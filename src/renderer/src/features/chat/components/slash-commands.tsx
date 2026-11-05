@@ -1,3 +1,4 @@
+import { useCustomThemes } from "@shared/themes/custom-theme-store";
 /**
  * Slash command completion for the composer: the command-word phase AND the
  * argument phase, in one listbox.
@@ -58,6 +59,8 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { themes } from "@shared/themes";
+import { appearanceLayerSummary } from "@shared/themes/appearance-summary";
+import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import { useQuery } from "@tanstack/react-query";
 import type { FC, KeyboardEvent } from "react";
 import {
@@ -498,7 +501,20 @@ function useArgumentRows(
 	tags: TagListState | undefined,
 	enabled: boolean,
 ): SlashArgumentListState {
-	const themeName = useUiPreferencesStore((state) => state.themeName);
+	const baseThemeName = useUiPreferencesStore((state) => state.themeName);
+	const customThemeId = useUiPreferencesStore((state) => state.customThemeId);
+	const customThemes = useCustomThemes();
+	const themeName = customThemes.themes.some(
+		(theme) => theme.id === customThemeId,
+	)
+		? customThemeId
+		: baseThemeName;
+	const appearance = useResolvedAppearance();
+	const selectedAccent = useUiPreferencesStore((state) => state.accent);
+	const layerSummary = appearanceLayerSummary(
+		appearance,
+		selectedAccent[appearance.palette.mode],
+	);
 	const { client, provided } = useOptionalQueryClient();
 	// Hooks cannot be called conditionally, so the entity query always runs and
 	// is merely DISABLED for a renderer-local or sessionless source — the entity
@@ -630,12 +646,19 @@ function useArgumentRows(
 	);
 	const localThemes = useMemo(
 		() =>
-			Object.values(themes).map((theme) => ({
+			[
+				...Object.values(themes),
+				...customThemes.themes.map((theme) => ({
+					id: theme.id,
+					name: theme.name,
+					description: theme.name,
+				})),
+			].map((theme) => ({
 				value: theme.id,
 				name: theme.name,
 				description: theme.description,
 			})),
-		[],
+		[customThemes],
 	);
 
 	/*
@@ -667,7 +690,9 @@ function useArgumentRows(
 		}
 		if (source === "theme") {
 			return {
-				rows: argumentRows("theme", localThemes, current),
+				rows: argumentRows("theme", localThemes, current).map((row) =>
+					row.current && layerSummary ? { ...row, detail: layerSummary } : row,
+				),
 				loading: false,
 				error: null,
 				needsSession: false,
@@ -880,6 +905,7 @@ function useArgumentRows(
 	}, [
 		source,
 		localThemes,
+		layerSummary,
 		entities.data,
 		entities.isLoading,
 		entities.isError,

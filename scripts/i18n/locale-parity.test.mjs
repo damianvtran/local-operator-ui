@@ -67,6 +67,54 @@ const IDENTICAL_OK = new Map([
 	],
 
 	[
+		"ui.settings.appearance.editor.copy_name",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.ratio",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.picker.rgb",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.picker.oklch",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.preview.bridge",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.floor",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.picker.chroma",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.group.accent",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.role.accent",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.role.accentAlt",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.role.danger",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.preview.sidebar",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
 		"es:ui.teamBridge.attachmentCard.bytes",
 		"Spanish standard unit copy is {size, number} bytes; independently audited by f93eb129057e (S3 receipt). Exact locale/key only, not an English fallback.",
 	],
@@ -309,6 +357,10 @@ const IDENTICAL_OK = new Map([
 		"Language-neutral list separator (comma and space), identical across shipped locales.",
 	],
 	[
+		"ui.chat.canonical.supplement.withheld.reason_separator",
+		"List separator (comma and space) for the withheld reasons; zh-CN and ur carry their own commas, the rest share English's.",
+	],
+	[
 		"ui.agents.settings.chat.top_k",
 		"Model sampling parameter name kept English by the fr, ru and es style guides.",
 	],
@@ -463,6 +515,19 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.settings.appearance.window_glass.material_tabbed",
 		"Microsoft material name (Tabbed Mica), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.appearance.layers.preview.code",
+		/*
+		 * `pnpm test`: the appearance preview strip's code line, rendered in a
+		 * monospace block beside the agent reply. It is a COMMAND, not copy - the
+		 * English value carries no verb to translate, so any non-identical value
+		 * would be a locale inventing one and printing a command that no longer
+		 * matches what the reader would type. The English side's context note says
+		 * the same, and like the sample URL above this is global: every locale shows
+		 * the literal.
+		 */
+		"sample command: the literal must stay byte-identical in every locale",
 	],
 	[
 		"ui.settings.navigation.settings_sidebar.general",

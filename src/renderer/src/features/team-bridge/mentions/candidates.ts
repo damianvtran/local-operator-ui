@@ -22,6 +22,7 @@ import {
 	composeChiefLabel,
 	personDisplayLabel,
 	personRowState,
+	unlistedMemberLabel,
 } from "../team-bridge-model";
 import type { MentionCandidate } from "./matcher";
 
@@ -126,6 +127,8 @@ export function buildMentionCandidates(input: {
 		if (seen.has(key) || !(members.has(key) || invited.has(key))) continue;
 		if (member.kind === "human" && member.account_id === selfAccountId)
 			continue;
+		const stored = unlistedMemberLabel(member, chiefLabels);
+		if (stored === null) continue;
 		seen.add(key);
 		const endpoint = (member as { endpoint_id?: unknown }).endpoint_id;
 		rows.push({
@@ -134,7 +137,15 @@ export function buildMentionCandidates(input: {
 			...(member.kind === "agent" && typeof endpoint === "string"
 				? { endpointId: endpoint }
 				: {}),
-			label: member.display_label,
+			/*
+			 * The stored label through `unlistedMemberLabel`, the read rule every
+			 * other surface applies: a legacy "Ben Tran (Ben Tran)" reads "Ben
+			 * Tran's chief of staff" and the "Member" placeholder never reaches
+			 * the popover row or the `mentions.notice.*` sentence verbatim
+			 * (review m1, m2-r2 on #1643). A label that names nobody cannot be
+			 * typed as a mention; skip it.
+			 */
+			label: stored,
 			member: members.has(key),
 			invited: invited.has(key),
 			bridgeOff: false,

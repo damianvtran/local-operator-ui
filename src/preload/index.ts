@@ -465,6 +465,9 @@ const api = {
 	 */
 	readFileBytes: (filePath: string, maxBytes?: number) =>
 		ipcRenderer.invoke("read-file-bytes", filePath, maxBytes),
+	// No script or path input: main inspects only this window's existing PDF guest.
+	pdfViewerStatus: (blobUrl: string) =>
+		ipcRenderer.invoke("pdf-viewer-status", blobUrl),
 	/**
 	 * Upload one composer attachment to the daemon's attachment store.
 	 *
@@ -985,6 +988,7 @@ const api = {
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
 			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
 		}): Promise<unknown> =>
 			ipcRenderer.invoke("browser-approvals-card-open", input),
 		closeApprovalsCard: (): Promise<unknown> =>
@@ -994,6 +998,7 @@ const api = {
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
 			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
 			requesterLabels?: Readonly<Record<string, string>>;
 		}): Promise<unknown> =>
 			ipcRenderer.invoke("browser-approvals-card-context", input),

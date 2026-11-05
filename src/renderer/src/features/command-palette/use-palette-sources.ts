@@ -83,6 +83,7 @@ import {
 	parsePaletteQuery,
 } from "./palette-search";
 import { chatRecentsOfRow } from "./use-conversation-recents";
+import { usePaletteTeamBridge } from "./use-palette-team-bridge";
 
 /**
  * The agent roster's page size.
@@ -231,6 +232,12 @@ export type PaletteChatState = {
 export type PaletteSources = {
 	items: PaletteItem[];
 	chats: PaletteChatState;
+	/**
+	 * Whether the `tb` word scope exists on this backend (the route's own
+	 * capability). The view's `searchPalette` call must parse the query the way
+	 * this hook did, or the two would disagree about which rows were asked for.
+	 */
+	bridgeScope: boolean;
 };
 
 export type PaletteSourceInput = {
@@ -257,9 +264,21 @@ export function usePaletteItems({
 	isCanvasOpen,
 }: PaletteSourceInput): PaletteSources {
 	useI18nLocale();
-	const { scope, terms } = parsePaletteQuery(query);
+	const capabilities = useDesktopCapabilities();
+	/* The `tb` scope exists only where the destination does (agent review round 1, M1). */
+	const bridgeScope = desktopFeatureEnabled(
+		capabilities.data,
+		"team_bridge_conversations",
+	);
+	const { scope, terms } = parsePaletteQuery(query, { bridgeScope });
 	const wantsChats = scope === null || scope === "chat";
-	const wantsAgents = scope === null || scope === "agent";
+	/*
+	 * Keep the roster available to the bridge scope's literal-name escape hatch
+	 * (`searchPalette`, Q1 in review round 2 of #1673). Otherwise `tb helper`
+	 * loses `tb-helper` here before search can admit its whole-name match. The
+	 * search still excludes agents that match only the stripped term `helper`.
+	 */
+	const wantsAgents = scope === null || scope === "agent" || scope === "bridge";
 	/*
 	 * Teams ride the SAME scope the roster does (issue #849): `@` reads "the things
 	 * I can start a chat with", and a team is one of them. A name of its own rather
@@ -269,8 +288,17 @@ export function usePaletteItems({
 	 */
 	const wantsTeams = scope === null || scope === "agent";
 	const wantsSettings = scope === null || scope === "setting";
+	/*
+	 * Team Bridge rows answer the default search as well as their own scope
+	 * (`tb`): a reader typing a channel's or a person's name should not first
+	 * have to know which surface it lives on (operator, 2026-11-04). They stay out
+	 * of `@`, `>` and `,`, each of which names a different store. `#` carries
+	 * them only for its no-chat-matched fallback (UX round 1, U3; the scope's
+	 * groups still exclude them, see `searchPalette`).
+	 */
+	const wantsTeamBridge =
+		scope === null || scope === "bridge" || scope === "chat";
 
-	const capabilities = useDesktopCapabilities();
 	const chatSearchSupported = desktopFeatureEnabled(
 		capabilities.data,
 		"session_search",
@@ -354,6 +382,17 @@ export function usePaletteItems({
 		],
 		[meshMembership, projectsEnabled],
 	);
+	/*
+	 * Team Bridge: the destination row (gated on the route's capability, as the
+	 * sidebar row is) plus the rail's conversations and people, from the caches
+	 * the rail already fills (`use-palette-team-bridge.ts`). The destination is
+	 * ordered after the other pages, where the sidebar's More group places it.
+	 */
+	const teamBridge = usePaletteTeamBridge({
+		open,
+		wantsRows: wantsTeamBridge,
+		destinationOrder: pages.length,
+	});
 	/*
 	 * Whether MAIN has an answer about the credential, which is a different fact
 	 * from the capability above.
@@ -936,6 +975,7 @@ export function usePaletteItems({
 
 	const items = (() => [
 		...buildNavigationItems(pages),
+		...(teamBridge.destination ? [teamBridge.destination] : []),
 		...buildActionItems(
 			buildPaletteActions({
 				isOnChatPage,
@@ -948,11 +988,13 @@ export function usePaletteItems({
 		...settingItems,
 		...agentItems,
 		...teamItems,
+		...teamBridge.rows,
 		...chatItems,
 	])();
 
 	return {
 		items,
+		bridgeScope,
 		chats: {
 			/*
 			 * Every term of this is a state the panel has to be able to explain:

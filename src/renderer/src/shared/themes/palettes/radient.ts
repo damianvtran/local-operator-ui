@@ -54,21 +54,41 @@ export const radient: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1B2027",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here the grounds are the ones the design spec gives this palette (SPEC §
+		 * 2.3), and every other ground-class role moved by the canvas's ΔL* holding
+		 * its `a` and `b`.
+		 * Measured:
+		 * canvas #1B2027 -> #171C23 (L* 12.04 -> 10.06)
+		 * surface #25293A -> #1E2333 (L* 16.92 -> 13.93)
+		 * elevated #2D324D -> #242A44 (L* 21.49 -> 17.68)
+		 * sunken #181A1D -> #141619 (L* 9.17 -> 7.16)
+		 * accent #91B7E9 -> #71B0F6: the brand blue held in hue and raised in chroma
+		 * (C* 29.0 -> 41.0, SPEC § 2.3): at C* 29 it sat ΔE00 12.6 from `inkMuted`, so
+		 * active, links and focus read as grey-blue text.
+		 */
+		canvas: "#171C23",
 		// The old theme set both background.default and background.paper to the
 		// same value, so a card was invisible against the page. Surface and elevated
 		// take the two blues the file already used for its sidebars.
-		surface: "#25293A",
-		elevated: "#2D324D",
-		sunken: "#181A1D",
+		surface: "#1E2333",
+		elevated: "#242A44",
+		sunken: "#141619",
 
 		// The user block's fill: `surface` itself, which already clears the
 		// role's ΔE00 4.0 floor off this canvas (measured 6.76).
-		messageSurface: "#25293A",
+		messageSurface: "#212536",
 		// The media slot's well: ΔE00 4.15 off the canvas, where `sunken` alone
 		// measures 3.17 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#17181a",
+		// Lifted #0C0E14 -> #0E0F15 (L* 4.00 -> 4.42) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.20 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#0E0F15",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -87,8 +107,8 @@ export const radient: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.94 `L*` and 8.1 `C*`,
 		 *                       `inkDim` 5.15:1.
 		 */
-		rowHover: "#2E303B",
-		rowSelected: "#2D344B",
+		rowHover: "#292B36",
+		rowSelected: "#262D44",
 
 		// Pure white was the one value in this file that belonged to no ramp: at
 		// C0 it reads as a hole punched in the navy rather than as the top of the
@@ -121,15 +141,15 @@ export const radient: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 6.98.
 		 */
-		hairline: "#3C404F",
+		hairline: "#383C4B",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.83:1 there against `hairline`'s 1.69:1.
-		hairlineStrong: "#404555",
+		hairlineStrong: "#3B4050",
 		// Derived. The old theme bounded inputs with white at 20 percent alpha,
 		// which measured about 1.5:1 on the page ground.
 		borderControl: "#7A8CA3",
 
-		accent: "#91B7E9",
+		accent: "#71B0F6",
 		accentHover: "#BDF0FD",
 		accentActive: "#6E9AD4",
 		// The chart's hover mark, a step AWAY from the plot ground rather than along the
@@ -139,7 +159,7 @@ export const radient: ThemeDefinition = {
 		tokenCommand: "#E3B457",
 		/* This palette's second hue: its `info` IS its accent, so the token takes
 		   the hue the same palette's editor already paints string literals in. */
-		accentWash: "#1F2835",
+		accentWash: "#1B2431",
 		// The old theme paired white with this blue, which measures 2.2:1. Ink on
 		// the accent fill is the page ground instead.
 		onAccent: "#10151C",
@@ -161,12 +181,19 @@ export const radient: ThemeDefinition = {
 		 * 2.0), 10.40:1 for `accentAlt` on it, and 2.03 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#252734",
+		/*
+		 * LIFTED #212330 -> #323341 (L* 14.05 -> 21.68, hue and chroma held) for
+		 * Team Bridge's person plates (visual refresh, contract C2; design round 1,
+		 * D1): the plate is borderless, so its fill must clear ΔE00 3.0 off every
+		 * ground it sits on. It measured 1.78; it now measures 3.19 at worst
+		 * (`rowHover`), with `accentAlt` 8.75:1 on it.
+		 */
+		accentAltWash: "#323341",
 
 		// Derived. Radient names no semantic colours, so these three are built to
 		// the theme's own cool cast rather than borrowed from another palette.
 		success: "#63D2A0",
-		successWash: "#1A2C2C",
+		successWash: "#162828",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -175,7 +202,7 @@ export const radient: ThemeDefinition = {
 		successBorder: "#4C8C73",
 
 		warning: "#E3B457",
-		warningWash: "#292823",
+		warningWash: "#25241F",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -184,7 +211,7 @@ export const radient: ThemeDefinition = {
 		warningBorder: "#957C4B",
 
 		danger: "#EF7E86",
-		dangerWash: "#2B2229",
+		dangerWash: "#271E25",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -194,8 +221,8 @@ export const radient: ThemeDefinition = {
 
 		// No informational hue, and the two candidates are both already spent on
 		// the accent. Info is the accent triple.
-		info: "#91B7E9",
-		infoWash: "#1F2835",
+		info: "#71B0F6",
+		infoWash: "#1B2431",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

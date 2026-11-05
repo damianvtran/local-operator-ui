@@ -25,5 +25,6 @@
 	"ui.agents.avatar.editor.zoom": "Zoom",
 	"ui.agents.avatar.editor.zoom_in": "Acercar",
 	"ui.agents.avatar.editor.zoom_out": "Alejar",
-	"ui.agents.avatar.editor.zoom_value": "{value}×"
+	"ui.agents.avatar.editor.zoom_value": "{value}×",
+	"ui.agents.avatar.add_link": "Añadir una foto para {name}"
 }

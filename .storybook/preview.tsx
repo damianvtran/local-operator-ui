@@ -21,13 +21,14 @@ import { AuthProviders } from "@renderer/shared/providers/auth";
 import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
 // @ts-ignore Path aliases don't work for Storybook root
 import { useUiPreferencesStore } from "@renderer/shared/store/ui-preferences-store";
+import { ThemeProvider as AppearanceThemeProvider } from "@shared/themes/theme-provider";
+import { BACKDROP_GRAY } from "../src/shared/glass-derivation.mjs";
 // @ts-ignore Path aliases don't work for Storybook root
 import "@renderer/styles/index.css";
 // @ts-ignore Path aliases don't work for Storybook root
 import { defaultQueryOptions } from "@renderer/shared/api/query-client";
 import {
 	DEFAULT_THEME,
-	applyThemeToDocument,
 	getTheme,
 	themes,
 	// @ts-ignore Path aliases don't work for Storybook root
@@ -175,11 +176,15 @@ const THEME_IDS = Object.keys(themes) as ThemeName[];
  * Moving only one of the three is what produced dark ink on light paper in
  * earlier evidence runs and read as a contrast defect in the product.
  */
+
 const ThemeFrame = ({
 	theme,
+	glassContrast,
 	children,
 }: {
 	theme: ThemeName;
+	/** Optional evidence input, never a default that overrides a story's seed. */
+	glassContrast?: number;
 	children: ReactNode;
 }) => {
 	/*
@@ -189,17 +194,30 @@ const ThemeFrame = ({
 	 * screenshot run is fast enough to catch.
 	 */
 	useLayoutEffect(() => {
-		useUiPreferencesStore.setState({ themeName: theme });
-		applyThemeToDocument(theme);
-	}, [theme]);
+		useUiPreferencesStore.setState({
+			themeName: theme,
+			...(glassContrast === undefined
+				? {}
+				: {
+						contrast: { dark: glassContrast, light: glassContrast },
+					}),
+		});
+	}, [theme, glassContrast]);
 
 	/* No teardown restoring the previous theme: every story mounts through this
 	   frame and sets its own, so a restore would only ever paint a palette
 	   nothing asked for between two stories. */
 	return (
-		<div className="min-h-screen bg-canvas font-sans text-body text-ink">
-			{children}
-		</div>
+		<AppearanceThemeProvider>
+			{/* Without a region marker this preview-only canvas masks every
+			    translucent story, even when the actual app's grounds are clear. */}
+			<div
+				data-glass-region="canvas"
+				className="min-h-screen bg-canvas font-sans text-body text-ink"
+			>
+				{children}
+			</div>
+		</AppearanceThemeProvider>
 	);
 };
 
@@ -257,7 +275,29 @@ const GlassFrame = ({
 				: null,
 		);
 	}, [glass, glassIntensity, ownsGlass, theme]);
-	return <>{children}</>;
+	/* A browser document has no OS material. A labelled fixture backdrop uses
+	 * the SAME measured worst under-window tone as the solver; otherwise a
+	 * transparent light story is read over the browser host's arbitrary black
+	 * base and looks like a contrast failure. This is DOM proof, not native. */
+	const tone =
+		BACKDROP_GRAY["under-window"][getTheme(theme).theme.palette.mode];
+	return (
+		<>
+			{glass && (
+				<div
+					aria-hidden="true"
+					data-story-glass-backdrop="measured-material-model"
+					style={{
+						position: "fixed",
+						inset: 0,
+						zIndex: -1,
+						backgroundColor: `rgb(${tone}, ${tone}, ${tone})`,
+					}}
+				/>
+			)}
+			{children}
+		</>
+	);
 };
 
 /**
@@ -420,6 +460,7 @@ const preview: Preview = {
 		locale: { control: { type: "select" }, options: LOCALE_IDS },
 		glass: { control: { type: "select" }, options: ["off", "on"] },
 		glassIntensity: { control: { type: "range", min: 0, max: 100, step: 1 } },
+		glassContrast: { control: { type: "range", min: -100, max: 100, step: 1 } },
 		chrome: { control: { type: "select" }, options: ["native", "mac32"] },
 	},
 	args: {
@@ -466,7 +507,14 @@ const preview: Preview = {
 											ownsGlass={storyOwnsGlass}
 											theme={theme}
 										>
-											<ThemeFrame theme={theme}>
+											<ThemeFrame
+												theme={theme}
+												glassContrast={
+													context.args.glassContrast === undefined
+														? undefined
+														: Number(context.args.glassContrast)
+												}
+											>
 												<LocaleFrame locale={locale}>
 													{/*
 													 * RADIX'S DIRECTION COMES FROM THIS CONTEXT, NOT FROM `<html dir>`: a

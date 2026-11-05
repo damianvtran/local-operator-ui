@@ -87,6 +87,7 @@ import {
 	formatBreachLine,
 	formatMemoryBudgetLine,
 	killTree,
+	memoryTripDiagnostic,
 	resolveMemoryBudget,
 	sampleGroup,
 } from "./desktop-test-memory-guard.mjs";
@@ -462,11 +463,19 @@ const watchdog =
 		: createMemoryWatchdog({
 				leaderPid: child.pid,
 				budgetBytes: memoryBudget.budgetMb * 1024 * 1024,
-				onTrip: () => {
+				onTrip: (reading) => {
 					// Set BEFORE the kill: the child's exit can be observed while the
 					// pre-kill re-read is still in flight, and must already read as a
 					// verdict rather than a signal death to re-raise.
 					breached = true;
+					// Preserve this pre-kill reading without a new sampler or argv dump.
+					const event = memoryTripDiagnostic({
+						leaderPid: child.pid,
+						budgetBytes: memoryBudget.budgetMb * 1024 * 1024,
+						reading,
+					});
+					console.error(`desktop tests: diagnostic ${JSON.stringify(event)}`);
+					diagnostic(event);
 					diagnosticSnapshot("memory-timeout");
 				},
 				onBreach: (reading, outcome) => {

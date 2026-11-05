@@ -8,7 +8,7 @@
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { FileIcon, FileX, ImageIcon, ImageOff } from "lucide-react";
+import { FileIcon, FileX, ImageIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import {
@@ -18,9 +18,12 @@ import {
 } from "../../chat/components/attachment-file-card";
 import { extensionOf } from "../../chat/utils/file-kind";
 import {
+	ATTACHMENT_GRID_VISIBLE,
+	ATTACHMENT_GROUP_MAX,
 	type BridgeAttachmentDescriptor,
 	type BridgeFileDescriptor,
 	attachmentBox,
+	attachmentFit,
 	fileCardWidth,
 	isAttachmentImage,
 	isAvailableAttachment,
@@ -28,6 +31,39 @@ import {
 	middleTruncateFileName,
 	splitFileNameTail,
 } from "./attachment-model";
+import {
+	type InlineImageBox,
+	InlineImageFailure,
+	InlineImageOverflow,
+} from "./inline-image-tile";
+
+/**
+ * Where the group puts one picture: a reserved single box, or a grid cell
+ * (`box: null`, the cell's CSS sizes it). `overflow` is the `+N` the last
+ * visible grid tile carries. The caller's tile renders into this slot and
+ * decides nothing about layout, so the member relay and the owner audit lay
+ * a set out identically.
+ */
+export type BridgeImageSlot = {
+	box: InlineImageBox;
+	fit: "cover" | "contain";
+	overflow: number;
+};
+
+type Visual<T> = { attachment: T; index: number; preview: boolean };
+
+/*
+ * GRID CELLS (SPEC §3.1 "Multiple images"). Two columns, 4px gutter, square
+ * cells, the whole set clipped to one 10px corner. Three images put the first
+ * across both rows (a portrait crop) and stack the other two, as Slack and
+ * Discord do; four is 2×2; five or more show four and the fourth says `+N`.
+ * `aspect-square` makes the reserved size a function of the column width
+ * alone, so nothing moves when the bytes land.
+ */
+function cellClass(position: number, visible: number) {
+	if (visible === 3 && position === 0) return "row-span-2";
+	return "aspect-square";
+}
 
 export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 	attachments,
@@ -40,15 +76,16 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 	attachments: readonly T[];
 	count?: number;
 	compact?: boolean;
-	renderPreview?: (attachment: T, index: number) => ReactNode;
-	/** S3b generic files, rendered after the images as noninteractive cards. */
+	renderPreview?: (
+		attachment: T,
+		index: number,
+		slot: BridgeImageSlot,
+	) => ReactNode;
+	/** S3b generic files, rendered after the images as noninteractive chips. */
 	files?: readonly BridgeFileDescriptor[];
 	fileCount?: number;
 }) {
 	useI18nLocale();
-	/* Images first, files second, as two lists: the image list's markup is the
-	 * pre-S3b markup byte for byte (the channel parity golden pins it), and a
-	 * file-less message renders exactly that and nothing else. */
 	const fileGroup = (
 		<BridgeFileGroup files={files} count={fileCount} compact={compact} />
 	);
@@ -56,84 +93,211 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 	// One opaque receipt represents it; never manufacture ids or fetch targets.
 	if (attachments.length === 0 && !(count > 0))
 		return files.length > 0 || fileCount > 0 ? fileGroup : null;
-	const items: readonly (T | null)[] = attachments.length
-		? attachments
-		: [null];
-	const imageList = (
-		<ul
-			aria-label={t("ui.teamBridge.attachmentCard.list", {
-				count: attachments.length || count,
-			})}
-			className="mt-1.5 flex min-w-0 flex-wrap items-start gap-2"
-		>
-			{items.map((attachment, index) => {
-				const available =
-					attachment !== null && isAvailableAttachment(attachment);
-				const image = attachment !== null && isAttachmentImage(attachment);
-				const preview =
-					available && image && attachment
-						? renderPreview?.(attachment, index)
-						: null;
-				const box = attachmentBox(attachment, items.length === 1, compact);
-				const Icon = !available ? ImageOff : image ? ImageIcon : FileIcon;
-				return (
-					<li
+	/*
+	 * Pictures go inline; everything that cannot be a picture here goes to a
+	 * chip. An image the reader may not see (refused, expired, withheld) keeps
+	 * its picture-shaped box so the transcript does not change shape around
+	 * it; an available image this view will not fetch (audit without a scope),
+	 * a non-image descriptor and a count-only receipt are chips, because a
+	 * blank picture-sized box would promise a picture that never comes.
+	 */
+	const visuals: Visual<T>[] = [];
+	const chips: { attachment: T | null; index: number }[] = [];
+	attachments.forEach((attachment, index) => {
+		const available = isAvailableAttachment(attachment);
+		const preview =
+			available && isAttachmentImage(attachment) && Boolean(renderPreview);
+		if (preview || (!available && isAttachmentImage(attachment)))
+			visuals.push({ attachment, index, preview });
+		else chips.push({ attachment, index });
+	});
+	if (attachments.length === 0) chips.push({ attachment: null, index: 0 });
+	const density = compact ? "compact" : "regular";
+	const single = visuals.length === 1;
+	const visible = Math.min(visuals.length, ATTACHMENT_GRID_VISIBLE);
+	const overflow = visuals.length - visible;
+	const listLabel = t("ui.teamBridge.attachmentCard.list", {
+		count: attachments.length || count,
+	});
+	const renderVisual = (
+		{ attachment, index, preview }: Visual<T>,
+		position: number,
+	) => {
+		const slot: BridgeImageSlot = {
+			box: single ? attachmentBox(attachment, true, compact) : null,
+			fit: single ? attachmentFit(attachment) : "cover",
+			overflow: position === visible - 1 ? overflow : 0,
+		};
+		const hidden = position >= visible;
+		return (
+			<li
+				key={attachment.id}
+				/* Images past the fourth stay mounted but hidden: the lightbox walks
+				   the whole set, so their tiles must still publish their bytes. */
+				hidden={hidden || undefined}
+				data-bridge-attachment-card={preview ? "preview" : "unavailable"}
+				className={cn(
+					"group/slot relative min-w-0",
+					!single && !hidden && cellClass(position, visible),
+				)}
+			>
+				{preview && renderPreview ? (
+					renderPreview(attachment, index, slot)
+				) : (
+					<InlineImageFailure
+						box={slot.box}
+						label={t("ui.teamBridge.attachments.position", {
+							index: String(index + 1),
+							count: String(attachments.length),
+						})}
+						copy={t("ui.teamBridge.attachments.unavailable")}
+					/>
+				)}
+				{slot.overflow > 0 && <InlineImageOverflow count={slot.overflow} />}
+			</li>
+		);
+	};
+	const imageList =
+		visuals.length > 0 ? (
+			<ul
+				aria-label={listLabel}
+				style={{ maxWidth: ATTACHMENT_GROUP_MAX[density] }}
+				className={cn(
+					"mt-1 min-w-0",
+					single
+						? "flex"
+						: "grid w-full grid-cols-2 gap-1 overflow-hidden rounded-md",
+				)}
+			>
+				{visuals.map(renderVisual)}
+			</ul>
+		) : null;
+	const chipList =
+		chips.length > 0 ? (
+			<ul
+				aria-label={visuals.length ? undefined : listLabel}
+				className="mt-1.5 flex min-w-0 flex-wrap items-start gap-2"
+			>
+				{chips.map(({ attachment }) => (
+					<AttachmentChip
 						key={attachment?.id ?? "count-only"}
-						style={{ width: box.width }}
-						data-bridge-attachment-card={
-							available ? (preview ? "preview" : "metadata") : "unavailable"
-						}
-						className={cn(
-							"min-w-0 max-w-full overflow-hidden rounded-md border border-control bg-surface",
-						)}
-					>
-						{preview ? (
-							<div className="max-w-full overflow-hidden">{preview}</div>
-						) : (
-							<div
-								className="flex max-w-full items-center justify-center bg-sunken text-ink-muted"
-								style={{ height: box.height }}
-							>
-								<Icon size={24} aria-hidden="true" />
-							</div>
-						)}
-						<div className="min-w-0 space-y-0.5 p-2 text-[12px] text-ink-muted">
-							<p className="font-medium text-ink">
-								{attachment
-									? t("ui.teamBridge.attachmentCard.file")
-									: t("ui.teamBridge.attachmentCard.list", { count })}
-							</p>
-							{available &&
-								attachment &&
-								Number.isSafeInteger(attachment.size) &&
-								attachment.size > 0 && (
-									<p dir="auto">
-										{t("ui.teamBridge.attachmentCard.bytes", {
-											size: attachment.size,
-										})}
-									</p>
-								)}
-							{!preview && (
-								<p className="max-w-[28ch] break-words">
-									{t(
-										available
-											? "ui.teamBridge.attachmentCard.metadata_only"
-											: "ui.teamBridge.attachmentCard.unavailable",
-									)}
-								</p>
-							)}
-						</div>
-					</li>
-				);
-			})}
-		</ul>
-	);
-	if (files.length === 0 && !(fileCount > 0)) return imageList;
+						attachment={attachment}
+						count={count}
+						compact={compact}
+					/>
+				))}
+			</ul>
+		) : null;
+	const hasFiles = files.length > 0 || fileCount > 0;
+	if (!chipList && !hasFiles) return imageList;
 	return (
 		<>
 			{imageList}
-			{fileGroup}
+			{chipList}
+			{hasFiles && fileGroup}
 		</>
+	);
+}
+
+/** The image types this client previews; anything else is never echoed. */
+const IMAGE_TYPE = new Map([
+	["image/png", "PNG"],
+	["image/jpeg", "JPEG"],
+]);
+
+/*
+ * THE CHIP (SPEC §3.1 "Non-image files", Slack-style): a 48px row, a kind
+ * tile, a name and a `TYPE · size` line. Borderless; the fill is the extent.
+ *
+ * FILL IS `mediaSurface`, NOT THE SPEC'S `surface`. The spec measured the chip
+ * on the channel pane once that pane moves to `canvas` (§3.2, a separate PR);
+ * today the pane, and the thread pane permanently, paint `surface`, where a
+ * `surface` chip would be the ground itself and vanish. Round 1 shipped
+ * `elevated`, which merged into a HOVERED row (ΔE00 0.00 arcade, 1.14 gruvbox,
+ * 1.21 obsidian, 1.90 everforest; agent review round 1, minor 1).
+ * `mediaSurface` is the borderless-tile role the Team Bridge avatar plates
+ * already rest on, held to ΔE00 3.0 off canvas, surface, elevated and rowHover
+ * by `PERCEPTIBLE`'s "team bridge borderless person and agent plates" row
+ * (fleet minima 4.00 / 5.96 / 7.89 / 3.70), so the chip keeps its extent on
+ * every ground a message row takes. The kind tile steps the other way, to
+ * `elevated` (7.89 minimum off the chip). `scripts/contrast-contract.mjs`
+ * carries the ink rows and the ground-step row.
+ *
+ * NO HOVER STEP and NO CONTROL: a descriptor chip offers nothing to do (no
+ * byte route; owner decision after #1634), and a hover colour step is this
+ * app's promise that something is pressable.
+ */
+const CHIP_CLASS =
+	"flex h-12 min-w-0 max-w-full items-center gap-2.5 rounded-md bg-media-surface px-2.5";
+const CHIP_TILE_CLASS =
+	"flex size-8 shrink-0 items-center justify-center rounded-sm bg-elevated";
+
+/**
+ * A descriptor that will not be drawn inline: an available image this view
+ * does not fetch, a non-image descriptor, or a count-only receipt. The name is
+ * generic on purpose (the image contract carries no name), and the meta line
+ * names only a type this client knows plus a human size - never the raw mime,
+ * never "N bytes".
+ */
+function AttachmentChip({
+	attachment,
+	count,
+	compact,
+}: {
+	attachment: BridgeAttachmentDescriptor | null;
+	count: number;
+	compact: boolean;
+}) {
+	const available = attachment !== null && isAvailableAttachment(attachment);
+	const type = attachment ? IMAGE_TYPE.get(attachment.mime) : undefined;
+	const size =
+		available && attachment && Number.isSafeInteger(attachment.size)
+			? attachmentSizeLabel(attachment.size > 0 ? attachment.size : null)
+			: null;
+	const name =
+		attachment === null
+			? t("ui.teamBridge.attachmentCard.list", { count })
+			: type
+				? t("ui.chat.canonical.image_label")
+				: t("ui.teamBridge.attachmentCard.file");
+	const meta = !available
+		? attachment === null
+			? null
+			: t("ui.teamBridge.attachmentCard.unavailable")
+		: type && size
+			? t("ui.chat.attachments.file_meta", { type, size })
+			: (size ?? type ?? null);
+	const Icon =
+		attachment === null || type ? ImageIcon : available ? FileIcon : FileX;
+	return (
+		<li
+			/* The file chips' own width, so both chip kinds line up in a column. */
+			style={{ width: fileCardWidth(compact) }}
+			data-bridge-attachment-card={
+				attachment === null || available ? "metadata" : "unavailable"
+			}
+			/* The view cannot show the picture; say so to a pointer reader too. */
+			title={
+				available && type
+					? t("ui.teamBridge.attachmentCard.metadata_only")
+					: undefined
+			}
+			className={CHIP_CLASS}
+		>
+			<span className={CHIP_TILE_CLASS}>
+				<Icon size={16} aria-hidden="true" className="text-ink-muted" />
+			</span>
+			<span className="min-w-0 flex-1">
+				<span className="block truncate font-medium text-[13px] text-ink">
+					{name}
+				</span>
+				{meta && (
+					<span dir="auto" className="block truncate text-ink-dim text-meta-sm">
+						{meta}
+					</span>
+				)}
+			</span>
+		</li>
 	);
 }
 
@@ -257,14 +421,11 @@ export function BridgeFileGroup({
 									? "metadata"
 									: "unavailable"
 						}
-						className="flex min-w-0 max-w-full items-center gap-2 rounded-md border border-control bg-surface p-2 text-[12px]"
+						/* The shared chip look (see `CHIP_CLASS`): borderless, the fill
+						   is the extent, no hover step because nothing here is a control. */
+						className={cn(CHIP_CLASS, "gap-2.5")}
 					>
-						<span
-							className={cn(
-								"flex size-8 shrink-0 items-center justify-center rounded-sm bg-sunken",
-								available ? "text-ink" : "text-ink-muted",
-							)}
-						>
+						<span className={cn(CHIP_TILE_CLASS, "text-ink-muted")}>
 							{file === null ? (
 								<FileIcon size={16} aria-hidden="true" />
 							) : available ? (
@@ -277,7 +438,7 @@ export function BridgeFileGroup({
 								<FileX size={16} aria-hidden="true" />
 							)}
 						</span>
-						<span className="min-w-0 flex-1">
+						<span className="min-w-0 flex-1 text-[13px]">
 							{file !== null && name ? (
 								<FileNameLabel
 									label={middleTruncateFileName(
@@ -300,7 +461,7 @@ export function BridgeFileGroup({
 								</span>
 							)}
 							{file !== null && (
-								<span className="block truncate text-ink-muted">
+								<span className="block truncate text-ink-dim text-meta-sm">
 									{available
 										? size
 											? t("ui.chat.attachments.file_meta", { type, size })

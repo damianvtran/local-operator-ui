@@ -308,6 +308,14 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_send_mentions"
 	/**
+	 * Per-thread read cursors (hub slice TR1): `team_bridge.thread_read`
+	 * acknowledges replies against the thread's own cursor. Absent: the thread
+	 * pane keeps acknowledging through the conversation read, which the hub's
+	 * compat rule (replies count against max(conversation, thread) cursor)
+	 * still clears.
+	 */
+	| "team_bridge_thread_reads"
+	/**
 	 * The owner's own agent's per-conversation wake level: the conversation
 	 * menu's "Wake your agent for" group, writing
 	 * `PUT /v1/desktop/team-bridge/conversations/{id}/agent-notify`.
@@ -319,6 +327,14 @@ export type DesktopFeature =
 	 * `server/features.py` with the route.
 	 */
 	| "team_bridge_agent_notify"
+	/**
+	 * The hub's server-side LEAVE CASCADE (Team Bridge hub, H4 slice): a person's
+	 * `leave` also withdraws their own agent from that conversation in the same
+	 * transaction. Advertised, the conversation menu calls leave ONLY; absent, it
+	 * calls leave and then a consent `withdraw` of the reader's own active agent
+	 * row (`leaveWithAgentCascade` in `team-bridge-conversation-menu-model.ts`).
+	 */
+	| "team_bridge_leave_withdraws_agent"
 	/**
 	 * An agent's OWN published picture through core's closed endpoint relay
 	 * (local-operator #3228). Absent: agent plates keep the glyph and send no

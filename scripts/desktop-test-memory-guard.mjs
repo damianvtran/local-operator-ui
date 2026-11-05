@@ -1050,6 +1050,35 @@ export function createMemoryWatchdog({
 	};
 }
 
+/** Retain the actual trip reading, not a second process census after the kill.
+ * Two hosted OOM attempts retained lane names but lost per-PID RSS, so their
+ * totals could not distinguish a growing worker from expensive overlap. Only
+ * accounting/identity fields leave this projection: argv and other member data
+ * must never enter the log. Largest-first truncation bounds failure output while
+ * keeping the processes most relevant to attribution; it changes no guard input.
+ */
+export function memoryTripDiagnostic({ leaderPid, budgetBytes, reading }) {
+	const members = reading.members
+		.map(({ pid, ppid, pgid, lstart, rssBytes }) => ({
+			pid,
+			ppid,
+			pgid,
+			lstart: typeof lstart === "string" ? lstart.slice(0, 128) : null,
+			rssBytes,
+		}))
+		.sort((a, b) => b.rssBytes - a.rssBytes || a.pid - b.pid);
+	return {
+		event: "memory-trip",
+		leaderPid,
+		budgetBytes,
+		totalBytes: reading.totalBytes,
+		rssBytes: reading.rssBytes,
+		footprintBytes: reading.footprintBytes,
+		members: members.slice(0, 32),
+		omitted: Math.max(0, members.length - 32),
+	};
+}
+
 /** The ONE loud line printed on a breach. Names the leader, the measured
  * figure and the budget, because that is what the person who owned the run needs
  * to decide whether their test leaks or the budget is wrong. */

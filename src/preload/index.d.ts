@@ -1,5 +1,6 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { PdfViewerStatus } from "../main/pdf-viewer-status";
 import type { UpdateCheckVerdict } from "../main/update-check-verdict";
 import type {
 	BackendUpdateCompletion,
@@ -176,6 +177,7 @@ declare global {
 					dir?: "ltr" | "rtl";
 					theme?: "light" | "dark";
 					palette?: string | null;
+					paletteVars?: Record<string, string> | null;
 				}) => Promise<unknown>;
 				closeApprovalsCard: () => Promise<unknown>;
 				setApprovalsCardContext: (input: {
@@ -183,6 +185,7 @@ declare global {
 					dir?: "ltr" | "rtl";
 					theme?: "light" | "dark";
 					palette?: string | null;
+					paletteVars?: Record<string, string> | null;
 					requesterLabels?: Readonly<Record<string, string>>;
 				}) => Promise<unknown>;
 				onChord: (
@@ -522,6 +525,8 @@ declare global {
 				filePath: string,
 				maxBytes?: number,
 			) => Promise<ReadFileBytesResponse>;
+			/** Parse status of this app window's already mounted native PDF guest. */
+			pdfViewerStatus: (blobUrl: string) => Promise<PdfViewerStatus>;
 			/**
 			 * Upload one composer attachment to the daemon's attachment store. Main owns
 			 * the read and the multipart POST; the renderer receives the stored record
@@ -654,6 +659,8 @@ declare global {
 						detail?: string;
 						/** True when the install follows a source tree, not the release. */
 						sourceBuild?: boolean;
+						/** Whether the press cannot interrupt a running session (`entry-point` route only). */
+						nonDisruptive?: boolean;
 						/**
 						 * The version the daemon SERVING this app reports, when it was
 						 * readable. `currentVersion` above is the install on disk, which an

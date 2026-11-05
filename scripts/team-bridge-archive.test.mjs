@@ -64,6 +64,7 @@ const bundle = await build({
 		contents: `
 			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { TeamBridgeArchivedChannelsView, TeamBridgeArchivedBanner } from "./src/renderer/src/features/team-bridge/team-bridge-archive";
+			export { conversationMenuItemIds } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu-model";
 			export { archiveMutationOptions, unarchiveMutationOptions, deleteMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { canArchiveConversation, canManageArchivedConversation, withoutConversation, withConversationStatus, selectableConversations, landingAfterRemoval, withAppendedPage, archivedChannelRows, isNotAMemberRefusal } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 		`,
@@ -479,8 +480,29 @@ test("the channels header offers Archived channels, and a row offers Archive onl
 		),
 	);
 	assert.match(html, /aria-label="Channel options"/);
+	/* EVERY ROW HAS A MENU NOW (operator 2026-11-04: leave, members and
+	   notifications on each channel), so the "…" itself no longer signals
+	   archive authority. Archive is one ITEM of that menu, and it is offered
+	   only where `canArchiveConversation` says so: asserted on the model the
+	   row renders, because a closed Radix menu draws no items to markup. */
 	const menus = html.match(/aria-label="More actions for [^"]+"/g) ?? [];
-	assert.deepEqual(menus, ['aria-label="More actions for mine"']);
+	assert.deepEqual(menus.sort(), [
+		'aria-label="More actions for humans"',
+		'aria-label="More actions for mine"',
+		'aria-label="More actions for theirs"',
+	]);
+	const archiveOffered = (row) =>
+		ui
+			.conversationMenuItemIds({
+				conversation: row,
+				selfAccountId: "acct_self",
+				archivable: ui.canArchiveConversation(row),
+				wiring: { notify: true, leave: true, archive: true },
+			})
+			.includes("archive");
+	assert.equal(archiveOffered(mine), true);
+	assert.equal(archiveOffered(theirs), false);
+	assert.equal(archiveOffered(builtin), false);
 });
 
 test("the archived view states loading, error, empty and populated", () => {

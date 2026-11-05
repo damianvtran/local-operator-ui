@@ -1,0 +1,60 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit",
+	"audit_id": "ui-update-notice-reassure-340352200f28",
+	"date": "2026-11-03",
+	"instance": "340352200f28-update-notice-ru",
+	"agent": "reviewer",
+	"session": "340352200f28",
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"locale": "ru",
+	"namespace": "ui.common.updates",
+	"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
+	"target_sha256": "7e089e5800ee8da3e7790db8c5284039764681b68085c57e2c7c4f5f57a43d88",
+	"context_sha256": "db9b046c313690aa9b582c98297c074697a81a98333ac90f9137f4b152bdef8f",
+	"glossary": {
+		"path": "~/local-operator/i18n/glossary.md",
+		"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+	"translator": {
+		"agent": "coder (team lopdev, update-notice-reassure)",
+		"session": "9615db04a717",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-11-03"
+	},
+	"independence": "Auditor session 340352200f28 differs from translator session 9615db04a717 and authored no English copy or code in PR #1655; it only applied the corrections listed in findings. Same model as translator (anthropic/claude-opus-5-5), separate agent instance; disclosed.",
+	"scope": "Delta audit of the 12 changed/new ui.common.updates values (PR #1655) against English, context sidecar, glossary and the ru style guide: meaning matches source behaviour (app restart/quit does not stop detached session runtimes; server reload keeps sessions, they switch build when idle), lead reassurance present, no em/en dashes, ICU placeholders intact, register per style guide. The other values are byte-identical to the previously audited main bytes. No rendered fit, native RTL or second safety audit claimed.",
+	"audited_keys": [
+		"ui.common.updates.update_notification.installing_closes_the_app_while_the_update_is_verified_and_put_in",
+		"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_server_will_tem",
+		"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_update_can_t_be",
+		"ui.common.updates.update_notification.restarting_puts_the_server_offline_while_it_comes_back",
+		"ui.common.updates.update_notification.rolling_the_server_onto",
+		"ui.common.updates.update_notification.the_app_updates_this_install_and_then_restarts_the_server_it_star",
+		"ui.common.updates.update_notification.the_app_updates_this_install_itself_the_server_you_are_using_was_",
+		"ui.common.updates.update_notification.the_new_build_has_landed_nothing_in_flight_was_cut_off_the_turns_",
+		"ui.common.updates.install.starting",
+		"ui.common.updates.update_foot_icon.sessions_keep_running",
+		"ui.common.updates.update_notification.remedy_managed_app_owned",
+		"ui.common.updates.update_notification.remedy_managed_global"
+	],
+	"findings": [
+		{
+			"id": "I6",
+			"severity": "nit",
+			"key": "ui.common.updates.update_notification.the_new_build_has_landed_nothing_in_flight_was_cut_off_the_turns_",
+			"summary": "'до половины минуты' is a calque; idiomatic 'до полуминуты'.",
+			"disposition": "fixed by auditor in this commit"
+		}
+	],
+	"checks": {
+		"key_parity": "key set equals English",
+		"placeholder_parity": "passed",
+		"dashes": "none in changed values",
+		"semantic_review": "complete"
+	},
+	"terminal": true
+}

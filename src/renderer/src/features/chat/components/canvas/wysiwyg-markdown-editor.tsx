@@ -168,6 +168,12 @@ const formatSelectionWithContext = (
 };
 
 type WysiwygMarkdownEditorProps = {
+	/** Explicit-save hosts own persistence; never enlist their drafts in Canvas buffers. */
+	draft?: {
+		onChange: (markdown: string) => void;
+		disabled?: boolean;
+		label: string;
+	};
 	document: CanvasDocument;
 	conversationId?: string;
 	agentId?: string;
@@ -434,6 +440,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	agentId,
 	initialFormatMenuOpen = false,
 	measure = "reading",
+	draft,
 }) => {
 	/*
 	 * A REMOUNT MUST SHOW THE RETAINED DRAFT, not the file's bytes. The buffer
@@ -444,8 +451,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 */
 
 	const locale = useI18nLocale();
-	const [content, setContent] = useState(
-		() => bufferText(document.id) ?? document.content,
+	const [content, setContent] = useState(() =>
+		draft ? document.content : (bufferText(document.id) ?? document.content),
 	);
 	const [hasUserChanges, setHasUserChanges] = useState(false);
 	const [currentTextType, setCurrentTextType] = useState<TextType>("paragraph");
@@ -497,7 +504,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const [canUndo, setCanUndo] = useState(false);
 	const [canRedo, setCanRedo] = useState(false);
 
-	const { getOrCreateManager } = useUndoManagerStore();
+	const { getOrCreateManager, removeManager } = useUndoManagerStore();
+	const isDraft = Boolean(draft);
 	const undoManagerRef = useRef<UndoManager | null>(null);
 
 	const findHighlightRegistry = "find-highlight";
@@ -522,6 +530,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const latestDocumentRef = useRef(document);
 	latestDocumentRef.current = document;
 	useEffect(() => {
+		if (draft) return;
 		adoptBuffer({
 			documentId: document.id,
 			path: document.path,
@@ -538,11 +547,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				});
 			},
 		});
-	}, [conversationId, document]);
+	}, [conversationId, document, draft]);
 
 	// Manual save function that bypasses debounce
 	const handleManualSave = useCallback(() => {
 		if (
+			draft ||
 			!document.path ||
 			!hasUserChanges ||
 			content === originalContentRef.current
@@ -574,7 +584,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				// save attempts it again.
 				console.error("Could not save the document:", error);
 			});
-	}, [content, document.id, document.path, hasUserChanges]);
+	}, [content, document.id, document.path, hasUserChanges, draft]);
 
 	const updateCurrentTextType = useCallback(() => {
 		const selection = window.getSelection();
@@ -632,14 +642,14 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		 * clears it (UX U11) - and publishes the registry the freshness check consults
 		 * before replacing anything.
 		 */
-		proposeBuffer(document.id, markdownContent);
+		if (!draft) proposeBuffer(document.id, markdownContent);
 		if (markdownContent !== originalContentRef.current) {
 			setHasUserChanges(true);
 		}
 
 		updateCurrentTextType();
 		updateSelectedFormats();
-	}, [document.id, updateCurrentTextType, updateSelectedFormats]);
+	}, [document.id, updateCurrentTextType, updateSelectedFormats, draft]);
 
 	const clearHighlights = useCallback(() => {
 		if (window.CSS && CSS.highlights) {
@@ -879,7 +889,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	useEffect(() => {
 		if (editorRef.current && document.id) {
 			// A retained draft wins over the file body; see the state initializer.
-			const retained = bufferText(document.id);
+			const retained = draft ? null : bufferText(document.id);
 			const shown = retained ?? document.content;
 			const htmlContent = markdownToHtml(shown);
 
@@ -947,10 +957,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 */
 	const documentId = document.id;
 	const documentTitle = document.title;
-	useEffect(
-		() => () => closeDocumentBuffer({ id: documentId, title: documentTitle }),
-		[documentId, documentTitle],
-	);
+	useEffect(() => {
+		if (draft) return;
+		return () => closeDocumentBuffer({ id: documentId, title: documentTitle });
+	}, [documentId, documentTitle, draft]);
 
 	// Manage UndoManager lifecycle
 	useEffect(() => {
@@ -986,12 +996,26 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			if (undoManagerRef.current) {
 				undoManagerRef.current.disconnect();
 			}
+			// Settings drafts have no retained Canvas owner. Releasing their undo
+			// histories avoids retaining a long prompt after each mode switch.
+			if (isDraft) removeManager(document.id);
 		};
-	}, [document.id, getOrCreateManager]);
+	}, [document.id, getOrCreateManager, isDraft, removeManager]);
+
+	// Controlled hosts receive all edits, including toolbar undo/redo, but never
+	// a mount-time serialization of their original canonical Markdown.
+	const draftChange = draft?.onChange;
+	const reportedContent = useRef(content);
+	useEffect(() => {
+		if (content === reportedContent.current) return;
+		reportedContent.current = content;
+		draftChange?.(content);
+	}, [content, draftChange]);
 
 	// Save content when debounced
 	useEffect(() => {
 		if (
+			!draft &&
 			hasUserChanges &&
 			!isInitialLoadRef.current &&
 			debouncedContent !== originalContentRef.current &&
@@ -1012,7 +1036,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					console.error("Could not save the document:", error);
 				});
 		}
-	}, [debouncedContent, document.id, document.path, hasUserChanges]);
+	}, [debouncedContent, document.id, document.path, hasUserChanges, draft]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect when content changes to restore the scroll position.
 	useEffect(() => {
@@ -2166,7 +2190,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						 * Value and name: `UNDO_SCOPE_ATTRIBUTE` in `@shared/lib/scrollbar-activity`.
 						 */
 						data-undo-scope="true"
-						contentEditable={!reviewState}
+						role="textbox"
+						tabIndex={draft?.disabled ? -1 : 0}
+						aria-label={draft?.label}
+						aria-multiline="true"
+						aria-disabled={draft?.disabled}
+						contentEditable={!reviewState && !draft?.disabled}
 						onInput={handleContentChange}
 						onKeyDown={handleKeyDown}
 						onClick={handleClick}
@@ -2339,6 +2368,7 @@ const arePropsEqual = (
 	}
 
 	// Check document properties that affect rendering
+	if (prevProps.draft !== nextProps.draft) return false;
 	const prevDoc = prevProps.document;
 	const nextDoc = nextProps.document;
 

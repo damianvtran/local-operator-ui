@@ -1263,37 +1263,37 @@ export const StopControlWhileStreaming: Story = {
 	),
 };
 
+/**
+ * A Stop press that has landed and whose turn has not ended: slot B keeps the
+ * Stop square in its pressed face (inert) - the same element, same x, so the
+ * pointer that just pressed it is still over what it pressed.
+ */
+export const StopControlStopping: Story = {
+	render: () => (
+		<Frame label="stopping: slot B holds the pressed Stop, inert">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story-stopping"
+					awaitingReply={true}
+					canonicalStop={{ active: true, stopping: true, onStop: () => {} }}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+};
+
 /*
- * THE SETTLED IDLE ROW, which is the operator's report on the first fix for the
- * round's MAJOR and has to be visible to be judged. The reservation of the Stop
- * control's box is now a GRACE WINDOW rather than a standing state
- * (`interrupt-slot-grace.ts`), so an idle composer on a capable backend holds
- * nothing and the dictation control sits beside Send with only the row's own gap
- * between them. Captured against the frame above, the pair is the point: the
- * cluster CHANGES between the two states - and it is the DICTATION control that
- * moves, 32px plus the row's own 4px gap to the right, while **Send keeps its
- * position**: it is pinned to the composer's right edge in every state (measured
- * on the live row, default rung: Send's left edge 1307 running, inside the window
- * and settled; the dictation control 1271 settled and 1235 running). As written
- * the other way round the pair would argue the weaker case - if the dictation
- * control never moved there would be nothing to protect from a press in the
- * Stop's box, and the window would need no justification. Against
- * `StopControlWithoutCapability` below it shows a backend that cannot interrupt
- * renders the same settled row.
- *
- * One ink difference from `interrupt-live/` beside these frames, stated so the
- * two sets are not read as one change: this story renders the dictation control
- * DISABLED (no Radient credential is armed in Storybook) and so in the
- * `ink-disabled` role, while the live rig arms a placeholder credential and
- * photographs the same box live and brighter. Both are legitimate states of the
- * same box, and the ink step is the credential rather than the reservation.
- *
- * The frames cannot show the grace itself: a story mounts a component in one
- * state, and the window opens on a TRANSITION the turn's own end produces (a
- * freshly mounted composer must render no reservation). That transition is
- * measured in the real app instead - `scripts/interrupt-esc-proof.mjs` presses the
- * Stop control and re-measures the cluster on both sides of the window, and its
- * `interrupt-live` frames carry both.
+ * THE SETTLED IDLE ROW, the other half of `StopControlWhileStreaming`: `[mic][Send]`,
+ * with Send disabled while the box is empty. The pair is the point of the
+ * button-slot change - Send and Stop are ONE slot, so between this frame and the
+ * streaming one the mic and the primary control keep the same x and only the
+ * face in the right-hand slot changes (measured, every state in the matrix, by
+ * `scripts/composer-readings-geometry.mjs --states=...`). One ink difference from
+ * `interrupt-live/`: Storybook arms no Radient credential, so the dictation
+ * control is drawn DISABLED here and in the `ink-disabled` role.
  */
 export const StopSlotSettled: Story = {
 	render: () => (
@@ -1303,7 +1303,6 @@ export const StopSlotSettled: Story = {
 					isLoading={false}
 					messages={NONEMPTY}
 					conversationId="story"
-					canonicalStopAvailable={true}
 					onSendMessage={async () => true}
 				/>
 			</div>
@@ -1320,7 +1319,6 @@ export const StopSlotSettledSmallView: Story = {
 					messages={NONEMPTY}
 					conversationId="story"
 					isSmallView={true}
-					canonicalStopAvailable={true}
 					interruptNotice={STOPPED_WITH_WORK_LEFT}
 					onSendMessage={async () => true}
 				/>

@@ -2449,7 +2449,7 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	);
 	assert.match(
 		source,
-		/if \(isInputDisabled\) return;\s*if \(noProvider\) return;/,
+		/if \(isInputDisabled\) return false;\s*if \(noProvider\) return false;/,
 		"the form's submit path still sends when nothing can answer",
 	);
 	/*
@@ -2461,7 +2461,7 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 */
 	assert.match(
 		source,
-		/if \(noModel\) \{\s*explainRefusedSend\(\);\s*return;\s*\}/,
+		/if \(noModel\) \{\s*explainRefusedSend\(\);\s*return false;\s*\}/,
 		"the submit path still sends with no model to run on",
 	);
 	/*
@@ -2477,7 +2477,7 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 */
 	assert.match(
 		source,
-		/isInputDisabled \|\|\s*sendRefused \|\|/,
+		/refused: isInputDisabled \|\| sendRefused,/,
 		"the Send control must report the same state the key does",
 	);
 	assert.match(
@@ -2526,7 +2526,7 @@ test("the disabled Send press answers the way Enter does, and keeps the caret (U
 	);
 	assert.match(
 		source,
-		/isInputDisabled \|\|\s*sendRefused \|\|\s*\(!newMessage\.trim\(\) && attachments\.length === 0\)/,
+		/const hasPayload = newMessage\.trim\(\) !== "" \|\| attachments\.length > 0;[\s\S]*?hasPayload,\s*refused: isInputDisabled \|\| sendRefused,/,
 		"the empty box keeps its own disabling term OUTSIDE the refusal's pair: it is disabled for its own reason, so it keeps the browser's press behaviour",
 	);
 });

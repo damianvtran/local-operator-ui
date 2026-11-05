@@ -10,6 +10,7 @@ import { TeamBridgeAttachmentStrip } from "./team-bridge-attachments";
 import { rememberUploadPreview } from "./team-bridge-attachments-model";
 import {
 	SHOT_GREEN_B64,
+	SHOT_PANORAMA_B64,
 	SHOT_RED_B64,
 	SHOT_TALL_B64,
 	SHOT_WIDE_B64,
@@ -37,6 +38,11 @@ import type {
 
 const BYTES: Record<string, string> = {
 	batt_wide: SHOT_WIDE_B64,
+	/* Extra ids for the inline-image grid and letterbox stories: the same
+	   synthetic pixels under distinct ids, because an id is a list key. */
+	batt_fifth: SHOT_GREEN_B64,
+	batt_sixth: SHOT_WIDE_B64,
+	batt_pano: SHOT_PANORAMA_B64,
 	batt_tall: SHOT_TALL_B64,
 	batt_green: SHOT_GREEN_B64,
 	batt_red: SHOT_RED_B64,
@@ -404,6 +410,92 @@ export const BubbleFourImages: StoryObj<typeof Thread> = {
 	),
 };
 
+/** Inline-image refresh (SPEC §3.1): three images put the first across both
+ * rows and stack the other two. */
+export const BubbleThreeImages: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: "Three angles:",
+					attachments: [
+						descriptor("batt_tall", 120, 180),
+						descriptor("batt_wide", 240, 150),
+						descriptor("batt_green", 200, 140),
+					],
+				}),
+			]}
+		/>
+	),
+};
+
+/** Six images: a 2×2 grid whose fourth tile says `+2`; the lightbox still
+ * walks all six. */
+export const BubbleSixImages: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: "The whole set:",
+					attachments: [
+						descriptor("batt_wide", 240, 150),
+						descriptor("batt_tall", 120, 180),
+						descriptor("batt_green", 200, 140),
+						descriptor("batt_red", 160, 160),
+						descriptor("batt_fifth", 200, 140),
+						descriptor("batt_sixth", 240, 150),
+					],
+				}),
+			]}
+		/>
+	),
+};
+
+/** An extreme ratio (4.5:1) letterboxes on `media-surface` rather than
+ * cropping the panorama to a strip. */
+export const BubblePanorama: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: "Panorama:",
+					attachments: [descriptor("batt_pano", 450, 100)],
+				}),
+			]}
+		/>
+	),
+};
+
+/** Non-image descriptors and S3b files: borderless chips, never "N bytes". */
+export const BubbleFileChips: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: "Notes and the log:",
+					attachments: [descriptor("batt_wide", 240, 150)],
+					files: [
+						{
+							id: "bfile_notes",
+							class: "pdf",
+							size: 2_400_000,
+							display_name: "Quarterly board summary.pdf",
+							state: "bound",
+						},
+						{
+							id: "bfile_log",
+							class: "text",
+							size: 18_200,
+							display_name: "run-2026-11-03.log",
+							state: "expired",
+						},
+					],
+				}),
+			]}
+		/>
+	),
+};
+
 export const BubbleImageOnly: StoryObj<typeof Thread> = {
 	render: () => (
 		<Thread
@@ -582,6 +674,9 @@ const widthStories = (width: number) => ({
 					messages={[fourImages]}
 					labelFor={(sender) => sender.display_label}
 					tenantId="tnt_story"
+					/* The byte route needs the captured account; without it every
+					   tile drew "Image unavailable" (QA round 1, Q2). */
+					accountId="acct_story_reader"
 				/>
 			</AtWidth>
 		),

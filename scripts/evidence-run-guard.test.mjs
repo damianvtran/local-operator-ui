@@ -250,6 +250,18 @@ async function realSweep(
 	]) {
 		copyFileSync(join(dirname(guard), name), join(scripts, name));
 	}
+	/*
+	 * `scripts/color.mjs` re-exports the shared colour maths from
+	 * `src/shared/theme-engine/color.mjs` (the theme composition engine measures
+	 * with the same functions the gates do), so the relocated checkout needs that
+	 * one module too - the same import edge, one directory over.
+	 */
+	const engine = join(root, "src", "shared", "theme-engine");
+	mkdirSync(engine, { recursive: true });
+	copyFileSync(
+		join(dirname(guard), "..", "src", "shared", "theme-engine", "color.mjs"),
+		join(engine, "color.mjs"),
+	);
 	// Only relocate the fixed lock literal in this disposable checkout. There is
 	// deliberately no production env override that lets sibling worktrees opt out.
 	const source = readFileSync(

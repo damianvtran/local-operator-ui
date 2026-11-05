@@ -27,8 +27,10 @@
  */
 import {
 	TeamBridgeApi,
+	type TeamBridgeMentionRow,
 	requireBridgeWriteAccount,
 } from "@shared/api/local-operator/team-bridge-api";
+import { usePassiveDesktopFeature } from "@shared/hooks/display-density";
 import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import {
 	type QueryClient,
@@ -41,7 +43,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversation,
@@ -52,6 +54,7 @@ import type {
 	TeamBridgeMessagePage,
 	TeamBridgeNotify,
 	TeamBridgeReadState,
+	TeamBridgeThreadReadState,
 	TeamBridgeUnread,
 } from "../../../../shared/team-bridge-contract";
 import {
@@ -562,7 +565,13 @@ export function useSendTeamBridgeMessage(
 ): UseMutationResult<
 	unknown,
 	Error,
-	{ clientRef: string; body: string; attachmentIds?: readonly string[] }
+	{
+		clientRef: string;
+		body: string;
+		attachmentIds?: readonly string[];
+		files?: readonly string[];
+		mentions?: readonly TeamBridgeMentionRow[];
+	}
 > {
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
@@ -571,6 +580,17 @@ export function useSendTeamBridgeMessage(
 		body: string;
 		/* A staged image set this message binds; omitted (never `[]`) for text. */
 		attachmentIds?: readonly string[];
+		files?: readonly string[];
+		/*
+		 * The @-mentions the caller captured at the PRESS (review MINOR-1 on #1663).
+		 * A picture send reaches this request only after its upload, and while it
+		 * uploads an optimistic text send of the same words can land and clear the
+		 * shared outbox entry, so a read here would post the picture without its
+		 * mentions. The key being PRESENT is the capture, even when its value is
+		 * undefined (nothing was staged); only an input without the key falls back
+		 * to the outbox, for a caller that never captured.
+		 */
+		mentions?: readonly TeamBridgeMentionRow[];
 	};
 	const mutation = useMutation<
 		unknown,
@@ -584,7 +604,10 @@ export function useSendTeamBridgeMessage(
 				tenantId: target.tenantId,
 				expectedAccountId: requireBridgeWriteAccount(target.accountId),
 				// The composer's @-mentions for exactly this text (`mention-outbox`).
-				mentions: stagedMentions(target.conversationId, input.body),
+				mentions:
+					"mentions" in input
+						? input.mentions
+						: stagedMentions(target.conversationId, input.body),
 			});
 		},
 		onSuccess: (_data, { input, target }) => {
@@ -603,6 +626,12 @@ export function useSendTeamBridgeMessage(
 		tenantId,
 	}));
 }
+/** A join naming its conversation (a rail row's menu, not the selection). */
+export type TeamBridgeJoinVariables = {
+	conversationId: string;
+	tenantId: string;
+};
+
 /**
  * Join a discoverable channel (or accept an invitation).
  *
@@ -615,27 +644,33 @@ export function useSendTeamBridgeMessage(
 export function useJoinTeamBridgeConversation(
 	conversationId: string,
 	tenantId?: string,
-): UseMutationResult<unknown, Error, void> {
+): UseMutationResult<unknown, Error, TeamBridgeJoinVariables | undefined> {
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
 	const mutation = useMutation<
 		unknown,
 		Error,
-		CapturedBridgeMutation<void, BridgeWriteTarget>
+		CapturedBridgeMutation<
+			TeamBridgeJoinVariables | undefined,
+			BridgeWriteTarget
+		>
 	>({
-		mutationFn: ({ target }) => {
+		/* A rail row's menu joins a row that is NOT the selection, so the
+		   conversation may ride in the variables; absent, it is the selection the
+		   hook was mounted for (the preview banner's Join). */
+		mutationFn: ({ input, target }) => {
 			target.assertCurrent();
 			return TeamBridgeApi.join(
-				target.conversationId,
-				target.tenantId,
+				input?.conversationId ?? target.conversationId,
+				input ? input.tenantId : target.tenantId,
 				target.accountId,
 			);
 		},
-		onSuccess: (_data, { target }) =>
+		onSuccess: (_data, { input, target }) =>
 			refreshAfterSend(
 				client,
-				target.conversationId,
-				target.tenantId,
+				input?.conversationId ?? target.conversationId,
+				input ? input.tenantId : target.tenantId,
 				target.isCurrent,
 			),
 	});
@@ -953,6 +988,8 @@ export type TeamBridgeInvitationAnswer = {
 	conversationId: string;
 	tenantId: string;
 	decision: "accept" | "decline";
+	/** Pins one of the owner's agent rows (members panel decline); optional. */
+	endpointId?: string;
 };
 
 /**
@@ -995,11 +1032,12 @@ export function invitationAnswerMutationOptions(
 			query.queryKey.at(-2) === "account",
 	};
 	return {
-		mutationFn: ({ conversationId, tenantId, decision }) =>
+		mutationFn: ({ conversationId, tenantId, decision, endpointId }) =>
 			TeamBridgeApi.answerAgentInvitation({
 				conversationId,
 				tenantId,
 				decision,
+				endpointId,
 				accountId: check(),
 				consentVersion: TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION,
 			}),
@@ -1137,6 +1175,197 @@ export function useMarkTeamBridgeRead(
 		tenantId,
 	}));
 }
+/**
+ * Write one root's viewer-scoped thread unread into this ACCOUNT's cached
+ * timeline pages of its conversation, in one synchronous pass, so the thread
+ * row's badge moves the moment a read lands instead of on the next 8s poll.
+ *
+ * OWNER-SCOPED (review round 1, F2): the account tail on the key keeps a write
+ * from reaching a page another signed-in account cached for the same
+ * tenant/conversation.
+ *
+ * ABSENT STAYS ABSENT: a root whose page came from a hub without thread reads
+ * carries no `thread_unread_count`, and writing a number there would invent a
+ * claim the hub never made.
+ */
+export function setCachedThreadUnread(
+	client: QueryClient,
+	target: {
+		conversationId: string;
+		tenantId: string;
+		accountId: string;
+		rootId: string;
+	},
+	count: number,
+	seq: number,
+) {
+	client.setQueriesData<TeamBridgeMessagePage>(
+		{
+			queryKey: teamBridgeKeys.messages(
+				target.conversationId,
+				target.tenantId,
+				target.accountId,
+			),
+		},
+		(page) => {
+			if (!page) return page;
+			let changed = false;
+			const messages = page.messages.map((message) => {
+				if (
+					message.id !== target.rootId ||
+					message.thread_unread_count === undefined ||
+					message.thread_unread_count === count
+				)
+					return message;
+				changed = true;
+				return {
+					...message,
+					thread_unread_count: count,
+					thread_last_read_seq: Math.max(
+						seq,
+						message.thread_last_read_seq ?? 0,
+					),
+				};
+			});
+			return changed ? { ...page, messages } : page;
+		},
+	);
+}
+
+/**
+ * Which count the row may show right after an acknowledgement of `seq`, or
+ * `undefined` for "leave it to the refetch".
+ *
+ * NO OPTIMISTIC ZERO ON A PARTIAL READ (review round 1, F1). The pane
+ * acknowledges incrementally while a long unread thread scrolls past, so
+ * writing 0 after every acknowledgement made the badge blink off and back to
+ * the hub's remainder once per step. In order of authority:
+ * 1. the hub's own answer to a TR1 thread read;
+ * 2. 0, only when `seq` reaches the newest reply the pane knows is the live
+ *    tail (`newestReplySeq`, `undefined` when the window is not at the tail);
+ * 3. otherwise nothing: the messages invalidation brings the hub's number.
+ */
+export function threadUnreadAfterRead(
+	answer: { thread_unread_count?: number; unread_count?: number } | undefined,
+	seq: number,
+	newestReplySeq: number | undefined,
+): number | undefined {
+	const echoed = answer?.thread_unread_count ?? answer?.unread_count;
+	if (echoed !== undefined) return echoed;
+	if (newestReplySeq !== undefined && seq >= newestReplySeq) return 0;
+	return undefined;
+}
+
+/**
+ * THE THREAD PANE'S ONE READ CALL SITE. Isolated so the hub's thread-read
+ * route (slice TR1) swaps in here and nowhere else.
+ *
+ * - `features.team_bridge_thread_reads >= 1` (the same `>= 1` key test the
+ *   attention service applies to `team_bridge_unread_events`): acknowledge
+ *   against the THREAD's cursor. The hub rolls that into the conversation
+ *   unread and bumps the unread revision, so the conversation list and the
+ *   rail badge are invalidated to recompute.
+ * - Otherwise: exactly today's behaviour, the conversation read with the reply
+ *   seq (`useMarkTeamBridgeRead`, optimistic rail clear included). The hub's
+ *   compat rule counts replies against max(conversation, thread cursor), so
+ *   this still clears a TR1 hub's thread count for a build that never posts a
+ *   thread read. Its answer is the CONVERSATION's state, so only rule 2 of
+ *   `threadUnreadAfterRead` applies to it.
+ *
+ * `newestReplySeq` is read at settlement, not captured at dispatch, so a reply
+ * that arrived while the read was in flight keeps its badge.
+ */
+export function useMarkTeamBridgeThreadRead(
+	conversationId: string,
+	tenantId: string,
+	rootId: string,
+	newestReplySeq: () => number | undefined = () => undefined,
+): { mutateAsync: (input: { seq: number }) => Promise<unknown> } {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	/* PASSIVE: the app root already owns the capabilities poll; a pane adding
+	   its own observer would add a refetch interval per open thread for an
+	   answer already in the cache. Absent/unknown reads false = today's path. */
+	const threadReads = usePassiveDesktopFeature("team_bridge_thread_reads");
+	const conversationRead = useMarkTeamBridgeRead(conversationId, tenantId);
+	const threadRead = useMutation<
+		TeamBridgeThreadReadState,
+		Error,
+		CapturedBridgeMutation<{ seq: number }, BridgeWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			if (!target.accountId || !target.tenantId)
+				throw new Error("Team Bridge write owner and tenant required");
+			return TeamBridgeApi.markThreadRead(target.conversationId, rootId, {
+				seq: input.seq,
+				tenantId: target.tenantId,
+				expectedAccountId: target.accountId,
+			});
+		},
+		onSuccess: async (_data, { target }) => {
+			if (!target.isCurrent() || !target.accountId) return;
+			cancelTeamBridgeUnreadReads(client, target.accountId);
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			if (!target.isCurrent()) return;
+			await client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
+		},
+	});
+	const boundThreadRead = bindBridgeMutation(threadRead, () => ({
+		...owner,
+		conversationId,
+		tenantId,
+	}));
+	/* Latest-ref, so `mutateAsync` keeps one identity: the pane's viewport
+	   observer is keyed on it, and a fresh closure per render would tear the
+	   observer down and re-observe every reply on each poll. */
+	const latest = useRef({
+		threadReads,
+		boundThreadRead,
+		conversationRead,
+		newestReplySeq,
+		owner,
+	});
+	latest.current = {
+		threadReads,
+		boundThreadRead,
+		conversationRead,
+		newestReplySeq,
+		owner,
+	};
+	const mutateAsync = useCallback(
+		async (input: { seq: number }) => {
+			const current = latest.current;
+			const viaThread = current.threadReads;
+			const answer = await (viaThread
+				? current.boundThreadRead.mutateAsync(input)
+				: current.conversationRead.mutateAsync(input));
+			const accountId = current.owner.accountId;
+			const count = threadUnreadAfterRead(
+				viaThread ? (answer as TeamBridgeThreadReadState) : undefined,
+				input.seq,
+				latest.current.newestReplySeq(),
+			);
+			if (accountId && count !== undefined && current.owner.isCurrent())
+				setCachedThreadUnread(
+					client,
+					{ conversationId, tenantId, accountId, rootId },
+					count,
+					input.seq,
+				);
+			// Reconcile with the hub's own per-viewer count either way.
+			void client.invalidateQueries({
+				queryKey: teamBridgeKeys.messages(conversationId, tenantId),
+			});
+			return answer;
+		},
+		[client, conversationId, tenantId, rootId],
+	);
+	return useMemo(() => ({ mutateAsync }), [mutateAsync]);
+}
+
 /** The member routes need the captured owner and nothing else: the
  * conversation and tenant travel in the variables, so one hook can serve any
  * conversation the dialog is opened on. */
@@ -1220,6 +1449,109 @@ export function useRemoveTeamBridgeMember(): UseMutationResult<
 		onSuccess: async (updated, { target }) => {
 			if (!target.isCurrent()) return;
 			replaceCachedConversation(client, target.accountId, updated);
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+		},
+	});
+	return bindBridgeMutation(mutation, () => owner);
+}
+
+export type TeamBridgeLeaveVariables = {
+	conversationId: string;
+	tenantId: string;
+};
+
+/**
+ * Leave a conversation as the signed-in person (the members panel's "Leave").
+ *
+ * NOT OPTIMISTIC, unlike archive: leaving changes what the reader may READ,
+ * and only the server knows the post-state (a private group disappears from
+ * the list, a channel turns into a discoverable preview). The page moves the
+ * selection off the room on success, the way remove-self and archive already
+ * do; every conversation and unread read is refetched so the rail and the
+ * badge agree with the server about where the reader still is.
+ */
+export function useLeaveTeamBridgeConversation(): UseMutationResult<
+	unknown,
+	Error,
+	TeamBridgeLeaveVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		unknown,
+		Error,
+		CapturedBridgeMutation<TeamBridgeLeaveVariables, MemberWriteTarget>
+	>({
+		/*
+		 * NEVER RETRIED (QA round 1, Q2), like group create below: one click is
+		 * one request. The shared client's `retry: 1` re-sent a refused leave, and
+		 * a retry after a committed leave whose answer was lost draws a
+		 * not-a-member refusal, so the panel would say "not saved" for a change
+		 * the hub made.
+		 */
+		retry: 0,
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			return TeamBridgeApi.leaveConversation({
+				conversationId: input.conversationId,
+				tenantId: input.tenantId,
+				expectedAccountId: target.accountId,
+			});
+		},
+		onSuccess: async (_data, { target }) => {
+			if (!target.isCurrent()) return;
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			if (!target.isCurrent()) return;
+			await client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
+		},
+	});
+	return bindBridgeMutation(mutation, () => owner);
+}
+
+export type TeamBridgeWithdrawAgentVariables =
+	TeamBridgeMemberMutationVariables & {
+		endpointId?: string;
+	};
+
+/**
+ * Take the reader's OWN ACTIVE agent out of one conversation (consent
+ * `withdraw`). Only that endpoint's row leaves; the owner's own membership is
+ * untouched. The answer is not written into the cache: it is rendered from
+ * the agent's member key on some hubs (see `withServedOwnAgentNotify`), so a
+ * refetch, not the answer, is what the panel re-renders from.
+ */
+export function useWithdrawTeamBridgeAgent(): UseMutationResult<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeWithdrawAgentVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		TeamBridgeConversation,
+		Error,
+		CapturedBridgeMutation<TeamBridgeWithdrawAgentVariables, MemberWriteTarget>
+	>({
+		/* NEVER RETRIED (QA round 1, Q2): a retried withdraw after a lost answer
+		   draws `409 not_active` for a change that was saved. */
+		retry: 0,
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			if (!target.accountId)
+				throw new Error("Team Bridge write authority changed");
+			return TeamBridgeApi.withdrawAgent({
+				conversationId: input.conversationId,
+				tenantId: input.tenantId,
+				accountId: target.accountId,
+				endpointId: input.endpointId,
+			});
+		},
+		onSuccess: async (_updated, { target }) => {
+			if (!target.isCurrent()) return;
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});

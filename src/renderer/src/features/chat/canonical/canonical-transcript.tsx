@@ -53,6 +53,7 @@ import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import type { AvatarMark } from "@shared/agent-avatar/avatar-presence";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -111,6 +112,7 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import { parseAgentAvatarSize, turnMarkHeight } from "../agent-avatar-size";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { chatRegionLabel } from "../chat-regions";
@@ -323,6 +325,10 @@ import {
 	refusalVerdict,
 } from "./user-attachments";
 import {
+	observeUserTurnClamp,
+	overflowsUserTurnClamp,
+} from "./user-turn-clamp";
+import {
 	type WorkingLineState,
 	deriveWorkingLine,
 	workingLineInputFor,
@@ -391,15 +397,15 @@ export const dbgChatEntriesRebuilds = { count: 0 };
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
 
-/**
- * The height the agent's turn-head picture adds to the entry it opens, in px.
- *
- * `message-avatar.tsx` draws `size-5` (20) plus `mb-1` (4). The DOM window's
- * estimate needs it because an entry the window has not mounted has no measured
+/*
+ * The height the agent's turn-head mark adds to the entry it opens is
+ * `turnMarkHeight(size)` (`agent-avatar-size.ts`): the box the setting picks
+ * plus `mb-1`, from the SAME table `message-avatar.tsx` draws its class from, so
+ * the DOM window's estimate cannot keep a 24px belief while the mark is 40. The
+ * estimate is needed because an entry the window has not mounted has no measured
  * box, and the mark is only there when the turn has a head and the pane has a
- * picture (review round 1, R-5).
+ * mark (review round 1, R-5).
  */
-const TURN_MARK_HEIGHT = 24;
 
 /**
  * The head set for a pane with no picture: no mark is drawn, so there is nothing
@@ -696,7 +702,7 @@ export type CanonicalTranscriptProps = {
 	 * Omitted/nulled is every existing caller and every story: nothing new
 	 * renders, and the transcript is byte-for-byte the one D11 left.
 	 */
-	agentAvatar?: string | null;
+	agentMark?: AvatarMark | null;
 	/**
 	 * The speaking agent's NAME, beside the picture it belongs to.
 	 *
@@ -1156,16 +1162,29 @@ const UserRow = memo(function UserRow({
 		);
 	});
 	/*
-	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
-	 * rather than guessed from a character count: the box is clamped first and
-	 * then asked whether it is hiding anything, so a `Show more` can never appear
-	 * on a turn that is already fully visible. Skipped while expanded, where the
-	 * clamp is off and the box would always report itself as fitting.
+	 * D2's eight-line clamp. The CAP is a class applied whenever the turn is
+	 * collapsed, from the first paint, so a long turn's first painted height IS
+	 * its settled height; `user-turn-clamp.ts` records why the first build, which
+	 * capped only after measuring an uncapped box, never clamped anything.
+	 *
+	 * What is measured is only whether the `Show more` control EXISTS: a turn that
+	 * fits under the cap must not grow a control that reveals nothing. The answer
+	 * compares the content's height to the cap's constant, so it is the same
+	 * collapsed or expanded (a turn remounted expanded keeps its `Show less`).
 	 */
 	const [expanded, setExpanded] = useTranscriptViewBoolean(record.id);
-	const [clamped, setClamped] = useState(false);
+	const [overflows, setOverflows] = useState(false);
 	const bodyRef = useRef<HTMLDivElement>(null);
+	const intrinsicBodyRef = useRef<HTMLDivElement>(null);
 	/*
+	 * The open-path decision, in the LAYOUT effect so the control is in the first
+	 * painted frame (a later answer lands the 34px control one frame late, the
+	 * height change the cap exists to avoid). The read falls after the commit's
+	 * DOM is complete, so it is answered by the layout the transcript's open pays
+	 * anyway; every row's read is in the same commit, and their setStates batch
+	 * into one synchronous re-render. `user-turn-clamp.ts` records the observer-only
+	 * alternative that was measured and rejected.
+	 *
 	 * The suppression below is one line rather than a block because biome attaches
 	 * an ignore to the NEXT line: a multi-line one leaves the rule unreported and
 	 * active, which is how this arrived as a red lint run with the reason already
@@ -1179,10 +1198,20 @@ const UserRow = memo(function UserRow({
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `remainingContent` re-measures the clamp; see above
 	useLayoutEffect(() => {
-		if (expanded) return;
 		const el = bodyRef.current;
-		if (el) setClamped(el.scrollHeight > el.clientHeight + 1);
-	}, [expanded, remainingContent]);
+		if (el) setOverflows(overflowsUserTurnClamp(el.scrollHeight));
+	}, [remainingContent]);
+	/*
+	 * Observe intrinsic content, NOT the clipped viewport: at 174/175px the
+	 * control is absent, but later image/font growth leaves the viewport at
+	 * 174px and would deliver no resize. The uncapped flow-root includes child
+	 * margins in its height, so growth and shrink both invalidate the answer
+	 * without a text-prop change or polling on every streamed token.
+	 */
+	useEffect(() => {
+		const content = intrinsicBodyRef.current;
+		return content ? observeUserTurnClamp(content, setOverflows) : undefined;
+	}, []);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
 			{/*
@@ -1285,292 +1314,313 @@ const UserRow = memo(function UserRow({
 							className={cn(
 								"relative",
 								/*
-								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2).
+								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2);
+								 * `USER_TURN_CLAMP_PX` is the same number, pinned equal by
+								 * `scripts/user-turn-clamp.test.mjs` (Tailwind needs the literal).
 								 *
-								 * The clamp is on the BLOCK, because a pasted stack trace is
-								 * still one user turn and would otherwise own the pane - and
-								 * the affordance below is rendered only when the clamp is
-								 * actually hiding something, so a turn that fits never grows a
-								 * control that reveals nothing.
+								 * UNCONDITIONAL while collapsed, never gated on a measurement:
+								 * the box paints at its settled height from the first frame. A
+								 * turn that fits is shorter than the cap, so the class changes
+								 * nothing for it. The clamp is on the turn's PROSE block (quote,
+								 * seal, text): a pasted stack trace is one turn and would
+								 * otherwise own the pane. Attachments and the control sit
+								 * outside it - the control must never be what the cap clips,
+								 * and a one-line turn with a screenshot is not a long turn.
+								 * The hidden text stays in the DOM, so selection, copy and
+								 * quoting reach all of it.
 								 */
-								!expanded && clamped ? "max-h-[174px] overflow-hidden" : "",
+								!expanded && "max-h-[174px] overflow-hidden",
 							)}
 						>
-							{/* The quote a quoted turn was sent with, rendered as the same
+							<div
+								ref={intrinsicBodyRef}
+								className="flow-root"
+								data-lo-user-turn-intrinsic
+							>
+								{/* The quote a quoted turn was sent with, rendered as the same
 							    recessed block the composer stages it in - the reader sees one
 							    idiom for "this is quoted" whether it is pending or sent. */}
-							{replies.length > 0 && <ReplyPreview replies={replies} />}
-							{/*
-							 * THE `$skill` SEAL. Without it this bubble IS the payload: the
-							 * header sentence, the `<skill>` tag, the whole SKILL.md body and
-							 * the request, painted at reading weight as though the reader had
-							 * typed them -- the defect the harness repo's
-							 * `docs/design/history-fold-convergence.md` row D8 records.
-							 * The typed line is the row; the instructions the model received
-							 * are one press away.
-							 *
-							 * A `Disclosure` rather than a fold of its own, because branding
-							 * § 7 allows exactly one expand/collapse idiom app-wide. Its
-							 * chevron slot is repainted `text-ink-dim`: the primitive's
-							 * `ink-disabled` is the one role exempt from every contrast floor,
-							 * while this chevron is the surface's only affordance rather than
-							 * chrome beside a trace row.
-							 */}
-							{seal && (
-								/*
-								 * `contents` rather than a box: this wrapper carries the anchor U2
-								 * scrolls to and must not add a flex item beside the bubble the
-								 * disclosure already sits in.
-								 */
-								<div ref={sealAnchor} className={cn("contents")}>
-									<Disclosure
-										className={cn("mb-1.5")}
-										/*
-										 * A NAMED group, because the chevron cannot inherit the trigger's
-										 * own `hover:text-ink-muted` - it pins its own ink - so the hover
-										 * step has to be keyed to the button (design round 1, D3). Named
-										 * rather than bare: an unnamed `group` here would re-key every
-										 * `group-hover:` inside this trigger to it.
-										 */
-										triggerClassName="group/seal"
-										chevronClassName="text-ink-dim group-hover/seal:text-ink-muted"
-										/*
-										 * The trigger's ACCESSIBLE NAME (UX round 1, U3): the summary
-										 * is a token and a purpose sentence, so a screen reader read
-										 * ~150 characters per pass and never said what the control
-										 * opens. The purpose stays visible, and in the `title` behind
-										 * the ellipsis, for sighted readers.
-										 */
-										triggerLabel={t("ui.chat.skill_invocation.trigger_label", {
-											token: seal.token,
-										})}
-										onOpenChange={(open) => {
-											if (open) holdSealTrigger();
-										}}
-										summary={
-											<span className={cn("flex min-w-0 items-center gap-1.5")}>
-												{/*
-												 * The composer's RESOLVED-skill ink, name for name
-												 * (`slash-highlight.ts`'s `RUN_INK`): the token a reader
-												 * sees on the row is the same object they saw in the box
-												 * they typed it in, so the two surfaces cannot drift into
-												 * two opinions about what a `$skill` looks like.
-												 *
-												 * THE CAPTION KEEPS A FLOOR (design round 1, D2): skill
-												 * names reach 64 characters, and a `shrink-0` name at
-												 * the narrowest window left the purpose showing one
-												 * letter and an ellipsis. Both sides ellipsize now
-												 * and the purpose holds 8rem, so a long name cannot
-												 * eat it.
-												 *
-												 * A FLOOR ON THE PURPOSE rather than a cap on the
-												 * name, and expressed in the spacing scale: a cap of
-												 * 60% of the row was this row's first spelling, and it
-												 * trips `tool-row.test.mjs`'s arbitrary-width guard -
-												 * which exists because an arbitrary cap in THIS file
-												 * is what once re-constrained a message column, and
-												 * which is right to be the one place that is
-												 * enumerated rather than described. A floor binds
-												 * only where the defect was measured.
-												 */}
+								{replies.length > 0 && <ReplyPreview replies={replies} />}
+								{/*
+								 * THE `$skill` SEAL. Without it this bubble IS the payload: the
+								 * header sentence, the `<skill>` tag, the whole SKILL.md body and
+								 * the request, painted at reading weight as though the reader had
+								 * typed them -- the defect the harness repo's
+								 * `docs/design/history-fold-convergence.md` row D8 records.
+								 * The typed line is the row; the instructions the model received
+								 * are one press away.
+								 *
+								 * A `Disclosure` rather than a fold of its own, because branding
+								 * § 7 allows exactly one expand/collapse idiom app-wide. Its
+								 * chevron slot is repainted `text-ink-dim`: the primitive's
+								 * `ink-disabled` is the one role exempt from every contrast floor,
+								 * while this chevron is the surface's only affordance rather than
+								 * chrome beside a trace row.
+								 */}
+								{seal && (
+									/*
+									 * `contents` rather than a box: this wrapper carries the anchor U2
+									 * scrolls to and must not add a flex item beside the bubble the
+									 * disclosure already sits in.
+									 */
+									<div ref={sealAnchor} className={cn("contents")}>
+										<Disclosure
+											className={cn("mb-1.5")}
+											/*
+											 * A NAMED group, because the chevron cannot inherit the trigger's
+											 * own `hover:text-ink-muted` - it pins its own ink - so the hover
+											 * step has to be keyed to the button (design round 1, D3). Named
+											 * rather than bare: an unnamed `group` here would re-key every
+											 * `group-hover:` inside this trigger to it.
+											 */
+											triggerClassName="group/seal"
+											chevronClassName="text-ink-dim group-hover/seal:text-ink-muted"
+											/*
+											 * The trigger's ACCESSIBLE NAME (UX round 1, U3): the summary
+											 * is a token and a purpose sentence, so a screen reader read
+											 * ~150 characters per pass and never said what the control
+											 * opens. The purpose stays visible, and in the `title` behind
+											 * the ellipsis, for sighted readers.
+											 */
+											triggerLabel={t(
+												"ui.chat.skill_invocation.trigger_label",
+												{
+													token: seal.token,
+												},
+											)}
+											onOpenChange={(open) => {
+												if (open) holdSealTrigger();
+											}}
+											summary={
 												<span
-													className={cn(
-														"min-w-0 shrink truncate text-token-command slash-run-bold",
-													)}
+													className={cn("flex min-w-0 items-center gap-1.5")}
 												>
-													{seal.token}
+													{/*
+													 * The composer's RESOLVED-skill ink, name for name
+													 * (`slash-highlight.ts`'s `RUN_INK`): the token a reader
+													 * sees on the row is the same object they saw in the box
+													 * they typed it in, so the two surfaces cannot drift into
+													 * two opinions about what a `$skill` looks like.
+													 *
+													 * THE CAPTION KEEPS A FLOOR (design round 1, D2): skill
+													 * names reach 64 characters, and a `shrink-0` name at
+													 * the narrowest window left the purpose showing one
+													 * letter and an ellipsis. Both sides ellipsize now
+													 * and the purpose holds 8rem, so a long name cannot
+													 * eat it.
+													 *
+													 * A FLOOR ON THE PURPOSE rather than a cap on the
+													 * name, and expressed in the spacing scale: a cap of
+													 * 60% of the row was this row's first spelling, and it
+													 * trips `tool-row.test.mjs`'s arbitrary-width guard -
+													 * which exists because an arbitrary cap in THIS file
+													 * is what once re-constrained a message column, and
+													 * which is right to be the one place that is
+													 * enumerated rather than described. A floor binds
+													 * only where the defect was measured.
+													 */}
+													<span
+														className={cn(
+															"min-w-0 shrink truncate text-token-command slash-run-bold",
+														)}
+													>
+														{seal.token}
+													</span>
+													{seal.purpose !== null && (
+														<>
+															<span
+																className={cn("shrink-0 text-ink-dim")}
+																aria-hidden="true"
+															>
+																·
+															</span>
+															{/*
+															 * ONE LINE, ELLIPSIZED, the whole sentence in the
+															 * native `title` rather than in a popper: this sits
+															 * inside every invocation row of a windowed
+															 * transcript, which is the cost `reply-preview.tsx`
+															 * records for the same choice one block away.
+															 */}
+															<span
+																className={cn(
+																	"min-w-32 flex-1 truncate text-ink-muted text-meta",
+																)}
+																title={seal.purpose}
+															>
+																{seal.purpose}
+															</span>
+														</>
+													)}
 												</span>
-												{seal.purpose !== null && (
-													<>
-														<span
-															className={cn("shrink-0 text-ink-dim")}
-															aria-hidden="true"
-														>
-															·
-														</span>
-														{/*
-														 * ONE LINE, ELLIPSIZED, the whole sentence in the
-														 * native `title` rather than in a popper: this sits
-														 * inside every invocation row of a windowed
-														 * transcript, which is the cost `reply-preview.tsx`
-														 * records for the same choice one block away.
-														 */}
-														<span
-															className={cn(
-																"min-w-32 flex-1 truncate text-ink-muted text-meta",
-															)}
-															title={seal.purpose}
-														>
-															{seal.purpose}
-														</span>
-													</>
-												)}
-											</span>
-										}
-									>
-										{/*
-										 * The same recessed ground the quoted turn above takes, and
-										 * the same reason: this block is not the reader's words but
-										 * text the app sent on their behalf, and the ground says so
-										 * without a rule between the two. `role="group"` + the
-										 * trigger's own label ties the panel to the control that
-										 * opened it (UX round 1, U3).
-										 */}
-										<div
-											/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group` and the wrong one here - there is no form, and its default box and margin would land inside a message bubble that is measured to the pixel. What the role buys is a LABELLING SCOPE, so the panel a press opened announces itself as the instructions the trigger named (the same trade `session-status-strip.tsx` and `mesh-canvas.tsx` record). */
-											role="group"
-											aria-label={instructionsLabel}
-											className={cn("rounded-sm bg-sunken p-2")}
+											}
 										>
-											<div className={cn("mb-1 text-ink-dim text-meta")}>
-												{instructionsLabel}
-											</div>
 											{/*
-											 * § 7's DETAIL-BLOCK CAP (design round 1, D1): a real
-											 * SKILL.md is 20-160 lines, and an uncapped block grew
-											 * until the row pushed itself - and the reader's own
-											 * request under it - out of the scroller. The cap is the
-											 * trace's own exported number rather than a second one
-											 * free to drift from it, and the block scrolls inside
-											 * itself.
+											 * The same recessed ground the quoted turn above takes, and
+											 * the same reason: this block is not the reader's words but
+											 * text the app sent on their behalf, and the ground says so
+											 * without a rule between the two. `role="group"` + the
+											 * trigger's own label ties the panel to the control that
+											 * opened it (UX round 1, U3).
 											 */}
 											<div
-												/*
-												 * The evidence rig's hook: `renderer-driver.mjs`'s
-												 * `--scene skill-seal` measures THIS element against § 7's
-												 * cap and reads its `scrollHeight` against its
-												 * `clientHeight`, which nothing else in the row can
-												 * answer.
-												 */
-												data-lo-skill-body
-												className={cn(DETAIL_SECTION_MAX, "overflow-auto")}
+												/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group` and the wrong one here - there is no form, and its default box and margin would land inside a message bubble that is measured to the pixel. What the role buys is a LABELLING SCOPE, so the panel a press opened announces itself as the instructions the trigger named (the same trade `session-status-strip.tsx` and `mesh-canvas.tsx` record). */
+												role="group"
+												aria-label={instructionsLabel}
+												className={cn("rounded-sm bg-sunken p-2")}
 											>
-												<MarkdownRenderer content={seal.body} />
+												<div className={cn("mb-1 text-ink-dim text-meta")}>
+													{instructionsLabel}
+												</div>
+												{/*
+												 * § 7's DETAIL-BLOCK CAP (design round 1, D1): a real
+												 * SKILL.md is 20-160 lines, and an uncapped block grew
+												 * until the row pushed itself - and the reader's own
+												 * request under it - out of the scroller. The cap is the
+												 * trace's own exported number rather than a second one
+												 * free to drift from it, and the block scrolls inside
+												 * itself.
+												 */}
+												<div
+													/*
+													 * The evidence rig's hook: `renderer-driver.mjs`'s
+													 * `--scene skill-seal` measures THIS element against § 7's
+													 * cap and reads its `scrollHeight` against its
+													 * `clientHeight`, which nothing else in the row can
+													 * answer.
+													 */
+													data-lo-skill-body
+													className={cn(DETAIL_SECTION_MAX, "overflow-auto")}
+												>
+													<MarkdownRenderer content={seal.body} />
+												</div>
 											</div>
-										</div>
-									</Disclosure>
-								</div>
-							)}
-							{/*
-							 * `credentialCitations`, and only on the user's own turn: this is the only
-							 * place in the transcript where a citation is the app's own words rather than
-							 * the agent's prose about one. A message sent with a pasted secret reads in the
-							 * reader's own voice, so the chip the composer showed must survive the send
-							 * (operator report, 2026-09-17: the citation arrived as a wall of technical
-							 * text). What the MODEL receives is unchanged — the sentence is still the
-							 * message's own text; only how it is drawn changes.
-							 */}
-							<MarkdownRenderer
-								content={seal ? seal.request : remainingContent}
-								credentialCitations
-								skillNames={attachedSkills}
-							/>
-							{clamped && (
-								/*
-								 * A 30px full-width row INSIDE the block, with no divider
-								 * (D2, the Raycast idiom): the clamp and its release are one
-								 * object, so the release sits on the block's own ground
-								 * rather than behind a rule between them.
-								 */
-								<button
-									type="button"
-									onClick={() => setExpanded((value) => !value)}
-									aria-expanded={expanded}
-									className={cn(
-										"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
-										"hover:text-ink",
-									)}
-								>
-									{expanded ? "Show less" : "Show more"}
-								</button>
-							)}
-							{(record.documents?.length ?? 0) > 0 && (
-								<div className={cn("mt-2 flex flex-col gap-1")}>
-									{record.documents?.map((document, index, documents) => {
-										/*
-										 * Judged by position and origin path as well as digest
-										 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
-										 * and its card offered Open on the real file.
-										 */
-										const verdict = refusalVerdict(refusedAttachments, {
-											messageId: record.id,
-											kind: "document",
-											position: index,
-											count: documents.length,
-											digest: document.attachment,
-											path: document.path,
-										});
-										return (
-											<SentFileCard
-												key={document.id}
-												document={document}
-												remote={remote}
-												placementKnown={placementKnown}
-												sessionId={
-													scope &&
-													!scope.childId &&
-													canMaterialiseAttachment(capable, verdict)
-														? scope.sessionId
-														: null
-												}
-												refused={verdict === false}
-												withheld={verdict === "pending"}
-											/>
-										);
-									})}
-								</div>
-							)}
-							{pictures.length > 0 && (
-								<div className={cn("mt-2 flex flex-col gap-2")}>
-									{pictures.map((image, index) => (
-										/*
-										 * The picture's own handle when the wire carried one (an artifact's
-										 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
-										 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
-										 * is not available to this render — rows mount and unmount with
-										 * the windowed transcript, so a number spanning it would RENUMBER
-										 * as the reader scrolls, and an unstable name is worse for a
-										 * screen reader than a repeated one. Within a message the
-										 * pictures are numbered; across messages the row grouping is the
-										 * context, and the picture's own handle discriminates wherever
-										 * one travelled with it.
-										 */
-										<CanonicalImage
-											key={image.id}
-											image={image}
-											scope={scope}
-											label={userImageLabel(image, index, pictures.length)}
-											/*
-											 * THIS MESSAGE is the group: the reader's own attachments are one
-											 * set, so a press walks the pictures of the turn it belongs
-											 * to and never the conversation's other screenshots.
-											 */
-											group={{
-												images: pictures,
-												index,
-												labelFor: userImageLabel,
-											}}
-											pathActions={userImagePathActions(
-												image,
-												scope,
-												conversationId,
-												remote || !placementKnown,
-												canMaterialiseAttachment(
-													capable,
-													refusalVerdict(refusedAttachments, {
-														messageId: record.id,
-														kind: "image",
-														position: index,
-														count: pictures.length,
-														digest: image.attachment,
-													}),
-												),
-											)}
-										/>
-									))}
-								</div>
-							)}
+										</Disclosure>
+									</div>
+								)}
+								{/*
+								 * `credentialCitations`, and only on the user's own turn: this is the only
+								 * place in the transcript where a citation is the app's own words rather than
+								 * the agent's prose about one. A message sent with a pasted secret reads in the
+								 * reader's own voice, so the chip the composer showed must survive the send
+								 * (operator report, 2026-09-17: the citation arrived as a wall of technical
+								 * text). What the MODEL receives is unchanged — the sentence is still the
+								 * message's own text; only how it is drawn changes.
+								 */}
+								<MarkdownRenderer
+									content={seal ? seal.request : remainingContent}
+									credentialCitations
+									skillNames={attachedSkills}
+								/>
+							</div>
 						</div>
+						{overflows && (
+							/*
+							 * A 30px full-width row INSIDE the bubble, with no divider
+							 * (D2, the Raycast idiom): the clamp and its release are one
+							 * object, so the release sits on the block's own ground
+							 * rather than behind a rule between them. It follows the capped
+							 * box rather than living in it, so the cap cannot clip it.
+							 */
+							<button
+								type="button"
+								onClick={() => setExpanded((value) => !value)}
+								aria-expanded={expanded}
+								className={cn(
+									"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
+									"hover:text-ink",
+								)}
+							>
+								{expanded
+									? t("ui.chat.user_turn.show_less")
+									: t("ui.chat.user_turn.show_more")}
+							</button>
+						)}
+						{(record.documents?.length ?? 0) > 0 && (
+							<div className={cn("mt-2 flex flex-col gap-1")}>
+								{record.documents?.map((document, index, documents) => {
+									/*
+									 * Judged by position and origin path as well as digest
+									 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
+									 * and its card offered Open on the real file.
+									 */
+									const verdict = refusalVerdict(refusedAttachments, {
+										messageId: record.id,
+										kind: "document",
+										position: index,
+										count: documents.length,
+										digest: document.attachment,
+										path: document.path,
+									});
+									return (
+										<SentFileCard
+											key={document.id}
+											document={document}
+											remote={remote}
+											placementKnown={placementKnown}
+											sessionId={
+												scope &&
+												!scope.childId &&
+												canMaterialiseAttachment(capable, verdict)
+													? scope.sessionId
+													: null
+											}
+											refused={verdict === false}
+											withheld={verdict === "pending"}
+										/>
+									);
+								})}
+							</div>
+						)}
+						{pictures.length > 0 && (
+							<div className={cn("mt-2 flex flex-col gap-2")}>
+								{pictures.map((image, index) => (
+									/*
+									 * The picture's own handle when the wire carried one (an artifact's
+									 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
+									 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
+									 * is not available to this render — rows mount and unmount with
+									 * the windowed transcript, so a number spanning it would RENUMBER
+									 * as the reader scrolls, and an unstable name is worse for a
+									 * screen reader than a repeated one. Within a message the
+									 * pictures are numbered; across messages the row grouping is the
+									 * context, and the picture's own handle discriminates wherever
+									 * one travelled with it.
+									 */
+									<CanonicalImage
+										key={image.id}
+										image={image}
+										scope={scope}
+										label={userImageLabel(image, index, pictures.length)}
+										/*
+										 * THIS MESSAGE is the group: the reader's own attachments are one
+										 * set, so a press walks the pictures of the turn it belongs
+										 * to and never the conversation's other screenshots.
+										 */
+										group={{
+											images: pictures,
+											index,
+											labelFor: userImageLabel,
+										}}
+										pathActions={userImagePathActions(
+											image,
+											scope,
+											conversationId,
+											remote || !placementKnown,
+											canMaterialiseAttachment(
+												capable,
+												refusalVerdict(refusedAttachments, {
+													messageId: record.id,
+													kind: "image",
+													position: index,
+													count: pictures.length,
+													digest: image.attachment,
+												}),
+											),
+										)}
+									/>
+								))}
+							</div>
+						)}
 					</div>
 					{/*
 					 * `!link.quoteAvailable` is the one-control rule: when the reader's
@@ -3496,7 +3546,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	settledSound = false,
 	supplementCondensed = false,
 	opensTurn = false,
-	agentAvatar = null,
+	agentMark = null,
 	agentName = null,
 	onInterruptTurn,
 }: {
@@ -3566,7 +3616,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	 */
 	opensTurn?: boolean;
 	/** The picture to draw when `opensTurn`; null draws nothing (D11). */
-	agentAvatar?: string | null;
+	agentMark?: AvatarMark | null;
 	/** The speaker's name, for the picture's accessible name (R-3). */
 	agentName?: string | null;
 	/**
@@ -3831,8 +3881,8 @@ const TranscriptRow = memo(function TranscriptRow({
 				 * every line in the row, which is the gutter D11 measured and deleted.
 				 * Same wrapper, so the 32px turn gap still sits above the mark.
 				 */}
-				{opensTurn && agentAvatar ? (
-					<MessageAvatar src={agentAvatar} name={agentName} />
+				{opensTurn && agentMark ? (
+					<MessageAvatar mark={agentMark} name={agentName} />
 				) : null}
 				{body}
 			</div>
@@ -3933,7 +3983,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	openFrame,
 	containerRef,
 	isSmallView,
-	agentAvatar = null,
+	agentMark = null,
 	agentName = null,
 	status,
 	failure,
@@ -4123,10 +4173,20 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * token. A picture-less agent is the common case and the one D11 left
 	 * untouched, so it pays nothing: the empty set is the same render.
 	 */
+	/*
+	 * A picture or the plate of a claimed picture holds a box on every head; with
+	 * no mark (every pictureless agent) the set is empty and no head draws
+	 * anything (see `message-avatar.tsx`).
+	 */
+	const hasMark = agentMark !== null;
 	const turnHeads = useMemo(
-		() => (agentAvatar ? agentTurnHeads(rows) : NO_TURN_HEADS),
-		[rows, agentAvatar],
+		() => (hasMark ? agentTurnHeads(rows) : NO_TURN_HEADS),
+		[rows, hasMark],
 	);
+	const avatarSize = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
+	);
+	const markHeight = turnMarkHeight(avatarSize);
 	/*
 	 * WHICH STOPPED SOUND CALLS HAVE ALREADY SETTLED (design D7, UX U9).
 	 *
@@ -6490,13 +6550,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		 * so the signature cannot claim a mark the row does not draw.
 		 */
 		const marksHead =
-			Boolean(agentAvatar) && slotCarriesTurnHead(entryRows, turnHeads);
+			Boolean(agentMark) && slotCarriesTurnHead(entryRows, turnHeads);
 		const userExpanded =
 			first.record.kind === "user" &&
 			viewState.current.store.read(first.record.id);
 		return {
 			key,
 			marksHead,
+			markHeight,
 			renderSignature: entryRows
 				.map((row) => entryRecordRevision(row.record))
 				.join(","),
@@ -6550,7 +6611,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								fact.text,
 								{ first: 0, trace: 2, item: 12, turn: 32 }[fact.gap],
 								containerRef.current?.clientWidth || 810,
-							) + (fact.marksHead ? TURN_MARK_HEIGHT : 0)),
+							) + (fact.marksHead ? fact.markHeight : 0)),
 				0,
 			),
 			estimateKind: `${facts[0].type}:${facts[0].bucket}:${facts[0].open}:${facts[0].userExpanded}`,
@@ -6678,7 +6739,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					stopping={stopping === true}
 					settledSound={settledSoundRowIds.has(row.record.id)}
 					opensTurn={opensTurn && index === 0}
-					agentAvatar={agentAvatar}
+					agentMark={agentMark}
 					agentName={agentName}
 					onInterruptTurn={onInterruptTurn}
 				/>
@@ -6710,8 +6771,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					 * (`opensTurn` is not passed to them), so opening the fold does
 					 * not produce a second copy.
 					 */}
-					{opensTurn && agentAvatar ? (
-						<MessageAvatar src={agentAvatar} name={agentName} />
+					{opensTurn && agentMark ? (
+						<MessageAvatar mark={agentMark} name={agentName} />
 					) : null}
 					<TraceFold
 						/*
@@ -6855,7 +6916,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				settledSound={settledSoundRowIds.has(group.row.record.id)}
 				supplementCondensed={supplementCondensed}
 				opensTurn={opensTurn}
-				agentAvatar={agentAvatar}
+				agentMark={agentMark}
 				agentName={agentName}
 				onInterruptTurn={onInterruptTurn}
 			/>
@@ -6889,9 +6950,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					 * groups rendered inside the bar never draw it, so opening the bar
 					 * does not add a second copy.
 					 */}
-					{slotCarriesTurnHead(entrySlotRows(entry), turnHeads) &&
-					agentAvatar ? (
-						<MessageAvatar src={agentAvatar} name={agentName} />
+					{slotCarriesTurnHead(entrySlotRows(entry), turnHeads) && agentMark ? (
+						<MessageAvatar mark={agentMark} name={agentName} />
 					) : null}
 					<TurnSummary
 						/*

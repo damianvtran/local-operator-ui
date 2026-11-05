@@ -1,0 +1,40 @@
+{
+ "auditor": "copy-reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "53746f0323e5-tbtrial-zh-cn",
+ "status": "passed",
+ "namespace": "ui.teamBridgeTrial",
+ "sha256": {
+  "zh-CN": "c3196fc1ee9f7bad20147843c798b35bbc13c077a1d97b6a1356837559892361",
+  "en": "20b844b6972e6ea6bd66508a775367a16d2ec49ca85d3400f41867461ed36599",
+  "en_context": "8873370c5f29be49424c335f4522bb626bcfd3c40bd84ca09f8cffa06efc1036"
+ },
+ "scope": "All 35 keys of ui.teamBridgeTrial on PR #1654 head 5433ed80aac2f6807264d5a64a07b7a61cf75418: meaning vs en + context.json, register (locale style guide), glossary terms, placeholders ({date} only; no plural/select arms), the no-card / nothing-charged-automatically / end-date / pause-until-subscribe clauses, RTL bidi controls, and {date} rendered through formatTrialDate's Intl options (node 24.22.1).",
+ "references": {
+  "glossary": "damianvtran/local-operator@ffd6c9e63a9939e799b53f16f2b5ed78c6580b7e:i18n/glossary.md",
+  "style_guide": "damianvtran/local-operator@ffd6c9e63a9939e799b53f16f2b5ed78c6580b7e:i18n/style-guides/zh-CN.md"
+ },
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "job": "7d5f03146b49"
+ },
+ "independence": "Auditor (copy-reviewer, job c28ccd33e655, session 53746f0323e5) is a different agent and run from the translator (coder, job 7d5f03146b49, session 3117c9ad7fca). Same served model family disclosed.",
+ "date": "2026-11-03",
+ "findings": [
+  {
+   "id": "Z1",
+   "severity": "MINOR",
+   "key": "ui.teamBridgeTrial.*",
+   "problem": "18 of 35 values put a space between Chinese and Latin/digit/{date} runs ('免费试用 Teams 30 天', '试用有效期至 {date}'). The zh-CN style guide says no space is inserted (width discipline), and the sibling ui.teamBridge namespace has 0 such spaces in 371 values (measured).",
+   "fix": "Drop those spaces, e.g. '免费试用Teams 30天' → '免费试用Teams30天'; '试用有效期至{date}'; '开始30天免费Team试用'."
+  },
+  {
+   "id": "Z2",
+   "severity": "NIT",
+   "key": "ui.teamBridgeTrial.dialog.included_credits",
+   "problem": "'成员可共用的共享额度' says 'shared' twice (共用 + 共享).",
+   "fix": "'成员可共用的额度池' or '成员共用的额度'."
+  }
+ ]
+}

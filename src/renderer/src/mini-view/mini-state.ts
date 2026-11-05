@@ -103,14 +103,44 @@ export function themeNameFromPreferencesWrite(input: {
 	storeKey: string;
 	newValue: string | null;
 	currentTheme: string;
+	/**
+	 * The appearance key this document is painting (`appearanceKey` in
+	 * `shared/themes/appearance.ts`). When given, a write is a theme write if the
+	 * TUPLE changed - theme, either mode's contrast, either mode's accent - not
+	 * only the name: a contrast or accent change keeps `themeName` and changes
+	 * every colour, and a name-only compare left the popout on the previous
+	 * composition. Omitted, the reader keeps its name-only behaviour.
+	 */
+	currentAppearance?: string;
 }): string | null {
 	if (input.eventKey !== input.storeKey || input.newValue === null) return null;
 	try {
 		const parsed = JSON.parse(input.newValue) as {
-			state?: { themeName?: unknown };
+			state?: {
+				themeName?: unknown;
+				customThemeId?: unknown;
+				contrast?: { dark?: unknown; light?: unknown };
+				accent?: { dark?: unknown; light?: unknown };
+			};
 		};
-		const name = parsed.state?.themeName;
+		const state = parsed.state;
+		const name = state?.themeName;
 		if (typeof name !== "string" || name.length === 0) return null;
+		if (input.currentAppearance !== undefined) {
+			/* The same shape `appearanceKey` builds, from the RAW blob: the
+			   comparison only has to say "different", and a malformed field that
+			   differs is still a change worth rehydrating for - the store's own
+			   merge re-sanitises everything it adopts. */
+			const key = JSON.stringify([
+				name,
+				state?.contrast?.dark ?? 0,
+				state?.contrast?.light ?? 0,
+				state?.accent?.dark ?? null,
+				state?.accent?.light ?? null,
+				state?.customThemeId ?? null,
+			]);
+			return key === input.currentAppearance ? null : name;
+		}
 		return name === input.currentTheme ? null : name;
 	} catch {
 		return null;
@@ -133,6 +163,7 @@ export function adoptPreferencesWrite(input: {
 	storeKey: string;
 	newValue: string | null;
 	currentTheme: string;
+	currentAppearance?: string;
 	rehydrate: () => unknown;
 	publish: () => void;
 }): boolean {

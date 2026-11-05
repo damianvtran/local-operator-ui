@@ -67,6 +67,8 @@ const bundle = await build({
 			export { teamBridgeMessageSchema } from "./src/shared/team-bridge-contract";
 			export { ownerAuditToBridgeMessage } from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-model";
 			export { ownerAuditMessageSchema } from "./src/shared/team-bridge-owner-audit-contract";
+			export { recipientLabel, participantLabel, unlistedMemberLabel } from "./src/renderer/src/features/team-bridge/team-bridge-model";
+			export { setLocale } from "./src/renderer/src/shared/i18n";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -89,16 +91,28 @@ const {
 	teamBridgeMessageSchema,
 	ownerAuditToBridgeMessage,
 	ownerAuditMessageSchema,
+	recipientLabel,
+	participantLabel,
+	unlistedMemberLabel,
+	setLocale,
 } = compiled.exports;
 const createElement = React.createElement;
 const MODERATION_LOCALES = ["en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi"];
 const MODERATION_EM_DASH = /\u2014/u;
+const RECIPIENT_LINE_KEY = /^ui\.teamBridge\.delivery\.(refused|held|pending)/;
+const SPLICED_PARTS = /\{(agent|owner)\}/;
 const INFO_LABEL = /aria-label="About message screening"/;
 const UNREAD_FIELDS = /SECRET-REASON|harassment|0\.97/;
 const INFO_REFUSED_CONSTANT = /t\("ui\.teamBridge\.delivery\.info_refused"\)/;
 const INFO_HELD_CONSTANT = /t\("ui\.teamBridge\.delivery\.info_held"\)/;
 const REFUSED_TIP_TEXT = /A refused message wasn't passed to the agent/;
 const BUTTON_MARKUP = /<button[\s\S]*?<\/button>/;
+const NOWRAP_RUN = /<span class="whitespace-nowrap">([\s\S]*?)<\/span><\/li>/;
+const NOWRAP_ANY = /whitespace-nowrap/;
+const BOUND_PERIOD = /^\. <button/;
+const BOUND_ELLIPSIS = /<span class="whitespace-nowrap">… <button/;
+const BUTTON_TAIL = /<button[\s\S]*$/;
+const HINDI_GRAPHEMES = new Intl.Segmenter("hi", { granularity: "grapheme" });
 
 const entry = (over = {}) => ({
 	endpoint_id: "bep_1",
@@ -195,7 +209,9 @@ test("delivery_pending is its own line: screened, not waiting to be screened", (
 	const html = render([
 		entry({ state: "held", hold_class: "delivery_pending" }),
 	]);
-	assert.deepEqual(lineTexts(html), ["Screened; delivery to Aida is pending"]);
+	assert.deepEqual(lineTexts(html), [
+		"Screened; delivery to Aida (Sam) is pending",
+	]);
 	assert.doesNotMatch(html, INFO_LABEL, "neither tooltip describes it");
 });
 
@@ -204,8 +220,453 @@ test("a blank label falls back to the shared placeholders", () => {
 		lineTexts(
 			render([entry({ recipient_label: "  ", recipient_owner_label: "" })]),
 		),
-		["Not delivered to Unknown agent (Unknown person). Refused by moderation."],
+		["Not delivered to Unknown agent. Refused by moderation."],
 	);
+});
+
+/*
+ * THE OWNER EXACTLY ONCE (operator report, 2026-11-03: "Not delivered to Aida
+ * (Ben Tran) (Ben Tran). Refused by moderation."). The recipient is resolved
+ * through the same `storedAgentName` + `composeChiefLabel` the message rows
+ * use, so each shape a stored agent label takes on the wire renders the row's
+ * label. Asserted on the refused, held and pending lines, because all three
+ * templates take the one composed `{recipient}`.
+ */
+const LINE_STATES = [
+	["refused", {}, (r) => `Not delivered to ${r}. Refused by moderation.`],
+	["held", { state: "held" }, (r) => `Waiting to be screened by ${r}…`],
+	[
+		"pending",
+		{ state: "held", hold_class: "delivery_pending" },
+		(r) => `Screened; delivery to ${r} is pending`,
+	],
+];
+const RECIPIENT_SHAPES = [
+	["a bare agent name gains its owner", "Aida", "Ben Tran", "Aida (Ben Tran)"],
+	[
+		"a label already carrying its owner keeps it once",
+		"Aida (Ben Tran)",
+		"Ben Tran",
+		"Aida (Ben Tran)",
+	],
+	[
+		"a composed label matched across case and spacing keeps it once",
+		"Aida  (ben tran)",
+		"Ben Tran",
+		"Aida (Ben Tran)",
+	],
+	[
+		"an agent labelled with its owner's name is the owner's chief of staff",
+		"Ben Tran",
+		"Ben Tran",
+		"Ben Tran’s chief of staff",
+	],
+	[
+		"a self-composed X (X) label is the owner's chief of staff",
+		"Ben Tran (Ben Tran)",
+		"Ben Tran",
+		"Ben Tran’s chief of staff",
+	],
+	[
+		"the hub's unnamed-agent label is not composed a second time",
+		"Ben Tran's chief of staff",
+		"Ben Tran",
+		"Ben Tran’s chief of staff",
+	],
+	[
+		"a blank agent label with a known owner is the owner's chief of staff",
+		"  ",
+		"Ben Tran",
+		"Ben Tran’s chief of staff",
+	],
+	[
+		"a blank owner keeps the stored label as is, without an empty parenthetical",
+		"Aida (Ben Tran)",
+		"",
+		"Aida (Ben Tran)",
+	],
+	[
+		"a label naming a different person in parentheses is the agent's own name",
+		"Aida (Sales)",
+		"Ben Tran",
+		"Aida (Sales) (Ben Tran)",
+	],
+	["blank labels fall back to the shared copy", " ", "", "Unknown agent"],
+];
+for (const [name, label, owner, expected] of RECIPIENT_SHAPES) {
+	for (const [kind, over, sentence] of LINE_STATES) {
+		test(`recipient label, ${kind} line: ${name}`, () => {
+			assert.deepEqual(
+				lineTexts(
+					render([
+						entry({
+							recipient_label: label,
+							recipient_owner_label: owner,
+							...over,
+						}),
+					]),
+				),
+				[sentence(expected)],
+			);
+		});
+	}
+}
+
+/*
+ * `recipientLabel` DIRECTLY (review M1 on #1643): the delivery lines only ever
+ * pass agents, so the human branch is reachable only here. Plain injected
+ * forms keep these cases about the resolution rule, not about catalogue copy.
+ */
+const PLAIN_CHIEF = {
+	named: (agent, person) => `${agent} <${person}>`,
+	unnamed: (person) => `unnamed:${person}`,
+};
+const RECIPIENT_LABEL_CASES = [
+	["agent, bare name", "agent", "Aida", "Ben Tran", "Aida <Ben Tran>"],
+	[
+		"agent, stored already composed",
+		"agent",
+		"Aida (Ben Tran)",
+		"Ben Tran",
+		"Aida <Ben Tran>",
+	],
+	[
+		"agent, full-width composed (review m2)",
+		"agent",
+		"Aida（陈伟）",
+		"陈伟",
+		"Aida <陈伟>",
+	],
+	[
+		"agent, full-width tail naming someone else is its own name",
+		"agent",
+		"Aida（销售）",
+		"陈伟",
+		"Aida（销售） <陈伟>",
+	],
+	[
+		"agent, full-width name stored ASCII-composed (review m1-r2)",
+		"agent",
+		"Aida（v2）(Ben Tran)",
+		"Ben Tran",
+		"Aida（v2） <Ben Tran>",
+	],
+	[
+		"agent, bracketed name stored composed (review m1-r2)",
+		"agent",
+		"Aida (v2) (Ben Tran)",
+		"Ben Tran",
+		"Aida (v2) <Ben Tran>",
+	],
+	[
+		"agent, label equals the owner",
+		"agent",
+		"Ben Tran",
+		"Ben Tran",
+		"unnamed:Ben Tran",
+	],
+	[
+		"agent, unnamed (blank label)",
+		"agent",
+		"  ",
+		"Ben Tran",
+		"unnamed:Ben Tran",
+	],
+	["agent, blank labels", "agent", "", " ", null],
+	[
+		"agent, blank owner and X (X) is X's unnamed agent",
+		"agent",
+		"Ben Tran (Ben Tran)",
+		"",
+		"unnamed:Ben Tran",
+	],
+	[
+		"human, named alone, owner ignored",
+		"human",
+		"Ben Tran",
+		"Sam Rivera",
+		"Ben Tran",
+	],
+	["human, legacy placeholder", "human", "Member", "", null],
+	["human, blank", "human", "   ", "Ben Tran", null],
+];
+for (const [name, kind, label, ownerLabel, expected] of RECIPIENT_LABEL_CASES) {
+	test(`recipientLabel: ${name}`, () => {
+		assert.equal(
+			recipientLabel({ kind, label, ownerLabel }, PLAIN_CHIEF),
+			expected,
+		);
+	});
+}
+
+/*
+ * THE FROZEN OWNER-SUFFIX MATRIX (review M1-r3 on #1643, after two regex
+ * regressions on the same function). Every row is asserted through BOTH the
+ * delivery path (`recipientLabel`, rendered by the shipped line) and the
+ * message-row path (`participantLabel`), with the English catalogue's own
+ * compositions: `chief.label` "{agent} ({person})" and the in-sentence /
+ * standalone unnamed "{person}’s chief of staff" (identical in English). A row
+ * whose owner is "" is an owner the hub sends blank and the directory does not
+ * list. `null` is the caller's "Unknown agent" placeholder.
+ */
+const EN_CHIEF = {
+	named: (agent, person) => `${agent} (${person})`,
+	unnamed: (person) => `${person}’s chief of staff`,
+};
+const UNKNOWN_AGENT = "Unknown agent";
+const FROZEN_MATRIX = [
+	["Aida", "Ben Tran", "Aida (Ben Tran)"],
+	["Aida (Ben Tran)", "Ben Tran", "Aida (Ben Tran)"],
+	["Aida（Ben Tran）", "Ben Tran", "Aida (Ben Tran)"],
+	["Aida（v2）(Ben Tran)", "Ben Tran", "Aida（v2） (Ben Tran)"],
+	["Aida (v2) (Ben Tran)", "Ben Tran", "Aida (v2) (Ben Tran)"],
+	// The English catalogue composes ASCII brackets; zh-CN would compose
+	// "Aida（销售）（陈伟）" from its own `chief.label`.
+	["Aida（销售）（陈伟）", "陈伟", "Aida（销售） (陈伟)"],
+	["Aida (Ana (she/her))", "Ana (she/her)", "Aida (Ana (she/her))"],
+	[
+		"Aida (Damian Tran (Minerva))",
+		"Damian Tran (Minerva)",
+		"Aida (Damian Tran (Minerva))",
+	],
+	["Aida (Ben Tran (Sales))", "Ben Tran (Sales)", "Aida (Ben Tran (Sales))"],
+	["Ben Tran", "Ben Tran", "Ben Tran’s chief of staff"],
+	["Ben Tran (Ben Tran)", "Ben Tran", "Ben Tran’s chief of staff"],
+	["Ana (she/her) (Ana (she/her))", "", "Ana (she/her)’s chief of staff"],
+	["Aida (v2)", "Ben Tran", "Aida (v2) (Ben Tran)"],
+	["", "", UNKNOWN_AGENT],
+];
+const rowLabel = (stored, owner) => {
+	const people =
+		owner === ""
+			? []
+			: [
+					{
+						account_id: "acct_owner",
+						display_label: owner,
+						role: "member",
+						bridge_enabled: true,
+						bridge_state: "active",
+						// A blank directory agent name sends the row to the stored
+						// label, the path this matrix pins.
+						agent: { endpoint_id: "bep_owner", name: "", state: "active" },
+					},
+				];
+	return (
+		participantLabel(
+			{ account_id: "acct_owner", kind: "agent", display_label: stored },
+			people,
+			EN_CHIEF,
+		) ?? UNKNOWN_AGENT
+	);
+};
+for (const [stored, owner, expected] of FROZEN_MATRIX) {
+	const name = `${JSON.stringify(stored)} owned by ${JSON.stringify(owner)}`;
+	test(`frozen matrix, delivery line: ${name}`, () => {
+		assert.equal(
+			recipientLabel(
+				{ kind: "agent", label: stored, ownerLabel: owner },
+				EN_CHIEF,
+			) ?? UNKNOWN_AGENT,
+			expected,
+		);
+		assert.deepEqual(
+			lineTexts(
+				render([
+					entry({ recipient_label: stored, recipient_owner_label: owner }),
+				]),
+			),
+			[`Not delivered to ${expected}. Refused by moderation.`],
+		);
+	});
+	test(`frozen matrix, message row: ${name}`, () => {
+		assert.equal(rowLabel(stored, owner), expected);
+	});
+}
+
+test("main's row label for an owner with a bracketed org suffix is preserved", () => {
+	// The regression against main that M1-r3 found: main's storedAgentName
+	// stripped "(Damian Tran (Minerva))" and the row read the owner once.
+	assert.equal(
+		rowLabel("Aida (Damian Tran (Minerva))", "Damian Tran (Minerva)"),
+		"Aida (Damian Tran (Minerva))",
+	);
+});
+
+test("an unlisted self-composed agent with a bracketed name is that person's chief of staff", () => {
+	const unlisted = (display_label) =>
+		unlistedMemberLabel({ kind: "agent", display_label }, EN_CHIEF);
+	assert.equal(
+		unlisted("Ben Tran (Sales) (Ben Tran (Sales))"),
+		"Ben Tran (Sales)’s chief of staff",
+	);
+	assert.equal(
+		unlisted("Ana (she/her) (Ana (she/her))"),
+		"Ana (she/her)’s chief of staff",
+	);
+	// A bracket inside a name is not a composition.
+	assert.equal(unlisted("Ana (she/her)"), "Ana (she/her)");
+});
+
+/*
+ * UNBALANCED BRACKETS (QA O1 on #1643), defined rather than incidental. With
+ * the owner KNOWN, only a label ending in exactly that owner's group is
+ * split; anything else is the agent's name verbatim and the owner is
+ * composed once after it, never dropped. With the owner UNKNOWN, an
+ * unbalanced group is never "X (X)", so the label reads verbatim.
+ */
+const UNBALANCED_MATRIX = [
+	// Not ending in the owner's group: the stored text verbatim, owner once.
+	["Aida (Ben", "Ben", "Aida (Ben (Ben)"],
+	["Aida (Ben) (x", "Ben", "Aida (Ben) (x (Ben)"],
+	["Aida (Ben Tran))", "Ben Tran", "Aida (Ben Tran)) (Ben Tran)"],
+	// Ending in the owner's group: the head verbatim, unbalanced or not.
+	["Aida ((Ben Tran)", "Ben Tran", "Aida ( (Ben Tran)"],
+	// An owner whose own name is unbalanced is matched by comparison.
+	["Aida (Ben (Sales)", "Ben (Sales", "Aida (Ben (Sales)"],
+	["Aida (Ben) (x)", "Ben) (x", "Aida (Ben) (x)"],
+	["Aida (Aida (Ben)", "Aida (Ben", "Aida (Aida (Ben)"],
+	// Owner unknown: an unbalanced group is never a self-composition.
+	["Aida (Ben", "", "Aida (Ben"],
+	["Ben (Ben", "", "Ben (Ben"],
+	["Ben ((Ben)", "", "Ben ((Ben)"],
+];
+for (const [stored, owner, expected] of UNBALANCED_MATRIX) {
+	const name = `${JSON.stringify(stored)} owned by ${JSON.stringify(owner)}`;
+	test(`unbalanced brackets, delivery line and row agree: ${name}`, () => {
+		assert.equal(
+			recipientLabel(
+				{ kind: "agent", label: stored, ownerLabel: owner },
+				EN_CHIEF,
+			),
+			expected,
+		);
+		assert.equal(rowLabel(stored, owner), expected);
+	});
+}
+
+test("an over-long label is read verbatim, not scanned (m1-r4 on #1643)", () => {
+	// 257 characters: one past the scanners' bound. The same shape at 256 is
+	// still recognised, so the bound is exact and not a blanket refusal.
+	const atBound = `${"A".repeat(256 - " (Ben)".length)} (Ben)`;
+	const overBound = `A${atBound}`;
+	assert.equal(atBound.length, 256);
+	assert.equal(
+		recipientLabel(
+			{ kind: "agent", label: atBound, ownerLabel: "Ben" },
+			EN_CHIEF,
+		),
+		atBound,
+	);
+	assert.equal(
+		recipientLabel(
+			{ kind: "agent", label: overBound, ownerLabel: "Ben" },
+			EN_CHIEF,
+		),
+		`${overBound} (Ben)`,
+	);
+	const selfComposed = `${"B".repeat(130)} (${"B".repeat(130)})`;
+	assert.equal(
+		unlistedMemberLabel(
+			{ kind: "agent", display_label: selfComposed },
+			EN_CHIEF,
+		),
+		selfComposed,
+	);
+	/*
+	 * The cost the bound exists for: a pathological 10,000-character label of
+	 * nested brackets took ~0.6 s per call before it. Generous ceiling so a
+	 * slow CI host does not flake; unbounded it is three orders above this.
+	 */
+	const nested = `${"(".repeat(5000)}x${")".repeat(5000)}`;
+	const started = performance.now();
+	recipientLabel(
+		{ kind: "agent", label: `${nested} (Ben)`, ownerLabel: "Ben" },
+		EN_CHIEF,
+	);
+	unlistedMemberLabel({ kind: "agent", display_label: nested }, EN_CHIEF);
+	assert.ok(performance.now() - started < 50);
+});
+
+test("the info glyph is bound to the sentence's last character, never alone (D2 on #1643)", () => {
+	const nowrap = (html) => html.match(NOWRAP_RUN)?.[1];
+	// The bound run is the final grapheme, a space and the button, so a wrap
+	// takes the last word with the glyph rather than stranding the glyph.
+	const refused = render([entry()]);
+	const run = nowrap(refused);
+	assert.ok(run, refused);
+	assert.match(run, BOUND_PERIOD);
+	assert.match(run, INFO_LABEL);
+	assert.match(render([entry({ state: "held" })]), BOUND_ELLIPSIS);
+	// The sentence itself is unchanged by the split.
+	assert.deepEqual(lineTexts(refused), [
+		"Not delivered to Aida (Sam). Refused by moderation.",
+	]);
+	// Only the last grapheme is bound: a long unspaced name keeps its
+	// emergency breaks (`overflow-wrap:anywhere`) outside the nowrap run.
+	const long = "A".repeat(120);
+	const held = render([
+		entry({ state: "held", recipient_label: long, recipient_owner_label: "" }),
+	]);
+	assert.equal(nowrap(held)?.includes(long), false);
+	// A combining mark is never cut off its base (hi ends in "।", ur in "۔";
+	// a Devanagari vowel sign before the danda must stay with its consonant).
+	try {
+		setLocale("hi");
+		const hindi = render([entry({ state: "held" })]);
+		const bound = nowrap(hindi) ?? "";
+		const text = bound.replace(BUTTON_TAIL, "").trimEnd();
+		assert.equal([...HINDI_GRAPHEMES.segment(text)].length, 1, text);
+	} finally {
+		setLocale("en");
+	}
+	// The pending line has no glyph and so nothing to bind.
+	assert.doesNotMatch(
+		render([entry({ state: "held", hold_class: "delivery_pending" })]),
+		NOWRAP_ANY,
+	);
+});
+
+test("an unnamed recipient takes the delivery-scoped in-sentence form, not the rail label", () => {
+	// i18n audit C1-C4 on #1643: the rail's standalone `chief.unnamed` is the
+	// wrong case/article mid-sentence in hi, ur, fr and es.
+	const unnamed = [
+		entry({ recipient_label: "Ben Tran", recipient_owner_label: "Ben Tran" }),
+	];
+	const expected = {
+		hi: "Ben Tran के चीफ़ ऑफ़ स्टाफ़ तक नहीं पहुँचा।",
+		ur: "Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا۔",
+		fr: "Non remis à la cheffe de cabinet (Ben Tran).",
+		// es is built around "para" so no "a el" contraction arises (C5 on #1643).
+		es: "Mensaje para el jefe de gabinete de Ben Tran no entregado.",
+		vi: "Không được chuyển tới chánh văn phòng của Ben Tran",
+	};
+	try {
+		for (const [locale, prefix] of Object.entries(expected)) {
+			setLocale(locale);
+			const [line] = lineTexts(render(unnamed));
+			assert.ok(line.startsWith(prefix), `${locale}: ${line}`);
+		}
+	} finally {
+		setLocale("en");
+	}
+});
+
+test("no delivery template splices an owner beside the recipient, in any locale", () => {
+	for (const locale of MODERATION_LOCALES) {
+		const catalogue = JSON.parse(
+			readFileSync(`src/i18n/catalogues/${locale}/ui.teamBridge.json`, "utf8"),
+		);
+		for (const [key, value] of Object.entries(catalogue)) {
+			if (!RECIPIENT_LINE_KEY.test(key)) continue;
+			assert.doesNotMatch(value, SPLICED_PARTS, `${locale} ${key}`);
+			assert.equal(
+				value.split("{recipient}").length - 1,
+				1,
+				`${locale} ${key} names its recipient exactly once`,
+			);
+		}
+	}
 });
 
 test("multi-recipient: one line per agent; merging happens only within a recipient", () => {
@@ -482,7 +943,8 @@ test("all moderation copy in every shipped locale has no em dash", () => {
 		const entries = Object.entries(catalogue).filter(([key]) =>
 			key.startsWith("ui.teamBridge.delivery."),
 		);
-		assert.equal(entries.length, 13, locale);
+		// 13 lines plus `recipient_unnamed`, the in-sentence unnamed form (#1643).
+		assert.equal(entries.length, 14, locale);
 		for (const [key, value] of entries) {
 			assert.doesNotMatch(value, MODERATION_EM_DASH, `${locale}:${key}`);
 		}

@@ -185,9 +185,30 @@ export function TeamBridgeAvatar({
 			data-team-bridge-avatar=""
 			style={{ "--profile-avatar-size": `${size}px` } as CSSProperties}
 			className={cn(
-				"relative inline-flex size-[var(--profile-avatar-size)] shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-body-sm",
-				kind === "agent" ? "text-accent" : "text-ink-muted",
-				selected ? "bg-surface" : "bg-media-surface",
+				"relative inline-flex size-[var(--profile-avatar-size)] shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-body-sm",
+				/*
+				 * IDENTITY WASHES, ROUND (Team Bridge visual refresh, D4 + contract C2).
+				 * The plate was a near-black `media-surface` square (L* 2.4 measured in
+				 * the operator's radient frame): a hole beside every name. A person is
+				 * now `accent-alt` on `accent-alt-wash` - the theme's second hue, whose
+				 * contract is "identity and category, never a state" - and an agent is
+				 * the accent Bot glyph (plus the dog-ear) on the SAME wash, so kind
+				 * reads from the ink's hue and the glyph. The plate is borderless, so
+				 * the wash IS its extent and clears ΔE00 3.0 off every ground it sits
+				 * on - canvas, surface, elevated, rowHover - on all 59 palettes (design
+				 * round 1, D1: eight palettes' washes were lifted for it). Agents do
+				 * not get `accent-wash`: that role sits within ΔE00 1.4-2.6 of a ground
+				 * on 15 palettes and has 60+ other consumers, so it cannot be re-seated
+				 * for this site. Both inks clear 4.5:1 on the wash
+				 * (`scripts/contrast-contract.mjs`, "team bridge identity plate" rows).
+				 * `rounded-full` is § 5's avatar shape.
+				 *
+				 * A SELECTED RAIL ROW keeps the `surface` plate it had: the washes sit
+				 * within ΔE00 1.4-2.3 of `rowSelected` on a few palettes, while both inks
+				 * clear 4.9:1 on `surface`.
+				 */
+				kind === "agent" ? "text-accent" : "text-accent-alt",
+				selected ? "bg-surface" : "bg-accent-alt-wash",
 				className,
 				/* AFTER `className`: the host's radius shorthand must not clip the
 				   dog-ear's tip (round 3, D1). */
@@ -214,7 +235,8 @@ export function TeamBridgeAvatar({
 					style={{ width: mark.outer, height: mark.outer }}
 					className={cn(
 						"pointer-events-none absolute end-0 bottom-0",
-						selected ? "bg-surface" : "bg-media-surface",
+						/* The keyline is the plate's OWN fill, so it follows the plate. */
+						selected ? "bg-surface" : "bg-accent-alt-wash",
 						AGENT_MARK_SHAPE,
 					)}
 				>

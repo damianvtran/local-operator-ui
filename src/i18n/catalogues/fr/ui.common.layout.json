@@ -1,5 +1,6 @@
 {
 	"ui.common.layout.chat_layout.resize_the_sidebar": "Redimensionner la barre latérale ({sidebartogglecap})",
+	"ui.common.layout.chat_layout.resize_the_sidebar_plain": "Redimensionner la barre latérale",
 	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "Redimensionner les demandes. Double-cliquez pour réinitialiser la largeur partagée du panneau.",
 	"ui.common.layout.sidebar_header.search_agents": "Rechercher des agents",
 	"ui.common.layout.sidebar_header.create_a_new_agent": "Créer un agent",

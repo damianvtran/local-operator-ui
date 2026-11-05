@@ -68,21 +68,38 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#2A2A3B",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #2A2A3B -> #1F1F30 (L* 17.75 -> 12.51)
+		 * surface #323142 -> #272637 (L* 21.09 -> 15.97)
+		 * elevated #37364B -> #2C2C40 (L* 23.53 -> 18.83)
+		 * sunken #242432 -> #191927 (L* 14.77 -> 9.39)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `elevated`, `messageSurface`, `hairline`. `pnpm check-themes` is the
+		 * measurement for each.
+		 */
+		canvas: "#1F1F30",
 		// Seated between base and upstream surface0, which is ΔE00 6.1 from base on its own:
 		// one step where this ramp needs two. ΔE00 2.2 and 2.2 up the ladder.
-		surface: "#323142",
-		elevated: "#37364B",
-		sunken: "#242432",
+		surface: "#272637",
+		elevated: "#2C2C40",
+		sunken: "#191927",
 
 		// The user block's fill: ΔE00 4.05 off the canvas, where `surface` alone
 		// measures 2.33 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#36354a",
+		messageSurface: "#2d2b3f",
 		// The media slot's well: ΔE00 4.01 off the canvas, where `sunken` alone
 		// measures 2.39 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#20202c",
+		mediaSurface: "#151521",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -101,8 +118,8 @@ export const catppuccinMocha: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.48 `L*` and 9.1 `C*`,
 		 *                       `inkDim` 5.03:1.
 		 */
-		rowHover: "#3A3943",
-		rowSelected: "#3C3B53",
+		rowHover: "#2E2D37",
+		rowSelected: "#302F46",
 
 		/*
 		 * Register re-solve: `ink`
@@ -155,10 +172,10 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.16:1 against `elevated` at its tightest.
 		 */
-		hairline: "#3F3F5D",
+		hairline: "#353552",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.66:1 there against `hairline`'s 1.51:1.
-		hairlineStrong: "#444563",
+		hairlineStrong: "#383956",
 		// Upstream surface1 45475A is 1.54:1 against the lightest ground — a decorative value
 		// in a structural role, and the one role a palette is most likely to get wrong.
 		// Walked away from the grounds along the same slate to 3.1:1, which is where every
@@ -188,7 +205,7 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * `elevated` is the tightest base at ΔE00 2.13. Lightness only, at the
 		 * wash's own hue.
 		 */
-		accentWash: "#303047",
+		accentWash: "#24243A",
 		onAccent: "#11111B",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#b4befe`,
@@ -245,12 +262,12 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * 2.0), 4.52:1 for `accentAlt` on it, and 6.52 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#253349",
+		accentAltWash: "#19283D",
 
 		success: "#A6E3A1",
 		// The scheme has no green tint, so the wash is the green tinted over `canvas` at
 		// the strongest alpha (13%) that keeps the green itself at 4.5:1 on it.
-		successWash: "#4B5E57",
+		successWash: "#3E514A",
 		/*
 		 * Register re-solve: `successBorder`
 		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
@@ -261,7 +278,7 @@ export const catppuccinMocha: ThemeDefinition = {
 
 		warning: "#FAB387",
 		// The peach tinted over `canvas`, same rule as the green above.
-		warningWash: "#5D4B4C",
+		warningWash: "#513F40",
 		/*
 		 * Register re-solve: `warningBorder`
 		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
@@ -271,7 +288,7 @@ export const catppuccinMocha: ThemeDefinition = {
 		warningBorder: "#B47246",
 
 		danger: "#F38BA8",
-		dangerWash: "#332434",
+		dangerWash: "#271929",
 		// The danger hue walked toward the ground to just above the 3:1 the control's
 		// only edge is asked for.
 		/*
@@ -283,7 +300,7 @@ export const catppuccinMocha: ThemeDefinition = {
 		dangerBorder: "#C5627F",
 
 		info: "#8CB7FD",
-		infoWash: "#213048",
+		infoWash: "#15253C",
 		/*
 		 * Register re-solve: `infoBorder`
 		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with

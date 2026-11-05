@@ -1,0 +1,47 @@
+{
+ "auditor": "copy-reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "53746f0323e5-tbtrial-ru",
+ "status": "changes_requested",
+ "namespace": "ui.teamBridgeTrial",
+ "sha256": {
+  "ru": "c9eb8a50172038b381bec8690883a6e4d46521e231e9bba62dee58ae48a56ce4",
+  "en": "20b844b6972e6ea6bd66508a775367a16d2ec49ca85d3400f41867461ed36599",
+  "en_context": "8873370c5f29be49424c335f4522bb626bcfd3c40bd84ca09f8cffa06efc1036"
+ },
+ "scope": "All 35 keys of ui.teamBridgeTrial on PR #1654 head 5433ed80aac2f6807264d5a64a07b7a61cf75418: meaning vs en + context.json, register (locale style guide), glossary terms, placeholders ({date} only; no plural/select arms), the no-card / nothing-charged-automatically / end-date / pause-until-subscribe clauses, RTL bidi controls, and {date} rendered through formatTrialDate's Intl options (node 24.22.1).",
+ "references": {
+  "glossary": "damianvtran/local-operator@ffd6c9e63a9939e799b53f16f2b5ed78c6580b7e:i18n/glossary.md",
+  "style_guide": "damianvtran/local-operator@ffd6c9e63a9939e799b53f16f2b5ed78c6580b7e:i18n/style-guides/ru.md"
+ },
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "job": "7d5f03146b49"
+ },
+ "independence": "Auditor (copy-reviewer, job c28ccd33e655, session 53746f0323e5) is a different agent and run from the translator (coder, job 7d5f03146b49, session 3117c9ad7fca). Same served model family disclosed.",
+ "date": "2026-11-03",
+ "findings": [
+  {
+   "id": "R1",
+   "severity": "MAJOR",
+   "key": "ui.teamBridgeTrial.dialog.lead",
+   "problem": "'до {date}' needs the genitive, but {date} renders as Intl's nominative full date ('четверг, 3 декабря 2026 г.'), giving 'действует до четверг, 3 декабря 2026 г..': wrong case plus a doubled full stop after 'г.' — in the exact promise sentence the user accepts the Terms against.",
+   "fix": "'Пробный период действует по {date} включительно.' (по + accusative: 'по четверг, 3 декабря 2026 г. включительно.'; the sentence no longer ends on 'г.')"
+  },
+  {
+   "id": "R1",
+   "severity": "MAJOR",
+   "key": "ui.teamBridgeTrial.active.note",
+   "problem": "Same defect: renders 'Пробный период действует до четверг, 3 декабря 2026 г.' (до + nominative).",
+   "fix": "'Пробный период действует по {date} включительно'"
+  },
+  {
+   "id": "R1",
+   "severity": "MAJOR",
+   "key": "ui.teamBridgeTrial.paused.note",
+   "problem": "'закончился {date}.' renders 'закончился четверг, 3 декабря 2026 г..': a bare nominative date after the verb (needs 'в четверг') and a doubled full stop.",
+   "fix": "'Пробный период Team закончился ({date}). Оформите подписку, чтобы продолжить; ваши сообщения сохранены.'"
+  }
+ ]
+}

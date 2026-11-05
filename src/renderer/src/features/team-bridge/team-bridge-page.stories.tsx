@@ -1,15 +1,20 @@
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import {
 	beginRadientAuthorityTransition,
 	radientUserKeys,
 } from "@shared/hooks/radient-account-authority";
 import { t } from "@shared/i18n";
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fireEvent, userEvent, waitFor, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	type CSSProperties,
 	type ComponentProps,
+	type FC,
+	type ReactNode,
 	useEffect,
 	useLayoutEffect,
 	useState,
@@ -43,6 +48,7 @@ import { teamBridgeComposerKey } from "@shared/store/team-bridge-composer-rows";
 import agentPortrait from "../../assets/images/storybook-avatar-portrait.jpg";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
+import { useUiPreferencesStore } from "../../shared/store/ui-preferences-store";
 import { draftStorageKey, draftTargetKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -103,6 +109,64 @@ const useMacChromeSimulation = () => {
 			}
 		};
 	}, []);
+};
+
+/**
+ * THE PAGE IN THE APP'S SHELL ON ITS OWN ROUTE (the sidebar swap, operator
+ * 2026-11-03): `ChatLayout` in route mode, exactly as `app.tsx` mounts it on
+ * `/team-bridge`. The navigation passed as `sidebar` is a marker element rather
+ * than `SidebarNavigation` (which needs the whole desktop bridge) - route mode
+ * does not mount it, and a frame that showed it would be the regression. The
+ * rail is portaled into the shell's column with its Back row and foot.
+ * `collapsed` sets the user's strip preference, which route mode overrides.
+ */
+const InTheShell: FC<{
+	collapsed?: boolean;
+	/** Open the fleet asks drawer: the yield that once squeezed the column (M1). */
+	fleetDrawer?: boolean;
+	children: ReactNode;
+}> = ({ collapsed = false, fleetDrawer = false, children }) => {
+	useMacChromeSimulation();
+	/* The app writes `<html dir>` from the locale (`app.tsx`); Storybook does not,
+	   so the Urdu frame would keep the column on the LTR side without this. */
+	useDocumentDirection();
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		const before = useUiPreferencesStore.getState();
+		const restore = {
+			isSidebarCollapsed: before.isSidebarCollapsed,
+			isAskDrawerOpen: before.isAskDrawerOpen,
+			askDrawerScope: before.askDrawerScope,
+		};
+		useUiPreferencesStore.getState().setSidebarCollapsed(collapsed);
+		if (fleetDrawer)
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				askDrawerScope: "fleet",
+			});
+		setReady(true);
+		return () => useUiPreferencesStore.setState(restore);
+	}, [collapsed, fleetDrawer]);
+	if (!ready) return null;
+	return (
+		<div
+			className="relative flex h-screen flex-col overflow-hidden"
+			style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+		>
+			<ChatLayout
+				sidebar={<nav data-story-app-nav="">app navigation</nav>}
+				routeSidebar={{}}
+				content={
+					<main
+						data-glass-region="canvas-backing"
+						className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas"
+					>
+						{children}
+					</main>
+				}
+			/>
+		</div>
+	);
 };
 
 const dm: TeamBridgeConversation = {
@@ -631,17 +695,20 @@ export const InvitationWaiting: Story = {
 };
 
 /**
- * The row's real hover FILL, beside the borderless human and agent plates.
- * Synthetic mouse events cannot set the browser's trusted :hover state, so this
- * capture-only rule mirrors the exact production hover declaration; the frame
- * and geometry read the resulting computed background, not just a class.
+ * The row's real hover FILL, beside the round identity plates, with the
+ * overlay toolbar it reveals. Synthetic mouse events cannot set the browser's
+ * trusted :hover state, so this capture-only rule mirrors the exact production
+ * hover declarations (the inset `::before` box on `surface`, the toolbar's
+ * reveal); the frame and geometry read the resulting computed styles.
  */
 export const HoveredMessageRow: Story = {
 	decorators: [
 		(Story) => (
 			<>
 				<style>
-					{"[data-capture-hover] { background-color: var(--color-row-hover); }"}
+					{
+						"[data-capture-hover]::before { background-color: var(--color-surface); } [data-capture-hover] [data-message-toolbar] > div { opacity: 1; pointer-events: auto; }"
+					}
 				</style>
 				<Story />
 			</>
@@ -763,6 +830,68 @@ export const ChannelSelected: Story = {
 			...message,
 			conversation_id: channel.id,
 		})),
+	},
+};
+
+/**
+ * THREE DAYS OF HISTORY, SCROLLED TO THE NEWEST (#1668 QA round 1 Q2, UX
+ * round 1 U1). Each day is its own sticky containing block, so exactly one
+ * day pill is stuck under the pane's top at any scroll offset - the stacked
+ * "Mor · Today · er 2" pill is the regression this frame guards. Each day is
+ * a same-sender run inside the five-minute window, so the grouped rows (one
+ * 24px line each, hover clock on one line) render too.
+ */
+const dayRun = (
+	dayOffset: number,
+	startSeq: number,
+	sender: TeamBridgeMessage["sender"],
+	bodies: string[],
+): TeamBridgeMessage[] =>
+	bodies.map((body, index) => {
+		const at = new Date();
+		at.setDate(at.getDate() - dayOffset);
+		at.setHours(10, index, 0, 0);
+		return {
+			id: `bcmsg_day${dayOffset}_${index}`,
+			conversation_id: channel.id,
+			seq: startSeq + index,
+			sender,
+			body,
+			origin: sender.kind,
+			created_at: at.toISOString(),
+		};
+	});
+const multiDayAda = {
+	account_id: "acct_agent",
+	kind: "agent",
+	display_label: "Ada's agent",
+} as const;
+const multiDaySelf = {
+	account_id: "acct_self",
+	kind: "human",
+	display_label: "Damian",
+} as const;
+export const MultiDayGroupedRuns: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [
+			...dayRun(2, 1, multiDaySelf, [
+				"Kicking off the launch checklist.",
+				"Owners are in the doc.",
+				"Ping me with blockers.",
+			]),
+			...dayRun(1, 4, multiDayAda, [
+				"Two items are still open.",
+				"The migration dry run passed.",
+				"Release notes are drafted.",
+				"Waiting on the final copy review.",
+			]),
+			...dayRun(0, 8, multiDaySelf, [
+				"Copy review is done.",
+				"Ship it after lunch.",
+				"Thanks, everyone.",
+			]),
+		],
 	},
 };
 
@@ -1109,38 +1238,146 @@ export const EmptyAllOrganizations: Story = {
  * native window chrome; the production value comes from the same property.
  */
 export const FlushToTheWindowTop: Story = {
-	render: () => {
-		useMacChromeSimulation();
-		return (
-			<div
-				className="relative flex h-screen flex-col overflow-hidden"
-				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
-			>
-				<ChatLayout
-					sidebar={<div className="panel-top-pad h-full bg-surface" />}
-					content={
-						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
-							<TeamBridgePageView
-								listState="ready"
-								messageState="ready"
-								conversations={[channel, group, dm]}
-								target={{ type: "conversation", id: channel.id }}
-								messages={messages}
-								organizations={[minervaOrganization, northwindOrganization]}
-								scope={asTeamBridgeTenantId("tnt_1")}
-								totalUnread={3}
-								selfAccountId={self}
-								onTarget={() => {}}
-								onSend={() => undefined}
-								onNewChannel={() => {}}
-								onScopeChange={() => {}}
-							/>
-						</main>
-					}
-				/>
-			</div>
-		);
+	render: () => (
+		<InTheShell>
+			<TeamBridgePageView
+				listState="ready"
+				messageState="ready"
+				conversations={[channel, group, dm]}
+				target={{ type: "conversation", id: channel.id }}
+				messages={messages}
+				organizations={[minervaOrganization, northwindOrganization]}
+				scope={asTeamBridgeTenantId("tnt_1")}
+				totalUnread={3}
+				selfAccountId={self}
+				onTarget={() => {}}
+				onSend={() => undefined}
+				onNewChannel={() => {}}
+				onScopeChange={() => {}}
+			/>
+		</InTheShell>
+	),
+};
+
+/**
+ * ONE SIDEBAR (the swap's main frame): the bridge rail fills the app's left
+ * column, with Back on top and the account foot below, and no second column.
+ */
+export const InShellChannelSelected: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: channel.id,
+		})),
 	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * The user's collapsed-strip preference on this route: the column still docks,
+ * because the rail has no 56px form; the preference is kept for the way back.
+ */
+export const InShellCollapsedPreference: Story = {
+	...InShellChannelSelected,
+	render: (args) => (
+		<InTheShell collapsed>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * The fleet asks drawer open (round 1, M1/Q2): at ~936-1139px the nav would
+ * yield to its 56px strip, but the bridge column has no strip form and stays
+ * docked. Capture at 1000px wide.
+ */
+export const InShellFleetDrawerOpen: Story = {
+	...InShellChannelSelected,
+	render: (args) => (
+		<InTheShell fleetDrawer>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * ONE INLINE INSET, BOTH SIDES (operator, 2026-11-04): every trailing mark the
+ * rail can draw at rest - the organization chevron and "+", a count beside a
+ * mute bell, a mute bell alone, the Invitations count, the audit list - in the
+ * docked column, so the capture shows each band's leading mark on the 16px line
+ * and each row's last mark ending 16px from the column's end edge.
+ * `scripts/team-bridge-sidebar-inset.test.mjs` pins the classes behind it.
+ */
+export const InShellSidebarInset: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		totalUnread: minervaOrganization.unread,
+		conversations: [
+			{
+				...channel,
+				members: [
+					...channel.members,
+					{
+						account_id: self,
+						kind: "agent",
+						display_label: "Robo Damian",
+						role: "member",
+						state: "invited",
+					},
+				],
+			},
+			mutedChannel,
+			{
+				...mutedChannel,
+				id: "bcv_ch_muted_read",
+				name: "qa-coordination",
+				unread_count: 0,
+				last_read_seq: 12,
+			},
+			group,
+			dm,
+		],
+		target: { type: "conversation", id: channel.id },
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: channel.id,
+		})),
+		people: directoryPeople,
+		onOpenArchived: () => {},
+		archivedConversations: [
+			{ ...channel, id: "bcv_ch_old", name: "old-launch", status: "archived" },
+		],
+		ownerAudit: staticOwnerAudit([minervaOrganization], "ready"),
+	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/** Urdu: the column is on the right, and Back's arrow points right. */
+export const InShellUrdu: Story = {
+	...InShellChannelSelected,
+	args: { ...InShellChannelSelected.args, locale: "ur" } as Story["args"],
+};
+
+/**
+ * An early state (the eligibility gate) still owns the column: the Back row
+ * and a quiet title, so a gated reader always has a way out.
+ */
+export const InShellEligibilityGate: Story = {
+	args: { eligibility: "plan_required" },
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
 };
 
 /**
@@ -1287,7 +1524,10 @@ function staticOwnerAudit(
 		clear: () => {},
 		panel: null,
 		rail: () => (
-			<section className="mt-4" aria-label={t("ui.ownerAudit.title")}>
+			<section
+				className={cn("mt-4", SIDEBAR_INSET)}
+				aria-label={t("ui.ownerAudit.title")}
+			>
 				<OwnerAuditSectionHeader />
 				{organizations.map((organization, index) => (
 					<div key={organization.tenantId}>
@@ -1298,7 +1538,6 @@ function staticOwnerAudit(
 							<RailGroupHeader
 								id={`owner-audit-${organization.tenantId}`}
 								name={organization.name}
-								inset="bare"
 								first={index === 0}
 							/>
 						)}
@@ -2016,6 +2255,9 @@ const threadTarget = {
 
 export const ThreadSummaryRow: Story = {
 	args: {
+		/* Without the capability the timeline draws no thread row at all, so this
+		   story showed nothing it is named for (design round 1 on #1672, D1). */
+		threadsCapabilityState: "enabled",
 		target: { type: "conversation", id: channel.id },
 		messages: [threadRoot],
 	},
@@ -2041,6 +2283,34 @@ export const ThreadAtMinimumWindow: Story = {
 		<div className="h-[700px] w-[800px] max-w-full">
 			<TeamBridgePageView {...args} />
 		</div>
+	),
+};
+
+/** The thread takeover below a 1024px conversation region, in the shell. */
+export const InShellThreadAtMinimumWindow: Story = {
+	args: {
+		/* The thread capability, so the pane really mounts and the takeover's
+		   start edge is in the frame (the inline board leaves it unset). */
+		threadsCapabilityState: "enabled",
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
 	),
 };
 
@@ -2083,8 +2353,12 @@ export const ThreadDeepLinkFromSearch: Story = {
 			>
 				<ChatLayout
 					sidebar={<div className="panel-top-pad h-full bg-surface" />}
+					routeSidebar={{}}
 					content={
-						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						<main
+							data-glass-region="canvas-backing"
+							className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas"
+						>
 							<TeamBridgePageView {...args} />
 						</main>
 					}
@@ -3215,5 +3489,64 @@ export const AgentOwnPictureMention: Story = {
 	play: async ({ canvasElement }) => {
 		const field = await within(canvasElement).findByRole("combobox");
 		await userEvent.type(field, "@Ai");
+	},
+};
+
+/*
+ * THE MEMBERS PANEL FROM THE HEADER COUNT (operator 2026-11-04). The count is
+ * a button; these frames are the header's hover and keyboard-focus states and
+ * the panel docked in the thread pane's slot on a wide page.
+ */
+export const MemberCountHover: Story = {
+	args: ChannelSelected.args,
+	play: async ({ canvasElement }) => {
+		const count = canvasElement.querySelector<HTMLElement>(
+			'button[aria-label^="View "]',
+		);
+		if (count) await userEvent.hover(count);
+	},
+};
+
+export const MemberCountFocused: Story = {
+	args: ChannelSelected.args,
+	play: async ({ canvasElement }) => {
+		const count = canvasElement.querySelector<HTMLElement>(
+			'button[aria-label^="View "]',
+		);
+		// Keyboard focus, so `:focus-visible` paints the outline ring.
+		count?.focus();
+		await userEvent.keyboard("{Shift>}{Tab}{/Shift}{Tab}");
+	},
+};
+
+export const MembersPanelOpen: Story = {
+	args: { ...ChannelSelected.args, initialMembersPanelOpen: true },
+};
+
+/*
+ * THE CONVERSATION MENU ON THE PAGE (operator 2026-11-04). The header "…" with
+ * the new membership and departure items, wired the way the container wires
+ * them; and the partial-leave line: the reader left, the follow-up withdraw of
+ * their own agent failed, so the page states the true state with a retry.
+ */
+/* The same room as `AgentWakeMenu` (the operator's screenshot state: wake
+   group, no Leave), now wired with the menu's new writes: the before/after pair. */
+const conversationMenuArgs = {
+	...ownAgentArgs,
+	onAddMembers: () => Promise.resolve(),
+	onMenuLeave: () => Promise.resolve({ status: "left" as const }),
+	onMenuOwnAgent: () => Promise.resolve(),
+	onMenuJoin: () => {},
+	onOpenMembersFor: () => {},
+};
+export const ConversationMenuHeader: Story = {
+	args: { ...conversationMenuArgs, defaultMenuOpen: true },
+};
+export const ConversationMenuPartialLeave: Story = {
+	args: {
+		...ChannelSelected.args,
+		partialLeave: { name: "#launch", retrying: false, retryFailed: false },
+		onRetryPartialLeave: () => {},
+		onDismissPartialLeave: () => {},
 	},
 };

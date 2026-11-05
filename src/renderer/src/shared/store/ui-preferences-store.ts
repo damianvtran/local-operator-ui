@@ -5,6 +5,10 @@
  * theme selection, and provides methods to update these preferences.
  */
 
+import {
+	type AgentAvatarSize,
+	DEFAULT_AGENT_AVATAR_SIZE,
+} from "@features/chat/agent-avatar-size";
 import type { AskScope } from "@features/chat/ask-queue";
 import {
 	CANVAS_PANE_MIN_PX,
@@ -42,10 +46,30 @@ import type {
 	ActionId,
 	ShortcutBindings,
 } from "@shared/keymap/keymap-registry";
-import { DEFAULT_THEME } from "@shared/themes";
+import { DEFAULT_THEME, isThemeName } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { AccentRef } from "../../../../shared/theme-engine/accent.mjs";
+import { normalizeHex } from "../../../../shared/theme-engine/accent.mjs";
+import type {
+	Mode,
+	PerMode,
+} from "../../../../shared/theme-engine/appearance.mjs";
+import {
+	DEFAULT_ACCENT,
+	DEFAULT_CONTRAST,
+	MODES,
+	THEME_ACCENT,
+	pushCustomAccent,
+	sanitizeAccent,
+	sanitizeAccentRef,
+	sanitizeContrast,
+	sanitizeContrastValue,
+	sanitizeCustomAccents,
+	sanitizeCustomThemeId,
+} from "../../../../shared/theme-engine/appearance.mjs";
+import { sanitizeCustomAccentNames } from "../../../../shared/theme-engine/picker.mjs";
 import {
 	MEMORY_PANES,
 	type MemoryPane,
@@ -982,9 +1006,69 @@ type UiPreferencesState = {
 	setTranscriptDisplayMode: (mode: TranscriptDisplayMode) => void;
 
 	/**
-	 * The currently selected theme
+	 * How large the agent's picture is drawn in the chat window (the turn head and
+	 * the chat header): `small` (today's 20px), `medium` or `large`. An app-level
+	 * preference, not a per-agent one.
+	 *
+	 * Default `small` per `agent-avatar-size.ts`, which owns the tokens, the pixel
+	 * tables and the judgement: this store keeps the value, and every reader parses
+	 * it through `parseAgentAvatarSize` because zustand rehydrates PAST the setters
+	 * (the read-side rule `transcriptDisplayMode` above follows). A blob saved
+	 * before this field existed simply lacks the key, so the default applies and no
+	 * migration step is needed.
+	 */
+	agentAvatarSize: AgentAvatarSize;
+
+	/**
+	 * Set the picture size. Takes the resolved union, so an unknown step cannot be
+	 * written; the stored value is judged again on every read.
+	 *
+	 * @param size - The step to draw the chat window's agent picture at
+	 */
+	setAgentAvatarSize: (size: AgentAvatarSize) => void;
+
+	/**
+	 * The currently selected theme. While a custom theme is active this holds
+	 * that theme's BASE, so every reader of `themeName` keeps a valid built-in.
 	 */
 	themeName: ThemeName;
+
+	/**
+	 * The appearance layers over `themeName` (v5; see
+	 * `src/shared/theme-engine/appearance.mjs` for each field's why). Contrast
+	 * and accent are PER MODE - "how much contrast I want in dark mode" survives
+	 * a switch from Dracula to Nord. Nothing in the settings UI writes these yet;
+	 * the setters below are the internal API the picker will use.
+	 */
+	contrast: PerMode<number>;
+	accent: PerMode<AccentRef>;
+	/** The user's own accent swatches, most recent first (<= 12). */
+	customAccents: string[];
+	/** The active saved custom theme, or null for the built-in `themeName`. */
+	customThemeId: string | null;
+	/** Set one mode's contrast (-100..100; rounded and clamped). */
+	setContrast: (mode: Mode, value: number) => void;
+	/** Set one mode's accent reference. */
+	setAccent: (mode: Mode, ref: AccentRef) => void;
+	/** Add a swatch to the front of `customAccents` (and select it for `mode`). */
+	addCustomAccent: (hex: string, select?: Mode) => void;
+	/** Remove a swatch; a mode that had it selected falls back to the theme's accent. */
+	removeCustomAccent: (hex: string) => void;
+	/**
+	 * The user's names for their custom accents, keyed by normalised hex. Absent
+	 * means the swatch is named by its hex. Additive within v5: `merge` defaults
+	 * and re-sanitises it (`sanitizeCustomAccentNames`), and a name is dropped
+	 * with its swatch, so the map can never outgrow the 12-swatch list.
+	 */
+	customAccentNames: Record<string, string>;
+	/** Name (or, with an empty string, un-name) one custom accent. */
+	renameCustomAccent: (hex: string, name: string) => void;
+	/**
+	 * "Edit colour…" on a custom swatch: replace it IN PLACE (same position, its
+	 * name kept), and move every mode that had it selected onto the new colour, so
+	 * editing is not remove-then-add with the selection lost in between.
+	 */
+	replaceCustomAccent: (from: string, to: string) => void;
 
 	/**
 	 * The width of the chat sidebar in pixels
@@ -2026,12 +2110,18 @@ const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
  * `main` keeps #895's v2 (the copy that shipped) and renumbers the memory step
  * to v3, dropping the duplicate.
  *
+ * v5 IS THE APPEARANCE LAYERS: per-mode `contrast` and `accent`, the
+ * `customAccents` swatches and `customThemeId`. Additive - the step only seeds
+ * the defaults (a v4 profile renders exactly as before: Standard contrast, the
+ * theme's own accent, no custom theme) - and `merge` re-sanitises them on every
+ * load, so a hand-edited value cannot reach the composition engine.
+ *
  * v3 (#894) IS THE RIGHT SLOT'S MEMORY: the four global pane flags stop being
  * persisted and become the bound conversation's projection, so the step lifts
  * whichever flag was true into `rightSlotLegacySeed` - the one-shot seed the
  * first bind plants - and deletes the four keys.
  */
-export const UI_PREFERENCES_VERSION = 4;
+export const UI_PREFERENCES_VERSION = 5;
 
 /**
  * The keys v2 removes from a stored blob. A list rather than a `delete
@@ -2058,7 +2148,103 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			sidebarOverflowExpanded: false,
 			showAgentReasoning: false,
 			transcriptDisplayMode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+			agentAvatarSize: DEFAULT_AGENT_AVATAR_SIZE,
 			themeName: DEFAULT_THEME,
+			contrast: DEFAULT_CONTRAST,
+			accent: DEFAULT_ACCENT,
+			customAccents: [],
+			customAccentNames: {},
+			customThemeId: null,
+			setContrast: (mode, value) =>
+				set((state) => ({
+					contrast: {
+						...state.contrast,
+						[mode]: sanitizeContrastValue(value),
+					},
+				})),
+			setAccent: (mode, ref) =>
+				set((state) => ({
+					accent: {
+						...state.accent,
+						[mode]: sanitizeAccentRef(ref, isThemeName),
+					},
+				})),
+			addCustomAccent: (hex, select) =>
+				set((state) => {
+					const customAccents = pushCustomAccent(state.customAccents, hex);
+					const added = normalizeHex(hex);
+					/* A 13th swatch drops the oldest (no prompt, by design); its name
+					   goes with it rather than lingering in the persisted map. */
+					const customAccentNames = sanitizeCustomAccentNames(
+						state.customAccentNames,
+						customAccents,
+					);
+					if (!select || !added) return { customAccents, customAccentNames };
+					return {
+						customAccents,
+						customAccentNames,
+						accent: {
+							...state.accent,
+							[select]: { kind: "custom", hex: added },
+						},
+					};
+				}),
+			removeCustomAccent: (hex) =>
+				set((state) => {
+					const target = normalizeHex(hex);
+					const accent = { ...state.accent };
+					for (const mode of MODES) {
+						const ref = accent[mode];
+						if (ref.kind === "custom" && ref.hex === target)
+							accent[mode] = THEME_ACCENT;
+					}
+					const customAccentNames = { ...state.customAccentNames };
+					if (target) delete customAccentNames[target];
+					return {
+						customAccents: state.customAccents.filter((h) => h !== target),
+						customAccentNames,
+						accent,
+					};
+				}),
+			renameCustomAccent: (hex, name) =>
+				set((state) => {
+					const target = normalizeHex(hex);
+					if (!target || !state.customAccents.includes(target)) return {};
+					return {
+						customAccentNames: sanitizeCustomAccentNames(
+							{ ...state.customAccentNames, [target]: name },
+							state.customAccents,
+						),
+					};
+				}),
+			replaceCustomAccent: (from, to) =>
+				set((state) => {
+					const source = normalizeHex(from);
+					const target = normalizeHex(to);
+					if (!source || !target || source === target) return {};
+					const index = state.customAccents.indexOf(source);
+					if (index < 0) return {};
+					/* The new colour takes the old one's slot; if it was already in
+					   the list elsewhere, that duplicate goes (sanitise de-dupes). */
+					const list = state.customAccents.filter((h) => h !== target);
+					list.splice(list.indexOf(source), 1, target);
+					const customAccents = sanitizeCustomAccents(list);
+					const names = { ...state.customAccentNames };
+					if (names[source] !== undefined && names[target] === undefined)
+						names[target] = names[source];
+					delete names[source];
+					const accent = { ...state.accent };
+					for (const mode of MODES) {
+						const ref = accent[mode];
+						if (ref.kind === "custom" && ref.hex === source)
+							accent[mode] = { kind: "custom", hex: target };
+					}
+					return {
+						customAccents,
+						customAccentNames: sanitizeCustomAccentNames(names, customAccents),
+						accent,
+					};
+				}),
 			rightSlotWidth: 0,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
 			/*
@@ -2168,9 +2354,16 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				});
 			},
 
+			setAgentAvatarSize: (size: AgentAvatarSize) => {
+				set({
+					agentAvatarSize: size,
+				});
+			},
+
 			setTheme: (themeName: ThemeName) => {
 				set({
 					themeName,
+					customThemeId: null,
 				});
 			},
 
@@ -3050,6 +3243,22 @@ export function mergePersistedUiPreferences(
 		 * Keeping them here also keeps unrelated writes/migrations non-destructive.
 		 */
 		shortcutBindings: sanitizeShortcutBindings(blob.shortcutBindings),
+		/*
+		 * THE APPEARANCE LAYERS ARE RE-VALIDATED, never trusted, for the reason the
+		 * shortcut overrides are: each one reaches the composition engine, and a
+		 * colour from it is written into an injected `<style>`.
+		 */
+		/* What the BLOB says, defaulted - never the in-memory state, which is
+		   what a reload is replacing (and for the two pre-v5 stores that reach
+		   here unmigrated, the identity values are the right ones). */
+		contrast: sanitizeContrast(blob.contrast),
+		accent: sanitizeAccent(blob.accent, isThemeName),
+		customAccents: sanitizeCustomAccents(blob.customAccents),
+		customAccentNames: sanitizeCustomAccentNames(
+			blob.customAccentNames,
+			sanitizeCustomAccents(blob.customAccents),
+		),
+		customThemeId: sanitizeCustomThemeId(blob.customThemeId),
 	};
 }
 
@@ -3109,6 +3318,17 @@ export function migrateUiPreferences(
 	}
 	if (version < 4)
 		blob.finderFiles = sanitizeFinderPreferences(blob.finderFiles);
+	if (version < 5) {
+		/*
+		 * v5 SEEDS THE APPEARANCE LAYERS AT THEIR IDENTITY VALUES. Sanitising
+		 * whatever is there (rather than overwriting) keeps the step idempotent and
+		 * harmless for a blob a newer build already wrote these keys into.
+		 */
+		blob.contrast = sanitizeContrast(blob.contrast);
+		blob.accent = sanitizeAccent(blob.accent, isThemeName);
+		blob.customAccents = sanitizeCustomAccents(blob.customAccents);
+		blob.customThemeId = sanitizeCustomThemeId(blob.customThemeId);
+	}
 	return blob;
 }
 

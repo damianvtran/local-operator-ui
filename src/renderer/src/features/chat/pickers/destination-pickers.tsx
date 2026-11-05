@@ -1,3 +1,4 @@
+import { useCustomThemes } from "@shared/themes/custom-theme-store";
 /**
  * Destination adapters: one component per `native_action` destination.
  *
@@ -66,6 +67,8 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
+import { appearanceLayerSummary } from "@shared/themes/appearance-summary";
+import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import {
 	showErrorToast,
 	showInfoToast,
@@ -2555,8 +2558,39 @@ export const EffortPicker: FC<PickerContext> = ({
 
 export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 	const locale = useI18nLocale();
-	const themeName = useUiPreferencesStore((state) => state.themeName);
+	const customThemes = useCustomThemes();
+	const customThemeId = useUiPreferencesStore((state) => state.customThemeId);
+	const baseThemeName = useUiPreferencesStore((state) => state.themeName);
+	const selectedId = customThemes.themes.some(
+		(theme) => theme.id === customThemeId,
+	)
+		? customThemeId
+		: baseThemeName;
+	const choices = useMemo(() => {
+		void locale;
+		return [
+			...Object.values(themes),
+			...customThemes.themes.map((theme) => ({
+				id: theme.id,
+				name: theme.name,
+				description: t("ui.settings.appearance.editor.base", {
+					name: theme.base,
+				}),
+			})),
+		];
+	}, [customThemes, locale]);
 	const setTheme = useUiPreferencesStore((state) => state.setTheme);
+	/*
+	 * The CURRENT row follows the painted composition, not the name alone: when
+	 * a contrast preset or the user's accent is layered over the theme, its meta
+	 * says so ("Strong contrast, your accent"), so the list never claims the
+	 * stock palette while the app paints another (see `appearanceLayerSummary`).
+	 */
+	const resolvedAppearance = useResolvedAppearance();
+	const accentRef = useUiPreferencesStore(
+		(state) => state.accent[resolvedAppearance.palette.mode],
+	);
+	const layerSummary = appearanceLayerSummary(resolvedAppearance, accentRef);
 	const [result, setResult] = useState<PickerResult | null>(null);
 	/*
 	 * The theme a fully-qualified argument NAMES, resolved at render so the FIRST
@@ -2578,31 +2612,42 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 		const wanted = action.args.trim();
 		if (!wanted) return null;
 		return (
-			Object.values(themes).find(
+			choices.find(
 				(theme) =>
 					theme.id.toLowerCase() === wanted.toLowerCase() ||
 					theme.name.toLowerCase() === wanted.toLowerCase(),
 			) ?? null
 		);
-	}, [action.args]);
+	}, [action.args, choices]);
 	const options = useMemo<PickerOption[]>(() => {
 		void locale;
-		return Object.values(themes).map((theme) => ({
+		return choices.map((theme) => ({
 			value: theme.id,
 			label: theme.name,
 			description: theme.description,
-			current: theme.id === themeName,
+			current: theme.id === selectedId,
+			...(theme.id === selectedId && layerSummary
+				? { meta: layerSummary }
+				: {}),
 			group: theme.id.startsWith("localOperator")
 				? "Local Operator"
 				: t("ui.chat.pickers.destination_pickers.ports"),
 		}));
-	}, [themeName, locale]);
+	}, [selectedId, choices, locale, layerSummary]);
 	// A typed argument (`/theme dracula`) is a direct pick when it names a theme.
 	useEffect(() => {
 		const wanted = action.args.trim();
 		if (!wanted) return;
 		if (requested) {
-			setTheme(requested.id as ThemeName);
+			const custom = customThemes.themes.find(
+				(theme) => theme.id === requested.id,
+			);
+			if (custom)
+				useUiPreferencesStore.setState({
+					themeName: custom.base as ThemeName,
+					customThemeId: custom.id,
+				});
+			else setTheme(requested.id as ThemeName);
 			setResult({
 				tone: "success",
 				text: t("ui.chat.pickers.destination_pickers.theme", {
@@ -2617,7 +2662,7 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 				}),
 			});
 		}
-	}, [action.args, requested, setTheme]);
+	}, [action.args, requested, setTheme, customThemes]);
 	return (
 		<PickerHost
 			open
@@ -2636,7 +2681,13 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 			 */
 			options={requested ? undefined : options}
 			onPick={(value, option) => {
-				setTheme(value as ThemeName);
+				const custom = customThemes.themes.find((theme) => theme.id === value);
+				if (custom)
+					useUiPreferencesStore.setState({
+						themeName: custom.base as ThemeName,
+						customThemeId: custom.id,
+					});
+				else setTheme(value as ThemeName);
 				setResult({
 					tone: "success",
 					text: t("ui.chat.pickers.destination_pickers.theme_058ec5", {

@@ -189,6 +189,33 @@ export const Populated: Story = {
 	},
 };
 
+/*
+ * An agent the directory names after its OWNER (an endpoint enrolled without an
+ * agent name), on the INVITE side: Ben's agent is not a member of the fixture
+ * conversation, so it is a candidate row. (Sherman's agent is already a member,
+ * so renaming it never reached the roster path; QA round 1, Q1 on #1643.) The
+ * roster used to compose it "Ben Tran (Ben Tran)"; it reads "Ben Tran’s chief of
+ * staff", as the members list and the rail do (design review D1 on #1643).
+ */
+export const OwnerNamedAgent: Story = {
+	args: {
+		people: people.map((person) =>
+			person.account_id === "acct_ben" && person.agent
+				? { ...person, agent: { ...person.agent, name: "Ben Tran" } }
+				: person,
+		),
+	},
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		await expect(
+			dialog.getByText("Ben Tran’s chief of staff"),
+		).toBeInTheDocument();
+		await expect(
+			dialog.queryByText("Ben Tran (Ben Tran)"),
+		).not.toBeInTheDocument();
+	},
+};
+
 export const Loading: Story = {
 	args: { people: [], peopleState: "loading" },
 };

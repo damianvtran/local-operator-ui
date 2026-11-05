@@ -157,7 +157,14 @@ export const oneLight: ThemeDefinition = {
 		 * 2.0), 4.90:1 for `accentAlt` on it, and 2.71 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#E9E5E8",
+		/*
+		 * LIFTED #E9E5E8 -> #FBF6F9 (L* 91.32 -> 97.33, hue and chroma held) for
+		 * Team Bridge's person plates (visual refresh, contract C2; design round 1,
+		 * D1): the plate is borderless, so its fill must clear ΔE00 3.0 off every
+		 * ground it sits on. It measured 1.84; it now measures 3.22 at worst
+		 * (`surface`), with `accentAlt` 5.72:1 on it.
+		 */
+		accentAltWash: "#FBF6F9",
 
 		// Canonical hue-4 green 50A14F is 2.43:1 on `sunken` (< 4.5). Darkened along the
 		// same green.

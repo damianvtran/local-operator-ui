@@ -38,6 +38,7 @@
 
 import { type BrowserWindow, type NativeImage, Notification } from "electron";
 import { t } from "../i18n/index";
+import { composeChiefLabel } from "../shared/team-bridge-labels";
 import {
 	TEAM_BRIDGE_NOTIFY_MAX_TITLE,
 	type TeamBridgeNotifyAuthority,
@@ -560,12 +561,21 @@ export class TeamBridgeNotifier {
 		 * the exemption is one line, and it is spelled.
 		 */
 		const sender = request.sender;
+		/*
+		 * The agent title goes through the renderer's one composition rule
+		 * (`composeChiefLabel`), not a bare "{agent} ({person})": the directory
+		 * names an endpoint enrolled without an agent name after its OWNER, and
+		 * splicing that read "Ben Tran (Ben Tran)" where every in-app surface
+		 * reads "Ben Tran's chief of staff" (2026-11-03 sweep).
+		 */
 		const title = sender
 			? safeTeamBridgeBannerText(
 					sender.kind === "person_agent"
-						? t("ui.teamBridge.chief.label", {
-								person: sender.display_name,
-								agent: sender.agent_name ?? "",
+						? composeChiefLabel(sender.agent_name ?? "", sender.display_name, {
+								named: (agent, person) =>
+									t("ui.teamBridge.chief.label", { agent, person }),
+								unnamed: (person) =>
+									t("ui.teamBridge.chief.unnamed", { person }),
 							})
 						: sender.display_name,
 					TEAM_BRIDGE_NOTIFY_MAX_TITLE,

@@ -1410,6 +1410,16 @@ export type BackendUpdateInfo = {
 	 * `server-release-notes.ts`.
 	 */
 	releaseNotes?: ServerReleaseNotes | null;
+	/**
+	 * Whether the press behind this offer cannot interrupt a running session.
+	 *
+	 * True only on the `entry-point` managed route (the generation layout: the
+	 * build lands in a tree no runtime imports, and the server move never signals
+	 * a runtime). The `source-build` rebuild and every by-hand route rewrite the
+	 * install in place, so the renderer must not reassure on them - this is what
+	 * the foot icon's "won't interrupt" line is gated on (review M1, 2026-11-03).
+	 */
+	nonDisruptive?: boolean;
 };
 
 /**
@@ -6862,8 +6872,16 @@ export class UpdateService {
 			 * that remains - sessions still working move onto the new build when they
 			 * next stop or go idle - with the cost stated as the time it takes.
 			 */
-			remedy:
-				"The app publishes the new build beside the one the server is using and then moves the server onto it, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle. This can take a minute or two.",
+			/*
+			 * Keyed (it renders verbatim above `Update server`) and led by the
+			 * reassurance: session runtimes are detached processes the move never
+			 * signals (`local_operator/server/reload.py` "It does NOT touch
+			 * runtimes"), so the reader needs to know first that nothing has to be
+			 * stopped before pressing.
+			 */
+			remedy: t(
+				"ui.common.updates.update_notification.remedy_managed_app_owned",
+			),
 			detail: `The app started this server itself (${startupMode}).`,
 			sourceBuild: false,
 			/*
@@ -7446,6 +7464,7 @@ export class UpdateService {
 					remedy: plan.remedy,
 					detail: plan.detail,
 					sourceBuild: plan.sourceBuild,
+					nonDisruptive: plan.managedRoute === "entry-point",
 					/*
 					 * WHO THE APP WOULD RESTART, on the panel where the user decides (UX U9).
 					 *

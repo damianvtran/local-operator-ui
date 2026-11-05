@@ -13,24 +13,43 @@ import {
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
-import { ArrowUp, Check, CircleAlert, ImagePlus, Mic, X } from "lucide-react";
+import {
+	ArrowUp,
+	Check,
+	CircleAlert,
+	ImagePlus,
+	Mic,
+	Paperclip,
+	X,
+} from "lucide-react";
 import type { FC, ReactNode } from "react";
 import type {
 	ClipboardEvent as ReactClipboardEvent,
 	DragEvent as ReactDragEvent,
 } from "react";
-import { useCallback, useId, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
+import type { TeamBridgeFilesCapability } from "../../../../shared/team-bridge-contract";
 import { rendererPlatform } from "../../mini-view/renderer-platform";
+import { registerComposerFocus } from "../chat/composer-field";
 import { MentionField, MentionNotice, useComposerMentions } from "./mentions";
+import { imagePasteCancelsText } from "./team-bridge-attachments-model";
 import {
-	imageFiles,
-	imagePasteCancelsText,
-} from "./team-bridge-attachments-model";
+	clearTeamBridgeComposerFocusRequest,
+	composerFocusDisposition,
+	teamBridgeComposerFocusPending,
+} from "./team-bridge-composer-focus";
+import { TeamBridgeFilesStrip } from "./team-bridge-files-strip";
 import {
 	MIN_DICTATION_CLIP_MS,
 	useTeamBridgeDictation,
 } from "./use-team-bridge-dictation";
+import {
+	type FileSend,
+	splitBridgeFiles,
+	transferredFiles,
+	useTeamBridgeFiles,
+} from "./use-team-bridge-files";
 
 /**
  * Team Bridge's message composer: one bar, anchored to the foot of the pane.
@@ -130,6 +149,13 @@ export type TeamBridgeComposerProps = {
 	sending?: boolean;
 	/** The hub takes images. Absent means the attach control is not offered. */
 	canAttach?: boolean;
+	onFileCountChange?: (count: number) => void;
+	fileContext?: {
+		accountId?: string;
+		tenantId?: string;
+		conversationId?: string | null;
+		capability: TeamBridgeFilesCapability | null;
+	};
 	/** Host chrome with no bar slot of its own (the schedule control). */
 	trailing?: ReactNode;
 	/**
@@ -159,6 +185,7 @@ export type TeamBridgeComposerProps = {
 	onSendMessage: (
 		content: string,
 		attachments: string[],
+		files?: FileSend,
 	) => boolean | Promise<boolean>;
 };
 
@@ -169,6 +196,8 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	sending = false,
 	sendDisabled = false,
 	canAttach = false,
+	onFileCountChange,
+	fileContext,
 	trailing,
 	hint,
 	disabledReasonId,
@@ -177,6 +206,14 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 }) => {
 	useI18nLocale();
 	const fieldId = useId();
+	const files = useTeamBridgeFiles({
+		scopeKey: conversationId,
+		...fileContext,
+		capability: fileContext?.capability ?? null,
+	});
+	useEffect(() => {
+		onFileCountChange?.(files.chips.length);
+	}, [files.chips.length, onFileCountChange]);
 	const attachments = useConversationInputStore(
 		(state) => state.inputByConversation[conversationId]?.attachments,
 	);
@@ -184,6 +221,15 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 		(state) => state.removeAttachment,
 	);
 	const chips = attachments ?? NO_ATTACHMENTS;
+	const scopeIdentity = JSON.stringify([
+		conversationId,
+		fileContext?.accountId,
+		fileContext?.tenantId,
+	]);
+	const scopeReceipt = useRef({ identity: scopeIdentity });
+	if (scopeReceipt.current.identity !== scopeIdentity)
+		scopeReceipt.current = { identity: scopeIdentity };
+	const fileStateAdd = files.add;
 	const stageMentionsRef = useRef<(body: string) => void>(() => {});
 
 	const {
@@ -200,17 +246,23 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 		// accepted send retires it (`transcriptless`, U1). The chips travel beside
 		// the text because this host binds them into the request itself.
 		transcriptless: true,
-		onSubmit: (message) => {
+		hasAdditionalContent: files.chips.length > 0,
+		onSubmit: async (message) => {
+			if (files.busy || files.blocked) return false;
+			const keys = files.chips.map((chip) => chip.key);
 			// @-mentions: stage this text's `mentions[]` for its send (mentions/).
 			stageMentionsRef.current(message);
-			return onSendMessage(
+			const accepted = await onSendMessage(
 				message,
 				(
 					useConversationInputStore.getState().inputByConversation[
 						conversationId
 					]?.attachments ?? NO_ATTACHMENTS
 				).map((entry) => entry.path),
+				files.receipt(),
 			);
+			if (accepted) for (const key of keys) files.remove(key);
+			return accepted;
 		},
 	});
 	/* @-MENTIONS (features/team-bridge/mentions/). Inert with no mention source
@@ -301,7 +353,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	 */
 	const pasteHandlers = {
 		onPaste: (event: ReactClipboardEvent<HTMLDivElement>) => {
-			const files = imageFiles(event.clipboardData);
+			const files = transferredFiles(event.clipboardData);
 			if (files.length === 0) return;
 			if (imagePasteCancelsText(event.clipboardData)) event.preventDefault();
 			void addFiles(files);
@@ -311,7 +363,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 				event.preventDefault();
 		},
 		onDrop: (event: ReactDragEvent<HTMLElement>) => {
-			const files = imageFiles(event.dataTransfer);
+			const files = transferredFiles(event.dataTransfer);
 			if (files.length === 0) return;
 			event.preventDefault();
 			void addFiles(files);
@@ -334,7 +386,11 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 			 */
 			if (disabled) return;
 			const store = useConversationInputStore.getState();
-			for (const file of files) {
+			const started = scopeReceipt.current;
+			const { images, generic } = await splitBridgeFiles(files);
+			if (scopeReceipt.current !== started) return;
+			if (generic.length) fileStateAdd(generic);
+			for (const file of images) {
 				/*
 				 * THE DRAFT KEEPS PATHS, NOT BYTES. `conversation-input-store` is
 				 * persisted to localStorage, so a data URL here would write a base64
@@ -352,17 +408,61 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 					continue;
 				}
 				const dataUrl = await readFileAsDataUrl(file);
-				if (dataUrl)
+				if (dataUrl && scopeReceipt.current === started)
 					store.addAttachment(conversationId, { id: uuidv4(), path: dataUrl });
 			}
 		},
-		[conversationId, disabled],
+		[conversationId, disabled, fileStateAdd],
 	);
 
 	const picker = useRef<HTMLInputElement>(null);
-	const hasContent = inputValue.trim().length > 0 || chips.length > 0;
+	const hasContent =
+		inputValue.trim().length > 0 || chips.length > 0 || files.chips.length > 0;
 	const blocked = disabled;
 	const showSpinner = sending || sendInFlight;
+
+	/*
+	 * THE PALETTE'S CARET HAND-OFF (UX round 1, U1 on #1673). Registered with
+	 * the same one-slot registry the chat composer uses (`composer-field.ts`), so
+	 * the palette's close-time restore (`handCaretToComposer`) can name and focus
+	 * this field when a pick moved the view. Only one composer is ever mounted:
+	 * the chat pane and Team Bridge are separate routes, and the unregister is
+	 * scoped to this registration, so a late teardown of either cannot clear the
+	 * other.
+	 */
+	const giveCaret = useCallback(() => {
+		const field = textareaRef.current;
+		if (!field) return;
+		field.focus();
+		clearTeamBridgeComposerFocusRequest();
+	}, [textareaRef]);
+	const composerNode = useCallback(() => textareaRef.current, [textareaRef]);
+	useEffect(
+		() => registerComposerFocus(giveCaret, composerNode),
+		[giveCaret, composerNode],
+	);
+	/*
+	 * A pick from another route lands before this composer exists (lazy route,
+	 * then the status, list and directory reads), so the close-time restore has
+	 * nothing to hand to. The pick leaves a request instead, honoured here once
+	 * the field is usable for the conversation it opened
+	 * (`team-bridge-composer-focus.ts` owns the rules). Re-asked on a
+	 * conversation change because a pick made on Team Bridge reuses this mount.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `conversationId` is a TRIGGER (a pick made on Team Bridge keeps this mount and changes only the conversation); the body reads the live request and the live caret.
+	useEffect(() => {
+		if (blocked || !teamBridgeComposerFocusPending()) return;
+		const field = textareaRef.current;
+		if (!field) return;
+		const active = document.activeElement;
+		if (active === field) {
+			clearTeamBridgeComposerFocusRequest();
+			return;
+		}
+		const disposition = composerFocusDisposition(active);
+		if (disposition === "take") giveCaret();
+		else if (disposition === "drop") clearTeamBridgeComposerFocusRequest();
+	}, [blocked, conversationId, giveCaret, textareaRef]);
 
 	/*
 	 * DICTATION, IN THE BAR RATHER THAN BESIDE IT (the operator's acceptance).
@@ -415,6 +515,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 			    is a sentence about the draft, not a row of the bar, so the bar keeps
 			    its field-plus-controls shape in every state (mentions/). */}
 			<MentionNotice mentions={mentions} />
+			<TeamBridgeFilesStrip state={files} />
 			{chips.length > 0 && (
 				/*
 				 * Chips are not part of the bar's own line (operator: an attachment may
@@ -477,6 +578,9 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 				   the box, including its padding, and the bridge's strip has always read
 				   it that way. */
 				{...pasteHandlers}
+				/* The same field-over-material role as the main chat composer;
+				 * a second opaque elevated fill would mask the chosen glass. */
+				data-glass-region="composer"
 				data-composer-bar=""
 				className={cn(
 					/* `rounded-md` (10px), not `rounded-lg` (14px): the operator asked for LESS
@@ -530,7 +634,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 						 * reserved for anything - dictation included. `relative` so the field
 						 * paints above the mention overlay `MentionField` positions under it.
 						 */
-						className="relative block min-h-9 w-full resize-none bg-transparent px-3 py-2 text-[14px] leading-5 text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed disabled:text-ink-dim"
+						className="relative block min-h-9 w-full resize-none bg-transparent px-3 pt-2.5 pb-1.5 text-[14px] leading-5 text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed disabled:text-ink-dim"
 					/>
 				</MentionField>
 				{/*
@@ -545,7 +649,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 				 */}
 				<div
 					data-composer-controls=""
-					className="flex h-9 min-w-0 items-center gap-1 px-2 pb-2"
+					className="flex h-9 min-w-0 items-center gap-1 px-1.5 pb-1.5"
 				>
 					{dictation.isRecording || dictation.isPreparing ? (
 						<>
@@ -722,23 +826,39 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 							>
 								<Mic aria-hidden="true" />
 							</Button>
-							{canAttach && (
+							{(canAttach || files.enabled) && (
 								<>
 									<Button
 										variant="ghost"
 										size="icon-sm"
-										aria-label={t("ui.teamBridge.attachments.add")}
-										title={t("ui.teamBridge.attachments.add")}
+										aria-label={t(
+											files.enabled
+												? "ui.teamBridge.files.add"
+												: "ui.teamBridge.attachments.add",
+										)}
+										title={t(
+											files.enabled
+												? "ui.teamBridge.files.add"
+												: "ui.teamBridge.attachments.add",
+										)}
 										disabled={blocked}
 										onClick={() => picker.current?.click()}
 									>
-										<ImagePlus size={16} aria-hidden="true" />
+										{files.enabled ? (
+											<Paperclip size={16} aria-hidden="true" />
+										) : (
+											<ImagePlus size={16} aria-hidden="true" />
+										)}
 									</Button>
 									<input
 										ref={picker}
 										type="file"
 										// A hint for the OS picker only; the bytes are sniffed regardless.
-										accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif"
+										accept={
+											fileContext?.capability
+												? undefined
+												: "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif"
+										}
 										multiple
 										hidden
 										tabIndex={-1}
@@ -753,11 +873,26 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 							{trailing}
 							<Button
 								size="icon-sm"
-								variant="primary"
-								// The circular arrow the pane reads as a send, not the square the
-								// chat composer's icon size gives.
-								className="shrink-0 rounded-full"
-								disabled={!hasContent || blocked || sendDisabled || showSpinner}
+								/* A 28px accent key with the controls' own 6px corner (visual
+								   refresh §3.2 Composer): the circle read as a floating badge
+								   beside square ghost controls in the same toolbar row.
+								   AT REST IT IS A GHOST GLYPH, NOT A WELL (design round 1, D3):
+								   `primary`'s disabled state paints `sunken`, which in the
+								   raised `elevated` card was the darkest, most saturated object
+								   in an empty composer. Accent only while there is something to
+								   send (or it is sending); otherwise the `ghost` disabled state,
+								   a transparent ground with `ink-disabled`, as Slack and Discord
+								   show an idle send. */
+								variant={hasContent || showSpinner ? "primary" : "ghost"}
+								className="shrink-0 rounded-sm"
+								disabled={
+									!hasContent ||
+									blocked ||
+									sendDisabled ||
+									showSpinner ||
+									files.busy ||
+									files.blocked
+								}
 								aria-label={t("ui.teamBridge.composer.send")}
 								onClick={() => void handleSubmit()}
 							>

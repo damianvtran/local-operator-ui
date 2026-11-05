@@ -151,6 +151,8 @@ const CONVERSATION = "bcv_mentions01";
 const MENTION_OTHER = /data-mention="other"[^>]*>@Ben Tran</;
 const MENTION_VIEWER = /data-mention="viewer"[^>]*>@Damian Tran</;
 const MENTION_ANY = /data-mention="/g;
+/* A mentioned row's wash class or the thread-row ring var it used to set. */
+const ROW_MENTION_WASH = /accent-wash|thread-row-host/;
 const NOT_MEMBER_NOTICE =
 	/Sherman Tsui isn’t in this conversation, so they won’t be notified\./;
 const INVITED_NOTICE =
@@ -880,6 +882,246 @@ test("message bodies highlight mentions; the reader's own is the stronger token"
 		false,
 		"no mention source, no highlight",
 	);
+});
+
+/*
+ * THE READER'S MENTION THROUGH THE REAL PROVIDER (operator report 2026-11-03:
+ * "@Damian Tran" in Sherman's message rendered in the "other" accent). The
+ * provider, not a hand-built context value, decides `self`, so these drive
+ * `TeamBridgeMentionProvider` with directory/member shapes the hub returns.
+ */
+const viewerConversation = (members) => ({
+	id: CONVERSATION,
+	tenant_id: "tnt_viewer",
+	kind: "channel",
+	name: "general",
+	members,
+	visibility: "public",
+	agent_capable: false,
+	status: "open",
+	created_by: "acct_sher",
+	latest_seq: 1,
+	last_read_seq: 1,
+	unread_count: 0,
+	muted: false,
+	last_message_at: null,
+});
+const participant = (account_id, display_label) => ({
+	account_id,
+	kind: "human",
+	display_label,
+	role: "member",
+	state: "active",
+});
+const directoryRow = (account_id, display_label) => ({
+	account_id,
+	display_label,
+	email: `${account_id}@example.invalid`,
+	bridge_enabled: true,
+	bridge_state: "active",
+});
+const renderThroughProvider = ({ people, members, message }) => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.TeamBridgeMentionProvider,
+			{
+				conversation: viewerConversation(members),
+				people,
+				selfAccountId: "acct_self",
+				sendMentions: true,
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_viewer",
+						sender: {
+							account_id: "acct_sher",
+							kind: "human",
+							display_label: "Sherman Tsui",
+						},
+						...message,
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	const doc = new JSDOM(html).window.document;
+	return Object.fromEntries(
+		[...doc.querySelectorAll("[data-mention]")].map((el) => [
+			el.textContent,
+			{ kind: el.getAttribute("data-mention"), className: el.className },
+		]),
+	);
+};
+const VIEWER_CLASS =
+	"team-bridge-mention rounded-sm px-0.5 font-medium bg-warning-wash text-warning";
+const OTHER_CLASS =
+	"team-bridge-mention rounded-sm px-0.5 font-medium bg-accent-wash text-accent";
+const members = [
+	participant("acct_self", "Damian Tran"),
+	participant("acct_sher", "Sherman Tsui"),
+	participant("acct_ben", "Ben Tran"),
+];
+const directory = [
+	directoryRow("acct_self", "Damian Tran"),
+	directoryRow("acct_sher", "Sherman Tsui"),
+	directoryRow("acct_ben", "Ben Tran"),
+];
+
+test("rendered: wire mentions pin viewer and other even with no self row in the directory", () => {
+	const marks = renderThroughProvider({
+		// The regression's shape: the roster lacks the reader, the account is known.
+		people: directory.filter((row) => row.account_id !== "acct_self"),
+		members,
+		message: {
+			body: "@Damian Tran and @Ben Tran, take a look",
+			mentions: [
+				{ kind: "human", account_id: "acct_self" },
+				{ kind: "human", account_id: "acct_ben" },
+			],
+		},
+	});
+	assert.deepEqual(marks, {
+		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
+		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
+	});
+});
+
+test("rendered: a message without mentions[] marks the reader by their own unique label", () => {
+	// Sherman's real message shape: no `mentions` key at all.
+	const marks = renderThroughProvider({
+		people: directory,
+		members,
+		message: { body: "@Damian Tran Yeah, and @Ben Tran too" },
+	});
+	assert.deepEqual(marks, {
+		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
+		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
+	});
+});
+
+test("rendered: a namesake in the directory or the room keeps the fallback 'other'", () => {
+	for (const [people, room] of [
+		[[...directory, directoryRow("acct_twin", "Damian Tran")], members],
+		[directory, [...members, participant("acct_twin", "Damian Tran")]],
+	]) {
+		const marks = renderThroughProvider({
+			people,
+			members: room,
+			message: { body: "@Damian Tran ping" },
+		});
+		assert.deepEqual(marks, {
+			"@Damian Tran": { kind: "other", className: OTHER_CLASS },
+		});
+	}
+	// The wire still names the reader by account, namesake or not.
+	const wire = renderThroughProvider({
+		people: [...directory, directoryRow("acct_twin", "Damian Tran")],
+		members,
+		message: {
+			body: "@Damian Tran ping",
+			mentions: [{ kind: "human", account_id: "acct_self" }],
+		},
+	});
+	assert.equal(wire["@Damian Tran"].kind, "viewer");
+});
+
+test("rendered: a case- or space-variant twin is still a namesake (review R1 M1)", () => {
+	for (const twin of ["damian tran", "Damian  Tran", " DAMIAN TRAN "]) {
+		for (const [people, room] of [
+			[[...directory, directoryRow("acct_twin", twin)], members],
+			[directory, [...members, participant("acct_twin", twin)]],
+		]) {
+			const marks = renderThroughProvider({
+				people,
+				members: room,
+				message: { body: "@Damian Tran ping" },
+			});
+			assert.deepEqual(
+				marks,
+				{ "@Damian Tran": { kind: "other", className: OTHER_CLASS } },
+				`twin ${JSON.stringify(twin)} keeps the fallback 'other'`,
+			);
+		}
+	}
+});
+
+test("rendered: the reader's own agent row never counts as a namesake (review R1 M2)", () => {
+	// A legacy agent participant stored under the owner's bare name.
+	const marks = renderThroughProvider({
+		people: directory,
+		members: [
+			...members,
+			{ ...participant("acct_self", "Damian Tran"), kind: "agent" },
+		],
+		message: { body: "@Damian Tran and @Ben Tran" },
+	});
+	assert.deepEqual(marks, {
+		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
+		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
+	});
+});
+
+/*
+ * NO ROW HIGHLIGHT FOR THE READER'S MENTION (operator 2026-11-04, removed in
+ * #1679: "keep the yellow tag but we don't need tagged messages to have this
+ * additional highlight"). The row once wore an `accentWash` inset box and a 2px leading
+ * accent bar (`data-mention-bar`). A mentioned row must now be the same box as
+ * an ordinary one - same class string, so the same insets, padding and hover -
+ * with the yellow viewer pill as the only mark. Rendered through the real
+ * provider so `self` is resolved the way the app resolves it.
+ */
+test("rendered: a row that mentions the reader has no bar or wash, only the pill", () => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.TeamBridgeMentionProvider,
+			{
+				conversation: viewerConversation(members),
+				people: directory,
+				selfAccountId: "acct_self",
+				sendMentions: true,
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_plain",
+						seq: 1,
+						body: "Morning, all",
+					},
+					{
+						...rootMessage,
+						id: "bcmsg_mentioned",
+						seq: 2,
+						sender: {
+							account_id: "acct_sher",
+							kind: "human",
+							display_label: "Sherman Tsui",
+						},
+						body: "@Damian Tran have a look",
+						mentions: [{ kind: "human", account_id: "acct_self" }],
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	const doc = new JSDOM(html).window.document;
+	const row = (id) => doc.querySelector(`[data-message-id="${id}"]`);
+	const plain = row("bcmsg_plain");
+	const mentioned = row("bcmsg_mentioned");
+	assert.ok(plain && mentioned, "both rows render");
+	assert.equal(doc.querySelector("[data-mention-bar]"), null, "no leading bar");
+	assert.doesNotMatch(mentioned.className, ROW_MENTION_WASH);
+	// Same class string = same px/py insets and the same hover tint, so the
+	// text's x and the row's height cannot differ because of the mention.
+	assert.equal(mentioned.className, plain.className);
+	assert.equal(mentioned.children.length, plain.children.length);
+	const pill = mentioned.querySelector('[data-mention="viewer"]');
+	assert.ok(pill, "the reader's pill still renders");
+	assert.equal(pill.className, VIEWER_CLASS);
 });
 
 /* A first send changes a person draft into an open conversation. Context is

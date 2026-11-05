@@ -44,7 +44,11 @@ import {
 	matchesMemberQuery,
 	memberCandidates,
 } from "./team-bridge-members-model";
-import { recipientKey, recipientMemberInput } from "./team-bridge-model";
+import {
+	composeChiefLabel,
+	recipientKey,
+	recipientMemberInput,
+} from "./team-bridge-model";
 import { TeamBridgeAvatar } from "./team-bridge-profile-card";
 
 export type TeamBridgeAddMembersViewProps = {
@@ -176,11 +180,23 @@ export function TeamBridgeAddMembersView({
 		}
 	}, [open]);
 
+	/*
+	 * Through `composeChiefLabel`, not a local "named unless blank" branch: an
+	 * agent the directory names after its owner is no name of its own, and the
+	 * local branch rendered it "Ben Tran (Ben Tran)" in this roster while the
+	 * current-members list beside it read "Ben Tran's chief of staff".
+	 */
 	const chiefLabel = useCallback(
 		(agent: string, person: string) =>
-			agent.trim()
-				? t("ui.teamBridge.chief.label", { agent, person })
-				: t("ui.teamBridge.chief.unnamed", { person }),
+			composeChiefLabel(agent, person, {
+				named: (agentName, personName) =>
+					t("ui.teamBridge.chief.label", {
+						agent: agentName,
+						person: personName,
+					}),
+				unnamed: (personName) =>
+					t("ui.teamBridge.chief.unnamed", { person: personName }),
+			}),
 		[],
 	);
 	/*

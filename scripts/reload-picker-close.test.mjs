@@ -211,6 +211,7 @@ const stubs = {
 	 */
 	"@shared/themes": `
 		export const DEFAULT_THEME = "localOperatorDark";
+		export const isThemeName = (id) => id === "localOperatorDark";
 		export const themes = {};
 	`,
 };
@@ -238,6 +239,18 @@ const bundle = await build({
 		"@shared": resolve("src/renderer/src/shared"),
 		"@features": resolve("src/renderer/src/features"),
 		"@renderer": resolve("src/renderer/src"),
+		/*
+		 * The stub above answers the BARREL, but the pickers also reach the appearance
+		 * modules directly (`@shared/themes/appearance`, `use-resolved-appearance`), and
+		 * that chain lands on MUI's `createTheme`. Left as a bare `@mui/material/styles`,
+		 * the bundle hands Node a DIRECTORY specifier and Node refuses it
+		 * (`ERR_UNSUPPORTED_DIR_IMPORT`). MUI ships that path as a directory of ESM files
+		 * for bundlers; every file in it imports its siblings the same directory way, so
+		 * naming `styles/index.js` only moves the failure down a level. The `node/` build
+		 * is that same module as CommonJS, which Node's ESM loader does resolve - named
+		 * exports included - so the seam keeps the REAL MUI rather than a passthrough.
+		 */
+		"@mui/material/styles": "@mui/material/node/styles/index.js",
 	},
 	plugins: [
 		{

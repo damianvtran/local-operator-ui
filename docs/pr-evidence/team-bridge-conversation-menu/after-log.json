@@ -1,0 +1,276 @@
+{
+  "source": "129897358386badeb15fcf2ddbad77ef5cbfa2bd",
+  "frames": [
+    {
+      "shot": {
+        "name": "row-menu-channel__localOperatorDark",
+        "story": "team-bridge-conversation-menu--row-menu-channel",
+        "theme": "localOperatorDark"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--row-menu-channel\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"More actions for launch\" [e3]\n    - menuitem \"View members\" [e4]\n      - InlineTextBox \"View members\"\n    - menuitem \"Add members…\" [e5]\n      - InlineTextBox \"Add members…\"\n    - menuitem \"Mute conversation\" [e6]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e7] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e8]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e9]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e10]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e11]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e12]\n        - InlineTextBox \"Never (muted)\"\n    - menuitem \"Remove Aida\" [e13]\n      - InlineTextBox \"Remove Aida\"\n    - menuitem \"Leave channel\" [e14]\n      - InlineTextBox \"Leave channel\"\n    - menuitem \"Archive channel\" [e15]\n      - InlineTextBox \"Archive channel\"",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-menu-general__localOperatorDark",
+        "story": "team-bridge-conversation-menu--row-menu-general",
+        "theme": "localOperatorDark"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--row-menu-general\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"More actions for general\" [e3]\n    - menuitem \"View members\" [e4]\n      - InlineTextBox \"View members\"\n    - menuitem \"Mute conversation\" [e5]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e6] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e7]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e8]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e9]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e10]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e11]\n        - InlineTextBox \"Never (muted)\"\n    - menuitem \"Remove Aida\" [e12]\n      - InlineTextBox \"Remove Aida\"\n    - menuitem \"Leave channel Everyone in the organization is a member — mute it instead\" [e13] [disabled]\n      - InlineTextBox \"Leave channel\"\n      - InlineTextBox \"Everyone in the organization is a\"\n      - InlineTextBox \"member — mute it instead\"",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-menu-agents__localOperatorDark",
+        "story": "team-bridge-conversation-menu--row-menu-agents",
+        "theme": "localOperatorDark"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--row-menu-agents\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"More actions for agents\" [e3]\n    - menuitem \"View members\" [e4]\n      - InlineTextBox \"View members\"\n    - menuitem \"Mute conversation\" [e5]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e6] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e7]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e8]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e9]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e10]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e11]\n        - InlineTextBox \"Never (muted)\"\n    - menuitem \"Remove Aida Pause your agent to take it out of #agents\" [e12] [disabled]\n      - InlineTextBox \"Remove Aida\"\n      - InlineTextBox \"Pause your agent to take it out of\"\n      - InlineTextBox \"#agents\"\n    - menuitem \"Leave channel\" [e13]\n      - InlineTextBox \"Leave channel\"",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "rows-at-rest__localOperatorDark",
+        "story": "team-bridge-conversation-menu--rows-at-rest",
+        "theme": "localOperatorDark"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--rows-at-rest\" [e1]\n  - region \"Channels\"\n    - heading \"Channels\"\n      - InlineTextBox \"Channels\"\n    - button \"general\" [e2]\n      - InlineTextBox \"general\"\n    - button \"More actions for general\" [e3] [collapsed]\n    - button \"agents\" [e4]\n      - InlineTextBox \"agents\"\n    - button \"More actions for agents\" [e5] [collapsed]\n    - button \"launch 3 unread\" [e6]\n      - InlineTextBox \"launch\"\n      - generic \"3 unread\"\n        - InlineTextBox \"3\"\n    - button \"More actions for launch\" [e7] [collapsed]\n    - button \"ops Muted\" [e8]\n      - InlineTextBox \"ops\"\n      - InlineTextBox \"Muted\"\n    - button \"More actions for ops\" [e9] [collapsed]\n  - region \"Notifications alt+T\" [e10]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-hover__localOperatorDark",
+        "story": "team-bridge-conversation-menu--rows-at-rest",
+        "theme": "localOperatorDark",
+        "action": "hover:[data-conversation-id=\"bcv_launch\"]"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--rows-at-rest\" [e1]\n  - region \"Channels\"\n    - heading \"Channels\"\n      - InlineTextBox \"Channels\"\n    - button \"general\" [e2]\n      - InlineTextBox \"general\"\n    - button \"More actions for general\" [e3] [collapsed]\n    - button \"agents\" [e4]\n      - InlineTextBox \"agents\"\n    - button \"More actions for agents\" [e5] [collapsed]\n    - button \"launch\" [e6]\n      - InlineTextBox \"launch\"\n    - button \"More actions for launch\" [e7] [collapsed]\n    - button \"ops Muted\" [e8]\n      - InlineTextBox \"ops\"\n      - InlineTextBox \"Muted\"\n    - button \"More actions for ops\" [e9] [collapsed]\n  - region \"Notifications alt+T\" [e10]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-focus__localOperatorDark",
+        "story": "team-bridge-conversation-menu--rows-at-rest",
+        "theme": "localOperatorDark",
+        "action": "focus-kbd:[data-conversation-id=\"bcv_launch\"]"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--rows-at-rest\" [e1]\n  - region \"Channels\"\n    - heading \"Channels\"\n      - InlineTextBox \"Channels\"\n    - button \"general\" [e2]\n      - InlineTextBox \"general\"\n    - button \"More actions for general\" [e3] [collapsed]\n    - button \"agents\" [e4]\n      - InlineTextBox \"agents\"\n    - button \"More actions for agents\" [e5] [collapsed]\n    - button \"launch\" [e6]\n      - InlineTextBox \"launch\"\n    - button \"More actions for launch\" [e7] [collapsed]\n    - button \"ops Muted\" [e8]\n      - InlineTextBox \"ops\"\n      - InlineTextBox \"Muted\"\n    - button \"More actions for ops\" [e9] [collapsed]\n  - region \"Notifications alt+T\" [e10]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "leave-confirm__localOperatorDark",
+        "story": "team-bridge-conversation-menu--leave-confirm",
+        "theme": "localOperatorDark"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--leave-confirm\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - dialog \"Leave #launch?\" [e3]\n    - heading \"Leave #launch?\"\n      - InlineTextBox \"Leave #launch?\"\n    - InlineTextBox \"You’ll stop getting its messages, and your agent leaves with you. To come\"\n    - InlineTextBox \"back, rejoin from the channel list or ask a member to invite you.\"\n    - button \"Cancel\" [e4]\n      - InlineTextBox \"Cancel\"\n    - button \"Leave\" [e5]\n      - InlineTextBox \"Leave\"\n    - button \"Close\" [e6]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "remove-agent-confirm__localOperatorDark",
+        "story": "team-bridge-conversation-menu--remove-agent-confirm",
+        "theme": "localOperatorDark"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--remove-agent-confirm\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - dialog \"Remove Aida from #launch?\" [e3]\n    - heading \"Remove Aida from #launch?\"\n      - InlineTextBox \"Remove Aida from #launch?\"\n    - InlineTextBox \"Aida stops receiving messages here, under every persona it uses. You stay\"\n    - InlineTextBox \"in the conversation, and you can add Aida again later.\"\n    - button \"Cancel\" [e4]\n      - InlineTextBox \"Cancel\"\n    - button \"Remove\" [e5]\n      - InlineTextBox \"Remove\"\n    - button \"Close\" [e6]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "remove-agent-not-in-general__localOperatorDark",
+        "story": "team-bridge-conversation-menu--remove-agent-not-in-general",
+        "theme": "localOperatorDark"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--remove-agent-not-in-general\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - dialog \"Remove Aida from #general?\" [e3]\n    - heading \"Remove Aida from #general?\"\n      - InlineTextBox \"Remove Aida from #general?\"\n    - InlineTextBox \"Aida stops receiving messages here, under every persona it uses. You stay\"\n    - InlineTextBox \"in the conversation, and you can add Aida again later.\"\n    - InlineTextBox \"Your agent isn’t in #general yet, so there’s nothing to remove.\"\n    - button \"Cancel\" [e4]\n      - InlineTextBox \"Cancel\"\n    - button \"Remove\" [e5]\n      - InlineTextBox \"Remove\"\n    - button \"Close\" [e6]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-menu-channel__localOperatorLight",
+        "story": "team-bridge-conversation-menu--row-menu-channel",
+        "theme": "localOperatorLight"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--row-menu-channel\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"More actions for launch\" [e3]\n    - menuitem \"View members\" [e4]\n      - InlineTextBox \"View members\"\n    - menuitem \"Add members…\" [e5]\n      - InlineTextBox \"Add members…\"\n    - menuitem \"Mute conversation\" [e6]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e7] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e8]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e9]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e10]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e11]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e12]\n        - InlineTextBox \"Never (muted)\"\n    - menuitem \"Remove Aida\" [e13]\n      - InlineTextBox \"Remove Aida\"\n    - menuitem \"Leave channel\" [e14]\n      - InlineTextBox \"Leave channel\"\n    - menuitem \"Archive channel\" [e15]\n      - InlineTextBox \"Archive channel\"",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-menu-general__localOperatorLight",
+        "story": "team-bridge-conversation-menu--row-menu-general",
+        "theme": "localOperatorLight"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--row-menu-general\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"More actions for general\" [e3]\n    - menuitem \"View members\" [e4]\n      - InlineTextBox \"View members\"\n    - menuitem \"Mute conversation\" [e5]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e6] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e7]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e8]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e9]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e10]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e11]\n        - InlineTextBox \"Never (muted)\"\n    - menuitem \"Remove Aida\" [e12]\n      - InlineTextBox \"Remove Aida\"\n    - menuitem \"Leave channel Everyone in the organization is a member — mute it instead\" [e13] [disabled]\n      - InlineTextBox \"Leave channel\"\n      - InlineTextBox \"Everyone in the organization is a\"\n      - InlineTextBox \"member — mute it instead\"",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-menu-agents__localOperatorLight",
+        "story": "team-bridge-conversation-menu--row-menu-agents",
+        "theme": "localOperatorLight"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--row-menu-agents\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"More actions for agents\" [e3]\n    - menuitem \"View members\" [e4]\n      - InlineTextBox \"View members\"\n    - menuitem \"Mute conversation\" [e5]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e6] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e7]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e8]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e9]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e10]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e11]\n        - InlineTextBox \"Never (muted)\"\n    - menuitem \"Remove Aida Pause your agent to take it out of #agents\" [e12] [disabled]\n      - InlineTextBox \"Remove Aida\"\n      - InlineTextBox \"Pause your agent to take it out of\"\n      - InlineTextBox \"#agents\"\n    - menuitem \"Leave channel\" [e13]\n      - InlineTextBox \"Leave channel\"",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "rows-at-rest__localOperatorLight",
+        "story": "team-bridge-conversation-menu--rows-at-rest",
+        "theme": "localOperatorLight"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--rows-at-rest\" [e1]\n  - region \"Channels\"\n    - heading \"Channels\"\n      - InlineTextBox \"Channels\"\n    - button \"general\" [e2]\n      - InlineTextBox \"general\"\n    - button \"More actions for general\" [e3] [collapsed]\n    - button \"agents\" [e4]\n      - InlineTextBox \"agents\"\n    - button \"More actions for agents\" [e5] [collapsed]\n    - button \"launch 3 unread\" [e6]\n      - InlineTextBox \"launch\"\n      - generic \"3 unread\"\n        - InlineTextBox \"3\"\n    - button \"More actions for launch\" [e7] [collapsed]\n    - button \"ops Muted\" [e8]\n      - InlineTextBox \"ops\"\n      - InlineTextBox \"Muted\"\n    - button \"More actions for ops\" [e9] [collapsed]\n  - region \"Notifications alt+T\" [e10]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-hover__localOperatorLight",
+        "story": "team-bridge-conversation-menu--rows-at-rest",
+        "theme": "localOperatorLight",
+        "action": "hover:[data-conversation-id=\"bcv_launch\"]"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--rows-at-rest\" [e1]\n  - region \"Channels\"\n    - heading \"Channels\"\n      - InlineTextBox \"Channels\"\n    - button \"general\" [e2]\n      - InlineTextBox \"general\"\n    - button \"More actions for general\" [e3] [collapsed]\n    - button \"agents\" [e4]\n      - InlineTextBox \"agents\"\n    - button \"More actions for agents\" [e5] [collapsed]\n    - button \"launch\" [e6]\n      - InlineTextBox \"launch\"\n    - button \"More actions for launch\" [e7] [collapsed]\n    - button \"ops Muted\" [e8]\n      - InlineTextBox \"ops\"\n      - InlineTextBox \"Muted\"\n    - button \"More actions for ops\" [e9] [collapsed]\n  - region \"Notifications alt+T\" [e10]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-focus__localOperatorLight",
+        "story": "team-bridge-conversation-menu--rows-at-rest",
+        "theme": "localOperatorLight",
+        "action": "focus-kbd:[data-conversation-id=\"bcv_launch\"]"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--rows-at-rest\" [e1]\n  - region \"Channels\"\n    - heading \"Channels\"\n      - InlineTextBox \"Channels\"\n    - button \"general\" [e2]\n      - InlineTextBox \"general\"\n    - button \"More actions for general\" [e3] [collapsed]\n    - button \"agents\" [e4]\n      - InlineTextBox \"agents\"\n    - button \"More actions for agents\" [e5] [collapsed]\n    - button \"launch\" [e6]\n      - InlineTextBox \"launch\"\n    - button \"More actions for launch\" [e7] [collapsed]\n    - button \"ops Muted\" [e8]\n      - InlineTextBox \"ops\"\n      - InlineTextBox \"Muted\"\n    - button \"More actions for ops\" [e9] [collapsed]\n  - region \"Notifications alt+T\" [e10]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "leave-confirm__localOperatorLight",
+        "story": "team-bridge-conversation-menu--leave-confirm",
+        "theme": "localOperatorLight"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--leave-confirm\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - dialog \"Leave #launch?\" [e3]\n    - heading \"Leave #launch?\"\n      - InlineTextBox \"Leave #launch?\"\n    - InlineTextBox \"You’ll stop getting its messages, and your agent leaves with you. To come\"\n    - InlineTextBox \"back, rejoin from the channel list or ask a member to invite you.\"\n    - button \"Cancel\" [e4]\n      - InlineTextBox \"Cancel\"\n    - button \"Leave\" [e5]\n      - InlineTextBox \"Leave\"\n    - button \"Close\" [e6]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "remove-agent-confirm__localOperatorLight",
+        "story": "team-bridge-conversation-menu--remove-agent-confirm",
+        "theme": "localOperatorLight"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--remove-agent-confirm\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - dialog \"Remove Aida from #launch?\" [e3]\n    - heading \"Remove Aida from #launch?\"\n      - InlineTextBox \"Remove Aida from #launch?\"\n    - InlineTextBox \"Aida stops receiving messages here, under every persona it uses. You stay\"\n    - InlineTextBox \"in the conversation, and you can add Aida again later.\"\n    - button \"Cancel\" [e4]\n      - InlineTextBox \"Cancel\"\n    - button \"Remove\" [e5]\n      - InlineTextBox \"Remove\"\n    - button \"Close\" [e6]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "remove-agent-not-in-general__localOperatorLight",
+        "story": "team-bridge-conversation-menu--remove-agent-not-in-general",
+        "theme": "localOperatorLight"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--remove-agent-not-in-general\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - dialog \"Remove Aida from #general?\" [e3]\n    - heading \"Remove Aida from #general?\"\n      - InlineTextBox \"Remove Aida from #general?\"\n    - InlineTextBox \"Aida stops receiving messages here, under every persona it uses. You stay\"\n    - InlineTextBox \"in the conversation, and you can add Aida again later.\"\n    - InlineTextBox \"Your agent isn’t in #general yet, so there’s nothing to remove.\"\n    - button \"Cancel\" [e4]\n      - InlineTextBox \"Cancel\"\n    - button \"Remove\" [e5]\n      - InlineTextBox \"Remove\"\n    - button \"Close\" [e6]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-menu-channel__dracula",
+        "story": "team-bridge-conversation-menu--row-menu-channel",
+        "theme": "dracula"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--row-menu-channel\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"More actions for launch\" [e3]\n    - menuitem \"View members\" [e4]\n      - InlineTextBox \"View members\"\n    - menuitem \"Add members…\" [e5]\n      - InlineTextBox \"Add members…\"\n    - menuitem \"Mute conversation\" [e6]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e7] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e8]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e9]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e10]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e11]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e12]\n        - InlineTextBox \"Never (muted)\"\n    - menuitem \"Remove Aida\" [e13]\n      - InlineTextBox \"Remove Aida\"\n    - menuitem \"Leave channel\" [e14]\n      - InlineTextBox \"Leave channel\"\n    - menuitem \"Archive channel\" [e15]\n      - InlineTextBox \"Archive channel\"",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-hover__dracula",
+        "story": "team-bridge-conversation-menu--rows-at-rest",
+        "theme": "dracula",
+        "action": "hover:[data-conversation-id=\"bcv_launch\"]"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-conversation-menu--rows-at-rest\" [e1]\n  - region \"Channels\"\n    - heading \"Channels\"\n      - InlineTextBox \"Channels\"\n    - button \"general\" [e2]\n      - InlineTextBox \"general\"\n    - button \"More actions for general\" [e3] [collapsed]\n    - button \"agents\" [e4]\n      - InlineTextBox \"agents\"\n    - button \"More actions for agents\" [e5] [collapsed]\n    - button \"launch\" [e6]\n      - InlineTextBox \"launch\"\n    - button \"More actions for launch\" [e7] [collapsed]\n    - button \"ops Muted\" [e8]\n      - InlineTextBox \"ops\"\n      - InlineTextBox \"Muted\"\n    - button \"More actions for ops\" [e9] [collapsed]\n  - region \"Notifications alt+T\" [e10]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "header-menu__localOperatorDark",
+        "story": "team-bridge-page--conversation-menu-header",
+        "theme": "localOperatorDark",
+        "width": 1440
+      },
+      "snapshot": "- RootWebArea \"team-bridge-page--conversation-menu-header\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"Conversation options\" [e3]\n    - menuitem \"View members\" [e4]\n      - InlineTextBox \"View members\"\n    - menuitem \"Add members…\" [e5]\n      - InlineTextBox \"Add members…\"\n    - menuitem \"Mute conversation\" [e6]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e7] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e8]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e9]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e10]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e11] [checked]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e12]\n        - InlineTextBox \"Never (muted)\"\n    - menuitem \"Remove Aida\" [e13]\n      - InlineTextBox \"Remove Aida\"\n    - menuitem \"Leave group\" [e14]\n      - InlineTextBox \"Leave group\"",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "partial-leave__localOperatorDark",
+        "story": "team-bridge-page--conversation-menu-partial-leave",
+        "theme": "localOperatorDark",
+        "width": 1440
+      },
+      "snapshot": "- RootWebArea \"team-bridge-page--conversation-menu-partial-leave\" [e1]\n  - complementary\n    - heading \"Team Bridge\"\n      - InlineTextBox \"Team Bridge\"\n    - button \"Organization: Minerva\" [e2] [collapsed]\n      - InlineTextBox \"Minerva\"\n    - button \"New message\" [e3]\n    - navigation \"Message shortcuts\"\n      - button \"Drafts\" [e4]\n        - InlineTextBox \"Drafts\"\n      - button \"Scheduled\" [e5]\n        - InlineTextBox \"Scheduled\"\n    - region \"Channels\"\n      - heading \"Channels\"\n        - InlineTextBox \"Channels\"\n      - button \"Create a channel\" [e6]\n      - button \"launch 3 unread\" [e7]\n        - InlineTextBox \"launch\"\n        - generic \"3 unread\"\n          - InlineTextBox \"3\"\n      - button \"More actions for launch\" [e8] [collapsed]\n    - region \"Groups\"\n      - heading \"Groups\"\n        - InlineTextBox \"Groups\"\n      - button \"Start a group conversation\" [e9]\n      - button \"Design review\" [e10]\n        - InlineTextBox \"Design review\"\n      - button \"More actions for Design review\" [e11] [collapsed]\n    - region \"Direct messages\"\n      - heading \"Direct messages\"\n        - InlineTextBox \"Direct messages\"\n      - button \"Ada's agent 2 unread\" [e12]\n        - InlineTextBox \"Ada's agent\"\n        - generic \"2 unread\"\n          - InlineTextBox \"2\"\n    - region \"People\"\n      - heading \"People\"\n        - InlineTextBox \"People\"\n      - InlineTextBox \"No one else has joined this organization yet.\"\n    - region \"Chiefs of staff\"\n      - heading \"Chiefs of staff\"\n        - InlineTextBox \"Chiefs of staff\"\n      - InlineTextBox \"No teammate has an agent on Team Bridge yet.\"\n      - InlineTextBox \"No teammate has an agent on Team Bridge\"\n      - InlineTextBox \"…\"\n  - InlineTextBox \"You left #launch. Your agent is still in this conversation.\"\n  - button \"Remove my agent\" [e13]\n    - InlineTextBox \"Remove my agent\"\n  - button \"Dismiss\" [e14]\n    - InlineTextBox \"Dismiss\"\n  - heading \"launch\"\n    - InlineTextBox \"launch\"\n  - button \"View 2 active members, 1 invited\" [e15] [collapsed]\n    - InlineTextBox \"2 active members\"\n  - InlineTextBox \"Launch coordination\"\n  - button \"Conversation options\" [e16] [collapsed]\n  - listitem \"Today\"\n    - InlineTextBox \"Damian\"\n    - InlineTextBox \"8:12 PM\"\n    - InlineTextBox \"Can you take the launch checklist today?\"\n    - InlineTextBox \"Ada's agent\"\n    - InlineTextBox \"8:14 PM\"\n    - InlineTextBox \"Yes — I am working through the two open items now.\"\n    - InlineTextBox \"Damian\"\n    - InlineTextBox \"8:16 PM\"\n    - InlineTextBox \"Great. Ping me if the second one needs a decision.\"\n    - InlineTextBox \"Ada's agent\"\n    - InlineTextBox \"8:18 PM\"\n    - InlineTextBox \"It does — I have posted the question in the channel.\"\n    - InlineTextBox \"8:20 PM\"\n    - InlineTextBox \"Waiting for the agent to admit this message.\"\n  - combobox \"Message launch\" [e17] [collapsed]\n  - InlineTextBox \"Enter to send, Shift+Enter for a new line.\"\n  - button \"Start recording\" [e18] [disabled]\n  - button \"Add images\" [e19]\n  - button \"Send\" [e20] [disabled]\n  - region \"Notifications alt+T\" [e21]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "header-menu__localOperatorLight",
+        "story": "team-bridge-page--conversation-menu-header",
+        "theme": "localOperatorLight",
+        "width": 1440
+      },
+      "snapshot": "- RootWebArea \"team-bridge-page--conversation-menu-header\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"Conversation options\" [e3]\n    - menuitem \"View members\" [e4]\n      - InlineTextBox \"View members\"\n    - menuitem \"Add members…\" [e5]\n      - InlineTextBox \"Add members…\"\n    - menuitem \"Mute conversation\" [e6]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e7] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e8]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e9]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e10]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e11] [checked]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e12]\n        - InlineTextBox \"Never (muted)\"\n    - menuitem \"Remove Aida\" [e13]\n      - InlineTextBox \"Remove Aida\"\n    - menuitem \"Leave group\" [e14]\n      - InlineTextBox \"Leave group\"",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "partial-leave__localOperatorLight",
+        "story": "team-bridge-page--conversation-menu-partial-leave",
+        "theme": "localOperatorLight",
+        "width": 1440
+      },
+      "snapshot": "- RootWebArea \"team-bridge-page--conversation-menu-partial-leave\" [e1]\n  - complementary\n    - heading \"Team Bridge\"\n      - InlineTextBox \"Team Bridge\"\n    - button \"Organization: Minerva\" [e2] [collapsed]\n      - InlineTextBox \"Minerva\"\n    - button \"New message\" [e3]\n    - navigation \"Message shortcuts\"\n      - button \"Drafts\" [e4]\n        - InlineTextBox \"Drafts\"\n      - button \"Scheduled\" [e5]\n        - InlineTextBox \"Scheduled\"\n    - region \"Channels\"\n      - heading \"Channels\"\n        - InlineTextBox \"Channels\"\n      - button \"Create a channel\" [e6]\n      - button \"launch 3 unread\" [e7]\n        - InlineTextBox \"launch\"\n        - generic \"3 unread\"\n          - InlineTextBox \"3\"\n      - button \"More actions for launch\" [e8] [collapsed]\n    - region \"Groups\"\n      - heading \"Groups\"\n        - InlineTextBox \"Groups\"\n      - button \"Start a group conversation\" [e9]\n      - button \"Design review\" [e10]\n        - InlineTextBox \"Design review\"\n      - button \"More actions for Design review\" [e11] [collapsed]\n    - region \"Direct messages\"\n      - heading \"Direct messages\"\n        - InlineTextBox \"Direct messages\"\n      - button \"Ada's agent 2 unread\" [e12]\n        - InlineTextBox \"Ada's agent\"\n        - generic \"2 unread\"\n          - InlineTextBox \"2\"\n    - region \"People\"\n      - heading \"People\"\n        - InlineTextBox \"People\"\n      - InlineTextBox \"No one else has joined this organization yet.\"\n    - region \"Chiefs of staff\"\n      - heading \"Chiefs of staff\"\n        - InlineTextBox \"Chiefs of staff\"\n      - InlineTextBox \"No teammate has an agent on Team Bridge yet.\"\n      - InlineTextBox \"No teammate has an agent on Team Bridge\"\n      - InlineTextBox \"…\"\n  - InlineTextBox \"You left #launch. Your agent is still in this conversation.\"\n  - button \"Remove my agent\" [e13]\n    - InlineTextBox \"Remove my agent\"\n  - button \"Dismiss\" [e14]\n    - InlineTextBox \"Dismiss\"\n  - heading \"launch\"\n    - InlineTextBox \"launch\"\n  - button \"View 2 active members, 1 invited\" [e15] [collapsed]\n    - InlineTextBox \"2 active members\"\n  - InlineTextBox \"Launch coordination\"\n  - button \"Conversation options\" [e16] [collapsed]\n  - listitem \"Today\"\n    - InlineTextBox \"Damian\"\n    - InlineTextBox \"8:13 PM\"\n    - InlineTextBox \"Can you take the launch checklist today?\"\n    - InlineTextBox \"Ada's agent\"\n    - InlineTextBox \"8:15 PM\"\n    - InlineTextBox \"Yes — I am working through the two open items now.\"\n    - InlineTextBox \"Damian\"\n    - InlineTextBox \"8:17 PM\"\n    - InlineTextBox \"Great. Ping me if the second one needs a decision.\"\n    - InlineTextBox \"Ada's agent\"\n    - InlineTextBox \"8:19 PM\"\n    - InlineTextBox \"It does — I have posted the question in the channel.\"\n    - InlineTextBox \"8:21 PM\"\n    - InlineTextBox \"Waiting for the agent to admit this message.\"\n  - combobox \"Message launch\" [e17] [collapsed]\n  - InlineTextBox \"Enter to send, Shift+Enter for a new line.\"\n  - button \"Start recording\" [e18] [disabled]\n  - button \"Add images\" [e19]\n  - button \"Send\" [e20] [disabled]\n  - region \"Notifications alt+T\" [e21]",
+      "method": "browser tool / static Storybook"
+    },
+    {
+      "shot": {
+        "name": "row-right-click__localOperatorDark",
+        "story": "team-bridge-conversation-menu--row-right-click",
+        "theme": "localOperatorDark"
+      },
+      "snapshot": "- menu \"More actions for launch\" [e3]\n  - menuitem \"View members\" [e4]\n    - InlineTextBox \"View members\"\n  - menuitem \"Add members…\" [e5]\n    - InlineTextBox \"Add members…\"\n  - menuitem \"Mute conversation\" [e6]\n    - InlineTextBox \"Mute conversation\"\n  - InlineTextBox \"Notification preferences\"\n  - group \"Notification preferences\"\n    - menuitemradio \"All messages\" [e7] [checked]\n      - InlineTextBox \"All messages\"\n    - menuitemradio \"Mentions\" [e8]\n      - InlineTextBox \"Mentions\"\n    - menuitemradio \"Mute\" [e9]\n      - InlineTextBox \"Mute\"\n  - InlineTextBox \"Wake your agent for\"\n  - group \"Wake your agent for\"\n    - menuitemradio \"Every message\" [e10]\n      - InlineTextBox \"Every message\"\n    - menuitemradio \"@-mentions and its threads\" [e11]\n      - InlineTextBox \"@-mentions and its threads\"\n    - menuitemradio \"Never (muted)\" [e12]\n      - InlineTextBox \"Never (muted)\"\n  - menuitem \"Remove Aida\" [e13]\n    - InlineTextBox \"Remove Aida\"\n  - menuitem \"Leave channel\" [e14]\n    - InlineTextBox \"Leave channel\"\n  - menuitem \"Archive channel\" [e15]\n    - InlineTextBox \"Archive channel\"\n\n[snapshot: scoped to '[role=\"menu\"]']",
+      "method": "browser tool / static Storybook; story play dispatches contextMenu, not physical right-click"
+    },
+    {
+      "shot": {
+        "name": "row-right-click__localOperatorLight",
+        "story": "team-bridge-conversation-menu--row-right-click",
+        "theme": "localOperatorLight"
+      },
+      "snapshot": "- menu \"More actions for launch\" [e3]\n  - menuitem \"View members\" [e4]\n    - InlineTextBox \"View members\"\n  - menuitem \"Add members…\" [e5]\n    - InlineTextBox \"Add members…\"\n  - menuitem \"Mute conversation\" [e6]\n    - InlineTextBox \"Mute conversation\"\n  - InlineTextBox \"Notification preferences\"\n  - group \"Notification preferences\"\n    - menuitemradio \"All messages\" [e7] [checked]\n      - InlineTextBox \"All messages\"\n    - menuitemradio \"Mentions\" [e8]\n      - InlineTextBox \"Mentions\"\n    - menuitemradio \"Mute\" [e9]\n      - InlineTextBox \"Mute\"\n  - InlineTextBox \"Wake your agent for\"\n  - group \"Wake your agent for\"\n    - menuitemradio \"Every message\" [e10]\n      - InlineTextBox \"Every message\"\n    - menuitemradio \"@-mentions and its threads\" [e11]\n      - InlineTextBox \"@-mentions and its threads\"\n    - menuitemradio \"Never (muted)\" [e12]\n      - InlineTextBox \"Never (muted)\"\n  - menuitem \"Remove Aida\" [e13]\n    - InlineTextBox \"Remove Aida\"\n  - menuitem \"Leave channel\" [e14]\n    - InlineTextBox \"Leave channel\"\n  - menuitem \"Archive channel\" [e15]\n    - InlineTextBox \"Archive channel\"\n\n[snapshot: scoped to '[role=\"menu\"]']",
+      "method": "browser tool / static Storybook; story play dispatches contextMenu, not physical right-click"
+    },
+    {
+      "shot": {
+        "name": "leave-confirm-agents__localOperatorDark",
+        "story": "team-bridge-page--conversation-menu-header",
+        "theme": "localOperatorDark",
+        "actions": [
+          "press:Escape",
+          "click:[aria-label=\"More actions for agents\"]",
+          "click-menuitem:Leave"
+        ]
+      },
+      "method": "browser tool / Escape, click More actions for agents, click Leave channel",
+      "observed": "Leave agents? You’ll stop getting its messages. Your agent stays in #agents; pause it to take it out."
+    },
+    {
+      "shot": {
+        "name": "leave-confirm-agents__localOperatorLight",
+        "story": "team-bridge-page--conversation-menu-header",
+        "theme": "localOperatorLight",
+        "actions": [
+          "press:Escape",
+          "click:[aria-label=\"More actions for agents\"]",
+          "click-menuitem:Leave"
+        ]
+      },
+      "method": "browser tool / Escape, click More actions for agents, click Leave channel",
+      "observed": "Leave agents? You’ll stop getting its messages. Your agent stays in #agents; pause it to take it out."
+    }
+  ]
+}

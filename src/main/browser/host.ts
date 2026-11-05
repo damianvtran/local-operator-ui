@@ -424,6 +424,10 @@ export interface BrowserHostOptions {
 	 * `will-download` handler that feeds it is installed on the SESSION, which this
 	 * module deliberately does not own. */
 	downloads: BrowserActionContext["downloads"];
+	/** The hidden H.264 encoder window for `record_start {quality: "high"}`
+	 * (`actions/recording-encoder-host.ts`). Absent in a test or a story: `high` is
+	 * then refused `record_quality_unavailable` and `standard` is unaffected. */
+	recordingEncoder?: BrowserActionContext["recordingEncoder"];
 	log: (message: string) => void;
 	onChanged: () => void;
 	facts: () => HostFacts;
@@ -456,6 +460,7 @@ export interface BrowserHostOptions {
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
 			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
 			requesterLabels?: Readonly<Record<string, string>>;
 		}) => void;
 		close: () => void;
@@ -464,6 +469,7 @@ export interface BrowserHostOptions {
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
 			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
 			requesterLabels?: Readonly<Record<string, string>>;
 		}) => void;
 		state: () => { available: boolean; open: boolean };
@@ -495,6 +501,7 @@ export class BrowserHost implements BrowserActionContext {
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
 	readonly downloads: BrowserActionContext["downloads"];
+	readonly recordingEncoder?: BrowserActionContext["recordingEncoder"];
 	readonly log: (message: string) => void;
 	readonly onChanged: () => void;
 	readonly facts: () => HostFacts;
@@ -542,6 +549,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
 		this.downloads = options.downloads;
+		this.recordingEncoder = options.recordingEncoder;
 		this.log = options.log;
 		this.onChanged = options.onChanged;
 		// See the field's doc comment: an arrow in a class-property initialiser is
@@ -2078,7 +2086,13 @@ export class BrowserHost implements BrowserActionContext {
 				: typeof request.palette === "string"
 					? request.palette
 					: undefined;
-		this.approvalsCard?.open({ locale, dir, theme, palette });
+		/* The composed values travel with the name; the controller validates them
+		   (`sanitizePaletteVars`), so anything malformed arrives as null. */
+		const paletteVars =
+			request.paletteVars && typeof request.paletteVars === "object"
+				? (request.paletteVars as Record<string, string>)
+				: null;
+		this.approvalsCard?.open({ locale, dir, theme, palette, paletteVars });
 		// The renderer discards the returned projection for the shield toggle
 		// (M2); the push is what makes aria-expanded and the button's selected
 		// style follow main. `onChanged` also re-renders a route that mounted
@@ -2117,9 +2131,15 @@ export class BrowserHost implements BrowserActionContext {
 					? request.theme
 					: undefined,
 			...(request.palette === null
-				? { palette: null }
+				? { palette: null, paletteVars: null }
 				: typeof request.palette === "string"
-					? { palette: request.palette }
+					? {
+							palette: request.palette,
+							paletteVars:
+								request.paletteVars && typeof request.paletteVars === "object"
+									? (request.paletteVars as Record<string, string>)
+									: null,
+						}
 					: {}),
 			...(labels ? { requesterLabels: labels } : {}),
 		});

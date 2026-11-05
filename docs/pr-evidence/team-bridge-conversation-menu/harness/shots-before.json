@@ -1,0 +1,28 @@
+[
+	{
+		"name": "header-menu__localOperatorDark",
+		"story": "team-bridge-page--agent-wake-menu",
+		"theme": "localOperatorDark",
+		"width": 1440
+	},
+	{
+		"name": "row-hover__localOperatorDark",
+		"story": "team-bridge-page--channel-selected",
+		"theme": "localOperatorDark",
+		"width": 1440,
+		"action": "hover:[data-conversation-id]"
+	},
+	{
+		"name": "header-menu__localOperatorLight",
+		"story": "team-bridge-page--agent-wake-menu",
+		"theme": "localOperatorLight",
+		"width": 1440
+	},
+	{
+		"name": "row-hover__localOperatorLight",
+		"story": "team-bridge-page--channel-selected",
+		"theme": "localOperatorLight",
+		"width": 1440,
+		"action": "hover:[data-conversation-id]"
+	}
+]

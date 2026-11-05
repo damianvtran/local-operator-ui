@@ -12,6 +12,7 @@ import { currentLocale, resolveLanguage, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import { AlertTriangle, Globe, ShieldCheck, X } from "lucide-react";
 import type { FC } from "react";
 import {
@@ -397,15 +398,28 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * exact palette name travels too, so the card paints in the user's palette
 	 * rather than localOperatorLight/Dark.
 	 */
-	const cardPalette =
-		typeof document !== "undefined"
-			? (document.documentElement.dataset.theme ?? null)
-			: null;
-	const cardTheme =
-		typeof document !== "undefined" &&
-		document.documentElement.classList.contains("dark")
-			? "dark"
-			: "light";
+	/*
+	 * A COMPOSED PALETTE (contrast preset or custom accent) is named `lo-<hash>`
+	 * and exists only in this document's runtime `<style>`. The card is another
+	 * document with a CSP that forbids inline styles, so the name alone would
+	 * paint its mode default; the values travel too. Resolved through the same
+	 * composition cache the provider filled, so this is a lookup, not a compose.
+	 * Null on the identity path, where the static block for the name suffices.
+	 */
+	const appearance = useResolvedAppearance();
+	/* The id the provider publishes as `data-theme`, taken from the resolution
+	   rather than read off the document at render: in the commit that changes
+	   the appearance, render runs BEFORE the provider's layout effect writes the
+	   attribute, so a DOM read would push the previous composition's name. */
+	const cardPalette = appearance.id;
+	const cardPaletteVars = useMemo(() => {
+		if (appearance.identity) return null;
+		const { mode: _mode, ...roles } = appearance.palette;
+		return roles as Record<string, string>;
+	}, [appearance]);
+	/* The painted palette's own mode - the same fact `applyAppearance` writes as
+	   the document `dark` class, read from the resolution for the same reason. */
+	const cardTheme = appearance.palette.mode === "dark" ? "dark" : "light";
 	/*
 	 * WHO ASKED, resolved by the side that has the session titles (F2). The queue
 	 * carries only `requesterSessionId`; main cannot name a conversation, and the
@@ -436,6 +450,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			dir: resolveLanguage(locale).dir,
 			theme: cardTheme,
 			palette: cardPalette,
+			paletteVars: cardPaletteVars,
 			requesterLabels,
 		});
 	}, [
@@ -443,6 +458,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		locale,
 		cardTheme,
 		cardPalette,
+		cardPaletteVars,
 		requesterLabels,
 	]);
 	/*

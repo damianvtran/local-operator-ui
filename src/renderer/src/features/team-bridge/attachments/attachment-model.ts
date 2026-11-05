@@ -20,18 +20,32 @@ export function isAttachmentImage(
 	return attachment.mime === "image/png" || attachment.mime === "image/jpeg";
 }
 
-/** Keep the member flow's reserved geometry for every card state, before bytes.
- * Non-finite/negative dimensions must not escape into CSS or create layout shifts.
+/*
+ * INLINE IMAGE GEOMETRY (Team Bridge visual refresh, SPEC §3.1 / D1). The
+ * operator's report was that images sat in bordered "File" cards; Slack and
+ * Discord show the picture and nothing else, at a size that reads as content.
+ * One picture gets up to 400×320 in the channel and 280×220 in the compact
+ * thread pane; a set lays out as a 2-column grid no wider than the same 400 /
+ * 280, with a 4px gutter (so a square cell is at most (400 - 4) / 2 = 198).
+ *
+ * Every number here is decided from the DESCRIPTOR, before any byte arrives:
+ * the reserved box is the loading state, and a box that changed when the
+ * picture decoded would move the message below it and fight the list's
+ * stick-to-bottom anchor.
  */
-export function attachmentBox(
+export const ATTACHMENT_GROUP_MAX = { regular: 400, compact: 280 } as const;
+const SINGLE_MAX = {
+	regular: { width: 400, height: 320 },
+	compact: { width: 280, height: 220 },
+} as const;
+/** What a picture with no (or garbage) dimensions reserves. */
+const UNKNOWN_BOX = { width: 240, height: 160 } as const;
+/** Grid tiles shown before the last visible one turns into `+N`. */
+export const ATTACHMENT_GRID_VISIBLE = 4;
+
+function validDimensions(
 	attachment: Pick<BridgeAttachmentDescriptor, "width" | "height"> | null,
-	single: boolean,
-	compact = false,
-) {
-	if (!single)
-		return compact ? { width: 128, height: 88 } : { width: 156, height: 104 };
-	const maxW = compact ? 264 : 360;
-	const maxH = compact ? 176 : 240;
+): { width: number; height: number } | null {
 	const width = attachment?.width;
 	const height = attachment?.height;
 	if (
@@ -42,7 +56,49 @@ export function attachmentBox(
 		width < 0 ||
 		height < 0
 	)
-		return { width: 240, height: 160 };
+		return null;
+	return { width, height };
+}
+
+/**
+ * How the picture fills its reserved box. `cover` when the box IS the
+ * picture's own ratio (the scale math below keeps it), so cover crops
+ * nothing. `contain` - a letterbox on `bg-media-surface` - when the ratio is
+ * extreme (wider than 2.5:1 or taller than 1:2.5): the 64px floor then makes
+ * the box squarer than the picture, and cover would crop a panorama down to
+ * a strip of its middle. Unknown dimensions also contain: the 240×160 box was
+ * reserved blind, and growing it to the decoded size after it painted is
+ * exactly the scroll jump the reservation exists to prevent.
+ */
+export function attachmentFit(
+	attachment: Pick<BridgeAttachmentDescriptor, "width" | "height"> | null,
+): "cover" | "contain" {
+	const size = validDimensions(attachment);
+	if (!size) return "contain";
+	const ratio = size.width / size.height;
+	return ratio > 2.5 || ratio < 0.4 ? "contain" : "cover";
+}
+
+/** Keep the member flow's reserved geometry for every card state, before bytes.
+ * Non-finite/negative dimensions must not escape into CSS or create layout shifts.
+ * `single: false` returns one square grid cell at the group's full width; the
+ * rendered grid sizes cells with CSS so a narrower column shrinks them evenly.
+ */
+export function attachmentBox(
+	attachment: Pick<BridgeAttachmentDescriptor, "width" | "height"> | null,
+	single: boolean,
+	compact = false,
+) {
+	const density = compact ? "compact" : "regular";
+	if (!single) {
+		const cell = (ATTACHMENT_GROUP_MAX[density] - 4) / 2;
+		return { width: cell, height: cell };
+	}
+	const maxW = SINGLE_MAX[density].width;
+	const maxH = SINGLE_MAX[density].height;
+	const size = validDimensions(attachment);
+	if (!size) return { ...UNKNOWN_BOX };
+	const { width, height } = size;
 	const scale = Math.min(maxW / width, maxH / height, 1);
 	return {
 		width: Math.max(64, Math.round(width * scale)),
@@ -149,8 +205,9 @@ export function splitFileNameTail(label: string): {
 	};
 }
 
-/** Card width for a file row: wide enough for a ~28-character name at regular
- * density, and narrower in compact so two cards share a 272px audit column. */
+/** Chip width for a file row: the 320px Slack-style chip at regular density
+ * (SPEC §3.1), capped at the column by the caller's `min(…, 100%)`; narrower
+ * in compact so a chip still fits the ~272px thread and audit columns whole. */
 export function fileCardWidth(compact: boolean): number {
-	return compact ? 208 : 240;
+	return compact ? 240 : 320;
 }

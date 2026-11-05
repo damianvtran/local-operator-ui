@@ -22,6 +22,11 @@
 		<title>Session switch — latency harness</title>
 		<script>
 			localStorage.clear();
+			// Explicit evidence opt-in through the shipped setting, before module
+			// evaluation/mount. Other fixtures retain their existing default.
+			if (new URLSearchParams(location.search).get("domWindow") === "on") {
+				localStorage.setItem("canonicalTranscriptDomWindow", "on");
+			}
 			/*
 			 * The sidebar's "Previous chats" section is collapsed until the user opens
 			 * it, and a collapsed section renders no session rows at all - so a click

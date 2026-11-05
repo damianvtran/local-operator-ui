@@ -1,0 +1,13 @@
+{
+  "kind": "execution-result-observation-not-raw-log",
+  "command": "NODE_OPTIONS=--max-old-space-size=512 python3 ~/local-operator/scripts/run_bounded.py --memory-mb 768 -- node --test scripts/i18n/locale-parity.test.mjs",
+  "head": "f043579ec5d1c7aba7eed34703806dc3c75d3b99",
+  "tests": 44,
+  "pass": 44,
+  "fail": 0,
+  "exit_code": 0,
+  "duration_ms": 1223.107167,
+  "node_rc": 0,
+  "wall_seconds": 1.8,
+  "source": "Actual functions.bash tool response in auditor session ba69d836a6d4; serial bounded execution."
+}

@@ -2061,6 +2061,9 @@ const installViewerBytes = () => {
 		cache.set(key, built);
 		return built;
 	};
+	// Storybook has no Electron guest inspector. The valid fixture models its
+	// parsed result; native PDFium/status/failure proof lives in pdf-canvas-proof.
+	api.pdfViewerStatus = async () => "ready";
 	api.readFileBytes = async (path: string) => {
 		const bytes = bytesFor(path);
 		if (!bytes)

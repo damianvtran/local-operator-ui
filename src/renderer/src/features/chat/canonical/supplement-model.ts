@@ -66,7 +66,76 @@ export type SupplementFile = {
 	sizeBytes: number;
 	mtime: number;
 	why: string;
+	/**
+	 * The agent named this file in a `deliver` pin (highlights deliverables,
+	 * 2026-11-03). Carries no badge — the operator asked for files to show up,
+	 * not for a second vocabulary — but the files section orders pinned entries
+	 * first so a pin can never sit behind an unpinned file. Absent = false.
+	 */
+	pinned?: boolean;
 };
+
+/**
+ * Why a pinned or answer-named deliverable was NOT shown (the contract's
+ * `withheld[].reason`). The core never sends a path here, only a display name,
+ * so the notice cannot leak where a refused file lives.
+ */
+export type SupplementWithheldReason =
+	| "outside"
+	| "sensitive"
+	| "missing"
+	| "too-large";
+
+export type SupplementWithheld = {
+	name: string;
+	reason: SupplementWithheldReason;
+};
+
+/** The core's `withheld[]` bound (≤ 10 names; the rest is `withheld_more`). */
+export const WITHHELD_MAX = 10;
+
+const WITHHELD_REASONS: readonly SupplementWithheldReason[] = [
+	"outside",
+	"sensitive",
+	"missing",
+	"too-large",
+];
+
+/**
+ * The withheld notice off a row's `details`, read defensively. An entry with an
+ * unknown reason is DROPPED rather than painted under a guessed phrase, but it
+ * still counts: the line's whole job is "never silent", so a reason this build
+ * does not know moves into the count (`more`) instead of vanishing.
+ */
+export function withheldFrom(
+	value: unknown,
+	moreValue: unknown,
+): { withheld: SupplementWithheld[]; withheldMore: number } {
+	const withheld: SupplementWithheld[] = [];
+	let unknown = 0;
+	if (Array.isArray(value)) {
+		for (const entry of value.slice(0, WITHHELD_MAX)) {
+			if (!entry || typeof entry !== "object") continue;
+			const item = entry as Record<string, unknown>;
+			const reason = item.reason as SupplementWithheldReason;
+			if (!WITHHELD_REASONS.includes(reason)) {
+				unknown += 1;
+				continue;
+			}
+			withheld.push({
+				name: typeof item.name === "string" ? item.name : "",
+				reason,
+			});
+		}
+	}
+	const more =
+		typeof moreValue === "number" &&
+		Number.isInteger(moreValue) &&
+		moreValue > 0
+			? moreValue
+			: 0;
+	return { withheld, withheldMore: more + unknown };
+}
 
 export type SupplementComponent = {
 	/** The attachment digest the document route is addressed by. */
@@ -136,6 +205,9 @@ function fileFrom(value: unknown): SupplementFile | null {
 		sizeBytes: finiteNumber(file.size_bytes) ?? 0,
 		mtime: finiteNumber(file.mtime) ?? 0,
 		why: typeof file.why === "string" ? file.why : "",
+		// Additive: stated only when true, so a row older than the pin parses to
+		// exactly the shape it always did.
+		...(file.pinned === true ? { pinned: true } : {}),
 	};
 }
 
@@ -203,6 +275,17 @@ export type SupplementSound = {
 	title: string;
 	/** Seconds, from the record that wrote it; `null` when it stated none. */
 	durationS: number | null;
+	/**
+	 * `"file"` for audio the turn WROTE to disk (highlights deliverables,
+	 * 2026-11-03): the core copies its bytes into the attachment store so it
+	 * plays through this exact player, and keeps the display `path` so the row's
+	 * title can open the file. Absent for a generated sound (the wire leaves
+	 * `origin` absent there).
+	 */
+	origin?: "file" | "";
+	/** Display path of a written audio file (session/`~`-relative); absent otherwise. */
+	path?: string;
+	pinned?: boolean;
 };
 
 /** One sound entry, read field-by-field; a malformed entry is dropped. */
@@ -220,6 +303,12 @@ function soundFrom(value: unknown): SupplementSound | null {
 		mime: typeof sound.mime === "string" ? sound.mime : "audio/mpeg",
 		title: typeof sound.title === "string" ? sound.title : "",
 		durationS: finiteNumber(sound.duration_s),
+		// Additive, like `pinned` on files: a generated sound keeps its old shape.
+		...(sound.origin === "file" ? { origin: "file" as const } : {}),
+		...(sound.origin === "file" && typeof sound.path === "string" && sound.path
+			? { path: sound.path }
+			: {}),
+		...(sound.pinned === true ? { pinned: true } : {}),
 	};
 }
 
@@ -337,9 +426,14 @@ export function supplementDisposition(
 		// content were images would paint an empty block, so the clause returns
 		// with their renderer rather than admitting a block that shows nothing.
 		// A sounds-only highlight is content too; otherwise its player never mounts.
+		// A withheld-only row is content as well (the contract's "never silent"):
+		// the core writes it precisely so the reader learns a pinned file was
+		// refused, and "nothing" would swallow the one line that says so.
 		return record.files.length ||
 			record.components.length ||
-			record.sounds?.length
+			record.sounds?.length ||
+			record.withheld?.length ||
+			record.withheldMore
 			? "block"
 			: "nothing";
 	}
@@ -902,6 +996,9 @@ export type SupplementPatch = {
 	components?: SupplementComponent[];
 	/** Present only on a beat that stated the list (the `done` beat, or a durable row's `details`). */
 	sounds?: SupplementSound[];
+	/** Stated alongside `sounds`; the same keep-unless-restated merge rule. */
+	withheld?: SupplementWithheld[];
+	withheldMore?: number;
 	error?: string;
 	/** The failed line's typed cause (`provider_<kind>`); the reader bounds it. */
 	cause?: string;
@@ -1011,7 +1108,21 @@ export function supplementPatchFromEvent(
 		// it on the same `done` beat (and on the durable row's `details`), and a
 		// beat that does not state it leaves whatever the row already held.
 		...(state === "decided" || state === "done"
-			? { files: filesFrom(event.files) }
+			? {
+					files: filesFrom(event.files),
+					/*
+					 * The withheld notice rides `files`' states, not `components`':
+					 * the producer (core #3392) states it on `decided` as well as
+					 * `done`, because the refusals are known when the files are
+					 * (review round 2, R7). ONLY WHEN STATED (round 1, R1): a beat
+					 * that does not carry the keys must not restate "nothing
+					 * withheld" over the row's list; the merge keeps an undefined
+					 * field.
+					 */
+					...("withheld" in event || "withheld_more" in event
+						? withheldFrom(event.withheld, event.withheld_more)
+						: {}),
+				}
 			: {}),
 		...(state === "done"
 			? {
@@ -1063,6 +1174,8 @@ export function supplementPatchFromDetails(
 		// empty list for those, and the merge below keeps a previous list when the
 		// patch does not state one — the same rule `files`/`components` follow.
 		sounds: soundsFrom(details.sounds),
+		// Additive (2026-11-03): absent on older rows, which read as "nothing withheld".
+		...withheldFrom(details.withheld, details.withheld_more),
 		...diagnosticsFrom(details),
 		...(details.dismissed === true ? { dismissed: true } : {}),
 		...(typeof details.error === "string" && details.error
@@ -1129,7 +1242,8 @@ function sameFiles(a: readonly SupplementFile[], b: readonly SupplementFile[]) {
 			file.kind === other.kind &&
 			file.sizeBytes === other.sizeBytes &&
 			file.mtime === other.mtime &&
-			file.why === other.why
+			file.why === other.why &&
+			(file.pinned ?? false) === (other.pinned ?? false)
 		);
 	});
 }
@@ -1169,9 +1283,24 @@ function sameSounds(
 			sound.attachment === other.attachment &&
 			sound.mime === other.mime &&
 			sound.title === other.title &&
-			sound.durationS === other.durationS
+			sound.durationS === other.durationS &&
+			sound.origin === other.origin &&
+			(sound.path ?? "") === (other.path ?? "") &&
+			(sound.pinned ?? false) === (other.pinned ?? false)
 		);
 	});
+}
+
+function sameWithheld(
+	a: readonly SupplementWithheld[],
+	b: readonly SupplementWithheld[],
+) {
+	if (a === b) return true;
+	if (a.length !== b.length) return false;
+	return a.every(
+		(item, index) =>
+			item.name === b[index].name && item.reason === b[index].reason,
+	);
 }
 
 /**
@@ -1212,6 +1341,12 @@ export function mergeSupplement(
 	 */
 	const sounds =
 		patch.sounds !== undefined ? patch.sounds : (previous?.sounds ?? []);
+	const withheld =
+		patch.withheld !== undefined ? patch.withheld : (previous?.withheld ?? []);
+	const withheldMore =
+		patch.withheldMore !== undefined
+			? patch.withheldMore
+			: (previous?.withheldMore ?? 0);
 	const filesMore =
 		patch.filesMore !== undefined
 			? patch.filesMore
@@ -1253,6 +1388,10 @@ export function mergeSupplement(
 		sounds: sameSounds(sounds, previous?.sounds ?? [])
 			? (previous?.sounds ?? [])
 			: sounds,
+		withheld: sameWithheld(withheld, previous?.withheld ?? [])
+			? (previous?.withheld ?? [])
+			: withheld,
+		withheldMore,
 		error,
 		cause,
 		model: patch.model ?? (newVersion ? "" : (previous?.model ?? "")),

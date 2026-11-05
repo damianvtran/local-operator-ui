@@ -324,8 +324,16 @@ export interface UploadResult {
  * the extension from ever advertising it — and it needs no `PROTO_VERSION` bump: an
  * old harness simply never sends the fields, and a host that does not advertise this
  * token is refused by capability rather than by version arithmetic.
+ *
+ * `record_quality` is the third token, on the same terms: it advertises that
+ * `record_start` accepts `quality: "standard" | "high"` and that `high` answers with
+ * `codec: "h264"`. A host without it ignores the field and records AV1, which is why
+ * the harness gates the parameter on this name AND checks the echoed codec.
  */
-export type HostCapabilityToken = "press_chord" | "record_size";
+export type HostCapabilityToken =
+	| "press_chord"
+	| "record_size"
+	| "record_quality";
 
 /**
  * The methods THIS host build serves, as it advertises them.
@@ -390,6 +398,9 @@ export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	// Sized recording (width/height on record_start) is not a method; the
 	// harness capability-gates the two params on this name.
 	"record_size",
+	// High-quality recording (quality on record_start) is not a method either; the
+	// harness capability-gates the one param on this name.
+	"record_quality",
 ];
 
 export interface Request {

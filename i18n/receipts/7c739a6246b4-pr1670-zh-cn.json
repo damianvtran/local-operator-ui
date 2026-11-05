@@ -1,0 +1,122 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (PR delta audit)",
+ "date": "2026-11-04",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session 7c739a6246b4 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.teamBridge",
+ "locale": "zh-CN",
+ "audit_id": "tb1670-7c739a6246b4-zh-cn",
+ "instance": "7c739a6246b4-pr1670-zh-cn",
+ "session": "7c739a6246b4",
+ "integration": {
+  "pr": 1670,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-members-panel",
+  "base": "a70a761ae4704a43c60470beed7c5eaeba763e90",
+  "audited_head": "4397967ebe01f60a6a2c8b68b430f36c68fa90fe",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session 7c739a6246b4. Did not translate the 23 members_panel values (they arrived in the implementer's commit 4397967 on PR #1670), wrote no English copy or code in the PR, and is not any prior ui.teamBridge auditor (828e525994e6-pr1666-zh-cn). It applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "zh-CN": "5927e039cb8d8b94a96510313f4203f08480aa47ec7fbf6badd12f36fc506405",
+  "en": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352"
+ },
+ "context_sha256": "74f1e0353fe96e3d141d9a43b1134308fb4fcf1b57f8c01e73110416fd79c313",
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/zh-CN.md",
+  "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Delta audit of PR #1670 (a70a761ae47..4397967ebe0): the 23 new ui.teamBridge.members_panel.* values read against en, the en context sidecar, the glossary and the zh-CN style guide, composed with real arguments; existing ui.teamBridge copy read for glossary consistency. No pre-existing value changed in the PR (verified); the other 342 values are byte-identical to the 828e525994e6-pr1666-zh-cn audited bytes. No rendered fit or native RTL rendering claimed.",
+  "keys_added": [
+   "ui.teamBridge.members_panel.title",
+   "ui.teamBridge.members_panel.close",
+   "ui.teamBridge.members_panel.open_label",
+   "ui.teamBridge.members_panel.open_label_invited",
+   "ui.teamBridge.members_panel.state.pending_approval",
+   "ui.teamBridge.members_panel.leave_label",
+   "ui.teamBridge.members_panel.leave_tooltip",
+   "ui.teamBridge.members_panel.decline_label",
+   "ui.teamBridge.members_panel.decline_tooltip",
+   "ui.teamBridge.members_panel.confirm.remove_title",
+   "ui.teamBridge.members_panel.confirm.remove_body",
+   "ui.teamBridge.members_panel.confirm.withdraw_body",
+   "ui.teamBridge.members_panel.confirm.leave_title",
+   "ui.teamBridge.members_panel.confirm.leave_body",
+   "ui.teamBridge.members_panel.confirm.decline_title",
+   "ui.teamBridge.members_panel.confirm.decline_body",
+   "ui.teamBridge.members_panel.confirm.remove",
+   "ui.teamBridge.members_panel.confirm.leave",
+   "ui.teamBridge.members_panel.confirm.decline",
+   "ui.teamBridge.members_panel.note.general",
+   "ui.teamBridge.members_panel.note.humans",
+   "ui.teamBridge.members_panel.note.agents",
+   "ui.teamBridge.members_panel.note.dm"
+  ],
+  "keys_changed_by_auditor": [
+   "ui.teamBridge.members_panel.decline_label",
+   "ui.teamBridge.members_panel.confirm.decline_title",
+   "ui.teamBridge.members_panel.note.general",
+   "ui.teamBridge.members_panel.note.humans",
+   "ui.teamBridge.members_panel.note.agents",
+   "ui.teamBridge.members_panel.open_label_invited"
+  ]
+ },
+ "findings": [
+  {
+   "id": "ZH-M1",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.members_panel.decline_label",
+    "ui.teamBridge.members_panel.confirm.decline_title"
+   ],
+   "summary": "'拒绝{name}的邀请' means rejecting an invitation sent by {name}; the reader declines on behalf of their agent, and events.declined uses '代{targets}拒绝了邀请'.",
+   "proposed": "'代{name}拒绝邀请' / '要代{name}拒绝邀请吗？'",
+   "disposition": "fixed by auditor in this commit"
+  },
+  {
+   "id": "ZH-M2",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.members_panel.note.general",
+    "ui.teamBridge.members_panel.note.humans",
+    "ui.teamBridge.members_panel.note.agents"
+   ],
+   "summary": "Spaces between CJK and the Latin '#general' run; the zh-CN style guide (Punctuation) forbids them and remove_title/leave_title already compose '#qa-coordination' without spaces.",
+   "disposition": "fixed by auditor in this commit"
+  },
+  {
+   "id": "ZH-N1",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.members_panel.open_label_invited"
+   ],
+   "summary": "'#名已邀请' is an unnatural order for the count clause.",
+   "proposed": "'已邀请#名'",
+   "disposition": "fixed by auditor in this commit"
+  }
+ ],
+ "evidence": {
+  "record": "i18n/audits/evidence/zh-CN/ui.teamBridge/tb1670-7c739a6246b4-zh-cn/record.json",
+  "record_sha256": "d0cc5281b7e7f0f57bf6e68d2c41436ba4e658e496f53c0c57b885e5c51ff742"
+ },
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 365 values parse; argument names equal en; CLDR plural arms per style guide on delta keys",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat, real arguments incl. 0/1/2/5/21/10^6)",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "key_set": "365 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/zh-CN/ui.teamBridge/tb1670-7c739a6246b4-zh-cn/audit.log"
+ },
+ "terminal": true
+}

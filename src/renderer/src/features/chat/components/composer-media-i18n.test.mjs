@@ -61,7 +61,7 @@ const ui = compiled.exports;
 test("recording keeps English copy and keycaps, and inactive recording stays absent", () => {
 	ui.setLocale("en");
 	const html = ui.recording(true);
-	for (const text of ["Recording", "confirms", "cancels", "Enter", "Esc"])
+	for (const text of ["Recording", "inserts", "cancels", "Enter", "Esc"])
 		assert.ok(html.includes(text), text);
 	assert.equal(ui.recording(false), "");
 });
@@ -81,14 +81,17 @@ test("attachment captions preserve MIME parameters and filenames", () => {
 });
 
 test("registered locale uses translated composer copy with English per-key fallback", () => {
-	ui.registerCatalogue("fr", {
+	// A locale with NO bundled catalogue: "fr" (and every shipped locale) now
+	// carries its own `confirms`, so a fr lookup would read real French and prove
+	// nothing about the per-key English fallback this test is named for.
+	ui.registerCatalogue("xx", {
 		"ui.chat.composer_media.recording": "Capture test",
 		"ui.chat.composer_media.remove_attachment": "Remove test",
 		"ui.chat.composer_media.pasted_type": "Type test {mimeType}",
 	});
-	ui.setLocale("fr");
+	ui.setLocale("xx");
 	assert.ok(ui.recording(true).includes("Capture test"));
-	assert.ok(ui.recording(true).includes("confirms"));
+	assert.ok(ui.recording(true).includes("inserts"));
 	const html = ui.attachments(["data:application/pdf;base64,AA"]);
 	assert.ok(html.includes("Type test application/pdf"));
 	assert.ok(html.includes('aria-label="Remove test"'));

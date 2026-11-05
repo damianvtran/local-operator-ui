@@ -9172,7 +9172,7 @@ export const STORIES = [
 		{
 			expectSentence: [
 				"The new build has landed",
-				"the turns running on this machine kept running",
+				"your sessions kept running",
 			],
 		},
 	],
@@ -9431,7 +9431,7 @@ export const STORIES = [
 		{
 			expectSentence: [
 				"offline while it comes back",
-				"Nothing in flight is cut off",
+				"Running sessions aren't interrupted",
 			],
 		},
 	],
@@ -12176,6 +12176,22 @@ export const STORIES = [
 	["common-updatefooticon--server-in-flight", 560, 360],
 	["common-updatefooticon--downloading", 560, 360],
 	["common-updatefooticon--strip-variant", 560, 360],
+	/*
+	 * The tooltip under a real pointer: the update indicator's first words to a
+	 * person, which carry the "running agents are not interrupted" line
+	 * (operator request, 2026-11-03). Hover is asserted before the shutter, and
+	 * the viewport is tall enough to hold the panel above the strip.
+	 */
+	[
+		"common-updatefooticon--both-surfaces",
+		560,
+		360,
+		{
+			hover: "[data-update-foot-icon]",
+			hoverSettleMs: 900,
+			dir: "both-surfaces/tooltip",
+		},
+	],
 	/*
 	 * The band's own states, in the design round's own enumeration (round-2
 	 * review, the D2 residual): the LONGEST version string the band can meet - the

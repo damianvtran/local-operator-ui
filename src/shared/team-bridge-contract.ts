@@ -247,6 +247,33 @@ export type TeamBridgeAttachmentCapability = z.infer<
 	typeof teamBridgeAttachmentCapabilitySchema
 >;
 
+/** #3363 human file wire: versioned, download-only, bounded per sniffed class.
+ * A missing/disabled block is normal rollout state, never permission to guess. */
+export const teamBridgeFilesCapabilitySchema = z
+	.object({
+		version: z.literal(1),
+		enabled: z.literal(true),
+		download_only: z.literal(true),
+		classes: z
+			.array(
+				z.object({
+					class: z.enum(["pdf", "text", "container", "other"]),
+					max_bytes: z
+						.number()
+						.int()
+						.positive()
+						.max(25 * 1024 * 1024),
+				}),
+			)
+			.min(1),
+		max_items: z.number().int().positive().optional(),
+		max_images: z.number().int().positive().optional(),
+	})
+	.passthrough();
+export type TeamBridgeFilesCapability = z.infer<
+	typeof teamBridgeFilesCapabilitySchema
+>;
+
 /*
  * PER-RECIPIENT DELIVERY STATE (Team Bridge delivery-state contract v1). The hub
  * attaches one entry per AGENT recipient to a human member's read of a message:
@@ -310,6 +337,44 @@ export const teamBridgeMessageSchema = z
 		last_reply_at: z.string().optional(),
 		/* Up to three distinct repliers' display labels — a facepile, not a roster. */
 		reply_participants: z.array(z.string()).optional(),
+		/*
+		 * Thread reads (hub slice TR1, server PR pending). VIEWER-SCOPED: the
+		 * hub computes these for the account reading the page, so they are a
+		 * statement about "me", never about the thread. All optional and each
+		 * `.catch(undefined)`: an older hub sends none of them, and a malformed
+		 * value costs the thread-row badge, never the message. ABSENT is not 0 —
+		 * absent means "this hub cannot tell", so the row draws no badge rather
+		 * than claiming the thread is read.
+		 */
+		thread_unread_count: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.catch(undefined),
+		thread_last_read_seq: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.catch(undefined),
+		/* Parallel to `reply_participants` (same order, same cap of three): the
+		 * ids let the facepile resolve a real avatar and keep the agent mark. A
+		 * label without an id still renders as its initial. */
+		reply_participant_ids: z
+			.array(
+				/* Caught PER ENTRY: one replier of a kind this build does not know,
+				   or one malformed id, costs that plate its avatar (it falls back to
+				   the label's initial), never the other two plates. */
+				z
+					.object({ account_id: id, kind: z.enum(["human", "agent"]) })
+					.passthrough()
+					.nullable()
+					.catch(null),
+			)
+			.max(16)
+			.optional()
+			.catch(undefined),
 		/* Image attachments, send order. Absent on text-only messages and old hubs. */
 		attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
 		/* Generic files (S3b), send order; absent on file-less messages and pre-S3b
@@ -750,6 +815,35 @@ export const teamBridgeIdentitySchema = z
 	.object({ account_id: z.string().min(1).nullable().optional() })
 	.passthrough();
 export type TeamBridgeIdentity = z.infer<typeof teamBridgeIdentitySchema>;
+
+/*
+ * The answer to a THREAD read (hub slice TR1): the viewer's new thread state.
+ * Every field optional and caught, because the server PR is not merged yet and
+ * the client must not fail a successful write over its echo: an answer it
+ * cannot read costs only the immediate badge update, and the timeline refetch
+ * that follows every read supplies the hub's count instead. `unread_count` is
+ * accepted as a spelling of the same number so either TR1 draft parses.
+ */
+export const teamBridgeThreadReadStateSchema = z
+	.object({
+		thread_unread_count: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.catch(undefined),
+		unread_count: z.number().int().nonnegative().optional().catch(undefined),
+		thread_last_read_seq: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.catch(undefined),
+	})
+	.passthrough();
+export type TeamBridgeThreadReadState = z.infer<
+	typeof teamBridgeThreadReadStateSchema
+>;
 
 export const teamBridgeReadStateSchema = z
 	.object({

@@ -3544,6 +3544,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 						 * reads as "degrade to the verification-page link".
 						 */
 						"signup.resend",
+						/*
+						 * The Team free trial ops (teams-trial §3; core PR #3386).
+						 * Named here and in `shared/api/radient/proxy.ts` for the
+						 * reason above.
+						 */
+						"team_trial.eligibility",
+						"team_trial.start",
+						"team_trial.status",
 					]),
 					request_id: requestId.optional(),
 					tenant_id: id.optional(),
@@ -3805,6 +3813,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id.optional(),
 		})
 		.strict(),
+	/*
+	 * LEAVE, as its own op beside `join` (members panel, 2026-11-04). The
+	 * `lifecycle` op's `leave` action reaches the same core route, but this one
+	 * is shaped for the panel's "Leave" row. The row's organization is sent as
+	 * `tenant_id` for core's owner receipt, but the hub's leave handler does NOT
+	 * read a tenant today: it resolves the caller's first active membership, so
+	 * a leave on a conversation in another organization is refused as not found
+	 * (shown inline) rather than routed there (review round 1, R2). Both
+	 * halves of the owner receipt ride the QUERY, which is where core's
+	 * `POST .../leave` reads them (`_conversation_owner_query`; the route has
+	 * no body model). Leaving is the leave/re-add boundary: re-entry needs a
+	 * fresh invitation, which is why the panel confirms first.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.leave"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.notify"),
@@ -3886,8 +3915,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			expected_account_id: id.optional(),
 			conversation_id: id,
 			account_id: id,
-			decision: z.enum(["accept", "decline"]),
-			consent_version: z.string().min(1).max(128),
+			/*
+			 * `withdraw` takes an ACTIVE own agent out (agent-server #227; core
+			 * `ConversationConsentIn`). Only accept/decline answer an invitation,
+			 * so only they carry `consent_version`: leaving is not consenting,
+			 * and core refuses a version on withdraw. The pairing is enforced on
+			 * the union's `superRefine` below, because a refined member is a
+			 * `ZodEffects` the discriminated union refuses.
+			 */
+			decision: z.enum(["accept", "decline", "withdraw"]),
+			consent_version: z.string().min(1).max(128).optional(),
+			/* Pins ONE of the caller's agent rows (an owner may have several
+			   endpoints); the hub owns the "is this one of yours" rule. */
+			endpoint_id: id.optional(),
 			tenant_id: id.optional(),
 		})
 		.strict(),
@@ -3961,6 +4001,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* Reply in this root message's thread; the hub validates the root. */
 			thread_root_id: id.optional(),
 			attachment_ids: teamBridgeAttachmentIds.optional(),
+			files: z
+				.array(id)
+				.min(1)
+				.max(10)
+				.refine((ids) => new Set(ids).size === ids.length, "Duplicate file")
+				.optional(),
 			mentions: teamBridgeMentionsSchema.optional(),
 		})
 		.strict(),
@@ -4049,6 +4095,24 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id.optional(),
 			seq: z.number().int().nonnegative().optional(),
 			muted: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * THREAD READ (hub slice TR1; server PR pending). A separate op rather than
+	 * a `message_id` on `team_bridge.read`: the conversation cursor and a thread
+	 * cursor are different rows on the hub, and a combined op would let a thread
+	 * acknowledgement advance the channel's cursor past unseen timeline rows.
+	 * Callers dispatch it only when `features.team_bridge_thread_reads >= 1`;
+	 * an older runtime never sees it.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.thread_read"),
+			expected_account_id: id,
+			conversation_id: id,
+			message_id: id,
+			tenant_id: id,
+			seq: z.number().int().nonnegative(),
 		})
 		.strict(),
 	z
@@ -4839,6 +4903,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/* Consent: accept/decline carry the participation version, withdraw
+		   never does (core `ConversationConsentIn._version_per_decision`). */
+		if (
+			request.op === "team_bridge.conversations.consent" &&
+			(request.decision === "withdraw") !==
+				(request.consent_version === undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"accept and decline require consent_version; withdraw carries none", // i18n: ignore wire validation diagnostic
+				path: ["consent_version"],
+			});
+		}
 		if (
 			(request.op === "notifications.read" ||
 				request.op === "notifications.dismiss") &&
@@ -4868,6 +4946,20 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		 * A PATCH that omits `body` keeps the stored one, so only an explicit
 		 * empty body needs a non-empty set beside it.
 		 */
+		if (request.op === "team_bridge.messages.send" && request.files) {
+			const images = request.attachment_ids ?? [];
+			if (
+				images.length + request.files.length > 10 ||
+				request.files.some((file) => images.includes(file))
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Invalid combined attachment set", // i18n: ignore request-schema diagnostic, not rendered interface copy
+					path: ["files"],
+				});
+			}
+		}
+
 		if (
 			request.op === "team_bridge.messages.send" ||
 			request.op === "team_bridge.scheduled.create" ||
@@ -4876,7 +4968,8 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		) {
 			if (
 				request.body?.trim() === "" &&
-				(request.attachment_ids?.length ?? 0) === 0
+				(request.attachment_ids?.length ?? 0) === 0 &&
+				!(request.op === "team_bridge.messages.send" && request.files?.length)
 			) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -7316,6 +7409,8 @@ export type DesktopMediaRequest =
 	 */
 	| {
 			op: "team_bridge.attachment.upload";
+			mode?: "image" | "file";
+			fileName?: string;
 			tenantId: string;
 			conversationId: string;
 			/* The captured-owner receipt the runtime now REQUIRES on these routes:
@@ -9836,6 +9931,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 						}
 					: {}),
 			};
+		case "team_bridge.conversations.leave":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/leave${conversationOwnerQuery(request)}`,
+				method: "POST",
+			};
 		case "team_bridge.conversations.notify":
 			return {
 				/* The read route's notify field (agent-server #148); no `seq`, so
@@ -9899,7 +9999,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					decision: request.decision,
-					consent_version: request.consent_version,
+					...(request.consent_version
+						? { consent_version: request.consent_version }
+						: {}),
+					...(request.endpoint_id ? { endpoint_id: request.endpoint_id } : {}),
 				},
 			};
 		case "team_bridge.owner_audit.conversations":
@@ -9978,6 +10081,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.attachment_ids?.length
 						? { attachment_ids: request.attachment_ids }
 						: {}),
+					...(request.files?.length ? { files: request.files } : {}),
 					// Omitted (never `[]`) when empty: the pre-mention wire, byte for byte.
 					...(request.mentions?.length ? { mentions: request.mentions } : {}),
 				},
@@ -10062,6 +10166,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					...(request.seq === undefined ? {} : { seq: request.seq }),
 					...(request.muted === undefined ? {} : { muted: request.muted }),
+				},
+			};
+		case "team_bridge.thread_read":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/read`,
+				method: "POST",
+				body: {
+					expected_account_id: request.expected_account_id,
+					tenant_id: request.tenant_id,
+					seq: request.seq,
 				},
 			};
 		case "team_bridge.unread": {

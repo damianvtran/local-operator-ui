@@ -44,7 +44,7 @@ import { t } from "../../../../i18n/messages";
  * (pages), because both are "the app's own vocabulary" and neither is an
  * entity with its own store to search.
  */
-export type PaletteScope = "command" | "chat" | "agent" | "setting";
+export type PaletteScope = "command" | "chat" | "agent" | "setting" | "bridge";
 
 /**
  * A rendered section of the list. Groups are the unit of both the heading and
@@ -62,6 +62,14 @@ export type PaletteGroup =
 	 * catalogues, so a group each is also what the caps can be tuned against.
 	 */
 	| "teams"
+	/**
+	 * Team Bridge's channels, groups, DMs, people and chiefs of staff (operator,
+	 * 2026-11-04). A group of its own because these rows open a different surface
+	 * (`/team-bridge`, not `/chat`) and come from a different store (the bridge's
+	 * react-query cache), and because "Aida (Ola)" the bridge chief and "aida" the
+	 * local agent must not read as one row under one heading.
+	 */
+	| "teamBridge"
 	| "actions"
 	| "panels"
 	| "settings";
@@ -100,7 +108,13 @@ export type PaletteIconName =
 	| "info"
 	| "usage"
 	| "session"
-	| "analytics";
+	| "analytics"
+	/* Team Bridge's rail marks (`ConversationKindIcon`): channel, DM; plus a
+	   person glyph standing in for the rail's avatar, which a palette row has no
+	   room to load. Groups reuse `team` (the rail's group mark is also `Users`). */
+	| "hash"
+	| "at-sign"
+	| "person";
 
 /** The finer kind, which decides the Enter label and the text match weights. */
 export type PaletteItemKind =
@@ -112,6 +126,8 @@ export type PaletteItemKind =
 	/** A team row (issue #849). Distinct from `agent` so the unscoped list can tell
 	 * a same-named pair apart by more than the section heading they sit under. */
 	| "team"
+	/** A Team Bridge row: the destination, a conversation, a person or a chief. */
+	| "bridge"
 	| "settings-section"
 	| "setting";
 
@@ -136,6 +152,15 @@ export type PaletteTarget =
 				| "change-interface-language"
 				| "toggle-canvas";
 	  }
+	/**
+	 * A Team Bridge address: `/team-bridge`, optionally with the page's deep-link
+	 * parameters (`palette-team-bridge.ts` builds them). Not a `path` because the
+	 * navigation differs on one point: when the window is ALREADY on Team Bridge
+	 * the view REPLACES instead of pushing, the notification-open rule
+	 * (`use-team-bridge-notification-open.ts`), so the column's Back still leaves
+	 * Team Bridge in one press (one history entry per visit, #1660).
+	 */
+	| { type: "bridge"; path: string }
 	/**
 	 * A panel, named by its picker destination.
 	 *
@@ -226,6 +251,13 @@ export type PaletteItem = {
 	 */
 	recentRank?: number;
 	/**
+	 * A Team Bridge CHANNEL row (drawn `#name`). Set at the source
+	 * (`palette-team-bridge.ts`); read only by the `#` scope's fallback in
+	 * `searchPalette`, so a Slack-style `#general` that names no local chat still
+	 * finds the channel (UX round 1, U3).
+	 */
+	bridgeChannel?: boolean;
+	/**
 	 * True on the row for the conversation the app is displaying right now.
 	 * Decided at the source (the shell's own displayed-session rule) and carried
 	 * as data for the same import-free reason. The Recents pin reads it to leave
@@ -247,6 +279,14 @@ export type PaletteItem = {
 	archived?: boolean;
 	/** Rendered in the danger role; the one row that destroys something. */
 	destructive?: boolean;
+	/**
+	 * An unmuted unread count, drawn with the shared attention badge. Team Bridge
+	 * rows carry it because the rail does: a reader hopping to a channel should
+	 * see the same "something is waiting" mark the rail would have shown them.
+	 * Display only - the ranking never reads it, so an unread row does not jump
+	 * ahead of a better name match.
+	 */
+	attention?: number;
 };
 
 /** One admitted row and the evidence for its position. */
@@ -363,7 +403,15 @@ export function paletteEmptyStateCopy(input: {
 				};
 	}
 	if (hasTerms) {
-		const glyph = SCOPE_LEGEND.find((entry) => entry.scope === scope)?.glyph;
+		/*
+		 * A word scope backs out the way a glyph does - delete the word - so it
+		 * gets the same line with its word in the glyph's slot (UX round 1, U2):
+		 * the generic "narrow with a prefix below" pointed at a legend that does
+		 * not contain this scope.
+		 */
+		const glyph =
+			SCOPE_LEGEND.find((entry) => entry.scope === scope)?.glyph ??
+			WORD_ONLY_SCOPES.find((entry) => entry.scope === scope)?.word;
 		return {
 			line: t("ui.command_palette.empty.no_matches", { terms }),
 			hint: glyph
@@ -450,6 +498,19 @@ const SCOPE_WORDS: Record<string, PaletteScope> = {
 	 */
 	team: "agent",
 	teams: "agent",
+	/*
+	 * Team Bridge's own scope (operator, 2026-11-04). ONE WORD, no glyph: the four
+	 * glyphs are taught in the footer legend, and a fifth would change that footer
+	 * on every palette open for a surface many backends do not have. `tb ola`
+	 * narrows; the default search already answers bridge names without it.
+	 *
+	 * NOT "bridge" (agent review round 1, M1): it is an ordinary English word, so
+	 * "bridge design" scoped away the chat "Bridge design review". And `tb` itself
+	 * is admitted only where the destination exists - `parsePaletteQuery`'s
+	 * `bridgeScope` - so a backend without Team Bridge keeps `tb helper` as the
+	 * plain search it is on main. See also `literalOutsideScope` in the search.
+	 */
+	tb: "bridge",
 	setting: "setting",
 	settings: "setting",
 	preference: "setting",
@@ -467,7 +528,43 @@ const SCOPE_GROUPS: Record<PaletteScope, PaletteGroup[]> = {
 	// "the things I can start a chat with by name", and teams are half of that.
 	agent: ["agents", "teams"],
 	setting: ["settings"],
+	bridge: ["teamBridge"],
 };
+
+/**
+ * Product names that BEGIN with a scope word, and so must not be read as one.
+ *
+ * "team bridge" is the case that made this table (operator screenshot,
+ * 2026-11-04): `team` scopes to the agent roster (issue #849), so the query was
+ * read as `@bridge` and answered with the one agent whose TAGS happen to hold
+ * the letters b-r-i-d-g-e in order (`manager`, a loose subsequence match) and
+ * nothing for Team Bridge itself. The scope word is honoured everywhere else -
+ * `team delivery` still opens the roster - because a phrase here is matched as
+ * whole leading tokens, not as a prefix of a word.
+ */
+const SCOPE_WORD_PHRASES: readonly (readonly string[])[] = [["team", "bridge"]];
+
+/**
+ * Scopes reached by a word alone, with the label the field's chip shows.
+ *
+ * Kept apart from `SCOPE_LEGEND` because the legend IS the footer: every entry
+ * there is drawn as a glyph to type, and this scope has none (see the `bridge`
+ * scope words above). The chip still names the scope once the reader is in it.
+ */
+export const WORD_ONLY_SCOPES: {
+	scope: PaletteScope;
+	/** The word that enters the scope, which the empty state teaches backing out of. */
+	word: string;
+	label: string;
+}[] = [
+	{
+		scope: "bridge",
+		word: "tb",
+		get label() {
+			return t("ui.teamBridge.nav.label");
+		},
+	},
+];
 
 /** The legend the palette itself renders, in the order the glyphs are taught. */
 export const SCOPE_LEGEND: {
@@ -567,7 +664,18 @@ export const COMMAND_SCOPE_SEED = ">";
  * "chat" still searches everything for it — which is what a user typing
  * "retention chat" means.
  */
-export function parsePaletteQuery(raw: string): {
+export function parsePaletteQuery(
+	raw: string,
+	options: {
+		/**
+		 * Whether the Team Bridge word scope exists: true only when the backend
+		 * advertises `team_bridge_conversations`. Absent means false, so every
+		 * caller that does not know (the shortcut doors, a test) parses exactly as
+		 * main did, with `tb` an ordinary search term.
+		 */
+		bridgeScope?: boolean;
+	} = {},
+): {
 	scope: PaletteScope | null;
 	terms: string;
 } {
@@ -581,7 +689,16 @@ export function parsePaletteQuery(raw: string): {
 	const glyph = SCOPE_PREFIXES[trimmed[0]];
 	if (glyph) return { scope: glyph, terms: trimmed.slice(1).trim() };
 	const [first, ...rest] = trimmed.split(WHITESPACE_RUN);
+	const leading = tokenize(trimmed);
+	if (
+		SCOPE_WORD_PHRASES.some((phrase) =>
+			phrase.every((token, index) => leading[index] === token),
+		)
+	)
+		return { scope: null, terms: trimmed };
 	const word = rest.length > 0 ? SCOPE_WORDS[normalizeText(first)] : undefined;
+	if (word === "bridge" && !options.bridgeScope)
+		return { scope: null, terms: trimmed };
 	if (word) return { scope: word, terms: rest.join(" ").trim() };
 	return { scope: null, terms: trimmed };
 }
@@ -610,6 +727,8 @@ export function parsePaletteQuery(raw: string): {
 const COMBINING_MARKS = /\p{M}/gu;
 const NOT_ALPHANUMERIC = /[^a-z0-9]+/g;
 const WHITESPACE_RUN = /\s+/;
+/** The separator a composed hint joins its facts with ("Direct message · Minerva"). */
+const HINT_SEPARATOR = /\s+\u00b7\s+/;
 
 /**
  * Strip diacritics and case, then reduce every run of non-alphanumerics to one
@@ -711,8 +830,17 @@ const FIELD_WEIGHT = {
 /** One row's fields, pre-normalised. Built once per list, not per keystroke. */
 type Haystacks = {
 	name: string;
-	keywords: string;
-	hint: string;
+	/*
+	 * One entry PER KEYWORD, never joined. A joined haystack let the loose
+	 * subsequence tier thread a query through several unrelated keywords: an agent
+	 * tagged `tools:read,glob,grep,...` and `delegate:yes` answered "bridge" (b in
+	 * glob, r in grep, i in list, d in read, then g-e in delegate), which is how
+	 * "team bridge" came back as `manager` (operator screenshot, 2026-11-04). A
+	 * keyword is one thing a user might type; a match has to live inside one.
+	 */
+	keywords: string[];
+	/** One entry per " · " segment of the hint; see `haystacksFor`. */
+	hint: string[];
 	group: string[];
 	soft: string;
 };
@@ -720,8 +848,18 @@ type Haystacks = {
 export function haystacksFor(item: PaletteItem): Haystacks {
 	return {
 		name: normalizeText(item.name),
-		keywords: (item.keywords ?? []).map(normalizeText).join(" ").trim(),
-		hint: normalizeText(item.hint ?? ""),
+		keywords: (item.keywords ?? []).map(normalizeText).filter(Boolean),
+		/*
+		 * One entry per " · " SEGMENT (UX round 1, U5), for the reason keywords are
+		 * kept apart: "Direct message · Minerva" let the loose tier thread "sam"
+		 * through two unrelated facts (s, a in "message", m in "Minerva"). The
+		 * middle dot is the separator every locale's `ui.teamBridge.notify.subtitle`
+		 * keeps; a hint without one is a single segment, exactly as before.
+		 */
+		hint: (item.hint ?? "")
+			.split(HINT_SEPARATOR)
+			.map(normalizeText)
+			.filter(Boolean),
 		group: PALETTE_GROUP_LABELS[item.group].map(normalizeText),
 		soft: normalizeText(item.soft ?? ""),
 	};
@@ -755,8 +893,9 @@ export function scoreHaystacks(
 			}
 		};
 		consider(haystacks.name, FIELD_WEIGHT.name);
-		consider(haystacks.keywords, FIELD_WEIGHT.keywords);
-		consider(haystacks.hint, FIELD_WEIGHT.hint);
+		for (const keyword of haystacks.keywords)
+			consider(keyword, FIELD_WEIGHT.keywords);
+		for (const segment of haystacks.hint) consider(segment, FIELD_WEIGHT.hint);
 		for (const group of haystacks.group) consider(group, FIELD_WEIGHT.group);
 		consider(haystacks.soft, FIELD_WEIGHT.soft);
 		if (!bestQuality) return null;
@@ -863,6 +1002,10 @@ export const PALETTE_GROUP_TITLES: Record<PaletteGroup, string> = {
 	get teams() {
 		return t("ui.command_palette.palette_search.teams");
 	},
+	// The product's own name, the same key the sidebar row and the page title read.
+	get teamBridge() {
+		return t("ui.teamBridge.nav.label");
+	},
 	get actions() {
 		return t("ui.command_palette.palette_search.actions");
 	},
@@ -891,6 +1034,9 @@ export const PALETTE_SECTION_TITLES: Record<PaletteSectionKey, string> = {
 	},
 	get teams() {
 		return PALETTE_GROUP_TITLES.teams;
+	},
+	get teamBridge() {
+		return PALETTE_GROUP_TITLES.teamBridge;
 	},
 	get actions() {
 		return PALETTE_GROUP_TITLES.actions;
@@ -921,6 +1067,9 @@ export const PALETTE_GROUP_LABELS: Record<PaletteGroup, string[]> = {
 	// "team" scopes to the roster and then matches this group's haystack - the
 	// same one-fact-one-derivation the other groups carry.
 	teams: ["Teams", "Team"],
+	// So `team bridge general` (an unscoped query, see `SCOPE_WORD_PHRASES`)
+	// still narrows to #general: the group's name is every row's weak haystack.
+	teamBridge: ["Team Bridge", "Bridge"],
 	actions: ["Actions", "Commands"],
 	panels: ["Panels", "Panels and reports", "Views"],
 	settings: ["Settings", "Preferences"],
@@ -932,6 +1081,7 @@ export const PALETTE_GROUP_ORDER: PaletteGroup[] = [
 	"chats",
 	"agents",
 	"teams",
+	"teamBridge",
 	"actions",
 	"panels",
 	"settings",
@@ -971,6 +1121,7 @@ const BROWSE_CAP: Record<PaletteGroup, number> = {
 	chats: 5,
 	agents: 5,
 	teams: 5,
+	teamBridge: 5,
 	actions: 5,
 	panels: 5,
 	settings: 8,
@@ -983,6 +1134,14 @@ const BROWSE_CAP: Record<PaletteGroup, number> = {
 export type PaletteSearchInput = {
 	items: PaletteItem[];
 	raw: string;
+	/** Passed through to `parsePaletteQuery`: whether the `tb` scope exists here. */
+	bridgeScope?: boolean;
+	/**
+	 * A conversations search is out and unanswered. The `#` fallback waits for
+	 * it: offering bridge channels while the chats answer is still coming would
+	 * swap the list under the reader when it lands.
+	 */
+	chatsAwaiting?: boolean;
 };
 
 /**
@@ -1002,14 +1161,33 @@ export type PaletteSearchInput = {
 export function searchPalette({
 	items,
 	raw,
+	bridgeScope = false,
+	chatsAwaiting = false,
 }: PaletteSearchInput): PaletteSearchOutcome {
-	const { scope, terms } = parsePaletteQuery(raw);
+	const { scope, terms } = parsePaletteQuery(raw, { bridgeScope });
 	const allowed = scope ? SCOPE_GROUPS[scope] : null;
 	const tokens = tokenize(terms);
 
 	// Pre-normalise once per list, not once per comparison: the haystacks are a
 	// function of the item, and normalising is the expensive half of matching.
-	const pool = items.filter((item) => !allowed || allowed.includes(item.group));
+	let pool = items.filter((item) => !allowed || allowed.includes(item.group));
+	/*
+	 * A WORD scope must not hide the row its words literally name (agent review
+	 * round 1, M1). `tb` is a word a name can begin with - an agent called
+	 * `tb-helper` - and a glyph is not, so under the word scope a row OUTSIDE it
+	 * whose name contains the whole query as typed still answers, scored against
+	 * the whole query. Glyph scopes keep their hard boundary: `#` is never part of
+	 * a name.
+	 */
+	const literalTokens = scope === "bridge" ? tokenize(raw) : [];
+	const literal = literalTokens.join(" ");
+	const literalOutsideScope = (item: PaletteItem) =>
+		literal !== "" &&
+		Boolean(allowed) &&
+		!allowed?.includes(item.group) &&
+		normalizeText(item.name).includes(literal);
+	if (literal && tokens.length > 0)
+		pool = pool.concat(items.filter(literalOutsideScope));
 
 	if (tokens.length === 0) {
 		const sections: PaletteSection[] = [];
@@ -1166,18 +1344,34 @@ export function searchPalette({
 
 	const byGroup = new Map<PaletteGroup, PaletteMatch[]>();
 	let total = 0;
-	for (const item of pool) {
-		const haystacks = haystacksFor(item);
-		const match = scoreItem(item, haystacks, tokens);
-		if (!match) continue;
+	const admit = (item: PaletteItem, against: string[]) => {
+		const match = scoreItem(item, haystacksFor(item), against);
+		if (!match) return;
 		total += 1;
 		const bucket = byGroup.get(item.group);
 		if (bucket) bucket.push(match);
 		else byGroup.set(item.group, [match]);
-	}
+	};
+	for (const item of pool)
+		admit(item, literalOutsideScope(item) ? literalTokens : tokens);
+	/*
+	 * `#general` THE SLACK WAY (UX round 1, U3). Bridge channels are drawn with a
+	 * `#`, so `#name` is how a reader reaches for one - and `#` is the local chats
+	 * scope. When that scope answers NOTHING, the bridge channels that match are
+	 * offered instead, under their own Team Bridge heading, rather than a "no
+	 * matches" line about a channel that exists. Only when chats are empty, so a
+	 * `#` query that names a local chat reads exactly as it did on main; a chat
+	 * search still in flight is the empty state's "searching" line, not this.
+	 */
+	if (scope === "chat" && total === 0 && !chatsAwaiting)
+		for (const item of items)
+			if (item.group === "teamBridge" && item.bridgeChannel)
+				admit(item, tokens);
 
 	const capFor = (group: PaletteGroup) =>
 		scope && SCOPE_GROUPS[scope].includes(group) ? SCOPED_GROUP_CAP : GROUP_CAP;
+	// (The `#` fallback's channels are under GROUP_CAP: they answer a scope that
+	// is not theirs, the same footing as any unscoped group.)
 
 	/*
 	 * Groups are ordered by their best row, then by the browse order, so the

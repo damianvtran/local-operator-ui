@@ -9,9 +9,8 @@ import type { EditDiff } from "@shared/api/local-operator/types";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { getTheme } from "@shared/themes";
 import { getSearchTheme } from "@shared/themes/search-theme";
+import { useAppearanceIsDark } from "@shared/themes/use-resolved-appearance";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import CodeMirror, {
 	type Extension,
@@ -101,14 +100,11 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-	/* The theme registry is the app's own source of truth for a palette's mode
-	   — `applyThemeToDocument` reads the same field to publish the document
-	   `dark` class — so resolving it here avoids a second name-to-mode table.
-	   Both theme getters are lookups over pre-built extensions, so neither
-	   needs a memo. */
-	const isDark = useUiPreferencesStore(
-		(state) => getTheme(state.themeName).theme.palette.mode === "dark",
-	);
+	/* The PAINTED palette's mode - the composition `applyAppearance` publishes
+	   as the document `dark` class - not the name's, so the editor can never
+	   disagree with the document it sits in. Both theme getters are lookups over
+	   pre-built extensions, so neither needs a memo. */
+	const isDark = useAppearanceIsDark();
 	const searchTheme = getSearchTheme(isDark);
 	const codeEditorTheme = getCodeMirrorTheme(isDark);
 	// A new extension makes react-codemirror reconfigure the plugin and rebuild

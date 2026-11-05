@@ -66,7 +66,21 @@ import { UpdateType } from "./deferred-updates-store";
  * whose payload carries none leaves it null and the tooltip omits the line
  * rather than guessing one from raw release notes.
  */
-export type QuietOffer = { version: string; summary?: string | null };
+export type QuietOffer = {
+	version: string;
+	summary?: string | null;
+	/**
+	 * Whether installing this offer leaves running sessions untouched.
+	 *
+	 * The foot icon's "won't interrupt running agents" line is shown only when
+	 * every waiting surface says so (review M1, 2026-11-03): the app install
+	 * restarts only this window, and the server's `entry-point` route lands
+	 * beside the running build, but the source rebuild and the legacy by-hand
+	 * installers rewrite the install in place under live runtimes. Absent reads
+	 * as false, so a producer that does not know never earns the reassurance.
+	 */
+	nonDisruptive?: boolean;
+};
 
 /** The surfaces, in the order the indicator lists them. */
 export const NOTICE_SURFACES: readonly UpdateType[] = [

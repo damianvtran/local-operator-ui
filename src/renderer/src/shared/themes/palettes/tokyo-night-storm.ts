@@ -45,19 +45,39 @@ export const tokyoNightStorm: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#24283B",
-		surface: "#2B3048",
-		elevated: "#303652",
-		sunken: "#1D2032",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #24283B -> #1A1E30 (L* 16.54 -> 11.70)
+		 * surface #2B3048 -> #22273E (L* 20.42 -> 16.20)
+		 * elevated #303652 -> #262D48 (L* 23.26 -> 19.04)
+		 * sunken #1D2032 -> #131728 (L* 12.76 -> 8.17)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `mediaSurface`, `warningWash`. `pnpm check-themes` is the measurement for
+		 * each.
+		 */
+		canvas: "#1A1E30",
+		surface: "#22273E",
+		elevated: "#262D48",
+		sunken: "#131728",
 
 		// The user block's fill: ΔE00 4.24 off the canvas, where `surface` alone
 		// measures 3.24 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2d324c",
+		messageSurface: "#232942",
 		// The media slot's well: ΔE00 4.15 off the canvas, where `sunken` alone
 		// measures 2.54 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#191b2d",
+		// Lifted #0D0E22 -> #101125 (L* 4.65 -> 5.82) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.10 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#101125",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -76,8 +96,8 @@ export const tokyoNightStorm: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.27 `L*` and 11.2 `C*`,
 		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#353745",
-		rowSelected: "#323958",
+		rowHover: "#2C2E3C",
+		rowSelected: "#28304E",
 
 		// Upstream fg C0CAF5 is 7.00:1 on `elevated` — exactly the floor, with no room for
 		// rounding. Lifted along the same periwinkle.
@@ -120,10 +140,10 @@ export const tokyoNightStorm: ThemeDefinition = {
 
 		// The sibling's rule lightened by the same step the ground took, so it still holds
 		// ΔE00 4.3 from every ground and 1.22-1.74:1 against them.
-		hairline: "#3F4662",
+		hairline: "#353C57",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.88:1 there against `hairline`'s 1.73:1.
-		hairlineStrong: "#444B68",
+		hairlineStrong: "#3A415D",
 		// Upstream fg_gutter 3B4261 is 1.36:1 against the grounds — a decorative value
 		// in a structural role. Walked to 3.1:1 on the lightest ground, the value every
 		// shipped palette's structural edge sits at.
@@ -147,7 +167,7 @@ export const tokyoNightStorm: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#283349",
+		accentWash: "#1E2A3F",
 		onAccent: "#1D2032",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -164,24 +184,24 @@ export const tokyoNightStorm: ThemeDefinition = {
 		 * 2.0), 5.49:1 for `accentAlt` on it, and 5.76 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#372F45",
+		accentAltWash: "#2D253A",
 
 		success: "#9ECE6A",
-		successWash: "#40504B",
+		successWash: "#364641",
 		successBorder: "#65922C",
 
 		warning: "#E0AF68",
-		warningWash: "#4C4649",
+		warningWash: "#3E383B",
 		warningBorder: "#AB7D34",
 
 		// Upstream red F7768E is 4.27:1 on `elevated` (< 4.5) — the one content value storm's
 		// lighter ground pushes under the floor. Lifted along the same rose.
 		danger: "#FE7C94",
-		dangerWash: "#3A2C3D",
+		dangerWash: "#312334",
 		dangerBorder: "#D95B74",
 
 		info: "#7DCFFF",
-		infoWash: "#263A52",
+		infoWash: "#1B3047",
 		infoBorder: "#398DBA",
 
 		// The shadow and scrim are the ground tinted, as in every palette here.

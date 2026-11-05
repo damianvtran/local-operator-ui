@@ -107,14 +107,42 @@ export function sessionAvatarTarget(
 	sha256: string;
 	owned: boolean;
 } | null {
+	const target = sessionAgentTarget(row);
+	if (!target || !target.sha256) return null;
+	return { ...target, sha256: target.sha256 };
+}
+
+/**
+ * The same address as `sessionAvatarTarget`, for a row that may have NO picture.
+ *
+ * The chat header reads the agent's address even when the row claims no digest,
+ * because a suggesting header (proactive agent, chief of staff) still needs it
+ * to build the placeholder's door. `sha256` is null when the row claims none;
+ * the header passes it as a `null` hint, so the agents map is NOT consulted, and
+ * `decideAvatarMark` draws nothing for it outside a suggesting header. The
+ * sidebar's pencil keeps reading `sessionAvatarTarget`, whose `sha256` is
+ * required, so a no-picture sidebar row stays exactly the row main draws.
+ */
+export function sessionAgentTarget(
+	row:
+		| (Pick<CanonicalSessionRow, "agent_id" | "locality" | "avatar_sha256"> & {
+				binding?: { agent?: string | null } | null;
+		  })
+		| null
+		| undefined,
+): {
+	agentId: string;
+	agentName: string | null;
+	sha256: string | null;
+	owned: boolean;
+} | null {
 	const agentId = row?.agent_id ?? null;
-	const sha256 = row?.avatar_sha256 ?? null;
-	if (!row || !agentId || !sha256) return null;
+	if (!row || !agentId) return null;
 	const agentName = row.binding?.agent || null;
 	return {
 		agentId,
 		agentName,
-		sha256,
+		sha256: row.avatar_sha256 || null,
 		owned: agentName !== null && sessionPictureEditable(row),
 	};
 }
