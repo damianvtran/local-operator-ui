@@ -158,5 +158,16 @@
 	"ui.settings.appearance.editor.preview.bridge": "Team Bridge",
 	"ui.settings.appearance.editor.preview.bridge_name": "Агент ревью",
 	"ui.settings.appearance.editor.preview.bridge_status": "Готово к ревью",
-	"ui.settings.appearance.editor.preview.code": "Пример кода"
+	"ui.settings.appearance.editor.preview.code": "Пример кода",
+	"ui.settings.appearance.editor.accents": "Акцентные цвета",
+	"ui.settings.appearance.editor.accent.primary": "Основной",
+	"ui.settings.appearance.editor.accent.primary_usage": "Взаимодействия и выделение",
+	"ui.settings.appearance.editor.accent.secondary": "Вторичный",
+	"ui.settings.appearance.editor.accent.secondary_usage": "Идентичность и категории",
+	"ui.settings.appearance.editor.accent.variants": "Варианты",
+	"ui.settings.appearance.editor.accent.secondary_help": "Слегка тонированный фон вторичного акцента остаётся таким, как в базовой теме, пока вы его не измените.",
+	"ui.settings.appearance.editor.accent.effective": "Предпросмотр учитывает настройки контраста и общего акцента. Общий акцент заменяет семейство цветов основного акцента; вторичные цвета остаются такими, как сохранено в теме, если не требуется корректировка контраста.",
+	"ui.settings.appearance.editor.preview.identity": "Идентичность",
+	"ui.settings.appearance.editor.preview.category": "Категория",
+	"ui.settings.appearance.editor.preview.meta": "Контекст"
 }

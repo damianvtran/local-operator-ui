@@ -41,6 +41,7 @@ export {definitionOf} from './src/renderer/src/shared/themes';
 export {useTheme} from '@mui/material/styles';
 export {savedPaletteOf} from './src/renderer/src/shared/themes/use-resolved-appearance';
 export {applyAppearance} from './src/renderer/src/shared/themes/appearance';
+export {CustomThemePreview} from './src/renderer/src/features/settings/components/custom-theme-preview';
 `,
 		resolveDir: process.cwd(),
 		loader: "tsx",
@@ -81,6 +82,7 @@ const {
 	useTheme,
 	savedPaletteOf,
 	applyAppearance,
+	CustomThemePreview,
 } = module.exports;
 let root = createRoot(document.getElementById("root"));
 const draft = (id) => ({
@@ -282,6 +284,54 @@ test("appearance keys include custom identity but no contrast is embedded in sto
 		appearanceKey({ ...current, customThemeId: "custom-test" }),
 	);
 	assert.equal(current.customThemeId, store.getState().customThemeId);
+});
+
+test("secondary pins survive real provider save/reload and global primary conflict in both modes", async () => {
+	for (const id of ["localOperatorDark", "localOperatorLight"]) {
+		const base = definitionOf(id).palette;
+		const theme = {
+			...draft(id),
+			id: `custom-secondary${base.mode}`,
+			overrides: {
+				accentAlt: base.accentAlt,
+				accentAltWash: base.accentAltWash,
+			},
+		};
+		await act(async () => {
+			store.setState({ ...identity, themeName: id, customThemeId: null });
+			saveCustomTheme(theme);
+			store.setState({ customThemeId: theme.id });
+			root.render(
+				h(ThemeProvider, null, h(CustomThemePreview, { id: "probe" })),
+			);
+		});
+		const read = (role) =>
+			getComputedStyle(document.documentElement).getPropertyValue(role).trim();
+		assert.equal(read("--lo-accent-alt"), base.accentAlt);
+		const chip = document.querySelector(
+			'[data-accent-preview="secondary"] span',
+		);
+		assert.equal(chip.style.color, "var(--lo-accent-alt)");
+		assert.equal(chip.style.background, "var(--lo-accent-alt-wash)");
+		assert.equal(document.querySelectorAll("[data-accent-preview]").length, 2);
+		await act(async () =>
+			store.setState({
+				accent: { ...identity.accent, [base.mode]: { kind: "theme-alt" } },
+			}),
+		);
+		assert.equal(read("--lo-accent-alt"), base.accentAlt);
+		assert.equal(read("--lo-accent-alt-wash"), base.accentAltWash);
+		await act(async () => reloadCustomThemes());
+		assert.deepEqual(
+			customThemeSnapshot().themes.find((t) => t.id === theme.id).overrides,
+			theme.overrides,
+		);
+		assert.equal(read("--lo-accent-alt"), base.accentAlt);
+		assert.deepEqual(
+			customThemeSnapshot().themes.find((t) => t.id === theme.id).seeds,
+			{},
+		);
+	}
 });
 
 test("teardown", async () => {

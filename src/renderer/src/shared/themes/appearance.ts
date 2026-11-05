@@ -151,6 +151,7 @@ export const resolveAppearance = (
 			contrast,
 			accent,
 			id: baseId,
+			preserveSecondary: customPalette !== undefined,
 			paletteAccent: accentOf,
 		});
 	}

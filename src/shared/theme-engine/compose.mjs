@@ -70,7 +70,13 @@ export const paletteHash = (palette) => {
  */
 export const composeTheme = (
 	base,
-	{ contrast = 0, accent = { kind: "theme" }, id, paletteAccent } = {},
+	{
+		contrast = 0,
+		accent = { kind: "theme" },
+		id,
+		paletteAccent,
+		preserveSecondary = false,
+	} = {},
 ) => {
 	const themeAccent = !accent || accent.kind === "theme";
 	if (contrast === 0 && themeAccent) {
@@ -93,6 +99,7 @@ export const composeTheme = (
 			authored: base,
 			id,
 			paletteAccent,
+			preserveSecondary,
 		});
 		palette = result.palette;
 		accentApplied = result.applied;

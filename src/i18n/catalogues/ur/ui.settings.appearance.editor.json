@@ -158,5 +158,16 @@
 	"ui.settings.appearance.editor.preview.bridge": "Team Bridge",
 	"ui.settings.appearance.editor.preview.bridge_name": "جائزہ لینے والا ایجنٹ",
 	"ui.settings.appearance.editor.preview.bridge_status": "جائزے کے لیے تیار",
-	"ui.settings.appearance.editor.preview.code": "مثالی کوڈ"
+	"ui.settings.appearance.editor.preview.code": "مثالی کوڈ",
+	"ui.settings.appearance.editor.accents": "نمایاں رنگ",
+	"ui.settings.appearance.editor.accent.primary": "بنیادی",
+	"ui.settings.appearance.editor.accent.primary_usage": "تعامل اور انتخاب",
+	"ui.settings.appearance.editor.accent.secondary": "ثانوی",
+	"ui.settings.appearance.editor.accent.secondary_usage": "شناخت اور زمرے",
+	"ui.settings.appearance.editor.accent.variants": "متبادل صورتیں",
+	"ui.settings.appearance.editor.accent.secondary_help": "ثانوی نمایاں رنگ کا ہلکا پس منظر بنیادی تھیم والا ہی رہتا ہے، جب تک آپ اسے تبدیل نہ کریں۔",
+	"ui.settings.appearance.editor.accent.effective": "پیش منظر میں کنٹراسٹ اور پوری ایپ کے نمایاں رنگ کی ترتیبات شامل ہیں۔ پوری ایپ کا نمایاں رنگ بنیادی نمایاں رنگوں کے گروپ کی جگہ لیتا ہے؛ ثانوی رنگ تھیم میں محفوظ کردہ رنگ ہی رہتے ہیں، جب تک کنٹراسٹ کی درستی ضروری نہ ہو۔",
+	"ui.settings.appearance.editor.preview.identity": "شناخت",
+	"ui.settings.appearance.editor.preview.category": "زمرہ",
+	"ui.settings.appearance.editor.preview.meta": "سیاق"
 }

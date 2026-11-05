@@ -158,5 +158,16 @@
 	"ui.settings.appearance.editor.preview.bridge": "Team Bridge",
 	"ui.settings.appearance.editor.preview.bridge_name": "Agent de revue",
 	"ui.settings.appearance.editor.preview.bridge_status": "Prêt pour la revue",
-	"ui.settings.appearance.editor.preview.code": "Exemple de code"
+	"ui.settings.appearance.editor.preview.code": "Exemple de code",
+	"ui.settings.appearance.editor.accents": "Couleurs d’accent",
+	"ui.settings.appearance.editor.accent.primary": "Principal",
+	"ui.settings.appearance.editor.accent.primary_usage": "Interactions et sélection",
+	"ui.settings.appearance.editor.accent.secondary": "Secondaire",
+	"ui.settings.appearance.editor.accent.secondary_usage": "Identité et catégories",
+	"ui.settings.appearance.editor.accent.variants": "Variantes",
+	"ui.settings.appearance.editor.accent.secondary_help": "Le fond légèrement teinté de l’accent secondaire reste celui du thème de base tant que vous ne le modifiez pas.",
+	"ui.settings.appearance.editor.accent.effective": "L’aperçu tient compte des réglages de contraste et d’accent global. L’accent global remplace la famille de couleurs de l’accent principal. Les couleurs secondaires restent celles enregistrées dans le thème, sauf si le contraste doit être ajusté.",
+	"ui.settings.appearance.editor.preview.identity": "Identité",
+	"ui.settings.appearance.editor.preview.category": "Catégorie",
+	"ui.settings.appearance.editor.preview.meta": "Contexte"
 }

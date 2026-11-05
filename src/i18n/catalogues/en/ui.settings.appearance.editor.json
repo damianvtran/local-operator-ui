@@ -158,5 +158,16 @@
 	"ui.settings.appearance.editor.preview.bridge": "Team Bridge",
 	"ui.settings.appearance.editor.preview.bridge_name": "Review agent",
 	"ui.settings.appearance.editor.preview.bridge_status": "Ready for review",
-	"ui.settings.appearance.editor.preview.code": "Example code"
+	"ui.settings.appearance.editor.preview.code": "Example code",
+	"ui.settings.appearance.editor.accents": "Accent colours",
+	"ui.settings.appearance.editor.accent.primary": "Primary",
+	"ui.settings.appearance.editor.accent.primary_usage": "Interactions and selection",
+	"ui.settings.appearance.editor.accent.secondary": "Secondary",
+	"ui.settings.appearance.editor.accent.secondary_usage": "Identity and categories",
+	"ui.settings.appearance.editor.accent.variants": "Variants",
+	"ui.settings.appearance.editor.accent.secondary_help": "Secondary wash stays from the base theme until you edit it.",
+	"ui.settings.appearance.editor.accent.effective": "The preview includes contrast and global accent settings. Global accent replaces the primary family; secondary colours remain authored unless contrast adjustment is needed.",
+	"ui.settings.appearance.editor.preview.identity": "Identity",
+	"ui.settings.appearance.editor.preview.category": "Category",
+	"ui.settings.appearance.editor.preview.meta": "Context"
 }

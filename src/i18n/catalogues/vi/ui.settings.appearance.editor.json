@@ -158,5 +158,16 @@
 	"ui.settings.appearance.editor.preview.bridge": "Team Bridge",
 	"ui.settings.appearance.editor.preview.bridge_name": "Tác nhân rà soát",
 	"ui.settings.appearance.editor.preview.bridge_status": "Sẵn sàng để xem xét",
-	"ui.settings.appearance.editor.preview.code": "Mã mẫu"
+	"ui.settings.appearance.editor.preview.code": "Mã mẫu",
+	"ui.settings.appearance.editor.accents": "Màu nhấn",
+	"ui.settings.appearance.editor.accent.primary": "Chính",
+	"ui.settings.appearance.editor.accent.primary_usage": "Tương tác và lựa chọn",
+	"ui.settings.appearance.editor.accent.secondary": "Phụ",
+	"ui.settings.appearance.editor.accent.secondary_usage": "Nhận diện và danh mục",
+	"ui.settings.appearance.editor.accent.variants": "Biến thể",
+	"ui.settings.appearance.editor.accent.secondary_help": "Nền nhạt màu nhấn phụ được giữ nguyên từ giao diện gốc cho đến khi bạn sửa.",
+	"ui.settings.appearance.editor.accent.effective": "Bản xem trước bao gồm thiết lập tương phản và màu nhấn chung. Màu nhấn chung thay thế nhóm màu nhấn chính; các màu phụ vẫn là màu đã lưu trong giao diện, trừ khi cần chỉnh độ tương phản.",
+	"ui.settings.appearance.editor.preview.identity": "Nhận diện",
+	"ui.settings.appearance.editor.preview.category": "Danh mục",
+	"ui.settings.appearance.editor.preview.meta": "Ngữ cảnh"
 }
