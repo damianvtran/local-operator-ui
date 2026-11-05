@@ -487,3 +487,103 @@ test("M4: after paging back past the cap, a poll returns to the present without 
 		"the reset window is the newest page, not the past plus the present",
 	);
 });
+
+test("M4-a: an older page answered for a replaced window is dropped, never spliced", () => {
+	/*
+	 * THE INTERLEAVING THE REVIEW MEASURED. `loadOlder` captures its cursor, the
+	 * read takes a round trip, and the 8 s poll is not blocked by it: a `hasNewer`
+	 * reset can land first. Merging the stale page then produced two disjoint
+	 * stretches in one array - under the cap so nothing dropped, and with
+	 * `hasNewer:false` so the next poll unioned the hole back.
+	 */
+	const total = 5_000;
+	const rowsFrom = (first, last) =>
+		Array.from({ length: last - first + 1 }, (_, i) => message(first + i));
+
+	let entry = cache.mergeChannelPage(
+		undefined,
+		page(rowsFrom(total - 59, total), { has_more: true }),
+		"newest",
+	);
+	while (!entry.hasNewer) {
+		entry = cache.mergeChannelPage(
+			entry,
+			page(rowsFrom(Math.max(1, entry.oldestSeq - 60), entry.oldestSeq - 1), {
+				has_more: true,
+			}),
+			"older",
+		);
+	}
+	// The cursor the older read was issued against.
+	const issuedFor = entry.oldestSeq;
+
+	// The poll's reset lands first.
+	const reset = cache.mergeChannelPage(
+		entry,
+		page(rowsFrom(total - 59, total), { has_more: true }),
+		"newest",
+	);
+
+	// Now the older read answers, for the window that no longer exists.
+	const spliced = cache.mergeOlderPageAtCursor(
+		reset,
+		page(rowsFrom(issuedFor - 60, issuedFor - 1), { has_more: true }),
+		issuedFor,
+	);
+	assert.equal(
+		spliced,
+		reset,
+		"a page answered for another window is discarded",
+	);
+	const seqs = reset.messages.map((row) => row.seq);
+	assert.equal(
+		seqs.every((seq, index) => index === 0 || seq === seqs[index - 1] + 1),
+		true,
+		"the replaced window stays contiguous",
+	);
+
+	// The same page against the window it WAS asked for still merges.
+	const same = cache.mergeOlderPageAtCursor(
+		entry,
+		page(rowsFrom(issuedFor - 60, issuedFor - 1), { has_more: true }),
+		issuedFor,
+	);
+	assert.ok(same !== entry, "matching cursor merges");
+	assert.equal(same.messages[0].seq, issuedFor - 60);
+});
+
+test("m8: an older read that adds no rows leaves hasNewer set", () => {
+	const rows = Array.from({ length: 60 }, (_, i) => message(4001 + i));
+	let entry = cache.mergeChannelPage(
+		undefined,
+		page(rows, { has_more: true }),
+		"newest",
+	);
+	// Pretend the window is behind a hole, as a trim would leave it.
+	entry = { ...entry, hasNewer: true };
+	// An overlapping page that adds nothing.
+	const again = cache.mergeChannelPage(
+		entry,
+		page(rows, { has_more: true }),
+		"older",
+	);
+	assert.equal(
+		again.hasNewer,
+		true,
+		"no older read can reach the present again",
+	);
+});
+
+test("m9: the deep-link page bound stays inside the retention cap", () => {
+	// The walk starts from the newest page, so `n` reads retain `(n + 1)` pages.
+	const pages =
+		Math.floor(
+			cache.TEAM_BRIDGE_MAX_RETAINED_MESSAGES / cache.TEAM_BRIDGE_PAGE_SIZE,
+		) - 1;
+	assert.equal(pages, 12, "floor(800/60) - 1");
+	assert.ok(
+		(pages + 1) * cache.TEAM_BRIDGE_PAGE_SIZE <=
+			cache.TEAM_BRIDGE_MAX_RETAINED_MESSAGES,
+		"12 older reads plus the newest page stay inside the cap",
+	);
+});

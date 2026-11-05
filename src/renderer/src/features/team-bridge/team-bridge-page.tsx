@@ -98,6 +98,10 @@ import {
 	isClientRefConflict,
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
+import {
+	TEAM_BRIDGE_MAX_RETAINED_MESSAGES,
+	TEAM_BRIDGE_PAGE_SIZE,
+} from "./team-bridge-channel-cache";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import {
 	TeamBridgeComposer,
@@ -4906,18 +4910,18 @@ const MESSAGE_LINK_TIMEOUT_MS = 8_000;
  * How far a `?message=` link may page back to find its row before it is treated
  * as unreachable.
  *
- * THE TWO NUMBERS ARE COUPLED, DO NOT MOVE ONE ALONE (agent review round 2, M4).
- * Every page this walk asks for is retained, and past `TEAM_BRIDGE_MAX_RETAINED_MESSAGES`
- * (800) an older read TRIMS THE NEWEST rows: the walk would be paging through a
- * window it is itself shortening, and the row it wants may be dropped the moment
- * it arrives. 13 pages of `TEAM_BRIDGE_PAGE_SIZE` (780 rows) stays strictly
- * inside the retained window, which is what makes the walk terminate somewhere
- * useful. If either constant moves, this bound has to be recomputed as
- * `floor(MAX_RETAINED / PAGE_SIZE) - 1`; the `over`-cap case is then handled by
- * the cache's `hasNewer` reset (the poll replaces the window instead of splicing
- * across the gap) rather than by this walk.
+ * DERIVED, NEVER TYPED (agent review round 3, m9). The walk starts from the
+ * newest page and asks for one older page at a time, so `n` reads retain
+ * `(n + 1) * TEAM_BRIDGE_PAGE_SIZE` rows: at the retention cap an older read
+ * trims the NEWEST rows, and the walk would be paging through a window it is
+ * itself shortening - the row it wants can be dropped the moment it arrives, and
+ * the next poll resets the window away from it. `floor(800/60) - 1 = 12` reads
+ * keep `13 * 60 = 780` rows, strictly inside the cap. If either constant moves,
+ * this expression moves with it; the over-cap case is handled by the cache's
+ * `hasNewer` reset instead (a replacement, never a splice).
  */
-const MESSAGE_LINK_MAX_PAGES = 13;
+const MESSAGE_LINK_MAX_PAGES =
+	Math.floor(TEAM_BRIDGE_MAX_RETAINED_MESSAGES / TEAM_BRIDGE_PAGE_SIZE) - 1;
 
 /** The page view's identity: one mounted view per account, tenant and target. */
 const viewKeyFor = (
@@ -6197,11 +6201,16 @@ const TeamBridgeOwnedPage: FC<{
 			linkedReadFor.current = messageLink.messageId;
 			linkedPages.current = 0;
 		}
-		if (
-			messages.hasOlder &&
-			!messages.isLoadingOlder &&
-			linkedPages.current < MESSAGE_LINK_MAX_PAGES
-		) {
+		/*
+		 * IN FLIGHT IS NOT "THE WALK IS SPENT" (agent review round 3, M3-a). The
+		 * terminal branch below used to be shared with the pending state - the
+		 * effect re-runs when `isLoadingOlder` flips true, the guard failed, and the
+		 * link was marked `fetched` after ONE page, so a `?message=` link only
+		 * resolved when the row was already inside the newest page. Waiting is the
+		 * whole point of the walk: the mutation's re-render is what decides next.
+		 */
+		if (messages.isLoadingOlder) return;
+		if (messages.hasOlder && linkedPages.current < MESSAGE_LINK_MAX_PAGES) {
 			linkedPages.current += 1;
 			/*
 			 * A READ THAT WRITES NOTHING MUST STILL FINISH THE WALK (agent review

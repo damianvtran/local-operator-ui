@@ -53,6 +53,7 @@ import type {
 	TeamBridgeEvent,
 	TeamBridgeMemberInput,
 	TeamBridgeMessage,
+	TeamBridgeMessagePage,
 	TeamBridgeNotify,
 	TeamBridgeReadState,
 	TeamBridgeThreadReadState,
@@ -65,6 +66,7 @@ import {
 	TEAM_BRIDGE_PAGE_SIZE,
 	channelViewOrder,
 	mergeChannelPage,
+	mergeOlderPageAtCursor,
 	rememberChannelView,
 	selectChannelEvictions,
 	withChannelMessages,
@@ -378,17 +380,22 @@ export function useTeamBridgeMessages(
 	 * exactly the cursor we want.
 	 */
 	const key = options.queryKey;
+	/* One read at a time per conversation, decided synchronously (see `loadOlder`). */
+	const inFlight = useRef(false);
 	const older = useMutation({
-		mutationFn: async () => {
-			const current = client.getQueryData<ChannelMessages>(key);
-			const beforeSeq = current?.oldestSeq;
-			if (
-				current === undefined ||
-				!current.hasOlder ||
-				beforeSeq === undefined ||
-				conversationId === null
-			)
-				return null;
+		/*
+		 * THE CURSOR IS THE MUTATION'S INPUT (agent review round 3, M4-a). It used to
+		 * be re-read inside `mutationFn`, which left `onSuccess` with nothing to
+		 * compare against: the write could not tell whether the window it was asked
+		 * for is still the window it would be merged into. Passing it makes the page
+		 * carry its own identity - and it is read AT CALL TIME from the entry in
+		 * `loadOlder`, so a poll or a trim between render and click is still
+		 * respected.
+		 */
+		mutationFn: async (
+			beforeSeq: number,
+		): Promise<TeamBridgeMessagePage | null> => {
+			if (conversationId === null) return null;
 			return readForBridgeOwner(client, accountId, () =>
 				TeamBridgeApi.listMessages(conversationId, {
 					...(tenantId ? { tenantId } : {}),
@@ -401,12 +408,18 @@ export function useTeamBridgeMessages(
 		   mutation would spend the same page again on a channel the reader may not
 		   read. */
 		retry: false,
-		onSuccess: (page) => {
+		onSuccess: (page, beforeSeq) => {
 			if (page === null) return;
+			/*
+			 * THE PAGE BELONGS TO THE WINDOW IT WAS ASKED FOR (agent review round 3,
+			 * M4-a). `beforeSeq` is captured when the read is issued; the 8 s poll runs
+			 * independently and can replace the window (a `hasNewer` reset) before this
+			 * answers. Merging then would put two disjoint stretches in one array,
+			 * under the cap so nothing drops and with the hole invisible to the next
+			 * poll. A cursor that no longer matches means the window moved: drop it.
+			 */
 			client.setQueryData<ChannelMessages>(key, (current) =>
-				current === undefined
-					? current
-					: mergeChannelPage(current, page, "older"),
+				mergeOlderPageAtCursor(current, page, beforeSeq),
 			);
 		},
 	});
@@ -422,12 +435,27 @@ export function useTeamBridgeMessages(
 		if (data === undefined) return;
 		sweepTeamBridgeChannelCache(client, keyString);
 	}, [client, data, keyString]);
-	const loadOlder = useCallback(() => {
+	const loadOlder = useCallback((): Promise<TeamBridgeMessagePage | null> => {
 		/* A load already in flight is the same page: the list asks on every scroll
-		   frame it is near the top, and answering each of them would be a burst. */
-		if (older.isPending) return;
-		older.mutate();
-	}, [older]);
+		   frame it is near the top, and answering each of them would be a burst.
+		   The fence is a ref, not `older.isPending`: a caller can ask twice in one
+		   tick (a walk re-running its effect before the mutation's own state has
+		   committed), and both calls would see the stale false. */
+		if (inFlight.current || older.isPending) return Promise.resolve(null);
+		const current = client.getQueryData<ChannelMessages>(key);
+		const beforeSeq = current?.oldestSeq;
+		/* No entry, no history cursor or nothing older: there is nothing to read,
+		   and saying so is what lets a walk finish. */
+		if (current === undefined || !current.hasOlder || beforeSeq === undefined)
+			return Promise.resolve(null);
+		inFlight.current = true;
+		return older
+			.mutateAsync(beforeSeq)
+			.catch(() => null)
+			.finally(() => {
+				inFlight.current = false;
+			});
+	}, [client, key, older.isPending, older.mutateAsync]);
 	return {
 		messages: data?.messages ?? [],
 		events: data?.events,

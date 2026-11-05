@@ -328,15 +328,47 @@ export function mergeChannelPage(
 		/* A trimmed window always has older history to offer, whatever the last
 		   page said: the rows are on the hub, we dropped our copy. */
 		hasOlder: learned || bounded.dropped,
-		/* An older page trims the NEWEST rows at the bound; that is the hole this
-		   flag makes visible, and the poll resets instead of splicing across it. */
-		hasNewer: direction === "older" ? bounded.dropped : false,
+		/*
+		 * STICKY (agent review round 3, m8). The flag means "this window does not
+		 * reach the present", and no older read can restore that: an older page that
+		 * adds nothing (duplicates, an empty page while `has_more` still says more)
+		 * leaves `bounded.dropped` false, and clearing the flag would let the next
+		 * poll union across the hole M4 closed.
+		 */
+		hasNewer:
+			direction === "older"
+				? previous?.hasNewer === true || bounded.dropped
+				: false,
 		approxBytes: approxChannelBytes(bounded.messages),
 		...(carrying.events === undefined ? {} : { events: carrying.events }),
 		...(carrying.events_truncated === undefined
 			? {}
 			: { events_truncated: carrying.events_truncated }),
 	};
+}
+
+/**
+ * Fold an older page in ONLY if the window is still the one it was asked for
+ * (agent review round 3, M4-a).
+ *
+ * `loadOlder` captures `beforeSeq` when it is issued and the read takes a round
+ * trip; the 8 s poll is a separate read and is not blocked by that mutation. If
+ * a poll's `hasNewer` reset lands first, the window is replaced with the newest
+ * page, and merging the older page into it yields TWO DISJOINT STRETCHES in one
+ * array - under the cap, so nothing drops, with `hasNewer:false`, so the next
+ * poll unions rather than resets and the hole survives. The cursor is the
+ * identity of the window the page belongs to: a reset or a trim changes it, and
+ * a page answered for a different one is discarded rather than spliced.
+ */
+export function mergeOlderPageAtCursor(
+	current: ChannelMessages | undefined,
+	page: TeamBridgeMessagePage,
+	cursor: number | undefined,
+	limits: { maxMessages?: number; maxBytes?: number } = {},
+): ChannelMessages | undefined {
+	if (current === undefined) return undefined;
+	if (cursor === undefined || current.oldestSeq !== cursor) return current;
+	return mergeChannelPage(current, page, "older", limits);
 }
 
 /** The window with rows replaced in place (a thread-unread write), re-bounded. */
