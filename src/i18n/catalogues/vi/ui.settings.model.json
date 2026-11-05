@@ -33,5 +33,7 @@
 	"ui.settings.model.system_prompt.load_failed": "Không tải được prompt hệ thống: {reason}",
 	"ui.settings.model.system_prompt.rich_text": "Văn bản có định dạng",
 	"ui.settings.model.system_prompt.source": "Mã nguồn Markdown",
-	"ui.settings.model.system_prompt.source_required": "Tài liệu này dùng cú pháp Markdown mà trình soạn thảo trực quan không thể giữ nguyên. Hãy chỉnh sửa mã nguồn để bảo toàn mọi chỉ dẫn."
+	"ui.settings.model.system_prompt.source_required": "Tài liệu này dùng cú pháp Markdown mà trình soạn thảo trực quan không thể giữ nguyên. Hãy chỉnh sửa mã nguồn để bảo toàn mọi chỉ dẫn.",
+	"ui.settings.model.system_prompt.source_edit": "Chỉnh sửa mã nguồn",
+	"ui.settings.model.system_prompt.source_stale": "Phần này đã thay đổi trong lúc bạn chỉnh sửa. Hãy hủy và mở lại để giữ nguyên các chỉ dẫn mới nhất."
 }

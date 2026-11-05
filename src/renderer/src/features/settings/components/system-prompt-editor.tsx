@@ -1,9 +1,9 @@
+import { SourcePreservingMarkdown } from "@features/chat/components/canvas/source-preserving-markdown";
 import { WysiwygMarkdownEditor } from "@features/chat/components/canvas/wysiwyg-markdown-editor";
 import type { CanvasDocument } from "@features/chat/types/canvas";
-import { Alert, Button, Textarea } from "@shared/components/ui";
+import { Button, Textarea } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useCallback, useId, useMemo, useState } from "react";
-import { canRichEditPrompt } from "./system-prompt-markdown";
 
 /** Settings owns canonical Markdown and its explicit Save boundary. Mode switches
  * never serialize the rich DOM: only an actual user edit may change the draft. */
@@ -17,8 +17,13 @@ export const SystemPromptEditor = ({
 	disabled?: boolean;
 }) => {
 	const id = useId();
-	const [safe, setSafe] = useState(() => canRichEditPrompt(value));
-	const [source, setSource] = useState(() => !safe);
+	const [source, setSource] = useState(false);
+	const [codec] = useState(
+		() =>
+			new SourcePreservingMarkdown(
+				t("ui.settings.model.system_prompt.source_edit"),
+			),
+	);
 	const [generation, setGeneration] = useState(0);
 	// Stable document identity during typing keeps selection, undo and scroll.
 	// Re-entering rich mode mounts the latest canonical source, not a stale DOM.
@@ -42,13 +47,13 @@ export const SystemPromptEditor = ({
 			onChange: richChange,
 			disabled,
 			label: t("ui.settings.model.system_prompt.instructions"),
+			codec,
+			sourceLabel: t("ui.settings.model.system_prompt.source_edit"),
+			sourceStaleLabel: t("ui.settings.model.system_prompt.source_stale"),
 		}),
-		[richChange, disabled],
+		[richChange, disabled, codec],
 	);
 	const enterRich = () => {
-		const supported = canRichEditPrompt(value);
-		setSafe(supported);
-		if (!supported) return;
 		setRichInitial(value);
 		setGeneration((n) => n + 1);
 		setSource(false);
@@ -79,9 +84,6 @@ export const SystemPromptEditor = ({
 					{t("ui.settings.model.system_prompt.source")}
 				</Button>
 			</fieldset>
-			{!safe && (
-				<Alert>{t("ui.settings.model.system_prompt.source_required")}</Alert>
-			)}
 			{source ? (
 				<Textarea
 					id="app-system-prompt"
