@@ -26,7 +26,8 @@ Stop on failed startup, blank page, or unresolved imports; no fallback browser.
 Host: `http://127.0.0.1:5211/session-switch-preview.html?scene=long`
 Other fixed `scene` values: `short`, `only`, `echo`, `code`, `links`.
 Host selectors: `#scene` (native select), `#narrow`, `#wide`, `#reload`, `#sample`,
-`#chat-fixture` (iframe titled "Real ChatPage fixture"), `#evidence` (read-only JSON).
+`#chat-fixture` (iframe titled "Real ChatPage fixture"), `#evidence` (compact read-only summary),
+`#download-evidence` (actual user-click download of full sample JSON).
 The existing direct page and galleries remain available and unmodified.
 
 ## Serial clock budget
@@ -50,7 +51,8 @@ The existing direct page and galleries remain available and unmodified.
   navigates the child afresh; it intentionally clears fixture localStorage just
   like the existing standalone fixture. This is distinct from reopening a session
   in the same mounted app. Compare evidence recordId/session and scroll offsets.
-- **260–300s**: save uniquely named screenshots/recording and evidence JSON text,
+- **260–300s**: save uniquely named screenshots/recording, compact summary and full JSON via
+  the actual "Download full sample JSON" link (use supported browser download),
   read logs, close the owned browser tab, stop the exact owned Vite job/group.
   Verify group exit AND port 5211 closed. The 300s wall bound is the fallback,
   not permission to leave a server behind. Never kill by name.
@@ -60,8 +62,11 @@ The existing direct page and galleries remain available and unmodified.
 Sampling is armed before iframe navigation. It retains every rAF observation,
 max 180 frames / 5 seconds per run. Read-only pointer/key listeners re-arm before
 real input handlers; there is no synthetic input, focus, scroll or style change.
-The first run is retained plus five recent runs. Save evidence before navigating
-or selecting a new host URL; the bounded ring is not an archival store.
+The first run is retained plus five recent runs. Download full evidence before navigating
+or selecting a new host URL; the bounded ring is not an archival store. Full samples
+exist only in memory and a click-generated Blob download, never in the page's AX
+tree. The visible summary is capped at 2200 characters / 11 lines; it is NOT the
+full sample archive. Blob URLs are revoked on the next download or page exit.
 
 `firstContentIndex=-1` means NO user row was observed within that budget: not PASS.
 `viewport.matches=false` invalidates narrow/wide evidence. `stableFrames` counts

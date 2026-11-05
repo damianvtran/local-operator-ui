@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
 	MAX_SAMPLES,
 	SCENES,
 	SIZES,
+	evidenceBlob,
+	evidenceSummary,
 	readFrame,
 	sceneUrl,
 	startSamples,
@@ -113,4 +116,57 @@ test("every early observation is retained with hard frame and wall bounds", () =
 	);
 	cancel();
 	assert.equal(stopped.pending(), false);
+});
+
+test("compact AX summary stays bounded while click-download bytes retain every early sample", async () => {
+	const samples = Array.from({ length: MAX_SAMPLES }, (_, index) => ({
+		state: "content-observed",
+		elapsedMs: index * 16,
+		cap: { height: index === 0 ? 900 : 174 },
+		maxHeight: "174px",
+		viewport: { width: 800, height: 600, matches: true },
+		recordId: "synthetic-user",
+		session: "#/chat/abcdef000001",
+		focused: { tag: "BUTTON", text: "Show more", disclosure: true },
+		scrolls: [{ top: 12, height: 600, scrollHeight: 900 }],
+	}));
+	const runs = Array.from({ length: 6 }, () => ({
+		scenario: "long",
+		expectedViewport: [800, 600],
+		samples,
+		done: true,
+		stableFrames: 12,
+	}));
+	const summary = evidenceSummary("frozen-source-sha", runs);
+	assert.ok(summary.length <= 2200);
+	assert.equal(summary.split("\n").length, 11);
+	for (const expected of [
+		"frozen-source-sha",
+		"Runs: 6",
+		"900/174px",
+		"174/174px",
+		'"matches":true',
+		"synthetic-user",
+		"abcdef000001",
+		"stable frames=12",
+	]) {
+		assert.ok(summary.includes(expected), expected);
+	}
+	const blob = evidenceBlob("frozen-source-sha", runs);
+	assert.equal(blob.type, "application/json");
+	const full = JSON.parse(await blob.text());
+	assert.deepEqual(full, { source: "frozen-source-sha", runs });
+	assert.equal(full.runs[0].samples[0].cap.height, 900);
+	assert.equal(full.runs[5].samples.length, MAX_SAMPLES);
+	assert.ok((await blob.text()).length > summary.length * 10);
+	const html = readFileSync(
+		new URL("./session-switch-preview.html", import.meta.url),
+		"utf8",
+	);
+	assert.ok(html.includes('<select id="scene">'));
+	assert.ok(html.includes('id="download-evidence"'));
+	assert.ok(
+		!html.includes("<details"),
+		"hiding raw JSON in details does not bound its AX tree",
+	);
 });

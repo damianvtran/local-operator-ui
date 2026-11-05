@@ -132,6 +132,48 @@ export function startSamples(read, publish, clock) {
 	};
 }
 
+/** Keep observations in memory, not AX: a full run can contain 1080 samples.
+ * Publishing those as visible text stalls browser snapshots and hides controls.
+ * The summary has fixed line/sequence bounds; download remains lossless. */
+export function evidenceSummary(source, runs) {
+	const firstRun = runs[0];
+	const initial = firstRun?.samples ?? [];
+	const firstIndex = initial.findIndex(
+		(sample) => sample.state === "content-observed",
+	);
+	const first = initial[firstIndex];
+	const latest = runs.at(-1);
+	const last = latest?.samples?.at(-1);
+	const heights = [];
+	for (const sample of initial) {
+		if (sample.state !== "content-observed") continue;
+		const value = `${Math.round(sample.elapsedMs)}ms:${sample.cap?.height ?? "none"}/${sample.maxHeight ?? "none"}`;
+		const signature = `${sample.cap?.height}/${sample.maxHeight}`;
+		if (signature !== heights.at(-1)?.signature && heights.length < 6)
+			heights.push({ signature, value });
+	}
+	const lines = [
+		`Source: ${source}`,
+		`Runs: ${runs.length} (initial + latest five retained); latest scenario: ${latest?.scenario ?? "none"}`,
+		`Viewport expected: ${JSON.stringify(latest?.expectedViewport ?? null)}; actual: ${JSON.stringify(last?.viewport ?? null)}`,
+		`First content: index=${firstIndex}, elapsed=${first?.elapsedMs ?? "none"}ms; cap height/max=${first?.cap?.height ?? "none"}/${first?.maxHeight ?? "none"}`,
+		`Initial cap sequence (first six changes): ${heights.map((height) => height.value).join(", ") || "none observed"}`,
+		`Latest: state=${last?.state ?? "pending"}; done=${latest?.done ?? false}; observed stable frames=${latest?.stableFrames ?? 0}`,
+		`Last cap: ${JSON.stringify(last?.cap ?? null)}; max=${last?.maxHeight ?? "none"}; expanded=${last?.expanded ?? "none"}`,
+		`Focus: ${JSON.stringify(last?.focused ?? null)}; selection length=${last?.selectionLength ?? 0}`,
+		`Row: ${last?.recordId ?? "none"}; session: ${last?.session ?? "none"}`,
+		`Scroll (first three ancestors): ${JSON.stringify(last?.scrolls?.slice(0, 3) ?? [])}`,
+		"Geometry observations only; full samples are available via Download full sample JSON.",
+	];
+	return lines.join("\n").slice(0, 2200);
+}
+
+export function evidenceBlob(source, runs) {
+	return new Blob([JSON.stringify({ source, runs }, null, 2)], {
+		type: "application/json",
+	});
+}
+
 if (typeof document !== "undefined") {
 	const frame = document.createElement("iframe");
 	frame.title = "Real ChatPage fixture";
@@ -162,11 +204,9 @@ if (typeof document !== "undefined") {
 					: readFrame(frame, expected),
 			(run) => {
 				Object.assign(entry, run);
-				document.querySelector("#evidence").textContent = JSON.stringify(
-					{ source, runs },
-
-					null,
-					2,
+				document.querySelector("#evidence").textContent = evidenceSummary(
+					source,
+					runs,
 				);
 			},
 			{
@@ -195,7 +235,23 @@ if (typeof document !== "undefined") {
 	document.querySelector("#sample").onclick = () => sample();
 	document.querySelector("#reload").onclick = remount;
 	scene.onchange = remount;
-	window.addEventListener("pagehide", () => cancel(), { once: true });
+	let downloadUrl;
+	const download = document.querySelector("#download-evidence");
+	download.addEventListener("click", () => {
+		// Build bytes only on an actual user/tool click, not every animation frame.
+		if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+		downloadUrl = URL.createObjectURL(evidenceBlob(source, runs));
+		download.href = downloadUrl;
+		download.download = `session-switch-preview-${source.slice(0, 12)}-${Date.now()}.json`;
+	});
+	window.addEventListener(
+		"pagehide",
+		() => {
+			cancel();
+			if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+		},
+		{ once: true },
+	);
 	// Observing actual input is not forwarding or synthesising it. Start before
 	// the real handler runs so its next rendered geometry can be retained.
 	frame.addEventListener("load", () => {
