@@ -72,7 +72,14 @@ const disclosure = (over: Record<string, unknown> = {}) => ({
 const revert = {
 	schema: 1 as const,
 	kind: "profile_revert" as const,
-	action_id: "ra_5b81",
+	/*
+	 * A REAL MINT, taken from the golden wire artifact's saved agent result:
+	 * `prv_` + exactly 32 URL-safe characters, which is what the pinned descriptor
+	 * schema accepts (`local_operator/profile_actions.py`). The pre-pin placeholder
+	 * `ra_5b81` could not parse, so this story's `profileSaveCall` returned null and
+	 * the fixture threw instead of drawing the card.
+	 */
+	action_id: "prv_pwZv3cu-siPFNmFYUTAtZGx5Jv09q1uT",
 	label: "Revert",
 	profile_kind: "agent" as const,
 	profile_name: "Researcher",
@@ -124,7 +131,13 @@ export const Saved: Story = {
 			const base = viewOf({
 				disclosure: disclosure(),
 				state: "applied",
-				revert,
+				/*
+				 * THE DESCRIPTOR'S HOME IS `profile_action`, not `revert`: `revert` is the
+				 * legacy `{op, backup_id}` text hint, and an envelope carrying it is refused
+				 * by the card's closed key set. This fixture used the legacy key, so the
+				 * headline story could not bind at all.
+				 */
+				profile_action: revert,
 				revert_verified: true,
 			});
 			return { ...base, revert: profileRevertView(revert) };
