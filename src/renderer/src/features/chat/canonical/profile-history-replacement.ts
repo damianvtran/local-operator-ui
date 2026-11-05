@@ -10,23 +10,46 @@ function object(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/** Per-transcript, never process-global: a different conversation gets a new state. */
+export type PendingProfileHistoryReplacement = {
+	entry: DesktopHistoryEntry;
+	conflict?: boolean;
+};
+export const MAX_PENDING_PROFILE_REPLACEMENTS = 32;
+const MAX_PROFILE_REPLACEMENT_BYTES = 32 * 1024;
+const MAX_PENDING_PROFILE_BYTES = 256 * 1024;
+
 /**
  * Core's append-only profile apply replaces an existing message via a prune entry,
  * not another ordinary tool message (Q9-B). Fold only that bounded replacement at
  * the original message's position. The notice is bookkeeping, never a new row or
  * authority. Missing targets on partial pages stay silent until the target is held;
  * native call, receipt, approval and request identities must all agree first.
+ *
+ * A newest-first page can contain the prune before its older target (C9-1).
+ * Retain only validated, non-rendered candidates in the owning transcript, bounded
+ * to 32 entries / 256 KiB total / 32 KiB per entry. Overflow is refused, not
+ * promoted to completion. A scope/view/source reset drops this temporary state;
+ * pagination alone does not. Conflicts remain non-authoritative tombstones.
  */
 export function profileHistoryReplacements(
 	entries: DesktopHistoryEntry[],
 	records: readonly TranscriptRecord[],
-): DesktopHistoryEntry[] {
+	pending: readonly PendingProfileHistoryReplacement[] = [],
+): {
+	entries: DesktopHistoryEntry[];
+	pending: readonly PendingProfileHistoryReplacement[];
+} {
 	const originals = new Map(
 		entries.filter((e) => e.type === "message").map((e) => [e.id, e]),
 	);
 	const replacements = new Map<string, DesktopHistoryEntry>();
 	const partial = new Map<string, DesktopHistoryEntry>();
-	for (const entry of entries) {
+	const grouped = new Map<string, PendingProfileHistoryReplacement>();
+	const conflicts = new Set(
+		pending.filter((p) => p.conflict).map((p) => p.entry.payload.target),
+	);
+	for (const entry of [...pending.map((p) => p.entry), ...entries]) {
 		if (entry.type !== "prune" || !object(entry.payload)) continue;
 		const { target, replacement } = entry.payload;
 		if (
@@ -82,17 +105,72 @@ export function profileHistoryReplacements(
 		if (
 			!after ||
 			after.status !== "applied" ||
+			after.profile_kind !== toolName ||
 			!action ||
 			action.receipt_id !== after.receipt_id ||
 			action.profile_kind !== after.profile_kind ||
 			action.profile_name !== after.profile_name
 		)
 			continue;
+		// A conflicting publication for one target is not a last-writer-wins
+		// instruction. Keep a bounded tombstone until its target is encountered.
+		if (
+			new TextEncoder().encode(JSON.stringify(entry)).length >
+			MAX_PROFILE_REPLACEMENT_BYTES
+		)
+			continue;
+		const held = grouped.get(target);
+		const conflict =
+			conflicts.has(target) ||
+			Boolean(
+				held &&
+					JSON.stringify(held.entry.payload.replacement) !==
+						JSON.stringify(replacement),
+			);
+		grouped.set(target, {
+			entry: held?.entry ?? entry,
+			...(conflict || held?.conflict ? { conflict: true } : {}),
+		});
+	}
+	const deferred: PendingProfileHistoryReplacement[] = [];
+	let deferredBytes = 2;
+	const defer = (candidate: PendingProfileHistoryReplacement) => {
+		const bytes =
+			new TextEncoder().encode(JSON.stringify(candidate)).length +
+			(deferred.length ? 1 : 0);
+		if (
+			deferred.length < MAX_PENDING_PROFILE_REPLACEMENTS &&
+			deferredBytes + bytes <= MAX_PENDING_PROFILE_BYTES
+		) {
+			deferred.push(candidate);
+			deferredBytes += bytes;
+		}
+	};
+	for (const candidate of grouped.values()) {
+		const { entry } = candidate;
+		const { target, replacement } = entry.payload as {
+			target: string;
+			replacement: Record<string, unknown>;
+		};
+		const toolName = replacement.tool_name as string;
+		const after = profileQueuedReceipt(
+			(replacement.provider_payload as Record<string, unknown>).details,
+		);
+		if (!after) continue;
 		const original = originals.get(target);
 		const previous = !original
 			? records.find((r) => r.kind === "tool" && r.sourceEntryId === target)
 			: undefined;
-		if (!original && (!previous || previous.kind !== "tool")) continue;
+		if (
+			candidate.conflict ||
+			(!original && (!previous || previous.kind !== "tool"))
+		) {
+			defer(candidate);
+			continue;
+		}
+		// Consume exactly once when the target arrives, even on a bad binding.
+		// A conflict tombstone remains until reset so replay cannot pick a winner.
+
 		const beforePayload = original?.payload;
 		const beforeDetails =
 			beforePayload && object(beforePayload.provider_payload)
@@ -101,7 +179,6 @@ export function profileHistoryReplacements(
 					? previous.details
 					: null;
 		const before = profileQueuedReceipt(beforeDetails);
-		if (after.profile_kind !== toolName) continue;
 		const callId =
 			beforePayload?.tool_call_id ??
 			(previous?.kind === "tool" ? previous.toolCallId : null);
@@ -144,9 +221,23 @@ export function profileHistoryReplacements(
 		if (original) replacements.set(target, effective);
 		else partial.set(entry.id, effective);
 	}
-	return entries.map(
+	const normalized = entries.map(
 		(entry) => replacements.get(entry.id) ?? partial.get(entry.id) ?? entry,
 	);
+	// A deferred prune can bind a target already held by this view even if neither
+	// appears on the new page. Keep its original native message identity, not a row
+	// for the prune's notice. Current-page prunes were already mapped above.
+	for (const [pruneId, effective] of partial) {
+		if (!entries.some((entry) => entry.id === pruneId))
+			normalized.push(effective);
+	}
+	const samePending =
+		pending.length === deferred.length &&
+		deferred.every(
+			(p, i) =>
+				p.entry === pending[i].entry && p.conflict === pending[i].conflict,
+		);
+	return { entries: normalized, pending: samePending ? pending : deferred };
 }
 
 /** An original-only older page cannot undo its already admitted append-only prune. */
