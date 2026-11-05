@@ -4417,6 +4417,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
+	// Profile writes echo the reviewed commitments, never a model-authored command.
+	...(["approvals.approveOperation", "approvals.applyOperation"] as const).map(
+		(op) =>
+			z
+				.object({
+					op: z.literal(op),
+					approvalId,
+					operation: z.literal("profile_save"),
+					requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+					disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+				})
+				.strict(),
+	),
 	/*
 	 * THE TYPED CREDENTIAL DECISIONS (`features.credential_approvals`). A credential
 	 * permission cannot ride the bodiless `approve` above: that request proves
@@ -8519,6 +8532,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 * else (the model forbids extras), each copied from the request unchanged so
 		 * the digests reach the server exactly as the list row served them.
 		 */
+		case "approvals.approveOperation":
+		case "approvals.applyOperation":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/${request.op === "approvals.approveOperation" ? "approve-operation" : "apply-operation"}`,
+				method: "POST",
+				body: {
+					operation: request.operation,
+					request_digest: request.requestDigest,
+					disclosure_digest: request.disclosureDigest,
+				},
+			};
 		case "approvals.approveCredential":
 		case "approvals.applyCredential":
 			return {

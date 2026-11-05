@@ -985,6 +985,18 @@ export type DesktopFeature =
 	 * keeps its Deny-and-remedy shape, exactly as before.
 	 */
 	| "credential_approvals"
+	/**
+	 * Typed PROFILE approval (`features.profile_approvals`): the `typed_approval`
+	 * block on a `profile_save` row plus `approve-operation` / `apply-operation`,
+	 * the two allowlisted posts that carry the reviewed operation and digests.
+	 *
+	 * ITS OWN KEY, for the same reason the credential one has one: a backend
+	 * without the kind registered has no route that accepts the body, so a renderer
+	 * that offered Approve there would POST into a 404. Absent ⇒ the profile card
+	 * states the proposal and its diff - the store is the authority for what was
+	 * filed - and offers no signature.
+	 */
+	| "profile_approvals"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
