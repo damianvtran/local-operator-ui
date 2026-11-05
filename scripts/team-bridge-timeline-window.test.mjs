@@ -274,3 +274,69 @@ test("nearHistoryEdge: no more history, or a page already in flight, asks nothin
 		false,
 	);
 });
+
+/* ------------------------------------------------------------- day pill */
+
+/*
+ * THE FLOATING DAY PILL: which day it names, and when it steps aside.
+ *
+ * This is the regression the windowed strip introduced: the grouped list's pill
+ * was `sticky top-2` inside each day's containing block, so a long day kept its
+ * label on screen. The strip cannot sticky (a group exists only around the rows
+ * that happen to be mounted), so the pill follows the viewport instead - and
+ * these cases pin the two things a reader would notice if it disagreed with the
+ * rows: the NAME, and the handover to the day's own divider.
+ */
+const dayItems = () => [day("d1"), row("m1"), row("m2"), day("d2"), row("m3")];
+
+test("stickyDayAt: the pill names the day of the first visible row", () => {
+	const items = dayItems();
+	const layout = windowMath.windowLayout(entries(items), new Map());
+	/* 140px in: d1's divider is 140px above the top edge, so the reading position
+	   is inside d1's rows and the label must be d1 - not the last day on screen. */
+	const sticky = windowMath.stickyDayAt(entries(items), layout, 140);
+	assert.equal(sticky.day.key, "d1");
+	assert.equal(sticky.hidden, false, "the divider's own pill is long gone");
+});
+
+test("stickyDayAt: the next day's divider takes the label over as it arrives", () => {
+	const items = dayItems();
+	const layout = windowMath.windowLayout(entries(items), new Map());
+	/* d2 starts at 232px; d2's FIRST row is visible from 232px on. */
+	const arriving = windowMath.stickyDayAt(entries(items), layout, 232);
+	assert.equal(arriving.day.key, "d2");
+	assert.equal(
+		arriving.hidden,
+		true,
+		"its own divider is at the top: no second pill",
+	);
+	const passed = windowMath.stickyDayAt(entries(items), layout, 260);
+	assert.equal(passed.day.key, "d2");
+	assert.equal(passed.hidden, false);
+});
+
+test("stickyDayAt: hidden while that day's own divider is still on screen", () => {
+	const items = dayItems();
+	const layout = windowMath.windowLayout(entries(items), new Map());
+	/* At the very top the divider is in flow at 0px; 8px and 20px in its pill is
+	   still visible at the top edge (it is 24px tall), so the overlay stands
+	   aside - the brief's "within ~8px of the viewport top", widened to the pill
+	   because a 24px pill is on screen for 24px of scroll. */
+	assert.equal(windowMath.stickyDayAt(entries(items), layout, 0).hidden, true);
+	assert.equal(windowMath.stickyDayAt(entries(items), layout, 8).hidden, true);
+	assert.equal(windowMath.stickyDayAt(entries(items), layout, 20).hidden, true);
+	assert.equal(
+		windowMath.stickyDayAt(entries(items), layout, 30).hidden,
+		false,
+	);
+});
+
+test("stickyDayAt: no pill without a day divider, and none on an empty strip", () => {
+	const bare = [row("m1"), row("m2")];
+	const layout = windowMath.windowLayout(entries(bare), new Map());
+	assert.equal(windowMath.stickyDayAt(entries(bare), layout, 100), null);
+	assert.equal(
+		windowMath.stickyDayAt([], windowMath.windowLayout([], new Map()), 0),
+		null,
+	);
+});

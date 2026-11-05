@@ -60,7 +60,10 @@ import {
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { TeamBridgeThreadRow } from "./team-bridge-thread-row";
 import { threadSummary } from "./team-bridge-threads-model";
-import { windowEntryKey } from "./team-bridge-window";
+import {
+	TEAM_BRIDGE_DAY_PILL_REST_PX,
+	windowEntryKey,
+} from "./team-bridge-window";
 import { useTimelineWindow } from "./use-team-bridge-timeline-window";
 
 /**
@@ -392,7 +395,7 @@ export const TeamBridgeMessageList: FC<{
 		// keyed on the stored id would remount it at the moment it settles.
 		[items, present],
 	);
-	const { range, spacers } = useTimelineWindow({
+	const { range, spacers, stickyDay, scrollTop } = useTimelineWindow({
 		entries,
 		listRef,
 		scrollRootRef,
@@ -543,9 +546,18 @@ export const TeamBridgeMessageList: FC<{
 		   `display: table`; see their ScrollArea class names. */
 		<ol
 			ref={listRef}
-			className="mt-auto flex w-full min-w-0 flex-col pt-4 pb-2"
+			/* `relative` is the overlay's containing block (the floating day pill); it
+			   is the scroll content, so `top` in it is a content offset. */
+			className="relative mt-auto flex w-full min-w-0 flex-col pt-4 pb-2"
 		>
 			{eventSlot(TEAM_BRIDGE_EVENTS_LEADING)}
+			{windowed && stickyDay !== null && !stickyDay.hidden && (
+				<DayPillOverlay
+					day={stickyDay.day}
+					scrollTop={scrollTop}
+					locale={locale}
+				/>
+			)}
 			{/* ABOVE THE LEADING SPACER on purpose: the edge of history belongs to
 			    the top of the conversation, not to whichever row is mounted first. */}
 			{windowed && (
@@ -684,6 +696,21 @@ function dayLabel(
 	);
 }
 
+/**
+ * THE DAY PILL ITSELF - one markup, three places.
+ *
+ * The grouped list's sticky pill, the windowed strip's day row and the floating
+ * overlay (`DayPillOverlay`) are the same object drawn by the same component, so
+ * "which day is this" cannot look different depending on which one a reader is
+ * looking at. `elevated` is the design contract: ΔE00 >= 4.17 off the `canvas`
+ * pane on every palette, so the pill occludes the text it floats over.
+ */
+const DayPill: FC<{ label: string }> = ({ label }) => (
+	<span className="flex h-6 items-center rounded-full bg-elevated px-2.5 font-medium text-[12px] text-ink-muted">
+		{label}
+	</span>
+);
+
 const DayGroup: FC<{
 	item: Extract<ThreadItem, { type: "day" }> | null;
 	locale: string;
@@ -706,9 +733,7 @@ const DayGroup: FC<{
 						data-day-divider=""
 						className="pointer-events-none sticky top-2 z-[5] flex justify-center py-2"
 					>
-						<span className="flex h-6 items-center rounded-full bg-elevated px-2.5 font-medium text-[12px] text-ink-muted">
-							{label}
-						</span>
+						<DayPill label={label} />
 					</div>
 				</>
 			)}
@@ -773,9 +798,9 @@ const HistoryEdge: FC<{
  * therefore becomes an ordinary item - same rule, same pill, same label, same
  * place in the flow - and scrolls with the rows it introduces.
  *
- * That trade is taken deliberately: the floating date is a convenience that
- * only matters in a long conversation, which is exactly the conversation where
- * the alternative is mounting the whole history twice over.
+ * The date still FLOATS while a long day scrolls past; it is drawn once by
+ * `DayPillOverlay`, which follows the viewport instead of a day group. Nothing
+ * is lost from the grouped list's behaviour - only the mechanism changes.
  */
 const DayHeading: FC<{
 	item: Extract<ThreadItem, { type: "day" }>;
@@ -800,11 +825,51 @@ const DayHeading: FC<{
 				data-day-divider=""
 				className="flex justify-center py-2"
 			>
-				<span className="flex h-6 items-center rounded-full bg-elevated px-2.5 font-medium text-[12px] text-ink-muted">
-					{label}
-				</span>
+				{/* `dayLabel` answers a string for a day item; the null case is the
+				    grouped list's pill-less group, which cannot reach this component. */}
+				<DayPill label={label ?? ""} />
 			</div>
 		</li>
+	);
+};
+
+/*
+ * THE FLOATING DAY PILL, FOR THE WINDOWED STRIP.
+ *
+ * WHY NOT `sticky`: a sticky element sticks inside its containing block, and in a
+ * windowed list the only containing block available is the whole strip (a day
+ * group would exist only around the rows that happen to be mounted). A pill
+ * sticking to the strip would then never hand over to the next day's divider -
+ * it would sit there naming the wrong day. So the pill is drawn ONCE, below the
+ * scroll viewport's top edge, and it follows the viewport rather than a day.
+ *
+ * The day it names is the first visible row's day (`stickyDayAt`) - exactly what
+ * the sticky pill showed - and it steps aside while that day's own row is at the
+ * resting place, so the two are never on screen together.
+ *
+ * `scrollTop` is the window hook's own state, the same number the visible slice
+ * is cut from, so the pill cannot lag the rows by a frame and needs no listener
+ * of its own.
+ */
+const DayPillOverlay: FC<{
+	day: Extract<ThreadItem, { type: "day" }>;
+	scrollTop: number;
+	locale: string;
+}> = ({ day, scrollTop, locale }) => {
+	const label = dayLabel(day, locale);
+	if (label === null) return null;
+	return (
+		<div
+			aria-hidden="true"
+			data-day-pill-overlay=""
+			className="pointer-events-none absolute inset-x-0 z-[5] flex justify-center py-2"
+			/* The `<ol>` is the scroll CONTENT, so an offset of `scrollTop + 8`
+			   lands 8px below the viewport's top edge at every scroll position - the
+			   same resting place `sticky top-2` gave the grouped pill. */
+			style={{ top: scrollTop + TEAM_BRIDGE_DAY_PILL_REST_PX }}
+		>
+			<DayPill label={label} />
+		</div>
 	);
 };
 

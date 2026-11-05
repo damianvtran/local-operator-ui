@@ -252,3 +252,68 @@ export function nearHistoryEdge({
 	if (firstVisible <= TEAM_BRIDGE_TOPNESS_ROWS) return true;
 	return scrollTop <= viewportHeight * TEAM_BRIDGE_TOPNESS_VIEWPORTS;
 }
+
+/**
+ * WHERE THE FLOATING DAY PILL RESTS, in pixels below the viewport's top edge,
+ * and how tall it is (`h-6` in `DayPill`).
+ *
+ * The grouped list's pill is `sticky top-2` (8px), and this overlay stands in
+ * for it in the windowed strip, so the two must rest at the same place: a reader
+ * who resizes, or switches conversation, must not see the date move. The height
+ * is what decides the HANDOVER below.
+ */
+export const TEAM_BRIDGE_DAY_PILL_REST_PX = 8;
+export const TEAM_BRIDGE_DAY_PILL_HEIGHT_PX = 24;
+
+/** The day divider that owns the top of the viewport, for the floating pill. */
+export type StickyDay = {
+	day: Extract<ThreadItem, { type: "day" }>;
+	key: string;
+	/** That day's own divider is still on screen at the top edge, so drawing the
+	 * overlay as well would show two labels for one day. */
+	hidden: boolean;
+};
+
+/**
+ * WHICH DAY THE FLOATING PILL SHOWS - exactly what the grouped list's sticky
+ * pill showed before the timeline was windowed.
+ *
+ * The rule is the first VISIBLE item's day: walk back from the first item whose
+ * bottom is below the viewport's top edge to the day divider that precedes it.
+ * That is what `position: sticky` inside a per-day containing block did - while
+ * you scroll through a long day its label stays put, and the moment the next
+ * day's divider arrives the label changes.
+ *
+ * `hidden` is the HANDOVER, and its band is the pill's own height rather than an
+ * arbitrary few pixels: a day divider is only ever the first visible item once
+ * its own top has reached the viewport's top edge (`top <= 0`), and its pill -
+ * 24px tall - is still partly on screen until `top < -24`. Overlaying a second
+ * pill while that one is visible is the double label this flag exists to
+ * prevent; the overlay takes over exactly when the divider's pill has gone.
+ *
+ * `null` means "no pill": an empty strip, or a top row whose day divider is not
+ * in the retained window at all (the oldest history was trimmed, so there is no
+ * label to show rather than a guessed one).
+ */
+export function stickyDayAt(
+	entries: readonly WindowEntry[],
+	layout: WindowLayout,
+	scrollTop: number,
+	pillHeight: number = TEAM_BRIDGE_DAY_PILL_HEIGHT_PX,
+): StickyDay | null {
+	if (entries.length === 0 || layout.keys.length === 0) return null;
+	const start = Math.min(
+		firstVisibleIndex(layout, scrollTop),
+		entries.length - 1,
+	);
+	for (let index = start; index >= 0; index -= 1) {
+		const entry = entries[index];
+		if (entry.item.type !== "day") continue;
+		return {
+			day: entry.item,
+			key: entry.key,
+			hidden: layout.offsets[index] - scrollTop > -pillHeight,
+		};
+	}
+	return null;
+}

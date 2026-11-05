@@ -2,10 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { WindowEntry } from "./team-bridge-window";
 import {
+	type StickyDay,
 	type WindowAnchor,
 	type WindowLayout,
 	firstVisibleIndex,
 	nearHistoryEdge,
+	stickyDayAt,
 	windowAnchor,
 	windowAnchorDelta,
 	windowLayout,
@@ -78,6 +80,14 @@ export function useTimelineWindow({
 	layout: WindowLayout;
 	range: { start: number; end: number };
 	spacers: { before: number; after: number };
+	/**
+	 * The day the floating pill shows, and where the viewport's top edge is in
+	 * the strip. Both come from the scroll signal this hook already keeps, so the
+	 * pill costs no second listener - and no second listener means the pill and
+	 * the window can never disagree about what is on screen.
+	 */
+	stickyDay: StickyDay | null;
+	scrollTop: number;
 } {
 	const active = enabled && scrollRootRef !== undefined;
 	const heights = useRef(new Map<string, number>());
@@ -275,5 +285,9 @@ export function useTimelineWindow({
 		anchor.current = windowAnchor(layout, element.scrollTop);
 	}, [active, layout]);
 
-	return { layout, range, spacers };
+	/* The pill's day is the first visible item's day (`stickyDayAt`), read from
+	   the same `scroll` state the window is cut from. Off with the window: an
+	   unwindowed list still has per-day sticky pills of its own. */
+	const stickyDay = active ? stickyDayAt(entries, layout, scroll.top) : null;
+	return { layout, range, spacers, stickyDay, scrollTop: scroll.top };
 }
