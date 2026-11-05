@@ -9,6 +9,7 @@ import {
 	evidenceSummary,
 	readFrame,
 	sceneUrl,
+	scrollHistory,
 	startSamples,
 } from "./session-switch-preview.mjs";
 
@@ -89,6 +90,103 @@ test("viewport evidence reads the child window, not the iframe element's nominal
 	win.innerWidth = 800;
 	assert.equal(readFrame(frame, SIZES.narrow).viewport.matches, true);
 	assert.equal(readFrame(frame, SIZES.narrow).state, "no-user-row");
+});
+
+test("authorized history controls only call native scrollTo on the production container", () => {
+	for (const direction of ["column-reverse", "column"]) {
+		const calls = [];
+		const region = Object.freeze({
+			scrollHeight: 2500,
+			clientHeight: 500,
+			scrollTop: -10,
+			scrollTo: (options) => calls.push(options),
+		});
+		const doc = {
+			querySelector: (selector) => {
+				assert.equal(selector, "[data-lo-transcript-scroll]");
+				return region;
+			},
+			defaultView: {
+				getComputedStyle: (element) => {
+					assert.equal(element, region);
+					return { flexDirection: direction };
+				},
+			},
+		};
+		scrollHistory(doc, "start");
+		scrollHistory(doc, "end");
+		assert.deepEqual(
+			calls,
+			direction === "column-reverse"
+				? [
+						{ top: -2000, behavior: "instant" },
+						{ top: 0, behavior: "instant" },
+					]
+				: [
+						{ top: 0, behavior: "instant" },
+						{ top: 2500, behavior: "instant" },
+					],
+		);
+		assert.equal(
+			region.scrollTop,
+			-10,
+			"helper must not assign scrollTop or other state directly",
+		);
+	}
+	const html = readFileSync(
+		new URL("./session-switch-preview.html", import.meta.url),
+		"utf8",
+	);
+	assert.ok(html.includes('id="history-start"'));
+	assert.ok(html.includes('id="history-end"'));
+});
+
+test("observer records scroll and stable container identity even while exact target is absent", () => {
+	const region = { scrollTop: -2000, clientHeight: 500, scrollHeight: 2500 };
+	const makeRow = () => ({
+		querySelector: () => null,
+		getAttribute: () => "abcdef000001-e87",
+		getBoundingClientRect: () => ({ x: 0, y: 0, width: 600, height: 174 }),
+		parentElement: null,
+	});
+	let row = makeRow();
+	const doc = {
+		activeElement: null,
+		querySelector: (selector) =>
+			selector === "[data-lo-transcript-scroll]"
+				? region
+				: selector.includes("data-record-kind")
+					? row
+					: null,
+	};
+	const frame = {
+		contentDocument: doc,
+		contentWindow: {
+			innerWidth: 800,
+			innerHeight: 600,
+			location: {
+				pathname: "/session-switch.html",
+				href: "http://fixture/session-switch.html",
+				hash: "#/chat/abcdef000001",
+			},
+			getComputedStyle: () => ({ flexDirection: "column-reverse" }),
+			getSelection: () => null,
+		},
+	};
+	const before = readFrame(frame, SIZES.narrow, "abcdef000001-e87");
+	row = null;
+	const absent = readFrame(frame, SIZES.narrow, "abcdef000001-e87");
+	row = makeRow();
+	const restored = readFrame(frame, SIZES.narrow, "abcdef000001-e87");
+	assert.equal(absent.state, "target-not-mounted");
+	assert.equal(absent.targetDomIdentity, null);
+	assert.notEqual(before.targetDomIdentity, restored.targetDomIdentity);
+	assert.equal(
+		before.transcriptScroll.containerDomIdentity,
+		absent.transcriptScroll.containerDomIdentity,
+	);
+	assert.deepEqual(before.transcriptScroll, restored.transcriptScroll);
+	assert.equal(absent.transcriptScroll.scrollTop, -2000);
 });
 
 function scheduler() {

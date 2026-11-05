@@ -62,6 +62,37 @@ export function sceneUrl(scene) {
 	return `session-switch.html?${query}`;
 }
 
+/** Authorized fixture seam: native scrolling only. No focus, selection, store,
+ * expansion, key, remount or virtualizer mutation. The product scroller is
+ * flex-col-reverse: chronological start is its negative scroll range, end is 0. */
+export function scrollHistory(doc, boundary) {
+	if (boundary !== "start" && boundary !== "end")
+		throw new Error("Unknown history boundary");
+	const region = doc.querySelector("[data-lo-transcript-scroll]");
+	if (!region)
+		throw new Error("Production transcript scroll container is absent");
+	const reversed =
+		doc.defaultView.getComputedStyle(region).flexDirection === "column-reverse";
+	const top = reversed
+		? boundary === "start"
+			? -Math.max(0, region.scrollHeight - region.clientHeight)
+			: 0
+		: boundary === "start"
+			? 0
+			: region.scrollHeight;
+	region.scrollTo({ top, behavior: "instant" });
+}
+
+// Observer-owned IDs describe DOM object identity, NOT an exposed React/store
+// identity. Weak keys do not keep retired rows/documents alive.
+const observedNodes = new WeakMap();
+let nextObservedNode = 0;
+function nodeIdentity(node) {
+	if (!node) return null;
+	if (!observedNodes.has(node)) observedNodes.set(node, ++nextObservedNode);
+	return observedNodes.get(node);
+}
+
 function rect(element) {
 	if (!element) return null;
 	const { x, y, width, height } = element.getBoundingClientRect();
@@ -84,6 +115,7 @@ export function readFrame(frame, expected, targetRecord = null) {
 		? cap.nextElementSibling
 		: null;
 	const focus = doc.activeElement;
+	const region = doc.querySelector("[data-lo-transcript-scroll]");
 	const scrolls = [];
 	for (let node = row?.parentElement; node; node = node.parentElement) {
 		if (
@@ -104,6 +136,16 @@ export function readFrame(frame, expected, targetRecord = null) {
 				? "target-not-mounted"
 				: "no-user-row",
 		targetRecord,
+		targetDomIdentity: nodeIdentity(row),
+		transcriptScroll: region
+			? {
+					containerDomIdentity: nodeIdentity(region),
+					scrollTop: region.scrollTop,
+					clientHeight: region.clientHeight,
+					scrollHeight: region.scrollHeight,
+					flexDirection: win.getComputedStyle(region).flexDirection,
+				}
+			: null,
 		domWindowSetting:
 			win.localStorage?.getItem("canonicalTranscriptDomWindow") ?? null,
 		domWindow: (() => {
@@ -227,7 +269,7 @@ export function evidenceSummary(source, runs) {
 		`Last cap: ${JSON.stringify(last?.cap ?? null)}; max=${last?.maxHeight ?? "none"}; expanded=${last?.expanded ?? "none"}`,
 		`Focus: ${JSON.stringify(last?.focused ?? null)}; selection length=${last?.selectionLength ?? 0}`,
 		`Row: ${last?.recordId ?? "none"}; target: ${last?.targetRecord ?? "first user"}; session: ${last?.session ?? "none"}; locale/dir: ${last?.language ?? "?"}/${last?.direction ?? "?"}`,
-		`Scroll (first three ancestors): ${JSON.stringify(last?.scrolls?.slice(0, 3) ?? [])}`,
+		`Transcript scroll: ${JSON.stringify(last?.transcriptScroll ?? null)}; target DOM identity=${last?.targetDomIdentity ?? "absent"}; ancestors: ${JSON.stringify(last?.scrolls?.slice(0, 3) ?? [])}`,
 		"Geometry observations only; full samples are available via Download full sample JSON.",
 	];
 	return lines.join("\n").slice(0, 2200);
@@ -310,6 +352,10 @@ if (typeof document !== "undefined") {
 	document.querySelector("#narrow").onclick = () => resize(SIZES.narrow);
 	document.querySelector("#wide").onclick = () => resize(SIZES.wide);
 	document.querySelector("#sample").onclick = () => sample();
+	document.querySelector("#history-start").onclick = () =>
+		scrollHistory(frame.contentDocument, "start");
+	document.querySelector("#history-end").onclick = () =>
+		scrollHistory(frame.contentDocument, "end");
 	document.querySelector("#reload").onclick = remount;
 	scene.onchange = remount;
 	let downloadUrl;

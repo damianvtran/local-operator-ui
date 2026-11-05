@@ -39,10 +39,24 @@ The existing direct page and galleries remain available and unmodified.
   `off`/fallback result is not a successful unmount. Expand target e87, then use
   an actual click on the child composer to move focus out of the row and clear
   any text selection. Focus/selection retain a row deliberately; expansion of
-  a plain-text user row alone does not. Use the real transcript scroll region
-  to leave the target, capture `target-not-mounted`, then return to the same ID
+  a plain-text user row alone does not. The newly authorized OUTER buttons
+  `#history-start` ("Scroll history to start") and `#history-end` ("Scroll history
+  to end") ONLY locate `[data-lo-transcript-scroll]` and call native `scrollTo`.
+  Trusted root-button clicks release child focus normally; handlers never focus,
+  select, change state/keys or force remount. Start uses the actual negative range
+  `-(scrollHeight-clientHeight)` for the shipped flex-col-reverse scroller; end
+  uses zero. A normal-flow scroller uses zero/scrollHeight instead. Click start
+  to leave the target, capture `target-not-mounted`, then end to return to the same ID
   and capture reconstructed Show less; collapse and record cap174/anchor. Do not
   switch session, reload, invoke handlers or force unmount. Budget 0–160s.
+  Download samples include exact independent container scrollTop/clientHeight/
+  scrollHeight/flexDirection even while target is absent, plus observer-assigned
+  container/target DOM-object identities. A restored target should have a new DOM
+  identity under the same container/session. These are NOT React view-state IDs:
+  no state-owner identifier is exposed. Source keeps the same uninterrupted
+  CanonicalTranscript mounted; neither button navigates or replaces any element.
+  If production retains the row despite native scrolling, report the pin/fallback
+  evidence and leave the remount cell unproved; never add a forced unmount.
 - `?scene=seal` uses the unchanged validated skill payload with a SHORT synthetic
   request (`userLines=0`), so its actual `$capture-demo` nested trigger can fit
   initially rather than sitting above a long bottom-anchored request. Use fresh
