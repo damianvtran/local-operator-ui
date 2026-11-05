@@ -39,6 +39,7 @@ const bundle = await build({
 			export {
 				readProfileRevertStatus,
 				runProfileRevertPress,
+				profileRevertOutcome,
 				profileRevertStatusCache,
 				profileRevertPressAllowed,
 				profileRevertAuthority,
@@ -1234,7 +1235,7 @@ test("the status answer is read from the real ACK frame, and a string detail is 
 test("the cache is keyed on the whole identity, so no other row inherits authority", () => {
 	api.profileRevertStatusCache.clear();
 	const available = { action_id: identity.action_id, state: "available" };
-	api.profileRevertStatusCache.remember("s_9f2c", identity, available);
+	api.profileRevertStatusCache.remember("s_9f2c", identity, available, "read");
 	assert.equal(
 		api.profileRevertStatusCache.read("s_9f2c", identity)?.state,
 		"available",
@@ -1344,10 +1345,12 @@ test("a cached available is not a completion: the press still writes and re-read
 	// The defect (review R2.1 / QA Q2.2): a remembered `available` short-circuited the
 	// press to `succeeded` with zero writes and zero reads - a completion it had never
 	// performed and could never have known.
-	api.profileRevertStatusCache.remember("s_9f2c", identity, {
-		action_id: identity.action_id,
-		state: "available",
-	});
+	api.profileRevertStatusCache.remember(
+		"s_9f2c",
+		identity,
+		{ action_id: identity.action_id, state: "available" },
+		"read",
+	);
 	let reads = 0;
 	const writes = [];
 	const answer = await api.runProfileRevertPress({
@@ -1393,4 +1396,104 @@ test("no rendered path shows failed beside an enabled revert", () => {
 	});
 	assert.equal(stale.state, "stale");
 	assert.equal(stale.enabled, false);
+});
+
+/* --------------------------------- round 4: "we do not know" and cache provenance */
+
+test("an uncertain activation renders unconfirmed, never 'did not go through'", async () => {
+	api.profileRevertStatusCache.clear();
+	/*
+	 * THE EXACT PATH QA TRACED. A press whose write throws and whose reconcile cannot
+	 * answer resolves `pending`; the hook maps that through `profileRevertOutcome`, and
+	 * the shipped `profileRevertView` is what the reader sees. It used to say "the
+	 * revert did not go through" - a claim nobody can make, because the write may have
+	 * landed (QA Q1).
+	 */
+	const answer = await api.runProfileRevertPress({
+		descriptor: revertDescriptor,
+		sessionId: "s_9f2c",
+		epoch: "e_1",
+		status: { action_id: identity.action_id, state: "available" },
+		identity,
+		write: async () => {
+			throw new Error("dropped");
+		},
+		readStatus: (() => {
+			let n = 0;
+			return async () => {
+				n += 1;
+				if (n === 1)
+					return { action_id: identity.action_id, state: "available" };
+				throw new Error("dropped");
+			};
+		})(),
+	});
+	assert.equal(answer.state, "pending");
+
+	const outcome = api.profileRevertOutcome(answer);
+	assert.equal(
+		outcome.approved,
+		false,
+		"an uncertain press is not an approval",
+	);
+	const view = api.profileRevertView(revertDescriptor, { outcome });
+	assert.equal(view.state, "unconfirmed");
+	assert.equal(view.enabled, false);
+	const catalogue = JSON.parse(source("src/i18n/catalogues/en/ui.mesh.json"));
+	assert.equal(
+		view.note,
+		catalogue["ui.mesh.mesh_approvals.profile_revert_unconfirmed"],
+		"unknown, in the copy that says unknown",
+	);
+	assert.notEqual(
+		view.note,
+		catalogue["ui.mesh.mesh_approvals.profile_revert_failed"],
+	);
+
+	// The other spelling of "we do not know" reaches the same state.
+	const spelled = api.profileRevertView(revertDescriptor, {
+		outcome: { approved: false, state: "unconfirmed" },
+	});
+	assert.equal(spelled.state, "unconfirmed");
+	// A DEFIANT refusal stays failed, and says so.
+	const failed = api.profileRevertView(revertDescriptor, {
+		outcome: { approved: false, state: "rejected" },
+	});
+	assert.equal(failed.state, "failed");
+	api.profileRevertStatusCache.clear();
+});
+
+test("only a cache entry with read provenance can skip the press", () => {
+	api.profileRevertStatusSchema; // keep the import shape explicit
+	api.profileRevertStatusCache.clear();
+	const succeeded = { action_id: identity.action_id, state: "succeeded" };
+
+	// (a) A completion recorded by anything but a read is NOT evidence: the press
+	// must re-read rather than report a completion nobody observed.
+	api.profileRevertStatusCache.remember("s_9f2c", identity, succeeded, "press");
+	assert.equal(
+		api.profileRevertStatusCache.read("s_9f2c", identity)?.state,
+		"succeeded",
+	);
+	assert.equal(
+		api.profileRevertStatusCache.readCompletion("s_9f2c", identity),
+		null,
+		"no read, no completion",
+	);
+
+	// (b) A read for this exact identity IS evidence: no second write.
+	api.profileRevertStatusCache.remember("s_9f2c", identity, succeeded, "read");
+	assert.deepEqual(
+		api.profileRevertStatusCache.readCompletion("s_9f2c", identity),
+		succeeded,
+	);
+	// ...but only for this identity.
+	assert.equal(
+		api.profileRevertStatusCache.readCompletion("s_9f2c", {
+			...identity,
+			tool_call_id: "tc_other",
+		}),
+		null,
+	);
+	api.profileRevertStatusCache.clear();
 });

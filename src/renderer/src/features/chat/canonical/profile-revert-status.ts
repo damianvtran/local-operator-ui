@@ -217,33 +217,89 @@ function identityKey(
 }
 
 /** Out-of-process cache of the last answer per bound identity, so a press can refuse twice. */
-const answers = new Map<string, ProfileRevertStatusAnswer>();
+/**
+ * Where a cached answer came FROM, because a completion may only rest on a read.
+ *
+ * `read` — the live status read answered this for this identity. A `succeeded` with
+ * this provenance is real evidence, so a later press must not write again.
+ * `press` — the entry was recorded by an activation path (or seeded by anything that
+ * did not read). It is NOT evidence of completion: the press re-reads first, because
+ * an outcome nobody observed is exactly the claim this seam exists to refuse.
+ */
+export type ProfileRevertStatusSource = "read" | "press";
+
+type ProfileRevertStatusEntry = {
+	answer: ProfileRevertStatusAnswer;
+	source: ProfileRevertStatusSource;
+};
+
+const answers = new Map<string, ProfileRevertStatusEntry>();
 
 export const profileRevertStatusCache = {
+	/** The last answer for this identity, whatever its provenance (for display). */
 	read(
 		sessionId: string | null,
 		identity: unknown,
 	): ProfileRevertStatusAnswer | null {
 		const parsed = profileRevertIdentitySchema.safeParse(identity);
 		if (!parsed.success) return null;
-		return answers.get(identityKey(sessionId, parsed.data)) ?? null;
+		return answers.get(identityKey(sessionId, parsed.data))?.answer ?? null;
+	},
+	/**
+	 * The cached COMPLETION, and only when a READ established it for this identity.
+	 *
+	 * This is the press's duplicate guard. An entry written by any other path - a
+	 * reconciliation, a seed, a restored transcript - returns null so the press takes
+	 * a fresh read instead of reporting a completion nobody observed.
+	 */
+	readCompletion(
+		sessionId: string | null,
+		identity: unknown,
+	): ProfileRevertStatusAnswer | null {
+		const parsed = profileRevertIdentitySchema.safeParse(identity);
+		if (!parsed.success) return null;
+		const entry = answers.get(identityKey(sessionId, parsed.data));
+		if (!entry || entry.source !== "read") return null;
+		return entry.answer.state === "succeeded" ? entry.answer : null;
 	},
 	remember(
 		sessionId: string | null,
 		identity: unknown,
 		answer: ProfileRevertStatusAnswer,
+		source: ProfileRevertStatusSource,
 	): void {
 		const parsedIdentity = profileRevertIdentitySchema.safeParse(identity);
 		const parsedAnswer = profileRevertStatusSchema.safeParse(answer);
 		if (!parsedIdentity.success || !parsedAnswer.success) return;
 		// An answer for another action is not an answer about this one.
 		if (parsedAnswer.data.action_id !== parsedIdentity.data.action_id) return;
-		answers.set(identityKey(sessionId, parsedIdentity.data), parsedAnswer.data);
+		answers.set(identityKey(sessionId, parsedIdentity.data), {
+			answer: parsedAnswer.data,
+			source,
+		});
 	},
 	clear(): void {
 		answers.clear();
 	},
 };
+
+/**
+ * The press's answer as the view's outcome shape.
+ *
+ * WHY THIS IS A FUNCTION AND NOT A LINE IN THE HOOK: the mapping decides whether an
+ * answer reads as success, refusal or UNKNOWN, and that is a claim about the write's
+ * fate. Living here it is testable without a renderer; kept in the hook it was only
+ * ever exercised by a mounted component, which is how `pending` — "we do not know" -
+ * reached the shipped view as `failed`, i.e. "the revert did not go through" (QA Q1).
+ */
+export function profileRevertOutcome(answer: ProfileRevertStatusAnswer): {
+	approved: boolean;
+	state: string;
+} {
+	// `succeeded` is the ONLY completion. Everything else is unproven, and
+	// `pending` in particular is not a refusal.
+	return { approved: answer.state === "succeeded", state: answer.state };
+}
 
 /**
  * ONE press, end to end — the whole activation as a pure async step.
@@ -285,8 +341,11 @@ export async function runProfileRevertPress(input: {
 	 * earlier read, not proof the action finished: only `succeeded` ends the press
 	 * here, and everything else is re-read below.
 	 */
-	const cached = profileRevertStatusCache.read(input.sessionId, input.identity);
-	if (cached?.state === "succeeded") return cached;
+	const cached = profileRevertStatusCache.readCompletion(
+		input.sessionId,
+		input.identity,
+	);
+	if (cached) return cached;
 	// No live permission, no gate identity or no bound identity: nothing is sent.
 	if (!profileRevertPressAllowed(input.status))
 		return input.status ?? refuse("unavailable");
@@ -305,7 +364,12 @@ export async function runProfileRevertPress(input: {
 		input.readStatus,
 	);
 	if (live.state !== "available") {
-		profileRevertStatusCache.remember(input.sessionId, input.identity, live);
+		profileRevertStatusCache.remember(
+			input.sessionId,
+			input.identity,
+			live,
+			"read",
+		);
 		return live;
 	}
 	try {
@@ -328,7 +392,12 @@ export async function runProfileRevertPress(input: {
 		);
 		const answer =
 			reconciled.state === "unavailable" ? refuse("pending") : reconciled;
-		profileRevertStatusCache.remember(input.sessionId, input.identity, answer);
+		profileRevertStatusCache.remember(
+			input.sessionId,
+			input.identity,
+			answer,
+			"read",
+		);
 		return answer;
 	}
 	const after = await readProfileRevertStatus(
@@ -337,6 +406,11 @@ export async function runProfileRevertPress(input: {
 		input.readStatus,
 	);
 	const answer = after.state === "unavailable" ? refuse("pending") : after;
-	profileRevertStatusCache.remember(input.sessionId, input.identity, answer);
+	profileRevertStatusCache.remember(
+		input.sessionId,
+		input.identity,
+		answer,
+		"read",
+	);
 	return answer;
 }

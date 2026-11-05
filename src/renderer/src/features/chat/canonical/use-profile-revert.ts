@@ -29,6 +29,7 @@ import { profileRevertLatch } from "./profile-revert-latch";
 import {
 	type ProfileRevertIdentity,
 	type ProfileRevertStatusAnswer,
+	profileRevertOutcome,
 	profileRevertStatusCache,
 	readProfileRevertStatus,
 	readProfileRevertStatusFromTransport,
@@ -105,8 +106,7 @@ export function useProfileRevertAnswer(): {
 			 */
 			setOutcome({
 				requestId: descriptor.action_id,
-				approved: answer.state === "succeeded",
-				state: answer.state,
+				...profileRevertOutcome(answer),
 			});
 		})();
 	}, []);
@@ -143,7 +143,8 @@ export function useProfileRevertStatus(
 			readProfileRevertStatusFromTransport,
 		).then((next) => {
 			if (!live) return;
-			profileRevertStatusCache.remember(sessionId, identity, next);
+			// A LIVE read is what makes a completion real for this identity.
+			profileRevertStatusCache.remember(sessionId, identity, next, "read");
 			setAnswer(next);
 		});
 		return () => {
