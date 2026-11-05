@@ -3,7 +3,9 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUp, CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
-import type { FC } from "react";
+import type { CSSProperties, FC } from "react";
+import type { GlassPaint } from "../../../../../shared/window-glass";
+import "./appearance-preview-strip.css";
 
 /**
  * The composed appearance on representative components: a chat pair, the
@@ -13,8 +15,9 @@ import type { FC } from "react";
  * Settings.
  *
  * WHAT IT PAINTS. By default it inherits the document's palette - the
- * composition `applyAppearance` published - so it shows exactly what the app
- * shows. `previewTheme` re-scopes it to another `[data-theme]` id: during a
+ * composition `applyAppearance` published. Glass uses the same derived alphas
+ * over an explicitly labelled abstract backdrop, not a native desktop capture.
+ * `previewTheme` re-scopes it to another `[data-theme]` id: during a
  * contrast drag the picker writes an unverified candidate block (`previewCss`)
  * and points the strip at it, so the drag is visible at pointer speed while the
  * document root keeps the last VERIFIED composition. A scoped id works because
@@ -27,34 +30,47 @@ import type { FC } from "react";
  * disabled button are drawn in those states with the same role utilities the
  * real components use, not by forcing pseudo-classes.
  *
- * FIXED HEIGHT so it never reflows while selections change (168px; two rows at
- * widths where one does not fit, via the grid's auto-fit minimum).
+ * Intrinsic height lets translated samples wrap at narrow widths without a
+ * clipped scrollport. Selection changes only colours, not sample structure.
  */
 export const AppearancePreviewStrip: FC<{
 	/** A scoped `[data-theme]` id to paint instead of the document's palette. */
 	previewTheme?: string;
 	className?: string;
-}> = ({ previewTheme, className }) => {
+	glassPaint?: GlassPaint | null;
+}> = ({ previewTheme, className, glassPaint }) => {
 	useI18nLocale();
 	return (
 		<section
 			aria-label={t("ui.settings.appearance.layers.preview_label")}
 			data-appearance-preview=""
-			className={cn("rounded-md border border-hairline", className)}
+			data-theme={previewTheme}
+			data-preview-glass={glassPaint?.kinds ?? ""}
+			style={glassPaint?.vars as CSSProperties}
+			className={cn(
+				"appearance-preview rounded-md border border-hairline",
+				className,
+			)}
 		>
 			<div
-				data-theme={previewTheme}
+				data-preview-samples=""
 				/* Set as an attribute, the way `quote-toolkit.tsx` does: React 18's
 				   DOM types have no `inert` prop. */
 				ref={setInert}
 				aria-hidden="true"
 				className={cn(
-					"grid min-h-42 grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3 rounded-md bg-canvas p-3 text-ink",
+					"grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] items-start gap-2 rounded-md p-2 text-ink",
 				)}
 			>
 				{/* 1. Chat pair */}
-				<div className="flex min-w-0 flex-col gap-2">
-					<div className="self-end rounded-md bg-message-surface px-2.5 py-1.5 text-body-sm">
+				<div
+					data-preview-region="canvas"
+					className="flex min-w-0 flex-col gap-2 rounded-md bg-canvas p-1"
+				>
+					<div
+						data-preview-block=""
+						className="self-end rounded-md bg-message-surface px-2.5 py-1.5 text-body-sm"
+					>
 						{t("ui.settings.appearance.layers.preview.user_message")}
 					</div>
 					<p className="text-body-sm text-ink-muted">
@@ -64,7 +80,10 @@ export const AppearancePreviewStrip: FC<{
 						</code>
 					</p>
 					{/* 2. Composer */}
-					<div className="mt-auto flex items-center gap-2 rounded-md border border-control bg-sunken px-2 py-1.5">
+					<div
+						data-preview-field=""
+						className="mt-auto flex items-center gap-2 rounded-md border border-control bg-sunken px-2 py-1.5"
+					>
 						<span className="min-w-0 flex-1 truncate text-body-sm text-ink-dim">
 							{t("ui.settings.appearance.layers.preview.composer_placeholder")}
 						</span>
@@ -74,7 +93,10 @@ export const AppearancePreviewStrip: FC<{
 					</div>
 				</div>
 				{/* 3. Sidebar rows: normal, hover (drawn), selected */}
-				<div className="flex min-w-0 flex-col gap-0.5 rounded-md bg-surface p-1.5">
+				<div
+					data-preview-region="sidebar"
+					className="flex min-w-0 flex-col gap-0.5 rounded-md bg-surface p-1"
+				>
 					<div className="flex items-center rounded-sm px-2 py-1 text-body-sm text-ink-muted">
 						<span className="truncate">
 							{t("ui.settings.appearance.layers.preview.row_inbox")}
@@ -93,12 +115,18 @@ export const AppearancePreviewStrip: FC<{
 					</div>
 				</div>
 				{/* 4. Buttons and 5. callouts */}
-				<div className="flex min-w-0 flex-col gap-1.5">
+				<div
+					data-preview-region="canvas"
+					className="flex min-w-0 flex-col gap-1.5 rounded-md bg-canvas p-1"
+				>
 					<div className="flex flex-wrap gap-1.5">
 						<span className="rounded-sm bg-accent px-2 py-0.5 text-meta text-on-accent">
 							{t("ui.settings.appearance.layers.preview.primary")}
 						</span>
-						<span className="rounded-sm border border-control bg-surface px-2 py-0.5 text-meta text-ink">
+						<span
+							data-preview-field=""
+							className="rounded-sm border border-control bg-surface px-2 py-0.5 text-meta text-ink"
+						>
 							{t("ui.settings.appearance.layers.preview.secondary")}
 						</span>
 						<span className="rounded-sm bg-sunken px-2 py-0.5 text-ink-disabled text-meta">
@@ -109,6 +137,9 @@ export const AppearancePreviewStrip: FC<{
 					<Callout tone="warning" />
 					<Callout tone="danger" />
 				</div>
+			</div>
+			<div className="bg-canvas px-2 py-1 text-ink-dim text-meta">
+				{t("ui.settings.appearance.layers.preview.sample_backdrop")}
 			</div>
 		</section>
 	);

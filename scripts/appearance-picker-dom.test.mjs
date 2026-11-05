@@ -59,6 +59,10 @@ globalThis.cancelAnimationFrame = window.cancelAnimationFrame = () => {};
 const bundle = await build({
 	stdin: {
 		contents: `
+ export { previewGlassPaint } from './src/renderer/src/features/settings/components/appearance-preview-glass';
+ export { glassPaintFor } from './src/shared/window-glass';
+ export { glassFloorsForPalette } from './src/shared/glass-derivation.mjs';
+ export { contrastCandidate } from './src/shared/theme-engine/contrast.mjs';
  export { createElement, act } from 'react';
  export { createRoot } from 'react-dom/client';
  export { AppearanceLayers } from './src/renderer/src/features/settings/components/appearance-layers';
@@ -70,6 +74,8 @@ const bundle = await build({
 		loader: "tsx",
 	},
 	bundle: true,
+	// DOM contracts do not claim CSS/pixel validation; the browser loads this sheet.
+	loader: { ".css": "empty" },
 	packages: "external",
 	format: "cjs",
 	platform: "node",
@@ -99,6 +105,10 @@ const {
 	captureTheme,
 	applyCaptureTheme,
 	resolveAppearance,
+	previewGlassPaint,
+	glassPaintFor,
+	glassFloorsForPalette,
+	contrastCandidate,
 } = module.exports;
 const frame = async () => {
 	const pending = frames;
@@ -130,7 +140,7 @@ const findButton = (text) =>
 		(b) => b.textContent.trim() === text,
 	);
 let root;
-async function mount(themeName = "obsidian", contrast = 0) {
+async function mount(themeName = "obsidian", contrast = 0, glass = null) {
 	if (root) await act(async () => root.unmount());
 	frames = [];
 	document.body.innerHTML = '<div id="test-root"></div>';
@@ -147,11 +157,144 @@ async function mount(themeName = "obsidian", contrast = 0) {
 			h(
 				ThemeProvider,
 				null,
-				h(AppearanceLayers, { gallery: h("div", null, "Gallery") }),
+				h(AppearanceLayers, { gallery: h("div", null, "Gallery"), glass }),
 			),
 		),
 	);
 }
+
+const activeGlass = {
+	active: true,
+	restartRequired: false,
+	capability: { supported: true, mechanism: "vibrancy" },
+	settings: {
+		enabled: true,
+		coverage: "full",
+		intensity: 100,
+		material: "window",
+	},
+};
+
+test("preview glass reuses production palette floors, not document alphas or saved enablement", () => {
+	const palette = resolveAppearance(store.getState()).palette;
+	const expected = glassPaintFor({
+		...activeGlass.settings,
+		mechanism: "vibrancy",
+		scheme: palette.mode,
+		floors: glassFloorsForPalette(palette),
+	});
+	assert.deepEqual(previewGlassPaint(activeGlass, palette), expected);
+	assert.equal(previewGlassPaint(null, palette), null);
+	assert.equal(
+		previewGlassPaint({ ...activeGlass, active: false }, palette),
+		null,
+	);
+	assert.equal(
+		previewGlassPaint(
+			{ ...activeGlass, capability: { supported: false, mechanism: "none" } },
+			palette,
+		),
+		null,
+	);
+	assert.equal(
+		previewGlassPaint({ ...activeGlass, restartRequired: true }, palette),
+		null,
+	);
+	const frosted = previewGlassPaint(
+		{ ...activeGlass, settings: { ...activeGlass.settings, intensity: 0 } },
+		palette,
+	);
+	assert.notEqual(
+		frosted.vars["--lo-glass-a-canvas"],
+		expected.vars["--lo-glass-a-canvas"],
+	);
+});
+
+test("active and draft preview use local production paint across schemes and coverage", async () => {
+	for (const theme of ["obsidian", "localOperatorLight"]) {
+		for (const coverage of ["full", "sidebars"]) {
+			const glass = {
+				...activeGlass,
+				settings: { ...activeGlass.settings, coverage },
+			};
+			await mount(theme, 0, glass);
+			const preview = document.querySelector("[data-appearance-preview]");
+			const palette = resolveAppearance(store.getState()).palette;
+			const expected = previewGlassPaint(glass, palette);
+			assert.equal(preview.dataset.previewGlass, expected.kinds);
+			for (const [name, value] of Object.entries(expected.vars))
+				assert.equal(preview.style.getPropertyValue(name), value);
+			const caption = preview.lastElementChild.textContent;
+			assert.equal(caption, "Sample backdrop");
+			const slider = document.querySelector("[data-contrast-slider]");
+			document.documentElement.style.setProperty("--lo-glass-a-canvas", ".999");
+			await fire(
+				slider,
+				new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+			);
+			await input(slider, "100");
+			await frame();
+			const draftPaint = previewGlassPaint(
+				glass,
+				contrastCandidate(palette, 100),
+			);
+			assert.equal(
+				store.getState().contrast[palette.mode],
+				0,
+				"draft is not committed",
+			);
+			assert.equal(
+				preview.querySelector("[data-preview-samples]").hasAttribute("inert"),
+				true,
+			);
+			for (const [name, value] of Object.entries(draftPaint.vars))
+				assert.equal(
+					preview.style.getPropertyValue(name),
+					value,
+					`${theme} ${coverage} ${name}`,
+				);
+			assert.equal(
+				preview.lastElementChild.textContent,
+				caption,
+				"caption never toggles height with state",
+			);
+			await fire(window, new MouseEvent("pointerup", { bubbles: true }));
+			await frame();
+			await frame();
+		}
+	}
+	document.documentElement.style.removeProperty("--lo-glass-a-canvas");
+});
+
+test("preview and its separator remain in flow with intrinsic compact samples", async () => {
+	await mount();
+	const preview = document.querySelector("[data-appearance-preview]");
+	const section = preview.parentElement;
+	assert.equal(
+		section.classList.contains("sticky"),
+		false,
+		"preview must scroll away instead of covering gallery tiles",
+	);
+	assert.equal(
+		section.classList.contains("-mx-1"),
+		false,
+		"preview must not reach into the scroll gutter",
+	);
+	assert.equal(
+		section.classList.contains("border-b"),
+		true,
+		"separator belongs to the normal-flow section",
+	);
+	const samples = preview.querySelector("[aria-hidden]");
+	assert.equal(
+		samples.classList.contains("min-h-42"),
+		false,
+		"sample content determines height at every width",
+	);
+	assert.equal(samples.classList.contains("p-2"), true);
+	assert.equal(samples.classList.contains("gap-2"), true);
+	assert.equal(samples.hasAttribute("inert"), true);
+});
 
 test("a drag never persists; release retains thumb/preview until verified store commit", async () => {
 	await mount();

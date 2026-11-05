@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { Contrast } from "lucide-react";
 import { type FC, useLayoutEffect, useState } from "react";
 import type { AccentRef } from "../../../../../shared/theme-engine/accent.mjs";
+import type { WindowGlassState } from "../../../../../shared/window-glass";
 import { AccentRow } from "./accent-row";
 import { AppearanceLayers } from "./appearance-layers";
 import { AppearancePreviewStrip } from "./appearance-preview-strip";
@@ -54,7 +55,10 @@ const Seed: FC<{
 	return ready ? children : null;
 };
 
-const Frame: FC<{ layers: Partial<typeof LAYERS_IDENTITY> }> = ({ layers }) => (
+const Frame: FC<{
+	layers: Partial<typeof LAYERS_IDENTITY>;
+	glass?: WindowGlassState | null;
+}> = ({ layers, glass }) => (
 	<Seed layers={layers}>
 		{/* The app shell owns scrolling; standalone stories need the same bounded
 		    viewport or its global overflow:hidden clips every lower control. */}
@@ -66,7 +70,7 @@ const Frame: FC<{ layers: Partial<typeof LAYERS_IDENTITY> }> = ({ layers }) => (
 					description="Customize the look and feel of Local Operator"
 					dataTourTag="settings-appearance-section"
 				>
-					<AppearanceLayers gallery={<ThemeSelector />} />
+					<AppearanceLayers gallery={<ThemeSelector />} glass={glass} />
 				</SettingsSection>
 			</div>
 		</div>
@@ -77,7 +81,7 @@ const meta = {
 	title: "Settings/Appearance layers",
 	component: AppearanceLayers,
 	parameters: { layout: "fullscreen" },
-	args: { gallery: null },
+	args: { gallery: null, glass: null },
 } satisfies Meta<typeof AppearanceLayers>;
 
 export default meta;
@@ -85,7 +89,72 @@ type Story = StoryObj<typeof meta>;
 
 /** Standard contrast, the theme's accent, no custom accents: today's look. */
 export const LayersStandard: Story = {
-	render: () => <Frame layers={{}} />,
+	render: ({ glass }) => <Frame layers={{}} glass={glass} />,
+};
+
+/** Synthetic native facts, not a claim that Storybook owns a native material. */
+const SAMPLE_GLASS: WindowGlassState = {
+	active: true,
+	restartRequired: false,
+	capability: {
+		supported: true,
+		mechanism: "vibrancy",
+		reason: "ok",
+		materials: ["window", "menu", "popover"],
+		defaultMaterial: "window",
+		liquid: false,
+		defaultEnabled: true,
+		liveToggle: true,
+	},
+	settings: {
+		enabled: true,
+		coverage: "full",
+		intensity: 80,
+		material: "window",
+	},
+};
+
+export const LayersGlass: Story = {
+	args: { glass: SAMPLE_GLASS },
+	render: ({ glass }) => <Frame layers={{}} glass={glass} />,
+};
+
+export const LayersGlassHigh: Story = {
+	args: { glass: SAMPLE_GLASS },
+	render: ({ glass }) => (
+		<Frame layers={{ contrast: { dark: 100, light: 100 } }} glass={glass} />
+	),
+};
+
+export const LayersGlassSidebars: Story = {
+	...LayersGlass,
+	args: {
+		glass: {
+			...SAMPLE_GLASS,
+			settings: { ...SAMPLE_GLASS.settings, coverage: "sidebars" },
+		},
+	},
+};
+
+export const LayersGlassUnsupported: Story = {
+	...LayersGlass,
+	args: {
+		glass: {
+			...SAMPLE_GLASS,
+			active: false,
+			capability: {
+				...SAMPLE_GLASS.capability,
+				supported: false,
+				mechanism: "none",
+				reason: "reduced-transparency",
+			},
+		},
+	},
+};
+
+export const LayersGlassRestartPending: Story = {
+	...LayersGlass,
+	args: { glass: { ...SAMPLE_GLASS, restartRequired: true } },
 };
 
 /**

@@ -1016,5 +1016,11 @@
 		"placeholders": {
 			"theme": "Display name of the built-in theme whose palette supplies the accent, already translated; never the current background theme and never a user-created accent."
 		}
+	},
+	"ui.settings.appearance.layers.preview.sample_backdrop": {
+		"role": "Small caption below the inert appearance sample",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Short label; wraps naturally in narrow windows.",
+		"note": "Always visible, including solid fallback. The abstract theme-role background is representative, not native desktop blur or a capture of private desktop content."
 	}
 }

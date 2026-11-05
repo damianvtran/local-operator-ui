@@ -4,6 +4,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { definitionOf, themes } from "@shared/themes";
 import type { ResolvedAppearance } from "@shared/themes/appearance";
+import type { ThemePalette } from "@shared/themes/palette-contract";
 import { useAuthoredPalette } from "@shared/themes/use-authored-palette";
 import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import type { FC, ReactNode } from "react";
@@ -17,6 +18,7 @@ import {
 } from "react";
 import type { AccentRef } from "../../../../../shared/theme-engine/accent.mjs";
 import type { PaletteRecord } from "../../../../../shared/theme-engine/accent.mjs";
+import { contrastCandidate } from "../../../../../shared/theme-engine/contrast.mjs";
 import {
 	ACCENT_ROLES,
 	PRESET_ORDER,
@@ -25,7 +27,9 @@ import {
 	curatedAccents,
 	previewCss,
 } from "../../../../../shared/theme-engine/picker.mjs";
+import type { WindowGlassState } from "../../../../../shared/window-glass";
 import { AccentRow } from "./accent-row";
+import { previewGlassPaint } from "./appearance-preview-glass";
 import { AppearancePreviewStrip } from "./appearance-preview-strip";
 import { ContrastControl } from "./contrast-control";
 
@@ -157,21 +161,33 @@ const usePreviewStyle = (resolved: ResolvedAppearance) => {
 	return draft;
 };
 
-/** [A] The preview strip, sticky at the top of Appearance. */
-export const AppearancePreviewSection: FC = () => {
+/** [A] In-flow preview: gallery tiles must never scroll beneath the sample. */
+export const AppearancePreviewSection: FC<{
+	glass?: WindowGlassState | null;
+}> = ({ glass }) => {
 	const resolved = useResolvedAppearance();
 	const draft = usePreviewStyle(resolved);
+	const authored = useAuthoredPalette().palette;
+	const paint = useMemo(() => {
+		// Match previewCss's candidate and committed accent overlay, not the
+		// document palette that intentionally stays verified during a drag.
+		const palette =
+			draft === null || !authored
+				? resolved.palette
+				: {
+						...(draft === 0 ? authored : contrastCandidate(authored, draft)),
+						...accentOverlay(resolved),
+					};
+		return previewGlassPaint(glass, palette as ThemePalette);
+	}, [glass, resolved, authored, draft]);
 	return (
 		<div
-			/*
-			 * Sticky inside the settings scroll column on the panel's own opaque
-			 * ground, so tiles scrolling under it are hidden, not dimmed (AGENTS.md
-			 * "a translucent panel must still occlude"). `bg-canvas` is the column's
-			 * ground, so the sticky band adds no new tone step.
-			 */
-			className="sticky top-0 z-10 -mx-1 border-hairline border-b bg-canvas px-1 pb-3"
+			/* The section owns its divider in normal flow. Pinning this sample
+			   occludes the first gallery row and steals narrow-window space. */
+			className="border-hairline border-b pb-3"
 		>
 			<AppearancePreviewStrip
+				glassPaint={paint}
 				previewTheme={draft === null ? undefined : PREVIEW_IDS.strip}
 			/>
 		</div>
@@ -391,9 +407,12 @@ export const ThemeLayerHeading: FC = () => {
  * (gallery), Contrast, Accent. The settings page and the stories both render
  * this, so a frame is a picture of the shipped subtree.
  */
-export const AppearanceLayers: FC<{ gallery: ReactNode }> = ({ gallery }) => (
+export const AppearanceLayers: FC<{
+	gallery: ReactNode;
+	glass?: WindowGlassState | null;
+}> = ({ gallery, glass }) => (
 	<div className="flex flex-col gap-6">
-		<AppearancePreviewSection />
+		<AppearancePreviewSection glass={glass} />
 		<div className="flex flex-col gap-2">
 			<ThemeLayerHeading />
 			{gallery}

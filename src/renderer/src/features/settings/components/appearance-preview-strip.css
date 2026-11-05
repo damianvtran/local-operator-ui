@@ -1,0 +1,74 @@
+/* A representative, theme-role backdrop, never a capture of the user's desktop.
+ * The sample consumes production-derived alphas locally: html's glass scope and
+ * its last committed palette must not override an uncommitted contrast draft. */
+.appearance-preview {
+	background: var(--lo-canvas);
+}
+
+.appearance-preview:not([data-preview-glass=""]) {
+	background: linear-gradient(
+		125deg,
+		var(--lo-accent) 0%,
+		var(--lo-surface) 45%,
+		var(--lo-accent-alt) 100%
+	);
+}
+
+.appearance-preview[data-preview-glass~="canvas"]
+	[data-preview-region="canvas"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
+		transparent
+	);
+}
+
+.appearance-preview[data-preview-glass~="sidebar"]
+	[data-preview-region="sidebar"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		transparent
+	);
+}
+
+/* Samples are pictures (div/span), so production's input/button selectors do
+ * not apply. Consume the same field and block tokens without dimming their ink. */
+.appearance-preview[data-preview-glass~="canvas"] [data-preview-field] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
+		transparent
+	);
+}
+
+.appearance-preview[data-preview-glass~="canvas"] [data-preview-block] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-block-veil) * 100%),
+		transparent
+	);
+}
+
+/* Only covered regions get the relative state/edge roles. Uncovered samples keep
+ * the authored solid roles, just like the app at sidebars-only coverage. */
+.appearance-preview[data-preview-glass~="canvas"]
+	[data-preview-region="canvas"],
+.appearance-preview[data-preview-glass~="sidebar"]
+	[data-preview-region="sidebar"] {
+	--color-row-hover: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-row-hover) * 100%),
+		transparent
+	);
+	--color-row-selected: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
+		transparent
+	);
+	--color-control: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-control-mix) * 100%),
+		var(--lo-border-control)
+	);
+}
