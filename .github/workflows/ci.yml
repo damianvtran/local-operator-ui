@@ -620,6 +620,11 @@ jobs:
       matrix:
         shard: [0, 1, 2, 3]
     env:
+      # Run 41941111005's three-worker shard reached 10.0/11.2 GiB against the
+      # 9.5 GiB bound on a 16 GiB runner. Cap every shard: inventory reshuffles,
+      # so a shard-number exception would just move the risk. Coverage remains
+      # complete; we only serialize more files. Keep memory/deadline gates intact.
+      LOCAL_OPERATOR_UI_TEST_CONCURRENCY: '2'
       DESKTOP_SHARD_INDEX: ${{ matrix.shard }}
       DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
 
