@@ -33,9 +33,8 @@
 	},
 	{
 		"name": "row-right-click__localOperatorDark",
-		"story": "team-bridge-conversation-menu--rows-at-rest",
-		"theme": "localOperatorDark",
-		"action": "context:[data-conversation-id=\"bcv_launch\"]"
+		"story": "team-bridge-conversation-menu--row-right-click",
+		"theme": "localOperatorDark"
 	},
 	{
 		"name": "leave-confirm__localOperatorDark",
@@ -86,9 +85,8 @@
 	},
 	{
 		"name": "row-right-click__localOperatorLight",
-		"story": "team-bridge-conversation-menu--rows-at-rest",
-		"theme": "localOperatorLight",
-		"action": "context:[data-conversation-id=\"bcv_launch\"]"
+		"story": "team-bridge-conversation-menu--row-right-click",
+		"theme": "localOperatorLight"
 	},
 	{
 		"name": "leave-confirm__localOperatorLight",
@@ -139,5 +137,25 @@
 		"story": "team-bridge-page--conversation-menu-partial-leave",
 		"theme": "localOperatorLight",
 		"width": 1440
+	},
+	{
+		"name": "leave-confirm-agents__localOperatorDark",
+		"story": "team-bridge-page--conversation-menu-header",
+		"theme": "localOperatorDark",
+		"actions": [
+			"press:Escape",
+			"click:[aria-label=\"More actions for agents\"]",
+			"click-menuitem:Leave"
+		]
+	},
+	{
+		"name": "leave-confirm-agents__localOperatorLight",
+		"story": "team-bridge-page--conversation-menu-header",
+		"theme": "localOperatorLight",
+		"actions": [
+			"press:Escape",
+			"click:[aria-label=\"More actions for agents\"]",
+			"click-menuitem:Leave"
+		]
 	}
 ]
