@@ -1,4 +1,5 @@
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import type { ThemeName } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { Contrast } from "lucide-react";
@@ -43,8 +44,11 @@ const LAYERS_IDENTITY = {
 	customAccentNames: {} as Record<string, string>,
 };
 
+/** The layers the stories seed; `themeName` picks the scheme a frame proves. */
+type LayerSeed = Partial<typeof LAYERS_IDENTITY> & { themeName?: ThemeName };
+
 const Seed: FC<{
-	layers: Partial<typeof LAYERS_IDENTITY>;
+	layers: LayerSeed;
 	children: React.ReactNode;
 }> = ({ layers, children }) => {
 	const [ready, setReady] = useState(false);
@@ -56,7 +60,7 @@ const Seed: FC<{
 };
 
 const Frame: FC<{
-	layers: Partial<typeof LAYERS_IDENTITY>;
+	layers: LayerSeed;
 	glass?: WindowGlassState | null;
 }> = ({ layers, glass }) => (
 	<Seed layers={layers}>
@@ -123,6 +127,14 @@ export const LayersGlassHigh: Story = {
 	args: { glass: SAMPLE_GLASS },
 	render: ({ glass }) => (
 		<Frame layers={{ contrast: { dark: 100, light: 100 } }} glass={glass} />
+	),
+};
+
+/** The light scheme: the alphas are re-derived for light floors, not reused. */
+export const LayersGlassLight: Story = {
+	...LayersGlass,
+	render: ({ glass }) => (
+		<Frame layers={{ themeName: "localOperatorLight" }} glass={glass} />
 	),
 };
 
