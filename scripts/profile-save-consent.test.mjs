@@ -1160,10 +1160,12 @@ test("a saved ToolResult renders the saved card with its diff and a disabled rev
 	assert.equal(saved.view.revert.enabled, false);
 
 	const team = api.profileSaveCall({
-		toolName: "agent",
+		// The artifact's REAL tool name for the team result, not the agent one.
+		toolName: api.GOLDEN_SAVED_TEAM_TOOL_RESULT.tool_name,
 		output: "",
 		details: api.GOLDEN_SAVED_TEAM_TOOL_RESULT.details,
 	});
+	assert.equal(api.GOLDEN_SAVED_TEAM_TOOL_RESULT.tool_name, "team");
 	assert.equal(team.descriptor.profile_kind, "team");
 	assert.equal(team.view.state, "saved");
 });
@@ -1763,6 +1765,27 @@ test("the scripted transport raises the control, and its press settles", async (
 	 * artifact's `applied` frame. One recorded write, no backend call.
 	 */
 	api.profileRevertStatusCache.clear();
+	/*
+	 * THE SPLIT (review R6-1): the enabled-affordance story must reach the enabled
+	 * control with NO write, and the press lives in its own story. The seam functions
+	 * are asserted directly - a mount cannot be observed headlessly - and the story
+	 * source is pinned to the read-only one.
+	 */
+	const availability = await api.runScriptedAvailabilityRead();
+	assert.equal(availability.available.state, "available");
+	assert.deepEqual(availability.authority, {
+		state: "available",
+		enabled: true,
+	});
+	assert.deepEqual(availability.writes, [], "the enabled story writes nothing");
+	const story = source(
+		"src/renderer/src/features/mesh/profile-consent-card.stories.tsx",
+	);
+	assert.match(story, /runScriptedAvailabilityRead\(\)/);
+	assert.match(story, /export const ScriptedTransportAvailable/);
+	assert.match(story, /export const ScriptedTransportSettled/);
+	assert.match(story, /scripted transport — no backend profile write/i);
+
 	const sequence = await api.runScriptedRevertSequence();
 	assert.equal(
 		sequence.available.action_id,

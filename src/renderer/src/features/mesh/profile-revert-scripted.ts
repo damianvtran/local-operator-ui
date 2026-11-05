@@ -48,6 +48,31 @@ export type ScriptedRevertSequence = {
 	writes: string[];
 };
 
+/**
+ * THE READ ONLY: what the status seam says about this action, with NO press.
+ *
+ * This is what the enabled-affordance story mounts on. It must never write, which is
+ * the point of splitting it from the sequence below: a mount that pressed would leave
+ * the story showing a settled, disabled control instead of the affordance it exists to
+ * photograph (review R6-1).
+ */
+export async function runScriptedAvailabilityRead(): Promise<{
+	available: Awaited<ReturnType<typeof readProfileRevertStatus>>;
+	authority: ReturnType<typeof profileRevertAuthority>;
+	writes: string[];
+}> {
+	const available = await readProfileRevertStatus(
+		SCRIPTED_REVERT_SESSION,
+		SCRIPTED_REVERT_IDENTITY,
+		async () => GOLDEN_LIVE_ACTION_ACK.agent.available,
+	);
+	return {
+		available,
+		authority: profileRevertAuthority(available),
+		writes: [],
+	};
+}
+
 /** Read → press, both through the shipped seam, both from the artifact's frames. */
 export async function runScriptedRevertSequence(): Promise<ScriptedRevertSequence> {
 	const writes: string[] = [];
