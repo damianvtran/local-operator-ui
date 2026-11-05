@@ -225,14 +225,52 @@ after(() => {
 	}
 });
 
+// Opt-in test-only mutation control. Both decisions regress to comparing a
+// box with its current client height; shipping sources/exports stay untouched.
+// Expected failure, specifically at expanded remount (not initial expansion):
+// LOP_CLAMP_REMOUNT_NEGATIVE=1 node scripts/run-desktop-tests.mjs \
+//   '--test-name-pattern=expanded UserRow remount' scripts/user-turn-clamp.test.mjs
+const negativeRemountControl = process.env.LOP_CLAMP_REMOUNT_NEGATIVE === "1";
+const LAYOUT_DECISION = "overflowsUserTurnClamp(el.scrollHeight)";
+const OBSERVER_DECISION = "overflowsUserTurnClamp(entry.target.scrollHeight)";
+const ROW_TEST_MODULE_RE = /(?:canonical-transcript\.tsx|user-turn-clamp\.ts)$/;
 const bundle = await build({
 	stdin: {
 		contents: `
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
 			export { USER_TURN_CLAMP_PX, overflowsUserTurnClamp } from "./src/renderer/src/features/chat/canonical/user-turn-clamp";
+			export { UserRow } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
+			export { TranscriptViewStateContext, TranscriptViewState } from "./src/renderer/src/features/chat/canonical/transcript-view-state";
 		`,
 		resolveDir: process.cwd(),
 	},
+	plugins: [
+		{
+			name: "actual-user-row-test-export",
+			setup(builder) {
+				builder.onLoad({ filter: ROW_TEST_MODULE_RE }, (args) => {
+					let source = readFileSync(args.path, "utf8");
+					const rowModule = args.path.endsWith("canonical-transcript.tsx");
+					if (negativeRemountControl) {
+						const decision = rowModule ? LAYOUT_DECISION : OBSERVER_DECISION;
+						assert.equal(
+							source.split(decision).length,
+							2,
+							"negative control must replace exactly one actual decision per path",
+						);
+						source = source.replace(
+							decision,
+							rowModule
+								? "el.scrollHeight > el.clientHeight + 1"
+								: "entry.target.scrollHeight > entry.target.clientHeight + 1",
+						);
+					}
+					if (rowModule) source += "\nexport { UserRow };\n";
+					return { contents: source, loader: rowModule ? "tsx" : "ts" };
+				});
+			},
+		},
+	],
 	bundle: true,
 	format: "esm",
 	platform: "node",
@@ -261,8 +299,14 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { CanonicalTranscript, USER_TURN_CLAMP_PX, overflowsUserTurnClamp } =
-	await import(bundlePath.href);
+const {
+	CanonicalTranscript,
+	UserRow,
+	TranscriptViewStateContext,
+	TranscriptViewState,
+	USER_TURN_CLAMP_PX,
+	overflowsUserTurnClamp,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 const TOGGLE_RE = /^Show (more|less)$/;
@@ -347,6 +391,116 @@ const mount = async (t, records) => {
 	};
 	return mounted;
 };
+
+test("expanded UserRow remount reconstructs Show less under one living owner", async (t) => {
+	// This is the actual production row, not a replacement hook/component. Only
+	// its child lifetime changes; root, QueryClient, context and store stay alive.
+	// Geometry is the existing explicit model, NOT pixel/virtualizer/anchor proof.
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const store = new TranscriptViewState();
+	const record = user("u-living-owner", linesOf(24));
+	t.after(async () => {
+		await act(async () => root.unmount());
+		client.clear();
+		container.remove();
+		charsPerLine = 80;
+		intrinsicHeight = null;
+	});
+	const renderRow = async (visible) =>
+		act(async () => {
+			root.render(
+				h(
+					QueryClientProvider,
+					{ client },
+					h(
+						TranscriptViewStateContext.Provider,
+						{ value: store },
+						visible
+							? h(
+									"div",
+									{ "data-record-kind": "user", "data-record-id": record.id },
+									h(UserRow, {
+										record,
+										isSmallView: false,
+										scope: null,
+										capable: false,
+									}),
+								)
+							: null,
+					),
+				),
+			);
+		});
+	const body = () =>
+		container.querySelector("[data-lo-user-turn-intrinsic]")?.parentElement;
+	const toggle = () =>
+		Array.from(container.querySelectorAll("button")).find((button) =>
+			TOGGLE_RE.test(button.textContent ?? ""),
+		);
+	const press = async (button) =>
+		act(async () =>
+			button.dispatchEvent(new window.MouseEvent("click", { bubbles: true })),
+		);
+	await renderRow(true);
+	assert.equal(store.read(record.id), false);
+	assert.equal(
+		toggle()?.textContent,
+		"Show more",
+		"initial collapsed admission must succeed before the remount control",
+	);
+	await press(toggle());
+	assert.equal(
+		store.read(record.id),
+		true,
+		"actual press writes the real shared store",
+	);
+	assert.equal(toggle()?.textContent, "Show less");
+	assert.equal(toggle()?.getAttribute("aria-expanded"), "true");
+	assert.doesNotMatch(body().className, CAP_RE);
+	assert.match(body().textContent, TAIL_RE);
+	const oldBody = body();
+	await renderRow(false);
+	assert.equal(
+		oldBody.isConnected,
+		false,
+		"old production row DOM is actually disconnected",
+	);
+	assert.equal(container.querySelector("[data-lo-user-turn-intrinsic]"), null);
+	assert.equal(
+		store.read(record.id),
+		true,
+		"living owner retains UI-written expansion while row is absent",
+	);
+	await renderRow(true);
+	assert.notEqual(
+		body(),
+		oldBody,
+		"same record is a NEW production row DOM mount",
+	);
+	assert.equal(store.read(record.id), true);
+	// No manual ResizeObserver delivery here: the production layout decision
+	// must reconstruct the control on an already-expanded first commit.
+	assert.equal(
+		toggle()?.textContent,
+		"Show less",
+		"expanded-remount Show less must reconstruct BEFORE manual observer delivery",
+	);
+	assert.equal(toggle()?.getAttribute("aria-expanded"), "true");
+	assert.doesNotMatch(body().className, CAP_RE);
+	assert.doesNotMatch(body().className, OVERFLOW_RE);
+	assert.match(body().textContent, TAIL_RE);
+	await press(toggle());
+	assert.equal(store.read(record.id), false);
+	assert.match(body().className, CAP_RE);
+	assert.match(body().className, OVERFLOW_RE);
+	assert.equal(toggle()?.textContent, "Show more");
+	assert.equal(toggle()?.getAttribute("aria-expanded"), "false");
+});
 
 test("a long turn carries the cap from its first commit, and offers Show more", async (t) => {
 	const mounted = await mount(t, [user("u-long", linesOf(12))]);
