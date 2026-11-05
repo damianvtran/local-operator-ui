@@ -124,8 +124,11 @@ export const previewGlassState = (
  * one) would show the sample's own text worse than the real window can. Moving
  * only toward the ink's own side can only gain contrast, which is what lets the
  * sample be visibly a window over something and still be a promise: measured
- * over this ramp, all three inks clear 4.5:1 on 59/59 palettes at intensity 80
- * and 100 (worst 4.70 and 4.64, `rosePineDawn`, `inkDim`).
+ * over a 101-point sweep of this ramp, all three inks clear 4.5:1 on 59/59
+ * palettes at intensity 80 and 100 (floor 4.65 / 4.51, `rosePineDawn` and
+ * `catppuccinLatte`, `inkDim` on the canvas). Those two digits are the sweep's
+ * own floor, and the suite asserts them - a column sample lands higher because
+ * the 125deg gradient never reaches a stop inside a column.
  */
 const BACKDROP_SHIFT = 32;
 

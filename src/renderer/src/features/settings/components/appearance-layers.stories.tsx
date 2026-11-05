@@ -1,5 +1,4 @@
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import type { ThemeName } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { Contrast } from "lucide-react";
@@ -44,8 +43,10 @@ const LAYERS_IDENTITY = {
 	customAccentNames: {} as Record<string, string>,
 };
 
-/** The layers the stories seed; `themeName` picks the scheme a frame proves. */
-type LayerSeed = Partial<typeof LAYERS_IDENTITY> & { themeName?: ThemeName };
+/** The layers the stories seed. The SCHEME is not seeded here: the preview-level
+ * `theme` arg owns `themeName`, and a store seed loses to it (see
+ * `LayersGlassLight`). */
+type LayerSeed = Partial<typeof LAYERS_IDENTITY>;
 
 const Seed: FC<{
 	layers: LayerSeed;
@@ -130,14 +131,22 @@ export const LayersGlassHigh: Story = {
 	),
 };
 
+/** Harness args the global decorators read; not a story, so not exported. */
+const LIGHT_THEME = { theme: "localOperatorLight" } as Story["args"];
+
 /** The light scheme: the alphas are re-derived for light floors, not reused, and
  * the neutral backdrop travels the other way. It is also the frame that would
- * show a sample still painting the previous palette (code R1). */
+ * show a sample still painting the previous palette (code R1).
+ *
+ * THE SCHEME COMES FROM THE `theme` ARG, NOT FROM A STORE SEED. `.storybook/
+ * preview.tsx`'s `ThemeFrame` writes `themeName` from that arg in its OWN layout
+ * effect, and React runs layout effects child-first, so a seed inside the story
+ * is repainted before the frame is ever shown - the story then rendered the
+ * dark palette and every "light" claim made from it was a dark measurement
+ * (design D6, QA Q-1). */
 export const LayersGlassLight: Story = {
 	...LayersGlass,
-	render: ({ glass }) => (
-		<Frame layers={{ themeName: "localOperatorLight" }} glass={glass} />
-	),
+	args: { ...LayersGlass.args, ...LIGHT_THEME },
 };
 
 export const LayersGlassSidebars: Story = {

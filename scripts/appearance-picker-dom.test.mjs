@@ -9,6 +9,8 @@ import { JSDOM } from "jsdom";
 const PREVIEW_BLOCK = /data-theme="lo-preview"/;
 const CEILING_HINT = /already as bright as it can go/;
 const BORROWED_NOTICE = /Accent: Tokyo Night Day/;
+const ROUNDED_TOP = /rounded-t-md/;
+const ROUNDED_BOTTOM = /rounded-b-md/;
 const dom = new JSDOM(
 	"<!doctype html><html><head></head><body></body></html>",
 	{ url: "http://localhost/" },
@@ -68,7 +70,9 @@ const bundle = await build({
  export { ThemeProvider } from './src/renderer/src/shared/themes/theme-provider';
  export { useUiPreferencesStore as store } from './src/renderer/src/shared/store/ui-preferences-store';
  export { captureTheme, applyCaptureTheme } from './src/renderer/src/shared/themes/terminal-theme';
- export { resolveAppearance } from './src/renderer/src/shared/themes/appearance';`,
+ export { resolveAppearance } from './src/renderer/src/shared/themes/appearance';
+ export { themes } from './src/renderer/src/shared/themes';
+ export { glassFloorsForPalette, composite, ratio } from './src/shared/glass-derivation.mjs';`,
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -106,6 +110,9 @@ const {
 	resolveAppearance,
 	previewGlassState,
 	previewBackdropVars,
+	themes,
+	composite,
+	ratio,
 	applyGlassState,
 	contrastCandidate,
 } = module.exports;
@@ -539,6 +546,19 @@ test("a drag never persists; release retains thumb/preview until verified store 
 			document.getElementById("lo-appearance-preview").textContent,
 			PREVIEW_BLOCK,
 		);
+		// UX U4: BOTH samples preview the candidate. The one the user is looking at
+		// while dragging is the compact companion beside Contrast/Accent; it used to
+		// keep the committed palette for the whole drag while the strip ~1000px above
+		// previewed the candidate, and that strip is off-screen at that scroll
+		// position.
+		const strips = [...document.querySelectorAll("[data-appearance-preview]")];
+		assert.equal(strips.length, 2);
+		for (const strip of strips)
+			assert.equal(
+				strip.dataset.theme,
+				"lo-preview",
+				`the ${strip.dataset.previewVariant} sample previews the drag`,
+			);
 		await fire(window, new MouseEvent("pointerup", { bubbles: true }));
 		assert.equal(
 			slider.value,
@@ -553,6 +573,12 @@ test("a drag never persists; release retains thumb/preview until verified store 
 		assert.equal(store.getState().contrast.dark, 50);
 		assert.equal(slider.value, "50");
 		assert.equal(writes, 1, "one release, one persistence write");
+		for (const strip of document.querySelectorAll("[data-appearance-preview]"))
+			assert.equal(
+				strip.hasAttribute("data-theme"),
+				false,
+				"the verified composition replaces the candidate in both samples",
+			);
 		assert.equal(
 			document.querySelectorAll("h3").length,
 			3,
@@ -659,4 +685,123 @@ test("console replay transports composed roles and rejects hostile snapshots", a
 	assert.equal(target.dataset.theme, resolved.id);
 	await act(async () => root.unmount());
 	root = null;
+});
+
+test("the sample's text rows are grounded like the canvas role they sit on", async () => {
+	// code C1, UX U5, design D5: `--lo-ink-dim` at 12px is promised over a
+	// COMPOSITED role, and these two rows sat on the bare ramp (3.05:1 dark,
+	// 3.70:1 light, below AA on 56 of 59 palettes). The stylesheet grounds
+	// `[data-preview-chrome]`; this pins the marker, so dropping the ground is a
+	// failing test rather than a silent 3:1 row. Real pixels are the browser's job.
+	await withPaintedRoles(
+		() => resolveAppearance(store.getState()).palette,
+		async () => {
+			await mount("localOperatorDark", 0, activeGlass);
+			const strips = [
+				...document.querySelectorAll("[data-appearance-preview]"),
+			];
+			assert.equal(strips.length, 2);
+			for (const strip of strips) {
+				const rows = [...strip.querySelectorAll("[data-preview-chrome]")];
+				assert.equal(
+					rows.length,
+					2,
+					`${strip.dataset.previewVariant}: header and caption are both grounded`,
+				);
+				assert.equal(rows[0].dataset.previewCaption, undefined);
+				assert.equal(rows[1].dataset.previewCaption, "");
+				// The card's own corners are rounded; a square band would poke out.
+				assert.match(rows[0].className, ROUNDED_TOP);
+				assert.match(rows[1].className, ROUNDED_BOTTOM);
+			}
+		},
+	);
+});
+
+test("the published ramp floor is the sweep's own, on all 59 palettes", () => {
+	// code C2: the digits in `appearance-preview-glass.ts` claimed 4.70 / 4.64 and
+	// the PR table published 4.74 / 4.64 while the model's own floor was lower, so
+	// they are computed here instead of quoted. A 101-point sweep of the 125deg
+	// ramp (linear in sRGB between the emitted stops), both composited roles, all
+	// three body inks, at the shipped default and at the transparent end.
+	const ids = Object.keys(themes);
+	assert.equal(ids.length, 59, "the published table's population");
+	const interpolate = (stops, t) => {
+		const [lo, hi, f] =
+			t <= 0.5
+				? [stops[0], stops[1], t / 0.5]
+				: [stops[1], stops[2], (t - 0.5) / 0.5];
+		return `#${[0, 1, 2]
+			.map((i) =>
+				Math.round(
+					Number.parseInt(lo.slice(1 + i * 2, 3 + i * 2), 16) * (1 - f) +
+						Number.parseInt(hi.slice(1 + i * 2, 3 + i * 2), 16) * f,
+				)
+					.toString(16)
+					.padStart(2, "0"),
+			)
+			.join("")}`;
+	};
+	// Resolved once: `resolveAppearance` runs the whole engine (~20 ms), so the
+	// sweep pays for it 59 times rather than once per intensity.
+	const resolved = ids.map((themeName) => {
+		const palette = paletteOf(themeName);
+		return {
+			themeName,
+			palette,
+			read: { roles: rolesOf(palette), scheme: palette.mode },
+		};
+	});
+	const floored = [];
+	for (const intensity of [80, 100]) {
+		let worst = { ratio: Number.POSITIVE_INFINITY };
+		for (const { themeName, palette, read } of resolved) {
+			const state = previewGlassState(
+				{ ...activeGlass, settings: { ...activeGlass.settings, intensity } },
+				read,
+				palette.mode,
+			);
+			assert.equal(state.kind, "glass");
+			const vars = previewBackdropVars(palette.mode);
+			const stops = ["a", "b", "c"].map(
+				(k) => vars[`--lo-preview-backdrop-${k}`],
+			);
+			for (let step = 0; step <= 100; step++) {
+				const ground = interpolate(stops, step / 100);
+				for (const [role, alpha] of [
+					["canvas", "--lo-glass-a-canvas"],
+					["surface", "--lo-glass-a-surface"],
+				]) {
+					const painted = composite(
+						palette[role],
+						Number(state.paint.vars[alpha]),
+						ground,
+					);
+					for (const ink of ["ink", "inkMuted", "inkDim"]) {
+						const measured = ratio(palette[ink], painted);
+						if (measured < worst.ratio)
+							worst = { ratio: measured, themeName, ink, role, intensity };
+					}
+				}
+			}
+		}
+		floored.push(worst);
+	}
+	for (const worst of floored)
+		assert.ok(
+			worst.ratio >= 4.5,
+			`${worst.themeName} ${worst.ink} on ${worst.role} at ${worst.intensity} is ${worst.ratio.toFixed(2)}:1`,
+		);
+	// THE PUBLISHED DIGITS, asserted as numbers: change the model and this fails.
+	assert.deepEqual(
+		floored.map(({ ratio: r, themeName, ink }) => [
+			r.toFixed(2),
+			themeName,
+			ink,
+		]),
+		[
+			["4.65", "rosePineDawn", "inkDim"],
+			["4.51", "catppuccinLatte", "inkDim"],
+		],
+	);
 });

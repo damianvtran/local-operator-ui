@@ -1,10 +1,15 @@
 /* A NEUTRAL backdrop, never a capture of the user's desktop and never the
  * palette being judged. The stops are the measured material tier each scheme's
  * alphas were solved against, emitted per scheme by `previewBackdropVars`, so
- * the ground cannot move with the accent under review and the composite stays
- * inside the tone envelope the production floors assume (code R2, design D2).
- * The sample consumes production-derived alphas locally: html's glass scope and
- * its last committed palette must not override an uncommitted contrast draft. */
+ * the ground cannot move with the accent under review. What is true of the
+ * travel is that it goes only AWAY from the ink's side, so it can only gain
+ * contrast against the floors' single material tone - not that it stays inside
+ * that tone (it deliberately leaves it).
+ * The sample consumes production-derived inks over that backdrop only where a
+ * glass role is composited; `[data-preview-chrome]` below keeps the two text
+ * rows off the raw ramp. The local `--lo-*` palette must stay the view's own:
+ * html's global glass rules and its last committed palette must not override an
+ * uncommitted contrast draft. */
 .appearance-preview {
 	background: var(--lo-canvas);
 }
@@ -15,6 +20,27 @@
 		var(--lo-preview-backdrop-a) 0%,
 		var(--lo-preview-backdrop-b) 50%,
 		var(--lo-preview-backdrop-c) 100%
+	);
+}
+
+/* THE TEXT ROWS SIT WHERE PRODUCTION PUTS THEM: ON THE CANVAS REGION, never on
+ * the desktop itself. Painted straight onto the ramp they measured 3.05:1 (dark)
+ * and 3.70:1 (light), below AA on 56 of 59 palettes (code C1, UX U5, design
+ * D5), because `--lo-ink-dim` at full strength is only promised over a
+ * composited role. So they take the canvas region's ground state for state - the
+ * canvas composite when canvas is covered, opaque canvas when it is not - which
+ * is the ground the published floor table is solved for (0 of 59 below AA).
+ * Translucent, not opaque, in the covered state: an opaque band inside a
+ * translucent card is the thing design N2 removed. */
+.appearance-preview [data-preview-chrome] {
+	background-color: var(--lo-canvas);
+}
+
+.appearance-preview[data-preview-glass~="canvas"] [data-preview-chrome] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
+		transparent
 	);
 }
 

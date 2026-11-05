@@ -222,6 +222,33 @@ const useContrastCommit = () => {
 	return { commit, pending };
 };
 
+/**
+ * The companion sample, scoped to the drag candidate exactly like the strip at the
+ * top of the section (UX U4). Both variants read the SAME `PREVIEW_IDS.strip`
+ * block, so there is one preview and one source of truth.
+ *
+ * The draft subscription lives here rather than in `AppearanceLayerControls`:
+ * during a drag the slider publishes per pointer move, and re-rendering the
+ * contrast row - let alone the accent row under it - to repaint a sample beside
+ * it is work the pointer does not need. This way a move re-renders the sample.
+ */
+const CompanionPreview: FC<{ glass?: WindowGlassState | null }> = ({
+	glass,
+}) => {
+	const draft = useDraft();
+	return (
+		<AppearancePreviewStrip
+			glass={glass}
+			variant="compact"
+			/* Without this the sample beside the control keeps the COMMITTED palette
+			   for the whole drag while the strip ~1000px above previews the
+			   candidate: the one sample the user is looking at was the stale one. */
+			previewTheme={draft === null ? undefined : PREVIEW_IDS.strip}
+			className="lg:order-2"
+		/>
+	);
+};
+
 /** [C] Contrast and [D] Accent, under the gallery. */
 export const AppearanceLayerControls: FC<{
 	glass?: WindowGlassState | null;
@@ -291,11 +318,7 @@ export const AppearanceLayerControls: FC<{
 		 * controls).
 		 */
 		<div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_15rem]">
-			<AppearancePreviewStrip
-				glass={glass}
-				variant="compact"
-				className="lg:order-2"
-			/>
+			<CompanionPreview glass={glass} />
 			<div className="flex min-w-0 flex-col gap-6 lg:order-1">
 				<section data-appearance-layer="contrast">
 					<ContrastControl

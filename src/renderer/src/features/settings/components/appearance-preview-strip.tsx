@@ -130,8 +130,14 @@ export const AppearancePreviewStrip: FC<{
 		>
 			{/* The sample's accessible name, made visible: without it the composite is
 			    only identifiable as "the user's theme" to someone who already knows
-			    (UX U3). It is also what the state line below belongs to. */}
-			<div className="px-2 pt-1.5 pb-1 text-ink-dim text-meta">
+			    (UX U3). It is also what the state line below belongs to.
+			    `data-preview-chrome` gives it the canvas region's ground: it is text on
+			    the panel, not text on the desktop the panel floats over (code C1).
+			    Rounded on the outer edge because the card's own corners are. */}
+			<div
+				data-preview-chrome=""
+				className="rounded-t-md px-2 pt-1.5 pb-1 text-ink-dim text-meta"
+			>
 				{t("ui.settings.appearance.layers.preview_label")}
 			</div>
 			<div
@@ -228,14 +234,15 @@ export const AppearancePreviewStrip: FC<{
 					</div>
 				) : null}
 			</div>
-			{/* The caption names a backdrop, so it is painted only when there is one;
-			    in the solid states the card has no backdrop to label (design D1). No
-			    ground of its own, so a translucent card is not finished with an
-			    opaque strip (design N2). */}
+			{/* The caption is the header's counterpart and takes the same ground
+			    (`[data-preview-chrome]`), never a flat fill of its own: an opaque bar
+			    inside a translucent card is what N2 removed, and no bar at all left the
+			    label at 3.3:1 in glass (code C1, UX U5, design D5). */}
 			{preview.kind === "glass" ? (
 				<div
 					data-preview-caption=""
-					className="px-2 pt-1 pb-1.5 text-ink-dim text-meta"
+					data-preview-chrome=""
+					className="rounded-b-md px-2 pt-1 pb-1.5 text-ink-dim text-meta"
 				>
 					{t(CAPTION)}
 				</div>
