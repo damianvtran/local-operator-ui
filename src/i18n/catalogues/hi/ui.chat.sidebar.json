@@ -62,5 +62,14 @@
 	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} और {tail}} middle {{head}, {tail}} other {{head} और {tail}}}",
 	"ui.chat.sidebar.row.open_draft": "{label} खोलें",
 	"ui.chat.sidebar.entity.more_in": "{name} में {label}",
-	"ui.chat.sidebar.search.count_tooltip": "इस खोज से {clipped, select, yes {कम से कम } other {}}{count, plural, =1 {{count_display} चैट मेल खाती है} one {{count_display} चैट मेल खाती है} other {{count_display} चैट मेल खाती हैं}}{clipped, select, yes {; सूची यहीं रुक जाती है} other {}}"
+	"ui.chat.sidebar.search.count_tooltip": "इस खोज से {clipped, select, yes {कम से कम } other {}}{count, plural, =1 {{count_display} चैट मेल खाती है} one {{count_display} चैट मेल खाती है} other {{count_display} चैट मेल खाती हैं}}{clipped, select, yes {; सूची यहीं रुक जाती है} other {}}",
+	"ui.chat.sidebar.row_menu.hint": "राइट-क्लिक करें या इसकी कार्रवाइयाँ देखने के लिए Shift+F10 दबाएँ।",
+	"ui.chat.sidebar.row_menu.hint_mac": "राइट-क्लिक करें या इसकी कार्रवाइयाँ देखने के लिए Shift+F10 (अधिकांश Mac कीबोर्ड पर Fn के साथ) दबाएँ।",
+	"ui.chat.sidebar.row.search_beyond": "खोज से मिला, यहाँ सूचीबद्ध चैट से परे",
+	"ui.chat.sidebar.row.recent": "हालिया",
+	"ui.chat.sidebar.row.not_sent_suffix": ", अभी नहीं भेजा गया",
+	"ui.chat.sidebar.row.unread_suffix": ", अपठित",
+	"ui.chat.sidebar.row.silent_remedy": "/stop अगर यह चुप्पी बनी रहे।",
+	"ui.chat.sidebar.catalogue.show_more": "{hidden, plural, one {{hidden, number, ::group-off} और दिखाएँ} other {{hidden, number, ::group-off} और दिखाएँ}}",
+	"ui.chat.sidebar.catalogue.show_more_chats": "{add, plural, one {{add, number, ::group-off} और चैट दिखाएँ} other {{add, number, ::group-off} और चैट दिखाएँ}}"
 }

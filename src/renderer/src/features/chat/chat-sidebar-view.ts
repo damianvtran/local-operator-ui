@@ -61,6 +61,7 @@
  * claim, which is why there is no wire field.
  */
 
+import { t } from "@shared/i18n";
 import type { WithoutParams } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import {
@@ -381,10 +382,11 @@ export const sectionGrownHintId = (key: string) => `section-grown-hint-${key}`;
  * THE SECTION FOOT'S VISIBLE LABEL, in one spelling (the singular was inline in
  * the component and the plural was its template). `Show 1 more` is its own
  * sentence rather than a pluralised one because that is what the panel's other
- * remainders say.
+ * remainders say. The count selects the locale's CLDR category inside the
+ * keyed message, never in this branch.
  */
 export const sectionMoreLabel = (hidden: number) =>
-	hidden === 1 ? "Show 1 more" : `Show ${hidden} more`;
+	t("ui.chat.sidebar.catalogue.show_more", { hidden });
 
 /**
  * THE SECTION FOOT'S ACCESSIBLE NAME (UX round 1's N1): the visible label names
@@ -556,12 +558,14 @@ export function pageLimit(loads: number): number {
  * prints `Show 4 more sessions`, not the ladder's next rung. And `remaining`
  * now comes from `pageReveal` where the list can compute it (follow-up a,
  * 2026-10-08), because a live row inside the next slice is already drawn: the
- * sentence names the rows the press ADDS, never the rows that merely exist.
+ * sentence names the rows the press ADDS, never the rows that merely exist. The
+ * count selects the locale's CLDR category inside the keyed message, so the
+ * singular branch is not a second English template here.
  */
 export function pageMoreLabel(loads: number, remaining: number): string {
 	const step = pageLimit(loads + 1) - pageLimit(loads);
 	const add = Math.max(0, Math.min(step, remaining));
-	return add === 1 ? "Show 1 more chat" : `Show ${add} more chats`;
+	return t("ui.chat.sidebar.catalogue.show_more_chats", { add });
 }
 
 /**

@@ -821,13 +821,13 @@ const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
  * the name still carries the state's sentence and nothing else, which is design
  * D2's call and still holds.
  *
- * ONE HOME FOR THE WORDS. The constant is the clause alone and the tooltip's own
- * expression adds the separator, rather than a second copy of the sentence in a
- * form only a tooltip can use: a description is announced straight after the
- * name, where a leading " · " would be read as a separator that is already
- * implied.
+ * ONE HOME FOR THE WORDS. The keyed clause is the sentence alone and the
+ * tooltip's own expression adds the separator, rather than a second copy of the
+ * sentence in a form only a tooltip can use: a description is announced straight
+ * after the name, where a leading " · " would be read as a separator that is
+ * already implied.
  */
-const SILENT_REMEDY = "/stop if it stays silent.";
+const silentRemedyClause = (): string => t("ui.chat.sidebar.row.silent_remedy");
 
 /**
  * The id of a row's remedy sentence, WHEN that row renders one.
@@ -981,8 +981,8 @@ export const EntityMark: FC<{
  */
 const rowMenuClause = (isMac: boolean): string =>
 	isMac
-		? "Right-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions."
-		: "Right-click or press Shift+F10 for its actions.";
+		? t("ui.chat.sidebar.row_menu.hint_mac")
+		: t("ui.chat.sidebar.row_menu.hint");
 const rowMenuClauseId = (sessionId: string) => `chat-row-menu-${sessionId}`;
 
 /**
@@ -4662,13 +4662,17 @@ export function ChatSidebar({
 						: (peerUncertainLabel(row) ??
 							row.status?.label ??
 							(synthesized.has(row.session_id)
-								? "found by search, beyond the chats listed here"
-								: "Recent"))}
-					{silent ? ` · ${SILENT_REMEDY}` : ""}
+								? t("ui.chat.sidebar.row.search_beyond")
+								: t("ui.chat.sidebar.row.recent")))}
+					{silent ? ` · ${silentRemedyClause()}` : ""}
 					{openedByNote(row)}
-					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
-					{unreadMarkKind(row) !== null ? ", unread" : ""}
-					{archived ? ", archived" : ""}
+					{unstarted.has(row.session_id)
+						? t("ui.chat.sidebar.row.not_sent_suffix")
+						: ""}
+					{unreadMarkKind(row) !== null
+						? t("ui.chat.sidebar.row.unread_suffix")
+						: ""}
+					{archived ? t("ui.chat.sidebar.row.archived_suffix") : ""}
 					{/*
 					 * THE SUBAGENT CLAUSE, from the SAME helper the row's `sr-only` sentence
 					 * reads, and gated by it in exactly the same way: empty on a `delegating`
@@ -4684,7 +4688,7 @@ export function ChatSidebar({
 					 * THE RECEIPT'S CLAUSE CLOSES THE LINE, after the flags rather than among
 					 * them: the flags are what the row IS and this is what the app is DOING
 					 * about the mark on it, so it reads as the actionable last word - the slot
-					 * `SILENT_REMEDY` occupies one fact up.
+					 * `silentRemedyClause` occupies one fact up.
 					 */}
 					{readAck ? ` · ${readAck.clause}` : ""}
 				</span>
@@ -5170,7 +5174,7 @@ export function ChatSidebar({
 		 */
 		const silentRemedy = silent ? (
 			<span id={silentRemedyId(row.session_id)} className="sr-only">
-				{SILENT_REMEDY}
+				{silentRemedyClause()}
 			</span>
 		) : null;
 		/*
