@@ -756,7 +756,7 @@ import {
 	ChatSessionAvatar,
 	ChatSessionAvatarEdit,
 } from "./chat-session-avatar";
-import { ChatAsksOutstanding } from "./chat-session-status";
+import { ChatAsksOutstanding, statusLabelText } from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -4660,7 +4660,7 @@ export function ChatSidebar({
 					{row.link_down === true
 						? peerLinkDownLabel(row, listNow / 1000)
 						: (peerUncertainLabel(row) ??
-							row.status?.label ??
+							statusLabelText(row) ??
 							(synthesized.has(row.session_id)
 								? t("ui.chat.sidebar.row.search_beyond")
 								: t("ui.chat.sidebar.row.recent")))}

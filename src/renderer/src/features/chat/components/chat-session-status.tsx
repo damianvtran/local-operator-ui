@@ -342,6 +342,20 @@ export function SubagentRunningMark({
  * name true if that label is ever reworded for a code whose ink does not step
  * between read and unseen.
  */
+export function statusLabelText(row: CanonicalSessionRow): string | undefined {
+	/*
+	 * `status.label` is a WIRE label, not copy: the backend's resting code
+	 * `recent` carries the English word "Recent" (core `session/catalog.py`).
+	 * The sidebar already owns the translated equivalent for that one state, so
+	 * substitute it by the stable transport code rather than by spelling. Every
+	 * other code keeps the backend's own label: those carry counts, causes and
+	 * state-specific detail this client does not reconstruct, and copying them
+	 * here would make a second source of truth.
+	 */
+	if (row.status?.code === "recent") return t("ui.chat.sidebar.row.recent");
+	return row.status?.label;
+}
+
 export function statusSpokenText(
 	row: CanonicalSessionRow,
 	nowSeconds: number,
@@ -349,7 +363,9 @@ export function statusSpokenText(
 ): string {
 	const label = mark.linkDown
 		? peerLinkDownLabel(row, nowSeconds)
-		: (mark.uncertainLabel ?? row.status?.label ?? "Recent");
+		: (mark.uncertainLabel ??
+			statusLabelText(row) ??
+			t("ui.chat.sidebar.row.recent"));
 	return `${label}${mark.unreadMark !== null ? ", unread" : ""}`;
 }
 
