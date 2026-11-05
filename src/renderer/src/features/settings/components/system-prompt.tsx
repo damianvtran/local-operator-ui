@@ -29,6 +29,9 @@ export const SystemPrompt: FC = () => {
 	const dirtyRef = useRef(false);
 	const baselineRef = useRef("");
 	const [revision, setRevision] = useState(0);
+	const [localDraftActive, setLocalDraftActive] = useState(false);
+	const [sourceVersion, setSourceVersion] = useState(0);
+	const observedServerVersion = useRef<string | null>(null);
 	const [saveError, setSaveError] = useState<string | null>(null);
 
 	// Cache refreshes can arrive while typing (including another consumer's
@@ -36,12 +39,28 @@ export const SystemPrompt: FC = () => {
 	// Adopt before paint so a fetched tagged prompt never flashes an empty rich
 	// editor (or lets a first interaction target that temporary editor).
 	useLayoutEffect(() => {
-		if (dirtyRef.current) return;
-		baselineRef.current = systemPromptData?.content ?? "";
-		setSystemPrompt(baselineRef.current);
-		setRevision((value) => value + 1);
+		const serverVersion = systemPromptData
+			? JSON.stringify([
+					systemPromptData.content,
+					systemPromptData.last_modified,
+				])
+			: null;
+		if (serverVersion !== observedServerVersion.current) {
+			observedServerVersion.current = serverVersion;
+			setSourceVersion((value) => value + 1);
+		}
+		// A node-local dialog owns unapplied text, not canonical Markdown.
+		// Retain that owner on refetch, but advance its version so Apply cannot
+		// overwrite changed server content. Cancel can then adopt the new base.
+		if (dirtyRef.current || localDraftActive) return;
+		const next = systemPromptData?.content ?? "";
+		if (next !== baselineRef.current) {
+			baselineRef.current = next;
+			setSystemPrompt(next);
+			setRevision((value) => value + 1);
+		}
 		setIsEdited(false);
-	}, [systemPromptData]);
+	}, [systemPromptData, localDraftActive]);
 
 	const handleInputChange = useCallback((newValue: string) => {
 		setSystemPrompt(newValue);
@@ -93,6 +112,8 @@ export const SystemPrompt: FC = () => {
 					key={revision}
 					value={systemPrompt}
 					onChange={handleInputChange}
+					onLocalDraftActiveChange={setLocalDraftActive}
+					sourceVersion={sourceVersion}
 					disabled={isSaving}
 				/>
 			</div>

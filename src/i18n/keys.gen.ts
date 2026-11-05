@@ -10132,7 +10132,9 @@ export type MessageParams = {
 	"ui.settings.model.system_prompt.save_changes": undefined;
 	"ui.settings.model.system_prompt.saving": undefined;
 	"ui.settings.model.system_prompt.source": undefined;
+	"ui.settings.model.system_prompt.source_edit": undefined;
 	"ui.settings.model.system_prompt.source_required": undefined;
+	"ui.settings.model.system_prompt.source_stale": undefined;
 	"ui.settings.model.system_prompt.system_prompt": undefined;
 	"ui.settings.model.system_prompt.unknown_error": undefined;
 	"ui.settings.model.provider_callout.providers_link": undefined;

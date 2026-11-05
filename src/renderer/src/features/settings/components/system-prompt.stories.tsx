@@ -1,13 +1,18 @@
 /** Isolated renderer fixtures: every bridge op fails closed except the synthetic
  * instruction/config operations below. Never opens the operator's prompt. */
-import { Button, Textarea } from "@shared/components/ui";
+import { Alert, Button, Textarea } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SettingsSection } from "./settings-section";
 import { SystemPrompt } from "./system-prompt";
+import {
+	extendedInstructionShape,
+	fictionalInstructionShape,
+} from "./system-prompt-fidelity.fixtures";
 
 const fictionalPrompt =
 	'# Working together\n\nUse **clear explanations**, preserve `literal` values, and read [the guide](https://example.invalid/guide).\n\n## Before acting\n\n- Inspect the relevant file.\n  - Keep nested instructions intact.\n- Explain the result.\n\n```python\nprint("fictional fixture")\n```\n';
@@ -16,6 +21,9 @@ type Props = {
 	before?: boolean;
 	kind?:
 		| "normal"
+		| "fidelity"
+		| "extended"
+		| "dangerous"
 		| "empty"
 		| "tags"
 		| "long"
@@ -24,9 +32,15 @@ type Props = {
 		| "save-error"
 		| "saving";
 	narrow?: boolean;
+	refetchControl?: boolean;
 };
 
-function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
+function Fixture({
+	before = false,
+	kind = "normal",
+	narrow = false,
+	refetchControl = false,
+}: Props) {
 	const [client] = useState(
 		() =>
 			new QueryClient({
@@ -37,14 +51,36 @@ function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
 			}),
 	);
 	const [ready, setReady] = useState(false);
+	const refetchFixture = useRef<(() => Promise<void>) | null>(null);
+	const [refetchTarget, setRefetchTarget] = useState<HTMLElement | null>(null);
+	useEffect(() => {
+		if (!refetchControl) return;
+		// The synthetic transport control belongs inside the active modal's
+		// focus/pointer scope, so a reviewer can cause a REAL query refetch using
+		// only visible UI rather than a privileged JavaScript evaluation port.
+		const update = () =>
+			setRefetchTarget(
+				window.document.querySelector<HTMLElement>('[role="dialog"]'),
+			);
+		const observer = new MutationObserver(update);
+		observer.observe(window.document.body, { childList: true, subtree: true });
+		update();
+		return () => observer.disconnect();
+	}, [refetchControl]);
 	const initial =
-		kind === "empty"
-			? ""
-			: kind === "tags"
-				? taggedPrompt
-				: kind === "long"
-					? fictionalPrompt.repeat(100)
-					: fictionalPrompt;
+		kind === "fidelity"
+			? fictionalInstructionShape
+			: kind === "extended"
+				? extendedInstructionShape
+				: kind === "dangerous"
+					? '# Fictional unsafe syntax\n\n<script>window.fictionalExecuted = true</script>\n\n<img src="https://example.invalid/remote" onerror="window.fictionalExecuted=true">\n\n[Unsafe](javascript:alert(1))\n\n![Remote](https://example.invalid/image)\n\nSafe instructions with **emphasis**.\n'
+					: kind === "empty"
+						? ""
+						: kind === "tags"
+							? taggedPrompt
+							: kind === "long"
+								? fictionalPrompt.repeat(100)
+								: fictionalPrompt;
 	useLayoutEffect(() => {
 		let content = initial;
 		const previousDesktop = window.api.desktop;
@@ -66,6 +102,7 @@ function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
 			content: () => content,
 		};
 		Object.assign(window, { systemPromptFixture: fixture });
+		refetchFixture.current = fixture.externalRefetch;
 		const syntheticDesktop: typeof window.api.desktop = {
 			...previousDesktop,
 			request: async (request) => {
@@ -143,7 +180,7 @@ function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
 		setReady(true);
 		return () => {
 			Object.defineProperty(window.api, "desktop", {
-				...desktopDescriptor,
+				enumerable: desktopDescriptor?.enumerable ?? true,
 				configurable: true,
 				writable: true,
 				value: nextDesktop,
@@ -151,13 +188,29 @@ function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
 			window.api.backend = previousBackend;
 			client.clear();
 			Reflect.deleteProperty(window, "systemPromptFixture");
+			refetchFixture.current = null;
 		};
 	}, [client, initial, kind]);
+	const refetchButton = (
+		<Button
+			variant="ghost"
+			onClick={() => {
+				void refetchFixture.current?.();
+			}}
+		>
+			External refetch (fictional)
+		</Button>
+	);
 	return (
 		<div
-			className="min-h-screen bg-surface p-4 text-ink"
+			className="h-screen overflow-y-auto bg-surface p-4 text-ink"
 			style={{ maxWidth: narrow ? 390 : 920 }}
 		>
+			{ready &&
+				refetchControl &&
+				(refetchTarget
+					? createPortal(refetchButton, refetchTarget)
+					: refetchButton)}
 			{before ? (
 				<SettingsSection
 					title={t("ui.settings.model.system_prompt.system_prompt")}
@@ -166,6 +219,11 @@ function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
 					)}
 				>
 					<div className="flex flex-col gap-4">
+						{(kind === "fidelity" || kind === "extended") && (
+							<Alert>
+								{t("ui.settings.model.system_prompt.source_required")}
+							</Alert>
+						)}
 						<label htmlFor="before-prompt">
 							{t("ui.settings.model.system_prompt.instructions")}
 						</label>
@@ -292,24 +350,395 @@ export const EditedUnsupportedTags: Story = {
 	args: { kind: "tags" },
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
+		await canvas.findByRole("heading", { name: "Working together" });
+		await expect(
+			canvasElement.querySelectorAll("[data-prompt-opaque]").length,
+		).toBeGreaterThan(0);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Markdown source" }),
+		);
 		await waitFor(() =>
 			expect(canvasElement.querySelector("textarea")).not.toBeNull(),
 		);
 		const editor = canvas.getByRole("textbox") as HTMLTextAreaElement;
 		await expect(editor.value).toBe(taggedPrompt);
-		await userEvent.click(canvas.getByRole("button", { name: "Rich text" }));
-		await expect(
-			(canvas.getByRole("textbox") as HTMLTextAreaElement).value,
-		).toBe(taggedPrompt);
 		await userEvent.type(editor, "\nAdditional fictional rule.");
+		await userEvent.click(canvas.getByRole("button", { name: "Rich text" }));
+		await canvas.findByRole("heading", { name: "Working together" });
 		await userEvent.click(canvas.getByRole("button", { name: "Save changes" }));
 		await waitFor(() =>
 			expect(
 				canvas.getByRole("button", { name: "Save changes" }),
 			).toBeDisabled(),
 		);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Markdown source" }),
+		);
+		await waitFor(() =>
+			expect(canvasElement.querySelector("textarea")).not.toBeNull(),
+		);
 		await expect(
 			(canvas.getByRole("textbox") as HTMLTextAreaElement).value,
 		).toBe(`${taggedPrompt}\nAdditional fictional rule.`);
+	},
+};
+export const Fidelity: Story = { args: { kind: "fidelity" } };
+export const ExtendedFormatting: Story = { args: { kind: "extended" } };
+export const BeforeFidelity: Story = {
+	args: { kind: "fidelity", before: true },
+};
+export const DangerousSyntax: Story = { args: { kind: "dangerous" } };
+export const NodeSourceEdit: Story = {
+	args: { kind: "fidelity" },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		await canvas.findByRole("heading", { name: "Working agreements" });
+		await expect(
+			canvas.getByRole("button", { name: "Save changes" }),
+		).toBeDisabled();
+		await userEvent.click(
+			canvas.getAllByRole("button", { name: "Edit source" })[0],
+		);
+		const dialog = within(
+			await page.findByRole("dialog", { name: "Edit source" }),
+		);
+		const source = dialog.getByRole("textbox") as HTMLTextAreaElement;
+		await expect(source.value).toBe("<policy>");
+		await userEvent.clear(source);
+		await userEvent.type(source, '<policy data-fictional="updated">');
+		await userEvent.click(dialog.getByRole("button", { name: "Apply" }));
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("button", { name: "Save changes" }),
+			).toBeEnabled(),
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("button", { name: "Save changes" }),
+			).toBeDisabled(),
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Redo" }));
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("button", { name: "Save changes" }),
+			).toBeEnabled(),
+		);
+		const editor = canvas.getByRole("textbox");
+		editor.focus();
+		await userEvent.keyboard("{Control>}z{/Control}");
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("button", { name: "Save changes" }),
+			).toBeDisabled(),
+		);
+		await userEvent.keyboard("{Control>}{Shift>}z{/Shift}{/Control}");
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("button", { name: "Save changes" }),
+			).toBeEnabled(),
+		);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Markdown source" }),
+		);
+		await waitFor(() =>
+			expect(canvasElement.querySelector("textarea")).not.toBeNull(),
+		);
+		await expect(
+			(canvas.getByRole("textbox") as HTMLTextAreaElement).value,
+		).toBe(
+			fictionalInstructionShape.replace(
+				"<policy>",
+				'<policy data-fictional="updated">',
+			),
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Save changes" }));
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("button", { name: "Save changes" }),
+			).toBeDisabled(),
+		);
+	},
+};
+export const StaleNodeSource: Story = {
+	args: { kind: "fidelity" },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		await canvas.findByRole("heading", { name: "Working agreements" });
+		const root = canvas.getByRole("textbox");
+		await userEvent.click(
+			canvas.getAllByRole("button", { name: "Edit source" })[0],
+		);
+		const dialog = within(
+			await page.findByRole("dialog", { name: "Edit source" }),
+		);
+		const text = root.querySelector("h1 span");
+		if (!text) throw new Error("Missing fictional heading");
+		text.textContent = "A newer fictional heading";
+		root.dispatchEvent(
+			new InputEvent("input", {
+				bubbles: true,
+				inputType: "insertText",
+				data: "newer",
+			}),
+		);
+		await userEvent.click(dialog.getByRole("button", { name: "Apply" }));
+		await dialog.findByText(
+			"This part changed while you were editing it. Cancel and open it again to keep the latest instructions.",
+		);
+		await expect(dialog.getByRole("button", { name: "Apply" })).toBeDisabled();
+		await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+		await expect(root.textContent).toContain("A newer fictional heading");
+	},
+};
+export const InertMarkupAndPaste: Story = {
+	args: { kind: "dangerous" },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByRole("heading", { name: "Fictional unsafe syntax" });
+		const root = canvas.getByRole("textbox");
+		await expect(
+			root.querySelector("script,img,iframe,svg,math,[src],[onerror]"),
+		).toBeNull();
+		root.focus();
+		const selection = window.getSelection();
+		const range = document.createRange();
+		range.selectNodeContents(root);
+		range.collapse(false);
+		selection?.removeAllRanges();
+		selection?.addRange(range);
+		const data = new DataTransfer();
+		data.setData(
+			"text/html",
+			'<img src="https://example.invalid/pasted" onerror="window.fictionalExecuted=true"><span data-prompt-node="forged">Forged</span>',
+		);
+		data.setData("text/plain", " Fictional pasted text <literal>");
+		root.dispatchEvent(
+			new ClipboardEvent("paste", {
+				bubbles: true,
+				cancelable: true,
+				clipboardData: data,
+			}),
+		);
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("button", { name: "Save changes" }),
+			).toBeEnabled(),
+		);
+		await expect(
+			root.querySelector(
+				"script,img,iframe,svg,math,[src],[onerror],[data-prompt-node=forged]",
+			),
+		).toBeNull();
+		await expect(
+			(window as unknown as { fictionalExecuted?: boolean }).fictionalExecuted,
+		).toBeUndefined();
+		await expect(
+			performance
+				.getEntriesByType("resource")
+				.filter((entry) => entry.name.includes("example.invalid")),
+		).toHaveLength(0);
+	},
+};
+
+export const ImmediateFlush: Story = {
+	args: { kind: "fidelity" },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByRole("heading", { name: "Working agreements" });
+		for (let round = 0; round < 3; round++) {
+			await userEvent.click(
+				canvas.getByRole("button", { name: "Markdown source" }),
+			);
+			await waitFor(() =>
+				expect(canvasElement.querySelector("textarea")).not.toBeNull(),
+			);
+			await expect(
+				(canvas.getByRole("textbox") as HTMLTextAreaElement).value,
+			).toBe(fictionalInstructionShape);
+			await userEvent.click(canvas.getByRole("button", { name: "Rich text" }));
+			await canvas.findByRole("heading", { name: "Working agreements" });
+			await expect(
+				canvas.getByRole("button", { name: "Save changes" }),
+			).toBeDisabled();
+		}
+		const edit = (value: string) => {
+			const root = canvas.getByRole("textbox");
+			const text = root.querySelector("h1 span");
+			if (!text) throw new Error("Missing fictional heading");
+			text.textContent = value;
+			root.dispatchEvent(
+				new InputEvent("input", {
+					bubbles: true,
+					inputType: "insertText",
+					data: value,
+				}),
+			);
+		};
+		edit("Fictional immediate source");
+		// No dirty-state/effect wait before the mode boundary.
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Markdown source" }),
+		);
+		await waitFor(() =>
+			expect(canvasElement.querySelector("textarea")).not.toBeNull(),
+		);
+		await expect(
+			(canvas.getByRole("textbox") as HTMLTextAreaElement).value,
+		).toBe(
+			fictionalInstructionShape.replace(
+				"Working agreements",
+				"Fictional immediate source",
+			),
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Rich text" }));
+		await canvas.findByRole("heading", { name: "Fictional immediate source" });
+		edit("Fictional immediate save");
+		// Likewise Save is the next user action, without waiting for an effect.
+		await userEvent.click(canvas.getByRole("button", { name: "Save changes" }));
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("button", { name: "Save changes" }),
+			).toBeDisabled(),
+		);
+		const fixture = (
+			window as unknown as {
+				systemPromptFixture: { content: () => string; requests: string[] };
+			}
+		).systemPromptFixture;
+		await expect(fixture.content()).toBe(
+			fictionalInstructionShape.replace(
+				"Working agreements",
+				"Fictional immediate save",
+			),
+		);
+		await expect(
+			fixture.requests.filter((op) => op === "instructions.update"),
+		).toHaveLength(1);
+	},
+};
+
+/** Manual counterpart: open a node, type without Apply, then use the visible
+ * synthetic button inside that modal. It exercises the actual query refetch. */
+export const RefetchControls: Story = {
+	args: { kind: "fidelity", refetchControl: true },
+};
+
+export const PristineRefetch: Story = {
+	args: { kind: "fidelity", refetchControl: true },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		await canvas.findByRole("heading", { name: "Working agreements" });
+		await userEvent.click(
+			canvasElement.querySelector("[data-prompt-opaque]") as HTMLElement,
+		);
+		const dialog = within(await page.findByRole("dialog"));
+		const local = dialog.getByRole("textbox");
+		await userEvent.clear(local);
+		await userEvent.type(local, '<policy fictional="unapplied">');
+		await userEvent.click(
+			await dialog.findByRole("button", {
+				name: "External refetch (fictional)",
+			}),
+		);
+		await waitFor(() =>
+			expect(dialog.getByRole("button", { name: "Apply" })).toBeDisabled(),
+		);
+		await expect(local).toHaveValue('<policy fictional="unapplied">');
+		await expect(dialog.getByRole("alert")).toHaveTextContent(
+			t("ui.settings.model.system_prompt.source_stale"),
+		);
+		await expect(
+			[...canvasElement.querySelectorAll("button")].find(
+				(button) => button.textContent === "Save changes",
+			),
+		).toBeDisabled();
+		const fixture = (
+			window as unknown as {
+				systemPromptFixture: { content: () => string; requests: string[] };
+			}
+		).systemPromptFixture;
+		await expect(fixture.content()).toContain("External fictional change.");
+		await expect(
+			fixture.requests.filter((op) => op === "instructions.update"),
+		).toHaveLength(0);
+		// Keep this stable warning/local-draft frame open for independent design
+		// inspection; Cancel remains visible and safely adopts the new baseline.
+	},
+};
+
+export const ImageCancel: Story = {
+	args: { kind: "normal" },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		// A resolved heading is the loaded-document readiness control. The
+		// transient empty editor may still be replaced by initial query adoption.
+		const heading = await canvas.findByRole("heading", {
+			name: "Working together",
+		});
+		const rich = canvas.getByRole("textbox", { name: "Instructions" });
+		const text = "Fictional image cancellation.";
+		await userEvent.click(rich);
+		// Match ImmediateFlush's explicit real-DOM input instrument. userEvent's
+		// empty-contenteditable typing is a no-op in this fixture; assert the
+		// actual input and caret instead of treating that setup failure as proof.
+		rich.dispatchEvent(
+			new InputEvent("beforeinput", {
+				bubbles: true,
+				inputType: "insertText",
+				data: text,
+			}),
+		);
+		const headingLeaf = heading.querySelector(
+			"span[data-prompt-node]",
+		) as HTMLElement;
+		headingLeaf.textContent = text;
+		const leaf = headingLeaf.firstChild as Text;
+		const caret = canvasElement.ownerDocument.createRange();
+		caret.setStart(leaf, text.length);
+		caret.collapse(true);
+		window.getSelection()?.removeAllRanges();
+		window.getSelection()?.addRange(caret);
+		rich.dispatchEvent(
+			new InputEvent("input", {
+				bubbles: true,
+				inputType: "insertText",
+				data: text,
+			}),
+		);
+		await expect(heading).toHaveTextContent(text);
+		const before = rich.innerHTML;
+		await waitFor(() =>
+			expect(canvas.getByRole("button", { name: "Undo" })).toBeEnabled(),
+		);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "More formatting" }),
+		);
+		await userEvent.click(
+			await page.findByRole("menuitem", { name: "Insert image" }),
+		);
+		const dialog = within(await page.findByRole("dialog"));
+		await expect(rich.innerHTML).toBe(before);
+		await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+		await expect(rich.innerHTML).toBe(before);
+		await expect(
+			canvas.getByRole("button", { name: "Save changes" }),
+		).toBeEnabled();
+		await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
+		await expect(
+			canvas.getByRole("heading", { name: "Working together" }),
+		).toBeVisible();
+		await userEvent.click(canvas.getByRole("button", { name: "Redo" }));
+		await expect(canvas.getByRole("heading", { name: text })).toBeVisible();
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Markdown source" }),
+		);
+		await expect(
+			canvas.getByRole("textbox", { name: "Instructions" }),
+		).toHaveValue(fictionalPrompt.replace("Working together", text));
 	},
 };
