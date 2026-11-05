@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "locale": "vi",
+  "namespace": "ui.mesh",
+  "date": "2026-11-05",
+  "instance": "i18n-audit-uimesh-vi-59a1adac0231",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "Independent auditor on this wave; authored no catalogue, ledger or code change for PR #1688",
+    "instance": "i18n-audit-uimesh-vi-59a1adac0231",
+    "model": "openai/gpt-6.1-sol",
+    "independence": "I independently reviewed English and target profile-consent copy against the core glossary, locale guide and translator context. I authored no catalogue, ledger, allowance, tests or product-code change for PR #1688. Audit findings and suggested corrections are review work, not catalogue authorship.",
+    "fallback": "The run was switched from anthropic/claude-opus-5-5 to openai/gpt-6.1-sol because of provider quota. Actual served fallback model disclosed without upgrade."
+  },
+  "status": "passed",
+  "sha256": {
+    "target": "1b86fe1a9a6ea07b9fb29fa0fbee822803940175909a221403a2dac7b46a0af2",
+    "en": "92b27eb8c083beafafa8b404447d2048c7a63042a606e2b5a523007c98fb438a"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.mesh.mesh_approvals.profile_outcome_approved_not_saved",
+      "detail": "src/i18n/catalogues/vi/ui.mesh.json:305: \"Đã chấp thuận — chưa được lưu\" correctly preserves approved-but-not-saved but changes the glossary approval term phê duyệt (core i18n/glossary.md:52; i18n/style-guides/vi.md:35). Use \"Đã phê duyệt — chưa được lưu\" for terminology consistency.",
+      "suggested_target": "Đã phê duyệt — chưa được lưu"
+    }
+  ],
+  "scope": {
+    "round": 2,
+    "frozen_catalogue_head": "22aa8da03cddee3d49ba7875da9693e2ddd7900b",
+    "observed_worktree_head": "2886c9d0ce344a4c1dbc8a92e283e8df3afddcba",
+    "previous_head": "be04b9cf092c92d8f4e6997fc914b1d4ca2a2bb9",
+    "structural": "All 310 ui.mesh keys checked for exact key-set equality, ICU parser success, argument/type/tag parity, and no manual bidi controls. All Vietnamese values NFC. Existing locale-specific CLDR arm differences retained unchanged; all 33 profile messages have no arguments, plural/select arms or tags.",
+    "semantic": "All 33 profile messages checked against English and supplied context, including 13 new English rows since round 1. Accepted hi/ur expiry, French U+2019, Russian session, Vietnamese xóa corrections verified. Before/After, receipt-diff explanation, every outcome and every revert state reviewed. The other 277 namespace rows were proved unchanged; their semantics were not freshly re-audited in this delta round.",
+    "source_use": "Verified changesIncluded/diffLines/changedFieldNames prevent absent receipt images from claiming no changes. Reviewed explicit outcome mapping and distinct offered/pending/saved/stale/failed/unconfirmed revert labels. No remaining profile wording claims a queued/denied/expired proposal was saved, or an offered/pending/expired revert succeeded.",
+    "compatibility": "HEAD advanced during audit. All eight catalogues and English context remained byte-identical to the frozen head. Inspected the direct source delta: only action_id prefix validation narrowed to prv_; lifecycle label mappings unchanged.",
+    "limitations": "Text/source audit only; no rendered width, shaping or interactive RTL proof. Resource hold forbids builds/apps and this role has no browser."
+  },
+  "checks": [
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "result": "PASS: every English key covered except 131 allowed gaps in 4 other namespaces; all ui.mesh profile keys have context."
+    },
+    {
+      "command": "In-memory @formatjs/icu-messageformat-parser audit of all ui.mesh keys",
+      "result": "PASS: 310 keys per locale, no missing/extra keys, parse errors, argument/tag mismatches or manual bidi controls. Existing CLDR plural differences retained."
+    },
+    {
+      "command": "shasum -a 256 on English and seven targets, plus comparison to git show frozen_head:path",
+      "result": "All eight catalogue byte streams matched the frozen head before receipt writing."
+    }
+  ],
+  "reference_sha256": {
+    "context": "577644b9398e9dc84fa96087922975e852c136476c9abb0c02774f1a07c6f67b",
+    "core_glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "locale_style_guide": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+  }
+}
