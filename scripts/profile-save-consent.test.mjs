@@ -162,7 +162,7 @@ const wire = (over = {}) => ({
 const revertDescriptor = {
 	schema: 1,
 	kind: "profile_revert",
-	action_id: "rv_abcdefghijklmnopqrstuvwxyz012345",
+	action_id: "prv_abcdefghijklmnopqrstuvwxyz012345",
 	label: "Revert",
 	profile_kind: "agent",
 	profile_name: "Researcher",
@@ -334,8 +334,14 @@ test("the descriptor is the backend's exact shape, and legacy hints are not it",
 	// A prefix and EXACTLY 32 URL-safe characters: a legacy short id is refused.
 	for (const bad of [
 		{ ...revertDescriptor, action_id: "ra_5b81" },
-		{ ...revertDescriptor, action_id: "rv_short" },
-		{ ...revertDescriptor, action_id: "rv_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+		{ ...revertDescriptor, action_id: "prv_short" },
+		// A same-length tail behind a different prefix is not the frozen mint.
+		{ ...revertDescriptor, action_id: "xyz_abcdefghijklmnopqrstuvwxyz012345" },
+		{ ...revertDescriptor, action_id: "ap_abcdefghijklmnopqrstuvwxyz012345" },
+		{ ...revertDescriptor, action_id: "rv_abcdefghijklmnopqrstuvwxyz012345" },
+		// A tail one character short or long is an id core never mints.
+		{ ...revertDescriptor, action_id: "prv_abcdefghijklmnopqrstuvwxyz01234" },
+		{ ...revertDescriptor, action_id: "prv_abcdefghijklmnopqrstuvwxyz0123456" },
 		{ ...revertDescriptor, schema: 2 },
 		{ ...revertDescriptor, kind: "revert" },
 		{ ...revertDescriptor, extra: true },

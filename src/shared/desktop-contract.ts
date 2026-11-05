@@ -2324,11 +2324,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.profileActionStatus"),
 			sessionId,
-			actionId: z
-				.string()
-				.min(1)
-				.max(64)
-				.regex(/^[A-Za-z0-9_-]+$/),
+			/*
+			 * The frozen mint (`local_operator/profile_actions.py`): `prv_` plus
+			 * exactly 32 URL-safe characters. Pinned rather than bounded, because an id
+			 * this app cannot name is an action core cannot resolve.
+			 */
+			actionId: z.string().regex(/^prv_[A-Za-z0-9_-]{32}$/),
 			receiptId: z.string().min(1).max(160),
 			profileKind: z.enum(["agent", "team"]),
 			profileName: z.string().min(1).max(128),

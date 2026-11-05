@@ -293,15 +293,15 @@ export const profileRevertDescriptorSchema = z
 		schema: z.literal(1),
 		kind: z.literal(PROFILE_REVERT_KIND),
 		/*
-		 * The op's own mint: a short lowercase prefix, an underscore, and EXACTLY 32
-		 * URL-safe characters — the opaque id an answer names as `request_id`. The
-		 * prefix literal is left as a bounded shape (1..8 lowercase letters) rather
-		 * than pinned to one word: the id is core's, and a renderer that hard-coded a
-		 * prefix it guessed would reject every real descriptor the day core spelled it
-		 * differently. Length and alphabet are exact, so a legacy short id
-		 * (`ra_5b81`) or a sentence is refused by name.
+		 * THE FROZEN MINT, LITERALLY: `prv_` and exactly 32 URL-safe characters.
+		 *
+		 * Read off core rather than guessed — `local_operator/profile_actions.py`
+		 * declares `action_id: str = Field(pattern=r"^prv_[A-Za-z0-9_-]{32}$")` and
+		 * mints it as `"prv_" + secrets.token_urlsafe(24)`. A looser shape would draw
+		 * a Revert for an id core cannot resolve; a legacy short id (`ra_5b81`),
+		 * another prefix, or a short/long tail is refused by name.
 		 */
-		action_id: z.string().regex(/^[a-z]{1,8}_[A-Za-z0-9_-]{32}$/),
+		action_id: z.string().regex(/^prv_[A-Za-z0-9_-]{32}$/),
 		label: z.string().min(1).max(64),
 		profile_kind: z.enum(PROFILE_KINDS),
 		profile_name: z.string().min(1).max(128),

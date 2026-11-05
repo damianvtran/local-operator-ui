@@ -57,7 +57,7 @@ export type ProfileRevertIdentity = z.infer<typeof profileRevertIdentitySchema>;
 /** The answer's closed schema: exactly two keys, `extra: forbid` on core's side too. */
 export const profileRevertStatusSchema = z
 	.object({
-		action_id: z.string().min(1).max(64),
+		action_id: z.string().regex(/^prv_[A-Za-z0-9_-]{32}$/),
 		state: z.enum(PROFILE_REVERT_STATUSES),
 	})
 	.strict();
