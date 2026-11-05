@@ -1797,3 +1797,109 @@ test("the scripted transport raises the control, and its press settles", async (
 	assert.equal(sequence.settled.state, "succeeded");
 	api.profileRevertStatusCache.clear();
 });
+
+/* ---------------------- round 7: the outcome sentence is the FINAL state's */
+
+test("the visible outcome sentence comes from the final lifecycle state (UX U4)", () => {
+	/*
+	 * THE DEFECT: an envelope overrode `state` but kept the INNER receipt's
+	 * `stateNote`, so a denied record read "Proposal — not saved yet" and an applied
+	 * inner receipt under a non-accepted envelope could read "Saved". Each combination
+	 * below asserts the sentence belongs to the FINAL state, in the catalogue's own
+	 * words — no new copy, no re-derived phrasing.
+	 */
+	const notes = JSON.parse(source("src/i18n/catalogues/en/ui.mesh.json"));
+	const note = (state) =>
+		notes[`ui.mesh.mesh_approvals.profile_outcome_${state}`];
+	const receipt = (status) => ({
+		status,
+		profile_kind: "agent",
+		profile_name: "reviewer",
+		scope: "global",
+		fields: ["instructions"],
+		diff: ["instructions (replaced; new text):", "guidance"],
+	});
+	const envelope = (state, innerStatus) =>
+		api.profileSaveCall({
+			toolName: "agent",
+			output: "",
+			details: { receipt: receipt(innerStatus), state },
+		});
+
+	const cases = [
+		// [envelope state, inner receipt status, expected final state]
+		["approved", "applied", "approved_not_saved"],
+		["approved", "queued", "approved_not_saved"],
+		["denied", "applied", "denied"],
+		["expired", "applied", "expired"],
+		["stale", "queued", "waiting"],
+		["queued", "applied", "waiting"],
+		["applied", "applied", "saved"],
+	];
+	for (const [envelopeState, innerStatus, expected] of cases) {
+		const call = envelope(envelopeState, innerStatus);
+		assert.ok(call, `${envelopeState}/${innerStatus} parses`);
+		assert.equal(
+			call.view.state,
+			expected,
+			`${envelopeState}/${innerStatus} resolves to ${expected}`,
+		);
+		assert.equal(
+			call.view.stateNote,
+			note(expected),
+			`${envelopeState}/${innerStatus} states ${expected}'s outcome`,
+		);
+		// The false claims the round reproduced, named so they cannot return.
+		if (expected !== "saved")
+			assert.notEqual(call.view.stateNote, note("saved"), envelopeState);
+		if (expected !== "waiting")
+			assert.notEqual(
+				call.view.stateNote,
+				note("waiting"),
+				`${envelopeState}/${innerStatus} must not read as a pending proposal`,
+			);
+	}
+});
+
+test("a receipt states no operation, because the producer states none", () => {
+	/*
+	 * The queued card said "New profile" for an actual update: a receipt's `details`
+	 * carry no `operation`, and inventing `create` is a claim the producer never made.
+	 * Both receipt paths (queued and applied) now render no operation word.
+	 */
+	const queued = api.profileSaveCall({
+		toolName: "agent",
+		output: "",
+		details: api.GOLDEN_QUEUED_TOOL_RESULT.details,
+	});
+	assert.ok(queued);
+	assert.equal(
+		queued.view.operation,
+		null,
+		"queued receipt states no operation",
+	);
+
+	const applied = api.profileSaveCall({
+		toolName: "agent",
+		output: "",
+		details: api.GOLDEN_SAVED_AGENT_TOOL_RESULT.details,
+	});
+	assert.ok(applied);
+	assert.equal(
+		applied.view.operation,
+		null,
+		"applied receipt states no operation",
+	);
+	// A disclosure-based card still carries the operation the producer DID state.
+	const disclosureCall = api.profileSaveCall({
+		toolName: "agent",
+		output: JSON.stringify(
+			api.GOLDEN_APPROVAL_ROWS[0].typed_approval.disclosure,
+		),
+	});
+	assert.ok(disclosureCall);
+	assert.equal(
+		disclosureCall.view.operation,
+		api.GOLDEN_APPROVAL_ROWS[0].typed_approval.disclosure.profile_operation,
+	);
+});

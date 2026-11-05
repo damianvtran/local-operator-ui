@@ -257,17 +257,29 @@ export function profileSaveCall(record: {
 	const envelopeDescriptor = profileRevertDescriptor(payload.profile_action);
 	const base = receiptView(envelopeReceipt, envelopeDescriptor);
 	const descriptor = envelopeDescriptor;
+	/*
+	 * THE ENVELOPE'S STATE IS THE RECORD'S STATE, AND SO IS ITS SENTENCE (UX U4).
+	 *
+	 * The receipt inside an envelope may say `applied`, while the envelope says the
+	 * proposal was denied, expired or is still queued. Overriding `state` alone left
+	 * the INNER receipt's `stateNote` on screen, so a denied record read "Proposal —
+	 * not saved yet" and an applied inner receipt under a non-accepted envelope could
+	 * read "Saved". The note is therefore derived from the FINAL state, in one place,
+	 * and the inner receipt never supplies it.
+	 */
+	const finalState = STATE_WORDS[stateWord(payload)] ?? base.state;
 	return {
 		view: {
 			...base,
-			state: STATE_WORDS[stateWord(payload)] ?? base.state,
+			state: finalState,
+			stateNote: stateNoteFor(finalState),
 			// `base.revert` is undefined without a descriptor: no control, not a
 			// disabled one, when a payload named only a legacy hint.
 			revert: descriptor ? profileRevertUnavailable() : base.revert,
 		},
 		descriptor,
 		revertVerifiedByProducer: payload.revert_verified === true,
-		state: STATE_WORDS[stateWord(payload)] ?? base.state,
+		state: finalState,
 	};
 }
 
@@ -335,13 +347,21 @@ function receiptView(
 	return {
 		kind: receipt.profile_kind,
 		name: receipt.profile_name,
-		operation: "create",
 		scope: receipt.scope,
 		// No before/after images: a receipt cannot fill the two-column diff.
 		fields: [],
 		changesIncluded: diffPresent,
 		diffLines,
 		changedFieldNames: changedFields,
+		/*
+		 * NO OPERATION WORD (parent, from the producer's own data). A receipt's
+		 * `details` carry no `operation` key — the operation lives on the associated
+		 * native approval's `disclosure.profile_operation` — so this card states none
+		 * rather than inventing `create` for an update. The closed receipt schema is
+		 * not loosened to fill it: absence is the honest reading, and the card renders
+		 * no operation word at all.
+		 */
+		operation: null,
 		state: applied ? "saved" : "waiting",
 		/*
 		 * AN APPLIED RECEIPT STATES ITS OUTCOME IN WORDS, like every other card
