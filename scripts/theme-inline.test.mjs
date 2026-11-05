@@ -85,7 +85,11 @@ function mount(action) {
 	const effects = [];
 	const hosts = [];
 	let index = 0;
-	const state = { themeName: "dark", setTheme: (id) => applied.push(id) };
+	const state = {
+		themeName: "dark",
+		setTheme: (id) => applied.push(id),
+		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
+	};
 	const deps = {
 		themes: THEMES,
 		useUiPreferencesStore: (selector) => selector(state),
@@ -107,6 +111,14 @@ function mount(action) {
 			effects.push(fn);
 		},
 		useI18nLocale: () => {},
+		/* The layered-appearance seams at the IDENTITY path: no contrast or
+		   accent layer, so the current row carries no meta - the resolution
+		   rules under test are unchanged by them. */
+		useResolvedAppearance: () => ({
+			identity: true,
+			palette: { mode: "dark" },
+		}),
+		appearanceLayerSummary: () => null,
 		t: (key, values) => {
 			const message = PICKERS_ENGLISH[key] ?? key;
 			if (!values) return message;

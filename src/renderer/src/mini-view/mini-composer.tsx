@@ -87,7 +87,7 @@ import {
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { applyThemeToDocument } from "@shared/themes";
+import { appearanceOf, applyAppearance } from "@shared/themes/appearance";
 import {
 	useCallback,
 	useEffect,
@@ -693,7 +693,7 @@ export function MiniComposer() {
 	 */
 	useEffect(() => {
 		return window.api?.miniView?.onSummoned?.(() => {
-			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
+			applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
 			update((current) => miniFrameTransitions.summoned(current));
 			closeSheet();
 			/*

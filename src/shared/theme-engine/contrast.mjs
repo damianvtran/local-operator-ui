@@ -83,8 +83,9 @@ export const CONTRAST_PRESETS = Object.freeze({
  * and palettes authored there (githubLight, localOperatorLight, ayuLight) cannot
  * lift their paper at all. So light High spends itself where it can: the paper
  * rises as far as the compressed ladder allows (never below Standard), and the
- * body ink takes the rest (`tensionInk`) - fleet-wide, ink/canvas rises 12-30%
- * from Standard to High on light. The presets gate's order leg holds that.
+ * body ink takes the rest (`tensionInk`) - fleet-wide, ink/canvas rises 5.4-26.5%
+ * from Standard to High on light (measured over the 18 light palettes:
+ * highContrastLight 5.4%, kanagawaLotus 26.5%). The presets gate's order leg holds that.
  */
 export const CONTRAST_ANCHORS = Object.freeze({
 	dark: Object.freeze({ high: 5, soft: 20 }),
@@ -208,16 +209,28 @@ const worstRatio = (p, hex, grounds) =>
  * Move `role` along L* only (hue and chroma kept), AWAY from the grounds, until it
  * clears `floor` on every listed ground. Leaves an already-passing value alone, so
  * a palette whose text still clears at the preset keeps its authored text.
+ * `accepts` lets the accent layer also preserve its distinction from body ink;
+ * the default keeps the existing contrast ladder and all its floors unchanged.
  */
-export const solveLightness = (p, role, grounds, floor) => {
+export const solveLightness = (
+	p,
+	role,
+	grounds,
+	floor,
+	accepts = () => true,
+) => {
 	const value = p[role];
-	if (!isFlatHex(value) || worstRatio(p, value, grounds) >= floor + HEADROOM)
+	if (
+		!isFlatHex(value) ||
+		(worstRatio(p, value, grounds) >= floor + HEADROOM && accepts(value))
+	)
 		return value;
 	const [l, a, b] = toLab(value);
 	const dir = p.mode === "dark" ? 1 : -1;
 	for (let s = 0.25; s <= 100; s += 0.25) {
 		const hex = labAtLightness(l + dir * s, a, b);
-		if (worstRatio(p, hex, grounds) >= floor + HEADROOM) return hex;
+		if (worstRatio(p, hex, grounds) >= floor + HEADROOM && accepts(hex))
+			return hex;
 	}
 	return value;
 };

@@ -309,6 +309,14 @@ const bundle = await build({
 		// The image has no assertion here, so it loads empty — the same choice `.css`
 		// already made (and the same pair `browser-chrome.test.mjs` carries).
 		"@assets": `${process.cwd()}/src/renderer/src/assets`,
+		// The start page reads its appearance through `use-resolved-appearance`, which
+		// reaches `base-theme` and MUI's `createTheme`. A bare `@mui/material/styles` is a
+		// DIRECTORY specifier by the time Node sees it, and Node refuses it
+		// (`ERR_UNSUPPORTED_DIR_IMPORT`). MUI ships that path as a directory of ESM files
+		// for bundlers, each file importing its siblings the same way, so naming
+		// `styles/index.js` only moves the failure a level down; the `node/` build is that
+		// same module as CommonJS, which Node's ESM loader resolves with named exports.
+		"@mui/material/styles": "@mui/material/node/styles/index.js",
 	},
 	loader: { ".css": "empty", ".png": "empty" },
 	write: false,

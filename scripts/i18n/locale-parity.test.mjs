@@ -444,6 +444,19 @@ const IDENTICAL_OK = new Map([
 		"Microsoft material name (Tabbed Mica), kept verbatim per the en sidecar.",
 	],
 	[
+		"ui.settings.appearance.layers.preview.code",
+		/*
+		 * `pnpm test`: the appearance preview strip's code line, rendered in a
+		 * monospace block beside the agent reply. It is a COMMAND, not copy - the
+		 * English value carries no verb to translate, so any non-identical value
+		 * would be a locale inventing one and printing a command that no longer
+		 * matches what the reader would type. The English side's context note says
+		 * the same, and like the sample URL above this is global: every locale shows
+		 * the literal.
+		 */
+		"sample command: the literal must stay byte-identical in every locale",
+	],
+	[
 		"ui.settings.navigation.settings_sidebar.general",
 		"Spanish cognate: «General» has the same spelling.",
 	],
