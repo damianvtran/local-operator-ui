@@ -2520,3 +2520,136 @@ test("C9-1 reset and bad/conflicting bindings never promote a deferred prune to 
 		"replay cannot pick a winner after a conflict",
 	);
 });
+
+test("C10-1 immediate large strict receipt is not subject to deferred retention limits", () => {
+	const { entries } = JSON.parse(
+		source("scripts/fixtures/profile-prune-actual-api.json"),
+	);
+	const [original, prune] = structuredClone(entries);
+	// Review's exact boundary counterexample: only diff size changes; every
+	// native target/call/profile/receipt/action binding stays verbatim.
+	prune.payload.replacement.provider_payload.details.diff = Array.from(
+		{ length: 20 },
+		() => "x".repeat(1893),
+	);
+	const bytes = Buffer.byteLength(JSON.stringify(prune));
+	assert.equal(bytes, 39006);
+	const replacement = prune.payload.replacement;
+	assert.ok(
+		api.profileQueuedReceiptSchema.safeParse(
+			replacement.provider_payload.details,
+		).success,
+	);
+	assert.equal(
+		api.profileSaveCall({
+			toolName: replacement.tool_name,
+			output: "",
+			details: replacement.provider_payload.details,
+		}).view.state,
+		"saved",
+		"existing schema and carrier accept this receipt",
+	);
+	const page = (entries) => ({
+		entries,
+		has_more: false,
+		cursor_missing: false,
+	});
+	const inspect = (state) => {
+		const rows = state.records.filter((r) => r.kind === "tool");
+		assert.equal(rows.length, 1);
+		return api.profileSaveCall({
+			toolName: rows[0].toolName,
+			output: rows[0].output ?? "",
+			details: rows[0].details,
+		});
+	};
+	const immediate = api.applyHistoryPage(
+		api.EMPTY_TRANSCRIPT,
+		page([original, prune]),
+	);
+	assert.equal(inspect(immediate).view.state, "saved");
+	assert.deepEqual(
+		inspect(immediate).descriptor,
+		replacement.provider_payload.details.profile_action,
+	);
+	const held = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([original]));
+	assert.equal(
+		inspect(api.applyHistoryPage(held, page([prune]))).view.state,
+		"saved",
+		"already-held exact target also bypasses only the retention cap",
+	);
+	const orphan = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([prune]));
+	assert.equal(orphan.records.length, 0);
+	assert.equal(
+		orphan.profileHistoryPending,
+		undefined,
+		"oversized deferred entry remains refused by the unchanged retention budget",
+	);
+	console.log(
+		JSON.stringify({
+			case: "C10-1",
+			prune_bytes: bytes,
+			strict_schema: true,
+			carrier_accepted: true,
+			immediate: "saved",
+			held_target: "saved",
+			oversized_deferred: "refused",
+		}),
+	);
+});
+
+test("C10-1 pending entry byte boundary does not constrain immediate admission", () => {
+	const { entries } = JSON.parse(
+		source("scripts/fixtures/profile-prune-actual-api.json"),
+	);
+	const [original, nativePrune] = entries;
+	const page = (entries) => ({
+		entries,
+		has_more: false,
+		cursor_missing: false,
+	});
+	const results = [];
+	for (const bytes of [38996, 32768, 32769]) {
+		const prune = structuredClone(nativePrune);
+		const diff = Array.from({ length: 20 }, () => "");
+		prune.payload.replacement.provider_payload.details.diff = diff;
+		let remaining = bytes - Buffer.byteLength(JSON.stringify(prune));
+		for (let i = 0; i < diff.length; i += 1) {
+			const length = Math.min(2000, remaining);
+			diff[i] = "x".repeat(length);
+			remaining -= length;
+		}
+		assert.equal(remaining, 0);
+		assert.equal(Buffer.byteLength(JSON.stringify(prune)), bytes);
+		assert.ok(
+			api.profileQueuedReceiptSchema.safeParse(
+				prune.payload.replacement.provider_payload.details,
+			).success,
+		);
+		const immediate = api.applyHistoryPage(
+			api.EMPTY_TRANSCRIPT,
+			page([original, prune]),
+		);
+		const row = immediate.records.find((r) => r.kind === "tool");
+		assert.equal(
+			api.profileSaveCall({
+				toolName: row.toolName,
+				output: row.output ?? "",
+				details: row.details,
+			}).view.state,
+			"saved",
+		);
+		const orphan = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([prune]));
+		assert.equal(orphan.records.length, 0);
+		assert.equal(
+			orphan.profileHistoryPending?.length ?? 0,
+			bytes <= 32768 ? 1 : 0,
+		);
+		results.push({
+			bytes,
+			immediate: "saved",
+			deferred: bytes <= 32768 ? "retained" : "refused",
+		});
+	}
+	console.log(JSON.stringify({ case: "C10-1 exact byte boundaries", results }));
+});

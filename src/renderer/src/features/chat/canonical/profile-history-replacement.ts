@@ -114,11 +114,6 @@ export function profileHistoryReplacements(
 			continue;
 		// A conflicting publication for one target is not a last-writer-wins
 		// instruction. Keep a bounded tombstone until its target is encountered.
-		if (
-			new TextEncoder().encode(JSON.stringify(entry)).length >
-			MAX_PROFILE_REPLACEMENT_BYTES
-		)
-			continue;
 		const held = grouped.get(target);
 		const conflict =
 			conflicts.has(target) ||
@@ -135,6 +130,14 @@ export function profileHistoryReplacements(
 	const deferred: PendingProfileHistoryReplacement[] = [];
 	let deferredBytes = 2;
 	const defer = (candidate: PendingProfileHistoryReplacement) => {
+		// This is a retention budget, not a new admission limit (C10-1).
+		// An already-resolvable receipt stays governed by the existing strict
+		// schema/carrier bounds; only missing-target candidates spend this budget.
+		if (
+			new TextEncoder().encode(JSON.stringify(candidate.entry)).length >
+			MAX_PROFILE_REPLACEMENT_BYTES
+		)
+			return;
 		const bytes =
 			new TextEncoder().encode(JSON.stringify(candidate)).length +
 			(deferred.length ? 1 : 0);
