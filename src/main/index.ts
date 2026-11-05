@@ -137,6 +137,7 @@ import {
 import { createMainLocale } from "./main-locale";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import { paletteDoorChannel } from "./palette-door";
+import { pdfViewerStatus } from "./pdf-viewer-status";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -3682,6 +3683,12 @@ app
 				return await listDirectory(resolveUserPath(target, cwd));
 			},
 		);
+
+		// Same sender gate as file reads; only the existing guest's status enum escapes.
+		ipcMain.handle("pdf-viewer-status", async (event, blobUrl: unknown) => {
+			authorizeLocalFileSender(event, "inspect its PDF viewer");
+			return pdfViewerStatus(event.sender, blobUrl, trustedRendererDocuments());
+		});
 
 		/*
 		 * Bytes for the in-app viewers, capped and named.

@@ -217,3 +217,47 @@ export const applyAppearance = (
 	root.classList.toggle("dark", resolved.palette.mode === "dark");
 	return resolved;
 };
+
+/**
+ * The appearance tuple out of the preferences state. One picker for every
+ * caller (provider, boot, mini-view, consumers) so no surface composes from a
+ * different subset of fields - the bug class this follow-up exists to close was
+ * exactly that: readers keyed on `themeName` alone while the document painted a
+ * composition.
+ */
+export const appearanceOf = (state: Appearance): Appearance => ({
+	themeName: state.themeName,
+	contrast: state.contrast,
+	accent: state.accent,
+});
+
+/**
+ * A stable string for "did the appearance change": what the mini-view compares
+ * across documents (its `storage` listener), and what a consumer can key a cache
+ * on without composing. Two equal tuples always compose to the same palette
+ * (`composeTheme` is deterministic), so equal keys mean equal paint.
+ */
+export const appearanceKey = (appearance: Appearance): string =>
+	JSON.stringify([
+		appearance.themeName,
+		appearance.contrast?.dark ?? 0,
+		appearance.contrast?.light ?? 0,
+		appearance.accent?.dark ?? null,
+		appearance.accent?.light ?? null,
+	]);
+
+/**
+ * The composed role values the document is painting, for a SEPARATE document
+ * that cannot read this one's injected `<style>` (the browser approvals card,
+ * whose CSP forbids inline styles). Null on the identity path: there the
+ * built-in's name alone is enough, because the card's static stylesheet carries
+ * every built-in block.
+ */
+export const composedPaletteVars = (
+	appearance: Appearance,
+): Record<string, string> | null => {
+	const resolved = resolveAppearance(appearance);
+	if (resolved.identity) return null;
+	const { mode: _mode, ...roles } = resolved.palette;
+	return roles as Record<string, string>;
+};

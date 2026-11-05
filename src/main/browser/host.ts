@@ -460,6 +460,7 @@ export interface BrowserHostOptions {
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
 			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
 			requesterLabels?: Readonly<Record<string, string>>;
 		}) => void;
 		close: () => void;
@@ -468,6 +469,7 @@ export interface BrowserHostOptions {
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
 			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
 			requesterLabels?: Readonly<Record<string, string>>;
 		}) => void;
 		state: () => { available: boolean; open: boolean };
@@ -2084,7 +2086,13 @@ export class BrowserHost implements BrowserActionContext {
 				: typeof request.palette === "string"
 					? request.palette
 					: undefined;
-		this.approvalsCard?.open({ locale, dir, theme, palette });
+		/* The composed values travel with the name; the controller validates them
+		   (`sanitizePaletteVars`), so anything malformed arrives as null. */
+		const paletteVars =
+			request.paletteVars && typeof request.paletteVars === "object"
+				? (request.paletteVars as Record<string, string>)
+				: null;
+		this.approvalsCard?.open({ locale, dir, theme, palette, paletteVars });
 		// The renderer discards the returned projection for the shield toggle
 		// (M2); the push is what makes aria-expanded and the button's selected
 		// style follow main. `onChanged` also re-renders a route that mounted
@@ -2123,9 +2131,15 @@ export class BrowserHost implements BrowserActionContext {
 					? request.theme
 					: undefined,
 			...(request.palette === null
-				? { palette: null }
+				? { palette: null, paletteVars: null }
 				: typeof request.palette === "string"
-					? { palette: request.palette }
+					? {
+							palette: request.palette,
+							paletteVars:
+								request.paletteVars && typeof request.paletteVars === "object"
+									? (request.paletteVars as Record<string, string>)
+									: null,
+						}
 					: {}),
 			...(labels ? { requesterLabels: labels } : {}),
 		});

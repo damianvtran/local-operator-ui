@@ -50,6 +50,9 @@ const composed = new Map(
 		new Map(ladder.map(([, c]) => [c, applyContrast(palette, c, { id })])),
 	]),
 );
+/* Legs are counted as they run rather than derived from `presets.length + 1`, so
+   a leg added or removed later cannot make the summary's denominator lie. */
+let legs = 0;
 let failed = 0;
 for (const [name, c] of presets) {
 	/* Reached, not merely legible: a capped palette is a preset the fleet cannot
@@ -76,6 +79,7 @@ for (const [name, c] of presets) {
 		for (const line of out.split("\n").filter((l) => l.startsWith("FAIL")))
 			console.log(`     ${line}`);
 	}
+	legs++;
 	if (!ok) failed++;
 }
 /*
@@ -106,12 +110,11 @@ console.log(
 	`${disordered.length === 0 ? "ok  " : "FAIL"} order: ink on canvas non-decreasing Soft -> High on ${authored.length - new Set(disordered.map((d) => d.split(":")[0])).size} of ${authored.length} palettes`,
 );
 for (const line of disordered) console.log(`     ${line}`);
+legs++;
 if (disordered.length > 0) failed++;
 
 if (failed > 0) {
-	console.error(
-		`\nContrast presets FAILED: ${failed} of ${presets.length + 1} leg(s).`,
-	);
+	console.error(`\nContrast presets FAILED: ${failed} of ${legs} leg(s).`);
 	process.exit(1);
 }
 console.log(

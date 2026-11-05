@@ -1,0 +1,25 @@
+{
+  "changed_keys": [
+    "ui.settings.appearance.contrast.standard",
+    "ui.settings.appearance.accent.title",
+    "ui.settings.appearance.picker.hex",
+    "ui.settings.appearance.hue.orange",
+    "ui.settings.appearance.hue.cyan",
+    "ui.settings.appearance.hue.indigo",
+    "ui.settings.appearance.hue.violet"
+  ],
+  "changed_values": {
+    "ui.settings.appearance.contrast.standard": "Normal",
+    "ui.settings.appearance.accent.title": "Couleur d’accent",
+    "ui.settings.appearance.picker.hex": "Hexadécimal",
+    "ui.settings.appearance.hue.orange": "orangé",
+    "ui.settings.appearance.hue.cyan": "bleu cyan",
+    "ui.settings.appearance.hue.indigo": "bleu indigo",
+    "ui.settings.appearance.hue.violet": "violet profond"
+  },
+  "unchanged_keys_retained": 155,
+  "icu_parse": "PASS",
+  "placeholders": "PASS (no placeholders on changed keys)",
+  "bidi": "PASS",
+  "technical_command_and_exemption": "PASS"
+}

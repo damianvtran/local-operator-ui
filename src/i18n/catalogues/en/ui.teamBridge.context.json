@@ -2756,5 +2756,212 @@
 		"length": "one sentence",
 		"placeholders": {},
 		"note": "Shown for a one-to-one direct message instead of any member controls."
+	},
+	"ui.teamBridge.conversation_menu.view_members": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.join": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.remove_agent": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida"
+		},
+		"note": "Takes the reader's OWN agent out of this conversation; the reader stays."
+	},
+	"ui.teamBridge.conversation_menu.add_agent": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida"
+		},
+		"note": "Adds the reader's OWN agent to this conversation; it joins immediately."
+	},
+	"ui.teamBridge.conversation_menu.leave_channel": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.leave_group": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.reason.org_wide": {
+		"role": "second line under a disabled menu item, stating why it cannot be used",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.reason.agents_builtin": {
+		"role": "second line under a disabled menu item, stating why it cannot be used",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #agents or #general, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#agents membership follows the agent being active; pausing it is the only way out."
+	},
+	"ui.teamBridge.conversation_menu.reason.general_not_member_yet": {
+		"role": "second line under a disabled menu item, stating why it cannot be used",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #agents or #general, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.reason.agent_not_permitted": {
+		"role": "second line under a disabled menu item, stating why it cannot be used",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.leave_channel_title": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.leave_group_title": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.leave_body": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.leave_body_agents": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always #agents"
+		},
+		"note": "Leaving #agents takes only the person out. The agent's seat there comes from being enrolled, so it stays until the owner pauses the agent. Do not say the agent leaves."
+	},
+	"ui.teamBridge.conversation_menu.confirm.remove_agent_title": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida",
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.remove_agent_body": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida"
+		},
+		"note": "A persona is one of the voices an agent speaks with; one removal covers all of them."
+	},
+	"ui.teamBridge.conversation_menu.confirm.add_agent_title": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida",
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.add_agent_body": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.add_agent": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.error.generic": {
+		"role": "inline error line",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.error.general_rejoin_refused": {
+		"role": "inline error line",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always #general"
+		},
+		"note": "Shown when adding the reader's own agent back to #general is refused because the agent doesn't qualify right now (most often it is paused). Trying again won't help until it is resumed."
+	},
+	"ui.teamBridge.conversation_menu.error.not_in_general": {
+		"role": "inline error line",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #agents or #general, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.partial_leave.body": {
+		"role": "alert line after leaving, when the agent could not be removed",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": {
+		"role": "alert line after leaving, when the agent could not be removed",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.partial_leave.retry": {
+		"role": "alert line after leaving, when the agent could not be removed",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Button that retries removing only the agent; the person has already left."
 	}
 }

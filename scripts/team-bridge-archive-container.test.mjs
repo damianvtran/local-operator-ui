@@ -611,3 +611,98 @@ test("m2: a server without #general lands the first load on #humans", async () =
 		await app.close();
 	}
 });
+
+/*
+ * LEAVE, THROUGH THE REAL CONTAINER (PR #1681 review round 1, R1). The cascade
+ * lives in the container's `onMenuLeave`, so only a container mount proves how
+ * many writes a leave makes. #agents: the hub refuses consent on that built-in,
+ * so the leave must be the ONLY write and no partial line may appear. The
+ * ordinary-channel control proves the counter sees a cascade when one runs
+ * (the fixture's default `{}` answer fails the withdraw's parse, so it lands as
+ * partial - which is exactly what #agents used to show).
+ */
+const leaveScenario = async (row) => {
+	const app = await mount({ lifecycle: [] });
+	try {
+		app.fixture.lifecycle = [row];
+		await seeded(app);
+		await ready(app);
+		const name = row.name;
+		await openMenu(
+			app.host.querySelector(`button[aria-label="More actions for ${name}"]`),
+		);
+		const leaveItem = () =>
+			[...document.querySelectorAll('[role="menuitem"]')].find((n) =>
+				n.textContent.includes("Leave channel"),
+			);
+		await until(leaveItem, "row leave item");
+		await act(async () => leaveItem().click());
+		const body = document.querySelector('[role="dialog"]').textContent;
+		await act(async () =>
+			[...document.querySelectorAll('[role="dialog"] button')]
+				.find(byText("Leave"))
+				.click(),
+		);
+		await until(
+			() =>
+				app.fixture.calls.some(
+					(c) => c.op === "team_bridge.conversations.leave",
+				),
+			"leave sent",
+		);
+		for (let i = 0; i < 5; i += 1) await delay();
+		await act(async () => {});
+		const writes = app.fixture.calls
+			.filter((c) =>
+				[
+					"team_bridge.conversations.leave",
+					"team_bridge.conversations.consent",
+				].includes(c.op),
+			)
+			.map((c) => `${c.op}${c.decision ? `:${c.decision}` : ""}`);
+		return {
+			body,
+			writes,
+			partial: Boolean(app.host.querySelector("[data-partial-leave]")),
+		};
+	} finally {
+		await app.close();
+	}
+};
+
+const ownAgentRow = {
+	account_id: "acct_a",
+	kind: "agent",
+	display_label: "Aida",
+	state: "active",
+	role: "member",
+	endpoint_id: "bep_aida",
+};
+
+test("R1: leaving #agents with an own active agent makes ONE request and never shows partial", async () => {
+	const result = await leaveScenario(
+		channel("bcv_agents", "agents", {
+			builtin: "agents",
+			agent_capable: true,
+			can_administer: false,
+			members: [person("acct_a"), ownAgentRow],
+		}),
+	);
+	assert.deepEqual(result.writes, ["team_bridge.conversations.leave"]);
+	assert.equal(result.partial, false);
+	assert.match(result.body, /Your agent stays in #agents/);
+});
+
+test("R1 control: leaving an ordinary channel with an own active agent DOES cascade", async () => {
+	const result = await leaveScenario(
+		channel("bcv_launch", "launch", {
+			agent_capable: true,
+			members: [person("acct_a", "owner"), ownAgentRow],
+		}),
+	);
+	assert.deepEqual(result.writes, [
+		"team_bridge.conversations.leave",
+		"team_bridge.conversations.consent:withdraw",
+	]);
+	assert.match(result.body, /your agent leaves with you/);
+});

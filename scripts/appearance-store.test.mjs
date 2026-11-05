@@ -145,3 +145,52 @@ test("setters: contrast per mode, accent per mode, swatches MRU, removal resets 
 	assert.deepEqual(st().contrast, { dark: 50, light: -100 });
 	assert.deepEqual(st().customAccents, ["#112233"]);
 });
+
+/*
+ * The accent row's rename and "Edit colour…" (layered appearance picker).
+ * Editing a swatch must REPLACE it in place - same slot, name kept, every mode
+ * that had it selected moved to the new colour - not remove-then-add, which
+ * would drop the selection to the theme accent for a frame and reorder the row.
+ * Names are bounded by the swatch list: a name never outlives its swatch.
+ */
+test("custom accents: rename, replace in place, names follow their swatch", async () => {
+	await load(5, { themeName: "nord" });
+	const st = () => store.getState();
+	st().addCustomAccent("#112233");
+	st().addCustomAccent("#445566", "dark");
+	st().addCustomAccent("#778899", "light");
+	st().renameCustomAccent("#445566", "  Harbour  ");
+	st().renameCustomAccent("#ABCDEF", "not a swatch");
+	assert.deepEqual(st().customAccentNames, { "#445566": "Harbour" });
+
+	st().replaceCustomAccent("#445566", "#2563eb");
+	assert.deepEqual(st().customAccents, ["#778899", "#2563EB", "#112233"]);
+	assert.deepEqual(st().accent.dark, { kind: "custom", hex: "#2563EB" });
+	assert.deepEqual(st().customAccentNames, { "#2563EB": "Harbour" });
+
+	st().replaceCustomAccent("#2563EB", "#778899");
+	assert.deepEqual(
+		st().customAccents,
+		["#778899", "#112233"],
+		"replacing onto an existing swatch merges rather than duplicating",
+	);
+
+	st().renameCustomAccent("#112233", "Ink");
+	st().removeCustomAccent("#112233");
+	assert.equal(st().customAccentNames["#112233"], undefined);
+
+	/* A 13th swatch drops the oldest and its name with it. */
+	st().renameCustomAccent("#778899", "Oldest");
+	for (let i = 0; i < 12; i++) st().addCustomAccent(`#00000${i.toString(16)}`);
+	assert.equal(st().customAccents.length, 12);
+	assert.equal(st().customAccents.includes("#778899"), false);
+	assert.deepEqual(st().customAccentNames, {});
+
+	/* A hand-edited blob cannot keep names for swatches it does not have. */
+	await load(5, {
+		themeName: "nord",
+		customAccents: ["#112233"],
+		customAccentNames: { "#112233": "Ink", "#FFFFFF": "ghost" },
+	});
+	assert.deepEqual(st().customAccentNames, { "#112233": "Ink" });
+});

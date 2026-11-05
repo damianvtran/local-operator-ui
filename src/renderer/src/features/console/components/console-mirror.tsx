@@ -2,6 +2,8 @@ import { sessionSwitcherRunOpen } from "@features/session-switcher/use-session-s
 import { subscribeLocale, t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { resolveAppearance } from "@shared/themes/appearance";
+import { captureTheme } from "@shared/themes/terminal-theme";
 import {
 	TERMINAL_FONT_SIZE,
 	measureCell,
@@ -705,7 +707,10 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 				cellWidth: cell.cellWidth,
 				cellHeight: cell.cellHeight,
 				visible,
-				theme: useUiPreferencesStore.getState().themeName,
+				theme: captureTheme(
+					resolveAppearance(useUiPreferencesStore.getState()),
+					useUiPreferencesStore.getState().themeName,
+				),
 			});
 		};
 		const refresh = () => {

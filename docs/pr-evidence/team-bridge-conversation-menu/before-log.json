@@ -1,0 +1,47 @@
+{
+  "source": "7345dcbf238d334e56f102eb994b15eb5c1776f0",
+  "frames": [
+    {
+      "shot": {
+        "name": "header-menu__localOperatorDark",
+        "story": "team-bridge-page--agent-wake-menu",
+        "theme": "localOperatorDark",
+        "width": 1440
+      },
+      "snapshot": "- RootWebArea \"team-bridge-page--agent-wake-menu\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"Conversation options\" [e3]\n    - menuitem \"Add members…\" [e4]\n      - InlineTextBox \"Add members…\"\n    - menuitem \"Mute conversation\" [e5]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e6] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e7]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e8]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e9]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e10] [checked]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e11]\n        - InlineTextBox \"Never (muted)\"",
+      "method": "browser tool / narrowed Storybook dev"
+    },
+    {
+      "shot": {
+        "name": "row-hover__localOperatorDark",
+        "story": "team-bridge-page--channel-selected",
+        "theme": "localOperatorDark",
+        "width": 1440,
+        "action": "hover:[data-conversation-id]"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-page--channel-selected\" [e1]\n  - complementary\n    - heading \"Team Bridge\"\n      - InlineTextBox \"Team Bridge\"\n    - button \"Organization: Minerva\" [e2] [collapsed]\n      - InlineTextBox \"Minerva\"\n    - button \"New message\" [e3]\n    - navigation \"Message shortcuts\"\n      - button \"Drafts\" [e4]\n        - InlineTextBox \"Drafts\"\n      - button \"Scheduled\" [e5]\n        - InlineTextBox \"Scheduled\"\n    - region \"Channels\"\n      - heading \"Channels\"\n        - InlineTextBox \"Channels\"\n      - button \"Create a channel\" [e6]\n      - button \"launch 3 unread\" [e7]\n        - InlineTextBox \"launch\"\n        - generic \"3 unread\"\n          - InlineTextBox \"3\"\n    - region \"Groups\"\n      - heading \"Groups\"\n        - InlineTextBox \"Groups\"\n      - button \"Start a group conversation\" [e8]\n      - button \"Design review\" [e9]\n        - InlineTextBox \"Design review\"\n    - region \"Direct messages\"\n      - heading \"Direct messages\"\n        - InlineTextBox \"Direct messages\"\n      - button \"Ada's agent 2 unread\" [e10]\n        - InlineTextBox \"Ada's agent\"\n        - generic \"2 unread\"\n          - InlineTextBox \"2\"\n    - region \"People\"\n      - heading \"People\"\n        - InlineTextBox \"People\"\n      - InlineTextBox \"No one else has joined this organization yet.\"\n    - region \"Chiefs of staff\"\n      - heading \"Chiefs of staff\"\n        - InlineTextBox \"Chiefs of staff\"\n      - InlineTextBox \"No teammate has an agent on Team Bridge yet.\"\n      - InlineTextBox \"No teammate has an agent on Team Bridge\"\n      - InlineTextBox \"…\"\n  - heading \"launch\"\n    - InlineTextBox \"launch\"\n  - button \"View 2 active members, 1 invited\" [e11] [collapsed]\n    - InlineTextBox \"2 active members\"\n  - InlineTextBox \"Launch coordination\"\n  - button \"Conversation options\" [e12] [collapsed]\n  - listitem \"Today\"\n    - InlineTextBox \"Damian\"\n    - InlineTextBox \"8:30 PM\"\n    - InlineTextBox \"Can you take the launch checklist today?\"\n    - InlineTextBox \"Ada's agent\"\n    - InlineTextBox \"8:32 PM\"\n    - InlineTextBox \"Yes — I am working through the two open items now.\"\n    - InlineTextBox \"Damian\"\n    - InlineTextBox \"8:34 PM\"\n    - InlineTextBox \"Great. Ping me if the second one needs a decision.\"\n    - InlineTextBox \"Ada's agent\"\n    - InlineTextBox \"8:36 PM\"\n    - InlineTextBox \"It does — I have posted the question in the channel.\"\n    - InlineTextBox \"8:38 PM\"\n    - InlineTextBox \"Waiting for the agent to admit this message.\"\n  - combobox \"Message launch\" [e13] [collapsed]\n  - InlineTextBox \"Enter to send, Shift+Enter for a new line.\"\n  - button \"Start recording\" [e14] [disabled]\n  - button \"Add images\" [e15]\n  - button \"Send\" [e16] [disabled]\n  - region \"Notifications alt+T\" [e17]",
+      "method": "browser tool / narrowed Storybook dev"
+    },
+    {
+      "shot": {
+        "name": "header-menu__localOperatorLight",
+        "story": "team-bridge-page--agent-wake-menu",
+        "theme": "localOperatorLight",
+        "width": 1440
+      },
+      "snapshot": "- RootWebArea \"team-bridge-page--agent-wake-menu\" [e1]\n  - region \"Notifications alt+T\" [e2]\n  - menu \"Conversation options\" [e3]\n    - menuitem \"Add members…\" [e4]\n      - InlineTextBox \"Add members…\"\n    - menuitem \"Mute conversation\" [e5]\n      - InlineTextBox \"Mute conversation\"\n    - InlineTextBox \"Notification preferences\"\n    - group \"Notification preferences\"\n      - menuitemradio \"All messages\" [e6] [checked]\n        - InlineTextBox \"All messages\"\n      - menuitemradio \"Mentions\" [e7]\n        - InlineTextBox \"Mentions\"\n      - menuitemradio \"Mute\" [e8]\n        - InlineTextBox \"Mute\"\n    - InlineTextBox \"Wake your agent for\"\n    - group \"Wake your agent for\"\n      - menuitemradio \"Every message\" [e9]\n        - InlineTextBox \"Every message\"\n      - menuitemradio \"@-mentions and its threads\" [e10] [checked]\n        - InlineTextBox \"@-mentions and its threads\"\n      - menuitemradio \"Never (muted)\" [e11]\n        - InlineTextBox \"Never (muted)\"",
+      "method": "browser tool / narrowed Storybook dev"
+    },
+    {
+      "shot": {
+        "name": "row-hover__localOperatorLight",
+        "story": "team-bridge-page--channel-selected",
+        "theme": "localOperatorLight",
+        "width": 1440,
+        "action": "hover:[data-conversation-id]"
+      },
+      "snapshot": "- RootWebArea \"team-bridge-page--channel-selected\" [e1]\n  - complementary\n    - heading \"Team Bridge\"\n      - InlineTextBox \"Team Bridge\"\n    - button \"Organization: Minerva\" [e2] [collapsed]\n      - InlineTextBox \"Minerva\"\n    - button \"New message\" [e3]\n    - navigation \"Message shortcuts\"\n      - button \"Drafts\" [e4]\n        - InlineTextBox \"Drafts\"\n      - button \"Scheduled\" [e5]\n        - InlineTextBox \"Scheduled\"\n    - region \"Channels\"\n      - heading \"Channels\"\n        - InlineTextBox \"Channels\"\n      - button \"Create a channel\" [e6]\n      - button \"launch 3 unread\" [e7]\n        - InlineTextBox \"launch\"\n        - generic \"3 unread\"\n          - InlineTextBox \"3\"\n    - region \"Groups\"\n      - heading \"Groups\"\n        - InlineTextBox \"Groups\"\n      - button \"Start a group conversation\" [e8]\n      - button \"Design review\" [e9]\n        - InlineTextBox \"Design review\"\n    - region \"Direct messages\"\n      - heading \"Direct messages\"\n        - InlineTextBox \"Direct messages\"\n      - button \"Ada's agent 2 unread\" [e10]\n        - InlineTextBox \"Ada's agent\"\n        - generic \"2 unread\"\n          - InlineTextBox \"2\"\n    - region \"People\"\n      - heading \"People\"\n        - InlineTextBox \"People\"\n      - InlineTextBox \"No one else has joined this organization yet.\"\n    - region \"Chiefs of staff\"\n      - heading \"Chiefs of staff\"\n        - InlineTextBox \"Chiefs of staff\"\n      - InlineTextBox \"No teammate has an agent on Team Bridge yet.\"\n      - InlineTextBox \"No teammate has an agent on Team Bridge\"\n      - InlineTextBox \"…\"\n  - heading \"launch\"\n    - InlineTextBox \"launch\"\n  - button \"View 2 active members, 1 invited\" [e11] [collapsed]\n    - InlineTextBox \"2 active members\"\n  - InlineTextBox \"Launch coordination\"\n  - button \"Conversation options\" [e12] [collapsed]\n  - listitem \"Today\"\n    - InlineTextBox \"Damian\"\n    - InlineTextBox \"8:30 PM\"\n    - InlineTextBox \"Can you take the launch checklist today?\"\n    - InlineTextBox \"Ada's agent\"\n    - InlineTextBox \"8:32 PM\"\n    - InlineTextBox \"Yes — I am working through the two open items now.\"\n    - InlineTextBox \"Damian\"\n    - InlineTextBox \"8:34 PM\"\n    - InlineTextBox \"Great. Ping me if the second one needs a decision.\"\n    - InlineTextBox \"Ada's agent\"\n    - InlineTextBox \"8:36 PM\"\n    - InlineTextBox \"It does — I have posted the question in the channel.\"\n    - InlineTextBox \"8:38 PM\"\n    - InlineTextBox \"Waiting for the agent to admit this message.\"\n  - combobox \"Message launch\" [e13] [collapsed]\n  - InlineTextBox \"Enter to send, Shift+Enter for a new line.\"\n  - button \"Start recording\" [e14] [disabled]\n  - button \"Add images\" [e15]\n  - button \"Send\" [e16] [disabled]\n  - region \"Notifications alt+T\" [e17]",
+      "method": "browser tool / narrowed Storybook dev"
+    }
+  ]
+}

@@ -163,7 +163,13 @@ export const applyAccent = (
 	/* Step 3: the accent's own text floors on the composed grounds, the derived
 	   steps riding along by the same L* so their offsets survive. */
 	const before = toLab(out.accent)[0];
-	out.accent = solveLightness(out, "accent", ACCENT_GROUNDS, 4.5);
+	out.accent = solveLightness(
+		out,
+		"accent",
+		ACCENT_GROUNDS,
+		4.5,
+		(hex) => deltaE(hex, out.ink) >= 3,
+	);
 	const moved = toLab(out.accent)[0] - before;
 	if (moved !== 0)
 		for (const role of ["accentHover", "accentActive", "chartBarHover"]) {
@@ -179,7 +185,13 @@ export const applyAccent = (
 		"#000000",
 	]);
 	const repaired = repairPalette(out, id, authored);
-	if (repaired.findings.length > 0)
+	// ΔE00 3 is a clearly perceptible colour difference, not a luminance
+	// ratio (two distinct saturated hues can share luminance). Never trade the
+	// existing text floors for separation: refuse the layer honestly instead.
+	if (
+		repaired.findings.length > 0 ||
+		deltaE(repaired.palette.accent, repaired.palette.ink) < 3
+	)
 		return { palette, applied: false, adjusted: 0, requested };
 	return {
 		palette: repaired.palette,

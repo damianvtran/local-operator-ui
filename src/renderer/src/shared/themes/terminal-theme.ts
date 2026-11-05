@@ -1,4 +1,24 @@
 import type { ITheme } from "@xterm/xterm";
+import {
+	isSafeThemeId,
+	paletteBlock,
+} from "../../../../shared/theme-engine/css.mjs";
+import { sanitizePaletteVars } from "../../../../shared/theme-engine/roles.mjs";
+import type { ResolvedAppearance } from "./appearance";
+
+/** Legacy feeds remain names; composed feeds snapshot the palette, not just its
+ * runtime id (which is meaningless in a different document without its CSS). */
+export const captureTheme = (
+	resolved: ResolvedAppearance,
+	builtIn: string,
+): string =>
+	resolved.identity
+		? builtIn
+		: JSON.stringify({
+				id: resolved.id,
+				mode: resolved.palette.mode,
+				palette: sanitizePaletteVars(resolved.palette),
+			});
 
 /**
  * The console mirror's colours, taken from the theme's roles.
@@ -216,6 +236,36 @@ export const applyCaptureTheme = (
 	root: HTMLElement = document.documentElement,
 ): void => {
 	if (theme === null || theme === undefined) return;
+	if (theme.startsWith("{")) {
+		try {
+			const snapshot = JSON.parse(theme);
+			const palette = sanitizePaletteVars(snapshot.palette);
+			if (
+				!palette ||
+				!isSafeThemeId(snapshot.id) ||
+				!["dark", "light"].includes(snapshot.mode)
+			)
+				throw new Error("Invalid capture palette");
+			let style = root.ownerDocument.getElementById("lo-capture-palette");
+			if (!style) {
+				style = root.ownerDocument.createElement("style");
+				style.id = "lo-capture-palette";
+				root.ownerDocument.head.appendChild(style);
+			}
+			style.textContent = paletteBlock(snapshot.id, {
+				...palette,
+				mode: snapshot.mode,
+			});
+			root.dataset.theme = snapshot.id;
+			root.classList.toggle("dark", snapshot.mode === "dark");
+			return;
+		} catch {
+			console.warn(
+				"[console] the capture view refused an invalid composed palette",
+			);
+			return;
+		}
+	}
 	root.dataset.theme = theme;
 	root.classList.toggle(
 		"dark",
