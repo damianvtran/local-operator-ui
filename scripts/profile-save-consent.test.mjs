@@ -34,7 +34,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
 			export * from "./src/renderer/src/features/mesh/mesh-profile-approval";
 			export * from "./src/renderer/src/features/mesh/profile-action-golden";
-			export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { applyEvent, applyHistoryPage, clearTranscript, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export * from "./src/renderer/src/features/mesh/profile-revert-scripted";
 			export { PROFILE_SAVE_TOOLS } from "./src/renderer/src/features/chat/components/trace/profile-save-card-model";
 			export * from "./src/renderer/src/features/chat/components/trace/tool-result-details";
@@ -2245,4 +2245,278 @@ test("profile prune refuses orphan, unrelated, stale and mismatched replacements
 	);
 	assert.equal(result.records[1].id, `tool:${original.payload.tool_call_id}`);
 	assert.equal(result.records.length, 2, "prune notice is not a third row");
+});
+
+test("C9-1 actual newest-six then older-eight retains the non-rendered prune until its target arrives", () => {
+	const { entries } = JSON.parse(
+		source("scripts/fixtures/profile-prune-paging-actual-api.json"),
+	);
+	assert.equal(entries.length, 14);
+	const page = (entries) => ({
+		entries,
+		has_more: true,
+		cursor_missing: false,
+	});
+	const prune = entries.find(
+		(e) => e.type === "prune" && e.payload.replacement,
+	);
+	const original = entries.find((e) => e.id === prune.payload.target);
+	const inspect = (state) => {
+		const rows = state.records.filter(
+			(r) =>
+				r.kind === "tool" && r.toolCallId === original.payload.tool_call_id,
+		);
+		assert.equal(rows.length, 1);
+		return api.profileSaveCall({
+			toolName: rows[0].toolName,
+			output: rows[0].output ?? "",
+			details: rows[0].details,
+		});
+	};
+	const together = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page(entries));
+	assert.equal(inspect(together).view.state, "saved");
+	const newest = api.applyHistoryPage(
+		api.EMPTY_TRANSCRIPT,
+		page(entries.slice(-6)),
+	);
+	assert.equal(
+		newest.records.filter(
+			(r) =>
+				r.kind === "tool" && r.toolCallId === original.payload.tool_call_id,
+		).length,
+		0,
+		"orphan replacement is not a fake saved row",
+	);
+	const split = api.applyHistoryPage(newest, page(entries.slice(0, 8)), {
+		pagedBefore: entries[8].id,
+	});
+	assert.equal(inspect(split).view.state, "saved");
+	assert.deepEqual(
+		inspect(split).descriptor,
+		prune.payload.replacement.provider_payload.details.profile_action,
+	);
+	assert.deepEqual(
+		split.records.map((r) => [r.id, r.ts]),
+		together.records.map((r) => [r.id, r.ts]),
+	);
+	assert.deepEqual(
+		split.records,
+		together.records,
+		"all row, argument, turn/position and source facts match the complete-page fold",
+	);
+	const row = split.records.find(
+		(r) => r.kind === "tool" && r.toolCallId === original.payload.tool_call_id,
+	);
+	assert.equal(row.sourceEntryId, original.id);
+	assert.equal(
+		split.profileHistoryPending,
+		undefined,
+		"successful binding consumes the pending candidate",
+	);
+	const replay = api.applyHistoryPage(split, page(entries.slice(-6)));
+	assert.deepEqual(
+		replay.records,
+		split.records,
+		"duplicate page cannot add a row or change the outcome",
+	);
+	assert.equal(replay.profileHistoryPending, undefined);
+});
+
+test("C9-1 deferred prune remains bounded, non-rendered, duplicate-safe and transcript-local", () => {
+	const { entries } = JSON.parse(
+		source("scripts/fixtures/profile-prune-paging-actual-api.json"),
+	);
+	const prune = entries.find(
+		(e) => e.type === "prune" && e.payload.replacement,
+	);
+	const page = (entries) => ({
+		entries,
+		has_more: true,
+		cursor_missing: false,
+	});
+	const initial = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([prune]));
+	assert.equal(initial.records.length, 0);
+	assert.equal(initial.profileHistoryPending.length, 1);
+	const duplicate = api.applyHistoryPage(initial, page([prune]));
+	assert.equal(
+		duplicate.profileHistoryPending,
+		initial.profileHistoryPending,
+		"repeat does not grow or replace the held candidates",
+	);
+	const other = api.applyHistoryPage(
+		api.EMPTY_TRANSCRIPT,
+		page(entries.slice(0, 8)),
+	);
+	const tool = other.records.find((r) => r.kind === "tool");
+	assert.equal(
+		api.profileSaveCall({
+			toolName: tool.toolName,
+			output: tool.output ?? "",
+			details: tool.details,
+		}).view.state,
+		"waiting",
+		"another transcript cannot inherit pending authority",
+	);
+	assert.equal(other.profileHistoryPending, undefined);
+	const many = Array.from({ length: 100 }, (_, i) => {
+		const p = structuredClone(prune);
+		p.id = `test-prune-${i}`;
+		p.payload.target = `test-orphan-${i}`;
+		return p;
+	});
+	const bounded = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page(many));
+	assert.equal(bounded.records.length, 0);
+	assert.equal(bounded.profileHistoryPending.length, 32);
+	const large = many.map((p) => {
+		const copy = structuredClone(p);
+		copy.payload.replacement.content = [{ text: "x".repeat(20 * 1024) }];
+		return copy;
+	});
+	const byteBounded = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page(large));
+	assert.ok(
+		Buffer.byteLength(JSON.stringify(byteBounded.profileHistoryPending)) <=
+			256 * 1024,
+	);
+	assert.ok(byteBounded.profileHistoryPending.length < 32);
+	const oversized = structuredClone(prune);
+	oversized.payload.replacement.content = [{ text: "x".repeat(40 * 1024) }];
+	assert.equal(
+		api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([oversized]))
+			.profileHistoryPending,
+		undefined,
+	);
+});
+
+test("C9-1 reset and bad/conflicting bindings never promote a deferred prune to authority", () => {
+	const { entries } = JSON.parse(
+		source("scripts/fixtures/profile-prune-paging-actual-api.json"),
+	);
+	const prune = entries.find(
+		(e) => e.type === "prune" && e.payload.replacement,
+	);
+	const original = entries.find((e) => e.id === prune.payload.target);
+	const page = (entries) => ({
+		entries,
+		has_more: true,
+		cursor_missing: false,
+	});
+	const view = (state) => {
+		const r = state.records.find((r) => r.kind === "tool");
+		return r
+			? api.profileSaveCall({
+					toolName: r.toolName,
+					output: r.output ?? "",
+					details: r.details,
+				})
+			: null;
+	};
+	const pending = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([prune]));
+	assert.equal(
+		api.clearTranscript(pending).profileHistoryPending,
+		undefined,
+		"clear drops pending even with no rendered rows",
+	);
+	const reset = api.applyHistoryPage(pending, page([]), { replace: true });
+	assert.equal(
+		reset.profileHistoryPending.length,
+		1,
+		"same-scope replace is not a source reset",
+	);
+	assert.equal(
+		view(api.applyHistoryPage(reset, page([original]))).view.state,
+		"saved",
+	);
+	const sourced = api.applyHistoryPage(
+		api.EMPTY_TRANSCRIPT,
+		{
+			...page([prune]),
+			journal_generation: "source-a",
+			journal_order_state: "ready",
+		},
+		{ authoritative: true },
+	);
+	assert.equal(sourced.profileHistoryPending.length, 1);
+	const rotated = api.applyHistoryPage(
+		sourced,
+		{
+			...page([]),
+			journal_generation: "source-b",
+			journal_order_state: "ready",
+		},
+		{ authoritative: true },
+	);
+	assert.equal(rotated.profileHistoryPending, undefined);
+	const staleSource = api.applyHistoryPage(rotated, {
+		...page([prune]),
+		journal_generation: "source-a",
+		journal_order_state: "ready",
+	});
+	assert.equal(
+		staleSource.profileHistoryPending,
+		undefined,
+		"old-source page cannot repopulate deferred candidates",
+	);
+	assert.equal(staleSource.records.length, 0);
+
+	assert.equal(
+		view(
+			api.applyHistoryPage(rotated, {
+				...page([original]),
+				journal_generation: "source-b",
+				journal_order_state: "ready",
+			}),
+		).view.state,
+		"waiting",
+	);
+	for (const mutate of [
+		(p) => {
+			p.payload.replacement.tool_call_id = "foreign-call";
+		},
+		(p) => {
+			p.payload.replacement.provider_payload.details.approval_id =
+				"ap_0000000000000";
+		},
+		(p) => {
+			p.payload.replacement.provider_payload.details.request_digest = `sha256:${"0".repeat(64)}`;
+		},
+		(p) => {
+			p.payload.replacement.provider_payload.details.profile_name =
+				"foreign-profile";
+			p.payload.replacement.provider_payload.details.profile_action.profile_name =
+				"foreign-profile";
+		},
+		(p) => {
+			p.ts = original.ts - 1;
+		},
+		(p) => {
+			p.payload.replacement.role = "assistant";
+		},
+	]) {
+		const bad = structuredClone(prune);
+		mutate(bad);
+		const held = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([bad]));
+		assert.equal(held.records.length, 0);
+		const later = api.applyHistoryPage(held, page([original]));
+		assert.equal(view(later).view.state, "waiting");
+		assert.equal(
+			later.profileHistoryPending,
+			undefined,
+			"bad binding consumed only when exact target arrives",
+		);
+	}
+	const conflict = structuredClone(prune);
+	conflict.payload.replacement.provider_payload.details.diff = [
+		"conflicting body",
+	];
+	const conflicted = api.applyHistoryPage(
+		api.EMPTY_TRANSCRIPT,
+		page([prune, conflict]),
+	);
+	const target = api.applyHistoryPage(conflicted, page([original]));
+	assert.equal(view(target).view.state, "waiting");
+	assert.equal(
+		view(api.applyHistoryPage(target, page([prune]))).view.state,
+		"waiting",
+		"replay cannot pick a winner after a conflict",
+	);
 });

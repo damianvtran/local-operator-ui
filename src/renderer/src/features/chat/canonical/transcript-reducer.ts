@@ -76,6 +76,7 @@ import {
 	rememberJournalCalls,
 } from "./journal-order";
 import {
+	type PendingProfileHistoryReplacement,
 	profileHistoryReplacements,
 	retainAppliedProfileReplacement,
 } from "./profile-history-replacement";
@@ -889,6 +890,8 @@ type TranscriptPayloadRecord =
 export type TranscriptRecord = TranscriptPayloadRecord & JournalPosition;
 
 export type TranscriptState = {
+	/** Non-rendered, bounded profile prunes awaiting their older native target. */
+	profileHistoryPending?: readonly PendingProfileHistoryReplacement[];
 	/** Order revision is independent of turn generation, view epoch and planner facts. */
 	journalMode?: boolean;
 	journalGeneration?: string;
@@ -4536,6 +4539,7 @@ export function applyHistoryPage(
 	let state = initialState;
 	const previousOrder = state;
 	const admittedPeerIds: string[] = [];
+	let pendingProfiles = initialState.profileHistoryPending;
 	/*
 	 * THE MERGE'S OWN FINISH: lane flag, cleared admissions, cleared wave -
 	 * every return below goes through it so no exit can leave a peer page
@@ -4544,7 +4548,9 @@ export function applyHistoryPage(
 	const finish = (result: TranscriptState): TranscriptState =>
 		finalizePeerLane(
 			clearPeerAdmissions(
-				result,
+				result.profileHistoryPending === pendingProfiles
+					? result
+					: { ...result, profileHistoryPending: pendingProfiles },
 				admittedPeerIds,
 				options.peerSource === true && page.journal_order_state === "ready",
 			),
@@ -4622,8 +4628,19 @@ export function applyHistoryPage(
 		options.pagedBefore !== undefined && state.index.has(options.pagedBefore)
 			? options.pagedBefore
 			: state.records[0]?.id;
+	const profileHistory = profileHistoryReplacements(
+		page.entries,
+		state.records,
+		clearedView || previousOrder.journalGeneration !== state.journalGeneration
+			? []
+			: state.profileHistoryPending,
+	);
+	pendingProfiles =
+		!clearedView && profileHistory.pending.length
+			? profileHistory.pending
+			: undefined;
 	const incoming: TranscriptRecord[] = [];
-	for (const entry of profileHistoryReplacements(page.entries, state.records)) {
+	for (const entry of profileHistory.entries) {
 		if (clearedView && !isCompactionOutcome(entry, state.clearedAt)) continue;
 		// A tool row keys by call id, not entry id, so the prior record is looked
 		// up under both. A supplement row keys by ANCHOR (`supplementRecordKey`),
@@ -7806,7 +7823,8 @@ export function clearTranscript(
 	state: TranscriptState,
 	at: number = Date.now(),
 ): TranscriptState {
-	if (state.records.length === 0) return state;
+	if (state.records.length === 0 && !state.profileHistoryPending?.length)
+		return state;
 	// `argsByCall` survives for the same reason it survives a `replace`: the
 	// history this clears is still on the backend, and repainting it must not
 	// lose the arguments the durable rows do not carry themselves.
