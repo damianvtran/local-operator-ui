@@ -159,7 +159,12 @@ function goldenView(details: Record<string, unknown>) {
 const revertDescriptor = {
 	schema: 1 as const,
 	kind: "profile_revert" as const,
-	action_id: "ra_5b81",
+	/*
+	 * A REAL MINT: `prv_` + exactly 32 URL-safe characters, the shape core mints and
+	 * the pinned schema requires. `ra_5b81` was a pre-pin placeholder that cannot
+	 * parse, so every story built on this descriptor drew no control at all.
+	 */
+	action_id: "prv_9Qm4Xc2LbT7rVp0YhN5sKd8WfJ3aZe6u",
 	label: "Revert",
 	profile_kind: "agent" as const,
 	profile_name: "Researcher",

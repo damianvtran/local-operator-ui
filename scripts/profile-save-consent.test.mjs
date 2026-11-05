@@ -1591,3 +1591,47 @@ test("a status answer read for one record never enables another", async () => {
 	assert.match(hook, /entry\.key === identityKey/);
 	assert.match(hook, /boundStatusAnswer\(entry\.answer, identity\)/);
 });
+
+/* ------------------------------- story fixtures: a legacy id fails a check */
+
+test("every story action id is a real mint, and the saved story uses the descriptor's home", () => {
+	const stories = [
+		"src/renderer/src/features/chat/canonical/profile-saved-card.stories.tsx",
+		"src/renderer/src/features/mesh/profile-consent-card.stories.tsx",
+	];
+	for (const path of stories) {
+		const text = source(path);
+		const ids = [...text.matchAll(/action_id:\s*"([^"]*)"/g)].map((m) => m[1]);
+		assert.ok(ids.length > 0, `${path} names at least one action`);
+		for (const id of ids) {
+			/*
+			 * A story is a preflight the parent shoots frames through: a pre-pin id
+			 * (`ra_5b81`) cannot parse, so `profileSaveCall` returns null and the story
+			 * throws instead of drawing the card. Fail HERE, not in Storybook.
+			 */
+			assert.match(id, /^prv_[A-Za-z0-9_-]{32}$/, `${path}: ${id}`);
+			assert.ok(
+				api.profileRevertDescriptor({
+					schema: 1,
+					kind: "profile_revert",
+					action_id: id,
+					label: "Revert",
+					profile_kind: "agent",
+					profile_name: "Researcher",
+					receipt_id: "rc_71bd",
+				}),
+				`${path}: ${id} must parse as the backend's descriptor`,
+			);
+		}
+		// No pre-pin placeholder may survive as a live literal.
+		assert.doesNotMatch(text, /action_id:\s*"(?:ra_|rv_|ap_|ap:)/, path);
+	}
+	/*
+	 * THE SAVED STORY'S ENVELOPE must file the descriptor under `profile_action`: the
+	 * card's key set is closed, so the legacy `revert` key made the headline story
+	 * unbindable even with a valid id.
+	 */
+	const savedStory = source(stories[0]);
+	assert.match(savedStory, /profile_action: revert/);
+	assert.doesNotMatch(savedStory, /\n\t{3}revert,\n/, "no legacy revert key");
+});
