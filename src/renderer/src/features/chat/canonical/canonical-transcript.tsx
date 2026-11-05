@@ -112,6 +112,9 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import type { ProfileRevertDescriptor } from "../../../../../shared/profile-consent";
+import { profileRevertView } from "../../mesh/mesh-profile-approval";
+import { ProfileConsentCard } from "../../mesh/profile-consent-card";
 import { parseAgentAvatarSize, turnMarkHeight } from "../agent-avatar-size";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
@@ -134,6 +137,7 @@ import {
 	type BridgeRowView,
 	bridgeRowView as composeBridgeRowView,
 } from "../components/trace/bridge-row-model";
+import { profileSaveCall } from "../components/trace/profile-save-card-model";
 import {
 	hubIdentity,
 	isInternalReceipt,
@@ -310,6 +314,7 @@ import { useBridgeConversationNames } from "./use-bridge-conversation-names";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
+import { useProfileRevertAnswer } from "./use-profile-revert";
 import { useScrollPaging } from "./use-scroll-paging";
 import {
 	type TranscriptMountAdapter,
@@ -2354,10 +2359,18 @@ const ToolRow = memo(function ToolRow({
 	stopping = false,
 	settledSound = false,
 	onInterruptTurn,
+	approvalEpoch = null,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	/**
+	 * The conversation's owner epoch, as a PRIMITIVE (the rows are memoised over
+	 * frontend frames). It is the identity a saved-profile card's revert press
+	 * answers on; without it the card states the change and offers no press,
+	 * because a gate answer with no epoch answers nothing.
+	 */
+	approvalEpoch?: string | null;
 	/** The row's first label read is in flight: hold the stand-in back. */
 	labelPending?: boolean;
 	/** The held column has outlived `LABEL_HOLD_MARK_MS`. */
@@ -2386,6 +2399,17 @@ const ToolRow = memo(function ToolRow({
 	 * reads nothing until a bridge row asks.
 	 */
 	const resolveConversation = useBridgeConversationNames();
+	/*
+	 * BOTH ARE UNCONDITIONAL, like the two above: a hook may not be skipped by a
+	 * branch, and the parse is a pure read of a settled result. `profileCall` is
+	 * null for every row but a bound `profile_save`/`profile_revert` answer, so the
+	 * branches below are unchanged for every other tool.
+	 */
+	const profileCall =
+		record.phase === "done" && record.output !== null
+			? profileSaveCall({ toolName: record.toolName, output: record.output })
+			: null;
+	const revertAnswer = useProfileRevertAnswer();
 	if (flagged !== null && record.toolName === "notify") {
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
@@ -2418,6 +2442,44 @@ const ToolRow = memo(function ToolRow({
 					view={imageGenCardView(record, { stopping, settled: settledSound })}
 					scope={scope}
 					actions={imageGenCardMountActions(record.toolName, onInterruptTurn)}
+				/>
+			</MessageContainer>
+		);
+	}
+	/*
+	 * THE SAVED-PROFILE CARD IS THE ROW for a settled `profile_save` answer this
+	 * build can bound (operator request: profile name, the changed fields, and a
+	 * one-click revert). It stands in the ledger row's place for the same reason
+	 * the image card does: two renderings of one call is the duplication this
+	 * transcript's own anatomy forbids. Everything it cannot bound keeps today's
+	 * row exactly — `profileSaveCall` returns null rather than guessing.
+	 */
+	if (profileCall) {
+		const revert = profileCall.descriptor
+			? profileRevertView(profileCall.descriptor, {
+					submitted:
+						revertAnswer.submitted === profileCall.descriptor.action_id,
+					outcome:
+						revertAnswer.outcome?.requestId === profileCall.descriptor.action_id
+							? revertAnswer.outcome
+							: null,
+				})
+			: null;
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ProfileConsentCard
+					view={revert ? { ...profileCall.view, revert } : profileCall.view}
+					onRevert={
+						profileCall.descriptor && scope?.sessionId && approvalEpoch
+							? () =>
+									revertAnswer.press({
+										descriptor:
+											profileCall.descriptor as ProfileRevertDescriptor,
+										sessionId: scope?.sessionId ?? null,
+										ownerEpoch: approvalEpoch,
+									})
+							: undefined
+					}
 				/>
 			</MessageContainer>
 		);
@@ -3501,8 +3563,16 @@ const TranscriptRow = memo(function TranscriptRow({
 	agentMark = null,
 	agentName = null,
 	onInterruptTurn,
+	approvalEpoch = null,
 }: {
 	row: Row;
+	/**
+	 * The conversation's owner epoch, as a PRIMITIVE (these rows are memoised over
+	 * frontend frames, so the frame itself is not a prop). It is the identity a
+	 * saved-profile card's revert press answers on: a gate answer with no epoch
+	 * answers nothing, and the card then offers no press.
+	 */
+	approvalEpoch?: string | null;
 	/** Primitive session context keeps memoized rows independent of frontend frames. */
 	sessionCwd?: string | null;
 	enter?: boolean;
@@ -3699,6 +3769,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					scope={scope}
+					approvalEpoch={approvalEpoch}
 					labelPending={labelPending}
 					labelHoldLate={labelHoldLate}
 					labelMarked={labelMarked}
@@ -6667,6 +6738,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			return group.rows.map((row, index) => (
 				<TranscriptRow
 					sessionCwd={frontend?.cwd}
+					approvalEpoch={frontend?.epoch ?? null}
 					key={row.record.id}
 					row={index === 0 ? atTraceTier(row) : row}
 					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
@@ -6797,6 +6869,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								group.rows.map((row, index) => (
 									<TranscriptRow
 										sessionCwd={frontend?.cwd}
+										approvalEpoch={frontend?.epoch ?? null}
 										key={row.record.id}
 										row={index === 0 ? atTraceTier(row) : row}
 										enter={
@@ -6838,6 +6911,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		) : (
 			<TranscriptRow
 				sessionCwd={frontend?.cwd}
+				approvalEpoch={frontend?.epoch ?? null}
 				key={group.row.record.id}
 				row={group.row}
 				enter={

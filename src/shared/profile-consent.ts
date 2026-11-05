@@ -409,11 +409,15 @@ export function profileRevertState(input: ProfileRevertInput): {
  * The revert's activation request, or `null` when this press may not be sent.
  *
  * IT IS AN ORDINARY AUTHENTICATED APPROVAL ANSWER on the originating session
- * (`sessions.answer`): `request_id` is the descriptor's `action_id`, `approved`
- * is true and `remember` is explicitly FALSE, because remembering a revert would
- * let it fire again on a later request id. No model argument, no raw command and
- * no reconstructed action reaches this path — the caller hands it the verified
- * descriptor and nothing else.
+ * (`sessions.answer`): `request_id` is the descriptor's `action_id` and `approved`
+ * is true. THERE IS NO `remember` FIELD, and its absence is the point: the gate
+ * answer carries `{session_id, epoch, request_id, approved}` and nothing else, so
+ * a revert can never be remembered into firing again on a later request id. A
+ * `remember: false` here would name a field the request schema refuses, and a
+ * shape that disagrees with its wire is how a false claim starts.
+ *
+ * No model argument, no raw command and no reconstructed action reaches this
+ * path — the caller holds a verified descriptor or nothing.
  */
 export function profileRevertAnswer(args: {
 	descriptor: unknown;
@@ -425,7 +429,6 @@ export function profileRevertAnswer(args: {
 	ownerEpoch?: string;
 	requestId: string;
 	approved: true;
-	remember: false;
 } | null {
 	const parsed = profileRevertDescriptorSchema.safeParse(args.descriptor);
 	if (!parsed.success || !args.sessionId) return null;
@@ -435,7 +438,6 @@ export function profileRevertAnswer(args: {
 		...(args.ownerEpoch ? { ownerEpoch: args.ownerEpoch } : {}),
 		requestId: parsed.data.action_id,
 		approved: true,
-		remember: false,
 	};
 }
 
