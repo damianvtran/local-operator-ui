@@ -168,6 +168,7 @@ const bundle = await build({
  export {t} from "./src/renderer/src/shared/i18n";
  export {browserDraftStorage} from "./src/renderer/src/shared/store/team-bridge-draft-account";
  export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
+ export {resetPendingSendsForTest, usePendingSends} from "./src/renderer/src/features/team-bridge/team-bridge-pending-sends";
  export {TeamBridgeFilesStrip} from "./src/renderer/src/features/team-bridge/team-bridge-files-strip";
  export {useTeamBridgeFiles, filesCapability, splitBridgeFiles} from "./src/renderer/src/features/team-bridge/use-team-bridge-files";
  export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";`,
@@ -228,6 +229,17 @@ m.setLocale("en");
 beforeEach(() => {
 	droppedSeq = 0;
 	m.useConversationInputStore.setState({ inputByConversation: {} });
+	/*
+	 * THE SAME REASON AS THE INPUT STORE, ONE LAYER DOWN: optimistic sends live in
+	 * a module singleton (`team-bridge-pending-sends`), so a send one case leaves
+	 * unconfirmed is still there when the next case mounts the same conversation -
+	 * and a second mount for a conversation carrying an extra row is a different
+	 * page from the one the next case meant to build (QA round 1, r8 m1: the
+	 * reader opened a row short of the end because F9's "mine" was still pending).
+	 * The store is reset, never emptied at unmount: in the app a pending send must
+	 * survive a remount, which `Q-2: a channel remounted...` now pins.
+	 */
+	m.resetPendingSendsForTest();
 });
 
 /* A 1x1 PNG and a 1x1 JPEG header: real magic numbers, no fixture files. */
@@ -2560,6 +2572,64 @@ test(
 				assert.ok(atBottom(viewport), "the sent message lands in view");
 			} finally {
 				await app.close();
+			}
+		}),
+);
+
+/*
+ * OPENING A CONVERSATION THAT WAS OPENED BEFORE (QA round 1, Q-2 / r8 m1).
+ *
+ * The regression only ever reproduced as a SIDE EFFECT of another test: mount
+ * `bcv_dm`, send, unmount, mount `bcv_dm` again - and the second mount opened a
+ * row short of the bottom. Which test ran first decided whether it showed up at
+ * all, which is not a reproduction. This is the same sequence inside ONE test
+ * body: mount, send with a stub that never settles (the optimistic row stays
+ * pending, which is the state the pending-sends store persists per
+ * conversation), unmount, remount, and ask the only question that matters:
+ * is the reader at the bottom?
+ */
+test(
+	"Q-2: a channel remounted with a still-pending send opens at the bottom",
+	{ timeout: 30_000 },
+	() =>
+		withScrollGeometry(async () => {
+			localStorage.clear();
+			m.resetPendingSendsForTest();
+			const rows = Array.from({ length: 10 }, (_, i) =>
+				message({
+					id: `bmsg_h${i + 1}`,
+					seq: i + 1,
+					conversation_id: "bcv_dm",
+					body: `h ${i + 1}`,
+				}),
+			);
+			const sends = [];
+			const base = {
+				target: { type: "conversation", id: "bcv_dm" },
+				onSend: async (body) => {
+					sends.push(body);
+				},
+			};
+			const first = await mountPage(pageProps({ ...base, messages: rows }));
+			const firstViewport = viewportOf(first.element);
+			assert.ok(atBottom(firstViewport), "the first mount opens at the bottom");
+			await typeBody(first.element, "still pending");
+			await act(async () => sendButton(first.element).click());
+			await settle();
+			await first.close();
+
+			const second = await mountPage(pageProps({ ...base, messages: rows }));
+			try {
+				const viewport = viewportOf(second.element);
+				const rowsMounted =
+					viewport.querySelectorAll("[data-message-id]").length;
+				assert.ok(
+					atBottom(viewport),
+					`the remount opens at the bottom (rows=${rowsMounted}, scrollTop=${viewport.scrollTop}, scrollHeight=${viewport.scrollHeight}, client=${viewport.clientHeight})`,
+				);
+			} finally {
+				await second.close();
+				m.resetPendingSendsForTest();
 			}
 		}),
 );
