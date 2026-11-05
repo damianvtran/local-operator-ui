@@ -544,9 +544,11 @@ function composedLaneWash(palette, floors) {
 			if (clears) return { dark: { role, scale }, light: { role, scale } };
 		}
 	}
-	throw new Error(
-		`no lane role clears Delta-E ${GLASS_LANE_STEP} on the composed palette`,
-	);
+	/* This is a candidate search, not a palette-validity verdict. A legible
+	 * canvas may still be too transparent for either lane role to separate from
+	 * it (Mint Light Soft, Linen Gentle). Let the joint solver move that ground
+	 * and re-solve its dependent veil instead of throwing through React paint. */
+	return null;
 }
 
 /** The block veil is a second ink overlay on CANVAS only. Solve its text floor
@@ -592,11 +594,35 @@ export function glassFloorsForPalette(palette) {
 	const palettes = [{ palette }];
 	const stateAlpha = glassStateAlphas(palette);
 	const alphaFloor = derive(palettes, stateAlpha);
-	const blockVeil = composedBlockFloors(palette, alphaFloor);
+	let blockVeil;
+	let laneWash;
+	/* Text gives a LOWER bound on canvas opacity, not a complete solution for
+	 * a lane drawn above it. Search the remaining transparent canvas grounds in
+	 * published 0.01 steps, re-solving the veil on each candidate. Accepted
+	 * palette roles keep their flat separation; moving toward that ground makes
+	 * the lane feasible without lowering its Delta-E floor, changing colours,
+	 * or disabling native glass. Unchanged feasible palettes stop immediately.
+	 * The complete supported-palette/accent matrix pins this totality contract. */
+	for (let minimum = 0; minimum <= 99; minimum++) {
+		let changed = false;
+		for (const tier of Object.keys(BACKDROP_GRAY)) {
+			const scheme = schemeOf(palette);
+			const current = alphaFloor[tier][scheme].canvas;
+			const candidate = Math.max(current, minimum / 100);
+			changed ||= candidate !== current;
+			alphaFloor[tier][scheme].canvas = candidate;
+		}
+		if (minimum > 0 && !changed) continue;
+		blockVeil = composedBlockFloors(palette, alphaFloor);
+		laneWash = composedLaneWash(palette, alphaFloor);
+		if (laneWash) break;
+	}
+	if (!laneWash)
+		throw new Error("palette roles cannot form a readable transparent lane");
 	const table = {
 		alphaFloor,
 		blockVeil,
-		laneWash: composedLaneWash(palette, alphaFloor),
+		laneWash,
 		controlMix: deriveControlMix(alphaFloor, palettes),
 		bandFloor: deriveBandFloor(palettes),
 		stateAlpha,

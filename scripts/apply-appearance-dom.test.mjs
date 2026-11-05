@@ -146,6 +146,107 @@ test("applyAppearance refuses an unsafe id or value and fails to identity", () =
 	}
 });
 
+test("lane totality survives exact failing appearances, accent switches and direct slider neighbors", () => {
+	const failures = [];
+	const cases = [
+		["mintLight", -100],
+		["mintLight", -99],
+		["linen", -50],
+		["linen", -51],
+		["linen", -49],
+		["linen", 0],
+		["linen", -1],
+		["linen", 1],
+		["localOperatorLight", 100],
+		["localOperatorLight", 99],
+	];
+	for (const [themeName, contrast] of cases) {
+		for (const accent of [
+			{ kind: "theme" },
+			{ kind: "palette", id: "radient" },
+			{ kind: "custom", hex: "#ff6644" },
+		]) {
+			const appearance = {
+				...STANDARD,
+				themeName,
+				contrast: { dark: contrast, light: contrast },
+				accent: { dark: accent, light: accent },
+			};
+			mod.applyGlassFacts(null);
+			mod.applyAppearance(appearance, doc);
+			mod.syncGlassScheme(); // same-code off control must not throw
+			try {
+				mod.applyGlassFacts({
+					mechanism: "vibrancy",
+					coverage: "full",
+					intensity: 100,
+					material: "window",
+					scheme: "light",
+				});
+				assert.equal(root.dataset.glass, "sidebar canvas pane");
+				/* Keep active facts while switching to the next persisted appearance,
+				 * exercising the exact provider layout-effect path, not just math. */
+				mod.applyAppearance(
+					{
+						...appearance,
+						contrast: {
+							dark: contrast + (contrast < 100 ? 1 : -1),
+							light: contrast + (contrast < 100 ? 1 : -1),
+						},
+					},
+					doc,
+				);
+				mod.syncGlassScheme();
+				assert.equal(root.dataset.glass, "sidebar canvas pane");
+			} catch (error) {
+				failures.push(
+					`${themeName}/${contrast}/${JSON.stringify(accent)}: ${error.message}`,
+				);
+			}
+		}
+	}
+	/* Preserve the borrowed accent across the actual UX sequence. An error
+	 * during an intermediate layout effect must not be mistaken for a failure
+	 * of only the final light/High palette. */
+	const borrowed = { kind: "palette", id: "radient" };
+	mod.applyGlassFacts(null);
+	for (const [themeName, values] of [
+		["localOperatorDark", [-100, -50, 0, 50, 100, 95]],
+		["dracula", [95]],
+		["localOperatorLight", [-100, -50, 0, 50, 100]],
+	]) {
+		for (const contrast of values) {
+			try {
+				mod.applyAppearance(
+					{
+						...STANDARD,
+						themeName,
+						contrast: { dark: contrast, light: contrast },
+						accent: { dark: borrowed, light: borrowed },
+					},
+					doc,
+				);
+				mod.applyGlassFacts({
+					mechanism: "vibrancy",
+					coverage: "full",
+					intensity: 100,
+					material: "window",
+					scheme: "light",
+				});
+				mod.syncGlassScheme();
+				assert.equal(root.dataset.glass, "sidebar canvas pane");
+			} catch (error) {
+				failures.push(`UX sequence ${themeName}/${contrast}: ${error.message}`);
+			}
+		}
+	}
+	assert.deepEqual(
+		failures,
+		[],
+		"every permitted switch must complete with active glass",
+	);
+});
+
 test("glass follows actual composed colours across presets, continuous values, accents and restart", () => {
 	for (const themeName of ["localOperatorDark", "localOperatorLight"]) {
 		for (const contrast of [-100, -50, 0, 50, 100, -73, 31]) {
