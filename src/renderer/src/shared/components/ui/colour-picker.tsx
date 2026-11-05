@@ -266,11 +266,8 @@ export const ColourPicker = ({
 					step={1}
 					value={coordinates.h}
 					onChange={(e) => paint({ ...coordinates, h: Number(e.target.value) })}
-					className="h-6 w-full accent-accent"
-					style={{
-						background:
-							"linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)",
-					}}
+					data-colour-hue=""
+					className="h-6 w-full focus-visible:outline-2 focus-visible:outline-accent"
 				/>
 			</label>
 			<div className="grid grid-cols-2 gap-2">

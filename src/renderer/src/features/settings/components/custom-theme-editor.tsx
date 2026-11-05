@@ -25,7 +25,7 @@ import {
 	useCustomThemes,
 } from "@shared/themes/custom-theme-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CustomThemeV1 } from "../../../../../shared/theme-engine/appearance.mjs";
 import { composeTheme } from "../../../../../shared/theme-engine/compose.mjs";
 import { paletteBlock } from "../../../../../shared/theme-engine/css.mjs";
@@ -108,6 +108,8 @@ export const CustomThemeEditor = ({
 	const [error, setError] = useState(false);
 	const [adjustError, setAdjustError] = useState(false);
 	const [discard, setDiscard] = useState(false);
+	const previousEditorControl = useRef<HTMLElement | null>(null);
+	const discarding = useRef(false);
 	const [announcement, setAnnouncement] = useState("");
 	const [advanced, setAdvanced] = useState(() => {
 		try {
@@ -188,8 +190,18 @@ export const CustomThemeEditor = ({
 		});
 	};
 	const requestClose = () => {
-		if (dirty) setDiscard(true);
-		else onClose();
+		// Escape can reach both nested Radix dismiss layers. The confirmation
+		// already owns it: do not replace the editor target with its own button.
+		if (discard) return;
+		if (dirty) {
+			// This controlled confirmation has no Radix Trigger to restore focus to.
+			// Capture the actual editing control before the nested trap takes focus.
+			previousEditorControl.current =
+				document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null;
+			setDiscard(true);
+		} else onClose();
 	};
 	const adjust = () => {
 		const next = suggestCustomAdjustment(base, draft);
@@ -410,25 +422,38 @@ export const CustomThemeEditor = ({
 							>
 								<span
 									className={
-										measured.findings.length ? "text-danger" : "text-success"
+										invalidText || !pickerValid || measured.findings.length
+											? "text-danger"
+											: "text-success"
 									}
 								>
-									{measured.findings.length
-										? t("ui.settings.appearance.editor.validation_summary", {
-												count: measured.findings.length,
-											})
-										: t("ui.settings.appearance.editor.validation_pass")}
+									{invalidText
+										? t("ui.settings.appearance.editor.invalid_hex")
+										: !pickerValid
+											? t(
+													"ui.settings.appearance.editor.picker.invalid_channels",
+												)
+											: measured.findings.length
+												? t(
+														"ui.settings.appearance.editor.validation_summary",
+														{
+															count: measured.findings.length,
+														},
+													)
+												: t("ui.settings.appearance.editor.validation_pass")}
 								</span>
-								{measured.findings.length > 0 && (
-									<Button
-										type="button"
-										variant="secondary"
-										size="sm"
-										onClick={adjust}
-									>
-										{t("ui.settings.appearance.editor.adjust")}
-									</Button>
-								)}
+								{!invalidText &&
+									pickerValid &&
+									measured.findings.length > 0 && (
+										<Button
+											type="button"
+											variant="secondary"
+											size="sm"
+											onClick={adjust}
+										>
+											{t("ui.settings.appearance.editor.adjust")}
+										</Button>
+									)}
 							</div>
 							{adjustError && (
 								<p role="alert" className="text-meta text-danger">
@@ -560,7 +585,19 @@ export const CustomThemeEditor = ({
 				</SheetContent>
 			</Sheet>
 			<Dialog open={discard} onOpenChange={setDiscard}>
-				<DialogContent>
+				<DialogContent
+					onCloseAutoFocus={(event) => {
+						// Discard closes the editor too: its own focus scope restores the opener.
+						// Escape/Keep editing leave it mounted, so return to the previous control.
+						if (
+							!discarding.current &&
+							previousEditorControl.current?.isConnected
+						) {
+							event.preventDefault();
+							previousEditorControl.current.focus({ preventScroll: true });
+						}
+					}}
+				>
 					<DialogTitle>
 						{t("ui.settings.appearance.editor.discard_title")}
 					</DialogTitle>
@@ -571,7 +608,13 @@ export const CustomThemeEditor = ({
 						<Button variant="secondary" onClick={() => setDiscard(false)}>
 							{t("ui.settings.appearance.editor.keep_editing")}
 						</Button>
-						<Button variant="danger" onClick={onClose}>
+						<Button
+							variant="danger"
+							onClick={() => {
+								discarding.current = true;
+								onClose();
+							}}
+						>
 							{t("ui.settings.appearance.editor.discard")}
 						</Button>
 					</div>

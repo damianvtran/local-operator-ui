@@ -130,6 +130,9 @@ export const InvalidHexBlocksSave: Story = {
 			}),
 		).toBeDisabled();
 		await expect(hex).toHaveAttribute("aria-invalid", "true");
+		await expect(
+			body.queryByText(t("ui.settings.appearance.editor.validation_pass")),
+		).not.toBeInTheDocument();
 	},
 };
 export const CancelDiscardsDraft: Story = {
@@ -186,5 +189,36 @@ export const ImportedPinnedEssentialCanEdit: Story = {
 				name: t("ui.settings.appearance.editor.save"),
 			}),
 		).toBeEnabled();
+	},
+};
+
+export const DiscardRestoresEditingFocus: Story = {
+	render: () => <Editor />,
+	play: async () => {
+		const body = within(document.body);
+		const name = await body.findByLabelText(
+			t("ui.settings.appearance.editor.name"),
+		);
+		await userEvent.clear(name);
+		await userEvent.type(name, "Focus recovery");
+		const opener = body.getByRole("button", {
+			name: t("ui.settings.appearance.editor.edit_role", {
+				role: t("ui.settings.appearance.editor.role.accent"),
+			}),
+		});
+		await userEvent.click(opener);
+		await userEvent.keyboard("{Escape}");
+		await body.findByRole("dialog", {
+			name: t("ui.settings.appearance.editor.discard_title"),
+		});
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() => expect(opener).toHaveFocus());
+		await userEvent.keyboard("{Escape}");
+		await userEvent.click(
+			await body.findByRole("button", {
+				name: t("ui.settings.appearance.editor.keep_editing"),
+			}),
+		);
+		await waitFor(() => expect(opener).toHaveFocus());
 	},
 };

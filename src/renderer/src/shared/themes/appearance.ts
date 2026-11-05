@@ -137,6 +137,9 @@ export const resolveAppearance = (
 	const key = JSON.stringify([
 		option.id,
 		customBaseId ?? null,
+		// A library revision changes no preference field. Hash ALL authored roles
+		// so same-base themes and edits to the active ID cannot reuse old paint.
+		customPalette ? paletteHash(customPalette) : null,
 		contrast,
 		accent ?? null,
 	]);

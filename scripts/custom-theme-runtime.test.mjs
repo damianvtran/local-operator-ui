@@ -38,6 +38,9 @@ export {useUiPreferencesStore as store} from './src/renderer/src/shared/store/ui
 export {saveCustomTheme,deleteCustomTheme,reloadCustomThemes,customThemeSnapshot} from './src/renderer/src/shared/themes/custom-theme-store';
 export {appearanceKey,appearanceOf} from './src/renderer/src/shared/themes/appearance';
 export {definitionOf} from './src/renderer/src/shared/themes';
+export {useTheme} from '@mui/material/styles';
+export {savedPaletteOf} from './src/renderer/src/shared/themes/use-resolved-appearance';
+export {applyAppearance} from './src/renderer/src/shared/themes/appearance';
 `,
 		resolveDir: process.cwd(),
 		loader: "tsx",
@@ -75,8 +78,11 @@ const {
 	definitionOf,
 	appearanceKey,
 	appearanceOf,
+	useTheme,
+	savedPaletteOf,
+	applyAppearance,
 } = module.exports;
-const root = createRoot(document.getElementById("root"));
+let root = createRoot(document.getElementById("root"));
 const draft = (id) => ({
 	format: "local-operator-theme",
 	version: 1,
@@ -116,14 +122,17 @@ test("saved custom selection paints via the real provider; editing an active ID,
 		};
 		await act(async () => saveCustomTheme(edited));
 		assert.equal(customThemeSnapshot().themes[0].name, "Edited Harbour");
-		// The repaint itself is proven in the browser run (Save → root accent
-		// moved #38c96a→#32CA68); this file pins the DATA the provider reads, so
-		// it fails if an edit stops reaching the library snapshot at all.
+		assert.notEqual(
+			document.documentElement.dataset.theme,
+			before,
+			"editing the active ID must repaint, not just persist",
+		);
 		assert.equal(
-			customThemeSnapshot().themes[0].overrides.accent,
+			getComputedStyle(document.documentElement)
+				.getPropertyValue("--lo-accent")
+				.trim(),
 			edited.overrides.accent,
 		);
-		void before;
 		assert.ok(document.getElementById("lo-composed-theme"));
 		// A storage event models a second document's edit without touching preferences.
 		await act(async () => {
@@ -148,6 +157,88 @@ test("saved custom selection paints via the real provider; editing an active ID,
 		);
 		assert.notEqual(before, id);
 	}
+});
+
+test("same-base A→B→active B edit updates root CSS, identity, MUI and mini document; reload keeps edited paint", async (t) => {
+	const probe = () =>
+		h("span", { "data-mui-accent": useTheme().palette.primary.main });
+	const a = {
+		...draft("localOperatorDark"),
+		id: "custom-cachea",
+		overrides: { accent: "#32CA68" },
+	};
+	const b = { ...a, id: "custom-cacheb", overrides: { accent: "#30C868" } };
+	const edited = { ...b, overrides: { accent: "#31C969" }, updatedAt: 3 };
+	await act(async () => {
+		store.setState({ ...identity, themeName: a.base, customThemeId: null });
+		saveCustomTheme(a);
+		saveCustomTheme(b);
+		root.render(h(ThemeProvider, null, h(probe)));
+	});
+	const mini = new JSDOM(
+		"<!doctype html><html><head></head><body></body></html>",
+	);
+	const identities = [];
+	const assertPaint = (theme) => {
+		const rootId = document.documentElement.dataset.theme;
+		assert.equal(
+			getComputedStyle(document.documentElement)
+				.getPropertyValue("--lo-accent")
+				.trim(),
+			theme.overrides.accent,
+		);
+		assert.equal(
+			document.querySelector("[data-mui-accent]").dataset.muiAccent,
+			theme.overrides.accent,
+		);
+		assert.ok(
+			document.getElementById("lo-composed-theme").textContent.includes(rootId),
+		);
+		assert.ok(
+			document
+				.getElementById("lo-composed-theme")
+				.textContent.includes(theme.overrides.accent),
+		);
+		// Mirror the mini entry's actual publisher into a separate document.
+		applyAppearance(
+			appearanceOf(store.getState()),
+			mini.window.document,
+			savedPaletteOf(theme),
+			theme.base,
+		);
+		assert.equal(mini.window.document.documentElement.dataset.theme, rootId);
+		assert.ok(
+			mini.window.document
+				.getElementById("lo-composed-theme")
+				.textContent.includes(theme.overrides.accent),
+		);
+		t.diagnostic(
+			`actual paint ${getComputedStyle(document.documentElement).getPropertyValue("--lo-accent").trim()} → ${rootId}; MUI ${document.querySelector("[data-mui-accent]").dataset.muiAccent}; mini ${mini.window.document.documentElement.dataset.theme}`,
+		);
+		return rootId;
+	};
+	for (const theme of [a, b]) {
+		await act(async () => store.setState({ customThemeId: theme.id }));
+		identities.push(assertPaint(theme));
+	}
+	await act(async () => saveCustomTheme(edited));
+	identities.push(assertPaint(edited));
+	assert.equal(
+		new Set(identities).size,
+		3,
+		"same-base switches AND same-ID edits must generate fresh palette identities",
+	);
+	await act(async () => {
+		reloadCustomThemes();
+		await store.persist.rehydrate();
+		root.unmount();
+	});
+	root = createRoot(document.getElementById("root"));
+	await act(async () => root.render(h(ThemeProvider, null, h(probe))));
+	assert.equal(assertPaint(edited), identities[2]);
+	assert.deepEqual(store.getState().contrast, identity.contrast);
+	assert.deepEqual(store.getState().accent, identity.accent);
+	mini.window.close();
 });
 
 test("failed quota write never publishes an unsaved custom palette", async () => {

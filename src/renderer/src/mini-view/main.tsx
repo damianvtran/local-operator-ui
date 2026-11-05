@@ -74,7 +74,12 @@ const publishAppearance = () => {
 	syncGlassScheme();
 };
 publishAppearance();
-subscribeCustomThemes(publishAppearance);
+// Register once per document, not once per adopted preferences write. On
+// teardown the library must release the callback (including test remounts).
+const unsubscribeCustomThemes = subscribeCustomThemes(publishAppearance);
+window.addEventListener("beforeunload", unsubscribeCustomThemes, {
+	once: true,
+});
 
 /*
  * THE POPOUT'S GLASS, from the same two channels the main document reads: the
@@ -121,31 +126,7 @@ window.addEventListener("storage", (event) => {
 			appearanceOf(useUiPreferencesStore.getState()),
 		),
 		rehydrate: () => useUiPreferencesStore.persist?.rehydrate?.(),
-		publish: () => {
-			/*
-			 * A LIBRARY EDIT IS A REPAINT TOO. A saved theme's values live in their own
-			 * store, so editing the ACTIVE one changes no preference field - the mini
-			 * document subscribes to the same presentation function the storage listener
-			 * uses, and neither writes preferences.
-			 */
-			const publishAppearance = () => {
-				const state = useUiPreferencesStore.getState();
-				const saved = findCustomTheme(state.customThemeId);
-				const savedPalette = savedPaletteOf(saved);
-				const savedBase = saved?.base as ThemeName | undefined;
-				applyAppearance(
-					appearanceOf(state),
-					document,
-					savedPalette,
-					savedBase,
-					(a) => resolveAppearance(a, savedPalette, savedBase),
-				);
-				syncGlassScheme();
-			};
-			publishAppearance();
-			subscribeCustomThemes(publishAppearance);
-			syncGlassScheme();
-		},
+		publish: publishAppearance,
 	});
 });
 
