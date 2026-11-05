@@ -33,6 +33,7 @@ const bundle = await build({
 			export * from "./src/shared/profile-consent";
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
 			export * from "./src/renderer/src/features/mesh/mesh-profile-approval";
+			export { profileSaveCall } from "./src/renderer/src/features/chat/components/trace/profile-save-card-model";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 			export { setLocale } from "./src/i18n";
 		`,
@@ -392,7 +393,6 @@ test("the revert dispatch is an ordinary approval answer on the originating sess
 			ownerEpoch: "e_1",
 			requestId: "ra_5b81",
 			approved: true,
-			remember: false,
 		},
 	);
 	// Nothing is answered from a state that is not offered, from a descriptor
@@ -556,4 +556,120 @@ test("the card draws no revert control without a verified descriptor", () => {
 	assert.match(card, REVERT_KILL_SWITCH);
 	assert.match(card, REVERT_DISABLED);
 	assert.match(card, REVERT_DESCRIBED_BY);
+});
+
+/* --------------------------------------------- the transcript saved card */
+
+/*
+ * THE TRANSCRIPT'S OWN PARSER, on the strings a tool row actually holds.
+ *
+ * The interesting failures are not layout: they are a payload this build cannot
+ * bound being described anyway, and a revert offered on a descriptor nobody
+ * verified. Both are assertions here, and every legacy answer must fall through
+ * to the ordinary row.
+ */
+const toolOutput = (value) =>
+	typeof value === "string" ? value : JSON.stringify(value);
+
+const callOf = (value, toolName = "profile_save") =>
+	api.profileSaveCall({ toolName, output: toolOutput(value) });
+
+test("a transcript answer this build cannot bound keeps today's row", () => {
+	assert.equal(callOf("Saved the profile."), null);
+	assert.equal(callOf(""), null);
+	assert.equal(callOf("{ not json"), null);
+	assert.equal(callOf({ hello: "world" }), null);
+	// A disclosure with a key this shape never carries is refused, not half-read.
+	assert.equal(callOf(disclosure({ extra_field: "surprise" })), null);
+	// An envelope that grew a key is refused whole.
+	assert.equal(callOf({ disclosure: disclosure(), surprise: true }), null);
+	// Another tool's answer is not this card's business even when it parses.
+	assert.equal(callOf(disclosure(), "bash"), null);
+});
+
+test("the saved card states the profile, the scope, the operation and the diff", () => {
+	const call = callOf({ disclosure: disclosure(), state: "applied" });
+	assert.ok(call);
+	assert.equal(call.view.name, "Researcher");
+	assert.equal(call.view.kind, "agent");
+	assert.equal(call.view.scope, "global");
+	assert.equal(call.view.operation, "update");
+	assert.equal(call.view.state, "saved");
+	assert.deepEqual(
+		call.view.fields.map((entry) => entry.field),
+		["model", "instructions"],
+	);
+	assert.equal(call.descriptor, null);
+	assert.equal(call.view.revert.state, "unavailable");
+});
+
+test("the revert is offered only when the backend verified the descriptor", () => {
+	const unverified = callOf({
+		disclosure: disclosure(),
+		revert: revertDescriptor,
+	});
+	assert.ok(unverified);
+	assert.equal(unverified.descriptor, null);
+	assert.equal(unverified.view.revert.state, "unavailable");
+	assert.equal(unverified.view.revert.enabled, false);
+
+	const wrongFlag = callOf({
+		disclosure: disclosure(),
+		revert: revertDescriptor,
+		revert_verified: "yes",
+	});
+	assert.equal(wrongFlag?.descriptor, null);
+
+	const verified = callOf({
+		disclosure: disclosure(),
+		state: "applied",
+		revert: revertDescriptor,
+		revert_verified: true,
+	});
+	assert.ok(verified?.descriptor);
+	assert.equal(verified.view.revert.state, "available");
+	assert.equal(verified.view.revert.enabled, true);
+});
+
+test("a queued receipt names the profile and claims no diff", () => {
+	const call = callOf({
+		status: "queued",
+		approval_id: "ap_dem1234",
+		request_digest: requestDigest,
+		expires_at: 1_900_000_000,
+		receipt_id: "rc_71bd",
+		profile_kind: "agent",
+		profile_name: "Researcher",
+		scope: "global",
+	});
+	assert.ok(call);
+	assert.equal(call.view.state, "waiting");
+	assert.equal(call.view.name, "Researcher");
+	assert.deepEqual(call.view.fields, []);
+	assert.equal(call.descriptor, null);
+});
+
+test("an unknown state word reads as still waiting, never as saved", () => {
+	for (const state of ["applied_ish", "", "SAVED_ISH"]) {
+		const call = callOf({ disclosure: disclosure(), state });
+		assert.equal(call?.view.state, "waiting", state);
+	}
+});
+
+test("the transcript rows the card replaces keep their hooks unconditional", () => {
+	const transcript = source(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+	);
+	// The parse and the answer hook are declared with the other hooks, above every
+	// early return; a branch that skipped them would be a hook-order bug.
+	const hookAt = transcript.indexOf(
+		"const revertAnswer = useProfileRevertAnswer();",
+	);
+	const firstReturn = transcript.indexOf("if (flagged !== null");
+	assert.ok(
+		hookAt > 0 && firstReturn > hookAt,
+		"hook declared before the first branch",
+	);
+	assert.match(transcript, /if \(profileCall\) \{/);
+	assert.match(transcript, /approvalEpoch=\{frontend\?\.epoch \?\? null\}/);
 });

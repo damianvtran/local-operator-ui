@@ -292,6 +292,58 @@ export function profileReceiptView(
 	};
 }
 
+/**
+ * The card from a DISCLOSURE and a lifecycle state, with no approval row behind it.
+ *
+ * The transcript's saved card has the same statement to make as the inbox card and
+ * none of the inbox's machinery: there is no store state to read, no signable row
+ * to gate, and nothing to approve - only what was saved and the one press that can
+ * undo it. Sharing this builder is what keeps the two surfaces from describing the
+ * same record in two voices.
+ */
+export function profileDisclosureView(
+	disclosure: ProfileSaveDisclosure,
+	{
+		state = "waiting",
+		revert,
+	}: {
+		state?: ProfileCardState;
+		revert?: ProfileRevertView;
+	} = {},
+): ProfileCardView {
+	return {
+		kind: disclosure.profile_kind,
+		name: disclosure.profile_name,
+		operation: disclosure.profile_operation,
+		scope: disclosure.scope,
+		fields: profileFieldRows(disclosure),
+		state,
+		stateNote: stateNoteFor(state),
+		canApprove: false,
+		canDeny: false,
+		canRetryApply: false,
+		unavailableReason: null,
+		revert: revert ?? profileRevertUnavailable(),
+	};
+}
+
+/**
+ * A lifecycle state's own sentence, or `null` where the state word is already the
+ * whole fact (`saved`, `denied`, `expired`).
+ */
+export function stateNoteFor(state: ProfileCardState): string | null {
+	switch (state) {
+		case "waiting":
+			return t("ui.mesh.mesh_approvals.profile_waiting");
+		case "approved_not_saved":
+			return t("ui.mesh.approval.approved_not_applied");
+		case "stopped":
+			return t("ui.mesh.approval.could_not_apply");
+		default:
+			return null;
+	}
+}
+
 /** Whether a title-level chip should name the family (a card without a disclosure cannot). */
 export function profileKindOf(row: MeshApprovalRow): ProfileKind | null {
 	const kind = row.profile?.disclosure?.profile_kind;
