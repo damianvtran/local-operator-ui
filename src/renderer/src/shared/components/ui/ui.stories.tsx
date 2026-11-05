@@ -1381,10 +1381,13 @@ export const DropdownOpen: Story = {
 								</DropdownMenuSubContent>
 							</DropdownMenuSub>
 							<DropdownMenuSeparator />
-							{/* The destructive label is the register design round 1 measured. */}
+							{/* The destructive label is the register design round 1 measured -
+							 * and a PRODUCT-length one (design round 2, NIT-1): the real rows are
+							 * phrases in a `w-56` menu, so a bare "Delete" under-reports the
+							 * row's width and its wrap. */}
 							<DropdownMenuItem destructive>
 								<Trash2 aria-hidden="true" />
-								Delete
+								Delete conversation
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>

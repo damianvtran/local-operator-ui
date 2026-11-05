@@ -76,27 +76,77 @@ export const SwitcherOpen: Story = {
 		);
 	},
 	play: async ({ canvasElement }) => {
+		const doc = canvasElement.ownerDocument;
 		/*
-		 * `window`, not the canvas: the listener sits on the document's own bubble
-		 * phase, and a press dispatched into a subtree exercises a path the app never
-		 * takes.
+		 * ON `document`, WHICH IS WHERE THE LISTENER IS. `use-session-switcher-keys.ts`
+		 * binds `document.addEventListener("keydown", onKeyDown)`; an event dispatched
+		 * on `window` does not travel DOWN the tree to a document listener, so the first
+		 * version of this fixture pressed a key nobody was listening for and the panel
+		 * never opened (QA round 1, Q-2). Dispatching on `document` is the same target
+		 * the app's own press reaches, which is the whole point of driving the real path
+		 * instead of reaching into the hook's state.
 		 */
-		window.dispatchEvent(
-			new KeyboardEvent("keydown", {
-				key: "Tab",
-				code: "Tab",
-				ctrlKey: true,
-				bubbles: true,
-				cancelable: true,
-			}),
-		);
-		await new Promise((resolve) => setTimeout(resolve, 260));
-		/* Fails loudly rather than photographing an empty page: if a future host
-		 * cannot dispatch the chord, the story says so instead of showing nothing. */
-		await expect(
-			canvasElement.ownerDocument.querySelector(
-				'[role="dialog"][data-glass-overlay]',
-			),
-		).not.toBeNull();
+		const press = () =>
+			doc.dispatchEvent(
+				new KeyboardEvent("keydown", {
+					key: "Tab",
+					code: "Tab",
+					ctrlKey: true,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		/*
+		 * POLLED, WITH ONE RETRY, because the listener is attached from a `useEffect`
+		 * and a `play` that runs before that effect flushes would press a key nobody is
+		 * listening for yet - design round 2's D4 named the race as a candidate cause
+		 * alongside the wrong target. The retry costs one extra `Tab` press (a second
+		 * press only steps the cursor, and the panel is what is being asserted), and it
+		 * cannot turn a broken fixture green: without the panel this still fails, and
+		 * paints the banner first.
+		 */
+		press();
+		const panelAfter = async (ms: number) => {
+			const deadline = Date.now() + ms;
+			while (Date.now() < deadline) {
+				const found = doc.querySelector('[role="dialog"][data-glass-overlay]');
+				if (found !== null) return found;
+				/* The reveal is `SESSION_SWITCHER_REVEAL_MS` (180 ms) after the press. */
+				await new Promise((resolve) => setTimeout(resolve, 20));
+			}
+			return null;
+		};
+		let panel = await panelAfter(400);
+		if (panel === null) {
+			press();
+			panel = await panelAfter(400);
+		}
+		/*
+		 * A BROKEN FIXTURE HAS TO BE VISIBLE IN THE PIXELS, not only in the interactions
+		 * log. A screenshot lane reads a blank frame as "the surface has nothing to
+		 * show", which is exactly how this fixture's own defect survived a review: the
+		 * assertion failed and the picture looked like an empty story. So the failure
+		 * paints a banner over the frame BEFORE it throws, and the story still fails.
+		 */
+		if (panel === null) {
+			const banner = doc.createElement("div");
+			banner.setAttribute("data-story-fixture-failure", "session-switcher");
+			banner.style.cssText = [
+				"position:fixed",
+				"inset:0",
+				"z-index:2147483647",
+				"display:grid",
+				"place-items:center",
+				"padding:24px",
+				"background:#b00020",
+				"color:#fff",
+				"font:600 18px/1.5 system-ui,sans-serif",
+				"text-align:center",
+			].join(";");
+			banner.textContent =
+				"FIXTURE FAILED: the session switcher did not open. No [role=dialog][data-glass-overlay] exists 260 ms after the chord - check the dispatch target and the reveal timer.";
+			doc.body.appendChild(banner);
+		}
+		await expect(panel).not.toBeNull();
 	},
 };
