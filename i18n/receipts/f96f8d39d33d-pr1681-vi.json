@@ -1,0 +1,120 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (PR delta audit)",
+ "date": "2026-11-04",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session f96f8d39d33d (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.teamBridge",
+ "locale": "vi",
+ "audit_id": "tb1681-f96f8d39d33d-vi",
+ "instance": "f96f8d39d33d-pr1681-vi",
+ "session": "f96f8d39d33d",
+ "integration": {
+  "pr": 1681,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-conversation-menu",
+  "base": "7345dcbf238d334e56f102eb994b15eb5c1776f0",
+  "audited_head": "1ec423538c464ba5b17ffe94d3d80b44f15623dd",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session f96f8d39d33d. Did not translate the 23 conversation_menu values (they arrived in the implementer's commit 1ec423538c46 on PR #1681), wrote no English copy or code in the PR, and is not any prior ui.teamBridge auditor (7c739a6246b4-pr1670, bf2ddf2b6fb3-pr1670-r2). It applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "vi": "2e2c523e8a421193ce96c3d58ee0238456330cbf872c671983fc586b16b709a2",
+  "en": "75280fb2e0efe7dc7064094064b9d88ab056856082a8224acfe5cb5fd21c3e7a"
+ },
+ "context_sha256": "71cbc1181a137ff9f5d3fa1a1389adb0571c5d1a6c6b750284aa7bdf90a1ab9b",
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/vi.md",
+  "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Delta audit of PR #1681 (7345dcb..1ec423538c46): the 23 new ui.teamBridge.conversation_menu.* values read against en, the en context sidecar, the renderer call sites (team-bridge-conversation-menu.tsx, team-bridge-page.tsx), the glossary, the vi style guide and the #1670 receipts, composed with real arguments; existing ui.teamBridge copy read for glossary consistency. The only pre-existing line the PR touched is members_panel.note.dm (trailing comma; value byte-identical, verified). No rendered fit or native RTL rendering claimed.",
+  "keys_added": [
+   "ui.teamBridge.conversation_menu.view_members",
+   "ui.teamBridge.conversation_menu.join",
+   "ui.teamBridge.conversation_menu.remove_agent",
+   "ui.teamBridge.conversation_menu.add_agent",
+   "ui.teamBridge.conversation_menu.leave_channel",
+   "ui.teamBridge.conversation_menu.leave_group",
+   "ui.teamBridge.conversation_menu.reason.org_wide",
+   "ui.teamBridge.conversation_menu.reason.agents_builtin",
+   "ui.teamBridge.conversation_menu.reason.general_not_member_yet",
+   "ui.teamBridge.conversation_menu.reason.agent_not_permitted",
+   "ui.teamBridge.conversation_menu.confirm.leave_channel_title",
+   "ui.teamBridge.conversation_menu.confirm.leave_group_title",
+   "ui.teamBridge.conversation_menu.confirm.leave_body",
+   "ui.teamBridge.conversation_menu.confirm.remove_agent_title",
+   "ui.teamBridge.conversation_menu.confirm.remove_agent_body",
+   "ui.teamBridge.conversation_menu.confirm.add_agent_title",
+   "ui.teamBridge.conversation_menu.confirm.add_agent_body",
+   "ui.teamBridge.conversation_menu.confirm.add_agent",
+   "ui.teamBridge.conversation_menu.error.generic",
+   "ui.teamBridge.conversation_menu.error.not_in_general",
+   "ui.teamBridge.conversation_menu.partial_leave.body",
+   "ui.teamBridge.conversation_menu.partial_leave.retry_failed",
+   "ui.teamBridge.conversation_menu.partial_leave.retry"
+  ],
+  "keys_changed_by_auditor": [
+   "ui.teamBridge.conversation_menu.reason.org_wide",
+   "ui.teamBridge.conversation_menu.confirm.leave_body",
+   "ui.teamBridge.conversation_menu.confirm.remove_agent_body",
+   "ui.teamBridge.conversation_menu.confirm.add_agent_body"
+  ]
+ },
+ "findings": [
+  {
+   "id": "VI-M1",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.conversation_menu.confirm.leave_body"
+   ],
+   "summary": "'tin nhắn của nó' (its messages) has no antecedent in the body; English 'its' is the conversation's — 'tin nhắn của cuộc trò chuyện này' as members_panel.confirm.leave_body says.",
+   "disposition": "fixed by auditor in this commit",
+   "current": "Bạn sẽ không nhận tin nhắn của nó nữa, và tác nhân của bạn cũng rời đi cùng bạn. Để quay lại, hãy tham gia lại từ danh sách kênh hoặc nhờ một thành viên mời bạn.",
+   "proposed": "Bạn sẽ không nhận tin nhắn của cuộc trò chuyện này nữa, và tác nhân của bạn cũng rời đi cùng bạn. Để quay lại, hãy tham gia lại từ danh sách kênh hoặc nhờ một thành viên mời bạn."
+  },
+  {
+   "id": "VI-M2",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.conversation_menu.reason.org_wide"
+   ],
+   "summary": "'tắt thông báo' drifts from the catalogue's mute 'tắt tiếng' (9 values) and trailing 'thay vào đó' is a calque of 'instead'; 'hãy tắt tiếng thay vì rời đi' mirrors members_panel.note.general.",
+   "disposition": "fixed by auditor in this commit",
+   "current": "Mọi người trong tổ chức đều là thành viên — hãy tắt thông báo thay vào đó",
+   "proposed": "Mọi người trong tổ chức đều là thành viên — hãy tắt tiếng thay vì rời đi"
+  },
+  {
+   "id": "VI-N1",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.conversation_menu.confirm.add_agent_body",
+    "ui.teamBridge.conversation_menu.confirm.remove_agent_body"
+   ],
+   "summary": "'nó' for the agent and '@-nhắc đến' read translated; the catalogue names the agent ('Tác nhân') and writes 'được nhắc đến bằng @'; 'với mọi persona nó dùng' → 'dù dùng persona nào'.",
+   "disposition": "fixed by auditor in this commit"
+  }
+ ],
+ "evidence": {
+  "record": "i18n/audits/evidence/vi/ui.teamBridge/tb1681-f96f8d39d33d-vi/record.json",
+  "record_sha256": "cfc4b9457d15f1ad059dad5300c5246661bdb28baaffef65b54a5ecd6ef394f5"
+ },
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 389 values parse; argument names equal en on every key; the only kind difference is the pre-existing vi/zh-CN {count, number} in attachmentCard.list/fileCard.list (byte-identical on base 7345dcb; those locales have no plural categories)",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat; {name}=Aida, {conversation}=qa-coordination, {channel}=isolateLtr('#general'/'#agents') as the renderer passes it)",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9); no stray U+202F outside fr; fr high punctuation on delta keys uses U+202F; zh-CN no CJK/Latin space on delta keys.",
+  "key_set": "389 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/vi/ui.teamBridge/tb1681-f96f8d39d33d-vi/audit.log"
+ },
+ "terminal": true
+}
