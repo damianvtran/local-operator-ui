@@ -11,14 +11,18 @@
  * element of each portalled primitive plus one rule gated on the document root, and
  * this file holds both halves of that contract.
  *
- * WHAT IT CAN AND CANNOT SEE. It asserts the marker's placement per ELEMENT, the
- * rule's shape and gate, and the alpha's arithmetic over the shipped modules. It
- * cannot see pixels: the computed alpha, the blur and legibility over real content
- * are the browser run's evidence (`scripts/window-glass-cdp.test.mjs`'s rig, and the
- * PR's own frames), never this file's.
+ * WHAT IT CAN AND CANNOT SEE. It asserts the marker's placement per ELEMENT -
+ * derived twice, once from the primitives that render a Portal and once from the
+ * app's own "this leaves the flow" vocabulary (`shadow-overlay` on a panel with its
+ * own ground) - the rule's shape and gate, the ink rebinding that keeps the dim
+ * register legible on the translucent panel, and the alpha's arithmetic over the
+ * shipped modules. It cannot see pixels: the computed alpha, the blur and
+ * legibility over real content are the browser run's evidence
+ * (`scripts/window-glass-cdp.test.mjs`'s rig, and the PR's own frames), never this
+ * file's.
  */
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -74,6 +78,92 @@ const PORTAL_RENDERERS = readdirSync(join(ROOT, UI_DIR)).filter(
 const NAMED_PANELS = {
 	"src/renderer/src/shared/components/common/update-notification.tsx":
 		"UpdateContainer",
+};
+
+/**
+ * THE SECOND DERIVATION: the floating panels that are not primitives at all.
+ *
+ * The portal scan above is exact but narrow - it only sees `shared/components/ui`.
+ * Round 1's MINOR-2 was that gap exactly: three feature-level panels floated opaque
+ * next to a translucent menu and nothing here could see them. Scanning the features
+ * for portals does not help - they are plain positioned divs.
+ *
+ * SO THE SIGNATURE COMES FROM THE DESIGN SYSTEM, not from a list. `shadow-overlay`
+ * is the one shadow the app has for elements that leave the page flow
+ * (`docs/branding.md` § 2 "Elevation"), and the components that spend it say so in
+ * their own comments - "a true floating overlay, so this is one of the few places
+ * `shadow-overlay` belongs". Pair that with the two things that make an element a
+ * PANEL rather than a floating control - its own ground (`bg-elevated` or
+ * `bg-floating`) and an out-of-flow placement (`absolute`, `fixed`, or the
+ * `pointer-events-auto` panel a positioned wrapper carries; two of the three panels
+ * this closed are positioned by their parent) - and the class falls out of the code
+ * without anyone enumerating it.
+ */
+const FLOATING_PANEL_SIGNATURE = (text) =>
+	/\bshadow-overlay\b/.test(text) &&
+	/\bbg-(elevated|floating)\b/.test(text) &&
+	/\b(absolute|fixed|pointer-events-auto)\b/.test(text);
+
+/** Every renderer `.tsx` outside the primitive layer, minus stories and tests. */
+const rendererFeatureFiles = (dir = "src/renderer/src", out = []) => {
+	for (const entry of readdirSync(join(ROOT, dir))) {
+		const path = `${dir}/${entry}`;
+		if (statSync(join(ROOT, path)).isDirectory())
+			rendererFeatureFiles(path, out);
+		else if (
+			entry.endsWith(".tsx") &&
+			!entry.includes(".stories.") &&
+			!entry.includes(".test.") &&
+			!path.startsWith(UI_DIR)
+		)
+			out.push(path);
+	}
+	return out;
+};
+
+/**
+ * THE PANELS THE SIGNATURE FINDS AND THIS PR DELIBERATELY LEAVES OPAQUE, named with
+ * the reason, so the next one has to be a decision rather than a silent gap.
+ *
+ * They are the same object as the marked ones - one attribute each, and the rule
+ * already covers them - and they are the follow-up scope, not an exemption. The bar
+ * for marking a surface is that someone looked at it: this round's remediation was
+ * the three panels review round 1 named, and every entry here changes pixels on a
+ * surface a remediation cycle had no browser run to verify. A panel marked blind is
+ * the failure mode this contract exists to prevent.
+ *
+ * THE BROWSER'S ADDRESS SUGGESTIONS ARE NOT MERELY DEFERRED, they are a different
+ * case: they float over the web view - arbitrary page content, not a column the app
+ * painted - so `overlayFloor`'s premise does not hold for them and they inherit the
+ * band's problem (moving content beneath). Marking them without a derivation of
+ * their own would assert a floor that was never measured for that backdrop.
+ */
+const DEFERRED_PANELS = {
+	"src/renderer/src/features/browser/components/browser-url-bar.tsx":
+		"floats over the page, not over app-painted content: a different backdrop class, not this row's floor",
+	"src/renderer/src/features/chat/components/mermaid-diagram.tsx":
+		"the diagram controls, over the rendered diagram in the canvas pane",
+	"src/renderer/src/features/chat/components/run-details/job-cancel-popover.tsx":
+		"the job-cancel confirmation card",
+	"src/renderer/src/features/chat/components/run-details/wake-cancel-popover.tsx":
+		"the wake-cancel confirmation card",
+	"src/renderer/src/features/team-bridge/team-bridge-message-toolbar.tsx":
+		"the message actions toolbar over a Bridge row",
+	"src/renderer/src/shared/components/common/find-replace-widget.tsx":
+		"the find bar floating inside the editor",
+};
+
+/** The feature-level panels the signature finds that are still unmarked. */
+const unmarkedFloatingPanels = () => {
+	const found = [];
+	for (const file of rendererFeatureFiles())
+		for (const tag of openingTags(read(file)))
+			if (
+				FLOATING_PANEL_SIGNATURE(tag.text) &&
+				!tag.text.includes('data-glass-overlay=""')
+			)
+				found.push({ file, name: tag.name });
+	return found;
 };
 
 test("O-1 every portalled primitive's panel carries the floating-layer marker", () => {
@@ -191,6 +281,24 @@ test("O-3 one rule paints the layer, gated on the root, with no element opacity"
 		false,
 		"the floating layer must never be faded as a whole - text, icons and focus rings stay crisp",
 	);
+	/*
+	 * THE ONE INK REBINDING, and it is load-bearing rather than cosmetic. The third
+	 * text register the panel carries - `DropdownMenuLabel`, an item's shortcut,
+	 * `SelectPrimitive.Label` - is `ink-dim`. Measured on this composite it lands at
+	 * 3.62:1 (dark) / 3.59:1 (light) at the panel's floor, and 3.90 / 3.96 at the
+	 * default 80, so it is under the 4.5 the flat contract holds that register to wherever
+	 * the slider is put. The panel cannot pay for it with opacity either: `ink-dim` needs
+	 * alpha 0.86 / 0.71, denser than the `elevated` rung's own floor (0.68 / 0.45) and a
+	 * step under the band's (0.88 / 0.78) - a panel more opaque than the plate it
+	 * replaces. So the ink is lifted instead, once, for every panel carrying the marker:
+	 * drop this line and every glass menu label and shortcut drops back below AA
+	 * silently.
+	 */
+	assert.match(
+		rule[2],
+		/--color-ink-dim:\s*var\(--color-ink-muted\);/,
+		"the floating panel must remap its dim text register to the muted one: unmapped it measures 3.62:1 dark / 3.59:1 light at the panel's floor, under the 4.5 the app holds that register to",
+	);
 	/* The scrim is a deliberate non-member: it covers the whole window and is a role
 	 * (`bg-scrim`), not a ground that floats over the app. */
 	assert.equal(
@@ -246,11 +354,25 @@ test("O-4 the alpha tracks the slider from the ceiling down to the derived floor
 	}
 });
 
-test("O-4b the floor's MEANING: every palette's ink clears AA over the worst desktop", async () => {
+test("O-4b the floor's MEANING: every palette's text registers clear AA at both ends of the slider", async () => {
 	const { loadPalettes } = await import("./palette-source.mjs");
 	const { composite, ratio, schemeOf } = await import(
 		"./derive-glass-floors.mjs"
 	);
+	/*
+	 * BOTH ENDS, not the floor alone: the panel's alpha travels from the veil ceiling to
+	 * the floor as the slider moves, and its registers have to hold at every position the
+	 * user can put it in. The default (80) and the clearest (100) are the two the
+	 * contract also measures, so this test and `scripts/contrast-contract.mjs` assert the
+	 * same table through two independent code paths over the same 59 palettes. The
+	 * ceiling here is the model's own (`window-glass.test.mjs` pins
+	 * `LANE_ALPHA_CEILING === GLASS_ALPHA_CEILING`) and `glassOverlayAlpha` is linear.
+	 */
+	const CEILING = 0.96;
+	const ends = [
+		["the default 80", 80],
+		["max transparency", 100],
+	];
 	let checked = 0;
 	for (const scheme of ["dark", "light"]) {
 		const floor = FLOORS.overlayFloor[scheme];
@@ -259,19 +381,36 @@ test("O-4b the floor's MEANING: every palette's ink clears AA over the worst des
 		for (const tier of Object.keys(FLOORS.alphaFloor))
 			backing = Math.min(backing, FLOORS.alphaFloor[tier][scheme].canvas);
 		const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
-		for (const { palette, name } of loadPalettes()) {
+		for (const { palette, id } of loadPalettes()) {
 			if (schemeOf(palette) !== scheme) continue;
-			const ground = composite(
-				palette.elevated,
-				floor,
-				composite(palette.canvas, backing, backdrop),
-			);
-			for (const ink of ["ink", "inkMuted"])
-				assert.ok(
-					ratio(palette[ink], ground) >= 4.5,
-					`${name}: ${ink} on the floating layer measures ${ratio(palette[ink], ground).toFixed(2)}:1 at the ${scheme} floor ${floor}, under the 4.5 text floor - the panel would be a hole with text on it`,
-				);
 			checked += 1;
+			for (const [at, intensity] of ends) {
+				const top = Math.max(CEILING, floor);
+				const alpha =
+					Math.round((top - (intensity / 100) * (top - floor)) * 100) / 100;
+				const ground = composite(
+					palette.elevated,
+					alpha,
+					composite(palette.canvas, backing, backdrop),
+				);
+				/*
+				 * THE REGISTER THAT RENDERS, not the hex the palette authors: inside a marked
+				 * panel `index.css` rebinds `--color-ink-dim` to `--color-ink-muted`, so a dim
+				 * label draws in the muted ink. Asserting the palette's `inkDim` here would
+				 * measure a colour the panel never paints - and would pass only if the panel
+				 * were opaque again, which is the trade review round 1 settled the other way.
+				 */
+				for (const [register, colour] of [
+					["ink", palette.ink],
+					["ink-muted (and the remapped ink-dim)", palette.inkMuted],
+				]) {
+					const got = ratio(colour, ground);
+					assert.ok(
+						got >= 4.5,
+						`${id}: ${register} is ${got.toFixed(2)}:1 on the floating panel ${at} (${scheme} ${alpha}), under the 4.5 text floor - the panel would be a hole with text on it`,
+					);
+				}
+			}
 		}
 	}
 	assert.ok(
@@ -323,4 +462,47 @@ test("O-6 the alpha is published, and the switch-off path clears it", () => {
 		/"--lo-glass-a-overlay",/,
 		"the renderer must list the variable among the ones a switch-off removes, or glass turned off mid-session leaves a stale alpha on the root",
 	);
+});
+
+test("O-7 the rest of the class: a floating panel outside the primitive layer is marked or named", () => {
+	const unmarked = unmarkedFloatingPanels();
+	assert.ok(
+		unmarked.length + Object.keys(DEFERRED_PANELS).length >= 8,
+		`the signature found ${unmarked.length} unmarked panel(s) and ${Object.keys(DEFERRED_PANELS).length} named one(s); the scan is looking in the wrong shape of file if it stops finding this class`,
+	);
+	/*
+	 * THE THREE REVIEW ROUND 1 NAMED, pinned so the derivation cannot quietly lose
+	 * them: they are the reason this test exists and the reason the slice exists.
+	 */
+	for (const path of [
+		"src/renderer/src/features/settings/components/settings-search.tsx",
+		"src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
+		"src/renderer/src/features/session-switcher/components/session-switcher.tsx",
+	])
+		assert.ok(
+			read(path).includes('data-glass-overlay=""'),
+			`${path}: the feature-level floating panel round 1 named is not marked; on glass it paints an opaque \`bg-elevated\` plate over a translucent column - the defect this slice exists for`,
+		);
+	for (const { file, name } of unmarked)
+		assert.ok(
+			DEFERRED_PANELS[file],
+			`${file}: <${name}> pairs \`shadow-overlay\` (the system's one shadow for what leaves the flow) with its own ground, and it paints opaque over the glass. Mark it with \`data-glass-overlay=""\`, or name it in DEFERRED_PANELS with the reason it is not marked yet`,
+		);
+	/*
+	 * AND THE NAMED LIST CANNOT OUTLIVE ITS SUBJECT: an entry whose panel carries the
+	 * marker is a stale exemption, and one whose file no longer has a panel of this
+	 * shape is dead text. Either way the list stops being the follow-up scope and
+	 * starts hiding the next regression in the same file.
+	 */
+	for (const [file, reason] of Object.entries(DEFERRED_PANELS)) {
+		assert.ok(reason.length > 10, `${file}: the listed reason is not a reason`);
+		assert.ok(
+			openingTags(read(file)).some((tag) => FLOATING_PANEL_SIGNATURE(tag.text)),
+			`${file}: no panel with the signature is in this file any more; drop the DEFERRED_PANELS entry`,
+		);
+		assert.ok(
+			unmarked.some((panel) => panel.file === file),
+			`${file}: every panel with the signature here is marked now, so the DEFERRED_PANELS entry is stale - delete it`,
+		);
+	}
 });

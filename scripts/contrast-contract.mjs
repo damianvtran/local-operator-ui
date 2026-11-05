@@ -2455,15 +2455,34 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 	 * contributes its alpha and the panel's own alpha can be materially lower than
 	 * the band's floor while still holding the text floor.
 	 *
-	 * The row therefore asserts what `overlayFloor` claims, over EVERY palette: at
-	 * the committed floor, composited over the LEAST opaque column the app can draw
-	 * (the smallest `canvas` floor across the material tiers) and the worst desktop
-	 * (a white thumbnail under a dark panel, a black one under a light panel), both
-	 * inks a portal carries its own text in still clear the 4.5 text floor. The
-	 * button face and the highlighted row are separately-covered pairs: a row's
-	 * `accentWash` is an OPAQUE role that replaces this ground, so it is measured
-	 * as its own fill and never as a stack on the alpha here.
+	 * The row therefore asserts what `overlayFloor` claims, over EVERY palette and at
+	 * BOTH ENDS OF THE SLIDER: at the default (80) and at MAX TRANSPARENCY (the floor
+	 * itself). The clearest end is the worst case for the fill, but the panel has to be
+	 * legible everywhere the user can put the slider, so both ends are measured rather
+	 * than the floor alone standing in for the travel.
+	 *
+	 * THE REGISTERS ARE THE ONES THAT RENDER, and the third one is measured where it
+	 * lands rather than where the palette authors it. The panel carries three text
+	 * registers - `ink` and `inkMuted`, which the derivation holds at the floor, and
+	 * `inkDim` for a menu label, an item's shortcut and a select's group heading. Inside
+	 * a marked panel `index.css` REBINDS `--color-ink-dim` to `--color-ink-muted`, so
+	 * the dim rows draw in the muted ink: measured as `inkDim` this register is 3.62:1
+	 * (dark) / 3.59:1 (light) at the floor, under the 4.5 text floor on 57 of the 59
+	 * palettes - the round-1 MAJOR. So the dim line is asserted as the muted role it
+	 * renders in, and the rebinding itself is held by `scripts/glass-overlay.test.mjs`,
+	 * which reads the declaration out of the rule: a row that measured the palette's
+	 * dim hex would be measuring a colour the panel never paints.
+	 *
+	 * The button face and the highlighted row are separately-covered pairs: a row's
+	 * `accentWash` is an OPAQUE role that replaces this ground, so it is measured as
+	 * its own fill and never as a stack on the alpha here.
 	 */
+	const OVERLAY_ENDS = [
+		{ label: "at the default 80", intensity: 80 },
+		{ label: "at max transparency", intensity: 100 },
+	];
+	const overlayMin = {};
+	let overlayPalettes = 0;
 	for (const { id, palette } of palettes) {
 		const scheme = glassSchemeOf(palette);
 		const floor = committed.overlayFloor?.[scheme];
@@ -2473,6 +2492,7 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 			);
 			continue;
 		}
+		overlayPalettes++;
 		/* The least opaque column the app can present: the derivation's worst case. */
 		let backing = 1;
 		for (const tier of Object.keys(committed.alphaFloor))
@@ -2482,16 +2502,37 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 			);
 		const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
 		const beneath = glassComposite(palette.canvas, backing, backdrop);
-		const panel = glassComposite(palette.elevated, floor, beneath);
-		for (const ink of ["ink", "inkMuted"]) {
-			authoredRun.assertions++;
-			const r = glassRatio(palette[ink], panel);
-			if (r < GLASS_INK_FLOOR)
-				authoredRun.fail(
-					`${id}: the floating overlay (${scheme}) ${ink} on the panel is ${r2(r)}:1, floor ${GLASS_INK_FLOOR}`,
-				);
+		const registers = [
+			["ink", palette.ink],
+			["inkMuted", palette.inkMuted],
+			/* The dim register, as the panel paints it (rebound to muted in the rule). */
+			["inkDim (rendered as inkMuted)", palette.inkMuted],
+		];
+		for (const end of OVERLAY_ENDS) {
+			/* `glassOverlayAlpha`'s own arithmetic, the shape § 5c already uses for the lane. */
+			const top = Math.max(LANE_ALPHA_CEILING, floor);
+			const alpha =
+				Math.round((top - (end.intensity / 100) * (top - floor)) * 100) / 100;
+			const panel = glassComposite(palette.elevated, alpha, beneath);
+			for (const [role, ink] of registers) {
+				authoredRun.assertions++;
+				const r = glassRatio(ink, panel);
+				const key = `${end.label.split(" ").pop()} ${scheme} ${role}`;
+				if (overlayMin[key] === undefined || r < overlayMin[key])
+					overlayMin[key] = r;
+				if (r < GLASS_INK_FLOOR) {
+					overlayMin.failures = (overlayMin.failures ?? 0) + 1;
+					authoredRun.fail(
+						`${id}: the floating overlay (${scheme}) ${role} on the panel ${end.label} is ${r2(r)}:1, floor ${GLASS_INK_FLOOR}`,
+					);
+				}
+			}
 		}
 	}
+	const ends = OVERLAY_ENDS.map((end) => end.label).join(" and ");
+	console.log(
+		`Window glass round 3: the floating overlay over ${overlayPalettes} palettes ${ends} - worst ink/muted dark ${r2(overlayMin["80 dark ink"] ?? 0)}/${r2(overlayMin["80 dark inkMuted"] ?? 0)} and ${r2(overlayMin["transparency dark ink"] ?? 0)}/${r2(overlayMin["transparency dark inkMuted"] ?? 0)}, light ${r2(overlayMin["80 light ink"] ?? 0)}/${r2(overlayMin["80 light inkMuted"] ?? 0)} and ${r2(overlayMin["transparency light ink"] ?? 0)}/${r2(overlayMin["transparency light inkMuted"] ?? 0)}; ${overlayMin.failures ?? 0} palette-end-register measurements under ${GLASS_INK_FLOOR}.`,
+	);
 	console.log(
 		`Window glass round 2: tightest block veil ΔE00 off canvas glass - dark ${r2(veilMin.dark)}, light ${r2(veilMin.light)}; work row step ${r2(workMin.step)}; chrome inks ${r2(chromeMin.ink)}/${r2(chromeMin.inkMuted)}/${r2(chromeMin.inkDim)}, tab step ${r2(chromeMin.tabStep)}.`,
 	);

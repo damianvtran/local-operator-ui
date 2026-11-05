@@ -438,8 +438,11 @@ export function deriveBandFloor(palettes) {
  *
  * WHY THIS IS NOT THE BAND'S FLOOR. The band is a strip in a column whose own fill
  * it replaces, so it is measured as if it stood on the desktop alone. A portal sits
- * ON TOP of that column: at the band floor its composite lands near-opaque (0.91
- * over `canvas`'s 0.59 is 0.96), which is the opaque plate the operator reported.
+ * ON TOP of that column, so that rung's own alpha would land near-opaque: the
+ * elevated floor is 0.68 on the dark palettes and the least opaque column's `canvas`
+ * is 0.53, and 0.68 over 0.53 composes to 0.85 (0.45 over 0.61 is 0.79 on the light
+ * ones) - the opaque plate the operator reported.
+ *
  * Derived against the layer beneath it, the smallest alpha that still holds the
  * floor is materially lower, so the panel is genuinely translucent AND readable -
  * the whole request, rather than a re-paint of the same opacity under a new name.
@@ -455,6 +458,19 @@ export function deriveBandFloor(palettes) {
  * in (a release-detail paragraph, a menu item). Both are measured rather than taking
  * the stronger one as a bound, because which of the two is stricter is not obvious
  * once the ground is a composite; the contract asserts both over every palette.
+ *
+ * AND THE THIRD REGISTER NEEDS NO THIRD MEASUREMENT: `inkDim` carries real panel text
+ * (a menu label, an item's shortcut, a select's group heading), and on this composite
+ * it lands at 3.62:1 dark / 3.59:1 light at the floor - under the 4.5 text floor on
+ * 57 of the 59 palettes, where the opaque `elevated` plate it replaces read
+ * 5.48-7.94:1. Holding it here would take the panel to alpha 0.86 dark / 0.71 light -
+ * denser than the `elevated` rung's own floor (0.68 / 0.45) and a step under the
+ * band's (0.88 / 0.78), i.e. more opaque than the plate it replaces, which is the
+ * slab this row exists to remove. So the panel rebinds `--color-ink-dim` to
+ * `--color-ink-muted` on glass (the floating-layer rule in `index.css`) and its dim
+ * rows render in the muted ink: the hierarchy deliberately collapses inside a
+ * floating panel, and the pair that survives is the one that still clears AA. That
+ * is why the ink set here is two roles, not three.
  *
  * A HIGHLIGHTED ROW IS NOT A STACK ON THIS FLOOR. A menu row's `accentWash` is an
  * OPAQUE palette role that replaces the panel's ground for that row, so it is

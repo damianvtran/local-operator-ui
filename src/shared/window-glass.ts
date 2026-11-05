@@ -669,9 +669,10 @@ export function glassAlphas(input: {
  * WHY IT IS NOT `elevated`'s ALPHA. `elevated` is a COLUMN's rung, and its floor is
  * derived as if that column stood on the desktop alone. A portal (menu, tooltip,
  * popover, dialog) is painted at the document root by Radix and floats ON our own
- * column, so that column's alpha is already underneath it: painted at `elevated`'s
- * floor the composite lands near-opaque (0.91 over a 0.59 canvas is 0.96), which is
- * the solid slab the operator reported. `GLASS_FLOORS.overlayFloor` is derived
+ * column, so that column's alpha is already underneath it: at `elevated`'s own floor
+ * the composite lands near-opaque - 0.68 over the least opaque column's `canvas` 0.53
+ * composes to 0.85 (0.45 over 0.61 is 0.79 on the light palettes) - which is the
+ * solid slab the operator reported. `GLASS_FLOORS.overlayFloor` is derived
  * against the least opaque column the app can present, so it is the smallest alpha
  * that still holds the ink floor over the worst desktop - genuinely translucent and
  * still readable, which is the difference between this and a re-paint of the same
