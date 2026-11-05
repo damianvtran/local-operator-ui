@@ -46,25 +46,41 @@ carries **no base64 run and no `data:` prefix**; the picker control is unchanged
 
 ## Frames in `frames/` — who made them and what they are
 
-Captured by the **designer** (design lane, round 1) from the **Storybook harness**
-for this component set; they are **not** app-real screenshots, and nothing in this
-PR was re-captured to produce them. The composer, the chips and the failure rows are
-the shipped components rendered with fixture data, which is the surface design
-review judges copy and layout from.
+Captured by the **designer** (design lane) from the **Storybook harness**; nothing
+in this PR was re-captured to produce them. The composer, chips and failure rows are
+the shipped components with fixture data, which is the surface design review judges
+copy and layout from. Round 1 and round 2 sets are both here, and the round-2 names
+carry the `r2-` prefix.
+
+### Round 1 (design round 1)
 
 | frame | state |
 | --- | --- |
-| `before-payload-tail-light.png` / `-dark.png` | the base tree: a pasted picture's row named by the base64 tail above the "damaged" sentence |
+| `before-payload-tail-light.png` / `-dark.png` | base tree: a pasted picture's row named by the base64 tail above the "damaged" sentence |
 | `after-one-chip-light.png` | one staged picture, real preview, no refusal |
 | `after-three-chips-light.png` / `-dark.png` | three staged pictures, each a real preview |
-| `after-corrupt-refused-light.png` | a genuinely corrupt image: neutral name + position, format/"damaged" sentence, no payload |
-| `after-three-one-refused-light.png` | three staged, one refused — the row says WHICH image |
+| `after-corrupt-refused-light.png` | a genuinely corrupt image: neutral name, format sentence, no payload |
+| `after-three-one-refused-light.png` | two staged, one refused |
 
-**App-real, separately:** QA's built-app pass mounted the chat composer and pasted
-into it for real (the same `MessageInput` paste handler the bridge mounts). The Team
-Bridge page itself mounts but is auth-gated in an isolated profile, so **no
-built-app frame of the bridge page exists** — the design frames above are the
-harness, and this README says so rather than implying otherwise.
+### Round 2 (design round 2, after the position-copy change)
+
+| frame | state |
+| --- | --- |
+| `r2-chip-one-light.png` | ONE staged image: the row reads `Pasted image` — no position suffix, which is the NIT-1 / D1 fix |
+| `r2-payload-tail-light.png` | the base tree's payload tail, re-staged as the control for the pair above |
+| `r2-refuse-1of1-light.png` / `-dark.png` | one staged, one refused: `Pasted image`, no numbering |
+| `r2-refuse-2of2-light.png` | two staged, the second refused: `Pasted image · Image 2 of 2` |
+| `r2-refuse-2of3-light.png` / `-dark.png` | three staged, the middle one refused: `Pasted image · Image 2 of 3` |
+| `r2-staged-three-broken-second-light.png` | three staged pictures, one tile not rendering, before any send |
+| `r2-refuse-damaged-light.png` / `-dark.png` | the "couldn't be read, it may be damaged" sentence — the arm a payload that declares base64 and will not decode reaches |
+| `r2-refuse-narrow800-light.png` / `-dark.png` | the same refusal at an 800 px window: the position label wraps, accepted as the window floor (D2's other half), not fixed |
+| `r2-truncated-no-refusal-light.png` | a truncated-but-decodable PNG stages with NO refusal — the pin for R2-3/D4: damaged-but-decodable bytes pass through `bound-image.ts` (pre-existing), so no frame claims that arm is caught |
+
+**App-real, separately:** QA's built-app pass mounted the **chat composer** and
+pasted into it for real (the same `MessageInput` paste handler the bridge mounts).
+The Team Bridge page itself mounts but is **auth-gated in an isolated profile**, so
+no built-app frame of the bridge page exists. These frames are the harness, and this
+README says so rather than implying otherwise.
 
 ## What these runs do NOT prove — read this before quoting them
 

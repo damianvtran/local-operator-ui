@@ -18,8 +18,9 @@
 //      a reason from the closed set.
 //
 // WHAT THIS IS NOT: the transport here is a fake, so this is module/state proof.
-// The rendered sentence and the bytes the hub receives are the built-app rig's
-// claim (`scripts/team-bridge-paste-scene.mjs`), not this file's.
+// The bytes the hub receives and the row a person would read are
+// `scripts/team-bridge-staged-upload-seam.mjs`'s claim against a recording stub,
+// and the rendered sentence is design's Storybook frames' - not this file's.
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -238,6 +239,40 @@ test("the failure rows of three staged values name each by its own position", as
 	);
 });
 
+test("a valid picture over the hub's ceiling is a FORMAT refusal, not damage", async () => {
+	// R2-1 / QA Q-2: an oversize image is a VALID picture that this hub cannot take,
+	// so it keeps the format sentence. Saying "couldn't be read, it may be damaged"
+	// about a picture that decoded perfectly is a false statement about its integrity.
+	const result = await uploadStagedImages({
+		paths: [PNG_DATA_URL],
+		accountId: "acc_1",
+		tenantId: "tnt_1",
+		conversationId: "bcv_1",
+		// Smaller than any real PNG: the prepare step refuses it as `too_large`.
+		capability: { ...CAP, max_bytes: 10 },
+	});
+	assert.equal(result.ids.length, 0);
+	assert.equal(result.failures.length, 1);
+	assert.equal(result.failures[0].reason, "unsupported");
+	assert.equal(result.failures[0].name, "Pasted image");
+});
+
+test("a long path's name is truncated to a filename's worth", async () => {
+	// D4: whatever a staged path turns out to be, the row is one line tall. This
+	// value cannot be read (no such file), so the name is all that is under test.
+	const longName = `${"a".repeat(180)}.png`;
+	const result = await upload([`/tmp/${longName}`]);
+	assert.equal(result.failures.length, 1);
+	assert.equal(result.failures[0].reason, "read");
+	assert.equal(result.failures[0].name.length, 120);
+	assert.ok(result.failures[0].name.endsWith("…"), "an ellipsis marks the cut");
+	assert.equal(
+		result.failures[0].name.includes("a".repeat(120)),
+		false,
+		"no 120-character run of the original survives",
+	);
+});
+
 test("a data URL that is not base64 is a FORMAT refusal, not a read failure", async () => {
 	// A percent-encoded data URL: a legal `data:` spelling that carries no `;base64`,
 	// which nothing in this app writes. It is not a damaged picture, so its sentence
@@ -269,13 +304,13 @@ test("a failure row's name never carries the payload", async () => {
 	assert.equal(result.failures.length, 1);
 	const failure = result.failures[0];
 	assert.equal(failure.reason, "unsupported");
-	assert.equal(failure.name, "Pasted image · Image 1 of 1");
+	assert.equal(failure.name, "Pasted image");
 	assert.equal(BASE64_RUN.test(failure.name), false, "no base64 run");
 	assert.equal(failure.name.includes("data:"), false, "no data: prefix");
 	assert.equal(
 		failure.name,
-		`${getFileName(notAnImage)} · Image 1 of 1`,
-		"one naming helper, plus the keyed position",
+		getFileName(notAnImage),
+		"one naming helper; a lone image needs no position",
 	);
 });
 
@@ -295,8 +330,8 @@ test("a corrupt image still reports a reason from the closed set, echoing nothin
 	assert.equal(result.failures[0].reason, "read");
 	assert.equal(
 		result.failures[0].name,
-		"Pasted image · Image 1 of 1",
-		"a neutral name and the keyed position, never the payload",
+		"Pasted image",
+		"a neutral name, never the payload",
 	);
 	assert.equal(BASE64_RUN.test(result.failures[0].name), false);
 	assert.equal(result.failures[0].name.includes("data:"), false);

@@ -3,6 +3,7 @@ import { t } from "@shared/i18n";
 import type { TeamBridgeAttachmentCapability } from "../../../../shared/team-bridge-contract";
 import { getFileName } from "../chat/utils/get-file-name";
 import {
+	AttachmentPrepareError,
 	prepareImageForUpload,
 	sniffImage,
 } from "./team-bridge-attachments-model";
@@ -157,7 +158,7 @@ function fromBase64(data: string): Uint8Array {
 const NAME_MAX = 120;
 
 /**
- * The name a failure row shows, and WHICH image it is.
+ * The name a failure row shows, and WHICH image it is - when that cannot be guessed.
  *
  * NEVER DERIVED FROM THE PAYLOAD. `getFileName` is the app's one naming helper and
  * already answers `"Pasted image"` for a `data:image/...` value, so the bridge names
@@ -166,20 +167,22 @@ const NAME_MAX = 120;
  * a policy anyone may widen (`scripts/i18n/check-strings.mjs`, "KNOWN
  * BOUNDARIES"); this change adds no copy of its own.
  *
- * THE POSITION IS KEYED COPY, not a new literal: `ui.teamBridge.attachments.position`
- * ("Image {index} of {count}") exists in every product locale and is what the chip
- * strip already labels each thumbnail with. Its numbers come from the STAGED LIST
- * (this value's index and the list's length), never from anything inside the value,
- * so "which image failed" is answerable when several were pasted at once.
+ * THE POSITION IS KEYED COPY, and only appears when there is more than one image:
+ * `ui.teamBridge.attachments.position` ("Image {index} of {count}") exists in every
+ * product locale and is what the chip strip already labels each thumbnail with. A
+ * lone image needs no position - "Pasted image · Image 1 of 1" is noise about a
+ * choice nobody made (QA NIT-1 / design D1) - so the suffix is added for `count > 1`
+ * only. Its numbers come from the STAGED LIST (this value's index and the list's
+ * length), never from the value itself.
  *
- * THE LENGTH GUARD IS THE SECOND HALF OF THAT RULE: a name is truncated to a
- * filename's worth of characters, so "split whatever string I was handed" can never
- * print a payload-length name again - whatever the string turns out to be.
+ * THE LENGTH GUARD IS SEPARATE FROM ALL OF THAT: a filename is truncated so a long
+ * path cannot put a paragraph in a one-line row, whatever the string turns out to be.
  */
 function stagedName(staged: string, index: number, count: number): string {
 	const base = staged.startsWith("data:")
 		? getFileName(staged)
 		: truncate(getFileName(staged));
+	if (count <= 1) return base;
 	return `${base} · ${t("ui.teamBridge.attachments.position", {
 		index: String(index + 1),
 		count: String(count),
@@ -268,14 +271,33 @@ export async function uploadStagedImages(params: {
 				capability.max_bytes,
 			);
 			bytes = prepared.bytes;
-		} catch {
-			// `prepareImageForUpload` refuses with its own reason. A png/jpeg that
-			// reached this step and still will not prepare is a picture that cannot be
-			// READ; anything else (heic/webp/gif on a platform whose decoder refuses
-			// them) is a FORMAT this client cannot carry. The pre-existing
-			// too_large-to-`unsupported` mapping is left exactly as it was.
+		} catch (error) {
+			/*
+			 * THE REASON COMES FROM THE PREPARE STEP'S OWN CLASSIFICATION, not from the
+			 * format alone. `too_large` is a VALID picture over the hub's byte ceiling and
+			 * keeps the format sentence exactly as the base tree said it; only an
+			 * `unsupported` refusal on a png/jpeg source is a source that could not be
+			 * READ. Deciding this on "is it png/jpeg" alone reclassified an oversize image
+			 * as damaged, which is a sentence about the picture's integrity and therefore
+			 * the one thing that must not be guessed (review round 2, R2-1 / QA Q-2).
+			 *
+			 * WHAT `read` IS AND IS NOT. It is reached by a source that cannot be read at
+			 * all, by a payload whose DECLARED base64 will not decode, and by a png/jpeg
+			 * the platform's decoder refuses here. It is NOT reached by every damaged
+			 * image: a truncated-but-still-decodable PNG passes through `bound-image.ts`
+			 * untouched (pre-existing behaviour, out of this change's scope), so this arm
+			 * cannot claim to catch corruption in general.
+			 */
 			const decodable = sniffed === "image/png" || sniffed === "image/jpeg";
-			failures.push({ name, reason: decodable ? "read" : "unsupported" });
+			const prepareRefusal =
+				error instanceof AttachmentPrepareError ? error.reason : null;
+			failures.push({
+				name,
+				reason:
+					prepareRefusal === "unsupported" && decodable
+						? "read"
+						: "unsupported",
+			});
 			continue;
 		}
 		try {
