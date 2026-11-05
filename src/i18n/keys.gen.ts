@@ -121,6 +121,7 @@ import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedulesErrors from "./catalogues/en/ui.schedules.errors.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
+import enUiSettingsAppearanceEditor from "./catalogues/en/ui.settings.appearance.editor.json";
 import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
 import enUiSettingsAppearanceWindowGlass from "./catalogues/en/ui.settings.appearance.window_glass.json";
 import enUiSettingsConfiguration from "./catalogues/en/ui.settings.configuration.json";
@@ -244,6 +245,7 @@ import esUiProviders from "./catalogues/es/ui.providers.json";
 import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
 import esUiSettingsAccount from "./catalogues/es/ui.settings.account.json";
+import esUiSettingsAppearanceEditor from "./catalogues/es/ui.settings.appearance.editor.json";
 import esUiSettingsAppearance from "./catalogues/es/ui.settings.appearance.json";
 import esUiSettingsAppearanceWindowGlass from "./catalogues/es/ui.settings.appearance.window_glass.json";
 import esUiSettingsConfiguration from "./catalogues/es/ui.settings.configuration.json";
@@ -367,6 +369,7 @@ import frUiProviders from "./catalogues/fr/ui.providers.json";
 import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
+import frUiSettingsAppearanceEditor from "./catalogues/fr/ui.settings.appearance.editor.json";
 import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
 import frUiSettingsAppearanceWindowGlass from "./catalogues/fr/ui.settings.appearance.window_glass.json";
 import frUiSettingsConfiguration from "./catalogues/fr/ui.settings.configuration.json";
@@ -490,6 +493,7 @@ import hiUiProviders from "./catalogues/hi/ui.providers.json";
 import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
 import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
 import hiUiSettingsAccount from "./catalogues/hi/ui.settings.account.json";
+import hiUiSettingsAppearanceEditor from "./catalogues/hi/ui.settings.appearance.editor.json";
 import hiUiSettingsAppearance from "./catalogues/hi/ui.settings.appearance.json";
 import hiUiSettingsAppearanceWindowGlass from "./catalogues/hi/ui.settings.appearance.window_glass.json";
 import hiUiSettingsConfiguration from "./catalogues/hi/ui.settings.configuration.json";
@@ -613,6 +617,7 @@ import ruUiProviders from "./catalogues/ru/ui.providers.json";
 import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
 import ruUiSettingsAccount from "./catalogues/ru/ui.settings.account.json";
+import ruUiSettingsAppearanceEditor from "./catalogues/ru/ui.settings.appearance.editor.json";
 import ruUiSettingsAppearance from "./catalogues/ru/ui.settings.appearance.json";
 import ruUiSettingsAppearanceWindowGlass from "./catalogues/ru/ui.settings.appearance.window_glass.json";
 import ruUiSettingsConfiguration from "./catalogues/ru/ui.settings.configuration.json";
@@ -736,6 +741,7 @@ import urUiProviders from "./catalogues/ur/ui.providers.json";
 import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
 import urUiSchedules from "./catalogues/ur/ui.schedules.json";
 import urUiSettingsAccount from "./catalogues/ur/ui.settings.account.json";
+import urUiSettingsAppearanceEditor from "./catalogues/ur/ui.settings.appearance.editor.json";
 import urUiSettingsAppearance from "./catalogues/ur/ui.settings.appearance.json";
 import urUiSettingsAppearanceWindowGlass from "./catalogues/ur/ui.settings.appearance.window_glass.json";
 import urUiSettingsConfiguration from "./catalogues/ur/ui.settings.configuration.json";
@@ -859,6 +865,7 @@ import viUiProviders from "./catalogues/vi/ui.providers.json";
 import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
 import viUiSchedules from "./catalogues/vi/ui.schedules.json";
 import viUiSettingsAccount from "./catalogues/vi/ui.settings.account.json";
+import viUiSettingsAppearanceEditor from "./catalogues/vi/ui.settings.appearance.editor.json";
 import viUiSettingsAppearance from "./catalogues/vi/ui.settings.appearance.json";
 import viUiSettingsAppearanceWindowGlass from "./catalogues/vi/ui.settings.appearance.window_glass.json";
 import viUiSettingsConfiguration from "./catalogues/vi/ui.settings.configuration.json";
@@ -982,6 +989,7 @@ import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
 import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
 import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
 import zhCNUiSettingsAccount from "./catalogues/zh-CN/ui.settings.account.json";
+import zhCNUiSettingsAppearanceEditor from "./catalogues/zh-CN/ui.settings.appearance.editor.json";
 import zhCNUiSettingsAppearance from "./catalogues/zh-CN/ui.settings.appearance.json";
 import zhCNUiSettingsAppearanceWindowGlass from "./catalogues/zh-CN/ui.settings.appearance.window_glass.json";
 import zhCNUiSettingsConfiguration from "./catalogues/zh-CN/ui.settings.configuration.json";
@@ -1108,6 +1116,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSchedulesErrors,
 	...enUiSchedules,
 	...enUiSettingsAccount,
+	...enUiSettingsAppearanceEditor,
 	...enUiSettingsAppearance,
 	...enUiSettingsAppearanceWindowGlass,
 	...enUiSettingsConfiguration,
@@ -1239,6 +1248,7 @@ export const bundledCatalogues: Readonly<
 		...esUiSchedulesErrors,
 		...esUiSchedules,
 		...esUiSettingsAccount,
+		...esUiSettingsAppearanceEditor,
 		...esUiSettingsAppearance,
 		...esUiSettingsAppearanceWindowGlass,
 		...esUiSettingsConfiguration,
@@ -1364,6 +1374,7 @@ export const bundledCatalogues: Readonly<
 		...frUiSchedulesErrors,
 		...frUiSchedules,
 		...frUiSettingsAccount,
+		...frUiSettingsAppearanceEditor,
 		...frUiSettingsAppearance,
 		...frUiSettingsAppearanceWindowGlass,
 		...frUiSettingsConfiguration,
@@ -1489,6 +1500,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiSchedulesErrors,
 		...hiUiSchedules,
 		...hiUiSettingsAccount,
+		...hiUiSettingsAppearanceEditor,
 		...hiUiSettingsAppearance,
 		...hiUiSettingsAppearanceWindowGlass,
 		...hiUiSettingsConfiguration,
@@ -1614,6 +1626,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiSchedulesErrors,
 		...ruUiSchedules,
 		...ruUiSettingsAccount,
+		...ruUiSettingsAppearanceEditor,
 		...ruUiSettingsAppearance,
 		...ruUiSettingsAppearanceWindowGlass,
 		...ruUiSettingsConfiguration,
@@ -1739,6 +1752,7 @@ export const bundledCatalogues: Readonly<
 		...urUiSchedulesErrors,
 		...urUiSchedules,
 		...urUiSettingsAccount,
+		...urUiSettingsAppearanceEditor,
 		...urUiSettingsAppearance,
 		...urUiSettingsAppearanceWindowGlass,
 		...urUiSettingsConfiguration,
@@ -1864,6 +1878,7 @@ export const bundledCatalogues: Readonly<
 		...viUiSchedulesErrors,
 		...viUiSchedules,
 		...viUiSettingsAccount,
+		...viUiSettingsAppearanceEditor,
 		...viUiSettingsAppearance,
 		...viUiSettingsAppearanceWindowGlass,
 		...viUiSettingsConfiguration,
@@ -1989,6 +2004,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSchedulesErrors,
 		...zhCNUiSchedules,
 		...zhCNUiSettingsAccount,
+		...zhCNUiSettingsAppearanceEditor,
 		...zhCNUiSettingsAppearance,
 		...zhCNUiSettingsAppearanceWindowGlass,
 		...zhCNUiSettingsConfiguration,
@@ -9060,6 +9076,184 @@ export type MessageParams = {
 	"ui.settings.account.settings_usage_chart.credits_summary": { days: number };
 	"ui.settings.account.settings_usage_chart.tokens_summary": { days: number };
 	"ui.settings.account.settings_usage_chart.tokens_used": undefined;
+	"ui.settings.appearance.editor.accent.effective": undefined;
+	"ui.settings.appearance.editor.accent.primary": undefined;
+	"ui.settings.appearance.editor.accent.primary_usage": undefined;
+	"ui.settings.appearance.editor.accent.secondary": undefined;
+	"ui.settings.appearance.editor.accent.secondary_help": undefined;
+	"ui.settings.appearance.editor.accent.secondary_usage": undefined;
+	"ui.settings.appearance.editor.accent.variants": undefined;
+	"ui.settings.appearance.editor.accent_note": undefined;
+	"ui.settings.appearance.editor.accents": undefined;
+	"ui.settings.appearance.editor.adjust": undefined;
+	"ui.settings.appearance.editor.adjust_unavailable": undefined;
+	"ui.settings.appearance.editor.adjusted": { role: string; hex: string };
+	"ui.settings.appearance.editor.advanced": undefined;
+	"ui.settings.appearance.editor.base": { name: string };
+	"ui.settings.appearance.editor.cancel": undefined;
+	"ui.settings.appearance.editor.clipboard_error": undefined;
+	"ui.settings.appearance.editor.contrast_note": { value: string };
+	"ui.settings.appearance.editor.copy_name": { name: string; number: string };
+	"ui.settings.appearance.editor.create": undefined;
+	"ui.settings.appearance.editor.custom_group": undefined;
+	"ui.settings.appearance.editor.customize": undefined;
+	"ui.settings.appearance.editor.delete": undefined;
+	"ui.settings.appearance.editor.delete_description": undefined;
+	"ui.settings.appearance.editor.delete_title": { name: string };
+	"ui.settings.appearance.editor.deleted": undefined;
+	"ui.settings.appearance.editor.discard": undefined;
+	"ui.settings.appearance.editor.discard_description": undefined;
+	"ui.settings.appearance.editor.discard_title": undefined;
+	"ui.settings.appearance.editor.duplicate": undefined;
+	"ui.settings.appearance.editor.edit": undefined;
+	"ui.settings.appearance.editor.edit_role": { role: string };
+	"ui.settings.appearance.editor.edited": undefined;
+	"ui.settings.appearance.editor.empty": undefined;
+	"ui.settings.appearance.editor.essentials": undefined;
+	"ui.settings.appearance.editor.export": undefined;
+	"ui.settings.appearance.editor.export_copied": undefined;
+	"ui.settings.appearance.editor.export_copy": undefined;
+	"ui.settings.appearance.editor.export_error": undefined;
+	"ui.settings.appearance.editor.export_file": undefined;
+	"ui.settings.appearance.editor.export_title": { name: string };
+	"ui.settings.appearance.editor.file_name": undefined;
+	"ui.settings.appearance.editor.floor": { value: string };
+	"ui.settings.appearance.editor.group.accent": undefined;
+	"ui.settings.appearance.editor.group.grounds": undefined;
+	"ui.settings.appearance.editor.group.lines": undefined;
+	"ui.settings.appearance.editor.group.overlay": undefined;
+	"ui.settings.appearance.editor.group.status": undefined;
+	"ui.settings.appearance.editor.group.text": undefined;
+	"ui.settings.appearance.editor.import": undefined;
+	"ui.settings.appearance.editor.import_base": undefined;
+	"ui.settings.appearance.editor.import_description": undefined;
+	"ui.settings.appearance.editor.import_error": undefined;
+	"ui.settings.appearance.editor.import_file": undefined;
+	"ui.settings.appearance.editor.import_format": undefined;
+	"ui.settings.appearance.editor.import_invalid_json": undefined;
+	"ui.settings.appearance.editor.import_name": undefined;
+	"ui.settings.appearance.editor.import_read": undefined;
+	"ui.settings.appearance.editor.import_roles": undefined;
+	"ui.settings.appearance.editor.import_size": undefined;
+	"ui.settings.appearance.editor.import_submit": undefined;
+	"ui.settings.appearance.editor.import_text": undefined;
+	"ui.settings.appearance.editor.import_title": undefined;
+	"ui.settings.appearance.editor.import_unsafe": undefined;
+	"ui.settings.appearance.editor.import_version": undefined;
+	"ui.settings.appearance.editor.invalid_hex": undefined;
+	"ui.settings.appearance.editor.keep_editing": undefined;
+	"ui.settings.appearance.editor.limit": undefined;
+	"ui.settings.appearance.editor.load_error": undefined;
+	"ui.settings.appearance.editor.loading": undefined;
+	"ui.settings.appearance.editor.mode_dark": undefined;
+	"ui.settings.appearance.editor.mode_light": undefined;
+	"ui.settings.appearance.editor.mode_warning": undefined;
+	"ui.settings.appearance.editor.more": { name: string };
+	"ui.settings.appearance.editor.name": undefined;
+	"ui.settings.appearance.editor.name_limit": undefined;
+	"ui.settings.appearance.editor.name_required": undefined;
+	"ui.settings.appearance.editor.new_name": { name: string };
+	"ui.settings.appearance.editor.pair": {
+		foreground: string;
+		background: string;
+	};
+	"ui.settings.appearance.editor.picker.area": undefined;
+	"ui.settings.appearance.editor.picker.area_description": undefined;
+	"ui.settings.appearance.editor.picker.area_value": {
+		lightness: string;
+		chroma: string;
+		hue: string;
+	};
+	"ui.settings.appearance.editor.picker.blue": undefined;
+	"ui.settings.appearance.editor.picker.chroma": undefined;
+	"ui.settings.appearance.editor.picker.eyedropper_error": undefined;
+	"ui.settings.appearance.editor.picker.format": undefined;
+	"ui.settings.appearance.editor.picker.gamut": undefined;
+	"ui.settings.appearance.editor.picker.green": undefined;
+	"ui.settings.appearance.editor.picker.invalid_channels": undefined;
+	"ui.settings.appearance.editor.picker.lightness": undefined;
+	"ui.settings.appearance.editor.picker.oklch": undefined;
+	"ui.settings.appearance.editor.picker.recent": undefined;
+	"ui.settings.appearance.editor.picker.recent_empty": undefined;
+	"ui.settings.appearance.editor.picker.recent_swatch": { hex: string };
+	"ui.settings.appearance.editor.picker.red": undefined;
+	"ui.settings.appearance.editor.picker.rgb": undefined;
+	"ui.settings.appearance.editor.picker.swatch": { hex: string };
+	"ui.settings.appearance.editor.picker.theme_swatches": undefined;
+	"ui.settings.appearance.editor.pinned_note": undefined;
+	"ui.settings.appearance.editor.preview": undefined;
+	"ui.settings.appearance.editor.preview.assistant": undefined;
+	"ui.settings.appearance.editor.preview.bridge": undefined;
+	"ui.settings.appearance.editor.preview.bridge_name": undefined;
+	"ui.settings.appearance.editor.preview.bridge_status": undefined;
+	"ui.settings.appearance.editor.preview.category": undefined;
+	"ui.settings.appearance.editor.preview.code": undefined;
+	"ui.settings.appearance.editor.preview.composer": undefined;
+	"ui.settings.appearance.editor.preview.danger": undefined;
+	"ui.settings.appearance.editor.preview.disabled": undefined;
+	"ui.settings.appearance.editor.preview.identity": undefined;
+	"ui.settings.appearance.editor.preview.info": undefined;
+	"ui.settings.appearance.editor.preview.input": undefined;
+	"ui.settings.appearance.editor.preview.menu": undefined;
+	"ui.settings.appearance.editor.preview.menu_danger": undefined;
+	"ui.settings.appearance.editor.preview.menu_item": undefined;
+	"ui.settings.appearance.editor.preview.meta": undefined;
+	"ui.settings.appearance.editor.preview.normal": undefined;
+	"ui.settings.appearance.editor.preview.primary": undefined;
+	"ui.settings.appearance.editor.preview.secondary": undefined;
+	"ui.settings.appearance.editor.preview.selected": undefined;
+	"ui.settings.appearance.editor.preview.send": undefined;
+	"ui.settings.appearance.editor.preview.sidebar": undefined;
+	"ui.settings.appearance.editor.preview.success": undefined;
+	"ui.settings.appearance.editor.preview.user": undefined;
+	"ui.settings.appearance.editor.preview.warning": undefined;
+	"ui.settings.appearance.editor.preview_note": undefined;
+	"ui.settings.appearance.editor.ratio": { value: string };
+	"ui.settings.appearance.editor.reset_role": { role: string };
+	"ui.settings.appearance.editor.retry": undefined;
+	"ui.settings.appearance.editor.role.accent": undefined;
+	"ui.settings.appearance.editor.role.accentActive": undefined;
+	"ui.settings.appearance.editor.role.accentAlt": undefined;
+	"ui.settings.appearance.editor.role.accentAltWash": undefined;
+	"ui.settings.appearance.editor.role.accentHover": undefined;
+	"ui.settings.appearance.editor.role.accentWash": undefined;
+	"ui.settings.appearance.editor.role.borderControl": undefined;
+	"ui.settings.appearance.editor.role.canvas": undefined;
+	"ui.settings.appearance.editor.role.chartBarHover": undefined;
+	"ui.settings.appearance.editor.role.danger": undefined;
+	"ui.settings.appearance.editor.role.dangerBorder": undefined;
+	"ui.settings.appearance.editor.role.dangerWash": undefined;
+	"ui.settings.appearance.editor.role.elevated": undefined;
+	"ui.settings.appearance.editor.role.hairline": undefined;
+	"ui.settings.appearance.editor.role.hairlineStrong": undefined;
+	"ui.settings.appearance.editor.role.info": undefined;
+	"ui.settings.appearance.editor.role.infoBorder": undefined;
+	"ui.settings.appearance.editor.role.infoWash": undefined;
+	"ui.settings.appearance.editor.role.ink": undefined;
+	"ui.settings.appearance.editor.role.inkDim": undefined;
+	"ui.settings.appearance.editor.role.inkDisabled": undefined;
+	"ui.settings.appearance.editor.role.inkMuted": undefined;
+	"ui.settings.appearance.editor.role.mediaSurface": undefined;
+	"ui.settings.appearance.editor.role.messageSurface": undefined;
+	"ui.settings.appearance.editor.role.onAccent": undefined;
+	"ui.settings.appearance.editor.role.overlayShadow": undefined;
+	"ui.settings.appearance.editor.role.rowHover": undefined;
+	"ui.settings.appearance.editor.role.rowSelected": undefined;
+	"ui.settings.appearance.editor.role.scrim": undefined;
+	"ui.settings.appearance.editor.role.success": undefined;
+	"ui.settings.appearance.editor.role.successBorder": undefined;
+	"ui.settings.appearance.editor.role.successWash": undefined;
+	"ui.settings.appearance.editor.role.sunken": undefined;
+	"ui.settings.appearance.editor.role.surface": undefined;
+	"ui.settings.appearance.editor.role.tokenCommand": undefined;
+	"ui.settings.appearance.editor.role.warning": undefined;
+	"ui.settings.appearance.editor.role.warningBorder": undefined;
+	"ui.settings.appearance.editor.role.warningWash": undefined;
+	"ui.settings.appearance.editor.save": undefined;
+	"ui.settings.appearance.editor.save_error": undefined;
+	"ui.settings.appearance.editor.saved": undefined;
+	"ui.settings.appearance.editor.validation_pass": undefined;
+	"ui.settings.appearance.editor.validation_summary": { count: number };
 	"ui.settings.appearance.accent.add": undefined;
 	"ui.settings.appearance.accent.adjusted": undefined;
 	"ui.settings.appearance.accent.custom_swatch": { name: string };
@@ -9900,8 +10094,11 @@ export type MessageParams = {
 	"ui.settings.model.system_prompt.last_modified": undefined;
 	"ui.settings.model.system_prompt.load_failed": { reason: string };
 	"ui.settings.model.system_prompt.loading_system_prompt": undefined;
+	"ui.settings.model.system_prompt.rich_text": undefined;
 	"ui.settings.model.system_prompt.save_changes": undefined;
 	"ui.settings.model.system_prompt.saving": undefined;
+	"ui.settings.model.system_prompt.source": undefined;
+	"ui.settings.model.system_prompt.source_required": undefined;
 	"ui.settings.model.system_prompt.system_prompt": undefined;
 	"ui.settings.model.system_prompt.unknown_error": undefined;
 	"ui.settings.model.provider_callout.providers_link": undefined;

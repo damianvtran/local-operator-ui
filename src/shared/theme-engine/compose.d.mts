@@ -21,5 +21,7 @@ export declare function composeTheme<P extends PaletteRecord>(
 		accent?: AccentRef;
 		id?: string;
 		paletteAccent?: (id: string) => string | undefined;
+		/** Custom themes retain secondary identity roles through global accent. */
+		preserveSecondary?: boolean;
 	},
 ): Composition<P>;

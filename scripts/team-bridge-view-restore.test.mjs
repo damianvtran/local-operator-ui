@@ -22,7 +22,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { act } from "react";
 process.env.TEAM_BRIDGE_PLAIN_MENUS = "1";
-const { delay, mount, until } = await import(
+const { delay, mount, ui, until } = await import(
 	"./fixtures/team-bridge-auth-owner-page.mjs"
 );
 
@@ -532,6 +532,53 @@ test("a notification click wins over the saved selection and becomes the saved o
 	}
 });
 
+test("a person link (the command palette's door) selects that person's row, over the saved selection", async () => {
+	/*
+	 * `?tenant=&person=` (`team-bridge-deep-link.ts`) opens the way a click on the
+	 * person's rail row does: the PERSON is selected and the pane shows the DM
+	 * they already share. Nothing is created by the link - the DM in the fixture
+	 * already exists, and a person with none would open an empty draft - and the
+	 * saved selection never paints first, the rule a conversation link keeps.
+	 */
+	const app = await open();
+	let saved;
+	try {
+		await pick(app, "launch_shared");
+		await until(() => selected(app) === "launch_shared", "launch selected");
+		await app.leave();
+		saved = { ...localStorage };
+	} finally {
+		await app.close();
+	}
+	const linked = await mount({
+		lifecycle: [],
+		path: "/team-bridge?tenant=org_shared&person=acct_peer_0",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			for (const [key, value] of Object.entries(saved))
+				localStorage.setItem(key, value);
+			scenario(fixture);
+		},
+	});
+	try {
+		await until(
+			() => selected(linked) === "person:acct_peer_0",
+			"the linked person is selected",
+		);
+		assert.ok(
+			!selections(linked, 0).includes("launch_shared"),
+			"the saved selection never painted over the link",
+		);
+		await roundTrip(linked);
+		await until(
+			() => selected(linked) === "person:acct_peer_0",
+			"the linked person is the new saved selection",
+		);
+	} finally {
+		await linked.close();
+	}
+});
+
 test("the selection and organization persist across an app restart", async () => {
 	let app = await open();
 	try {
@@ -603,5 +650,205 @@ test("a notification click survives an auth remount when storage refuses the wri
 	} finally {
 		Object.getPrototypeOf(localStorage).setItem = setItem;
 		await clicked.close();
+	}
+});
+
+/* ------------------------------------------------------------------ *
+ * The command palette's door, round 1 (#1673): m1 and U1
+ * ------------------------------------------------------------------ */
+
+const composerField = (app) =>
+	app.host.querySelector("textarea:not([disabled])");
+
+/* Mount on a palette link the way a pick from another route arrives. */
+/*
+ * `settled`: the account read already answered, as it has in a window where
+ * the palette is open. Without it the fixture's first account read lands after
+ * mount and remounts the container (`key={account.token}`), and that remount's
+ * fresh refs are a different path from the one a palette pick takes.
+ */
+async function openLink(
+	path,
+	{ request = true, before, settled = false } = {},
+) {
+	if (request) ui.requestTeamBridgeComposerFocus();
+	const app = await mount({
+		lifecycle: [],
+		path,
+		waitReady: false,
+		seed: ({ fixture, client }) => {
+			if (settled)
+				client.setQueryData(ui.radientUserKeys.user(), {
+					account: {
+						id: "acct_a",
+						name: "acct_a",
+						email: "acct_a@fixture.invalid",
+					},
+					identity: {},
+				});
+			scenario(fixture);
+		},
+	});
+	before?.(app);
+	return app;
+}
+
+test("a person link to someone not in the directory falls back to the default view (m1)", async () => {
+	/*
+	 * The palette's roster can be stale by the time the page reads it. A link to
+	 * an account the organization's directory does not hold used to land on an
+	 * "Untitled" pane with nothing to send to; it is now checked exactly like a
+	 * stale remembered target, and the page lands where a cold open would.
+	 */
+	const app = await openLink(
+		"/team-bridge?tenant=org_shared&person=acct_removed",
+		{ request: false, settled: true },
+	);
+	try {
+		await until(
+			() => selected(app) === "gen_org_shared",
+			"fell back to the organization's landing",
+		);
+		// Measured on the reverted page: the composer read "Message this
+		// conversation", a pane addressed to nobody.
+		assert.equal(
+			composerField(app)?.getAttribute("aria-label"),
+			"Message general",
+		);
+		assert.ok(
+			!selections(app, 0).includes("person:acct_removed"),
+			"no row for the unknown account was ever selected",
+		);
+	} finally {
+		await app.close();
+	}
+	// The KNOWN person still holds (the positive case above, re-checked here so
+	// a validation that refused everyone would fail this test too).
+	const known = await openLink(
+		"/team-bridge?tenant=org_shared&person=acct_peer_0",
+		{ request: false, settled: true },
+	);
+	try {
+		await until(
+			() => selected(known) === "person:acct_peer_0",
+			"the known person holds",
+		);
+		await delay();
+		await delay();
+		assert.equal(selected(known), "person:acct_peer_0");
+	} finally {
+		await known.close();
+	}
+});
+
+test("a palette pick from another route puts the caret in the opened conversation's composer (U1)", async () => {
+	/*
+	 * Door A: the rail's Search button. Door B: Cmd+K from a text box, which the
+	 * sidebar swap has unmounted by the time Team Bridge is up, so focus is on
+	 * the body. Both arrive here as a page mounting on the link with a pending
+	 * request and the caret either on a button or on nothing.
+	 */
+	for (const door of ["search-button", "body"]) {
+		const button = document.createElement("button");
+		document.body.append(button);
+		if (door === "search-button") button.focus();
+		const app = await openLink(
+			"/team-bridge?tenant=org_shared&conversation=launch_shared",
+		);
+		try {
+			await until(() => selected(app) === "launch_shared", "launch selected");
+			await until(
+				() =>
+					composerField(app) !== null &&
+					document.activeElement === composerField(app),
+				`${door}: the composer holds the caret`,
+			);
+			assert.equal(ui.teamBridgeComposerFocusPending(), false, "one-shot");
+		} finally {
+			button.remove();
+			await app.close();
+		}
+	}
+});
+
+test("a person pick lands the caret in that person's composer too (U1)", async () => {
+	const app = await openLink(
+		"/team-bridge?tenant=org_shared&person=acct_peer_0",
+	);
+	try {
+		await until(
+			() => selected(app) === "person:acct_peer_0",
+			"the person is selected",
+		);
+		await until(
+			() =>
+				composerField(app) !== null &&
+				document.activeElement === composerField(app),
+			"the person's composer holds the caret",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+test("no pick, no grab: an ordinary open and a reader typing elsewhere keep their caret (U1)", async () => {
+	// No request: a plain open (rail click, cold start) never moves the caret.
+	ui.clearTeamBridgeComposerFocusRequest();
+	const plain = await openLink(
+		"/team-bridge?tenant=org_shared&conversation=launch_shared",
+		{ request: false },
+	);
+	try {
+		await until(() => composerField(plain) !== null, "composer up");
+		await delay();
+		assert.notEqual(document.activeElement, composerField(plain));
+	} finally {
+		await plain.close();
+	}
+	// A request, but the reader is typing in another field: it is dropped.
+	const elsewhere = document.createElement("input");
+	document.body.append(elsewhere);
+	elsewhere.focus();
+	const busy = await openLink(
+		"/team-bridge?tenant=org_shared&conversation=launch_shared",
+	);
+	try {
+		await until(() => composerField(busy) !== null, "composer up");
+		await delay();
+		assert.equal(
+			document.activeElement,
+			elsewhere,
+			"the reader's field kept it",
+		);
+		assert.equal(ui.teamBridgeComposerFocusPending(), false, "request dropped");
+	} finally {
+		elsewhere.remove();
+		await busy.close();
+	}
+});
+
+test("the palette's close-time restore can name and focus the bridge composer (U1, on-route door)", async () => {
+	/*
+	 * A pick made ON Team Bridge reuses the mounted composer; the palette's close
+	 * then asks the shared registry (`handCaretToComposer`). Before this change
+	 * the bridge composer never registered, so the call answered false and the
+	 * caret went to the rail.
+	 */
+	ui.clearTeamBridgeComposerFocusRequest();
+	const app = await openLink(
+		"/team-bridge?tenant=org_shared&conversation=launch_shared",
+		{ request: false },
+	);
+	try {
+		await until(() => composerField(app) !== null, "composer up");
+		document.body.focus();
+		let landed = false;
+		await act(async () => {
+			landed = ui.handCaretToComposer();
+		});
+		assert.equal(landed, true);
+		assert.equal(document.activeElement, composerField(app));
+	} finally {
+		await app.close();
 	}
 });

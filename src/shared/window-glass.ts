@@ -39,6 +39,7 @@
  */
 
 import GLASS_FLOORS from "./window-glass-floors.json";
+export type GlassFloorTable = typeof GLASS_FLOORS;
 
 /**
  * Which surfaces the glass covers. `full` includes `sidebars`.
@@ -612,9 +613,9 @@ export function glassAlphaFloors(
 	mechanism: GlassMechanism,
 	material: GlassMaterial,
 	scheme: GlassScheme,
+	floors: GlassFloorTable = GLASS_FLOORS,
 ): GlassAlphas {
-	const tier =
-		GLASS_FLOORS.alphaFloor[floorTierFor(mechanism, material)][scheme];
+	const tier = floors.alphaFloor[floorTierFor(mechanism, material)][scheme];
 	return {
 		canvas: tier.canvas,
 		surface: tier.surface,
@@ -636,12 +637,14 @@ export function glassAlphas(input: {
 	mechanism: GlassMechanism;
 	material: GlassMaterial;
 	scheme: GlassScheme;
+	floors?: GlassFloorTable;
 }): GlassAlphas {
 	const t = Math.min(100, Math.max(0, input.intensity)) / 100;
 	const floors = glassAlphaFloors(
 		input.mechanism,
 		input.material,
 		input.scheme,
+		input.floors,
 	);
 	const at = (floor: number): number => {
 		/* A role whose floor is ABOVE the veil ceiling (dark `elevated` on the
@@ -789,24 +792,28 @@ export function glassPaintFor(input: {
 	mechanism: GlassMechanism;
 	material: GlassMaterial;
 	scheme: GlassScheme;
+	floors?: GlassFloorTable;
 }): GlassPaint {
+	const floors = input.floors ?? GLASS_FLOORS;
 	const raw = glassAlphas(input);
 	const net = (target: number): number =>
-		round2(Math.min(1, Math.max(0, 1 - (1 - target) / (1 - raw.canvas))));
+		raw.canvas === 1
+			? 0
+			: round2(Math.min(1, Math.max(0, 1 - (1 - target) / (1 - raw.canvas))));
 	const vars: Record<string, string> = {
 		"--lo-glass-a-canvas": String(raw.canvas),
 		"--lo-glass-a-surface": String(raw.surface),
 		"--lo-glass-a-elevated": String(raw.elevated),
-		"--lo-glass-a-row-hover": String(GLASS_FLOORS.stateAlpha.hover),
-		"--lo-glass-a-row-selected": String(GLASS_FLOORS.stateAlpha.selected),
+		"--lo-glass-a-row-hover": String(floors.stateAlpha.hover),
+		"--lo-glass-a-row-selected": String(floors.stateAlpha.selected),
 		/*
 		 * A RUNNING ROW is the row that is the subject right now, the same claim a
 		 * selected row makes (and the two cannot co-occur), so the overlay is the
 		 * same derived alpha under its own name: the CSS says "work" where the
 		 * meaning is "in flight", and a future split is one derivation away.
 		 */
-		"--lo-glass-a-row-work": String(GLASS_FLOORS.stateAlpha.work),
-		"--lo-glass-a-field": String(GLASS_FLOORS.stateAlpha.field),
+		"--lo-glass-a-row-work": String(floors.stateAlpha.work),
+		"--lo-glass-a-field": String(floors.stateAlpha.field),
 		/*
 		 * The block veil: a text-bearing block whose fill is its only boundary on
 		 * the flat system (a user message bubble, a project card) takes this ink
@@ -814,7 +821,7 @@ export function glassPaintFor(input: {
 		 * opaque island. Derivation and the failed `messageSurface`-floor
 		 * alternative: `scripts/derive-glass-floors.mjs`.
 		 */
-		"--lo-glass-a-block-veil": String(GLASS_FLOORS.blockVeil[input.scheme]),
+		"--lo-glass-a-block-veil": String(floors.blockVeil[input.scheme]),
 		/*
 		 * THE ISOLATING BAND'S OWN ALPHA FLOOR, per scheme.
 		 *
@@ -830,7 +837,7 @@ export function glassPaintFor(input: {
 		 * The ordinary bands do not need it: they sit on the pane's own static
 		 * ground, where the published alpha is right.
 		 */
-		"--lo-glass-a-band-floor": String(GLASS_FLOORS.bandFloor[input.scheme]),
+		"--lo-glass-a-band-floor": String(floors.bandFloor[input.scheme]),
 		/*
 		 * The LANE wash: a well behind veiled blocks cannot be an ink overlay (the
 		 * veil is already the one ink layer under the card's text), so it is a
@@ -847,18 +854,19 @@ export function glassPaintFor(input: {
 		 * reverse. The contract asserts the pair at every slider position.
 		 */
 		"--lo-glass-a-lane": String(
-			Math.round(raw.canvas * GLASS_FLOORS.laneWash[input.scheme].scale * 100) /
-				100,
+			Math.round(raw.canvas * floors.laneWash[input.scheme].scale * 100) / 100,
 		),
 		/* The palette role that lane alpha is painted in, as a CSS reference: the
 		 * role is scheme-dependent and the stylesheet must not carry a second copy
 		 * of that decision. */
 		"--lo-glass-lane-tone":
-			GLASS_FLOORS.laneWash[input.scheme].role === "sunken"
+			floors.laneWash[input.scheme].role === "sunken"
 				? "var(--lo-sunken)"
 				: "var(--lo-surface)",
 		"--lo-glass-control-mix": String(
-			glassControlMix(input.mechanism, input.material, input.scheme),
+			floors.controlMix[floorTierFor(input.mechanism, input.material)][
+				input.scheme
+			],
 		),
 		"--lo-glass-in-surface": String(net(raw.surface)),
 		"--lo-glass-in-elevated": String(net(raw.elevated)),

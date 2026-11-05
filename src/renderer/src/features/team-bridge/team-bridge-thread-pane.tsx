@@ -342,6 +342,9 @@ function TeamBridgeThreadPaneBody({
 	};
 	return (
 		<aside
+			/* A sibling reading sidebar, not a surface stacked over the timeline.
+			 * The shared split-page contract owns its material through the top pad. */
+			data-glass-region="page-sidebar"
 			ref={pane}
 			aria-label={t("ui.teamBridge.replies.title")}
 			/* THE THREAD IS THE THIRD PLANE (visual refresh §3.2): `surface` beside
@@ -533,6 +536,7 @@ function TeamBridgeThreadPaneBody({
 						</p>
 					)}
 					<div
+						data-glass-region="composer"
 						className="rounded-md bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid"
 						{...(state === "ready"
 							? attachmentPasteHandlers(images, files)

@@ -1,0 +1,11 @@
+{
+  "base": "149615374bfb90b2539c60b1016286c880258d5f",
+  "head": "f043579ec5d1c7aba7eed34703806dc3c75d3b99",
+  "previous_keys": 160,
+  "previous_values_utf8_byte_identical": true,
+  "old_english_context_entries_unchanged": true,
+  "new_keys": 11,
+  "base_target_sha256": "1c27fd1286753487898afcb844f087ccd3ab8fa50342286b84ef76f0f3bab6f7",
+  "base_source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
+  "retained_value_map_sha256": "8e4be2178d44a26b6add0bdd488c717171d9b3a5a51af52d274d70751a6ac8e1"
+}

@@ -42,6 +42,54 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"ui.settings.appearance.editor.copy_name",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.ratio",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.picker.rgb",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.picker.oklch",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.preview.bridge",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.floor",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.picker.chroma",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.group.accent",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.role.accent",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.role.accentAlt",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.role.danger",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.preview.sidebar",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
 		"es:ui.teamBridge.attachmentCard.bytes",
 		"Spanish standard unit copy is {size, number} bytes; independently audited by f93eb129057e (S3 receipt). Exact locale/key only, not an English fallback.",
 	],

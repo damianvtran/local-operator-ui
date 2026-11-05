@@ -1,0 +1,22 @@
+{
+  "keys": 160,
+  "format_calls": 160,
+  "errors": [],
+  "unexempted_identical": [
+    "ui.settings.appearance.editor.copy_name",
+    "ui.settings.appearance.editor.ratio",
+    "ui.settings.appearance.editor.picker.rgb",
+    "ui.settings.appearance.editor.picker.oklch",
+    "ui.settings.appearance.editor.preview.bridge"
+  ],
+  "plural_outputs": {
+    "0": "کنٹراسٹ کے 0 مسائل",
+    "1": "کنٹراسٹ کا 1 مسئلہ",
+    "2": "کنٹراسٹ کے 2 مسائل",
+    "5": "کنٹراسٹ کے 5 مسائل",
+    "11": "کنٹراسٹ کے 11 مسائل",
+    "21": "کنٹراسٹ کے 21 مسائل",
+    "22": "کنٹراسٹ کے 22 مسائل",
+    "1.5": "کنٹراسٹ کے 1.5 مسائل"
+  }
+}

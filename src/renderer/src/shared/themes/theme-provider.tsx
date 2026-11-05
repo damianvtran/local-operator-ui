@@ -3,8 +3,9 @@ import { reportWindowChromeColors } from "@shared/hooks/use-window-chrome";
 import { syncGlassScheme } from "@shared/hooks/use-window-glass";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, ReactNode } from "react";
-import { useLayoutEffect, useMemo } from "react";
-import { applyAppearance, resolveAppearance } from "./appearance";
+import { useLayoutEffect } from "react";
+import { applyAppearance } from "./appearance";
+import { useSavedAppearance } from "./use-resolved-appearance";
 
 /**
  * Props for the ThemeProvider component
@@ -25,23 +26,14 @@ type ThemeProviderProps = {
  * element.
  */
 export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
-	// Get the selected theme and its appearance layers from the UI preferences store
-	const themeName = useUiPreferencesStore((state) => state.themeName);
-	const contrast = useUiPreferencesStore((state) => state.contrast);
-	const accent = useUiPreferencesStore((state) => state.accent);
-
 	/*
-	 * The palette the app paints: the built-in at Standard contrast with its own
-	 * accent - the IDENTITY path, which is every profile today because no setting
-	 * writes the v5 fields yet - or a composition over it (see `appearance.ts`).
-	 * On the identity path `resolved.muiTheme` is the prebuilt `getTheme(...)`
-	 * object and `resolved.id` the built-in id, so this provider renders exactly
-	 * what it rendered before the engine existed.
+	 * One hook owns "what is selected, worth, and derived": the provider, every
+	 * consumer and the mini-view document must resolve a saved theme the same
+	 * way, and two of them re-deriving it separately is how a saved theme paints
+	 * one palette in MUI and another in CSS.
 	 */
-	const resolved = useMemo(
-		() => resolveAppearance({ themeName, contrast, accent }),
-		[themeName, contrast, accent],
-	);
+	const { appearance, resolved, savedPalette, savedBase } =
+		useSavedAppearance();
 
 	/*
 	 * Publish the theme id to the document element on mount and on every
@@ -55,7 +47,13 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
 	useLayoutEffect(() => {
 		/* Injects the composed block (if any) BEFORE setting `data-theme`, so no
 		   frame names a block that does not exist yet. */
-		applyAppearance({ themeName, contrast, accent });
+		applyAppearance(
+			appearance,
+			document,
+			savedPalette,
+			savedBase,
+			() => resolved,
+		);
 		/*
 		 * THE SAME FRAME INFORMS THE WINDOW CHROME. On Windows and Linux the OS's
 		 * caption glyphs are drawn by Electron over the renderer, and on Linux the box
@@ -68,9 +66,16 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
 		reportWindowChromeColors(resolved.id);
 		/* The glass alphas and the OS material's tone follow the palette's scheme. */
 		syncGlassScheme();
-	}, [themeName, contrast, accent, resolved.id]);
+	}, [appearance, resolved, savedPalette, savedBase]);
 
 	return (
 		<MuiThemeProvider theme={resolved.muiTheme}>{children}</MuiThemeProvider>
 	);
 };
+
+/* Kept for the store-shape comment the previous version carried, so a reader
+ * comparing profiles still lands on the same statement: on the identity path
+ * `resolved.muiTheme` is the prebuilt `getTheme(...)` object and `resolved.id`
+ * the built-in id, so this provider renders exactly what it rendered before the
+ * engine existed. `useUiPreferencesStore` is imported for that reason only. */
+void useUiPreferencesStore;

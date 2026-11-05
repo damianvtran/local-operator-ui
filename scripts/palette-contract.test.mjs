@@ -654,6 +654,10 @@ test("the pane identity is captured at open, by the pane's own rule", () => {
 		/identityAtOpen\.current = currentPanelIdentity\(\);/,
 		"the identity has to be captured in the SAME effect, or the comparison it feeds is between two different instants",
 	);
+	assert.ok(
+		open.includes("clearTeamBridgeComposerFocusRequest();"),
+		"a new palette open cancels any older bridge focus request (r2-m3)",
+	);
 	/*
 	 * And the rule behind it is the pane's, not a second notion of "the view
 	 * moved": the draft's own session id is read, which is the term that makes
