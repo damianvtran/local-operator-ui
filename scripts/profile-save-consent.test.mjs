@@ -34,9 +34,10 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
 			export * from "./src/renderer/src/features/mesh/mesh-profile-approval";
 			export * from "./src/renderer/src/features/mesh/profile-action-golden";
-			export { applyEvent, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export * from "./src/renderer/src/features/mesh/profile-revert-scripted";
 			export { PROFILE_SAVE_TOOLS } from "./src/renderer/src/features/chat/components/trace/profile-save-card-model";
+			export * from "./src/renderer/src/features/chat/components/trace/tool-result-details";
 			export { profileSaveCall } from "./src/renderer/src/features/chat/components/trace/profile-save-card-model";
 			export { createProfileRevertLatch } from "./src/renderer/src/features/chat/canonical/profile-revert-latch";
 			export {
@@ -1901,5 +1902,205 @@ test("a receipt states no operation, because the producer states none", () => {
 	assert.equal(
 		disclosureCall.view.operation,
 		api.GOLDEN_APPROVAL_ROWS[0].typed_approval.disclosure.profile_operation,
+	);
+});
+
+/* Cold hydration must retain the same bounded profile facts as the live row.
+ * Native message carrier: harness/types.py::Message.provider_payload stores
+ * tool-result metadata under `details`; transcript-reducer.ts reads the durable
+ * message at payload.provider_payload.details (not payload.details). Golden
+ * ToolResult values below remain verbatim; only the native history wrapper is built.
+ */
+for (const fixtureName of [
+	"GOLDEN_SAVED_AGENT_TOOL_RESULT",
+	"GOLDEN_SAVED_TEAM_TOOL_RESULT",
+	"GOLDEN_QUEUED_TOOL_RESULT",
+]) {
+	test(`cold history retains the live profile card: ${fixtureName}`, () => {
+		const result = api[fixtureName];
+		const live = api.applyEvent(api.EMPTY_TRANSCRIPT, {
+			type: "tool_execution_end",
+			tool_call_id: result.tool_call_id,
+			tool_name: result.tool_name,
+			result,
+		});
+		const cold = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, {
+			entries: [
+				{
+					id: `history:${result.tool_call_id}`,
+					ts: 1_700_000_000,
+					type: "message",
+					payload: {
+						kind: "message",
+						role: "tool",
+						tool_call_id: result.tool_call_id,
+						tool_name: result.tool_name,
+						content: result.content,
+						is_error: result.is_error,
+						provider_payload: {
+							details: result.details,
+							duration_s: result.duration_s,
+						},
+					},
+				},
+			],
+			has_more: false,
+			cursor_missing: false,
+		});
+		const cardFrom = (state) => {
+			const row = state.records.find((record) => record.kind === "tool");
+			assert.ok(row, "native carrier produces a canonical tool row");
+			assert.equal(row.toolName, result.tool_name);
+			return api.profileSaveCall({
+				toolName: row.toolName,
+				output: row.output ?? "",
+				details: row.details ?? null,
+			});
+		};
+		const liveCard = cardFrom(live);
+		assert.ok(liveCard, "live carrier is the positive control");
+		const coldCard = cardFrom(cold);
+		assert.ok(
+			coldCard,
+			"cold carrier must preserve the live card (details currently lost)",
+		);
+		assert.deepEqual(coldCard, liveCard);
+	});
+}
+
+test("shared metadata selection preserves profile identity and progress neighbors", () => {
+	const details = api.GOLDEN_SAVED_AGENT_TOOL_RESULT.details;
+	const previous = { stage: "running", progress_fraction: 0.5 };
+	for (const fixtureName of [
+		"GOLDEN_SAVED_AGENT_TOOL_RESULT",
+		"GOLDEN_SAVED_TEAM_TOOL_RESULT",
+		"GOLDEN_QUEUED_TOOL_RESULT",
+	]) {
+		const fixture = api[fixtureName];
+		const selected = api.preferToolResultDetails(
+			fixture.tool_name,
+			fixture.details,
+			null,
+		);
+		assert.equal(
+			selected,
+			fixture.details,
+			"preserve producer object, including opaque IDs",
+		);
+		if (fixture.details.profile_action) {
+			assert.equal(selected.profile_action, fixture.details.profile_action);
+			assert.equal(
+				selected.profile_action.receipt_id,
+				fixture.details.profile_action.receipt_id,
+			);
+		}
+	}
+	for (const toolName of ["agent", "team"]) {
+		for (const value of [
+			undefined,
+			null,
+			{ op: "list", items: [] },
+			{ op: "show", name: "reviewer" },
+		]) {
+			assert.equal(api.preferToolResultDetails(toolName, value, null), null);
+			assert.equal(
+				api.preferToolResultDetails(toolName, value, previous),
+				previous,
+			);
+		}
+	}
+	for (const toolName of ["web_search", "mcp.agent", "profile_save"]) {
+		assert.equal(api.preferToolResultDetails(toolName, details, null), null);
+	}
+	const oversized = {
+		...details,
+		revert: { text: "x".repeat(api.PROFILE_METADATA_MAX_BYTES + 1) },
+	};
+	assert.equal(api.preferToolResultDetails("agent", oversized, null), null);
+	assert.equal(
+		api.preferToolResultDetails("agent", oversized, previous),
+		previous,
+	);
+	const cyclic = { ...details };
+	cyclic.revert = cyclic;
+	assert.equal(api.preferToolResultDetails("agent", cyclic, null), null);
+	// Progress remains tool-agnostic and retains its existing equality behavior.
+	const equalProgress = { ...previous };
+	assert.equal(
+		api.preferToolResultDetails("agent", equalProgress, previous),
+		previous,
+	);
+	const newProgress = { stage: "done", progress_fraction: 1 };
+	assert.equal(
+		api.preferToolResultDetails("web_search", newProgress, previous),
+		newProgress,
+	);
+});
+
+/* Producer source/provenance is recorded in this fixture's own meta. Unlike the
+ * earlier independent saved/queued samples, it was exported from execute_agent →
+ * disposed Session → signed apply → native inbox consumer and shares one real
+ * call/receipt identity. Never substitute IDs or manufacture a continuation event.
+ */
+test("actual correlated continuation replaces the queued row live and cold", () => {
+	const fixture = JSON.parse(
+		source("scripts/fixtures/profile-continuation-golden.json"),
+	);
+	const queued = fixture.queued_tool_result;
+	const applied = fixture.applied_tool_result;
+	const event = fixture.tool_execution_end_event;
+	const message = fixture.cold_history_message;
+	assert.equal(queued.tool_call_id, applied.tool_call_id);
+	assert.equal(event.tool_call_id, queued.tool_call_id);
+	assert.equal(message.tool_call_id, queued.tool_call_id);
+	assert.deepEqual(event.result, applied);
+	assert.deepEqual(message.provider_payload.details, applied.details);
+	assert.equal(
+		applied.details.profile_action.receipt_id,
+		queued.details.receipt_id,
+	);
+	const liveQueue = api.applyEvent(api.EMPTY_TRANSCRIPT, {
+		type: "tool_execution_end",
+		tool_call_id: queued.tool_call_id,
+		tool_name: queued.tool_name,
+		result: queued,
+		duration_s: queued.duration_s,
+		is_error: queued.is_error,
+	});
+	const card = (state) => {
+		const rows = state.records.filter((row) => row.kind === "tool");
+		assert.equal(
+			rows.length,
+			1,
+			"continuation updates rather than duplicates the original call",
+		);
+		assert.equal(rows[0].toolCallId, queued.tool_call_id);
+		return api.profileSaveCall({
+			toolName: rows[0].toolName,
+			output: rows[0].output ?? "",
+			details: rows[0].details,
+		});
+	};
+	assert.equal(card(liveQueue)?.view.state, "waiting");
+	const liveSaved = api.applyEvent(liveQueue, event);
+	assert.equal(card(liveSaved)?.view.state, "saved");
+	assert.deepEqual(card(liveSaved)?.descriptor, applied.details.profile_action);
+	const page = {
+		entries: [
+			{ id: message.id, ts: 1_700_000_000, type: "message", payload: message },
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	// The page wrapper supplies journal ordering only; its payload is the ACTUAL
+	// Message.tool_result serializer output, including provider_payload untouched.
+	const coldSaved = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page);
+	assert.deepEqual(card(coldSaved), card(liveSaved));
+	const hydratedSaved = api.applyHistoryPage(liveQueue, page);
+	assert.deepEqual(card(hydratedSaved), card(liveSaved));
+	assert.deepEqual(card(api.applyEvent(liveSaved, event)), card(liveSaved));
+	assert.deepEqual(
+		card(api.applyHistoryPage(coldSaved, page)),
+		card(coldSaved),
 	);
 });

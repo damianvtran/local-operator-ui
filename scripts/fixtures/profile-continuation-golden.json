@@ -1,0 +1,151 @@
+{
+	"meta": {
+		"source_sha": "19d1132976598d7743a536ebe72897f1ea90c9c3",
+		"uncommitted_source": true,
+		"provenance": "Actual execute_agent queued result; original Session disposed; signed apply; real inbox consumer emits native event and upserts cold history. No LLM dispatch."
+	},
+	"source_session_id": "synthetic-session",
+	"queued_tool_result": {
+		"tool_call_id": "same-real-call",
+		"tool_name": "agent",
+		"content": [
+			{
+				"type": "text",
+				"text": "Queued agent 'reviewer' for durable approval (ap_v3cs59nan21p4). No profile or backup was changed. The signed approval continuation applies it; do not retry this tool call.\ninstructions: updated"
+			}
+		],
+		"details": {
+			"status": "queued",
+			"fields": ["instructions"],
+			"diff": [
+				"instructions (replaced; new text):",
+				"Approved offline guidance."
+			],
+			"approval_id": "ap_v3cs59nan21p4",
+			"request_digest": "sha256:73075ec0feafa0f544633e9bf534af1f8c9392d2914a853e9fa56f55659e577a",
+			"expires_at": 1793946633.349659,
+			"receipt_id": "c30dd3be271e0204bf8cc459a26c9f176c2641df93b2334ae0750fa013147965",
+			"profile_kind": "agent",
+			"profile_name": "reviewer",
+			"scope": "global"
+		},
+		"duration_s": null,
+		"is_error": false,
+		"useless": false
+	},
+	"applied_tool_result": {
+		"tool_call_id": "same-real-call",
+		"tool_name": "agent",
+		"content": [
+			{
+				"type": "text",
+				"text": "Saved agent 'reviewer' in your account after signed approval.\ninstructions: updated"
+			}
+		],
+		"details": {
+			"status": "applied",
+			"profile_kind": "agent",
+			"profile_name": "reviewer",
+			"scope": "global",
+			"receipt_id": "c30dd3be271e0204bf8cc459a26c9f176c2641df93b2334ae0750fa013147965",
+			"fields": ["instructions"],
+			"diff": ["instructions:", "Approved offline guidance."],
+			"approval_id": "ap_v3cs59nan21p4",
+			"request_digest": "sha256:73075ec0feafa0f544633e9bf534af1f8c9392d2914a853e9fa56f55659e577a",
+			"profile_action": {
+				"schema": 1,
+				"kind": "profile_revert",
+				"action_id": "prv_1a4b4d3d1d5c764de4878ee90d6b72dc",
+				"label": "Revert",
+				"profile_kind": "agent",
+				"profile_name": "reviewer",
+				"receipt_id": "c30dd3be271e0204bf8cc459a26c9f176c2641df93b2334ae0750fa013147965"
+			}
+		},
+		"duration_s": null,
+		"is_error": false,
+		"useless": false
+	},
+	"tool_execution_end_event": {
+		"type": "tool_execution_end",
+		"tool_call_id": "same-real-call",
+		"tool_name": "agent",
+		"result": {
+			"tool_call_id": "same-real-call",
+			"tool_name": "agent",
+			"content": [
+				{
+					"type": "text",
+					"text": "Saved agent 'reviewer' in your account after signed approval.\ninstructions: updated"
+				}
+			],
+			"details": {
+				"status": "applied",
+				"profile_kind": "agent",
+				"profile_name": "reviewer",
+				"scope": "global",
+				"receipt_id": "c30dd3be271e0204bf8cc459a26c9f176c2641df93b2334ae0750fa013147965",
+				"fields": ["instructions"],
+				"diff": ["instructions:", "Approved offline guidance."],
+				"approval_id": "ap_v3cs59nan21p4",
+				"request_digest": "sha256:73075ec0feafa0f544633e9bf534af1f8c9392d2914a853e9fa56f55659e577a",
+				"profile_action": {
+					"schema": 1,
+					"kind": "profile_revert",
+					"action_id": "prv_1a4b4d3d1d5c764de4878ee90d6b72dc",
+					"label": "Revert",
+					"profile_kind": "agent",
+					"profile_name": "reviewer",
+					"receipt_id": "c30dd3be271e0204bf8cc459a26c9f176c2641df93b2334ae0750fa013147965"
+				}
+			},
+			"duration_s": null,
+			"is_error": false,
+			"useless": false
+		},
+		"duration_s": null,
+		"is_error": false
+	},
+	"cold_history_message": {
+		"role": "tool",
+		"content": [
+			{
+				"type": "text",
+				"text": "Saved agent 'reviewer' in your account after signed approval.\ninstructions: updated"
+			}
+		],
+		"tool_calls": [],
+		"tool_call_id": "same-real-call",
+		"tool_name": "agent",
+		"is_error": false,
+		"stop_reason": null,
+		"usage": null,
+		"input_mode": null,
+		"input_path": null,
+		"provider_payload": {
+			"details": {
+				"status": "applied",
+				"profile_kind": "agent",
+				"profile_name": "reviewer",
+				"scope": "global",
+				"receipt_id": "c30dd3be271e0204bf8cc459a26c9f176c2641df93b2334ae0750fa013147965",
+				"fields": ["instructions"],
+				"diff": ["instructions:", "Approved offline guidance."],
+				"approval_id": "ap_v3cs59nan21p4",
+				"request_digest": "sha256:73075ec0feafa0f544633e9bf534af1f8c9392d2914a853e9fa56f55659e577a",
+				"profile_action": {
+					"schema": 1,
+					"kind": "profile_revert",
+					"action_id": "prv_1a4b4d3d1d5c764de4878ee90d6b72dc",
+					"label": "Revert",
+					"profile_kind": "agent",
+					"profile_name": "reviewer",
+					"receipt_id": "c30dd3be271e0204bf8cc459a26c9f176c2641df93b2334ae0750fa013147965"
+				}
+			},
+			"useless": false,
+			"duration_s": null
+		},
+		"id": "9bb9787252834b2788bb3f7ba7f52163"
+	}
+}
