@@ -34,6 +34,7 @@
 
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
@@ -222,6 +223,8 @@ const bundle = await build({
 			export { ReloadPicker, RenamePicker, reloadReceipt, renameSubmission } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			export { FORK_CUT_NOTE } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			export { operationFailureText } from "./src/renderer/src/features/chat/pickers/use-picker-backend";
+			export { DesktopControlError, desktopResult as productionDesktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+			export { t } from "./src/i18n/messages";
 		`,
 		resolveDir: ROOT,
 	},
@@ -302,6 +305,9 @@ globalThis.__errorToast = (message) => {
 const {
 	ReloadPicker,
 	RenamePicker,
+	DesktopControlError,
+	productionDesktopResult,
+	t,
 	reloadReceipt,
 	renameSubmission,
 	FORK_CUT_NOTE,
@@ -808,10 +814,16 @@ for (const outcome of [
 	});
 }
 
-test("a failed rename keeps its inline error and can be retried", async (context) => {
+test("an acknowledged rename refusal keeps its inline error and can be retried", async (context) => {
 	let attempts = 0;
 	const run = await mountRename(context, async () => {
-		if (++attempts === 1) throw new Error("owner unavailable");
+		if (++attempts === 1)
+			throw new DesktopControlError(
+				422,
+				"name rejected",
+				undefined,
+				"invalid_name",
+			);
 		return {
 			result: { kind: "notice", style: "info", text: "renamed to New name" },
 		};
@@ -819,9 +831,7 @@ test("a failed rename keeps its inline error and can be retried", async (context
 	await run.submit();
 	assert.equal(run.closed(), 0);
 	assert.ok(
-		document.body.textContent.includes(
-			"/rename did not run: owner unavailable",
-		),
+		document.body.textContent.includes("/rename did not run: name rejected"),
 	);
 	assert.deepEqual(toasts, []);
 	await run.submit();
@@ -829,6 +839,154 @@ test("a failed rename keeps its inline error and can be retried", async (context
 	assert.equal(run.closed(), 1);
 	assert.deepEqual(toasts, ["renamed to New name"]);
 });
+
+test("a lost rename acknowledgement keeps uncertainty inline without automatic replay", async (context) => {
+	// The server may commit before its reply is lost. A generic Error proves
+	// neither rejection nor rollback; asserting 'did not run' taught false
+	// certainty. Keep a separate acknowledged-refusal control above.
+	let durableName = "Old name";
+	let writes = 0;
+	const run = await mountRename(context, async () => {
+		durableName = "New name";
+		if (++writes === 1) throw new Error("owner unavailable");
+		return {
+			result: { kind: "notice", style: "info", text: "renamed to New name" },
+		};
+	});
+	await run.submit();
+	assert.equal(durableName, "New name");
+	assert.equal(run.closed(), 0);
+	assert.ok(document.querySelector('[role="dialog"]'));
+	assert.ok(
+		document.body.textContent.includes(
+			t("ui.projects.use_request_update.the_request_could_not_be_confirmed"),
+		),
+	);
+	assert.equal(
+		document.body.textContent.includes("/rename did not run"),
+		false,
+	);
+	await new Promise((resolve) => setTimeout(resolve, 25));
+	assert.equal(
+		run.requests.length,
+		1,
+		"uncertainty must never replay a mutation",
+	);
+	assert.equal(writes, 1);
+	assert.deepEqual(toasts, []);
+	await run.submit();
+	assert.equal(run.requests.length, 2, "only an explicit retry sends again");
+	assert.equal(run.closed(), 1);
+	assert.deepEqual(toasts, ["renamed to New name"]);
+});
+
+for (const cell of [
+	{
+		name: "acknowledged rejection",
+		status: 422,
+		code: "invalid_name",
+		committed: false,
+	},
+	{ name: "busy owner", status: 504, code: "runtime_busy", committed: false },
+	{ name: "committed rename with lost reply", status: null, committed: true },
+]) {
+	test(`real HTTP rename ${cell.name} preserves inline disposition and explicit retry`, async (context) => {
+		let calls = 0;
+		let durableName = "Old name";
+		const server = createServer(async (request, response) => {
+			let body = "";
+			for await (const chunk of request) body += chunk;
+			const command = JSON.parse(body);
+			assert.equal(command.command, "rename");
+			++calls;
+			if (calls === 1) {
+				if (cell.committed) durableName = command.args;
+				if (cell.status === null) {
+					response.destroy();
+					return;
+				}
+				response.setHeader("Content-Type", "application/json");
+				response.end(
+					JSON.stringify({
+						status: cell.status,
+						body: { detail: { code: cell.code, text: "name rejected" } },
+					}),
+				);
+				return;
+			}
+			durableName = command.args;
+			response.setHeader("Content-Type", "application/json");
+			response.end(
+				JSON.stringify({
+					status: 200,
+					body: {
+						result: {
+							result: {
+								kind: "notice",
+								style: "info",
+								text: "renamed to New name",
+							},
+						},
+					},
+				}),
+			);
+		});
+		await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+		const nativeFetch = globalThis.fetch;
+		const base = `http://127.0.0.1:${server.address().port}`;
+		globalThis.fetch = (input, options) =>
+			nativeFetch(new URL(input, base), options);
+		context.after(async () => {
+			globalThis.fetch = nativeFetch;
+			server.closeAllConnections();
+			await new Promise((resolve) => server.close(resolve));
+		});
+		// Only the development endpoint's URL is redirected. The picker, hook,
+		// desktopRequest/desktopResult and structured error conversion are real.
+		let pending;
+		const run = await mountRename(context, (request) => {
+			pending = productionDesktopResult(request);
+			return pending;
+		});
+		await run.submit();
+		await act(async () => {
+			await assert.rejects(
+				pending,
+				(error) =>
+					error instanceof DesktopControlError && error.status === cell.status,
+			);
+		});
+		assert.equal(calls, 1, document.body.textContent);
+		assert.equal(durableName, cell.committed ? "New name" : "Old name");
+		assert.equal(run.closed(), 0);
+		const acknowledged = cell.status === 422;
+		assert.ok(
+			document.body.textContent.includes(
+				acknowledged
+					? "/rename did not run: name rejected"
+					: t(
+							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+						),
+			),
+		);
+		assert.equal(
+			document.body.textContent.includes("/rename did not run"),
+			acknowledged,
+		);
+		await new Promise((resolve) => setTimeout(resolve, 25));
+		assert.equal(calls, 1, "no HTTP or hook layer may replay automatically");
+		assert.equal(run.requests.length, 1);
+		assert.deepEqual(toasts, []);
+		await run.submit();
+		await act(async () => {
+			await pending;
+		});
+		assert.equal(calls, 2);
+		assert.equal(run.closed(), 1);
+		assert.equal(durableName, "New name");
+		assert.deepEqual(toasts, ["renamed to New name"]);
+	});
+}
 
 test("rename waits for the owner's response before closing", async (context) => {
 	let finish;

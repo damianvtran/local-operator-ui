@@ -11,7 +11,7 @@ import {
 	resolveComparisonBase,
 	runAddedCheck,
 } from "./check-added-strings.mjs";
-import { openSnapshot } from "./check-strings.mjs";
+import { isScanned, openSnapshot } from "./check-strings.mjs";
 
 const REPO = new URL("../..", import.meta.url).pathname;
 const HUNK_ERROR_RE = /hunk header/;
@@ -134,11 +134,30 @@ test("the real CLI rejects logical and JSX text in untracked and staged-new file
 			`review-r1-${process.pid}-${mode}.tsx`,
 		);
 		const scratch = mkdtempSync(join(tmpdir(), "i18n-added-guard-"));
+		// Keep a generated pager bundle present for the entire census: unlike a
+		// timing-based concurrency rerun this deterministically tests collision
+		// isolation while the CLI must STILL reject our new literal copy.
+		const pagerBundle = join(
+			REPO,
+			"scripts",
+			`_table-pager-range-${process.pid}.bundle.mjs`,
+		);
 		const env = Object.fromEntries(
 			Object.entries(process.env).filter(([key]) => key !== "GIT_INDEX_FILE"),
 		);
 		try {
 			writeFileSync(probe, source);
+			writeFileSync(
+				pagerBundle,
+				'export const generated = "Not product copy";',
+			);
+			assert.equal(isScanned(relative(REPO, pagerBundle)), false);
+			const ignored = spawnSync(
+				"git",
+				["check-ignore", "--", relative(REPO, pagerBundle)],
+				{ cwd: REPO, env, encoding: "utf8" },
+			);
+			assert.equal(ignored.status, 0, "generated pager bundle must be ignored");
 			const rel = relative(REPO, probe);
 			if (mode === "staged-new") {
 				// A temporary index proves the tracked/new-file diff path without
@@ -168,6 +187,7 @@ test("the real CLI rejects logical and JSX text in untracked and staged-new file
 			}
 		} finally {
 			rmSync(probe, { force: true });
+			rmSync(pagerBundle, { force: true });
 			rmSync(scratch, { recursive: true, force: true });
 		}
 	}

@@ -829,6 +829,62 @@ rule:
   change in a run that reported a settled frame), and a dark frame carrying the
   app's own `List agents request failed: 503` toast in one run out of two.
 
+## Opt-in real-core model uncertainty case
+
+`scripts/asks-app-regression.mjs --case model-uncertainty --leg candidate`
+adds one explicitly selected case to the existing macOS producer, not to its
+three default fixture-backed cases. The native CI job owns execution after source
+review; missing compiled outputs, build receipt, pinned Electron or published core
+refuse setup. Do not install/download a local Electron or substitute the operator's
+daemon. There is no historical native-control claim for this case.
+
+The canonical build seals input/output hashes, checkout, lock and runtime pin.
+Core is the published 0.94.15 native wheel; CI verifies its release target and
+wheel digest before reusing the now-idle core environment. The real CLI owns port
+8080, authentication, lifespan and its truthful serve record. A case-only ASGI
+wrapper sits **inside** that listener: an external proxy is rejected by production
+discovery or bypassed in favour of the real upstream. Main/preload are unchanged.
+
+Only initial cached A/B rows are seeded, with the production capture stamp and
+model serialization. Live discovery remains genuinely empty and its response is
+held. Native chat's initial live-A SSE is captured before subscription delivery,
+released ONCE, and correlated with its processed consumer receipt and DOM baseline.
+After the one B intent loses its ACK, genuine post-B SSE and the independent
+POST-ACK ModelPicker GET stay held through both unknown frames. Only B-SSE is
+released first: the default remains fenced while the picker GET is pending; that
+GET then releases live B for DOM settlement. The `model-b-sse-get-pending` frame
+replaces the former stale-A caption. **Delayed native stale-A delivery is NOT
+covered**; prior backend/component stale-projection proofs are not native pixels. The model
+picker cannot issue that GET before the awaited command: no pre-B native GET is
+invented. Cold HTTP remains separately labelled backend/component proof, **not a
+native cold-state caption or claim**. Original messages keep epoch/sequence and
+request causality; no old JSON becomes a fresh read. Settlement uncertainty is scoped to the active model dialog: the historical transcript notice remains attributed to the lost reply and does not contradict a separately reconciled picker. Active-dialog uncertainty still blocks settlement. The B command reaches the real
+owner exactly once; independent live-owner and journal-B verification precedes
+loss of its success ACK through a 504 transport fault. All attempts are recorded
+before forwarding, and the backend does **not** enforce the candidate's default
+write fence. An explicit final save must send hosting then model_name and persist B
+in the real isolated YAML. A private parent pipe controls delivery, never an HTTP
+route available to the renderer; losing that pipe stops only its owned daemon.
+
+The existing armed driver exposes a bounded metadata-only observer, disabled in
+ordinary launches. Canonical receipts are emitted after the actual flush; model
+GET receipts after real interpretation/finally. Receipt cursors precede release,
+so a previously consumed duplicate epoch/seq cannot certify a new delivery. Only
+then does the driver observe React/CSS settlement, post-frame neutral/disabled
+controls and actual default gestures with zero invocations/attempts. Fresh B must
+appear in the dialog's rendered current-model description before unlock/save.
+The app drains without exiting, then the real backend and recorded descendants
+join. Both exit receipts and acceptance written AFTER cleanup are mandatory; CI
+rejects a zero process status without those artifacts. Old default-case reapers
+keep their existing standalone exit behavior.
+
+This case uses the asks producer's hit-tested CDP input and `capturePage`, including
+consecutive frames and geometry. It claims neither focused/foreground behaviour
+nor WCV compositor pixels. Pure contract tests and backend-only loopback proofs
+are prerequisites, **not** evidence that the native flow passed. Failed setup
+stops dispatch; native evidence remains outstanding until the reviewed CI case
+actually runs.
+
 ## What it cannot prove, and what it is not for
 
 - **It is not a substitute for the `browser` tool.** This drives the app's own

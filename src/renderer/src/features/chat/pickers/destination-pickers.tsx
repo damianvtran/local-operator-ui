@@ -39,10 +39,17 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
-import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import {
+	type CanonicalSessionHandle,
+	resyncCanonicalSession,
+} from "@shared/hooks/use-canonical-session";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import {
+	type ModelAuthorityReceipt,
+	observeModelAuthority,
+} from "../../../dev-driver/model-authority-observer";
 
 /**
  * The model this session is RUNNING, for a dialog whose job is not to offer the
@@ -875,6 +882,27 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const [live, setLive] = useState(false);
 	const [pickedCurrent, setPickedCurrent] = useState<string | null>(null);
+	// A lost ACK is not a refusal. Hold fresh model intents until a read-only
+	// authoritative snapshot answers; never replay the possibly accepted UUID.
+	const [unconfirmedModel, setUnconfirmedModel] = useState(false);
+	const unconfirmedModelRef = useRef(false);
+	// Feedback belongs to one mounted intent and one bridge receipt generation.
+	// Owner/frontend epochs are a different clock; never use them for this guard.
+	const modelFeedbackIntent = useRef(0);
+	const modelFeedbackContext = useRef({
+		sessionId,
+		receipt: canonical.receipt,
+	});
+	if (modelFeedbackContext.current.sessionId !== sessionId)
+		modelFeedbackIntent.current += 1;
+	modelFeedbackContext.current = { sessionId, receipt: canonical.receipt };
+	useEffect(
+		() => () => {
+			modelFeedbackIntent.current += 1;
+		},
+		[],
+	);
+
 	/*
 	 * WHICH VIEW OF THE CATALOGUE THIS DIALOG SHOWS.
 	 *
@@ -1410,6 +1438,13 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const saveModelDefault = useCallback(
 		(model: { provider: string; model_id: string }) => {
+			observeModelAuthority({
+				carrier: "default-save",
+				sessionId: "",
+				epoch: null,
+				seq: null,
+				disposition: "invoked",
+			});
 			/*
 			 * Chained, as the effort dialog's are: the last write asked for is the
 			 * last write config.yml sees, whatever order the answers come back in
@@ -1591,6 +1626,8 @@ export const ModelPicker: FC<PickerContext> = ({
 				model_id: modelId,
 				display_name: option.label,
 			};
+			const feedbackIntent = ++modelFeedbackIntent.current;
+			const feedbackReceipt = modelFeedbackContext.current.receipt;
 			canonical.paintPendingModel(model);
 			switching.current = true;
 			let run: Awaited<ReturnType<typeof command.run>>;
@@ -1600,10 +1637,90 @@ export const ModelPicker: FC<PickerContext> = ({
 				switching.current = false;
 			}
 			const { outcome, result: failure } = run;
-			if (!outcome || isNativeAction(outcome) || outcome.kind === "error") {
+			if (
+				!outcome ||
+				isNativeAction(outcome) ||
+				outcome.kind === "error" ||
+				failure.tone === "error"
+			) {
 				// The owner refused (or the call itself failed): the band goes back to
 				// the authoritative model rather than keeping a paint that never landed.
 				canonical.clearPendingModel();
+				if (run.unconfirmed) {
+					unconfirmedModelRef.current = true;
+					setUnconfirmedModel(true);
+					note(failure.text);
+					if (persistDefaultRef.current) persist.setResult(failure);
+					// Armed evidence observes this REAL consumer after interpretation;
+					// ordinary launches retain no metadata and change no control flow.
+					let authorityReceipt: ModelAuthorityReceipt = {
+						carrier: "model-get",
+						sessionId,
+						epoch: null,
+						seq: null,
+						disposition: "failed",
+					};
+					try {
+						// Unlike the one-shot composer hook, this read must distinguish
+						// failure from success before enabling another mutation. A cold
+						// carried snapshot is not proof of the owner's current selection.
+						const snapshot = await desktopResult<{
+							session_id?: string;
+							epoch?: string;
+							seq?: number;
+							payload: { frontend: CanonicalFrontendSync; cold: boolean };
+						}>({ op: "sessions.get", sessionId });
+						const state = snapshot.payload.frontend.snapshot;
+						const selector = modelSelector(state.selected_model);
+						if (snapshot.payload.cold === false && selector) {
+							setPickedCurrent(selector);
+							unconfirmedModelRef.current = false;
+							setUnconfirmedModel(false);
+							// Retire only this uncertain intent's active feedback once its
+							// intended selection is independently confirmed. History's note
+							// remains; a newer command/save result must never be erased.
+							const current = modelFeedbackContext.current;
+							if (
+								modelFeedbackIntent.current === feedbackIntent &&
+								current.sessionId === sessionId &&
+								snapshot.session_id === sessionId &&
+								state.session_id === sessionId &&
+								selector === value &&
+								feedbackReceipt &&
+								current.receipt &&
+								snapshot.epoch === feedbackReceipt.epoch &&
+								current.receipt.epoch === feedbackReceipt.epoch &&
+								typeof snapshot.seq === "number" &&
+								snapshot.seq >= feedbackReceipt.seq &&
+								snapshot.seq >= current.receipt.seq
+							) {
+								command.setResult((current) =>
+									current === failure ? null : current,
+								);
+								persist.setResult((current) =>
+									current === failure ? null : current,
+								);
+							}
+						}
+						authorityReceipt = {
+							carrier: "model-get",
+							sessionId,
+							epoch: snapshot.epoch ?? null,
+							seq: snapshot.seq ?? null,
+							disposition:
+								snapshot.payload.cold === false && selector
+									? "live"
+									: "cold-or-invalid",
+						};
+					} catch {
+						// Keep the neutral uncertainty and disabled choices, not a
+						// fabricated unchanged model or a second command request.
+					} finally {
+						resyncCanonicalSession(sessionId);
+						observeModelAuthority(authorityReceipt);
+					}
+					return;
+				}
 				/*
 				 * And the failure is reported WHEREVER it lands (UX U2).
 				 *
@@ -1654,6 +1771,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			canonical,
 			command,
 			note,
+			sessionId,
 			rowAuth,
 			draft,
 			draftPick.pick,
@@ -1715,6 +1833,10 @@ export const ModelPicker: FC<PickerContext> = ({
 		),
 	] as const;
 	const onPersistDefaultChange = (checked: boolean) => {
+		// A missing receipt can follow an accepted switch. Until a LIVE read
+		// identifies the selection, even a queued/programmatic checkbox callback
+		// must not persist the last-known model or change the checkbox's intent.
+		if (unconfirmedModel || unconfirmedModelRef.current) return;
 		persistDefaultRef.current = checked;
 		setPersistDefault(checked);
 		if (!checked) {
@@ -1820,7 +1942,11 @@ export const ModelPicker: FC<PickerContext> = ({
 								"ui.chat.pickers.destination_pickers.choose_the_model_for_this_session",
 							)
 			}
-			options={options}
+			options={
+				unconfirmedModel
+					? options.map((option) => ({ ...option, disabled: true }))
+					: options
+			}
 			/*
 			 * The model picker's own search rule: the catalogue's ids are not strings
 			 * the user wrote, so the shared contiguous test is too narrow for them and
@@ -1972,6 +2098,13 @@ export const ModelPicker: FC<PickerContext> = ({
 						? t("ui.chat.pickers.destination_pickers.switching_the_model8e7138")
 						: t("ui.chat.pickers.destination_pickers.saving_the_default9573f2")
 			}
+			blockedHint={
+				unconfirmedModel
+					? t(
+							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+						)
+					: undefined
+			}
 			result={draft ? draftPick.result : pickResult}
 			toolbar={
 				/*
@@ -2017,6 +2150,7 @@ export const ModelPicker: FC<PickerContext> = ({
 						{!draft && (
 							<PickerCheck
 								checked={persistDefault}
+								disabled={unconfirmedModel}
 								onCheckedChange={onPersistDefaultChange}
 								tone="muted"
 							>
@@ -2045,7 +2179,12 @@ export const ModelPicker: FC<PickerContext> = ({
 								variant="ghost"
 								size="sm"
 								type="button"
-								disabled={!modelInForce || command.busy || persist.busy}
+								disabled={
+									!modelInForce ||
+									command.busy ||
+									persist.busy ||
+									unconfirmedModel
+								}
 								onClick={() => {
 									if (modelInForce) void saveModelDefault(modelInForce);
 								}}
