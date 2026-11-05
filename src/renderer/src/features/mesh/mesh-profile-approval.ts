@@ -26,6 +26,7 @@ import {
 	type ProfileRevertState,
 	type ProfileSaveDisclosure,
 	profileFieldRows,
+	profileRevertDescriptor,
 	profileRevertState,
 } from "../../../../shared/profile-consent";
 import type { MeshApprovalRow } from "./mesh-approvals";
@@ -87,8 +88,14 @@ export type ProfileCardView = {
 	 * `null` when signing is offered or the record is no longer waiting.
 	 */
 	unavailableReason: string | null;
-	/** The one-click revert, when a verified descriptor reached this surface. */
-	revert: ProfileRevertView;
+	/**
+	 * The one-click revert, when a verified descriptor reached this surface.
+	 *
+	 * ABSENT IS A STATE (review R2.4): a payload with no descriptor draws no
+	 * control at all, which is what stop either a legacy `{op, backup_id}` hint or a
+	 * queued proposal from wearing a greyed-out Revert it can never honour.
+	 */
+	revert?: ProfileRevertView;
 };
 
 export type ProfileRevertView = {
@@ -302,20 +309,29 @@ export function profileReceiptView(
 		operation: "create",
 		scope: receipt.scope,
 		fields: [],
+		/*
+		 * PRESENT-AND-EMPTY IS NOT ABSENT (review R2.6): `diff: []` is a backend
+		 * saying "no change lines", a missing `diff` says nothing at all, and the
+		 * card has a different sentence for each.
+		 */
 		changesIncluded:
-			(receipt.diff?.length ?? 0) > 0 || (receipt.fields?.length ?? 0) > 0,
+			Array.isArray(receipt.diff) || Array.isArray(receipt.fields),
 		diffLines: receipt.diff ?? [],
 		changedFieldNames: receipt.fields ?? [],
 		state: receipt.status === "applied" ? "saved" : "waiting",
-		stateNote:
-			receipt.status === "applied"
-				? null
-				: t("ui.mesh.mesh_approvals.profile_waiting"),
+		// The outcome is stated for every state, applied included (review R2.6).
+		stateNote: stateNoteFor(receipt.status === "applied" ? "saved" : "waiting"),
 		canApprove: false,
 		canDeny: false,
 		canRetryApply: false,
 		unavailableReason: null,
-		revert: profileRevertUnavailable(),
+		/*
+		 * Only a parsed descriptor may draw the control; without one the card shows
+		 * none at all rather than a disabled guess (review R2.4).
+		 */
+		revert: profileRevertDescriptor(receipt.profile_action)
+			? profileRevertUnavailable()
+			: undefined,
 	};
 }
 

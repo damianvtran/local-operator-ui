@@ -76,8 +76,8 @@ export function ProfileConsentCard({
 	const headId = useId();
 	const changesId = useId();
 	const revertNoteId = useId();
-	const revert = view.revert;
-	const revertDisabled = !revert.enabled || !onRevert;
+	const revert = view.revert ?? null;
+	const revertDisabled = !revert || !revert.enabled || !onRevert;
 	/*
 	 * A DISABLED CONTROL ALWAYS SAYS WHY (design D1 / UX U3). Two ways it used to go
 	 * silent: a descriptor with no dispatch handler (enabled state, no verb), and the
@@ -86,13 +86,14 @@ export function ProfileConsentCard({
 	 * alone; when no specific reason is known, the card says THAT rather than
 	 * leaving the space blank.
 	 */
-	const revertReason =
-		revert.note ??
-		(onRevert === undefined
-			? t("ui.mesh.mesh_approvals.profile_revert_no_handler")
-			: revertDisabled
-				? t("ui.mesh.mesh_approvals.profile_revert_reason_unknown")
-				: null);
+	const revertReason = !revert
+		? null
+		: (revert.note ??
+			(onRevert === undefined
+				? t("ui.mesh.mesh_approvals.profile_revert_no_handler")
+				: revertDisabled
+					? t("ui.mesh.mesh_approvals.profile_revert_reason_unknown")
+					: null));
 	return (
 		<section
 			className={cn(
@@ -102,7 +103,7 @@ export function ProfileConsentCard({
 			aria-labelledby={headId}
 			data-tour-tag="profile-consent-card"
 			data-profile-state={view.state}
-			data-profile-revert={revert.state}
+			data-profile-revert={revert?.state ?? "absent"}
 		>
 			<header className="flex flex-col gap-1">
 				<span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-ink-dim">
@@ -248,7 +249,7 @@ export function ProfileConsentCard({
 				 * its reason through `aria-describedby` rather than a `title`, because a
 				 * tooltip is not reachable from a disabled control.
 				 */}
-				{(revert.descriptor !== null || revert.note !== null || onRevert) && (
+				{revert && (
 					<span className="inline-flex items-center gap-2">
 						<Button
 							type="button"

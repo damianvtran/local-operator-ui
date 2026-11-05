@@ -34,7 +34,14 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProfileSaveDisclosure } from "../../../../shared/profile-consent";
+import { profileSaveCall } from "../chat/components/trace/profile-save-card-model";
+import { approvalRows } from "./mesh-approvals";
 import { profileCardView, profileRevertView } from "./mesh-profile-approval";
+import {
+	GOLDEN_APPROVAL_ROWS,
+	GOLDEN_QUEUED_TOOL_RESULT,
+	GOLDEN_SAVED_AGENT_TOOL_RESULT,
+} from "./profile-action-golden";
 import { ProfileConsentCard } from "./profile-consent-card";
 
 const digest = `sha256:${"a".repeat(64)}`;
@@ -111,7 +118,12 @@ function row(
 			? {}
 			: {
 					profile: {
-						action: "approve-operation",
+						/*
+						 * THE LEGACY TOKEN, because that is what `row_fields` emits on every
+						 * typed row (`desktop_approval.py:382`). The old fixture wrote the
+						 * newer label and so photographed a shape no daemon serves.
+						 */
+						action: "approve-credential",
 						operation: "profile_save",
 						request_digest: digest,
 						disclosure_digest: digest,
@@ -125,6 +137,23 @@ function row(
 				}),
 		...over,
 	} as unknown as Parameters<typeof profileCardView>[0];
+}
+
+/**
+ * The card for a golden ToolResult's `details`, through the SHIPPED parser.
+ *
+ * `profileSaveCall` is what the transcript calls, so a story cannot photograph a
+ * shape the app would never build - and a fixture that stops parsing throws HERE
+ * instead of quietly painting the fallback row.
+ */
+function goldenView(details: Record<string, unknown>) {
+	const result = profileSaveCall({
+		toolName: "profile_save",
+		output: "",
+		details,
+	});
+	if (!result) throw new Error("a golden fixture no longer parses");
+	return result.view;
 }
 
 const revertDescriptor = {
@@ -161,14 +190,25 @@ const approveActions = (
 	</span>
 );
 
-/** The ordinary case: an update to an agent profile with two changed columns. */
+/**
+ * THE POSITIVE ROW, STRAIGHT FROM THE WIRE.
+ *
+ * `PROFILE_APPROVAL_LIST_WIRE` is a `GET /v1/desktop/approvals` response in the
+ * daemon's own serialisation, and it goes through the shipped `approvalRows` and
+ * `profileCardView`. That is the point: the story cannot photograph a card the app
+ * would not build, and if the daemon's block moves, `profile-approval-fixtures.test.mjs`
+ * fails rather than the card quietly degrading to its unsupported state.
+ */
 export const DisclosurePopulated: Story = {
 	args: {
-		view: profileCardView(row(), {
-			profileApprovals: true,
-			canApprove: true,
-			canDeny: true,
-		}),
+		view: profileCardView(
+			approvalRows({ approvals: GOLDEN_APPROVAL_ROWS })[0],
+			{
+				profileApprovals: true,
+				canApprove: true,
+				canDeny: true,
+			},
+		),
 		actions: approveActions,
 	},
 };
@@ -193,7 +233,16 @@ export const TeamProfile: Story = {
 							label: "Launch",
 							description: "Carries a launch to its release gate.",
 							manager: "Researcher",
-							members: [{ name: "Researcher" }, { name: "Reviewer" }],
+							/*
+							 * `TeamMember` as `local_operator/teams.py` declares it: `role` is the
+							 * authored field, and `{name}` (what this fixture used to carry) is a
+							 * shape the wire never had - which is exactly why a roster change
+							 * once read as "no changes" (review R1/R2.3).
+							 */
+							members: [
+								{ role: "Researcher", count: 2, tier: "hi" },
+								{ role: "Reviewer", saver: false },
+							],
 							aliases: ["launch-crew"],
 							instructions: "Follow the release runbook.",
 							project: "Launch",
@@ -207,15 +256,28 @@ export const TeamProfile: Story = {
 	},
 };
 
+/** The record after a successful apply: saved, with its own outcome sentence. */
+export const Saved: Story = {
+	args: {
+		/*
+		 * A REAL SAVED TOOL RESULT through the shipped parser: the card the transcript
+		 * paints after an apply, with the backend's own `diff` lines and the agreed
+		 * `profile_action` descriptor.
+		 */
+		view: goldenView(GOLDEN_SAVED_AGENT_TOOL_RESULT.details),
+	},
+};
+
 /** A queued, unattended proposal — filed by a teammate, waiting on this machine. */
 export const QueuedUnattended: Story = {
 	args: {
-		view: profileCardView(row({ state: "requested" }), {
-			profileApprovals: true,
-			canApprove: true,
-			canDeny: true,
-		}),
-		actions: approveActions,
+		/*
+		 * A RECEIPT, not a disclosure: this is the chat-side shape a queued proposal
+		 * arrives as (`_queued_profile_receipt`), so the state under test is the one
+		 * the transcript paints - including the backend's own `diff` lines, which is
+		 * where a policy change becomes readable.
+		 */
+		view: goldenView(GOLDEN_QUEUED_TOOL_RESULT.details),
 	},
 };
 

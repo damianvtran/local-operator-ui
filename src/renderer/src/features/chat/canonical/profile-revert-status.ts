@@ -40,11 +40,12 @@ export type ProfileRevertStatusWord = (typeof PROFILE_REVERT_STATUSES)[number];
 /** The exact identity a status read is offered for. */
 export const profileRevertIdentitySchema = z
 	.object({
-		action_id: z
-			.string()
-			.min(1)
-			.max(64)
-			.regex(/^[A-Za-z0-9_-]+$/),
+		/*
+		 * THE FROZEN MINT, in the identity too (review R2.8): the same
+		 * `^prv_[A-Za-z0-9_-]{32}$` core mints, so an id this app would offer a
+		 * status read for is one core can actually resolve.
+		 */
+		action_id: z.string().regex(/^prv_[A-Za-z0-9_-]{32}$/),
 		receipt_id: z.string().min(1).max(160),
 		profile_kind: z.enum(["agent", "team"]),
 		profile_name: z.string().min(1).max(128),
@@ -89,6 +90,26 @@ const desktopTransport: ProfileRevertStatusTransport = async ({
 		toolCallId: identity.tool_call_id,
 	});
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Core answers a status read with the EXISTING acknowledgment frame —
+ * `{op: "ack", req, detail: {action_id, state}}` — rather than a new result
+ * envelope, so the value has to be unwrapped before the closed two-key schema
+ * sees it (review R2.7). Only an `op: "ack"` frame carrying an OBJECT `detail` is
+ * unwrapped; anything else is returned untouched and refused by the schema.
+ *
+ * WHY A STRING `detail` IS NEVER PARSED: a string there is a refusal, and
+ * `JSON.parse`ing it would let a refusal re-enter as a status this build believed.
+ */
+function unwrapStatusPayload(payload: unknown): unknown {
+	if (!isRecord(payload) || !("detail" in payload)) return payload;
+	if (payload.op !== "ack") return payload;
+	return payload.detail;
+}
+
 /**
  * Read the live status for one action.
  *
@@ -114,7 +135,9 @@ export async function readProfileRevertStatus(
 	} catch {
 		return { action_id: parsed.data.action_id, state: "unavailable" };
 	}
-	const answer = profileRevertStatusSchema.safeParse(payload);
+	const answer = profileRevertStatusSchema.safeParse(
+		unwrapStatusPayload(payload),
+	);
 	// The answer must be for THIS action, or it answers nothing.
 	if (!answer.success || answer.data.action_id !== parsed.data.action_id)
 		return { action_id: parsed.data.action_id, state: "unavailable" };
@@ -171,17 +194,51 @@ export function profileRevertAuthority(
 	}
 }
 
-/** Out-of-process cache of the last answer per action, so a press can refuse twice. */
+/**
+ * The cache's key is the WHOLE identity a read was offered for, session included.
+ *
+ * Keyed by action id alone, a second conversation or another row's card inherited
+ * the first one's answer — an `available` included — without any read of its own
+ * (review R2.2). An action is answered on the originating conversation's gate, so
+ * the session belongs in the key beside the receipt and the tool call.
+ */
+function identityKey(
+	sessionId: string | null,
+	identity: ProfileRevertIdentity,
+): string {
+	return [
+		sessionId ?? "",
+		identity.action_id,
+		identity.receipt_id,
+		identity.profile_kind,
+		identity.profile_name,
+		identity.tool_call_id,
+	].join("\u0000");
+}
+
+/** Out-of-process cache of the last answer per bound identity, so a press can refuse twice. */
 const answers = new Map<string, ProfileRevertStatusAnswer>();
 
 export const profileRevertStatusCache = {
-	read(actionId: string): ProfileRevertStatusAnswer | null {
-		return answers.get(actionId) ?? null;
+	read(
+		sessionId: string | null,
+		identity: unknown,
+	): ProfileRevertStatusAnswer | null {
+		const parsed = profileRevertIdentitySchema.safeParse(identity);
+		if (!parsed.success) return null;
+		return answers.get(identityKey(sessionId, parsed.data)) ?? null;
 	},
-	remember(answer: ProfileRevertStatusAnswer): void {
-		const parsed = profileRevertStatusSchema.safeParse(answer);
-		if (!parsed.success || !parsed.data.action_id) return;
-		answers.set(parsed.data.action_id, parsed.data);
+	remember(
+		sessionId: string | null,
+		identity: unknown,
+		answer: ProfileRevertStatusAnswer,
+	): void {
+		const parsedIdentity = profileRevertIdentitySchema.safeParse(identity);
+		const parsedAnswer = profileRevertStatusSchema.safeParse(answer);
+		if (!parsedIdentity.success || !parsedAnswer.success) return;
+		// An answer for another action is not an answer about this one.
+		if (parsedAnswer.data.action_id !== parsedIdentity.data.action_id) return;
+		answers.set(identityKey(sessionId, parsedIdentity.data), parsedAnswer.data);
 	},
 	clear(): void {
 		answers.clear();
@@ -220,14 +277,37 @@ export async function runProfileRevertPress(input: {
 		action_id: input.descriptor.action_id,
 		state,
 	});
+	/*
+	 * ONLY A COMPLETION IS A DUPLICATE (review R2.1 / QA Q2.2). The cache used to
+	 * short-circuit ANY remembered answer — including an `available` — to
+	 * `succeeded` with no write and no read, so the very first press reported a
+	 * completion it had never performed. A remembered status word is a record of an
+	 * earlier read, not proof the action finished: only `succeeded` ends the press
+	 * here, and everything else is re-read below.
+	 */
+	const cached = profileRevertStatusCache.read(input.sessionId, input.identity);
+	if (cached?.state === "succeeded") return cached;
 	// No live permission, no gate identity or no bound identity: nothing is sent.
 	if (!profileRevertPressAllowed(input.status))
 		return input.status ?? refuse("unavailable");
-	if (!input.sessionId || !input.epoch || !input.status)
+	if (!input.sessionId || !input.epoch || !input.identity)
 		return refuse("unavailable");
-	/* A cached completion is a finished action: a second press writes nothing. */
-	if (profileRevertStatusCache.read(input.descriptor.action_id))
-		return refuse("succeeded");
+	/*
+	 * A FRESH READ BEFORE THE WRITE (review R2.1). The answer the card holds was
+	 * read when the control was drawn and may since have expired, been answered on
+	 * another surface, or lost to a restart; nothing is dispatched on a stale
+	 * permission. This read, then the outcome read below, are the press's two
+	 * authority points — one to authorise, one to learn what happened.
+	 */
+	const live = await readProfileRevertStatus(
+		input.sessionId,
+		input.identity,
+		input.readStatus,
+	);
+	if (live.state !== "available") {
+		profileRevertStatusCache.remember(input.sessionId, input.identity, live);
+		return live;
+	}
 	try {
 		await input.write({
 			sessionId: input.sessionId,
@@ -248,7 +328,7 @@ export async function runProfileRevertPress(input: {
 		);
 		const answer =
 			reconciled.state === "unavailable" ? refuse("pending") : reconciled;
-		profileRevertStatusCache.remember(answer);
+		profileRevertStatusCache.remember(input.sessionId, input.identity, answer);
 		return answer;
 	}
 	const after = await readProfileRevertStatus(
@@ -257,6 +337,6 @@ export async function runProfileRevertPress(input: {
 		input.readStatus,
 	);
 	const answer = after.state === "unavailable" ? refuse("pending") : after;
-	profileRevertStatusCache.remember(answer);
+	profileRevertStatusCache.remember(input.sessionId, input.identity, answer);
 	return answer;
 }

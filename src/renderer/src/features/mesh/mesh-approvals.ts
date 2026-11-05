@@ -315,7 +315,7 @@ export function canApproveApproval(
 			profileApprovals &&
 			row.profile !== undefined &&
 			row.profile.signable_here === true &&
-			row.profile.disclosure !== null &&
+			row.profile.disclosure != null &&
 			row.profile.disclosure.operation === PROFILE_SAVE_OPERATION
 		);
 	/*
@@ -430,7 +430,13 @@ export function approvalDecisionRequest(
 			approvalId,
 			operation: PROFILE_SAVE_OPERATION,
 			requestDigest: row.profile.request_digest,
-			disclosureDigest: row.profile.disclosure_digest,
+			/*
+			 * An ABSENT disclosure digest cannot be echoed: the op's body must carry a
+			 * `sha256:` value, and inventing one would bind bytes nobody served. The
+			 * empty string fails the request schema, so the press is refused by name
+			 * rather than by a guessed digest.
+			 */
+			disclosureDigest: row.profile.disclosure_digest ?? "",
 		};
 	}
 	if (row.kind === "device" || row.kind === "machine")
