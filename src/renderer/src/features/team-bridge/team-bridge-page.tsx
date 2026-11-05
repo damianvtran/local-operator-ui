@@ -11,6 +11,7 @@ import {
 } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
 import { useLeftSidebarHosted } from "@shared/components/navigation/left-sidebar-host";
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -65,6 +66,16 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import { rowCurrent } from "../chat/components/chat-sidebar";
+import { TeamBridgeTrialEmpty } from "../team-bridge-trial/team-bridge-trial-empty";
+import {
+	teamBridgeReadOnly,
+	trialEndedOrg,
+	trialReplacesPanel,
+} from "../team-bridge-trial/team-bridge-trial-model";
+import {
+	TeamBridgeTrialEndedPanel,
+	useTeamBridgeTrialNote,
+} from "../team-bridge-trial/team-bridge-trial-paused";
 import { TeamBridgeMentionProvider } from "./mentions";
 import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
@@ -767,6 +778,15 @@ export type TeamBridgePageViewProps = {
 	 * reads and writes, which live in its container.
 	 */
 	notice?: ReactNode;
+	/** Replaces the plan-required panel for an account in no Team organization
+	 * (the Team trial empty state, `features/team-bridge-trial`). */
+	noOrgPanel?: ReactNode;
+	/**
+	 * The `notice` slot already explains why the page is read-only (the ended
+	 * Team trial band), so the composer's generic read-only line is dropped
+	 * rather than said twice (design review D7).
+	 */
+	readOnlyExplained?: boolean;
 	onTarget: (target: TeamBridgeTarget | null) => void;
 	/**
 	 * Send `body`. For a target with no conversation yet the container creates
@@ -903,6 +923,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	gatePending = false,
 	readOnly = false,
 	notice = null,
+	noOrgPanel,
+	readOnlyExplained = false,
 	onTarget,
 	onSend,
 	onSchedule,
@@ -2366,6 +2388,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				<TeamBridgeGateLoading />
 			</>
 		);
+	if (trialReplacesPanel(eligibility) && noOrgPanel)
+		return (
+			<>
+				{earlyColumn}
+				{noOrgPanel}
+			</>
+		);
 	if (eligibility)
 		return (
 			<>
@@ -2531,7 +2560,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			    the sections all inset `px-2`, and each control pads its own `px-2`,
 			    so Back's arrow, the org tile, the Drafts glyph and every row's mark
 			    start at x=16. It was 16 / 20 / 20 / 12 - three lines in one column. */}
-			<header className="flex h-12 shrink-0 items-center gap-1 px-2">
+			<header
+				className={cn("flex h-12 shrink-0 items-center gap-1", SIDEBAR_INSET)}
+			>
 				<TeamBridgeOrgSwitcher
 					organizations={organizations}
 					scope={scope}
@@ -2541,6 +2572,43 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					organizationsFailed={organizationsFailed}
 					unreadRefreshing={refreshingUnread}
 					onRetry={onRetryMemberships}
+				/>
+				{/*
+				 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
+				 * on screen while the reads behind them settle, so the rail says they
+				 * are being re-read rather than presenting a stale list as a current
+				 * one. The slot is always in the flow and only its colour role changes,
+				 * so a poll cannot reflow the rail under the reader. `data-rail-refreshing`
+				 * names which read is behind it.
+				 *
+				 * BEFORE THE "+", NOT AFTER IT (operator, 2026-11-04): the header's last
+				 * item ends on the rail's trailing line (16px from the edge, where every
+				 * badge and bell ends), and an always-present 6px slot after the "+"
+				 * pushed that glyph to 26px. No new copy: this is a state of the
+				 * rail, and what a screen reader needs to hear is the affected regions'
+				 * own `aria-busy`.
+				 *
+				 * AND NEITHER READ WEARS THE ATTENTION HUE (design round 1, D2). Green in
+				 * this rail is the mark of a count the reader owes attention to: every
+				 * row's `AttentionBadge` sits beside this dot, and so does the collapsed
+				 * sidebar's More badge. A green dot four rows above those badges reads as
+				 * a count of unread, and makes the one mark readers trust mean the
+				 * opposite kind of thing. Attention is a count; liveness is plumbing. So
+				 * both refresh states are `ink-dim`, and which read is behind the dot
+				 * stays in `data-rail-refreshing` - for instruments and tests rather than
+				 * for eyes, because a difference no reader can act on does not earn a hue.
+				 */}
+				<span
+					data-rail-refreshing={
+						refreshingUnread ? "unread" : refreshingRows ? "rows" : undefined
+					}
+					aria-hidden="true"
+					className={cn(
+						"size-1.5 shrink-0 rounded-full",
+						refreshingUnread || refreshingRows
+							? "bg-ink-dim"
+							: "bg-transparent",
+					)}
 				/>
 				{/* "New message" opens an empty To: draft: a DM or a group is
 				    decided by how many people the reader adds, as in Slack. */}
@@ -2567,42 +2635,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				>
 					<Plus size={16} />
 				</Button>
-				{/*
-				 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
-				 * on screen while the reads behind them settle, so the rail says they
-				 * are being re-read rather than presenting a stale list as a current
-				 * one. The slot is always in the flow and only its colour role changes,
-				 * so a poll cannot reflow the rail under the reader. `data-rail-refreshing`
-				 * names which read is behind it. No new copy: this is a state of the
-				 * rail, and what a screen reader needs to hear is the affected regions'
-				 * own `aria-busy`.
-				 *
-				 * AND NEITHER READ WEARS THE ATTENTION HUE (design round 1, D2). Green in
-				 * this rail is the mark of a count the reader owes attention to: every
-				 * row's `AttentionBadge` sits beside this dot, and so does the collapsed
-				 * sidebar's More badge. A green dot four rows above those badges reads as
-				 * a count of unread, and makes the one mark readers trust mean the
-				 * opposite kind of thing. Attention is a count; liveness is plumbing. So
-				 * both refresh states are `ink-dim`, and which read is behind the dot
-				 * stays in `data-rail-refreshing` - for instruments and tests rather than
-				 * for eyes, because a difference no reader can act on does not earn a hue.
-				 */}
-				<span
-					data-rail-refreshing={
-						refreshingUnread ? "unread" : refreshingRows ? "rows" : undefined
-					}
-					aria-hidden="true"
-					className={cn(
-						"size-1.5 shrink-0 rounded-full",
-						refreshingUnread || refreshingRows
-							? "bg-ink-dim"
-							: "bg-transparent",
-					)}
-				/>
 			</header>
 			<nav
 				aria-label={t("ui.teamBridge.drafts.navigation")}
-				className="flex flex-col px-2 pb-1"
+				className={cn("flex flex-col pb-1", SIDEBAR_INSET)}
 			>
 				<button
 					type="button"
@@ -3865,9 +3901,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.archive.composer.note")}
 								</p>
 							) : readOnly ? (
-								<p className="shrink-0 px-5 pb-4 text-[12px] text-ink-dim leading-snug">
-									{t("ui.teamBridge.read_only.composer")}
-								</p>
+								readOnlyExplained ? null : (
+									<p className="shrink-0 px-5 pb-4 text-[12px] text-ink-dim leading-snug">
+										{t("ui.teamBridge.read_only.composer")}
+									</p>
+								)
 							) : (
 								<div
 									className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1 pb-4"
@@ -4698,7 +4736,19 @@ const TeamBridgeOwnedPage: FC<{
 		eligibility === null &&
 		status.data?.account_id === accountId;
 	const selfAccountId = readsEnabled ? accountId : undefined;
-	const readOnly = status.data?.read_only === true || !ownerGuard;
+	// An ended Team trial pauses the organization: history stays readable and
+	// posting is off (the hub refuses it too, 403 `team_trial_ended`).
+	const trialNote = useTeamBridgeTrialNote(
+		readsEnabled ? status.data?.tenant_id : null,
+	);
+	// Q5: an ended trial reads surface A with no tenant; the runtime's marker
+	// names the organization so the no-org branch shows its paused band.
+	const trialEnded = trialEndedOrg(status.data);
+	const readOnly = teamBridgeReadOnly({
+		statusReadOnly: status.data?.read_only === true,
+		ownerGuard,
+		trialPaused: trialNote.paused,
+	});
 	const owner = useBridgeOwner(accountId);
 	const isCurrentOwner = () => owner.isCurrent() && ownerGuard;
 	/* The same fence minus "this page is still mounted": for the first-message post
@@ -6030,7 +6080,25 @@ const TeamBridgeOwnedPage: FC<{
 				eligibility={eligibility}
 				gatePending={gatePending && !cachedPaint}
 				readOnly={readOnly}
-				notice={<TeamBridgeDefaultOnBanner status={status.data} />}
+				readOnlyExplained={trialNote.paused}
+				notice={
+					<>
+						{trialNote.note}
+						<TeamBridgeDefaultOnBanner status={status.data} />
+					</>
+				}
+				noOrgPanel={
+					trialEnded ? (
+						<TeamBridgeTrialEndedPanel
+							tenantId={trialEnded.tenantId}
+							endedAt={trialEnded.endedAt}
+						/>
+					) : (
+						<TeamBridgeTrialEmpty
+							fallback={<TeamBridgeEligibilityPanel reason="plan_required" />}
+						/>
+					)
+				}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();

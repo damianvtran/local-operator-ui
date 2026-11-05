@@ -244,6 +244,8 @@ export const EVIDENCE_SOURCES = new Set([
 	"scripts/evidence-tz.mjs",
 	"scripts/palette-source.mjs",
 	"scripts/python-child-env.mjs",
+	/* `scripts/color.mjs` re-exports the shared colour maths from here. */
+	"src/shared/theme-engine/color.mjs",
 ]);
 
 /** Every palette file, because the palettes ARE the grounds a frame is judged

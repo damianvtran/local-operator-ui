@@ -595,8 +595,8 @@ test("a blob already at the current version is passed through untouched", () => 
  * would leave a v0 blob's key behind), and it reaches the live store through a
  * real rehydrate rather than only through the pure function.
  */
-test("the persist version is 4, adding user Files preferences after the v3 pane-memory migration", () => {
-	assert.equal(UI_PREFERENCES_VERSION, 4);
+test("the persist version is 5, adding the appearance layers after the v4 Files preferences", () => {
+	assert.equal(UI_PREFERENCES_VERSION, 5);
 });
 
 test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
@@ -616,6 +616,11 @@ test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
 			closedSections: [],
 			kinds: [],
 		},
+		/* v5 seeds the appearance layers at their identity values. */
+		contrast: { dark: 0, light: 0 },
+		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
+		customAccents: [],
+		customThemeId: null,
 	});
 });
 
@@ -631,6 +636,10 @@ test("a v1 blob is passed through untouched, apart from the v3 handover", () => 
 			closedSections: [],
 			kinds: [],
 		},
+		contrast: { dark: 0, light: 0 },
+		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
+		customAccents: [],
+		customThemeId: null,
 	});
 	/*
 	 * AND A v1 BLOB THAT CARRIED A SLOT FLAG IS THE ORDINARY #894 UPGRADE: the step
@@ -935,7 +944,7 @@ test("v4 Files sort/disclosure/group/type filter are persisted with no search qu
 		kinds: ["images"],
 	});
 	const written = JSON.parse(memory.get("ui-preferences-storage"));
-	assert.equal(written.version, 4);
+	assert.equal(written.version, UI_PREFERENCES_VERSION);
 	assert.deepEqual(written.state.finderFiles, {
 		sort: "size",
 		order: "desc",

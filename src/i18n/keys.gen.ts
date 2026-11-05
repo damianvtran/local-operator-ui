@@ -142,6 +142,7 @@ import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
 import enUiTeamBridgeThreadRow from "./catalogues/en/ui.teamBridge.threadRow.json";
+import enUiTeamBridgeTrial from "./catalogues/en/ui.teamBridgeTrial.json";
 import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
@@ -264,6 +265,7 @@ import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
 import esUiTeamBridgeThreadRow from "./catalogues/es/ui.teamBridge.threadRow.json";
+import esUiTeamBridgeTrial from "./catalogues/es/ui.teamBridgeTrial.json";
 import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
@@ -386,6 +388,7 @@ import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
 import frUiTeamBridgeThreadRow from "./catalogues/fr/ui.teamBridge.threadRow.json";
+import frUiTeamBridgeTrial from "./catalogues/fr/ui.teamBridgeTrial.json";
 import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
@@ -508,6 +511,7 @@ import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
 import hiUiTeamBridgeThreadRow from "./catalogues/hi/ui.teamBridge.threadRow.json";
+import hiUiTeamBridgeTrial from "./catalogues/hi/ui.teamBridgeTrial.json";
 import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
@@ -630,6 +634,7 @@ import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
 import ruUiTeamBridgeThreadRow from "./catalogues/ru/ui.teamBridge.threadRow.json";
+import ruUiTeamBridgeTrial from "./catalogues/ru/ui.teamBridgeTrial.json";
 import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
@@ -752,6 +757,7 @@ import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
 import urUiTeamBridgeThreadRow from "./catalogues/ur/ui.teamBridge.threadRow.json";
+import urUiTeamBridgeTrial from "./catalogues/ur/ui.teamBridgeTrial.json";
 import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
@@ -874,6 +880,7 @@ import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
 import viUiTeamBridgeThreadRow from "./catalogues/vi/ui.teamBridge.threadRow.json";
+import viUiTeamBridgeTrial from "./catalogues/vi/ui.teamBridgeTrial.json";
 import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
@@ -996,6 +1003,7 @@ import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.js
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
 import zhCNUiTeamBridgeThreadRow from "./catalogues/zh-CN/ui.teamBridge.threadRow.json";
+import zhCNUiTeamBridgeTrial from "./catalogues/zh-CN/ui.teamBridgeTrial.json";
 import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
@@ -1121,6 +1129,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiTeamBridge,
 	...enUiTeamBridgeLeave,
 	...enUiTeamBridgeThreadRow,
+	...enUiTeamBridgeTrial,
 	...enUiUpdatesPanel,
 };
 
@@ -1251,6 +1260,7 @@ export const bundledCatalogues: Readonly<
 		...esUiTeamBridge,
 		...esUiTeamBridgeLeave,
 		...esUiTeamBridgeThreadRow,
+		...esUiTeamBridgeTrial,
 		...esUiUpdatesPanel,
 	},
 	fr: {
@@ -1375,6 +1385,7 @@ export const bundledCatalogues: Readonly<
 		...frUiTeamBridge,
 		...frUiTeamBridgeLeave,
 		...frUiTeamBridgeThreadRow,
+		...frUiTeamBridgeTrial,
 		...frUiUpdatesPanel,
 	},
 	hi: {
@@ -1499,6 +1510,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiTeamBridge,
 		...hiUiTeamBridgeLeave,
 		...hiUiTeamBridgeThreadRow,
+		...hiUiTeamBridgeTrial,
 		...hiUiUpdatesPanel,
 	},
 	ru: {
@@ -1623,6 +1635,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiTeamBridge,
 		...ruUiTeamBridgeLeave,
 		...ruUiTeamBridgeThreadRow,
+		...ruUiTeamBridgeTrial,
 		...ruUiUpdatesPanel,
 	},
 	ur: {
@@ -1747,6 +1760,7 @@ export const bundledCatalogues: Readonly<
 		...urUiTeamBridge,
 		...urUiTeamBridgeLeave,
 		...urUiTeamBridgeThreadRow,
+		...urUiTeamBridgeTrial,
 		...urUiUpdatesPanel,
 	},
 	vi: {
@@ -1871,6 +1885,7 @@ export const bundledCatalogues: Readonly<
 		...viUiTeamBridge,
 		...viUiTeamBridgeLeave,
 		...viUiTeamBridgeThreadRow,
+		...viUiTeamBridgeTrial,
 		...viUiUpdatesPanel,
 	},
 	"zh-CN": {
@@ -1995,6 +2010,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiTeamBridge,
 		...zhCNUiTeamBridgeLeave,
 		...zhCNUiTeamBridgeThreadRow,
+		...zhCNUiTeamBridgeTrial,
 		...zhCNUiUpdatesPanel,
 	},
 };
@@ -10532,6 +10548,43 @@ export type MessageParams = {
 	};
 	"ui.teamBridge.threadRow.last": { when: string; time: string };
 	"ui.teamBridge.threadRow.unread_badge": { count: number; label: string };
+	"ui.teamBridgeTrial.active.invite": undefined;
+	"ui.teamBridgeTrial.active.note": { date: string };
+	"ui.teamBridgeTrial.dialog.cancel": undefined;
+	"ui.teamBridgeTrial.dialog.confirm": undefined;
+	"ui.teamBridgeTrial.dialog.end_credits": undefined;
+	"ui.teamBridgeTrial.dialog.end_heading": undefined;
+	"ui.teamBridgeTrial.dialog.end_invites": undefined;
+	"ui.teamBridgeTrial.dialog.end_pause": undefined;
+	"ui.teamBridgeTrial.dialog.end_vault": undefined;
+	"ui.teamBridgeTrial.dialog.included_bridge": undefined;
+	"ui.teamBridgeTrial.dialog.included_credits": undefined;
+	"ui.teamBridgeTrial.dialog.included_heading": undefined;
+	"ui.teamBridgeTrial.dialog.included_invites": undefined;
+	"ui.teamBridgeTrial.dialog.included_vault": undefined;
+	"ui.teamBridgeTrial.dialog.lead": { date: string };
+	"ui.teamBridgeTrial.dialog.org_label": undefined;
+	"ui.teamBridgeTrial.dialog.starting": undefined;
+	"ui.teamBridgeTrial.dialog.terms_agree": undefined;
+	"ui.teamBridgeTrial.dialog.terms_read": undefined;
+	"ui.teamBridgeTrial.dialog.title": undefined;
+	"ui.teamBridgeTrial.empty.body": undefined;
+	"ui.teamBridgeTrial.empty.checking": undefined;
+	"ui.teamBridgeTrial.empty.start": undefined;
+	"ui.teamBridgeTrial.empty.title": undefined;
+	"ui.teamBridgeTrial.error.generic": undefined;
+	"ui.teamBridgeTrial.error.not_eligible": undefined;
+	"ui.teamBridgeTrial.error.rate_limited": undefined;
+	"ui.teamBridgeTrial.error.terms_outdated": undefined;
+	"ui.teamBridgeTrial.ineligible.email_unverified": undefined;
+	"ui.teamBridgeTrial.ineligible.former_subscriber": undefined;
+	"ui.teamBridgeTrial.ineligible.not_owner": undefined;
+	"ui.teamBridgeTrial.ineligible.other": undefined;
+	"ui.teamBridgeTrial.ineligible.title": undefined;
+	"ui.teamBridgeTrial.ineligible.trial_used": undefined;
+	"ui.teamBridgeTrial.paused.note": { date: string };
+	"ui.teamBridgeTrial.paused.note_member": { date: string };
+	"ui.teamBridgeTrial.subscribe": undefined;
 	"ui.updates.panel.artifact.damaged.message": undefined;
 	"ui.updates.panel.artifact.damaged.message_version": { version: string };
 	"ui.updates.panel.artifact.metadata_missing.message": undefined;
