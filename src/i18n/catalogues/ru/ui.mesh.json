@@ -284,8 +284,6 @@
 	"ui.mesh.mesh_approvals.profile_scope_global": "Глобально",
 	"ui.mesh.mesh_approvals.profile_changes": "Что изменится",
 	"ui.mesh.mesh_approvals.profile_field": "Поле",
-	"ui.mesh.mesh_approvals.profile_saved_value": "Сохранено",
-	"ui.mesh.mesh_approvals.profile_new_value": "Станет",
 	"ui.mesh.mesh_approvals.profile_not_set": "Не задано",
 	"ui.mesh.mesh_approvals.profile_cleared": "Очищено",
 	"ui.mesh.mesh_approvals.profile_changes_none": "Ни одно поле не меняется",
@@ -299,5 +297,16 @@
 	"ui.mesh.mesh_approvals.profile_revert_failed": "Восстановление не выполнено",
 	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Восстановление недоступно в этой сессии",
 	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "Изменения полей не включены в эту квитанцию",
-	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Возможно, отмена не выполнилась"
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Возможно, отмена не выполнилась",
+	"ui.mesh.mesh_approvals.profile_column_before": "Было",
+	"ui.mesh.mesh_approvals.profile_column_after": "После",
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": "Предложение — ещё не сохранено",
+	"ui.mesh.mesh_approvals.profile_outcome_saved": "Сохранено",
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": "Одобрено — ещё не сохранено",
+	"ui.mesh.mesh_approvals.profile_outcome_denied": "Отклонено — не сохранено",
+	"ui.mesh.mesh_approvals.profile_outcome_expired": "Истекло — не сохранено",
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": "Остановлено — не сохранено",
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": "Состояние неизвестно этой версии",
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": "Отмена недоступна в этом представлении",
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": "Отмена сейчас недоступна"
 }

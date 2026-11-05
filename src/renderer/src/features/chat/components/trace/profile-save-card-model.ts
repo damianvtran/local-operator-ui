@@ -88,7 +88,7 @@ const ENVELOPE_KEYS = new Set([
 	"disclosure",
 	"receipt",
 	"state",
-	"revert",
+	"profile_action",
 	"revert_verified",
 ]);
 
@@ -107,7 +107,13 @@ function fromDisclosure(
 	envelope: Record<string, unknown> | null,
 ): ProfileSaveCall {
 	const state = STATE_WORDS[stateWord(envelope)] ?? "waiting";
-	const descriptor = profileRevertDescriptor(envelope?.revert);
+	/*
+	 * THE DESCRIPTOR LIVES UNDER `details.profile_action`, and only there. Not
+	 * `details.revert` (the legacy `{op: "revert", backup_id}` text hint) and not
+	 * top level: a persisted payload may hold a legacy hint or an agent-authored
+	 * object, and neither may draw a control.
+	 */
+	const descriptor = profileRevertDescriptor(envelope?.profile_action);
 	return {
 		view: profileDisclosureView(disclosure, {
 			state,
@@ -177,7 +183,7 @@ export function profileSaveCall(record: {
 	const envelopeReceipt = profileQueuedReceipt(payload.receipt);
 	if (!envelopeReceipt) return null;
 	const base = receiptView(envelopeReceipt);
-	const descriptor = profileRevertDescriptor(payload.revert);
+	const descriptor = profileRevertDescriptor(payload.profile_action);
 	return {
 		view: {
 			...base,

@@ -260,11 +260,17 @@ export const profileQueuedReceiptSchema = z
 		/** The backend's own diff lines, rendered verbatim. */
 		diff: z.array(z.string().max(2000)).max(64).optional(),
 		/*
-		 * A LEGACY TEXT HINT, DELIBERATELY UNPARSED. An applied card's details hold
-		 * `revert = {op: "revert", backup_id}` — prose for a human, not the agreed
-		 * verified descriptor. It is accepted here so the record still renders, and
-		 * it can never become a control: only `profileRevertDescriptorSchema` (which
-		 * this shape is not) may do that.
+		 * THE VERIFIED DESCRIPTOR's home: `details.profile_action`, parsed only by
+		 * `profileRevertDescriptorSchema`. It is carried here as an opaque value so the
+		 * receipt itself still parses; whether it may draw a control is decided by the
+		 * live status read, never by this block.
+		 */
+		profile_action: z.unknown().optional(),
+		/*
+		 * A LEGACY TEXT HINT, DELIBERATELY UNPARSED. An older applied card's details
+		 * hold `revert = {op: "revert", backup_id}` — prose for a human, not the agreed
+		 * verified descriptor. Accepted so the record still renders; it can NEVER
+		 * become a control, because only `profile_action` is ever parsed as one.
 		 */
 		revert: z.unknown().optional(),
 	})
@@ -286,11 +292,16 @@ export const profileRevertDescriptorSchema = z
 	.object({
 		schema: z.literal(1),
 		kind: z.literal(PROFILE_REVERT_KIND),
-		action_id: z
-			.string()
-			.min(1)
-			.max(64)
-			.regex(/^[A-Za-z0-9_-]+$/),
+		/*
+		 * The op's own mint: a short lowercase prefix, an underscore, and EXACTLY 32
+		 * URL-safe characters — the opaque id an answer names as `request_id`. The
+		 * prefix literal is left as a bounded shape (1..8 lowercase letters) rather
+		 * than pinned to one word: the id is core's, and a renderer that hard-coded a
+		 * prefix it guessed would reject every real descriptor the day core spelled it
+		 * differently. Length and alphabet are exact, so a legacy short id
+		 * (`ra_5b81`) or a sentence is refused by name.
+		 */
+		action_id: z.string().regex(/^[a-z]{1,8}_[A-Za-z0-9_-]{32}$/),
 		label: z.string().min(1).max(64),
 		profile_kind: z.enum(PROFILE_KINDS),
 		profile_name: z.string().min(1).max(128),

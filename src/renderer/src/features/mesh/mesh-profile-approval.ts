@@ -145,36 +145,26 @@ export function profileOperationLabel(operation: ProfileOperation): string {
  */
 function cardState(
 	row: MeshApprovalRow,
-	canRetryApply: boolean,
+	_canRetryApply: boolean,
 ): { state: ProfileCardState; note: string | null } {
 	switch (row.state) {
 		case "requested":
-			return {
-				state: "waiting",
-				note: t("ui.mesh.mesh_approvals.profile_waiting"),
-			};
+			return { state: "waiting", note: outcomeNote("waiting") };
 		case "approved":
 			return {
 				state: "approved_not_saved",
-				note: canRetryApply
-					? t("ui.mesh.approval.retry_hint")
-					: t("ui.mesh.approval.approved_not_applied"),
+				note: outcomeNote("approved_not_saved"),
 			};
 		case "connected":
-			return { state: "saved", note: null };
+			return { state: "saved", note: outcomeNote("saved") };
 		case "denied":
-			return { state: "denied", note: null };
+			return { state: "denied", note: outcomeNote("denied") };
 		case "expired":
-			return { state: "expired", note: null };
+			return { state: "expired", note: outcomeNote("expired") };
 		case "failed":
-			return {
-				state: "stopped",
-				note: canRetryApply
-					? t("ui.mesh.approval.retry_hint")
-					: t("ui.mesh.approval.could_not_apply"),
-			};
+			return { state: "stopped", note: outcomeNote("stopped") };
 		default:
-			return { state: "unknown", note: null };
+			return { state: "unknown", note: outcomeNote("unknown") };
 	}
 }
 
@@ -371,16 +361,36 @@ export function profileDisclosureView(
  * A lifecycle state's own sentence, or `null` where the state word is already the
  * whole fact (`saved`, `denied`, `expired`).
  */
-export function stateNoteFor(state: ProfileCardState): string | null {
+export function stateNoteFor(state: ProfileCardState): string {
+	return outcomeNote(state);
+}
+
+/**
+ * EVERY lifecycle state states its outcome in words (design D2 / UX U1).
+ *
+ * THE DEFECT THIS REPLACES: the diff's value columns used to read "Saved" and
+ * "Will be", so a queued proposal carried a past-tense claim in a column heading
+ * while the body promised a future one — and the states with no sentence of their
+ * own (saved, denied, expired) stated their outcome only in a small chip. The
+ * columns are now a neutral comparison (Before / After) and this sentence is the
+ * one place the record's lifecycle is said out loud, for every state.
+ */
+function outcomeNote(state: ProfileCardState): string {
 	switch (state) {
 		case "waiting":
-			return t("ui.mesh.mesh_approvals.profile_waiting");
+			return t("ui.mesh.mesh_approvals.profile_outcome_waiting");
+		case "saved":
+			return t("ui.mesh.mesh_approvals.profile_outcome_saved");
 		case "approved_not_saved":
-			return t("ui.mesh.approval.approved_not_applied");
+			return t("ui.mesh.mesh_approvals.profile_outcome_approved_not_saved");
+		case "denied":
+			return t("ui.mesh.mesh_approvals.profile_outcome_denied");
+		case "expired":
+			return t("ui.mesh.mesh_approvals.profile_outcome_expired");
 		case "stopped":
-			return t("ui.mesh.approval.could_not_apply");
+			return t("ui.mesh.mesh_approvals.profile_outcome_stopped");
 		default:
-			return null;
+			return t("ui.mesh.mesh_approvals.profile_outcome_unknown");
 	}
 }
 

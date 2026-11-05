@@ -22,17 +22,17 @@
  *    `unconfirmed`, keeps the claim, and never re-offers the control. Only a
  *    refusal that positively names the record as stale/expired maps to `stale`.
  */
-import {
-	DesktopControlError,
-	desktopResult,
-} from "@shared/api/local-operator/desktop-api";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useCallback, useEffect, useState } from "react";
 import type { ProfileRevertDescriptor } from "../../../../../shared/profile-consent";
 import { profileRevertLatch } from "./profile-revert-latch";
 import {
+	type ProfileRevertIdentity,
 	type ProfileRevertStatusAnswer,
 	profileRevertStatusCache,
 	readProfileRevertStatus,
+	readProfileRevertStatusFromTransport,
+	runProfileRevertPress,
 } from "./profile-revert-status";
 
 export type ProfileRevertOutcome = {
@@ -57,18 +57,10 @@ export type ProfileRevertPress = {
 	 * `null` — or anything but `available` — sends nothing: the seam is the only
 	 * authority, and an absent answer is never permission.
 	 */
-	status: { status: string } | null;
+	status: ProfileRevertStatusAnswer | null;
+	/** The bound identity the status read was made for: same action, same call. */
+	identity: ProfileRevertIdentity | null;
 };
-
-/** A refusal that positively says the action's window is over. */
-const STALE_CODES = /(expired|stale|not_found|already_answered|window)/i;
-
-function refusalState(error: unknown): string | undefined {
-	if (!(error instanceof DesktopControlError)) return undefined;
-	const code = error.code ?? "";
-	if (STALE_CODES.test(code)) return "stale";
-	return undefined;
-}
 
 export function useProfileRevertAnswer(): {
 	submitted: string | null;
@@ -79,63 +71,44 @@ export function useProfileRevertAnswer(): {
 	const [outcome, setOutcome] = useState<ProfileRevertOutcome | null>(null);
 
 	const press = useCallback((input: ProfileRevertPress) => {
-		const { descriptor, sessionId, ownerEpoch, status } = input;
-		// No live status for this action, or no gate identity: nothing is sent.
-		if (status?.status !== "available" || !sessionId || !ownerEpoch) return;
-		/* A cached completion means this action is already done: no second write. */
-		if (profileRevertStatusCache.read(descriptor.action_id)) return;
+		const { descriptor, sessionId, ownerEpoch, status, identity } = input;
 		/*
-		 * THE SYNCHRONOUS CLAIM. React state (`submitted`) is only true on the next
-		 * paint, so the latch is what stops a second press in the same batch.
+		 * THE SYNCHRONOUS CLAIM, before anything is built: React state is only true on
+		 * the next paint, so the latch is what stops a second press in the same batch
+		 * from sending an identical answer.
 		 */
 		if (!profileRevertLatch.claim(descriptor.action_id)) return;
 		setSubmitted(descriptor.action_id);
 		setOutcome(null);
-		// Optimistically remember the in-flight answer so a sibling press is refused
-		// even before any response exists.
-		profileRevertStatusCache.remember(descriptor.action_id, {
-			status: "pending",
-		});
-		void desktopResult({
-			op: "sessions.answer",
-			sessionId,
-			epoch: ownerEpoch,
-			requestId: descriptor.action_id,
-			approved: true,
-		})
-			.then(() => {
-				profileRevertStatusCache.remember(descriptor.action_id, {
-					status: "succeeded",
-				});
-				setOutcome({
-					requestId: descriptor.action_id,
-					approved: true,
-					state: "applied",
-				});
-			})
-			.catch((error: unknown) => {
-				/*
-				 * A NAMED STALE REFUSAL IS KNOWABLE; everything else is unknown. The
-				 * old code called every error `failed`, which both claimed a fact it
-				 * did not have and re-armed the control over a change that may already
-				 * be undone.
-				 */
-				const state = refusalState(error);
-				/*
-				 * An uncertain activation stays PENDING in the status cache until the seam
-				 * reconciles it: `unconfirmed` is not a completion, and it must never be
-				 * remembered as one.
-				 */
-				if (state === "stale")
-					profileRevertStatusCache.remember(descriptor.action_id, {
-						status: "stale",
-					});
-				setOutcome({
-					requestId: descriptor.action_id,
-					approved: false,
-					state: state ?? "unconfirmed",
-				});
+		void (async () => {
+			const answer = await runProfileRevertPress({
+				descriptor,
+				sessionId,
+				epoch: ownerEpoch,
+				status,
+				identity,
+				write: (request) =>
+					desktopResult({
+						op: "sessions.answer",
+						sessionId: request.sessionId,
+						epoch: request.epoch,
+						requestId: request.requestId,
+						approved: request.approved,
+					}),
+				readStatus: readProfileRevertStatusFromTransport,
 			});
+			/*
+			 * THE ANSWER IS THE STATE, not the press's luck: a reconciled read decides
+			 * whether the revert is pending, done, stale or refused. An uncertain
+			 * activation therefore stays `pending`, never `failed`, and the control is
+			 * not re-offered from here.
+			 */
+			setOutcome({
+				requestId: descriptor.action_id,
+				approved: answer.state === "succeeded",
+				state: answer.state,
+			});
+		})();
 	}, []);
 
 	return { submitted, outcome, press };
@@ -149,12 +122,8 @@ export function useProfileRevertAnswer(): {
  * contract point in `profile-revert-status.ts` returns until core ships the read.
  */
 export function useProfileRevertStatus(
-	identity: {
-		action_id: string;
-		receipt_id: string;
-		profile_kind: "agent" | "team";
-		profile_name: string;
-	} | null,
+	sessionId: string | null,
+	identity: ProfileRevertIdentity | null,
 ): ProfileRevertStatusAnswer | null {
 	const [answer, setAnswer] = useState<ProfileRevertStatusAnswer | null>(null);
 	const actionId = identity?.action_id ?? null;
@@ -166,14 +135,18 @@ export function useProfileRevertStatus(
 			return;
 		}
 		let live = true;
-		void readProfileRevertStatus(identity).then((next) => {
+		void readProfileRevertStatus(
+			sessionId,
+			identity,
+			readProfileRevertStatusFromTransport,
+		).then((next) => {
 			if (!live) return;
-			profileRevertStatusCache.remember(actionId, next);
+			profileRevertStatusCache.remember(next);
 			setAnswer(next);
 		});
 		return () => {
 			live = false;
 		};
-	}, [identity, actionId]);
+	}, [identity, actionId, sessionId]);
 	return answer;
 }

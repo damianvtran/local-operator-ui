@@ -2289,6 +2289,37 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			cwd: z.string().min(1).max(4096),
 		})
 		.strict(),
+	/*
+	 * THE LIVE PROFILE-ACTION STATUS READ (read-only, session-scoped).
+	 *
+	 * It is the SOLE authority for enabling a Revert: core's gate is a live
+	 * action-registration/status check, and a persisted `revert_verified` in a tool
+	 * result is a record of what some producer once verified, never proof this
+	 * runtime can execute the action.
+	 *
+	 * THE SESSION COMES FROM THE TRANSPORT, NOT THE BODY: the session id is this
+	 * op's own routing field (the same one `sessions.answer` uses), and the body
+	 * carries only the opaque action identity plus the call it belongs to.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.profileActionStatus"),
+			sessionId,
+			actionId: z
+				.string()
+				.min(1)
+				.max(64)
+				.regex(/^[A-Za-z0-9_-]+$/),
+			receiptId: z.string().min(1).max(160),
+			profileKind: z.enum(["agent", "team"]),
+			profileName: z.string().min(1).max(128),
+			/**
+			 * The tool call this row belongs to. Bound so a status answer can never be
+			 * applied to a different card than the one that asked.
+			 */
+			toolCallId: z.string().min(1).max(160),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.answer"),
@@ -8920,6 +8951,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 					command: request.command,
 					args: request.args ?? "",
 					images: request.images ?? [],
+				},
+			};
+		case "sessions.profileActionStatus":
+			/*
+			 * READ-ONLY. The path follows the sibling session-control routes
+			 * (`.../sessions/{id}/answers` for the answer door); the op name and body
+			 * are core's, and a different path is a one-line change here.
+			 */
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/profile-action-status`,
+				method: "POST",
+				body: {
+					action_id: request.actionId,
+					receipt_id: request.receiptId,
+					profile_kind: request.profileKind,
+					profile_name: request.profileName,
+					tool_call_id: request.toolCallId,
 				},
 			};
 		case "sessions.answer":

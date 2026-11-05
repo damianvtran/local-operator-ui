@@ -284,8 +284,6 @@
 	"ui.mesh.mesh_approvals.profile_scope_global": "عالمی",
 	"ui.mesh.mesh_approvals.profile_changes": "کیا تبدیل ہوگا",
 	"ui.mesh.mesh_approvals.profile_field": "فیلڈ",
-	"ui.mesh.mesh_approvals.profile_saved_value": "محفوظ شدہ",
-	"ui.mesh.mesh_approvals.profile_new_value": "ہو جائے گا",
 	"ui.mesh.mesh_approvals.profile_not_set": "مقرر نہیں",
 	"ui.mesh.mesh_approvals.profile_cleared": "حذف شدہ",
 	"ui.mesh.mesh_approvals.profile_changes_none": "کوئی فیلڈ تبدیل نہیں ہوتی",
@@ -299,5 +297,16 @@
 	"ui.mesh.mesh_approvals.profile_revert_failed": "بحالی مکمل نہیں ہوئی",
 	"ui.mesh.mesh_approvals.profile_revert_unavailable": "اس سیشن میں بحالی دستیاب نہیں",
 	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "اس رسید میں فیلڈ کی تبدیلیاں شامل نہیں ہیں",
-	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "بحالی مکمل نہیں ہوئی ہو سکتی"
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "بحالی مکمل نہیں ہوئی ہو سکتی",
+	"ui.mesh.mesh_approvals.profile_column_before": "پہلے",
+	"ui.mesh.mesh_approvals.profile_column_after": "بعد",
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": "تجویز — ابھی محفوظ نہیں",
+	"ui.mesh.mesh_approvals.profile_outcome_saved": "محفوظ",
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": "منظور شدہ — ابھی محفوظ نہیں",
+	"ui.mesh.mesh_approvals.profile_outcome_denied": "مسترد — محفوظ نہیں",
+	"ui.mesh.mesh_approvals.profile_outcome_expired": "میعاد ختم — محفوظ نہیں",
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": "رکا — محفوظ نہیں",
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": "یہ ورژن اس حالت کو نہیں جانتا",
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": "اس منظر میں بحالی دستیاب نہیں",
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": "بحالی ابھی دستیاب نہیں"
 }

@@ -284,8 +284,6 @@
 	"ui.mesh.mesh_approvals.profile_scope_global": "Global",
 	"ui.mesh.mesh_approvals.profile_changes": "Ce qui change",
 	"ui.mesh.mesh_approvals.profile_field": "Champ",
-	"ui.mesh.mesh_approvals.profile_saved_value": "Enregistré",
-	"ui.mesh.mesh_approvals.profile_new_value": "Sera",
 	"ui.mesh.mesh_approvals.profile_not_set": "Non défini",
 	"ui.mesh.mesh_approvals.profile_cleared": "Effacé",
 	"ui.mesh.mesh_approvals.profile_changes_none": "Aucune modification de champ",
@@ -299,5 +297,16 @@
 	"ui.mesh.mesh_approvals.profile_revert_failed": "Le rétablissement n’a pas abouti",
 	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Le rétablissement n’est pas disponible dans cette session",
 	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "Ce reçu ne contient pas les modifications des champs",
-	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Le rétablissement n’a peut-être pas abouti"
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Le rétablissement n’a peut-être pas abouti",
+	"ui.mesh.mesh_approvals.profile_column_before": "Avant",
+	"ui.mesh.mesh_approvals.profile_column_after": "Après",
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": "Proposition — pas encore enregistrée",
+	"ui.mesh.mesh_approvals.profile_outcome_saved": "Enregistré",
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": "Approuvé — pas encore enregistré",
+	"ui.mesh.mesh_approvals.profile_outcome_denied": "Refusé — non enregistré",
+	"ui.mesh.mesh_approvals.profile_outcome_expired": "Expiré — pas enregistré",
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": "Arrêté — pas enregistré",
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": "État inconnu de cette version",
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": "Le rétablissement n’est pas disponible dans cette vue",
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": "Le rétablissement n’est pas disponible pour le moment"
 }

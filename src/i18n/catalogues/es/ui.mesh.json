@@ -284,8 +284,6 @@
 	"ui.mesh.mesh_approvals.profile_scope_global": "Global",
 	"ui.mesh.mesh_approvals.profile_changes": "Qué cambia",
 	"ui.mesh.mesh_approvals.profile_field": "Campo",
-	"ui.mesh.mesh_approvals.profile_saved_value": "Guardado",
-	"ui.mesh.mesh_approvals.profile_new_value": "Quedará",
 	"ui.mesh.mesh_approvals.profile_not_set": "Sin definir",
 	"ui.mesh.mesh_approvals.profile_cleared": "Borrado",
 	"ui.mesh.mesh_approvals.profile_changes_none": "Ningún campo cambia",
@@ -299,5 +297,16 @@
 	"ui.mesh.mesh_approvals.profile_revert_failed": "La restauración no se completó",
 	"ui.mesh.mesh_approvals.profile_revert_unavailable": "La restauración no está disponible en esta sesión",
 	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "Este recibo no incluye los cambios de los campos",
-	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Es posible que no se haya revertido el cambio"
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Es posible que no se haya revertido el cambio",
+	"ui.mesh.mesh_approvals.profile_column_before": "Antes",
+	"ui.mesh.mesh_approvals.profile_column_after": "Después",
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": "Propuesta — aún no guardada",
+	"ui.mesh.mesh_approvals.profile_outcome_saved": "Guardado",
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": "Aprobado — aún no guardado",
+	"ui.mesh.mesh_approvals.profile_outcome_denied": "Rechazado — no guardado",
+	"ui.mesh.mesh_approvals.profile_outcome_expired": "Caducado — no guardado",
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": "Detenido — no guardado",
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": "Estado desconocido para esta versión",
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": "La restauración no está disponible en esta vista",
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": "La restauración no está disponible ahora"
 }

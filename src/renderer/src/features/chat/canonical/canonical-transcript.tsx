@@ -2430,15 +2430,20 @@ const ToolRow = memo(function ToolRow({
 	 * `unavailable` for every action, so the control renders disabled with its
 	 * reason — never enabled off the payload's flag and never off a guessed route.
 	 */
-	const revertStatus = useProfileRevertStatus(
-		profileCall?.descriptor
+	const revertIdentity =
+		profileCall?.descriptor && record.toolCallId
 			? {
 					action_id: profileCall.descriptor.action_id,
 					receipt_id: profileCall.descriptor.receipt_id,
 					profile_kind: profileCall.descriptor.profile_kind,
 					profile_name: profileCall.descriptor.profile_name,
+					/* Bound to THIS row: an answer for another call may not enable it. */
+					tool_call_id: record.toolCallId,
 				}
-			: null,
+			: null;
+	const revertStatus = useProfileRevertStatus(
+		scope?.sessionId ?? null,
+		revertIdentity,
 	);
 	if (flagged !== null && record.toolName === "notify") {
 		return (
@@ -2511,7 +2516,7 @@ const ToolRow = memo(function ToolRow({
 				namesThisRecord &&
 				scope?.sessionId &&
 				approvalEpoch &&
-				revertStatus?.status === "available",
+				revertStatus?.state === "available",
 		);
 		const revert = descriptor
 			? pressable
@@ -2536,6 +2541,7 @@ const ToolRow = memo(function ToolRow({
 										sessionId: scope?.sessionId ?? null,
 										ownerEpoch: approvalEpoch,
 										status: revertStatus,
+										identity: revertIdentity,
 									})
 							: undefined
 					}

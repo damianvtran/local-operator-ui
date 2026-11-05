@@ -284,8 +284,6 @@
 	"ui.mesh.mesh_approvals.profile_scope_global": "Global",
 	"ui.mesh.mesh_approvals.profile_changes": "What changes",
 	"ui.mesh.mesh_approvals.profile_field": "Field",
-	"ui.mesh.mesh_approvals.profile_saved_value": "Saved",
-	"ui.mesh.mesh_approvals.profile_new_value": "Will be",
 	"ui.mesh.mesh_approvals.profile_not_set": "Not set",
 	"ui.mesh.mesh_approvals.profile_cleared": "Cleared",
 	"ui.mesh.mesh_approvals.profile_changes_none": "No authored field changes",
@@ -299,5 +297,16 @@
 	"ui.mesh.mesh_approvals.profile_revert_failed": "The revert did not go through",
 	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Revert is not available in this session",
 	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "Field changes are not included in this receipt",
-	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "The revert may not have gone through"
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "The revert may not have gone through",
+	"ui.mesh.mesh_approvals.profile_column_before": "Before",
+	"ui.mesh.mesh_approvals.profile_column_after": "After",
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": "Proposal — not saved yet",
+	"ui.mesh.mesh_approvals.profile_outcome_saved": "Saved",
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": "Approved — not saved yet",
+	"ui.mesh.mesh_approvals.profile_outcome_denied": "Denied — not saved",
+	"ui.mesh.mesh_approvals.profile_outcome_expired": "Expired — not saved",
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": "Stopped — not saved",
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": "State unknown to this version",
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": "Revert is not available in this view",
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": "Revert is not available right now"
 }

@@ -78,6 +78,21 @@ export function ProfileConsentCard({
 	const revertNoteId = useId();
 	const revert = view.revert;
 	const revertDisabled = !revert.enabled || !onRevert;
+	/*
+	 * A DISABLED CONTROL ALWAYS SAYS WHY (design D1 / UX U3). Two ways it used to go
+	 * silent: a descriptor with no dispatch handler (enabled state, no verb), and the
+	 * unavailable arm whose reason lived on a view that was never rendered. The
+	 * reason is real text tied by `aria-describedby`, never a `title` and never ink
+	 * alone; when no specific reason is known, the card says THAT rather than
+	 * leaving the space blank.
+	 */
+	const revertReason =
+		revert.note ??
+		(onRevert === undefined
+			? t("ui.mesh.mesh_approvals.profile_revert_no_handler")
+			: revertDisabled
+				? t("ui.mesh.mesh_approvals.profile_revert_reason_unknown")
+				: null);
 	return (
 		<section
 			className={cn(
@@ -135,10 +150,10 @@ export function ProfileConsentCard({
 									{t("ui.mesh.mesh_approvals.profile_field")}
 								</th>
 								<th scope="col" className="py-1 pr-2 font-normal">
-									{t("ui.mesh.mesh_approvals.profile_saved_value")}
+									{t("ui.mesh.mesh_approvals.profile_column_before")}
 								</th>
 								<th scope="col" className="py-1 font-normal">
-									{t("ui.mesh.mesh_approvals.profile_new_value")}
+									{t("ui.mesh.mesh_approvals.profile_column_after")}
 								</th>
 							</tr>
 						</thead>
@@ -233,26 +248,26 @@ export function ProfileConsentCard({
 				 * its reason through `aria-describedby` rather than a `title`, because a
 				 * tooltip is not reachable from a disabled control.
 				 */}
-				{(revert.descriptor !== null || onRevert) && (
+				{(revert.descriptor !== null || revert.note !== null || onRevert) && (
 					<span className="inline-flex items-center gap-2">
 						<Button
 							type="button"
 							variant="ghost"
 							size="sm"
 							disabled={revertDisabled}
-							aria-describedby={revert.note ? revertNoteId : undefined}
+							aria-describedby={revertReason ? revertNoteId : undefined}
 							onClick={onRevert}
 							data-tour-tag="profile-consent-revert"
 						>
 							{revert.label}
 						</Button>
-						{revert.note && (
+						{revertReason && (
 							<span
 								id={revertNoteId}
 								className="text-meta text-ink-dim [overflow-wrap:anywhere]"
 								data-tour-tag="profile-consent-revert-note"
 							>
-								{revert.note}
+								{revertReason}
 							</span>
 						)}
 					</span>
