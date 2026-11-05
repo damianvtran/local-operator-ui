@@ -4904,10 +4904,20 @@ type TeamBridgeMessageLink = {
 const MESSAGE_LINK_TIMEOUT_MS = 8_000;
 /*
  * How far a `?message=` link may page back to find its row before it is treated
- * as unreachable: 20 pages of 60 rows covers a day of a very busy channel, and a
- * bound is what stops one stale link from walking an entire archive.
+ * as unreachable.
+ *
+ * THE TWO NUMBERS ARE COUPLED, DO NOT MOVE ONE ALONE (agent review round 2, M4).
+ * Every page this walk asks for is retained, and past `TEAM_BRIDGE_MAX_RETAINED_MESSAGES`
+ * (800) an older read TRIMS THE NEWEST rows: the walk would be paging through a
+ * window it is itself shortening, and the row it wants may be dropped the moment
+ * it arrives. 13 pages of `TEAM_BRIDGE_PAGE_SIZE` (780 rows) stays strictly
+ * inside the retained window, which is what makes the walk terminate somewhere
+ * useful. If either constant moves, this bound has to be recomputed as
+ * `floor(MAX_RETAINED / PAGE_SIZE) - 1`; the `over`-cap case is then handled by
+ * the cache's `hasNewer` reset (the poll replaces the window instead of splicing
+ * across the gap) rather than by this walk.
  */
-const MESSAGE_LINK_MAX_PAGES = 20;
+const MESSAGE_LINK_MAX_PAGES = 13;
 
 /** The page view's identity: one mounted view per account, tenant and target. */
 const viewKeyFor = (
@@ -6169,8 +6179,8 @@ const TeamBridgeOwnedPage: FC<{
 	 * is the right tool: ask for the page before the oldest retained row, repeat
 	 * while the walk is making progress, and stop when the row appears, the
 	 * history ends, or the walk has covered `MESSAGE_LINK_MAX_PAGES` pages
-	 * (1_200 rows at the shipped page size - beyond that the link is treated as
-	 * unreachable rather than walking an archive).
+	 * (780 rows at the shipped page size - kept inside the retained window, see
+	 * the constant).
 	 */
 	const linkedPages = useRef(0);
 	const linkedReadFor = useRef<string | null>(null);
@@ -6193,7 +6203,24 @@ const TeamBridgeOwnedPage: FC<{
 			linkedPages.current < MESSAGE_LINK_MAX_PAGES
 		) {
 			linkedPages.current += 1;
-			messages.loadOlder();
+			/*
+			 * A READ THAT WRITES NOTHING MUST STILL FINISH THE WALK (agent review
+			 * round 2, m5). `loadOlder()` is a no-op when the conversation's entry was
+			 * evicted between this render and the call: the mutation resolves without a
+			 * write, no re-render follows, and a walk that waited for one kept the
+			 * timeline in its "landing on the linked message" state for the life of the
+			 * mount. The old `.finally()` always resolved; this restores that, without
+			 * ending the walk when the page DID arrive (the merge re-renders and the
+			 * effect decides again).
+			 */
+			void Promise.resolve(messages.loadOlder())
+				.then((page) => {
+					if (page === null)
+						setMessageLink((link: TeamBridgeMessageLink | null) =>
+							link ? { ...link, fetched: true } : link,
+						);
+				})
+				.catch(() => undefined);
 			return;
 		}
 		/* Nothing older to read, or the walk is spent: the link is finished. A

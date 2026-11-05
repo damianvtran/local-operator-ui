@@ -112,6 +112,18 @@ export function useTimelineWindow({
 		setScroll({ top, height });
 	}, []);
 	const viewport = useRef<HTMLElement | null>(null);
+	/*
+	 * HAS ANYTHING MOVED THIS STRIP YET? Set SYNCHRONOUSLY in the scroll handler,
+	 * never inside its rAF: the frame after a scroll can carry a layout change (a
+	 * message arriving), and a rule that only learned about the scroll a frame
+	 * later would pin a reader who has already scrolled straight back to the end.
+	 */
+	const scrolledSinceMount = useRef(false);
+	/* The row count this mount was last pinned for, so the opening pin runs once per
+	   shape of the strip instead of on every layout: re-pinning a strip whose rows
+	   have not changed can oscillate against its own range (the pinned position
+	   selects a different slice, which changes the height again). */
+	const pinnedForRows = useRef(-1);
 
 	/*
 	 * A NEW CONVERSATION IS A NEW STRIP. Heights are keyed by row identity (the
@@ -126,6 +138,8 @@ export function useTimelineWindow({
 		heights.current = new Map();
 		anchor.current = null;
 		previousLayout.current = null;
+		scrolledSinceMount.current = false;
+		pinnedForRows.current = -1;
 	}
 
 	/*
@@ -190,6 +204,7 @@ export function useTimelineWindow({
 		commitScroll(element.scrollTop, element.clientHeight);
 		let frame = 0;
 		const onScroll = () => {
+			scrolledSinceMount.current = true;
 			if (frame !== 0) return;
 			frame = requestAnimationFrame(() => {
 				frame = 0;
@@ -264,7 +279,7 @@ export function useTimelineWindow({
 		let changed = false;
 		for (let index = 0; index < markers.length; index += 1) {
 			const key = markers[index].dataset.windowItem;
-			if (key === undefined || key === undefined) continue;
+			if (key === undefined) continue;
 			const top = markers[index].getBoundingClientRect().top;
 			const next = markers[index + 1]?.getBoundingClientRect().top ?? spacerTop;
 			const height = Math.round(next - top);
@@ -332,8 +347,33 @@ export function useTimelineWindow({
 		   the DOM's height with no layout change at all (a scroll), and a pinned
 		   reader must survive that. An empty strip has nothing to correct. */
 		if (range.end - range.start === 0) return;
-		if (previous === null || anchor.current === null) return;
 		const max = Math.max(0, element.scrollHeight - element.clientHeight);
+		/*
+		 * NOTHING HAS MOVED THIS STRIP YET, SO IT BELONGS AT ITS END (QA round 1's
+		 * r8 m1; agent review round 2, M4's neighbour). A mount pins against the rows
+		 * its first frame carries; a row that arrives in the next commit - the
+		 * optimistic send this conversation still holds, the slice growing as the
+		 * first measurement replaces estimates - makes the strip taller with no scroll
+		 * event, so there was nothing to correct against and the reader opened rows
+		 * short of the newest message (measured: 8 rows, top 520, height 1160).
+		 *
+		 * THE FIRST SCROLL HANDS THE DECISION OVER FOR GOOD. It is recorded
+		 * synchronously by the handler above, whoever causes it - the page's own pin,
+		 * a restored position, the reader - and from then on the anchor (including
+		 * its `atBottom`) is the authority. This is a layout effect, so it lands
+		 * before paint and cannot race the frame that grows the strip.
+		 */
+		if (
+			!scrolledSinceMount.current &&
+			pinnedForRows.current !== entries.length
+		) {
+			pinnedForRows.current = entries.length;
+			if (range.end !== entries.length || element.scrollTop === max) return;
+			element.scrollTop = max;
+			commitScroll(element.scrollTop, element.clientHeight);
+			return;
+		}
+		if (previous === null || anchor.current === null) return;
 		const target = anchor.current.atBottom
 			? max
 			: anchorDeltaTarget(element, layout, anchor.current, max);
@@ -345,7 +385,7 @@ export function useTimelineWindow({
 		element.scrollTop = target;
 		commitScroll(element.scrollTop, element.clientHeight);
 		anchor.current = paintAnchor(element, layout, element.scrollTop);
-	}, [active, commitScroll, layout, range.start, range.end]);
+	}, [active, commitScroll, entries.length, layout, range.start, range.end]);
 
 	/* The pill's day is the first visible item's day (`stickyDayAt`), read from
 	   the same `scroll` state the window is cut from. Off with the window: an

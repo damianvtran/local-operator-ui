@@ -399,3 +399,91 @@ test("M2: a poll still drops the oldest rows, an older page the newest", () => {
 		[1, 2, 3, 4],
 	);
 });
+
+/* ------------------------------------------ the window that left the present */
+
+test("M4: after paging back past the cap, a poll returns to the present without a gap", () => {
+	/*
+	 * THE MEASURED HOLE. A 5,000-row channel opens on its newest 60 rows; the
+	 * reader pages back until the count bound (800) forces the trim. Before M4 the
+	 * trim dropped the OLDEST rows, so the window marched into the past, and the 8 s
+	 * poll then unioned the newest page onto it - ascending, deduped, contiguous
+	 * LOOKING, with a ~4,000-row gap in the middle and no way back to `now`.
+	 */
+	const total = 5_000;
+	const rowsFrom = (first, last) =>
+		Array.from({ length: last - first + 1 }, (_, i) => message(first + i));
+
+	// The open: the newest page.
+	let entry = cache.mergeChannelPage(
+		undefined,
+		page(rowsFrom(total - cache.TEAM_BRIDGE_PAGE_SIZE + 1, total), {
+			has_more: true,
+		}),
+		"newest",
+	);
+	assert.equal(
+		entry.hasNewer,
+		false,
+		"an untrimmed window still reaches the present",
+	);
+
+	// Scroll back far enough that the cap trims the newest end.
+	let guard = 0;
+	while (!entry.hasNewer && guard < 200) {
+		guard += 1;
+		entry = cache.mergeChannelPage(
+			entry,
+			page(
+				rowsFrom(
+					Math.max(1, (entry.oldestSeq ?? 1) - 60),
+					(entry.oldestSeq ?? 1) - 1,
+				),
+				{
+					has_more: true,
+				},
+			),
+			"older",
+		);
+	}
+	assert.equal(
+		entry.hasNewer,
+		true,
+		"past the cap the window no longer reaches the present",
+	);
+	assert.equal(
+		entry.messages.length,
+		cache.TEAM_BRIDGE_MAX_RETAINED_MESSAGES,
+		"the window stops at the cap",
+	);
+	assert.ok(
+		entry.messages.at(-1).seq < total,
+		"and the newest of those rows is behind the present",
+	);
+
+	// The poll. It must NOT splice across the hole.
+	const polled = cache.mergeChannelPage(
+		entry,
+		page(rowsFrom(total - cache.TEAM_BRIDGE_PAGE_SIZE + 1, total), {
+			has_more: true,
+		}),
+		"newest",
+	);
+	assert.equal(polled.hasNewer, false, "the poll clears the flag");
+	assert.equal(
+		polled.messages.at(-1).seq,
+		total,
+		"the newest message is back in the window",
+	);
+	const seqs = polled.messages.map((row) => row.seq);
+	assert.equal(
+		seqs.every((seq, index) => index === 0 || seq === seqs[index - 1] + 1),
+		true,
+		`the window is contiguous (no gap): ${seqs.length} rows ${seqs[0]}..${seqs.at(-1)}`,
+	);
+	assert.equal(
+		polled.messages.length,
+		cache.TEAM_BRIDGE_PAGE_SIZE,
+		"the reset window is the newest page, not the past plus the present",
+	);
+});

@@ -2610,9 +2610,21 @@ test(
 					sends.push(body);
 				},
 			};
+			/* The TIMELINE's viewport, not the first scroll area on the page: an
+			   empty shell has a sidebar viewport too, and measuring that one made the
+			   assertions below vacuous (agent review round 2, m6). */
+			const timelineOf = (element) => {
+				const found = [
+					...element.querySelectorAll("[data-radix-scroll-area-viewport]"),
+				].filter((node) => node.querySelector("[data-message-id]"));
+				assert.equal(found.length, 1, "one timeline viewport");
+				return found[0];
+			};
 			const first = await mountPage(pageProps({ ...base, messages: rows }));
-			const firstViewport = viewportOf(first.element);
-			assert.ok(atBottom(firstViewport), "the first mount opens at the bottom");
+			assert.ok(
+				atBottom(timelineOf(first.element)),
+				"the first mount opens at the bottom",
+			);
 			await typeBody(first.element, "still pending");
 			await act(async () => sendButton(first.element).click());
 			await settle();
@@ -2620,12 +2632,25 @@ test(
 
 			const second = await mountPage(pageProps({ ...base, messages: rows }));
 			try {
-				const viewport = viewportOf(second.element);
+				const viewport = timelineOf(second.element);
 				const rowsMounted =
 					viewport.querySelectorAll("[data-message-id]").length;
 				assert.ok(
 					atBottom(viewport),
 					`the remount opens at the bottom (rows=${rowsMounted}, scrollTop=${viewport.scrollTop}, scrollHeight=${viewport.scrollHeight}, client=${viewport.clientHeight})`,
+				);
+				/*
+				 * AND THE PENDING SEND IS STILL DRAWN (agent review round 2, m6). Opening
+				 * at the bottom says nothing about retention: dropping pending sends at
+				 * unmount would keep the assertion above green while losing the row the
+				 * reader typed, which is the whole point of the store outliving a mount.
+				 * The body is asserted by its own text, not by a row count, so a
+				 * placeholder or an empty local row cannot satisfy it.
+				 */
+				assert.match(
+					viewport.textContent ?? "",
+					/still pending/,
+					"the unconfirmed send survived the remount",
 				);
 			} finally {
 				await second.close();

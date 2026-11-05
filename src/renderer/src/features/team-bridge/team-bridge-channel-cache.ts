@@ -116,6 +116,14 @@ export type ChannelMessages = {
 	/** Cursor for the next older page: the oldest retained message's seq. */
 	oldestSeq?: number;
 	hasOlder: boolean;
+	/*
+	 * THE WINDOW NO LONGER REACHES THE PRESENT (agent review round 2, M4). An
+	 * older read past the count bound trims the NEWEST rows, so the retained window
+	 * becomes a stretch of the past with a hole between it and `now`. While that is
+	 * true the poll must NOT union - a union across the hole is contiguous-looking
+	 * but false. It resets to the newest page instead (`mergeChannelPage`).
+	 */
+	hasNewer?: boolean;
 	approxBytes: number;
 	/** Membership lines that ride the page; carried and deduped like messages. */
 	events?: TeamBridgeEvent[];
@@ -277,6 +285,33 @@ export function mergeChannelPage(
 	 * the dead-end that M2 measured, so the direction is passed, never inferred
 	 * from the page's contents.
 	 */
+	/*
+	 * A POLL THAT ARRIVES WHILE THE WINDOW IS BEHIND A HOLE REPLACES IT, NEVER
+	 * UNIONS IT (agent review round 2, M4). Paging back past the count bound trims
+	 * the NEWEST rows, so `previous` is a stretch of the past; unioning the newest
+	 * page onto it would produce a window that looks contiguous and is not - a
+	 * ~4,000-row gap in a 5,000-row channel - and every seq-based decision
+	 * (the day pill, "load earlier", the reader's place) would be taken across it.
+	 * Replacing the window is also the only answer that returns the reader to the
+	 * present: they asked to scroll back, not to leave the channel.
+	 */
+	if (direction === "newest" && previous?.hasNewer === true) {
+		const reset = boundChannelMessages(page.messages, limits, "oldest");
+		const resetSeq = oldestRowSeq(reset.messages);
+		return {
+			messages: reset.messages,
+			...(resetSeq === undefined ? {} : { oldestSeq: resetSeq }),
+			/* The history below this page is on the hub, and paging back fetches it
+			   again - so the affordance stays. */
+			hasOlder: true,
+			hasNewer: false,
+			approxBytes: approxChannelBytes(reset.messages),
+			...(carrying.events === undefined ? {} : { events: carrying.events }),
+			...(carrying.events_truncated === undefined
+				? {}
+				: { events_truncated: carrying.events_truncated }),
+		};
+	}
 	const bounded = boundChannelMessages(
 		mergeChannelMessages(previous?.messages ?? [], page.messages),
 		limits,
@@ -293,6 +328,9 @@ export function mergeChannelPage(
 		/* A trimmed window always has older history to offer, whatever the last
 		   page said: the rows are on the hub, we dropped our copy. */
 		hasOlder: learned || bounded.dropped,
+		/* An older page trims the NEWEST rows at the bound; that is the hole this
+		   flag makes visible, and the poll resets instead of splicing across it. */
+		hasNewer: direction === "older" ? bounded.dropped : false,
 		approxBytes: approxChannelBytes(bounded.messages),
 		...(carrying.events === undefined ? {} : { events: carrying.events }),
 		...(carrying.events_truncated === undefined
@@ -306,6 +344,8 @@ export function withChannelMessages(
 	entry: ChannelMessages,
 	messages: readonly TeamBridgeMessage[],
 ): ChannelMessages {
+	/* Trimmed oldest-first, like a poll: this patch replaces rows in place, it
+	   never moves the window's own edge, so `hasNewer` is whatever it already was. */
 	const bounded = boundChannelMessages(messages);
 	const oldestSeq = oldestRowSeq(bounded.messages);
 	return {
