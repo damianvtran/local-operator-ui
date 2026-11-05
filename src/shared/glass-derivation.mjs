@@ -42,18 +42,26 @@ export const GLASS_EDGE_FLOOR = 3;
  *
  * The 3:1 floor is the app's STRUCTURAL edge - the sole boundary of an input or an
  * outlined button, drawn in `borderControl`. A floating panel's hairline is not that
- * element: the design system's own strongest divider, `hairlineStrong` against
- * `elevated`, measures 1.34:1 on a dark palette and 1.87:1 on a light one, and its
- * ordinary hairline 1.24 / 1.47. Holding the panel edge at 3:1 would paint every
- * menu with a line stronger than any border this app ships - a third kind of edge,
- * invented to settle a fill-step argument.
+ * element: across the palette table the design system's own strongest divider,
+ * `hairlineStrong` against `elevated`, measures 1.22-1.41:1 on the dark palettes and
+ * 1.86-2.24 on the light ones, and its ordinary hairline 1.15-1.31 / 1.37-1.74.
+ * Holding the panel edge at 3:1 would paint every menu with a line stronger than any
+ * border this app ships - a third kind of edge, invented to settle a fill-step
+ * argument.
  *
  * 1.5 IS THE CONVENTION FOR TWO ADJACENT SURFACES STILL READING AS TWO (the same
  * order as WCAG's 3:1 for a component boundary, applied one step down because this
- * is a plate's edge and not a control's), and it lands the derived edge in the
- * band `hairlineStrong` already occupies. That is the whole claim being made: on
- * the states where the fill step collapsed, the boundary is a hairline as strong as
- * the strongest one the system already ships, rather than the shadow's alone.
+ * is a plate's edge and not a control's).
+ *
+ * WHERE THE DERIVED EDGE ACTUALLY LANDS, per scheme, because one sentence covered
+ * both and only the dark half was true (agent review round 4, N4-2): 1.57:1 in both
+ * schemes, which is ABOVE the whole dark band - the dark `hairlineStrong` tops out
+ * at 1.41 - and in the light scheme between the ordinary hairline's band and
+ * `hairlineStrong`'s (1.57 against 1.86-2.24). So the claim is: on the states where
+ * the fill step collapsed, the dark panels get an edge stronger than any divider
+ * this system ships, and the light panels get one stronger than their ordinary
+ * hairline though not as strong as their strongest divider. More than the shadow's
+ * alone in both, which is what D2 asked for.
  */
 export const GLASS_OVERLAY_EDGE_FLOOR = 1.5;
 

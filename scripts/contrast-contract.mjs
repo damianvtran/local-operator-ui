@@ -2605,6 +2605,10 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 				beneath,
 			);
 			for (const role of GLASS_OVERLAY_INKS) {
+				/* Counted like every other row in this run: a measurement the total
+				 * does not include is a measurement a reader cannot audit (agent
+				 * review round 4, N4-1). */
+				authoredRun.assertions++;
 				/* The rule's own `color-mix`: `ink` at `inkMix` over the palette's role. */
 				const painted = glassComposite(palette.ink, inkMix, palette[role]);
 				const r = glassRatio(painted, panel);
@@ -2616,6 +2620,7 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 						`${id}: the floating overlay (${scheme}) ${role} on the panel ${end.label} is ${r2(r)}:1 after the derived ink mix, floor ${GLASS_INK_FLOOR}`,
 					);
 			}
+			authoredRun.assertions++;
 			const edge = glassComposite(palette.ink, edgeMix, palette.hairline);
 			const er = glassRatio(edge, panel);
 			const edgeKey = `edge ${scheme}`;

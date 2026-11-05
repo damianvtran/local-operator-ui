@@ -39,6 +39,29 @@ const CONFIG_PATH = join(CONFIG_DIR, "main.ts");
 /** A taken path is a config file, not a declaration or a snapshot. */
 const CONFIG_FILE = /\.(?:ts|tsx|mts|js|mjs)$/;
 
+/**
+ * THE ALIASES THIS SWEEP DEPENDS ON, pinned so a deleted one fails loudly instead
+ * of quietly redefining "resolvable" (agent review round 4, M4-1).
+ *
+ * Both tests below agree that an unresolvable specifier is unresolvable - that is
+ * what the negative control is for - so deleting an alias from `main.ts` used to
+ * make them BOTH pass: the specifier that relied on it stops looking like a path,
+ * the sweep skips it, and the gallery-breaker walks back in with a green lane. The
+ * list is a CONTAINMENT check, not an equality: a new alias is welcome, a vanished
+ * one is a failure that names it.
+ */
+const EXPECTED_ALIASES = [
+	"@renderer",
+	"@components",
+	"@features",
+	"@shared",
+	"@assets",
+	"@hooks",
+	"@api",
+	"@store",
+	"@resources",
+];
+
 /** The synthetic entry's name, so a failure message points at the sweep and not a file. */
 const SWEEP_ENTRY = "sweep.ts";
 
@@ -57,6 +80,16 @@ const storybookAliases = () => {
 	const pairs = [
 		...config.matchAll(/"(@[a-z]+)":\s*resolve\("([^"]+)"\)/g),
 	].map(([, key, target]) => [key, resolve(ROOT, target)]);
+	for (const key of EXPECTED_ALIASES)
+		assert.ok(
+			pairs.some(([found]) => found === key),
+			`${CONFIG_PATH} no longer maps ${key}: a specifier that relied on it would stop looking like a path, this sweep would skip it, and a dead gallery would pass both tests`,
+		);
+	for (const [key, target] of pairs)
+		assert.ok(
+			target === ROOT || target.startsWith(`${ROOT}/`),
+			`${CONFIG_PATH} maps ${key} to ${target}, which is outside the repository - a specifier through it would resolve to somebody else's tree, or to nothing`,
+		);
 	assert.ok(
 		pairs.length >= 8,
 		`the alias scan found ${pairs.length} entries in ${CONFIG_PATH}; the config's alias block has changed shape and this sweep is no longer reading it`,
