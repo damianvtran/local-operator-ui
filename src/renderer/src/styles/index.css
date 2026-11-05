@@ -77,9 +77,10 @@
  * row's background (hover, current) and BELOW its content, and it takes no
  * pointer events. The row's own tints keep working underneath - a hovered row
  * under the band measures 1.349:1 dark / 1.270:1 light against the pane, so the
- * hover is still visible while the arrival is on screen.
+ * hover remains independent in a solid window. Covered glass instead uses
+ * one derived selected veil, excluding hover while the target cue is present.
  *
- * WHY 12% ACCENT OVER THE GROUND, NOT THE FLAT `accent-wash` TOKEN (design
+ * WHY 12% ACCENT OVER THE SOLID GROUND, NOT THE FLAT `accent-wash` TOKEN (design
  * round 1, D2). `accent-wash` on this pane measured 1.044:1 dark and 1.061:1
  * light - fainter than the row hover tint (1.084:1) and the rail's selected row
  * (1.127:1 / 1.135:1), so the mark the reader was TOLD about was drawn more
@@ -102,6 +103,13 @@
 }
 .lo-team-bridge-target {
 	isolation: isolate;
+	/* On glass, target and hover are alternative states, never two ink veils.
+	 * Outside covered glass these fallbacks keep the original ground steps. */
+	--color-row-hover-surface: var(--lo-target-hover-surface, var(--lo-surface));
+	--color-row-hover-elevated: var(
+		--lo-target-hover-elevated,
+		var(--lo-elevated)
+	);
 }
 .lo-team-bridge-target::after {
 	content: "";
@@ -111,7 +119,13 @@
 	z-index: -1;
 	/* A ground, never a target: the row's menu and badges keep their hit area. */
 	pointer-events: none;
-	background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+	/* The accent wash remains the solid-window fallback. Composed glass uses
+	 * the derived selected step: a fixed accent alpha has no contrast budget
+	 * on an arbitrary translucent ground, especially stacked with hover. */
+	background-color: var(
+		--lo-target-wash,
+		color-mix(in srgb, var(--color-accent) 12%, transparent)
+	);
 	animation: lo-team-bridge-target 1400ms var(--ease-out-quart) both;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1120,6 +1134,11 @@
 	   `accent` hue at two strengths; see the two roles' doc in the palette
 	   contract and § 2 of docs/branding.md. */
 	--color-row-hover: var(--lo-row-hover);
+	/* Inset states keep their opaque ground step outside covered glass regions. */
+	--color-row-hover-surface: var(--lo-surface);
+	--color-row-hover-elevated: var(--lo-elevated);
+	--color-placeholder: var(--lo-sunken);
+	--color-floating: var(--lo-elevated);
 	--color-row-selected: var(--lo-row-selected);
 	/* The user message block's own surface. Not a fifth ground and not a row
 	   state: one object's fill, and the fill IS its boundary (D10), so it
@@ -2206,12 +2225,53 @@ html[data-glass~="pane"] [data-glass-region="pane"] {
 		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
 		transparent
 	);
+	/* Pseudo-element states cannot use the ordinary hover:bg-* translation:
+	 * their paint belongs to ::before, not the row. Reuse the same derived ink
+	 * steps, without changing the inset box or multiplying text opacity. */
+	--color-row-hover-surface: var(--color-row-hover);
+	--color-row-hover-elevated: var(--color-row-hover);
+	--color-placeholder: var(--color-row-selected);
+	--lo-target-wash: var(--color-row-selected);
+	--lo-target-hover-surface: transparent;
+	--lo-target-hover-elevated: transparent;
+	/* A floating action strip owns ONE isolating ground, not another ink veil
+	 * over the hovered row. Keep the elevated readability floor and blur what
+	 * scrolls behind it; making only its buttons translucent exposes old text. */
+	--color-floating: color-mix(
+		in srgb,
+		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
+		transparent
+	);
+	--lo-floating-backdrop: blur(12px);
 	/* The structural edge, nudged toward `ink` so 3:1 holds on the translucent ground. */
 	--color-control: color-mix(
 		in srgb,
 		var(--lo-ink) calc(var(--lo-glass-control-mix) * 100%),
 		var(--lo-border-control)
 	);
+}
+/* Skeleton callers sometimes request a different SOLID ground (for example
+ * elevated bars in notifications). On covered glass they are still placeholder
+ * marks, not opaque content islands. Match the shared component's marker so
+ * those utility overrides cannot bypass its role; uncovered callers keep their
+ * original class-selected fills. Do not lower opacity on a loading container. */
+html[data-glass~="sidebar"]
+	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
+	[data-glass-placeholder],
+html[data-glass~="canvas"]
+	:is(
+		[data-glass-region="canvas"],
+		main[data-glass-region="canvas-backing"],
+		[data-glass-region="panel"]
+	)
+	[data-glass-placeholder],
+html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-placeholder] {
+	background-color: var(--color-placeholder);
+}
+/* No data-glass means no inherited blur: unsupported and reduced-transparency
+ * windows retain the original solid floating ground and the same hit geometry. */
+[data-glass-plane="floating"] {
+	backdrop-filter: var(--lo-floating-backdrop, none);
 }
 html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])

@@ -6,7 +6,9 @@ import type { HTMLAttributes } from "react";
  *
  * `sunken` because a skeleton stands in for content, and content sits on
  * `surface`; the recessed step reads as an empty well rather than as a solid
- * block that might be real.
+ * block that might be real. The shared `placeholder` role keeps this solid
+ * fallback, but becomes the derived selected-row ink step on covered glass:
+ * an opaque sunken swatch would punch a hole through the loading pane.
  *
  * `animate-pulse` is an opacity animation, which is inside the motion budget,
  * and `styles/index.css` caps it under `prefers-reduced-motion` rather than
@@ -18,7 +20,8 @@ export const Skeleton = ({
 	...props
 }: HTMLAttributes<HTMLDivElement>) => (
 	<div
-		className={cn("animate-pulse rounded-sm bg-sunken", className)}
+		data-glass-placeholder=""
+		className={cn("animate-pulse rounded-sm bg-placeholder", className)}
 		{...props}
 	/>
 );
