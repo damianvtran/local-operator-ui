@@ -1427,4 +1427,24 @@ test("settlement failure census separates description, disabled, association and
 	assert.equal(census.neutralDialog, false);
 	assert.equal(census.uncertaintyLocation.inDialog, false);
 	assert.equal(census.elapsedMs, 100);
+	// Active picker feedback, not the deliberately retained transcript notice,
+	// decides settlement. Run the real predicate, not a parallel approximation.
+	const predicateLine = source
+		.split("\n")
+		.find((line) => line.includes("`/* model-case: settled-B */"));
+	const predicate = predicateLine.slice(
+		predicateLine.indexOf("`") + 1,
+		predicateLine.lastIndexOf("`"),
+	);
+	assert.equal(
+		runInNewContext(predicate, { document }),
+		true,
+		"historical transcript alone must not block settled picker B",
+	);
+	dialog.innerText = "The request could not be confirmed";
+	assert.equal(
+		runInNewContext(predicate, { document }),
+		false,
+		"active dialog uncertainty must still block settlement",
+	);
 });

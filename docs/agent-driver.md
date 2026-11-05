@@ -858,7 +858,7 @@ covered**; prior backend/component stale-projection proofs are not native pixels
 picker cannot issue that GET before the awaited command: no pre-B native GET is
 invented. Cold HTTP remains separately labelled backend/component proof, **not a
 native cold-state caption or claim**. Original messages keep epoch/sequence and
-request causality; no old JSON becomes a fresh read. The B command reaches the real
+request causality; no old JSON becomes a fresh read. Settlement uncertainty is scoped to the active model dialog: the historical transcript notice remains attributed to the lost reply and does not contradict a separately reconciled picker. Active-dialog uncertainty still blocks settlement. The B command reaches the real
 owner exactly once; independent live-owner and journal-B verification precedes
 loss of its success ACK through a 504 transport fault. All attempts are recorded
 before forwarding, and the backend does **not** enforce the candidate's default

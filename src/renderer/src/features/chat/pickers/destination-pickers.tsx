@@ -883,6 +883,23 @@ export const ModelPicker: FC<PickerContext> = ({
 	// authoritative snapshot answers; never replay the possibly accepted UUID.
 	const [unconfirmedModel, setUnconfirmedModel] = useState(false);
 	const unconfirmedModelRef = useRef(false);
+	// Feedback belongs to one mounted intent and one bridge receipt generation.
+	// Owner/frontend epochs are a different clock; never use them for this guard.
+	const modelFeedbackIntent = useRef(0);
+	const modelFeedbackContext = useRef({
+		sessionId,
+		receipt: canonical.receipt,
+	});
+	if (modelFeedbackContext.current.sessionId !== sessionId)
+		modelFeedbackIntent.current += 1;
+	modelFeedbackContext.current = { sessionId, receipt: canonical.receipt };
+	useEffect(
+		() => () => {
+			modelFeedbackIntent.current += 1;
+		},
+		[],
+	);
+
 	/*
 	 * WHICH VIEW OF THE CATALOGUE THIS DIALOG SHOWS.
 	 *
@@ -1606,6 +1623,8 @@ export const ModelPicker: FC<PickerContext> = ({
 				model_id: modelId,
 				display_name: option.label,
 			};
+			const feedbackIntent = ++modelFeedbackIntent.current;
+			const feedbackReceipt = modelFeedbackContext.current.receipt;
 			canonical.paintPendingModel(model);
 			switching.current = true;
 			let run: Awaited<ReturnType<typeof command.run>>;
@@ -1643,6 +1662,7 @@ export const ModelPicker: FC<PickerContext> = ({
 						// failure from success before enabling another mutation. A cold
 						// carried snapshot is not proof of the owner's current selection.
 						const snapshot = await desktopResult<{
+							session_id?: string;
 							epoch?: string;
 							seq?: number;
 							payload: { frontend: CanonicalFrontendSync; cold: boolean };
@@ -1653,6 +1673,31 @@ export const ModelPicker: FC<PickerContext> = ({
 							setPickedCurrent(selector);
 							unconfirmedModelRef.current = false;
 							setUnconfirmedModel(false);
+							// Retire only this uncertain intent's active feedback once its
+							// intended selection is independently confirmed. History's note
+							// remains; a newer command/save result must never be erased.
+							const current = modelFeedbackContext.current;
+							if (
+								modelFeedbackIntent.current === feedbackIntent &&
+								current.sessionId === sessionId &&
+								snapshot.session_id === sessionId &&
+								state.session_id === sessionId &&
+								selector === value &&
+								feedbackReceipt &&
+								current.receipt &&
+								snapshot.epoch === feedbackReceipt.epoch &&
+								current.receipt.epoch === feedbackReceipt.epoch &&
+								typeof snapshot.seq === "number" &&
+								snapshot.seq >= feedbackReceipt.seq &&
+								snapshot.seq >= current.receipt.seq
+							) {
+								command.setResult((current) =>
+									current === failure ? null : current,
+								);
+								persist.setResult((current) =>
+									current === failure ? null : current,
+								);
+							}
 						}
 						authorityReceipt = {
 							carrier: "model-get",

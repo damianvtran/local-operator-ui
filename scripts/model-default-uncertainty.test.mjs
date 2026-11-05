@@ -195,3 +195,154 @@ test("unconfirmed defaults never PATCH; live resolution restores intended saving
 		await new Promise((done) => server.close(done));
 	}
 });
+
+// Exercise the shipped post-ACK GET interpretation, not a copied reducer. This
+// is callback proof; the final native run remains responsible for real pixels.
+const reconciliationStart = source.indexOf(
+	"const snapshot = await desktopResult<",
+	source.indexOf("const onPick = useCallback("),
+);
+const reconciliationEnd = source.indexOf(
+	"\n\t\t\t\t\t\tauthorityReceipt = {",
+	reconciliationStart,
+);
+assert(reconciliationStart >= 0 && reconciliationEnd > reconciliationStart);
+const reconcileBody = (
+	await transform(
+		`return async () => {${source.slice(reconciliationStart, reconciliationEnd)}}`,
+		{ loader: "ts", format: "cjs" },
+	)
+).code;
+function feedbackContext(overrides = {}) {
+	const failure = {
+		tone: "warning",
+		text: "The request could not be confirmed",
+	};
+	const ctx = {
+		sessionId: "session-A",
+		value: "test/mock-model-b",
+		failure,
+		feedbackIntent: 1,
+		feedbackReceipt: { epoch: "bridge-A", seq: 2 },
+		modelFeedbackIntent: { current: 1 },
+		modelFeedbackContext: {
+			current: {
+				sessionId: "session-A",
+				receipt: { epoch: "bridge-A", seq: 3 },
+			},
+		},
+		command: {
+			result: failure,
+			setResult(change) {
+				this.result = change(this.result);
+			},
+		},
+		persist: {
+			result: failure,
+			setResult(change) {
+				this.result = change(this.result);
+			},
+		},
+		unconfirmedModelRef: { current: true },
+		setUnconfirmedModel: (value) => {
+			ctx.unconfirmed = value;
+		},
+		setPickedCurrent: (value) => {
+			ctx.picked = value;
+		},
+		modelSelector: (m) => (m ? `${m.provider}/${m.model_id}` : null),
+		reply: {
+			session_id: "session-A",
+			epoch: "bridge-A",
+			seq: 5,
+			payload: {
+				cold: false,
+				frontend: {
+					snapshot: {
+						session_id: "session-A",
+						selected_model: { provider: "test", model_id: "mock-model-b" },
+					},
+				},
+			},
+		},
+		patches: 0,
+		transcript: [failure.text],
+		...overrides,
+	};
+	ctx.desktopResult = async (request) => {
+		assert.equal(
+			request.op,
+			"sessions.get",
+			"reconciliation must never mutate settings or replay the command",
+		);
+		return ctx.reply;
+	};
+	return ctx;
+}
+const reconcile = (ctx) =>
+	new Function("context", `with(context){${reconcileBody}}`)(ctx)();
+test("live intended B retires only captured picker feedback, preserving transcript and no automatic PATCH", async () => {
+	const ctx = feedbackContext();
+	await reconcile(ctx);
+	assert.equal(ctx.picked, "test/mock-model-b");
+	assert.equal(ctx.unconfirmed, false);
+	assert.equal(ctx.command.result, null);
+	assert.equal(ctx.persist.result, null);
+	assert.equal(ctx.patches, 0);
+	assert.deepEqual(ctx.transcript, [ctx.failure.text]);
+});
+for (const mode of [
+	"cold",
+	"wrong-session",
+	"wrong-frontend-session",
+	"wrong-model",
+	"stale",
+	"replacement-epoch",
+	"current-replacement-epoch",
+	"obsolete-intent",
+	"changed-session",
+	"newer-result",
+	"pending",
+	"failed",
+])
+	test(`reconciliation retains captured warning for ${mode}`, async () => {
+		const ctx = feedbackContext();
+		if (mode === "cold") ctx.reply.payload.cold = true;
+		if (mode === "wrong-session") ctx.reply.session_id = "session-Z";
+		if (mode === "wrong-frontend-session")
+			ctx.reply.payload.frontend.snapshot.session_id = "session-Z";
+		if (mode === "wrong-model")
+			ctx.reply.payload.frontend.snapshot.selected_model.model_id =
+				"mock-model-a";
+		if (mode === "stale") ctx.reply.seq = 1;
+		if (mode === "replacement-epoch") ctx.reply.epoch = "bridge-Z";
+		if (mode === "current-replacement-epoch")
+			ctx.modelFeedbackContext.current.receipt.epoch = "bridge-Z";
+		if (mode === "obsolete-intent") ctx.modelFeedbackIntent.current = 2;
+		if (mode === "changed-session")
+			ctx.modelFeedbackContext.current.sessionId = "session-Z";
+		const newer = { tone: "error", text: "A newer real failure" };
+		if (mode === "newer-result")
+			ctx.command.result = ctx.persist.result = newer;
+		if (mode === "pending") {
+			let complete;
+			ctx.desktopResult = () =>
+				new Promise((resolve) => {
+					complete = resolve;
+				});
+			const task = reconcile(ctx);
+			assert.equal(ctx.command.result, ctx.failure);
+			complete({ ...ctx.reply, payload: { ...ctx.reply.payload, cold: true } });
+			await task;
+		} else if (mode === "failed") {
+			ctx.desktopResult = async () => {
+				throw Error("real GET failure");
+			};
+			await assert.rejects(reconcile(ctx), /real GET failure/);
+		} else await reconcile(ctx);
+		assert.equal(
+			ctx.command.result,
+			mode === "newer-result" ? newer : ctx.failure,
+		);
+		assert.equal(ctx.patches, 0);
+	});
