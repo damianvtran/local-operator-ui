@@ -74,6 +74,7 @@ const bundle = await build({
 		contents: `
 			export { TeamBridgePageView, TeamBridgePreviewBanner } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { TeamBridgeConversationMenu } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu";
+			export { conversationMenuSections, conversationMenuItemIds } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu-model";
 			export { notifyMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS, ownActiveAgent, agentNotifyLevel, ownAgentMenuState, withOwnAgentNotify } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 		`,
@@ -257,7 +258,30 @@ test("a preview shows the join banner and never a message body", () => {
 	assert.match(html, /You’re previewing this channel/);
 	assert.match(html, /Join to see its history and get notifications/);
 	assert.match(html, />Join</);
-	assert.match(html, /24 members/);
+	/* The header's one quiet fact is the channel's own topic when it has one
+	   (design round 1 on #1668, D2), else the plain member count, which a
+	   preview reads from the aggregate since it has no member rows. */
+	assert.match(html, /Design critiques/);
+	const untopiced = conversation({
+		discoverable: true,
+		member: false,
+		member_count: 24,
+		members: [],
+		topic: null,
+	});
+	assert.match(
+		renderToStaticMarkup(
+			createElement(
+				ui.TeamBridgePageView,
+				viewProps({
+					target: { type: "conversation", id: untopiced.id },
+					conversations: [untopiced],
+					messageState: "ready",
+				}),
+			),
+		),
+		/24 members/,
+	);
 	// The cached body and the composer are both wrong on a non-member pane.
 	assert.doesNotMatch(html, /SECRET PREVIEW BODY/);
 	assert.doesNotMatch(html, /Message this conversation/);
@@ -304,8 +328,9 @@ test("a refused join is stated above a still-available action", () => {
 test("the header menu's trigger names the control", () => {
 	const html = renderToStaticMarkup(
 		createElement(ui.TeamBridgeConversationMenu, {
+			sections: [[{ id: "notify" }]],
 			conversation: { notify: "all", muted: false },
-			onNotifyChange: () => {},
+			handlers: { onNotifyChange: () => {} },
 		}),
 	);
 	assert.match(html, /aria-label="Conversation options"/);
@@ -460,85 +485,87 @@ test("the menu draws the agent group from the model, separately labelled, before
 		"utf8",
 	);
 	assert.match(source, /TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS\.map/);
-	assert.match(source, /\{ownAgent && onAgentNotifyChange && \(/);
+	// The group is the model's `agent_notify` item, not an inline guess.
+	assert.match(source, /case "agent_notify":/);
 	assert.match(
 		source,
 		/aria-label=\{t\("ui\.teamBridge\.agentNotify\.label"\)\}/,
 	);
 	// The agent group writes through its own callback, never the reader's notify.
-	assert.match(source, /onAgentNotifyChange\(asTeamBridgeNotify\(next\)\)/);
-	const agentGroup = source.indexOf("{ownAgent && onAgentNotifyChange && (");
-	const archiveGuard = source.indexOf("{onArchive && (");
-	assert.ok(agentGroup > 0 && archiveGuard > agentGroup);
+	assert.match(
+		source,
+		/handlers\.onAgentNotifyChange\?\.\(asTeamBridgeNotify\(next\)\)/,
+	);
 });
 
 /*
  * ARCHIVE IS LAST, AND STAYS LAST (operator, 2026-10-29).
  *
- * The operator reported Archive sitting where a mis-click is easy. In this
- * build it is already the final item — but "already true" is not a guarantee:
- * the next action added to this menu is appended by whoever edits the
- * component, and a destructive row that drifts above the fold is the bug the
- * report describes. So the ORDER is pinned here rather than assumed, and the
- * assertion is positional on purpose: a test that merely checked the label
- * exists would pass again the moment someone moved it.
+ * The operator reported Archive sitting where a mis-click is easy. The menu's
+ * ORDER now lives in ONE model (`conversationMenuSections`) that the header and
+ * every rail row render, so the pin moved from the component's source to the
+ * model's output: for every viewer that may archive, Archive is the last item
+ * of the last section, after a separator from the preferences. Positional on
+ * purpose: a test that merely checked the item exists would pass again the
+ * moment someone moved it.
  */
 test("archive is the last action in the conversation menu, after every other", () => {
+	const self = "acct_self";
+	const member = (account_id, kind = "human", state = "active") => ({
+		account_id,
+		kind,
+		display_label: kind === "agent" ? "Aida" : "Damian",
+		role: "owner",
+		state,
+		endpoint_id: kind === "agent" ? "bep_aida" : undefined,
+	});
+	const wiring = {
+		viewMembers: true,
+		addMembers: true,
+		join: true,
+		notify: true,
+		agentNotify: true,
+		ownAgent: true,
+		leave: true,
+		archive: true,
+	};
+	for (const members of [
+		[member(self)],
+		[member(self), member(self, "agent")],
+	]) {
+		const sections = ui.conversationMenuSections({
+			conversation: conversation({
+				members,
+				can_administer: true,
+				notify: "all",
+			}),
+			selfAccountId: self,
+			agentNotifyEnabled: true,
+			archivable: true,
+			wiring,
+		});
+		const ids = sections.flat().map((item) => item.id);
+		assert.equal(ids.at(-1), "archive", ids.join(","));
+		const last = sections.at(-1);
+		assert.ok(
+			!sections
+				.slice(0, -1)
+				.flat()
+				.some((item) => item.id === "archive"),
+		);
+		// A separator (a section boundary) sits between the preferences and it.
+		const notifySection = sections.findIndex((section) =>
+			section.some((item) => item.id === "notify"),
+		);
+		assert.ok(notifySection >= 0 && sections.indexOf(last) > notifySection);
+	}
+	// And the renderer draws sections in order with nothing appended after them.
 	const source = readFileSync(
 		`${ROOT}/src/renderer/src/features/team-bridge/team-bridge-conversation-menu.tsx`,
 		"utf8",
 	);
-	// The notify group's close is the last non-archive content in the menu.
-	const radioGroupEnd = source.indexOf("</DropdownMenuRadioGroup>");
-	assert.ok(radioGroupEnd > 0, "the notify radio group must still close");
-	// Conditional on the caller's authority, not always rendered.
-	const archiveGuard = source.indexOf("{onArchive && (");
-	assert.ok(
-		archiveGuard > radioGroupEnd,
-		"archive must come after the notify group, not before it",
-	);
-	// Positional: no DropdownMenuItem begins after the archive one.
-	const archiveItem = source.indexOf("<DropdownMenuItem", archiveGuard);
-	assert.ok(archiveItem > 0, "the archive item must still be a menu item");
-	const lastItem = source.lastIndexOf("<DropdownMenuItem");
-	assert.equal(
-		archiveItem,
-		lastItem,
-		"archive must be the last menu item; a later item was added after it",
-	);
-	// And it must be separated from the preferences above it, so the eye reads
-	// it as a different kind of act rather than the next option in a list.
-	// Matched on the tag, not the exact self-closing literal: an ordinary
-	// className on that separator is a legitimate edit, and pinning the literal
-	// would fail on it while blaming the order.
-	const separatorTag = source.indexOf("<DropdownMenuSeparator", radioGroupEnd);
-	assert.ok(
-		separatorTag > 0 && separatorTag < archiveItem,
-		"a separator must sit between the preferences and archive",
-	);
-
-	/*
-	 * NOTHING RENDERS BENEATH ARCHIVE (review round 1, MINOR 1).
-	 *
-	 * The positional check above only sees a literal `<DropdownMenuItem`. A
-	 * sibling COMPONENT added after the archive block - `<ExtraActions />` - can
-	 * render its own rows underneath Archive while the search finds no later
-	 * item, so the guard would pass on precisely the layout it exists to forbid.
-	 * The region that matters is between the end of the archive guard and the
-	 * end of the menu: whatever lives there would render below Archive.
-	 */
-	const afterGuard = source.slice(
-		source.indexOf(")}", archiveItem) + 2,
-		source.indexOf("</DropdownMenu>", archiveItem),
-	);
-	const strayElement = afterGuard
-		.replace(/\/\*[\s\S]*?\*\//g, "")
-		.match(/<[A-Za-z]/);
-	assert.equal(
-		strayElement,
-		null,
-		`nothing may render after the archive item; found ${strayElement?.[0] ?? ""}`,
-	);
+	assert.match(source, /sections\.map\(\(section, index\)/);
+	assert.match(source, /index > 0 && <DropdownMenuSeparator \/>/);
 });
 
 test("the notify options restore both cached pages when the write is refused", async () => {

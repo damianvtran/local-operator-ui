@@ -207,14 +207,14 @@ const settle = async (rounds = 8) => {
 	}
 };
 
-const mount = async (condensed) => {
+const mount = async (condensed, over = {}) => {
 	const container = document.createElement("div");
 	document.body.appendChild(container);
 	const root = createRoot(container);
 	await act(async () => {
 		root.render(
 			createElement(SupplementRow, {
-				record,
+				record: { ...record, ...over },
 				sessionId: "5ea1face0001",
 				condensed,
 			}),
@@ -257,4 +257,34 @@ test("fourteen sounds mount fourteen players, in both forms", async () => {
 		await act(async () => root.unmount());
 		container.remove();
 	}
+});
+
+test("an unknown length hides the total clock; a known one keeps it (design D1)", async () => {
+	// A written MP3's hint is 0 (the core states a duration only for WAV), and
+	// JSDOM never fires loadedmetadata, so this is the pre-metadata frame the
+	// reader sees: the total is reserved but invisible, never `0:00`.
+	const unknown = await mount(false, {
+		sounds: [
+			{
+				attachment: digest(90),
+				mime: "audio/mpeg",
+				title: "take.mp3",
+				durationS: 0,
+				origin: "file",
+				path: "picks/take.mp3",
+			},
+		],
+	});
+	const total = unknown.container.querySelector("[data-sound-total]");
+	assert.ok(total, "the total slot exists, so nothing reflows when it fills");
+	assert.ok(total.className.includes("invisible"), total.outerHTML);
+	assert.equal(total.getAttribute("aria-hidden"), "true");
+	await act(async () => unknown.root.unmount());
+	unknown.container.remove();
+	const known = await mount(false, { sounds: [sounds[0]] });
+	const knownTotal = known.container.querySelector("[data-sound-total]");
+	assert.equal(knownTotal.className.includes("invisible"), false);
+	assert.equal(knownTotal.textContent, "0:06");
+	await act(async () => known.root.unmount());
+	known.container.remove();
 });

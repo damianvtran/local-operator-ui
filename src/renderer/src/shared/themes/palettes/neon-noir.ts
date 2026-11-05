@@ -96,19 +96,33 @@ export const neonNoir: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#23262B",
-		surface: "#2B2E35",
-		elevated: "#2F343D",
-		sunken: "#1F2124",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #23262B -> #1B1E23 (L* 15.05 -> 11.16)
+		 * surface #2B2E35 -> #23262D (L* 18.91 -> 15.13)
+		 * elevated #2F343D -> #272C35 (L* 21.57 -> 17.87)
+		 * sunken #1F2124 -> #17191C (L* 12.65 -> 8.66)
+		 */
+		canvas: "#1B1E23",
+		surface: "#23262D",
+		elevated: "#272C35",
+		sunken: "#17191C",
 
 		// The user block's fill: ΔE00 4.18 off the canvas, where `surface` alone
 		// measures 2.86 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2d313a",
+		messageSurface: "#252932",
 		// The media slot's well: ΔE00 4.09 off the canvas, where `sunken` alone
 		// measures 2.00 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#1b1c1d",
+		mediaSurface: "#111415",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -127,8 +141,8 @@ export const neonNoir: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.39 `L*` and 6.7 `C*`,
 		 *                       `inkDim` 5.05:1.
 		 */
-		rowHover: "#333539",
-		rowSelected: "#323846",
+		rowHover: "#2B2D31",
+		rowSelected: "#2A303E",
 
 		ink: "#DCDFE4",
 		/*
@@ -193,10 +207,10 @@ export const neonNoir: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.22:1 against `elevated` at its tightest.
 		 */
-		hairline: "#3B414B",
+		hairline: "#333943",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.70:1 there against `hairline`'s 1.57:1.
-		hairlineStrong: "#404650",
+		hairlineStrong: "#373D47",
 		// The TUI `edge-hi` 3A414E lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
@@ -225,7 +239,7 @@ export const neonNoir: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#26333B",
+		accentWash: "#1E2B33",
 		onAccent: "#090C13",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -241,10 +255,10 @@ export const neonNoir: ThemeDefinition = {
 		 * 2.0), 4.65:1 for `accentAlt` on it, and 5.86 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#363039",
+		accentAltWash: "#2E2831",
 
 		success: "#6CC49A",
-		successWash: "#202D2C",
+		successWash: "#182524",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -259,7 +273,7 @@ export const neonNoir: ThemeDefinition = {
 		successBorder: "#5A8574",
 
 		warning: "#CFAE62",
-		warningWash: "#2D2B25",
+		warningWash: "#25231D",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -276,7 +290,7 @@ export const neonNoir: ThemeDefinition = {
 		// E07A8A, the TUI's rose: a neon sign seen through a wet window rather than a
 		// saturated red.
 		danger: "#E47D8D",
-		dangerWash: "#2F242A",
+		dangerWash: "#271C22",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -293,7 +307,7 @@ export const neonNoir: ThemeDefinition = {
 		// 7AA8D8, the TUI's `signal` — rain blue, kept distinct from the dim cyan
 		// accent.
 		info: "#7AA8D8",
-		infoWash: "#222A34",
+		infoWash: "#1A222C",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

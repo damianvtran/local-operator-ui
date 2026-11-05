@@ -158,7 +158,7 @@ export function readResolvedGround(element: Element | null): string | null {
  * drift the moment a role is re-authored without the chrome being told - which is
  * exactly the drift `INSTALL_WINDOW_CANVAS` exists to catch on the main side.
  *
- * MUST RUN AFTER `applyThemeToDocument`. Both live in the theme provider's
+ * MUST RUN AFTER `applyAppearance`. Both live in the theme provider's
  * `useLayoutEffect`, in that order, so the caption glyphs and the app's ink change
  * in one frame - a report sent before the attribute lands would describe the
  * previous palette, and one sent from a `useEffect` would arrive a frame after the

@@ -423,6 +423,80 @@ test("a child frame may be the PDF blob or the backend's static route, nothing e
 	);
 });
 
+test("only Chromium's own PDF viewer may navigate its internal UUID child", () => {
+	const viewer =
+		"chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/index.html";
+	const target = viewer.replace(
+		"index.html",
+		"53b6d933-cf85-403b-8748-8fecd8431f90",
+	);
+	const allowed = {
+		url: target,
+		isMainFrame: false,
+		parentUrl: viewer,
+		initiatorUrl: viewer,
+	};
+	assert.equal(guards.frameNavigationVerdict(allowed, TRUSTED).allowed, true);
+	for (const change of [
+		{ isMainFrame: true },
+		{ parentUrl: undefined },
+		{ initiatorUrl: undefined },
+		{ parentUrl: APP_FILE, initiatorUrl: APP_FILE },
+		{ parentUrl: "blob:file:///unrelated", initiatorUrl: APP_FILE },
+		{
+			parentUrl: "http://localhost:1111/v1/static/html?path=x",
+			initiatorUrl: viewer,
+		},
+		{ initiatorUrl: "https://attacker.test/" },
+		{ parentUrl: `${viewer}?fake=1` },
+		{
+			url: target.replace(
+				"mhjfbmdgcfjbbpaeojofohoefgiehjai",
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			),
+		},
+		{
+			url: target.replace(
+				"mhjfbmdgcfjbbpaeojofohoefgiehjai",
+				"mhjfbmdgcfjbbpaeojofohoefgiehjai.attacker.test",
+			),
+		},
+		{ url: viewer },
+		{ url: `${target}?fake=1` },
+		{ url: `${target}#fake` },
+	]) {
+		assert.equal(
+			guards.frameNavigationVerdict({ ...allowed, ...change }, TRUSTED).allowed,
+			false,
+			JSON.stringify(change),
+		);
+	}
+	const contents = fakeContents();
+	guards.guardNavigation(
+		contents,
+		() => TRUSTED,
+		() => {},
+	);
+	const event = {
+		url: target,
+		isMainFrame: false,
+		isSameDocument: false,
+		frame: { parent: { url: viewer } },
+		initiator: { url: viewer },
+	};
+	assert.equal(
+		contents.emit("will-frame-navigate", event).defaultPrevented,
+		false,
+	);
+	assert.equal(
+		contents.emit("will-frame-navigate", {
+			...event,
+			initiator: { url: APP_FILE },
+		}).defaultPrevented,
+		true,
+	);
+});
+
 test("guardNavigation cancels a refused navigation and lets the rest through", () => {
 	const contents = fakeContents();
 	const logs = [];

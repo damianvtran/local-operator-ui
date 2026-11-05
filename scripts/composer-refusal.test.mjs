@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { contractSource } from "./contrast-contract-source.mjs";
 
 /*
  * THE REFUSAL CONTRACT: a composer that will not take input must refuse the
@@ -56,7 +57,6 @@ const COMPOSER =
 	"src/renderer/src/shared/components/composer/message-input.tsx";
 const STACK =
 	"src/renderer/src/features/chat/components/measured-suggestion-stack.tsx";
-const CONTRAST = "scripts/contrast-contract.mjs";
 const MISSING_NOTICE =
 	"src/renderer/src/features/chat/missing-session-notice.ts";
 const TRANSCRIPT =
@@ -620,7 +620,7 @@ test("the contrast contract knows this state exists", () => {
 	 * depends on is pinned in the loop that consumes it - a listed row that
 	 * silently asserts nothing is the same defect one level down.
 	 */
-	const source = code(CONTRAST);
+	const source = contractSource();
 	assert.match(
 		source,
 		/name: "composer \(read-only\)"/,

@@ -76,6 +76,16 @@ export type AttentionBadgeProps = Omit<
 	count: number;
 	placement?: "inline" | "corner";
 	register?: "attention" | "quiet";
+	/**
+	 * Wrap the CAPPED numeral in words ("2 unread"), for a host whose row has
+	 * no other place to say what the number counts (the Team Bridge thread
+	 * row). It receives the label this component already capped, so the cap
+	 * stays here and a host still cannot pick a variant, class or cap; the
+	 * pill geometry (`size="count"`: fixed `h-4`) is unchanged, so worded and
+	 * bare marks share one height. Corner marks are glyph annotations and
+	 * ignore it.
+	 */
+	format?: (label: string) => string;
 };
 
 /** The digits the badge spells before it caps to `99+`. */
@@ -90,6 +100,7 @@ export const AttentionBadge = forwardRef<HTMLSpanElement, AttentionBadgeProps>(
 			count,
 			placement = "inline",
 			register = "attention",
+			format,
 			className,
 			...props
 		},
@@ -110,12 +121,9 @@ export const AttentionBadge = forwardRef<HTMLSpanElement, AttentionBadgeProps>(
 				)}
 				{...props}
 			>
-				{countLabel(
-					count,
-					placement === "corner"
-						? ATTENTION_BADGE_CORNER_CAP
-						: ATTENTION_BADGE_CAP,
-				)}
+				{placement === "corner"
+					? countLabel(count, ATTENTION_BADGE_CORNER_CAP)
+					: (format ?? String)(countLabel(count, ATTENTION_BADGE_CAP))}
 			</Badge>
 		);
 	},

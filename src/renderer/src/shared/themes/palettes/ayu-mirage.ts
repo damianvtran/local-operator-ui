@@ -60,18 +60,32 @@ export const ayuMirage: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#242936",
-		surface: "#2D3442",
-		elevated: "#353C4B",
-		sunken: "#191D27",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #242936 -> #1A1F2C (L* 16.64 -> 11.83)
+		 * surface #2D3442 -> #222937 (L* 21.61 -> 16.51)
+		 * elevated #353C4B -> #2A3140 (L* 25.25 -> 20.28)
+		 * sunken #191D27 -> #0F131D (L* 10.79 -> 5.93)
+		 */
+		canvas: "#1A1F2C",
+		surface: "#222937",
+		elevated: "#2A3140",
+		sunken: "#0F131D",
 
 		// The user block's fill: ΔE00 4.26 off the canvas, where `surface` alone
 		// measures 3.55 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2e3644",
+		messageSurface: "#242c3a",
 		// The media slot's well: `sunken` itself, which already clears the
 		// role's floor off this canvas (measured ΔE00 4.01, 5.85 L*).
-		mediaSurface: "#191D27",
+		mediaSurface: "#0F131D",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -90,8 +104,8 @@ export const ayuMirage: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.70 `L*` and 8.0 `C*`,
 		 *                       `inkDim` 5.10:1.
 		 */
-		rowHover: "#373B44",
-		rowSelected: "#343F54",
+		rowHover: "#2C3039",
+		rowSelected: "#293449",
 
 		ink: "#D6D5CE",
 		// upstream's blue-tinted muted rung.
@@ -119,13 +133,13 @@ export const ayuMirage: ThemeDefinition = {
 		inkDim: "#A4B6CA",
 		inkDisabled: "#707A8C",
 
-		hairline: "#414B60",
+		hairline: "#364055",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 
 		// `sunken`: 2.08:1 there against `hairline`'s 1.93:1.
 
-		hairlineStrong: "#465065",
+		hairlineStrong: "#3B455A",
 		borderControl: "#7E8BA4",
 
 		// the family's azure.
@@ -139,7 +153,7 @@ export const ayuMirage: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#2A3949",
+		accentWash: "#1F2E3E",
 		onAccent: "#1F2430",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#FFAD66`,
@@ -177,22 +191,22 @@ export const ayuMirage: ThemeDefinition = {
 		 * `accentWash` (the field floor is 2.0), 4.57:1 for `accentAlt` on it, and
 		 * 17.67 from the nearest ground it is painted on.
 		 */
-		accentAltWash: "#403525",
+		accentAltWash: "#352B1B",
 
 		success: "#D5FF80",
-		successWash: "#2F363A",
+		successWash: "#252C30",
 		successBorder: "#D5FF80",
 
 		warning: "#FFD173",
-		warningWash: "#38383B",
+		warningWash: "#2D2D30",
 		warningBorder: "#FFD173",
 
 		danger: "#F39185",
-		dangerWash: "#39333E",
+		dangerWash: "#2F2934",
 		dangerBorder: "#F39185",
 
 		info: "#DFBFFF",
-		infoWash: "#3A3A4D",
+		infoWash: "#2F2F42",
 		infoBorder: "#DFBFFF",
 
 		overlayShadow: "0 12px 32px -12px rgb(16 19 26 / 0.72)",

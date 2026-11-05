@@ -27,6 +27,8 @@ import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
 import { installConversationInputSync } from "./shared/store/conversation-input-sync";
 import { installRightSlotMemoryFollower } from "./shared/store/right-slot-follower";
+import { useUiPreferencesStore } from "./shared/store/ui-preferences-store";
+import { appearanceOf, applyAppearance } from "./shared/themes/appearance";
 import { ThemeProvider } from "./shared/themes/theme-provider";
 import { isDevelopmentMode } from "./shared/utils/env-utils";
 
@@ -45,6 +47,21 @@ const posthogOptions: Partial<PostHogConfig> = {
  * A no-op in every normal launch; `docs/agent-driver.md` is the contract.
  */
 installDevDriver();
+
+/*
+ * THE COMPOSED THEME BEFORE FIRST PAINT. `themes/index.ts` publishes the
+ * DEFAULT palette at import, and `ThemeProvider` publishes the user's in a
+ * layout effect - before paint, but only once React has rendered the tree. A
+ * non-Standard composition (contrast preset or custom accent) used to be
+ * reachable only through that effect, and every module-scope paint in between
+ * (the splash, the scrollbar styles, anything the main process captures as the
+ * first frame) carried the built-in. The preferences store hydrates
+ * synchronously from localStorage at import, so the composition is known here:
+ * publish it now, the same way the mini-view and the installer publish theirs
+ * at module scope. The provider's effect then re-publishes the same id (a
+ * no-op write) and owns every later change.
+ */
+applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
 
 /*
  * THE SCROLLBAR FADE'S DOM HALF, installed once for the whole app. Its CSS half

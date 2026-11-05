@@ -332,11 +332,23 @@ test("the server row replaces the optimistic one in place: one row, same element
 		const [optimistic] = before;
 		assert.equal(optimistic.getAttribute("data-delivery"), "pending");
 
-		gate.resolve(message({ id: "msg_server", seq: 1 }));
+		/* The hub stamps the stored row seconds after the press, so it is on the
+		   press's own local day. That matters since #1668 (QA round 1, Q2): each
+		   day is its own sticky containing block, and a row that CHANGED day would
+		   move to another day group, which React can only do by remounting it. The
+		   fixture's default 2030 date would be exactly that move; a reconciliation
+		   that straddles local midnight is the one case that still remounts,
+		   accepted for the one-pill-at-a-time fix. */
+		const stored = message({
+			id: "msg_server",
+			seq: 1,
+			created_at: new Date().toISOString(),
+		});
+		gate.resolve(stored);
 		await settle();
 		/* The page's own read now carries the stored message, as the refetch after a
 		   send does in production. */
-		const history = [message({ id: "msg_server", seq: 1 })];
+		const history = [stored];
 		await app.render(
 			pageProps({
 				target: conversationTarget,

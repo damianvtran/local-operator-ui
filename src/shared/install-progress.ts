@@ -735,7 +735,7 @@ export function installFailureReason(
  * disagree. Changing a palette without changing this is a failing test, not a
  * flash nobody notices.
  */
-export const INSTALL_WINDOW_CANVAS = "#22201c";
+export const INSTALL_WINDOW_CANVAS = "#1d1b17";
 
 export const INSTALL_IPC_CHANNELS = {
 	/** main -> renderer: the current phase, the terminal message, or a failure. */

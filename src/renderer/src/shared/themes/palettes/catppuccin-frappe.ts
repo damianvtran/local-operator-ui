@@ -66,19 +66,33 @@ export const catppuccinFrappe: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#303445",
-		surface: "#363B4E",
-		elevated: "#3C4153",
-		sunken: "#2A2D3E",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #303445 -> #212535 (L* 21.99 -> 14.97)
+		 * surface #363B4E -> #272C3E (L* 25.14 -> 18.28)
+		 * elevated #3C4153 -> #2C3243 (L* 27.75 -> 20.91)
+		 * sunken #2A2D3E -> #1B1E2E (L* 18.87 -> 11.68)
+		 */
+		canvas: "#212535",
+		surface: "#272C3E",
+		elevated: "#2C3243",
+		sunken: "#1B1E2E",
 
 		// The user block's fill: ΔE00 4.26 off the canvas, where `surface` alone
 		// measures 2.39 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#3b4153",
+		messageSurface: "#2b3243",
 		// The media slot's well: ΔE00 4.21 off the canvas, where `sunken` alone
 		// measures 2.27 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#252738",
+		mediaSurface: "#161828",
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
@@ -96,8 +110,8 @@ export const catppuccinFrappe: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.04 `L*` and 9.1 `C*`,
 		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#3E404C",
-		rowSelected: "#3B425C",
+		rowHover: "#2E303C",
+		rowSelected: "#2B324B",
 
 		// Canonical text C6D0F5 is 6.52:1 on `elevated` — under the 7:1 body floor. Lifted
 		// along the same lavender-white.
@@ -143,10 +157,10 @@ export const catppuccinFrappe: ThemeDefinition = {
 		// The port's #464B60 sat ΔE00 3.16 from `elevated`, where a 1px line needs 4.0. This
 		// clears it and stays between 1.24:1 and 1.70:1 on the four grounds, so it still
 		// divides rather than bounds.
-		hairline: "#4A5064",
+		hairline: "#394053",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.84:1 there against `hairline`'s 1.70:1.
-		hairlineStrong: "#4F556A",
+		hairlineStrong: "#3E4559",
 		// Upstream overlay2, which clears the 3:1 structural floor with room (3.67:1 on
 		// the binding ground) where overlay0 — the inactive tone — could not.
 		borderControl: "#949CBB",
@@ -169,7 +183,7 @@ export const catppuccinFrappe: ThemeDefinition = {
 		 * `surface` is the tightest base at ΔE00 2.05. Lightness only, at the
 		 * wash's own hue.
 		 */
-		accentWash: "#37394E",
+		accentWash: "#282A3E",
 		// Upstream crust. The port shipped base 303446 here, which is 4.31:1 on the pressed
 		// fill and under the floor; crust takes the worst of the three states to 5.25:1.
 		onAccent: "#232634",
@@ -190,25 +204,25 @@ export const catppuccinFrappe: ThemeDefinition = {
 		 * 2.0), 6.73:1 for `accentAlt` on it, and 6.26 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#293C4F",
+		accentAltWash: "#192D3F",
 
 		success: "#A6D189",
-		successWash: "#343948",
+		successWash: "#252A39",
 		successBorder: "#8BC365",
 
 		warning: "#EF9F76",
-		warningWash: "#383848",
+		warningWash: "#292939",
 		warningBorder: "#EB8855",
 
 		// Canonical red E78284 is 3.76:1 on `elevated` (< 4.5). Lifted along the same rose, then
 		// nudged a further step so it keeps ΔE00 15 from the peach beside it — the lift alone
 		// sat at 14.97.
 		danger: "#F1989C",
-		dangerWash: "#38384A",
+		dangerWash: "#29293A",
 		dangerBorder: "#E67F82",
 
 		info: "#91AEEF",
-		infoWash: "#353B4F",
+		infoWash: "#262C3F",
 		infoBorder: "#769AEB",
 
 		// The shadow and scrim are the ground tinted, as in every palette here: a shadow

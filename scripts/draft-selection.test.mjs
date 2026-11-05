@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { unlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -50,7 +49,9 @@ const DISPATCH = "src/renderer/src/features/chat/components/slash-dispatch.ts";
 /** One recorded desktop request, with the wire request it projects to. */
 const calls = [];
 let reply = () => ({ result: null });
-globalThis.window = {
+// Browser imports now subscribe to storage events. Use a real event target,
+// not a partial Window lookalike that crashes before draft assertions run.
+globalThis.window = Object.assign(new EventTarget(), {
 	api: {
 		desktop: {
 			request: async (request) => {
@@ -59,7 +60,7 @@ globalThis.window = {
 			},
 		},
 	},
-};
+});
 // `persist` reads the default storage at store creation; Node has no
 // localStorage, and zustand warns without one. An in-memory stub keeps the
 // import quiet without changing what the store does with it.
@@ -124,7 +125,11 @@ const bundle = await build({
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
-	format: "esm",
+	// Same bounded boundary as appearance-picker-dom: real app modules are
+	// bundled; installed third-party packages are required once, not embedded.
+	// No theme/store implementation is stubbed to hide a browser contract.
+	packages: "external",
+	format: "cjs",
 	platform: "node",
 	mainFields: ["module", "main"],
 	conditions: ["import"],
@@ -132,28 +137,17 @@ const bundle = await build({
 		"@shared": "./src/renderer/src/shared",
 		"@features": "./src/renderer/src/features",
 	},
-	external: [
-		"react",
-		"react-dom",
-		"react-dom/server",
-		"react/jsx-runtime",
-		"@tanstack/react-query",
-	],
 	loader: { ".css": "empty" },
 	jsx: "automatic",
-	/*
-	 * The slash-dispatch module graph reaches CJS interop (`require("react")`)
-	 * through the dispatcher and the router, and a data-free ESM bundle has no
-	 * `require` of its own; the banner is the same one the identity suite uses.
-	 */
-	banner: {
-		js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',
-	},
 	write: false,
 });
 
-const bundlePath = new URL("./_draft-selection.bundle.mjs", import.meta.url);
-await writeFile(bundlePath, bundle.outputFiles[0].text);
+const fixtureModule = { exports: {} };
+new Function("require", "module", "exports", bundle.outputFiles[0].text)(
+	createRequire(import.meta.url),
+	fixtureModule,
+	fixtureModule.exports,
+);
 const {
 	NO_DRAFT_TARGET,
 	DesktopControlError,
@@ -186,8 +180,7 @@ const {
 	specUnresolved,
 	useConversationInputStore,
 	useCanonicalSessionsStore,
-} = await import(bundlePath.href);
-await unlink(bundlePath);
+} = fixtureModule.exports;
 
 const CWD = "/tmp/example";
 const UUID = "7c9e6679-7425-40de-944b-e07fc1f90ae7";

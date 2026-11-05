@@ -9,7 +9,7 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import {
 	Copy as CopyIcon,
 	Download,
@@ -583,7 +583,11 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 	   stylesheet. ThemeProvider publishes `data-theme` in a layout effect,
 	   which runs before this component's passive effect, so the role variables
 	   the new config resolves are already the new theme's. */
-	const themeName = useUiPreferencesStore((state) => state.themeName);
+	/* Keyed on the PAINTED id - the built-in's, or `lo-<hash>` for a contrast
+	   preset or custom accent - not on `themeName`: a contrast change keeps the
+	   name and changes every colour, and a name key left the previous
+	   composition's colours baked into the SVG. */
+	const themeName = useResolvedAppearance().id;
 
 	const renderDiagram = useCallback(async () => {
 		try {

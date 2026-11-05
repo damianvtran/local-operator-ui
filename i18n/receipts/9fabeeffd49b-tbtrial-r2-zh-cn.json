@@ -1,0 +1,38 @@
+{
+ "auditor": "copy-reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "9fabeeffd49b-tbtrial-r2-zh-cn",
+ "status": "passed",
+ "namespace": "ui.teamBridgeTrial",
+ "sha256": {
+  "zh-CN": "1ca81c0c87d2b26a6a45c6684adee070bdb4777c962036689d05f491ee768396",
+  "en": "36522e0b7e636ec33f5c654add2d7cafdf78644cc81806f24d54805095decc25",
+  "en_context": "964f7f893d1f066aa8fbcedfb4533f19a50aae7984c250a81c60675c72b3b411"
+ },
+ "scope": "Round 2 on PR #1654 head a906a494cb341e6c6b6d81779875bb91a79754e8 (delta bdc5bb1229e..a906a494): every value that changed since round 1 (13 en-driven keys incl. the new dialog.end_invites and paused.note_member, plus the locale-only fixes for R1/F1/Z1/Z2/V1/U1), read against en + ui.teamBridgeTrial.context.json and the core glossary/style guides; key-set parity (37), {date} preserved, no ASCII apostrophes, no manual bidi controls, no em/en dashes; {date} rendered through formatTrialDate's Intl options (node 24.22.1); each round-1 finding re-checked on head. Unchanged keys were audited in round 1 (53746f0323e5).",
+ "references": {
+  "glossary": "damianvtran/local-operator@89f7f8f9eaddb3084569a7dcddc6524fac454cd5:i18n/glossary.md",
+  "style_guide": "damianvtran/local-operator@89f7f8f9eaddb3084569a7dcddc6524fac454cd5:i18n/style-guides/zh-CN.md",
+  "note": "glossary and style guides byte-identical to round 1's ffd6c9e6 (git diff --quiet)"
+ },
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "commits": [
+   "55dc7bb4d45",
+   "a906a494cb3"
+  ]
+ },
+ "independence": "Auditor copy-reviewer (session 9fabeeffd49b) is a different agent and run from the translator (coder, remediation commits 55dc7bb4d45 and a906a494). Same served model family disclosed. The auditor edited no translation.",
+ "date": "2026-11-04",
+ "prior_findings": "Z1 fixed in all 18 round-1 values; reopened in ineligible.former_subscriber by a906a494. Z2 fixed (成员共用的额度池).",
+ "findings": [
+  {
+   "id": "Z1",
+   "severity": "MINOR",
+   "key": "ui.teamBridgeTrial.ineligible.former_subscriber",
+   "problem": "Reopened by the C14 rewrite (a906a494): a space between Latin and Han in 'Team Bridge 历史记录'. The zh-CN guide forbids it and the other 36 keys (incl. end_pause, paused.*: 'Team Bridge历史记录') have none.",
+   "fix": "'你的组织曾使用过Team套餐。订阅即可重新启用团队功能；成员会保留，Team Bridge历史记录仍可查看（只读）。'"
+  }
+ ]
+}

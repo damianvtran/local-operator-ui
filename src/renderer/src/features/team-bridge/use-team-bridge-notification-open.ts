@@ -12,6 +12,16 @@ import {
 	type TeamBridgeOpenResult,
 	teamBridgeOpenPath,
 } from "../../../../shared/team-bridge-notify";
+import { TEAM_BRIDGE_PATH } from "./team-bridge-nav";
+
+const LEADING_HASH = /^#/;
+const QUERY_OR_HASH = /[?#]/;
+
+/** Whether a hash-router location is the Team Bridge route (`#/team-bridge…`). */
+export function onTeamBridgeRoute(hash: string): boolean {
+	const path = hash.replace(LEADING_HASH, "").split(QUERY_OR_HASH)[0];
+	return path === TEAM_BRIDGE_PATH || path.startsWith(`${TEAM_BRIDGE_PATH}/`);
+}
 
 /** The identity journal intentionally gives pending and settled sign-out the
  * same account token. A held notification click needs to observe that final
@@ -28,7 +38,7 @@ function notificationAuthoritySnapshot(client: QueryClient): string {
  * settles; a mismatch answers visibly without disclosing private routing IDs. */
 export function useTeamBridgeNotificationOpen(
 	enabled: boolean,
-	navigate: (path: string) => void,
+	navigate: (path: string, options?: { replace?: boolean }) => void,
 ): void {
 	const client = useQueryClient();
 	const subscribe = useCallback(
@@ -78,7 +88,20 @@ export function useTeamBridgeNotificationOpen(
 			return;
 		}
 		if (!enabled || authority.accountId !== accountId) return;
-		navigate(teamBridgeOpenPath(target));
+		/*
+		 * REPLACE WHEN THE WINDOW IS ALREADY ON TEAM BRIDGE (round 1, M2/Q1). A
+		 * push there stacks a second `/team-bridge` entry (the page then clears its
+		 * params with a replace), so the column's Back - "leave Team Bridge" -
+		 * would spend its first press stepping from one bridge entry to the other
+		 * with nothing visibly changing. Replacing keeps one entry per visit, the
+		 * invariant `team-bridge-leave.ts` relies on. Read from the live hash at
+		 * the moment of the open, because the click can land on any route.
+		 */
+		const onBridge = onTeamBridgeRoute(window.location.hash);
+		navigate(
+			teamBridgeOpenPath(target),
+			onBridge ? { replace: true } : undefined,
+		);
 		setTarget(null);
 	}, [target, enabled, navigate, client, authority.accountId, authority.token]);
 }

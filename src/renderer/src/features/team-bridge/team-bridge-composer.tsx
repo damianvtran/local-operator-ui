@@ -19,14 +19,20 @@ import type {
 	ClipboardEvent as ReactClipboardEvent,
 	DragEvent as ReactDragEvent,
 } from "react";
-import { useCallback, useId, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { rendererPlatform } from "../../mini-view/renderer-platform";
+import { registerComposerFocus } from "../chat/composer-field";
 import { MentionField, MentionNotice, useComposerMentions } from "./mentions";
 import {
 	imageFiles,
 	imagePasteCancelsText,
 } from "./team-bridge-attachments-model";
+import {
+	clearTeamBridgeComposerFocusRequest,
+	composerFocusDisposition,
+	teamBridgeComposerFocusPending,
+} from "./team-bridge-composer-focus";
 import {
 	MIN_DICTATION_CLIP_MS,
 	useTeamBridgeDictation,
@@ -365,6 +371,49 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	const showSpinner = sending || sendInFlight;
 
 	/*
+	 * THE PALETTE'S CARET HAND-OFF (UX round 1, U1 on #1673). Registered with
+	 * the same one-slot registry the chat composer uses (`composer-field.ts`), so
+	 * the palette's close-time restore (`handCaretToComposer`) can name and focus
+	 * this field when a pick moved the view. Only one composer is ever mounted:
+	 * the chat pane and Team Bridge are separate routes, and the unregister is
+	 * scoped to this registration, so a late teardown of either cannot clear the
+	 * other.
+	 */
+	const giveCaret = useCallback(() => {
+		const field = textareaRef.current;
+		if (!field) return;
+		field.focus();
+		clearTeamBridgeComposerFocusRequest();
+	}, [textareaRef]);
+	const composerNode = useCallback(() => textareaRef.current, [textareaRef]);
+	useEffect(
+		() => registerComposerFocus(giveCaret, composerNode),
+		[giveCaret, composerNode],
+	);
+	/*
+	 * A pick from another route lands before this composer exists (lazy route,
+	 * then the status, list and directory reads), so the close-time restore has
+	 * nothing to hand to. The pick leaves a request instead, honoured here once
+	 * the field is usable for the conversation it opened
+	 * (`team-bridge-composer-focus.ts` owns the rules). Re-asked on a
+	 * conversation change because a pick made on Team Bridge reuses this mount.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `conversationId` is a TRIGGER (a pick made on Team Bridge keeps this mount and changes only the conversation); the body reads the live request and the live caret.
+	useEffect(() => {
+		if (blocked || !teamBridgeComposerFocusPending()) return;
+		const field = textareaRef.current;
+		if (!field) return;
+		const active = document.activeElement;
+		if (active === field) {
+			clearTeamBridgeComposerFocusRequest();
+			return;
+		}
+		const disposition = composerFocusDisposition(active);
+		if (disposition === "take") giveCaret();
+		else if (disposition === "drop") clearTeamBridgeComposerFocusRequest();
+	}, [blocked, conversationId, giveCaret, textareaRef]);
+
+	/*
 	 * DICTATION, IN THE BAR RATHER THAN BESIDE IT (the operator's acceptance).
 	 *
 	 * The capability is the shared probe the five speech surfaces read, and the
@@ -477,6 +526,9 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 				   the box, including its padding, and the bridge's strip has always read
 				   it that way. */
 				{...pasteHandlers}
+				/* The same field-over-material role as the main chat composer;
+				 * a second opaque elevated fill would mask the chosen glass. */
+				data-glass-region="composer"
 				data-composer-bar=""
 				className={cn(
 					/* `rounded-md` (10px), not `rounded-lg` (14px): the operator asked for LESS
@@ -530,7 +582,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 						 * reserved for anything - dictation included. `relative` so the field
 						 * paints above the mention overlay `MentionField` positions under it.
 						 */
-						className="relative block min-h-9 w-full resize-none bg-transparent px-3 py-2 text-[14px] leading-5 text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed disabled:text-ink-dim"
+						className="relative block min-h-9 w-full resize-none bg-transparent px-3 pt-2.5 pb-1.5 text-[14px] leading-5 text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed disabled:text-ink-dim"
 					/>
 				</MentionField>
 				{/*
@@ -545,7 +597,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 				 */}
 				<div
 					data-composer-controls=""
-					className="flex h-9 min-w-0 items-center gap-1 px-2 pb-2"
+					className="flex h-9 min-w-0 items-center gap-1 px-1.5 pb-1.5"
 				>
 					{dictation.isRecording || dictation.isPreparing ? (
 						<>
@@ -753,10 +805,18 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 							{trailing}
 							<Button
 								size="icon-sm"
-								variant="primary"
-								// The circular arrow the pane reads as a send, not the square the
-								// chat composer's icon size gives.
-								className="shrink-0 rounded-full"
+								/* A 28px accent key with the controls' own 6px corner (visual
+								   refresh §3.2 Composer): the circle read as a floating badge
+								   beside square ghost controls in the same toolbar row.
+								   AT REST IT IS A GHOST GLYPH, NOT A WELL (design round 1, D3):
+								   `primary`'s disabled state paints `sunken`, which in the
+								   raised `elevated` card was the darkest, most saturated object
+								   in an empty composer. Accent only while there is something to
+								   send (or it is sending); otherwise the `ghost` disabled state,
+								   a transparent ground with `ink-disabled`, as Slack and Discord
+								   show an idle send. */
+								variant={hasContent || showSpinner ? "primary" : "ghost"}
+								className="shrink-0 rounded-sm"
 								disabled={!hasContent || blocked || sendDisabled || showSpinner}
 								aria-label={t("ui.teamBridge.composer.send")}
 								onClick={() => void handleSubmit()}

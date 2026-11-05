@@ -3,9 +3,9 @@
 	"alphaFloor": {
 		"under-window": {
 			"dark": {
-				"canvas": 0.59,
-				"surface": 0.67,
-				"elevated": 0.87
+				"canvas": 0.53,
+				"surface": 0.59,
+				"elevated": 0.68
 			},
 			"light": {
 				"canvas": 0.61,
@@ -15,9 +15,9 @@
 		},
 		"menu": {
 			"dark": {
-				"canvas": 0.73,
-				"surface": 0.79,
-				"elevated": 0.94
+				"canvas": 0.67,
+				"surface": 0.72,
+				"elevated": 0.8
 			},
 			"light": {
 				"canvas": 0.79,
@@ -27,9 +27,9 @@
 		},
 		"popover": {
 			"dark": {
-				"canvas": 0.79,
-				"surface": 0.85,
-				"elevated": 0.97
+				"canvas": 0.75,
+				"surface": 0.78,
+				"elevated": 0.86
 			},
 			"light": {
 				"canvas": 0.86,
@@ -45,7 +45,7 @@
 	"laneWash": {
 		"dark": {
 			"role": "sunken",
-			"scale": 0.73
+			"scale": 0.68
 		},
 		"light": {
 			"role": "surface",
@@ -53,7 +53,7 @@
 		}
 	},
 	"bandFloor": {
-		"dark": 0.91,
+		"dark": 0.88,
 		"light": 0.78
 	},
 	"controlMix": {
@@ -62,11 +62,11 @@
 			"light": 0.2
 		},
 		"menu": {
-			"dark": 0.15,
+			"dark": 0.1,
 			"light": 0.2
 		},
 		"popover": {
-			"dark": 0.15,
+			"dark": 0.1,
 			"light": 0.15
 		}
 	},

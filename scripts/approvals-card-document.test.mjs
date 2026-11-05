@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
+import { loadPalettes } from "./palette-source.mjs";
 
 /*
  * THE CARD DOCUMENT'S OWN RULES, driven through its real `main.ts`.
@@ -362,4 +363,35 @@ test("R3-2: overflowing scope explanation is named, associated, reachable and sc
 	assert.equal(gloss.tabIndex, -1, "short explanations add no stop");
 	assert.equal(gloss.dataset.overflow, "false");
 	assert.equal(key(dom, buttons[1], "Tab").defaultPrevented, false);
+});
+
+// Renderer repeats main's all-or-nothing sanitizer: an IPC bypass must not be
+// able to invent custom-property names or smuggle a CSS value into the card.
+test("composed card palettes are independently validated inside the document", () => {
+	const { doc, push } = mount();
+	const palette = loadPalettes().find((p) => p.id === "obsidian").palette;
+	push(modelOf(1, [req("a")], { paletteVars: palette }));
+	assert.equal(
+		doc.documentElement.style.getPropertyValue("--lo-accent"),
+		palette.accent,
+	);
+	push(
+		modelOf(2, [req("a")], {
+			paletteVars: { ...palette, accent: "red; } body { display:none" },
+		}),
+	);
+	assert.equal(doc.documentElement.style.getPropertyValue("--lo-accent"), "");
+	push(
+		modelOf(3, [req("a")], {
+			paletteVars: { ...palette, arbitraryRole: "#FFFFFF" },
+		}),
+	);
+	assert.equal(
+		doc.documentElement.style.getPropertyValue("--lo-arbitrary-role"),
+		"",
+	);
+	assert.equal(
+		doc.documentElement.style.getPropertyValue("--lo-accent"),
+		palette.accent,
+	);
 });

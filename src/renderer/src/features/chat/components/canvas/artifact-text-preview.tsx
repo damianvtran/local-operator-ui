@@ -7,9 +7,8 @@ import { MAX_EAGER_READ_BYTES } from "@features/chat/utils/viewer-routing";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { getTheme } from "@shared/themes";
 import { getCodeMirrorTheme } from "@shared/themes/code-mirror-theme";
+import { useAppearanceIsDark } from "@shared/themes/use-resolved-appearance";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import CodeMirror from "@uiw/react-codemirror";
 import { type FC, memo, useEffect, useMemo, useState } from "react";
@@ -108,10 +107,7 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	}, [artifact, tooLarge]);
 	/* The editor's own theme resolution (`code-editor.tsx`), so a read-only
 	   attachment and an editable file read as the same surface. */
-	const isDark = useUiPreferencesStore(
-		(preferences) =>
-			getTheme(preferences.themeName).theme.palette.mode === "dark",
-	);
+	const isDark = useAppearanceIsDark();
 	const extensions = useMemo(() => {
 		const language = loadLanguageExtensions(document.title);
 		return [getCodeMirrorTheme(isDark), ...(language ? [language] : [])];

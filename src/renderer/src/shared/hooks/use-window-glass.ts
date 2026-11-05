@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { glassFloorsForPalette } from "../../../../shared/glass-derivation.mjs";
 import {
 	type GlassScheme,
 	type GlassSettings,
@@ -6,6 +7,7 @@ import {
 	type WindowGlassState,
 	glassPaintFor,
 } from "../../../../shared/window-glass";
+import { glassPaletteFor } from "../themes/glass-palette";
 
 /**
  * The renderer's half of the window glass (translucency, on by default where the
@@ -24,7 +26,7 @@ import {
  * stylesheet it always ran.
  *
  * THE SCHEME IS READ FROM THE DOCUMENT (`.dark`, written by
- * `applyThemeToDocument`) because the alpha floors differ by scheme: a dark palette
+ * `applyAppearance`) because the alpha floors differ by scheme: a dark palette
  * over a dark material and a light one over a light material have different worst
  * backdrops. The theme provider calls `syncGlassScheme` in the same layout effect
  * that applies the theme, so the alphas and the palette change in one frame.
@@ -54,7 +56,7 @@ type Applied = {
 	active: boolean;
 	/** The scheme the alphas were derived for. The first paint takes main's
 	 * persisted one (the theme has not been applied yet); every later paint reads
-	 * the document, which `applyThemeToDocument` has already updated. */
+	 * the document, which `applyAppearance` has already updated. */
 	scheme: GlassScheme;
 	mechanism: "vibrancy" | "background-material";
 	settings: Pick<GlassSettings, "coverage" | "intensity" | "material">;
@@ -65,6 +67,9 @@ let applied: Applied | null = null;
 export const documentScheme = (): GlassScheme =>
 	root().classList.contains("dark") ? "dark" : "light";
 
+/* Native capability and the user's opacity setting are independent of theme
+ * composition. Measure the actual palette below instead of treating lo-* IDs
+ * (including borrowed/custom accents) as a request to disable transparency. */
 function paint(next: Applied | null): void {
 	applied = next;
 	const el = root();
@@ -73,7 +78,9 @@ function paint(next: Applied | null): void {
 		for (const name of GLASS_VARS) el.style.removeProperty(name);
 		return;
 	}
+	const palette = glassPaletteFor(document);
 	const { kinds, vars } = glassPaintFor({
+		floors: palette ? glassFloorsForPalette(palette) : undefined,
 		coverage: next.settings.coverage,
 		intensity: next.settings.intensity,
 		mechanism: next.mechanism,
@@ -140,6 +147,8 @@ export function applyGlassState(state: WindowGlassState | null): void {
  */
 export function syncGlassScheme(): void {
 	if (!applied || !applied.active) return;
+	/* Composition changes inks and grounds even when the scheme is unchanged.
+	 * Re-derive in the same layout effect, before either paint can be shown. */
 	paint({ ...applied, scheme: documentScheme() });
 	void window.api?.windowGlass?.reportScheme?.(documentScheme());
 }

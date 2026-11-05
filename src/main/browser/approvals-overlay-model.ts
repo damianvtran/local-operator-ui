@@ -22,6 +22,7 @@ import {
 	type ApprovalsCardModel,
 	type ApprovalsCardRequest,
 } from "../../shared/browser-approvals-overlay";
+import { sanitizePaletteVars } from "../../shared/theme-engine/roles.mjs";
 
 /**
  * A display string, capped. Never HTML: the document writes `textContent`.
@@ -142,6 +143,8 @@ export interface ApprovalsCardModelInput {
 	requesterLabels?: Readonly<Record<string, string>>;
 	/** The app's exact palette name; null/absent means the mode default. */
 	palette?: unknown;
+	/** A composed palette's role values; see `ApprovalsCardModel.paletteVars`. */
+	paletteVars?: unknown;
 }
 
 function modelDirection(value: unknown): "ltr" | "rtl" {
@@ -171,6 +174,7 @@ export function approvalsCardModelFrom(
 		dir: modelDirection(input.dir),
 		theme: input.theme === "light" ? "light" : "dark",
 		palette: paletteName(input.palette),
+		paletteVars: sanitizePaletteVars(input.paletteVars),
 		view: input.view === "list" ? "list" : "request",
 		focus: input.focus === true,
 		count: pending.length,
@@ -242,6 +246,7 @@ export function sanitizeApprovalsCardModel(
 		dir: modelDirection(input.dir),
 		theme: input.theme === "light" ? "light" : "dark",
 		palette: paletteName(input.palette),
+		paletteVars: sanitizePaletteVars(input.paletteVars),
 		view: input.view === "list" ? "list" : "request",
 		focus: input.focus === true,
 		count: pending.length,

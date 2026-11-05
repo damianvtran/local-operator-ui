@@ -329,7 +329,8 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 	// `/chat` (#739), and a missing export fails the bundle, not an assertion.
 	"react-router-dom":
 		'export const useNavigate = () => () => undefined;\nexport const useLocation = () => ({ pathname: "/chat" });\nexport const Link = ({ children }) => children;',
-	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";`,
+	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";
+export const isThemeName = (id) => id === "localOperatorDark";`,
 	"@shared/hooks/use-canonical-session": `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";

@@ -1,86 +1,57 @@
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
+import { Button } from "@shared/components/ui/button";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { type FC, memo } from "react";
+import { type FC, memo, useEffect, useState } from "react";
 import {
 	FileViewerState,
 	OpenInOsButton,
 	ViewerChrome,
 } from "./file-viewer-state";
+import { watchPdfViewer } from "./pdf-viewer-poll";
 
 /**
- * PDFs, in Chromium's own viewer, over a blob URL.
- *
- * Measured, not assumed (Electron 35.5.1, macOS arm64, the app's CSP copied
- * verbatim): an `<iframe src="blob:…">` whose blob says `application/pdf` loads
- * a frame document with `contentType: application/pdf` and zero CSP violations.
- * `<embed>` — the variant every Stack Overflow answer reaches for — is the one
- * our own CSP blocks, because there is no `object-src` directive and it falls
- * back to `default-src 'self'`. `plugins: true` changes nothing on Electron 35
- * and would widen the app's plugin surface for no behaviour, so
- * `webPreferences` is not touched.
- *
- * ## Naming the file once
- *
- * Chromium draws its toolbar from the frame's URL — an iframe's `title`
- * attribute is an accessibility label, not a document name — so a blob URL put
- * the UUID of the blob in the platform bar while our own bar printed the
- * filename, two names for one document and one of them garbage. `#toolbar=0`
- * (a fragment Chromium's PDF viewer honours; verified in the app, not assumed)
- * drops the platform toolbar entirely, which leaves the document's name in the
- * one place the app already prints it for every document: the tab above
- * (`ViewerChrome` no longer repeats it — see that component for why). The trade
- * is stated rather than hidden: the platform's page counter, zoom stepper and
- * print button go with it. Those are in the OS viewer, one click away in the bar
- * above, and a UUID printed as a filename is worse than a missing zoom control.
- *
- * ## The field around the page is the platform's, and `color-scheme` does not
- * reach it
- *
- * In the light brand palettes a near-black field sits under a cream bar with the
- * white page floating in it, and design review round 1 (D2) asked whether the
- * app could pin the platform's scheme so the field follows the palette. It was
- * tried and measured, and it cannot: on Electron 35.5.1 / macOS arm64 the field
- * measures `#282828` in every palette with this branch's stylesheets, and
- * neither the inherited `color-scheme` the palettes already publish on
- * `[data-theme]`, nor an explicit `color-scheme: light` on this `<iframe>`, nor
- * the same property set on the viewer document's own root, nor an emulated
- * `prefers-color-scheme: light`, moves it — the plugin paints from the
- * BROWSER's preferred colour scheme, not from any CSS we can author. The knob
- * that does reach it is the process-wide `nativeTheme.themeSource`, which is a
- * decision about every platform surface in the app rather than about this
- * viewer, so it is recorded here beside the toolbar note above as an accepted
- * platform boundary and left for the review to weigh. What the app owns on this
- * surface is the bar: themed, on `surface`, under its own hairline rule.
- *
- * What the probe proves, and what the frames prove. The probe measures the
- * viewer DOCUMENT: frame URL, the injected `<embed>`, no CSP violations, no
- * download. Whether it PAINTS is a question for pixels, and the committed
- * `canvas-workspace--pdf-viewer` frames answer it - this harness's headless
- * Chrome draws the fixture document under our own name bar (`#toolbar=0`) in
- * every theme the sweep captured. An earlier probe of the same wiring measured
- * `childBodyKids: 0`, so that was a difference between browser builds rather
- * than a law about this surface. The live `mentioned-files-app` frame stays
- * the evidence for the REAL read path, since that is the one production takes,
- * over the main process's bytes rather than a story fixture.
- *
- * No `pdf.js`, deliberately: it is a real dependency (a ~1.5 MB build plus a
- * worker asset, which is its own CSP decision), it re-implements a canvas
- * renderer for a toolbar Chromium already draws, and it duplicates the PDFium
- * the runtime already ships.
+ * Chromium owns the document; the app owns byte access and failure recovery.
+ * The frame's load event is NOT PDF readiness: our navigation guard once blocked
+ * the built-in viewer after application/pdf had loaded. Main reads the parsed
+ * result from that exact browser-owned guest. Unknown runtime shapes time out
+ * visibly instead of leaving a successful-looking blank.
  */
-const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
-	document,
-}) => {
+const PdfPreviewAttempt: FC<{
+	document: CanvasDocument;
+	onRetry: () => void;
+	reload: boolean;
+}> = ({ document, onRetry, reload }) => {
 	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
 		sizeBytes: document.sizeBytes,
+		cachePolicy: reload ? "reload" : "reuse",
 	});
+
+	const [viewer, setViewer] = useState<"loading" | "ready" | "failed">(
+		"loading",
+	);
+	useEffect(() => {
+		if (state.status !== "ready") return;
+		setViewer("loading");
+		return watchPdfViewer(
+			() =>
+				typeof window.api?.pdfViewerStatus === "function"
+					? window.api.pdfViewerStatus(state.url)
+					: Promise.resolve("failed"),
+			setViewer,
+		);
+	}, [state.status, state.url]);
+	const retry = (
+		<Button variant="secondary" size="sm" onClick={onRetry}>
+			{t("ui.canvas.files.retry")}
+		</Button>
+	);
 
 	/* The letterbox wears the PANE's ground (`canvas/index.tsx`): it is the pane's
 	   body behind the document, so it takes the drawer's rung rather than the
@@ -94,36 +65,70 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 			{/* Our chrome, and the only name on this surface: see the note above. */}
 			<ViewerChrome path={document.path} />
 
-			<div className={cn("min-h-0 flex-1")}>
-				{state.status === "ready" ? (
-					<iframe
-						src={`${state.url}#toolbar=0`}
-						title={t("ui.canvas.pdf_preview.pdf", { title: document.title })}
-						className={cn("h-full w-full border-0 bg-surface")}
-					/>
+			<div
+				className={cn("relative min-h-0 flex-1")}
+				// Driver contract: byte readiness alone does not mean PDFium parsed it.
+				data-pdf-status={state.status === "ready" ? viewer : state.status}
+			>
+				{state.status === "ready" && viewer !== "failed" ? (
+					<>
+						<iframe
+							src={`${state.url}#toolbar=0`}
+							title={t("ui.canvas.pdf_preview.pdf", { title: document.title })}
+							// Never hide the guest: Chromium can parse a hidden PDF yet never
+							// start rasterizing it. The opaque sibling scrim owns loading.
+							className={cn("h-full w-full border-0 bg-surface")}
+						/>
+						{viewer === "loading" ? (
+							<div
+								className={cn("absolute inset-0 bg-elevated")}
+								aria-live="polite"
+							>
+								<FileViewerState
+									quiet
+									title={t("ui.canvas.pdf_preview.opening")}
+								/>
+							</div>
+						) : null}
+					</>
 				) : state.status === "loading" ? (
 					<FileViewerState quiet title={t("ui.canvas.pdf_preview.opening")} />
-				) : state.code === "too-large" ? (
+				) : state.status === "unavailable" && state.code === "too-large" ? (
 					<FileViewerState
 						title={t("ui.canvas.pdf_preview.too_large_to_preview")}
-						detail={state.message}
+						detail={document.path}
 					>
 						<OpenInOsButton path={document.path} />
 					</FileViewerState>
 				) : (
 					<FileViewerState
 						title={
-							state.code === "not-found"
+							state.status === "unavailable" && state.code === "not-found"
 								? t("ui.canvas.pdf_preview.file_no_longer_exists")
 								: t("ui.canvas.pdf_preview.this_pdf_could_not_be_opened")
 						}
-						detail={state.message ?? document.path}
+						detail={document.path}
 					>
+						{retry}
 						<OpenInOsButton path={document.path} />
 					</FileViewerState>
 				)}
 			</div>
 		</div>
+	);
+};
+
+const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
+	document,
+}) => {
+	const [attempt, setAttempt] = useState(0);
+	return (
+		<PdfPreviewAttempt
+			key={`${document.path}:${document.lastAgentModified}:${document.sizeBytes}:${attempt}`}
+			document={document}
+			reload={attempt > 0}
+			onRetry={() => setAttempt((value) => value + 1)}
+		/>
 	);
 };
 

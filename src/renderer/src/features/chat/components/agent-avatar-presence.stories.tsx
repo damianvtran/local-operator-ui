@@ -17,6 +17,11 @@
  * `sessionPictureEditable` the app uses. `MatrixNotOwned` is the remote column
  * the table must keep empty.
  *
+ * NO PICTURE, NO MARK (operator, 2026-11-04). For a regular agent every
+ * pictureless cell is empty - no placeholder, no reserved box. `MatrixProactive`
+ * seeds the profiles list with every agent `proactive`, the one case where the
+ * HEADER column (and only that column) still draws the placeholder door.
+ *
  * `capturePending` is held until the failed row has settled, because its claim
  * ("bytes did not resolve") arrives after paint and an early frame would show the
  * calm plate instead (AGENTS.md, *What a capture may claim*).
@@ -172,14 +177,26 @@ const RailRow: FC<{ state: State }> = ({ state }) => (
 	</div>
 );
 
-const Matrix: FC<{ size: AgentAvatarSize; owned: boolean }> = ({
-	size,
-	owned,
-}) => {
+const Matrix: FC<{
+	size: AgentAvatarSize;
+	owned: boolean;
+	proactive: boolean;
+}> = ({ size, owned, proactive }) => {
 	const client = useQueryClient();
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({ agentAvatarSize: size });
-	}, [size]);
+		/*
+		 * The class lives on the profile; seeded before first paint so the header
+		 * reads it on its first render (`agentSuggestsPicture`).
+		 */
+		client.setQueryData(
+			["desktop", "profiles"],
+			Object.values(AGENTS).map((agent) => ({
+				name: agent.name,
+				action_class: proactive ? "proactive" : "reactive",
+			})),
+		);
+	}, [size, client, proactive]);
 	useEffect(() => {
 		client.setQueryData(agentAvatarsQueryKey, {
 			[AGENTS.picture.id]: {
@@ -206,7 +223,7 @@ const Matrix: FC<{ size: AgentAvatarSize; owned: boolean }> = ({
 	return (
 		<>
 			<div
-				data-avatar-matrix={`${size}-${owned ? "owned" : "not-owned"}`}
+				data-avatar-matrix={`${size}-${owned ? "owned" : "not-owned"}${proactive ? "-proactive" : ""}`}
 				className="inline-block bg-canvas p-4 text-body-sm text-ink"
 			>
 				<div
@@ -228,18 +245,15 @@ const Matrix: FC<{ size: AgentAvatarSize; owned: boolean }> = ({
 				</p>
 				{/*
 				 * WHAT THE LAST ROW IS. "Picture unreadable" is a digest the row claims
-				 * whose bytes answer 404 - not an upload that failed (a refused upload
-				 * leaves the previous picture or none, and is the editor's error line).
-				 * It draws what NO picture draws on each surface, which is the contract:
-				 * the turn head and the header draw the placeholder door; the session row
-				 * and the rail draw the bare status or glyph, because those two surfaces
-				 * never draw a placeholder. The Uploading row is the one place the door is
-				 * closed on purpose (a plate and a spinner).
+				 * whose bytes answer 404 - not an upload that failed. It draws what NO
+				 * picture draws on each surface, which is the contract: nothing on the
+				 * turn head, the header and the session row (the header's placeholder
+				 * door only for a proactive agent), the glyph on the rail.
 				 */}
 				<p className="mt-1 max-w-xl text-ink-muted">
-					Picture unreadable draws the same as No picture on every surface: the
-					door on the turn head and header, the bare status on the session row,
-					the glyph on the rail.
+					{proactive
+						? "Proactive agents: the header alone suggests a picture; every other surface draws nothing without one."
+						: "Regular agents: no picture draws nothing on the turn head, header and session row; the rail keeps its glyph."}
 				</p>
 			</div>
 		</>
@@ -256,19 +270,21 @@ const MatrixRow: FC<{ state: State; owned: boolean }> = ({ state, owned }) => (
 	</>
 );
 
-type Args = { size: AgentAvatarSize; owned: boolean };
+type Args = { size: AgentAvatarSize; owned: boolean; proactive: boolean };
 
 const meta: Meta<Args> = {
 	title: "Chat/Agent picture presence",
 	parameters: { layout: "fullscreen" },
-	args: { size: "small", owned: true },
+	args: { size: "small", owned: true, proactive: false },
 	argTypes: {
 		size: {
 			control: { type: "select" },
 			options: ["small", "medium", "large"],
 		},
 	},
-	render: (args) => <Matrix size={args.size} owned={args.owned} />,
+	render: (args) => (
+		<Matrix size={args.size} owned={args.owned} proactive={args.proactive} />
+	),
 };
 export default meta;
 
@@ -283,3 +299,6 @@ export const MatrixLarge: Story = { args: { size: "large" } };
 
 /** A remote conversation's agent: nothing owned, so no door and no placeholder. */
 export const MatrixNotOwned: Story = { args: { owned: false } };
+
+/** Proactive-class agents: the header's placeholder door is the only empty mark. */
+export const MatrixProactive: Story = { args: { proactive: true } };

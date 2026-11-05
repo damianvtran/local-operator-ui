@@ -2903,3 +2903,58 @@ html[data-glass~="canvas"] [data-glass-lane] {
 	outline: 2px solid var(--lo-border-control);
 	outline-offset: -2px;
 }
+
+/* Native range tracks paint ABOVE the input background. Style the actual
+   track for the shared editor/accent picker, keeping the native keyboard/AT
+   value semantics and a 24px pointer target rather than replacing the input. */
+input[data-colour-hue] {
+	appearance: none;
+	background: transparent;
+	cursor: pointer;
+}
+input[data-colour-hue]::-webkit-slider-runnable-track {
+	height: 8px;
+	border-radius: 4px;
+	background: linear-gradient(
+		to right,
+		#ff0000,
+		#ffff00,
+		#00ff00,
+		#00ffff,
+		#0000ff,
+		#ff00ff,
+		#ff0000
+	);
+}
+input[data-colour-hue]::-webkit-slider-thumb {
+	appearance: none;
+	box-sizing: border-box;
+	width: 16px;
+	height: 16px;
+	margin-top: -4px;
+	border: 2px solid var(--lo-ink);
+	border-radius: 50%;
+	background: var(--lo-elevated);
+}
+input[data-colour-hue]::-moz-range-track {
+	height: 8px;
+	border-radius: 4px;
+	background: linear-gradient(
+		to right,
+		#ff0000,
+		#ffff00,
+		#00ff00,
+		#00ffff,
+		#0000ff,
+		#ff00ff,
+		#ff0000
+	);
+}
+input[data-colour-hue]::-moz-range-thumb {
+	box-sizing: border-box;
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--lo-ink);
+	border-radius: 50%;
+	background: var(--lo-elevated);
+}

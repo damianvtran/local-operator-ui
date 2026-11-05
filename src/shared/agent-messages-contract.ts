@@ -150,6 +150,24 @@ export const agentMessagesStatusSchema = z
 		// section gates the reach editor's controls rather than letting a reader
 		// press a Save the server will refuse.
 		read_only: z.boolean().optional(),
+		/*
+		 * The organization whose no-card Team trial ENDED (core #3386, from the
+		 * hub's positive `trial_ended_at` marker, agent-server #296). Present only
+		 * when no organization is eligible, so it rides surface A with
+		 * `tenant_id: null`: without it the page could not tell an ended trial
+		 * from "never had Teams" and offered a new trial (QA round 1, Q5).
+		 * Additive: an older runtime omits it and a malformed block degrades to
+		 * null rather than failing the status read that gates every surface.
+		 */
+		trial_ended: z
+			.object({
+				tenant_id: z.string().min(1),
+				trial_ended_at: z.string().min(1),
+			})
+			.passthrough()
+			.nullable()
+			.optional()
+			.catch(null),
 		delivery_hold: agentMessagesDeliveryHoldSchema,
 		default_on: agentMessagesDefaultOnSchema,
 	})

@@ -1,0 +1,22 @@
+{
+  "keys": 160,
+  "format_calls": 160,
+  "errors": [],
+  "unexempted_identical": [
+    "ui.settings.appearance.editor.copy_name",
+    "ui.settings.appearance.editor.ratio",
+    "ui.settings.appearance.editor.picker.rgb",
+    "ui.settings.appearance.editor.picker.oklch",
+    "ui.settings.appearance.editor.preview.bridge"
+  ],
+  "plural_outputs": {
+    "0": "Проблемы с контрастом: 0",
+    "1": "1 проблема с контрастом",
+    "2": "Проблемы с контрастом: 2",
+    "5": "Проблемы с контрастом: 5",
+    "11": "Проблемы с контрастом: 11",
+    "21": "21 проблема с контрастом",
+    "22": "Проблемы с контрастом: 22",
+    "1.5": "Проблемы с контрастом: 1,5"
+  }
+}

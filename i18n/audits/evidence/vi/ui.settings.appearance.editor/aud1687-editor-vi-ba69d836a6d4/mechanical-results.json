@@ -1,0 +1,22 @@
+{
+  "keys": 160,
+  "format_calls": 160,
+  "errors": [],
+  "unexempted_identical": [
+    "ui.settings.appearance.editor.copy_name",
+    "ui.settings.appearance.editor.ratio",
+    "ui.settings.appearance.editor.picker.rgb",
+    "ui.settings.appearance.editor.picker.oklch",
+    "ui.settings.appearance.editor.preview.bridge"
+  ],
+  "plural_outputs": {
+    "0": "0 vấn đề tương phản",
+    "1": "1 vấn đề tương phản",
+    "2": "2 vấn đề tương phản",
+    "5": "5 vấn đề tương phản",
+    "11": "11 vấn đề tương phản",
+    "21": "21 vấn đề tương phản",
+    "22": "22 vấn đề tương phản",
+    "1.5": "1,5 vấn đề tương phản"
+  }
+}

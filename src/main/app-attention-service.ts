@@ -121,8 +121,11 @@ export class AppAttentionService {
 			"approvals.approve",
 			"approvals.deny",
 			"team_bridge.read",
+			// A thread read rolls into the conversation unread (TR1): same reconcile.
+			"team_bridge.thread_read",
 			"team_bridge.conversations.notify",
 			"team_bridge.conversations.join",
+			"team_bridge.conversations.leave",
 			"team_bridge.conversations.delete",
 			"team_bridge.conversations.lifecycle",
 			"team_bridge.conversations.consent",

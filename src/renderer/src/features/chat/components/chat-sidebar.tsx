@@ -1061,16 +1061,6 @@ export function ChatSidebar({
 	 * conditional, so the order is a readability choice rather than a hooks rule.
 	 */
 	const sessions = useCanonicalSessionsStore((s) => s.sessions);
-	/*
-	 * Whether any conversation in the list claims a picture: the one fact a
-	 * pictureless row needs to hold the picture's box empty, so every title in a
-	 * list that mixes both starts on one x (design review D1). A list with none
-	 * draws exactly what main drew.
-	 */
-	const anyRowPictured = useMemo(
-		() => sessions.some((row) => Boolean(row.agent_id && row.avatar_sha256)),
-		[sessions],
-	);
 	const error = useCanonicalSessionsStore((s) => s.error);
 	/*
 	 * The TRI-STATE, because the gate owes two different sentences and can only pick
@@ -4860,11 +4850,7 @@ export function ChatSidebar({
 				 * One component so the two arms cannot disagree about the state, and so
 				 * a row without a picture is exactly the cell this file drew before.
 				 */}
-				<ChatSessionAvatar
-					row={row}
-					nowSeconds={listNow / 1000}
-					reservePicture={anyRowPictured}
-				/>
+				<ChatSessionAvatar row={row} nowSeconds={listNow / 1000} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
 				 * A leading fact rather than a trailing one, for the reason the archived

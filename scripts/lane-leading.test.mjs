@@ -175,8 +175,23 @@ const PANEL_COLUMNS = [
 			'className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"',
 			// The thread column is built through `cn()` since main's narrow takeover
 			// (`@max-[1024px]/bridge:invisible`) landed, so the pin is the quoted
-			// class string rather than a whole `className="…"` attribute.
-			'"panel-top-pad flex min-w-0 flex-1 flex-col bg-surface"',
+			// class string rather than a whole `className="…"` attribute. Its ground
+			// is `canvas` since the Team Bridge visual refresh (#1668): the timeline
+			// is the reading plane beside the `surface` rail. The rule this pins is
+			// unchanged - the box that pads the strip paints its own ground.
+			'"panel-top-pad flex min-w-0 flex-1 flex-col bg-canvas"',
+		],
+	},
+	{
+		/*
+		 * The shell's ROUTE-OWNED left column (the Team Bridge sidebar swap): the
+		 * host the bridge rail is portaled into on `/team-bridge`. It is the panel
+		 * in that mode - the hosted rail carries no pad of its own - so it is the
+		 * element that must clear the traffic lights.
+		 */
+		path: "src/renderer/src/shared/components/common/chat-layout.tsx",
+		classes: [
+			'className="panel-top-pad flex h-full min-h-0 flex-col overflow-hidden bg-surface"',
 		],
 	},
 ];

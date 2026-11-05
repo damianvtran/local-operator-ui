@@ -1,4 +1,5 @@
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import { PanelEdge } from "@shared/components/common/panel-edge";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -38,7 +39,7 @@ import {
 	observeDisplayedThreadReplies,
 } from "./team-bridge-thread-read";
 import { useStickToBottom } from "./use-stick-to-bottom";
-import { teamBridgeKeys, useMarkTeamBridgeRead } from "./use-team-bridge";
+import { teamBridgeKeys, useMarkTeamBridgeThreadRead } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
 import {
 	type ReplyWindowMode,
@@ -313,11 +314,23 @@ function TeamBridgeThreadPaneBody({
 	};
 	return (
 		<aside
+			/* A sibling reading sidebar, not a surface stacked over the timeline.
+			 * The shared split-page contract owns its material through the top pad. */
+			data-glass-region="page-sidebar"
 			ref={pane}
 			aria-label={t("ui.teamBridge.replies.title")}
-			className="panel-top-pad flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-canvas"
+			/* THE THREAD IS THE THIRD PLANE (visual refresh §3.2): `surface` beside
+			   the `canvas` timeline, with the one sanctioned `PanelEdge` seam on its
+			   leading edge (`relative` is the seam's containing block). It was
+			   `canvas`, the same ground as the timeline it sits beside, so only the
+			   seam separated two reading planes. Rows inside it hover to `elevated`
+			   (`density="compact"`), the next step up from this ground.
+			   `--thread-row-host` / `--thread-row-message-hover` hand both grounds to
+			   the thread row's facepile ring (`team-bridge-thread-row.tsx`). */
+			className="panel-top-pad relative flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-surface [--thread-row-host:var(--color-surface)] [--thread-row-message-hover:var(--color-elevated)]"
 		>
-			<header className="flex h-11 shrink-0 items-center justify-between px-5">
+			<PanelEdge side="start" />
+			<header className="flex h-12 shrink-0 items-center justify-between px-4">
 				<h2 className="font-semibold text-[15px] text-ink">
 					{t("ui.teamBridge.replies.title")}
 				</h2>
@@ -495,7 +508,8 @@ function TeamBridgeThreadPaneBody({
 						</p>
 					)}
 					<div
-						className="rounded-xl bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid"
+						data-glass-region="composer"
+						className="rounded-md bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid"
 						{...(state === "ready" ? attachmentPasteHandlers(images) : {})}
 					>
 						<TeamBridgeAttachmentStrip state={images} />
@@ -537,8 +551,10 @@ function TeamBridgeThreadPaneBody({
 							/>
 							<Button
 								size="icon-sm"
-								variant="primary"
-								className="rounded-lg"
+								/* Ghost at rest, accent while sendable: the composer's rule
+								   (design round 1, D3; `team-bridge-composer.tsx`). */
+								variant={hasContent || sending ? "primary" : "ghost"}
+								className="rounded-sm"
 								disabled={
 									!hasContent || images.busy || sending || state !== "ready"
 								}
@@ -601,7 +617,20 @@ function TeamBridgeThreadPaneMount({
 }: ThreadPaneMountProps) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
-	const read = useMarkTeamBridgeRead(conversationId, tenantId);
+	/* The newest reply this pane can know of: the root's rollup `last` seq is not
+	   on the wire, so it is the newest admitted reply row - but only when the
+	   window holds the live edge: a backward window paged into the middle, or
+	   an oldest-first window with pages left, has newer replies it has not
+	   loaded. `undefined` keeps the
+	   badge (see `threadUnreadAfterRead`). Read at settlement through a ref
+	   because the query below is declared after this hook. */
+	const newestReplyRef = useRef<number | undefined>(undefined);
+	const read = useMarkTeamBridgeThreadRead(
+		conversationId,
+		tenantId,
+		rootId,
+		() => newestReplyRef.current,
+	);
 	// Observer recreation (paging/refetch) must not turn a successful read into a
 	// second mutation loop. This ref belongs to the keyed tenant/conversation/root.
 	const acknowledged = useRef(-1);
@@ -651,6 +680,15 @@ function TeamBridgeThreadPaneMount({
 		poll: true,
 	});
 	const replies = query.replies;
+	newestReplyRef.current =
+		(query.mode === "desc" && query.latestPageAvailable) ||
+		(query.mode !== "desc" && !query.hasNextPage)
+			? replies.reduce<number | undefined>(
+					(max, reply) =>
+						max === undefined || reply.seq > max ? reply.seq : max,
+					undefined,
+				)
+			: undefined;
 
 	const send = useMutation({
 		mutationFn: ({

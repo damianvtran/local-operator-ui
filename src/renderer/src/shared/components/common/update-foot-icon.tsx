@@ -239,6 +239,22 @@ export const UpdateFootIconView: FC<{
 							{(summarySurface.offer.summary ?? "").trim()}
 						</span>
 					) : null}
+					{/*
+					 * The reassurance rides in the tooltip, the first place a person
+					 * meets an update, so "do I have to stop everything first?" is
+					 * answered before the card opens. ONLY WHEN EVERY WAITING SURFACE IS
+					 * NON-DISRUPTIVE (review M1): an app install restarts only the window
+					 * and the server's `entry-point` move leaves detached runtimes alone
+					 * (`server/reload.py`), but the source rebuild and the legacy
+					 * installers rewrite the install in place, and their cards say a turn
+					 * can be interrupted - the tooltip must not contradict them. Wraps
+					 * rather than truncates: it is a sentence, not a label.
+					 */}
+					{surfaces.every((surface) => surface.offer.nonDisruptive === true) ? (
+						<span className="text-ink-muted">
+							{t("ui.common.updates.update_foot_icon.sessions_keep_running")}
+						</span>
+					) : null}
 					<span className="whitespace-nowrap text-ink-muted">
 						{t("ui.common.updates.update_foot_icon.show_the_update_notice")}
 					</span>

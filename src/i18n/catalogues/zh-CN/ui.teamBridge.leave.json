@@ -1,0 +1,6 @@
+{
+	"ui.teamBridge.leave.back": "返回",
+	"ui.teamBridge.leave.back_shortcut": "返回（{shortcut}）",
+	"ui.teamBridge.leave.name": "返回，离开Team Bridge",
+	"ui.teamBridge.leave.name_attention": "{count, plural, other {返回，离开Team Bridge，其他位置有#项待处理}}"
+}

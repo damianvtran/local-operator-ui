@@ -1,0 +1,21 @@
+{
+  "keys": 160,
+  "format_calls": 160,
+  "errors": [],
+  "unexempted_identical": [
+    "ui.settings.appearance.editor.ratio",
+    "ui.settings.appearance.editor.picker.rgb",
+    "ui.settings.appearance.editor.picker.oklch",
+    "ui.settings.appearance.editor.preview.bridge"
+  ],
+  "plural_outputs": {
+    "0": "0个对比度问题",
+    "1": "1个对比度问题",
+    "2": "2个对比度问题",
+    "5": "5个对比度问题",
+    "11": "11个对比度问题",
+    "21": "21个对比度问题",
+    "22": "22个对比度问题",
+    "1.5": "1.5个对比度问题"
+  }
+}

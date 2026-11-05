@@ -86,6 +86,16 @@ export interface ApprovalsCardModel {
 	 * user's palette rather than a mode default. Null means the mode default.
 	 */
 	palette: string | null;
+	/**
+	 * The composed palette's role values, when `palette` names a composition
+	 * (`lo-<hash>`: a contrast preset or custom accent) that the card's static
+	 * stylesheet has no block for. The card's CSP is `style-src 'self'`, so it
+	 * cannot take the `<style>` the main window injects; it sets these as `--lo-*`
+	 * custom properties instead. Every key is a palette role and every value a
+	 * hex or the fixed shadow grammar (`sanitizePaletteVars`); null means the
+	 * static block for `palette` (or the mode default) is the whole theme.
+	 */
+	paletteVars: Record<string, string> | null;
 	view: "request" | "list";
 	/** Ask the document to focus its dialog after painting (explicit open only). */
 	focus: boolean;

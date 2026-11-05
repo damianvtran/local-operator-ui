@@ -1,0 +1,40 @@
+{
+ "schema": 1,
+ "auditor": "copy-reviewer (lopdev team copy-reviewer session 3454343bfd47; independent i18n auditor, not the translator agent coder of session 568d933e34b1)",
+ "agent": "copy-reviewer (lopdev team copy-reviewer session 3454343bfd47; independent i18n auditor, not the translator agent coder of session 568d933e34b1)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (3454343bfd47) and agent (copy-reviewer) from the translator (agent coder, session 568d933e34b1, anthropic/claude-opus-5-5). Same model family as the translator: not a cross-family audit. Verdict rebuilt from the en source, en context, render site, sibling precedents, glossary and locale style guide.",
+ "instance": "3454343bfd47-leave-ur",
+ "session": "3454343bfd47",
+ "locale": "ur",
+ "branch": "feat/team-bridge-sidebar-swap",
+ "base_head": "34b61d19316c825303e5c4e1b0c0717c32b0023d (files uncommitted in worktree; audited by blob hash)",
+ "date": "2026-11-04",
+ "status": "passed",
+ "namespace": "ui.teamBridge.leave",
+ "sha256": {
+  "ur": "fb3af2917c89fdf67f12a84e9642db4e9844efea69c9be9dcf603a5861ec3cad",
+  "en": "e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7"
+ },
+ "inputs_sha256": {
+  "en_context (ui.teamBridge.leave.context.json)": "8f61f476d77c6428a67df9362910859e3dccce5d83516735601dd44d2aaf8560",
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/ur.md)": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+ },
+ "scope": "ui.teamBridge.leave: all 4 keys (back, back_shortcut, name, name_attention), new namespace",
+ "verified": [
+  "all 9 brief sha256 values matched the worktree files before audit (en, en context, 7 targets)",
+  "key set equals en (4 keys); back_shortcut keeps exactly {shortcut}; name_attention keeps {count} with # in every arm; back/name placeholder-free",
+  "CLDR plural arms for ur are exactly one/other (Intl.PluralRules categories), formatted with intl-messageformat at 0,1,2,3,5,21,22,1000000 without error",
+  "no bidi/zero-width control characters, NFC, no edge or double spaces",
+  "design-qa copy_scan.py over all 9 leave files: 'scanned 9 files, 43 candidate strings; 0 findings'",
+  "visible label is one short word (column min 220px); 'Team Bridge' kept Latin and untranslated as in the locale's ui.teamBridge.json",
+  "'پیچھے' / 'پیچھے ({shortcut})' match ui.browser.browser_url_bar precedent; LTR {shortcut} island left in source order",
+  "'آئٹم/آئٹمز' matches ui.nativeBadge.attention; 'منتظر ہے/ہیں' matches the shipped hold copy ('… کے منتظر ہیں'); 'نکلیں' is the respectful imperative the guide requires; Urdu comma '،' used",
+  "RTL: no manual bidi controls (render layer isolates); component flips the arrow via useTextDirection() (team-bridge-route-column.tsx:52)",
+  "0 falls to other ('0 آئٹمز'), correct for ur"
+ ],
+ "findings": []
+}

@@ -1,0 +1,59 @@
+{
+  "audit_id": "aud1682-delta-es-ba69d836a6d4",
+  "audit_date": "2026-11-04",
+  "locale": "es",
+  "namespace": "ui.settings.appearance",
+  "audited_head": "003d40db17dc997dc586942de7498b30e027ec49",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ba69d836a6d4",
+    "instance": "aud1682-delta-es-ba69d836a6d4",
+    "model": "openai/gpt-6.1-sol",
+    "primary_model": "anthropic/claude-opus-5-5",
+    "fallback": "provider quota failure; host switched auditor to openai/gpt-6.1-sol before locale audit",
+    "independent_from_translator_session": true,
+    "independence": "Different session from translator fd3ba80e8c8f; this auditor authored no translations. Same fallback model, separate agent/session."
+  },
+  "translator": {
+    "session": "fd3ba80e8c8f",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": "quota fallback; map incorporated by coder"
+  },
+  "keys_audited": [
+    "ui.settings.appearance.contrast.background_ceiling",
+    "ui.settings.appearance.contrast.capped_hint",
+    "ui.settings.appearance.accent.palette_override_notice"
+  ],
+  "scope": "3 new keys: contrast.background_ceiling, contrast.capped_hint, accent.palette_override_notice (PR #1682). Previous 85 keys retained from audit 63837f8; all previous namespace values verified byte-identical.",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.json",
+      "sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.context.json",
+      "sha256": "072b5c80bcce279e98ba60ef7da856b7831764b938d284647eb0b3a5bd2990ac"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/es/ui.settings.appearance.json",
+      "sha256": "bdc317095cbcd1c096e991c6ff5e88402010b4ac1cb6de0914547100bc60b31e"
+    }
+  },
+  "findings": [],
+  "status": "passed",
+  "result": "clean",
+  "checks": {
+    "placeholders_byte_identical": true,
+    "bidi_control_characters_absent": true,
+    "french_narrow_nbsp_before_colon": null,
+    "all_preexisting_values_byte_identical_to_63837f8": true,
+    "idiom_and_term_consistency": "Reviewed actual English/context/locale bytes; background ceiling limits background brightness and darkens ink; capped hint promises closest readable setting; accent reminder preserves borrowed palette name."
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/aud1682-delta-es-ba69d836a6d4.json",
+      "sha256": "0fd29c127e774657ef58f81bcd5008d831e9d6822a579e6f0ee5e6fb55a8446c"
+    }
+  ],
+  "limitations": "Translation-source audit only; no rendered-fit or native-reader claim. Whole string scanners owned by CI. Previous findings retained in prior receipts, not re-audited or erased."
+}

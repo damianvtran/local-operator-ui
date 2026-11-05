@@ -521,3 +521,201 @@ test("a row whose sounds are absent or empty renders no sounds section at all", 
 		}
 	}
 });
+
+/* ------------------ highlights deliverables (2026-11-03) ------------------ */
+
+/*
+ * THE OPERATOR'S REPRO: a turn wrote ten audio files and one HTML page to the
+ * scratchpad and the user had to find them on disk. The core now emits the
+ * audio in `sounds[]` with `origin: "file"` and the page as an html-kind file;
+ * the block must draw all ten in the SAME collage generated sounds use and keep
+ * the page as an actionable row, in BOTH fold states.
+ */
+const writtenSound = (index) => ({
+	...sound(`picked-${index}`, `take-${index}.mp3`, 0),
+	origin: "file",
+	path: `picks/take-${index}.mp3`,
+});
+
+test("written audio draws in the sounds collage beside an html row, in both forms", () => {
+	const record = supplement({
+		files: [file("picks/index.html", "index.html", 2048, "html")],
+		sounds: Array.from({ length: 10 }, (_, index) => writtenSound(index + 1)),
+	});
+	for (const condensed of [true, false]) {
+		const markup = render(record, condensed);
+		assert.equal(
+			(markup.match(/data-supplement-sound=""/g) ?? []).length,
+			10,
+			`one collage cell per written file (condensed=${condensed})`,
+		);
+		assert.ok(
+			markup.includes("grid-cols-[repeat(auto-fit"),
+			"the collage grid",
+		);
+		// The written file's title is the reveal/open press, and its tooltip is
+		// the display path - no extra button, so no cell grows.
+		assert.equal(
+			(markup.match(/data-supplement-sound-file=""/g) ?? []).length,
+			10,
+		);
+		assert.ok(markup.includes('title="picks/take-3.mp3"'), "path tooltip");
+		// The page stays a compact file row (its canvas action is the row menu's;
+		// `supplement-file-actions.test.mjs` exercises the menu itself).
+		assert.equal((markup.match(/data-supplement-file=""/g) ?? []).length, 1);
+		assert.ok(textOf(markup).includes("index.html"));
+		assert.equal(markup.includes("data-supplement-images"), false);
+	}
+	// A GENERATED sound keeps a plain title span: nothing to reveal.
+	const generated = render(supplement({ sounds: [sound("g", "Swell", 3)] }));
+	assert.equal(generated.includes("data-supplement-sound-file"), false);
+});
+
+const PIN_WORD = /pinned/i;
+
+test("pinned files lead the files section; no badge is drawn", () => {
+	const record = supplement({
+		files: [
+			file("a.md", "a.md", 10),
+			file("b.md", "b.md", 10),
+			{ ...file("pinned.md", "pinned.md", 10), pinned: true },
+		],
+		filesMore: 2,
+		more: ["c.md", "d.md"],
+	});
+	for (const condensed of [true, false]) {
+		const text = textOf(render(record, condensed));
+		assert.ok(
+			text.indexOf("pinned.md") < text.indexOf("a.md"),
+			`the pin precedes unpinned rows (condensed=${condensed}): ${text}`,
+		);
+		assert.ok(text.includes("2 more files"), "the disclosure is unchanged");
+		assert.equal(PIN_WORD.test(text.replace("pinned.md", "")), false);
+	}
+});
+
+test("the withheld line paints once, muted, in both forms; a withheld-only row paints it", () => {
+	const mixed = supplement({
+		files: [file("report.md", "report.md", 100)],
+		withheld: [
+			{ name: "x.key", reason: "sensitive" },
+			{ name: "far.mp4", reason: "outside" },
+			{ name: "far2.mp4", reason: "outside" },
+		],
+		withheldMore: 1,
+	});
+	const only = supplement({
+		withheld: [{ name: "gone.png", reason: "missing" }],
+	});
+	for (const condensed of [true, false]) {
+		const markup = render(mixed, condensed);
+		assert.equal(
+			(markup.match(/data-supplement-withheld=""/g) ?? []).length,
+			1,
+		);
+		// Four refused (three listed + one more), distinct reasons in first-seen
+		// order, joined by the catalogue's list comma - never "and" (D2).
+		assert.ok(
+			textOf(markup).includes(
+				"4 files not shown: sensitive file, outside allowed locations",
+			),
+			textOf(markup),
+		);
+		assert.ok(markup.includes("text-ink-muted"), "the quiet style");
+		const single = render(only, condensed);
+		assert.ok(
+			textOf(single).includes("1 file not shown: file no longer exists"),
+			textOf(single),
+		);
+		// Names only ever reach the tooltip, never the line itself.
+		assert.equal(textOf(single).includes("gone.png"), false);
+	}
+	// Only a count, no reason this build knows: the count alone.
+	const countOnly = render(supplement({ withheldMore: 2 }));
+	assert.ok(textOf(countOnly).includes("2 files not shown"), textOf(countOnly));
+	assert.equal(textOf(countOnly).includes(":"), false);
+	// Nothing withheld: no line.
+	assert.equal(
+		render(supplement({ files: [file("a.md", "a.md", 1)] })).includes(
+			"data-supplement-withheld",
+		),
+		false,
+	);
+});
+
+test("a video-kind file renders as a preview tile in both forms; images keep the grid", () => {
+	const record = supplement({
+		files: [
+			file("renders/demo.mp4", "demo.mp4", 900_000, "video"),
+			file("renders/still.png", "still.png", 9_000, "image"),
+			file("notes.md", "notes.md", 100),
+		],
+	});
+	for (const condensed of [true, false]) {
+		const markup = render(record, condensed);
+		assert.equal(
+			(markup.match(/data-supplement-video-tile=""/g) ?? []).length,
+			1,
+			`one video tile (condensed=${condensed})`,
+		);
+		assert.equal(
+			(markup.match(/data-supplement-image-tile=""/g) ?? []).length,
+			1,
+			"the image keeps its grid tile",
+		);
+		// The tile's name row + the markdown row; the image has no row.
+		assert.equal((markup.match(/data-supplement-file=""/g) ?? []).length, 2);
+		// Static markup runs no effects: the tile is the reserved 16:9 box, and
+		// no <video> exists until the path resolves near the viewport.
+		assert.ok(markup.includes("aspect-video"));
+		assert.equal(markup.includes("<video"), false);
+	}
+});
+
+/* ----------------------- round-1 remediation (2026-11-03) ----------------------- */
+
+test("an over-cap clip is a plain file row, not an inline tile (R3)", () => {
+	const markup = render(
+		supplement({
+			files: [file("renders/huge.mp4", "huge.mp4", 33 * 1024 * 1024, "video")],
+		}),
+	);
+	assert.equal(markup.includes("data-supplement-video-tile"), false);
+	assert.equal((markup.match(/data-supplement-file=""/g) ?? []).length, 1);
+	assert.ok(textOf(markup).includes("huge.mp4"));
+});
+
+test("the video name row carries the path suffix and size like its neighbours (D4)", () => {
+	const markup = render(
+		supplement({
+			files: [file("renders/demo.mp4", "demo.mp4", 2309, "video")],
+		}),
+	);
+	const text = textOf(markup);
+	assert.ok(text.includes("renders/demo.mp4"), text);
+	assert.ok(text.includes("2.3 KB"), text);
+});
+
+test("two written files with identical bytes render two cells (R5)", () => {
+	const twin = (path) => ({
+		...sound("same-bytes", path, 0),
+		origin: "file",
+		path,
+	});
+	const errors = [];
+	const original = console.error;
+	console.error = (...args) => errors.push(args.join(" "));
+	try {
+		const markup = render(
+			supplement({ sounds: [twin("a.mp3"), twin("picks/a.mp3")] }),
+		);
+		assert.equal((markup.match(/data-supplement-sound=""/g) ?? []).length, 2);
+	} finally {
+		console.error = original;
+	}
+	assert.equal(
+		errors.some((line) => line.includes("same key")),
+		false,
+		errors.join("\n"),
+	);
+});

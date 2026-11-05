@@ -65,19 +65,36 @@ export const ayuDark: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1C2028",
-		surface: "#242934",
-		elevated: "#2C323E",
-		sunken: "#18191C",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #1C2028 -> #161A22 (L* 12.18 -> 9.20)
+		 * surface #242934 -> #1E232E (L* 16.55 -> 13.68)
+		 * elevated #2C323E -> #252B37 (L* 20.69 -> 17.45)
+		 * sunken #18191C -> #111216 (L* 8.77 -> 5.51)
+		 */
+		canvas: "#161A22",
+		surface: "#1E232E",
+		elevated: "#252B37",
+		sunken: "#111216",
 
 		// The user block's fill: ΔE00 4.06 off the canvas, where `surface` alone
 		// measures 3.23 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#262b37",
+		messageSurface: "#202531",
 		// The media slot's well: ΔE00 4.39 off the canvas, where `sunken` alone
 		// measures 3.81 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#18191b",
+		// Lifted #101215 -> #111315 (L* 5.39 -> 5.77) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.64 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#111315",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -96,8 +113,8 @@ export const ayuDark: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.74 `L*` and 6.9 `C*`,
 		 *                       `inkDim` 5.12:1.
 		 */
-		rowHover: "#2D3037",
-		rowSelected: "#2B3445",
+		rowHover: "#262930",
+		rowSelected: "#242D3E",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
@@ -141,10 +158,10 @@ export const ayuDark: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 5.02.
 		 */
-		hairline: "#3B414B",
+		hairline: "#343A44",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.85:1 there against `hairline`'s 1.71:1.
-		hairlineStrong: "#404650",
+		hairlineStrong: "#393F49",
 		// upstream's ui line 2B3038 is 1.11:1 on `elevated` — a ground colour
 		// doing a boundary's job. Lifted along the same blue-grey.
 		/*
@@ -166,7 +183,7 @@ export const ayuDark: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#152431",
+		accentWash: "#0E1E2B",
 		onAccent: "#0D1017",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#FF8F40`,
@@ -185,14 +202,14 @@ export const ayuDark: ThemeDefinition = {
 		 * 2.0), 5.94:1 for `accentAlt` on it, and 11.20 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#282214",
+		accentAltWash: "#221C0C",
 
 		success: "#AAD94C",
-		successWash: "#181F1F",
+		successWash: "#121919",
 		successBorder: "#AAD94C",
 
 		warning: "#FFB454",
-		warningWash: "#232120",
+		warningWash: "#1D1B1A",
 		warningBorder: "#FFB454",
 
 		/*
@@ -204,11 +221,11 @@ export const ayuDark: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		danger: "#F4757C",
-		dangerWash: "#221B23",
+		dangerWash: "#1C151D",
 		dangerBorder: "#F07178",
 
 		info: "#D2A6FF",
-		infoWash: "#222232",
+		infoWash: "#1C1C2C",
 		infoBorder: "#D2A6FF",
 
 		overlayShadow: "0 12px 32px -12px rgb(5 6 9 / 0.8)",

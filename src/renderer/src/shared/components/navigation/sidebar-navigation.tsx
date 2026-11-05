@@ -63,6 +63,10 @@ import {
 	regionOf,
 	renderedRegion,
 } from "@shared/components/navigation/sidebar-destinations";
+import {
+	SettingsGear,
+	SidebarFoot,
+} from "@shared/components/navigation/sidebar-foot";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import {
 	AttentionBadge,
@@ -107,7 +111,6 @@ import {
 	MessageSquarePlus,
 	Network,
 	Search,
-	Settings,
 	Store,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -301,7 +304,7 @@ type SidebarRowAction =
  *   changes the strip cannot paint anyway. The reduced case belongs to the
  *   docked list, not to a second poll in a 56px column.
  */
-const StripFeedKeeper: FC = () => {
+export const StripFeedKeeper: FC = () => {
 	const feed = useDesktopFeed();
 	const capabilities = useDesktopCapabilities();
 	const setCataloguePageable = useCanonicalSessionsStore(
@@ -2181,15 +2184,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	);
 
 	/*
-	 * The two affordances Settings keeps, and the reason it left the destination
-	 * group: it is a route the user visits once and then returns from, so a
-	 * permanent row spent a destination's width on it while the account row in
-	 * the same foot already opens onto the same place. The gear is the one press;
-	 * the account menu is the one that also carries Sign out. The tour's
-	 * `navigate-settings` step attaches to this button, which is why it carries
-	 * the tag rather than the menu item.
-	 */
-	/*
 	 * THE "MORE" ROW AND ITS INLINE GROUP.
 	 *
 	 * One disclosure, drawn in both widths: expanded it is a destination row
@@ -2322,29 +2316,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		);
 	};
 
-	const settingsGear = (
-		<BrowserSafeTooltip
-			content={t("ui.shell.sidebar_navigation.settings")}
-			side="top"
-		>
-			<button
-				type="button"
-				data-tour-tag="nav-item-settings"
-				onClick={() => navigate("/settings")}
-				aria-current={currentView === "settings" ? "page" : undefined}
-				aria-label={t("ui.shell.sidebar_navigation.settings")}
-				className={cn(
-					"flex size-8 shrink-0 items-center justify-center rounded-sm text-ink-muted",
-					"transition-colors duration-fast ease-out-quart",
-					"hover:bg-row-hover hover:text-ink",
-					currentView === "settings" && "text-ink",
-				)}
-			>
-				<Settings size={16} aria-hidden="true" />
-			</button>
-		</BrowserSafeTooltip>
-	);
-
 	if (!expanded) {
 		/*
 		 * The 56px strip. 48 would be the VS Code activity bar's width and what the
@@ -2430,7 +2401,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					 * anything waiting renders exactly as it did before the icon existed.
 					 */}
 					<UpdateFootIcon />
-					{settingsGear}
+					<SettingsGear />
 					<UserProfileSidebar expanded={false} />
 				</div>
 			</div>
@@ -2553,21 +2524,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * 48, so the row is not squeezed (a fixed `h-10` with `pb-2` would
 			 * leave a 32px content box and a 40px row overflowing it).
 			 */}
-			<div className="flex min-h-10 shrink-0 items-center justify-between gap-1 px-2 pb-2">
-				<UserProfileSidebar expanded />
-				{/*
-				 * THE CLUSTER, AND WHY IT IS ONE CHILD (design consult §3.1): three
-				 * children under `justify-between` would spread the row - the icon
-				 * would float to the middle - so the icon and the gear are wrapped in
-				 * one `flex items-center gap-1` div and the row keeps its two-child
-				 * shape. The icon sits immediately left of the gear at the row's own
-				 * 4px step (the measured slot), and the gear stays the row's last stop.
-				 */}
-				<div className="flex items-center gap-1">
-					<UpdateFootIcon />
-					{settingsGear}
-				</div>
-			</div>
+			<SidebarFoot />
 		</div>
 	);
 };

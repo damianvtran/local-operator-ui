@@ -793,7 +793,9 @@ test("rail: loading, error with a working retry, empty, populated", async () => 
 		error.host
 			.querySelector('[role="alert"]')
 			.className.split(" ")
-			.includes("px-3"),
+			/* `px-2` inside the audit section's SIDEBAR_INSET puts the text on the
+			   rail's 16px line (team-bridge-sidebar-inset.test.mjs). */
+			.includes("px-2"),
 		"the rail's failure keeps the rail rows' inset",
 	);
 	assert.ok(error.text().includes(m.t("ui.ownerAudit.error")));
@@ -1329,10 +1331,17 @@ test("the surface offers no way to write: no composer, no reaction, no admit", a
 test("a message with attachments names them without fetching bytes", async () => {
 	const view = await renderView(panel({ messages: [admitted] }));
 	const text = view.text();
-	assert.ok(text.includes(m.t("ui.teamBridge.attachmentCard.unavailable")));
+	/* The non-bound text file is a chip that says the attachment is
+	 * unavailable; the expired PNG keeps its picture-shaped box and says the
+	 * IMAGE is unavailable, the member transcript's wording (inline-image
+	 * refresh, SPEC §3.1). Both are named; neither fetches. */
 	assert.equal(
 		text.split(m.t("ui.teamBridge.attachmentCard.unavailable")).length - 1,
-		2,
+		1,
+	);
+	assert.equal(
+		text.split(m.t("ui.teamBridge.attachments.unavailable")).length - 1,
+		1,
 	);
 	/* No image tag, no byte URL: this text-only surface never loads a private
 	 * attachment into a renderer. */
@@ -2024,7 +2033,9 @@ test("days get a divider and rows get a clock, never a per-row medium date", asy
 		day: "numeric",
 	});
 	assert.ok(
-		view.host.querySelector(`li[aria-label="${divider}"]`),
+		/* The day group carries the label since the sticky-pill fix
+		   (#1668 QA round 1, Q2): one day group per day, one pill each. */
+		view.host.querySelector(`[data-day-group][aria-label="${divider}"]`),
 		"the day is a divider row",
 	);
 	for (const message of [admitted, rejected, unscreenedEmpty, own])
@@ -3096,6 +3107,10 @@ test("attachments are named, never fetched, through the shared list", async () =
  * `size-[max(8px,32%)]` / `size-[calc(100%-1px)]` to inline integer px
  * (`agentMarkPx`), so the channel and audit sides both changed together; the
  * golden diff is exactly those two class removals and two `style` additions.
+ * Regenerated again for the Team Bridge visual refresh (2026-11-04): class
+ * strings only - round identity-wash plates, the inset `::before` hover, 12px
+ * meta clocks, and the day divider split into an in-flow rule plus a sticky
+ * pill (one extra `<li>` per day). Structure, names and bodies are unchanged.
  * Clock text and the `title` date depend on the machine's time zone, so both are
  * normalised; the structure, classes, names and bodies are compared verbatim.
  */

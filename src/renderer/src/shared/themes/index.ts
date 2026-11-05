@@ -223,6 +223,23 @@ export const themes: ThemeCollection = Object.fromEntries(
 ) as ThemeCollection;
 
 /**
+ * The built-in definition (its authored palette) for an id, or undefined. The
+ * composition engine needs the PALETTE object itself - by reference, since the
+ * identity guarantee is `composeTheme(base) === base` - not the MUI theme.
+ */
+export const definitionOf = (id: string): ThemeDefinition | undefined =>
+	definitions.find((definition) => definition.id === id);
+
+/**
+ * True when `id` names a built-in theme. Persisted references to a palette (an
+ * accent borrowed from another theme, a custom theme's base) are checked with
+ * this on load, so a palette removed in a later build degrades to a default
+ * rather than indexing `themes` with an unknown key.
+ */
+export const isThemeName = (id: string): id is ThemeName =>
+	Object.prototype.hasOwnProperty.call(themes, id);
+
+/**
  * Default theme name
  */
 export const DEFAULT_THEME: ThemeName = "localOperatorDark";

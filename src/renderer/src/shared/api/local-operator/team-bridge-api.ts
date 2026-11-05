@@ -29,6 +29,7 @@ import {
 	type TeamBridgeReadScope,
 	type TeamBridgeReadState,
 	type TeamBridgeThreadPage,
+	type TeamBridgeThreadReadState,
 	type TeamBridgeUnread,
 	teamBridgeAttachmentUploadSchema,
 	teamBridgeConversationListSchema,
@@ -41,6 +42,7 @@ import {
 	teamBridgeScheduledListSchema,
 	teamBridgeScheduledMessageSchema,
 	teamBridgeThreadPageSchema,
+	teamBridgeThreadReadStateSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
 import {
@@ -539,6 +541,30 @@ export const TeamBridgeApi = {
 	},
 
 	/**
+	 * Acknowledge a THREAD's replies up to `seq` (hub slice TR1). Owner-guarded
+	 * like every write: the receipt is required, so the hub refuses a read
+	 * replayed under another signed-in account. The answer is the viewer's new
+	 * thread state, parsed leniently (see `teamBridgeThreadReadStateSchema`):
+	 * its count is what the thread row shows the moment the read lands.
+	 */
+	async markThreadRead(
+		conversationId: string,
+		rootId: string,
+		input: { seq: number; tenantId: string; expectedAccountId: string },
+	): Promise<TeamBridgeThreadReadState> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.thread_read",
+			conversation_id: conversationId,
+			message_id: rootId,
+			tenant_id: input.tenantId,
+			expected_account_id: input.expectedAccountId,
+			seq: input.seq,
+		});
+		const parsed = teamBridgeThreadReadStateSchema.safeParse(answer ?? {});
+		return parsed.success ? parsed.data : {};
+	},
+
+	/**
 	 * The signed-in hub account id, from the existing status read. The page
 	 * needs it to tell "mine" from "theirs" (own-message alignment and a DM's
 	 * title); it is the one identity the bridge surface already publishes, and
@@ -676,6 +702,53 @@ export const TeamBridgeApi = {
 	},
 
 	/**
+	 * Leave one conversation as the signed-in person (members panel "Leave").
+	 *
+	 * Its own op rather than `leave()` above (the lifecycle action), so the
+	 * panel's answer and refusal have one shape. `tenantId` feeds core's owner
+	 * receipt only: the hub's leave handler ignores a tenant and resolves the
+	 * caller's first active membership, so leaving a conversation in another
+	 * organization comes back as a not-found refusal, not a routed leave
+	 * (review round 1, R2).
+	 * Re-entry after leaving needs a fresh invitation (core's route docstring).
+	 */
+	async leaveConversation(input: {
+		conversationId: string;
+		tenantId: string;
+		expectedAccountId?: string;
+	}): Promise<unknown> {
+		return desktopResult<unknown>({
+			op: "team_bridge.conversations.leave",
+			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
+			conversation_id: input.conversationId,
+		});
+	},
+
+	/**
+	 * Take the caller's OWN ACTIVE agent out of a conversation (consent
+	 * `withdraw`, agent-server #227). Withdraw is not consent, so it sends no
+	 * `consent_version`. `endpointId` pins which of the owner's agents leaves
+	 * when the participant row carries one; without it the hub resolves the
+	 * owner's single agent row, and refuses `rule=ambiguous` if there are two.
+	 */
+	async withdrawAgent(input: {
+		conversationId: string;
+		accountId: string;
+		tenantId: string;
+		endpointId?: string;
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.consent",
+			...(await teamBridgeWriteOwner(input.accountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			account_id: input.accountId,
+			decision: "withdraw",
+			...(input.endpointId ? { endpoint_id: input.endpointId } : {}),
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
+	/**
 	 * Answer an invitation for the caller's OWN agent (agent-server `Consent`).
 	 *
 	 * An agent added to a channel or group stays `invited` until its owner
@@ -694,6 +767,8 @@ export const TeamBridgeApi = {
 		tenantId: string;
 		decision: "accept" | "decline";
 		consentVersion: string;
+		/** Pins one of the owner's agent rows (members panel); optional. */
+		endpointId?: string;
 	}): Promise<TeamBridgeConversation> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.consent",
@@ -702,6 +777,7 @@ export const TeamBridgeApi = {
 			account_id: input.accountId,
 			decision: input.decision,
 			consent_version: input.consentVersion,
+			...(input.endpointId ? { endpoint_id: input.endpointId } : {}),
 		});
 		return teamBridgeConversationSchema.parse(answer);
 	},

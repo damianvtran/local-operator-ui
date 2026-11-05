@@ -4995,7 +4995,7 @@ export function resolveGlobalInstallPlan(input: {
 			 * so the promise landed on the wrong line (review D5).
 			 */
 			remedy: managed
-				? "The app installs the new build beside the one in use and moves the server onto it immediately, so nothing in flight is cut off."
+				? t("ui.common.updates.update_notification.remedy_managed_global")
 				: sourceRebuildRoute
 					? "Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered."
 					: "This install predates the non-disruptive installer, so update it once from your terminal; that updater rewrites the shared environment in place, which can interrupt sessions mid-turn. The app manages updates after that.",
