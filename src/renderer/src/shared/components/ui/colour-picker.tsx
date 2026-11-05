@@ -259,7 +259,8 @@ export const ColourPicker = ({
 			<label className="flex flex-col gap-1 text-meta">
 				{t("ui.settings.appearance.picker.hue")}
 				<input
-					type="range" dir="ltr"
+					type="range"
+					dir="ltr"
 					min={0}
 					max={360}
 					step={1}
@@ -276,7 +277,8 @@ export const ColourPicker = ({
 				<label className="flex flex-col gap-1 text-meta">
 					{t("ui.settings.appearance.editor.picker.lightness")}
 					<input
-						type="range" dir="ltr"
+						type="range"
+						dir="ltr"
 						min={0}
 						max={100}
 						value={coordinates.l * 100}
@@ -289,7 +291,8 @@ export const ColourPicker = ({
 				<label className="flex flex-col gap-1 text-meta">
 					{t("ui.settings.appearance.editor.picker.chroma")}
 					<input
-						type="range" dir="ltr"
+						type="range"
+						dir="ltr"
 						min={0}
 						max={0.4}
 						step={0.001}
@@ -321,7 +324,8 @@ export const ColourPicker = ({
 					</option>
 				</select>
 				<input
-					dir="ltr" aria-label={
+					dir="ltr"
+					aria-label={
 						format === "hex"
 							? t("ui.settings.appearance.picker.hex")
 							: format === "rgb"
