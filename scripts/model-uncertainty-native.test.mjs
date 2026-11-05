@@ -505,6 +505,8 @@ function oracleContext(mode = "happy") {
 						args: "test/mock-model-b",
 					},
 				});
+				if (mode === "duplicate-B")
+					attempts.push(structuredClone(attempts.at(-1)));
 				return;
 			}
 			if (selector === "[data-model-case-default]") {
@@ -541,6 +543,8 @@ function oracleContext(mode = "happy") {
 						observer: false,
 						body: { value, base: null },
 					});
+				if (mode === "extra-explicit-PATCH")
+					attempts.push(structuredClone(attempts.at(-1)));
 				return;
 			}
 			assert.fail("unknown fake input selector");
@@ -1448,3 +1452,143 @@ test("settlement failure census separates description, disabled, association and
 		"active dialog uncertainty must still block settlement",
 	);
 });
+
+function presencePolicyContext() {
+	const feed = {
+		index: 0,
+		order: 1,
+		method: "GET",
+		path: "/v1/desktop/events",
+		observer: false,
+	};
+	const presence = {
+		index: 1,
+		order: 3,
+		method: "POST",
+		path: "/v1/desktop/presence",
+		observer: false,
+		query_empty: true,
+		response_status: 200,
+		body: {
+			subscription_id: "owned-feed",
+			can_notify: true,
+			can_notify_kinds: ["complete", "error"],
+			session_id: "",
+			window: {
+				exists: false,
+				focused: false,
+				visible: false,
+				minimized: false,
+			},
+		},
+	};
+	const open = {
+		request_index: 0,
+		subscription_id: "owned-feed",
+		open_order: 2,
+		close_order: 4,
+		response_status: 200,
+		delivered: true,
+	};
+	return { attempts: [feed, presence], presence, feed, open };
+}
+test("presence policy admits only original earlier live app-feed identity and exact nonsecret body", () => {
+	for (const session of ["", sid]) {
+		const c = presencePolicyContext();
+		c.presence.body.session_id = session;
+		assertModelTraffic(c.attempts, sid, [], [c.open]);
+	}
+});
+for (const mode of [
+	"method",
+	"path",
+	"suffix",
+	"query",
+	"missing-query-witness",
+	"missing-body",
+	"missing-field",
+	"missing-window-field",
+	"bad-subscription-type",
+	"long-subscription",
+	"extra-field",
+	"extra-device",
+	"can-notify-false",
+	"can-notify-string",
+	"missing-kind",
+	"extra-kind",
+	"duplicate-kind",
+	"kind-order",
+	"extra-window",
+	"window-type",
+	"foreign-session",
+	"unobserved",
+	"wrong-id",
+	"future-id",
+	"old-closed-feed",
+	"other-feed",
+	"observer-feed",
+	"undelivered",
+	"response-rejected",
+	"extra-command",
+	"extra-default",
+])
+	test(`presence policy rejects ${mode}`, () => {
+		const c = presencePolicyContext();
+		let opens = [c.open];
+		if (mode === "method") c.presence.method = "PATCH";
+		if (mode === "path") c.presence.path = "/v1/desktop/presences";
+		if (mode === "suffix") c.presence.path += "/";
+		if (mode === "query") c.presence.query_empty = false;
+		if (mode === "missing-query-witness")
+			Reflect.deleteProperty(c.presence, "query_empty");
+		if (mode === "missing-body") Reflect.deleteProperty(c.presence, "body");
+		if (mode === "missing-field")
+			Reflect.deleteProperty(c.presence.body, "can_notify");
+		if (mode === "missing-window-field")
+			Reflect.deleteProperty(c.presence.body.window, "visible");
+		if (mode === "bad-subscription-type") c.presence.body.subscription_id = 123;
+		if (mode === "long-subscription")
+			c.presence.body.subscription_id = "x".repeat(65);
+		if (mode === "extra-field") c.presence.body.unexpected = true;
+		if (mode === "extra-device") c.presence.body.device_id = "other-device";
+		if (mode === "can-notify-false") c.presence.body.can_notify = false;
+		if (mode === "can-notify-string") c.presence.body.can_notify = "true";
+		if (mode === "missing-kind")
+			c.presence.body.can_notify_kinds = ["complete"];
+		if (mode === "extra-kind") c.presence.body.can_notify_kinds.push("gate");
+		if (mode === "duplicate-kind")
+			c.presence.body.can_notify_kinds = ["complete", "complete"];
+		if (mode === "kind-order") c.presence.body.can_notify_kinds.reverse();
+		if (mode === "extra-window") c.presence.body.window.extra = false;
+		if (mode === "window-type") c.presence.body.window.focused = 0;
+		if (mode === "foreign-session") c.presence.body.session_id = "bbbbbbbbbbbb";
+		if (mode === "unobserved") opens = [];
+		if (mode === "wrong-id") c.presence.body.subscription_id = "another-feed";
+		if (mode === "future-id") c.open.open_order = 5;
+		if (mode === "old-closed-feed") c.open.close_order = 2;
+		if (mode === "other-feed")
+			c.feed.path = `/v1/desktop/sessions/${sid}/events`;
+		if (mode === "observer-feed") c.feed.observer = true;
+		if (mode === "undelivered") c.open.delivered = false;
+		if (mode === "response-rejected") c.presence.response_status = 404;
+		if (mode === "extra-command")
+			c.attempts.push({
+				method: "POST",
+				path: `/v1/desktop/sessions/${sid}/commands`,
+				body: { command: "model", args: "test/unexpected" },
+				observer: false,
+			});
+		if (mode === "extra-default")
+			c.attempts.push({
+				method: "PATCH",
+				path: "/v1/settings/hosting",
+				body: { base: null, value: "other" },
+				observer: false,
+			});
+		assert.throws(() => assertModelTraffic(c.attempts, sid, [], opens));
+	});
+
+for (const mode of ["duplicate-B", "extra-explicit-PATCH"])
+	test(`presence correction retains exact native mutation counts: ${mode}`, async () => {
+		await assert.rejects(modelUncertaintyCase.drive(oracleContext(mode)));
+	});

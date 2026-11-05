@@ -47,6 +47,12 @@ class DeliveryGate:
         self.hold_live_catalogue = False
         self.b_request_index: int | None = None
         self.captured_bytes = 0
+        self.feed_opens: list[dict[str, Any]] = []
+        self.evidence_order = 0
+
+    def next_order(self) -> int:
+        self.evidence_order += 1
+        return self.evidence_order
 
     def release(self, indices: list[int] | None = None) -> None:
         if indices is None:
@@ -76,7 +82,58 @@ class ModelUncertaintyMiddleware:
         attempt: dict[str, Any] = {"index": index, "method": scope["method"], "path": path, "observer": observer}
         if index >= 4096:
             raise RuntimeError("model case attempt bound exceeded")
+        attempt["order"] = self.gate.next_order()
         self.gate.attempts.append(attempt)
+        is_presence = path == "/v1/desktop/presence"
+        if is_presence:
+            attempt["query_empty"] = not bool(scope.get("query_string", b""))
+        # Observe original bytes on the existing app feed only. No extra stream,
+        # body rewrite, auth-header retention, or observation await is introduced.
+        is_app_feed = not observer and scope["method"] == "GET" and path == "/v1/desktop/events"
+        feed_open: dict[str, Any] | None = None
+        feed_buffer = b""
+        feed_done = False
+        response_status: int | None = None
+        downstream_send = send
+
+        async def observed_send(message: dict[str, Any]) -> None:
+            nonlocal feed_open, feed_buffer, feed_done, response_status
+            if message["type"] == "http.response.start":
+                response_status = message["status"]
+                if is_presence:
+                    attempt["response_status"] = response_status
+            if is_app_feed and response_status == 200 and not feed_done and message["type"] == "http.response.body":
+                chunk = message.get("body", b"")
+                if len(feed_buffer) + len(chunk) > 16_384:
+                    # Missing evidence fails policy later, never changes delivery.
+                    attempt["feed_observation_error"] = "open event evidence bound exceeded"
+                    feed_done, feed_buffer = True, b""
+                else:
+                    feed_buffer = (feed_buffer + chunk).replace(b"\r\n", b"\n")
+                    while b"\n\n" in feed_buffer:
+                        event, feed_buffer = feed_buffer.split(b"\n\n", 1)
+                        data = b"\n".join(line[5:].lstrip(b" ") for line in event.split(b"\n") if line.startswith(b"data:"))
+                        try:
+                            frame = json.loads(data)
+                        except (ValueError, UnicodeDecodeError, RecursionError):
+                            continue
+                        if isinstance(frame, dict) and frame.get("type") == "open":
+                            payload = frame.get("payload")
+                            subscription = payload.get("subscription_id") if isinstance(payload, dict) else None
+                            if isinstance(subscription, str) and 0 < len(subscription) <= 64 and len(self.gate.feed_opens) < 64:
+                                feed_open = {"request_index": index, "subscription_id": subscription,
+                                             "open_order": self.gate.next_order(), "close_order": None,
+                                             "response_status": response_status, "delivered": False}
+                                self.gate.feed_opens.append(feed_open)
+                            feed_done, feed_buffer = True, b""
+                            break
+            if is_app_feed and feed_open is not None and message["type"] == "http.response.body" and not message.get("more_body", False) and feed_open["close_order"] is None:
+                feed_open["close_order"] = self.gate.next_order()
+            await downstream_send(message)
+            if feed_open is not None:
+                feed_open["delivered"] = True
+
+        send = observed_send
         incoming: list[dict[str, Any]] = []
         body = b""
         if scope["method"] in {"POST", "PATCH"}:
@@ -95,10 +152,33 @@ class ModelUncertaintyMiddleware:
             if isinstance(parsed, dict):
                 if path.endswith("/commands") or path in {"/v1/settings/hosting", "/v1/settings/model_name"}:
                     attempt["body"] = parsed
+                elif is_presence and scope["method"] == "POST":
+                    # Only the reviewed nonsecret shape is retained. Invalid
+                    # bodies still count/hash, but unknown fields/values never
+                    # turn the evidence file into a credential/payload sink.
+                    safe = (set(parsed) == {"subscription_id", "can_notify", "can_notify_kinds", "session_id", "window"}
+                            and isinstance(parsed["subscription_id"], str) and 0 < len(parsed["subscription_id"]) <= 64
+                            and type(parsed["can_notify"]) is bool
+                            and isinstance(parsed["can_notify_kinds"], list) and len(parsed["can_notify_kinds"]) <= 8
+                            and all(kind in ("complete", "error") for kind in parsed["can_notify_kinds"])
+                            and isinstance(parsed["session_id"], str) and len(parsed["session_id"]) <= 12
+                            and isinstance(parsed["window"], dict) and set(parsed["window"]) == {"exists", "focused", "visible", "minimized"}
+                            and all(type(value) is bool for value in parsed["window"].values()))
+                    if safe:
+                        attempt["body"] = parsed
+                    else:
+                        attempt["presence_body_invalid"] = True
+                        attempt["body_sha256"] = hashlib.sha256(body).hexdigest()
                 else:
                     attempt["body_sha256"] = hashlib.sha256(body).hexdigest()
+            elif is_presence:
+                attempt["presence_body_invalid"] = True
+                attempt["body_sha256"] = hashlib.sha256(body).hexdigest()
         async def original_receive() -> dict[str, Any]:
-            return incoming.pop(0) if incoming else await receive()
+            message = incoming.pop(0) if incoming else await receive()
+            if message["type"] == "http.disconnect" and feed_open is not None and feed_open["close_order"] is None:
+                feed_open["close_order"] = self.gate.next_order()
+            return message
 
         session_path = f"/v1/desktop/sessions/{self.gate.session_id}"
         is_authority_read = (not observer and scope["method"] == "GET" and (path in {session_path, session_path + "/events", "/v1/desktop/events", "/v1/desktop/sessions"} or (path == "/v1/desktop/models" and b"live=true" in scope.get("query_string", b""))))
@@ -164,7 +244,8 @@ class ModelUncertaintyMiddleware:
         try:
             await self.app(scope, original_receive, deliver)
         finally:
-            pass
+            if feed_open is not None and feed_open["close_order"] is None:
+                feed_open["close_order"] = self.gate.next_order()
 
     async def verify_b_commit(self) -> None:
         import httpx
@@ -215,7 +296,7 @@ def control_pipe(gate: DeliveryGate) -> None:
                 seed_catalogue()
             elif command["op"] != "state":
                 raise ValueError("unsupported control operation")
-            result = {"id": command["id"], "ok": True, "attempts": gate.attempts, "captures": gate.captures, "commit": gate.commit, "identity": {"prefix": sys.prefix, "version": importlib.metadata.version("local-operator")}}
+            result = {"id": command["id"], "ok": True, "attempts": gate.attempts, "captures": gate.captures, "feed_opens": gate.feed_opens, "commit": gate.commit, "identity": {"prefix": sys.prefix, "version": importlib.metadata.version("local-operator")}}
         except (ValueError, KeyError, RuntimeError) as error:
             result = {"id": command.get("id") if isinstance(command, dict) else None, "ok": False, "error": str(error)}
         print("MODEL_CASE_CONTROL " + json.dumps(result), flush=True)

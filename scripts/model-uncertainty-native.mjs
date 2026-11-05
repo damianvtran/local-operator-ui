@@ -171,7 +171,12 @@ export function verifyModelBuild(root, receiptPath) {
 }
 
 /** Dedicated policy, never used to loosen the existing asks read-only policy. */
-export function assertModelTraffic(attempts, sessionId, readTemplates = []) {
+export function assertModelTraffic(
+	attempts,
+	sessionId,
+	readTemplates = [],
+	feedOpens = [],
+) {
 	const base = `/v1/desktop/sessions/${sessionId}`;
 	const reads = new Set([
 		"/health",
@@ -222,6 +227,72 @@ export function assertModelTraffic(attempts, sessionId, readTemplates = []) {
 					return new RegExp(`^${pattern}$`).test(request.path);
 				});
 			assert(known, `unmodeled native read ${request.path}`);
+			continue;
+		}
+		if (request.path === "/v1/desktop/presence") {
+			// Notification lease/attendance writes belong to the app's ORIGINAL
+			// authenticated feed, not to arbitrary backend membership or a future ID.
+			assert.equal(request.method, "POST");
+			assert.equal(request.query_empty, true);
+			const body = request.body;
+			assert(body && typeof body === "object" && !Array.isArray(body));
+			assert.deepEqual(Object.keys(body).sort(), [
+				"can_notify",
+				"can_notify_kinds",
+				"session_id",
+				"subscription_id",
+				"window",
+			]);
+			assert.equal(body.can_notify, true);
+			assert.deepEqual(body.can_notify_kinds, ["complete", "error"]);
+			assert(["", sessionId].includes(body.session_id));
+			assert(
+				body.window &&
+					typeof body.window === "object" &&
+					!Array.isArray(body.window),
+			);
+			assert.deepEqual(Object.keys(body.window).sort(), [
+				"exists",
+				"focused",
+				"minimized",
+				"visible",
+			]);
+			assert(
+				Object.values(body.window).every((value) => typeof value === "boolean"),
+			);
+			assert(
+				typeof body.subscription_id === "string" &&
+					body.subscription_id.length > 0 &&
+					body.subscription_id.length <= 64,
+			);
+			const witness = feedOpens.find((open) => {
+				const feed = attempts.find((a) => a.index === open.request_index);
+				return (
+					open.subscription_id === body.subscription_id &&
+					open.delivered === true &&
+					open.response_status === 200 &&
+					feed?.observer === false &&
+					feed.method === "GET" &&
+					feed.path === "/v1/desktop/events" &&
+					Number.isInteger(feed.order) &&
+					Number.isInteger(open.open_order) &&
+					Number.isInteger(request.order) &&
+					feed.order < open.open_order &&
+					open.open_order < request.order &&
+					(open.close_order === null ||
+						(Number.isInteger(open.close_order) &&
+							open.close_order > request.order))
+				);
+			});
+			assert(
+				witness,
+				"presence lacks earlier live owned app-feed open witness",
+			);
+			assert.equal(
+				request.response_status,
+				200,
+				"presence lease was not accepted",
+			);
 			continue;
 		}
 		if (
@@ -1050,6 +1121,7 @@ export const modelUncertaintyCase = {
 			traffic.attempts,
 			backend.sessionId,
 			backend.readTemplates,
+			traffic.feed_opens,
 		);
 		const modelB = traffic.attempts.filter(
 			(r) =>
