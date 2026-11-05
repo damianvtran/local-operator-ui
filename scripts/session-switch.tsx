@@ -35,10 +35,12 @@ import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { paintPendingSend } from "@shared/hooks/use-canonical-session";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
 	HashRouter,
@@ -47,6 +49,10 @@ import {
 	Routes,
 	useNavigate,
 } from "react-router-dom";
+import {
+	attachmentMode,
+	withCaptureAttachment,
+} from "./session-switch-attachments";
 import {
 	type BridgeHandle,
 	type BridgeLatency,
@@ -123,6 +129,8 @@ const SESSION_COUNT = param("sessions", 24);
  * knob that puts the clamp on the open path being measured.
  */
 const USER_LINES = param("userLines", 0);
+// Opt-in only: existing latency arms and the long-prose knob remain unchanged.
+const ATTACHMENT_MODE = attachmentMode(window.location.search);
 const LEADING_NON_WORD_RE = /^[^\p{L}\p{N}]+/u;
 /** A fixed-size pasted brief for the extreme-length clamp regression arm. */
 const USER_CHARS = Math.max(0, Math.floor(param("userChars", 0)));
@@ -224,6 +232,13 @@ function steps(count: number): TranscriptStep[] {
 			});
 		}
 	}
+	if (ATTACHMENT_MODE !== null) {
+		// Only the first user turn gets a card, even in a large latency fixture.
+		const first = out.findIndex((step) => step.kind === "user");
+		const step = out[first];
+		if (step?.kind === "user")
+			out[first] = withCaptureAttachment(step, ATTACHMENT_MODE);
+	}
 	return out;
 }
 
@@ -270,6 +285,11 @@ stepsBySession[OUTGOING] = steps(OUTGOING_STEPS);
  * both arms, so the view being left is the same work in each run.
  */
 stepsBySession[INCOMING] = LIVE ? inFlightSteps() : steps(INCOMING_STEPS);
+// Echo capture starts empty and advances only on explicit fixture controls: no
+// timer can race the screenshot or skip the optimistic stage on a slow host.
+if (ATTACHMENT_MODE === "echo") {
+	for (const id of SESSION_IDS) stepsBySession[id] = [];
+}
 
 // ------------------------------------------------------------------ probe
 
@@ -1906,6 +1926,57 @@ const HASH_PREFIX = /^#/;
 const probePath = () =>
 	window.location.hash.replace(HASH_PREFIX, "") || "/chat";
 
+/** Fixture controls, never a replacement for the shipped row or disclosure. */
+function AttachmentCaptureControls() {
+	const [stage, setStage] = useState<"ready" | "echo" | "persisted">("ready");
+	const active = useCanonicalSessionsStore((state) => state.activeSessionId);
+	if (ATTACHMENT_MODE !== "echo") return null;
+	const id = "synthetic-attachment-admission";
+	const step = steps(1)[0];
+	if (step?.kind !== "user") throw new Error("Missing synthetic user step");
+	return (
+		<aside
+			aria-label="Attachment capture controls"
+			className="fixed bottom-2 left-2 z-50 flex gap-2 bg-canvas p-2"
+		>
+			<button
+				type="button"
+				disabled={stage !== "ready" || active !== OUTGOING}
+				onClick={() => {
+					paintPendingSend(OUTGOING, {
+						id,
+						text: step.text,
+						images: [],
+						documents: (step.documents ?? []).map((document, index) => ({
+							id: `${id}:doc:${index}`,
+							attachment: document.attachment,
+							filename: document.filename,
+							mimeType: document.mime_type,
+							bytes: document.bytes,
+							injection: document.injection,
+							path: null,
+							storedPath: null,
+						})),
+					});
+					setStage("echo");
+				}}
+			>
+				Paint synthetic attachment echo
+			</button>
+			<button
+				type="button"
+				disabled={stage !== "echo" || active !== OUTGOING}
+				onClick={() => {
+					bridge.persistUser(OUTGOING, step, id);
+					setStage("persisted");
+				}}
+			>
+				Persist synthetic attachment row
+			</button>
+		</aside>
+	);
+}
+
 const ShellFrame = ({ children }: { children: React.ReactNode }) => (
 	<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
 		{/*
@@ -1922,6 +1993,7 @@ const ShellFrame = ({ children }: { children: React.ReactNode }) => (
 		 * produced. `ChatLayout` + `SidebarNavigation` is the app's own arrangement
 		 * (`app.tsx`), so the click this page drives is the click the app receives.
 		 */}
+		<AttachmentCaptureControls />
 		<ChatLayout
 			sidebar={<SidebarNavigation />}
 			content={
