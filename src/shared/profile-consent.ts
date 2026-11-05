@@ -201,18 +201,42 @@ export type ProfileSaveDisclosure = z.infer<typeof profileSaveDisclosureSchema>;
 /** The typed block a profile row carries (`typed_approval`), closed like the wire's. */
 export const profileTypedApprovalSchema = z
 	.object({
-		action: z.literal("approve-operation"),
+		/*
+		 * THE ACTION TOKEN IS LEGACY WIRE VOCABULARY, NOT THE SELECTOR.
+		 *
+		 * `desktop_approval.row_fields` writes `action: "approve-credential"` on EVERY
+		 * typed row - profile rows included - because the generic typed route grew out
+		 * of the credential one. Requiring `"approve-operation"` here refused every
+		 * real profile row, and the card degraded to the opaque fallback while the
+		 * story fixture (which hand-wrote the newer label) looked fine. So the label is
+		 * bounded but not keyed on, and the fact that selects this route is the
+		 * OPERATION: `operation === "profile_save"` or nothing.
+		 */
+		action: z.string().min(1).max(64),
 		operation: z.literal(PROFILE_SAVE_OPERATION),
 		request_digest: digest,
-		disclosure_digest: digest,
-		disclosure: profileSaveDisclosureSchema.nullable(),
+		/*
+		 * THE HOST'S ASSURANCE, as the row states it: `assurance()`'s level and
+		 * whether that level can prove a person approved. Bounded fields of their own
+		 * rather than an open object, because this block is what a reader trusts when
+		 * the card says "signable here".
+		 */
+		assurance: z.string().max(64).optional(),
+		unproven_human: z.boolean().optional(),
+		/*
+		 * THE DISCLOSURE LIVES INSIDE THE ROW - there is no second GET for it. Absent
+		 * or null means the record carries no signable facts, which reads as opaque,
+		 * never as "no changes".
+		 */
+		disclosure: profileSaveDisclosureSchema.nullable().optional(),
+		disclosure_digest: digest.optional(),
 		/**
 		 * The server's own answer to "may THIS host sign it". Absent reads false:
 		 * an optimistic optional field must never enable a signature.
 		 */
 		signable_here: z.boolean(),
-		refusal: z.string().max(64),
-		refusal_message: z.string().max(2000),
+		refusal: z.string().max(64).optional(),
+		refusal_message: z.string().max(2000).optional(),
 		apply_outcome: z
 			.object({
 				code: z.string().max(64),
@@ -221,7 +245,17 @@ export const profileTypedApprovalSchema = z
 				remedy: z.string().max(2000),
 			})
 			.strict()
-			.nullable(),
+			.nullable()
+			.optional(),
+		/**
+		 * The presence-gated key's availability on this host: `{available, helper}`.
+		 * Reported, never assumed - and bounded, so a row that grew a field fails HERE
+		 * (by name) rather than being half-read.
+		 */
+		upgrade: z
+			.object({ available: z.boolean(), helper: z.string().max(64) })
+			.strict()
+			.optional(),
 	})
 	.strict();
 
@@ -277,6 +311,47 @@ export const profileQueuedReceiptSchema = z
 	.strict();
 
 export type ProfileQueuedReceipt = z.infer<typeof profileQueuedReceiptSchema>;
+
+/**
+ * An APPLIED record's `details`, as the real tool result carries it.
+ *
+ * WHY A SECOND SHAPE. The golden wire artifact (`profile-action-golden.ts`) shows the
+ * saved result and the queued receipt are different objects: queued carries
+ * `status`/`profile_kind`/`profile_name`, while the applied one carries
+ * `{kind, name, scope, fields, diff, backup_id, revision, authorized_by, profile_action,
+ * revert}` and NO status word — its savedness is the fact that a write happened, not a
+ * field. Reading it through the queued schema refused every real saved card, which is
+ * how the transcript fell back to a bare tool row on a successful save.
+ *
+ * `kind` is the record's own family word ("role" on an agent at this checkpoint), so it
+ * is carried verbatim and NOT mapped to the card's agent/team vocabulary: only a parsed
+ * descriptor, whose `profile_kind` the backend states, may name the family.
+ */
+export const profileSavedRecordSchema = z
+	.object({
+		kind: z.string().max(64).optional(),
+		name: z.string().min(1).max(128),
+		scope: z.literal("global"),
+		fields: z.array(z.string().max(64)).max(32).optional(),
+		diff: z.array(z.string().max(2000)).max(64).optional(),
+		backup_id: z.string().max(160).optional(),
+		revision: z.string().max(200).optional(),
+		authorized_by: z.string().max(160).optional(),
+		class: z.string().max(64).optional(),
+		/** The agreed (uncommitted) verified descriptor. */
+		profile_action: z.unknown().optional(),
+		/** The legacy `{op: "revert", backup_id}` hint — prose, never a control. */
+		revert: z.unknown().optional(),
+	})
+	.strict();
+
+export type ProfileSavedRecord = z.infer<typeof profileSavedRecordSchema>;
+
+/** The applied record, or `null` when the value is not exactly one this build bounds. */
+export function profileSavedRecord(value: unknown): ProfileSavedRecord | null {
+	const parsed = profileSavedRecordSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+}
 
 /**
  * The revert descriptor — the ONLY thing that may draw a Revert button.
@@ -343,7 +418,14 @@ function memberLine(entry: Record<string, unknown>): string {
 	// `auto` and an absent effort mean different things (override vs inherit), so
 	// the word is kept verbatim rather than folded into the empty case.
 	const effort = typeof entry.effort === "string" ? entry.effort : "";
-	const saver = entry.saver === true ? "saver" : "";
+	/*
+	 * `saver` is `bool | null` on the model: null or absent INHERITS, true sets the
+	 * designation and an explicit false CLEARS one. Folding false into the absent
+	 * case made "inherit" and "explicitly off" compare equal, so a real roster
+	 * change produced no row at all (review R2.3).
+	 */
+	const saver =
+		entry.saver === true ? "saver" : entry.saver === false ? "saver off" : "";
 	const extras = [kind === "team" ? "team" : "", tier, effort, saver].filter(
 		(part) => part !== "",
 	);
@@ -498,8 +580,14 @@ export function profileRevertState(input: ProfileRevertInput): {
 		/* A refusal the backend actually authored as stale/expired IS knowable. */
 		if (settled === "expired" || settled === "stale")
 			return { state: "stale", enabled: false };
+		/*
+		 * A REFUSED ANSWER IS A KNOWN END, and it never re-offers the press: a
+		 * control that read "failed" while staying enabled invited an immediate
+		 * duplicate revert (QA Q2.1). The reader has to reconcile before retrying,
+		 * so no path in this resolver returns failed WITH enabled.
+		 */
 		if (input.outcome.approved === false)
-			return { state: "failed", enabled: true };
+			return { state: "failed", enabled: false };
 		return { state: "saved", enabled: false };
 	}
 	if (input.submitted) return { state: "pending", enabled: false };

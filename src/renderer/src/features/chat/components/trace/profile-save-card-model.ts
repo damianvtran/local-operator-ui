@@ -23,13 +23,13 @@
  * wrote.
  */
 
-import { t } from "../../../../../../i18n/messages";
 import {
 	type ProfileRevertDescriptor,
 	type ProfileSaveDisclosure,
 	profileDisclosure,
 	profileQueuedReceipt,
 	profileRevertDescriptor,
+	profileSavedRecord,
 } from "../../../../../../shared/profile-consent";
 
 /** The receipt's parsed shape, taken from the one schema that defines it. */
@@ -39,6 +39,7 @@ import {
 	type ProfileCardView,
 	profileDisclosureView,
 	profileRevertUnavailable,
+	stateNoteFor,
 } from "../../../mesh/mesh-profile-approval";
 
 /** The calls this card owns. Anything else keeps its existing rendering. */
@@ -167,14 +168,43 @@ export function profileSaveCall(record: {
 
 	const direct = profileDisclosure(payload);
 	if (direct) return fromDisclosure(direct, null);
-	const receipt = profileQueuedReceipt(payload);
-	if (receipt)
+	/*
+	 * A SAVED RECORD IS ITS OWN SHAPE (see `profileSavedRecordSchema`): the golden
+	 * artifact's applied result carries `{kind, name, fields, diff, profile_action,
+	 * revert, backup_id, ...}` and no status word, so reading it as a queued receipt
+	 * refused every real saved card. The descriptor is parsed from the same record -
+	 * that is where a real saved card files its action - and the legacy `revert` hint
+	 * is carried but never parsed as one.
+	 */
+	const saved = profileSavedRecord(payload);
+	if (saved) {
+		const descriptor = profileRevertDescriptor(saved.profile_action);
 		return {
-			view: receiptView(receipt),
-			descriptor: null,
-			revertVerifiedByProducer: false,
-			state: "waiting",
+			view: savedView(saved, descriptor),
+			descriptor,
+			revertVerifiedByProducer: payload.revert_verified === true,
+			state: "saved",
 		};
+	}
+	const receipt = profileQueuedReceipt(payload);
+	if (receipt) {
+		/*
+		 * A RECEIPT'S OWN DESCRIPTOR IS READ HERE TOO (review R2.4). An applied
+		 * card's `details` are the receipt object itself, so its `profile_action`
+		 * sat in `payload` while only the envelope branch ever looked for it: the
+		 * one place a real saved card files its action was discarded, and no
+		 * status could ever be verified for it. The legacy `revert` hint is still
+		 * never parsed as a descriptor - a receipt carrying only that draws no
+		 * control at all.
+		 */
+		const descriptor = profileRevertDescriptor(payload.profile_action);
+		return {
+			view: receiptView(receipt, descriptor),
+			descriptor,
+			revertVerifiedByProducer: payload.revert_verified === true,
+			state: receipt.status === "applied" ? "saved" : "waiting",
+		};
+	}
 
 	for (const key of Object.keys(payload))
 		if (!ENVELOPE_KEYS.has(key)) return null;
@@ -182,12 +212,15 @@ export function profileSaveCall(record: {
 	if (envelopeDisclosure) return fromDisclosure(envelopeDisclosure, payload);
 	const envelopeReceipt = profileQueuedReceipt(payload.receipt);
 	if (!envelopeReceipt) return null;
-	const base = receiptView(envelopeReceipt);
-	const descriptor = profileRevertDescriptor(payload.profile_action);
+	const envelopeDescriptor = profileRevertDescriptor(payload.profile_action);
+	const base = receiptView(envelopeReceipt, envelopeDescriptor);
+	const descriptor = envelopeDescriptor;
 	return {
 		view: {
 			...base,
 			state: STATE_WORDS[stateWord(payload)] ?? base.state,
+			// `base.revert` is undefined without a descriptor: no control, not a
+			// disabled one, when a payload named only a legacy hint.
 			revert: descriptor ? profileRevertUnavailable() : base.revert,
 		},
 		descriptor,
@@ -201,7 +234,45 @@ export function profileSaveCall(record: {
  * receipt stands for, and no field is claimed — the receipt carries no images, and
  * a diff this card invented would be a diff nobody reviewed.
  */
-function receiptView(receipt: ProfileReceipt): ProfileCardView {
+/**
+ * A SAVED record's card.
+ *
+ * The family word comes from the descriptor when one parsed (the backend states
+ * `profile_kind` there) and is NULL otherwise: the record's own `kind` is "role" at
+ * this checkpoint, which is not the card's agent/team vocabulary, and guessing it
+ * would be a placeholder for a fact nobody stated.
+ */
+function savedView(
+	saved: NonNullable<ReturnType<typeof profileSavedRecord>>,
+	descriptor: ProfileRevertDescriptor | null,
+): ProfileCardView {
+	const diffLines = saved.diff ?? [];
+	const changedFields = saved.fields ?? [];
+	return {
+		kind: descriptor?.profile_kind ?? null,
+		name: saved.name,
+		// The record does not state create/update/revert; a card that claimed one
+		// would be inventing it.
+		operation: null,
+		scope: saved.scope,
+		fields: [],
+		changesIncluded: Array.isArray(saved.fields) || Array.isArray(saved.diff),
+		diffLines,
+		changedFieldNames: changedFields,
+		state: "saved",
+		stateNote: stateNoteFor("saved"),
+		canApprove: false,
+		canDeny: false,
+		canRetryApply: false,
+		unavailableReason: null,
+		revert: descriptor ? profileRevertUnavailable() : undefined,
+	};
+}
+
+function receiptView(
+	receipt: ProfileReceipt,
+	descriptor: ProfileRevertDescriptor | null = null,
+): ProfileCardView {
 	/*
 	 * THE RECEIPT'S OWN LINES ARE THE CARD'S BODY when it has them. `fields` are the
 	 * changed column names and `diff` the backend's human-readable summary — the one
@@ -210,6 +281,15 @@ function receiptView(receipt: ProfileReceipt): ProfileCardView {
 	 */
 	const diffLines = receipt.diff ?? [];
 	const changedFields = receipt.fields ?? [];
+	/*
+	 * PRESENT-AND-EMPTY IS NOT ABSENT (review R2.6). A receipt whose `diff` is `[]`
+	 * states that the backend authored no change lines; a receipt with no `diff`
+	 * key states nothing at all. Collapsing them made the card describe an unknown
+	 * as an empty diff, so presence - not length - decides which sentence is true.
+	 */
+	const diffPresent =
+		Array.isArray(receipt.diff) || Array.isArray(receipt.fields);
+	const applied = receipt.status === "applied";
 	return {
 		kind: receipt.profile_kind,
 		name: receipt.profile_name,
@@ -217,18 +297,25 @@ function receiptView(receipt: ProfileReceipt): ProfileCardView {
 		scope: receipt.scope,
 		// No before/after images: a receipt cannot fill the two-column diff.
 		fields: [],
-		changesIncluded: diffLines.length > 0 || changedFields.length > 0,
+		changesIncluded: diffPresent,
 		diffLines,
 		changedFieldNames: changedFields,
-		state: receipt.status === "applied" ? "saved" : "waiting",
-		stateNote:
-			receipt.status === "applied"
-				? null
-				: t("ui.mesh.mesh_approvals.profile_waiting"),
+		state: applied ? "saved" : "waiting",
+		/*
+		 * AN APPLIED RECEIPT STATES ITS OUTCOME IN WORDS, like every other card
+		 * (review R2.6): a saved record with no sentence beside it left the reader
+		 * to infer completion from the chip alone.
+		 */
+		stateNote: stateNoteFor(applied ? "saved" : "waiting"),
 		canApprove: false,
 		canDeny: false,
 		canRetryApply: false,
 		unavailableReason: null,
-		revert: profileRevertUnavailable(),
+		/*
+		 * NO DESCRIPTOR, NO CONTROL: a queued proposal has nothing to revert, and a
+		 * legacy `{op, backup_id}` hint is prose, not an action - so the kill-switch
+		 * here is an ABSENT control, not a disabled one (review R2.4).
+		 */
+		revert: descriptor ? profileRevertUnavailable() : undefined,
 	};
 }

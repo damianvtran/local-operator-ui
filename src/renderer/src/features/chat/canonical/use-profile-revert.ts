@@ -129,7 +129,9 @@ export function useProfileRevertStatus(
 	const actionId = identity?.action_id ?? null;
 	useEffect(() => {
 		if (!identity || !actionId) return;
-		const cached = profileRevertStatusCache.read(actionId);
+		// Keyed on the whole bound identity, so another row or session cannot
+		// inherit this answer (review R2.2).
+		const cached = profileRevertStatusCache.read(sessionId, identity);
 		if (cached) {
 			setAnswer(cached);
 			return;
@@ -141,7 +143,7 @@ export function useProfileRevertStatus(
 			readProfileRevertStatusFromTransport,
 		).then((next) => {
 			if (!live) return;
-			profileRevertStatusCache.remember(next);
+			profileRevertStatusCache.remember(sessionId, identity, next);
 			setAnswer(next);
 		});
 		return () => {

@@ -33,6 +33,7 @@ const bundle = await build({
 			export * from "./src/shared/profile-consent";
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
 			export * from "./src/renderer/src/features/mesh/mesh-profile-approval";
+			export * from "./src/renderer/src/features/mesh/profile-action-golden";
 			export { profileSaveCall } from "./src/renderer/src/features/chat/components/trace/profile-save-card-model";
 			export { createProfileRevertLatch } from "./src/renderer/src/features/chat/canonical/profile-revert-latch";
 			export {
@@ -393,10 +394,14 @@ test("the state machine: offered, latched, settled, stale, failed, unconfirmed",
 		}).state,
 		"stale",
 	);
-	// A knowable refusal is the one arm that may be retried.
+	/*
+	 * A refusal is failed AND DISABLED (QA Q2.1). It used to stay enabled, which is
+	 * the arm that let a reader press a duplicate revert the instant the backend
+	 * refused one; a known end is not an invitation.
+	 */
 	assert.deepEqual(
 		api.profileRevertState({ ...base, outcome: { approved: false } }),
-		{ state: "failed", enabled: true },
+		{ state: "failed", enabled: false },
 	);
 });
 
@@ -508,8 +513,12 @@ const CARD_REASON_DESCRIBED =
 const CARD_REASON_TEXT = /\{revertReason\}/;
 const CARD_NO_HANDLER_KEY = /profile_revert_no_handler/;
 const CARD_UNKNOWN_REASON_KEY = /profile_revert_reason_unknown/;
-const CARD_CLUSTER =
-	/revert\.descriptor !== null \|\| revert\.note !== null \|\| onRevert/;
+/*
+ * The control renders ONLY when the view carries one (review R2.4): no descriptor
+ * means no Revert at all, not a disabled one. The internal gates stay tested by the
+ * reason/no-handler cases above.
+ */
+const CARD_CLUSTER = /\{revert && \(/;
 const CARD_NO_TITLE_REASON = /title=\{revert/;
 const SEAM_READ = /const revertStatus = useProfileRevertStatus\(/;
 const NO_SECOND_AUTHORITY = /revertRegistered/;
@@ -641,8 +650,11 @@ test("a replayed legacy revert hint never produces a revert control", () => {
 		});
 		assert.ok(call, "the record still renders");
 		assert.equal(call.descriptor, null, JSON.stringify(replayed));
-		assert.equal(call.view.revert.enabled, false);
-		assert.equal(call.view.revert.descriptor, null);
+		/*
+		 * R2.4: no descriptor means NO control. A greyed-out Revert beside a legacy
+		 * text hint was a control the record could never honour.
+		 */
+		assert.equal(call.view.revert, undefined, JSON.stringify(replayed));
 	}
 });
 
@@ -818,18 +830,44 @@ test("a press writes once, and a cached completion writes nothing at all", async
 		return {};
 	};
 	const available = statusAnswer("available");
-
-	// A fresh available answer: one write, then the reconciled state.
+	/*
+	 * R2.1: a press reads the live status BEFORE it writes (authority may have
+	 * expired) and once more after (to learn what happened); the second answer is
+	 * what the card shows.
+	 */
+	const sequence = (states) => {
+		const seen = [];
+		let reads = 0;
+		return {
+			seen,
+			read: async () => {
+				const next = states[reads] ?? "pending";
+				reads += 1;
+				seen.push("read");
+				return statusAnswer(next);
+			},
+		};
+	};
+	const first = sequence(["available", "succeeded"]);
 	const done = await api.runProfileRevertPress({
 		descriptor: revertDescriptor,
 		sessionId: "s_9f2c",
 		epoch: "e_1",
 		status: available,
 		identity,
-		write,
-		readStatus: async () => statusAnswer("succeeded"),
+		write: async (request) => {
+			first.seen.push("write");
+			writes.push(request);
+			return {};
+		},
+		readStatus: first.read,
 	});
 	assert.equal(writes.length, 1);
+	assert.deepEqual(
+		first.seen,
+		["read", "write", "read"],
+		"one read authorises the write, one read reports its outcome",
+	);
 	assert.equal(done.state, "succeeded");
 
 	// A second press on the cached completion: still one write in total.
@@ -875,10 +913,16 @@ test("a dropped activation stays pending and reconciles with a fresh read", asyn
 		},
 		readStatus: async () => {
 			reads += 1;
-			return statusAnswer("pending");
+			// The write is authorised by the first read and contradicted by the
+			// second: the activation landed nowhere we can see.
+			return statusAnswer(reads === 1 ? "available" : "pending");
 		},
 	});
-	assert.equal(reads, 1, "an uncertain press reconciles with the live seam");
+	assert.equal(
+		reads,
+		2,
+		"one read authorises, the second reconciles the uncertain answer",
+	);
 	assert.equal(answer.state, "pending");
 	// Never failed, and the control is not re-offered.
 	assert.deepEqual(api.profileRevertAuthority(answer), {
@@ -897,9 +941,14 @@ test("a dropped activation stays pending and reconciles with a fresh read", asyn
 		write: async () => {
 			throw new Error("timeout");
 		},
-		readStatus: async () => {
-			throw new Error("dropped");
-		},
+		readStatus: (() => {
+			let n = 0;
+			return async () => {
+				n += 1;
+				if (n === 1) return statusAnswer("available");
+				throw new Error("dropped");
+			};
+		})(),
 	});
 	assert.equal(unreconciled.state, "pending");
 	api.profileRevertStatusCache.clear();
@@ -1043,4 +1092,305 @@ test("the roster diff moves whenever an authored member field moves", () => {
 		rosterFrom({ role: "reviewer" }, { role: "reviewer", count: 1 }),
 		[],
 	);
+});
+
+/* ------------------------------- the golden wire artifact, and round-2 gates */
+
+test("the golden artifact is the one vendored here, and a real row still binds", () => {
+	/*
+	 * FIXTURE PARITY (parent acceptance): a fixture that stops matching the shipped
+	 * parser, or drifts from the exported artifact, fails HERE rather than in a story
+	 * nobody reran. The provenance is asserted so a re-vendored artifact is a
+	 * deliberate, visible change.
+	 */
+	assert.equal(
+		api.PROFILE_ACTION_GOLDEN_META.source_sha,
+		"b4f879399b577764de1939e955457d71aecbe1b9",
+	);
+	const row = api.GOLDEN_APPROVAL_ROWS[0];
+	const typed = api.profileTypedApproval(row.typed_approval);
+	assert.ok(typed, "the real typed block must parse");
+	/*
+	 * THE LEGACY LABEL IS WHAT THE DAEMON SENDS (`desktop_approval.py:382`); the
+	 * operation is the selector. Keying on the label refused every real row.
+	 */
+	assert.equal(typed.action, "approve-credential");
+	assert.equal(
+		typed.disclosure.profile_name,
+		row.typed_approval.disclosure.profile_name,
+	);
+
+	const parsed = api.approvalRows({ approvals: [row] });
+	assert.equal(parsed.length, 1);
+	assert.equal(
+		parsed[0].kind,
+		"profile",
+		"a real row must recognise as a profile row",
+	);
+	const view = api.profileCardView(parsed[0], {
+		profileApprovals: true,
+		canApprove: true,
+	});
+	assert.ok(view.fields.length > 0, "the positive card renders its field rows");
+	assert.equal(view.name, row.typed_approval.disclosure.profile_name);
+	assert.equal(view.unavailableReason, null);
+});
+
+test("a saved ToolResult renders the saved card with its diff and a disabled revert", () => {
+	const saved = api.profileSaveCall({
+		toolName: "profile_save",
+		output: "",
+		details: api.GOLDEN_SAVED_AGENT_TOOL_RESULT.details,
+	});
+	assert.ok(saved, "the real applied details must parse");
+	assert.equal(saved.state, "saved");
+	assert.equal(saved.view.state, "saved");
+	assert.ok(saved.view.diffLines.length > 0, "the backend's diff lines render");
+	assert.equal(saved.view.changesIncluded, true);
+	assert.equal(saved.descriptor.profile_kind, "agent");
+	// A descriptor alone never enables the control: only a live `available` may.
+	assert.equal(saved.view.revert.state, "unavailable");
+	assert.equal(saved.view.revert.enabled, false);
+
+	const team = api.profileSaveCall({
+		toolName: "profile_save",
+		output: "",
+		details: api.GOLDEN_SAVED_TEAM_TOOL_RESULT.details,
+	});
+	assert.equal(team.descriptor.profile_kind, "team");
+	assert.equal(team.view.state, "saved");
+});
+
+test("a queued receipt renders the backend's own lines, not an invented diff", () => {
+	const queued = api.profileSaveCall({
+		toolName: "profile_save",
+		output: "",
+		details: api.GOLDEN_QUEUED_TOOL_RESULT.details,
+	});
+	assert.ok(queued, "the real queued details must parse");
+	assert.equal(queued.view.state, "waiting");
+	assert.deepEqual(
+		queued.view.diffLines,
+		api.GOLDEN_QUEUED_TOOL_RESULT.details.diff,
+		"verbatim, never re-derived",
+	);
+	// A queued proposal has nothing to revert and carries no descriptor.
+	assert.equal(queued.descriptor, null);
+	assert.equal(queued.view.revert, undefined);
+});
+
+test("the status answer is read from the real ACK frame, and a string detail is refused", async () => {
+	const actionId = api.GOLDEN_LIVE_ACTION_ACK.agent.available.detail.action_id;
+	const bound = { ...identity, action_id: actionId, tool_call_id: "tc_4a1b" };
+	const answer = await api.readProfileRevertStatus(
+		"s_9f2c",
+		bound,
+		async () => {
+			return api.GOLDEN_LIVE_ACTION_ACK.agent.available;
+		},
+	);
+	assert.equal(answer.state, "available");
+
+	// A STRINGIFIED detail is a refusal, never a payload to parse.
+	const stringified = await api.readProfileRevertStatus(
+		"s_9f2c",
+		bound,
+		async () => ({
+			op: "ack",
+			req: 1,
+			detail: JSON.stringify(api.GOLDEN_LIVE_ACTION_ACK.agent.available.detail),
+		}),
+	);
+	assert.equal(stringified.state, "unavailable");
+
+	// Extra keys inside `detail` are a refusal, not a richer answer.
+	const extended = await api.readProfileRevertStatus(
+		"s_9f2c",
+		bound,
+		async () => ({
+			op: "ack",
+			req: 1,
+			detail: {
+				...api.GOLDEN_LIVE_ACTION_ACK.agent.available.detail,
+				inverse: "restore",
+			},
+		}),
+	);
+	assert.equal(extended.state, "unavailable");
+
+	// An unknown state word refuses.
+	const unknown = await api.readProfileRevertStatus(
+		"s_9f2c",
+		bound,
+		async () => ({
+			op: "ack",
+			req: 1,
+			detail: { action_id: actionId, state: "done" },
+		}),
+	);
+	assert.equal(unknown.state, "unavailable");
+});
+
+test("the cache is keyed on the whole identity, so no other row inherits authority", () => {
+	api.profileRevertStatusCache.clear();
+	const available = { action_id: identity.action_id, state: "available" };
+	api.profileRevertStatusCache.remember("s_9f2c", identity, available);
+	assert.equal(
+		api.profileRevertStatusCache.read("s_9f2c", identity)?.state,
+		"available",
+	);
+	// A different session, or a different row's call, gets nothing.
+	assert.equal(api.profileRevertStatusCache.read("s_other", identity), null);
+	assert.equal(
+		api.profileRevertStatusCache.read("s_9f2c", {
+			...identity,
+			tool_call_id: "tc_other",
+		}),
+		null,
+	);
+	assert.equal(
+		api.profileRevertStatusCache.read("s_9f2c", {
+			...identity,
+			receipt_id: "rc_other",
+		}),
+		null,
+	);
+	api.profileRevertStatusCache.clear();
+});
+
+test("an explicit saver:false is a roster change beside an inherited one", () => {
+	const roster = (members) => ({
+		id: "tm_launch",
+		name: "Launch team",
+		label: "Launch",
+		description: "Carries a launch to its release gate.",
+		manager: "Researcher",
+		members,
+		aliases: ["launch-crew"],
+		instructions: "Follow the release runbook.",
+		project: "Launch",
+	});
+	const disclosureOf = (before, after) =>
+		api.profileDisclosure({
+			version: 1,
+			operation: "profile_save",
+			approval_id: "ap_demo1234",
+			profile_kind: "team",
+			scope: "global",
+			profile_operation: "update",
+			target_id: "tm_launch",
+			profile_name: "Launch team",
+			session_id: "s_9f2c",
+			tool_call_id: "tc_4a1b",
+			receipt_id: "rc_71bd",
+			changed_fields: ["members"],
+			before,
+			after,
+			base_commitment: `sha256:${"a".repeat(64)}`,
+			after_commitment: `sha256:${"a".repeat(64)}`,
+			expires_at: 1_900_000_000,
+			signing_principal: "operator-key",
+		});
+	// Inherited -> explicitly off is a CHANGE, and must produce a row (R2.3).
+	const moved = api.profileFieldRows(
+		disclosureOf(
+			roster([{ role: "reviewer" }]),
+			roster([{ role: "reviewer", saver: false }]),
+		),
+	);
+	assert.equal(moved.length, 1, "inherit -> explicit off must produce a row");
+	assert.notEqual(moved[0].before.text, moved[0].after.text);
+	// Absent and explicit null both inherit, so nothing moved.
+	assert.deepEqual(
+		api.profileFieldRows(
+			disclosureOf(
+				roster([{ role: "reviewer" }]),
+				roster([{ role: "reviewer", saver: null }]),
+			),
+		),
+		[],
+	);
+});
+
+test("a present-but-empty diff is not the same fact as an absent one", () => {
+	const withEmpty = api.profileSaveCall({
+		toolName: "profile_save",
+		output: "",
+		details: {
+			...api.GOLDEN_QUEUED_TOOL_RESULT.details,
+			fields: [],
+			diff: [],
+		},
+	});
+	assert.equal(withEmpty.view.changesIncluded, true);
+	assert.deepEqual(withEmpty.view.diffLines, []);
+
+	const withoutDiff = api.profileSaveCall({
+		toolName: "profile_save",
+		output: "",
+		details: {
+			status: "queued",
+			profile_kind: "agent",
+			profile_name: "Researcher",
+			scope: "global",
+		},
+	});
+	assert.equal(withoutDiff.view.changesIncluded, false);
+	assert.deepEqual(withoutDiff.view.diffLines, []);
+});
+
+test("a cached available is not a completion: the press still writes and re-reads", async () => {
+	api.profileRevertStatusCache.clear();
+	// The defect (review R2.1 / QA Q2.2): a remembered `available` short-circuited the
+	// press to `succeeded` with zero writes and zero reads - a completion it had never
+	// performed and could never have known.
+	api.profileRevertStatusCache.remember("s_9f2c", identity, {
+		action_id: identity.action_id,
+		state: "available",
+	});
+	let reads = 0;
+	const writes = [];
+	const answer = await api.runProfileRevertPress({
+		descriptor: revertDescriptor,
+		sessionId: "s_9f2c",
+		epoch: "e_1",
+		status: { action_id: identity.action_id, state: "available" },
+		identity,
+		write: async (request) => {
+			writes.push(request);
+			return {};
+		},
+		readStatus: async () => {
+			reads += 1;
+			return {
+				action_id: identity.action_id,
+				state: reads === 1 ? "available" : "succeeded",
+			};
+		},
+	});
+	assert.equal(
+		writes.length,
+		1,
+		"a cached available must not suppress the write",
+	);
+	assert.equal(reads, 2, "one read authorises, one reports the outcome");
+	// The outcome is the LIVE answer, never the cache's word.
+	assert.equal(answer.state, "succeeded");
+	api.profileRevertStatusCache.clear();
+});
+
+test("no rendered path shows failed beside an enabled revert", () => {
+	// QA Q2.1, at the view the card actually renders.
+	const refused = api.profileRevertView(revertDescriptor, {
+		outcome: { approved: false, state: "failed" },
+	});
+	assert.equal(refused.state, "failed");
+	assert.equal(refused.enabled, false);
+	assert.ok(refused.note, "a disabled control still states why");
+	// A stale refusal keeps its own state, also disabled.
+	const stale = api.profileRevertView(revertDescriptor, {
+		outcome: { approved: false, state: "stale" },
+	});
+	assert.equal(stale.state, "stale");
+	assert.equal(stale.enabled, false);
 });
