@@ -1,0 +1,71 @@
+{
+  "audit_id": "aud1682-ci-ru-ba69d836a6d4",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "audit_date": "2026-11-04",
+  "locale": "ru",
+  "namespace": "ui.settings.appearance",
+  "audited_head": "f9297edd67afddfed8c0a4eea53451fc859fda9c",
+  "scope": "B CI delta only: picker.hex; other keys retain audits 63837f8/bcf0760 with unchanged values verified.",
+  "key_count": 1,
+  "keys_audited": [
+    "ui.settings.appearance.picker.hex"
+  ],
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ba69d836a6d4",
+    "instance": "aud1682-ci-ru-ba69d836a6d4",
+    "model": "openai/gpt-6.1-sol",
+    "primary_model": "anthropic/claude-opus-5-5",
+    "fallback": "Quota fallback; actual openai/gpt-6.1-sol confirmed by host session-state.",
+    "independent_from_translator_session": true,
+    "independence": "Separate session from translator fd3ba80e8c8f; did not author or remediate translations."
+  },
+  "translator": {
+    "session": "fd3ba80e8c8f",
+    "model": "radient/auto",
+    "provenance_source": "Manager delegation for B CI delta at f9297edd67a explicitly states actual translator radient/auto. Underlying provider/model not independently inferred."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.json",
+      "sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.context.json",
+      "sha256": "75db38dd15ae3c1ec3ca9ced1859edea11d999da9bd6fcca1e3286098cd372dd"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ru/ui.settings.appearance.json",
+      "sha256": "80bd724ab2456fa71a4f103b1003329ae7c65eb086a2b7ff25d142d8852689f6"
+    }
+  },
+  "findings": [],
+  "status": "passed",
+  "result": "clean",
+  "checks": {
+    "changed_keys": [
+      "ui.settings.appearance.picker.hex"
+    ],
+    "changed_values": {
+      "ui.settings.appearance.picker.hex": "HEX-код"
+    },
+    "unchanged_keys_retained": 161,
+    "icu_parse": "PASS",
+    "placeholders": "PASS (no placeholders on changed keys)",
+    "bidi": "PASS",
+    "technical_command_and_exemption": "PASS"
+  },
+  "context_review": "palette_override_notice placeholder.theme now explicitly describes the borrowed built-in palette name, not background theme or user accent; preserves meaning of the prior note.",
+  "idiom_review": "Hex field labels name hexadecimal notation naturally in each locale. French Normal/Couleur d’accent and orange/cyan/indigo/violet families remain understandable in preset and tooltip contexts. Vietnamese xanh cyan retains the cyan family.",
+  "artifacts": [
+    {
+      "path": "i18n/receipts/aud1682-ci-ru-ba69d836a6d4.json",
+      "sha256": "f7ae3e1f249ead208601738fbad2276478c3a92b9c27dbd0aa5f05daf58e4598"
+    },
+    {
+      "path": "i18n/audits/evidence/ru/ui.settings.appearance/aud1682-ci-ru-ba69d836a6d4/mechanical-results.json",
+      "sha256": "ce8b022aadb228d75d076084ed9a86a5a62c5b76b7681c95399a6d13ebd0e0d2"
+    }
+  ],
+  "limitations": "No prior B audit reset. Earlier minor/nit findings remain in historical receipts; clean describes only this delta. No rendered fit or native-reader claim; CI owns whole string scanners."
+}
