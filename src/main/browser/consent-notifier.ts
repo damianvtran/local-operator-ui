@@ -4,6 +4,7 @@ import {
 	type LifetimeNotification,
 	NotificationLifetime,
 } from "../notification-lifetime";
+import { notificationSoundOptions } from "../notification-sound";
 
 /**
  * One native banner per pending site approval.
@@ -93,6 +94,7 @@ export interface ConsentNotifierOptions {
 		title: string;
 		body: string;
 		silent: boolean;
+		sound?: string;
 	}) => LifetimeNotification & { show(): void };
 }
 
@@ -150,7 +152,8 @@ export class ConsentNotifier {
 				{
 					title: CONSENT_TITLE(),
 					body: consentBody(count, oldest.origin),
-					silent: false,
+					// The configured sound (or none); see `notification-sound.ts`.
+					...notificationSoundOptions(),
 				},
 			);
 			/*

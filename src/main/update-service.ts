@@ -117,6 +117,7 @@ import {
 	runInOwnProcessGroup,
 	waitForInstallGroupGone,
 } from "./install-group-run";
+import { notificationSoundOptions } from "./notification-sound";
 import {
 	ensureVenvBytecodeGuard,
 	withPythonBytecodeCache,
@@ -1993,7 +1994,8 @@ function bannerReportedShown(
 			const notification = new Notification({
 				title: notice.title,
 				body: notice.body,
-				silent: false,
+				// The configured sound (or none); see `notification-sound.ts`.
+				...notificationSoundOptions(),
 			});
 			notification.on("show", () => {
 				clearTimeout(deadline);

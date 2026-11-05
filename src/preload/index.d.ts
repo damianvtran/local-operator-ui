@@ -563,6 +563,13 @@ declare global {
 			 * first, because `showItemInFolder` returns nothing and will happily
 			 * reveal the parent of a path that does not exist.
 			 */
+			/**
+			 * Subscribe to notification sounds main asks this window to play (its
+			 * fallback when the OS cannot play them). Returns the unsubscribe.
+			 */
+			onNotificationSound?: (
+				callback: (bytes: Uint8Array) => void,
+			) => () => void;
 			showItemInFolder: (filePath: string) => Promise<FileActionOutcome>;
 			systemInfo: {
 				getAppVersion: () => Promise<string>;

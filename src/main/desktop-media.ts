@@ -361,6 +361,20 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			assetId: z.string().regex(/^la_[0-9a-f]{16}$/),
 		})
 		.strict(),
+	/*
+	 * One notification sound as `audio/wav` with the volume baked in (core
+	 * `/v1/notification-sounds/{id}/audio?volume=`, `features.notification_sounds`).
+	 * Main stages it in ~/Library/Sounds or hands it to the renderer's player
+	 * (`notification-sound.ts`). The id is the catalog's slug or core's
+	 * `custom-[a-z0-9-]{1,40}`, checked here because it becomes a path segment.
+	 */
+	z
+		.object({
+			op: z.literal("notification_sounds.audio"),
+			soundId: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+			volume: z.number().int().min(0).max(100),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -482,6 +496,11 @@ function endpoint(request: DesktopMediaRequest): {
 		case "library.waveform":
 			return {
 				path: `/v1/desktop/library/assets/${request.assetId}/waveform`,
+				method: "GET",
+			};
+		case "notification_sounds.audio":
+			return {
+				path: `/v1/notification-sounds/${request.soundId}/audio?volume=${request.volume}`,
 				method: "GET",
 			};
 		case "team_bridge.attachment.upload":
@@ -639,6 +658,7 @@ export async function requestDesktopMediaOutcome(
 		request.op === "library.content" ||
 		request.op === "library.thumbnail" ||
 		request.op === "library.waveform" ||
+		request.op === "notification_sounds.audio" ||
 		request.op === "team_bridge.attachment" ||
 		request.op === "team_bridge.owner_audit.attachment" ||
 		request.op === "team_bridge.avatar" ||

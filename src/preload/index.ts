@@ -61,6 +61,7 @@ import {
 	isMiniViewRegistrationState,
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
+import { NOTIFICATION_SOUND_PLAY_CHANNEL } from "../shared/notification-sound";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import type {
 	TeamBridgeNotificationSender,
@@ -516,6 +517,23 @@ const api = {
 		ipcRenderer.on(EXTERNAL_OPEN_REFUSED_CHANNEL, handler);
 		return () => {
 			ipcRenderer.removeListener(EXTERNAL_OPEN_REFUSED_CHANNEL, handler);
+		};
+	},
+	/**
+	 * A notification sound main could not hand to the OS (Windows/Linux, or a
+	 * macOS staging failure): gain-baked WAV bytes for the renderer's own
+	 * player. Anything but bytes is dropped here, so the player never builds a
+	 * source out of whatever else might arrive on the channel.
+	 */
+	onNotificationSound: (
+		callback: (bytes: Uint8Array) => void,
+	): (() => void) => {
+		const handler = (_event: IpcRendererEvent, bytes: unknown) => {
+			if (bytes instanceof Uint8Array && bytes.byteLength > 0) callback(bytes);
+		};
+		ipcRenderer.on(NOTIFICATION_SOUND_PLAY_CHANNEL, handler);
+		return () => {
+			ipcRenderer.removeListener(NOTIFICATION_SOUND_PLAY_CHANNEL, handler);
 		};
 	},
 	showItemInFolder: (filePath: string): Promise<FileActionOutcome> =>
