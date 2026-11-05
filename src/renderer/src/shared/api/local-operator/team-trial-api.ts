@@ -24,6 +24,7 @@
  */
 import { radientProxy } from "@shared/api/radient/proxy";
 import { DesktopControlError } from "./desktop-api";
+import { requireTeamTrialStartEnabled } from "./team-trial-activation";
 
 /** The live trial block (§3 start response and the eligibility `trial` field). */
 export type TeamTrialBlock = {
@@ -89,7 +90,9 @@ export const teamTrialApi = {
 			tenantId,
 		});
 	},
-	start(input: TeamTrialStartInput): Promise<TeamTrialStartResult> {
+	async start(input: TeamTrialStartInput): Promise<TeamTrialStartResult> {
+		// Direct API callers must not bypass the UI/mutation activation hold.
+		requireTeamTrialStartEnabled();
 		const orgName = input.orgName?.trim();
 		return radientProxy<TeamTrialStartResult>({
 			operation: "team_trial.start",

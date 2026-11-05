@@ -17,6 +17,7 @@
  * enrolment call of its own.
  */
 import { membershipKeys } from "@features/agent-hub/hooks/use-memberships-query";
+import { requireTeamTrialStartEnabled } from "@shared/api/local-operator/team-trial-activation";
 import {
 	type TeamTrialEligibility,
 	type TeamTrialStartInput,
@@ -106,7 +107,11 @@ export function useStartTeamTrial() {
 	const client = useQueryClient();
 	const { accountId } = useObservedRadientAuthority();
 	return useMutation({
-		mutationFn: (input: TeamTrialStartInput) => teamTrialApi.start(input),
+		mutationFn: (input: TeamTrialStartInput) => {
+			// Guard the mutation boundary even if another caller mounts a dialog.
+			requireTeamTrialStartEnabled();
+			return teamTrialApi.start(input);
+		},
 		onSuccess: async () => {
 			await Promise.all([
 				client.invalidateQueries({
