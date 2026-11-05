@@ -23,7 +23,7 @@
  *    refusal that positively names the record as stale/expired maps to `stale`.
  */
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ProfileRevertDescriptor } from "../../../../../shared/profile-consent";
 import { profileRevertLatch } from "./profile-revert-latch";
 import {
@@ -140,6 +140,18 @@ export function useProfileRevertStatus(
 		key: string;
 		answer: ProfileRevertStatusAnswer;
 	} | null>(null);
+	// The canonical row parses a new descriptor object on every paint. Depend on
+	// its identity facts, not that object: replaying a cached answer into a fresh
+	// entry on every effect otherwise causes an unbounded render loop (Q9-A).
+	const { action_id, receipt_id, profile_kind, profile_name, tool_call_id } =
+		identity ?? {};
+	const readIdentity = useMemo<ProfileRevertIdentity | null>(
+		() =>
+			action_id && receipt_id && profile_kind && profile_name && tool_call_id
+				? { action_id, receipt_id, profile_kind, profile_name, tool_call_id }
+				: null,
+		[action_id, receipt_id, profile_kind, profile_name, tool_call_id],
+	);
 	const identityKey =
 		identity === null ? null : statusIdentityKey(sessionId, identity);
 	const answer =
@@ -147,10 +159,10 @@ export function useProfileRevertStatus(
 			? boundStatusAnswer(entry.answer, identity)
 			: null;
 	useEffect(() => {
-		if (!identity || identityKey === null) return;
+		if (!readIdentity || identityKey === null) return;
 		// Keyed on the whole bound identity, so another row or session cannot
 		// inherit this answer (review R2.2).
-		const cached = profileRevertStatusCache.read(sessionId, identity);
+		const cached = profileRevertStatusCache.read(sessionId, readIdentity);
 		if (cached) {
 			setEntry({ key: identityKey, answer: cached });
 			return;
@@ -158,17 +170,17 @@ export function useProfileRevertStatus(
 		let live = true;
 		void readProfileRevertStatus(
 			sessionId,
-			identity,
+			readIdentity,
 			readProfileRevertStatusFromTransport,
 		).then((next) => {
 			if (!live) return;
 			// A LIVE read is what makes a completion real for this identity.
-			profileRevertStatusCache.remember(sessionId, identity, next, "read");
+			profileRevertStatusCache.remember(sessionId, readIdentity, next, "read");
 			setEntry({ key: identityKey, answer: next });
 		});
 		return () => {
 			live = false;
 		};
-	}, [identity, identityKey, sessionId]);
+	}, [readIdentity, identityKey, sessionId]);
 	return answer;
 }

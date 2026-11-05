@@ -1,0 +1,90 @@
+{
+	"meta": {
+		"source_file": "queued-cold-actual-api.json",
+		"source_sha256": "30689cfaa94dbc0f214d80cc8a785c568959ca1eca6dc179805ce1c900a52c0f",
+		"provenance": "Two entries copied verbatim from actual cold API history; live Session resumed after disposal and signed team apply. No fabricated replacement fields."
+	},
+	"entries": [
+		{
+			"id": "604f898ecbae4ba191cb0e5a3f9f8f49",
+			"ts": 1793878130.39127,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Queued team 'lopdev' for durable approval (ap_brrgw2wh9gk4m). No profile or backup was changed. The signed approval continuation applies it; do not retry this tool call.\ninstructions: updated"
+					}
+				],
+				"tool_call_id": "qa-live-team-0361fb1cb2b8",
+				"tool_name": "team",
+				"provider_payload": {
+					"details": {
+						"status": "queued",
+						"fields": ["instructions"],
+						"diff": [
+							"instructions (replaced; new text):",
+							"Queued browser proof."
+						],
+						"approval_id": "ap_brrgw2wh9gk4m",
+						"request_digest": "sha256:f43dc1cd610d55fb827d21d1ba4682d1463943549a103a4bcb9cfb33ac4dd908",
+						"expires_at": 1793964530.379034,
+						"receipt_id": "56bbbab5e3d666a88053f9af085de012db2b517c0c877e778462cc032154d319",
+						"profile_kind": "team",
+						"profile_name": "lopdev",
+						"scope": "global"
+					},
+					"useless": false,
+					"duration_s": 0.010571790975518525
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "profile-applied:56bbbab5e3d666a88053f9af085de012db2b517c0c877e778462cc032154d319",
+			"ts": 1793878237.953805,
+			"type": "prune",
+			"payload": {
+				"target": "604f898ecbae4ba191cb0e5a3f9f8f49",
+				"notice": "Profile save applied.",
+				"replacement": {
+					"kind": "message",
+					"role": "tool",
+					"content": [
+						{
+							"text": "Saved team 'lopdev' in your account after signed approval.\ninstructions: updated"
+						}
+					],
+					"tool_call_id": "qa-live-team-0361fb1cb2b8",
+					"tool_name": "team",
+					"provider_payload": {
+						"details": {
+							"status": "applied",
+							"profile_kind": "team",
+							"profile_name": "lopdev",
+							"scope": "global",
+							"receipt_id": "56bbbab5e3d666a88053f9af085de012db2b517c0c877e778462cc032154d319",
+							"fields": ["instructions"],
+							"diff": ["instructions:", "Queued browser proof."],
+							"approval_id": "ap_brrgw2wh9gk4m",
+							"request_digest": "sha256:f43dc1cd610d55fb827d21d1ba4682d1463943549a103a4bcb9cfb33ac4dd908",
+							"profile_action": {
+								"schema": 1,
+								"kind": "profile_revert",
+								"action_id": "prv_9de76caa1190c4541f0261011af4c07d",
+								"label": "Revert",
+								"profile_kind": "team",
+								"profile_name": "lopdev",
+								"receipt_id": "56bbbab5e3d666a88053f9af085de012db2b517c0c877e778462cc032154d319"
+							}
+						},
+						"useless": false,
+						"duration_s": null
+					}
+				}
+			},
+			"ts_source": "entry"
+		}
+	]
+}

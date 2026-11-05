@@ -2104,3 +2104,145 @@ test("actual correlated continuation replaces the queued row live and cold", () 
 		card(coldSaved),
 	);
 });
+
+test("actual cold API prune replacement updates the existing queued profile message (Q9-B)", () => {
+	const fixture = JSON.parse(
+		source("scripts/fixtures/profile-prune-actual-api.json"),
+	);
+	const [original, prune] = fixture.entries;
+	assert.equal(prune.payload.target, original.id);
+	const page = (entries) => ({
+		entries,
+		has_more: false,
+		cursor_missing: false,
+	});
+	const queued = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([original]));
+	const inspect = (state) => {
+		const rows = state.records.filter((row) => row.kind === "tool");
+		assert.equal(rows.length, 1, "one original tool row, no prune notice row");
+		const row = rows[0];
+		assert.equal(row.toolCallId, original.payload.tool_call_id);
+		const card = api.profileSaveCall({
+			toolName: row.toolName,
+			output: row.output ?? "",
+			details: row.details,
+		});
+		assert.ok(card);
+		return { row, card };
+	};
+	assert.equal(inspect(queued).card.view.state, "waiting");
+	const cold = api.applyHistoryPage(
+		api.EMPTY_TRANSCRIPT,
+		page(fixture.entries),
+	);
+	assert.equal(inspect(cold).card.view.state, "saved");
+	assert.deepEqual(
+		inspect(cold).card.descriptor,
+		prune.payload.replacement.provider_payload.details.profile_action,
+	);
+	// An older page can expose the immutable original without the later prune.
+	// It must not undo a correlated replacement that this row already admitted.
+	assert.equal(
+		inspect(api.applyHistoryPage(cold, page([original]))).card.view.state,
+		"saved",
+	);
+	const paged = api.applyHistoryPage(queued, page([prune]));
+	assert.equal(inspect(paged).card.view.state, "saved");
+	assert.equal(inspect(paged).row.id, inspect(queued).row.id);
+	assert.equal(inspect(paged).row.ts, inspect(queued).row.ts);
+	assert.equal(
+		inspect(api.applyHistoryPage(cold, page(fixture.entries))).card.view.state,
+		"saved",
+	);
+});
+
+test("profile prune refuses orphan, unrelated, stale and mismatched replacements", () => {
+	const fixture = JSON.parse(
+		source("scripts/fixtures/profile-prune-actual-api.json"),
+	);
+	const [original, prune] = fixture.entries;
+	const page = (entries) => ({
+		entries,
+		has_more: false,
+		cursor_missing: false,
+	});
+	const queued = api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([original]));
+	const summary = (state) =>
+		state.records.map((row) => ({
+			id: row.id,
+			ts: row.ts,
+			kind: row.kind,
+			details: row.details,
+		}));
+	const invalid = [
+		(p) => {
+			p.payload.target = "unrelated-target";
+		},
+		(p) => {
+			p.payload.replacement.tool_call_id = "unrelated-call";
+		},
+		(p) => {
+			p.payload.replacement.tool_name = "agent";
+		},
+		(p) => {
+			p.payload.replacement.provider_payload.details.receipt_id =
+				"wrong-receipt";
+		},
+		(p) => {
+			p.payload.replacement.provider_payload.details.request_digest = `sha256:${"0".repeat(64)}`;
+		},
+		(p) => {
+			p.payload.replacement.provider_payload.details.profile_action.receipt_id =
+				"wrong-receipt";
+		},
+		(p) => {
+			p.payload.replacement.provider_payload.details.profile_name =
+				"other-profile";
+		},
+		(p) => {
+			p.payload.replacement.role = "assistant";
+		},
+		(p) => {
+			p.payload.replacement.extra = "not-a-supported-replacement";
+		},
+		(p) => {
+			p.payload.replacement.provider_payload = null;
+		},
+		(p) => {
+			p.ts = original.ts - 1;
+		},
+	];
+	for (const mutate of invalid) {
+		const bad = structuredClone(prune);
+		mutate(bad);
+		assert.deepEqual(
+			summary(api.applyHistoryPage(queued, page([bad]))),
+			summary(queued),
+		);
+	}
+	assert.equal(
+		api.applyHistoryPage(api.EMPTY_TRANSCRIPT, page([prune])).records.length,
+		0,
+		"partial page with no proven target cannot create a fake completion",
+	);
+	const generic = {
+		id: "ordinary-message",
+		ts: original.ts - 1,
+		type: "message",
+		payload: {
+			role: "user",
+			content: [{ type: "text", text: "ordinary neighbor" }],
+		},
+	};
+	const result = api.applyHistoryPage(
+		api.EMPTY_TRANSCRIPT,
+		page([generic, ...fixture.entries]),
+	);
+	assert.equal(
+		result.records[0].id,
+		generic.id,
+		"original row position remains after its neighbor",
+	);
+	assert.equal(result.records[1].id, `tool:${original.payload.tool_call_id}`);
+	assert.equal(result.records.length, 2, "prune notice is not a third row");
+});
