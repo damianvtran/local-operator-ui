@@ -62,5 +62,14 @@
 	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} и {tail}} middle {{head}, {tail}} other {{head} и {tail}}}",
 	"ui.chat.sidebar.row.open_draft": "Открыть {label}",
 	"ui.chat.sidebar.entity.more_in": "{label} в «{name}»",
-	"ui.chat.sidebar.search.count_tooltip": "По этому поиску {count, plural, =1 {{clipped, select, yes {найдено не менее {count_display} чата} other {найден {count_display} чат}}} one {{clipped, select, yes {найдено не менее {count_display} чата} other {найден {count_display} чат}}} few {{clipped, select, yes {найдено не менее {count_display} чатов} other {найдено {count_display} чата}}} many {{clipped, select, yes {найдено не менее {count_display} чатов} other {найдено {count_display} чатов}}} other {{clipped, select, yes {найдено не менее {count_display} чата} other {найдено {count_display} чата}}}}{clipped, select, yes {; список на этом обрывается} other {}}"
+	"ui.chat.sidebar.search.count_tooltip": "По этому поиску {count, plural, =1 {{clipped, select, yes {найдено не менее {count_display} чата} other {найден {count_display} чат}}} one {{clipped, select, yes {найдено не менее {count_display} чата} other {найден {count_display} чат}}} few {{clipped, select, yes {найдено не менее {count_display} чатов} other {найдено {count_display} чата}}} many {{clipped, select, yes {найдено не менее {count_display} чатов} other {найдено {count_display} чатов}}} other {{clipped, select, yes {найдено не менее {count_display} чата} other {найдено {count_display} чата}}}}{clipped, select, yes {; список на этом обрывается} other {}}",
+	"ui.chat.sidebar.row_menu.hint": "Щёлкните правой кнопкой или нажмите Shift+F10, чтобы открыть его действия.",
+	"ui.chat.sidebar.row_menu.hint_mac": "Щёлкните правой кнопкой или нажмите Shift+F10 (на большинстве клавиатур Mac — с Fn), чтобы открыть его действия.",
+	"ui.chat.sidebar.row.search_beyond": "найдено поиском, за пределами перечисленных здесь чатов",
+	"ui.chat.sidebar.row.recent": "Недавно",
+	"ui.chat.sidebar.row.not_sent_suffix": ", ещё не отправлено",
+	"ui.chat.sidebar.row.unread_suffix": ", не прочитано",
+	"ui.chat.sidebar.row.silent_remedy": "/stop, если ответа всё нет.",
+	"ui.chat.sidebar.catalogue.show_more": "Показать ещё {hidden, plural, one {{hidden, number, ::group-off}} few {{hidden, number, ::group-off}} many {{hidden, number, ::group-off}} other {{hidden, number, ::group-off}}}",
+	"ui.chat.sidebar.catalogue.show_more_chats": "Показать ещё {add, plural, one {{add, number, ::group-off} чат} few {{add, number, ::group-off} чата} many {{add, number, ::group-off} чатов} other {{add, number, ::group-off} чата}}"
 }

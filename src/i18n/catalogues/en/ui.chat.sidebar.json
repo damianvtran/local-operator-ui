@@ -62,5 +62,14 @@
 	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} and {tail}} middle {{head}, {tail}} other {{head} and {tail}}}",
 	"ui.chat.sidebar.row.open_draft": "Open {label}",
 	"ui.chat.sidebar.entity.more_in": "{label} in {name}",
-	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {At least } other {}}{count, plural, =1 {{count_display} chat matches} other {{count_display} chats match}} this search{clipped, select, yes {; the list stops there} other {}}"
+	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {At least } other {}}{count, plural, =1 {{count_display} chat matches} other {{count_display} chats match}} this search{clipped, select, yes {; the list stops there} other {}}",
+	"ui.chat.sidebar.row_menu.hint": "Right-click or press Shift+F10 for its actions.",
+	"ui.chat.sidebar.row_menu.hint_mac": "Right-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions.",
+	"ui.chat.sidebar.row.search_beyond": "found by search, beyond the chats listed here",
+	"ui.chat.sidebar.row.recent": "Recent",
+	"ui.chat.sidebar.row.not_sent_suffix": ", not sent yet",
+	"ui.chat.sidebar.row.unread_suffix": ", unread",
+	"ui.chat.sidebar.row.silent_remedy": "/stop if it stays silent.",
+	"ui.chat.sidebar.catalogue.show_more": "Show {hidden, plural, one {{hidden, number, ::group-off} more} other {{hidden, number, ::group-off} more}}",
+	"ui.chat.sidebar.catalogue.show_more_chats": "Show {add, plural, one {{add, number, ::group-off} more chat} other {{add, number, ::group-off} more chats}}"
 }
