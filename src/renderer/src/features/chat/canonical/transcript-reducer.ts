@@ -53,7 +53,10 @@ import {
 	wakeIsCatchup,
 	wakeIsHidden,
 } from "../components/trace/receipt-row-model";
-import { preferToolResultDetails } from "../components/trace/tool-result-details";
+import {
+	preferToolResultDetails,
+	profileWriteDetails,
+} from "../components/trace/tool-result-details";
 import {
 	type SendDeliveryState,
 	diffFromDetails,
@@ -72,6 +75,10 @@ import {
 	receiveJournalOrder,
 	rememberJournalCalls,
 } from "./journal-order";
+import {
+	profileHistoryReplacements,
+	retainAppliedProfileReplacement,
+} from "./profile-history-replacement";
 import { freezeRecordDeep } from "./record-immutability";
 import { type SkillRow, skillOf } from "./skill-row";
 import {
@@ -4616,7 +4623,7 @@ export function applyHistoryPage(
 			? options.pagedBefore
 			: state.records[0]?.id;
 	const incoming: TranscriptRecord[] = [];
-	for (const entry of page.entries) {
+	for (const entry of profileHistoryReplacements(page.entries, state.records)) {
 		if (clearedView && !isCompactionOutcome(entry, state.clearedAt)) continue;
 		// A tool row keys by call id, not entry id, so the prior record is looked
 		// up under both. A supplement row keys by ANCHOR (`supplementRecordKey`),
@@ -4633,7 +4640,19 @@ export function applyHistoryPage(
 			] ??
 			previousRecordForSupplement(state, entry);
 		let record = durableRecord(entry, previous);
-		if (record && state.journalMode)
+		// A continuation page may contain only the immutable queued original, not
+		// its later prune. Keep the already correlated applied overlay rather than
+		// rolling a signed completion back to a proposal on that partial read.
+		if (retainAppliedProfileReplacement(entry, previous) && previous)
+			record = previous;
+		// Keep the native target id for profile prune continuations arriving on a
+		// later partial page; canonical tool ids alone cannot identify their target.
+		if (
+			record &&
+			(state.journalMode ||
+				(record.kind === "tool" &&
+					profileWriteDetails(record.toolName, record.details)))
+		)
 			record = { ...record, sourceEntryId: entry.id };
 		/*
 		 * A CONTINUATION'S ROWS ARE OLDER THAN EVERYTHING THE READER HOLDS (see

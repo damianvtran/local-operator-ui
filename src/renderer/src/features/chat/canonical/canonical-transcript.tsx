@@ -204,7 +204,10 @@ import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
-import { statusAnswerIsBound } from "./profile-revert-status";
+import {
+	profileRevertOutcome,
+	statusAnswerIsBound,
+} from "./profile-revert-status";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
@@ -2519,22 +2522,36 @@ const ToolRow = memo(function ToolRow({
 		 * answer to the row's own identity is the second half of that fix - the hook is
 		 * the first.
 		 */
-		const pressable = Boolean(
+		// A bound read establishes what happened, not permission to do it again.
+		// Gating presentation on `available` hid real succeeded/stale/pending answers
+		// behind "unavailable" after a successful restore (Q9-A).
+		const boundRead = Boolean(
 			descriptor &&
 				namesThisRecord &&
 				scope?.sessionId &&
 				approvalEpoch &&
-				statusAnswerIsBound(revertStatus, revertIdentity) &&
-				revertStatus?.state === "available",
+				statusAnswerIsBound(revertStatus, revertIdentity),
 		);
+		const ownOutcome =
+			revertAnswer.outcome?.requestId === descriptor?.action_id
+				? revertAnswer.outcome
+				: null;
+		const submitted = revertAnswer.submitted === descriptor?.action_id;
+		const pressable =
+			boundRead &&
+			revertStatus?.state === "available" &&
+			!submitted &&
+			ownOutcome === null;
+		const terminal =
+			revertStatus &&
+			["succeeded", "stale", "failed"].includes(revertStatus.state)
+				? profileRevertOutcome(revertStatus)
+				: null;
 		const revert = descriptor
-			? pressable
+			? boundRead && (revertStatus?.state !== "unavailable" || ownOutcome)
 				? profileRevertView(descriptor, {
-						submitted: revertAnswer.submitted === descriptor.action_id,
-						outcome:
-							revertAnswer.outcome?.requestId === descriptor.action_id
-								? revertAnswer.outcome
-								: null,
+						submitted: submitted || revertStatus?.state === "pending",
+						outcome: ownOutcome ?? terminal,
 					})
 				: profileRevertUnavailable()
 			: null;
