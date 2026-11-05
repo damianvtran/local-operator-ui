@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "locale": "hi",
+  "namespace": "ui.settings.notifications",
+  "date": "2026-11-04",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "ed833173e70f",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.json",
+    "sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.context.json",
+    "sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/hi/ui.settings.notifications.json",
+    "sha256": "c1711483144ce9709816e73da91f709f9f5fb2394ff232dae93337e920de6dec"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-hi.json",
+      "sha256": "eda030263094b66c498df63d174b7d75074bf0e92f482d942a793cbd1f5c5a3c"
+    }
+  ],
+  "findings": [
+    {
+      "id": "HI1",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.list.builtin",
+        "ui.settings.notifications.custom.hint"
+      ],
+      "reason": "Match the core namespace built-in term; avoid a more formal unrelated rendering."
+    }
+  ],
+  "status": "passed",
+  "notes_not_execution_logs": true,
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ]
+}

@@ -42,6 +42,31 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"fr:ui.settings.notifications.section.title",
+		"French cognate « Notifications »; independently audited in D2 r2 (b5bf3a7c1761). This exact French heading is not an English fallback.",
+	],
+	[
+		"fr:ui.settings.notifications.volume.label",
+		"French cognate « Volume »; independently audited in D2 r2 (b5bf3a7c1761). This exact French label is not an English fallback.",
+	],
+	[
+		"hi:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+
+	[
 		"ui.settings.appearance.editor.copy_name",
 		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
 	],

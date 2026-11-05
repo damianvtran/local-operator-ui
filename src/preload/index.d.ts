@@ -570,6 +570,13 @@ declare global {
 			onNotificationSound?: (
 				callback: (bytes: Uint8Array) => void,
 			) => () => void;
+			/**
+			 * Raise one real banner with the configured notification sound.
+			 * Optional: absent outside Electron (Storybook, browser development).
+			 */
+			sendTestNotification?: () => Promise<
+				{ shown: true } | { shown: false; reason: "unsupported" | "suppressed" }
+			>;
 			showItemInFolder: (filePath: string) => Promise<FileActionOutcome>;
 			systemInfo: {
 				getAppVersion: () => Promise<string>;

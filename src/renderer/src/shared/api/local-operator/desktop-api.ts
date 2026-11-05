@@ -787,6 +787,7 @@ export async function desktopMedia(
 	if (!response.ok) {
 		let detail = "The media request failed.";
 		let declaredCode: string | undefined;
+		let declaredParams: Record<string, unknown> | undefined;
 		if (type.includes("application/json")) {
 			try {
 				const body = (await response.json()) as { detail?: unknown };
@@ -817,6 +818,13 @@ export async function desktopMedia(
 						detail = envelope.message;
 					}
 					if (typeof envelope.code === "string") declaredCode = envelope.code;
+					const params = (raw as { params?: unknown }).params;
+					if (
+						typeof params === "object" &&
+						params !== null &&
+						!Array.isArray(params)
+					)
+						declaredParams = params as Record<string, unknown>;
 				}
 			} catch {
 				// Keep the generic detail.
@@ -837,6 +845,16 @@ export async function desktopMedia(
 					: detail === DESKTOP_MACHINE_DETAIL.noCredential
 						? DESKTOP_REFUSAL_CODE.noCredential
 						: undefined,
+			// The upload's own refusal, as main's relay forwards it (dev-proxy twin).
+			...(request.op === "notification_sounds.upload" &&
+			declaredCode !== undefined
+				? {
+						refusal: {
+							code: declaredCode.slice(0, 64),
+							...(declaredParams ? { params: declaredParams } : {}),
+						},
+					}
+				: {}),
 		};
 	}
 	if (type.includes("application/json")) {

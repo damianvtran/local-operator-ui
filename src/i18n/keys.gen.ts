@@ -133,6 +133,7 @@ import enUiSettingsModelDefaultEffort from "./catalogues/en/ui.settings.model.de
 import enUiSettingsModel from "./catalogues/en/ui.settings.model.json";
 import enUiSettingsModelProviderCallout from "./catalogues/en/ui.settings.model.provider_callout.json";
 import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json";
+import enUiSettingsNotifications from "./catalogues/en/ui.settings.notifications.json";
 import enUiSettingsSearch from "./catalogues/en/ui.settings.search.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
@@ -258,6 +259,7 @@ import esUiSettingsModelDefaultEffort from "./catalogues/es/ui.settings.model.de
 import esUiSettingsModel from "./catalogues/es/ui.settings.model.json";
 import esUiSettingsModelProviderCallout from "./catalogues/es/ui.settings.model.provider_callout.json";
 import esUiSettingsNavigation from "./catalogues/es/ui.settings.navigation.json";
+import esUiSettingsNotifications from "./catalogues/es/ui.settings.notifications.json";
 import esUiSettingsSearch from "./catalogues/es/ui.settings.search.json";
 import esUiSettingsShortcuts from "./catalogues/es/ui.settings.shortcuts.json";
 import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
@@ -383,6 +385,7 @@ import frUiSettingsModelDefaultEffort from "./catalogues/fr/ui.settings.model.de
 import frUiSettingsModel from "./catalogues/fr/ui.settings.model.json";
 import frUiSettingsModelProviderCallout from "./catalogues/fr/ui.settings.model.provider_callout.json";
 import frUiSettingsNavigation from "./catalogues/fr/ui.settings.navigation.json";
+import frUiSettingsNotifications from "./catalogues/fr/ui.settings.notifications.json";
 import frUiSettingsSearch from "./catalogues/fr/ui.settings.search.json";
 import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
@@ -508,6 +511,7 @@ import hiUiSettingsModelDefaultEffort from "./catalogues/hi/ui.settings.model.de
 import hiUiSettingsModel from "./catalogues/hi/ui.settings.model.json";
 import hiUiSettingsModelProviderCallout from "./catalogues/hi/ui.settings.model.provider_callout.json";
 import hiUiSettingsNavigation from "./catalogues/hi/ui.settings.navigation.json";
+import hiUiSettingsNotifications from "./catalogues/hi/ui.settings.notifications.json";
 import hiUiSettingsSearch from "./catalogues/hi/ui.settings.search.json";
 import hiUiSettingsShortcuts from "./catalogues/hi/ui.settings.shortcuts.json";
 import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
@@ -633,6 +637,7 @@ import ruUiSettingsModelDefaultEffort from "./catalogues/ru/ui.settings.model.de
 import ruUiSettingsModel from "./catalogues/ru/ui.settings.model.json";
 import ruUiSettingsModelProviderCallout from "./catalogues/ru/ui.settings.model.provider_callout.json";
 import ruUiSettingsNavigation from "./catalogues/ru/ui.settings.navigation.json";
+import ruUiSettingsNotifications from "./catalogues/ru/ui.settings.notifications.json";
 import ruUiSettingsSearch from "./catalogues/ru/ui.settings.search.json";
 import ruUiSettingsShortcuts from "./catalogues/ru/ui.settings.shortcuts.json";
 import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
@@ -758,6 +763,7 @@ import urUiSettingsModelDefaultEffort from "./catalogues/ur/ui.settings.model.de
 import urUiSettingsModel from "./catalogues/ur/ui.settings.model.json";
 import urUiSettingsModelProviderCallout from "./catalogues/ur/ui.settings.model.provider_callout.json";
 import urUiSettingsNavigation from "./catalogues/ur/ui.settings.navigation.json";
+import urUiSettingsNotifications from "./catalogues/ur/ui.settings.notifications.json";
 import urUiSettingsSearch from "./catalogues/ur/ui.settings.search.json";
 import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
 import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
@@ -883,6 +889,7 @@ import viUiSettingsModelDefaultEffort from "./catalogues/vi/ui.settings.model.de
 import viUiSettingsModel from "./catalogues/vi/ui.settings.model.json";
 import viUiSettingsModelProviderCallout from "./catalogues/vi/ui.settings.model.provider_callout.json";
 import viUiSettingsNavigation from "./catalogues/vi/ui.settings.navigation.json";
+import viUiSettingsNotifications from "./catalogues/vi/ui.settings.notifications.json";
 import viUiSettingsSearch from "./catalogues/vi/ui.settings.search.json";
 import viUiSettingsShortcuts from "./catalogues/vi/ui.settings.shortcuts.json";
 import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
@@ -1008,6 +1015,7 @@ import zhCNUiSettingsModelDefaultEffort from "./catalogues/zh-CN/ui.settings.mod
 import zhCNUiSettingsModel from "./catalogues/zh-CN/ui.settings.model.json";
 import zhCNUiSettingsModelProviderCallout from "./catalogues/zh-CN/ui.settings.model.provider_callout.json";
 import zhCNUiSettingsNavigation from "./catalogues/zh-CN/ui.settings.navigation.json";
+import zhCNUiSettingsNotifications from "./catalogues/zh-CN/ui.settings.notifications.json";
 import zhCNUiSettingsSearch from "./catalogues/zh-CN/ui.settings.search.json";
 import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.json";
 import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
@@ -1136,6 +1144,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsModel,
 	...enUiSettingsModelProviderCallout,
 	...enUiSettingsNavigation,
+	...enUiSettingsNotifications,
 	...enUiSettingsSearch,
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
@@ -1269,6 +1278,7 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsModel,
 		...esUiSettingsModelProviderCallout,
 		...esUiSettingsNavigation,
+		...esUiSettingsNotifications,
 		...esUiSettingsSearch,
 		...esUiSettingsShortcuts,
 		...esUiSettingsSpeech,
@@ -1396,6 +1406,7 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsModel,
 		...frUiSettingsModelProviderCallout,
 		...frUiSettingsNavigation,
+		...frUiSettingsNotifications,
 		...frUiSettingsSearch,
 		...frUiSettingsShortcuts,
 		...frUiSettingsSpeech,
@@ -1523,6 +1534,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsModel,
 		...hiUiSettingsModelProviderCallout,
 		...hiUiSettingsNavigation,
+		...hiUiSettingsNotifications,
 		...hiUiSettingsSearch,
 		...hiUiSettingsShortcuts,
 		...hiUiSettingsSpeech,
@@ -1650,6 +1662,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsModel,
 		...ruUiSettingsModelProviderCallout,
 		...ruUiSettingsNavigation,
+		...ruUiSettingsNotifications,
 		...ruUiSettingsSearch,
 		...ruUiSettingsShortcuts,
 		...ruUiSettingsSpeech,
@@ -1777,6 +1790,7 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsModel,
 		...urUiSettingsModelProviderCallout,
 		...urUiSettingsNavigation,
+		...urUiSettingsNotifications,
 		...urUiSettingsSearch,
 		...urUiSettingsShortcuts,
 		...urUiSettingsSpeech,
@@ -1904,6 +1918,7 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsModel,
 		...viUiSettingsModelProviderCallout,
 		...viUiSettingsNavigation,
+		...viUiSettingsNotifications,
 		...viUiSettingsSearch,
 		...viUiSettingsShortcuts,
 		...viUiSettingsSpeech,
@@ -2031,6 +2046,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSettingsModel,
 		...zhCNUiSettingsModelProviderCallout,
 		...zhCNUiSettingsNavigation,
+		...zhCNUiSettingsNotifications,
 		...zhCNUiSettingsSearch,
 		...zhCNUiSettingsShortcuts,
 		...zhCNUiSettingsSpeech,
@@ -10143,6 +10159,90 @@ export type MessageParams = {
 	"ui.settings.navigation.settings_sidebar.settings_sections": undefined;
 	"ui.settings.navigation.settings_sidebar.speech_voicing": undefined;
 	"ui.settings.navigation.settings_sidebar.system": undefined;
+	"ui.settings.notifications.backend_older": undefined;
+	"ui.settings.notifications.custom.add": undefined;
+	"ui.settings.notifications.custom.added_many": { count: number };
+	"ui.settings.notifications.custom.added_one": { name: string };
+	"ui.settings.notifications.custom.cancel": undefined;
+	"ui.settings.notifications.custom.cancel_upload": { file: string };
+	"ui.settings.notifications.custom.empty": undefined;
+	"ui.settings.notifications.custom.finishing": undefined;
+	"ui.settings.notifications.custom.full": { count: number };
+	"ui.settings.notifications.custom.hint": {
+		seconds: number;
+		megabytes: number;
+	};
+	"ui.settings.notifications.custom.more": { name: string };
+	"ui.settings.notifications.custom.remove": undefined;
+	"ui.settings.notifications.custom.remove_action": undefined;
+	"ui.settings.notifications.custom.remove_confirm": { name: string };
+	"ui.settings.notifications.custom.remove_confirm_selected": { name: string };
+	"ui.settings.notifications.custom.remove_failed": {
+		name: string;
+		reason: string;
+	};
+	"ui.settings.notifications.custom.removed": { name: string };
+	"ui.settings.notifications.custom.removed_reset": { name: string };
+	"ui.settings.notifications.custom.rename": undefined;
+	"ui.settings.notifications.custom.rename_empty": undefined;
+	"ui.settings.notifications.custom.rename_failed": { reason: string };
+	"ui.settings.notifications.custom.rename_label": undefined;
+	"ui.settings.notifications.custom.rename_long": { max: number };
+	"ui.settings.notifications.custom.uploading": { percent: number };
+	"ui.settings.notifications.error.choose_another": undefined;
+	"ui.settings.notifications.error.dismiss": undefined;
+	"ui.settings.notifications.error.network": { file: string };
+	"ui.settings.notifications.error.silent": { file: string };
+	"ui.settings.notifications.error.too_large": {
+		file: string;
+		megabytes: number;
+	};
+	"ui.settings.notifications.error.too_long": {
+		file: string;
+		seconds: string;
+		limit: number;
+	};
+	"ui.settings.notifications.error.undecodable": { file: string };
+	"ui.settings.notifications.error.unsupported_codec": { file: string };
+	"ui.settings.notifications.error.unsupported_format": { file: string };
+	"ui.settings.notifications.list.builtin": undefined;
+	"ui.settings.notifications.list.custom": undefined;
+	"ui.settings.notifications.list.custom_count": { count: number; max: number };
+	"ui.settings.notifications.list.default_tag": undefined;
+	"ui.settings.notifications.list.label": undefined;
+	"ui.settings.notifications.list.system_description": undefined;
+	"ui.settings.notifications.list.system_name": undefined;
+	"ui.settings.notifications.load.failed": { reason: string };
+	"ui.settings.notifications.load.loading": undefined;
+	"ui.settings.notifications.missing_rows": { count: number; rows: string };
+	"ui.settings.notifications.preview.failed": undefined;
+	"ui.settings.notifications.preview.play": { name: string };
+	"ui.settings.notifications.preview.stop": { name: string };
+	"ui.settings.notifications.retry": undefined;
+	"ui.settings.notifications.save.failed": { reason: string };
+	"ui.settings.notifications.save.failed_generic": undefined;
+	"ui.settings.notifications.search_terms": undefined;
+	"ui.settings.notifications.section.description": undefined;
+	"ui.settings.notifications.section.title": undefined;
+	"ui.settings.notifications.sound.enabled_description": undefined;
+	"ui.settings.notifications.sound.enabled_label": undefined;
+	"ui.settings.notifications.sound.enabled_off_note": undefined;
+	"ui.settings.notifications.sound.gated": undefined;
+	"ui.settings.notifications.sound.gated_action": undefined;
+	"ui.settings.notifications.sound.heading": undefined;
+	"ui.settings.notifications.test.action": undefined;
+	"ui.settings.notifications.test.banner_body": undefined;
+	"ui.settings.notifications.test.banner_title": undefined;
+	"ui.settings.notifications.test.failed": undefined;
+	"ui.settings.notifications.test.sent": undefined;
+	"ui.settings.notifications.volume.description": undefined;
+	"ui.settings.notifications.volume.label": undefined;
+	"ui.settings.notifications.volume.muted": undefined;
+	"ui.settings.notifications.volume.readout": { value: number };
+	"ui.settings.notifications.volume.readout_default": { value: number };
+	"ui.settings.notifications.volume.reset": undefined;
+	"ui.settings.notifications.volume.system": undefined;
+	"ui.settings.notifications.volume.valuetext": { value: number };
 	"ui.settings.search.empty.shortcut": { shortcut: string };
 	"ui.settings.search.empty.summary": undefined;
 	"ui.settings.search.field.label": undefined;

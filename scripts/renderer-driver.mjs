@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds>
  *                          which built-in scene to run (default: states)
  *   --attach <absolute-path> (with --scene attach, repeatable) one file the
  *                          paperclip press stages; ONLY the native picker is
@@ -287,6 +287,7 @@ import {
 } from "./imagegen-card-fixture.mjs";
 import { sceneLibraryAsset } from "./library-asset-scene.mjs";
 import { sceneMeshTab } from "./mesh-scene.mjs";
+import { sceneNotificationSounds } from "./notification-sounds-scene.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -50796,6 +50797,26 @@ async function main() {
 					backendRecords: BACKEND_RECORDS,
 					framesDir: FRAMES,
 					electronUserAgent: ELECTRON_USER_AGENT,
+				});
+			/*
+			 * Settings -> Notifications -> Sound over a live daemon (local-operator
+			 * #3403): select, preview, volume, one accepted and one `too_long`
+			 * upload, rename and remove-selected, each read back from the daemon.
+			 * Needs `--backend`, `--sound-ok <file>` and `--sound-long <file>`.
+			 */ else if (SCENE === "notification-sounds")
+				await sceneNotificationSounds({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					clickAt,
+					backend: BACKEND,
+					token: process.env.LOCAL_OPERATOR_DESKTOP_TOKEN ?? null,
+					soundOk: argValue("--sound-ok", null),
+					soundLong: argValue("--sound-long", null),
 				});
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);

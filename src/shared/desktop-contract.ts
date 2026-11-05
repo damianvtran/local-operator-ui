@@ -4179,6 +4179,33 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({ op: z.literal("tts.paths") })
 		.strict(),
+	/*
+	 * THE NOTIFICATION-SOUND SURFACE (`features.notification_sounds`, core
+	 * `server/routes/notification_sounds.py`): the listing Settings renders, and
+	 * the two edits a custom sound takes. Selection, volume and on/off are NOT
+	 * here: they are `notifications.sound.*` registry keys and go through
+	 * `settings.edit` like every other row (one write funnel). Audio and upload
+	 * carry bytes, so they ride the media relay (`desktop-media.ts`).
+	 *
+	 * `id` is shape-checked because it becomes a path segment: the catalog's
+	 * slugs and core's `custom-<slug>-<hex>` ids are both lower-case kebab.
+	 */
+	z
+		.object({ op: z.literal("notification_sounds.list") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("notification_sounds.rename"),
+			id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+			name: z.string().min(1).max(200),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("notification_sounds.remove"),
+			id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+		})
+		.strict(),
 	z.object({ op: z.literal("config.get") }).strict(),
 	z.object({ op: z.literal("config.update"), value: configUpdate }).strict(),
 	z.object({ op: z.literal("instructions.get") }).strict(),
@@ -7444,6 +7471,12 @@ export type DesktopMediaRequest =
 	 */
 	| { op: "notification_sounds.audio"; soundId: string; volume: number }
 	/*
+	 * Add one custom notification sound (core `POST /v1/notification-sounds`,
+	 * multipart `file` + optional `name`). `fileName` is display text for the
+	 * daemon's refusal copy only; it never becomes a path on either side.
+	 */
+	| { op: "notification_sounds.upload"; fileName: string; name?: string }
+	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
 	 * `/v1/desktop/sessions/{id}/supplements/{digest}/document`.
@@ -7482,6 +7515,13 @@ export type DesktopMediaResponse =
 			 * exactly as the JSON transport's refusals are (design § 3.5, § 5.1).
 			 */
 			code?: DesktopRefusalCode;
+			/**
+			 * The daemon's own refusal code and params, forwarded only for
+			 * `notification_sounds.upload` (main `desktop-media.ts`): that row's copy
+			 * and remedy switch on the code (`too_long`, `unsupported_format` ...),
+			 * which the closed pairing table above cannot carry.
+			 */
+			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
 
 export type DesktopAPI = {
@@ -10197,6 +10237,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "tts.paths":
 			return { path: "/v1/tts/paths", method: "GET" };
+		case "notification_sounds.list":
+			return { path: "/v1/notification-sounds", method: "GET" };
+		case "notification_sounds.rename":
+			return {
+				path: `/v1/notification-sounds/${request.id}`,
+				method: "PATCH",
+				body: { name: request.name },
+			};
+		case "notification_sounds.remove":
+			return {
+				path: `/v1/notification-sounds/${request.id}`,
+				method: "DELETE",
+			};
 		case "config.get":
 			return { path: "/v1/config", method: "GET" };
 		case "config.update":

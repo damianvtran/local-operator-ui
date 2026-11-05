@@ -375,6 +375,20 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			volume: z.number().int().min(0).max(100),
 		})
 		.strict(),
+	/*
+	 * Add one custom notification sound: multipart `file` + optional `name`
+	 * (core `POST /v1/notification-sounds`). The daemon sniffs the bytes and
+	 * refuses by content, so the declared type below is never trusted;
+	 * `fileName` is the user's own name for the file, used by the daemon only in
+	 * refusal copy and as the default display name.
+	 */
+	z
+		.object({
+			op: z.literal("notification_sounds.upload"),
+			fileName: z.string().min(1).max(255),
+			name: z.string().min(1).max(200).optional(),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -414,6 +428,12 @@ export type DesktopMediaResponse =
 			 * become a sentence the renderer shows or a code other routes may claim.
 			 */
 			code?: DesktopRefusalCode | "renderer_busy";
+			/**
+			 * The daemon's own refusal code and params, forwarded ONLY for
+			 * `notification_sounds.upload`, whose row copy switches on them (see
+			 * the relay's error branch).
+			 */
+			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
 
 function endpoint(request: DesktopMediaRequest): {
@@ -503,6 +523,8 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/notification-sounds/${request.soundId}/audio?volume=${request.volume}`,
 				method: "GET",
 			};
+		case "notification_sounds.upload":
+			return { path: "/v1/notification-sounds", method: "POST" };
 		case "team_bridge.attachment.upload":
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId, ...(request.mode ? { mode: request.mode } : {}) })}`,
@@ -563,6 +585,28 @@ export type DesktopMediaOutcome = {
 	/** Whether the daemon itself answered this request. */
 	answered: boolean;
 };
+
+/**
+ * A refusal's `params`, kept only as SHORT SCALARS (review round 1, n2): the
+ * renderer interpolates them into copy (`{seconds}`, `format`), so nothing
+ * else is needed, and the daemon being trusted is no reason to pass an
+ * arbitrarily large or nested object across IPC. At most 8 keys of at most 64
+ * characters; strings are cut to 128; objects, arrays and non-finite numbers
+ * are dropped.
+ */
+export function scalarParams(
+	params: Record<string, unknown>,
+): Record<string, string | number | boolean> | undefined {
+	const out: Record<string, string | number | boolean> = {};
+	for (const [key, value] of Object.entries(params).slice(0, 8)) {
+		if (key.length > 64) continue;
+		if (typeof value === "string") out[key] = value.slice(0, 128);
+		else if (typeof value === "number" && Number.isFinite(value))
+			out[key] = value;
+		else if (typeof value === "boolean") out[key] = value;
+	}
+	return Object.keys(out).length > 0 ? out : undefined;
+}
 
 export async function requestDesktopMediaOutcome(
 	input: unknown,
@@ -707,9 +751,14 @@ export async function requestDesktopMediaOutcome(
 			type:
 				request.op === "transcription.create"
 					? request.mimeType
-					: "application/zip",
+					: request.op === "notification_sounds.upload"
+						? "application/octet-stream"
+						: "application/zip",
 		});
 		form.append("file", blob, request.fileName);
+		if (request.op === "notification_sounds.upload" && request.name) {
+			form.append("name", request.name);
+		}
 		if (request.op === "transcription.create") {
 			for (const [key, value] of Object.entries(request.fields)) {
 				form.append(key, value);
@@ -877,6 +926,7 @@ export async function requestDesktopMediaOutcome(
 			// still, only a short detail string is forwarded.
 			let detail = "The media request failed.";
 			let declaredCode: string | undefined;
+			let declaredParams: Record<string, unknown> | undefined;
 			if (responseType.includes("application/json")) {
 				try {
 					const parsedError = (await response.json()) as {
@@ -910,6 +960,14 @@ export async function requestDesktopMediaOutcome(
 						if (typeof envelope.code === "string") {
 							declaredCode = envelope.code;
 						}
+						const params = (raw as { params?: unknown }).params;
+						if (
+							typeof params === "object" &&
+							params !== null &&
+							!Array.isArray(params)
+						) {
+							declaredParams = scalarParams(params as Record<string, unknown>);
+						}
 					}
 				} catch {
 					// Keep the generic detail.
@@ -928,6 +986,22 @@ export async function requestDesktopMediaOutcome(
 						declaredCode !== undefined && isDesktopRefusalCode(declaredCode)
 							? declaredCode
 							: desktopRefusalCodeForStatus(target.path, response.status),
+					/*
+					 * A notification-sound upload's refusal is about the FILE (`too_long`,
+					 * `unsupported_format` with `params.format`, ...), and the settings
+					 * row's copy and remedy switch on that code, never on `detail`. The
+					 * pairing `code` above cannot carry it (that table is closed), so
+					 * this op alone forwards the daemon's own code and params.
+					 */
+					...(request.op === "notification_sounds.upload" &&
+					declaredCode !== undefined
+						? {
+								refusal: {
+									code: declaredCode.slice(0, 64),
+									...(declaredParams ? { params: declaredParams } : {}),
+								},
+							}
+						: {}),
 				},
 				answered: true,
 			};
