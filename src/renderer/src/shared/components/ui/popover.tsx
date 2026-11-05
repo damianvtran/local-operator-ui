@@ -41,6 +41,7 @@ export const PopoverContent = forwardRef<
 				 * paints over the chrome strip, and its controls have to stay clickable there.
 				 */
 				data-titlebar-no-drag=""
+				data-glass-overlay=""
 				align={align}
 				sideOffset={sideOffset}
 				className={cn(

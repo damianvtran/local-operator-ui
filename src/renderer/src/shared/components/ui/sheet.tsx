@@ -123,6 +123,7 @@ export const SheetContent = forwardRef<
 					 * brand row - reach the pointer only while the rect subtracts.
 					 */
 					data-titlebar-no-drag=""
+					data-glass-overlay=""
 					className={cn(sheetVariants({ side }), className)}
 					{...props}
 				>

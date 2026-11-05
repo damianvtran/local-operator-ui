@@ -425,6 +425,73 @@ export function deriveBandFloor(palettes) {
 	return out;
 }
 
+/**
+ * THE FLOATING OVERLAY'S OWN ALPHA FLOOR, per scheme.
+ *
+ * A PORTAL is not a column. A menu, tooltip, popover, dialog, select or sheet is
+ * painted at the document root by Radix, so no `data-glass-region` ancestor
+ * describes it: whatever the anchor floats over is its backdrop, and that backdrop
+ * is arbitrary. The same question the isolating band answers has to be answered
+ * here, with one difference that matters - a portal always floats over SOMETHING THE
+ * APP PAINTED, never over the raw desktop, so the layer beneath it contributes its
+ * own alpha and the panel's alpha does not have to carry the whole job.
+ *
+ * WHY THIS IS NOT THE BAND'S FLOOR. The band is a strip in a column whose own fill
+ * it replaces, so it is measured as if it stood on the desktop alone. A portal sits
+ * ON TOP of that column: at the band floor its composite lands near-opaque (0.91
+ * over `canvas`'s 0.59 is 0.96), which is the opaque plate the operator reported.
+ * Derived against the layer beneath it, the smallest alpha that still holds the
+ * floor is materially lower, so the panel is genuinely translucent AND readable -
+ * the whole request, rather than a re-paint of the same opacity under a new name.
+ *
+ * THE BACKING IS THE LEAST OPAQUE THE APP CAN PRESENT: the smallest `canvas` floor
+ * across the material tiers. A denser backing is easier (it contributes more), so
+ * the clearest column the app can draw is the worst case and bounds the rest. The
+ * desktop behind it is the scheme's extreme - a white thumbnail under a dark panel,
+ * a black one under a light panel - for the band's reason: an intermediate content
+ * colour is easier, never harder.
+ *
+ * THE INKS ARE `ink` AND `inkMuted`, the two registers a portal carries its own text
+ * in (a release-detail paragraph, a menu item). Both are measured rather than taking
+ * the stronger one as a bound, because which of the two is stricter is not obvious
+ * once the ground is a composite; the contract asserts both over every palette.
+ *
+ * A HIGHLIGHTED ROW IS NOT A STACK ON THIS FLOOR. A menu row's `accentWash` is an
+ * OPAQUE palette role that replaces the panel's ground for that row, so it is
+ * measured as its own fill (the flat contract's `accentWash` rows) and never as an
+ * ink overlay on top of the alpha here - which is what keeps keyboard navigation
+ * legible at every slider position.
+ */
+export function deriveOverlayFloor(palettes, floors) {
+	const out = {};
+	for (const scheme of ["dark", "light"]) {
+		/* The least opaque column the app can draw under the portal. */
+		let backing = 1;
+		for (const tier of Object.keys(floors))
+			backing = Math.min(backing, floors[tier][scheme]?.canvas ?? 1);
+		/* The extreme the ink contrasts against, as in `deriveBandFloor`. */
+		const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
+		let need = 0;
+		for (const { palette } of palettes) {
+			if (schemeOf(palette) !== scheme) continue;
+			const beneath = composite(palette.canvas, backing, backdrop);
+			for (const ink of ["inkMuted", "ink"]) {
+				let a = 0.2;
+				for (; a <= 1.0001; a += 0.01) {
+					if (
+						ratio(palette[ink], composite(palette.elevated, a, beneath)) >=
+						GLASS_INK_FLOOR
+					)
+						break;
+				}
+				need = Math.max(need, Math.round(Math.min(a, 1) * 100) / 100);
+			}
+		}
+		out[scheme] = Math.round(need * 100) / 100;
+	}
+	return out;
+}
+
 /** The smallest border->ink mix (0.05 steps) that holds 3:1 on every ground at its floor. */
 export function deriveControlMix(floors, palettes) {
 	const out = {};
@@ -625,6 +692,7 @@ export function glassFloorsForPalette(palette) {
 		laneWash,
 		controlMix: deriveControlMix(alphaFloor, palettes),
 		bandFloor: deriveBandFloor(palettes),
+		overlayFloor: deriveOverlayFloor(palettes, alphaFloor),
 		stateAlpha,
 	};
 	paletteTables.set(key, table);

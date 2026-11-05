@@ -61,6 +61,7 @@ import {
 	deriveBlockVeil as sharedderiveBlockVeil,
 	deriveControlMix as sharedderiveControlMix,
 	deriveLaneWash as sharedderiveLaneWash,
+	deriveOverlayFloor as sharedderiveOverlayFloor,
 } from "../src/shared/glass-derivation.mjs";
 export {
 	BACKDROP_GRAY,
@@ -90,6 +91,8 @@ export const deriveBlockVeil = (floors) =>
 export const deriveLaneWash = (floors) =>
 	sharedderiveLaneWash(floors, loadPalettes());
 export const deriveBandFloor = () => sharedderiveBandFloor(loadPalettes());
+export const deriveOverlayFloor = (floors) =>
+	sharedderiveOverlayFloor(loadPalettes(), floors);
 export const deriveControlMix = (floors) =>
 	sharedderiveControlMix(floors, loadPalettes());
 
@@ -106,6 +109,7 @@ if (isEntryPoint(import.meta.url)) {
 					laneWash: deriveLaneWash(derived),
 					controlMix: deriveControlMix(derived),
 					bandFloor: deriveBandFloor(),
+					overlayFloor: deriveOverlayFloor(derived),
 					stateAlpha: GLASS_STATE_ALPHA,
 				},
 				null,
@@ -141,6 +145,14 @@ if (isEntryPoint(import.meta.url)) {
 				bad++;
 				console.error(
 					`band floor ${scheme} is ${file.bandFloor?.[scheme]} but the palettes need ${band[scheme]} for the count to clear the ${GLASS_INK_FLOOR} text floor over the worst content - re-derive, never hand-lower it`,
+				);
+			}
+		const overlay = deriveOverlayFloor(derived);
+		for (const scheme of ["dark", "light"])
+			if ((file.overlayFloor?.[scheme] ?? 0) < overlay[scheme]) {
+				bad++;
+				console.error(
+					`overlay floor ${scheme} is ${file.overlayFloor?.[scheme]} but the palettes need ${overlay[scheme]} for a panel's ink to clear the ${GLASS_INK_FLOOR} text floor over the worst content above the clearest column - re-derive, never hand-lower it`,
 				);
 			}
 		const lane = deriveLaneWash(committed);

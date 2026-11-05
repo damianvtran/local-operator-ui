@@ -2444,6 +2444,54 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 				);
 		}
 	}
+	/*
+	 * THE FLOATING OVERLAY (popups, menus, tooltips, dialogs, the update notice).
+	 *
+	 * A floating surface has no ground of its own to be measured against: it is
+	 * painted at the document root and floats over whatever the app happened to
+	 * render beneath it. That is the band's problem one layer further out, with one
+	 * important difference - a portalled panel is always over SOMETHING THE APP
+	 * PAINTED, never over the raw desktop, so the column beneath it already
+	 * contributes its alpha and the panel's own alpha can be materially lower than
+	 * the band's floor while still holding the text floor.
+	 *
+	 * The row therefore asserts what `overlayFloor` claims, over EVERY palette: at
+	 * the committed floor, composited over the LEAST opaque column the app can draw
+	 * (the smallest `canvas` floor across the material tiers) and the worst desktop
+	 * (a white thumbnail under a dark panel, a black one under a light panel), both
+	 * inks a portal carries its own text in still clear the 4.5 text floor. The
+	 * button face and the highlighted row are separately-covered pairs: a row's
+	 * `accentWash` is an OPAQUE role that replaces this ground, so it is measured
+	 * as its own fill and never as a stack on the alpha here.
+	 */
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		const floor = committed.overlayFloor?.[scheme];
+		if (floor === undefined) {
+			fail(
+				`${id}: the floating overlay's alpha floor is missing for ${scheme}`,
+			);
+			continue;
+		}
+		/* The least opaque column the app can present: the derivation's worst case. */
+		let backing = 1;
+		for (const tier of Object.keys(committed.alphaFloor))
+			backing = Math.min(
+				backing,
+				committed.alphaFloor[tier][scheme]?.canvas ?? 1,
+			);
+		const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
+		const beneath = glassComposite(palette.canvas, backing, backdrop);
+		const panel = glassComposite(palette.elevated, floor, beneath);
+		for (const ink of ["ink", "inkMuted"]) {
+			authoredRun.assertions++;
+			const r = glassRatio(palette[ink], panel);
+			if (r < GLASS_INK_FLOOR)
+				authoredRun.fail(
+					`${id}: the floating overlay (${scheme}) ${ink} on the panel is ${r2(r)}:1, floor ${GLASS_INK_FLOOR}`,
+				);
+		}
+	}
 	console.log(
 		`Window glass round 2: tightest block veil ΔE00 off canvas glass - dark ${r2(veilMin.dark)}, light ${r2(veilMin.light)}; work row step ${r2(workMin.step)}; chrome inks ${r2(chromeMin.ink)}/${r2(chromeMin.inkMuted)}/${r2(chromeMin.inkDim)}, tab step ${r2(chromeMin.tabStep)}.`,
 	);

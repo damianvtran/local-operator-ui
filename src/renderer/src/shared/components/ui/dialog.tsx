@@ -111,6 +111,7 @@ export const DialogContent = forwardRef<
 					 * one marker covers everything inside the dialog.
 					 */
 					data-titlebar-no-drag=""
+					data-glass-overlay=""
 					className={cn(
 						"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
 						"flex w-full max-w-lg flex-col gap-4",

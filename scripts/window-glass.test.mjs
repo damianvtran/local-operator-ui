@@ -1146,6 +1146,18 @@ test("G-11 every region, state and well the CSS names is a marker some component
 			"CSS names data-glass-lane but no component carries it",
 		);
 	/*
+	 * Round 4: a floating overlay is the panel of a portalled primitive (a menu, a
+	 * tooltip, a popover, a dialog, a select, a drawer) plus the fixed update notice.
+	 * It is a valueless marker like the lane, so the same closed-vocabulary rule
+	 * holds it - and `glass-overlay.test.mjs` asserts WHERE on the element it sits,
+	 * which this scan deliberately does not try to do.
+	 */
+	if (/\[data-glass-overlay\]/.test(css))
+		assert.ok(
+			sources.some((source) => /data-glass-overlay/.test(source)),
+			"CSS names data-glass-overlay but no component carries it",
+		);
+	/*
 	 * THE STACKED INK IS FORBIDDEN, NOT MEASURED. A row inside a veiled
 	 * block once took `hover:bg-row-hover` over the veil - ink 5% over ink 9% -
 	 * and the stack measured `inkMuted` 4.03:1 on synthwave and `inkDim` 3.11 on

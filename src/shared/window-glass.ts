@@ -661,6 +661,32 @@ export function glassAlphas(input: {
 	};
 }
 
+/**
+ * THE FLOATING LAYER'S ALPHA: the veil ceiling at intensity 0 down to the portal's
+ * own derived floor at 100 - the same linear shape the grounds use, so the panel and
+ * the column behind it answer the slider together.
+ *
+ * WHY IT IS NOT `elevated`'s ALPHA. `elevated` is a COLUMN's rung, and its floor is
+ * derived as if that column stood on the desktop alone. A portal (menu, tooltip,
+ * popover, dialog) is painted at the document root by Radix and floats ON our own
+ * column, so that column's alpha is already underneath it: painted at `elevated`'s
+ * floor the composite lands near-opaque (0.91 over a 0.59 canvas is 0.96), which is
+ * the solid slab the operator reported. `GLASS_FLOORS.overlayFloor` is derived
+ * against the least opaque column the app can present, so it is the smallest alpha
+ * that still holds the ink floor over the worst desktop - genuinely translucent and
+ * still readable, which is the difference between this and a re-paint of the same
+ * opacity under a new name.
+ */
+export function glassOverlayAlpha(input: {
+	intensity: number;
+	scheme: GlassScheme;
+}): number {
+	const t = Math.min(100, Math.max(0, input.intensity)) / 100;
+	const floor = GLASS_FLOORS.overlayFloor[input.scheme];
+	const top = Math.max(GLASS_ALPHA_CEILING, floor);
+	return round2(top - t * (top - floor));
+}
+
 /** What main tells the renderer. `active` is the one the CSS keys on. */
 export type WindowGlassState = {
 	capability: GlassCapability;
@@ -838,6 +864,16 @@ export function glassPaintFor(input: {
 		 * ground, where the published alpha is right.
 		 */
 		"--lo-glass-a-band-floor": String(floors.bandFloor[input.scheme]),
+		/*
+		 * THE FLOATING OVERLAY's own alpha, for the `[data-glass-overlay]` panels (menus,
+		 * tooltips, popovers, dialogs, the update notice). A token of its own because it
+		 * answers a different question from the elevated column above it: see
+		 * `overlayFloor` in `derive-glass-floors.mjs` for the derivation, and for why a
+		 * highlighted row's accent wash does not stack on it.
+		 */
+		"--lo-glass-a-overlay": String(
+			glassOverlayAlpha({ intensity: input.intensity, scheme: input.scheme }),
+		),
 		/*
 		 * The LANE wash: a well behind veiled blocks cannot be an ink overlay (the
 		 * veil is already the one ink layer under the card's text), so it is a

@@ -1,5 +1,5 @@
 {
-	"_why": "Minimum ground alphas, the state/field overlay alphas and the edge mix the window-glass feature paints, derived by scripts/derive-glass-floors.mjs (AA ink over the worst measured backdrop WITH the state overlay stacked; the 3:1 structural edge via a border->ink mix). Asserted by scripts/contrast-contract.mjs. Never hand-lower a value: re-derive.",
+	"_why": "Minimum ground alphas, the state/field overlay alphas, the floating overlay's own floor and the edge mix the window-glass feature paints, derived by scripts/derive-glass-floors.mjs (AA ink over the worst measured backdrop WITH the state overlay stacked; the 3:1 structural edge via a border->ink mix; the overlay floor against the least opaque column the app can present). Asserted by scripts/contrast-contract.mjs. Never hand-lower a value: re-derive.",
 	"alphaFloor": {
 		"under-window": {
 			"dark": {
@@ -52,10 +52,6 @@
 			"scale": 0.72
 		}
 	},
-	"bandFloor": {
-		"dark": 0.88,
-		"light": 0.78
-	},
 	"controlMix": {
 		"under-window": {
 			"dark": 0.15,
@@ -69,6 +65,14 @@
 			"dark": 0.1,
 			"light": 0.15
 		}
+	},
+	"bandFloor": {
+		"dark": 0.88,
+		"light": 0.78
+	},
+	"overlayFloor": {
+		"dark": 0.7,
+		"light": 0.5
 	},
 	"stateAlpha": {
 		"hover": 0.05,

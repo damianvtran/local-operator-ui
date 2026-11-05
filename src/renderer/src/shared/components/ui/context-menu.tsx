@@ -110,6 +110,7 @@ export const ContextMenuContent = forwardRef<
 			<ContextMenuPrimitive.Content
 				ref={composedRef}
 				data-titlebar-no-drag=""
+				data-glass-overlay=""
 				className={cn(panelClasses, "min-w-56", className)}
 				{...props}
 			/>

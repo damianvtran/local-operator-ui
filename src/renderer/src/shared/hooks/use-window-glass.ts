@@ -44,6 +44,9 @@ const GLASS_VARS = [
 	"--lo-glass-a-row-work",
 	"--lo-glass-a-block-veil",
 	"--lo-glass-a-band-floor",
+	/* The floating layer's own alpha; see `glassOverlayAlpha` in
+	 * `src/shared/window-glass.ts` for why it is not the elevated rung. */
+	"--lo-glass-a-overlay",
 	"--lo-glass-a-lane",
 	"--lo-glass-lane-tone",
 	"--lo-glass-a-field",
