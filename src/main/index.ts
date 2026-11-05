@@ -137,6 +137,7 @@ import {
 import { createMainLocale } from "./main-locale";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import { paletteDoorChannel } from "./palette-door";
+import { pdfViewerStatus } from "./pdf-viewer-status";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -3697,6 +3698,11 @@ app
 		 * specific enough for the viewer to say "too large to preview" and offer
 		 * the OS instead of showing a spinner that never finishes.
 		 */
+		ipcMain.handle("pdf-viewer-status", async (event, blobUrl: unknown) => {
+			authorizeLocalFileSender(event, "inspect its PDF viewer");
+			return pdfViewerStatus(event.sender, blobUrl, trustedRendererDocuments());
+		});
+
 		ipcMain.handle(
 			"read-file-bytes",
 			async (
