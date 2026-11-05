@@ -13,6 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { runInNewContext } from "node:vm";
 // The embedded child asserts the launch carries the mock-keychain switch; it
 // takes the one spelling from chrome-keychain.mjs (chrome-keychain.test.mjs).
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
@@ -1186,4 +1187,244 @@ test("strict model launch binds its verified executable despite late parent over
 		);
 		assert.equal(process.env.ELECTRON_OVERRIDE_DIST_PATH, oldOverride);
 	}
+});
+
+// Execute the exact production closure with inert I/O, never a real PID/signal.
+// Extraction keeps the failure-order control tied to the cleanup actually used.
+function inertOwnedClose(fault, code = "ENOSPC", releaseFails = false) {
+	const source = readFileSync(
+		new URL("./model-uncertainty-native.mjs", import.meta.url),
+		"utf8",
+	);
+	const closure = source.slice(
+		source.indexOf("const performCloseOwnedCore ="),
+		source.indexOf("\n\tlet sessionId;"),
+	);
+	const seen = [];
+	let finish;
+	let settled = false;
+	let descendantReads = 0;
+	const failure = Object.assign(Error(`${fault} refused`), { code });
+	const closed = new Promise((resolve) => {
+		finish = () => {
+			seen.push("child-joined");
+			resolve({ code: 0, signal: null });
+		};
+	});
+	const io = (stage) => {
+		seen.push(stage);
+		if (
+			fault === stage ||
+			(fault === "capture+receipt" && ["capture", "receipt"].includes(stage))
+		)
+			throw failure;
+	};
+
+	const close = new Function(
+		"child",
+		"birth",
+		"config",
+		"output",
+		"scratch",
+		"logs",
+		"closed",
+		"control",
+		"mkdirSync",
+		"writeFileSync",
+		"join",
+		"spawnSync",
+		"existsSync",
+		"readFileSync",
+		"assert",
+		"delay",
+		`${closure}; return closeOwnedCore;`,
+	)(
+		{
+			pid: 123,
+			exitCode: null,
+			signalCode: null,
+			kill(signal) {
+				assert.equal(signal, "SIGTERM");
+				seen.push("signal-owned");
+			},
+			stdin: {
+				end() {
+					seen.push("eof-owned");
+				},
+			},
+		},
+		"owned-birth",
+		"owned-root",
+		"output",
+		"scratch",
+		[],
+		closed,
+		async (op) => {
+			seen.push(op);
+			if (op === "state" && fault === "fallback")
+				throw Error("original-state-error");
+			if (op === "release" && releaseFails)
+				throw Error("original-release-error");
+			return {};
+		},
+		() => io("mkdir"),
+		(path, data) =>
+			io(
+				path.endsWith("owned-core-exit.json")
+					? "receipt"
+					: path.endsWith("backend-diagnostic.log")
+						? "log"
+						: JSON.parse(data).diagnosticError
+							? "fallback"
+							: "capture",
+			),
+		(...parts) => parts.join("/"),
+		(_cmd, args) =>
+			args.includes("lstart=")
+				? { status: 0, stdout: "owned-birth", stderr: "" }
+				: ++descendantReads === 1
+					? { status: 0, stdout: "456", stderr: "" }
+					: { status: 1, stdout: "", stderr: "" },
+		() => true,
+		() => "456",
+		assert,
+		async () => {
+			seen.push("descendant-wait");
+		},
+	);
+	const promise = close();
+	assert.equal(close(), promise, "repeat close must share the lifecycle");
+	promise.then(
+		() => {
+			settled = true;
+		},
+		() => {
+			settled = true;
+		},
+	);
+	return { promise, seen, finish, failure, settled: () => settled };
+}
+for (const code of ["ENOSPC", "EACCES"]) {
+	for (const fault of [
+		"mkdir",
+		"capture",
+		"fallback",
+		"log",
+		"receipt",
+		"capture+receipt",
+	]) {
+		test(`owned cleanup joins before rejecting ${code} at ${fault}`, async () => {
+			const c = inertOwnedClose(fault, code);
+			await new Promise((resolve) => setImmediate(resolve));
+			assert.equal(
+				c.settled(),
+				false,
+				"diagnostic failure must not settle before the child joins",
+			);
+			assert(c.seen.includes("release"));
+			assert.equal(c.seen.filter((x) => x === "signal-owned").length, 1);
+			c.finish();
+			await assert.rejects(
+				c.promise,
+				(error) =>
+					error instanceof AggregateError && error.errors.includes(c.failure),
+			);
+			assert(
+				c.seen.indexOf("descendant-wait") > c.seen.indexOf("child-joined"),
+			);
+			assert(c.seen.indexOf("receipt") > c.seen.indexOf("descendant-wait"));
+			assert.equal(c.seen.filter((x) => x === "signal-owned").length, 1);
+		});
+	}
+}
+test("owned cleanup preserves diagnostic and release failures without accepting", async () => {
+	const c = inertOwnedClose("log", "EACCES", true);
+	let accepted = false;
+	const operation = runOwnedModelCase({
+		run: async () => 0,
+		backend: { close: () => c.promise },
+		accept: async () => {
+			accepted = true;
+		},
+	});
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(c.settled(), false);
+	c.finish();
+	await assert.rejects(
+		operation,
+		(e) =>
+			e instanceof AggregateError &&
+			e.errors.includes(c.failure) &&
+			e.errors.some((x) => String(x).includes("original-release-error")),
+	);
+	assert.equal(accepted, false);
+});
+test("owned cleanup success is accepted only after child and descendants join", async () => {
+	const c = inertOwnedClose(null);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(c.settled(), false);
+	c.finish();
+	const receipt = await c.promise;
+	assert.equal(receipt.clean, true);
+	assert.equal(receipt.joined, true);
+});
+test("settlement failure census separates description, disabled, association and uncertainty terms", () => {
+	const source = readFileSync(
+		new URL("./model-uncertainty-native.mjs", import.meta.url),
+		"utf8",
+	);
+	const start = source.indexOf("`/* model-case: settlement-census */");
+	const expression = source
+		.slice(start + 1, source.indexOf("`", start + 1))
+		.replace("${settledStart}", "100");
+	const dialog = {
+		id: "dialog-A",
+		isConnected: true,
+		innerText: "live B",
+		getAttribute: (k) => (k === "aria-describedby" ? "description-A" : null),
+		contains: () => false,
+	};
+	const checkbox = {
+		isConnected: true,
+		disabled: false,
+		getAttribute: () => null,
+		closest: () => dialog,
+		getBoundingClientRect: () => ({ x: 1, y: 2, width: 16, height: 16 }),
+	};
+	const textNode = {
+		textContent: "The request could not be confirmed",
+		parentElement: {
+			tagName: "P",
+			getAttribute: () => null,
+			closest: () => null,
+		},
+	};
+	let count = 0;
+	const document = {
+		body: { innerText: textNode.textContent },
+		querySelector: (s) => (s === '[role="dialog"]' ? dialog : checkbox),
+		querySelectorAll: () => [dialog],
+		getElementById: () => ({ textContent: "test/mock-model-b" }),
+		createTreeWalker: () => ({
+			nextNode: () => (count++ === 0 ? textNode : null),
+		}),
+	};
+	const census = JSON.parse(
+		runInNewContext(expression, {
+			document,
+			NodeFilter: { SHOW_TEXT: 4 },
+			Date: { now: () => 200 },
+		}),
+	);
+	assert.equal(census.descriptionText, "test/mock-model-b");
+	assert.equal(census.descriptionHasB, true);
+	assert.equal(census.disabled, false);
+	assert.equal(census.disabledPass, true);
+	assert.equal(census.ariaDisabled, null);
+	assert.equal(census.ariaDisabledPass, true);
+	assert.equal(census.sameDialog, true);
+	assert.equal(census.neutralGlobal, true);
+	assert.equal(census.neutralDialog, false);
+	assert.equal(census.uncertaintyLocation.inDialog, false);
+	assert.equal(census.elapsedMs, 100);
 });

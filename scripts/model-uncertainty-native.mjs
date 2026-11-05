@@ -416,100 +416,127 @@ export async function startModelBackend({ output }) {
 		return { status: response.status, data };
 	};
 	const performCloseOwnedCore = async () => {
-		// Persist original bounded capture state BEFORE cleanup releases senders.
-		// Attempts never include auth headers/tokens; this rig owns synthetic data.
-		mkdirSync(output, { recursive: true });
-		try {
-			writeFileSync(
-				join(output, "backend-capture-state.json"),
-				JSON.stringify(await control("state")),
-			);
-		} catch (error) {
-			writeFileSync(
-				join(output, "backend-capture-state.json"),
-				JSON.stringify({ diagnosticError: String(error) }),
-			);
-		}
-		writeFileSync(
-			join(output, "backend-diagnostic.log"),
-			logs.join("\n").slice(-64_000),
-		);
+		const errors = [];
 		const receipt = { pid: child.pid, birth, root: config, clean: false };
+		// Output can be unwritable precisely when cleanup matters most. Diagnostic
+		// failures remain failures, but must never strand the owned process group.
 		try {
+			// Persist original bounded capture state BEFORE cleanup releases senders.
+			// Attempts never include auth headers/tokens; this rig owns synthetic data.
+			mkdirSync(output, { recursive: true });
 			try {
-				await control("release");
+				writeFileSync(
+					join(output, "backend-capture-state.json"),
+					JSON.stringify(await control("state")),
+				);
 			} catch (error) {
-				receipt.releaseError = String(error);
-			}
-			if (child.exitCode === null && child.signalCode === null) {
-				const now = spawnSync(
-					"ps",
-					["-p", String(child.pid), "-o", "lstart="],
-					{ encoding: "utf8" },
+				errors.push(error);
+				writeFileSync(
+					join(output, "backend-capture-state.json"),
+					JSON.stringify({ diagnosticError: String(error) }),
 				);
-				if (birth && now.status === 0 && now.stdout.trim() === birth)
-					child.kill("SIGTERM");
-				else child.stdin.end(); // no signal without a birth witness; join the private owner EOF path
 			}
-			let timer;
-			try {
-				Object.assign(
-					receipt,
-					await Promise.race([
-						closed,
-						new Promise((_, reject) => {
-							timer = setTimeout(
-								() => reject(Error("owned core exit deadline")),
-								15_000,
-							);
-						}),
-					]),
-				);
-			} finally {
-				clearTimeout(timer);
-			}
-			const ledger = join(scratch, "owned-child-pids");
-			const pids = existsSync(ledger)
-				? [
-						...new Set(
-							readFileSync(ledger, "utf8").trim().split(/\s+/).filter(Boolean),
-						),
-					]
-				: [];
-			assert(
-				pids.every((pid) => /^[1-9][0-9]*$/.test(pid)),
-				"invalid owned descendant ledger",
-			);
-			const until = Date.now() + 5000;
-			for (;;) {
-				if (pids.length === 0) break;
-				const probe = spawnSync("ps", ["-p", pids.join(","), "-o", "pid="], {
-					encoding: "utf8",
-				});
-				assert(
-					!probe.error && [0, 1].includes(probe.status) && !probe.stderr.trim(),
-					"owned descendant observation unavailable",
-				);
-				if (!probe.stdout.trim()) break;
-				assert(
-					Date.now() < until,
-					"owned descendants have not settled; no unknown-PID signal fallback",
-				);
-				await delay(100);
-			}
-			receipt.descendants = pids;
-			assert(!receipt.releaseError, receipt.releaseError);
-			receipt.clean = true;
-			return receipt;
-		} catch (error) {
-			receipt.error = String(error);
-			throw error;
-		} finally {
 			writeFileSync(
-				join(output, "owned-core-exit.json"),
-				JSON.stringify(receipt, null, 2),
+				join(output, "backend-diagnostic.log"),
+				logs.join("\n").slice(-64_000),
 			);
+		} catch (error) {
+			errors.push(error);
+		} finally {
+			try {
+				try {
+					await control("release");
+				} catch (error) {
+					receipt.releaseError = String(error);
+					errors.push(error);
+				}
+				if (child.exitCode === null && child.signalCode === null) {
+					const now = spawnSync(
+						"ps",
+						["-p", String(child.pid), "-o", "lstart="],
+						{ encoding: "utf8" },
+					);
+					if (birth && now.status === 0 && now.stdout.trim() === birth)
+						child.kill("SIGTERM");
+					else child.stdin.end(); // no signal without a birth witness; join the private owner EOF path
+				}
+				let timer;
+				try {
+					Object.assign(
+						receipt,
+						await Promise.race([
+							closed,
+							new Promise((_, reject) => {
+								timer = setTimeout(
+									() => reject(Error("owned core exit deadline")),
+									15_000,
+								);
+							}),
+						]),
+					);
+				} finally {
+					clearTimeout(timer);
+				}
+				const ledger = join(scratch, "owned-child-pids");
+				const pids = existsSync(ledger)
+					? [
+							...new Set(
+								readFileSync(ledger, "utf8")
+									.trim()
+									.split(/\s+/)
+									.filter(Boolean),
+							),
+						]
+					: [];
+				assert(
+					pids.every((pid) => /^[1-9][0-9]*$/.test(pid)),
+					"invalid owned descendant ledger",
+				);
+				const until = Date.now() + 5000;
+				for (;;) {
+					if (pids.length === 0) break;
+					const probe = spawnSync("ps", ["-p", pids.join(","), "-o", "pid="], {
+						encoding: "utf8",
+					});
+					assert(
+						!probe.error &&
+							[0, 1].includes(probe.status) &&
+							!probe.stderr.trim(),
+						"owned descendant observation unavailable",
+					);
+					if (!probe.stdout.trim()) break;
+					assert(
+						Date.now() < until,
+						"owned descendants have not settled; no unknown-PID signal fallback",
+					);
+					await delay(100);
+				}
+				receipt.descendants = pids;
+				receipt.joined = true;
+				assert(!receipt.releaseError, receipt.releaseError);
+				receipt.clean = errors.length === 0;
+			} catch (error) {
+				errors.push(error);
+			} finally {
+				if (errors.length) receipt.error = errors.map(String).join("; ");
+				try {
+					writeFileSync(
+						join(output, "owned-core-exit.json"),
+						JSON.stringify(receipt, null, 2),
+					);
+				} catch (error) {
+					errors.push(error);
+				}
+			}
 		}
+		// The memoized promise settles ONLY after cleanup, even when no receipt can
+		// be written. Never replace the original I/O error with a cleanup exception.
+		if (errors.length)
+			throw new AggregateError(
+				errors,
+				"owned core diagnostics or cleanup failed",
+			);
+		return receipt;
 	};
 	let closePromise;
 	const closeOwnedCore = () => {
@@ -984,9 +1011,10 @@ export const modelUncertaintyCase = {
 		};
 		// Receipt completion precedes React commit. Only a DOM read can prove
 		// B is rendered and the checkbox is enabled; waitFor's facts are not it.
+		const settledStart = Date.now();
 		await wait(
 			`/* model-case: settled-B */ (()=>{const d=document.querySelector('[role="dialog"]'),e=document.querySelector('[data-model-case-default]');if(!d||!e)return false;const text=(d.getAttribute('aria-describedby')||'').split(/\\s+/).map(id=>document.getElementById(id)?.textContent||'').join(' ');return text.includes('test/mock-model-b')&&e.disabled!==true&&e.getAttribute('aria-disabled')!=='true'&&!/could not be confirmed/i.test(document.body.innerText)})()`,
-			`JSON.stringify({description:document.querySelector('[role="dialog"]')?.getAttribute('aria-describedby'),disabled:document.querySelector('[data-model-case-default]')?.getAttribute('aria-disabled')})`,
+			`/* model-case: settlement-census */ (()=>{const d=document.querySelector('[role="dialog"]'),e=document.querySelector('[data-model-case-default]');const ids=(d?.getAttribute('aria-describedby')||'').split(/\\s+/).filter(Boolean),text=ids.map(id=>document.getElementById(id)?.textContent||'').join(' ');const neutral=/could not be confirmed/i;const box=e?.getBoundingClientRect();const dialogs=[...document.querySelectorAll('[role="dialog"]')].slice(0,4).map(n=>({id:n.id,title:n.getAttribute('aria-label'),labelledBy:n.getAttribute('aria-labelledby')}));const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n,location=null,reads=0;while((n=walker.nextNode())&&reads++<2000){if(neutral.test(n.textContent)){const p=n.parentElement;location={text:n.textContent.slice(0,256),tag:p?.tagName,role:p?.getAttribute('role'),region:p?.closest('[data-sidebar-region]')?.getAttribute('data-sidebar-region'),inDialog:!!d?.contains(p)};break;}}return JSON.stringify({elapsedMs:Date.now()-${settledStart},dialogExists:!!d,checkboxExists:!!e,dialogConnected:!!d?.isConnected,checkboxConnected:!!e?.isConnected,descriptionIds:ids.slice(0,8),descriptionText:text.slice(0,512),descriptionHasB:text.includes('test/mock-model-b'),disabled:e?.disabled??null,disabledPass:!!e&&e.disabled!==true,ariaDisabled:e?.getAttribute('aria-disabled')??null,ariaDisabledPass:!!e&&e.getAttribute('aria-disabled')!=='true',checked:e?.getAttribute('aria-checked')??null,checkboxDialogId:e?.closest('[role="dialog"]')?.id??null,sameDialog:!!d&&!!e&&e.closest('[role="dialog"]')===d,neutralGlobal:neutral.test(document.body.innerText),neutralDialog:neutral.test(d?.innerText||''),box:box?{x:box.x,y:box.y,w:box.width,h:box.height}:null,dialogs,uncertaintyLocation:location,locationScanCapped:reads>=2000});})()`,
 		);
 		await assertB("fresh-consumed-geometry");
 		const pending = await backend.state();
