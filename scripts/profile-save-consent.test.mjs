@@ -673,3 +673,13 @@ test("the transcript rows the card replaces keep their hooks unconditional", () 
 	assert.match(transcript, /if \(profileCall\) \{/);
 	assert.match(transcript, /approvalEpoch=\{frontend\?\.epoch \?\? null\}/);
 });
+
+test("a verified descriptor with no gate identity is disabled with a reason", () => {
+	const transcript = source(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+	);
+	// The arm that must never exist: a disabled control whose note is null.
+	assert.match(transcript, /const pressable = Boolean\(/);
+	assert.match(transcript, /: profileRevertUnavailable\(\)/);
+	assert.match(transcript, /pressable && profileCall\.descriptor/);
+});
