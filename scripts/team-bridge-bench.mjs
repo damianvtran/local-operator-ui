@@ -48,6 +48,23 @@
  *      300 ms blocked, and that difference is what the reader feels on the NEXT
  *      interaction.
  *
+ * THE OTHER THREE MODES, all sharing this one launch path:
+ *
+ *   --repeat=<n>   take the measurement n times and report median/min/max, because
+ *                  a single sample on a loaded machine moved a 5,000-row settle
+ *                  between 23.6 s and 81 s for the same code.
+ *   --frames=<dir> capture rendered PNGs instead of measuring: the channel open and
+ *                  the scrolled-back edge in light and dark, and the media channel.
+ *                  Each view is deadline-guarded, and a missing frame is recorded as
+ *                  MISSING rather than silently absent.
+ *   --self-test=zero-rows
+ *                  drive the failure path through the real gate and exit non-zero.
+ *                  A rig that cannot be seen to fail is not evidence of anything.
+ *
+ * WHAT IT CANNOT DO, stated here rather than discovered later: a run that fails a
+ * check exits non-zero unless `--allow-fail` says otherwise, and `--allow-fail`
+ * still prints every failure - the flag licenses the exit code, never the silence.
+ *
  * THE NEGATIVE CONTROL IS PART OF THE INSTRUMENT. `--messages 50` must produce
  * materially smaller settled times and DOM node counts than `--messages 5000`, or
  * the rig is measuring something other than the history it says it is. `--control`
@@ -98,7 +115,11 @@ import { hostname, loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateSync } from "node:zlib";
-import { reapOnExit, stopAppTree } from "./app-tree-teardown.mjs";
+import {
+	onInterrupted,
+	reapOnExit,
+	stopAppTree,
+} from "./app-tree-teardown.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
@@ -130,11 +151,56 @@ const ROOT = resolve(
 	flag("root", resolve(dirname(fileURLToPath(import.meta.url)), "..")),
 );
 const SCENARIO = flag("scenario", "first-paint");
-const MESSAGES = Number(flag("messages", "5000"));
+/**
+ * A COUNT FLAG, validated at the edge. `--messages=0`, `--messages=-1` and
+ * `--messages=abc` all used to reach the fixture: the first renders an empty
+ * channel, the second asks for a page that cannot exist, and the third makes every
+ * shape `NaN` - which a run can then report as a measurement. Refused by name.
+ */
+function countFlag(name, fallback, max) {
+	const raw = flag(name, String(fallback));
+	const value = Number(raw);
+	if (!Number.isInteger(value) || value < 1 || value > max)
+		throw new Error(
+			`--${name}=${raw} is not a positive integer between 1 and ${max}`,
+		);
+	return value;
+}
+const MESSAGES = countFlag("messages", 5000, 20_000);
+/**
+ * THE FRAMES JOB'S CHANNEL, deliberately small. The day pill, the history edge and
+ * the media row need a few screenfuls, not five thousand rows: a 5000-row capture
+ * took fifteen minutes at this machine's load and had to be killed.
+ */
+const FRAME_MESSAGES = countFlag("frames-messages", 120, 2_000);
 /** The negative control's small channel, and the size the pair is compared at. */
 const CONTROL_SMALL = Number(flag("control-small", "50"));
 const SIZE = flag("size", "1380x900");
 const JSON_OUT = flag("json", null);
+/**
+ * `--frames=<dir>`: capture rendered PNGs for the design and UX reviewers instead
+ * of measuring a scenario. Same stub, same headless launch, same reaping - the
+ * only difference is what the run does once the page is up.
+ */
+const FRAMES_DIR = flag("frames", null);
+/**
+ * THE ONLY WAY TO EXIT 0 WITH FAILED CHECKS. Off by default: a rig whose failures
+ * are advisory is a rig that reported `rows=0` and exited 0 on a crashing branch,
+ * which is exactly what review round 1 caught.
+ */
+const ALLOW_FAIL = has("allow-fail");
+/** The fail-closed self-test: proves this rig can fail, without launching Electron. */
+const SELF_TEST = flag("self-test", null);
+/**
+ * `--repeat=<n>`: how many times each measurement is taken.
+ *
+ * WHY THIS EXISTS. A single sample on a machine whose load average was 93-187
+ * during development moved `first-paint --messages 5000` between 19.9 s and 39.2 s
+ * for the same code, which is a number nobody can quote. Repeats are reported as
+ * median/min/max, so the spread is visible beside the figure rather than hidden
+ * behind it. Default 1 keeps every existing invocation byte-identical.
+ */
+const REPEAT = Math.max(1, Math.floor(Number(flag("repeat", "1")) || 1));
 const _VERBOSE = has("verbose");
 const _KEEP = has("keep");
 
@@ -151,6 +217,20 @@ if (!SCRATCH_ROOT)
 	throw new Error(
 		"refusing to run: set LOCAL_OPERATOR_SCRATCHPAD (or pass --scratch=<dir>) so the profile, config and daemon record are isolated",
 	);
+
+/**
+ * THE INTERRUPT PATH, wired ONCE through the shared module.
+ *
+ * Measured in review round 1: a SIGINT left five Electron processes alive, because
+ * `process.on("exit")` does not fire on a signal and nothing else was listening. The
+ * handler is registered here rather than inside `measure()` so a `--repeat` run does
+ * not stack one listener per sample; `activeReap` is whichever launch owns the tree.
+ */
+let activeReap = null;
+onInterrupted(async () => {
+	if (activeReap) await activeReap();
+	return 130;
+});
 
 const _SCENARIOS = [
 	"first-paint",
@@ -670,6 +750,18 @@ function startStub(fixture, recordsDir) {
 							},
 						},
 					});
+				/*
+				 * AN UNKNOWN OPERATION IS REFUSED, not answered with the account. The
+				 * envelope reply used to be the fallback for every operation, which
+				 * silently feeds an unrelated payload to whatever asked (review round 1:
+				 * a route serving a shape nobody asked for is exactly what this stub
+				 * promises not to do).
+				 */
+				if (operation !== "account") {
+					unknown.push(`radient:${operation}`);
+					refuse(400, `unknown radient operation ${operation}`);
+					return;
+				}
 				return send({
 					/*
 					 * THE PROXY ENVELOPE IS DOUBLY NESTED, and getting it wrong is silent.
@@ -1146,6 +1238,45 @@ const INSTRUMENT = `(() => {
 	window.__tbBench = bench;
 	bench.rowsNow = () => document.querySelectorAll("[data-message-id]").length;
 	bench.domNodes = () => document.querySelectorAll("*").length;
+	/*
+	 * THE OLDEST RENDERED ROW, by identity rather than by count. A windowed list keeps
+	 * its MOUNTED row count constant while older history arrives, so "rows grew" is
+	 * not evidence that a page loaded (QA, round 2). The fixture's ids encode the seq
+	 * (m_<seq hex>_<conversation>), so the minimum seq in the DOM is the oldest row
+	 * currently rendered, and it must move BACKWARDS when a page lands.
+	 */
+	bench.oldestSeq = () => {
+		const ids = [...document.querySelectorAll("[data-message-id]")].map(
+			(node) => node.getAttribute("data-message-id") || "",
+		);
+		let oldest = null;
+		for (const id of ids) {
+			const value = Number.parseInt((id.split("_")[1] || ""), 16);
+			if (!Number.isFinite(value)) continue;
+			if (oldest === null || value < oldest) oldest = value;
+		}
+		return oldest;
+	};
+	bench.waitOldestBelow = async (limit, timeoutMs = 4000) => {
+		const start = performance.now();
+		while (performance.now() - start < timeoutMs) {
+			const oldest = bench.oldestSeq();
+			if (oldest !== null && oldest < limit) {
+				const painted = await bench.paint();
+				return { ok: true, oldest, ms: painted - start };
+			}
+			await new Promise((done) => setTimeout(done, 50));
+		}
+		return { ok: false, oldest: bench.oldestSeq(), ms: null };
+	};
+	/* The history edge, when this build draws one: a marker, else nothing. Evidence,
+	   never a gate - the baseline has no edge line to find. */
+	bench.historyEdge = () => {
+		const node = document.querySelector("[data-history-edge],[data-history-start],[data-transcript-start]");
+		return node
+			? { present: true, marker: node.getAttribute("data-history-edge") ?? node.getAttribute("data-history-start") ?? node.getAttribute("data-transcript-start") ?? "" }
+			: { present: false, marker: null };
+	};
 	bench.mark = (name) => {
 		bench.marks.set(name, performance.now());
 		try { performance.mark("bench:" + name); } catch {}
@@ -1197,9 +1328,26 @@ const INSTRUMENT = `(() => {
 				break;
 			if (quietMs === 0 && performance.now() - start > 120) break;
 		}
+		const settledRows = bench.rowsNow();
+		/*
+		 * FAIL CLOSED. A settle that never arrived used to return ok:true with a
+		 * fabricated time, so a zero-row run printed settled~90000ms and the exit
+		 * code said "fine" (review round 1, MAJOR 2). A timeout now says so and
+		 * carries NO time at all.
+		 */
+		if (performance.now() - start >= timeoutMs)
+			return {
+				ok: false,
+				ms: null,
+				rows: settledRows,
+				reason:
+					settledRows === 0
+						? "the timeline rendered no rows"
+						: "no quiet settle within " + timeoutMs + " ms",
+			};
 		const painted = await bench.paint();
 		const dispatch = bench.marks.has("dispatch") ? bench.marks.get("dispatch") : start;
-		return { ok: true, ms: painted - dispatch, rows: bench.rowsNow() };
+		return { ok: true, ms: painted - dispatch, rows: settledRows };
 	};
 	bench.scroller = () => {
 		let node = document.querySelector("[data-message-id]");
@@ -1335,6 +1483,7 @@ async function openChannel({
 		messageRequests: stub.total(MESSAGES_READ) - before,
 		first: first.ok,
 		settled: settled.ok,
+		settledReason: settled.reason ?? null,
 		body: page.body,
 	};
 }
@@ -1356,6 +1505,7 @@ async function runScenario({ scenario, fixture, evaluate, stub }) {
 			conversation: BIG_CONVERSATION,
 			firstRowMs: opened.firstRowMs,
 			settledMs: opened.settledMs,
+			settledReason: opened.settledReason,
 			rows: opened.rows,
 			domNodes: opened.domNodes,
 			longTasks: opened.longTasks,
@@ -1505,28 +1655,48 @@ async function runScenario({ scenario, fixture, evaluate, stub }) {
 		 * not the rows the reader asked for and every later number is unmoored.
 		 */
 		const beforeSeqRequests = stub.total(/before_seq/);
+		const edge = await evaluate("window.__tbBench.historyEdge()");
 		const pages = [];
+		/*
+		 * WINDOWING-AWARE (QA, round 2). A virtualised list keeps its mounted row count
+		 * flat while older history arrives, so this scenario watches the OLDEST
+		 * RENDERED ROW's seq instead: each scroll must make it strictly smaller, and
+		 * the `before_seq` request count says what that cost. On today's unpaginated
+		 * app nothing moves and the checks fail - which is the honest baseline.
+		 */
+		let oldest = await evaluate("window.__tbBench.oldestSeq()");
 		for (let index = 0; index < 5; index += 1) {
-			const rowsBefore = opened.rows + index;
 			const requestsBefore = stub.total(/before_seq/);
+			const oldestBefore = oldest;
 			await evaluate(`(() => {
 				window.__tbBench.mark("scroll");
 				const node = window.__tbBench.scroller();
 				if (node) node.scrollTop = 0;
 				return true;
 			})()`);
-			const grown = await evaluate(
-				`window.__tbBench.waitRows(${rowsBefore + 1}, 4000)`,
+			const moved = await evaluate(
+				`window.__tbBench.waitOldestBelow(${oldestBefore === null ? Number.MAX_SAFE_INTEGER : oldestBefore}, 4000)`,
 			);
 			await sleep(250);
+			oldest = await evaluate("window.__tbBench.oldestSeq()");
 			pages.push({
 				page: index + 1,
-				ms: grown.ms,
-				ok: grown.ok,
+				ms: moved.ms,
+				ok: moved.ok,
 				requests: stub.total(/before_seq/) - requestsBefore,
+				oldestBefore,
+				oldestAfter: oldest,
 				rows: await evaluate("window.__tbBench.rowsNow()"),
 			});
+			if (!moved.ok && index > 0) break;
 		}
+		const monotonic = pages
+			.filter((page) => page.ok)
+			.every((page, position, loaded) =>
+				position === 0
+					? true
+					: page.oldestAfter < loaded[position - 1].oldestAfter,
+			);
 		return {
 			scenario,
 			conversation: BIG_CONVERSATION,
@@ -1535,15 +1705,21 @@ async function runScenario({ scenario, fixture, evaluate, stub }) {
 			rows: opened.rows,
 			domNodes: opened.domNodes,
 			beforeSeqRequests,
+			historyEdge: edge,
 			pages,
+			oldestRows: { first: pages[0]?.oldestBefore ?? null, last: oldest },
 			checks: [
 				{
 					name: "zero before_seq requests before any scroll",
 					ok: beforeSeqRequests === 0,
 				},
 				{
-					name: "older rows really appeared",
+					name: "scrolling back rendered older rows (oldest seq moved backwards)",
 					ok: pages.some((page) => page.ok),
+				},
+				{
+					name: "the oldest seq moved backwards monotonically",
+					ok: monotonic,
 				},
 			],
 			body: opened.body,
@@ -1735,14 +1911,13 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 	rmSync(scratch, { recursive: true, force: true });
 	mkdirSync(scratch, { recursive: true });
 	const fixture = fixtures(messageCount);
-	const stub = await startStub(
-		fixture,
-		join(scratch, "config", "run", "serve"),
-	);
-	const cdpPort = await freePort();
+	// Declared before the try so the failure path can name them; created INSIDE the
+	// try so a throw between the stub's `listen` and the first await cannot leave the
+	// server (or its discovery record) behind.
+	let stub = null;
+	let cdpPort = null;
 	let app = null;
 	let client = null;
-	let _tearDown = null;
 	let reaped = null;
 
 	const reap = async () => {
@@ -1767,7 +1942,7 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 		}
 		const verdict = app?.userData ? rendererRss(app.userData) : null;
 		if (verdict) reaped = { ...(reaped ?? {}), survivors: verdict.processes };
-		await stub.close();
+		if (stub) await stub.close();
 		if (!keepScratch) {
 			try {
 				rmSync(scratch, { recursive: true, force: true });
@@ -1778,6 +1953,9 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 	};
 
 	try {
+		stub = await startStub(fixture, join(scratch, "config", "run", "serve"));
+		cdpPort = await freePort();
+		activeReap = reap;
 		allowStubOrigin(stub.port);
 		app = launchApp({ port: cdpPort, scratch, size: SIZE });
 		// The synchronous last resort: `process.exit` runs no `finally` at all.
@@ -1817,6 +1995,26 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 		// One beat for the page's own first paint to settle before the scripted
 		// interaction: the bench measures the channel open, not the mount.
 		await sleep(500);
+		/*
+		 * `--frames` replaces the MEASUREMENT, not the harness: same launch, same
+		 * stub, same settle-then-capture order. Branching here rather than in a
+		 * second launcher is what keeps one rig: a frames mode with its own boot
+		 * sequence would drift from the one the numbers come through.
+		 */
+		if (FRAMES_DIR) {
+			const frames = await captureFrames({
+				evaluate: client.evaluate,
+				send: client.send,
+				stub,
+				dir: resolve(FRAMES_DIR),
+			});
+			return {
+				frames,
+				mounted,
+				refused: [...new Set(stub.unknown())],
+				identity: identity(startedAt),
+			};
+		}
 		const result = await runScenario({
 			scenario,
 			fixture,
@@ -1838,9 +2036,305 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 			identity: identity(startedAt),
 		};
 	} finally {
+		activeReap = null;
 		await reap();
-		_tearDown = reaped;
 	}
+}
+
+/* -------------------------------------------------------------- rendered frames */
+
+/**
+ * The store the app persists its own theme in, and the two built-in ids the
+ * frames are taken in.
+ *
+ * THE THEME IS SET THE WAY THE APP SETS IT - its persisted preference, then a
+ * reload - and never by overriding CSS or forcing the `data-theme` attribute from
+ * here. A CSS override would photograph the rig's idea of dark mode; the persisted
+ * key photographs the app's own, which is what a design reviewer is judging.
+ */
+const THEME_STORAGE_KEY = "ui-preferences-storage";
+const FRAME_THEMES = { light: "localOperatorLight", dark: "localOperatorDark" };
+
+/** Write the requested theme into the app's own persisted state, then reload. */
+async function adoptTheme({ evaluate, send }, themeName) {
+	const written = await evaluate(`(() => {
+		const raw = localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
+		const blob = raw ? JSON.parse(raw) : { state: {}, version: 0 };
+		blob.state = { ...(blob.state || {}), themeName: ${JSON.stringify(themeName)} };
+		localStorage.setItem(${JSON.stringify(THEME_STORAGE_KEY)}, JSON.stringify(blob));
+		return blob.state.themeName;
+	})()`);
+	await send("Page.reload", {});
+	const started = Date.now();
+	let last = null;
+	let lastError = null;
+	/*
+	 * THE BUDGET IS FOUR MINUTES, not one. A reload while a 5,000-message channel is
+	 * mounted re-renders the list before the main thread can answer an evaluation;
+	 * the first budget (60 s) expired on exactly that and reported `last probe: null`,
+	 * which reads as "the app ignored the theme" rather than "the renderer was
+	 * busy". The error now carries the last refusal's text so the two cannot be
+	 * confused again.
+	 */
+	while (Date.now() - started < 240_000) {
+		try {
+			last = await evaluate(`(() => ({
+				theme: document.documentElement.dataset.theme ?? null,
+				body: getComputedStyle(document.body).backgroundColor,
+				readyState: document.readyState,
+			}))()`);
+			lastError = null;
+			if (last?.theme === themeName) return { written, ...last };
+		} catch (error) {
+			// The document is mid-reload, or its main thread is still rendering.
+			lastError = String(error?.message ?? error);
+		}
+		await sleep(250);
+	}
+	throw new Error(
+		`the app did not adopt ${themeName} after a reload (last probe: ${JSON.stringify(last)}, last refusal: ${lastError})`,
+	);
+}
+
+/** Wait for a composited frame: two rAFs, then a beat for the capture. */
+async function settleFrame(evaluate) {
+	await evaluate(
+		"new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))",
+	);
+	await sleep(150);
+}
+
+/**
+ * Capture the five review frames into `dir` and answer what each one proves.
+ *
+ * EVERY FRAME CARRIES ITS OWN EVIDENCE, because a screenshot nobody can check is
+ * a picture rather than a proof: rows and DOM nodes at capture time, whether a day
+ * pill was actually in the viewport, whether the scroll-back really loaded an older
+ * page (zero on today's unpaginated app, and that zero is stated), and the applied
+ * `data-theme` so a light frame cannot silently be a dark one.
+ */
+async function captureFrames({ evaluate, send, stub, dir }) {
+	mkdirSync(dir, { recursive: true });
+	const frames = {};
+
+	const shot = async (name) => {
+		await settleFrame(evaluate);
+		const { data } = await send("Page.captureScreenshot", {
+			format: "png",
+			fromSurface: true,
+			captureBeyondViewport: false,
+		});
+		const path = join(dir, `${name}.png`);
+		writeFileSync(path, Buffer.from(data, "base64"));
+		return path;
+	};
+
+	/*
+	 * EVERY VIEW IS GUARDED BY A WALL-CLOCK DEADLINE. A 5,000-row capture hung for
+	 * fifteen minutes at this machine's load and had to be killed by hand; a hung
+	 * frame must cost that frame, not the run. On expiry the view is recorded as
+	 * MISSING (with the reason) and the remaining views still run.
+	 */
+	const guard = async (label, ms, work) => {
+		let timer = null;
+		const timeout = new Promise((resolve) => {
+			timer = setTimeout(
+				() => resolve({ ok: false, reason: `${label} exceeded ${ms} ms` }),
+				ms,
+			);
+		});
+		try {
+			return await Promise.race([
+				work().then((value) => ({ ok: true, value })),
+				timeout,
+			]);
+		} finally {
+			if (timer) clearTimeout(timer);
+		}
+	};
+
+	const guardedView = async (names, ms, work) => {
+		const outcome = await guard(names.join("+"), ms, work);
+		if (outcome.ok) return true;
+		for (const name of names)
+			if (!frames[name])
+				frames[name] = { missing: true, reason: outcome.reason };
+		process.stderr.write(
+			`[frames] ${names.join(", ")} missing: ${outcome.reason}\n`,
+		);
+		return false;
+	};
+
+	const state = async () =>
+		evaluate(`(() => {
+			const node = window.__tbBench.scroller();
+			return {
+				rows: window.__tbBench.rowsNow(),
+				dom: window.__tbBench.domNodes(),
+				theme: document.documentElement.dataset.theme ?? null,
+				scroll: node ? { top: Math.round(node.scrollTop), height: node.scrollHeight, view: node.clientHeight } : null,
+			};
+		})()`);
+
+	const toBottom = async () =>
+		evaluate(`(() => {
+			const node = window.__tbBench.scroller();
+			if (!node) return null;
+			node.scrollTop = node.scrollHeight;
+			return { top: Math.round(node.scrollTop), height: node.scrollHeight, view: node.clientHeight };
+		})()`);
+
+	/** The day pill (`[data-day-divider]`) really painted inside the viewport. */
+	const dayPill = async () =>
+		evaluate(`(() => {
+			const pills = [...document.querySelectorAll("[data-day-divider]")];
+			const inView = (node) => {
+				const box = node.getBoundingClientRect();
+				return box.height > 0 && box.bottom > 0 && box.top < innerHeight;
+			};
+			let visible = pills.filter(inView).length;
+			if (visible === 0 && pills.length > 0) {
+				pills[pills.length - 1].scrollIntoView({ block: "center" });
+				return { total: pills.length, visible: pills.filter(inView).length, moved: true };
+			}
+			return { total: pills.length, visible };
+		})()`);
+
+	/**
+	 * Scroll back until an OLDER PAGE arrives, or prove that none arrived.
+	 *
+	 * Today's app has no paging, so this reports `loaded: false` after bounded
+	 * attempts and still takes the frame - the honest answer for the baseline, and
+	 * the row count is the evidence either way.
+	 */
+	const scrollBack = async () => {
+		const before = await evaluate("window.__tbBench.rowsNow()");
+		for (let attempt = 1; attempt <= 6; attempt += 1) {
+			await evaluate(`(() => {
+				const node = window.__tbBench.scroller();
+				if (node) node.scrollTop = 0;
+				return true;
+			})()`);
+			const grown = await evaluate(
+				`window.__tbBench.waitRows(${before + 1}, 2500)`,
+			);
+			if (grown.ok)
+				return {
+					loaded: true,
+					attempts: attempt,
+					rows: await evaluate("window.__tbBench.rowsNow()"),
+				};
+			await sleep(200);
+		}
+		return {
+			loaded: false,
+			attempts: 6,
+			rows: await evaluate("window.__tbBench.rowsNow()"),
+		};
+	};
+
+	const boot = async (theme) => {
+		const applied = await adoptTheme({ evaluate, send }, FRAME_THEMES[theme]);
+		await waitForBridge(evaluate);
+		const installed = await evaluate(INSTRUMENT);
+		if (!installed.ok)
+			throw new Error(
+				`the instrument did not install: ${JSON.stringify(installed)}`,
+			);
+		await sleep(400);
+		return applied;
+	};
+
+	const captureOpenAndScrolled = async (theme) => {
+		await boot(theme);
+		await openChannel({
+			evaluate,
+			stub,
+			conversationId: BIG_CONVERSATION,
+			tenantId: TENANTS[0].tenant_id,
+			label: `${theme} open`,
+		});
+		const bottom = await toBottom();
+		const pillOpen = await dayPill();
+		const atOpen = await state();
+		const openPath = await shot(`open-${theme}`);
+
+		const back = await scrollBack();
+		const pillScrolled = await dayPill();
+		const atScrolled = await state();
+		const scrolledPath = await shot(`scrolled-${theme}`);
+
+		frames[`open-${theme}`] = {
+			path: resolve(openPath),
+			...atOpen,
+			bottom,
+			dayPill: pillOpen,
+		};
+		frames[`scrolled-${theme}`] = {
+			path: resolve(scrolledPath),
+			...atScrolled,
+			dayPill: pillScrolled,
+			olderPageLoaded: back.loaded,
+			scrollAttempts: back.attempts,
+		};
+	};
+
+	const lightOk = await guardedView(
+		["open-light", "scrolled-light"],
+		180_000,
+		() => captureOpenAndScrolled("light"),
+	);
+
+	/* The media channel keeps the light theme its file name promises. */
+	const mediaView = async () => {
+		const media = await openChannel({
+			evaluate,
+			stub,
+			conversationId: MEDIA_CONVERSATION,
+			tenantId: TENANTS[0].tenant_id,
+			label: "media (light)",
+		});
+		const images = await evaluate("window.__tbBench.waitImages(20000)");
+		/*
+		 * THE FRAME MUST SHOW THE TILES, not the channel's tail. A settled channel can
+		 * end on messages without images - measured on this rig's first media capture:
+		 * twelve images were in the DOM and none in the viewport, so the picture proved
+		 * nothing about the attachment boxes it exists to show. The first row carrying a
+		 * REAL tile (decoded, bigger than an avatar) is scrolled into view first.
+		 */
+		const tile = await evaluate(`(() => {
+		for (const row of document.querySelectorAll("[data-message-id]")) {
+			for (const image of row.querySelectorAll("img")) {
+				const box = image.getBoundingClientRect();
+				if (image.naturalWidth > 0 && box.width > 80 && box.height > 60) {
+					row.scrollIntoView({ block: "center" });
+					return { found: true, width: Math.round(box.width), height: Math.round(box.height), naturalWidth: image.naturalWidth, complete: image.complete };
+				}
+			}
+		}
+		return { found: false };
+	})()`);
+		const atMedia = await state();
+		const mediaPath = await shot("media-light");
+		frames["media-light"] = {
+			path: resolve(mediaPath),
+			...atMedia,
+			images,
+			tile,
+			rows: media.rows,
+		};
+	};
+	await guardedView(["media-light"], 90_000, mediaView);
+
+	const darkOk = await guardedView(
+		["open-dark", "scrolled-dark"],
+		240_000,
+		() => captureOpenAndScrolled("dark"),
+	);
+	void lightOk;
+	void darkOk;
+
+	return frames;
 }
 
 /* ------------------------------------------------------------------ the report */
@@ -1851,15 +2345,165 @@ function formatTable(rows) {
 	return lines.join("\n");
 }
 
+/**
+ * Median/min/max of one metric across a size's samples.
+ *
+ * Median rather than mean on purpose: one run that stalls on a loaded machine
+ * (measured here: 81 s settled beside 23.6 s for the same code) drags a mean far
+ * enough to be useless, while the median stays where the machine usually is and
+ * min/max say how wide the machine's day was.
+ */
+function spread(values) {
+	const kept = values.filter((value) => typeof value === "number");
+	if (kept.length === 0) return null;
+	const sorted = [...kept].sort((left, right) => left - right);
+	const middle =
+		sorted.length % 2 === 1
+			? sorted[(sorted.length - 1) / 2]
+			: (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+	const round = (value) => Math.round(value * 10) / 10;
+	return {
+		median: round(middle),
+		min: round(sorted[0]),
+		max: round(sorted[sorted.length - 1]),
+		n: kept.length,
+	};
+}
+
+/**
+ * WHAT MAKES THIS RUN A FAILURE, as a list of sentences.
+ *
+ * Review round 1's second major: every scenario check was advisory, and the only
+ * exit gate was `settledMs === null`, which `memory` never even set. A crashing
+ * branch measured zero rows, printed `firstRow=null settled≈90000ms rows=0`, and
+ * exited 0 - a rig that says "fine" about nothing. Every failure is collected here,
+ * named, and gates the exit code.
+ */
+function failuresOf(report) {
+	const failures = [];
+	for (const run of report.runs ?? []) {
+		const result = run.result ?? {};
+		for (const check of result.checks ?? [])
+			if (!check.ok)
+				failures.push(`messages=${run.messageCount}: ${check.name}`);
+		if (result.settledMs === null)
+			failures.push(
+				`messages=${run.messageCount}: no settled time (${result.settledReason ?? "the settle timed out"})`,
+			);
+	}
+	if (report.negativeControl && !report.negativeControl.ok)
+		failures.push("negative control: the rig did not respond to history size");
+	for (const [name, frame] of Object.entries(report.frames ?? {}))
+		if (frame.missing) failures.push(`frame ${name}: ${frame.reason}`);
+	return failures;
+}
+
+/** Apply the gate to a finished report and name every failure in the summary. */
+function applyGate(report, lines) {
+	const failures = failuresOf(report);
+	if (failures.length === 0) return failures;
+	lines.push(`  RUN FAILED - ${failures.length} check(s) did not pass:`);
+	for (const failure of failures) lines.push(`    - ${failure}`);
+	if (ALLOW_FAIL)
+		lines.push(
+			"  --allow-fail: exiting 0 WITH the failures above. This is not a pass.",
+		);
+	else process.exitCode = 1;
+	return failures;
+}
+
 export async function main() {
 	const startedAt = Date.now();
+
+	/*
+	 * THE SELF-TEST PROVES THIS RIG CAN FAIL, without launching Electron: it builds
+	 * the report a zero-row measurement produces and sends it through the SAME gate
+	 * the real runs use. A rig whose failure path is unexercised is the defect
+	 * review round 1 found; this is the exercise.
+	 */
+	if (SELF_TEST) {
+		if (SELF_TEST !== "zero-rows")
+			throw new Error(`unknown --self-test=${SELF_TEST}; known: zero-rows`);
+		const synthetic = {
+			bench: "team-bridge-bench",
+			mode: "self-test",
+			selfTest: SELF_TEST,
+			runs: [
+				{
+					messageCount: 50,
+					result: {
+						rows: 0,
+						firstRowMs: null,
+						settledMs: null,
+						settledReason: "the timeline rendered no rows",
+						checks: [
+							{
+								name: "the timeline rendered at least one row",
+								ok: false,
+							},
+						],
+					},
+					domNodes: 0,
+				},
+			],
+			wallMs: 0,
+		};
+		const lines = [
+			"",
+			`team-bridge-bench · self-test=${SELF_TEST} · SYNTHETIC, no Electron`,
+		];
+		applyGate(synthetic, lines);
+		process.stderr.write(`${formatTable(lines)}\n`);
+		process.stdout.write(`${JSON.stringify(synthetic, null, 2)}\n`);
+		return synthetic;
+	}
+
+	/*
+	 * `--frames` is its own mode rather than a flag on a scenario: it answers with
+	 * files and their evidence, not with timings, and a run that quietly did both
+	 * would put a reviewer's picture and a benchmark's number in the same report.
+	 */
+	if (FRAMES_DIR) {
+		const captured = await measure({
+			scenario: SCENARIO,
+			messageCount: FRAME_MESSAGES,
+		});
+		const frames = captured.frames;
+		const report = {
+			bench: "team-bridge-bench",
+			mode: "frames",
+			themeIds: FRAME_THEMES,
+			size: SIZE,
+			ranAt: new Date().toISOString(),
+			frames,
+			identity: captured.identity,
+			refused: captured.refused,
+			wallMs: Date.now() - startedAt,
+		};
+		const text = JSON.stringify(report, null, 2);
+		if (JSON_OUT) writeFileSync(resolve(JSON_OUT), `${text}\n`);
+		process.stdout.write(`${text}\n`);
+		const lines = ["", `team-bridge-bench · frames · ${SIZE}`];
+		for (const frame of Object.values(frames)) {
+			lines.push(
+				`  ${frame.path}  theme=${frame.theme} rows=${frame.rows} dom=${frame.dom} pill=${frame.dayPill?.visible ?? 0}/${frame.dayPill?.total ?? 0}${frame.olderPageLoaded === undefined ? "" : ` olderPage=${frame.olderPageLoaded}`}${frame.images ? ` images=${frame.images.count}${frame.images.ok ? "" : " (NOT DECODED)"}` : ""}`,
+			);
+		}
+		applyGate(report, lines);
+		process.stderr.write(`${formatTable(lines)}\n`);
+		return report;
+	}
+
 	const runs = [];
 	const control = has("control");
 	const sizes = control ? [CONTROL_SMALL, MESSAGES] : [MESSAGES];
 
 	for (const messageCount of sizes) {
-		const measured = await measure({ scenario: SCENARIO, messageCount });
-		runs.push({ messageCount, ...measured });
+		const samples = [];
+		for (let index = 0; index < REPEAT; index += 1) {
+			samples.push(await measure({ scenario: SCENARIO, messageCount }));
+		}
+		runs.push({ messageCount, ...samples[0], samples });
 	}
 
 	const report = {
@@ -1875,16 +2519,56 @@ export async function main() {
 			domNodes: run.domNodes,
 			rss: run.rss,
 			refused: run.refused,
+			/*
+			 * Every sample, compactly, plus the spread of the two numbers the decision
+			 * turns on. A single `result` above stays the first sample so every existing
+			 * reader of this JSON keeps working; `aggregate` is what a person should
+			 * quote once REPEAT > 1.
+			 */
+			samples: (run.samples ?? [run]).map((sample) => ({
+				firstRowMs: sample.result.firstRowMs,
+				settledMs: sample.result.settledMs,
+				rows: sample.result.rows,
+				domNodes: sample.domNodes,
+				heapMb: sample.heapMb,
+				rendererRssMb: sample.rss?.rendererRssMb ?? null,
+			})),
+			aggregate:
+				REPEAT > 1
+					? {
+							firstRowMs: spread(
+								(run.samples ?? []).map((sample) => sample.result.firstRowMs),
+							),
+							settledMs: spread(
+								(run.samples ?? []).map((sample) => sample.result.settledMs),
+							),
+							domNodes: spread(
+								(run.samples ?? []).map((sample) => sample.domNodes),
+							),
+							rendererRssMb: spread(
+								(run.samples ?? []).map(
+									(sample) => sample.rss?.rendererRssMb ?? null,
+								),
+							),
+						}
+					: null,
 		})),
 		wallMs: Date.now() - startedAt,
 	};
 
 	if (control && runs.length === 2) {
 		const [small, big] = runs;
-		const smallSettled = small.result.settledMs;
-		const bigSettled = big.result.settledMs;
-		const smallRows = small.result.rows;
-		const bigRows = big.result.rows;
+		// The MEDIAN of whatever repeats were taken: comparing two first samples on a
+		// loaded machine is how a control passes or fails for reasons that are not
+		// the fixture's size.
+		const centre = (run, pick) => {
+			const values = (run.samples ?? [run]).map((sample) => pick(sample));
+			return spread(values)?.median ?? null;
+		};
+		const smallSettled = centre(small, (sample) => sample.result.settledMs);
+		const bigSettled = centre(big, (sample) => sample.result.settledMs);
+		const smallRows = centre(small, (sample) => sample.result.rows);
+		const bigRows = centre(big, (sample) => sample.result.rows);
 		const ok =
 			typeof smallSettled === "number" &&
 			typeof bigSettled === "number" &&
@@ -1916,10 +2600,11 @@ export async function main() {
 
 	// The human summary goes to stderr so stdout stays parseable.
 	const lines = ["", `team-bridge-bench · ${SCENARIO} · ${SIZE}`];
-	for (const run of runs) {
+	// The PROJECTION carries `aggregate`; the raw run objects do not.
+	for (const run of report.runs) {
 		const result = run.result;
 		lines.push(
-			`  messages=${run.messageCount}  firstRow=${fmt(result.firstRowMs)}ms  settled=${fmt(result.settledMs)}ms  rows=${result.rows}  dom=${run.domNodes}  history-reads=${result.messageRequests ?? "?"}`,
+			`  messages=${run.messageCount}  firstRow=${fmt(result.firstRowMs)}ms  settled=${fmt(result.settledMs)}ms  rows=${result.rows}  dom=${run.domNodes}  history-reads=${result.messageRequests ?? "?"}${result.settledMs === null ? `  (NO SETTLE: ${result.settledReason ?? "timed out"})` : ""}`,
 		);
 		/*
 		 * EVERY FAILED PRECONDITION IS NAMED HERE, not buried in the JSON. The
@@ -1944,19 +2629,22 @@ export async function main() {
 			lines.push(
 				`    attachments=${result.attachmentRequests} re-entry=${result.reentry.attachmentRequests}`,
 			);
-		if (result.heapMb !== undefined || run.heapMb !== undefined)
+		if (run.heapMb !== undefined)
 			lines.push(
 				`    heap=${run.heapMb ?? "?"}MB rss=${run.rss?.rendererRssMb ?? "?"}MB renderers=${run.rss?.renderers ?? "?"}`,
 			);
+		if (run.aggregate) {
+			const { firstRowMs, settledMs, domNodes } = run.aggregate;
+			lines.push(
+				`    spread n=${firstRowMs?.n ?? REPEAT}: firstRow median=${fmt(firstRowMs?.median)}ms (${fmt(firstRowMs?.min)}..${fmt(firstRowMs?.max)}) settled median=${fmt(settledMs?.median)}ms (${fmt(settledMs?.min)}..${fmt(settledMs?.max)}) dom median=${fmt(domNodes?.median)} (${fmt(domNodes?.min)}..${fmt(domNodes?.max)})`,
+			);
+		}
 	}
 	if (report.negativeControl)
 		lines.push(`  negative control: ${report.negativeControl.verdict}`);
 	process.stderr.write(`${formatTable(lines)}\n`);
 
-	const failed = runs.some((run) => run.result.settledMs === null);
-	if (failed) process.exitCode = 1;
-	if (report.negativeControl && !report.negativeControl.ok)
-		process.exitCode = 1;
+	applyGate(report, lines);
 	return report;
 }
 
