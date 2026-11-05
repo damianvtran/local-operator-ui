@@ -33,7 +33,11 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import type { ProfileSaveDisclosure } from "../../../../shared/profile-consent";
+import { useEffect, useState } from "react";
+import {
+	type ProfileSaveDisclosure,
+	profileRevertDescriptor,
+} from "../../../../shared/profile-consent";
 import { profileSaveCall } from "../chat/components/trace/profile-save-card-model";
 import { approvalRows } from "./mesh-approvals";
 import { profileCardView, profileRevertView } from "./mesh-profile-approval";
@@ -43,6 +47,11 @@ import {
 	GOLDEN_SAVED_AGENT_TOOL_RESULT,
 } from "./profile-action-golden";
 import { ProfileConsentCard } from "./profile-consent-card";
+import {
+	SCRIPTED_REVERT_DESCRIPTOR,
+	type ScriptedRevertSequence,
+	runScriptedRevertSequence,
+} from "./profile-revert-scripted";
 
 const digest = `sha256:${"a".repeat(64)}`;
 
@@ -148,7 +157,7 @@ function row(
  */
 function goldenView(details: Record<string, unknown>) {
 	const result = profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: "",
 		details,
 	});
@@ -156,20 +165,23 @@ function goldenView(details: Record<string, unknown>) {
 	return result.view;
 }
 
-const revertDescriptor = {
-	schema: 1 as const,
-	kind: "profile_revert" as const,
-	/*
-	 * A REAL MINT: `prv_` + exactly 32 URL-safe characters, the shape core mints and
-	 * the pinned schema requires. `ra_5b81` was a pre-pin placeholder that cannot
-	 * parse, so every story built on this descriptor drew no control at all.
-	 */
-	action_id: "prv_9Qm4Xc2LbT7rVp0YhN5sKd8WfJ3aZe6u",
-	label: "Revert",
-	profile_kind: "agent" as const,
-	profile_name: "Researcher",
-	receipt_id: "rc_71bd",
-};
+/**
+ * THE ARTIFACT'S OWN DESCRIPTOR, verbatim.
+ *
+ * Not a minted id and not a chosen `receipt_id`: `saved_agent_tool_result.details`
+ * carries `{action_id, kind, label, profile_kind, profile_name, receipt_id, schema}`,
+ * and this is exactly that object, so the story cannot disagree with the wire about
+ * which record the control refers to.
+ */
+const revertDescriptor = (() => {
+	const parsed = profileRevertDescriptor(
+		GOLDEN_SAVED_AGENT_TOOL_RESULT.details.profile_action,
+	);
+	// The artifact's own descriptor must parse through the shipped schema; if it
+	// stops, every revert story below is photographing a control that cannot exist.
+	if (!parsed) throw new Error("the artifact's descriptor no longer parses");
+	return parsed;
+})();
 
 const meta = {
 	title: "Mesh/ProfileConsentCard",
@@ -346,6 +358,65 @@ export const UnavailableRevert: Story = {
 		}),
 		onRevert: undefined,
 	},
+};
+
+/**
+ * The ENABLED affordance, driven by a SCRIPTED TRANSPORT (`profile-revert-scripted.ts`).
+ *
+ * The control exists only after the artifact's correlated `agent.available` ACK for
+ * this exact identity, and the press settles on its `applied` frame — no descriptor
+ * alone and no persisted flag enables it.
+ *
+ * SCRIPTED TRANSPORT — NO BACKEND PROFILE WRITE.
+ */
+function ScriptedTransportStory() {
+	const [view, setView] = useState(() =>
+		profileCardView(row({ state: "connected" }), { profileApprovals: true }),
+	);
+	const [sequence, setSequence] = useState<ScriptedRevertSequence | null>(null);
+	useEffect(() => {
+		void runScriptedRevertSequence().then(setSequence);
+	}, []);
+	useEffect(() => {
+		if (!sequence) return;
+		const enabled = sequence.authority.enabled;
+		const settled = sequence.settled.state;
+		setView((base) => ({
+			...base,
+			revert: profileRevertView(SCRIPTED_REVERT_DESCRIPTOR, {
+				// The ENABLED arm is the scripted `available`; the settled arm is the
+				// artifact's `applied` frame. Nothing here reads a persisted flag.
+				...(enabled && settled === "available"
+					? {}
+					: settled === "pending"
+						? { submitted: true }
+						: {
+								outcome: { approved: settled === "succeeded", state: settled },
+							}),
+			}),
+		}));
+	}, [sequence]);
+	return (
+		<ProfileConsentCard
+			view={view}
+			onRevert={() => {
+				void runScriptedRevertSequence().then(setSequence);
+			}}
+		/>
+	);
+}
+
+export const ScriptedTransportEnabled: Story = {
+	args: {
+		/*
+		 * THE RESTING SHAPE OFFERS NOTHING: no descriptor-backed `revert` is handed in,
+		 * so nothing can be enabled before the scripted read answers.
+		 */
+		view: profileCardView(row({ state: "connected" }), {
+			profileApprovals: true,
+		}),
+	},
+	render: () => <ScriptedTransportStory />,
 };
 
 /** The descriptor's resting state: one press, offered. */

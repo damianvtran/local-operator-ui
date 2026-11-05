@@ -34,6 +34,9 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
 			export * from "./src/renderer/src/features/mesh/mesh-profile-approval";
 			export * from "./src/renderer/src/features/mesh/profile-action-golden";
+			export { applyEvent, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export * from "./src/renderer/src/features/mesh/profile-revert-scripted";
+			export { PROFILE_SAVE_TOOLS } from "./src/renderer/src/features/chat/components/trace/profile-save-card-model";
 			export { profileSaveCall } from "./src/renderer/src/features/chat/components/trace/profile-save-card-model";
 			export { createProfileRevertLatch } from "./src/renderer/src/features/chat/canonical/profile-revert-latch";
 			export {
@@ -569,7 +572,7 @@ test("a disabled revert always carries a reason, never a blank control", () => {
 const toolOutput = (value) =>
 	typeof value === "string" ? value : JSON.stringify(value);
 
-const callOf = (value, toolName = "profile_save", details = null) =>
+const callOf = (value, toolName = "agent", details = null) =>
 	api.profileSaveCall({
 		toolName,
 		output: toolOutput(value),
@@ -639,7 +642,7 @@ test("a replayed legacy revert hint never produces a revert control", () => {
 		{ schema: 1, kind: "profile_revert" },
 	]) {
 		const call = api.profileSaveCall({
-			toolName: "profile_save",
+			toolName: "agent",
 			output: "",
 			details: {
 				status: "applied",
@@ -681,7 +684,7 @@ test("a queued receipt WITH a diff renders the backend's lines, and never 'no ch
 		scope: "global",
 	};
 	const call = api.profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: "",
 		details,
 	});
@@ -693,7 +696,7 @@ test("a queued receipt WITH a diff renders the backend's lines, and never 'no ch
 	assert.equal(call.view.state, "waiting");
 
 	const bare = api.profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: "",
 		details: { ...details, fields: undefined, diff: undefined },
 	});
@@ -710,7 +713,7 @@ test("a policy-only change is stated in the backend's own words, not re-derived 
 		"Delegate: off → on",
 	];
 	const call = api.profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: "",
 		details: {
 			status: "applied",
@@ -1142,7 +1145,7 @@ test("the golden artifact is the one vendored here, and a real row still binds",
 
 test("a saved ToolResult renders the saved card with its diff and a disabled revert", () => {
 	const saved = api.profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: "",
 		details: api.GOLDEN_SAVED_AGENT_TOOL_RESULT.details,
 	});
@@ -1157,7 +1160,7 @@ test("a saved ToolResult renders the saved card with its diff and a disabled rev
 	assert.equal(saved.view.revert.enabled, false);
 
 	const team = api.profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: "",
 		details: api.GOLDEN_SAVED_TEAM_TOOL_RESULT.details,
 	});
@@ -1167,7 +1170,7 @@ test("a saved ToolResult renders the saved card with its diff and a disabled rev
 
 test("a queued receipt renders the backend's own lines, not an invented diff", () => {
 	const queued = api.profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: "",
 		details: api.GOLDEN_QUEUED_TOOL_RESULT.details,
 	});
@@ -1318,7 +1321,7 @@ test("an explicit saver:false is a roster change beside an inherited one", () =>
 
 test("a present-but-empty diff is not the same fact as an absent one", () => {
 	const withEmpty = api.profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: "",
 		details: {
 			...api.GOLDEN_QUEUED_TOOL_RESULT.details,
@@ -1330,7 +1333,7 @@ test("a present-but-empty diff is not the same fact as an absent one", () => {
 	assert.deepEqual(withEmpty.view.diffLines, []);
 
 	const withoutDiff = api.profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: "",
 		details: {
 			status: "queued",
@@ -1602,7 +1605,11 @@ test("every story action id is a real mint, and the saved story uses the descrip
 	for (const path of stories) {
 		const text = source(path);
 		const ids = [...text.matchAll(/action_id:\s*"([^"]*)"/g)].map((m) => m[1]);
-		assert.ok(ids.length > 0, `${path} names at least one action`);
+		/*
+		 * A story may derive its descriptor from the golden artifact instead of writing
+		 * an id literal - that is the preferred form now - so the requirement is that a
+		 * literal, WHEN present, is a real mint.
+		 */
 		for (const id of ids) {
 			/*
 			 * A story is a preflight the parent shoots frames through: a pre-pin id
@@ -1632,6 +1639,138 @@ test("every story action id is a real mint, and the saved story uses the descrip
 	 * unbindable even with a valid id.
 	 */
 	const savedStory = source(stories[0]);
-	assert.match(savedStory, /profile_action: revert/);
-	assert.doesNotMatch(savedStory, /\n\t{3}revert,\n/, "no legacy revert key");
+	/*
+	 * The saved story now DERIVES its payload from the artifact, which is stronger than
+	 * a literal: its descriptor, ids and profile identity come straight from
+	 * `GOLDEN_SAVED_AGENT_TOOL_RESULT`, and no legacy `revert:` key is spliced in.
+	 */
+	assert.match(savedStory, /GOLDEN_SAVED_AGENT_TOOL_RESULT\.details/);
+	assert.doesNotMatch(
+		savedStory,
+		/revert_verified: true,\n\t+\},\n\t\}\)\(\),/,
+		"no hand-built envelope",
+	);
+});
+
+/* --------------------- round 6: the REAL tool names, end to end (product fix) */
+
+test("a ToolExecutionEndEvent for the real `agent` tool reaches the saved card", () => {
+	/*
+	 * THE DEFECT THIS PINS (parent, reproduced): the card keyed on the tool name
+	 * `profile_save`, which is the approval OPERATION, not the tool. Core's results
+	 * arrive as `agent` / `team`, so the card never drew on the real path. This test
+	 * goes event -> reducer -> row -> card, not view-helper only.
+	 */
+	assert.deepEqual([...api.PROFILE_SAVE_TOOLS].sort(), ["agent", "team"]);
+	const artifact = api.GOLDEN_SAVED_AGENT_TOOL_RESULT;
+	const state = api.applyEvent(api.EMPTY_TRANSCRIPT, {
+		type: "tool_execution_end",
+		tool_call_id: artifact.tool_call_id,
+		tool_name: artifact.tool_name,
+		result: {
+			content: artifact.content,
+			details: artifact.details,
+			duration_s: artifact.duration_s,
+			is_error: artifact.is_error,
+		},
+	});
+	const row = state.records.find((record) => record.kind === "tool");
+	assert.ok(row, "the tool row exists");
+	assert.equal(row.toolName, "agent", "the row carries the REAL tool name");
+	const call = api.profileSaveCall({
+		toolName: row.toolName,
+		output: row.output ?? "",
+		details: row.details ?? null,
+	});
+	assert.ok(call, "the real tool name binds the saved card");
+	assert.equal(call.view.state, "saved");
+	assert.equal(call.view.name, artifact.details.name);
+	assert.ok(call.view.diffLines.length > 0);
+	assert.equal(
+		call.descriptor.action_id,
+		artifact.details.profile_action.action_id,
+	);
+	assert.equal(
+		call.descriptor.receipt_id,
+		artifact.details.profile_action.receipt_id,
+	);
+	// A descriptor is not permission: the resting control is disabled.
+	assert.equal(call.view.revert.enabled, false);
+});
+
+test("the queued receipt binds under the real `agent` tool too", () => {
+	const artifact = api.GOLDEN_QUEUED_TOOL_RESULT;
+	const state = api.applyEvent(api.EMPTY_TRANSCRIPT, {
+		type: "tool_execution_end",
+		tool_call_id: artifact.tool_call_id,
+		tool_name: artifact.tool_name,
+		result: {
+			content: artifact.content,
+			details: artifact.details,
+			duration_s: artifact.duration_s,
+			is_error: artifact.is_error,
+		},
+	});
+	const row = state.records.find((record) => record.kind === "tool");
+	const call = api.profileSaveCall({
+		toolName: row.toolName,
+		output: row.output ?? "",
+		details: row.details ?? null,
+	});
+	assert.ok(call);
+	assert.equal(call.view.state, "waiting");
+	assert.deepEqual(call.view.diffLines, artifact.details.diff);
+	assert.equal(call.view.revert, undefined, "no descriptor, no control");
+});
+
+test("an ordinary agent or team result never draws a profile card", () => {
+	/*
+	 * THE ROUTING FIX MUST NOT BROADEN: `agent` and `team` are ordinary management
+	 * tools, so a list/show/select result must render exactly as it does today.
+	 */
+	for (const toolName of ["agent", "team"]) {
+		for (const details of [
+			null,
+			{ agents: [{ name: "reviewer" }], count: 1 },
+			{ op: "list", agents: [] },
+			{ op: "select", agent: "reviewer" },
+			{ name: "reviewer", class: "reactive" },
+			{ op: "show", name: "reviewer", instructions: "Reviews code" },
+		]) {
+			const call = api.profileSaveCall({
+				toolName,
+				output: 'read-only result: {"agents":[]}',
+				details,
+			});
+			assert.equal(call, null, `${toolName} ${JSON.stringify(details)}`);
+		}
+	}
+	// And a non-profile tool carrying a saved-looking payload is still refused.
+	assert.equal(
+		api.profileSaveCall({
+			toolName: "web_search",
+			output: JSON.stringify(api.GOLDEN_SAVED_AGENT_TOOL_RESULT.details),
+			details: api.GOLDEN_SAVED_AGENT_TOOL_RESULT.details,
+		}),
+		null,
+	);
+});
+
+test("the scripted transport raises the control, and its press settles", async () => {
+	/*
+	 * The enabled story is not descriptor-driven: the control exists only after the
+	 * scripted `available` ACK for this identity, and the press settles on the
+	 * artifact's `applied` frame. One recorded write, no backend call.
+	 */
+	api.profileRevertStatusCache.clear();
+	const sequence = await api.runScriptedRevertSequence();
+	assert.equal(
+		sequence.available.action_id,
+		api.GOLDEN_SAVED_AGENT_TOOL_RESULT.details.profile_action.action_id,
+	);
+	assert.equal(sequence.available.state, "available");
+	assert.deepEqual(sequence.authority, { state: "available", enabled: true });
+	assert.equal(sequence.writes.length, 1, "one recorded press");
+	assert.equal(sequence.settled.state, "succeeded");
+	api.profileRevertStatusCache.clear();
 });

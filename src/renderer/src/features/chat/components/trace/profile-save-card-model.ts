@@ -42,10 +42,28 @@ import {
 	stateNoteFor,
 } from "../../../mesh/mesh-profile-approval";
 
-/** The calls this card owns. Anything else keeps its existing rendering. */
+/**
+ * The TOOLS whose results may carry a profile write, and nothing else.
+ *
+ * THE DISTINCTION THIS FILE GOT WRONG FOR FIVE ROUNDS: `profile_save` is the
+ * approval OPERATION inside the payload (`details.operation` / the disclosure's
+ * `operation`), NOT the tool. The first-party results arrive under the tool names
+ * `agent` and `team` — `saved_agent_tool_result.tool_name === "agent"`,
+ * `saved_team_tool_result.tool_name === "team"`, and the queued receipt comes back
+ * from `agent` too (golden wire artifact). Keying on `profile_save` matched nothing
+ * the daemon sends, so the card never drew on the real path while the hand-built
+ * stories (which forced `toolName: "profile_save"`) looked healthy.
+ *
+ * THE SET IS EXPLICIT AND NARROW. `agent` and `team` are ordinary management tools —
+ * list, show, select — so the tool name alone never draws a card: `profileSaveCall`
+ * still requires a strict saved/queued/disclosure payload below, and a list or show
+ * result matches none of them. No wildcard for MCP or custom tools, because a
+ * third-party result claiming a profile write is exactly what this card must not
+ * describe.
+ */
 export const PROFILE_SAVE_TOOLS: ReadonlySet<string> = new Set([
-	"profile_save",
-	"profile_revert",
+	"agent",
+	"team",
 ]);
 
 export type ProfileSaveCall = {
@@ -138,6 +156,30 @@ function fromDisclosure(
 function stateWord(envelope: Record<string, unknown> | null): string {
 	const value = envelope?.state;
 	return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+/**
+ * The profile write's own `details`, when this result is one.
+ *
+ * WHY THE REDUCER NEEDS THIS. The settle path carries details through
+ * `preferProgressDetails`, which keeps only progress-shaped payloads, so an `agent`
+ * or `team` result's saved/queued receipt was dropped before the card could read it —
+ * the card then saw prose `output` and drew nothing. This returns the details ONLY
+ * for the profile tools and ONLY when they parse as one of the bounded shapes, so no
+ * other tool's details are retained and an ordinary list/show result still carries
+ * none.
+ */
+export function profileWriteDetails(
+	toolName: string,
+	details: unknown,
+): Record<string, unknown> | null {
+	if (!PROFILE_SAVE_TOOLS.has(toolName)) return null;
+	if (!isRecord(details)) return null;
+	const bounded =
+		profileSavedRecord(details) !== null ||
+		profileQueuedReceipt(details) !== null ||
+		profileDisclosure(details) !== null;
+	return bounded ? details : null;
 }
 
 /**

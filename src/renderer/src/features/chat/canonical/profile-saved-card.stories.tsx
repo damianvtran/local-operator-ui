@@ -24,9 +24,14 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import {
-	type ProfileCardView,
-	profileRevertView,
-} from "../../mesh/mesh-profile-approval";
+	type ProfileRevertDescriptor,
+	profileRevertDescriptor,
+} from "../../../../../shared/profile-consent";
+import type { ProfileCardView } from "../../mesh/mesh-profile-approval";
+import {
+	GOLDEN_QUEUED_TOOL_RESULT,
+	GOLDEN_SAVED_AGENT_TOOL_RESULT,
+} from "../../mesh/profile-action-golden";
 import { ProfileConsentCard } from "../../mesh/profile-consent-card";
 import { profileSaveCall } from "../components/trace/profile-save-card-model";
 
@@ -69,38 +74,19 @@ const disclosure = (over: Record<string, unknown> = {}) => ({
 	...over,
 });
 
-const revert = {
-	schema: 1 as const,
-	kind: "profile_revert" as const,
-	/*
-	 * A REAL MINT, taken from the golden wire artifact's saved agent result:
-	 * `prv_` + exactly 32 URL-safe characters, which is what the pinned descriptor
-	 * schema accepts (`local_operator/profile_actions.py`). The pre-pin placeholder
-	 * `ra_5b81` could not parse, so this story's `profileSaveCall` returned null and
-	 * the fixture threw instead of drawing the card.
-	 */
-	action_id: "prv_pwZv3cu-siPFNmFYUTAtZGx5Jv09q1uT",
-	label: "Revert",
-	profile_kind: "agent" as const,
-	profile_name: "Researcher",
-	receipt_id: "rc_71bd",
-};
-
-const receipt = {
-	status: "queued",
-	approval_id: "ap_dem1234",
-	request_digest: digest,
-	expires_at: 1_900_000_000,
-	receipt_id: "rc_71bd",
-	profile_kind: "agent",
-	profile_name: "Researcher",
-	scope: "global",
-};
+/*
+ * THE ARTIFACT'S OWN DESCRIPTOR, verbatim - parsed through the shipped schema so a
+ * drift fails here rather than in a preflight. No minted id, no chosen receipt.
+ */
+const revert = profileRevertDescriptor(
+	GOLDEN_SAVED_AGENT_TOOL_RESULT.details.profile_action,
+) as ProfileRevertDescriptor;
+if (!revert) throw new Error("the artifact's descriptor no longer parses");
 
 /** The call's `output` as the transcript holds it: the settled result's text. */
 const viewOf = (output: unknown): ProfileCardView => {
 	const call = profileSaveCall({
-		toolName: "profile_save",
+		toolName: "agent",
 		output: typeof output === "string" ? output : JSON.stringify(output),
 	});
 	if (!call) throw new Error("fixture is not a bound profile answer");
@@ -124,25 +110,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** A saved change with a verified revert: the headline case the operator asked for. */
+/**
+ * The saved change, from the artifact's real result.
+ *
+ * THE CONTROL IS NOT ENABLED HERE, deliberately: a descriptor is not permission, and a
+ * story that handed itself `enabled: true` would photograph a state the product cannot
+ * produce. The enabled affordance is `ScriptedTransportEnabled` in the mesh set, where
+ * a scripted `available` ACK causes it.
+ */
 export const Saved: Story = {
-	args: {
-		view: (() => {
-			const base = viewOf({
-				disclosure: disclosure(),
-				state: "applied",
-				/*
-				 * THE DESCRIPTOR'S HOME IS `profile_action`, not `revert`: `revert` is the
-				 * legacy `{op, backup_id}` text hint, and an envelope carrying it is refused
-				 * by the card's closed key set. This fixture used the legacy key, so the
-				 * headline story could not bind at all.
-				 */
-				profile_action: revert,
-				revert_verified: true,
-			});
-			return { ...base, revert: profileRevertView(revert) };
-		})(),
-	},
+	args: { view: viewOf(GOLDEN_SAVED_AGENT_TOOL_RESULT.details) },
 };
 
 /** The same answer without the backend's verification: the press is not offered. */
@@ -150,9 +127,9 @@ export const UnverifiedRevert: Story = {
 	args: { view: viewOf({ disclosure: disclosure(), state: "applied" }) },
 };
 
-/** An unattended proposal: a queued receipt names the profile and claims no diff. */
+/** An unattended proposal, from the artifact's real queued receipt. */
 export const QueuedReceipt: Story = {
-	args: { view: viewOf(receipt) },
+	args: { view: viewOf(GOLDEN_QUEUED_TOOL_RESULT.details) },
 };
 
 /** Denied: the change never happened, and the card offers nothing. */
