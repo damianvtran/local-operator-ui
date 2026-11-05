@@ -287,7 +287,7 @@
 	"ui.mesh.mesh_approvals.profile_saved_value": "Đã lưu",
 	"ui.mesh.mesh_approvals.profile_new_value": "Sẽ thành",
 	"ui.mesh.mesh_approvals.profile_not_set": "Chưa đặt",
-	"ui.mesh.mesh_approvals.profile_cleared": "Đã xoá",
+	"ui.mesh.mesh_approvals.profile_cleared": "Đã xóa",
 	"ui.mesh.mesh_approvals.profile_changes_none": "Không có trường nào thay đổi",
 	"ui.mesh.mesh_approvals.profile_waiting": "Đang chờ quyết định của bạn",
 	"ui.mesh.mesh_approvals.profile_unavailable": "Phiên bản ứng dụng này không thể ký thay đổi hồ sơ. Hãy xem lại bằng dòng lệnh.",
@@ -297,5 +297,7 @@
 	"ui.mesh.mesh_approvals.profile_revert_done": "Đã khôi phục",
 	"ui.mesh.mesh_approvals.profile_revert_stale": "Lần khôi phục này đã hết hạn",
 	"ui.mesh.mesh_approvals.profile_revert_failed": "Việc khôi phục không thành công",
-	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Khôi phục không khả dụng trong phiên này"
+	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Khôi phục không khả dụng trong phiên này",
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "Biên nhận này không bao gồm các thay đổi của trường",
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Có thể thao tác hoàn tác chưa hoàn tất"
 }

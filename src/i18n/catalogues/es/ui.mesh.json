@@ -297,5 +297,7 @@
 	"ui.mesh.mesh_approvals.profile_revert_done": "Restaurado",
 	"ui.mesh.mesh_approvals.profile_revert_stale": "Esta restauración ha caducado",
 	"ui.mesh.mesh_approvals.profile_revert_failed": "La restauración no se completó",
-	"ui.mesh.mesh_approvals.profile_revert_unavailable": "La restauración no está disponible en esta sesión"
+	"ui.mesh.mesh_approvals.profile_revert_unavailable": "La restauración no está disponible en esta sesión",
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "Este recibo no incluye los cambios de los campos",
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Es posible que no se haya revertido el cambio"
 }

@@ -123,14 +123,7 @@ export function ProfileConsentCard({
 				<h4 id={changesId} className="text-meta text-ink-muted">
 					{t("ui.mesh.mesh_approvals.profile_changes")}
 				</h4>
-				{view.fields.length === 0 ? (
-					<p
-						className="text-meta text-ink-dim"
-						data-tour-tag="profile-consent-no-changes"
-					>
-						{t("ui.mesh.mesh_approvals.profile_changes_none")}
-					</p>
-				) : (
+				{view.fields.length > 0 ? (
 					<table
 						className="w-full border-collapse text-left text-meta"
 						aria-labelledby={changesId}
@@ -172,6 +165,49 @@ export function ProfileConsentCard({
 							))}
 						</tbody>
 					</table>
+				) : view.diffLines.length > 0 ? (
+					/*
+					 * THE BACKEND'S OWN LINES, VERBATIM (parent correction to I1). A
+					 * receipt carries `fields` and `diff`, and `diff` is where a POLICY
+					 * change is stated in words: class, effort, tools and delegate live
+					 * inside the `tags` image, so a permission-relevant change would
+					 * otherwise read as a bare "tags changed". These lines are rendered as
+					 * the backend authored them; this card never parses tag strings to
+					 * describe a policy change itself.
+					 */
+					<ul
+						className="flex flex-col gap-1 text-meta text-ink [overflow-wrap:anywhere]"
+						data-tour-tag="profile-consent-diff-lines"
+					>
+						{view.diffLines.map((line) => (
+							<li key={line}>{line}</li>
+						))}
+					</ul>
+				) : view.changedFieldNames.length > 0 ? (
+					<p
+						className="font-mono text-meta text-ink [overflow-wrap:anywhere]"
+						data-tour-tag="profile-consent-changed-fields"
+					>
+						{view.changedFieldNames.join(", ")}
+					</p>
+				) : (
+					/*
+					 * TWO EMPTY CASES, TWO SENTENCES (i18n audit I1). "Nothing changed" is
+					 * a claim about a diff we hold; a payload that carried no images and no
+					 * lines at all gets the honest fallback instead.
+					 */
+					<p
+						className="text-meta text-ink-dim"
+						data-tour-tag={
+							view.changesIncluded
+								? "profile-consent-no-changes"
+								: "profile-consent-changes-not-included"
+						}
+					>
+						{view.changesIncluded
+							? t("ui.mesh.mesh_approvals.profile_changes_none")
+							: t("ui.mesh.mesh_approvals.profile_changes_not_in_receipt")}
+					</p>
 				)}
 			</div>
 

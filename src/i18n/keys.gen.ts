@@ -7510,6 +7510,7 @@ export type MessageParams = {
 	"ui.mesh.mesh_approvals.profile_approval_unavailable": undefined;
 	"ui.mesh.mesh_approvals.profile_changes": undefined;
 	"ui.mesh.mesh_approvals.profile_changes_none": undefined;
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": undefined;
 	"ui.mesh.mesh_approvals.profile_cleared": undefined;
 	"ui.mesh.mesh_approvals.profile_field": undefined;
 	"ui.mesh.mesh_approvals.profile_kind_agent": undefined;
@@ -7525,6 +7526,7 @@ export type MessageParams = {
 	"ui.mesh.mesh_approvals.profile_revert_pending": undefined;
 	"ui.mesh.mesh_approvals.profile_revert_stale": undefined;
 	"ui.mesh.mesh_approvals.profile_revert_unavailable": undefined;
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": undefined;
 	"ui.mesh.mesh_approvals.profile_saved_value": undefined;
 	"ui.mesh.mesh_approvals.profile_scope_global": undefined;
 	"ui.mesh.mesh_approvals.profile_unavailable": undefined;

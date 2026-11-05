@@ -297,5 +297,7 @@
 	"ui.mesh.mesh_approvals.profile_revert_done": "Reverted",
 	"ui.mesh.mesh_approvals.profile_revert_stale": "This revert has expired",
 	"ui.mesh.mesh_approvals.profile_revert_failed": "The revert did not go through",
-	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Revert is not available in this session"
+	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Revert is not available in this session",
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "Field changes are not included in this receipt",
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "The revert may not have gone through"
 }
