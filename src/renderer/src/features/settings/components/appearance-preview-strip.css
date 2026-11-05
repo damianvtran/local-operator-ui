@@ -23,20 +23,26 @@
 	);
 }
 
-/* THE TEXT ROWS SIT WHERE PRODUCTION PUTS THEM: ON THE CANVAS REGION, never on
- * the desktop itself. Painted straight onto the ramp they measured 3.05:1 (dark)
- * and 3.70:1 (light), below AA on 56 of 59 palettes (code C1, UX U5, design
- * D5), because `--lo-ink-dim` at full strength is only promised over a
- * composited role. So they take the canvas region's ground state for state - the
- * canvas composite when canvas is covered, opaque canvas when it is not - which
- * is the ground the published floor table is solved for (0 of 59 below AA).
- * Translucent, not opaque, in the covered state: an opaque band inside a
- * translucent card is the thing design N2 removed. */
+/* THE TEXT ROWS SIT WHERE PRODUCTION PUTS THEM: ON THE CARD, never on the
+ * desktop itself and never as an opaque bar inside it. Painted straight onto the
+ * ramp they measured 3.05:1 (dark) and 3.70:1 (light), below AA on 56 of 59
+ * palettes (code C1, UX U5, design D5), because `--lo-ink-dim` at full strength
+ * is only promised over a composited role. So they take the canvas composite -
+ * the ground the published floor table is solved for (0 of 59 below AA) - for
+ * as long as the sample paints a backdrop at all.
+ *
+ * ANY coverage, not just `canvas` (code C3). Keying the composite off
+ * `~="canvas"` left the SIDEBARS-ONLY state - the one glass state that ships
+ * its own story - with flat `var(--lo-canvas)`: an opaque bar top and bottom of
+ * a card that is still painting the ramp, which is the N2 silhouette back. The
+ * card is one translucent surface whenever it shows a backdrop; the rows follow
+ * the card, and the opaque fallback is left to the solid states, where the
+ * whole card is that same canvas. */
 .appearance-preview [data-preview-chrome] {
 	background-color: var(--lo-canvas);
 }
 
-.appearance-preview[data-preview-glass~="canvas"] [data-preview-chrome] {
+.appearance-preview:not([data-preview-glass=""]) [data-preview-chrome] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),

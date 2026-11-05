@@ -1,6 +1,7 @@
 /** Real React/store/provider regressions for the layered picker. jsdom is a
  * focus/event instrument, not rendered/native evidence; Storybook owns pixels. */
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -11,6 +12,14 @@ const CEILING_HINT = /already as bright as it can go/;
 const BORROWED_NOTICE = /Accent: Tokyo Night Day/;
 const ROUNDED_TOP = /rounded-t-md/;
 const ROUNDED_BOTTOM = /rounded-b-md/;
+const CSS_RULE = /([^{}]+)\{([^{}]*)\}/g;
+const CSS_COMMENT = /\/\*[\s\S]*?\*\//g;
+const GROUND_COMPOSITE = /^background-color: color-mix\(/;
+const GROUND_ALPHA =
+	/var\(--lo-canvas\) calc\(var\(--lo-glass-a-canvas\) \* 100%\)/;
+const GROUND_DECLARATION = /^background-color: (.+);$/;
+const GLASS_STATE_SELECTOR = /:not\(\[[a-z-]+=""\]\)/;
+const TRANSPARENT = / transparent/;
 const dom = new JSDOM(
 	"<!doctype html><html><head></head><body></body></html>",
 	{ url: "http://localhost/" },
@@ -687,12 +696,63 @@ test("console replay transports composed roles and rejects hostile snapshots", a
 	root = null;
 });
 
-test("the sample's text rows are grounded like the canvas role they sit on", async () => {
-	// code C1, UX U5, design D5: `--lo-ink-dim` at 12px is promised over a
+test("the sample's text rows are grounded by the canvas composite in every glass state", async () => {
+	// code C1, C3, C4, UX U5, design D5: `--lo-ink-dim` at 12px is promised over a
 	// COMPOSITED role, and these two rows sat on the bare ramp (3.05:1 dark,
-	// 3.70:1 light, below AA on 56 of 59 palettes). The stylesheet grounds
-	// `[data-preview-chrome]`; this pins the marker, so dropping the ground is a
-	// failing test rather than a silent 3:1 row. Real pixels are the browser's job.
+	// 3.70:1 light, below AA on 56 of 59 palettes). This bundle loads the
+	// stylesheet as empty, so jsdom resolves no ground at all and a DOM-only
+	// assertion passed with every ground deleted (C4): the DECLARATIONS are pinned here,
+	// from the sheet itself, and the DOM half only proves the marker they hang on
+	// is still emitted by both variants.
+	const sheet = await readFile(
+		new URL(
+			"../src/renderer/src/features/settings/components/appearance-preview-strip.css",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	// `selector { body }` blocks; this sheet has no at-rules and no nested braces.
+	const rules = [...sheet.replace(CSS_COMMENT, "").matchAll(CSS_RULE)].map(
+		([, selector, body]) => ({
+			selector: selector.trim(),
+			body: body.replace(/\s+/g, " ").trim(),
+		}),
+	);
+	const chrome = rules.filter((rule) =>
+		rule.selector.includes("[data-preview-chrome]"),
+	);
+	assert.equal(chrome.length, 2, "one solid ground, one composited ground");
+	const solid = chrome.find(
+		(rule) => rule.selector === ".appearance-preview [data-preview-chrome]",
+	);
+	assert.ok(solid, "the rows keep an explicit solid-state ground");
+	assert.equal(solid.body, "background-color: var(--lo-canvas);");
+	const glass = chrome.find((rule) => rule !== solid);
+	// The declaration that actually paints in glass: the canvas composite at the
+	// coverage alpha, not a flat fill and not an ink tier.
+	assert.match(glass.body, GROUND_COMPOSITE);
+	assert.match(glass.body, GROUND_ALPHA);
+	assert.match(glass.body, GROUND_DECLARATION);
+	assert.match(glass.body, TRANSPARENT);
+	// C3: it applies to EVERY state that paints a backdrop. Keyed off `~="canvas"`
+	// the sidebars-only story - the one glass state with its own frame - fell back
+	// to the opaque rule and re-created N2's band.
+	assert.ok(
+		chrome.every(
+			(rule) =>
+				rule === solid ||
+				!(
+					GROUND_DECLARATION.test(rule.body) &&
+					!GROUND_COMPOSITE.test(rule.body)
+				),
+		),
+		"no glass-state chrome rule may repaint the rows flat",
+	);
+	assert.ok(
+		!glass.selector.includes("~="),
+		`the composite is not scoped to one coverage: ${glass.selector}`,
+	);
+	assert.match(glass.selector, GLASS_STATE_SELECTOR);
 	await withPaintedRoles(
 		() => resolveAppearance(store.getState()).palette,
 		async () => {
