@@ -15,6 +15,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
+	realpathSync,
 	writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -176,6 +177,7 @@ export function assertModelTraffic(
 	sessionId,
 	readTemplates = [],
 	feedOpens = [],
+	proof = {},
 ) {
 	const base = `/v1/desktop/sessions/${sessionId}`;
 	const reads = new Set([
@@ -226,7 +228,53 @@ export function assertModelTraffic(
 						.join("/");
 					return new RegExp(`^${pattern}$`).test(request.path);
 				});
-			assert(known, `unmodeled native read ${request.path}`);
+			if (!known) {
+				const resident =
+					/^\/v1\/desktop\/sessions\/([a-f0-9]{12})(\/command-entities)?$/.exec(
+						request.path,
+					);
+				assert(
+					resident && resident[1] !== sessionId,
+					`unmodeled native read ${request.path}`,
+				);
+				assert.deepEqual(
+					request.query,
+					resident[2] ? { command: "effort" } : {},
+				);
+				assert.equal(request.query_empty, !resident[2]);
+				assert(!request.query_invalid);
+				assert.equal(request.response_status, 200);
+				assert(
+					Number.isInteger(request.delivery_order) &&
+						request.delivery_order > request.order,
+				);
+				const ownedList = proof.listWitnesses?.some((w) => {
+					const list = attempts.find((a) => a.index === w.request_index);
+					return (
+						typeof proof.scopeId === "string" &&
+						w.scope_id === proof.scopeId &&
+						w.response_status === 200 &&
+						list?.observer === false &&
+						list.method === "GET" &&
+						list.path === "/v1/desktop/sessions" &&
+						list.response_status === 200 &&
+						Number.isInteger(list.order) &&
+						Number.isInteger(w.delivery_order) &&
+						list.order < w.delivery_order &&
+						w.delivery_order < request.order &&
+						w.rows?.some(
+							(row) =>
+								row.id === resident[1] &&
+								row.local === true &&
+								row.peer_null === true,
+						)
+					);
+				});
+				assert(
+					ownedList,
+					"resident read lacks earlier delivered owned local LIST witness",
+				);
+			}
 			continue;
 		}
 		if (request.path === "/v1/desktop/presence") {
@@ -306,8 +354,84 @@ export function assertModelTraffic(
 			].includes(request.path)
 		)
 			continue;
+		if (request.path === "/v1/desktop/sessions/preview") {
+			assert.equal(request.method, "POST");
+			assert.equal(request.query_empty, true);
+			assert.equal(request.response_status, 200);
+			assert(
+				Number.isInteger(request.delivery_order) &&
+					request.delivery_order > request.order,
+			);
+			assert.equal(
+				attempts.filter((a) => !a.observer && a.path === request.path).length,
+				1,
+			);
+			const body = request.body;
+			assert(body && typeof body === "object");
+			assert(
+				Object.keys(body).every((k) =>
+					["request_id", "cwd", "target", "model"].includes(k),
+				),
+			);
+			assert.match(body.request_id, REQUEST_ID_PATTERN);
+			assert(
+				!attempts.some(
+					(a) => a !== request && a.body?.request_id === body.request_id,
+				),
+				"preview UUID reused",
+			);
+			assert.equal(body.cwd, proof.fixtureCwd);
+			assert.equal(request.cwd_owned, true);
+			assert(
+				typeof proof.scopeId === "string" && request.scope_id === proof.scopeId,
+			);
+			assert.equal(proof.defaultSynthetic, true);
+			assert(body.target === undefined || body.target === null);
+			assert(body.model === undefined || body.model === null);
+			continue;
+		}
 		if (request.method === "POST" && request.path === `${base}/commands`) {
 			assert.equal(request.body.command, "model");
+			if (request.body.args === "") {
+				assert.deepEqual(Object.keys(request.body).sort(), [
+					"args",
+					"command",
+					"images",
+					"request_id",
+				]);
+				assert.deepEqual(request.body.images, []);
+				assert.match(request.body.request_id, REQUEST_ID_PATTERN);
+				assert.equal(request.query_empty, true);
+				assert.equal(request.response_status, 200);
+				assert.deepEqual(request.native_action, {
+					kind: "native_action",
+					destination: "session.model",
+					session_id: sessionId,
+				});
+				const b = attempts.find(
+					(a) =>
+						!a.observer &&
+						a.path === request.path &&
+						a.body?.args === "test/mock-model-b",
+				);
+				assert(
+					b &&
+						Number.isInteger(request.order) &&
+						Number.isInteger(request.delivery_order) &&
+						request.order < request.delivery_order &&
+						request.delivery_order < b.order,
+					"bare model receipt must precede B intent",
+				);
+				assert.notEqual(request.body.request_id, b.body.request_id);
+				assert.equal(
+					attempts.filter(
+						(a) =>
+							!a.observer && a.path === request.path && a.body?.args === "",
+					).length,
+					1,
+				);
+				continue;
+			}
 			assert.equal(request.body.args, "test/mock-model-b");
 			assert(
 				Object.keys(request.body).every((key) =>
@@ -329,8 +453,38 @@ export function assertModelTraffic(
 			),
 			`unsafe settings key ${request.path}`,
 		);
-		assert.deepEqual(Object.keys(request.body).sort(), ["base", "value"]);
-		assert.equal(request.body.base, null);
+		const keys = Object.keys(request.body).sort();
+		assert(
+			(keys.length === 1 && keys[0] === "value") ||
+				(keys.length === 2 && keys[0] === "base" && keys[1] === "value"),
+		);
+		if (Object.hasOwn(request.body, "base"))
+			assert.equal(request.body.base, null);
+		assert.equal(request.query_empty, true);
+		assert.equal(request.response_status, 200);
+		assert(
+			Number.isInteger(proof.saveBarrierOrder) &&
+				Number.isInteger(request.order) &&
+				request.order > proof.saveBarrierOrder,
+			"default write preceded explicit gesture barrier",
+		);
+		assert(
+			Number.isInteger(request.delivery_order) &&
+				request.delivery_order > request.order,
+		);
+		assert.deepEqual(
+			attempts
+				.filter((a) => !a.observer && a.method === "PATCH")
+				.map((a) => a.path),
+			["/v1/settings/hosting", "/v1/settings/model_name"],
+		);
+		const settingsWrites = attempts.filter(
+			(a) => !a.observer && a.method === "PATCH",
+		);
+		assert(
+			settingsWrites[0].delivery_order < settingsWrites[1].order,
+			"model_name write preceded hosting acceptance",
+		);
 		assert.equal(
 			request.body.value,
 			request.path.endsWith("/hosting") ? "test" : "mock-model-b",
@@ -347,6 +501,7 @@ export function modelBackendPythonEnv({ scratch, token, observerToken }) {
 	return pythonChildEnv({
 		base: {
 			MODEL_CASE_GUARD_LOG: join(scratch, "blocked-network.ndjson"),
+			MODEL_CASE_FIXTURE_CWD: scratch,
 			MODEL_CASE_CHILD_PIDS: join(scratch, "owned-child-pids"),
 			PATH: process.env.PATH,
 			HOME: home,
@@ -398,6 +553,16 @@ export async function startModelBackend({ output }) {
 		join(config, "config.yml"),
 		"values:\n  hosting: test\n  model_name: mock-model\n  language: en\n",
 	);
+	// Only this exact predeclared synthetic default may authorize neutral preview.
+	assert.equal(
+		readFileSync(join(config, "config.yml"), "utf8"),
+		"values:\n  hosting: test\n  model_name: mock-model\n  language: en\n",
+	);
+	const policyScope = {
+		scopeId: createHash("sha256").update(realpathSync(config)).digest("hex"),
+		fixtureCwd: realpathSync(scratch),
+		defaultSynthetic: true,
+	};
 	// Seed with the production writer/parser and capture stamp. These are INITIAL
 	// cached rows; the real live pass is allowed to answer empty and is held.
 	const seed =
@@ -706,6 +871,7 @@ export async function startModelBackend({ output }) {
 		scratch,
 		token,
 		readTemplates,
+		policyScope,
 		records: join(config, "run", "serve"),
 		state,
 		control,
@@ -1107,6 +1273,7 @@ export const modelUncertaintyCase = {
 			`/* model-case: mark-save */ (()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(e=>/^set current model as default$/i.test(e.textContent.trim()));if(!b)throw Error('explicit default save missing');b.setAttribute('data-model-case-save','')})()`,
 		);
 		await assertB("before-explicit-save");
+		const saveBarrierOrder = (await backend.state()).evidence_order;
 		await press("[data-model-case-save]");
 		const until = Date.now() + 10_000;
 		for (;;) {
@@ -1122,6 +1289,21 @@ export const modelUncertaintyCase = {
 			backend.sessionId,
 			backend.readTemplates,
 			traffic.feed_opens,
+			{
+				...backend.policyScope,
+				listWitnesses: traffic.list_witnesses,
+				saveBarrierOrder,
+			},
+		);
+		assert.equal(
+			traffic.attempts.filter(
+				(a) =>
+					!a.observer &&
+					a.path === `/v1/desktop/sessions/${backend.sessionId}/commands` &&
+					a.body?.args === "",
+			).length,
+			1,
+			"exactly one native model picker open required",
 		);
 		const modelB = traffic.attempts.filter(
 			(r) =>

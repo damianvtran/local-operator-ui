@@ -292,7 +292,24 @@ function oracleContext(mode = "happy") {
 	const stamps = [];
 	const calls = [];
 	const receipts = [];
-	const attempts = [];
+	const attempts = [
+		{
+			method: "POST",
+			path: `/v1/desktop/sessions/${sid}/commands`,
+			observer: false,
+			body: {
+				request_id: "00000000-0000-0000-0000-000000000002",
+				command: "model",
+				args: "",
+				images: [],
+			},
+			native_action: {
+				kind: "native_action",
+				destination: "session.model",
+				session_id: sid,
+			},
+		},
+	];
 	const payload = (model, epoch, seq) => ({
 		session_id: sid,
 		epoch,
@@ -350,7 +367,15 @@ function oracleContext(mode = "happy") {
 	};
 	const state = () => {
 		const result = {
-			attempts: attempts.map((x) => ({ ...x })),
+			attempts: attempts.map((x, index) => ({
+				...x,
+				index,
+				order: index * 3 + 1,
+				delivery_order: index * 3 + 2,
+				query_empty: true,
+				response_status: 200,
+			})),
+			evidence_order: attempts.length * 3,
 			commit:
 				phase === "before"
 					? null
@@ -1591,4 +1616,253 @@ for (const mode of [
 for (const mode of ["duplicate-B", "extra-explicit-PATCH"])
 	test(`presence correction retains exact native mutation counts: ${mode}`, async () => {
 		await assert.rejects(modelUncertaintyCase.drive(oracleContext(mode)));
+	});
+
+function completeTrafficContext(baseNull = false) {
+	const uuid = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
+	const resident = "bbbbbbbbbbbb";
+	const scopeId = "owned-scope";
+	const list = {
+		index: 0,
+		order: 1,
+		delivery_order: 2,
+		method: "GET",
+		path: "/v1/desktop/sessions",
+		observer: false,
+		response_status: 200,
+	};
+	const snapshot = {
+		index: 1,
+		order: 3,
+		delivery_order: 4,
+		method: "GET",
+		path: `/v1/desktop/sessions/${resident}`,
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		query: {},
+	};
+	const entities = {
+		index: 2,
+		order: 5,
+		delivery_order: 6,
+		method: "GET",
+		path: `${snapshot.path}/command-entities`,
+		observer: false,
+		response_status: 200,
+		query_empty: false,
+		query: { command: "effort" },
+	};
+	const preview = {
+		index: 3,
+		order: 7,
+		delivery_order: 8,
+		method: "POST",
+		path: "/v1/desktop/sessions/preview",
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		cwd_owned: true,
+		scope_id: scopeId,
+		body: { request_id: uuid(3), cwd: "/owned/fixture" },
+	};
+	const bare = {
+		index: 4,
+		order: 9,
+		delivery_order: 10,
+		method: "POST",
+		path: `/v1/desktop/sessions/${sid}/commands`,
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		body: { request_id: uuid(2), command: "model", args: "", images: [] },
+		native_action: {
+			kind: "native_action",
+			destination: "session.model",
+			session_id: sid,
+		},
+	};
+	const b = {
+		index: 5,
+		order: 11,
+		delivery_order: 12,
+		method: "POST",
+		path: bare.path,
+		observer: false,
+		body: {
+			request_id: uuid(1),
+			command: "model",
+			args: "test/mock-model-b",
+			images: [],
+		},
+	};
+	const hosting = {
+		index: 6,
+		order: 15,
+		delivery_order: 16,
+		method: "PATCH",
+		path: "/v1/settings/hosting",
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		body: { value: "test", ...(baseNull ? { base: null } : {}) },
+	};
+	const model = {
+		index: 7,
+		order: 17,
+		delivery_order: 18,
+		method: "PATCH",
+		path: "/v1/settings/model_name",
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		body: { value: "mock-model-b", ...(baseNull ? { base: null } : {}) },
+	};
+	const witness = {
+		request_index: 0,
+		delivery_order: 2,
+		response_status: 200,
+		scope_id: scopeId,
+		rows: [{ id: resident, local: true, peer_null: true }],
+	};
+	return {
+		list,
+		snapshot,
+		entities,
+		preview,
+		bare,
+		b,
+		hosting,
+		model,
+		witness,
+		attempts: [list, snapshot, entities, preview, bare, b, hosting, model],
+		proof: {
+			scopeId,
+			fixtureCwd: "/owned/fixture",
+			defaultSynthetic: true,
+			saveBarrierOrder: 13,
+			listWitnesses: [witness],
+		},
+	};
+}
+test("complete six-gap policy accepts only witnessed local reads, neutral preview, native open and both valid explicit base shapes", () => {
+	for (const baseNull of [false, true]) {
+		const c = completeTrafficContext(baseNull);
+		assertModelTraffic(c.attempts, sid, [], [], c.proof);
+		c.preview.body.target = null;
+		c.preview.body.model = null;
+		assertModelTraffic(c.attempts, sid, [], [], c.proof);
+	}
+});
+for (const mode of [
+	"unlisted",
+	"future-list",
+	"observer-list",
+	"undelivered-list",
+	"non200-list",
+	"unknown-locality",
+	"peer-row",
+	"wrong-root",
+	"arbitrary-id",
+	"snapshot-query",
+	"entities-name",
+	"entities-wrong-command",
+	"entities-missing",
+	"encoded-path",
+	"preview-hash-only",
+	"preview-cwd",
+	"preview-symlink",
+	"preview-target",
+	"preview-model",
+	"preview-extra",
+	"preview-uuid",
+	"preview-reused-uuid",
+	"snapshot-missing-query-witness",
+	"hosting-late-receipt",
+	"preview-query",
+	"preview-status",
+	"preview-twice",
+	"default-not-synthetic",
+	"bare-no-receipt",
+	"bare-status",
+	"bare-wrong-case",
+	"bare-args",
+	"bare-images",
+	"bare-uuid",
+	"bare-reused-uuid",
+	"bare-second",
+	"bare-future-receipt",
+	"B-replay",
+	"wrong-base",
+	"extra-patch-field",
+	"wrong-value",
+	"wrong-order",
+	"duplicate-PATCH",
+	"early-write",
+	"failed-write",
+])
+	test(`complete six-gap policy rejects ${mode}`, () => {
+		const c = completeTrafficContext();
+		if (mode === "unlisted") c.proof.listWitnesses = [];
+		if (mode === "future-list") c.witness.delivery_order = 4;
+		if (mode === "observer-list") c.list.observer = true;
+		if (mode === "undelivered-list")
+			Reflect.deleteProperty(c.witness, "delivery_order");
+		if (mode === "non200-list") c.list.response_status = 401;
+		if (mode === "unknown-locality")
+			Reflect.deleteProperty(c.witness.rows[0], "local");
+		if (mode === "peer-row") c.witness.rows[0].peer_null = false;
+		if (mode === "wrong-root") c.witness.scope_id = "foreign-scope";
+		if (mode === "arbitrary-id")
+			c.snapshot.path = "/v1/desktop/sessions/cccccccccccc";
+		if (mode === "snapshot-query") c.snapshot.query = { journal_order: "1" };
+		if (mode === "entities-name")
+			c.entities.query = { command: "effort", name: "foreign" };
+		if (mode === "entities-wrong-command")
+			c.entities.query = { command: "model" };
+		if (mode === "entities-missing") c.entities.query = {};
+		if (mode === "encoded-path") c.snapshot.path += "%2f";
+		if (mode === "preview-hash-only") Reflect.deleteProperty(c.preview, "body");
+		if (mode === "preview-cwd") c.preview.body.cwd = "/foreign";
+		if (mode === "preview-symlink") c.preview.cwd_owned = false;
+		if (mode === "preview-target") c.preview.body.target = { agent: "foreign" };
+		if (mode === "preview-model")
+			c.preview.body.model = { provider: "real", model_id: "real" };
+		if (mode === "preview-extra") c.preview.body.extra = true;
+		if (mode === "preview-uuid") c.preview.body.request_id = "invalid";
+		if (mode === "preview-reused-uuid")
+			c.preview.body.request_id = c.b.body.request_id;
+		if (mode === "snapshot-missing-query-witness")
+			Reflect.deleteProperty(c.snapshot, "query_empty");
+		if (mode === "hosting-late-receipt") c.hosting.delivery_order = 18;
+		if (mode === "preview-query") c.preview.query_empty = false;
+		if (mode === "preview-status") c.preview.response_status = 422;
+		if (mode === "preview-twice") c.attempts.push(structuredClone(c.preview));
+		if (mode === "default-not-synthetic") c.proof.defaultSynthetic = false;
+		if (mode === "bare-no-receipt")
+			Reflect.deleteProperty(c.bare, "native_action");
+		if (mode === "bare-status") c.bare.response_status = 500;
+		if (mode === "bare-wrong-case")
+			c.bare.native_action.session_id = "cccccccccccc";
+		if (mode === "bare-args") c.bare.body.args = " ";
+		if (mode === "bare-images") c.bare.body.images = ["image"];
+		if (mode === "bare-uuid") c.bare.body.request_id = "invalid";
+		if (mode === "bare-reused-uuid")
+			c.bare.body.request_id = c.b.body.request_id;
+		if (mode === "bare-second") c.attempts.push(structuredClone(c.bare));
+		if (mode === "bare-future-receipt") c.bare.delivery_order = 12;
+		if (mode === "B-replay")
+			c.attempts.push({
+				...c.b,
+				body: { ...c.b.body, args: "test/other-model" },
+			});
+		if (mode === "wrong-base") c.hosting.body.base = {};
+		if (mode === "extra-patch-field") c.hosting.body.extra = true;
+		if (mode === "wrong-value") c.model.body.value = "real-model";
+		if (mode === "wrong-order")
+			[c.attempts[6], c.attempts[7]] = [c.model, c.hosting];
+		if (mode === "duplicate-PATCH") c.attempts.push(structuredClone(c.model));
+		if (mode === "early-write") c.hosting.order = 12;
+		if (mode === "failed-write") c.hosting.response_status = 500;
+		assert.throws(() => assertModelTraffic(c.attempts, sid, [], [], c.proof));
 	});

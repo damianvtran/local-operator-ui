@@ -174,6 +174,93 @@ class Contracts(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(gate.feed_opens, [])
             self.assertNotIn("never-retain-this", json.dumps(gate.attempts + gate.feed_opens))
 
+    async def test_original_list_minimization_delivered_before_resident_queries(self):
+        gate = module.DeliveryGate()
+        gate.scope_id = "owned-scope"
+        data = {"result": {"sessions": [{"id": "bbbbbbbbbbbb", "locality": "local", "peer": None, "name": "NEVER_RETAIN_TITLE", "preview": "NEVER_RETAIN_CONTENT"}, {"id": "cccccccccccc"}]}}
+        original = json.dumps(data).encode()
+        async def listing(scope, receive, send):
+            await send({"type": "http.response.start", "status": 200})
+            for byte in original:
+                await send({"type": "http.response.body", "body": bytes([byte]), "more_body": True})
+            await send({"type": "http.response.body", "body": b"", "more_body": False})
+        sent = await self.invoke(listing, gate, path="/v1/desktop/sessions")
+        self.assertEqual(b"".join(m.get("body", b"") for m in sent), original)
+        witness = gate.list_witnesses[0]
+        self.assertEqual(witness["rows"], [{"id": "bbbbbbbbbbbb", "local": True, "peer_null": True}, {"id": "cccccccccccc", "local": False, "peer_null": False}])
+        self.assertNotIn("NEVER_RETAIN", json.dumps(witness))
+        async def read(scope, receive, send):
+            await send({"type": "http.response.start", "status": 200})
+            await send({"type": "http.response.body", "body": b"{}"})
+        await self.invoke(read, gate, path="/v1/desktop/sessions/bbbbbbbbbbbb/command-entities", query=b"command=effort")
+        self.assertEqual(gate.attempts[-1]["query"], {"command": "effort"})
+        self.assertLess(witness["delivery_order"], gate.attempts[-1]["order"])
+        for query in (b"command=effort&command=model", b"name=NEVER_RETAIN_QUERY", b"comm%61nd=effort", b"command=model"):
+            await self.invoke(read, gate, path="/v1/desktop/sessions/bbbbbbbbbbbb/command-entities", query=query)
+            self.assertTrue(gate.attempts[-1]["query_invalid"])
+            self.assertNotIn("NEVER_RETAIN_QUERY", json.dumps(gate.attempts[-1]))
+
+    async def test_undelivered_or_non200_list_never_authorizes_resident(self):
+        for failed_send, status in ((True, 200), (False, 401)):
+            gate = module.DeliveryGate()
+            gate.scope_id = "owned-scope"
+            async def app(scope, receive, send):
+                await send({"type": "http.response.start", "status": status})
+                await send({"type": "http.response.body", "body": b'{"result":{"sessions":[{"id":"bbbbbbbbbbbb","locality":"local","peer":null}]}}'})
+            async def receive():
+                return {"type": "http.request", "body": b""}
+            async def send(message):
+                if failed_send and message["type"] == "http.response.body":
+                    raise RuntimeError("original delivery failed")
+            scope = {"type": "http", "method": "GET", "path": "/v1/desktop/sessions", "query_string": b"", "headers": []}
+            if failed_send:
+                with self.assertRaisesRegex(RuntimeError, "original delivery failed"):
+                    await module.ModelUncertaintyMiddleware(app, gate=gate)(scope, receive, send)
+            else:
+                await module.ModelUncertaintyMiddleware(app, gate=gate)(scope, receive, send)
+            self.assertEqual(gate.list_witnesses, [])
+
+    async def test_preview_exact_owned_cwd_null_selection_and_symlink_escape(self):
+        import tempfile
+        with tempfile.TemporaryDirectory(dir=os.environ.get("TMPDIR")) as directory:
+            owned = Path(directory).resolve() / "fixture"
+            owned.mkdir()
+            foreign = Path(directory).resolve() / "foreign"
+            foreign.mkdir()
+            (owned / "escape").symlink_to(foreign, target_is_directory=True)
+            gate = module.DeliveryGate()
+            gate.fixture_cwd = str(owned)
+            gate.scope_id = "owned-scope"
+            calls = []
+            async def app(scope, receive, send):
+                calls.append(await receive())
+                await send({"type": "http.response.start", "status": 200})
+                await send({"type": "http.response.body", "body": b"{}"})
+            neutral = {"request_id": "00000000-0000-0000-0000-000000000003", "cwd": str(owned), "target": None, "model": None}
+            await self.invoke(app, gate, method="POST", path="/v1/desktop/sessions/preview", body=json.dumps(neutral).encode())
+            self.assertEqual(gate.attempts[-1]["body"], neutral)
+            for change in ({"cwd": str(foreign)}, {"cwd": str(owned / "escape")}, {"cwd": "../fixture"}, {"cwd": str(owned / "missing")}, {"target": {"peer": "NEVER_RETAIN_TARGET"}}, {"model": {"provider": "real", "model_id": "NEVER_RETAIN_MODEL"}}, {"extra": "NEVER_RETAIN_EXTRA"}):
+                await self.invoke(app, gate, method="POST", path="/v1/desktop/sessions/preview", body=json.dumps(neutral | change).encode())
+                self.assertTrue(gate.attempts[-1]["preview_scope_invalid"])
+                self.assertNotIn("body", gate.attempts[-1])
+                self.assertNotIn("NEVER_RETAIN", json.dumps(gate.attempts[-1]))
+            self.assertEqual(len(calls), 8, "recorder must not suppress invalid attempts")
+
+    async def test_bare_model_records_only_exact_original_native_action(self):
+        gate = module.DeliveryGate()
+        gate.session_id = "aaaaaaaaaaaa"
+        body = {"request_id": "00000000-0000-0000-0000-000000000002", "command": "model", "args": "", "images": []}
+        for destination in ("session.model", "wrong"):
+            original = json.dumps({"result": {"command": "model", "result": {"kind": "native_action", "destination": destination, "session_id": gate.session_id, "args": "", "fields": ["NEVER_RETAIN_FIELDS"]}}}).encode()
+            async def app(scope, receive, send):
+                await receive()
+                await send({"type": "http.response.start", "status": 200})
+                await send({"type": "http.response.body", "body": original[:13], "more_body": True})
+                await send({"type": "http.response.body", "body": original[13:]})
+            await self.invoke(app, gate, method="POST", path=f"/v1/desktop/sessions/{gate.session_id}/commands", body=json.dumps(body).encode())
+            self.assertEqual(gate.attempts[-1]["native_action"] is not None, destination == "session.model")
+            self.assertNotIn("NEVER_RETAIN", json.dumps(gate.attempts[-1]))
+
     async def test_wrong_source_and_version_fail_before_app_boot(self):
         with self.assertRaisesRegex(RuntimeError, "borrowed"):
             module.validate_core(Path("/foreign/local_operator/__init__.py"), Path("/owned"), "0.94.15")

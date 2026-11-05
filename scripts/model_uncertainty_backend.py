@@ -15,6 +15,8 @@ from pathlib import Path
 import sys
 import threading
 import hashlib
+import re
+from urllib.parse import parse_qsl
 from typing import Any
 
 CORE_VERSION = "0.94.15"
@@ -49,6 +51,11 @@ class DeliveryGate:
         self.captured_bytes = 0
         self.feed_opens: list[dict[str, Any]] = []
         self.evidence_order = 0
+        root = os.environ.get("LOCAL_OPERATOR_CONFIG_DIR", "")
+        self.scope_id = hashlib.sha256(str(Path(root).resolve()).encode()).hexdigest() if root else None
+        cwd = os.environ.get("MODEL_CASE_FIXTURE_CWD", "")
+        self.fixture_cwd = str(Path(cwd).resolve(strict=True)) if cwd else None
+        self.list_witnesses: list[dict[str, Any]] = []
 
     def next_order(self) -> int:
         self.evidence_order += 1
@@ -85,6 +92,28 @@ class ModelUncertaintyMiddleware:
         attempt["order"] = self.gate.next_order()
         self.gate.attempts.append(attempt)
         is_presence = path == "/v1/desktop/presence"
+        is_preview = path == "/v1/desktop/sessions/preview" and scope["method"] == "POST"
+        is_list = not observer and path == "/v1/desktop/sessions" and scope["method"] == "GET"
+        is_session_read = scope["method"] == "GET" and re.fullmatch(r"/v1/desktop/sessions/[a-f0-9]{12}(?:/command-entities)?", path) is not None
+        is_reviewed_write = path in {"/v1/settings/hosting", "/v1/settings/model_name"} or path.endswith("/commands") or is_preview
+        if is_session_read or is_reviewed_write:
+            raw_query = scope.get("query_string", b"")
+            attempt["query_empty"] = not bool(raw_query)
+            try:
+                if len(raw_query) > 512:
+                    raise ValueError("query bound")
+                pairs = parse_qsl(raw_query.decode("utf-8"), keep_blank_values=True, strict_parsing=True, errors="strict", max_num_fields=4)
+                if len({key for key, _ in pairs}) != len(pairs) or (pairs and pairs != [("command", "effort")]):
+                    raise ValueError("unreviewed query")
+                # Require canonical bytes too: percent-encoded aliases are not
+                # silently promoted into another allowed path/query surface.
+                if raw_query not in (b"", b"command=effort"):
+                    raise ValueError("noncanonical query")
+                attempt["query"] = dict(pairs)
+            except (ValueError, UnicodeDecodeError):
+                attempt["query_invalid"] = True
+                attempt["query_sha256"] = hashlib.sha256(raw_query).hexdigest()
+
         if is_presence:
             attempt["query_empty"] = not bool(scope.get("query_string", b""))
         # Observe original bytes on the existing app feed only. No extra stream,
@@ -94,13 +123,16 @@ class ModelUncertaintyMiddleware:
         feed_buffer = b""
         feed_done = False
         response_status: int | None = None
+        json_buffer = bytearray()
+        json_failed = False
+        json_deadline = self.gate.loop.time() + 30
         downstream_send = send
 
         async def observed_send(message: dict[str, Any]) -> None:
-            nonlocal feed_open, feed_buffer, feed_done, response_status
+            nonlocal feed_open, feed_buffer, feed_done, response_status, json_failed
             if message["type"] == "http.response.start":
                 response_status = message["status"]
-                if is_presence:
+                if is_presence or is_session_read or is_reviewed_write or is_list:
                     attempt["response_status"] = response_status
             if is_app_feed and response_status == 200 and not feed_done and message["type"] == "http.response.body":
                 chunk = message.get("body", b"")
@@ -130,6 +162,44 @@ class ModelUncertaintyMiddleware:
             if is_app_feed and feed_open is not None and message["type"] == "http.response.body" and not message.get("more_body", False) and feed_open["close_order"] is None:
                 feed_open["close_order"] = self.gate.next_order()
             await downstream_send(message)
+            # Witness authority ONLY after ORIGINAL bytes successfully delivered.
+            # Buffer at most one bounded list/native-action response transiently;
+            # retained evidence contains neither titles nor transcript content.
+            bare_model = path.endswith("/commands") and attempt.get("body", {}).get("command") == "model" and attempt.get("body", {}).get("args") == ""
+            if (is_list or bare_model) and message["type"] == "http.response.body" and not json_failed:
+                chunk = message.get("body", b"")
+                if len(json_buffer) + len(chunk) > 1_000_000 or self.gate.loop.time() > json_deadline:
+                    json_failed = True
+                    json_buffer.clear()
+                    attempt["response_evidence_invalid"] = True
+                else:
+                    json_buffer.extend(chunk)
+                    if not message.get("more_body", False):
+                        attempt["delivery_order"] = self.gate.next_order()
+                        try:
+                            data = json.loads(json_buffer)
+                            result = data["result"]
+                            if is_list and response_status == 200 and self.gate.scope_id:
+                                rows = result["sessions"]
+                                if not isinstance(rows, list) or len(rows) > 512 or len(self.gate.list_witnesses) >= 32:
+                                    raise ValueError("list evidence bound")
+                                safe_rows = []
+                                for row in rows:
+                                    if not isinstance(row, dict):
+                                        raise ValueError("invalid row")
+                                    sid = row.get("id")
+                                    if isinstance(sid, str) and re.fullmatch(r"[a-f0-9]{12}", sid):
+                                        safe_rows.append({"id": sid, "local": "locality" in row and row["locality"] == "local", "peer_null": "peer" in row and row["peer"] is None})
+                                self.gate.list_witnesses.append({"request_index": index, "delivery_order": attempt["delivery_order"], "response_status": response_status, "scope_id": self.gate.scope_id, "rows": safe_rows})
+                            elif bare_model:
+                                action = result["result"]
+                                attempt["native_action"] = {"kind": action.get("kind"), "destination": action.get("destination"), "session_id": action.get("session_id")} if result.get("command") == "model" and action.get("kind") == "native_action" and action.get("destination") == "session.model" and action.get("session_id") == self.gate.session_id and action.get("args") == "" else None
+                        except (ValueError, KeyError, TypeError, AttributeError, RecursionError):
+                            attempt["response_evidence_invalid"] = True
+                        finally:
+                            json_buffer.clear()
+            if is_reviewed_write and message["type"] == "http.response.body" and not message.get("more_body", False):
+                attempt["delivery_order"] = self.gate.next_order()
             if feed_open is not None:
                 feed_open["delivered"] = True
 
@@ -152,6 +222,22 @@ class ModelUncertaintyMiddleware:
             if isinstance(parsed, dict):
                 if path.endswith("/commands") or path in {"/v1/settings/hosting", "/v1/settings/model_name"}:
                     attempt["body"] = parsed
+                elif is_preview:
+                    safe = (set(parsed).issubset({"request_id", "cwd", "target", "model"}) and {"request_id", "cwd"}.issubset(parsed)
+                            and isinstance(parsed["request_id"], str) and re.fullmatch(r"[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}", parsed["request_id"]) is not None
+                            and parsed.get("target") is None and parsed.get("model") is None)
+                    try:
+                        cwd = parsed.get("cwd")
+                        owned = isinstance(cwd, str) and len(cwd) <= 4096 and Path(cwd).is_absolute() and str(Path(cwd).resolve(strict=True)) == cwd == self.gate.fixture_cwd and Path(cwd).is_dir()
+                    except (ValueError, OSError, RuntimeError):
+                        owned = False
+                    if safe and owned:
+                        attempt["body"] = parsed
+                        attempt["cwd_owned"] = True
+                        attempt["scope_id"] = self.gate.scope_id
+                    else:
+                        attempt["preview_scope_invalid"] = True
+                        attempt["body_sha256"] = hashlib.sha256(body).hexdigest()
                 elif is_presence and scope["method"] == "POST":
                     # Only the reviewed nonsecret shape is retained. Invalid
                     # bodies still count/hash, but unknown fields/values never
@@ -296,7 +382,7 @@ def control_pipe(gate: DeliveryGate) -> None:
                 seed_catalogue()
             elif command["op"] != "state":
                 raise ValueError("unsupported control operation")
-            result = {"id": command["id"], "ok": True, "attempts": gate.attempts, "captures": gate.captures, "feed_opens": gate.feed_opens, "commit": gate.commit, "identity": {"prefix": sys.prefix, "version": importlib.metadata.version("local-operator")}}
+            result = {"id": command["id"], "ok": True, "attempts": gate.attempts, "captures": gate.captures, "feed_opens": gate.feed_opens, "list_witnesses": gate.list_witnesses, "scope_id": gate.scope_id, "evidence_order": gate.evidence_order, "commit": gate.commit, "identity": {"prefix": sys.prefix, "version": importlib.metadata.version("local-operator")}}
         except (ValueError, KeyError, RuntimeError) as error:
             result = {"id": command.get("id") if isinstance(command, dict) else None, "ok": False, "error": str(error)}
         print("MODEL_CASE_CONTROL " + json.dumps(result), flush=True)
