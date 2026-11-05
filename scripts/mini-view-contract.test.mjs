@@ -463,6 +463,7 @@ test("a contrast or accent write is a theme write when the tuple is compared", (
 			s.contrast.light,
 			s.accent.dark,
 			s.accent.light,
+			s.customThemeId ?? null,
 		]);
 	const write = (next) =>
 		themeNameFromPreferencesWrite({
@@ -473,6 +474,11 @@ test("a contrast or accent write is a theme write when the tuple is compared", (
 			currentAppearance: key(state),
 		});
 	assert.equal(write({ ...state, sidebarWidth: 300 }), null, "unrelated write");
+	assert.equal(
+		write({ ...state, customThemeId: "custom-synthetic" }),
+		"obsidian",
+		"saved custom identity is an appearance change, even with the same base",
+	);
 	assert.equal(
 		write({ ...state, contrast: { dark: 100, light: 0 } }),
 		"obsidian",

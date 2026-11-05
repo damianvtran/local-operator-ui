@@ -2363,6 +2363,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setTheme: (themeName: ThemeName) => {
 				set({
 					themeName,
+					customThemeId: null,
 				});
 			},
 

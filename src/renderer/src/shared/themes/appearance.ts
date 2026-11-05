@@ -35,6 +35,7 @@ import type { Theme } from "@mui/material/styles";
 import type { AccentRef } from "../../../../shared/theme-engine/accent.mjs";
 import type { Composition } from "../../../../shared/theme-engine/compose.mjs";
 import { composeTheme } from "../../../../shared/theme-engine/compose.mjs";
+import { paletteHash } from "../../../../shared/theme-engine/compose.mjs";
 import {
 	isSafePaletteValue,
 	isSafeThemeId,
@@ -50,6 +51,12 @@ export const COMPOSED_STYLE_ID = "lo-composed-theme";
 
 export type Appearance = {
 	themeName: ThemeName;
+	/** The active saved theme's id. Its palette is NOT looked up here: this
+	 * module stays free of the theme library and the preferences store so the
+	 * composition engine can be bundled (and tested) without either. Callers
+	 * with a library pass the derived palette as `resolveAppearance`'s second
+	 * argument. */
+	customThemeId?: string | null;
 	contrast: { dark: number; light: number };
 	accent: { dark: AccentRef; light: AccentRef };
 };
@@ -114,15 +121,28 @@ const compositionCache = new Map<string, Composition<ThemePalette>>();
  */
 export const resolveAppearance = (
 	appearance: Appearance,
+	/** A saved theme's DERIVED palette, when one is active. */
+	customPalette?: ThemePalette,
+	/** Its base palette id: the contract's pins are keyed by it. */
+	customBaseId?: ThemeName,
 ): ResolvedAppearance => {
 	const option = getTheme(appearance.themeName);
 	const definition = definitionOf(option.id);
 	if (!definition) throw new Error(`no palette for theme ${option.id}`);
-	const base = definition.palette;
+	const base = customPalette ?? definition.palette;
 	const mode = base.mode;
+	const baseId = customBaseId ?? option.id;
 	const contrast = appearance.contrast[mode] ?? 0;
 	const accent = appearance.accent[mode];
-	const key = JSON.stringify([option.id, contrast, accent ?? null]);
+	const key = JSON.stringify([
+		option.id,
+		customBaseId ?? null,
+		// A library revision changes no preference field. Hash ALL authored roles
+		// so same-base themes and edits to the active ID cannot reuse old paint.
+		customPalette ? paletteHash(customPalette) : null,
+		contrast,
+		accent ?? null,
+	]);
 	let composition = compositionCache.get(key);
 	if (composition) {
 		compositionCache.delete(key);
@@ -130,7 +150,7 @@ export const resolveAppearance = (
 		composition = composeTheme(base, {
 			contrast,
 			accent,
-			id: option.id,
+			id: baseId,
 			paletteAccent: accentOf,
 		});
 	}
@@ -139,17 +159,18 @@ export const resolveAppearance = (
 		const oldest = compositionCache.keys().next().value;
 		if (oldest !== undefined) compositionCache.delete(oldest);
 	}
-	if (composition.identity) {
+	if (composition.identity && !customBaseId) {
 		return {
 			...composition,
 			id: option.id,
 			muiTheme: option.theme,
 		};
 	}
-	const id = composition.id ?? option.id;
+	const id = `lo-${paletteHash(composition.palette)}`;
 	return {
 		...composition,
 		id,
+		identity: false,
 		muiTheme: muiThemeFor(id, composition.palette),
 	};
 };
@@ -178,8 +199,12 @@ const safeToWrite = (id: string, palette: ThemePalette): boolean =>
 export const applyAppearance = (
 	appearance: Appearance,
 	doc: Document = document,
+	/** A saved theme's derived palette (see `resolveAppearance`). */
+	customPalette?: ThemePalette,
+	customBaseId?: ThemeName,
 	/* Injected for tests only: the composition to publish. */
-	resolve: (a: Appearance) => ResolvedAppearance = resolveAppearance,
+	resolve: (a: Appearance) => ResolvedAppearance = (a) =>
+		resolveAppearance(a, customPalette, customBaseId),
 ): ResolvedAppearance => {
 	let resolved = resolve(appearance);
 	if (!resolved.identity && !safeToWrite(resolved.id, resolved.palette)) {
@@ -227,6 +252,7 @@ export const applyAppearance = (
  */
 export const appearanceOf = (state: Appearance): Appearance => ({
 	themeName: state.themeName,
+	customThemeId: state.customThemeId ?? null,
 	contrast: state.contrast,
 	accent: state.accent,
 });
@@ -244,6 +270,7 @@ export const appearanceKey = (appearance: Appearance): string =>
 		appearance.contrast?.light ?? 0,
 		appearance.accent?.dark ?? null,
 		appearance.accent?.light ?? null,
+		appearance.customThemeId ?? null,
 	]);
 
 /**
@@ -255,8 +282,10 @@ export const appearanceKey = (appearance: Appearance): string =>
  */
 export const composedPaletteVars = (
 	appearance: Appearance,
+	customPalette?: ThemePalette,
+	customBaseId?: ThemeName,
 ): Record<string, string> | null => {
-	const resolved = resolveAppearance(appearance);
+	const resolved = resolveAppearance(appearance, customPalette, customBaseId);
 	if (resolved.identity) return null;
 	const { mode: _mode, ...roles } = resolved.palette;
 	return roles as Record<string, string>;
