@@ -1,0 +1,94 @@
+{
+  "translator_instance": "fd3ba80e8c8f",
+  "translator_agent": "task",
+  "translator_model": "openai/gpt-6.1-sol",
+  "date": "2026-11-04",
+  "fallback": "Fallback in effect: the session was booted on anthropic/claude-opus-5-5 and the harness routed calls to openai/gpt-6.1-sol from 2026-11-04 20:26:58 (reason \"provider failure: quota\"); every model call of this 160-key task billed to openai/gpt-6.1-sol.",
+  "source_path": "/Users/damian/.local-operator/sessions/a9f616ccf032/scratchpad/custom-theme-editor.en.json",
+  "source_sha256": "470a5201f0d058adc3072d859f08e2f8f4467f57fb407c828a7420e3cf5c6197",
+  "namespace": "ui.settings.appearance.editor",
+  "scope": "160 English keys × 7 locales = 1120 translated entries; scratch proposal only.",
+  "source_contract": "Source ICU plural/select arms, identifiers, markup and placeholders preserved exactly, including one/other in zh-CN and vi. Independent auditor should assess locale plural behavior; this task did not modify the English/source arm set.",
+  "terminology": "Read-only B appearance catalogues in ~/local-operator-ui/.worktrees/layered-picker; same Theme/Accent/Contrast/Lightness/Hue terminology. Human colour-role labels, not token identifiers.",
+  "intent": "Full editor is advanced. Contrast remains independent of saved theme; selected accent applies on top.",
+  "guide_hashes": {
+    "/Users/damian/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "/Users/damian/local-operator/i18n/style-guides/fr.md": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+    "/Users/damian/local-operator/i18n/style-guides/es.md": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+    "/Users/damian/local-operator/i18n/style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+    "/Users/damian/local-operator/i18n/style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "/Users/damian/local-operator/i18n/style-guides/vi.md": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+    "/Users/damian/local-operator/i18n/style-guides/ur.md": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+    "/Users/damian/local-operator/i18n/style-guides/hi.md": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "outputs": {
+    "fr": {
+      "keys": 160,
+      "sha256": "5adb7193f2ec988714628a36c3002da372abdd8d9b1656873e57080b27243864",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/custom-theme-editor.fr.json"
+    },
+    "es": {
+      "keys": 160,
+      "sha256": "57f851c2df5428a08bec312835822f2988d67aaf2cc4ef4555fdbf7fb6dd69e2",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/custom-theme-editor.es.json"
+    },
+    "zh-CN": {
+      "keys": 160,
+      "sha256": "ae801d9454457589bbf19551aa13d187602f88f97f396a51d4bfa8c2eaf98f08",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/custom-theme-editor.zh-CN.json"
+    },
+    "ru": {
+      "keys": 160,
+      "sha256": "e43e88d089db8bd87e2ae3373083fbc4f7c05409154fee6e00e7feb85081172d",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/custom-theme-editor.ru.json"
+    },
+    "vi": {
+      "keys": 160,
+      "sha256": "6cd2362c15bf113c2d4d31981e3502d92e47b0ffb66290f1b76c6930264bedcb",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/custom-theme-editor.vi.json"
+    },
+    "ur": {
+      "keys": 160,
+      "sha256": "e3d0a7183d57c6548ad4557f6b8edf6377fe69ab434ed2a7556027b2d1fb84b6",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/custom-theme-editor.ur.json"
+    },
+    "hi": {
+      "keys": 160,
+      "sha256": "864317249c191324c87fd186433f6793d5828493a94448e7d367d54e04c1c66f",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/custom-theme-editor.hi.json"
+    }
+  },
+  "validation": {
+    "command": "python3 ~/local-operator/scripts/run_bounded.py --memory-mb 768 --timeout 60 -- python3 $LOCAL_OPERATOR_SCRATCHPAD/validate-custom-editor.py",
+    "exit_code": 0,
+    "duration_seconds": 0.5,
+    "result": "PASS 160 keys per locale; identifiers, ICU selectors, tags, braces, #, technical literals, no bidi controls",
+    "artifact": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/custom-theme-editor.validation.json"
+  },
+  "repository_writes": "None. No worktree creation, commits, pushes, dependency installs or full scanners.",
+  "audit_status": "NOT AUDITED. Independent auditor must inspect actual incorporated bytes. No rendered fit or native-reader claim.",
+  "correction": {
+    "kind": "REPLACEMENT record: the first version of this file claimed anthropic/claude-opus-5-5 with no fallback, which was wrong for this task",
+    "corrected_at": "2026-11-04",
+    "superseded_record": "custom-theme-editor.provenance.superseded-20261104T210545Z.json",
+    "superseded_record_sha256": "c350aa5378fbe0195977c07f389a9c014d47304a7654261be935e48a2d773730",
+    "superseded_claim": {
+      "translator_model": "anthropic/claude-opus-5-5",
+      "fallback": "None used for this 160-key editor translation task."
+    },
+    "how_discovered": "Independent auditor for #1687 (session 52010) questioned the claim; re-derived from the harness per-call identity ledger rather than the boot-time selection snapshot.",
+    "evidence": {
+      "transcript": "~/.local-operator/sessions/fd3ba80e8c8f/transcript.jsonl",
+      "route_event": "custom active_model_route @ 2026-11-04 20:26:58: primary anthropic/claude-opus-5-5, active openai/gpt-6.1-sol, reason \"provider failure: quota\"",
+      "turn_start": "selected_model records the configured selector (anthropic/claude-opus-5-5), not the serving identity; the editor turn started 21:00:28",
+      "spend_ledger": {
+        "at_turn_start_21:00:34": "session_spend last_identity openai/gpt-6.1-sol; calls 55 (anthropic 52, openai 3)",
+        "at_outputs_written_21:05:04": "session_spend last_identity openai/gpt-6.1-sol; calls 67 (anthropic 52, openai 15)",
+        "at_provenance_written_21:05:45": "session_spend last_identity openai/gpt-6.1-sol; calls 70 (anthropic 52, openai 18)",
+        "reading": "anthropic call count stays frozen at 52 across the whole turn while openai/gpt-6.1-sol rises 3->18, so all 15 model calls of this task were served by openai/gpt-6.1-sol. Output files carry mtime 21:05:04."
+      }
+    },
+    "unaffected": "Translated values, the 160-key source hash and the mechanical validation result are unchanged; only the model claim was wrong.",
+    "not_claimed": "This is a translator-side self-correction, not an audit verdict."
+  }
+}
