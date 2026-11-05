@@ -52,7 +52,10 @@ export type PreviewState = "idle" | "loading" | "playing" | "failed";
  */
 export const STATIC_ROW_CLASS =
 	"group/row flex min-h-11 items-center gap-3 border-b border-hairline px-2";
-export const ROW_CLASS = `${STATIC_ROW_CLASS} hover:bg-row-hover`;
+// Keep the complete selectable row literal: the row-state contract's AST
+// scan must see every rung without evaluating a runtime substitution.
+export const ROW_CLASS =
+	"group/row flex min-h-11 items-center gap-3 border-b border-hairline px-2 hover:bg-row-hover";
 
 /**
  * The radio ring's hover step. `border-control` on `row-hover` is under 3:1 in

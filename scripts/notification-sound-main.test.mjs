@@ -105,7 +105,14 @@ test("an OS without notifications answers `unsupported`", async () => {
 	assert.equal(made.length, 0);
 });
 
-test("a stalled sound refresh is bounded, then the banner goes out", async () => {
+test("a stalled sound refresh is bounded, then the banner goes out", async (t) => {
+	// Production deliberately unrefs its 1.5s fallback timer, so that a test
+	// banner cannot keep a quitting app alive. With no other handles in this
+	// isolated test worker, Node may exit before that promise settles (Linux
+	// CI cancelled this and its four successors). Own a bounded referenced
+	// handle for the test, never change the production shutdown behaviour.
+	const keepAlive = setTimeout(() => {}, 5000);
+	t.after(() => clearTimeout(keepAlive));
 	const { made, create } = banners();
 	let refreshed = 0;
 	const started = Date.now();

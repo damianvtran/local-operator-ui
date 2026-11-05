@@ -42,6 +42,31 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"fr:ui.settings.notifications.section.title",
+		"French cognate « Notifications »; independently audited in D2 r2 (b5bf3a7c1761). This exact French heading is not an English fallback.",
+	],
+	[
+		"fr:ui.settings.notifications.volume.label",
+		"French cognate « Volume »; independently audited in D2 r2 (b5bf3a7c1761). This exact French label is not an English fallback.",
+	],
+	[
+		"hi:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+
+	[
 		"es:ui.teamBridge.attachmentCard.bytes",
 		"Spanish standard unit copy is {size, number} bytes; independently audited by f93eb129057e (S3 receipt). Exact locale/key only, not an English fallback.",
 	],
