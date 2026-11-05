@@ -43,6 +43,7 @@ import {
 } from "../../../../shared/theme-engine/css.mjs";
 import type { ThemeName } from "../types/theme";
 import { createBaseTheme } from "./base-theme";
+import { publishGlassPalette } from "./glass-palette";
 import { definitionOf, getTheme } from "./index";
 import type { ThemePalette } from "./palette-contract";
 
@@ -237,6 +238,7 @@ export const applyAppearance = (
 		style.textContent = paletteBlock(resolved.id, resolved.palette);
 		if (!existing) doc.head.appendChild(style);
 	}
+	publishGlassPalette(doc, resolved.identity ? null : resolved.palette);
 	root.dataset.theme = resolved.id;
 	/* Mirrors the palette's own mode, as `applyThemeToDocument` does. */
 	root.classList.toggle("dark", resolved.palette.mode === "dark");

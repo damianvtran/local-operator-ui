@@ -526,6 +526,9 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 				   the box, including its padding, and the bridge's strip has always read
 				   it that way. */
 				{...pasteHandlers}
+				/* The same field-over-material role as the main chat composer;
+				 * a second opaque elevated fill would mask the chosen glass. */
+				data-glass-region="composer"
 				data-composer-bar=""
 				className={cn(
 					/* `rounded-md` (10px), not `rounded-lg` (14px): the operator asked for LESS

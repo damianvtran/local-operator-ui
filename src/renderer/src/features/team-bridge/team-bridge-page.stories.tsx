@@ -157,7 +157,10 @@ const InTheShell: FC<{
 				sidebar={<nav data-story-app-nav="">app navigation</nav>}
 				routeSidebar={{}}
 				content={
-					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+					<main
+						data-glass-region="canvas-backing"
+						className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas"
+					>
 						{children}
 					</main>
 				}
@@ -2352,7 +2355,10 @@ export const ThreadDeepLinkFromSearch: Story = {
 					sidebar={<div className="panel-top-pad h-full bg-surface" />}
 					routeSidebar={{}}
 					content={
-						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						<main
+							data-glass-region="canvas-backing"
+							className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas"
+						>
 							<TeamBridgePageView {...args} />
 						</main>
 					}
