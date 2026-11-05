@@ -174,6 +174,188 @@ class Contracts(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(gate.feed_opens, [])
             self.assertNotIn("never-retain-this", json.dumps(gate.attempts + gate.feed_opens))
 
+    async def test_resident_original_recorder_trace_reaches_real_policy(self):
+        # Cross-language integration: pass the ACTUAL proxy attempts/list evidence
+        # unchanged to the production policy. Hand-built delivery stamps let the
+        # prior unit fixture pass while the real recorder omitted this field.
+        import subprocess
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory).resolve() / "config"
+            config.mkdir()
+            for mode in ("complete", "failed-final", "headers-only"):
+                with self.subTest(mode=mode), patch.dict(os.environ, {"LOCAL_OPERATOR_CONFIG_DIR": str(config)}):
+                    gate = module.DeliveryGate()
+                    async def upstream(scope, receive, send):
+                        await receive()
+                        await send({"type": "http.response.start", "status": 200})
+                        data = (b'{"result":{"sessions":[{"id":"bbbbbbbbbbbb","locality":"local","peer":null}]}}'
+                                if scope["path"] == "/v1/desktop/sessions" else b'{"result":{}}')
+                        await send({"type": "http.response.body", "body": data, "more_body": True})
+                        if mode != "headers-only" or scope["path"] == "/v1/desktop/sessions":
+                            await send({"type": "http.response.body", "body": b"", "more_body": False})
+                    await self.invoke(upstream, gate, path="/v1/desktop/sessions")
+                    for suffix, query in (("", b""), ("/command-entities", b"command=effort")):
+                        if mode == "failed-final":
+                            async def failed_send(message):
+                                if message["type"] == "http.response.body" and not message.get("more_body", False):
+                                    raise OSError("inert downstream failure")
+                            async def receive():
+                                return {"type": "http.request", "body": b""}
+                            with self.assertRaises(OSError):
+                                await module.ModelUncertaintyMiddleware(upstream, gate=gate)({"type": "http", "method": "GET", "path": "/v1/desktop/sessions/bbbbbbbbbbbb" + suffix, "headers": [], "query_string": query}, receive, failed_send)
+                        else:
+                            await self.invoke(upstream, gate, path="/v1/desktop/sessions/bbbbbbbbbbbb" + suffix, query=query)
+                    trace = {"attempts": gate.attempts, "listWitnesses": gate.list_witnesses, "scopeId": gate.scope_id}
+                    script = ("import { assertModelTraffic } from " + json.dumps(Path(__file__).with_name("model-uncertainty-native.mjs").as_uri())
+                              + ";let text='';for await(const c of process.stdin)text+=c;const t=JSON.parse(text);assertModelTraffic(t.attempts,'aaaaaaaaaaaa',[],[],t);console.log('original-recorder-to-policy PASS');")
+                    result = subprocess.run(["node", "--input-type=module", "-e", script], input=json.dumps(trace), capture_output=True, text=True, timeout=15)
+                    if mode == "complete":
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(result.stdout.strip(), "original-recorder-to-policy PASS")
+                    else:
+                        self.assertNotEqual(result.returncode, 0, "undelivered resident response must never satisfy policy")
+
+    async def test_preview_invalid_diagnostic_is_only_enums_and_booleans(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            root = str(Path(directory).resolve())
+            neutral = {"request_id": "00000000-0000-0000-0000-000000000002", "cwd": root}
+            for change, field, expected in (
+                ({}, "cwd_fixture_match", True),
+                ({"cwd": root + "/missing"}, "cwd_existing_directory", False),
+                ({"cwd": "NEVER_RETAIN_PATH"}, "cwd_absolute", False),
+                ({"cwd": 7}, "cwd_type", "other"),
+                ({"request_id": "NEVER_RETAIN_UUID"}, "request_id_valid", False),
+                ({"target": {"agent": "NEVER_RETAIN_AGENT"}}, "target", "nonneutral"),
+                ({"model": {"provider": "NEVER_RETAIN_MODEL"}}, "model", "nonneutral"),
+                ({"NEVER_RETAIN_KEY": True}, "unknown_keys_present", True),
+                ({"target": None}, "target", "null"),
+            ):
+                with self.subTest(field=field):
+                    gate = module.DeliveryGate()
+                    gate.fixture_cwd = root
+                    async def upstream(scope, receive, send):
+                        await receive()
+                        await send({"type": "http.response.start", "status": 200})
+                        await send({"type": "http.response.body", "body": b"{}"})
+                    await self.invoke(upstream, gate, method="POST", path="/v1/desktop/sessions/preview", body=json.dumps(neutral | change).encode())
+                    attempt = gate.attempts[-1]
+                    diagnostic = attempt["preview_diagnostic"]
+                    self.assertEqual(diagnostic[field], expected)
+                    self.assertNotIn("NEVER_RETAIN", json.dumps(diagnostic))
+                    self.assertNotIn(root, json.dumps(diagnostic))
+                    self.assertTrue(all(type(v) is bool or v in {"omitted", "string", "null", "other", "nonneutral"} for v in diagnostic.values()))
+                    self.assertEqual(attempt["response_status"], 200)
+                    self.assertTrue(attempt["query_empty"])
+            for invalid in (None, [], "NEVER_RETAIN_BODY"):
+                diagnostic = module.preview_diagnostic(invalid, root)
+                self.assertFalse(diagnostic["schema_object"])
+                self.assertFalse(diagnostic["required_keys_present"])
+                self.assertNotIn("NEVER_RETAIN", json.dumps(diagnostic))
+
+    async def test_actual_neutral_home_builder_recorder_policy_and_identity_negatives(self):
+        import hashlib
+        import subprocess
+        import tempfile
+        # Actual source functions, including hydration/transitive query filtering.
+        # Only transport is inert; returned raw body drives the actual recorder.
+        builder = r"""
+const fs=require('node:fs'),vm=require('node:vm'),esbuild=require('esbuild'),assert=require('node:assert/strict');
+const read=p=>fs.readFileSync(p,'utf8');
+const store=read('src/renderer/src/shared/store/canonical-sessions-store.ts'),selection=read('src/renderer/src/features/chat/draft-selection.ts'),page=read('src/renderer/src/features/chat/components/chat-page.tsx'),contract=read('src/shared/desktop-contract.ts');
+function fn(s,n){const m=[...s.matchAll(new RegExp('^(?:export )?(?:async )?function '+n+'\\(','gm'))];assert.equal(m.length,1,n);const e=/^\}(?=\r?$)/gm;e.lastIndex=m[0].index;const end=e.exec(s);assert(end);return s.slice(m[0].index,end.index+1)}
+const initial=store.slice(store.indexOf('export const useCanonicalSessionsStore ='),store.indexOf('setCwd:',store.indexOf('export const useCanonicalSessionsStore =')));
+const props=['cwd','drafts','activeDraftKey','activeSessionId','forgotten'].map(k=>{const a=[...initial.matchAll(new RegExp('^[\\t ]+'+k+':[^\\n]+','gm'))];assert.equal(a.length,1,k);return a[0][0].trim().replace(/,$/,'')});
+const target=[...page.matchAll(/const draftTarget: DraftSelectionTarget = (\{[\s\S]*?\n\t\});/g)];assert.equal(target.length,1);
+let source=['launchTarget','launchSession','launchDraftSeed','draftsWithoutTombstonedPointers','mergePersistedSession','paneDraftKey'].map(n=>fn(store,n)).join('\n')+'\n'+['selectionSelector','draftModelForWire','draftPreviewKey','fetchDraftPreview','draftPreviewQuery'].map(n=>fn(selection,n)).join('\n')+'\n'+fn(contract,'desktopEndpoint');
+source+='\nthis.run=async function(){const state=mergePersistedSession(undefined,{'+props.join(',')+'});const key=paneDraftKey(state.activeDraftKey,state.activeSessionId,state.drafts);const draft=state.drafts[key],cwd=state.cwd;const target='+target[0][1]+';await draftPreviewQuery(target,false).queryFn();await draftPreviewQuery(target,true).queryFn();};this.endpoint=desktopEndpoint;';
+let result;const c={crypto:require('node:crypto').webcrypto,window:{api:{desktop:{}}},keepPreviousData:require('@tanstack/react-query').keepPreviousData,desktopResult:async command=>{result=c.endpoint(command);return {frontend:{}}}};
+vm.createContext(c);vm.runInContext(esbuild.transformSync(source.replace(/^export /gm,''),{loader:'ts',target:'es2022'}).code,c);c.run().then(()=>{assert.equal(result.method,'POST');assert.equal(result.path,'/v1/desktop/sessions/preview');process.stdout.write(JSON.stringify(result.body))}).catch(e=>{console.error(e);process.exitCode=1});
+"""
+        repo = Path(__file__).resolve().parent.parent
+        built = subprocess.run(["node", "-e", builder], cwd=repo, capture_output=True, text=True, timeout=15)
+        self.assertEqual(built.returncode, 0, built.stderr)
+        body = json.loads(built.stdout)
+        self.assertEqual(set(body), {"cwd", "request_id"})
+        self.assertEqual(body["cwd"], "~")
+        policy_script = ("import {assertModelTraffic} from " + json.dumps(Path(__file__).with_name("model-uncertainty-native.mjs").as_uri())
+                         + ";let t='';for await(const c of process.stdin)t+=c;const p=JSON.parse(t);assertModelTraffic(p.attempts,'aaaaaaaaaaaa',[],[],p.proof);")
+        modes = ("happy", "null-selections", "absolute-case", "other-user", "slash", "suffix", "traversal", "relative", "foreign-absolute", "absolute-home", "whitespace", "wrong-home", "wrong-declared-home", "wrong-config", "wrong-scope", "missing-home-authority", "missing-scope-authority", "missing-fixture", "nonexistent-home", "symlink-escape", "nonnull-target", "nonnull-model", "unknown-key", "bad-uuid", "query", "non200", "undelivered", "unfinished", "duplicate", "wrong-default", "target-false", "target-empty", "target-list", "model-false", "model-zero", "model-list", "wrong-policy-home", "missing-policy-home", "wrong-policy-scope")
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory).resolve()
+            home = fixture / "home"
+            config = home / ".local-operator"
+            config.mkdir(parents=True)
+            foreign = fixture / "foreign"
+            (foreign / ".local-operator").mkdir(parents=True)
+            escape = fixture / "escape"
+            escape.mkdir()
+            (escape / "home").symlink_to(foreign, target_is_directory=True)
+            expected_default = "values:\n  hosting: test\n  model_name: mock-model\n  language: en\n"
+            scope_id = hashlib.sha256(str(config).encode()).hexdigest()
+            home_id = hashlib.sha256(str(home).encode()).hexdigest()
+            for mode in modes:
+                with self.subTest(mode=mode):
+                    (config / "config.yml").write_text(expected_default if mode != "wrong-default" else "values: {}\n")
+                    env = {"HOME": str(home), "LOCAL_OPERATOR_CONFIG_DIR": str(config), "MODEL_CASE_FIXTURE_CWD": str(fixture), "MODEL_CASE_EXPECTED_SERVER_HOME": str(home), "MODEL_CASE_EXPECTED_SERVER_SCOPE": scope_id}
+                    data = dict(body)
+                    if mode == "null-selections": data.update(target=None, model=None)
+                    paths = {"absolute-case": str(fixture), "other-user": "~otheruser", "slash": "~/", "suffix": "~/child", "traversal": "~/../foreign", "relative": "home", "foreign-absolute": str(foreign), "absolute-home": str(home), "whitespace": " ~"}
+                    if mode in paths: data["cwd"] = paths[mode]
+                    if mode == "wrong-home": env["HOME"] = str(foreign)
+                    if mode == "wrong-declared-home": env["MODEL_CASE_EXPECTED_SERVER_HOME"] = str(foreign)
+                    if mode == "wrong-config": env["LOCAL_OPERATOR_CONFIG_DIR"] = str(foreign / ".local-operator")
+                    if mode == "wrong-scope": env["MODEL_CASE_EXPECTED_SERVER_SCOPE"] = "0" * 64
+                    if mode == "missing-home-authority": env["MODEL_CASE_EXPECTED_SERVER_HOME"] = ""
+                    if mode == "missing-scope-authority": env["MODEL_CASE_EXPECTED_SERVER_SCOPE"] = ""
+                    if mode == "missing-fixture": env["MODEL_CASE_FIXTURE_CWD"] = ""
+                    if mode == "nonexistent-home": env["HOME"] = str(fixture / "absent")
+                    if mode == "symlink-escape":
+                        env.update(HOME=str(foreign), MODEL_CASE_EXPECTED_SERVER_HOME=str(foreign), MODEL_CASE_FIXTURE_CWD=str(escape), LOCAL_OPERATOR_CONFIG_DIR=str(foreign / ".local-operator"), MODEL_CASE_EXPECTED_SERVER_SCOPE=hashlib.sha256(str(foreign / ".local-operator").encode()).hexdigest())
+                    if mode == "nonnull-target": data["target"] = {"kind": "agent", "name": "synthetic-but-unapproved"}
+                    if mode == "nonnull-model": data["model"] = {"provider": "test", "model_id": "mock-model-a"}
+                    if mode == "unknown-key": data["extra"] = True
+                    if mode == "bad-uuid": data["request_id"] = "invalid"
+                    if mode == "target-false": data["target"] = False
+                    if mode == "target-empty": data["target"] = ""
+                    if mode == "target-list": data["target"] = []
+                    if mode == "model-false": data["model"] = False
+                    if mode == "model-zero": data["model"] = 0
+                    if mode == "model-list": data["model"] = []
+                    original = json.dumps(data).encode()
+                    seen = []
+                    with patch.dict(os.environ, env):
+                        gate = module.DeliveryGate()
+                        async def upstream(scope, receive, send):
+                            request = await receive()
+                            self.assertEqual(request["body"], original, "recorder must not rewrite raw home shorthand or rejected input")
+                            seen.append(True)
+                            await send({"type": "http.response.start", "status": 401 if mode == "non200" else 200})
+                            await send({"type": "http.response.body", "body": b"{}", "more_body": True})
+                            if mode != "unfinished": await send({"type": "http.response.body", "body": b"", "more_body": False})
+                        async def receive(): return {"type": "http.request", "body": original}
+                        async def send(message):
+                            if mode == "undelivered" and message["type"] == "http.response.body" and not message.get("more_body", False): raise OSError("inert delivery failure")
+                        scope = {"type": "http", "method": "POST", "path": "/v1/desktop/sessions/preview", "headers": [], "query_string": b"unknown=1" if mode == "query" else b""}
+                        for _ in range(2 if mode == "duplicate" else 1):
+                            try: await module.ModelUncertaintyMiddleware(upstream, gate=gate)(scope, receive, send)
+                            except OSError:
+                                self.assertEqual(mode, "undelivered")
+                    proof = {"scopeId": scope_id, "serverHomeId": home_id, "fixtureCwd": str(fixture), "defaultSynthetic": (config / "config.yml").read_text() == expected_default}
+                    if mode == "wrong-policy-home": proof["serverHomeId"] = "0" * 64
+                    if mode == "missing-policy-home": proof.pop("serverHomeId")
+                    if mode == "wrong-policy-scope": proof["scopeId"] = "0" * 64
+                    result = subprocess.run(["node", "--input-type=module", "-e", policy_script], input=json.dumps({"attempts": gate.attempts, "proof": proof}), cwd=repo, capture_output=True, text=True, timeout=15)
+                    expected = mode in {"happy", "null-selections", "absolute-case"}
+                    self.assertEqual(result.returncode == 0, expected, f"{mode}: {result.stderr}")
+                    self.assertEqual(len(seen), 2 if mode == "duplicate" else 1, "all attempts must reach the actual upstream")
+                    if mode in {"happy", "null-selections"}:
+                        self.assertEqual(gate.attempts[0]["body"]["cwd"], "~")
+                        self.assertEqual(gate.attempts[0]["server_home_id"], home_id)
+                    if mode in {"wrong-home", "wrong-declared-home", "wrong-config", "wrong-scope", "missing-home-authority", "missing-scope-authority", "missing-fixture", "nonexistent-home", "symlink-escape"}:
+                        self.assertIsNone(gate.server_home_id, "invalid authority must not mint a root witness")
+
     async def test_original_list_minimization_delivered_before_resident_queries(self):
         gate = module.DeliveryGate()
         gate.scope_id = "owned-scope"

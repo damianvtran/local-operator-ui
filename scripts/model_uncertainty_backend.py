@@ -56,6 +56,25 @@ class DeliveryGate:
         cwd = os.environ.get("MODEL_CASE_FIXTURE_CWD", "")
         self.fixture_cwd = str(Path(cwd).resolve(strict=True)) if cwd else None
         self.list_witnesses: list[dict[str, Any]] = []
+        # A request's "~" is not ownership. Bind the actual SERVER home now,
+        # before any request, to the parent's separately pinned core fixture.
+        # App HOME and the session's creation cwd are deliberately not this root.
+        self.server_home_id = None
+        try:
+            actual_home = Path(os.environ["HOME"]).resolve(strict=True)
+            declared_home = os.environ["MODEL_CASE_EXPECTED_SERVER_HOME"]
+            declared_scope = os.environ["MODEL_CASE_EXPECTED_SERVER_SCOPE"]
+            owned_home = Path(self.fixture_cwd) / "home" if self.fixture_cwd else None
+            config = Path(root).resolve(strict=True)
+            if (actual_home.is_dir() and str(actual_home) == declared_home
+                    and owned_home is not None and owned_home.is_dir()
+                    and owned_home.resolve(strict=True) == owned_home == actual_home
+                    and config.parent == actual_home and self.scope_id == declared_scope
+                    and re.fullmatch(r"[a-f0-9]{64}", declared_scope)):
+                self.server_home_id = hashlib.sha256(str(actual_home).encode()).hexdigest()
+        except (KeyError, TypeError, ValueError, OSError, RuntimeError):
+            pass
+
 
     def next_order(self) -> int:
         self.evidence_order += 1
@@ -69,6 +88,41 @@ class DeliveryGate:
         for index, event in self.held.items():
             if indices is None or index in indices:
                 event.set()
+
+
+def preview_diagnostic(parsed, fixture_cwd):
+    """Classify rejected preview fields without leaking their values.
+
+    The old hash cannot tell which neutral-envelope precondition failed. These
+    bounded booleans/enums are observations ONLY, not a new permission or a
+    reason to accept a real provider/target/cwd that the policy does not own.
+    """
+    obj = isinstance(parsed, dict)
+    fields = parsed if obj else {}
+    cwd = fields.get("cwd")
+    absolute = isinstance(cwd, str) and len(cwd) <= 4096 and Path(cwd).is_absolute()
+    canonical = None
+    try:
+        if absolute:
+            canonical = Path(cwd).resolve(strict=True)
+    except (ValueError, OSError, RuntimeError):
+        pass
+    def selection(key):
+        return "omitted" if key not in fields else "null" if fields[key] is None else "nonneutral"
+    return {
+        "schema_object": obj,
+        "required_keys_present": {"request_id", "cwd"}.issubset(fields),
+        "unknown_keys_present": bool(set(fields) - {"request_id", "cwd", "target", "model"}),
+        "request_id_valid": isinstance(fields.get("request_id"), str) and re.fullmatch(r"[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}", fields["request_id"]) is not None,
+        "cwd_type": "omitted" if "cwd" not in fields else "string" if isinstance(cwd, str) else "null" if cwd is None else "other",
+        "cwd_absolute": absolute,
+        "cwd_existing_directory": canonical is not None and canonical.is_dir(),
+        "cwd_canonical": canonical is not None and str(canonical) == cwd,
+        "cwd_fixture_match": canonical is not None and str(canonical) == fixture_cwd,
+        "cwd_contained": canonical is not None and bool(fixture_cwd) and canonical.is_relative_to(Path(fixture_cwd)),
+        "target": selection("target"),
+        "model": selection("model"),
+    }
 
 
 class ModelUncertaintyMiddleware:
@@ -198,7 +252,10 @@ class ModelUncertaintyMiddleware:
                             attempt["response_evidence_invalid"] = True
                         finally:
                             json_buffer.clear()
-            if is_reviewed_write and message["type"] == "http.response.body" and not message.get("more_body", False):
+            # The resident-read policy requires the same delivered-response clock
+            # as writes. Stamp only AFTER downstream send succeeds, including
+            # a chunked response's empty final terminator, never at header time.
+            if (is_reviewed_write or is_session_read) and message["type"] == "http.response.body" and not message.get("more_body", False):
                 attempt["delivery_order"] = self.gate.next_order()
             if feed_open is not None:
                 feed_open["delivered"] = True
@@ -219,6 +276,8 @@ class ModelUncertaintyMiddleware:
                 parsed = json.loads(body)
             except (ValueError, UnicodeDecodeError):
                 parsed = None
+            if is_preview:
+                attempt["preview_diagnostic"] = preview_diagnostic(parsed, self.gate.fixture_cwd)
             if isinstance(parsed, dict):
                 if path.endswith("/commands") or path in {"/v1/settings/hosting", "/v1/settings/model_name"}:
                     attempt["body"] = parsed
@@ -229,12 +288,21 @@ class ModelUncertaintyMiddleware:
                     try:
                         cwd = parsed.get("cwd")
                         owned = isinstance(cwd, str) and len(cwd) <= 4096 and Path(cwd).is_absolute() and str(Path(cwd).resolve(strict=True)) == cwd == self.gate.fixture_cwd and Path(cwd).is_dir()
+                        if cwd == "~":
+                            # Only the literal has this branch. Never normalize an
+                            # arbitrary path into a broader permission or replace
+                            # the raw request body with its resolved directory.
+                            owned = (self.gate.server_home_id is not None
+                                     and hashlib.sha256(str(Path("~").expanduser().resolve(strict=True)).encode()).hexdigest() == self.gate.server_home_id)
+
                     except (ValueError, OSError, RuntimeError):
                         owned = False
                     if safe and owned:
                         attempt["body"] = parsed
                         attempt["cwd_owned"] = True
                         attempt["scope_id"] = self.gate.scope_id
+                        if cwd == "~":
+                            attempt["server_home_id"] = self.gate.server_home_id
                     else:
                         attempt["preview_scope_invalid"] = True
                         attempt["body_sha256"] = hashlib.sha256(body).hexdigest()

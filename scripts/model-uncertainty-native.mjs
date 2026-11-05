@@ -380,7 +380,12 @@ export function assertModelTraffic(
 				),
 				"preview UUID reused",
 			);
-			assert.equal(body.cwd, proof.fixtureCwd);
+			if (body.cwd === "~") {
+				assert.match(proof.serverHomeId ?? "", /^[a-f0-9]{64}$/);
+				assert.equal(request.server_home_id, proof.serverHomeId);
+			} else {
+				assert.equal(body.cwd, proof.fixtureCwd);
+			}
 			assert.equal(request.cwd_owned, true);
 			assert(
 				typeof proof.scopeId === "string" && request.scope_id === proof.scopeId,
@@ -562,7 +567,13 @@ export async function startModelBackend({ output }) {
 		scopeId: createHash("sha256").update(realpathSync(config)).digest("hex"),
 		fixtureCwd: realpathSync(scratch),
 		defaultSynthetic: true,
+		serverHomeId: createHash("sha256").update(realpathSync(home)).digest("hex"),
 	};
+	// Parent declarations precede child startup/requests. The recorder verifies
+	// actual server HOME/config/fixture independently; no request supplies them.
+	assert.equal(realpathSync(env.HOME), realpathSync(home));
+	env.MODEL_CASE_EXPECTED_SERVER_HOME = realpathSync(home);
+	env.MODEL_CASE_EXPECTED_SERVER_SCOPE = policyScope.scopeId;
 	// Seed with the production writer/parser and capture stamp. These are INITIAL
 	// cached rows; the real live pass is allowed to answer empty and is held.
 	const seed =
