@@ -30,7 +30,8 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: `export {uploadStagedImages, stagedSource} from "./src/renderer/src/features/team-bridge/team-bridge-staged-upload";
- export {getFileName} from "./src/renderer/src/features/chat/utils/get-file-name";`,
+ export {getFileName} from "./src/renderer/src/features/chat/utils/get-file-name";
+ export {setLocale} from "./src/i18n";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -56,7 +57,11 @@ const compiled = new Module(compiledPath);
 compiled.filename = compiledPath;
 compiled.paths = Module._nodeModulePaths(process.cwd());
 compiled._compile(bundle.outputFiles[0].text, compiled.filename);
-const { uploadStagedImages, stagedSource, getFileName } = compiled.exports;
+const { uploadStagedImages, stagedSource, getFileName, setLocale } =
+	compiled.exports;
+// The failure name composes a keyed position label, so the suite pins the source
+// language the way the sibling attachment suite does.
+setLocale("en");
 
 /* A 1x1 PNG: real magic numbers, no fixture file. */
 const PNG = Uint8Array.from(
@@ -66,6 +71,14 @@ const PNG = Uint8Array.from(
 	(c) => c.charCodeAt(0),
 );
 const PNG_DATA_URL = `data:image/png;base64,${Buffer.from(PNG).toString("base64")}`;
+/* A second PNG with different bytes, so "three uploads" cannot be one picture thrice. */
+const SMALL_PNG = Uint8Array.from(
+	atob(
+		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+	),
+	(char) => char.charCodeAt(0),
+);
+
 const CAP = {
 	enabled: true,
 	max_count: 4,
@@ -178,6 +191,73 @@ test("a filesystem path still takes the filesystem read (one prepare path, two s
 	assert.equal(sha256(uploads[0].bytes), sha256(PNG));
 });
 
+test("three staged data URLs upload in staged order, each its own bytes", async () => {
+	/* A third picture with bytes of its own: the 1x1 PNG plus a trailing byte, which
+	   keeps the magic this suite sniffs on and makes the digest unmistakable. */
+	const third = Buffer.concat([Buffer.from(PNG), Buffer.from([0x00])]);
+	const result = await upload([
+		PNG_DATA_URL,
+		`data:image/png;base64,${Buffer.from(SMALL_PNG).toString("base64")}`,
+		`data:image/png;base64,${third.toString("base64")}`,
+	]);
+	assert.deepEqual(result.failures, []);
+	assert.deepEqual(
+		result.ids,
+		["batt_1", "batt_2", "batt_3"],
+		"ids in staged order",
+	);
+	assert.equal(uploads.length, 3);
+	assert.equal(sha256(uploads[0].bytes), sha256(PNG));
+	assert.equal(sha256(uploads[1].bytes), sha256(SMALL_PNG));
+	assert.equal(sha256(uploads[2].bytes), sha256(third));
+	assert.equal(
+		new Set(uploads.map((entry) => sha256(entry.bytes))).size,
+		3,
+		"three distinct pictures, three distinct digests",
+	);
+});
+
+test("the failure rows of three staged values name each by its own position", async () => {
+	const result = await upload([
+		`data:image/png;base64,${Buffer.from("one").toString("base64")}`,
+		`data:image/png;base64,${Buffer.from("two").toString("base64")}`,
+		`data:image/png;base64,${Buffer.from("three").toString("base64")}`,
+	]);
+	assert.deepEqual(
+		result.failures.map((failure) => failure.name),
+		[
+			"Pasted image · Image 1 of 3",
+			"Pasted image · Image 2 of 3",
+			"Pasted image · Image 3 of 3",
+		],
+		"there is no way to tell which image failed unless the row says so",
+	);
+	assert.deepEqual(
+		result.failures.map((failure) => failure.reason),
+		["unsupported", "unsupported", "unsupported"],
+	);
+});
+
+test("a data URL that is not base64 is a FORMAT refusal, not a read failure", async () => {
+	// A percent-encoded data URL: a legal `data:` spelling that carries no `;base64`,
+	// which nothing in this app writes. It is not a damaged picture, so its sentence
+	// must not be the damaged one.
+	const percent = "data:image/png,%89PNG%0D%0A%1A%0A";
+	const result = await upload([percent]);
+	assert.equal(result.ids.length, 0);
+	assert.equal(result.failures.length, 1);
+	assert.equal(result.failures[0].reason, "unsupported");
+	assert.deepEqual(reads, [], "still never a filesystem read");
+});
+
+test("a payload that declares base64 and will not decode is a READ failure", async () => {
+	const declared = `data:image/png;base64,${Buffer.from("not-base64-@@@").toString("base64")}@@@`;
+	const result = await upload([declared]);
+	assert.equal(result.failures.length, 1);
+	assert.equal(result.failures[0].reason, "read");
+	assert.equal(BASE64_RUN.test(result.failures[0].name), false);
+});
+
 /* ------------------------------------------------------------ the name */
 
 test("a failure row's name never carries the payload", async () => {
@@ -189,10 +269,14 @@ test("a failure row's name never carries the payload", async () => {
 	assert.equal(result.failures.length, 1);
 	const failure = result.failures[0];
 	assert.equal(failure.reason, "unsupported");
-	assert.equal(failure.name, "Pasted image");
+	assert.equal(failure.name, "Pasted image · Image 1 of 1");
 	assert.equal(BASE64_RUN.test(failure.name), false, "no base64 run");
 	assert.equal(failure.name.includes("data:"), false, "no data: prefix");
-	assert.equal(failure.name, getFileName(notAnImage), "one naming helper");
+	assert.equal(
+		failure.name,
+		`${getFileName(notAnImage)} · Image 1 of 1`,
+		"one naming helper, plus the keyed position",
+	);
 });
 
 test("a corrupt image still reports a reason from the closed set, echoing nothing", async () => {
@@ -204,11 +288,16 @@ test("a corrupt image still reports a reason from the closed set, echoing nothin
 	const result = await upload([truncated]);
 	assert.equal(result.ids.length, 0);
 	assert.equal(result.failures.length, 1);
-	assert.ok(
-		["unsupported", "read", "upload"].includes(result.failures[0].reason),
-		`reason ${result.failures[0].reason} is not in the closed set`,
+	/* EXACT, not "one of": a payload that declares base64 and will not decode is a
+	   source that could not be READ (the "may be damaged" sentence), and drifting
+	   that to `unsupported` would tell the operator their picture was the wrong
+	   format. */
+	assert.equal(result.failures[0].reason, "read");
+	assert.equal(
+		result.failures[0].name,
+		"Pasted image · Image 1 of 1",
+		"a neutral name and the keyed position, never the payload",
 	);
-	assert.equal(result.failures[0].name, "Pasted image");
 	assert.equal(BASE64_RUN.test(result.failures[0].name), false);
 	assert.equal(result.failures[0].name.includes("data:"), false);
 });

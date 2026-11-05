@@ -44,6 +44,28 @@ bytes; three pictures produce three uploads; a genuinely corrupt image still
 reports a reason from the closed set with a neutral name (`Pasted image`) that
 carries **no base64 run and no `data:` prefix**; the picker control is unchanged.
 
+## Frames in `frames/` — who made them and what they are
+
+Captured by the **designer** (design lane, round 1) from the **Storybook harness**
+for this component set; they are **not** app-real screenshots, and nothing in this
+PR was re-captured to produce them. The composer, the chips and the failure rows are
+the shipped components rendered with fixture data, which is the surface design
+review judges copy and layout from.
+
+| frame | state |
+| --- | --- |
+| `before-payload-tail-light.png` / `-dark.png` | the base tree: a pasted picture's row named by the base64 tail above the "damaged" sentence |
+| `after-one-chip-light.png` | one staged picture, real preview, no refusal |
+| `after-three-chips-light.png` / `-dark.png` | three staged pictures, each a real preview |
+| `after-corrupt-refused-light.png` | a genuinely corrupt image: neutral name + position, format/"damaged" sentence, no payload |
+| `after-three-one-refused-light.png` | three staged, one refused — the row says WHICH image |
+
+**App-real, separately:** QA's built-app pass mounted the chat composer and pasted
+into it for real (the same `MessageInput` paste handler the bridge mounts). The Team
+Bridge page itself mounts but is auth-gated in an isolated profile, so **no
+built-app frame of the bridge page exists** — the design frames above are the
+harness, and this README says so rather than implying otherwise.
+
 ## What these runs do NOT prove — read this before quoting them
 
 - **No rendered frame, and no macOS pasteboard read.** The Team Bridge route lands

@@ -1,7 +1,11 @@
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import { t } from "@shared/i18n";
 import type { TeamBridgeAttachmentCapability } from "../../../../shared/team-bridge-contract";
 import { getFileName } from "../chat/utils/get-file-name";
-import { prepareImageForUpload } from "./team-bridge-attachments-model";
+import {
+	prepareImageForUpload,
+	sniffImage,
+} from "./team-bridge-attachments-model";
 
 /**
  * The shared composer's staged values -> ids the hub will bind to a message.
@@ -68,9 +72,11 @@ const IMAGE_EXTENSIONS = [
  * "This image couldn't be read".
  *
  * So the distinction is typed HERE rather than at that one call site: a consumer
- * must switch on `kind`, and the next thing that reads a staged value cannot
- * reintroduce the defect by assuming a path. An unknown value is not guessed - the
- * send refuses it with `unsupported` and a neutral name.
+ * in THIS module must switch on `kind`. The store field stays a plain `string`
+ * (`conversation-input-store` has one column and two producers), so the type is
+ * this module's boundary rather than the store's - anything outside that reads the
+ * field still sees text, which is why the narrowing is stated here and not claimed
+ * repository-wide.
  */
 export type StagedSource =
 	| { kind: "path"; path: string }
@@ -96,7 +102,7 @@ export function stagedSource(staged: string): StagedSource | null {
 }
 
 /**
- * The bytes behind a staged source.
+ * The bytes behind a staged source, or WHY they could not be produced.
  *
  * A data URL is decoded HERE, in the renderer, from its own payload: the bytes
  * are already in this process (the paste handler put them there), so going back
@@ -104,28 +110,36 @@ export function stagedSource(staged: string): StagedSource | null {
  * result is the same `Uint8Array`-into-`Blob` shape the filesystem branch
  * produces, which is what keeps ONE prepare path for both forms.
  *
- * `null` is "this client cannot produce the bytes": a data URL whose payload is
- * not base64 (nothing in this app writes one, and guessing at an encoding is how
- * a wrong picture gets sent), or an unreadable file.
+ * THE REFUSAL IS DISCRIMINATED, deliberately: a payload that is not base64 (a
+ * percent-encoded data URL, which nothing in this app writes) is a FORMAT this
+ * client cannot carry (`unsupported`), while a file that cannot be read or base64
+ * that will not decode is a source that could not be READ. Collapsing the two into
+ * one reason is how "this file is damaged" gets said about a value that was never an
+ * image - the same class of untruth as naming a row after its own payload.
  */
-async function readStagedBytes(
-	source: StagedSource,
-): Promise<Uint8Array | null> {
+type StagedBytes =
+	| { ok: true; bytes: Uint8Array }
+	| { ok: false; why: "unsupported" | "read" };
+
+async function readStagedBytes(source: StagedSource): Promise<StagedBytes> {
 	if (source.kind === "path") {
 		const read = await window.api?.readFile?.(source.path, "base64");
-		if (!read?.success) return null;
+		if (!read?.success) return { ok: false, why: "read" };
 		try {
-			return fromBase64(read.data);
+			return { ok: true, bytes: fromBase64(read.data) };
 		} catch {
-			return null;
+			return { ok: false, why: "read" };
 		}
 	}
 	const match = DATA_URL.exec(source.dataUrl);
-	if (!match || !match[2]) return null;
+	if (!match) return { ok: false, why: "unsupported" };
+	/* No `;base64` marker: a percent-encoded data URL, a form this app never writes. */
+	if (!match[2]) return { ok: false, why: "unsupported" };
 	try {
-		return fromBase64(match[3]);
+		return { ok: true, bytes: fromBase64(match[3]) };
 	} catch {
-		return null;
+		/* `;base64` was declared and `atob` refused the payload: a corrupt source. */
+		return { ok: false, why: "read" };
 	}
 }
 
@@ -139,16 +153,41 @@ function fromBase64(data: string): Uint8Array {
 	return bytes;
 }
 
+/** A name is a FILE NAME, never a payload: these rows are one line tall. */
+const NAME_MAX = 120;
+
 /**
- * The name a failure row shows.
+ * The name a failure row shows, and WHICH image it is.
  *
- * NEVER DERIVED FROM THE PAYLOAD. `getFileName` is the app's one naming helper
- * and already answers `"Pasted image"` for a `data:image/...` value, so the bridge
- * names a pasted picture the way the chat does. Its literals are pre-existing
- * unkeyed English (the i18n policy's known backlog, see `docs/I18N.md`); this
- * change adds no copy, keyed or otherwise.
+ * NEVER DERIVED FROM THE PAYLOAD. `getFileName` is the app's one naming helper and
+ * already answers `"Pasted image"` for a `data:image/...` value, so the bridge names
+ * a pasted picture the way the chat does. Its literals are pre-existing unkeyed
+ * English, which the repo's string checker records as a known boundary rather than
+ * a policy anyone may widen (`scripts/i18n/check-strings.mjs`, "KNOWN
+ * BOUNDARIES"); this change adds no copy of its own.
+ *
+ * THE POSITION IS KEYED COPY, not a new literal: `ui.teamBridge.attachments.position`
+ * ("Image {index} of {count}") exists in every product locale and is what the chip
+ * strip already labels each thumbnail with. Its numbers come from the STAGED LIST
+ * (this value's index and the list's length), never from anything inside the value,
+ * so "which image failed" is answerable when several were pasted at once.
+ *
+ * THE LENGTH GUARD IS THE SECOND HALF OF THAT RULE: a name is truncated to a
+ * filename's worth of characters, so "split whatever string I was handed" can never
+ * print a payload-length name again - whatever the string turns out to be.
  */
-const stagedName = (staged: string): string => getFileName(staged);
+function stagedName(staged: string, index: number, count: number): string {
+	const base = staged.startsWith("data:")
+		? getFileName(staged)
+		: truncate(getFileName(staged));
+	return `${base} · ${t("ui.teamBridge.attachments.position", {
+		index: String(index + 1),
+		count: String(count),
+	})}`;
+}
+
+const truncate = (name: string): string =>
+	name.length <= NAME_MAX ? name : `${name.slice(0, NAME_MAX - 1)}…`;
 
 const looksLikeImage = (source: StagedSource): boolean => {
 	if (source.kind === "dataUrl") return source.mime.startsWith("image/");
@@ -182,12 +221,16 @@ export async function uploadStagedImages(params: {
 		// The hub advertising no `attachments` block cannot take an id at all and
 		// answers the field with 400; the caller has already refused the send for
 		// this case, so nothing is uploaded here and nothing is reported twice.
-		for (const staged of paths)
-			failures.push({ name: stagedName(staged), reason: "unsupported" });
+		for (let index = 0; index < paths.length; index += 1)
+			failures.push({
+				name: stagedName(paths[index], index, paths.length),
+				reason: "unsupported",
+			});
 		return { ids, failures };
 	}
-	for (const staged of paths) {
-		const name = stagedName(staged);
+	const count = paths.length;
+	for (const [index, staged] of paths.entries()) {
+		const name = stagedName(staged, index, count);
 		const source = stagedSource(staged);
 		if (source === null || !looksLikeImage(source)) {
 			// The bridge carries pictures only; a document belongs to the daemon's
@@ -198,8 +241,20 @@ export async function uploadStagedImages(params: {
 			continue;
 		}
 		const read = await readStagedBytes(source);
-		if (read === null) {
-			failures.push({ name, reason: "read" });
+		if (!read.ok) {
+			failures.push({ name, reason: read.why });
+			continue;
+		}
+		/*
+		 * THE FORMAT IS SNIFFED FROM THE BYTES BEFORE ANY DECODE IS ATTEMPTED, so the
+		 * refusal can say which of two different things went wrong. `null` is "this is
+		 * not a picture at all"; a picture the platform cannot DECODE is the format
+		 * sentence; a png/jpeg that sniffs and then will not decode or prepare is a
+		 * source that could not be read (the "may be damaged" sentence).
+		 */
+		const sniffed = sniffImage(read.bytes);
+		if (sniffed === null) {
+			failures.push({ name, reason: "unsupported" });
 			continue;
 		}
 		let bytes: Uint8Array;
@@ -209,15 +264,18 @@ export async function uploadStagedImages(params: {
 			// SAME step runs for a data URL and for a filesystem read: one prepare
 			// path, so the two forms cannot drift into different bounding rules.
 			const prepared = await prepareImageForUpload(
-				new Blob([read as BlobPart]),
+				new Blob([read.bytes as BlobPart]),
 				capability.max_bytes,
 			);
 			bytes = prepared.bytes;
 		} catch {
-			// `prepareImageForUpload` refuses with its own reason; the two it can
-			// raise here are a format this platform cannot decode and a picture still
-			// over the hub's ceiling after bounding.
-			failures.push({ name, reason: "unsupported" });
+			// `prepareImageForUpload` refuses with its own reason. A png/jpeg that
+			// reached this step and still will not prepare is a picture that cannot be
+			// READ; anything else (heic/webp/gif on a platform whose decoder refuses
+			// them) is a FORMAT this client cannot carry. The pre-existing
+			// too_large-to-`unsupported` mapping is left exactly as it was.
+			const decodable = sniffed === "image/png" || sniffed === "image/jpeg";
+			failures.push({ name, reason: decodable ? "read" : "unsupported" });
 			continue;
 		}
 		try {
