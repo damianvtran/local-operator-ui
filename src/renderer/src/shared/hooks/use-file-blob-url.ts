@@ -83,6 +83,8 @@ export type FileBlobState =
 	  };
 
 type FileBlobOptions = {
+	/** Explicit Retry must read again even when metadata and another holder stay unchanged. */
+	cachePolicy?: "reuse" | "reload";
 	/** Last modification of the file, so a rewrite is a different cache entry. */
 	mtimeMs?: number | null;
 	/** MIME type of the blob; a PDF renders only when the blob says it is one. */
@@ -176,7 +178,13 @@ const isDirectUrl = (path: string): boolean =>
 
 export function useFileBlobUrl(
 	path: string,
-	{ mtimeMs, mimeType, sizeBytes, maxBytes }: FileBlobOptions,
+	{
+		mtimeMs,
+		mimeType,
+		sizeBytes,
+		maxBytes,
+		cachePolicy = "reuse",
+	}: FileBlobOptions,
 ): FileBlobState {
 	const filePath = stripFileUrl(path);
 	/*
@@ -191,7 +199,10 @@ export function useFileBlobUrl(
 	// A lazy initializer, so the id is drawn once per holder and survives
 	// re-renders; the key it feeds is stable for the holder's whole life.
 	const [holderId] = useState(() => nextHolderId++);
-	const key = cacheKey(filePath, mtimeMs, sizeBytes, holderId);
+	const sharedKey = cacheKey(filePath, mtimeMs, sizeBytes, holderId);
+	// A retry owns fresh bytes without evicting or revoking other mounted viewers.
+	const key =
+		cachePolicy === "reload" ? `${sharedKey}:reload-${holderId}` : sharedKey;
 	/*
 	 * The same argument one step earlier for size: a file the probe measured as
 	 * over the read cap is refused by main without being read, so the viewer
