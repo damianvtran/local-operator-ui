@@ -2317,13 +2317,27 @@ test("QA Q3: a 401 upload marks the chip signed_out and says so with the sign-in
  */
 const ROW = 120;
 const CLIENT = 400;
+/*
+ * THE DESCRIPTORS AS THE PROCESS STARTED WITH THEM, captured once, before any
+ * test can install an override. Every run restores THESE, never "whatever was
+ * installed when I started": a run that leaked (a throw outside a `finally`, two
+ * runs overlapping on the shared prototype) used to hand its getter to the next
+ * run's `saved`, and the next restore re-installed it - a ratchet that made a
+ * viewport report `clientHeight` 520 against this file's own `CLIENT = 400` and
+ * turned r8 m1 red only when it ran after another geometry test.
+ */
+const SCROLL_PROTO = window.HTMLElement.prototype;
+const SCROLL_DESCRIPTORS = {
+	scrollHeight: Object.getOwnPropertyDescriptor(SCROLL_PROTO, "scrollHeight"),
+	clientHeight: Object.getOwnPropertyDescriptor(SCROLL_PROTO, "clientHeight"),
+	scrollTop: Object.getOwnPropertyDescriptor(SCROLL_PROTO, "scrollTop"),
+};
 function withScrollGeometry(run) {
-	const proto = window.HTMLElement.prototype;
-	const saved = {
-		scrollHeight: Object.getOwnPropertyDescriptor(proto, "scrollHeight"),
-		clientHeight: Object.getOwnPropertyDescriptor(proto, "clientHeight"),
-		scrollTop: Object.getOwnPropertyDescriptor(proto, "scrollTop"),
-	};
+	const proto = SCROLL_PROTO;
+	/* Drop anything a previous run left behind before installing ours, so no
+	   stale own descriptor can shadow the model this run is about to measure. */
+	for (const name of Object.keys(SCROLL_DESCRIPTORS))
+		Reflect.deleteProperty(proto, name);
 	const tops = new WeakMap();
 	const isViewport = (el) => el.hasAttribute("data-radix-scroll-area-viewport");
 	// `data-test-extra-height` models growth that is NOT a message row (a
@@ -2360,7 +2374,7 @@ function withScrollGeometry(run) {
 		},
 	});
 	const restore = () => {
-		for (const [name, descriptor] of Object.entries(saved))
+		for (const [name, descriptor] of Object.entries(SCROLL_DESCRIPTORS))
 			if (descriptor) Object.defineProperty(proto, name, descriptor);
 			else Reflect.deleteProperty(proto, name);
 	};
