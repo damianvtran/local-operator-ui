@@ -30,7 +30,32 @@ Host selectors: `#scene` (native select), `#narrow`, `#wide`, `#reload`, `#sampl
 `#download-evidence` (actual user-click download of full sample JSON).
 The existing direct page and galleries remain available and unmodified.
 
-## Remaining-review closure (one serial pass, maximum 300s)
+## Final two rows only (maximum 300s; all other rows retained)
+
+- `?scene=reopen` now explicitly passes `domWindow=on`. The child head sets the
+  SHIPPED `canonicalTranscriptDomWindow=on` localStorage flag after its normal
+  clear and before any product module mounts. This is an opt-in feature case,
+  not evidence of default DOM windowing. Require evidence DOM window `on`; an
+  `off`/fallback result is not a successful unmount. Expand target e87, then use
+  an actual click on the child composer to move focus out of the row and clear
+  any text selection. Focus/selection retain a row deliberately; expansion of
+  a plain-text user row alone does not. Use the real transcript scroll region
+  to leave the target, capture `target-not-mounted`, then return to the same ID
+  and capture reconstructed Show less; collapse and record cap174/anchor. Do not
+  switch session, reload, invoke handlers or force unmount. Budget 0–160s.
+- `?scene=seal` uses the unchanged validated skill payload with a SHORT synthetic
+  request (`userLines=0`), so its actual `$capture-demo` nested trigger can fit
+  initially rather than sitting above a long bottom-anchored request. Use fresh
+  child snapshot refs for that trigger, open its actual instructions, capture
+  both trigger and `[data-lo-skill-body]`. No replacement UI or parser change.
+  Budget 160–250s; if above viewport, use actual child scrolling before capture.
+- 250–300s: download full JSON, save uniquely named captures, console check,
+  close owned tab, stop exact owned server group and verify port closed.
+
+Cold/locale/image/quote and prior English rows are CLOSED and retained; the
+broader prior plan below is historical guidance, NOT a new dispatch matrix.
+
+## Prior remaining-review closure (historical, do not rerun closed rows)
 
 Use direct host URLs, NOT the flaky native scenario select. Prefix every suffix
 below with `http://127.0.0.1:5211/session-switch-preview.html?scene=`. Retain already

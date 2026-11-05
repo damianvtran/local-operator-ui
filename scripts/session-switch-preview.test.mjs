@@ -20,6 +20,29 @@ test("direct missing-case URLs select real cold admission, locales and same-owne
 	assert.equal(params("ur-long").get("locale"), "ur");
 	assert.equal(params("fr-long").get("locale"), "fr");
 	assert.equal(params("reopen").get("outgoingSteps"), "90");
+	assert.equal(params("reopen").get("domWindow"), "on");
+	assert.equal(
+		params("long").get("domWindow"),
+		null,
+		"retained scenes keep their prior defaults",
+	);
+	assert.equal(
+		params("seal").get("userLines"),
+		"0",
+		"short request leaves the real seal trigger initially visible",
+	);
+	const entry = readFileSync(
+		new URL("./session-switch.html", import.meta.url),
+		"utf8",
+	);
+	assert.ok(
+		entry.indexOf("localStorage.clear()") <
+			entry.indexOf('localStorage.setItem("canonicalTranscriptDomWindow"'),
+	);
+	assert.ok(
+		entry.indexOf('localStorage.setItem("canonicalTranscriptDomWindow"') <
+			entry.indexOf('<script type="module"'),
+	);
 	for (const example of ["quote", "seal", "image"])
 		assert.equal(params(example).get("userExample"), example);
 });

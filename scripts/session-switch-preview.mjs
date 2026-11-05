@@ -51,7 +51,11 @@ export function sceneUrl(scene) {
 	if (scene.startsWith("cold-")) query.set("boot", "sidebar");
 	if (scene === "fr-long") query.set("locale", "fr");
 	if (scene === "ur-long") query.set("locale", "ur");
+	// The nested trigger must start in view, not above a long synthetic request.
+	// Payload parsing and the real Disclosure remain unchanged.
+	if (scene === "seal") query.set("userLines", "0");
 	if (scene === "reopen") {
+		query.set("domWindow", "on");
 		query.set("steps", "90");
 		query.set("outgoingSteps", "90");
 	}
@@ -100,6 +104,18 @@ export function readFrame(frame, expected, targetRecord = null) {
 				? "target-not-mounted"
 				: "no-user-row",
 		targetRecord,
+		domWindowSetting:
+			win.localStorage?.getItem("canonicalTranscriptDomWindow") ?? null,
+		domWindow: (() => {
+			const region = doc.querySelector("[data-lo-dom-window]");
+			return region
+				? {
+						enabled: region.getAttribute("data-lo-dom-window"),
+						pinned: region.getAttribute("data-lo-dom-pinned"),
+						reason: region.getAttribute("data-lo-dom-window-reason"),
+					}
+				: null;
+		})(),
 		language: doc.documentElement?.lang,
 		direction: doc.documentElement?.dir,
 		viewport: {
@@ -204,7 +220,7 @@ export function evidenceSummary(source, runs) {
 	const lines = [
 		`Source: ${source}`,
 		`Runs: ${runs.length} (initial/first-content protected; six-run bound); latest scenario: ${latest?.scenario ?? "none"}`,
-		`Viewport expected: ${JSON.stringify(latest?.expectedViewport ?? null)}; actual: ${JSON.stringify(last?.viewport ?? null)}`,
+		`Viewport expected: ${JSON.stringify(latest?.expectedViewport ?? null)}; actual: ${JSON.stringify(last?.viewport ?? null)}; DOM window: ${JSON.stringify(last?.domWindow ?? null)}; setting=${last?.domWindowSetting ?? "default"}`,
 		`First content: index=${firstIndex}, elapsed=${first?.elapsedMs ?? "none"}ms; cap height/max=${first?.cap?.height ?? "none"}/${first?.maxHeight ?? "none"}`,
 		`Initial cap sequence (first six changes): ${heights.map((height) => height.value).join(", ") || "none observed"}`,
 		`Latest: state=${last?.state ?? "pending"}; done=${latest?.done ?? false}; observed stable frames=${latest?.stableFrames ?? 0}`,
