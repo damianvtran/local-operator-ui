@@ -25,10 +25,16 @@ const IMAGE_QUOTA_COPY = /too many images/i;
 const RETRY_COPY = /retry/i;
 const OPAQUE_ID = /opaque/;
 const COUNT_ONLY_COPY = /3 attachments/;
+// Both size spellings: the raw count the bordered card printed, and the human
+// `2 KB` the chips print since the inline-image refresh (agent review round 1,
+// minor 2) - a size must not leak onto a refused or expired tile in either.
 const PRIVATE_TERMINAL_METADATA =
-	/expired|withheld|deleted|unknown|revoked|opaque|2,048/;
+	/expired|withheld|deleted|unknown|revoked|opaque|2,048|\bKB\b/;
 const GENERIC_FILE_COPY = /File/;
-const LOCALIZED_BYTE_COUNT = /2,048 bytes/;
+// A human size on the chip (`2 KB`), never the raw "2,048 bytes" receipt the
+// bordered card printed before the inline-image refresh (SPEC §3.1).
+const HUMAN_SIZE = /2 KB/;
+const RAW_BYTE_COUNT = /bytes/;
 const PRIVATE_FILE_METADATA = /secret|script|private/;
 const TINY_RESERVED_BOX = /width: 64px; height: 64px/;
 
@@ -145,7 +151,7 @@ const bundle = await build({
  export {BridgeAttachmentGroup, BridgeFileGroup} from "./src/renderer/src/features/team-bridge/attachments/bridge-attachment-group";
  export {middleTruncateFileName, splitFileNameTail, toBridgeFileDescriptor} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {ownerAuditMessageSchema} from "./src/shared/team-bridge-owner-audit-contract";
- export {attachmentBox} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
+ export {attachmentBox, attachmentFit} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
  export {TeamBridgeMarkdown} from "./src/renderer/src/features/team-bridge/team-bridge-markdown";
  export {TeamBridgeScheduledAttachments} from "./src/renderer/src/features/team-bridge/team-bridge-attachments";
@@ -1067,8 +1073,12 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 		2,
 	);
 	assert.doesNotMatch(view.element.textContent, TERMINAL_REASON);
+	/* The ready tile's hover cluster (Open, Save) is not a retry; count the
+	   controls outside it. */
 	assert.equal(
-		view.element.querySelectorAll("button").length,
+		[...view.element.querySelectorAll("button")].filter(
+			(node) => !node.closest("[data-attachment-actions]"),
+		).length,
 		1,
 		"404 and terminal descriptors expose no retry",
 	);
@@ -2822,7 +2832,8 @@ test("shared file metadata: generic safe name, no raw descriptor text or inline 
 	});
 	assert.equal(commissioned, 0);
 	assert.match(view.element.textContent, GENERIC_FILE_COPY);
-	assert.match(view.element.textContent, LOCALIZED_BYTE_COUNT);
+	assert.match(view.element.textContent, HUMAN_SIZE);
+	assert.doesNotMatch(view.element.textContent, RAW_BYTE_COUNT);
 	assert.doesNotMatch(view.element.textContent, PRIVATE_FILE_METADATA);
 	assert.equal(view.element.querySelectorAll("button,img,a,script").length, 0);
 	await view.close();
@@ -2840,13 +2851,18 @@ test("shared geometry: nullable, invalid and huge dimensions stay finite and bou
 		for (const compact of [false, true]) {
 			const box = m.attachmentBox({ width, height: width }, true, compact);
 			assert.ok(Number.isFinite(box.width) && Number.isFinite(box.height));
-			assert.ok(box.width > 0 && box.width <= (compact ? 264 : 360));
-			assert.ok(box.height > 0 && box.height <= (compact ? 176 : 240));
+			assert.ok(box.width > 0 && box.width <= (compact ? 280 : 400));
+			assert.ok(box.height > 0 && box.height <= (compact ? 220 : 320));
 		}
 	}
+	// A grid cell is square at half the group's width less the 4px gutter.
 	assert.deepEqual(m.attachmentBox(null, false, true), {
-		width: 128,
-		height: 88,
+		width: 138,
+		height: 138,
+	});
+	assert.deepEqual(m.attachmentBox(null, false, false), {
+		width: 198,
+		height: 198,
 	});
 });
 
@@ -3191,6 +3207,9 @@ const PDF_META = /PDF · 184 KB/;
 const CSV_META = /CSV · 920 B/;
 const FILE_ID_PREFIX = /bfile_/;
 const WRAPS = /flex-wrap/;
+const GRID_TWO_COLUMNS = /grid-cols-2/;
+const SPANS_TWO_ROWS = /row-span-2/;
+const SQUARE_CELL = /aspect-square/;
 const SHRINKS = /min-w-0/;
 const CAPPED = /max-w-full/;
 const TRUNCATES = /truncate/;
@@ -3335,14 +3354,17 @@ test("S3b files: mixed 4 images + 6 files at compact density stays bounded and w
 	});
 	const lists = view.element.querySelectorAll("ul");
 	assert.equal(lists.length, 2);
-	for (const list of lists) {
-		assert.match(list.className, WRAPS);
-		assert.match(list.className, SHRINKS);
-	}
+	/* The images are a bounded 2-column grid (SPEC §3.1), capped at the compact
+	   group width; the file chips still wrap. Both may shrink. */
+	const [imageGrid, fileList] = lists;
+	assert.match(imageGrid.className, GRID_TWO_COLUMNS);
+	assert.equal(imageGrid.style.maxWidth, "280px");
+	assert.match(fileList.className, WRAPS);
+	for (const list of lists) assert.match(list.className, SHRINKS);
 	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
 	assert.equal(cards.length, 6);
 	for (const card of cards) {
-		assert.equal(card.style.width, "208px");
+		assert.equal(card.style.width, "240px");
 		assert.match(card.className, CAPPED);
 		const name = card.querySelector('[dir="auto"]');
 		const head = name.querySelector('[data-file-name-part="head"]');
@@ -3523,6 +3545,137 @@ test("S3b files: the tail is a protected element; only the head ellipsises (Q1/D
 	assert.equal(
 		view.element.querySelectorAll("[title],[aria-label] [aria-label]").length,
 		0,
+	);
+	await view.close();
+});
+
+/* ------------------------------------------------------------------ *\
+   Inline images (SPEC §3.1): grid layout, +N, fit, per-image Save.
+   Added in agent review round 1 (M1, minors 3 and 5).
+\* ------------------------------------------------------------------ */
+
+const sixImages = (fourthState) =>
+	[0, 1, 2, 3, 4, 5].map((index) => ({
+		id: `batt_six${index}`,
+		mime: "image/png",
+		size: 10,
+		width: 4,
+		height: 3,
+		state: index === 3 ? fourthState : "bound",
+	}));
+
+test("inline grid: +N survives a failed fourth tile; tiles 5+ stay mounted but hidden (M1)", async () => {
+	for (const fourthState of ["bound", "expired", "withheld", "deleted"]) {
+		const view = await renderAttachmentGroup({
+			attachments: sixImages(fourthState),
+			renderPreview: (_attachment, index) =>
+				React.createElement("span", null, `tile${index}`),
+		});
+		const items = [...view.element.querySelectorAll("ul > li")];
+		assert.equal(items.length, 6, `${fourthState}: every image is mounted`);
+		assert.deepEqual(
+			items.map((li) => li.hidden),
+			[false, false, false, false, true, true],
+			`${fourthState}: positions 5 and 6 are hidden`,
+		);
+		const overflow = view.element.querySelectorAll(
+			"[data-attachment-overflow]",
+		);
+		assert.equal(overflow.length, 1, `${fourthState}: one +N label`);
+		assert.equal(overflow[0].textContent, "+2");
+		assert.ok(
+			items[3].contains(overflow[0]),
+			`${fourthState}: the label sits on the fourth slot`,
+		);
+		await view.close();
+	}
+});
+
+test("inline grid: member Placeholder and failed fourth tile keep +N; ready fourth tile names it (M1)", async () => {
+	mediaAnswer = (request) =>
+		request.attachmentId === "batt_six3"
+			? { status: 404, kind: "error", detail: "x" }
+			: { status: 200, kind: "bytes", mimeType: "image/png", data: PNG };
+	const failed = await renderList([
+		message({ id: "bmsg_six_fail", attachments: sixImages("bound") }),
+	]);
+	assert.equal(
+		failed.element.querySelector("[data-attachment-overflow]")?.textContent,
+		"+2",
+		"a refused fourth picture still says +2",
+	);
+	await failed.close();
+	mediaAnswer = () => ({
+		status: 200,
+		kind: "bytes",
+		mimeType: "image/png",
+		data: PNG,
+	});
+	const ready = await renderList([
+		message({ id: "bmsg_six_ok", attachments: sixImages("bound") }),
+	]);
+	const more = m.t("ui.chat.canonical.fold.more_images", {
+		count: 2,
+		count_display: "2",
+	});
+	const fourth = ready.element.querySelectorAll("ul > li")[3];
+	assert.equal(
+		fourth.querySelector("button[aria-label]").getAttribute("aria-label"),
+		more,
+		"label in name: the +2 tile is named for what it shows",
+	);
+	assert.equal(
+		fourth.querySelector("[data-attachment-actions]"),
+		null,
+		"the +N tile carries no action cluster",
+	);
+	await ready.close();
+});
+
+test("inline grid: three images put the first across both rows", async () => {
+	const view = await renderAttachmentGroup({
+		attachments: sixImages("bound").slice(0, 3),
+		renderPreview: () => React.createElement("span"),
+	});
+	const items = [...view.element.querySelectorAll("ul > li")];
+	assert.match(items[0].className, SPANS_TWO_ROWS);
+	for (const li of items.slice(1)) assert.match(li.className, SQUARE_CELL);
+	await view.close();
+});
+
+test("inline image fit: cover inside 2.5:1..1:2.5, contain outside and when unknown", () => {
+	assert.equal(m.attachmentFit({ width: 400, height: 300 }), "cover");
+	assert.equal(m.attachmentFit({ width: 250, height: 100 }), "cover");
+	assert.equal(m.attachmentFit({ width: 40, height: 100 }), "cover");
+	assert.equal(m.attachmentFit({ width: 251, height: 100 }), "contain");
+	assert.equal(m.attachmentFit({ width: 39, height: 100 }), "contain");
+	assert.equal(m.attachmentFit({ width: null, height: 100 }), "contain");
+	assert.equal(m.attachmentFit(null), "contain");
+});
+
+test("member ready tile: Save is offered per image and named for that image (minor 5)", async () => {
+	mediaAnswer = () => ({
+		status: 200,
+		kind: "bytes",
+		mimeType: "image/png",
+		data: PNG,
+	});
+	const view = await renderList([
+		message({ id: "bmsg_two", attachments: sixImages("bound").slice(0, 2) }),
+	]);
+	const saves = [
+		...view.element.querySelectorAll("[data-attachment-actions] button"),
+	].filter((node) => node.getAttribute("aria-hidden") !== "true");
+	assert.deepEqual(
+		saves.map((node) => node.getAttribute("aria-label")),
+		[1, 2].map((index) =>
+			m.t("ui.common.forms.autocomplete_field.save", {
+				label: m.t("ui.teamBridge.attachments.position", {
+					index: String(index),
+					count: "2",
+				}),
+			}),
+		),
 	);
 	await view.close();
 });

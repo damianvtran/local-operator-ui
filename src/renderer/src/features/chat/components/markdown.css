@@ -303,6 +303,23 @@
 	color: var(--lo-ink);
 }
 
+/*
+ * A `$skill` the reader's turn invoked (`utils/remark-skill-ink.ts`). The role is
+ * `tokenCommand`: the composer paints the same token in it before the send and
+ * the sealed row paints it after, so the three surfaces say one thing. Weight
+ * 600 is the second channel, and the only one in obsidian, where `tokenCommand`
+ * IS `ink` (docs/branding.md, "The structure ink that is not in the ladder").
+ *
+ * TWO CLASSES, so the selector outranks `.lo-markdown strong` and a token inside
+ * emphasis keeps this ink. NO `content:`, NO pseudo-element and NO
+ * `text-transform`: what a reader selects must be the characters they typed
+ * (`scripts/skill-token-ink.test.mjs` pins the source of this rule).
+ */
+.lo-markdown .lo-skill-token {
+	color: var(--lo-token-command);
+	font-weight: 600;
+}
+
 .lo-markdown em {
 	font-style: italic;
 }

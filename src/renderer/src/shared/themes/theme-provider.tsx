@@ -3,8 +3,8 @@ import { reportWindowChromeColors } from "@shared/hooks/use-window-chrome";
 import { syncGlassScheme } from "@shared/hooks/use-window-glass";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, ReactNode } from "react";
-import { useLayoutEffect } from "react";
-import { applyThemeToDocument, getTheme } from "./index";
+import { useLayoutEffect, useMemo } from "react";
+import { applyAppearance, resolveAppearance } from "./appearance";
 
 /**
  * Props for the ThemeProvider component
@@ -25,11 +25,23 @@ type ThemeProviderProps = {
  * element.
  */
 export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
-	// Get the selected theme from the UI preferences store
+	// Get the selected theme and its appearance layers from the UI preferences store
 	const themeName = useUiPreferencesStore((state) => state.themeName);
+	const contrast = useUiPreferencesStore((state) => state.contrast);
+	const accent = useUiPreferencesStore((state) => state.accent);
 
-	// Get the theme object for the selected theme
-	const themeOption = getTheme(themeName);
+	/*
+	 * The palette the app paints: the built-in at Standard contrast with its own
+	 * accent - the IDENTITY path, which is every profile today because no setting
+	 * writes the v5 fields yet - or a composition over it (see `appearance.ts`).
+	 * On the identity path `resolved.muiTheme` is the prebuilt `getTheme(...)`
+	 * object and `resolved.id` the built-in id, so this provider renders exactly
+	 * what it rendered before the engine existed.
+	 */
+	const resolved = useMemo(
+		() => resolveAppearance({ themeName, contrast, accent }),
+		[themeName, contrast, accent],
+	);
 
 	/*
 	 * Publish the theme id to the document element on mount and on every
@@ -41,7 +53,9 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
 	 * palette's variables under the new MUI theme on every switch.
 	 */
 	useLayoutEffect(() => {
-		applyThemeToDocument(themeName);
+		/* Injects the composed block (if any) BEFORE setting `data-theme`, so no
+		   frame names a block that does not exist yet. */
+		applyAppearance({ themeName, contrast, accent });
 		/*
 		 * THE SAME FRAME INFORMS THE WINDOW CHROME. On Windows and Linux the OS's
 		 * caption glyphs are drawn by Electron over the renderer, and on Linux the box
@@ -51,12 +65,12 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
 		 * Reported from the variables the document paints (see the function's note) and
 		 * in THIS effect rather than a second one, so the two cannot disagree.
 		 */
-		reportWindowChromeColors(getTheme(themeName).id);
+		reportWindowChromeColors(resolved.id);
 		/* The glass alphas and the OS material's tone follow the palette's scheme. */
 		syncGlassScheme();
-	}, [themeName]);
+	}, [themeName, contrast, accent, resolved.id]);
 
 	return (
-		<MuiThemeProvider theme={themeOption.theme}>{children}</MuiThemeProvider>
+		<MuiThemeProvider theme={resolved.muiTheme}>{children}</MuiThemeProvider>
 	);
 };

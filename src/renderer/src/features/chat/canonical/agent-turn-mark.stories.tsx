@@ -21,15 +21,17 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import "../../../styles/index.css";
 import {
 	agentAvatarsQueryKey,
-	useAgentAvatar,
 	useAgentAvatarMap,
 } from "@shared/agent-avatar/agent-avatar";
+import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQueryClient } from "@tanstack/react-query";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import type { AgentAvatarSize } from "../agent-avatar-size";
 import { CanonicalTranscript } from "./canonical-transcript";
 import type { CanonicalTranscriptStatus } from "./transcript-pane";
 import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
@@ -192,10 +194,18 @@ const Panel = ({
 	frame,
 	width,
 	agentId,
+	owned = true,
+	height = PANE_HEIGHT,
+	transcript = TRANSCRIPT,
 }: {
 	frame: string;
 	width: number;
 	agentId: string | null;
+	/** The records to draw; the short three-turn fixture by default. */
+	transcript?: TranscriptState;
+	/** Whether the viewer owns the agent (the picture's ownership answer). */
+	owned?: boolean;
+	height?: number;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	/*
@@ -204,7 +214,12 @@ const Panel = ({
 	 * the stored value reaches the row - the same subscription that repaints a
 	 * conversation when the picture changes.
 	 */
-	const agentAvatar = useAgentAvatar(agentId);
+	const agentAvatar = useAgentSlotMark({
+		agentId,
+		agentName: "coder",
+		owned,
+		pictureDoor: false,
+	});
 	return (
 		<div
 			data-frame={frame}
@@ -213,12 +228,12 @@ const Panel = ({
 		>
 			<div
 				className="flex min-h-0 flex-col"
-				style={{ height: PANE_HEIGHT }}
+				style={{ height }}
 				ref={containerRef}
 			>
 				<CanonicalTranscript
 					frontend={{} as CanonicalFrontendState}
-					transcript={TRANSCRIPT}
+					transcript={transcript}
 					gate={null}
 					waiting={false}
 					starting={false}
@@ -226,7 +241,7 @@ const Panel = ({
 					onLoadOlder={async () => true}
 					containerRef={containerRef}
 					isSmallView={false}
-					agentAvatar={agentAvatar}
+					agentMark={agentAvatar}
 					/*
 					 * THE NAME THE IMAGE PRINTS: without it the frame renders
 					 * `alt=""` and the frame cannot show what a reader with a screen
@@ -341,9 +356,29 @@ export const GalleryStory: Story = {
 };
 
 /** A pane whose agent has a stored picture; a component so the hook is legal. */
-const PicturePane = ({ frame, width }: { frame: string; width: number }) => {
+const PicturePane = ({
+	frame,
+	width,
+	agentId = STORY_AGENT_ID,
+	transcript,
+	height,
+}: {
+	frame: string;
+	width: number;
+	agentId?: string | null;
+	transcript?: TranscriptState;
+	height?: number;
+}) => {
 	useStoredPicture();
-	return <Panel frame={frame} width={width} agentId={STORY_AGENT_ID} />;
+	return (
+		<Panel
+			frame={frame}
+			width={width}
+			agentId={agentId}
+			transcript={transcript}
+			height={height}
+		/>
+	);
 };
 
 /** Just the wide picture pane, for a frame a reviewer can read at 1:1. */
@@ -382,6 +417,227 @@ export const PlainNarrow: Story = {
 	render: () => (
 		<div className="bg-canvas p-6">
 			<Panel frame="plain-narrow" width={420} agentId={null} />
+		</div>
+	),
+};
+
+/** An owned agent that has NO stored picture (the map above lists only the pictured one). */
+const BARE_AGENT_ID = "agent-story-bare";
+
+/**
+ * AN OWNED AGENT WITH NO PICTURE, in a real transcript: no mark at all (operator,
+ * 2026-11-04). #1651 drew a dashed camera door at the first turn's head here; it
+ * took a line above the first tool row for an agent that never asked for a
+ * picture, so it is gone, and this frame is the D11 transcript exactly - the
+ * same as `PlainWide`. `data-frame` is the measure hook for that comparison.
+ */
+export const NoPictureOwned: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<PicturePane
+				frame="no-picture-owned"
+				width={1024}
+				agentId={BARE_AGENT_ID}
+			/>
+		</div>
+	),
+};
+
+/** The same agent when the viewer does not own it: also no mark at all. */
+export const NoPictureNotOwned: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<Panel
+				frame="no-picture-not-owned"
+				width={1024}
+				agentId={BARE_AGENT_ID}
+				owned={false}
+			/>
+		</div>
+	),
+};
+
+/** A pane at one step of the size setting, with a picture or without. */
+const SizedPane = ({
+	size,
+	agentId,
+}: {
+	size: AgentAvatarSize;
+	agentId: string;
+}) => {
+	useLayoutEffect(() => {
+		useUiPreferencesStore.setState({ agentAvatarSize: size });
+		return () => useUiPreferencesStore.setState({ agentAvatarSize: "small" });
+	}, [size]);
+	return <PicturePane frame={`size-${size}`} width={1024} agentId={agentId} />;
+};
+
+export const SizeSmall: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<SizedPane size="small" agentId={STORY_AGENT_ID} />
+		</div>
+	),
+};
+export const SizeMedium: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<SizedPane size="medium" agentId={STORY_AGENT_ID} />
+		</div>
+	),
+};
+export const SizeLarge: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<SizedPane size="large" agentId={STORY_AGENT_ID} />
+		</div>
+	),
+};
+/** The large step with no picture: still nothing, at any size. */
+export const SizeLargeNoPicture: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<SizedPane size="large" agentId={BARE_AGENT_ID} />
+		</div>
+	),
+};
+
+/**
+ * A LONG TRANSCRIPT, WITH THE DOM WINDOW ON (QA round 1, Q3).
+ *
+ * The short fixtures never reach the windowing path, so they cannot show the
+ * thing the size setting must not break: the window ESTIMATES an entry it has
+ * not mounted, and the estimate for a turn head reads `turnMarkHeight(size)`.
+ * 60 turns (120 records, a mark on each turn's head) is well past what a pane
+ * mounts at once, and the story switches the window on the way the app does
+ * (`canonicalTranscriptDomWindow` = "on", read once at mount, so it is set before
+ * the transcript mounts). A probe in the rig reads `[data-turn-mark-count]`-style
+ * facts off the DOM: how many marks are mounted against how many turns, and the
+ * region's `scrollHeight` at the top, middle and bottom.
+ */
+const LONG_TURNS = 60;
+const LONG_RECORDS: TranscriptRecord[] = Array.from(
+	{ length: LONG_TURNS },
+	(_, turn) => [
+		user(
+			`lu${turn}`,
+			`Question ${turn + 1}: what did the retry budget become?`,
+		),
+		assistant(
+			`la${turn}`,
+			`Answer ${turn + 1}: it moved into the gateway client and is read from one constant per route, so a route cannot carry a second copy.`,
+		),
+	],
+).flat();
+const LONG_TRANSCRIPT = transcriptOf(LONG_RECORDS);
+
+const LongPane = ({
+	size,
+	agentId,
+}: {
+	size: AgentAvatarSize;
+	/** `null` draws no marks at all: the control for the mark's own cost. */
+	agentId?: string | null;
+}) => {
+	// The window is read once per transcript mount; state it before the mount.
+	try {
+		window.localStorage.setItem("canonicalTranscriptDomWindow", "on");
+	} catch {
+		// A host without storage draws the full DOM; the probe then reports it.
+	}
+	/*
+	 * THE STEP IS STATED DURING RENDER, NOT IN AN EFFECT: the app persists it long
+	 * before a conversation mounts, so a transcript's FIRST render already reads
+	 * the reader's step. An effect would render the first frame at the previous
+	 * step and carry its measured heights into the estimates, a drift no session
+	 * can produce.
+	 */
+	useUiPreferencesStore.setState({ agentAvatarSize: size });
+	useLayoutEffect(
+		() => () => useUiPreferencesStore.setState({ agentAvatarSize: "small" }),
+		[],
+	);
+	return (
+		<PicturePane
+			frame={`long-${size}`}
+			width={1024}
+			agentId={agentId}
+			transcript={LONG_TRANSCRIPT}
+			height={560}
+		/>
+	);
+};
+
+export const LongWindowedSmall: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<LongPane size="small" />
+		</div>
+	),
+};
+export const LongWindowedLarge: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<LongPane size="large" />
+		</div>
+	),
+};
+/** The control: the same long transcript at the large step with NO marks drawn. */
+export const LongWindowedLargeNoMarks: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<LongPane size="large" agentId={null} />
+		</div>
+	),
+};
+
+/**
+ * THE OPERATOR'S CASE (2026-11-04): an agent turn that opens straight into tool
+ * rows, the shape of most delegated sessions. Without a picture its first tool
+ * row must sit directly under the user's turn, at the turn gap and nothing more;
+ * with one, the picture's line sits between them. `data-frame` is the measure
+ * hook for the y offset of the first tool row.
+ */
+const TOOL_FIRST = transcriptOf([
+	user("tu1", "Run the checks on the avatar branch."),
+	tool({
+		id: "tt1",
+		ts: TS + 500,
+		toolName: "bash",
+		args: { command: "pnpm check-types" },
+	}),
+	tool({
+		id: "tt2",
+		ts: TS + 600,
+		toolName: "read",
+		args: { path: "src/renderer/src/shared/agent-avatar/avatar-presence.ts" },
+	}),
+	assistant("ta1", "Types are clean and the presence table reads as intended."),
+]);
+
+export const ToolFirstNoPicture: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<PicturePane
+				frame="tool-first-no-picture"
+				width={720}
+				agentId={BARE_AGENT_ID}
+				transcript={TOOL_FIRST}
+				height={320}
+			/>
+		</div>
+	),
+};
+
+export const ToolFirstPicture: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<PicturePane
+				frame="tool-first-picture"
+				width={720}
+				transcript={TOOL_FIRST}
+				height={320}
+			/>
 		</div>
 	),
 };

@@ -56,6 +56,7 @@ const bundle = await build({
 			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			export { LAPSE_NOTE_CLEAR_MS } from "./src/renderer/src/features/chat/components/asks/ask-panel";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
+			export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 		`,
 		loader: "tsx",
 		resolveDir: process.cwd(),
@@ -98,8 +99,12 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { AskDrawer, LAPSE_NOTE_CLEAR_MS, useConversationInputStore } =
-	await import(bundlePath.href);
+const {
+	AskDrawer,
+	LAPSE_NOTE_CLEAR_MS,
+	useConversationInputStore,
+	useUiPreferencesStore,
+} = await import(bundlePath.href);
 await unlink(bundlePath).catch(() => {});
 
 const h = React.createElement;
@@ -436,6 +441,207 @@ test("the entry move waits for the frame and moves focus once it lands (R4)", as
 	);
 	await view.unmount();
 	door.remove();
+});
+
+/*
+ * THE PRESS SURVIVES OUR OWN INERT, BEHAVIOURALLY (agent review round 1, m1; round 2,
+ * m-r2-1 and m-r2-2). The covered column is made inert on the commit the drawer opens;
+ * `inert` blurs the chip the user pressed to `<body>`. The latch is what remembers that
+ * press across the read wait, and the marker is what tells it apart from a keyboard that
+ * left of its own accord.
+ */
+test("a press blurred by our own inert still lands in the drawer (m1)", async (t) => {
+	const covered = document.createElement("div");
+	const door = document.createElement("button");
+	door.setAttribute("data-tour-tag", "ask-pane-trigger");
+	covered.appendChild(door);
+	document.body.appendChild(covered);
+	door.focus();
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: null, scope: "session", onClose: () => {} }),
+	);
+	assert.equal(
+		document.activeElement,
+		door,
+		"the unread commit moves nothing - the press waits",
+	);
+	/* The parent's layout effect on that same commit, in order: the marker, the blur. */
+	covered.setAttribute("inert", "");
+	door.blur();
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			onClose: () => {},
+		}),
+	);
+	const active = document.activeElement;
+	const surface = view.container.querySelector("[data-lo-ask-surfaces]");
+	assert.ok(
+		surface?.contains(active ?? null),
+		"the press that our own inert blurred must still reach the drawer",
+	);
+	assert.equal(
+		active?.getAttribute("data-ask-option"),
+		"staging",
+		"on the card's first option, the same landing a visible door gets",
+	);
+	covered.remove();
+});
+
+/*
+ * AND BODY ALONE IS NOT THAT EVIDENCE (agent review round 2, m-r2-2): a click on
+ * non-focusable chrome parks the keyboard in exactly the same place, so the latch may
+ * only be adopted when the pressed control really is inside an inert subtree (or was
+ * removed by our own commit). Without the marker the move stands down.
+ */
+test("a keyboard that left for <body> without our inert moves nothing (m-r2-2)", async (t) => {
+	const door = document.createElement("button");
+	door.setAttribute("data-tour-tag", "ask-pane-trigger");
+	document.body.appendChild(door);
+	door.focus();
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: null, scope: "session", onClose: () => {} }),
+	);
+	door.blur();
+	assert.equal(
+		document.activeElement,
+		document.body,
+		"the user clicked somewhere inert-free, which looks like our blur",
+	);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			onClose: () => {},
+		}),
+	);
+	assert.equal(
+		document.activeElement,
+		document.body,
+		"but without the marker the drawer must not adopt a keyboard it did not take",
+	);
+	door.remove();
+});
+
+/*
+ * A PRESS FROM AN ORDINARY CONTROL, WHICH IS THE CONFIRM'S "Open asks panel" (agent
+ * review round 2, M2-r2): the drawer cannot treat it as a door (it carries no door
+ * marker), and the control is REMOVED with the confirm on the commit the sheet mounts.
+ * The chord's request latches it, and its own removal is evidence enough that our own
+ * commit took it away - so the keyboard lands in the sheet instead of on `<body>`.
+ */
+test("a chord press whose control our commit removed still lands in the drawer", async (t) => {
+	const store = useUiPreferencesStore;
+	const button = document.createElement("button");
+	document.body.appendChild(button);
+	button.focus();
+	store.getState().requestAskOpen("session", "chord");
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: null,
+			scope: "session",
+			onClose: () => {},
+			presentation: "overlay",
+		}),
+	);
+	button.remove();
+	assert.equal(
+		document.activeElement,
+		document.body,
+		"the pressed control is gone",
+	);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			onClose: () => {},
+			presentation: "overlay",
+		}),
+	);
+	const active = document.activeElement;
+	assert.equal(
+		active?.getAttribute("data-ask-option"),
+		"staging",
+		"the press the confirm unmounted must still reach the sheet",
+	);
+});
+
+/*
+ * THE DOCKED PANE TAKES NOTHING AWAY, SO IT LATCHES NOTHING (agent review round 3,
+ * MINOR-1). An asks request raised while the composer holds focus used to adopt the
+ * textarea as a "press origin" and pull the caret into the pane - a docked regression
+ * that only the sheet can justify, because only there does our own commit inert the
+ * control. Behavioural both ways: the composer keeps its caret in the docked pane, and
+ * a notice press under the sheet still lands.
+ */
+test("a chord request never pulls the caret out of the composer in the docked pane", async (t) => {
+	const store = useUiPreferencesStore;
+	const textarea = document.createElement("textarea");
+	document.body.appendChild(textarea);
+	textarea.focus();
+	store.getState().requestAskOpen("session", "chord");
+	const mountView = async () => {
+		const view = await mountFor(
+			t,
+			h(AskDrawer, { frontend: null, scope: "session", onClose: () => {} }),
+		);
+		await view.rerender(
+			h(AskDrawer, {
+				frontend: frontend([radioAsk]),
+				scope: "session",
+				onClose: () => {},
+			}),
+		);
+		return view;
+	};
+	await mountView();
+	assert.ok(
+		document.activeElement === textarea,
+		"the docked pane must leave a control it does not cover exactly where the user left it",
+	);
+	textarea.remove();
+});
+
+test("a notice press under the sheet still lands in the drawer", async (t) => {
+	const store = useUiPreferencesStore;
+	const covered = document.createElement("div");
+	const press = document.createElement("button");
+	press.textContent = "Open asks";
+	covered.appendChild(press);
+	document.body.appendChild(covered);
+	press.focus();
+	store.getState().requestAskOpen("session", "chord");
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: null,
+			scope: "session",
+			onClose: () => {},
+			presentation: "overlay",
+		}),
+	);
+	/* Our own commit, in order: the covered marker lands, the focused control blurs. */
+	covered.setAttribute("inert", "");
+	press.blur();
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			onClose: () => {},
+			presentation: "overlay",
+		}),
+	);
+	const active = document.activeElement;
+	assert.equal(
+		active?.getAttribute("data-ask-option"),
+		"staging",
+		"the press is still the user's last act, so the sheet takes the keyboard",
+	);
+	covered.remove();
 });
 
 test("the close door fires ONCE per emptying", async () => {

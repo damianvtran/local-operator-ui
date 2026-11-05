@@ -1,8 +1,10 @@
+import { Send } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 
 import { acquireAudioMeterStream } from "./audio-meter-stream";
 import {
@@ -16,6 +18,20 @@ import {
  */
 type AudioRecordingIndicatorProps = {
 	isRecording: boolean;
+	/**
+	 * The host draws a "Send recording" control beside Confirm, so the hint line
+	 * names it. The one irreversible action of the three (it transcribes AND
+	 * sends, with no review) is the one the line must not leave unnamed (UX
+	 * round 1, U3). Off for the canvas editor, which has no such control.
+	 */
+	sendsNow?: boolean;
+	/**
+	 * The mic has been pressed and the recorder does not exist yet: the lane is
+	 * drawn at its FINAL height with this sentence in its label row, so the press
+	 * opens the block once and the handover to recording changes nothing (design
+	 * round 3, D14; QA round 3, Q-1). `null` or absent means not preparing.
+	 */
+	preparingLabel?: string | null;
 };
 
 const BUFFER_SIZE = 120; // Number of bars in the waveform
@@ -84,6 +100,8 @@ const PULSE_KEYFRAMES = `
  */
 export const AudioRecordingIndicator = ({
 	isRecording,
+	sendsNow = false,
+	preparingLabel = null,
 }: AudioRecordingIndicatorProps): JSX.Element | null => {
 	// Subscribe at render time so changing language does not restart the audio effect.
 	useI18nLocale();
@@ -280,7 +298,8 @@ export const AudioRecordingIndicator = ({
 		};
 	}, [isRecording]);
 
-	if (!isRecording) {
+	const preparing = !isRecording && preparingLabel !== null;
+	if (!isRecording && !preparing) {
 		return null;
 	}
 
@@ -319,19 +338,57 @@ export const AudioRecordingIndicator = ({
 		 * field's `aria-describedby` is a state that must read the same here.
 		 */
 		<div
-			data-recording-indicator=""
-			className="mt-2 flex w-full min-w-0 flex-col gap-2 px-2 text-accent"
+			// `data-recording-indicator` stays the fact "a take is live": the
+			// preparing block wears its own attribute so nothing that asks whether a
+			// recording exists can read the press as one.
+			{...(preparing
+				? { "data-preparing-lane": "" }
+				: { "data-recording-indicator": "" })}
+			className={cn(
+				"mt-2 flex w-full min-w-0 flex-col gap-2 px-2",
+				preparing ? "text-ink-muted" : "text-accent",
+			)}
 		>
 			<style>{PULSE_KEYFRAMES}</style>
 			<div className="flex min-w-0 items-center gap-2">
 				<span className="relative block size-2 shrink-0" aria-hidden="true">
-					<span className="absolute inset-0 rounded-full border border-accent opacity-0 animate-[recording-ping_1.6s_ease-out_infinite]" />
-					<span className="block size-2 rounded-full bg-accent" />
+					{!preparing && (
+						<span className="absolute inset-0 rounded-full border border-accent opacity-0 animate-[recording-ping_1.6s_ease-out_infinite]" />
+					)}
+					<span
+						className={cn(
+							"block size-2 rounded-full",
+							preparing ? "bg-ink-disabled" : "bg-accent",
+						)}
+					/>
 				</span>
-				<span className="shrink-0 font-medium text-body-sm text-accent">
-					{t("ui.chat.composer_media.recording")}
-				</span>
-				<span className="ms-auto flex min-w-0 items-center gap-1.5 text-body-sm text-ink-dim">
+				{preparing ? (
+					/*
+					 * THE STATE IS ANNOUNCED, not merely painted: the words are only
+					 * announced if they ARE a live region - an `<output>`, this file's
+					 * spelling of `role="status"`. No pulse and no waveform yet: the one
+					 * indeterminate element on the surface is the ring on the mic's own
+					 * busy face (branding 5).
+					 */
+					<output
+						data-preparing-indicator=""
+						className="shrink-0 font-medium text-body-sm text-ink-muted"
+					>
+						{preparingLabel}
+					</output>
+				) : (
+					<span className="shrink-0 font-medium text-body-sm text-accent">
+						{t("ui.chat.composer_media.recording")}
+					</span>
+				)}
+				<span
+					className={cn(
+						"ms-auto flex min-w-0 items-center gap-1.5 text-body-sm text-ink-dim",
+						// Not offered before there is anything to press them on; the
+						// row keeps its height either way.
+						preparing && "invisible",
+					)}
+				>
 					<span className="flex items-center gap-1">
 						<KeyboardShortcut shortcut="Enter" />
 						{t("ui.chat.composer_media.confirms")}
@@ -341,6 +398,15 @@ export const AudioRecordingIndicator = ({
 						<KeyboardShortcut shortcut="Esc" />
 						{t("ui.chat.composer_media.cancels")}
 					</span>
+					{sendsNow && (
+						<>
+							<span aria-hidden="true">·</span>
+							<span className="flex items-center gap-1">
+								<Send aria-hidden="true" className="size-3.5" />
+								{t("ui.chat.composer_media.sends_now")}
+							</span>
+						</>
+					)}
 				</span>
 			</div>
 			{/*
@@ -352,7 +418,13 @@ export const AudioRecordingIndicator = ({
 			 * drawing behind the same shape of wrapper.
 			 */}
 			<div aria-hidden="true">
-				<canvas ref={canvasRef} className={WAVEFORM_CLASS} />
+				{preparing ? (
+					// The waveform's own height, empty: the block is final-size before
+					// the recorder exists.
+					<div className={WAVEFORM_CLASS} />
+				) : (
+					<canvas ref={canvasRef} className={WAVEFORM_CLASS} />
+				)}
 			</div>
 		</div>
 	);

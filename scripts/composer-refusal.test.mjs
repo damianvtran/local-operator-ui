@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { contractSource } from "./contrast-contract-source.mjs";
 
 /*
  * THE REFUSAL CONTRACT: a composer that will not take input must refuse the
@@ -56,7 +57,6 @@ const COMPOSER =
 	"src/renderer/src/shared/components/composer/message-input.tsx";
 const STACK =
 	"src/renderer/src/features/chat/components/measured-suggestion-stack.tsx";
-const CONTRAST = "scripts/contrast-contract.mjs";
 const MISSING_NOTICE =
 	"src/renderer/src/features/chat/missing-session-notice.ts";
 const TRANSCRIPT =
@@ -185,9 +185,24 @@ test("every path that TYPES INTO or SUBMITS the composer answers to the refusal"
 		"and it refuses before the pick writes the completion anywhere",
 	);
 
+	/*
+	 * The Send control's `disabled` is the SLOT ROLE's (`composer-slots.ts`), and the
+	 * refusal reaches the role as the pair `isInputDisabled || sendRefused`, so the
+	 * pin is on both halves: the control reads the role, the role is fed the refusal.
+	 */
 	assert.match(
 		source,
-		/type="submit"[\s\S]{0,400}?disabled=\{\s*isInputDisabled \|\|\s*sendRefused/,
+		/type="submit"[\s\S]{0,400}?disabled=\{!slotB\.enabled\}/,
+		"the Send control disables on its slot role",
+	);
+	assert.match(
+		source,
+		/refused: isInputDisabled \|\| sendRefused,/,
+		"and the role is told about the refusal",
+	);
+	assert.match(
+		source,
+		/type="submit"[\s\S]{0,400}?disabled=\{!slotB\.enabled\}/,
 		"the Send control carries the refusal itself, so the band does not offer a live primary action beside a box that takes nothing - and so the first control a refused keyboard user reaches is not the destructive one",
 	);
 	/*
@@ -605,7 +620,7 @@ test("the contrast contract knows this state exists", () => {
 	 * depends on is pinned in the loop that consumes it - a listed row that
 	 * silently asserts nothing is the same defect one level down.
 	 */
-	const source = code(CONTRAST);
+	const source = contractSource();
 	assert.match(
 		source,
 		/name: "composer \(read-only\)"/,

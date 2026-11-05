@@ -8,6 +8,7 @@ import {
 	askOpenFacts,
 	askOutstandingReading,
 	askSettledAnnouncement,
+	askWaitingAnnouncement,
 	createAskOpenView,
 	shouldCloseCarriedDrawer,
 } from "./ask-open-policy";
@@ -73,7 +74,8 @@ useUiPreferencesStore.subscribe((state) => {
  *     is what makes a dismissal survive a switch (the record is the page's
  *     `askDismissals`, outside any mount) while the "once" resets.
  *  2. READ THE LIVE FACTS the module takes as inputs: the store's drawer flags, whether
- *     the composer holds text, where the keyboard is, and the clock.
+ *     the composer holds text, where the keyboard is, whether the drawer would be
+ *     drawn as the sheet over the conversation, and the clock.
  *  3. APPLY THE VERDICT through the store's ONE writer, `setAskDrawerOpen`, so an
  *     auto-open goes through the same slot claim as a press on the chip - including
  *     the borrow of a durable pane, which the close gives back.
@@ -109,10 +111,22 @@ export const useAskOpenPolicy = ({
 	sessionId,
 	composerId,
 	view,
+	overlayPresentation,
 }: {
 	sessionId: string | undefined;
 	composerId: string | undefined;
 	view: AskQueueView;
+	/**
+	 * Whether the drawer would be drawn as the SHEET over the conversation at this
+	 * instant (`askPanePresentation`'s mode for the row it mounts in), read as a
+	 * function rather than a boolean: the row width is measured in a layout effect,
+	 * and a cached frame can take the view's one decision in the commit that first
+	 * measures it, so a render-time value would answer the pre-measurement question
+	 * (row 0, i.e. docked) exactly where the answer matters. Read only inside the
+	 * decision effect, which is the only place it is a fact (see
+	 * `AskOpenInput.overlayPresentation`).
+	 */
+	overlayPresentation: () => boolean;
 }): string => {
 	/*
 	 * THE LIVE REGION'S SENTENCE (design review round 1, D1): "" until a POLICY open
@@ -189,6 +203,25 @@ export const useAskOpenPolicy = ({
 		) {
 			live.setAskDrawerOpen(false, "session");
 		}
+		/*
+		 * A MODAL SHEET IS NOT CARRIED (agent review round 1, m2). A DOCKED drawer can
+		 * follow the user between conversations: it sits beside the composer, and the
+		 * conversation switch is not an act on it. The SHEET cannot - it covers and
+		 * inerts the content, and a carried one mounts with the keyboard on `<body>`
+		 * (the switch destroyed the element that held it), where Escape is not claimed
+		 * and the only way out is to Tab into the sheet. So at the start of a view under
+		 * the sheet presentation the carried open is closed as a WITHDRAWAL (no
+		 * options): it returns a displaced pane like Escape, and the rail's asks item is
+		 * still the door. A view that opens the drawer itself is unaffected - this runs
+		 * once, before that decision.
+		 */
+		if (
+			overlayPresentation() &&
+			live.isAskDrawerOpen &&
+			live.askDrawerScope === "session"
+		) {
+			live.setAskDrawerOpen(false, "session");
+		}
 	}, [sessionId]);
 
 	/*
@@ -247,8 +280,23 @@ export const useAskOpenPolicy = ({
 			keyboardOnDoor: !wasDecided && keyboardIsOnDoor(),
 			drawerOpen: liveDrawerOpen,
 			sessionDrawerOpen: liveSessionDrawerOpen,
+			/*
+			 * READ LAST, LIVE, LIKE THE FLAGS ABOVE: the presentation is a fact about the
+			 * row at decision time, not about the render this effect was scheduled from
+			 * (the row's first measurement is a layout effect in the same commit).
+			 */
+			overlayPresentation: overlayPresentation(),
 		});
-		if (verdict.action === "open") {
+		if (verdict.reason === "covers-conversation") {
+			/*
+			 * THE REFUSAL STILL SPEAKS (agent review round 1, m3): the drawer stays shut,
+			 * so the only thing a reader who cannot see the chip would miss is that asks
+			 * are waiting. It is the queue's own clause, not an "opened" claim, and it is
+			 * the sentence the settled transition speaks for the same reason (see
+			 * `askWaitingAnnouncement`).
+			 */
+			setAnnouncement(askWaitingAnnouncement(view));
+		} else if (verdict.action === "open") {
 			/*
 			 * THE WRITE IS UNCONDITIONAL BECAUSE THE DECISION ALREADY WAS. `observe` refuses
 			 * to open over an up drawer (`drawer-open`), reading the same flag this effect
@@ -330,8 +378,19 @@ export const useAskOpenPolicy = ({
 	);
 	useEffect(() => {
 		const waiting = view.waiting > 0 || view.open > 0 || view.delivering > 0;
-		if (wasWaiting.current && !waiting && sessionDrawerOpen)
+		if (wasWaiting.current && !waiting && sessionDrawerOpen) {
 			setAnnouncement(askSettledAnnouncement(view));
+		} else if (!waiting && !sessionDrawerOpen) {
+			/*
+			 * AND A QUIET QUEUE HAS NOTHING TO ANNOUNCE (agent review round 2, m-r2-3).
+			 * The `covers-conversation` refusal speaks over a SHUT drawer, so neither
+			 * the close watch above (no close happened) nor the settle arm (no drawer was
+			 * up) can end that sentence - a queue that emptied after a refusal left
+			 * "1 question waiting." standing for the rest of the mount. Nothing waiting,
+			 * nothing up: the region has nothing true left to say.
+			 */
+			setAnnouncement("");
+		}
 		wasWaiting.current = waiting;
 	}, [view, sessionDrawerOpen]);
 

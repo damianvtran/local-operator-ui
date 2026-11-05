@@ -1,5 +1,6 @@
 import type { OwnerAuditScope } from "@shared/api/local-operator/team-bridge-owner-audit-api";
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { Alert } from "@shared/components/ui/alert";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
@@ -116,12 +117,13 @@ export function AuditFailure({
 	state?: AuditFailureState;
 	retry: () => void;
 	/*
-	 * The section's own inline inset. The rail's rows sit at `px-3`; the panel's
+	 * The section's own inline inset. The rail passes `px-2` (inside the rail
+	 * section's SIDEBAR_INSET, so the text starts on the 16px line); the panel's
 	 * transcript rows carry a 20px gutter (`px-5`) now that the scroll container
 	 * has none, so the panel passes that and its failure lines up with the
 	 * column instead of hanging 8px left of it (design review round 1, D2).
 	 */
-	inset?: "px-3" | "px-5";
+	inset?: "px-2" | "px-3" | "px-5";
 }) {
 	return (
 		<div role="alert" className={cn("space-y-2 text-sm text-danger", inset)}>
@@ -174,15 +176,16 @@ export function OwnerAuditRailView({
 	useI18nLocale();
 	if (state === "loading")
 		return (
-			<output className="px-3 py-2 text-sm text-ink-muted">
+			<output className="px-2 py-2 text-sm text-ink-muted">
 				{t("ui.ownerAudit.loading")}
 			</output>
 		);
-	if (failedState(state)) return <AuditFailure state={state} retry={retry} />;
+	if (failedState(state))
+		return <AuditFailure state={state} retry={retry} inset="px-2" />;
 	return (
 		<>
 			{conversations.length === 0 && (
-				<p className="px-3 py-2 text-sm text-ink-muted">
+				<p className="px-2 py-2 text-sm text-ink-muted">
 					{t("ui.ownerAudit.empty_list")}
 				</p>
 			)}
@@ -949,10 +952,10 @@ export function OwnerAuditSectionHeader() {
 	useI18nLocale();
 	return (
 		<>
-			<h2 className="px-3 py-2 font-medium text-meta text-ink-dim tracking-wide">
+			<h2 className="px-2 py-2 font-medium text-meta text-ink-dim tracking-wide">
 				{t("ui.ownerAudit.title")}
 			</h2>
-			<p className="px-3 pb-2 text-meta text-ink-dim">
+			<p className="px-2 pb-2 text-meta text-ink-dim">
 				{t("ui.ownerAudit.read_only")}
 			</p>
 		</>
@@ -1005,7 +1008,15 @@ export function useOwnerAuditSurface({
 			/>
 		),
 		rail: (beforeSelect) => (
-			<section className="mt-4" aria-label={t("ui.ownerAudit.title")}>
+			/*
+			 * THE SHARED SIDEBAR INSET (operator, 2026-11-04): this section used to
+			 * carry none, so its rows' marks sat at 8px and its header at 12px while
+			 * every other band of the rail put them at 16px.
+			 */
+			<section
+				className={cn("mt-4", SIDEBAR_INSET)}
+				aria-label={t("ui.ownerAudit.title")}
+			>
 				<OwnerAuditSectionHeader />
 				{organizations.map((organization, index) => (
 					<div key={`${accountId}:${organization.tenantId}`}>
@@ -1014,15 +1025,12 @@ export function useOwnerAuditSurface({
 						 * D5). This section is one of the three places the organization is
 						 * stated, so it must move with the other two when the treatment
 						 * changes - it just did, gaining D2's spacing above a non-first
-						 * group and D3's `title` for a truncated name. `inset="bare"` because
-						 * this section carries no `RailSection` inset of its own: its 12px
-						 * axis comes from `px-3`.
+						 * group and D3's `title` for a truncated name.
 						 */}
 						{organizations.length > 1 && (
 							<RailGroupHeader
 								id={`team-bridge-audit-org-${organization.tenantId}`}
 								name={organization.name}
-								inset="bare"
 								first={index === 0}
 							/>
 						)}

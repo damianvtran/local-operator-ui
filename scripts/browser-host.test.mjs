@@ -7824,6 +7824,7 @@ test("/health carries the capabilities this build serves", async () => {
 		"record_start",
 		"record_stop",
 		"record_size",
+		"record_quality",
 	]);
 });
 

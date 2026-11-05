@@ -38,7 +38,12 @@ export const BrowserSafeTooltip: FC<TooltipProps> = (props) => {
 		<Tooltip
 			{...props}
 			suppressed={viewPresent || Boolean(props.suppressed)}
-			discardWhileSuppressed={viewPresent}
+			/* OR the caller's own opt-in (agent review round 1, m2 on #1668): Team
+			   Bridge's Back suppresses the shell's entry focus and must not resume
+			   it on the first key press. */
+			discardWhileSuppressed={
+				viewPresent || Boolean(props.discardWhileSuppressed)
+			}
 		/>
 	);
 };

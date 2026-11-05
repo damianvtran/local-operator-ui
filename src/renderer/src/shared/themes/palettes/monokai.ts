@@ -54,23 +54,40 @@ export const monokai: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#272822",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #272822 -> #1E1F19 (L* 15.82 -> 11.46)
+		 * surface #2E2F28 -> #25261F (L* 19.09 -> 14.84)
+		 * elevated #39382F -> #2F2E25 (L* 23.35 -> 18.77)
+		 * sunken #1E1F1A -> #151610 (L* 11.49 -> 6.96)
+		 */
+		canvas: "#1E1F19",
 		// Canvas and elevated are upstream's background and line highlight; surface
 		// is the derived step between them, so it is the one that moves. 2D2E27 sat
 		// ΔE00 1.95 from canvas — a card edge that is not there. One unit up the
 		// same olive ramp reads 2.26, and still leaves 5.05 up to elevated.
-		surface: "#2E2F28",
-		elevated: "#39382F",
-		sunken: "#1E1F1A",
+		surface: "#25261F",
+		elevated: "#2F2E25",
+		sunken: "#151610",
 
 		// The user block's fill: ΔE00 4.19 off the canvas, where `surface` alone
 		// measures 2.26 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#35342c",
+		messageSurface: "#2c2b23",
 		// The media slot's well: ΔE00 4.20 off the canvas, where `sunken` alone
 		// measures 2.86 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#1a1b17",
+		// Lifted #10110b -> #11120d (L* 4.83 -> 5.25) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.12 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#11120d",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -89,8 +106,8 @@ export const monokai: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.79 `L*` and 6.6 `C*`,
 		 *                       `inkDim` 5.13:1.
 		 */
-		rowHover: "#353632",
-		rowSelected: "#383B2D",
+		rowHover: "#2B2C28",
+		rowSelected: "#2D3022",
 
 		ink: "#F8F8F2",
 		inkMuted: "#BFBFBF",
@@ -109,13 +126,13 @@ export const monokai: ThemeDefinition = {
 		inkDim: "#B1AE9C",
 		inkDisabled: "#75715E",
 
-		hairline: "#464740",
+		hairline: "#3C3D36",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 
 		// `sunken`: 1.91:1 there against `hairline`'s 1.77:1.
 
-		hairlineStrong: "#4B4C45",
+		hairlineStrong: "#41423B",
 		// The comment colour lightened further, so a structural boundary is legally
 		// distinct from the decorative hairline above it.
 		borderControl: "#8E8A73",
@@ -129,7 +146,7 @@ export const monokai: ThemeDefinition = {
 		chartBarHover: "#D0F090",
 		tokenCommand: "#66D9EF",
 		/* The wire's own `info`, so the command word's rendering does not move. */
-		accentWash: "#363E23",
+		accentWash: "#2C3419",
 		onAccent: "#272822",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -164,14 +181,14 @@ export const monokai: ThemeDefinition = {
 		 * `accentWash` (the field floor is 2.0), 4.52:1 for `accentAlt` on it, and
 		 * 20.95 from the nearest ground it is painted on.
 		 */
-		accentAltWash: "#382D47",
+		accentAltWash: "#2E233C",
 
 		// The same green as the accent. Monokai has exactly one green, and a second
 		// one invented to fill this role would be a colour no Monokai user
 		// recognises. A green success next to a green primary button is the honest
 		// reading of this scheme.
 		success: "#A6E22E",
-		successWash: "#363E23",
+		successWash: "#2C3419",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -181,7 +198,7 @@ export const monokai: ThemeDefinition = {
 
 		// Monokai's orange.
 		warning: "#FD971F",
-		warningWash: "#413522",
+		warningWash: "#362B18",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -202,7 +219,7 @@ export const monokai: ThemeDefinition = {
 		 * re-pick of the palette's colour.
 		 */
 		danger: "#FF77A3",
-		dangerWash: "#40282C",
+		dangerWash: "#361F23",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -212,7 +229,7 @@ export const monokai: ThemeDefinition = {
 
 		// Monokai's blue.
 		info: "#66D9EF",
-		infoWash: "#2F3D3B",
+		infoWash: "#253331",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

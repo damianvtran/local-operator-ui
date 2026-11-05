@@ -76,9 +76,14 @@ const isHoldClass = (value: unknown): value is TeamBridgeHoldClass =>
  * entries by endpoint, so a repeated `endpoint_id` is a duplicate, and the
  * first entry wins (this also keeps React keys unique).
  *
- * Labels are trimmed; an empty one comes back as "" and the component fills
- * in the shared "unknown agent/person" copy, so a blank wire label never
- * renders "Not delivered to  ()".
+ * `agent` and `owner` are the WIRE labels, trimmed and otherwise untouched:
+ * the agent member's stored label (which an older client may have written
+ * already composed, "Aida (Ben Tran)") and its owner's name. They are never
+ * rendered as a pair. The component resolves them to ONE display label through
+ * the shared `recipientLabel`, so the line names the recipient exactly as the
+ * message rows do and the owner never twice (operator report, 2026-11-03). A
+ * label that resolves to nobody renders the shared "Unknown agent" copy, so a
+ * blank wire label never renders "Not delivered to  ()" (review R2).
  */
 export function teamBridgeDeliveryLines(
 	states: readonly TeamBridgeDeliveryState[] | undefined,

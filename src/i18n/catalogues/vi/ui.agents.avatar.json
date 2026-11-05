@@ -25,5 +25,6 @@
 	"ui.agents.avatar.editor.zoom": "Thu phóng",
 	"ui.agents.avatar.editor.zoom_in": "Phóng to",
 	"ui.agents.avatar.editor.zoom_out": "Thu nhỏ",
-	"ui.agents.avatar.editor.zoom_value": "{value}×"
+	"ui.agents.avatar.editor.zoom_value": "{value}×",
+	"ui.agents.avatar.add_link": "Thêm ảnh cho {name}"
 }

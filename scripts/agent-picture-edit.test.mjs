@@ -41,7 +41,7 @@ const bundle = await build({
 			'export { agentAvatarPath } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { publish, release } from "./src/renderer/src/shared/lib/blob-url-cache";',
 			'export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";',
-			'export { sessionAvatarTarget } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
+			'export { sessionAvatarTarget, sessionAgentTarget } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { sessionPictureEditable } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { renderToStaticMarkup } from "react-dom/server";',
 			'export { createElement } from "react";',
@@ -116,6 +116,7 @@ const {
 	ChatSessionAvatarEdit,
 	ChatHeader,
 	sessionAvatarTarget,
+	sessionAgentTarget,
 	agentAvatarPath,
 	publish,
 	release,
@@ -407,7 +408,7 @@ test("neither placement decides ownership for itself", async () => {
 	assert.match(content, /agentAvatarOwned = useCanonicalSessionsStore/);
 	// Ownership comes out of the shared reader, which calls the one predicate.
 	assert.match(content, /avatarTarget\(state\)\?\.owned/);
-	assert.match(content, /sessionAvatarTarget\(\s*state\.sessions\.find/);
+	assert.match(content, /sessionAgentTarget\(\s*state\.sessions\.find/);
 	const meta = await readFile(
 		"src/renderer/src/shared/agent-avatar/agent-avatar-meta.ts",
 		"utf8",
@@ -511,11 +512,183 @@ test("the header takes its agent from the row's binding, never from the title", 
 	);
 	// The wiring a render cannot reach (`chat-content` needs a desktop transport):
 	// the header's avatar comes from the shared reader, and carries its name.
-	assert.match(content, /sessionAvatarTarget\(/);
+	assert.match(content, /sessionAgentTarget\(/);
 	assert.match(content, /agentName: avatarAgentName/);
 	const header = await readFile(
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 		"utf8",
 	);
-	assert.doesNotMatch(header, /<ChatHeaderAvatar[^>]*agentName=/);
+	/*
+	 * The mark may be handed a name, but only the BOUND AGENT's (`agentAvatar.
+	 * agentName`); the `agentName` prop is the conversation's title and must never
+	 * reach it. Two forms would break that: a JSX prop on the avatar components
+	 * (`agentName={agentName}`, or the header's destructured title under any other
+	 * local name), and the hook's input object. Both are asked of the code, with
+	 * comments blanked, so an explanation cannot satisfy or trip a pin.
+	 */
+	const code = header
+		.replace(/\/\*[\s\S]*?\*\//g, (c) => " ".repeat(c.length))
+		.replace(/\/\/[^\n]*/g, (c) => " ".repeat(c.length));
+	assert.doesNotMatch(
+		code,
+		/<(?:ChatHeaderAvatar\w*|AgentAvatarSlot)\b[^>]*agentName=\{(?:agentName|title)\}/,
+		"the conversation's title reaches the avatar's name",
+	);
+	assert.doesNotMatch(
+		code,
+		/useAgentSlotMark\(\{[^}]*agentName:\s*(?:agentName|title)\b/,
+		"the conversation's title reaches the mark decision",
+	);
+	/* The one name the avatar takes is the bound agent's, in both places it is read. */
+	assert.match(code, /agentName: agent\.agentName/);
+	assert.match(code, /agentName=\{agent\.agentName\}/);
+	/* A negative control: the pin does fire on the form it forbids. */
+	assert.match(
+		"<ChatHeaderAvatar agentName={title} />",
+		/<(?:ChatHeaderAvatar\w*|AgentAvatarSlot)\b[^>]*agentName=\{(?:agentName|title)\}/,
+	);
+});
+
+/*
+ * A HEADER WITH NO BOUND AGENT NEEDS NO QUERY CLIENT (agent review M1). The mark
+ * reads the agents list through `useQueryClient`, which throws outside a
+ * provider, and a draft or a packaged profile has no agent to read. The hook
+ * lives in a component rendered only when there is one, so this mount - the
+ * shape of every panel-rail header test - must not throw. It is rendered through
+ * `renderToStaticMarkup` directly, NOT through this file's `render` helper,
+ * because that helper supplies the provider this case is about the absence of.
+ * (Wrapping a test in a provider is exactly how the regression would be hidden.)
+ */
+test("a header with no bound agent mounts with no QueryClientProvider", () => {
+	for (const agentAvatar of [undefined, null]) {
+		const markup = renderToStaticMarkup(
+			createElement(
+				MemoryRouter,
+				{ initialEntries: ["/"] },
+				createElement(ChatHeader, { agentName: TITLE, agentAvatar }),
+			),
+		);
+		assert.match(markup, new RegExp(TITLE), "the header drew its title");
+		assert.doesNotMatch(markup, /data-agent-mark/, "and no avatar");
+		/* The title row keeps the historical 20px line when no mark is drawn. */
+		assert.match(markup, /\bh-5\b[^"]*flex-wrap overflow-clip/);
+	}
+});
+
+test("a header WITH an agent still needs the query client, so the guard is the absence of one", () => {
+	assert.throws(
+		() =>
+			renderToStaticMarkup(
+				createElement(
+					MemoryRouter,
+					{ initialEntries: ["/"] },
+					createElement(ChatHeader, {
+						agentName: TITLE,
+						agentAvatar: sessionAgentTarget(
+							row({ binding: { agent: "Scout" } }),
+						),
+					}),
+				),
+			),
+		/QueryClient/,
+	);
+});
+
+/* ------------------------------------------- the placeholder door (presence) --- */
+
+/*
+ * A REGULAR SESSION WITH NO PICTURE DRAWS NOTHING in the header (operator,
+ * 2026-11-04): no mark, no box, the 20px title line main always had. The
+ * placeholder door survives only for a proactive-class agent or the chief of
+ * staff (`agentSuggestsPicture`), owned and bound: same editor href as the
+ * picture's pencil, a name that says "add" rather than "change".
+ *
+ * The profiles are SEEDED into the query cache rather than fetched: the class
+ * lives on the profile, and a static render cannot wait for a read.
+ */
+const headerFor = (r, profiles = []) => {
+	const client = new QueryClient({
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
+	});
+	client.setQueryData(["desktop", "profiles"], profiles);
+	return renderToStaticMarkup(
+		createElement(
+			QueryClientProvider,
+			{ client },
+			createElement(
+				MemoryRouter,
+				{ initialEntries: ["/"] },
+				createElement(ChatHeader, {
+					agentName: TITLE,
+					agentAvatar: sessionAgentTarget(r),
+				}),
+			),
+		),
+	);
+};
+
+test("a regular (reactive) agent with no picture draws no mark and no box in the header", () => {
+	for (const profiles of [
+		[],
+		[{ name: "Scout", action_class: "reactive" }],
+		[{ name: "Scout" }],
+		/* Another agent being proactive says nothing about this one. */
+		[{ name: "Other", action_class: "proactive" }],
+	]) {
+		const r = row({ binding: { agent: "Scout" }, avatar_sha256: null });
+		const markup = headerFor(r, profiles);
+		assert.doesNotMatch(markup, /data-agent-mark/, JSON.stringify(profiles));
+		assert.doesNotMatch(markup, /data-agent-avatar-edit/);
+		assert.doesNotMatch(markup, /edit=picture/);
+		/* The title row keeps the pre-#1651 20px line: nothing reserved beside it. */
+		assert.match(markup, /\bh-5\b[^"]*flex-wrap overflow-clip/);
+	}
+});
+
+for (const [label, agent, profiles] of [
+	[
+		"a proactive-class agent",
+		"Scout",
+		[{ name: "Scout", action_class: "proactive" }],
+	],
+	["the chief of staff", "aida", []],
+]) {
+	test(`${label} with no picture still draws the placeholder door in the header`, () => {
+		const r = row({ binding: { agent }, avatar_sha256: null });
+		const markup = headerFor(r, profiles);
+		assert.match(markup, /data-agent-mark="placeholder"/);
+		const href = hrefOf(markup);
+		assert.ok(href, "the placeholder is a link");
+		const params = new URLSearchParams(href.split("?")[1]);
+		assert.equal(params.get("edit"), "picture");
+		assert.equal(params.get("name"), agent);
+		assert.equal(params.get("agent"), "agent-1");
+		assert.doesNotMatch(
+			markup,
+			/aria-label="Change /,
+			"it offers to add, not to change",
+		);
+		/* ...but never for a remote copy of the same agent. */
+		const remote = headerFor({ ...r, locality: "remote" }, profiles);
+		assert.doesNotMatch(remote, /data-agent-mark/);
+	});
+}
+
+test("no picture and nothing to act on draws nothing in the header", () => {
+	for (const over of [
+		{ locality: "remote" },
+		{ binding: {} },
+		{ agent_id: null },
+	]) {
+		const r = row({
+			binding: { agent: "Scout" },
+			avatar_sha256: null,
+			...over,
+		});
+		const markup = headerFor(r);
+		assert.doesNotMatch(markup, /data-agent-mark/, JSON.stringify(over));
+		assert.doesNotMatch(markup, /data-agent-avatar-edit/, JSON.stringify(over));
+	}
 });

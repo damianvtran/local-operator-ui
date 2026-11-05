@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "auditor": "reviewer-session (independent of coder-desktop)",
+  "agent": "reviewer-session (independent of coder-desktop)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none",
+  "model_provenance": "Session 54ec32ab1ef8 header: anthropic/claude-sonnet-5-5; no provider fallback occurred.",
+  "independence": "Separate session from coder-desktop, who authored the five keys in all eight locales. Verdict rebuilt from the en source and context, the render sites in message-input.tsx, sibling keys, glossary and the locale style guide; the coder's commit text was not read.",
+  "instance": "54ec32ab1ef8-composer-ru-r2",
+  "session": "54ec32ab1ef8",
+  "locale": "ru",
+  "namespace": "ui.chat.composer",
+  "branch": "feat/composer-send-stop-slot",
+  "base": "origin/main e6a9b59b8d906fed65cc2c604282c59109236386",
+  "date": "2026-11-03",
+  "status": "passed",
+  "audit_kind": "delta audit of 5 added keys; the other keys are byte-identical to the last audited row (main blob hash == ledger target_sha256)",
+  "delta_keys_audited": [
+    "ui.chat.composer.insert_transcript",
+    "ui.chat.composer.insert_transcript_hint",
+    "ui.chat.composer.send_recording",
+    "ui.chat.composer.send_recording_hint",
+    "ui.chat.composer.steer_hint"
+  ],
+  "scope": "ui.chat.composer: insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint",
+  "sha256": {
+    "en": "54dacbce2bd8f60835ef73e0687746bdf7bcaba2da5294b90a71c8bcc16fa1d2",
+    "ru": "e7ab27e9942a5a996c9f98af58f26882a7d051ab0cc204f09800eb434093793a",
+    "context": "8c6501b195e6e1d4730f57030b19ec229b1b6f5312055d00caf6686cdaaa4c7f"
+  },
+  "reference_sha256": {
+    "glossary": "0eb34437a8c3d6f5 (prefix; sha256 of origin/main:i18n/glossary.md, local-operator@fetched 2026-11-03)",
+    "style_guide": "origin/main:i18n/style-guides/ru.md"
+  },
+  "verified": [
+    "all five keys present in en and the locale; key set of the namespace equals en (node scripts/i18n/locale-parity.test.mjs, 53/53 pass)",
+    "no placeholders/ICU/tags in any of the five en strings, none introduced; NFC; no edge or double spaces; no bidi/zero-width/BOM characters (ur/hi included)",
+    "meaning: insert_transcript* = put the transcribed words in the box to review (never 'confirm'); send_recording* = transcribe and send at once, 'no review' stated plainly in the hint; steer_hint = Steer now (Enter) + Esc stops the turn",
+    "sibling parity read against confirm_recording*, cancel_recording*, placeholder.waiting, placeholder.stopping, stop_work_hint in the same locale file",
+    "advisory maxCells from the en context sidecar respected (display-width count, CJK=2); fr/es hints sit at 48/48 and 24/24 - at, not over"
+  ],
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": [
+        "ui.chat.composer.insert_transcript",
+        "ui.chat.composer.insert_transcript_hint",
+        "ui.chat.composer.send_recording_hint"
+      ],
+      "current": "расшифровку / Расшифровать",
+      "proposed": "KEEP (record exception) - glossary row `transcript` is транскрипт",
+      "reason": "Glossary §2 renders `transcript` as транскрипт, but in ru that word already names the CONVERSATION transcript (ui.chat.question_dock.secret_note) and транскрипция the service. For dictated text, расшифровка is the native, collision-free word. Not a defect; the divergence is recorded here so the ledger is honest. No edit needed."
+    }
+  ]
+}

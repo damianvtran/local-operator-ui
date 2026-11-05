@@ -69,18 +69,32 @@ export const forest: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1F2922",
-		surface: "#26332A",
-		elevated: "#2D3A32",
-		sunken: "#1C211E",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #1F2922 -> #162019 (L* 15.45 -> 11.09)
+		 * surface #26332A -> #1D2A21 (L* 19.83 -> 15.63)
+		 * elevated #2D3A32 -> #233028 (L* 23.05 -> 18.47)
+		 * sunken #1C211E -> #141916 (L* 12.14 -> 8.15)
+		 */
+		canvas: "#162019",
+		surface: "#1D2A21",
+		elevated: "#233028",
+		sunken: "#141916",
 
 		// The user block's fill: ΔE00 4.05 off the canvas, where `surface` alone
 		// measures 3.38 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#27352c",
+		messageSurface: "#1e2c23",
 		// The media slot's well: `sunken` itself, which already clears the
 		// role's floor off this canvas (measured ΔE00 4.36, 3.30 L*).
-		mediaSurface: "#1C211E",
+		mediaSurface: "#141916",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -99,8 +113,8 @@ export const forest: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.55 `L*` and 7.5 `C*`,
 		 *                       `inkDim` 5.02:1.
 		 */
-		rowHover: "#303833",
-		rowSelected: "#2A3E31",
+		rowHover: "#262E29",
+		rowSelected: "#213427",
 
 		ink: "#DDE8DD",
 		/*
@@ -165,11 +179,11 @@ export const forest: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.16:1 against `elevated` at its tightest.
 		 */
-		hairline: "#334538",
+		hairline: "#293B2E",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.72:1 there against `hairline`'s 1.59:1.
-		hairlineStrong: "#384A3D",
+		hairlineStrong: "#2E4033",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
@@ -206,7 +220,7 @@ export const forest: ThemeDefinition = {
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
-		accentWash: "#223221",
+		accentWash: "#182818",
 
 		// The theme's own deepest ground, at 7.59:1 on all three accent fills.
 		onAccent: "#0A120D",
@@ -224,7 +238,7 @@ export const forest: ThemeDefinition = {
 		 * 2.0), 5.29:1 for `accentAlt` on it, and 16.35 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#332A3C",
+		accentAltWash: "#2A2133",
 
 		// Upstream success, clearing 5.73:1 at its tightest ground.
 		success: "#7CC487",
@@ -232,7 +246,7 @@ export const forest: ThemeDefinition = {
 		// The TUI has no success or warning tint, so both are the state hue at 13%
 		// over the ground — the fraction the TUI's own tints measure at. The hue
 		// clears 6.04:1 on this fill.
-		successWash: "#243829",
+		successWash: "#1A2E20",
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.54:1 at its tightest ground.
@@ -249,7 +263,7 @@ export const forest: ThemeDefinition = {
 		 */
 		successBorder: "#5A8C63",
 		warning: "#D8AE52",
-		warningWash: "#303522",
+		warningWash: "#272C19",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -265,7 +279,7 @@ export const forest: ThemeDefinition = {
 		danger: "#E58579",
 
 		// The TUI's own danger tint.
-		dangerWash: "#28211C",
+		dangerWash: "#1F1813",
 
 		// This one is also drawn on a dialog's ground, where the delete control's edge
 		// IS the control: 3.31:1 at its tightest.
@@ -286,7 +300,7 @@ export const forest: ThemeDefinition = {
 		info: "#6FB3C9",
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
-		infoWash: "#1C2E38",
+		infoWash: "#13252F",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

@@ -31,6 +31,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { kebab, paletteBlock } from "../src/shared/theme-engine/css.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -38,26 +39,16 @@ const PALETTE_DIR = join(ROOT, "src/renderer/src/shared/themes/palettes");
 const OUT = join(ROOT, "src/renderer/src/styles/themes.generated.css");
 const THEME_CSS = join(ROOT, "src/renderer/src/styles/index.css");
 
-/** camelCase role -> kebab-case custom property suffix. */
-const kebab = (s) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
-
 const palettes = loadPalettes();
 if (palettes.length === 0) {
 	console.error(`No palettes found in ${PALETTE_DIR}`);
 	process.exit(1);
 }
 
-const block = ({ id, palette }) => {
-	const lines = Object.entries(palette)
-		.filter(([role]) => role !== "mode")
-		.map(([role, value]) => `\t--lo-${kebab(role)}: ${value};`)
-		.join("\n");
-	/* `color-scheme` makes the platform paint native scrollbars, form controls
-	   and the caret to match the palette. Without it a dark theme keeps a white
-	   scrollbar track, which is the single most visible "unthemed" artefact in
-	   an Electron app. */
-	return `[data-theme="${id}"] {\n\tcolor-scheme: ${palette.mode};\n${lines}\n}`;
-};
+/* The block text is `paletteBlock`, shared with the renderer's runtime
+   composition (src/shared/theme-engine/css.mjs), so the static CSS and a composed
+   theme's injected `<style>` cannot be emitted two different ways. */
+const block = ({ id, palette }) => paletteBlock(id, palette);
 
 /**
  * Re-declare Tailwind's role variables inside any scoped theme subtree.

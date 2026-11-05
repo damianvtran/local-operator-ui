@@ -2,7 +2,8 @@ import {
 	useAidaDisplayName,
 	useAidaTarget,
 } from "@features/aida/use-aida-target";
-import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
+import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
+import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
 import {
 	backendPaneSentence,
 	compatibilityBannerShown,
@@ -87,6 +88,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
+import { TURN_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
 import {
 	asideAskBlockedReason,
 	askAside,
@@ -3718,7 +3720,44 @@ function SessionPanel({
 	const speakerAgentId =
 		agentProfiles.data?.find((row) => row.name === speakerAgent)?.agent_id ??
 		null;
-	const agentAvatar = useAgentAvatar(speakerAgentId);
+	// The turn mark's box, i.e. the size its bytes are read at.
+	const avatarSize = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
+	);
+	/*
+	 * THE TURN HEAD'S MARK: the picture when it resolves, else nothing - decided by
+	 * the one function the header also asks (`decideAvatarMark`). A pictureless
+	 * agent draws no mark and reserves no line above its first row. Ownership is
+	 * the row's own answer (`sessionPictureEditable`: a remote conversation's
+	 * agent is another device's), and a draft has no row, which is the same
+	 * "local" answer a plain page's rows get. `pictureDoor` is false: the turn's
+	 * picture has never been a link.
+	 *
+	 * `cssPx` is the box `MessageAvatar` draws it at, from the same size table -
+	 * the read asks for the derivative that covers THAT box, so a `large` mark is
+	 * not served the `small` step's 64 px file on a retina panel.
+	 *
+	 * `sha256Hint` IS THE ROW'S DIGEST, only when the row is about this speaker
+	 * (QA Q-1): unhinted, the read claims nothing until the agents map answers,
+	 * so a pictured agent drew nothing and then popped in 24px. The row's claim
+	 * lets the cold head hold its plate. Not hinted otherwise (`undefined`, look
+	 * it up): a live switch to another agent, or a row with no digest - the map
+	 * also knows a picture set in this window before the row refetches, and a
+	 * `null` hint would never consult it. Unclaimed still draws nothing.
+	 */
+	const rowSpeaks =
+		speakerAgentId !== null && boundRow?.agent_id === speakerAgentId;
+	const agentAvatar = useAgentSlotMark({
+		agentId: speakerAgentId,
+		agentName: speakerAgent,
+		sha256Hint: (rowSpeaks && boundRow?.avatar_sha256) || undefined,
+		owned: sessionPictureEditable({
+			agent_id: speakerAgentId,
+			locality: boundRow?.locality,
+		}),
+		pictureDoor: false,
+		cssPx: TURN_AVATAR_BOX[avatarSize].px,
+	});
 	// The header names the conversation the user clicked, so it falls back to the
 	// catalogue row's name for the same reason `loaded` falls back to its binding:
 	// `conversation_title` is the journalled title only, and the row's name is

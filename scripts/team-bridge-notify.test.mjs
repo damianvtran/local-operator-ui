@@ -1740,6 +1740,31 @@ test("cold sender enrichment posts within its deadline; completion never re-aler
 	}
 });
 
+test("an agent banner title composes through the shared chief rule: owner exactly once", async () => {
+	// The main process used to splice "{agent} ({person})" itself, so an agent
+	// the directory names after its owner titled the banner "Ben Tran (Ben
+	// Tran)" while the app read "Ben Tran's chief of staff" (2026-11-03 sweep).
+	const cases = [
+		["Aida", "Aida (Ben Tran)"],
+		["Ben Tran", "Ben Tran’s chief of staff"],
+		["ben  tran", "Ben Tran’s chief of staff"],
+	];
+	for (const [agentName, expected] of cases) {
+		const { dir, file } = tempFile();
+		try {
+			const h = harness({ file });
+			await h.notifier.notify(
+				request({
+					sender: personSender({ kind: "person_agent", agent_name: agentName }),
+				}),
+			);
+			assert.equal(h.banners[0].options.title, expected, agentName);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}
+});
+
 test("warm composite follows the person source kind; agent title names its owner and agent", async () => {
 	const { dir, file } = tempFile();
 	const images = {
@@ -1783,8 +1808,9 @@ const compositePng = (tag = "untagged") => {
 	Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(data);
 	data.writeUInt32BE(13, 8);
 	data.write("IHDR", 12);
-	data.writeUInt32BE(64, 16);
-	data.writeUInt32BE(64, 20);
+	// The composite size main asks core for (256: covers a 2x/Windows banner).
+	data.writeUInt32BE(256, 16);
+	data.writeUInt32BE(256, 20);
 	data.write(tag, 33);
 	return data;
 };
@@ -1912,7 +1938,7 @@ test("single-flight shares one request and photo is requested at banner size", a
 	const first = cache.read(r, 250);
 	const second = cache.read(r, 250);
 	assert.equal(calls.length, 1);
-	assert.equal(calls[0].size, 64);
+	assert.equal(calls[0].size, 256);
 	release({
 		kind: "bytes",
 		status: 200,

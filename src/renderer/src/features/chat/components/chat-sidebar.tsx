@@ -926,12 +926,13 @@ const RowMenuOwner: FC<{
  * KIND - `Users` for a team, `Bot` for an agent - and the name truncates, so the
  * kind is the one thing that survives the ellipsis.
  */
-const EntityMark: FC<{
+export const EntityMark: FC<{
 	/** The agent's id, or null for a team (which has no picture). */
 	agentId: string | null;
 	glyph: LucideIcon;
 }> = ({ agentId, glyph: Glyph }) => {
-	const avatar = useAgentAvatar(agentId);
+	// 16 = the `size-4` plate below.
+	const avatar = useAgentAvatar(agentId, undefined, 16);
 	if (avatar === null) return <Glyph className="size-4 shrink-0" />;
 	return (
 		/*
@@ -5370,7 +5371,7 @@ export function ChatSidebar({
 					 * nothing at all unless the row's agent has a picture and this device
 					 * owns it.
 					 */}
-					<ChatSessionAvatarEdit row={row} />
+					<ChatSessionAvatarEdit row={row} nested={nested} />
 					{silentRemedy}
 					{readAckRemedy}
 				</div>,
@@ -6138,7 +6139,7 @@ export function ChatSidebar({
 				{rowButton}
 				{/* The picture's pencil - a sibling of the row button, as in the
 				    no-menu arm above; it draws nothing without a picture. */}
-				<ChatSessionAvatarEdit row={row} />
+				<ChatSessionAvatarEdit row={row} nested={nested} />
 				{silentRemedy}
 				{readAckRemedy}
 				{menuRemedy}

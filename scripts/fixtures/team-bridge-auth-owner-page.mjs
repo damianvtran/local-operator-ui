@@ -74,8 +74,10 @@ const SOURCE = /\/src\/.*\.(?:tsx?|json)$/;
 const laneSource = resolve(
 	"src/renderer/src/features/team-bridge/team-bridge-pending-sends.ts",
 );
+// Re-pinned when `PendingSend` gained its captured `mentions` field (a type-only
+// import and property; the lane code the observer hooks is unchanged).
 const laneHash =
-	"9262850c304c39364cc3a88aff63c2dcf6335f4544d9264b07f75b625bd6a729";
+	"16ba46b7d74205a219b0d19c9b86297aa485a31fc1a7261b1757d4f598e529d6";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const laneAttempts = [];
 let laneObserverError = false;
@@ -125,7 +127,10 @@ const bundle = await build({
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';
- export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';`,
+ export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
+ export {resetHeldRailScrollForTest} from './src/renderer/src/features/team-bridge/team-bridge-rail-scroll';
+ export {LeftSidebarHostContext} from './src/renderer/src/shared/components/navigation/left-sidebar-host';
+ export {stageMentions, stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -257,7 +262,10 @@ export const DropdownMenuTrigger=({children,asChild})=>{const c=React.useContext
 export const DropdownMenuContent=({children})=>{const c=React.useContext(Ctx);return c.open?React.createElement("div",{role:"menu"},children):null;};
 export const DropdownMenuItem=({children,onSelect,onClick})=>{const c=React.useContext(Ctx);return React.createElement("div",{role:"menuitem",onClick:(e)=>{onClick?.(e);onSelect?.(e);c.setOpen(false);}},children);};
 const Pass=({children})=>React.createElement(React.Fragment,null,children);
-export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass,DropdownMenuRadioGroup=Pass,DropdownMenuSubTrigger=Pass,DropdownMenuSubContent=Pass,DropdownMenuCheckboxItem=DropdownMenuItem,DropdownMenuRadioItem=DropdownMenuItem,DropdownMenuLabel=Pass,DropdownMenuSeparator=()=>null,DropdownMenuShortcut=Pass;`
+const Radio=React.createContext(null);
+export const DropdownMenuRadioGroup=({children,onValueChange})=>React.createElement(Radio.Provider,{value:onValueChange},children);
+export const DropdownMenuRadioItem=({children,value,onSelect})=>{const pick=React.useContext(Radio);return React.createElement(DropdownMenuItem,{onSelect:(e)=>{onSelect?.(e);pick?.(value);}},children);};
+export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass,DropdownMenuSubTrigger=Pass,DropdownMenuSubContent=Pass,DropdownMenuCheckboxItem=DropdownMenuItem,DropdownMenuLabel=Pass,DropdownMenuSeparator=()=>null,DropdownMenuShortcut=Pass;`
 								: `export const rowCurrent=${role};`,
 				}));
 			},
@@ -313,6 +321,18 @@ const conversation = (id = "bcv_shared") => ({
 	muted: false,
 });
 const reply = (result) => ({ status: 200, body: { result } });
+/* The `attachments` mode's hub capability and its one 1x1 PNG (a drop yields a
+   path; the send reads these bytes through `readFile` when it binds them). */
+const IMAGE_CAPABILITY = {
+	enabled: true,
+	max_count: 4,
+	max_bytes: 5 * 1024 * 1024,
+	max_pixels: 16_777_216,
+	mime_types: ["image/png", "image/jpeg"],
+};
+const PNG_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+let droppedSeq = 0;
 const delay = () =>
 	act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
 async function until(predicate, label) {
@@ -321,6 +341,26 @@ async function until(predicate, label) {
 		await delay();
 	}
 	assert.fail(`timed out: ${label}`);
+}
+/*
+ * THE SHELL'S HOSTED COLUMN, opt-in (`hostedRail`). In the app the rail is
+ * portaled into a host `div` the shell publishes through
+ * `LeftSidebarHostContext`; the host is React state set by a ref callback, so
+ * on the commit that mounts the route the host is still null and
+ * `InLeftSidebarHost` renders NOTHING - the rail arrives a commit later. Leaving
+ * the route unmounts the host with it, as the shell's swap does. A suite that
+ * needs that first rail-less commit (QA round 1, Q2) asks for this; every other
+ * suite keeps the inline rail it always had.
+ */
+function HostedRail({ children }) {
+	const [host, setHost] = React.useState(null);
+	const slot = React.useMemo(() => ({ host }), [host]);
+	return React.createElement(
+		ui.LeftSidebarHostContext.Provider,
+		{ value: slot },
+		React.createElement("div", { ref: setHost, "data-test-route-host": "" }),
+		children,
+	);
 }
 function deferred() {
 	let resolve;
@@ -344,6 +384,15 @@ function deferred() {
  *   waitReady   - false when the scenario holds the gate open on purpose.
  *   statusGate  - replaces the fixture's own null status gate, so a caller can
  *                 hold the eligibility verdict open from before the first render.
+ *   sendMentions- advertises `team_bridge_send_mentions`, so the composer's
+ *                 @-mentions are serialised onto the wire (off by default).
+ *   attachments - advertises the hub's image capability and answers the
+ *                 preload's file calls (`getPathForFile`, `readFile`) and the
+ *                 media relay's upload, so a dropped picture takes the page's
+ *                 REAL awaited picture path. Off by default: the other suites'
+ *                 request shapes predate it. `fixture.mediaGate` holds the
+ *                 upload open; `fixture.uploadStarts` counts
+ *                 uploads begun and `fixture.uploads` each one answered.
  * The remaining holds are installed on the returned fixture by the scenario that
  * needs them: `fixture.listGate` (the conversation list) and `fixture.unreadGate`
  * (the account unread aggregate).
@@ -357,6 +406,9 @@ async function mount({
 	seed = null,
 	waitReady = true,
 	statusGate = null,
+	sendMentions = false,
+	attachments = false,
+	hostedRail = false,
 } = {}) {
 	// A revoked attempt can outlive its cleared lane and store entry. A later
 	// fixture must not reset shared state while that earlier job can still run.
@@ -378,6 +430,9 @@ async function mount({
 		messages: new Map(),
 		createGate: null,
 		postGate: null,
+		mediaGate: null,
+		uploadStarts: 0,
+		uploads: [],
 		empty,
 		generation: "A",
 		enabled: true,
@@ -416,9 +471,41 @@ async function mount({
 		createListTenant: undefined,
 		createReceipts: [],
 		away: false,
+		listFor: null,
 	};
 	window.api = {
+		...(attachments
+			? {
+					getPathForFile: () => `/fixtures/dropped-${++droppedSeq}.png`,
+					readFile: async () => ({ success: true, data: PNG_BASE64 }),
+				}
+			: {}),
 		desktop: {
+			...(attachments
+				? {
+						media: async (request) => {
+							fixture.uploadStarts += 1;
+							if (fixture.mediaGate) await fixture.mediaGate.promise;
+							const id = `batt_${fixture.uploads.length + 1}`;
+							fixture.uploads.push({ id, request });
+							return {
+								status: 201,
+								kind: "json",
+								body: {
+									result: {
+										attachment: {
+											id,
+											mime: "image/png",
+											size: 67,
+											width: 1,
+											height: 1,
+										},
+									},
+								},
+							};
+						},
+					}
+				: {}),
 			request: async (request) => {
 				// The fake server captures ownership at dispatch, just as an authenticated
 				// request does. A late A reply must not silently become B's server history.
@@ -437,6 +524,14 @@ async function mount({
 								team_bridge_threads: 1,
 								team_bridge_reactions: 1,
 								team_bridge_conversation_owner_guard: fixture.ownerGuard,
+								/* Opt-in: only the mention suites type an `@`, and the other
+								   suites' request shapes predate the field. */
+								...(sendMentions ? { team_bridge_send_mentions: 1 } : {}),
+								/* Opt-in like mentions: only a suite that seeds
+								   `ownerAuditConversations` draws the read-only history rail. */
+								...(fixture.ownerAuditConversations
+									? { team_bridge_owner_audit: 1 }
+									: {}),
 							},
 						});
 					case "radient.request":
@@ -479,6 +574,7 @@ async function mount({
 								session: "present",
 							},
 							status: {
+								...(attachments ? { attachments: IMAGE_CAPABILITY } : {}),
 								tenants: fixture.tenants ?? [
 									{
 										tenant_id: "org_shared",
@@ -499,6 +595,10 @@ async function mount({
 						});
 					case "team_bridge.conversations.list":
 						if (fixture.listGate) await fixture.listGate.promise;
+						/* PER-SCOPE ROWS (view restore): a scenario that needs each organization
+						   to answer its own list - and the account read to answer the union -
+						   supplies them here; every older suite leaves it null. */
+						if (fixture.listFor) return reply(fixture.listFor(request));
 						if (fixture.lifecycle) {
 							const wanted = request.status ?? "open";
 							return reply({
@@ -539,7 +639,19 @@ async function mount({
 							(row) => row.id !== request.conversation_id,
 						);
 						return reply({ deleted: true });
+					/* The chief-of-staff history's own read; answered only when a suite
+					   seeds rows (see the `team_bridge_owner_audit` capability above). */
+					case "team_bridge.owner_audit.conversations":
+						return reply({
+							conversations: (fixture.ownerAuditConversations ?? []).map(
+								(row) => ({ ...row, tenant_id: request.tenant_id }),
+							),
+							has_more: false,
+							next_cursor: null,
+						});
 					case "team_bridge.directory":
+						if (fixture.directoryMembers)
+							return reply({ members: fixture.directoryMembers });
 						return reply({
 							members: ["Peer", "Other peer"].map((name, index) => ({
 								account_id: `acct_peer_${index}`,
@@ -642,6 +754,15 @@ async function mount({
 						if (fixture.created)
 							return reply(fixture.messages.get(ownerKey)[0]);
 						return reply({ id: `msg_${owner}` });
+					/* A thread read answers its root out of the scenario's history, so a
+					   reopened thread pane renders rather than erroring (view restore). */
+					case "team_bridge.messages.replies": {
+						const root = (
+							fixture.historyByConversation.get(request.conversation_id) ?? []
+						).find((row) => row.id === request.message_id);
+						if (!root) return reply({});
+						return reply({ root, replies: [], has_more: false });
+					}
 					case "team_bridge.read":
 						return reply({
 							conversation_id: request.conversation_id,
@@ -667,7 +788,7 @@ async function mount({
 	const root = createRoot(host);
 	const client = ui.queryClient;
 	client.clear();
-	seed?.({ client, ui });
+	seed?.({ client, ui, fixture });
 	const ownedQueries = new Set();
 	const stopTracking = client
 		.getQueryCache()
@@ -724,7 +845,15 @@ async function mount({
 							React.Fragment,
 							null,
 							React.createElement(ui.AuthPrincipal),
-							fixture.away ? null : React.createElement(ui.TeamBridgePage),
+							fixture.away
+								? null
+								: hostedRail
+									? React.createElement(
+											HostedRail,
+											null,
+											React.createElement(ui.TeamBridgePage),
+										)
+									: React.createElement(ui.TeamBridgePage),
 						),
 					),
 				),
@@ -777,6 +906,7 @@ async function mount({
 			fixture.unreadGate?.resolve();
 			fixture.createGate?.resolve();
 			fixture.postGate?.resolve();
+			fixture.mediaGate?.resolve();
 			const errors = [];
 			const attemptCleanup = async (fn) => {
 				try {

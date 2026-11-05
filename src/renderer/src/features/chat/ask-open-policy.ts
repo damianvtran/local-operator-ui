@@ -19,7 +19,14 @@
  * six rules in their own idiom, so a rule changed here is a rule to change there:
  *
  *  1. NOTHING PENDING ON OPEN -> closed (what every surface did before the policy).
- *  2. PENDING ON OPEN -> open, ONCE for that view of that conversation.
+ *  2. PENDING ON OPEN -> open, ONCE for that view of that conversation. THE DESKTOP
+ *     HAS ONE EXCEPTION, and it is the first rule the other surfaces do not have:
+ *     when the drawer would be the SHEET over the conversation (below the dock
+ *     breakpoint), it does not open - `covers-conversation`. The sheet makes the
+ *     content inert, so an auto-open would cover and disable what the user is
+ *     reading; rules 5 and 6 are why that is a refusal rather than a modal. The
+ *     sheet is still one press away, the chip and the rail still announce it, and
+ *     the live region speaks the queue's own clause.
  *  3. ALL ADDRESSED ON OPEN -> closed, and a queue that settles never re-opens.
  *  4. A DELIBERATE CLOSE WHILE ASKS REMAIN IS RESPECTED for that conversation: not on
  *     a re-render, a queue refresh, an ask arriving or changing, or a switch away and
@@ -167,7 +174,21 @@ export type AskOpenReason =
 	/** The keyboard is on one of the drawer's doors: an open would read as a press (rule 6). */
 	| "door-focused"
 	/** The asks drawer is already up, in either scope: there is nothing to open. */
-	| "drawer-open";
+	| "drawer-open"
+	/**
+	 * The drawer would be drawn as the SHEET OVER the conversation (the row is below
+	 * the dock breakpoint), so an auto-open would cover - and make inert - the thing
+	 * the user is reading or typing in. Rule 5 ("an arrival never lands on someone
+	 * who is working") and rule 6 ("no theft") are why this is a refusal and not a
+	 * modal: the chip and the badge still announce the queue.
+	 *
+	 * FINAL FOR THE VIEW, like every other `leave` that is not a wait: widening the
+	 * window afterwards does NOT open it. "On open" is the one moment the policy acts,
+	 * and a resize is not a user asking for the drawer; opening on a resize would also
+	 * move the keyboard into a surface nobody just pressed. The chip and the rail are
+	 * the doors, which is what the announced clause points at.
+	 */
+	| "covers-conversation";
 
 export type AskOpenVerdict = {
 	action: "open" | "leave";
@@ -226,10 +247,13 @@ export type AskOpenInput = {
 	 * WHY A HELD DRAFT BLOCKS THE OPEN, AND WHY THAT IS A JUDGMENT CALL. Rule 5 says an
 	 * auto-open never lands on a user who is typing, and the other three surfaces keep it
 	 * literally (the phone's sheet is modal and covers the box; the TUI's panel stashes
-	 * the draft). On THIS surface the drawer docks BESIDE the composer and covers
+	 * the draft). On THIS surface a DOCKED drawer sits beside the composer and covers
 	 * nothing, and the composer's routing no longer depends on the drawer, so there is no
 	 * hazard to the draft - what remains is motion: a pane sliding in beside the line
-	 * being typed, and the column narrowing under the caret.
+	 * being typed, and the column narrowing under the caret. IN THE OVERLAY PRESENTATION
+	 * (below the dock breakpoint) the sheet DOES cover the box and makes the conversation
+	 * inert, and that case is refused outright (`overlayPresentation`,
+	 * `covers-conversation`) rather than reasoned about here.
 	 *
 	 * THE COST IS THE LATCH. The view decides once, so a user who had a half-written
 	 * message when the conversation opened and clears it a moment later does not get the
@@ -268,6 +292,19 @@ export type AskOpenInput = {
 	 * is meant to read the same on all four.
 	 */
 	drawerOpen: boolean;
+	/**
+	 * Whether THIS surface would present the drawer as the overlay sheet rather than
+	 * as a pane docked beside the composer: `askPanePresentation(...).mode ===
+	 * "overlay"` for the row the drawer mounts in (design 2026-11-03). Below the dock
+	 * breakpoint the sheet covers the row and the conversation is `inert` while it is
+	 * up, so an auto-open there is the focus theft and the covered transcript that
+	 * rules 5 and 6 forbid.
+	 *
+	 * A LATENT FACT RATHER THAN A LIVE ONE: the presentation is a function of the row
+	 * width, which does not change under a view unless the user resizes; a resize does
+	 * not re-open a view that has already taken its one decision.
+	 */
+	overlayPresentation: boolean;
 };
 
 const wait = (reason: AskOpenReason): AskOpenVerdict => ({
@@ -287,9 +324,10 @@ const leave = (reason: AskOpenReason): AskOpenVerdict => ({
  *
  * THE ORDER IS THE SPEC for which reason is reported, because each `leave` should
  * name the first thing that kept the drawer closed: `dismissed`, `composer-has-text`,
- * `door-focused` and `drawer-open` are reported only for a queue that WOULD have
- * opened (they are overrides on a pending queue, so a settled queue in a dismissed
- * conversation says `nothing-pending`, which is the truer sentence).
+ * `door-focused`, `drawer-open` and `covers-conversation` are reported only for a
+ * queue that WOULD have opened (they are overrides on a pending queue, so a settled
+ * queue in a dismissed conversation says `nothing-pending`, which is the truer
+ * sentence).
  *
  * Only `no-conversation`, `unresolved` and `tally-only` return without settling: each
  * means "the queue has not answered in a form a surface can draw", and each is bounded
@@ -317,6 +355,12 @@ export const decideAskAutoOpen = (input: AskOpenInput): AskOpenVerdict => {
 	if (input.composerHasText) return leave("composer-has-text");
 	if (input.keyboardOnDoor) return leave("door-focused");
 	if (input.drawerOpen) return leave("drawer-open");
+	/*
+	 * LAST OF THE OVERRIDES, so a row that is both narrow and busy keeps the more
+	 * specific sentence (`composer-has-text`, `door-focused`, `drawer-open`), and so
+	 * every reason a wide window already reported keeps its precedence there.
+	 */
+	if (input.overlayPresentation) return leave("covers-conversation");
 	return { action: "open", settled: true, reason: "pending-on-open" };
 };
 
@@ -549,8 +593,20 @@ export const askOpenAnnouncement = (view: AskQueueView): string =>
  * chip's own clause for the same reason the open sentence does: one vocabulary
  * point, so the region and the chip cannot disagree.
  */
-export const askSettledAnnouncement = (view: AskQueueView): string =>
+const askQueueSentence = (view: AskQueueView): string =>
 	`${askChipCountClause(view)}.`;
+
+export const askSettledAnnouncement = askQueueSentence;
+
+/**
+ * THE SAME SENTENCE, FOR THE ONE OTHER EVENT THAT NEEDS IT (agent review round 1, m3):
+ * a view whose queue is pending but which must not open the drawer because the sheet
+ * would cover and inert the conversation (`covers-conversation`). The sentence is the
+ * chip's own clause - it claims nothing about a surface being up - so the live region
+ * and the chip cannot disagree, and a reader who cannot see the sheet still learns
+ * that asks are waiting. One builder, two events.
+ */
+export const askWaitingAnnouncement = askQueueSentence;
 
 /**
  * The conversations whose surface the user has closed while asks remained, and WHICH

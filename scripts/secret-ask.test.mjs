@@ -4,6 +4,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
+import { contractSource } from "./contrast-contract-source.mjs";
 
 /*
  * THE SECRET ASK'S DOCKED FIELD, driven through the SHIPPED component.
@@ -773,7 +774,7 @@ test("the field is built from the shared primitives whose contrast rows already 
 		/<Button[^>]*type="submit"[^>]*variant="primary"/,
 		"the send control is the shared Button",
 	);
-	const contrast = readFileSync("scripts/contrast-contract.mjs", "utf8");
+	const contrast = contractSource();
 	assert.match(
 		contrast,
 		/name: "input field",\s*\n\s*on: GROUNDS,/,

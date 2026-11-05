@@ -13,7 +13,7 @@
       {
         "surface": "desktop app",
         "repo": "damianvtran/local-operator-ui",
-        "ref": "574fe4840bef2ac5866eca36a14ea40631a802ea",
+        "ref": "096c791a471fbf9bd5f7d3f02771a7202c916530",
         "artefact": "src/renderer/src/shared/themes/palettes/local-operator.ts (header, lines 14-29; the two sanctioned deviations)"
       },
       {
@@ -173,6 +173,35 @@
         { "file": "app-family.json", "path": "/palettes/localOperatorLight/values/onAccent", "value": "#F6FAF8" }
       ],
       "sources": ["mobile tokens.json $meta.accentDivergence + § fixed group record", "ADR 0007 QA round 1 Q2"]
+    },
+    {
+      "id": "dark-ground-ramp",
+      "role": "the dark ground ramps (all grounds, and the washes that move with them)",
+      "kind": "measured",
+      "summary": "The app family's dark ramp follows the app's own dark band (canvas L* 9-15, target 9-13), re-lit 2026-11-03. The site keeps its page ladder. The four dark washes the two shared (accent, success, warning, danger) now differ.",
+      "surfaces": {
+        "site": {
+          "values": { "paper": "#16130e", "surface": "#1e1a14", "elevated": "#282318", "sunken": "#0f0c08", "accent-wash": "#16281d", "success-wash": "#16281d", "warning-wash": "#2a2213", "danger-wash": "#2e1b18" },
+          "note": "a single page ground; paper sits at L* 6.03"
+        },
+        "app family (desktop + mobile)": {
+          "values": { "canvas": "#1d1b17", "surface": "#26221c", "elevated": "#2F2A1F", "sunken": "#171512", "accentWash": "#13241A", "successWash": "#13241A", "warningWash": "#251d0d", "dangerWash": "#291613" },
+          "note": "canvas L* 12.33 -> 9.85 (delta -2.48), surface 15.87 -> 13.47, elevated 18.67 -> 17.27, sunken 9.92 -> 6.88. accentWash and successWash take the design spec's own value #13241A (delta L* -1.82, a* -10.55 -> -10.00, b* 4.94 -> 4.48); the washes the spec does not name moved with the canvas holding a and b to within 0.26: warningWash -2.45, dangerWash -2.42, accentAltWash -2.42, infoWash -2.43"
+        }
+      },
+      "why": "The desktop app received the report \"dark mode isn't that dark ... it should be maybe a bit darker in tone\" (operator, 2026-11-03), with its median dark canvas at L* 15.1. Its contrast contract moved the dark band from [12, 22] to [9, 15]. That places the floor between Discord's 2025 chat ground #1A1A1E (L* 9.42) and Slack's dark #1A1D21 (L* 10.62). Every dark palette was re-lit by one proportional map, L*_new = 9 + 0.6 x (L*_old - 12). localOperatorDark takes the hand-tuned ladder from that pass's design spec. The washes are ground-class roles, so they moved with the grounds, and that is what parts them from the site's values. The site's dark page register was never the app's: paper sat at L* 6.03 against canvas 12.33 before this change as well. So this entry records the four role-matched values the two had shared byte-for-byte: the accent, success, warning and danger washes. Accents and inks are unchanged on both surfaces.",
+      "assertions": [
+        { "file": "tokens.json", "path": "/color/accent/accent-wash/dark", "value": "#16281d" },
+        { "file": "tokens.json", "path": "/color/semantic/success-wash/dark", "value": "#16281d" },
+        { "file": "tokens.json", "path": "/color/semantic/warning-wash/dark", "value": "#2a2213" },
+        { "file": "tokens.json", "path": "/color/semantic/danger-wash/dark", "value": "#2e1b18" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorDark/values/accentWash", "value": "#13241A" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorDark/values/successWash", "value": "#13241A" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorDark/values/warningWash", "value": "#251d0d" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorDark/values/dangerWash", "value": "#291613" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorDark/values/canvas", "value": "#1d1b17" }
+      ],
+      "sources": ["local-operator-ui docs/branding.md § 2 (the ground floors) at the pinned ref", "local-operator.ts localOperatorDark Measured block at the same ref"]
     }
   ]
 }

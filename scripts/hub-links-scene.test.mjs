@@ -20,6 +20,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { contractSource } from "./contrast-contract-source.mjs";
 
 const DRIVER = "scripts/renderer-driver.mjs";
 const STUB = "docs/evidence/hub-links/harness/stub-daemon.mjs";
@@ -249,7 +250,7 @@ test("the auto-push switch is described by its pause line only while that line r
 // would stay green if the control silently fell back to Button's secondary.
 test("source confirmation uses the two warning-wash pairings the contract measures", () => {
 	const panel = readFileSync(PANEL, "utf8");
-	const contract = readFileSync("scripts/contrast-contract.mjs", "utf8");
+	const contract = contractSource();
 	assert.match(panel, /ref=\{openerRef\}\s+variant="primary"/);
 	assert.match(
 		panel,

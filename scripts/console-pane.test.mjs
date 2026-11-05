@@ -26,6 +26,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { contractSource } from "./contrast-contract-source.mjs";
 
 /*
  * THE STORAGE SHIM, the same one `console-pane-render.test.mjs` and four sibling jsdom
@@ -120,10 +121,7 @@ const {
  * right up until one is edited.
  */
 const contractAnsi = () => {
-	const source = readFileSync(
-		join(process.cwd(), "scripts/contrast-contract.mjs"),
-		"utf8",
-	);
+	const source = contractSource();
 	const start = source.indexOf("const TERMINAL_ANSI = [");
 	assert.ok(start !== -1, "the contract still declares TERMINAL_ANSI");
 	const body = source.slice(start, source.indexOf("];", start));
@@ -153,10 +151,7 @@ test("the terminal's ANSI table is the contract's table, slot for slot", () => {
  * gate here).
  */
 const contractSelectionRow = () => {
-	const source = readFileSync(
-		join(process.cwd(), "scripts/contrast-contract.mjs"),
-		"utf8",
-	);
+	const source = contractSource();
 	const start = source.indexOf('name: "console terminal selection"');
 	assert.ok(start !== -1, "the contract still carries the selection row");
 	const body = source.slice(start, source.indexOf("},", start));

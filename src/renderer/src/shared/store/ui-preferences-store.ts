@@ -5,6 +5,10 @@
  * theme selection, and provides methods to update these preferences.
  */
 
+import {
+	type AgentAvatarSize,
+	DEFAULT_AGENT_AVATAR_SIZE,
+} from "@features/chat/agent-avatar-size";
 import type { AskScope } from "@features/chat/ask-queue";
 import {
 	CANVAS_PANE_MIN_PX,
@@ -42,10 +46,29 @@ import type {
 	ActionId,
 	ShortcutBindings,
 } from "@shared/keymap/keymap-registry";
-import { DEFAULT_THEME } from "@shared/themes";
+import { DEFAULT_THEME, isThemeName } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { AccentRef } from "../../../../shared/theme-engine/accent.mjs";
+import { normalizeHex } from "../../../../shared/theme-engine/accent.mjs";
+import type {
+	Mode,
+	PerMode,
+} from "../../../../shared/theme-engine/appearance.mjs";
+import {
+	DEFAULT_ACCENT,
+	DEFAULT_CONTRAST,
+	MODES,
+	THEME_ACCENT,
+	pushCustomAccent,
+	sanitizeAccent,
+	sanitizeAccentRef,
+	sanitizeContrast,
+	sanitizeContrastValue,
+	sanitizeCustomAccents,
+	sanitizeCustomThemeId,
+} from "../../../../shared/theme-engine/appearance.mjs";
 import {
 	MEMORY_PANES,
 	type MemoryPane,
@@ -982,9 +1005,54 @@ type UiPreferencesState = {
 	setTranscriptDisplayMode: (mode: TranscriptDisplayMode) => void;
 
 	/**
-	 * The currently selected theme
+	 * How large the agent's picture is drawn in the chat window (the turn head and
+	 * the chat header): `small` (today's 20px), `medium` or `large`. An app-level
+	 * preference, not a per-agent one.
+	 *
+	 * Default `small` per `agent-avatar-size.ts`, which owns the tokens, the pixel
+	 * tables and the judgement: this store keeps the value, and every reader parses
+	 * it through `parseAgentAvatarSize` because zustand rehydrates PAST the setters
+	 * (the read-side rule `transcriptDisplayMode` above follows). A blob saved
+	 * before this field existed simply lacks the key, so the default applies and no
+	 * migration step is needed.
+	 */
+	agentAvatarSize: AgentAvatarSize;
+
+	/**
+	 * Set the picture size. Takes the resolved union, so an unknown step cannot be
+	 * written; the stored value is judged again on every read.
+	 *
+	 * @param size - The step to draw the chat window's agent picture at
+	 */
+	setAgentAvatarSize: (size: AgentAvatarSize) => void;
+
+	/**
+	 * The currently selected theme. While a custom theme is active this holds
+	 * that theme's BASE, so every reader of `themeName` keeps a valid built-in.
 	 */
 	themeName: ThemeName;
+
+	/**
+	 * The appearance layers over `themeName` (v5; see
+	 * `src/shared/theme-engine/appearance.mjs` for each field's why). Contrast
+	 * and accent are PER MODE - "how much contrast I want in dark mode" survives
+	 * a switch from Dracula to Nord. Nothing in the settings UI writes these yet;
+	 * the setters below are the internal API the picker will use.
+	 */
+	contrast: PerMode<number>;
+	accent: PerMode<AccentRef>;
+	/** The user's own accent swatches, most recent first (<= 12). */
+	customAccents: string[];
+	/** The active saved custom theme, or null for the built-in `themeName`. */
+	customThemeId: string | null;
+	/** Set one mode's contrast (-100..100; rounded and clamped). */
+	setContrast: (mode: Mode, value: number) => void;
+	/** Set one mode's accent reference. */
+	setAccent: (mode: Mode, ref: AccentRef) => void;
+	/** Add a swatch to the front of `customAccents` (and select it for `mode`). */
+	addCustomAccent: (hex: string, select?: Mode) => void;
+	/** Remove a swatch; a mode that had it selected falls back to the theme's accent. */
+	removeCustomAccent: (hex: string) => void;
 
 	/**
 	 * The width of the chat sidebar in pixels
@@ -1586,17 +1654,26 @@ export const EMPTY_RIGHT_SLOT_MEMORY: RightSlotMemory = Object.freeze([]);
  * below a pane's floor lifts to it here, where all three writers of the value
  * are covered at once - see the floor constants below.
  *
- * THE CANVAS'S `overlay` MODE IS THE CASE TO STATE EXPLICITLY, because it is the
- * one where the mode and the arithmetic are easiest to get out of step: when the
- * row cannot host the pane beside the conversation, chat-content stops drawing
- * the divider and the pane draws at the leftover — `min(preference, row - 480)` —
- * because the conversation keeps its 480 floor beside it exactly as it does at
- * every other row, which is why this function needs no branch for the mode. (The
- * mode's NAME is historical: since `1e88f7fc167` removed the pane's `absolute`
- * positioning the pane no longer covers the conversation — the mode withholds the
- * divider and the data attribute; `canvasPaneMode` carries the note.) At the rows
- * where a naive reading would disagree (a preference smaller than the leftover),
- * the pane draws at its preference and this function says so.
+ * THE OVERLAY MODE, PER OCCUPANT, because the mode and the arithmetic are easiest
+ * to get out of step. The CANVAS: when the row cannot host it beside the
+ * conversation, chat-content stops drawing the divider and the canvas draws at the
+ * leftover — `min(preference, row - 480)` - because the conversation keeps its 480px
+ * floor beside it; this function's answer is that width. (The canvas's name for the
+ * mode is historical: since `1e88f7fc167` removed the pane's `absolute` positioning
+ * the canvas no longer covers the conversation - the mode withholds the divider and
+ * the data attribute; `canvasPaneMode` carries the note.) At the rows where a naive
+ * reading would disagree (a preference smaller than the leftover), the canvas draws
+ * at its preference and this function says so.
+ *
+ * THE ASK DRAWER IS THE EXCEPTION, and it is deliberate: below the breakpoint it
+ * draws a right-anchored SHEET (`askPanePresentation`, `chat-sidebar-layout.ts`),
+ * and this function keeps answering the DOCKED arithmetic (`row - 480`), which is
+ * not the sheet's width. No mount draws this number for the sheet: the lane's stop
+ * and `data-slot-edge` read the presentation's width in `chat-layout.tsx`, the drawer
+ * draws it (`chat-content.tsx` / `chat-layout.tsx`), and this answer is only the width
+ * a docked drawer would have had. A story arm that draws the sheet must read
+ * `askPanePresentation` for the same reason. Two readings of one pane, each with its
+ * own reader, rather than a mode branch in the width resolver.
  *
  * UNMEASURED IS NOT ZERO. `rowWidth` is 0 for the frame before the row's first
  * measurement, and answering 0 there would tell the lane the slot has no pixels —
@@ -2017,12 +2094,18 @@ const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
  * `main` keeps #895's v2 (the copy that shipped) and renumbers the memory step
  * to v3, dropping the duplicate.
  *
+ * v5 IS THE APPEARANCE LAYERS: per-mode `contrast` and `accent`, the
+ * `customAccents` swatches and `customThemeId`. Additive - the step only seeds
+ * the defaults (a v4 profile renders exactly as before: Standard contrast, the
+ * theme's own accent, no custom theme) - and `merge` re-sanitises them on every
+ * load, so a hand-edited value cannot reach the composition engine.
+ *
  * v3 (#894) IS THE RIGHT SLOT'S MEMORY: the four global pane flags stop being
  * persisted and become the bound conversation's projection, so the step lifts
  * whichever flag was true into `rightSlotLegacySeed` - the one-shot seed the
  * first bind plants - and deletes the four keys.
  */
-export const UI_PREFERENCES_VERSION = 4;
+export const UI_PREFERENCES_VERSION = 5;
 
 /**
  * The keys v2 removes from a stored blob. A list rather than a `delete
@@ -2049,7 +2132,53 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			sidebarOverflowExpanded: false,
 			showAgentReasoning: false,
 			transcriptDisplayMode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+			agentAvatarSize: DEFAULT_AGENT_AVATAR_SIZE,
 			themeName: DEFAULT_THEME,
+			contrast: DEFAULT_CONTRAST,
+			accent: DEFAULT_ACCENT,
+			customAccents: [],
+			customThemeId: null,
+			setContrast: (mode, value) =>
+				set((state) => ({
+					contrast: {
+						...state.contrast,
+						[mode]: sanitizeContrastValue(value),
+					},
+				})),
+			setAccent: (mode, ref) =>
+				set((state) => ({
+					accent: {
+						...state.accent,
+						[mode]: sanitizeAccentRef(ref, isThemeName),
+					},
+				})),
+			addCustomAccent: (hex, select) =>
+				set((state) => {
+					const customAccents = pushCustomAccent(state.customAccents, hex);
+					const added = normalizeHex(hex);
+					if (!select || !added) return { customAccents };
+					return {
+						customAccents,
+						accent: {
+							...state.accent,
+							[select]: { kind: "custom", hex: added },
+						},
+					};
+				}),
+			removeCustomAccent: (hex) =>
+				set((state) => {
+					const target = normalizeHex(hex);
+					const accent = { ...state.accent };
+					for (const mode of MODES) {
+						const ref = accent[mode];
+						if (ref.kind === "custom" && ref.hex === target)
+							accent[mode] = THEME_ACCENT;
+					}
+					return {
+						customAccents: state.customAccents.filter((h) => h !== target),
+						accent,
+					};
+				}),
 			rightSlotWidth: 0,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
 			/*
@@ -2156,6 +2285,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setTranscriptDisplayMode: (mode: TranscriptDisplayMode) => {
 				set({
 					transcriptDisplayMode: mode,
+				});
+			},
+
+			setAgentAvatarSize: (size: AgentAvatarSize) => {
+				set({
+					agentAvatarSize: size,
 				});
 			},
 
@@ -3041,6 +3176,18 @@ export function mergePersistedUiPreferences(
 		 * Keeping them here also keeps unrelated writes/migrations non-destructive.
 		 */
 		shortcutBindings: sanitizeShortcutBindings(blob.shortcutBindings),
+		/*
+		 * THE APPEARANCE LAYERS ARE RE-VALIDATED, never trusted, for the reason the
+		 * shortcut overrides are: each one reaches the composition engine, and a
+		 * colour from it is written into an injected `<style>`.
+		 */
+		/* What the BLOB says, defaulted - never the in-memory state, which is
+		   what a reload is replacing (and for the two pre-v5 stores that reach
+		   here unmigrated, the identity values are the right ones). */
+		contrast: sanitizeContrast(blob.contrast),
+		accent: sanitizeAccent(blob.accent, isThemeName),
+		customAccents: sanitizeCustomAccents(blob.customAccents),
+		customThemeId: sanitizeCustomThemeId(blob.customThemeId),
 	};
 }
 
@@ -3100,6 +3247,17 @@ export function migrateUiPreferences(
 	}
 	if (version < 4)
 		blob.finderFiles = sanitizeFinderPreferences(blob.finderFiles);
+	if (version < 5) {
+		/*
+		 * v5 SEEDS THE APPEARANCE LAYERS AT THEIR IDENTITY VALUES. Sanitising
+		 * whatever is there (rather than overwriting) keeps the step idempotent and
+		 * harmless for a blob a newer build already wrote these keys into.
+		 */
+		blob.contrast = sanitizeContrast(blob.contrast);
+		blob.accent = sanitizeAccent(blob.accent, isThemeName);
+		blob.customAccents = sanitizeCustomAccents(blob.customAccents);
+		blob.customThemeId = sanitizeCustomThemeId(blob.customThemeId);
+	}
 	return blob;
 }
 

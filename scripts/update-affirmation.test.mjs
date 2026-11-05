@@ -2098,9 +2098,9 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 	assert.ok(
 		copy.some(
 			(text) =>
-				/offline while it comes back - usually a few seconds, up to half a minute/.test(
+				/offline while it comes back \(usually a few seconds, up to half a minute\)/.test(
 					text,
-				) && /Nothing in flight is cut off/.test(text),
+				) && /Running sessions aren't interrupted/.test(text),
 		),
 		`the cost of the press must be stated before it: ${JSON.stringify(copy)}`,
 	);
@@ -2578,7 +2578,7 @@ test("the offer names the restart cost only where the app may restart the server
 		/keeps running the old build until it restarts/,
 		adoptedCopy,
 	);
-	assert.match(adoptedCopy, /nothing in flight is dropped/, adoptedCopy);
+	assert.match(adoptedCopy, /Running sessions aren't interrupted/, adoptedCopy);
 	/*
 	 * The plan's own sentence is not what an adopted machine is told: the two
 	 * describe opposite things about the server the reader is using, and the whole
@@ -2796,7 +2796,7 @@ test("the in-flight install panel is restart-neutral on both arms", () => {
 	assert.match(ownedCopy, /Rolling the server onto/, ownedCopy);
 	assert.match(
 		ownedCopy,
-		/Nothing in flight is cut off - the turns running on this machine keep running/,
+		/Running sessions aren't interrupted\. Rolling the server onto/,
 		ownedCopy,
 	);
 	assert.equal(
@@ -2818,7 +2818,7 @@ test("the in-flight install panel is restart-neutral on both arms", () => {
 	assert.match(adoptedCopy, /Rolling the server onto/, adoptedCopy);
 	assert.match(
 		adoptedCopy,
-		/can't be interrupted once it has started/,
+		/can't be stopped once it has started/,
 		adoptedCopy,
 	);
 	assert.equal(

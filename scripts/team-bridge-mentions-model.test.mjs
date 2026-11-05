@@ -17,6 +17,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/team-bridge/mentions/matcher";
 			export * from "./src/renderer/src/features/team-bridge/mentions/tokens";
 			export * from "./src/renderer/src/features/team-bridge/mentions/message-mentions";
+			export { buildMentionCandidates } from "./src/renderer/src/features/team-bridge/mentions/candidates";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -302,6 +303,48 @@ test("serializer: only ACTIVE members are sent, whatever the token says (R1-01)"
 	]);
 });
 
+test("serializer: an ACTIVE member's silent (notify: false) token is left out by its flag alone", () => {
+	/*
+	 * Review NIT-1 on #1663: the page-level silent case picks a NON-member, so
+	 * the active-member filter drops it whether or not the `notify` check works.
+	 * Here both members are active and in the set, so only `notify` can drop
+	 * Sherman; the notifying Ben beside him proves the filter let them through.
+	 */
+	const tokens = [
+		{
+			start: 0,
+			end: 9,
+			kind: "human",
+			accountId: "a_ben",
+			label: "Ben Tran",
+			notify: true,
+		},
+		{
+			start: 10,
+			end: 23,
+			kind: "human",
+			accountId: "a_sherman",
+			label: "Sherman Tsui",
+			notify: false,
+		},
+	];
+	const active = new Set(["human:a_ben", "human:a_sherman"]);
+	assert.deepEqual(m.serializeMentions(tokens, active), [
+		{ kind: "human", account_id: "a_ben" },
+	]);
+	// Control: the same token notifying IS sent, so the set admits Sherman.
+	assert.deepEqual(
+		m.serializeMentions(
+			tokens.map((token) => ({ ...token, notify: true })),
+			active,
+		),
+		[
+			{ kind: "human", account_id: "a_ben" },
+			{ kind: "human", account_id: "a_sherman" },
+		],
+	);
+});
+
 test("serializer: contract shape, dedupe, silent tokens and unaddressable agents left out", () => {
 	let s = m.insertMention("@b", [], { start: 0, end: 2 }, ben);
 	s = m.insertMention(
@@ -476,4 +519,174 @@ test("viewer identity requires an authoritative account id for humans and agents
 		self,
 	});
 	assert.ok(fallback.runs.every((run) => run.viewer === false));
+});
+
+test("members the directory does not list are offered by their stored NAME, never a legacy composed label", () => {
+	// Review m1 on #1643: the fallback loop used the raw `display_label`, so a
+	// legacy "Ben Tran (Ben Tran)" reached the popover row and the notice
+	// sentence verbatim, and the "Member" placeholder was offered as a name.
+	const member = (account_id, kind, display_label) => ({
+		account_id,
+		kind,
+		display_label,
+		role: "member",
+		state: "active",
+	});
+	const rows = m.buildMentionCandidates({
+		conversation: {
+			members: [
+				member("a_self", "human", "Damian"),
+				member("a_ana", "human", "Ana"),
+				member("a_ben", "agent", "Ben Tran (Ben Tran)"),
+				member("a_sam", "agent", "Juno (Sam)"),
+				member("a_old", "human", "Member"),
+			],
+		},
+		people: [],
+		selfAccountId: "a_self",
+		chiefLabels: {
+			named: (agent, person) => `${agent} (${person})`,
+			unnamed: (person) => `${person}’s chief of staff`,
+		},
+		agentRole: "Chief of staff",
+	});
+	// "Ben Tran (Ben Tran)" is Ben's UNNAMED agent, still a mention target
+	// (review m2-r2 on #1643); only "Member" names nobody.
+	assert.deepEqual(
+		rows.map((row) => [row.kind, row.label]),
+		[
+			["human", "Ana"],
+			["agent", "Ben Tran’s chief of staff"],
+			["agent", "Juno (Sam)"],
+		],
+	);
+});
+
+/*
+ * THE VIEWER IN THE FALLBACK (operator report 2026-11-03). Most messages carry
+ * no `mentions[]`, so the name path must still mark the reader's own mention,
+ * but only through the label the provider resolved from the authenticated
+ * account (`labelUnique`), and never when anyone else could own the name.
+ */
+const uniqueSelf = { ...self, labelUnique: true };
+
+test("viewer: a wire mentions[] row for the reader is the viewer treatment (a)", () => {
+	const spec = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: [{ kind: "human", account_id: "a_me" }],
+		candidates: roster,
+		self: uniqueSelf,
+	});
+	assert.deepEqual(spec.runs, [{ label: "Damian Tran", viewer: true }]);
+});
+
+test("viewer: the fallback marks the reader's own unique label, others stay other (b, d)", () => {
+	const spec = m.messageMentionSpec({
+		body: "@Damian Tran and @Ben Tran, see this",
+		mentions: undefined,
+		candidates: roster,
+		self: uniqueSelf,
+	});
+	assert.equal(spec.source, "fallback");
+	assert.deepEqual(
+		spec.runs.map((r) => [r.label, r.viewer]),
+		[
+			["Ben Tran", false],
+			["Ben", false],
+			["Damian Tran", true],
+		],
+	);
+});
+
+test("viewer: the fallback never marks a label someone else also carries (c)", () => {
+	// The provider found no namesake, but a candidate of this conversation has one.
+	const namesakeCandidate = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: undefined,
+		candidates: [
+			...roster,
+			{ kind: "human", accountId: "a_twin", label: "Damian Tran" },
+		],
+		self: uniqueSelf,
+	});
+	assert.ok(namesakeCandidate.runs.every((run) => run.viewer === false));
+	// An agent whose composed label equals the reader's is still not the reader.
+	const namesakeAgent = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: undefined,
+		candidates: [
+			...roster,
+			{ kind: "agent", accountId: "a_twin", label: "Damian Tran" },
+		],
+		self: uniqueSelf,
+	});
+	assert.ok(namesakeAgent.runs.every((run) => run.viewer === false));
+	// The provider saw a namesake in the directory or the member list.
+	const notUnique = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: undefined,
+		candidates: roster,
+		self: { ...self, labelUnique: false },
+	});
+	assert.equal(notUnique.runs[0].viewer, false);
+});
+
+test("viewer: candidate namesakes compare by name key; the reader's own rows never block (M1, M2)", () => {
+	for (const twin of ["damian tran", "Damian  Tran"]) {
+		const spec = m.messageMentionSpec({
+			body: "@Damian Tran ping",
+			mentions: undefined,
+			candidates: [
+				...roster,
+				{ kind: "human", accountId: "a_twin", label: twin },
+			],
+			self: uniqueSelf,
+		});
+		assert.deepEqual(spec.runs, [{ label: "Damian Tran", viewer: false }]);
+	}
+	const ownAgent = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: undefined,
+		candidates: [
+			...roster,
+			{ kind: "agent", accountId: self.accountId, label: "Damian Tran" },
+		],
+		self: uniqueSelf,
+	});
+	assert.ok(ownAgent.runs.some((r) => r.viewer === true));
+});
+
+test("viewer: the reader's own agent follows the wire-id rule only (f)", () => {
+	const candidates = [
+		...roster,
+		{ kind: "agent", accountId: self.accountId, label: "Aida (Damian Tran)" },
+	];
+	const wire = m.messageMentionSpec({
+		body: "@Aida (Damian Tran) go",
+		mentions: [{ kind: "agent", account_id: self.accountId }],
+		candidates,
+		self: uniqueSelf,
+	});
+	assert.deepEqual(wire.runs, [{ label: "Aida (Damian Tran)", viewer: true }]);
+	const fallback = m.messageMentionSpec({
+		body: "@Aida (Damian Tran) go",
+		mentions: undefined,
+		candidates,
+		self: uniqueSelf,
+	});
+	assert.deepEqual(fallback.runs, [
+		{ label: "Aida (Damian Tran)", viewer: false },
+	]);
+});
+
+test("viewer: an identity with no label highlights nothing on the wire path", () => {
+	assert.equal(
+		m.messageMentionSpec({
+			body: "@ hello",
+			mentions: [{ kind: "human", account_id: "a_me" }],
+			candidates: [],
+			self: { accountId: "a_me", label: "", labelUnique: false },
+		}),
+		null,
+	);
 });
