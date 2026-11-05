@@ -110,15 +110,11 @@ conversation is found by a glance down a rail of twenty rows rather than by a
 accent's "active state" spend on that screen. Asserted as the `team bridge
 selected rail glyph` graphic row (accent on `rowSelected`, 3:1).
 
-**A message that mentions the reader takes a leading accent bar (C3,
-2026-11-04).** The bar left *selection* long ago (see the state roles below);
-this is a different class of mark - attention, the accent badge's class - and
-it is drawn only on a Team Bridge message row that @-mentions the reader: a 2px
-`accent` bar at the start edge of the row's inset `accentWash` box, Discord's
-highlighted row in the theme's own accent. The inline token keeps the viewer's
-`warning` ink; the bar and wash say "this row is about you" from across the
-pane. Asserted as the `team bridge mention row bar` graphic row (accent on
-`accentWash`, `canvas` and `surface`, 3:1).
+**A message that mentions the reader gets no row treatment (C3, revised
+2026-11-04).** It once wore an inset `accentWash` box and a 2px `accent`
+leading bar; the operator rejected both as visual noise. The inline token's
+viewer `warning` ink is what says "this is about you", so the row rests and
+hovers like every other message row.
 
 ### The four grounds
 

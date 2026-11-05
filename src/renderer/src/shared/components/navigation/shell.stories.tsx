@@ -653,6 +653,34 @@ export const Settings: Story = {
 };
 
 /**
+ * Settings under the macOS integrated titlebar - the frame the operator's
+ * "section above the settings in the titlebar area" report (2026-11-04) lives
+ * in. `Settings` above has no chrome facts, so its strip is 0px and cannot show
+ * the 32px lane at all. The defect is visible only with window glass on, where
+ * the split page's content column alone paints the canvas: open this with
+ * `?args=glass:on` (and a `theme:` arg for light/dark).
+ *
+ * THE STRIPES ARE A STAND-IN DESKTOP, not a product colour. Storybook's theme
+ * frame paints an opaque `canvas` behind every story, which hides exactly the
+ * hole this story exists to show; in the app the window's backdrop is the
+ * desktop. A loud pattern makes any unpainted box read at a glance.
+ */
+const SettingsUnderMacChrome: FC = () => {
+	useMacChrome();
+	return <SettingsPage />;
+};
+
+export const SettingsMacChrome: Story = {
+	render: () => (
+		<div className="bg-[repeating-linear-gradient(45deg,#2f6fb0_0_12px,#b0582f_12px_24px)]">
+			<ShellFrame>
+				<SettingsUnderMacChrome />
+			</ShellFrame>
+		</div>
+	),
+};
+
+/**
  * Appearance, scrolled into view.
  *
  * `Settings` above is a 1280x800 clip of the top of a page about 3,600px
