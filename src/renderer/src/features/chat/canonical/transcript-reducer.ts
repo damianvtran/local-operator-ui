@@ -44,7 +44,6 @@ import {
 	preferBridgeFacts,
 	preferBridgeLabel,
 } from "../components/trace/bridge-row-model";
-import { profileWriteDetails } from "../components/trace/profile-save-card-model";
 import {
 	type HubReceipt,
 	type PeerSender,
@@ -54,6 +53,7 @@ import {
 	wakeIsCatchup,
 	wakeIsHidden,
 } from "../components/trace/receipt-row-model";
+import { preferToolResultDetails } from "../components/trace/tool-result-details";
 import {
 	type SendDeliveryState,
 	diffFromDetails,
@@ -3754,7 +3754,8 @@ function durableRecord(
 			// reloaded transcript reads the cancelled/conflict/refusal states from
 			// the same payload the live frames painted them from, and a row whose
 			// page carries no details keeps what it held.
-			details: preferProgressDetails(
+			details: preferToolResultDetails(
+				String(payload.tool_name ?? ""),
 				providerPayload.details,
 				previous?.kind === "tool" ? (previous.details ?? null) : null,
 			),
@@ -6671,9 +6672,11 @@ export function applyEvent(
 				 * (its `output` is prose). Narrow on purpose: the helper accepts only the
 				 * profile tools' bounded shapes, so no other row's details survive here.
 				 */
-				details:
-					profileWriteDetails(base.toolName, result.details) ??
-					preferProgressDetails(result.details, base.details),
+				details: preferToolResultDetails(
+					base.toolName,
+					result.details,
+					base.details,
+				),
 			});
 		}
 		case "supplement_progress": {

@@ -61,10 +61,8 @@ import {
  * third-party result claiming a profile write is exactly what this card must not
  * describe.
  */
-export const PROFILE_SAVE_TOOLS: ReadonlySet<string> = new Set([
-	"agent",
-	"team",
-]);
+export { PROFILE_SAVE_TOOLS } from "./tool-result-details";
+import { PROFILE_SAVE_TOOLS } from "./tool-result-details";
 
 export type ProfileSaveCall = {
 	view: ProfileCardView;
@@ -156,30 +154,6 @@ function fromDisclosure(
 function stateWord(envelope: Record<string, unknown> | null): string {
 	const value = envelope?.state;
 	return typeof value === "string" ? value.trim().toLowerCase() : "";
-}
-
-/**
- * The profile write's own `details`, when this result is one.
- *
- * WHY THE REDUCER NEEDS THIS. The settle path carries details through
- * `preferProgressDetails`, which keeps only progress-shaped payloads, so an `agent`
- * or `team` result's saved/queued receipt was dropped before the card could read it —
- * the card then saw prose `output` and drew nothing. This returns the details ONLY
- * for the profile tools and ONLY when they parse as one of the bounded shapes, so no
- * other tool's details are retained and an ordinary list/show result still carries
- * none.
- */
-export function profileWriteDetails(
-	toolName: string,
-	details: unknown,
-): Record<string, unknown> | null {
-	if (!PROFILE_SAVE_TOOLS.has(toolName)) return null;
-	if (!isRecord(details)) return null;
-	const bounded =
-		profileSavedRecord(details) !== null ||
-		profileQueuedReceipt(details) !== null ||
-		profileDisclosure(details) !== null;
-	return bounded ? details : null;
 }
 
 /**
