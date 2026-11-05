@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -19,6 +20,15 @@ const root = resolve(import.meta.dirname, "..");
 
 export default defineConfig({
 	root: resolve(root, "scripts"),
+	// Startup checkout identity, not a claim about a packaged/compiled artifact.
+	define: {
+		__SWITCH_PREVIEW_SOURCE__: JSON.stringify(
+			execFileSync("git", ["rev-parse", "HEAD"], {
+				cwd: root,
+				encoding: "utf8",
+			}).trim(),
+		),
+	},
 	resolve: {
 		alias: {
 			"@renderer": resolve(root, "src/renderer/src"),

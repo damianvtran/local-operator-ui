@@ -205,19 +205,25 @@ function steps(count: number): TranscriptStep[] {
 								{ length: 8 },
 								(_, line) => `Boundary line ${line + 1}`,
 							).join("  \n")
-						: USER_EXAMPLE === "code"
-							? `A pasted stack trace:\n\n\`\`\`text\n${Array.from({ length: 40 }, (_, line) => `trace line ${line + 1}: inspect workspace`).join("\n")}\n\`\`\``
-							: USER_CHARS > 0
-								? `Turn ${turn}: ${"a pasted brief with selectable hidden text. ".repeat(
-										Math.ceil(USER_CHARS / 43),
-									)}`.slice(0, USER_CHARS)
-								: USER_LINES > 0
-									? Array.from(
-											{ length: USER_LINES },
-											(_, line) =>
-												`Turn ${turn}, line ${line + 1}: a pasted line of the brief that makes this turn taller than the clamp.`,
-										).join("\n\n")
-									: `Turn ${turn}: check the workspace and report what changed since yesterday, briefly.`,
+						: USER_EXAMPLE === "links"
+							? Array.from(
+									{ length: Math.max(1, Math.min(USER_LINES || 24, 48)) },
+									(_, line) =>
+										`Synthetic paragraph ${line + 1}: inspect [capture guide](#synthetic-guide) with \`inline_code_${line + 1}\` before continuing.`,
+								).join("\n\n")
+							: USER_EXAMPLE === "code"
+								? `A pasted stack trace:\n\n\`\`\`text\n${Array.from({ length: 40 }, (_, line) => `trace line ${line + 1}: inspect workspace`).join("\n")}\n\`\`\``
+								: USER_CHARS > 0
+									? `Turn ${turn}: ${"a pasted brief with selectable hidden text. ".repeat(
+											Math.ceil(USER_CHARS / 43),
+										)}`.slice(0, USER_CHARS)
+									: USER_LINES > 0
+										? Array.from(
+												{ length: USER_LINES },
+												(_, line) =>
+													`Turn ${turn}, line ${line + 1}: a pasted line of the brief that makes this turn taller than the clamp.`,
+											).join("\n\n")
+										: `Turn ${turn}: check the workspace and report what changed since yesterday, briefly.`,
 			});
 		} else if (i % 3 === 1) {
 			out.push({
