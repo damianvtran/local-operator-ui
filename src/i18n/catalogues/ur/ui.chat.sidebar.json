@@ -68,7 +68,7 @@
 	"ui.chat.sidebar.row.search_beyond": "تلاش سے ملا، یہاں درج چیٹس سے آگے",
 	"ui.chat.sidebar.row.recent": "حالیہ",
 	"ui.chat.sidebar.row.not_sent_suffix": "، ابھی نہیں بھیجا گیا",
-	"ui.chat.sidebar.row.unread_suffix": "، نہ پڑھی گئی",
+	"ui.chat.sidebar.row.unread_suffix": "، نہ پڑھا گیا",
 	"ui.chat.sidebar.row.silent_remedy": "/stop اگر یہ خاموش رہے۔",
 	"ui.chat.sidebar.catalogue.show_more": "{hidden, plural, one {مزید {hidden, number, ::group-off} دکھائیں} other {مزید {hidden, number, ::group-off} دکھائیں}}",
 	"ui.chat.sidebar.catalogue.show_more_chats": "{add, plural, one {مزید {add, number, ::group-off} چیٹ دکھائیں} other {مزید {add, number, ::group-off} چیٹس دکھائیں}}"

@@ -69,7 +69,7 @@
 	"ui.chat.sidebar.row.recent": "हालिया",
 	"ui.chat.sidebar.row.not_sent_suffix": ", अभी नहीं भेजा गया",
 	"ui.chat.sidebar.row.unread_suffix": ", अपठित",
-	"ui.chat.sidebar.row.silent_remedy": "/stop अगर यह चुप्पी बनी रहे।",
+	"ui.chat.sidebar.row.silent_remedy": "/stop अगर यह चुप रहे।",
 	"ui.chat.sidebar.catalogue.show_more": "{hidden, plural, one {{hidden, number, ::group-off} और दिखाएँ} other {{hidden, number, ::group-off} और दिखाएँ}}",
 	"ui.chat.sidebar.catalogue.show_more_chats": "{add, plural, one {{add, number, ::group-off} और चैट दिखाएँ} other {{add, number, ::group-off} और चैट दिखाएँ}}"
 }

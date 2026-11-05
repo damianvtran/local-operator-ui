@@ -65,7 +65,7 @@
 	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {至少有} other {}}{count, plural, other {{count_display}个对话}}匹配此搜索{clipped, select, yes {；列表到此为止} other {}}",
 	"ui.chat.sidebar.row_menu.hint": "右键点击或按 Shift+F10 查看其操作。",
 	"ui.chat.sidebar.row_menu.hint_mac": "右键点击或按 Shift+F10（多数 Mac 键盘需配合 Fn）查看其操作。",
-	"ui.chat.sidebar.row.search_beyond": "由搜索找到，不在此处列出的对话中",
+	"ui.chat.sidebar.row.search_beyond": "由搜索找到，不在此处列表中",
 	"ui.chat.sidebar.row.recent": "最近",
 	"ui.chat.sidebar.row.not_sent_suffix": "，尚未发送",
 	"ui.chat.sidebar.row.unread_suffix": "，未读",
