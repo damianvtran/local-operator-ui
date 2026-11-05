@@ -293,7 +293,7 @@ test("secondary pins survive real provider save/reload and global primary confli
 			...draft(id),
 			id: `custom-secondary${base.mode}`,
 			overrides: {
-				accentAlt: base.accentAlt,
+				accentAlt: `#${(Number.parseInt(base.accentAlt.slice(1), 16) - 1).toString(16).padStart(6, "0").toUpperCase()}`,
 				accentAltWash: base.accentAltWash,
 			},
 		};
@@ -307,7 +307,7 @@ test("secondary pins survive real provider save/reload and global primary confli
 		});
 		const read = (role) =>
 			getComputedStyle(document.documentElement).getPropertyValue(role).trim();
-		assert.equal(read("--lo-accent-alt"), base.accentAlt);
+		assert.equal(read("--lo-accent-alt"), theme.overrides.accentAlt);
 		const chip = document.querySelector(
 			'[data-accent-preview="secondary"] span',
 		);
@@ -319,14 +319,14 @@ test("secondary pins survive real provider save/reload and global primary confli
 				accent: { ...identity.accent, [base.mode]: { kind: "theme-alt" } },
 			}),
 		);
-		assert.equal(read("--lo-accent-alt"), base.accentAlt);
+		assert.equal(read("--lo-accent-alt"), theme.overrides.accentAlt);
 		assert.equal(read("--lo-accent-alt-wash"), base.accentAltWash);
 		await act(async () => reloadCustomThemes());
 		assert.deepEqual(
 			customThemeSnapshot().themes.find((t) => t.id === theme.id).overrides,
 			theme.overrides,
 		);
-		assert.equal(read("--lo-accent-alt"), base.accentAlt);
+		assert.equal(read("--lo-accent-alt"), theme.overrides.accentAlt);
 		assert.deepEqual(
 			customThemeSnapshot().themes.find((t) => t.id === theme.id).seeds,
 			{},
