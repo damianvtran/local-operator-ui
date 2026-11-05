@@ -1012,6 +1012,9 @@
 		"role": "Theme-header accent override reminder",
 		"tone": "Plain, explanatory.",
 		"length": "Wrapping status line; retain all facts.",
-		"note": "Theme-header reminder that accent comes from another built-in palette. {theme} is that borrowed palette’s display name, never the current background theme. Not a user-created accent."
+		"note": "Theme-header reminder that accent comes from another built-in palette. {theme} is that borrowed palette’s display name, never the current background theme. Not a user-created accent.",
+		"placeholders": {
+			"theme": "Display name of the built-in theme whose palette supplies the accent, already translated; never the current background theme and never a user-created accent."
+		}
 	}
 }

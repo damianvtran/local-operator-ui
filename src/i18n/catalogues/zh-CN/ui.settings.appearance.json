@@ -129,7 +129,7 @@
 	"ui.settings.appearance.accent.use_theme_accent": "使用主题强调色",
 	"ui.settings.appearance.picker.dialog": "选择强调色",
 	"ui.settings.appearance.picker.edit_dialog": "编辑强调色",
-	"ui.settings.appearance.picker.hex": "Hex",
+	"ui.settings.appearance.picker.hex": "十六进制",
 	"ui.settings.appearance.picker.invalid": "请输入十六进制颜色，如#1A2B3C。",
 	"ui.settings.appearance.picker.hue": "色相",
 	"ui.settings.appearance.picker.hue_value": "色相{deg}°，{name}",
