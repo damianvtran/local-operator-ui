@@ -381,7 +381,7 @@
 	"ui.teamBridge.conversation_menu.confirm.remove_agent_title": "{name} को {conversation} से हटाएँ?",
 	"ui.teamBridge.conversation_menu.confirm.remove_agent_body": "{name} को यहाँ संदेश मिलने बंद हो जाएँगे, उसकी हर पर्सोना के लिए। आप बातचीत में बने रहेंगे, और {name} को बाद में फिर से जोड़ सकते हैं।",
 	"ui.teamBridge.conversation_menu.confirm.add_agent_title": "{name} को {conversation} में जोड़ें?",
-	"ui.teamBridge.conversation_menu.confirm.add_agent_body": "{name} तुरंत जुड़ जाएगा। यह यहाँ हर संदेश पढ़ता है, तय करता है कि जवाब देना है या नहीं, और @-उल्लेख होने पर जवाब देता है।",
+	"ui.teamBridge.conversation_menu.confirm.add_agent_body": "{name} तुरंत जुड़ जाएगा। यह यहाँ हर संदेश पढ़ता है, तय करता है कि जवाब देना है या नहीं, और @ से उल्लेख होने पर जवाब देता है।",
 	"ui.teamBridge.conversation_menu.confirm.add_agent": "जोड़ें",
 	"ui.teamBridge.conversation_menu.error.generic": "यह बदलाव सहेजा नहीं गया। फिर कोशिश करें।",
 	"ui.teamBridge.conversation_menu.error.not_in_general": "आपका एजेंट अभी {channel} में नहीं है, इसलिए हटाने के लिए कुछ नहीं है।",

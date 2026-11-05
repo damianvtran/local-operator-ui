@@ -1,0 +1,108 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (PR delta audit)",
+ "date": "2026-11-04",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session f96f8d39d33d (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.teamBridge",
+ "locale": "ur",
+ "audit_id": "tb1681-f96f8d39d33d-ur",
+ "instance": "f96f8d39d33d-pr1681-ur",
+ "session": "f96f8d39d33d",
+ "integration": {
+  "pr": 1681,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-conversation-menu",
+  "base": "7345dcbf238d334e56f102eb994b15eb5c1776f0",
+  "audited_head": "1ec423538c464ba5b17ffe94d3d80b44f15623dd",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session f96f8d39d33d. Did not translate the 23 conversation_menu values (they arrived in the implementer's commit 1ec423538c46 on PR #1681), wrote no English copy or code in the PR, and is not any prior ui.teamBridge auditor (7c739a6246b4-pr1670, bf2ddf2b6fb3-pr1670-r2). It applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "ur": "c914f5bc5764782360aafda9a108690a33de5ef0944fa2cc05a44a4c9f77076d",
+  "en": "75280fb2e0efe7dc7064094064b9d88ab056856082a8224acfe5cb5fd21c3e7a"
+ },
+ "context_sha256": "71cbc1181a137ff9f5d3fa1a1389adb0571c5d1a6c6b750284aa7bdf90a1ab9b",
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/ur.md",
+  "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Delta audit of PR #1681 (7345dcb..1ec423538c46): the 23 new ui.teamBridge.conversation_menu.* values read against en, the en context sidecar, the renderer call sites (team-bridge-conversation-menu.tsx, team-bridge-page.tsx), the glossary, the ur style guide and the #1670 receipts, composed with real arguments; existing ui.teamBridge copy read for glossary consistency. The only pre-existing line the PR touched is members_panel.note.dm (trailing comma; value byte-identical, verified). No rendered fit or native RTL rendering claimed.",
+  "keys_added": [
+   "ui.teamBridge.conversation_menu.view_members",
+   "ui.teamBridge.conversation_menu.join",
+   "ui.teamBridge.conversation_menu.remove_agent",
+   "ui.teamBridge.conversation_menu.add_agent",
+   "ui.teamBridge.conversation_menu.leave_channel",
+   "ui.teamBridge.conversation_menu.leave_group",
+   "ui.teamBridge.conversation_menu.reason.org_wide",
+   "ui.teamBridge.conversation_menu.reason.agents_builtin",
+   "ui.teamBridge.conversation_menu.reason.general_not_member_yet",
+   "ui.teamBridge.conversation_menu.reason.agent_not_permitted",
+   "ui.teamBridge.conversation_menu.confirm.leave_channel_title",
+   "ui.teamBridge.conversation_menu.confirm.leave_group_title",
+   "ui.teamBridge.conversation_menu.confirm.leave_body",
+   "ui.teamBridge.conversation_menu.confirm.remove_agent_title",
+   "ui.teamBridge.conversation_menu.confirm.remove_agent_body",
+   "ui.teamBridge.conversation_menu.confirm.add_agent_title",
+   "ui.teamBridge.conversation_menu.confirm.add_agent_body",
+   "ui.teamBridge.conversation_menu.confirm.add_agent",
+   "ui.teamBridge.conversation_menu.error.generic",
+   "ui.teamBridge.conversation_menu.error.not_in_general",
+   "ui.teamBridge.conversation_menu.partial_leave.body",
+   "ui.teamBridge.conversation_menu.partial_leave.retry_failed",
+   "ui.teamBridge.conversation_menu.partial_leave.retry"
+  ],
+  "keys_changed_by_auditor": [
+   "ui.teamBridge.conversation_menu.view_members",
+   "ui.teamBridge.conversation_menu.confirm.add_agent_body"
+  ]
+ },
+ "findings": [
+  {
+   "id": "UR-M1",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.conversation_menu.view_members"
+   ],
+   "summary": "Glossary drift: 'اراکین' while every other ui.teamBridge value (14) uses 'ارکان', including the members panel title this item opens.",
+   "disposition": "fixed by auditor in this commit",
+   "current": "اراکین دیکھیں",
+   "proposed": "ارکان دیکھیں"
+  },
+  {
+   "id": "UR-N1",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.conversation_menu.confirm.add_agent_body"
+   ],
+   "summary": "'@-ذکر' (hyphenated calque) vs the catalogue's '@ کے ساتھ ذکر' (members.invitation_note_v2/_v3, builtin.general_topic).",
+   "disposition": "fixed by auditor in this commit",
+   "current": "{name} فوراً شامل ہو جائے گا۔ یہ یہاں ہر پیغام پڑھتا ہے، فیصلہ کرتا ہے کہ جواب دینا ہے یا نہیں، اور @-ذکر ہونے پر جواب دیتا ہے۔",
+   "proposed": "{name} فوراً شامل ہو جائے گا۔ یہ یہاں ہر پیغام پڑھتا ہے، فیصلہ کرتا ہے کہ جواب دینا ہے یا نہیں، اور @ کے ساتھ ذکر ہونے پر جواب دیتا ہے۔"
+  }
+ ],
+ "evidence": {
+  "record": "i18n/audits/evidence/ur/ui.teamBridge/tb1681-f96f8d39d33d-ur/record.json",
+  "record_sha256": "ebe55cfbeef707bb3689a53271873999b6c4025b059b93b0eb112770d3ef3d0e"
+ },
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 389 values parse; argument names equal en on every key; the only kind difference is the pre-existing vi/zh-CN {count, number} in attachmentCard.list/fileCard.list (byte-identical on base 7345dcb; those locales have no plural categories)",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat; {name}=Aida, {conversation}=qa-coordination, {channel}=isolateLtr('#general'/'#agents') as the renderer passes it)",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9); no stray U+202F outside fr; fr high punctuation on delta keys uses U+202F; zh-CN no CJK/Latin space on delta keys.",
+  "key_set": "389 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/ur/ui.teamBridge/tb1681-f96f8d39d33d-ur/audit.log"
+ },
+ "terminal": true
+}
