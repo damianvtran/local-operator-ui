@@ -183,6 +183,7 @@ const terminalThemeRoles = (
 export const readTerminalTheme = (
 	root: HTMLElement = document.documentElement,
 	mode: TerminalSurfaceMode = "live",
+	glassHost?: HTMLElement,
 ): ITheme => {
 	const styles = getComputedStyle(root);
 	const theme: Record<string, string> = {};
@@ -190,6 +191,18 @@ export const readTerminalTheme = (
 	for (const role of Object.keys(roles) as TerminalThemeRole[]) {
 		const value = resolveTerminalRole(styles, roles[role]);
 		if (value) theme[role] = value;
+	}
+	// Only an on-screen pane may borrow its parent's glass ground. Captures
+	// have no native backdrop and must keep their deterministic solid palette.
+	// data-glass is capability-gated by use-window-glass (including Reduce
+	// Transparency); a preference alone must never punch through a solid window.
+	if (
+		root.dataset?.glass?.split(/\s+/).includes("pane") &&
+		glassHost?.closest('[data-glass-region="pane"]')
+	) {
+		// xterm parses colours, not CSS tokens. Only the default cell ground is
+		// transparent: ANSI backgrounds, glyphs, selection and cursor stay crisp.
+		theme.background = "#00000000";
 	}
 	/*
 	 * THE CARET IS HIDDEN IN CSS, NOT PAINTED AWAY (design round 1, D1).

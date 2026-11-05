@@ -233,6 +233,27 @@ test("the theme resolves roles through the document, and omits what is missing",
 	try {
 		const theme = readTerminalTheme({});
 		assert.equal(theme.background, "#101010");
+		const glassRoot = { dataset: { glass: "sidebar canvas pane" } };
+		const paneHost = { closest: () => ({}) };
+		assert.equal(
+			readTerminalTheme(glassRoot, "live", paneHost).background,
+			"#00000000",
+		);
+		assert.equal(
+			readTerminalTheme(glassRoot, "history", paneHost).background,
+			"#00000000",
+		);
+		assert.equal(
+			readTerminalTheme(glassRoot).background,
+			"#101010",
+			"capture callers without an on-screen pane keep a solid ground",
+		);
+		assert.equal(
+			readTerminalTheme({ dataset: { glass: "sidebar" } }, "live", paneHost)
+				.background,
+			"#101010",
+			"sidebar-only coverage does not enable pane transparency",
+		);
 		assert.equal(theme.foreground, "#f0f0f0");
 		assert.equal(theme.cursor, "#4488ff");
 		assert.equal(theme.cursorAccent, "#181818");

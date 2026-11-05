@@ -13,6 +13,7 @@ import {
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
+import "./console-mirror.css";
 import { type FC, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /**
@@ -270,8 +271,16 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		Terminal.strings.promptLabel = t("ui.console.terminal.prompt_label");
 		Terminal.strings.tooMuchOutput = t("ui.console.terminal.too_much_output");
 		const term = new Terminal({
+			// xterm fixes this renderer capability at construction. Keep it enabled
+			// even on solid themes so changing glass never replaces the terminal,
+			// its scrollback, or the subscription to the existing console surface.
+			allowTransparency: true,
 			scrollback: 5000,
-			theme: readTerminalTheme(document.documentElement, initialThemeMode),
+			theme: readTerminalTheme(
+				document.documentElement,
+				initialThemeMode,
+				initialMode === "capture" ? undefined : host,
+			),
 			fontFamily: terminalFontFamily(),
 			fontSize: TERMINAL_FONT_SIZE,
 			allowProposedApi: true,
@@ -670,6 +679,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			terminal.options.theme = readTerminalTheme(
 				document.documentElement,
 				themeMode,
+				mode === "capture" ? undefined : host,
 			);
 		};
 		/**
@@ -713,8 +723,10 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 				),
 			});
 		};
+		// Appearance changes do not change input/cursor mode and must not write
+		// control sequences into the existing buffer. Only a mode transition does.
+		applyMode();
 		const refresh = () => {
-			applyMode();
 			applyTheme();
 			send();
 		};
@@ -724,7 +736,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		const theme = new MutationObserver(refresh);
 		theme.observe(document.documentElement, {
 			attributes: true,
-			attributeFilter: ["data-theme", "class"],
+			attributeFilter: ["data-theme", "class", "data-glass", "style"],
 		});
 		return () => {
 			resize.disconnect();

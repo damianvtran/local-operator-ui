@@ -1067,3 +1067,61 @@ test("a mirror mounted without a request never takes the keyboard (the restore, 
 	);
 	root.unmount();
 });
+
+// Exercise the component's real creation and document-observer path. The terminal
+// stub proves subscription/instance invariants here; the browser evidence uses
+// actual xterm to prove its DOM scroll layer consumes the transparent theme.
+test("effective pane glass updates the existing terminal without replaying its surface", async () => {
+	const calls = installBridge();
+	const html = document.documentElement;
+	const host = document.getElementById("root");
+	host.dataset.glassRegion = "pane";
+	html.style.setProperty("--color-sunken", "#171512");
+	html.style.setProperty("--color-ink", "#f1eee6");
+	const { root, terminal } = await mountMirror();
+	try {
+		const constructed = __terminals.length;
+		const writes = terminal.written.length;
+		assert.equal(
+			terminal.options.allowTransparency,
+			true,
+			"renderer capability must be enabled before open",
+		);
+		assert.equal(terminal.options.theme.background, "#171512");
+		html.dataset.glass = "sidebar canvas pane";
+		await settle(30);
+		assert.equal(terminal.options.theme.background, "#00000000");
+		assert.equal(terminal.options.theme.foreground, "#f1eee6");
+		html.style.setProperty("--color-ink", "#ffffff");
+		await settle(30);
+		assert.equal(
+			terminal.options.theme.foreground,
+			"#ffffff",
+			"live contrast updates parsed xterm colours",
+		);
+		for (const coverage of ["sidebar", "", "sidebar canvas pane"]) {
+			if (coverage) html.dataset.glass = coverage;
+			else delete html.dataset.glass;
+			await settle(30);
+			assert.equal(
+				terminal.options.theme.background,
+				coverage.includes("pane") ? "#00000000" : "#171512",
+			);
+		}
+		assert.equal(__terminals.length, constructed);
+		assert.equal(terminal.wasDisposed, false);
+		// Theme changes must not replay the subscribed bytes or write mode sequences.
+		assert.equal(terminal.written.length, writes);
+		assert.equal(
+			calls.length,
+			0,
+			"appearance changes never type into the process",
+		);
+	} finally {
+		root.unmount();
+		delete html.dataset.glass;
+		delete host.dataset.glassRegion;
+		html.style.removeProperty("--color-sunken");
+		html.style.removeProperty("--color-ink");
+	}
+});
