@@ -268,10 +268,11 @@ export const InThreadPaneHost: Story = {
 };
 
 /*
- * A thread root that MENTIONS THE READER (#1672 round 3, D6): #1668 paints its
- * inset box `accent-wash` at rest and on hover, and the facepile ring must read
- * that wash rather than the timeline's canvas. A minimal mention source names
- * the reader so the list's own mention highlighting decides the wash.
+ * A thread root that MENTIONS THE READER. Kept as a regression frame: since the
+ * operator removed the mention-row highlight (2026-11-04) the root wears no
+ * wash or leading bar, so it - and its facepile ring - must look exactly like
+ * an unmentioned root; only the inline viewer token marks it. A minimal
+ * mention source names the reader so that token renders.
  */
 const readerMentionSource = {
 	conversationId: "bcv_story",

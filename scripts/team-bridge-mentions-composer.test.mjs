@@ -151,6 +151,8 @@ const CONVERSATION = "bcv_mentions01";
 const MENTION_OTHER = /data-mention="other"[^>]*>@Ben Tran</;
 const MENTION_VIEWER = /data-mention="viewer"[^>]*>@Damian Tran</;
 const MENTION_ANY = /data-mention="/g;
+/* A mentioned row's wash class or the thread-row ring var it used to set. */
+const ROW_MENTION_WASH = /accent-wash|thread-row-host/;
 const NOT_MEMBER_NOTICE =
 	/Sherman Tsui isn’t in this conversation, so they won’t be notified\./;
 const INVITED_NOTICE =
@@ -1112,7 +1114,7 @@ test("rendered: a row that mentions the reader has no bar or wash, only the pill
 	const mentioned = row("bcmsg_mentioned");
 	assert.ok(plain && mentioned, "both rows render");
 	assert.equal(doc.querySelector("[data-mention-bar]"), null, "no leading bar");
-	assert.doesNotMatch(mentioned.className, /accent-wash|thread-row-host/);
+	assert.doesNotMatch(mentioned.className, ROW_MENTION_WASH);
 	// Same class string = same px/py insets and the same hover tint, so the
 	// text's x and the row's height cannot differ because of the mention.
 	assert.equal(mentioned.className, plain.className);
