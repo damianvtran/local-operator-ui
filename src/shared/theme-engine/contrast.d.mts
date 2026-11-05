@@ -12,6 +12,15 @@ export declare const CONTRAST_ANCHORS: Readonly<{
 	dark: Readonly<{ high: number; soft: number }>;
 	light: Readonly<{ high: number; soft: number }>;
 }>;
+// The terminal reuses the palette solver for semantic ANSI inks on glass;
+// expose its existing pure API rather than introducing a second colour solver.
+export declare function solveLightness(
+	palette: Record<string, string>,
+	role: string,
+	grounds: string[],
+	floor: number,
+	accepts?: (value: string) => boolean,
+): string;
 export declare function pickOnAccent(
 	accent: string,
 	candidates: unknown[],
