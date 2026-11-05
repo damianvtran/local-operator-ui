@@ -272,7 +272,13 @@ export function usePaletteItems({
 	);
 	const { scope, terms } = parsePaletteQuery(query, { bridgeScope });
 	const wantsChats = scope === null || scope === "chat";
-	const wantsAgents = scope === null || scope === "agent";
+	/*
+	 * Keep the roster available to the bridge scope's literal-name escape hatch
+	 * (`searchPalette`, Q1 in review round 2 of #1673). Otherwise `tb helper`
+	 * loses `tb-helper` here before search can admit its whole-name match. The
+	 * search still excludes agents that match only the stripped term `helper`.
+	 */
+	const wantsAgents = scope === null || scope === "agent" || scope === "bridge";
 	/*
 	 * Teams ride the SAME scope the roster does (issue #849): `@` reads "the things
 	 * I can start a chat with", and a team is one of them. A name of its own rather

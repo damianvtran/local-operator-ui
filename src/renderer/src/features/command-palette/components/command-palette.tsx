@@ -7,7 +7,10 @@ import { openConversation } from "@features/chat/open-conversation";
 import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
 import { useLanguageDialogStore } from "@features/settings/components/language-dialog-store";
-import { requestTeamBridgeComposerFocus } from "@features/team-bridge/team-bridge-composer-focus";
+import {
+	clearTeamBridgeComposerFocusRequest,
+	requestTeamBridgeComposerFocus,
+} from "@features/team-bridge/team-bridge-composer-focus";
 import { teamBridgeNavigation } from "@features/team-bridge/team-bridge-deep-link";
 import { onTeamBridgeRoute } from "@features/team-bridge/use-team-bridge-notification-open";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
@@ -571,6 +574,7 @@ export const CommandPalette: FC = () => {
 		returnFocusTo.current = active instanceof HTMLElement ? active : null;
 		identityAtOpen.current = currentPanelIdentity();
 		bridgePicked.current = false;
+		clearTeamBridgeComposerFocusRequest();
 	}, [isCommandPaletteOpen]);
 
 	/*
