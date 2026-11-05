@@ -571,11 +571,15 @@ export function profileRevertState(input: ProfileRevertInput): {
 	if (input.outcome) {
 		const settled = (input.outcome.state ?? "").toLowerCase();
 		/*
-		 * AN UNCONFIRMED SEND IS NOT A FAILED ONE, and it never re-enables: the answer
-		 * may have landed, so offering the press again would invite a duplicate revert
-		 * (QA Q1 / review R3, reproduced against this resolver).
+		 * "WE DO NOT KNOW" HAS TWO SPELLINGS AND BOTH STAY UNCONFIRMED. `unconfirmed`
+		 * is this app's word for an answer that never arrived; `pending` is what a
+		 * reconcile read records when the activation may or may not have landed. Before
+		 * this, `pending` fell through to the refusal arm below and rendered "the revert
+		 * did not go through" — a claim nobody can make when the write's fate is
+		 * unknown (QA Q1, reproduced through the mounted hook into the shipped view).
+		 * Neither arm re-enables: a press that may have landed must not invite a second.
 		 */
-		if (settled === "unconfirmed")
+		if (settled === "unconfirmed" || settled === "pending")
 			return { state: "unconfirmed", enabled: false };
 		/* A refusal the backend actually authored as stale/expired IS knowable. */
 		if (settled === "expired" || settled === "stale")
