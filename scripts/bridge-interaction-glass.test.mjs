@@ -27,6 +27,50 @@ const toolbar = read(
 );
 const skeleton = read("src/renderer/src/shared/components/ui/skeleton.tsx");
 
+// Read the component's actual utility and its stylesheet keyframes. A hardcoded
+// 0.7 once let this model pass while Tailwind's default pulse painted at 0.5.
+const pulseClass = skeleton
+	.match(/cn\("([^"]+)"/)?.[1]
+	.split(/\s+/)
+	.find((name) => name.startsWith("animate-"));
+assert.ok(pulseClass, "Skeleton must declare its animation utility");
+const pulseName = pulseClass.slice("animate-".length);
+const pulseCss = css.includes(`--animate-${pulseName}:`)
+	? css
+	: read("node_modules/tailwindcss/theme.css");
+const keyframeName = pulseCss.match(
+	new RegExp(`--animate-${pulseName}:\\s*([\\w-]+)`),
+)?.[1];
+assert.ok(keyframeName, `${pulseClass}: missing animation definition`);
+const keyframeStart = pulseCss.indexOf(`@keyframes ${keyframeName} {`);
+assert.ok(keyframeStart >= 0, `${pulseClass}: missing keyframes`);
+let keyframeEnd = pulseCss.indexOf("{", keyframeStart) + 1;
+let depth = 1;
+while (depth > 0 && keyframeEnd < pulseCss.length) {
+	if (pulseCss[keyframeEnd] === "{") depth += 1;
+	if (pulseCss[keyframeEnd] === "}") depth -= 1;
+	keyframeEnd += 1;
+}
+assert.equal(depth, 0, `${pulseClass}: unterminated keyframes`);
+const pulseOpacities = [
+	...pulseCss
+		.slice(keyframeStart, keyframeEnd)
+		.matchAll(/opacity:\s*([\d.]+)/g),
+].map((match) => Number(match[1]));
+assert.ok(pulseOpacities.length > 0, `${pulseClass}: missing opacity stops`);
+const pulseTrough = Math.min(...pulseOpacities);
+const VISIBLE_PULSE_END = /100%\s*\{\s*opacity:\s*1\s*;/;
+
+test("Skeleton's used animation and stylesheet share the visible pulse floor", () => {
+	assert.equal(pulseClass, "animate-pulse-visible");
+	assert.ok(pulseTrough >= 0.7, `actual ${pulseClass} trough ${pulseTrough}`);
+	// The shared reduced-motion rule runs one near-instant iteration, so its
+	// final frame must be visible rather than stranding a transparent mark.
+	assert.match(pulseCss.slice(keyframeStart, keyframeEnd), VISIBLE_PULSE_END);
+	assert.ok(css.includes("animation-duration: 0.01ms !important"));
+	assert.ok(css.includes("animation-iteration-count: 1 !important"));
+});
+
 test("inset message hover and keyboard focus use the same shared glass roles", () => {
 	for (const role of ["surface", "elevated"]) {
 		assert.ok(row.includes(`hover:before:bg-row-hover-${role}`));
@@ -41,7 +85,9 @@ test("inset message hover and keyboard focus use the same shared glass roles", (
 });
 
 test("shared skeleton and floating toolbar preserve opaque fallbacks and independent ink", () => {
-	assert.ok(skeleton.includes("animate-pulse rounded-sm bg-placeholder"));
+	assert.ok(
+		skeleton.includes("animate-pulse-visible rounded-sm bg-placeholder"),
+	);
 	assert.ok(skeleton.includes('data-glass-placeholder=""'));
 	assert.ok(
 		css.includes(
@@ -131,7 +177,7 @@ test("floating strip and pulsing placeholder retain floors on their actual neste
 					const hover = composite(palette.ink, alpha("row-hover"), pane);
 					const placeholder = composite(
 						palette.ink,
-						alpha("row-selected") * 0.7,
+						alpha("row-selected") * pulseTrough,
 						pane,
 					);
 					placeholderStep = Math.min(
