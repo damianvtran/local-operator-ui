@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "audit_id": "rs1732-zh-cn-r1-a95ac1ad0cc7",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.radient_session",
+  "date": "2026-11-06",
+  "auditor": {
+    "agent": "reviewer",
+    "session": "a95ac1ad0cc7",
+    "instance": "a95ac1ad0cc7-pr1732-r1-zh-cn",
+    "model": "anthropic/claude-opus-5-5",
+    "independent_from_translator": true,
+    "translator": "PR #1732 coder session (anthropic/claude-opus-5-5, per PR body)"
+  },
+  "inputs": {
+    "src/i18n/catalogues/en/ui.chat.radient_session.json": {
+      "sha256": "49d5e57f39c27fc5c3dbaea99519cacb2ef739f9c3c88e1df8169fd349ccb8a1"
+    },
+    "src/i18n/catalogues/en/ui.chat.radient_session.context.json": {
+      "sha256": "4a6f942d3bcbea56d180e0ff40463f84916d58748cba2ec3b11670107ed1ca04"
+    },
+    "src/i18n/catalogues/zh-CN/ui.chat.radient_session.json": {
+      "sha256": "3d88274db680d6abbb527907a45fe511751d5bac1b1da07341b5d5cb48a0e6d4"
+    }
+  },
+  "style_guide": {
+    "path": "~/local-operator i18n/style-guides/zh-CN.md",
+    "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+    "glossary_path": "~/local-operator i18n/glossary.md",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "core_commit": "e21f92fa4ee"
+  },
+  "result": "clean",
+  "status": "passed",
+  "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "ids": []
+  },
+  "artifacts": {
+    "i18n/receipts/a95ac1ad0cc7-pr1732-r1-zh-cn.json": {
+      "sha256": "7147011f2e16b3417e6d0e7ea08020df871a802364f228244a7be14c09e94780"
+    },
+    "i18n/audits/evidence/zh-CN/ui.chat.radient_session/rs1732-zh-cn-r1-a95ac1ad0cc7/audit.log": {
+      "sha256": "3abff0b3852c2c6303ceed27a6aee5d697d063fdde230a78ef67d0c5d9125d7a"
+    },
+    "i18n/audits/evidence/zh-CN/ui.chat.radient_session/rs1732-zh-cn-r1-a95ac1ad0cc7/verify.py": {
+      "sha256": "8da5ca0aa2ddde09be9c198641ed22dd0e5c7ad19c5537f08f5035d64d580fd8"
+    }
+  },
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "pr": 1732,
+    "branch": "fix/radient-callout-no-terminal",
+    "head": "088881be3e494d1b5f9de2cfecc5861d4e8638e1",
+    "base": "ec09bc17aff"
+  },
+  "terminal": true
+}
