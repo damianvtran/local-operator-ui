@@ -24,10 +24,7 @@ import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
 import {
 	LINK_PREVIEW_MAX_URL_CHARS,
-	type LinkPreviewArtifactRequest,
-	type LinkPreviewArtifactResult,
-	type LinkPreviewResolveRequest,
-	type LinkPreviewResolveResult,
+	type LinkPreviewBridge,
 } from "./link-preview";
 import type {
 	TeamBridgeNotificationSender,
@@ -7634,18 +7631,7 @@ export type DesktopAPI = {
 	 * account the caller claims, exactly as `teamBridge.*` does; main holds no
 	 * identity of its own to substitute.
 	 */
-	linkPreview?: {
-		/** Resolve ONE link at `index` in its message. Always resolves — a refusal is
-		 * an `absent`/`error` state, never a rejected promise. */
-		resolve: (
-			request: LinkPreviewResolveRequest,
-		) => Promise<LinkPreviewResolveResult>;
-		/** The bytes of one artifact id from a resolved card, served from main's disk
-		 * cache when it holds them for this receipt and from core otherwise. */
-		artifact: (
-			request: LinkPreviewArtifactRequest,
-		) => Promise<LinkPreviewArtifactResult>;
-	};
+	linkPreview?: LinkPreviewBridge;
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**
 	 * A notification click, with the conversation it names and - when the banner was

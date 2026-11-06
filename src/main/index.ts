@@ -2783,15 +2783,48 @@ app
 				logger.info(line, LogFileType.BACKEND);
 			}
 		};
+		const appAttention = new AppAttentionService({
+			request: (input) => backendService.requestDesktop(input),
+			supportsUnreadEvents: desktopRequestSchema.safeParse({
+				op: "team_bridge.unread.events",
+				after: "0",
+				wait: 20,
+			}).success,
+			publish: publishBadge,
+			clear: () => {
+				// Quit/reset clears must never request Dock activation-policy repair.
+				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
+				nativeBadge.reset();
+			},
+			// Fire-and-forget: the sign-out must not wait on a directory sweep, and a
+			// clear that fails is retried by the next transition's orphan pass. The
+			// cache is constructed just below this statement — see why there, beside
+			// that construction — and this closure only reaches it when a transition
+			// actually fires, which is after this synchronous block has finished.
+			principalChanged: () => {
+				void linkPreviewArtifacts.clear();
+			},
+		});
 		/*
-		 * LINK PREVIEWS' BYTE CACHE, built here because two things subscribe to it: the
-		 * proxy below, and the principal fence on the attention service. It holds
-		 * third-party image BYTES for 24 h, and a sign-out or account switch must not
-		 * leave the departing account's images on disk — so `principalChanged` clears
-		 * it, on the same fence that stops a stale unread aggregate landing after a
-		 * sign-out. A per-entry account fingerprint already stops a replayed id being
-		 * served under another receipt (see `link-preview/artifact-cache.ts`); this is
-		 * the other half: the bytes stop existing.
+		 * LINK PREVIEWS' BYTE CACHE — built BELOW the attention service, deliberately.
+		 *
+		 * WHY NOT ABOVE IT, where it reads more naturally: `scripts/app-icon-badge.test.mjs`
+		 * slices this file from `const publishBadge =` to `const appAttention =` and
+		 * evaluates that region through `new Function` with an explicit name list.
+		 * A construction inside that region fails there with `ReferenceError:
+		 * LinkPreviewArtifactCache is not defined` — a real regression in a test this
+		 * change does not own (QA round 2, Q-2), so the cache is built here instead.
+		 * The port above is outside that region and only reaches this binding when a
+		 * principal transition actually fires, which cannot happen before this
+		 * synchronous block finishes.
+		 *
+		 * WHAT IT IS FOR. It holds third-party image BYTES for 24 h, and a sign-out or
+		 * account switch must not leave the departing account's images on disk — so
+		 * `principalChanged` clears it, on the same fence that stops a stale unread
+		 * aggregate landing after a sign-out. A per-entry account fingerprint already
+		 * stops a replayed id being served under another receipt (see
+		 * `link-preview/artifact-cache.ts`); this is the other half: the bytes stop
+		 * existing.
 		 *
 		 * WHAT MAIN DOES NOT DO HERE, because the next reader will be tempted: it does
 		 * not fetch, parse, or validate any remote document. Issues with a preview
@@ -2809,26 +2842,6 @@ app
 			dir: join(app.getPath("userData"), "cache", "link-previews"),
 		});
 		void linkPreviewArtifacts.open().catch(() => {});
-
-		const appAttention = new AppAttentionService({
-			request: (input) => backendService.requestDesktop(input),
-			supportsUnreadEvents: desktopRequestSchema.safeParse({
-				op: "team_bridge.unread.events",
-				after: "0",
-				wait: 20,
-			}).success,
-			publish: publishBadge,
-			clear: () => {
-				// Quit/reset clears must never request Dock activation-policy repair.
-				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
-				nativeBadge.reset();
-			},
-			// Fire-and-forget: the sign-out must not wait on a directory sweep, and a
-			// clear that fails is retried by the next transition's orphan pass.
-			principalChanged: () => {
-				void linkPreviewArtifacts.clear();
-			},
-		});
 		refreshAppIconBadge = () => {
 			if (process.platform === "win32") nativeBadge.invalidateOverlayTarget();
 			appAttention.projection.refresh();

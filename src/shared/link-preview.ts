@@ -207,7 +207,17 @@ export type LinkPreviewArtifactResult =
 	| { kind: "bytes"; data: Uint8Array; mimeType: string }
 	| { kind: "error"; code: LinkPreviewArtifactErrorCode; status: number };
 
-/** The preload surface, `window.api.linkPreview`. */
+/**
+ * The preload surface, `window.api.desktop.linkPreview` — the type
+ * `DesktopAPI.linkPreview` names, so the bridge is declared once and the contract
+ * points at it rather than restating the two calls.
+ *
+ * WHERE IT LIVES MATTERS, and it is not `api.linkPreview`: the preload exposes it
+ * beside `teamBridge`, and a first cut typed it one level up, so a renderer
+ * following the types called `undefined.resolve` (QA round 1, Q-1).
+ * `scripts/link-preview-preload-shape.test.mjs` compiles a probe at this exact
+ * path, so the two cannot drift again.
+ */
 export interface LinkPreviewBridge {
 	resolve(
 		request: LinkPreviewResolveRequest,
