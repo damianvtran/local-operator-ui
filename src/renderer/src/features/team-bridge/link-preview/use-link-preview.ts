@@ -22,9 +22,9 @@ import {
  * The two IPC-backed hooks the link-preview card needs, and nothing else.
  *
  * WHY THE BRIDGE IS A PROP. Production passes nothing and the card reads
- * `window.api.linkPreview`; a story or a test passes a fake, so the card's
- * states can be rendered without a main process and without patching a global.
- * That is the same seam the design round needs for its frames.
+ * `window.api.desktop.linkPreview`; a story or a test passes a fake, so the
+ * card's states can be rendered without a main process and without patching a
+ * global. That is the same seam the design round needs for its frames.
  *
  * THERE IS NO CACHE IN THIS FILE, deliberately. Every resolve is a call to core
  * (which owns the TTLs) and every artifact is a call to main's byte cache. An
@@ -37,10 +37,16 @@ import {
  * from telling the previewed site who read the message.
  */
 
-/** The preload surface, or `null` where it is not installed (a renderer booted
- * without a main process). A card that cannot ask draws nothing. */
+/** The preload surface, or `null` where it is absent (a browser or Storybook host
+ * with no preload, or a main process that predates the channel). A card that
+ * cannot ask draws nothing.
+ *
+ * The `desktop.` step is load-bearing: `LinkPreviewBridge` is declared in
+ * `shared/desktop-contract.ts` beside `teamBridge` because that is where the
+ * preload exposes it, and the whole `desktop` object is missing outside the
+ * Electron shell, so the optional chain has to cover it as well as the bridge. */
 function linkPreviewBridge(): LinkPreviewBridge | null {
-	return window.api?.linkPreview ?? null;
+	return window.api?.desktop?.linkPreview ?? null;
 }
 
 /** The account receipt, or `null` when there is not a usable one. Same bounds
