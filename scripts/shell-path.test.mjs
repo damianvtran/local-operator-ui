@@ -789,7 +789,17 @@ test("the app builds ONE resolver and gives it to both consumers", () => {
 		1,
 		"one resolver per process: a second construction is a second shell and a second answer",
 	);
-	assert.match(source, /new BackendServiceManager\(\{ userShellPath \}\)/);
+	assert.match(
+		source,
+		/new BackendServiceManager\(\{[^}]*\buserShellPath\b/,
+		// The claim is the HAND-OFF, not the option list's shape. This used to pin
+		// the literal `{ userShellPath }`, which failed the moment the constructor
+		// grew a second option - `fallbackSpawnUrls` already exists on
+		// `BackendServiceManagerOptions`, and an option passed at the call site (an
+		// attach target, say) tripped it while the hand-off it exists to guard was
+		// untouched. Still fail-closed: the construction must name the resolver.
+		"the manager is handed the one resolver the app built",
+	);
 	// The console receives it through the browser host, which forwards it to the
 	// console host (pinned by `scripts/console-wiring.mjs`, which fails on a
 	// declared option the construction site does not forward).
