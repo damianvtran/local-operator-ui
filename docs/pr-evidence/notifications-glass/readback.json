@@ -1,0 +1,576 @@
+{
+  "view": {
+    "width": 1024,
+    "height": 657
+  },
+  "origin": "http://localhost:6006",
+  "shots": [
+    {
+      "cell": "dark-80",
+      "url": "http://localhost:6006/?path=/story/notifications-page--populated&viewMode=story&full=1&args=theme:localOperatorDark;glass:on;glassIntensity:80;glassContrast:0",
+      "frames": {
+        "after": "docs/pr-evidence/notifications-glass/dark-80.png",
+        "before": "docs/pr-evidence/notifications-glass/dark-80-before.png"
+      },
+      "after": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorDark",
+        "vars": {
+          "canvas": 0.62,
+          "elevated": 0.74,
+          "bandFloor": 0.88,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": {
+          "alpha": 0.88,
+          "bg": "color(srgb 0.184314 0.164706 0.121569 / 0.88)",
+          "backdropFilter": "blur(12px)",
+          "position": "sticky",
+          "height": 32,
+          "top": 160
+        },
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": {
+          "alpha": 0.05,
+          "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.05)"
+        },
+        "selected": {
+          "alpha": 0.08,
+          "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.08)"
+        },
+        "rows": 6,
+        "underBand": null,
+        "headerText": "Waiting on you1"
+      },
+      "before": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorDark",
+        "vars": {
+          "canvas": 0.62,
+          "elevated": 0.74,
+          "bandFloor": 0.88,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": null,
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": null,
+        "selected": null,
+        "rows": 6,
+        "underBand": null,
+        "headerText": null
+      }
+    },
+    {
+      "cell": "dark-50",
+      "url": "http://localhost:6006/?path=/story/notifications-page--populated&viewMode=story&full=1&args=theme:localOperatorDark;glass:on;glassIntensity:50;glassContrast:0",
+      "frames": {
+        "after": "docs/pr-evidence/notifications-glass/dark-50.png",
+        "before": "docs/pr-evidence/notifications-glass/dark-50-before.png"
+      },
+      "after": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorDark",
+        "vars": {
+          "canvas": 0.75,
+          "elevated": 0.82,
+          "bandFloor": 0.88,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": {
+          "alpha": 0.88,
+          "bg": "color(srgb 0.184314 0.164706 0.121569 / 0.88)",
+          "backdropFilter": "blur(12px)",
+          "position": "sticky",
+          "height": 32,
+          "top": 160
+        },
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": {
+          "alpha": 0.05,
+          "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.05)"
+        },
+        "selected": {
+          "alpha": 0.08,
+          "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.08)"
+        },
+        "rows": 6,
+        "underBand": null,
+        "headerText": "Waiting on you1"
+      },
+      "before": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorDark",
+        "vars": {
+          "canvas": 0.75,
+          "elevated": 0.82,
+          "bandFloor": 0.88,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": null,
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": null,
+        "selected": null,
+        "rows": 6,
+        "underBand": null,
+        "headerText": null
+      }
+    },
+    {
+      "cell": "light-80",
+      "url": "http://localhost:6006/?path=/story/notifications-page--populated&viewMode=story&full=1&args=theme:localOperatorLight;glass:on;glassIntensity:80;glassContrast:0",
+      "frames": {
+        "after": "docs/pr-evidence/notifications-glass/light-80.png",
+        "before": "docs/pr-evidence/notifications-glass/light-80-before.png"
+      },
+      "after": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorLight",
+        "vars": {
+          "canvas": 0.68,
+          "elevated": 0.55,
+          "bandFloor": 0.78,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": {
+          "alpha": 0.78,
+          "bg": "color(srgb 0.996078 0.992157 0.980392 / 0.78)",
+          "backdropFilter": "blur(12px)",
+          "position": "sticky",
+          "height": 32,
+          "top": 160
+        },
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": {
+          "alpha": 0.05,
+          "bg": "color(srgb 0.129412 0.117647 0.0941176 / 0.05)"
+        },
+        "selected": {
+          "alpha": 0.08,
+          "bg": "color(srgb 0.129412 0.117647 0.0941176 / 0.08)"
+        },
+        "rows": 6,
+        "underBand": null,
+        "headerText": "Waiting on you1"
+      },
+      "before": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorLight",
+        "vars": {
+          "canvas": 0.68,
+          "elevated": 0.55,
+          "bandFloor": 0.78,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": null,
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": null,
+        "selected": null,
+        "rows": 6,
+        "underBand": null,
+        "headerText": null
+      }
+    },
+    {
+      "cell": "light-50",
+      "url": "http://localhost:6006/?path=/story/notifications-page--populated&viewMode=story&full=1&args=theme:localOperatorLight;glass:on;glassIntensity:50;glassContrast:0",
+      "frames": {
+        "after": "docs/pr-evidence/notifications-glass/light-50.png",
+        "before": "docs/pr-evidence/notifications-glass/light-50-before.png"
+      },
+      "after": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorLight",
+        "vars": {
+          "canvas": 0.78,
+          "elevated": 0.71,
+          "bandFloor": 0.78,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": {
+          "alpha": 0.78,
+          "bg": "color(srgb 0.996078 0.992157 0.980392 / 0.78)",
+          "backdropFilter": "blur(12px)",
+          "position": "sticky",
+          "height": 32,
+          "top": 160
+        },
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": {
+          "alpha": 0.05,
+          "bg": "color(srgb 0.129412 0.117647 0.0941176 / 0.05)"
+        },
+        "selected": {
+          "alpha": 0.08,
+          "bg": "color(srgb 0.129412 0.117647 0.0941176 / 0.08)"
+        },
+        "rows": 6,
+        "underBand": null,
+        "headerText": "Waiting on you1"
+      },
+      "before": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorLight",
+        "vars": {
+          "canvas": 0.78,
+          "elevated": 0.71,
+          "bandFloor": 0.78,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": null,
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": null,
+        "selected": null,
+        "rows": 6,
+        "underBand": null,
+        "headerText": null
+      }
+    },
+    {
+      "cell": "dark-80-contrast-high",
+      "url": "http://localhost:6006/?path=/story/notifications-page--populated&viewMode=story&full=1&args=theme:localOperatorDark;glass:on;glassIntensity:80;glassContrast:80",
+      "frames": {
+        "after": "docs/pr-evidence/notifications-glass/dark-80-contrast-high.png",
+        "before": "docs/pr-evidence/notifications-glass/dark-80-contrast-high-before.png"
+      },
+      "after": {
+        "glass": "sidebar canvas pane",
+        "theme": "lo-19ynkwb",
+        "vars": {
+          "canvas": 0.54,
+          "elevated": 0.65,
+          "bandFloor": 0.81,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": {
+          "alpha": 0.81,
+          "bg": "color(srgb 0.152941 0.133333 0.0941176 / 0.81)",
+          "backdropFilter": "blur(12px)",
+          "position": "sticky",
+          "height": 32,
+          "top": 160
+        },
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": {
+          "alpha": 0.05,
+          "bg": "color(srgb 0.964706 0.952941 0.921569 / 0.05)"
+        },
+        "selected": {
+          "alpha": 0.08,
+          "bg": "color(srgb 0.964706 0.952941 0.921569 / 0.08)"
+        },
+        "rows": 6,
+        "underBand": null,
+        "headerText": "Waiting on you1"
+      },
+      "before": {
+        "glass": "sidebar canvas pane",
+        "theme": "lo-19ynkwb",
+        "vars": {
+          "canvas": 0.54,
+          "elevated": 0.65,
+          "bandFloor": 0.81,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": null,
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": null,
+        "selected": null,
+        "rows": 6,
+        "underBand": null,
+        "headerText": null
+      }
+    },
+    {
+      "cell": "dark-80-contrast-soft",
+      "url": "http://localhost:6006/?path=/story/notifications-page--populated&viewMode=story&full=1&args=theme:localOperatorDark;glass:on;glassIntensity:80;glassContrast:-80",
+      "frames": {
+        "after": "docs/pr-evidence/notifications-glass/dark-80-contrast-soft.png",
+        "before": "docs/pr-evidence/notifications-glass/dark-80-contrast-soft-before.png"
+      },
+      "after": {
+        "glass": "sidebar canvas pane",
+        "theme": "lo-16l0oey",
+        "vars": {
+          "canvas": 0.54,
+          "elevated": 0.74,
+          "bandFloor": 0.86,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": {
+          "alpha": 0.86,
+          "bg": "color(srgb 0.243137 0.231373 0.2 / 0.86)",
+          "backdropFilter": "blur(12px)",
+          "position": "sticky",
+          "height": 32,
+          "top": 160
+        },
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": {
+          "alpha": 0.05,
+          "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.05)"
+        },
+        "selected": {
+          "alpha": 0.08,
+          "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.08)"
+        },
+        "rows": 6,
+        "underBand": null,
+        "headerText": "Waiting on you1"
+      },
+      "before": {
+        "glass": "sidebar canvas pane",
+        "theme": "lo-16l0oey",
+        "vars": {
+          "canvas": 0.54,
+          "elevated": 0.74,
+          "bandFloor": 0.86,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": null,
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": null,
+        "selected": null,
+        "rows": 6,
+        "underBand": null,
+        "headerText": null
+      }
+    },
+    {
+      "cell": "dark-80-glass-off",
+      "url": "http://localhost:6006/?path=/story/notifications-page--populated&viewMode=story&full=1&args=theme:localOperatorDark;glass:off;glassIntensity:80;glassContrast:0",
+      "frames": {
+        "after": "docs/pr-evidence/notifications-glass/dark-80-glass-off.png",
+        "before": "docs/pr-evidence/notifications-glass/dark-80-glass-off-before.png"
+      },
+      "after": {
+        "glass": null,
+        "theme": "localOperatorDark",
+        "vars": {
+          "canvas": null,
+          "elevated": null,
+          "bandFloor": null,
+          "field": null,
+          "selected": null
+        },
+        "band": {
+          "alpha": 1,
+          "bg": "rgb(29, 27, 23)",
+          "backdropFilter": "none",
+          "position": "sticky",
+          "height": 32,
+          "top": 160
+        },
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": {
+          "alpha": 1,
+          "bg": "rgb(23, 21, 18)"
+        },
+        "selected": {
+          "alpha": 1,
+          "bg": "rgb(47, 42, 31)"
+        },
+        "rows": 6,
+        "underBand": null,
+        "headerText": "Waiting on you1"
+      },
+      "before": {
+        "glass": null,
+        "theme": "localOperatorDark",
+        "vars": {
+          "canvas": null,
+          "elevated": null,
+          "bandFloor": null,
+          "field": null,
+          "selected": null
+        },
+        "band": null,
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": null,
+        "selected": null,
+        "rows": 6,
+        "underBand": null,
+        "headerText": null
+      }
+    },
+    {
+      "cell": "light-80-glass-off",
+      "url": "http://localhost:6006/?path=/story/notifications-page--populated&viewMode=story&full=1&args=theme:localOperatorLight;glass:off;glassIntensity:80;glassContrast:0",
+      "frames": {
+        "after": "docs/pr-evidence/notifications-glass/light-80-glass-off.png",
+        "before": "docs/pr-evidence/notifications-glass/light-80-glass-off-before.png"
+      },
+      "after": {
+        "glass": null,
+        "theme": "localOperatorLight",
+        "vars": {
+          "canvas": null,
+          "elevated": null,
+          "bandFloor": null,
+          "field": null,
+          "selected": null
+        },
+        "band": {
+          "alpha": 1,
+          "bg": "rgb(242, 237, 227)",
+          "backdropFilter": "none",
+          "position": "sticky",
+          "height": 32,
+          "top": 160
+        },
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": {
+          "alpha": 1,
+          "bg": "rgb(236, 230, 216)"
+        },
+        "selected": {
+          "alpha": 1,
+          "bg": "rgb(254, 253, 250)"
+        },
+        "rows": 6,
+        "underBand": null,
+        "headerText": "Waiting on you1"
+      },
+      "before": {
+        "glass": null,
+        "theme": "localOperatorLight",
+        "vars": {
+          "canvas": null,
+          "elevated": null,
+          "bandFloor": null,
+          "field": null,
+          "selected": null
+        },
+        "band": null,
+        "port": {
+          "top": 160,
+          "scrollTop": 0
+        },
+        "track": null,
+        "selected": null,
+        "rows": 6,
+        "underBand": null,
+        "headerText": null
+      }
+    },
+    {
+      "cell": "dark-80-scrolled",
+      "url": "http://localhost:6006/?path=/story/notifications-page--populated&viewMode=story&full=1&args=theme:localOperatorDark;glass:on;glassIntensity:80;glassContrast:0",
+      "frames": {
+        "after": "docs/pr-evidence/notifications-glass/dark-80-scrolled.png",
+        "before": "docs/pr-evidence/notifications-glass/dark-80-scrolled-before.png"
+      },
+      "after": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorDark",
+        "vars": {
+          "canvas": 0.62,
+          "elevated": 0.74,
+          "bandFloor": 0.88,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": {
+          "alpha": 0.88,
+          "bg": "color(srgb 0.184314 0.164706 0.121569 / 0.88)",
+          "backdropFilter": "blur(12px)",
+          "position": "sticky",
+          "height": 32,
+          "top": 160
+        },
+        "port": {
+          "top": 160,
+          "scrollTop": 31
+        },
+        "track": {
+          "alpha": 0.05,
+          "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.05)"
+        },
+        "selected": {
+          "alpha": 0.08,
+          "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.08)"
+        },
+        "rows": 6,
+        "underBand": 161,
+        "headerText": "Waiting on you1"
+      },
+      "before": {
+        "glass": "sidebar canvas pane",
+        "theme": "localOperatorDark",
+        "vars": {
+          "canvas": 0.62,
+          "elevated": 0.74,
+          "bandFloor": 0.88,
+          "field": 0.05,
+          "selected": 0.08
+        },
+        "band": null,
+        "port": {
+          "top": 160,
+          "scrollTop": 31
+        },
+        "track": null,
+        "selected": null,
+        "rows": 6,
+        "underBand": null,
+        "headerText": null
+      }
+    }
+  ]
+}

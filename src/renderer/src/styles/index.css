@@ -2303,6 +2303,15 @@ html[data-glass~="canvas"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
 		:where([data-glass-region="chrome"])
 	),
+/* A PAGE THAT OWNS ITS GROUND is the same class of container as the backing: its
+ * `canvas` marker is where a track inside it reads the page alpha from, and
+ * without this arm the same page mounted outside `<main>` (the Storybook glass
+ * harness) kept an opaque track and the frames measured a different surface. */
+	html[data-glass~="canvas"]
+	[data-glass-region="canvas"]
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
+		:where([data-glass-region="chrome"])
+	),
 html[data-glass~="pane"]
 	[data-glass-region="pane"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
@@ -2324,6 +2333,10 @@ html[data-glass~="canvas"]
 	main[data-glass-region="canvas-backing"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
 	[role="tab"][data-state="active"],
+html[data-glass~="canvas"]
+	[data-glass-region="canvas"]
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
+	:is([role="tab"][data-state="active"], [role="radio"][aria-checked="true"]),
 html[data-glass~="pane"]
 	[data-glass-region="pane"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
@@ -2811,7 +2824,44 @@ html[data-glass~="pane"]
 html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
+	[data-glass-plane="band-backdrop"],
+html[data-glass~="canvas"]
+	[data-glass-region="canvas"]
 	[data-glass-plane="band-backdrop"] {
+	/*
+	 * THE SAME PLANE ON A PAGE THAT IS NOT A PANE (the notifications list's sticky
+	 * group headers). A page like Notifications has no pane - its material is the
+	 * canvas the `<main>` backing paints - so its 32px band needs this gate too, and
+	 * it takes the ONE declaration above rather than a second composition: same
+	 * elevated role, same published floor, same blur.
+	 *
+	 * WHY THE FIELD OVERLAY IS NOT ENOUGH HERE. `docs/branding.md` calls a sticky
+	 * scroll-under header a band and the lighter treatment of one is the field
+	 * overlay (the Projects board's team header). A 5% ink pass does not hide what
+	 * moves under it: the Finder band's own note records "a thumbnail's green filling
+	 * the band and a file name colliding with the section label". A notification
+	 * row's TITLE is that file name, at 32px against a label at the same x, so this
+	 * band carries the isolating treatment.
+	 *
+	 * THE GATE IS THE PAGE'S OWN `canvas` REGION MARKER, not `<main>`'s backing:
+	 * a page that owns its ground marks its root (Projects, Library, Settings all
+	 * do), and that marker is what the rules inside the page hang off. The backing
+	 * gate would only match in the shell, so the same page rendered outside it -
+	 * Storybook's harness, which paints the real glass attributes - would keep the
+	 * flat fills and every frame taken there would measure the wrong tree.
+	 *
+	 * WHY NOT THE PAGE'S OWN CANVAS ROLE. Measured before writing this: the canvas
+	 * role at this same floor holds `ink`/`inkMuted`/`inkDim` on the dark palettes but
+	 * misses the floors on NINETEEN light ones (inkDim 3.11-3.46 against 3.5 on
+	 * rosePineDawn, localOperatorLight, githubLight, catppuccinLatte and others;
+	 * inkMuted 3.77-4.37 against 4.5 on kanagawaLotus, rosePineDawn, tokyoNightDay).
+	 * The floor is derived for `elevated`, and re-deriving one for the canvas role
+	 * would buy a number that is opaque on both schemes - so the band is one role step
+	 * up from the page, which is what makes it read as a band at all.
+	 *
+	 * Under *Sidebars only* neither gate matches: the canvas is not covered, so the
+	 * header keeps its flat opaque `bg-canvas` and nothing here applies.
+	 */
 	/*
 	 * THE `1` IS A FALLBACK, and it is the OPAQUE end on purpose.
 	 *
@@ -2843,6 +2893,36 @@ html[data-glass~="pane"]
 	[data-glass-region="pane"]
 	[role="tablist"]
 	:is([class~="bg-surface"], [class~="bg-sunken"], [class~="bg-elevated"]) {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
+		transparent
+	);
+}
+/*
+ * A WELL'S SELECTED SEGMENT, ON THE SAME RULE, for the idiom that is not a
+ * `tablist` (the notifications Unread/All switch is a `radiogroup` of buttons with
+ * `aria-checked`, so the tablist translation above can never reach it). The track
+ * is the field overlay; the selected segment's own `bg-elevated` is an opaque pill
+ * in a see-through column, so it takes the SAME selected-row overlay every other
+ * selected thing wears - one step OVER the track, relative to whatever the ground
+ * already is, so it reads on every page material instead of being a hole.
+ *
+ * Scoped to a marked well: the track that opts in with `data-glass-well` is the
+ * only ancestor this may fire under, which is what keeps an arbitrary
+ * `bg-elevated` control outside a segmented track at its authored role.
+ */
+html[data-glass~="canvas"]
+	[data-glass-region="canvas"]
+	[class~="bg-sunken"][data-glass-well]
+	:is([role="radio"][aria-checked="true"], [role="tab"][data-state="active"]),
+/* The same pair mounted in a PANE (the chat rail's updates drawer): the track's
+ * field overlay comes from the pane rule above, so only the checked segment's
+ * selected step is stated here. */
+	html[data-glass~="pane"]
+	[data-glass-region="pane"]
+	[class~="bg-sunken"][data-glass-well]
+	[role="radio"][aria-checked="true"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),

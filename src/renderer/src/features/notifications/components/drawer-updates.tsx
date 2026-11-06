@@ -756,6 +756,11 @@ const DrawerReadViews: FC<{
 		<div
 			role="radiogroup"
 			aria-label={t("ui.notifications.filter.read_state")}
+			/* The same pair as the reel's Unread | All switch, and the same glass
+			 * answer: the track is a well (the field overlay) and the checked
+			 * segment is the selected-row overlay, so neither is a slab in the
+			 * pane this drawer lives in. Off glass both keep their classes. */
+			data-glass-well=""
 			className="flex items-center gap-0.5 rounded-sm bg-sunken p-0.5"
 		>
 			{(["unread", "read"] as const).map((value) => (

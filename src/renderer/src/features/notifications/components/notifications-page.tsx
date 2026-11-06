@@ -1691,7 +1691,21 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			: null;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col" data-notifications-page="">
+		/*
+		 * THE PAGE OWNS ITS GROUND (`data-glass-region="canvas"`), the marker the
+		 * rules for surfaces inside it hang on. It paints nothing itself - the
+		 * `main` canvas backing is the wash - so the marker's own rule (which
+		 * clears a page role on glass) changes nothing here; what it does is let
+		 * this page's band and segmented track be styled by their own rules
+		 * whether they render in the shell or in a harness that mounts the page
+		 * alone (Storybook's glass frame paints the real attributes, and a rule
+		 * gated on `<main>` measured nothing there).
+		 */
+		<div
+			className="flex h-full min-h-0 flex-col"
+			data-notifications-page=""
+			data-glass-region="canvas"
+		>
 			<div className="flex shrink-0 flex-col gap-4 px-6 pt-6">
 				<PageHeader
 					title={t("ui.notifications.page.title")}
@@ -2169,10 +2183,29 @@ const GroupBlock: FC<{
 			 * but never a tab stop and never walked by the arrow keys (design.md
 			 * section 14: group headers cannot be focused).
 			 */}
+			{/*
+			 * THE BAND, NOT A PLATE (operator report, 2026-11-05: "the group
+			 * headers paint as solid dark bars across the panel ... holes punched
+			 * in the backdrop rather than layers on it"). `bg-canvas` is right off
+			 * glass but opaque, so on a translucent page the header was the page's
+			 * own tone at alpha 1.0 over a page at the user's alpha - a seam with
+			 * nothing blurred under it.
+			 *
+			 * `data-glass-plane="band-backdrop"` is the isolating band: the
+			 * elevated role at `max(--lo-glass-a-elevated, --lo-glass-a-band-floor)`
+			 * plus `blur(12px)` (styles/index.css, where the role choice is argued
+			 * and measured - the page's own canvas role misses the ink floors on
+			 * nineteen light palettes). The floor rather than the field overlay
+			 * because a row's TITLE passes under this label at the same x, which is
+			 * the collision the Finder band was given its floor for. Sticky geometry
+			 * is untouched: same `sticky top-0`, same `z-[1]`, same 32px band, so
+			 * rows still scroll under it.
+			 */}
 			<div
 				// biome-ignore lint/a11y/useSemanticElements: a grid's group header row; a native <tr> cannot sit in this flex column
 				role="row"
 				tabIndex={-1}
+				data-glass-plane="band-backdrop"
 				className="sticky top-0 z-[1] flex h-8 items-center gap-2 bg-canvas px-3 text-ink-muted text-meta"
 			>
 				<span
@@ -2531,9 +2564,21 @@ const Toolbar: FC<ToolbarProps> = ({
 				</>
 			) : (
 				<>
+					{/*
+					 * THE TRACK IS A WELL, THE SEGMENTS ARE OVERLAYS. Off glass this
+					 * pair is `bg-sunken` with a `bg-elevated` selected pill, which is
+					 * right on an opaque page - but opaque `sunken` is a slab in a
+					 * see-through column and the pill is a second one. The
+					 * `data-glass-well` opt-in gives the track the field overlay and
+					 * makes the checked segment the selected-row overlay
+					 * (styles/index.css, "A WELL'S SELECTED SEGMENT"), the same
+					 * treatment the Settings and Agents segmented controls wear, while
+					 * every class here still paints the unchanged flat pair off glass.
+					 */}
 					<div
 						role="radiogroup"
 						aria-label={t("ui.notifications.filter.read_state")}
+						data-glass-well=""
 						className="flex items-center gap-0.5 rounded-sm bg-sunken p-0.5"
 					>
 						{(["unread", "all"] as const).map((value) => (

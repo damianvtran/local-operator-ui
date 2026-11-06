@@ -76,6 +76,8 @@ const skip = !built
 
 /** Effective alpha may differ by float noise only. */
 const TOLERANCE = 0.006;
+/** A backdrop filter that actually blurs: the band's isolating half. */
+const HAS_BLUR = /blur/;
 
 /**
  * Opaque, deliberate grounds that may sit inside a glass region. Each is a
@@ -483,6 +485,10 @@ const ROUTES = [
 	{ hash: "#/browser", must: ["sidebar", "chrome"] },
 	{ hash: "#/schedules", must: ["sidebar", "panel"] },
 	{ hash: "#/agent-hub", must: ["sidebar", "panel"] },
+	/* Notifications: the page's own canvas region (it has no page-sidebar), whose
+	 * group header and read-state switch are asserted by the targeted test below.
+	 * It was absent from this list while the whole surface was opaque. */
+	{ hash: "#/notifications", must: ["sidebar", "canvas"] },
 ];
 
 /**
@@ -1145,3 +1151,148 @@ for (const [themeName, label] of [
 		},
 	);
 }
+
+/*
+ * THE NOTIFICATIONS SURFACE (operator report, 2026-11-05: "the group headers paint
+ * as solid dark bars ... the Unread/All switch is equally opaque").
+ *
+ * WHY THIS TEST EXISTS AND WHAT IT CANNOT DO. The route was outside `ROUTES`, so
+ * nothing here read it; and the surface's defect was exactly the class a route
+ * grid cannot see - a header and a switch that keep their FLAT fills on a page
+ * whose own ground is glass. The switch is measured as it really renders (it is
+ * on the page in every state, including the empty one). The group header is NOT:
+ * it only exists when notifications do, and a headless rig has no daemon to
+ * produce them, so its rule is measured through an element carrying the
+ * component's OWN class and attribute inside the page's own region - a rule read,
+ * said so here rather than passed off as a frame of the surface. The frame that
+ * shows the header over real rows is the PR's evidence set
+ * (`docs/pr-evidence/notifications-glass/`), which reads the same alphas.
+ */
+test(
+	"the notifications page composes its sticky group header and read-state switch through the window glass",
+	{ skip, timeout: 300_000 },
+	async () => {
+		for (const [themeName, label] of [
+			["localOperatorDark", "dark"],
+			["localOperatorLight", "light"],
+		]) {
+			await loadTheme(themeName);
+			await setGlass({
+				enabled: true,
+				coverage: "full",
+				intensity: 80,
+				material: "window",
+			});
+			await cdp.ev(`location.hash = "#/notifications"`);
+			let present = false;
+			for (let i = 0; i < 40 && !present; i++) {
+				present = await cdp.ev(
+					`!!document.querySelector("[data-notifications-page]")`,
+				);
+				if (!present) await wait(300);
+			}
+			assert.ok(
+				present,
+				`${label}: the notifications page renders (a lazy route that never appears must not read as "nothing to measure")`,
+			);
+			const read = await cdp.ev(`(() => {
+        const alpha = (c) => {
+          if (!c || c === "transparent") return 0;
+          let m = c.match(/^rgba?\\(([^)]+)\\)$/);
+          if (m) { const p = m[1].split(/[,\\/]\\s*|\\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; }
+          m = c.match(/^color\\(srgb ([^)]+)\\)$/);
+          if (m) { const p = m[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; }
+          return 1;
+        };
+        const root = getComputedStyle(document.documentElement);
+        const v = (n) => Number(root.getPropertyValue(n).trim() || "NaN");
+        const page = document.querySelector("[data-notifications-page]");
+        /* The read-state switch is the page's only marked well. */
+        const track = page?.querySelector('[class~="bg-sunken"][data-glass-well]');
+        const selected = track?.querySelector('[role="radio"][aria-checked="true"]');
+        return {
+          glass: document.documentElement.dataset.glass,
+          region: page?.getAttribute("data-glass-region") ?? null,
+          field: v("--lo-glass-a-field"),
+          selectedAlpha: v("--lo-glass-a-row-selected"),
+          elevated: v("--lo-glass-a-elevated"),
+          bandBand: v("--lo-glass-a-band-floor"),
+          track: track ? getComputedStyle(track).backgroundColor : null,
+          trackAlpha: track ? alpha(getComputedStyle(track).backgroundColor) : null,
+          selected: selected ? alpha(getComputedStyle(selected).backgroundColor) : null,
+          readToggle: !!document.querySelector("[data-notifications-page] [role=\\"radiogroup\\"]"),
+        };
+      })()`);
+			assert.ok(
+				read.trackAlpha !== null,
+				`${label}: the read-state switch's marked track was found (a switch nobody marked is an opaque slab in a glass column)`,
+			);
+			/*
+			 * THE PAGE'S OWN GROUND MARKER. Without it the page's band and track
+			 * rules have no region to hang off and the surface silently returns to
+			 * flat fills - the defect, one attribute away.
+			 */
+			assert.equal(
+				read.region,
+				"canvas",
+				`${label}: the notifications page must mark its own canvas region`,
+			);
+			assert.ok(
+				read.readToggle,
+				`${label}: the Unread/All switch is on the page`,
+			);
+			assert.ok(
+				Math.abs(read.trackAlpha - read.field) <= 0.006,
+				`${label}: the switch's track paints ${read.trackAlpha}, expected the field overlay ${read.field}`,
+			);
+			assert.ok(
+				read.selected !== null &&
+					Math.abs(read.selected - read.selectedAlpha) <= 0.006,
+				`${label}: the checked segment paints ${read.selected}, expected the selected-row overlay ${read.selectedAlpha} (an opaque pill is a hole in glass)`,
+			);
+			/*
+			 * THE BAND, through the component's own template. It is inserted inside
+			 * the page region, measured, and removed - so the numbers below are the
+			 * cascade the shipped header gets, read where the shipped header lives.
+			 */
+			const band = await cdp.ev(`(() => {
+        const alpha = (c) => {
+          if (!c || c === "transparent") return 0;
+          let m = c.match(/^rgba?\\(([^)]+)\\)$/);
+          if (m) { const p = m[1].split(/[,\\/]\\s*|\\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; }
+          m = c.match(/^color\\(srgb ([^)]+)\\)$/);
+          if (m) { const p = m[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; }
+          return 1;
+        };
+        const page = document.querySelector("[data-notifications-page]");
+        if (!page) return null;
+        /* The shipped header's own class string and attribute, verbatim. */
+        const probe = document.createElement("div");
+        probe.setAttribute("data-glass-plane", "band-backdrop");
+        probe.className = "sticky top-0 z-[1] flex h-8 items-center gap-2 bg-canvas px-3 text-ink-muted text-meta";
+        page.prepend(probe);
+        const style = getComputedStyle(probe);
+        const out = { alpha: alpha(style.backgroundColor), bg: style.backgroundColor, backdrop: style.backdropFilter || style.webkitBackdropFilter, position: style.position };
+        probe.remove();
+        return out;
+      })()`);
+			assert.ok(band, `${label}: the page region accepted the band probe`);
+			assert.ok(
+				Math.abs(band.alpha - Math.max(read.elevated, read.bandBand)) <= 0.006,
+				`${label}: the group header paints ${band.alpha}, expected max(elevated ${read.elevated}, band floor ${read.bandBand}) - an opaque bar is the seam the operator reported`,
+			);
+			assert.ok(
+				HAS_BLUR.test(String(band.backdrop)),
+				`${label}: the group header draws no backdrop blur (${band.backdrop}) - without it a band over moving rows dims them instead of isolating them`,
+			);
+			assert.equal(
+				band.position,
+				"sticky",
+				`${label}: the header must stay pinned (position ${band.position})`,
+			);
+			console.log(
+				`[glass-cdp] ${label}/#/notifications: band ${band.alpha} (floor ${read.bandBand}, elevated ${read.elevated}) blur ${band.backdrop}; switch track ${read.track}; field overlay ${read.field}`,
+			);
+		}
+	},
+);
