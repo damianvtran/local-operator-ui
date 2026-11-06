@@ -61369,7 +61369,7 @@
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
 			"source_sha256": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
-			"target_sha256": "631d3a66320ea238dba36fdbaa7ada6b247dbdbe399281e0272f7512f38c12ce",
+			"target_sha256": "bf8089bab58648ac2463194754d025acf8a376fbd5c14ac00549a6ec5fae68e9",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -61384,20 +61384,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer-cb9d33604d15",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-05",
+					"agent": "copy-reviewer",
+					"model": "radient/auto",
+					"date": "2026-11-06",
 					"result": "clean",
-					"instance": "cb9d33604d15-pr1693-r1-vi",
+					"instance": "20ee46d7281d-pr1666-vir1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cb9d33604d15-pr1693-r1-vi.json",
-					"receipt_sha256": "ce9cc449adc681670904d567e7e3ce62ce9b9f4feade1c3efbe2d426a7b6fcc4",
-					"scope": "PR #1693 round 1: eight added files.* keys; 391 prior key/value pairs retained"
+					"receipt": "i18n/receipts/20ee46d7281d-pr1666-vir1-vi.json",
+					"receipt_sha256": "5bd81c78205cff94a97d836b776e505a3195089ca1360a30343cd92aaa86f44a",
+					"scope": "key-level re-audit: ui.teamBridge.builtin.general_topic (VI-R1 on #1666)",
+					"note": "Key-level re-audit; evidence i18n/audits/evidence/vi/ui.teamBridge/tb1666-vi-r1-20ee46d7281d/record.json. Zero findings: the landed VI-R1 value matches the English source and the namespace's established construction."
 				}
 			],
 			"status": "audited",
@@ -63063,6 +63064,29 @@
 							"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-vi.json",
 							"receipt_sha256": "58c86f4b019fd06f14b6decaf80112cf72040b0404d73285e432871e64f03e1b",
 							"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+					"target_sha256": "631d3a66320ea238dba36fdbaa7ada6b247dbdbe399281e0272f7512f38c12ce",
+					"auditors": [
+						{
+							"agent": "reviewer-cb9d33604d15",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-05",
+							"result": "clean",
+							"instance": "cb9d33604d15-pr1693-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cb9d33604d15-pr1693-r1-vi.json",
+							"receipt_sha256": "ce9cc449adc681670904d567e7e3ce62ce9b9f4feade1c3efbe2d426a7b6fcc4",
+							"scope": "PR #1693 round 1: eight added files.* keys; 391 prior key/value pairs retained"
 						}
 					],
 					"status": "audited"

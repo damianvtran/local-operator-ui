@@ -62,6 +62,8 @@ import {
 } from "@shared/i18n";
 // @ts-ignore Path aliases don't work for Storybook root
 import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
+// @ts-ignore Path aliases don't work for Storybook root
+import { applyDocumentDirection } from "@shared/i18n/use-document-direction";
 import type { Preview } from "@storybook/react";
 import {
 	QueryClient,
@@ -413,6 +415,29 @@ const LocaleFrame = ({
 		return subscribeLocale(() => {
 			if (currentLocale() !== locale) setLocale(locale);
 		});
+	}, [locale]);
+
+	/*
+	 * THE DOCUMENT ROOT'S `dir` AND `lang`, from the SAME shipped writer the app
+	 * mounts (`useDocumentDirection` -> `applyDocumentDirection`).
+	 *
+	 * WHY THIS FRAME WRITES IT: the preview wrote only Radix's `Direction`
+	 * context below, so `<html dir>` stayed `ltr` and an `?args=locale:ur`
+	 * capture was URDU TEXT LAID OUT LTR: lines left-aligned with the info glyph
+	 * trailing on the right, which made two evidence frames claim an RTL reading
+	 * they did not have (design review round 1, D1 on #1666). The shipped app
+	 * writes the attribute once, from its own locale store; a capture that does
+	 * not write it is a frame of a document the product never renders.
+	 *
+	 * KEYED ON THE REQUESTED LOCALE, not on the store: this frame already
+	 * re-asserts `setLocale(locale)` against a story whose own bridge stub
+	 * answers with a fixed `language`, and the root attribute must obey the same
+	 * pin rather than whatever the stub left behind. A `lang` write is part of
+	 * the same shipped call and changes glyph selection for CJK locales - that is
+	 * the app's own behaviour, not a capture-only tweak.
+	 */
+	useLayoutEffect(() => {
+		applyDocumentDirection(document.documentElement, locale);
 	}, [locale]);
 
 	return <>{children}</>;

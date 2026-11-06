@@ -133,15 +133,20 @@ export const METHODS = [
 	"hover",
 	// DOM/native and page-owned ARIA selection; never an OS popup.
 	"select",
+	// Write one form control's value and read it back: a native <select> by
+	// label or value, an <input>/<textarea> through the prototype setter (so a
+	// framework's instance tracker cannot swallow the update), `input` then
+	// `change` dispatched. Appended here so no existing method index moves.
+	"setvalue",
 	// Clipboard write through the HOST rather than through a page permission:
 	// the element's bytes are read in an isolated world and written from the main
-	// process, and the answer is a receipt (chars, a 16-hex sha256, the element's
-	// tag/id/name, verified) that carries no text at all. APPENDED so no existing
-	// method's index moves on this host, the same rule `hover` follows above: the
-	// Python mirror places it in its own group and the wire is by NAME, so
-	// `isMethod` admits it either way, and HOST_CAPABILITIES is what refuses it on
-	// a host that predates it instead of a version bump (an additive method must
-	// not close an already-released peer with `proto_mismatch`).
+	// process, and the answer is a receipt (chars, a 16-hex sha256, verified) that
+	// carries no text at all. APPENDED (after `setvalue`, which main landed first)
+	// so no existing method's index moves on this host, the same rule `hover`
+	// follows above: the Python mirror places it in its own group and the wire is
+	// by NAME, so `isMethod` admits it either way, and HOST_CAPABILITIES is what
+	// refuses it on a host that predates it instead of a version bump (an additive
+	// method must not close an already-released peer with `proto_mismatch`).
 	"copy",
 ] as const;
 
@@ -175,6 +180,9 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	// A pointer move plus a short settle: no navigation, no wait on the page.
 	hover: 20.0,
 	select: 25.0,
+	// One page program plus a read-back: the same budget as `select`, which is
+	// the same shape (resolve, run, report), and it waits on no page load.
+	setvalue: 25.0,
 	// One selector resolution, one isolated-world read and one synchronous
 	// clipboard write: the cheapest shape in this table, and it waits on nothing.
 	copy: 20.0,
@@ -330,6 +338,26 @@ export interface UploadResult {
 	accepted: FileFact[];
 }
 
+/** `setvalue` -> the value the control actually holds after the write, read back
+ * from the page rather than assumed.
+ *
+ * `value` is ABSENT for `<input type=password>`: the program reads it back to
+ * answer `verified` honestly and then drops it, because this result rides into a
+ * transcript and a credential must not. `input_type` and `matched` are additive
+ * desktop-only extensions of the shared `{value, kind?, verified?, url, title}`
+ * shape (the wire table in the sibling `local-operator` PR owns that base): the
+ * DOM type the write went through, and the option a `<select>` resolved to —
+ * the same `{index, label, value}` triple `select` returns. */
+export interface SetvalueResult {
+	value?: string;
+	kind?: "input" | "textarea" | "select";
+	verified: boolean;
+	input_type?: string;
+	matched?: { index: number; label: string; value: string };
+	url: string;
+	title: string;
+}
+
 /**
  * Capability TOKENS that are not wire methods: a flag on a method the host already
  * serves. `press_chord` says this build's `press` understands the extended
@@ -403,6 +431,11 @@ export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	// the extension/cmux hosts and older desktop apps must be refused by capability.
 	"hover",
 	"select",
+	// Writing a value into a form control. On the same list as `select` for the
+	// same reason: an app build that predates it answers the frame with a bare
+	// `internal`, which a caller can only read as "the bridge broke"; the
+	// capability turns that peer into a typed refusal instead.
+	"setvalue",
 	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
 	// attached only for the duration of an action, so it holds no standing session
 	// to keep a `Network` subscription on. The backend therefore gates these four
