@@ -22,6 +22,14 @@
           "h": 657
         },
         "theme": "localOperatorLight",
+        "prefs": {
+          "version": 5,
+          "themeName": "localOperatorLight",
+          "contrast": {
+            "dark": 0,
+            "light": 0
+          }
+        },
         "glass": "sidebar canvas pane",
         "groups": 3,
         "vars": {
@@ -62,7 +70,23 @@
         },
         "track": null
       },
-      "before": null
+      "before": null,
+      "negativeControl": null,
+      "shutter": {
+        "overlays": [],
+        "heading": "Notifications",
+        "headingTopmost": true,
+        "headerTopmost": true,
+        "groups": 3,
+        "onboarding": {
+          "state": {
+            "isModalComplete": true,
+            "isTourComplete": true,
+            "currentStep": "connect_provider"
+          },
+          "version": 0
+        }
+      }
     }
   ]
 }

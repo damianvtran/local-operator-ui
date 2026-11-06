@@ -93,6 +93,21 @@
         "withMarker": 0.88,
         "withoutMarker": 1,
         "restored": 0.88
+      },
+      "shutter": {
+        "overlays": [],
+        "heading": "Notifications",
+        "headingTopmost": true,
+        "headerTopmost": true,
+        "groups": 3,
+        "onboarding": {
+          "state": {
+            "isModalComplete": true,
+            "isTourComplete": true,
+            "currentStep": "connect_provider"
+          },
+          "version": 0
+        }
       }
     }
   ]

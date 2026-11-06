@@ -206,6 +206,67 @@ const DROP_MARKS = `(() => {
   return true;
 })()`;
 
+/*
+ * THE SHUTTER REFUSAL. A frame is only worth committing if it shows the surface
+ * the cell names, and the cheapest way to be wrong about that is a layer the rig
+ * did not expect: a fresh scratch profile has no onboarding record, so the app
+ * opened its "Connect an AI account" modal over the list and both halves of the
+ * dark-80 pair photographed the modal - the headers, the switch and the page
+ * ground were all behind it while the readback underneath still reported correct
+ * alphas (AGENTS.md "What a capture may claim").
+ *
+ * So the rig looks before it shoots, and refuses rather than writes:
+ *   - no visible first-run/dialog surface (`data-onboarding-modal` is the app's own
+ *     marker on the dialog; `[role="dialog"][aria-modal="true"]` is Radix's), and
+ *   - the page's heading AND a group header are the TOPMOST hit-testable elements
+ *     at their own centres, which is what "this frame is of that surface" means.
+ * A failure writes no PNG and exits non-zero: no frame is better than a plausible
+ * frame of the wrong screen.
+ */
+const SHUTTER_GUARD = `(() => {
+  const visible = (el) => {
+    if (!el) return false;
+    const s = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0.05 && r.width > 1 && r.height > 1;
+  };
+  const covers = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.width * r.height > innerWidth * innerHeight * 0.25;
+  };
+  const overlays = [...document.querySelectorAll('[data-onboarding-modal], [role="dialog"], [aria-modal="true"]')]
+    .filter((el) => visible(el) && covers(el))
+    .map((e) => ({ marker: e.getAttribute("data-onboarding-modal") !== null ? "data-onboarding-modal" : e.getAttribute("role") || "aria-modal", w: Math.round(e.getBoundingClientRect().width), h: Math.round(e.getBoundingClientRect().height) }));
+  const page = document.querySelector("[data-notifications-page]");
+  const heading = page ? [...page.querySelectorAll('h1, h2, [role="heading"]')].find(visible) : null;
+  const header = document.querySelector('[data-notification-group] [role="row"]');
+  const topmost = (el) => {
+    if (!el || !visible(el)) return false;
+    const r = el.getBoundingClientRect();
+    const x = Math.min(Math.max(r.left + r.width / 2, 1), innerWidth - 2);
+    const y = Math.min(Math.max(r.top + r.height / 2, 1), innerHeight - 2);
+    const hit = document.elementFromPoint(x, y);
+    return !!hit && (hit === el || el.contains(hit));
+  };
+  return {
+    overlays,
+    heading: heading ? (heading.textContent || "").trim().slice(0, 40) : null,
+    headingTopmost: topmost(heading),
+    headerTopmost: topmost(header),
+    groups: document.querySelectorAll("[data-notification-group]").length,
+    /* The state the app actually booted from, so a refusal can say whether the seed
+     * landed instead of only that a dialog is present. */
+    onboarding: (() => {
+      try {
+        const raw = JSON.parse(localStorage.getItem("onboarding-storage") || "null");
+        return raw ? { state: raw.state, version: raw.version } : "absent";
+      } catch (e) {
+        return "unreadable";
+      }
+    })(),
+  };
+})()`;
+
 async function main() {
 	const cells = CELLS.filter((c) => !only || only.includes(c.name));
 	if (!cells.length) throw new Error(`no cell matched ${only?.join(",")}`);
@@ -298,39 +359,60 @@ async function main() {
 			 * pre-document script merges the cell's fields in BEFORE the store
 			 * rehydrates, which is the only ordering that cannot be overwritten.
 			 */
-			const seed = `try {
-        const k = "ui-preferences-storage";
-        const cur = JSON.parse(localStorage.getItem(k) || "null") || { state: {}, version: 0 };
-        if (!cur.state) cur.state = {};
-        cur.state.themeName = ${JSON.stringify(cell.theme)};
-        cur.state.contrast = { dark: ${cell.contrast ?? 0}, light: ${cell.contrast ?? 0} };
-        localStorage.setItem(k, JSON.stringify(cur));
-      } catch {}`;
-			const { identifier } = await cdp.send(
-				"Page.addScriptToEvaluateOnNewDocument",
-				{ source: seed },
-			);
-			await cdp.send("Page.reload", { ignoreCache: true });
+			const seed = `/* TWO INDEPENDENT WRITES, each its own try: the wizard's record and the
+				 * palette are separate facts, and a throw in one must not take the other
+				 * with it. They shared one try at first, and a light-half cell then booted
+				 * the dark palette on every attempt - the failure mode this split exists to
+				 * remove. */
+			try {
+				/* FIRST RUN OFF, and it has to be in this script rather than after the boot:
+				 * a fresh scratch profile has no onboarding record, so the app opens its
+				 * "Connect an AI account" modal over the list and the frame photographs the
+				 * modal instead of the surface under review (measured: both halves of the
+				 * dark-80 pair were dominated by it). Same record the renderer driver's
+				 * seedOnboardingComplete writes - key, version and fields verbatim. */
+				localStorage.setItem("onboarding-storage", JSON.stringify({ state: { isModalComplete: true, isTourComplete: true, currentStep: "create_agent" }, version: 0 }));
+			} catch (e) {}
+			try {
+				const k = "ui-preferences-storage";
+				const cur = JSON.parse(localStorage.getItem(k) || "null") || { state: {}, version: 0 };
+				if (!cur.state) cur.state = {};
+				cur.state.themeName = ${JSON.stringify(cell.theme)};
+				cur.state.contrast = { dark: ${cell.contrast ?? 0}, light: ${cell.contrast ?? 0} };
+				localStorage.setItem(k, JSON.stringify(cur));
+			} catch (e) {}`;
 			/*
-			 * RE-ATTACH AFTER THE RELOAD, and never reuse the pre-reload socket: a
-			 * reload tears the renderer's execution context down, and the old socket then
-			 * answers every `Runtime.evaluate` with an error - which `evSoft` reads as
-			 * "not ready yet", so a dead channel looks exactly like a slow boot.
+			 * THE SEED IS RETRIED, because it races the app. A pre-document write should
+			 * be unbeatable - it runs before any app code - and yet the same cell boots
+			 * the wanted palette on one run and the previous one on the next (measured:
+			 * light-80 and light-50 both came up `localOperatorDark` in one pass and light
+			 * in the next, one profile per cell either way). Rather than assert once and
+			 * die, or worse shoot the wrong palette silently, the seed is re-applied on the
+			 * CURRENT session and the document reloaded again, up to four times; the
+			 * assertion after the loop still refuses a cell that never took.
 			 */
-			cdp = await connect(port);
-			const appliedTheme = await until(
-				() => cdp.evSoft("document.documentElement?.dataset?.theme ?? null"),
-				90_000,
-				"the appearance to apply",
-			);
-			/* The identifier belongs to the session that registered it, and the reload
-			 * above re-attached on a new one - so this removal answers "Script not
-			 * found" there. It is worth attempting (it keeps the seed off documents this
-			 * page opens later) and worth not failing on: the seed only rewrites the
-			 * cell's own two fields, so a second application changes nothing. */
-			await cdp
-				.send("Page.removeScriptToEvaluateOnNewDocument", { identifier })
-				.catch(() => {});
+			let appliedTheme = null;
+			for (let attempt = 1; attempt <= 4; attempt++) {
+				await cdp.ev(`(() => { ${seed} return true; })()`);
+				await cdp.send("Page.reload", { ignoreCache: true });
+				/*
+				 * RE-ATTACH AFTER THE RELOAD, and never reuse the pre-reload socket: a
+				 * reload tears the renderer's execution context down, and the old socket then
+				 * answers every `Runtime.evaluate` with an error - which `evSoft` reads as
+				 * "not ready yet", so a dead channel looks exactly like a slow boot.
+				 */
+				cdp = await connect(port);
+				appliedTheme = await until(
+					() => cdp.evSoft("document.documentElement?.dataset?.theme ?? null"),
+					90_000,
+					"the appearance to apply",
+				);
+				if (appliedTheme === cell.theme) break;
+				/* A composed palette legitimately renames the document (see below). */
+				if (cell.contrast) break;
+				await wait(600);
+			}
+
 			/*
 			 * A COMPOSED APPEARANCE RENAMES THE DOCUMENT. At Standard (and with no
 			 * accent) the built-in palette is the identity, so `data-theme` is its own
@@ -346,7 +428,7 @@ async function main() {
 				);
 			if (!cell.contrast && composed)
 				throw new Error(
-					`${cell.name}: expected the built-in identity, got the composed id "${appliedTheme}"`,
+					`${cell.name}: expected the built-in identity, got the composed id "${appliedTheme}" - the stored preferences were ${JSON.stringify(await cdp.evSoft('(() => { try { const b = JSON.parse(localStorage.getItem("ui-preferences-storage") || "null"); return b ? b.state?.themeName ?? null : "absent"; } catch (e) { return "unreadable"; } })()'))}.`,
 				);
 			await wait(2000);
 			await cdp.ev(
@@ -358,6 +440,42 @@ async function main() {
 				})}).then(() => true)`,
 			);
 			await wait(1500);
+			/*
+			 * THE FIRST-RUN WIZARD IS DISMISSED, NOT ASSUMED AWAY.
+			 *
+			 * The seed above writes the wizard's completion record before the document
+			 * loads, which is what `scripts/renderer-driver.mjs` does in
+			 * `seedOnboardingComplete`. Measured here, that record does not survive: the
+			 * app boots and rewrites `onboarding-storage` to its own defaults
+			 * (`{isModalComplete:false, isTourComplete:false, currentStep:"connect_provider"}`,
+			 * read out of the live document), because nothing on this lane has a provider
+			 * connected and the first-run decision re-opens it. So the rig does what a
+			 * person does: presses Escape, which is the dialog's own documented exit
+			 * (`onDismiss={finish}`, the same handler as "Skip for now"), and lets the app
+			 * write the completion itself.
+			 *
+			 * `finish()` also navigates to the chat, so the route is set again afterwards.
+			 * If the dialog will not close, this throws rather than shooting a frame of it;
+			 * the shutter guard below is the second line of that defence.
+			 */
+			const wizard = await cdp.ev(
+				'!!document.querySelector("[data-onboarding-modal]")',
+			);
+			if (wizard) {
+				for (const type of ["keyDown", "keyUp"])
+					await cdp.send("Input.dispatchKeyEvent", {
+						type,
+						key: "Escape",
+						code: "Escape",
+						windowsVirtualKeyCode: 27,
+						nativeVirtualKeyCode: 27,
+					});
+				await until(
+					() => cdp.ev('!document.querySelector("[data-onboarding-modal]")'),
+					15_000,
+					"the first-run wizard to close",
+				);
+			}
 			await cdp.ev(`location.hash = ${JSON.stringify(ROUTE)}`);
 			await until(
 				() => cdp.ev('!!document.querySelector("[data-notifications-page]")'),
@@ -384,6 +502,24 @@ async function main() {
         })()`);
 				await wait(400);
 			}
+
+			/*
+			 * REFUSAL BEFORE THE SHUTTER, after every state change this cell makes, so
+			 * what is checked is what is about to be photographed. If a dialog covers the
+			 * page, or the heading or a group header is not the topmost element at its own
+			 * centre, the frame would show something other than the surface this cell
+			 * names. Nothing is written in that case: the run throws, the process exits
+			 * non-zero, and the reason names what was found instead.
+			 */
+			const shutter = await cdp.ev(SHUTTER_GUARD);
+			if (shutter.overlays.length)
+				throw new Error(
+					`${cell.name}: REFUSED TO SHOOT - a dialog covers the page (${JSON.stringify(shutter.overlays)}). The frame would show the dialog, not the notifications surface. Onboarding store: ${JSON.stringify(shutter.onboarding)}.`,
+				);
+			if (!shutter.headingTopmost || !shutter.headerTopmost)
+				throw new Error(
+					`${cell.name}: REFUSED TO SHOOT - the page is not the topmost surface at its own coordinates (heading ${JSON.stringify(shutter.heading)} topmost=${shutter.headingTopmost}, group header topmost=${shutter.headerTopmost}).`,
+				);
 
 			const shot = async (suffix, clip) => {
 				const shotResult = await cdp.send("Page.captureScreenshot", {
@@ -459,6 +595,7 @@ async function main() {
 				after: afterRead,
 				before: beforeRead,
 				negativeControl,
+				shutter,
 			});
 			console.log(
 				`[notif-glass] ${label}/${cell.name}: band ${afterRead.header?.alpha ?? "absent"} (floor ${afterRead.vars.bandFloor}, elevated ${afterRead.vars.elevated}) ${afterRead.header?.backdrop ?? "none"} pinned ${afterRead.header?.position ?? "n/a"}; page ${afterRead.backing?.alpha ?? "n/a"}; track ${afterRead.track?.alpha ?? "absent"} checked ${afterRead.track?.checked?.alpha ?? "n/a"}; ${groups} groups${beforeRead ? `; BEFORE band ${beforeRead.header?.alpha} track ${beforeRead.track?.alpha}` : ""}${negativeControl ? `; NEGATIVE CONTROL band ${negativeControl.withMarker} -> ${negativeControl.withoutMarker} (restored ${negativeControl.restored})` : ""}`,

@@ -22,8 +22,36 @@ app's own CDP `Page.captureScreenshot`, never macOS `screencapture`. Every boot 
 reaped by exact pid through `scripts/app-tree-teardown.mjs`. Frames are 2× DPR of
 a 1024×657 viewport.
 
-Glass goes through the appearance row's own IPC (`window.api.windowGlass.set`),
-and the palette is seeded into the store the app reads at boot.
+Glass goes through the appearance row's own IPC (`window.api.windowGlass.set`), and
+the palette is seeded into the store the app reads at boot.
+
+### The first-run wizard, and the refusal that keeps it out of the frames
+
+A scratch profile has no onboarding record, so the app opens its **“Connect an AI
+account”** modal over the list. It did exactly that in the previous revision of
+this set: `head-dark-80.png` and `base-dark-80.png` were both dominated by the
+wizard, which covered the group headers, the switch and even the page's ground —
+the surface under review was not in the picture at all.
+
+Two things now stand between that and a committed frame:
+
+1. **The wizard is dismissed through its own exit.** The rig writes the completion
+   record before the document loads (the same `onboarding-storage` object
+   `scripts/renderer-driver.mjs` writes in `seedOnboardingComplete`), and when the
+   app re-opens the wizard anyway — on a lane with no provider connected it rewrites
+   that record to its defaults, measured — the rig presses **Escape**, which is the
+   dialog's documented exit (`onDismiss={finish}`, the same handler as “Skip for
+   now”), and the app writes the completion itself.
+2. **The shutter refuses.** Before any capture, `SHUTTER_GUARD` asserts that no
+   `data-onboarding-modal` (the app's own marker on that dialog) or large
+   `role="dialog"` surface is visible, and that the page's “Notifications” heading
+   and at least one group header are the **topmost hit-testable elements at their
+   own centres**. If either check fails the run writes **no frame** and exits
+   non-zero: a frame that cannot show the claimed state is worse than none
+   (`AGENTS.md`, “What a capture may claim”). Every committed readback carries the
+   audit's answer (`shutter: { overlays: [], heading: "Notifications",
+   headingTopmost: true, headerTopmost: true }`), and the drawer note at the end of
+   this file says which surfaces are still outside the set.
 
 ### The lane: an isolated backend with real rows
 
@@ -91,6 +119,14 @@ The numbers, not the pixels, are the claim.
 | head light 50 | **0.78** | 0.78 (0.71) | 0.78 | 0.05 / **0.08** |
 | head dark 80, glass off | 1.0 | — (no glass vars) | — | 1.0 / 1.0 |
 | head dark 80, scrolled | 0.88 | 0.88 (0.74) | 0.62 | 0.05 / 0.08 |
+
+**Two independent reads agree.** The numbers say the band moved from 1.0 to the
+floor; the pixels say the same thing without being asked to. Comparing the base
+and head frames over the band's own rect (`x 260, y 228, 756×32`, read from the
+readback, so the two halves are compared where the element is), **98 % of the band's
+pixels changed** in all four pairs, and **87 % of the switch's** — mean colour at
+the band, dark 80 %: base `(29.7, 27.7, 23.6)` → head `(45.4, 41.4, 32.5)`; light
+80 %: `(240.3, 236.3, 227.3)` → `(251.1, 249.0, 244.9)`.
 
 The head's header is `max(elevated, band floor)` with `backdrop-filter: blur(12px)`
 and `position: sticky`, `top: 0`, `z-index: 1`, 32 px tall — geometry unchanged

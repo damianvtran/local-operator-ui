@@ -22,6 +22,14 @@
           "h": 657
         },
         "theme": "localOperatorDark",
+        "prefs": {
+          "version": 5,
+          "themeName": "localOperatorDark",
+          "contrast": {
+            "dark": 0,
+            "light": 0
+          }
+        },
         "glass": null,
         "groups": 3,
         "vars": {
@@ -80,7 +88,27 @@
           }
         }
       },
-      "before": null
+      "before": null,
+      "negativeControl": {
+        "withMarker": 1,
+        "withoutMarker": 1,
+        "restored": 1
+      },
+      "shutter": {
+        "overlays": [],
+        "heading": "Notifications",
+        "headingTopmost": true,
+        "headerTopmost": true,
+        "groups": 3,
+        "onboarding": {
+          "state": {
+            "isModalComplete": true,
+            "isTourComplete": true,
+            "currentStep": "connect_provider"
+          },
+          "version": 0
+        }
+      }
     }
   ]
 }
