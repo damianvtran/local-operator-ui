@@ -19,6 +19,7 @@ import * as pageActions from "./actions/page";
 import * as queryActions from "./actions/query";
 import * as recordingActions from "./actions/recording";
 import * as selectActions from "./actions/select";
+import * as setvalueActions from "./actions/setvalue";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import { collectAddressHistory, mergeAddressHistory } from "./address-history";
@@ -86,6 +87,11 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	// stack, so it is authorized on entry and on the result exactly like `click`.
 	"hover",
 	"select",
+	// `setvalue` writes into a control on the CURRENT document and reports the
+	// value it read back from it, so it is authorized on entry and on the result
+	// exactly as `select` is: an answer that raced a navigation it did not cause
+	// must be discarded, never reported as the new page's.
+	"setvalue",
 	"scroll",
 	"logs",
 	// `download` names a control on the CURRENT document (the link or button that
@@ -155,6 +161,11 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	// landing on success OR throw, and restore if unapproved. No native popup,
 	// no agent-initiated document request to intercept with Fetch.
 	"select",
+	// A `setvalue` change handler can navigate exactly like a select change: an
+	// auto-submitting form turns a write into a navigation. Adopt/authorize the
+	// landing on success OR throw, restore if unapproved, and stay OUT of
+	// NAVIGATION_ACTIONS for the reason below: the write fetches nothing itself.
+	"setvalue",
 	"download",
 	"upload",
 ]);
@@ -223,6 +234,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"press",
 	"hover",
 	"select",
+	"setvalue",
 	"scroll",
 	"logs",
 	"close",
@@ -808,6 +820,8 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.hover(this, params);
 			case "select":
 				return selectActions.select(this, params);
+			case "setvalue":
+				return setvalueActions.setvalue(this, params);
 			case "download":
 				return downloadActions.download(this, params);
 			case "upload":

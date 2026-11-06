@@ -133,6 +133,11 @@ export const METHODS = [
 	"hover",
 	// DOM/native and page-owned ARIA selection; never an OS popup.
 	"select",
+	// Write one form control's value and read it back: a native <select> by
+	// label or value, an <input>/<textarea> through the prototype setter (so a
+	// framework's instance tracker cannot swallow the update), `input` then
+	// `change` dispatched. Appended here so no existing method index moves.
+	"setvalue",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -165,6 +170,9 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	// A pointer move plus a short settle: no navigation, no wait on the page.
 	hover: 20.0,
 	select: 25.0,
+	// One page program plus a read-back: the same budget as `select`, which is
+	// the same shape (resolve, run, report), and it waits on no page load.
+	setvalue: 25.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -381,6 +389,11 @@ export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	// the extension/cmux hosts and older desktop apps must be refused by capability.
 	"hover",
 	"select",
+	// Writing a value into a form control. On the same list as `select` for the
+	// same reason: an app build that predates it answers the frame with a bare
+	// `internal`, which a caller can only read as "the bridge broke"; the
+	// capability turns that peer into a typed refusal instead.
+	"setvalue",
 	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
 	// attached only for the duration of an action, so it holds no standing session
 	// to keep a `Network` subscription on. The backend therefore gates these four

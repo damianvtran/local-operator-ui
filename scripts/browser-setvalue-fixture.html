@@ -1,0 +1,132 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>select / setvalue stand-in</title>
+<style>
+ body{font:14px system-ui;margin:0;padding:24px}
+ section{border-top:1px solid #ddd;padding:12px 0}
+ label{display:block;margin:8px 0 4px;font-weight:600}
+ .echo{font-family:ui-monospace,monospace;color:#06c}
+ #events{font-family:ui-monospace,monospace;color:#333}
+ [role=combobox]{border:1px solid #888;padding:4px 8px;width:16em}
+</style></head>
+<body>
+<h1>Browser <code>select</code>/<code>setvalue</code> stand-in</h1>
+<p id="events">events: (none)</p>
+
+<!-- Gap 1's shape: an Angular form control. ngModel listens to `change` only,
+     so a selection that never dispatches change is a selection the framework
+     never records — the value must change AND the listener must run. -->
+<section id="angular-form">
+  <label for="env">Environment</label>
+  <select id="env" name="env">
+    <option value="">Choose an environment</option>
+    <option value="prod">Production</option>
+    <option value="sandbox">Sandbox</option>
+  </select>
+  <div id="env-echo" class="echo">environment: (unset)</div>
+</section>
+
+<!-- React's controlled-input shape, modelled: an OWN `value` accessor on the
+     node (inputValueTracking) records every write that goes through the
+     instance property, and the input handler treats a write it already
+     recorded as "nothing changed" — which is why assigning `.value` is silent
+     and only the prototype setter reaches onChange. -->
+<section id="react-form">
+  <label for="name">Display name</label>
+  <input id="name" name="name" type="text" value="">
+  <div id="name-echo" class="echo">name: (empty)</div>
+</section>
+
+<section id="date-form">
+  <label for="when">Start date</label>
+  <input id="when" name="when" type="date">
+  <div id="when-echo" class="echo">when: (unset)</div>
+</section>
+
+<section id="refusals">
+  <label for="locked">Locked field</label>
+  <input id="locked" name="locked" type="text" value="cannot change" disabled>
+  <label for="ro">Read-only field</label>
+  <input id="ro" name="ro" type="text" value="read only" readonly>
+  <label for="pick">An ARIA widget is not a form control</label>
+  <div id="pick" role="combobox" aria-controls="pick-options" aria-expanded="false" tabindex="0">Choose a colour</div>
+  <div id="pick-options" role="listbox" hidden>
+    <div role="option" data-value="r" aria-selected="false">Red</div>
+    <div role="option" data-value="b" aria-selected="false">Blue</div>
+  </div>
+</section>
+
+<script>
+  // One event log the evidence reads, so "did change fire" is a page fact rather
+  // than an inference from the host's own answer.
+  var events = [];
+  window.__events = events;
+  function note(line) {
+    events.push(line);
+    document.getElementById('events').textContent = 'events: ' + events.join(' | ');
+  }
+  window.__reading = function () {
+    return {
+      env: document.getElementById('env').value,
+      envEcho: document.getElementById('env-echo').textContent,
+      name: document.getElementById('name').value,
+      nameEcho: document.getElementById('name-echo').textContent,
+      when: document.getElementById('when').value,
+      whenEcho: document.getElementById('when-echo').textContent,
+      locked: document.getElementById('locked').value,
+      combo: document.getElementById('pick').textContent,
+      events: events.slice(),
+    };
+  };
+
+  var env = document.getElementById('env');
+  env.addEventListener('input', function () { note('env:input=' + env.value); });
+  env.addEventListener('change', function () {
+    document.getElementById('env-echo').textContent = 'environment: ' + env.value;
+    note('env:change=' + env.value);
+  });
+
+  (function reactShaped() {
+    var input = document.getElementById('name');
+    var echo = document.getElementById('name-echo');
+    var proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    var tracker = { last: input.value };
+    var state = { value: '' };
+    // React's tracker: an OWN accessor whose setter writes through to the real
+    // value AND records it, so the framework cannot see a difference later.
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      get: function () { return proto.get.call(this); },
+      set: function (next) {
+        proto.set.call(this, String(next));
+        tracker.last = String(next);
+        note('name:instance-setter=' + tracker.last);
+      },
+    });
+    input.addEventListener('input', function () {
+      var now = proto.get.call(input);
+      if (now === tracker.last) { note('name:input-suppressed'); return; }
+      tracker.last = now;
+      state.value = now;
+      echo.textContent = 'name: ' + state.value;
+      note('name:onChange=' + state.value);
+    });
+    window.__react = { state: state, tracker: tracker };
+    // The setters stay reachable from the page for the negative control.
+    window.__setViaInstance = function (v) { input.value = v; };
+  })();
+
+  var when = document.getElementById('when');
+  when.addEventListener('input', function () { note('when:input=' + when.value); });
+  when.addEventListener('change', function () {
+    document.getElementById('when-echo').textContent = 'when: ' + when.value;
+    note('when:change=' + when.value);
+  });
+
+  document.getElementById('pick').addEventListener('click', function () {
+    var list = document.getElementById('pick-options');
+    list.hidden = false;
+    document.getElementById('pick').setAttribute('aria-expanded', 'true');
+    note('pick:opened');
+  });
+</script>
+</body></html>

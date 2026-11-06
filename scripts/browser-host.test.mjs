@@ -7817,6 +7817,9 @@ test("/health carries the capabilities this build serves", async () => {
 		"press_chord",
 		"hover",
 		"select",
+		// Writing a form control's value; the pin above exists so this list is
+		// edited by the PR that adds the capability, never discovered drifting.
+		"setvalue",
 		"network_start",
 		"network_stop",
 		"network_read",
@@ -12300,9 +12303,9 @@ test("hover is in the wire vocabulary, advertised beside press, lane-scoped, and
 	assert.ok(METHODS.includes("hover"));
 	assert.ok(isMethod("hover"));
 	assert.equal(
-		METHODS.at(-2),
+		METHODS.at(-3),
 		"hover",
-		"appended: no existing method's index moved",
+		"appended: no existing method's index moved; `select` and then `setvalue` follow it",
 	);
 	assert.ok(HOST_CAPABILITIES.includes("hover"));
 	// The harness gates extended press on this exact token; `press` alone is true of
@@ -12647,4 +12650,94 @@ test("select is advertised, owned/document scoped, and restores forbidden change
 		),
 		{ code: "owner_refused" },
 	);
+});
+
+test("setvalue is advertised, document/owner scoped, and restores forbidden change-handler landings without Fetch", async () => {
+	assert.ok(METHODS.includes("setvalue"));
+	assert.ok(isMethod("setvalue"));
+	assert.ok(HOST_CAPABILITIES.includes("setvalue"));
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("setvalue"),
+		HOST_CAPABILITIES.indexOf("select") + 1,
+	);
+	assert.equal(
+		METHODS.at(-1),
+		"setvalue",
+		"appended: no existing method's index moved",
+	);
+	assert.equal(COMMAND_TIMEOUTS_S.setvalue, 25);
+	const { host, cdp, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const contents = registry.requireSurface(tab).view.webContents;
+	const original = cdp.send;
+	// A plain write: the program's own read-back is the whole answer, and no
+	// per-hop gate is armed (that is click/type/press only — a write fetches
+	// nothing itself).
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode")
+			return { object: { objectId: "setvalue" } };
+		if (method === "Runtime.callFunctionOn")
+			return {
+				result: {
+					value: {
+						status: "ready",
+						kind: "input",
+						type: "text",
+						value: "Damian",
+						verified: true,
+					},
+				},
+			};
+		return original(target, method, params);
+	};
+	cdp.calls.length = 0;
+	const written = await host.dispatch(
+		"setvalue",
+		{ ...owner, tab, selector: "#i", text: "Damian" },
+		"setvalue",
+	);
+	assert.equal(written.value, "Damian");
+	assert.equal(written.verified, true);
+	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	// A typed refusal rides `data.reason`, not prose: that is the field a caller
+	// branches on, and the wire's ErrorCode vocabulary is closed.
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode")
+			return { object: { objectId: "setvalue" } };
+		if (method === "Runtime.callFunctionOn")
+			return { result: { value: { status: "disabled", tag: "input" } } };
+		return original(target, method, params);
+	};
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#i", text: "x" },
+			"setvalue",
+		),
+		(e) => e.code === "element_not_found" && e.data.reason === "disabled",
+	);
+	// The change handler navigates to an unapproved origin and the program throws
+	// on the context teardown: the THROW path is judged and the tab restored,
+	// exactly as `select`'s is.
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode")
+			return { object: { objectId: "setvalue" } };
+		if (method === "Runtime.callFunctionOn") {
+			contents.url = "https://forbidden.example/written";
+			registry.bumpEpoch(registry.requireSurface(tab).tabId);
+			throw new Error("context destroyed on change");
+		}
+		return original(target, method, params);
+	};
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#i", text: "x" },
+			"setvalue",
+		),
+		(e) =>
+			e.code === "origin_not_allowed" &&
+			e.data.origin === "https://forbidden.example",
+	);
+	assert.equal(contents.url, "https://approved.example/");
 });
