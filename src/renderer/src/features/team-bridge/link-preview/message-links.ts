@@ -20,7 +20,17 @@
  * a reference link whose definition exists are links, while an image is not (the
  * renderer draws it as text) and neither is a URL inside inline code or a code
  * block. Duplicates keep their own positions, for the same reason nothing is
- * filtered.
+ * filtered. What this does NOT count is the anchors the renderer GENERATES rather
+ * than the author writing them: GFM footnote references and back-references
+ * (`href="#user-content-fn-1"`, drawn as spans by the `a` override) are not links
+ * the message points at, so they take no position (#1734 review round 1, R1-n1).
+ *
+ * WHAT IS NOT FILTERED HERE, AND WHY THE CARD FILTERS ELSEWHERE. This list keeps
+ * every href the renderer draws, including ones that fail `EXTERNAL_HREF` and are
+ * therefore drawn as inert text, because such a link still occupies a position
+ * the renderer draws. The mount (`team-bridge-message-link-previews.tsx`) drops
+ * those from the cards it mounts, after numbering; filtering here would renumber
+ * every later link and hand its card to a different one.
  *
  * THE BODY IS SPLIT THE WAY `InlineDataBody` SPLITS IT. A legacy inline-data
  * region is drawn as a receipt, never as markdown, so its text is not parsed

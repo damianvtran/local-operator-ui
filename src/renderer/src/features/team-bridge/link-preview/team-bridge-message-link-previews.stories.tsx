@@ -184,6 +184,24 @@ export const OneLink: Story = {
 	},
 };
 
+/** The links the body refuses to make destinations: a scheme-less host, a
+ * protocol-relative host, a relative file, an anchor and a dot-relative path.
+ * The body draws each as inert monospace text, so NO card is mounted and core is
+ * never asked (#1734 review round 1, R1-M1 / Q-1). */
+export const InertLinks: Story = {
+	name: "Links drawn as text (no card)",
+	args: {
+		bodies: [
+			[
+				"The one real link is https://docs.example.com/guides/release-checklist,",
+				"and beside it [README.md](README.md), [the plan](./notes/plan.md),",
+				"the [status page](example.com/login), [the incident](//status.example.com/42)",
+				"and [the appendix](#section) are all drawn as plain text.",
+			].join("\n"),
+		],
+	},
+};
+
 export const ThreeLinks: Story = {
 	name: "Three links",
 	args: {

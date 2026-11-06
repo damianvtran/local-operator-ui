@@ -4,6 +4,7 @@ import {
 	LINK_PREVIEW_MAX_CARDS_PER_MESSAGE,
 	type LinkPreviewBridge,
 } from "../../../../../shared/link-preview";
+import { EXTERNAL_HREF } from "../team-bridge-external-href";
 import { teamBridgeMessageLinks } from "./message-links";
 import { TeamBridgeLinkPreview } from "./team-bridge-link-preview";
 
@@ -19,6 +20,21 @@ import { TeamBridgeLinkPreview } from "./team-bridge-link-preview";
  * components that resolve to nothing. A message whose first link core refuses
  * therefore shows at most two cards - its first three positions are spent in the
  * order core counts them, which is the point.
+ *
+ * A LINK THE BODY DRAWS AS TEXT GETS NO CARD, AND IS NEVER ASKED ABOUT.
+ * `TeamBridgeMarkdown` draws a link whose href fails `EXTERNAL_HREF` (a
+ * scheme-less `example.com/login`, a protocol-relative `//host`, a relative
+ * `./notes/plan.md`, a `#section`) as inert monospace text: the message refuses
+ * to make it a destination. A card for it would make it one anyway, because
+ * core normalises a scheme-less target to `https://` and fetches it - an agent
+ * citing `[README.md](README.md)` got a card for the third-party site
+ * `https://README.md` (#1734 review round 1, R1-M1 / Q-1). So the mount applies
+ * the renderer's own `EXTERNAL_HREF` test, the one rule both readers share.
+ * It filters HERE, after positions are assigned, and not in `message-links.ts`:
+ * the renderer still draws such a link (its `a` override is called for it and
+ * answers with a span), so it keeps its position, and a later link's index
+ * stays what it was. `mailto:` passes the test and is still asked about; core
+ * refuses it as `unsupported-scheme`.
  *
  * WHAT THE READER SEES WHEN THERE IS NO CARD. The plain link, exactly as the
  * message wrote it: this list never touches the body above it, and each card
@@ -45,7 +61,10 @@ export const TeamBridgeMessageLinkPreviews: FC<{
 }> = ({ body, expectedAccountId, bridge }) => {
 	const links = useMemo(
 		() =>
-			teamBridgeMessageLinks(body).slice(0, LINK_PREVIEW_MAX_CARDS_PER_MESSAGE),
+			teamBridgeMessageLinks(body)
+				.slice(0, LINK_PREVIEW_MAX_CARDS_PER_MESSAGE)
+				.map((url, index) => ({ url, index }))
+				.filter(({ url }) => EXTERNAL_HREF.test(url)),
 		[body],
 	);
 	if (links.length === 0) return null;
@@ -58,7 +77,7 @@ export const TeamBridgeMessageLinkPreviews: FC<{
 			data-link-previews=""
 			className="mt-1.5 flex max-w-sm flex-col gap-1.5 empty:hidden"
 		>
-			{links.map((url, index) => (
+			{links.map(({ url, index }) => (
 				<TeamBridgeLinkPreview
 					key={`${index}\u0000${url}`}
 					url={url}

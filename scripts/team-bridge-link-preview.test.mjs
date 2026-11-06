@@ -100,6 +100,35 @@ const IMAGE_ID = "fedcba9876543210fedcba9876543210";
 const URL_TEXT = "https://example.com/changelog";
 const RETRY_COPY = /Retry/;
 
+/* The assertions' regexes, hoisted: `lint/performance/useTopLevelRegex` is right
+ * that a literal inside a function is rebuilt on every call, and naming each one
+ * says what the assertion is looking FOR instead of leaving a reader to decode
+ * the escaping. They are the shapes the shipped components emit, so a component
+ * that renames a class or changes an attribute fails here by name. */
+const SITE_NAME = /Example/;
+const TITLE_TEXT = /What changed this week/;
+const DESCRIPTION_TEXT = /Three fixes\./;
+const PICTURE_BLOB = /src="blob:card\/picture"/;
+const FAVICON_BLOB = /blob:card\/favicon/;
+const CANONICAL_HREF = /href="https:\/\/example\.com\/changelog"/;
+const OPENS_NEW_TAB = /target="_blank"/;
+const LINK_REL = /rel="noopener noreferrer"|rel="noreferrer"/;
+const MEASURED_ASPECT_RATIO = /aspect-ratio:640 \/ 360/;
+const UNMEASURED_HEIGHT = /height:128px/;
+const ANY_ASPECT_RATIO = /aspect-ratio/;
+const ZERO_SIZED_BOX = /0px|0 \/ 0|width:0/;
+const IMG_TAG = /<img/;
+const ANCHOR_TAG = /<a /;
+const BUTTON_TAG = /<button/;
+const FIRST_CARD_BLOB = /src="blob:card\/1"/;
+const ANY_PICTURE_BLOB = /<img src="blob:/;
+const SECOND_TITLE = /Second page/;
+const FETCH_CALL = /\bfetch\s*\(/;
+const XHR = /XMLHttpRequest/;
+const IMAGE_DECODE = /new Image\s*\(/;
+const BEACON_OR_STREAM = /sendBeacon|EventSource/;
+const EMPTY_HIDDEN = /empty:hidden/;
+
 /** A `ready` answer as the wire sends it: unset fields are ABSENT, not null. */
 const ready = (preview = {}) => ({
 	kind: "ready",
@@ -447,16 +476,16 @@ test("a ready card draws the site, the title, the description and links out", ()
 		imageUrl: "blob:card/picture",
 		faviconUrl: "blob:card/favicon",
 	});
-	assert.match(html, /Example/);
-	assert.match(html, /What changed this week/);
-	assert.match(html, /Three fixes\./);
-	assert.match(html, /src="blob:card\/picture"/);
-	assert.match(html, /blob:card\/favicon/);
+	assert.match(html, SITE_NAME);
+	assert.match(html, TITLE_TEXT);
+	assert.match(html, DESCRIPTION_TEXT);
+	assert.match(html, PICTURE_BLOB);
+	assert.match(html, FAVICON_BLOB);
 	// The destination is the page's own canonical URL, handed to the browser -
 	// never a window this app navigates.
-	assert.match(html, /href="https:\/\/example\.com\/changelog"/);
-	assert.match(html, /target="_blank"/);
-	assert.match(html, /rel="noopener noreferrer"|rel="noreferrer"/);
+	assert.match(html, CANONICAL_HREF);
+	assert.match(html, OPENS_NEW_TAB);
+	assert.match(html, LINK_REL);
 });
 
 test("a measured picture reserves its ratio and an unmeasured one reserves a strip", () => {
@@ -464,8 +493,8 @@ test("a measured picture reserves its ratio and an unmeasured one reserves a str
 		m.linkPreviewCardView(ready({ image: picture() })),
 		{ imageUrl: "blob:card/picture" },
 	);
-	assert.match(measured, /aspect-ratio:640 \/ 360/);
-	assert.doesNotMatch(measured, /height:128px/, "a ratio needs no strip");
+	assert.match(measured, MEASURED_ASPECT_RATIO);
+	assert.doesNotMatch(measured, UNMEASURED_HEIGHT, "a ratio needs no strip");
 
 	const unmeasured = renderView(
 		m.linkPreviewCardView(
@@ -473,31 +502,31 @@ test("a measured picture reserves its ratio and an unmeasured one reserves a str
 		),
 		{ imageUrl: "blob:card/picture" },
 	);
-	assert.match(unmeasured, /height:128px/);
+	assert.match(unmeasured, UNMEASURED_HEIGHT);
 	assert.doesNotMatch(
 		unmeasured,
-		/aspect-ratio/,
+		ANY_ASPECT_RATIO,
 		"absent dimensions are UNKNOWN, so the card claims no ratio",
 	);
 	assert.doesNotMatch(
 		`${measured}${unmeasured}`,
-		/0px|0 \/ 0|width:0/,
+		ZERO_SIZED_BOX,
 		"no zero-sized box, in either case",
 	);
 });
 
 test("a picture that never arrived leaves the text alone", () => {
 	const html = renderView(m.linkPreviewCardView(ready()), { imageUrl: null });
-	assert.doesNotMatch(html, /<img/, "no empty framed box where a picture was");
-	assert.match(html, /What changed this week/);
+	assert.doesNotMatch(html, IMG_TAG, "no empty framed box where a picture was");
+	assert.match(html, TITLE_TEXT);
 });
 
 test("a canonical URL that is not http(s) is drawn but never linked", () => {
 	const html = renderView(
 		m.linkPreviewCardView(ready({ url: "javascript:alert(1)" })),
 	);
-	assert.doesNotMatch(html, /<a /);
-	assert.match(html, /What changed this week/);
+	assert.doesNotMatch(html, ANCHOR_TAG);
+	assert.match(html, TITLE_TEXT);
 });
 
 test("absent, disabled, waiting and silent draw nothing at all", () => {
@@ -514,7 +543,7 @@ test("absent, disabled, waiting and silent draw nothing at all", () => {
 
 test("a manual retry is one quiet control", () => {
 	const html = renderView({ kind: "retry" }, { onRetry: () => {} });
-	assert.match(html, /<button/);
+	assert.match(html, BUTTON_TAG);
 	assert.match(html, RETRY_COPY);
 });
 
@@ -635,7 +664,7 @@ test("one resolve per link, carrying the receipt main cannot invent", async () =
 	assert.deepEqual(record.resolves, [
 		{ url: URL_TEXT, index: 2, expectedAccountId: "acct_self" },
 	]);
-	assert.match(mounted.html(), /What changed this week/);
+	assert.match(mounted.html(), TITLE_TEXT);
 	await mounted.close();
 });
 
@@ -659,7 +688,7 @@ test("the picture's bytes are asked for with the SAME receipt, by id", async () 
 	for (const request of record.artifacts) {
 		assert.equal(request.expectedAccountId, "acct_self");
 	}
-	assert.match(mounted.html(), /src="blob:card\/1"/);
+	assert.match(mounted.html(), FIRST_CARD_BLOB);
 	await mounted.close();
 	assert.ok(revokedUrls >= 1, "the picture URL is revoked when the card goes");
 });
@@ -683,21 +712,17 @@ test("a reused card drops the previous link's picture, never a revoked blob", as
 	// `finally`, so a failing assertion still unmounts this root: left mounted, it
 	// fails the NEXT test too and one regression reads as two (#1722 R2-n2).
 	try {
-		assert.match(
-			mounted.html(),
-			/<img src="blob:/,
-			"link A's picture is drawn",
-		);
+		assert.match(mounted.html(), ANY_PICTURE_BLOB, "link A's picture is drawn");
 		await mounted.rerender({
 			url: second,
 			index: 0,
 			expectedAccountId: "acct_self",
 			bridge: record.bridge,
 		});
-		assert.match(mounted.html(), /Second page/, "the second link is drawn");
+		assert.match(mounted.html(), SECOND_TITLE, "the second link is drawn");
 		assert.doesNotMatch(
 			mounted.html(),
-			/src="blob:/,
+			ANY_PICTURE_BLOB,
 			"a pictureless link paints no picture, revoked URL included",
 		);
 	} finally {
@@ -732,7 +757,7 @@ test("a delayed retry WAITS and then asks again, drawing no error card", async (
 	await act(async () => new Promise((resolve) => setTimeout(resolve, 450)));
 	await settle();
 	assert.equal(record.resolves.length, 2, "core's delay was honoured");
-	assert.match(mounted.html(), /What changed this week/);
+	assert.match(mounted.html(), TITLE_TEXT);
 	await mounted.close();
 });
 
@@ -769,7 +794,7 @@ test("changing the link during a 429 wait cancels the old link's retry", async (
 			[URL_TEXT, second],
 			"one resolve for the new link, and no retry of the old one",
 		);
-		assert.match(mounted.html(), /Second page/);
+		assert.match(mounted.html(), SECOND_TITLE);
 	} finally {
 		await mounted.close();
 	}
@@ -848,12 +873,12 @@ test("the card module carries no fetch path of its own", () => {
 		// `new Image()` or a beacon/stream here would be this app telling the
 		// linked site who read the message. The comment names the class, so the
 		// assertion covers the class (R1-m4).
-		assert.doesNotMatch(source, /\bfetch\s*\(/, `${file} fetches`);
-		assert.doesNotMatch(source, /XMLHttpRequest/, `${file} opens an XHR`);
-		assert.doesNotMatch(source, /new Image\s*\(/, `${file} decodes an image`);
+		assert.doesNotMatch(source, FETCH_CALL, `${file} fetches`);
+		assert.doesNotMatch(source, XHR, `${file} opens an XHR`);
+		assert.doesNotMatch(source, IMAGE_DECODE, `${file} decodes an image`);
 		assert.doesNotMatch(
 			source,
-			/sendBeacon|EventSource/,
+			BEACON_OR_STREAM,
 			`${file} opens a side channel`,
 		);
 	}
@@ -1047,7 +1072,7 @@ test("disabled previews leave the plain link: no card, no bytes, an empty list",
 		const list = mounted.element.querySelector("[data-link-previews]");
 		assert.ok(list, "the list is mounted");
 		assert.equal(list.children.length, 0, "and holds no card");
-		assert.match(list.className, /empty:hidden/, "so it takes no space");
+		assert.match(list.className, EMPTY_HIDDEN, "so it takes no space");
 	} finally {
 		await mounted.close();
 	}
@@ -1075,6 +1100,95 @@ test("mixed refusals draw only the links core resolved, in core's positions", as
 			],
 		);
 		assert.deepEqual(mounted.cards(), ["https://site1.example/p"]);
+	} finally {
+		await mounted.close();
+	}
+});
+
+/* A link the body draws as INERT TEXT (its href fails `EXTERNAL_HREF`, so
+ * `TeamBridgeMarkdown` renders a `<span>`) is never a card. Core normalises a
+ * scheme-less target to `https://` and fetches it, and a relative path raises
+ * out of its resolver, so asking about one is an outbound request for something
+ * the reader cannot see as a link (#1734 review round 1, R1-M1 / Q-1). */
+/* The SAME five targets twice: as the hrefs the body refuses (drawn as inert
+ * text) and as `https:` hrefs of the same shape (drawn as links). One array
+ * behind both bodies is what makes the negative control below a real control -
+ * the only difference between them is the scheme. */
+const INERT_TARGETS = [
+	"example.com",
+	"//host",
+	"README.md",
+	"#section",
+	"./notes/plan.md",
+];
+const INERT_LINKS = INERT_TARGETS.map((target) => `[t](${target})`).join(" ");
+const ELIGIBLE_LOOKALIKES = INERT_TARGETS.map(
+	(target, index) =>
+		`[t](https://${index}.inert.example/${encodeURIComponent(target)})`,
+).join(" ");
+
+test("links the body draws as inert text are never asked about and mount nothing", async () => {
+	const record = perUrlBridge();
+	const mounted = await mountMessage({
+		body: INERT_LINKS,
+		expectedAccountId: "acct_self",
+		bridge: record.bridge,
+	});
+	try {
+		assert.equal(record.resolves.length, 0, "core is never asked");
+		assert.equal(mounted.element.innerHTML, "", "and nothing is mounted");
+	} finally {
+		await mounted.close();
+	}
+});
+
+test("an eligible link after inert ones keeps the index its position earned", async () => {
+	const record = perUrlBridge();
+	const mounted = await mountMessage({
+		// The first two links are inert, so the drawn link is at position 2 - not
+		// 0. Filtering in `message-links.ts` instead would renumber it and give a
+		// different link the card the moment an inert link preceded it.
+		body: "[t](example.com) [t](//host) then https://real.example/x",
+		expectedAccountId: "acct_self",
+		bridge: record.bridge,
+	});
+	try {
+		assert.deepEqual(
+			record.resolves.map(({ url, index }) => [url, index]),
+			[["https://real.example/x", 2]],
+		);
+		assert.deepEqual(mounted.cards(), ["https://real.example/x"]);
+	} finally {
+		await mounted.close();
+	}
+});
+
+test("NEGATIVE CONTROL: remove the mount's filter and the inert links are asked about", async () => {
+	// The extractor keeps every drawn href, unfiltered and in position - that is
+	// what makes the index contract hold. So the ONLY thing stopping the five
+	// inert links above is the filter in the mount: swapping each href for an
+	// `https:` one of the same shape makes the same body ask five times. If the
+	// filter is deleted, the first test's `resolves.length === 0` fails; if the
+	// filter is moved into `message-links.ts`, this assertion renumbers.
+	assert.deepEqual(m.teamBridgeMessageLinks(INERT_LINKS), [
+		"example.com",
+		"//host",
+		"README.md",
+		"#section",
+		"./notes/plan.md",
+	]);
+	const record = perUrlBridge();
+	const mounted = await mountMessage({
+		body: ELIGIBLE_LOOKALIKES,
+		expectedAccountId: "acct_self",
+		bridge: record.bridge,
+	});
+	try {
+		assert.deepEqual(
+			record.resolves.map((request) => request.index),
+			[0, 1, 2],
+			"the same body with eligible hrefs asks at the cap's first three positions",
+		);
 	} finally {
 		await mounted.close();
 	}

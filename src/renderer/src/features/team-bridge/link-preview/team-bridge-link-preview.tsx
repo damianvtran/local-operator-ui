@@ -98,11 +98,25 @@ import {
  */
 const CARD_CLASS = cn(
 	"relative overflow-hidden rounded-lg",
+	/* The card's ground is `sunken`, not the `plain` variant's `surface`
+	 * (design round 1, D1). A card sits on a row whose ground MOVES: the
+	 * timeline row hovers to `row-hover-surface` (= `surface` outside glass) and
+	 * the thread pane is `surface` with compact rows hovering to `elevated`. On
+	 * `surface` the card measured ΔE00 0.00 against the ground beside it in the
+	 * thread pane at rest and in a hovered timeline row - measured across all 59
+	 * palettes - so a third party's title and description dissolved into the
+	 * sender's own text, which is an attribution problem, not just an edge.
+	 * `sunken` is the recessed well `docs/branding.md` reserves for quoted
+	 * content, and its fleet-minimum ΔE00 against the ground beside it is 2.00
+	 * at rest and 3.96 / 6.07 over `surface` / `elevated`, so the card keeps an
+	 * edge in every state instead of none in two. Overrides the variant's
+	 * `bg-surface` through `cn`; no other `Card` consumer is affected. */
 	"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
 	"has-[:focus-visible]:outline-accent has-[:focus-visible]:-outline-offset-2",
 	"has-[:focus-visible]:after:pointer-events-none has-[:focus-visible]:after:absolute",
 	"has-[:focus-visible]:after:inset-0.5 has-[:focus-visible]:after:rounded-[calc(var(--radius-lg)-2px)]",
 	"has-[:focus-visible]:after:border has-[:focus-visible]:after:border-surface",
+	"bg-sunken",
 );
 
 const LINK_CLASS = cn(
