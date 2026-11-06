@@ -76,11 +76,6 @@ export const LINK_PREVIEW_ARTIFACT_ID = /^[0-9a-f]{32}$/;
 export const LINK_PREVIEW_RESOLVE_CHANNEL = "link-preview:resolve";
 export const LINK_PREVIEW_ARTIFACT_CHANNEL = "link-preview:artifact";
 
-/** Which artifact of a preview a card is asking for. Retained as a TYPE because
- * the card's two slots are drawn differently (a 16 px icon, a hero image) even
- * though the wire request no longer carries it: the id alone names the bytes. */
-export type LinkPreviewArtifactKind = "favicon" | "image";
-
 export interface LinkPreviewArtifact {
 	/** Core's scope-derived id: 32 hex chars, the only identifier that may cross a
 	 * log line or name a cache file — never the URL it was derived from. */
@@ -145,7 +140,7 @@ export type LinkPreviewAbsentReason =
 	 * anything, so a renderer must not show the "this link goes somewhere local"
 	 * copy for a switch the operator flipped. It is also the one reason with a
 	 * main-side side effect — see the artifact-drop rule in
-	 * `src/main/link-preview/resolve.ts`.
+	 * `ForgetIndex` (`src/main/link-preview/service.ts`).
 	 */
 	| "disabled";
 
@@ -188,7 +183,22 @@ export type LinkPreviewArtifactErrorCode =
 	| "not-found"
 	/** The request never met a valid id, or core refused a malformed one (422). */
 	| "invalid-request"
-	/** The daemon could not be reached, or answered with something unusable. */
+	/**
+	 * Core answered `409`: this artifact belongs to another account.
+	 *
+	 * Its own member rather than `io` because it is the one refusal that says the
+	 * account fence just held, and because `io` is the code a renderer retries:
+	 * retrying cannot change whose account this is. A card should render nothing
+	 * and stop asking.
+	 */
+	| "account-mismatch"
+	/** `401`/`403`: this install is not signed in as an account that may read the
+	 * id. Same class as `account-mismatch` — a retry does not help until the user
+	 * signs in — and separate from it because the remedy is different. */
+	| "unauthorized"
+	/** Nothing the card can act on: a transport failure, a 5xx, or a 404 that did
+	 * not come from core's artifact route (a desktop backend that predates it, in
+	 * which case the card is still worth keeping). */
 	| "io";
 
 /** Same envelope style as the app's existing media answers

@@ -312,3 +312,84 @@ test("core's 404 for an id this scope does not own stays a 404", async () => {
 		stub.restore();
 	}
 });
+
+test("an SVG response is refused before it can reach the renderer", async () => {
+	// Core's sniffer never emits SVG, but these bytes cross IPC as bare bytes and
+	// the sandbox headers that made them safe do not survive that hop — so the
+	// reader allowlists core's raster set rather than accepting `image/*`.
+	const stub = stubFetch(
+		() =>
+			new Response(new Uint8Array([60, 115, 118, 103]), {
+				status: 200,
+				headers: { "content-type": "image/svg+xml" },
+			}),
+	);
+	try {
+		const response = await requestDesktopMediaOutcome(
+			{
+				op: "team_bridge.link_preview.artifact",
+				id: IMAGE_ID,
+				expectedAccountId: ACCOUNT,
+			},
+			null,
+			BACKEND,
+			TOKEN,
+		);
+		assert.equal(response.response.kind, "error");
+		assert.equal(response.response.status, 422);
+	} finally {
+		stub.restore();
+	}
+});
+
+test("the two 404s are distinguishable by the body core sends", async () => {
+	const routeNotFound = stubFetch(
+		() =>
+			new Response(JSON.stringify({ detail: { code: "artifact_not_found" } }), {
+				status: 404,
+				headers: { "content-type": "application/json" },
+			}),
+	);
+	try {
+		const response = await requestDesktopMediaOutcome(
+			{
+				op: "team_bridge.link_preview.artifact",
+				id: IMAGE_ID,
+				expectedAccountId: ACCOUNT,
+			},
+			null,
+			BACKEND,
+			TOKEN,
+		);
+		assert.equal(response.response.kind, "error");
+		assert.equal(response.response.refusal?.code, "artifact_not_found");
+	} finally {
+		routeNotFound.restore();
+	}
+
+	// A desktop backend that predates the route answers the router's plain-string
+	// 404. It carries no code, which is what keeps the card alive.
+	const routerNotFound = stubFetch(
+		() =>
+			new Response(JSON.stringify({ detail: "Not Found" }), {
+				status: 404,
+				headers: { "content-type": "application/json" },
+			}),
+	);
+	try {
+		const response = await requestDesktopMediaOutcome(
+			{
+				op: "team_bridge.link_preview.artifact",
+				id: IMAGE_ID,
+				expectedAccountId: ACCOUNT,
+			},
+			null,
+			BACKEND,
+			TOKEN,
+		);
+		assert.equal(response.response.kind, "error");
+		assert.equal(response.response.refusal, undefined);
+	} finally {
+		routerNotFound.restore();
+	}
+});

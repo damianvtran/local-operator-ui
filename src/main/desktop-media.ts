@@ -22,6 +22,7 @@ import {
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
 } from "../shared/desktop-contract";
+import { LINK_PREVIEW_ARTIFACT_ID } from "../shared/link-preview";
 
 const NOTIFICATION_INITIALS = /^[\p{L}\p{N}]{0,2}$/u;
 
@@ -407,7 +408,7 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.link_preview.artifact"),
-			id: z.string().regex(/^[0-9a-f]{32}$/),
+			id: z.string().regex(LINK_PREVIEW_ARTIFACT_ID),
 			expectedAccountId: z.string().min(1).max(128),
 		})
 		.strict(),

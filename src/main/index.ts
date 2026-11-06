@@ -2783,6 +2783,33 @@ app
 				logger.info(line, LogFileType.BACKEND);
 			}
 		};
+		/*
+		 * LINK PREVIEWS' BYTE CACHE, built here because two things subscribe to it: the
+		 * proxy below, and the principal fence on the attention service. It holds
+		 * third-party image BYTES for 24 h, and a sign-out or account switch must not
+		 * leave the departing account's images on disk — so `principalChanged` clears
+		 * it, on the same fence that stops a stale unread aggregate landing after a
+		 * sign-out. A per-entry account fingerprint already stops a replayed id being
+		 * served under another receipt (see `link-preview/artifact-cache.ts`); this is
+		 * the other half: the bytes stop existing.
+		 *
+		 * WHAT MAIN DOES NOT DO HERE, because the next reader will be tempted: it does
+		 * not fetch, parse, or validate any remote document. Issues with a preview
+		 * (dial-tone page, private host, disabled feature) belong to core's routes; main
+		 * only forwards and keeps the bytes.
+		 *
+		 * OPENED IN THE BACKGROUND: `open()` ensures the directory, reads the index and
+		 * sweeps once, and until it settles every lookup is a miss and every store is a
+		 * no-op — a cold cache, not an error. Blocking the window on a directory scan to
+		 * save one image download would trade the first paint for it.
+		 */
+		const linkPreviewArtifacts = new LinkPreviewArtifactCache({
+			// The documented home: <userData>/cache/link-previews, one file per
+			// artifact id with an `index.json` beside them.
+			dir: join(app.getPath("userData"), "cache", "link-previews"),
+		});
+		void linkPreviewArtifacts.open().catch(() => {});
+
 		const appAttention = new AppAttentionService({
 			request: (input) => backendService.requestDesktop(input),
 			supportsUnreadEvents: desktopRequestSchema.safeParse({
@@ -2795,6 +2822,11 @@ app
 				// Quit/reset clears must never request Dock activation-policy repair.
 				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
 				nativeBadge.reset();
+			},
+			// Fire-and-forget: the sign-out must not wait on a directory sweep, and a
+			// clear that fails is retried by the next transition's orphan pass.
+			principalChanged: () => {
+				void linkPreviewArtifacts.clear();
 			},
 		});
 		refreshAppIconBadge = () => {
@@ -3437,26 +3469,6 @@ app
 			(m) => logger.warn(m, LogFileType.BACKEND),
 		);
 
-		/*
-		 * LINK PREVIEWS: a proxy to core's routes, plus the artifact-byte cache.
-		 *
-		 * WHAT MAIN DOES NOT DO HERE, because the next reader will be tempted: it does
-		 * not fetch, parse, or validate any remote document. Issues with a preview
-		 * (dial-tone page, private host, disabled feature) belong to core's routes; main
-		 * only forwards and, for images, keeps the bytes. See
-		 * `main/link-preview/service`.
-		 *
-		 * THE CACHE IS OPENED IN THE BACKGROUND. `open()` ensures the directory, reads the
-		 * index and sweeps once, and until it settles every lookup is a miss and every
-		 * store is a no-op — a cold cache, not an error. Blocking the window on a
-		 * directory scan to save one image download would trade the first paint for it.
-		 */
-		const linkPreviewArtifacts = new LinkPreviewArtifactCache({
-			// The documented home: <userData>/cache/link-previews, one file per
-			// artifact id with an `index.json` beside them.
-			dir: join(app.getPath("userData"), "cache", "link-previews"),
-		});
-		void linkPreviewArtifacts.open().catch(() => {});
 		const linkPreview = createLinkPreviewService({
 			transport: {
 				request: (input) => sendDesktop(input),

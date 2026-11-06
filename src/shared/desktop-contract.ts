@@ -22,6 +22,7 @@ import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
+import { LINK_PREVIEW_MAX_URL_CHARS } from "./link-preview";
 import type {
 	TeamBridgeNotificationSender,
 	TeamBridgeNotifyAuthority,
@@ -4169,7 +4170,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.link_preview.resolve"),
-			url: z.string().min(1).max(4096),
+			url: z.string().min(1).max(LINK_PREVIEW_MAX_URL_CHARS),
 			index: z.number().int().nonnegative(),
 			expectedAccountId: id,
 		})

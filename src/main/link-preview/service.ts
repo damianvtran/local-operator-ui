@@ -22,10 +22,7 @@
  * places to look when they disagree. What main keeps is `artifact-cache.ts`
  * (bytes, so an image is not re-downloaded) and the small forget-index below
  * (ids only, in memory only, so the "disabled" rule can find what to drop).
- * Neither holds a card. What main keeps is
- * `artifact-cache.ts` (bytes, so an image is not re-downloaded) and the small
- * forget-index below (ids only, in memory only, so the "disabled" rule can find
- * what to drop). Neither holds a card.
+ * Neither holds a card.
  *
  * NOTHING IN HERE EVER LOGS, THROWS OR RETURNS A URL. Invariant 2 of the old
  * module is kept because it is the one part of that design that was right: a
@@ -48,7 +45,11 @@ import {
 	type LinkPreviewResolveResult,
 } from "../../shared/link-preview";
 import type { DesktopMediaResponse } from "../desktop-media";
-import { type LinkPreviewArtifactCache, previewKeyFor } from "./artifact-cache";
+import {
+	type LinkPreviewArtifactCache,
+	artifactOwnerFingerprint,
+	previewKeyFor,
+} from "./artifact-cache";
 
 /**
  * The two transport calls, as the caller supplies them.
@@ -95,7 +96,7 @@ const ABSENT_REASONS: ReadonlySet<string> = new Set<LinkPreviewAbsentReason>([
  * plausibly still drawing. It is NOT a cache — nothing is served from it, and it
  * holds no page data at all.
  */
-const FORGET_INDEX_LIMIT = 256;
+export const FORGET_INDEX_LIMIT = 256;
 
 /**
  * The ids a preview was holding, keyed by a hash of its URL, so a later refusal
@@ -109,20 +110,29 @@ const FORGET_INDEX_LIMIT = 256;
  * picture for a preview that no longer exists. Core's refusal does not carry the
  * ids, so this app has to remember them from the answer that did.
  *
- * WHY A HASH RATHER THAN THE URL, AND WHY NOTHING IS PERSISTED. A plain URL map
- * would be a browsing record: every link the operator's correspondents sent,
+ * WHY A HASH RATHER THAN A URL, AND WHY THE ACCOUNT IS IN THE KEY. A plain URL
+ * map would be a browsing record: every link the operator's correspondents sent,
  * retained for the process's life and one crash-dump away from disk. A sha256
  * with a fixed domain prefix answers the same question ("is this the same
- * preview?") without keeping the text. The map is in memory only and dies with
- * the process; after a restart the worst case is that stale bytes stay until
- * their 24 h TTL, which is the same window core gives the card itself.
+ * preview?") without keeping the text. The ACCOUNT fingerprint is part of the key
+ * because a refusal belongs to the scope that received it: keyed by the URL
+ * alone, account B resolving the same link and then answering `disabled` dropped
+ * account A's ids and left A's bytes in place — a delete primitive across
+ * accounts, and a way to defeat the `disabled` rule (review round 1, finding 4).
+ * The map is in memory only and dies with the process; after a restart the worst
+ * case is that stale bytes stay until their 24 h TTL. It holds
+ * `FORGET_INDEX_LIMIT` previews per process, LRU.
  */
 class ForgetIndex {
 	private readonly ids = new Map<string, readonly string[]>();
 
-	record(url: string, artifactIds: readonly string[]): void {
+	record(
+		accountFingerprint: string,
+		url: string,
+		artifactIds: readonly string[],
+	): void {
 		if (artifactIds.length === 0) return;
-		const key = previewKeyFor(url);
+		const key = previewKeyFor(accountFingerprint, url);
 		// Re-insert so the Map's own order tracks recency: `keys().next()` below is
 		// then the least recently remembered preview.
 		this.ids.delete(key);
@@ -136,8 +146,8 @@ class ForgetIndex {
 
 	/** The ids this preview was holding, and forget them: one refusal per preview
 	 * needs them once, and a later resolve re-records a fresh answer. */
-	take(url: string): readonly string[] {
-		const key = previewKeyFor(url);
+	take(accountFingerprint: string, url: string): readonly string[] {
+		const key = previewKeyFor(accountFingerprint, url);
 		const held = this.ids.get(key);
 		this.ids.delete(key);
 		return held ?? [];
@@ -330,6 +340,19 @@ function envelopeResult(body: unknown): unknown {
 	return (body as { result?: unknown }).result;
 }
 
+/**
+ * The code core's own artifact refusal carries, if the reader found one.
+ *
+ * The route answers `404 {"detail":{"code":"artifact_not_found"}}`; a daemon that
+ * has no such route answers the router's `404 {"detail":"Not Found"}`, which the
+ * reader reports without a code. That difference is the only thing that tells
+ * "this id is not yours / is gone" apart from "this backend cannot serve artifacts
+ * at all", and only the first should cost the card.
+ */
+function artifactRefusalCode(answer: DesktopMediaResponse): string | undefined {
+	return answer.kind === "error" ? answer.refusal?.code : undefined;
+}
+
 /** Core's `CRUDResponse` code for a rate limit; the one status this module maps
  * to a delay rather than to a failure. */
 const RATE_LIMITED = 429;
@@ -347,6 +370,7 @@ export function createLinkPreviewService(
 			// honest answer, and it draws nothing.
 			return { kind: "absent", reason: "unsupported-scheme" };
 		const { url, index, expectedAccountId } = input;
+		const accountFingerprint = artifactOwnerFingerprint(expectedAccountId);
 		let answer: DesktopResponse;
 		try {
 			answer = await transport.request({
@@ -382,6 +406,7 @@ export function createLinkPreviewService(
 		if (mapped.kind === "ready") {
 			const preview = mapped.preview;
 			forget.record(
+				artifactOwnerFingerprint(expectedAccountId),
 				url,
 				[preview.favicon?.id, preview.image?.id].filter(
 					(candidate): candidate is string => typeof candidate === "string",
@@ -394,7 +419,7 @@ export function createLinkPreviewService(
 			// not leave drawable bytes behind), and any other absence means the card
 			// this preview had is gone; either way the ids that preview was holding
 			// must not survive it.
-			const held = forget.take(url);
+			const held = forget.take(accountFingerprint, url);
 			if (held.length > 0) await cache?.drop(held);
 		}
 		return mapped;
@@ -404,7 +429,17 @@ export function createLinkPreviewService(
 		if (!isArtifactRequest(input))
 			return { kind: "error", code: "invalid-request", status: 400 };
 		const { id, expectedAccountId } = input;
-		const cached = await cache?.read(id);
+		/*
+		 * THE RECEIPT GATES THE HIT. A cache hit answers without asking core, so the
+		 * only authority between a replayed id and another account's bytes is this
+		 * comparison: the entry carries a fingerprint of the account that stored it,
+		 * and a different receipt is a MISS that goes on to ask the daemon (which
+		 * answers 404 for a scope that does not name the id). Without this, an id
+		 * from a previous session rendered whatever it named, under any account
+		 * string (review round 1, MAJOR-1).
+		 */
+		const accountFingerprint = artifactOwnerFingerprint(expectedAccountId);
+		const cached = await cache?.read(id, accountFingerprint);
 		if (cached !== undefined && cached !== null)
 			return { kind: "bytes", data: cached.bytes, mimeType: cached.mime };
 		let answer: DesktopMediaResponse;
@@ -420,18 +455,43 @@ export function createLinkPreviewService(
 		if (answer.kind === "bytes") {
 			// Stored BEFORE it is returned, but a store failure is not a read failure:
 			// the bytes are in hand and the card can draw them either way.
-			await cache?.store(id, answer.mimeType, answer.data);
+			await cache?.store(id, answer.mimeType, answer.data, accountFingerprint);
 			return { kind: "bytes", data: answer.data, mimeType: answer.mimeType };
 		}
-		if (answer.status === 404 || answer.status === 422)
-			// Core makes "your scope does not name this id" and "the bytes are gone"
-			// deliberately indistinguishable, so there is one code for both — and this
-			// app must not try to tell them apart either.
+		/*
+		 * THE REFUSALS, by what they mean for a retry rather than by number alone.
+		 *
+		 *  - 404 with core's `{"code":"artifact_not_found"}` body: this scope does
+		 *    not name the id, or the bytes are gone. Core makes those one answer on
+		 *    purpose, so this app does not try to tell them apart either.
+		 *    A 404 WITHOUT that body is a different thing entirely: the route is not
+		 *    there (a desktop backend that predates the preview routes answers the
+		 *    router's `{"detail":"Not Found"}`). Treating that as "expired" would
+		 *    drop a card that is perfectly good, so it is reported as `io` and the
+		 *    renderer may keep the card. The two are distinguishable because only
+		 *    the route's own 404 carries a machine-readable `code`
+		 *    (review round 1, nit 5).
+		 *  - 409 is core saying this id belongs to another account. It is the one
+		 *    refusal that says the fence just held, and a retry cannot change it, so
+		 *    it gets its own non-retryable code rather than the transient `io`
+		 *    (finding 5). 401/403 are the same class: sign in as the right account.
+		 *  - 422 is a malformed id the schema let through.
+		 */
+		if (answer.status === 404)
 			return {
 				kind: "error",
-				code: answer.status === 404 ? "not-found" : "invalid-request",
+				code:
+					artifactRefusalCode(answer) === "artifact_not_found"
+						? "not-found"
+						: "io",
 				status: answer.status,
 			};
+		if (answer.status === 409)
+			return { kind: "error", code: "account-mismatch", status: 409 };
+		if (answer.status === 401 || answer.status === 403)
+			return { kind: "error", code: "unauthorized", status: answer.status };
+		if (answer.status === 422)
+			return { kind: "error", code: "invalid-request", status: 422 };
 		return { kind: "error", code: "io", status: answer.status };
 	}
 

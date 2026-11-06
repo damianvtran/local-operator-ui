@@ -14,7 +14,8 @@ import { build } from "esbuild";
  */
 const bundle = await build({
 	stdin: {
-		contents: "export * from './src/main/link-preview/service';",
+		contents:
+			"export * from './src/main/link-preview/service'; export * from './src/main/link-preview/artifact-cache';",
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -27,6 +28,9 @@ const {
 	isResolveRequest,
 	isArtifactRequest,
 	mapResolution,
+	artifactOwnerFingerprint,
+	LinkPreviewArtifactCache,
+	FORGET_INDEX_LIMIT,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -76,11 +80,15 @@ function cacheDouble(codes = {}) {
 		dropped,
 		stored,
 		cache: {
-			async read() {
-				return codes.hit ?? null;
+			// The real signature: a hit is the answer for THIS (id, receipt) pair.
+			async read(id, accountFingerprint) {
+				if (codes.hit === undefined) return null;
+				return codes.hit.accountFingerprint === accountFingerprint
+					? { mime: codes.hit.mime, bytes: codes.hit.bytes }
+					: null;
 			},
-			async store(id, mime, bytes) {
-				stored.push({ id, mime, size: bytes.byteLength });
+			async store(id, mime, bytes, accountFingerprint) {
+				stored.push({ id, mime, size: bytes.byteLength, accountFingerprint });
 			},
 			async drop(ids) {
 				dropped.push([...ids]);
@@ -344,7 +352,13 @@ test("artifact serves cached bytes without touching the transport", async () => 
 	const bytes = new Uint8Array([1, 2, 3]);
 	const { service, calls } = serviceWith(
 		{ request: [], media: [] },
-		{ hit: { mime: "image/png", bytes } },
+		{
+			hit: {
+				mime: "image/png",
+				bytes,
+				accountFingerprint: artifactOwnerFingerprint(ACCOUNT),
+			},
+		},
 	);
 	const result = await service.artifact({
 		id: IMAGE_ID,
@@ -375,7 +389,14 @@ test("artifact fetches on a miss, then stores what it was served", async () => {
 		data: bytes,
 		mimeType: "image/webp",
 	});
-	assert.deepEqual(stored, [{ id: IMAGE_ID, mime: "image/webp", size: 2 }]);
+	assert.deepEqual(stored, [
+		{
+			id: IMAGE_ID,
+			mime: "image/webp",
+			size: 2,
+			accountFingerprint: artifactOwnerFingerprint(ACCOUNT),
+		},
+	]);
 	// The account receipt travels as the request's own field, which the media
 	// transport turns into the `X-Link-Preview-Account` header.
 	assert.deepEqual(calls[0].input, {
@@ -389,7 +410,12 @@ test("artifact maps core's 404 and 422 to the coded errors the card reads", asyn
 	const { service } = serviceWith({
 		request: [],
 		media: [
-			{ status: 404, kind: "error", detail: "nope" },
+			{
+				status: 404,
+				kind: "error",
+				detail: "nope",
+				refusal: { code: "artifact_not_found" },
+			},
 			{ status: 422, kind: "error", detail: "malformed" },
 			{ status: 503, kind: "error", detail: "no daemon" },
 			new Error("transport exploded"),
@@ -505,4 +531,217 @@ test("nothing under src/main/link-preview fetches a third-party origin", async (
 			`${name} must not name a remote origin`,
 		);
 	}
+});
+
+/* ------------------------------------------------------------------------- *
+ * Remediation round 1: the account binding, driven through the REAL cache.
+ *
+ * The double above cannot prove this one — a fake that returns `codes.hit` for
+ * everything is exactly the shape whose absence of an account check MAJOR-1
+ * reported. These cases use `LinkPreviewArtifactCache` on a temp directory.
+ * ------------------------------------------------------------------------- */
+
+async function realCacheService(answers) {
+	const { mkdtemp } = await import("node:fs/promises");
+	const { tmpdir } = await import("node:os");
+	const { join } = await import("node:path");
+	const dir = await mkdtemp(join(tmpdir(), "lp-svc-"));
+	const cache = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await cache.open();
+	const { transport, calls } = transportFor(answers);
+	return {
+		dir,
+		calls,
+		cache,
+		service: createLinkPreviewService({ transport, cache }),
+	};
+}
+
+const ACCOUNT_A = "acc_01HACCOUNTA";
+const ACCOUNT_B = "acc_01HACCOUNTB";
+
+test("A's cached bytes are never served to B (MAJOR-1)", async () => {
+	const bytes = new Uint8Array([7, 7, 7]);
+	const { service, calls, cache } = await realCacheService({
+		request: [],
+		media: [
+			{ status: 200, kind: "bytes", mimeType: "image/png", data: bytes },
+			// B's turn: the real daemon answers 404 for a scope that does not name
+			// the id, which is what a miss must reach.
+			{
+				status: 404,
+				kind: "error",
+				detail: "not available",
+				refusal: { code: "artifact_not_found" },
+			},
+		],
+	});
+
+	// Account A fetches and stores it.
+	const stored = await service.artifact({
+		id: IMAGE_ID,
+		expectedAccountId: ACCOUNT_A,
+	});
+	assert.deepEqual(stored, {
+		kind: "bytes",
+		data: bytes,
+		mimeType: "image/png",
+	});
+	assert.deepEqual(cache.ids(), [IMAGE_ID]);
+
+	// Account B replays the same id. It must NOT get A's bytes: the hit is refused
+	// on the receipt and the request goes on to core, which says "not yours".
+	const foreign = await service.artifact({
+		id: IMAGE_ID,
+		expectedAccountId: ACCOUNT_B,
+	});
+	assert.deepEqual(foreign, {
+		kind: "error",
+		code: "not-found",
+		status: 404,
+	});
+	assert.equal(calls.length, 2, "the foreign read must reach the transport");
+	assert.equal(calls[1].input.expectedAccountId, ACCOUNT_B);
+
+	// A still gets its own bytes, from disk, without another call.
+	const again = await service.artifact({
+		id: IMAGE_ID,
+		expectedAccountId: ACCOUNT_A,
+	});
+	assert.deepEqual(again, {
+		kind: "bytes",
+		data: bytes,
+		mimeType: "image/png",
+	});
+	assert.equal(calls.length, 2);
+});
+
+test("artifact refusals carry a code a renderer can act on", async () => {
+	const { service } = serviceWith({
+		request: [],
+		media: [
+			{ status: 409, kind: "error", detail: "another account" },
+			{ status: 401, kind: "error", detail: "sign in" },
+			{ status: 403, kind: "error", detail: "forbidden" },
+			// The route's own 404: a machine-readable code.
+			{
+				status: 404,
+				kind: "error",
+				detail: "gone",
+				refusal: { code: "artifact_not_found" },
+			},
+			// A router 404 from a backend that has no such route: no code, so the
+			// card must survive (`io`, not `not-found`).
+			{ status: 404, kind: "error", detail: "Not Found" },
+			{ status: 500, kind: "error", detail: "boom" },
+		],
+	});
+	const request = { id: IMAGE_ID, expectedAccountId: ACCOUNT };
+	assert.deepEqual(await service.artifact(request), {
+		kind: "error",
+		code: "account-mismatch",
+		status: 409,
+	});
+	assert.deepEqual(await service.artifact(request), {
+		kind: "error",
+		code: "unauthorized",
+		status: 401,
+	});
+	assert.deepEqual(await service.artifact(request), {
+		kind: "error",
+		code: "unauthorized",
+		status: 403,
+	});
+	assert.deepEqual(await service.artifact(request), {
+		kind: "error",
+		code: "not-found",
+		status: 404,
+	});
+	assert.deepEqual(await service.artifact(request), {
+		kind: "error",
+		code: "io",
+		status: 404,
+	});
+	assert.deepEqual(await service.artifact(request), {
+		kind: "error",
+		code: "io",
+		status: 500,
+	});
+});
+
+test("the forget map is keyed by account, so one account's refusal cannot drop another's ids", async () => {
+	const ids = (prefix) => ({
+		status: 200,
+		body: {
+			result: {
+				kind: "ready",
+				preview: {
+					url: REQUEST_URL,
+					image: { id: `${prefix}`.repeat(32).slice(0, 32), mime: "image/png" },
+				},
+			},
+		},
+	});
+	const { service, dropped } = serviceWith({
+		request: [
+			ids("a"),
+			ids("b"),
+			{ status: 200, body: { result: { kind: "absent", reason: "disabled" } } },
+		],
+		media: [],
+	});
+	const asA = { url: REQUEST_URL, index: 0, expectedAccountId: ACCOUNT_A };
+	const asB = { url: REQUEST_URL, index: 0, expectedAccountId: ACCOUNT_B };
+	await service.resolve(asA);
+	await service.resolve(asB);
+	// A's own refusal must drop A's ids, and only A's.
+	await service.resolve(asA);
+	assert.deepEqual(dropped, [["a".repeat(32)]]);
+});
+
+test("the forget map is bounded, and the oldest preview is forgotten first", async () => {
+	const ready = () => ({
+		status: 200,
+		body: {
+			result: {
+				kind: "ready",
+				preview: {
+					url: REQUEST_URL,
+					image: { id: IMAGE_ID, mime: "image/png" },
+				},
+			},
+		},
+	});
+	const urls = Array.from(
+		{ length: FORGET_INDEX_LIMIT + 1 },
+		(_, index) => `${REQUEST_URL}&n=${index}`,
+	);
+	const { service, dropped } = serviceWith({
+		request: [
+			...urls.map(() => ready()),
+			// A refusal for the OLDEST preview: its record has been evicted, so there
+			// is nothing to drop — the bound is real, not aspirational.
+			{
+				status: 200,
+				body: { result: { kind: "absent", reason: "disabled" } },
+			},
+			// A refusal for the newest still finds its ids.
+			{
+				status: 200,
+				body: { result: { kind: "absent", reason: "disabled" } },
+			},
+		],
+		media: [],
+	});
+	for (const url of urls) {
+		await service.resolve({ url, index: 0, expectedAccountId: ACCOUNT });
+	}
+	await service.resolve({ url: urls[0], index: 0, expectedAccountId: ACCOUNT });
+	assert.deepEqual(dropped, []);
+	await service.resolve({
+		url: urls[urls.length - 1],
+		index: 0,
+		expectedAccountId: ACCOUNT,
+	});
+	assert.deepEqual(dropped, [[IMAGE_ID]]);
 });
