@@ -1234,17 +1234,21 @@ job.** At the shipped 80 % about 2 % of the desktop reaches the eye through the
 Notifications band against about 38 % through the page beside it (the band's own
 rect carries alpha 0.980 dark / 0.976 light in the frames), and its step off that
 page runs from 1.11:1 over a dark desktop to 2.56:1 over a bright one
-(`docs/pr-evidence/notifications-glass/`). That step is the point: a header that let
-the desktop through as freely as the page beside it would stop reading as a header.
+(`docs/pr-evidence/notifications-glass/`), both ends read off the fixed-wallpaper
+composite - 1.11:1 in PR #1714's round-1 design review, 2.56:1 in its round 2. That
+step is the point: a header that let the desktop through as freely as the page
+beside it would stop reading as a header.
 The floor above is derived against the MEDIA hazard - a bare white or black under
 the band, the worst a material can put there. A notification row is the TEXT-ROW
 hazard instead: what passes under the band is text, not a photograph of a desktop,
 and measured under the band's own blur it puts the same three inks at 0.63 dark /
-0.32 light. Those are the numbers a see-through header would buy, and they are why
-it is not shipped. At 0.63 dark the desktop share rises to about 14 % - the band's
-own 37 % over the ~38 % the page already leaves open - so the header stops covering
-the thing it exists to cover. At 0.32 light the band's step against the page
-collapses toward 1.0 and the header stops reading as a header at all - a worse
+0.32 light - the same round-2 design review blurred a real row at the band's own
+radius, took the brightest pixel (`#7b7a73` dark / `#aba69e` light) and solved the
+floor against it. Those are the numbers a see-through header would buy, and they
+are why it is not shipped. At 0.63 dark the desktop share rises to about 14 % - the
+band's own 37 % over the ~38 % the page already leaves open - so the header stops
+covering the thing it exists to cover. At 0.32 light the band's step against the
+page collapses toward 1.0 and the header stops reading as a header at all - a worse
 defect than the isolation it was trying to avoid. Anyone who wants a see-through
 header has to beat that measurement first, and then add a surface-class opt-in to
 the derivation plus a `CONTROLS`/contract row rather than hand-picking a number.
