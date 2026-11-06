@@ -110,6 +110,9 @@ const BUTTON_MARKUP = /<button[\s\S]*?<\/button>/;
 const NOWRAP_RUN = /<span class="whitespace-nowrap">([\s\S]*?)<\/span><\/li>/;
 const NOWRAP_ANY = /whitespace-nowrap/;
 const BOUND_PERIOD = /^\. <button/;
+const BOUND_CJK_FULL_STOP = /^。<button/;
+const BOUND_DANDA = /^। <button/;
+const BOUND_URDU_STOP = /^۔ <button/;
 const BOUND_ELLIPSIS = /<span class="whitespace-nowrap">… <button/;
 const BUTTON_TAIL = /<button[\s\S]*$/;
 const HINDI_GRAPHEMES = new Intl.Segmenter("hi", { granularity: "grapheme" });
@@ -625,6 +628,31 @@ test("the info glyph is bound to the sentence's last character, never alone (D2 
 		render([entry({ state: "held", hold_class: "delivery_pending" })]),
 		NOWRAP_ANY,
 	);
+});
+
+test("a CJK full stop ends flush against the glyph, and only CJK does (D2 on #1666)", () => {
+	const nowrap = (html) => html.match(NOWRAP_RUN)?.[1];
+	/*
+	 * `。` carries its own trailing side bearing inside the em box, so the
+	 * joining space the Latin sentence needs doubled the gap between the
+	 * sentence and the glyph. Both readings are asserted: zh-CN loses the
+	 * space, and the two other sentence-final marks that are NOT CJK (the
+	 * Devanagari danda and the Urdu full stop) keep it - a rule that dropped
+	 * the space for every non-Latin script would break those two.
+	 */
+	try {
+		setLocale("zh-CN");
+		const zh = nowrap(render([entry()])) ?? "";
+		assert.match(zh, BOUND_CJK_FULL_STOP, zh);
+		setLocale("hi");
+		const hi = nowrap(render([entry()])) ?? "";
+		assert.match(hi, BOUND_DANDA, hi);
+		setLocale("ur");
+		const ur = nowrap(render([entry()])) ?? "";
+		assert.match(ur, BOUND_URDU_STOP, ur);
+	} finally {
+		setLocale("en");
+	}
 });
 
 test("an unnamed recipient takes the delivery-scoped in-sentence form, not the rail label", () => {

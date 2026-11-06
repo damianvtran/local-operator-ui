@@ -195,6 +195,13 @@ export const AgentMixedPartialDelivery: Story = {
  * sentence's final word, never alone on a continuation line. Pin a locale with
  * `?args=locale:ru` (the locale D2 was found in) and nudge `width` to move the
  * break; the glyph travels with the last word at every width.
+ *
+ * AN RTL LOCALE IS ACTUALLY RTL HERE ONLY BECAUSE THE PREVIEW WRITES IT
+ * (design review D1 on #1666): `LocaleFrame` in `.storybook/preview.tsx` calls
+ * the app's own `applyDocumentDirection` for the pinned locale, so
+ * `?args=locale:ur` measures `direction: rtl` on `html` and on the rows and the
+ * glyph lands at the inline END. Before that, this story's ur frames were Urdu
+ * text laid out LTR while the evidence text claimed otherwise.
  */
 export const NarrowWrappedLines: Story = {
 	args: {
