@@ -138,6 +138,8 @@ function page() {
 <button id="copy-without-gesture">Copy later</button>
 <button id="copy-after-window">Copy in 3s</button>
 <button id="frame-probe">Ask the frame to copy</button>
+<button id="forge-binding">Drive the binding directly</button>
+<p id="forge-result">idle</p>
 <a id="navigate" href="/next">next page</a>
 <iframe id="same-site-frame" src="/frame"></iframe>
 <p id="shim">unknown</p>
@@ -196,6 +198,22 @@ function page() {
       );
     });
   } else {
+    // THE REVIEWER'S E1 PROBE, as a standing row: a page that calls the injected
+    // binding straight, with no gesture and no click of its own. The host decides, so
+    // this must NOT reach the clipboard — the clipboard is checked by fingerprint,
+    // not by what the page says about it. The separator is built with
+    // String.fromCharCode(10) rather than an escape, because this source lives
+    // inside a template literal and an escape would be evaluated out of it.
+    document.getElementById("forge-binding").addEventListener("click", function () {
+      try {
+        window.__localOperatorClipboardWrite(
+          900001 + String.fromCharCode(10) + "HOSTILE-PAGE-DROVE-THE-BINDING"
+        );
+        report("forge-result", "called");
+      } catch (error) {
+        report("forge-result", "threw:" + (error && error.name));
+      }
+    });
     document.getElementById("frame-probe").addEventListener("click", function () {
       document.getElementById("same-site-frame").contentWindow.postMessage("write", "*");
     });
@@ -205,6 +223,29 @@ function page() {
       report("frame-result", event.data);
     }
   });
+  // Two probes run with NO user gesture and NO click, in a document of their own, so
+  // nothing but the host gate can admit them:
+  //   ?forge - the page drives the injected binding directly (the review's E1 probe);
+  //   ?frame - the child frame writes with no activation of its own.
+  if (location.search.indexOf("forge") !== -1) {
+    setTimeout(function () {
+      try {
+        window.__localOperatorClipboardWrite(
+          900001 + String.fromCharCode(10) + "HOSTILE-PAGE-DROVE-THE-BINDING"
+        );
+        report("forge-result", "called");
+      } catch (error) {
+        report("forge-result", "threw:" + (error && error.name));
+      }
+    }, 300);
+  }
+  if (location.search.indexOf("frame") !== -1) {
+    setTimeout(function () {
+      document
+        .getElementById("same-site-frame")
+        .contentWindow.postMessage("write", "*");
+    }, 300);
+  }
   attempt("load");
 </script>
 </body></html>`;
@@ -581,6 +622,33 @@ async function main() {
 		`read #result -> ${JSON.stringify(clicked.text)} · pbpaste sha256[0..16] = ${sha16(landedByPage)} · expected ${sha16(TOKEN)}`,
 	);
 
+	// --- R1-5: the page drives the binding itself ------------------------
+	// In a document of its OWN, opened fresh and never clicked: the whole failure
+	// class this row exists for is a page with no gesture being admitted, so a tab
+	// that has had a real click in it cannot test it (Chromium keeps that activation
+	// live for a few seconds, and admitting the write then would be correct).
+	await pbcopy("clipboard-proof-canary");
+	const forgeOpen = await rpcOk(state, "open", {
+		url: `${origin}/?forge`,
+		requester: "session:clipboard-proof",
+	});
+	const forgeResult = await pollRead(
+		state,
+		forgeOpen.tab,
+		"#forge-result",
+		"idle",
+		24,
+	);
+	await new Promise((resolve) => setTimeout(resolve, 300));
+	const forgeLanded = pbpaste();
+	check(
+		"(R1-5) a page calling the injected binding directly, with no gesture, is REFUSED by the host",
+		forgeLanded === "clipboard-proof-canary" &&
+			!forgeLanded.includes("HOSTILE-PAGE-DROVE-THE-BINDING") &&
+			String(forgeResult.text ?? "") === "called",
+		`page says ${JSON.stringify(forgeResult.text)} · pbpaste -> ${forgeLanded === "clipboard-proof-canary" ? "unchanged (canary)" : "CHANGED"} · sha256[0..16] ${sha16(forgeLanded)}`,
+	);
+
 	// --- (a2) the AGENT path: the host's own click ------------------------
 	// The host's `click` dispatches in-page, so it carries no user activation. It
 	// mints a single-use arm before the dispatch (see `armHostClipboardWrite`), which
@@ -655,16 +723,23 @@ async function main() {
 	);
 
 	// --- (c) a same-process child frame ------------------------------------
-	await rpcOk(state, "click", { tab: firstTab, selector: "#frame-probe" });
+	// ALSO in a fresh, never-clicked document: a child frame must be judged on ITS
+	// OWN activation, so a tab where the top frame has just been clicked cannot tell
+	// "verified per frame" from "borrowed the parent's".
+	const frameOpen = await rpcOk(state, "open", {
+		url: `${origin}/?frame`,
+		requester: "session:clipboard-proof",
+	});
 	const frameAttempt = await pollRead(
 		state,
-		firstTab,
+		frameOpen.tab,
 		"#frame-result",
 		"idle",
 		24,
 	);
-	info(
-		"(c) a same-process child frame's writeText (reported, not gated; OOPIFs are not covered)",
+	check(
+		"(c) a child frame's write is refused: main-frame-only, because its activation reading is not trustworthy",
+		String(frameAttempt.text ?? "").startsWith("frame:refused:NotAllowedError"),
 		`read #frame-result -> ${JSON.stringify(frameAttempt.text)}`,
 	);
 

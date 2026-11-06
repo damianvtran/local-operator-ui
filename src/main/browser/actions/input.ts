@@ -637,22 +637,23 @@ export async function click(
 	 * The dispatch below happens IN THE PAGE, which carries no user activation, so a
 	 * page's Copy button clicked by an agent took the native refusal path and showed
 	 * "Unable to copy to clipboard" — the operator's own symptom, on the agent's
-	 * route. The arm is host-minted, nonce-carrying, single-use and cleared in this
-	 * call's own `finally`; what it grants is one clipboard WRITE inside the same
-	 * window a real click gives a page, never a read (`actions/clipboard-shim.ts`
-	 * states it at the mechanism). A view with no shim answers false and the click
-	 * behaves exactly as it did before.
+	 * route. The arm lives in MAIN memory (`{frameId, expiresAt}`, host clock), so
+	 * there is nothing in the page to read, freeze or forge; it is single-use and
+	 * cleared in this call's own `finally`. What it grants is one clipboard WRITE
+	 * inside the window a real click gives a page, never a read
+	 * (`actions/clipboard-shim.ts` states it at the mechanism). A view with no shim
+	 * is simply not armed, and the click behaves exactly as it did before.
 	 */
 	// The node lives in the PAGE's own session (the top document, or a same-site frame
 	// whose document is in-process). A node in a child SESSION is an OOPIF, whose
 	// clipboard write the shim does not reach — so it is not armed, and the click
 	// behaves as it always did.
 	const armableTarget = node.sessionId === undefined;
-	if (armableTarget) {
-		await armHostClipboardWrite(ctx.cdp, contents, contents.id, {
-			objectId: node.objectId,
-		});
-	}
+	// The frame the click actually resolved in: an in-process child frame has its own
+	// id here, the top document has none (`undefined` ⇒ the view's main frame). The
+	// arm admits ONE write for THAT frame only, because an arm for "any frame" would
+	// be the borrowed activation the per-frame rule exists to forbid.
+	if (armableTarget) armHostClipboardWrite(contents.id, node.frame?.frameId);
 	try {
 		// In a frame the click runs in the frame's own session: the function reads
 		// `getBoundingClientRect` and dispatches in-page, so its coordinates are
@@ -666,11 +667,7 @@ export async function click(
 	} finally {
 		// Cleared on the click's OWN completion path, so nothing the page scheduled
 		// for later rides a window this call justified.
-		if (armableTarget) {
-			void clearHostClipboardArm(ctx.cdp, contents, contents.id, {
-				objectId: node.objectId,
-			});
-		}
+		if (armableTarget) clearHostClipboardArm(contents.id);
 		contents.removeListener("did-start-navigation", onStart);
 	}
 	if (navigationSeen) {

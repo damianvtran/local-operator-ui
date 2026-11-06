@@ -59,11 +59,9 @@ const mod = await import(
 const {
 	installBrowserSessionHandlers,
 	clipboardShimSource,
-	CLIPBOARD_ARM,
+	CLIPBOARD_SENTINEL,
 	installClipboardShim,
 	armHostClipboardWrite,
-	clearHostClipboardArm,
-	CLIPBOARD_ARM_WINDOW_MS,
 	CLIPBOARD_BINDING,
 	CLIPBOARD_ACK,
 	CLIPBOARD_SHIM_MAX_BYTES,
@@ -168,19 +166,21 @@ test("an unknown WebContents and a startup probe are reported, not judged", () =
 	assert.equal(seen[1].granted, false);
 });
 
-// ---- the page write -------------------------------------------------------
+// ---- the page write: a dumb transport, and a host that decides -------------
 
 const TOKEN = "SYNTHETIC-token-clipboard-shim-NOT-A-CREDENTIAL";
-const NONCE = "nonce-fixture-0123456789abcdef";
 
 /**
  * A document with the shipped shim installed into it.
  *
- * `gesture` is what Chromium's own `navigator.userActivation.isActive` would
- * answer; the shim captures the getter at document start, so the fixture has to
- * provide it BEFORE the source runs — exactly the order a real page has.
+ * The shim holds NO credential and judges NOTHING, so this fixture provides no
+ * nonce and no gesture input: it provides the binding the host injects, and the
+ * ack the host calls. Whether a write HAPPENS is decided by the host gate, which
+ * the tests below drive separately — that split is the whole point of the
+ * redesign, so a fixture that could answer it here would be testing the old
+ * design.
  */
-function shimWindow({ gesture = true, clipboardApi = true } = {}) {
+function shimWindow({ clipboardApi = true } = {}) {
 	const dom = new JSDOM("<!doctype html><body></body>", {
 		runScripts: "outside-only",
 	});
@@ -188,10 +188,6 @@ function shimWindow({ gesture = true, clipboardApi = true } = {}) {
 	const sent = [];
 	win[CLIPBOARD_BINDING] = (payload) => sent.push(payload);
 	const native = { writes: 0 };
-	Object.defineProperty(win.Navigator.prototype, "userActivation", {
-		get: () => ({ isActive: gesture }),
-		configurable: true,
-	});
 	Object.defineProperty(win.navigator, "permissions", {
 		value: {
 			query: (descriptor) =>
@@ -216,32 +212,30 @@ function shimWindow({ gesture = true, clipboardApi = true } = {}) {
 			configurable: true,
 		});
 	}
-	win.eval(clipboardShimSource(NONCE));
+	win.eval(clipboardShimSource());
 	return {
 		dom,
 		win,
 		sent,
 		native,
-		/** Answer the write the way the host does, from the binding event. */
-		ack: (id, ok) => win[CLIPBOARD_ACK](NONCE, id, ok),
-		/** Mint an arm the way the HOST does, through the same global. */
-		arm: (ms = CLIPBOARD_ARM_WINDOW_MS) => win[CLIPBOARD_ARM](NONCE, ms),
-		payloads: () => sent.map((raw) => JSON.parse(payloadText(raw))),
+		/** Settle the write the way the HOST does, from the binding event. */
+		ack: (id, ok) => win[CLIPBOARD_ACK](id, ok),
+		/** The ids the page has asked the host about, in order. */
+		ids: () => sent.map((raw) => Number(String(raw).split("\n")[0])),
+		/** The text the page handed the host, per call. */
+		texts: () =>
+			sent.map((raw) => String(raw).slice(String(raw).indexOf("\n") + 1)),
 	};
 }
 
-/** CDP's binding payload is one string: the JSON the shim serialised. */
-const payloadText = (raw) => (typeof raw === "string" ? raw : String(raw));
-
-test("the shipped shim writes through the host and resolves only on its ack", async () => {
+test("the shim carries (id, text) to the binding and settles only on the host's ack", async () => {
 	const f = shimWindow();
 	const pending = f.win.navigator.clipboard.writeText(TOKEN);
 	assert.equal(f.sent.length, 1, "the write reached the host binding");
-	const [payload] = f.payloads();
-	assert.equal(payload.nonce, NONCE, "the per-tab nonce is the credential");
-	assert.equal(payload.text, TOKEN, "the binding carries the page's text");
-	assert.equal(typeof payload.id, "number");
-	f.ack(payload.id, true);
+	assert.deepEqual(f.texts(), [TOKEN], "the binding carries the page's text");
+	assert.equal(typeof f.ids()[0], "number");
+	const id = f.ids()[0];
+	f.ack(id, true);
 	await pending;
 	assert.equal(
 		f.native.writes,
@@ -251,151 +245,93 @@ test("the shipped shim writes through the host and resolves only on its ack", as
 	f.dom.window.close();
 });
 
-test("a refused host write rejects the page's promise with NotAllowedError", async () => {
+test("the shim holds NO credential: nothing page-readable identifies it", () => {
 	const f = shimWindow();
+	// The globals a page can ENUMERATE and read: the binding the host injected (an
+	// injected binding is page-callable by construction) and the ack. Neither is a
+	// credential — the ack only settles the page's own promise, and the binding call
+	// is judged by the host.
+	const published = Object.keys(f.win).filter((key) =>
+		key.startsWith("__localOperatorClipboard"),
+	);
+	assert.deepEqual(
+		published.sort(),
+		[CLIPBOARD_ACK, CLIPBOARD_BINDING].sort(),
+		"the binding and an ack — no nonce, no arm handle",
+	);
+	// The sentinel exists but is NOT enumerable, so a page that walks the globalThis
+	// keys does not even learn the program is installed.
+	assert.equal(f.win[CLIPBOARD_SENTINEL], true);
+	assert.equal(
+		Object.getOwnPropertyDescriptor(f.win, CLIPBOARD_SENTINEL).enumerable,
+		false,
+		"the sentinel is not discoverable by key enumeration",
+	);
+	f.dom.window.close();
+});
+
+test("the sentinel is non-writable and non-configurable, so a page cannot force a re-install", () => {
+	const f = shimWindow();
+	const descriptor = Object.getOwnPropertyDescriptor(f.win, CLIPBOARD_SENTINEL);
+	assert.deepEqual(
+		{ writable: descriptor.writable, configurable: descriptor.configurable },
+		{ writable: false, configurable: false },
+	);
+	// A page trying to clear it fails, in both the sloppy and the strict spelling a
+	// real page would use.
+	assert.throws(() => {
+		Object.defineProperty(f.win, CLIPBOARD_SENTINEL, { value: false });
+	});
+	const second = f.win.navigator.clipboard.writeText;
+	f.win.eval(clipboardShimSource());
+	assert.equal(
+		f.win.navigator.clipboard.writeText,
+		second,
+		"a second install is a no-op (no wrapper around a wrapper)",
+	);
+	f.dom.window.close();
+});
+
+test("the shim judges no gesture: it forwards a write that the HOST then refuses", async () => {
+	const f = shimWindow();
+	// No userActivation at all in this world — and the write still reaches the host,
+	// because deciding is the host's job. A gate here would be a page-patchable
+	// control, which is exactly what review round 1 refused.
+	Object.defineProperty(f.win.Navigator.prototype, "userActivation", {
+		get: () => ({ isActive: false }),
+		configurable: true,
+	});
 	const pending = f.win.navigator.clipboard.writeText(TOKEN);
-	const [payload] = f.payloads();
-	f.ack(payload.id, false);
+	assert.equal(f.sent.length, 1);
+	const id = f.ids()[0];
+	f.ack(id, false);
 	await assert.rejects(
 		pending,
 		(error) =>
-			error.name === "NotAllowedError" &&
-			// The page must never be handed the text it already had, and must never be
-			// told something that is not true about the clipboard.
-			!/SYNTHETIC/.test(error.message),
-	);
-	f.dom.window.close();
-});
-
-test("an ack for the wrong nonce, or no ack at all, never resolves the page", async () => {
-	const f = shimWindow();
-	const pending = f.win.navigator.clipboard.writeText(TOKEN);
-	const [payload] = f.payloads();
-	// A page calling the ack itself with the wrong credential (or with none) must not
-	// be able to confirm its own write.
-	f.win[CLIPBOARD_ACK]("not-the-nonce", payload.id, true);
-	await assert.rejects(
-		pending,
-		(error) => error.name === "NotAllowedError",
-		"with no valid ack the write times out and rejects",
-	);
-	f.dom.window.close();
-});
-
-test("no user gesture rejects and never reaches the host", async () => {
-	const f = shimWindow({ gesture: false });
-	await assert.rejects(
-		f.win.navigator.clipboard.writeText(TOKEN),
-		(error) => error.name === "NotAllowedError",
-	);
-	assert.deepEqual(f.sent, [], "a drive-by write does not reach the binding");
-	f.dom.window.close();
-});
-
-test("a host arm lets ONE write through, and is consumed by it", async () => {
-	const f = shimWindow({ gesture: false });
-	assert.equal(f.arm(), true, "the host's arm is accepted");
-	const first = f.win.navigator.clipboard.writeText(TOKEN);
-	assert.equal(f.sent.length, 1, "the armed write reaches the host binding");
-	const [payload] = f.payloads();
-	f.ack(payload.id, true);
-	await first;
-	// Consumed: the same page, a moment later, with no fresh click and no gesture.
-	await assert.rejects(
-		f.win.navigator.clipboard.writeText(TOKEN),
-		(error) => error.name === "NotAllowedError",
-		"an arm is single-use, so one click cannot authorize a second copy",
-	);
-	assert.equal(f.sent.length, 1);
-	f.dom.window.close();
-});
-
-test("an arm expires, and a wrong nonce mints nothing", async () => {
-	const f = shimWindow({ gesture: false });
-	assert.equal(
-		f.win[CLIPBOARD_ARM]("not-the-nonce", 5_000),
-		false,
-		"a page cannot mint an arm for itself",
-	);
-	assert.equal(f.arm(0), false, "clearing is not arming");
-	assert.equal(f.arm(40), true);
-	await new Promise((resolve) => setTimeout(resolve, 80));
-	await assert.rejects(
-		f.win.navigator.clipboard.writeText(TOKEN),
-		(error) => error.name === "NotAllowedError",
-		"an expired arm authorizes nothing",
-	);
-	assert.deepEqual(f.sent, []);
-	f.dom.window.close();
-});
-
-test("the host mints the arm through the page global, nonce as an argument", async () => {
-	// A fake pool: the point is the CALL the host makes, not a browser. The install
-	// runs first because the arm has to name the nonce of the shim actually
-	// installed — a stale or absent nonce answers false, which is the safe failure.
-	const calls = [];
-	const cdp = {
-		send: async (contents, method, params) => {
-			calls.push({ method, params });
-			return { result: { value: true } };
-		},
-		subscribe: () => () => undefined,
-	};
-	const contents = { id: 1, isDestroyed: () => false };
-	await installClipboardShim(cdp, contents, 77);
-	calls.length = 0;
-	const armed = await armHostClipboardWrite(cdp, contents, 77, {
-		objectId: "object-1",
-	});
-	assert.equal(armed, true);
-	const [call] = calls;
-	assert.equal(call.method, "Runtime.callFunctionOn");
-	assert.equal(call.params.objectId, "object-1");
-	assert.deepEqual(
-		call.params.arguments.map((entry) => entry.value).slice(0, 1),
-		[CLIPBOARD_ARM],
-	);
-	// The nonce and the window ride as ARGUMENTS, so no page can read them out of
-	// any injected source text.
-	assert.equal(
-		call.params.arguments.length,
-		3,
-		"name, nonce and window are all arguments",
+			error.name === "NotAllowedError" && !/SYNTHETIC/.test(error.message),
 	);
 	assert.equal(
-		JSON.stringify(call.params.functionDeclaration).includes("nonce-fixture"),
-		false,
-	);
-	await clearHostClipboardArm(cdp, contents, 77, { objectId: "object-1" });
-	assert.equal(
-		calls[1].params.arguments[2].value,
+		f.native.writes,
 		0,
-		"clearing is the same call with a zero window",
+		"the refusal never fell back to the native path",
 	);
-	// An unknown view has no shim, so nothing is armed and the click keeps the
-	// behaviour it had before this feature.
-	assert.equal(
-		await armHostClipboardWrite(cdp, contents, 999, { objectId: "object-1" }),
-		false,
-	);
+	f.dom.window.close();
 });
 
-test("an oversized write rejects rather than truncating silently", async () => {
+test("an oversized write rejects in the page and never reaches the host", async () => {
 	const f = shimWindow();
-	const huge = "x".repeat(CLIPBOARD_SHIM_MAX_BYTES + 1);
 	await assert.rejects(
-		f.win.navigator.clipboard.writeText(huge),
+		f.win.navigator.clipboard.writeText(
+			"x".repeat(CLIPBOARD_SHIM_MAX_BYTES + 1),
+		),
 		(error) => error.name === "QuotaExceededError",
 	);
 	assert.deepEqual(f.sent, []);
-	// And the boundary itself is allowed, or the cap would be off by one.
-	const atLimit = f.win.navigator.clipboard.writeText(
+	// The boundary itself is allowed, or the cap would be off by one.
+	void f.win.navigator.clipboard.writeText(
 		"x".repeat(CLIPBOARD_SHIM_MAX_BYTES),
 	);
 	assert.equal(f.sent.length, 1);
-	const [payload] = f.payloads();
-	f.ack(payload.id, true);
-	await atLimit;
 	f.dom.window.close();
 });
 
@@ -409,11 +345,10 @@ test("write() serves a text/plain ClipboardItem and falls through for anything e
 	// `write()` reads the item's blob first, so the binding call is a microtask
 	// behind the call itself.
 	await new Promise((resolve) => setTimeout(resolve, 20));
-	const [payload] = f.payloads();
-	assert.equal(payload.text, TOKEN);
-	f.ack(payload.id, true);
+	assert.deepEqual(f.texts(), [TOKEN]);
+	f.ack(f.ids()[0], true);
 	await pending;
-	// An image item is NOT this host's business: it goes to the native path, which
+	// An image item is NOT this host's business: it takes the native path, which
 	// fails exactly as it did before this change.
 	const png = { types: ["image/png"], getType: () => Promise.resolve({}) };
 	await f.win.navigator.clipboard.write([png]).catch(() => undefined);
@@ -447,10 +382,274 @@ test("a document with no clipboard API is left completely alone", () => {
 	const dom = new JSDOM("<!doctype html><body></body>", {
 		runScripts: "outside-only",
 	});
-	// No throw, no globals: the shim is inert where the API it patches is absent.
-	dom.window.eval(clipboardShimSource(NONCE));
-	assert.equal(dom.window.navigator.clipboard, undefined);
+	dom.window.eval(clipboardShimSource());
+	assert.equal(dom.window[CLIPBOARD_SENTINEL], undefined, "no sentinel either");
 	dom.window.close();
+});
+
+// ---- the HOST gate: the only authority ------------------------------------
+
+/**
+ * A CDP pool that answers the shipped install and then feeds it the events a real
+ * renderer would.
+ *
+ * `activation` is what the ISOLATED world answers for
+ * `navigator.userActivation.isActive`; a MAIN-world evaluate (which page script
+ * could patch) answers `pageWorldActivation` instead, so a test can prove the host
+ * never consults the patchable one.
+ */
+function hostFixture({
+	activation = false,
+	pageWorldActivation = false,
+	mainFrameId = "FRAME-MAIN",
+} = {}) {
+	const calls = [];
+	let listener = null;
+	let isolatedSeq = 900;
+	let isolatedContextId;
+	const cdp = {
+		send: async (_contents, method, params = {}) => {
+			calls.push({ method, params });
+			if (method === "Page.createIsolatedWorld") {
+				isolatedContextId = ++isolatedSeq;
+				return { executionContextId: isolatedContextId };
+			}
+			if (method === "Page.getFrameTree") {
+				return { frameTree: { frame: { id: mainFrameId } } };
+			}
+			if (method === "Runtime.evaluate") {
+				if (String(params.expression).includes("userActivation")) {
+					// The isolated reading is the one that counts; a probe in any other
+					// context is the page's own (patchable) answer.
+					const value =
+						params.contextId === isolatedContextId
+							? activation
+							: pageWorldActivation;
+					return { result: { value } };
+				}
+				return { result: { value: undefined } };
+			}
+			return {};
+		},
+		subscribe: (_id, handler) => {
+			listener = handler;
+			return () => {
+				listener = null;
+			};
+		},
+	};
+	const emit = (method, params) => listener?.(method, params);
+	return {
+		cdp,
+		calls,
+		emit,
+		/** Create a document's default context the way a renderer does. */
+		context: (id, frameId = mainFrameId) =>
+			emit("Runtime.executionContextCreated", {
+				context: { id, auxData: { frameId, isDefault: true } },
+			}),
+		/** The page calling the binding directly, with no page-side ceremony. */
+		bindingCall: (contextId, payload) =>
+			emit("Runtime.bindingCalled", {
+				name: CLIPBOARD_BINDING,
+				payload,
+				executionContextId: contextId,
+			}),
+		// The ack CALLS only: the install expression also mentions the ack's name (it
+		// is in the config the program reads), so a substring match would count the
+		// install itself as an ack.
+		acks: () =>
+			calls
+				.filter(
+					(call) =>
+						call.method === "Runtime.evaluate" &&
+						ACK_CALL.test(String(call.params.expression)),
+				)
+				.map((call) => String(call.params.expression)),
+	};
+}
+
+/** One ack, as the host evaluates it. Module scope: the linter's top-level-regex
+ * rule, and there is no reason to compile it per call. */
+/** The activation probe itself, exactly (the install source also MENTIONS
+ * `userActivation` in a comment, so a substring match finds the wrong call). */
+const ACTIVATION_PROBE = /^navigator\.userActivation\.isActive === true$/;
+
+const ACK_CALL = new RegExp(`^${CLIPBOARD_ACK}\\(\\d+, (true|false)\\)$`);
+
+const settleHost = () => new Promise((resolve) => setTimeout(resolve, 30));
+
+async function installedHost(options) {
+	const fixture = hostFixture(options);
+	const contents = { id: 1, isDestroyed: () => false };
+	await installClipboardShim(fixture.cdp, contents, 77);
+	fixture.context(7);
+	await settleHost();
+	return { ...fixture, contents };
+}
+
+test("HOST GATE (a): a direct binding call with no activation and no arm is refused", async () => {
+	clipboard.text = "untouched";
+	const host = await installedHost({ activation: false });
+	host.bindingCall(7, `1\n${TOKEN}`);
+	await settleHost();
+	assert.equal(
+		clipboard.text,
+		"untouched",
+		"the binding call must never reach the OS clipboard",
+	);
+	assert.deepEqual(host.acks(), [`${CLIPBOARD_ACK}(1, false)`]);
+});
+
+test("HOST GATE (b): an arm past its window is refused, because the HOST owns the clock", async () => {
+	clipboard.text = "untouched";
+	const host = await installedHost({ activation: false });
+	assert.equal(
+		armHostClipboardWrite(77, undefined, 10),
+		true,
+		"the main frame is armed for ten milliseconds",
+	);
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	host.bindingCall(7, `1\n${TOKEN}`);
+	await settleHost();
+	assert.equal(clipboard.text, "untouched", "an expired arm admits nothing");
+	assert.deepEqual(host.acks(), [`${CLIPBOARD_ACK}(1, false)`]);
+});
+
+test("HOST GATE: a live arm admits exactly ONE write, in its own frame", async () => {
+	clipboard.text = "";
+	const host = await installedHost({ activation: false });
+	armHostClipboardWrite(77);
+	host.bindingCall(7, `1\n${TOKEN}`);
+	await settleHost();
+	assert.equal(clipboard.text, TOKEN, "the arm admitted the write");
+	assert.deepEqual(host.acks(), [`${CLIPBOARD_ACK}(1, true)`]);
+	// Consumed by that write.
+	host.bindingCall(7, `2\n${TOKEN}`);
+	await settleHost();
+	assert.equal(
+		clipboard.text,
+		TOKEN,
+		"a second write finds the arm spent (the text is unchanged, not re-written)",
+	);
+	assert.deepEqual(host.acks(), [
+		`${CLIPBOARD_ACK}(1, true)`,
+		`${CLIPBOARD_ACK}(2, false)`,
+	]);
+});
+
+test("HOST GATE (c): a page patching userActivation, Date.now and JSON.stringify is still refused", async () => {
+	clipboard.text = "untouched";
+	// The page WOULD answer "active" — that is what a patched getter returns.
+	const host = await installedHost({
+		activation: false,
+		pageWorldActivation: true,
+	});
+	// And this is what page script reaching for the payload path would look like.
+	const f = shimWindow();
+	f.win.JSON = { stringify: () => '{"id":1,"text":"pwned"}' };
+	f.win.Date = { now: () => 0 };
+	Object.defineProperty(f.win, "navigator", {
+		value: {
+			userActivation: { isActive: true },
+			clipboard: f.win.navigator.clipboard,
+		},
+		configurable: true,
+	});
+	host.bindingCall(7, `1\n${TOKEN}`);
+	await settleHost();
+	assert.equal(
+		clipboard.text,
+		"untouched",
+		"the gate reads the ISOLATED world, so the page's own answer cannot admit it",
+	);
+	// The probe the host actually made: an isolated-world evaluate, not a page one.
+	const probe = host.calls.find(
+		(call) =>
+			call.method === "Runtime.evaluate" &&
+			ACTIVATION_PROBE.test(String(call.params.expression)),
+	);
+	assert.ok(probe, "the host asked the activation question");
+	assert.equal(
+		typeof probe.params.contextId,
+		"number",
+		"…with an execution context id, so it is a world the page cannot patch",
+	);
+	f.dom.window.close();
+});
+
+test("HOST GATE: a child frame cannot borrow the top frame's arm", async () => {
+	clipboard.text = "untouched";
+	const host = await installedHost({ activation: false });
+	// A same-process child frame's default context, created the way a renderer does.
+	host.context(8, "FRAME-CHILD");
+	await settleHost();
+	// An arm minted for the MAIN frame (what a click with no frame of its own does).
+	armHostClipboardWrite(77, "FRAME-MAIN");
+	host.bindingCall(8, `1\n${TOKEN}`);
+	await settleHost();
+	assert.equal(
+		clipboard.text,
+		"untouched",
+		"the per-frame rule: an arm for the main frame admits nothing in a child",
+	);
+	assert.match(host.acks()[0], /false/);
+	// The same arm still works for the frame it was minted for.
+	host.bindingCall(7, `2\n${TOKEN}`);
+	await settleHost();
+	assert.equal(clipboard.text, TOKEN);
+});
+
+test("HOST GATE: a child frame is refused even WITH activation, because the reading cannot be trusted", async () => {
+	clipboard.text = "untouched";
+	// `activation: true` is the hostile case the narrowing exists for: on this runtime
+	// a same-process child's isolated reading reported the TOP frame's activation, so
+	// an activated child is exactly what a borrowed reading looks like.
+	const host = await installedHost({ activation: true });
+	host.context(8, "FRAME-CHILD");
+	await settleHost();
+	host.bindingCall(8, `1\n${TOKEN}`);
+	await settleHost();
+	assert.equal(
+		clipboard.text,
+		"untouched",
+		"main-frame-only: a child frame is refused regardless of what activation says",
+	);
+	assert.deepEqual(host.acks(), [`${CLIPBOARD_ACK}(1, false)`]);
+	// The main frame, on the same gate, is admitted — so this is a frame rule and not
+	// a broken gate.
+	host.bindingCall(7, `2\n${TOKEN}`);
+	await settleHost();
+	assert.equal(clipboard.text, TOKEN);
+});
+
+test("HOST GATE: an unknown execution context is refused rather than trusted", async () => {
+	clipboard.text = "untouched";
+	const host = await installedHost({ activation: true });
+	// A context the host never saw created: there is no frame to verify, so there is
+	// nothing to admit.
+	host.bindingCall(999, `1\n${TOKEN}`);
+	await settleHost();
+	assert.equal(clipboard.text, "untouched");
+	assert.deepEqual(host.acks(), [`${CLIPBOARD_ACK}(1, false)`]);
+});
+
+test("HOST GATE: real activation in the frame is enough, with no arm", async () => {
+	clipboard.text = "";
+	const host = await installedHost({ activation: true });
+	host.bindingCall(7, `1\n${TOKEN}`);
+	await settleHost();
+	assert.equal(clipboard.text, TOKEN);
+	assert.deepEqual(host.acks(), [`${CLIPBOARD_ACK}(1, true)`]);
+});
+
+test("HOST GATE: the over-cap refusal is the HOST's, because the page's copy is patchable", async () => {
+	clipboard.text = "untouched";
+	const host = await installedHost({ activation: true });
+	host.bindingCall(7, `1\n${"x".repeat(CLIPBOARD_SHIM_MAX_BYTES + 1)}`);
+	await settleHost();
+	assert.equal(clipboard.text, "untouched");
+	assert.deepEqual(host.acks(), [`${CLIPBOARD_ACK}(1, false)`]);
 });
 
 // ---- the copy action ------------------------------------------------------

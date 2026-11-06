@@ -1,56 +1,71 @@
-import { randomBytes } from "node:crypto";
-
 /**
- * The page-side clipboard WRITE, installed by the host into a driven view's main
- * world.
+ * The page-side clipboard WRITE: a dumb transport installed by the host into a
+ * driven view's main world, and the HOST-side gate that decides every write.
  *
- * THE PROBLEM THIS SOLVES, measured rather than assumed (2026-11-06, Electron
- * 45.1.0, built dev app, a real driven tab on a loopback page):
+ * THE WORST CASE, stated once so no later reader has to infer it: **a page in a
+ * driven view cannot write the clipboard without either a genuine user activation
+ * in its own frame or a 2 s host-issued arm from an agent click; it can never
+ * read it.**
  *
- * - A page's own Copy button calls `navigator.clipboard.writeText`, and in this
- *   runtime Chromium gates that write on ONE content setting
- *   (`CLIPBOARD_READ_WRITE`), which Electron surfaces to
- *   `setPermissionRequestHandler` as **`clipboard-read`**. No
- *   `clipboard-sanitized-write` ask is ever made, so granting that permission
- *   fixes nothing (measured: refused with it granted).
- * - Granting `clipboard-read` DOES make the write work — and it also lets the page
- *   call `navigator.clipboard.readText()` after its own click and read whatever
- *   the user last copied (measured: the page read back the text it had written).
- *   That is exactly the capability the operator ruled out, so the permission
- *   system cannot be the mechanism.
+ * WHAT THIS REPLACED, and why the first design was wrong rather than incomplete.
+ * A page's own Copy button needs `navigator.clipboard.writeText` to resolve, and
+ * on this runtime (Electron 45.1.0; measured 2026-11-06, built dev app, headless,
+ * a real driven tab) Chromium gates that write on ONE content setting that
+ * Electron reports as `clipboard-read` — so the permission system cannot buy the
+ * write without also letting every page READ the user's clipboard (measured: the
+ * page read back the text it had written). The write is therefore served by the
+ * host. The first attempt put the whole mechanism in the page's MAIN WORLD: a
+ * per-tab nonce in a page-visible global, a gesture check reading
+ * `navigator.userActivation` from a world page script can patch, and an arm
+ * window measured with the page's own `Date.now`. Every one of those is
+ * page-controllable, so a hostile page could mint its own credential, freeze the
+ * clock, or patch the activation getter — review round 1 reproduced exactly that
+ * (`BEFORE` → `HOSTILE-PAGE-DROVE-THE-BINDING`).
  *
- * SO: the permission handlers stay DEFAULT-DENY (both of them, every permission),
- * `clipboard-read` stays denied and `readText()` keeps rejecting as a
- * PERMISSION-level fact rather than a shim, and the WRITE is served by this
- * host-authored program instead. It adds exactly the capability a
- * `clipboard-sanitized-write` grant would have added — write text to the OS
- * clipboard — and none of the read half that made the grant unacceptable.
+ * THE RULE THAT FALLS OUT: **the main world is a transport, never an authority.**
+ * It holds no credential, judges nothing, and its only job is to carry `(id,
+ * text)` to the host and settle the page's promise on the host's answer. Every
+ * decision — is there real user activation, is there a live host arm — is made in
+ * the MAIN PROCESS against the ISOLATED world, which page script cannot patch.
  *
- * WHY THE MAIN WORLD, AND WHY THAT IS NOT THE USUAL PROHIBITION: the isolated
- * world is where this host reads pages, because a page cannot observe or patch
- * it. A page's OWN API cannot be replaced from there (worlds share the DOM, not
- * the JavaScript heap), so the one thing that must change about the page's own
- * surface — its clipboard write — can only be done in the main world. What makes
- * that safe is scope: this program is HOST-AUTHORED source (a committed string,
- * never agent-supplied), it exposes no transport to the harness, no file access
- * and no navigation, and the only thing it can do is put bounded text on the OS
- * clipboard through the host's ack protocol. A page that ignores or replaces it
- * simply has the behaviour it has today.
+ * WHERE THE AUTHORITY LIVES, concretely, on one binding event:
  *
- * THE ACK PROTOCOL exists so the page's promise is truthful. `writeText` must
- * resolve only when the byte actually reached the clipboard: the shim sends
- * `(nonce, requestId, text)` over a CDP binding, the host writes with Electron's
- * `clipboard.writeText` and then evaluates `ack(nonce, requestId, ok)` in the
- * SAME execution context, and the shim resolves or rejects on that. A per-tab
- * NONCE is what stops a page from driving the binding or the ack directly: both
- * are page-visible globals (an injected binding has to be), and a page that
- * could call them would be able to write the clipboard without a gesture and
- * confirm its own writes. The nonce lives in this closure and in the host only.
+ * 1. `Runtime.bindingCalled` names the `executionContextId` the call came from.
+ * 2. That id maps to a frame from this host's own `Runtime.executionContextCreated`
+ *    bookkeeping — so the frame is the host's fact, not the page's claim.
+ * 3. `Page.createIsolatedWorld` for that frame, then `Runtime.evaluate`
+ *    `navigator.userActivation.isActive` **with that isolated context's id**. An
+ *    isolated world shares the DOM but not the JavaScript heap, so page script
+ *    cannot have replaced that `Navigator`, and the activation state it reads is
+ *    the frame's own.
+ * 4. If that is false, a live host-minted ARM for that frame (an agent's `click`,
+ *    see `armHostClipboardWrite`) admits the write. The arm is a
+ *    `{frameId, expiresAt}` record in main memory, timed by the host's monotonic
+ *    clock, single-use, and cleared when the click returns.
+ * 5. Only then is the text written with Electron's `clipboard.writeText`, and only
+ *    then does the page hear `ok`.
  *
- * WHY A COMMITTED SOURCE STRING, and not a function stringified at runtime: a
- * bytecode build turns anything handed to `Function.prototype.toString()` into a
- * dummy zero-width source, so the host would install nothing and report success
- * (the trap that already broke `select`). The string below is the program.
+ * WHAT A PAGE CAN STILL DO TO ITSELF: call the binding directly (it is a
+ * page-visible function — an injected binding has to be), call the ack with any
+ * id, or patch its own `userActivation`/`Date.now`/`JSON.stringify`. None of it
+ * helps: the gate is host-side, so a direct call is judged by the same
+ * activation-or-arm rule and refused, and forging an ack lies to the page's own
+ * promise and to nothing else.
+ *
+ * COVERAGE, stated rather than implied: the program is INSTALLED into the main
+ * frame and every same-process child frame of the driven target (a document is
+ * covered wherever its context appears), but a WRITE is admitted from the MAIN
+ * frame only. The reason is measured, not cautious: on this runtime a same-process
+ * child frame's isolated-world activation reading reported the TOP frame's
+ * activation (2026-11-06: after a trusted press in the main document, the child's
+ * write was admitted on "user activation" while the child itself had none), and an
+ * ambiguous reading is not a control. A child frame is therefore refused, named in
+ * the app log, and the page sees the native `NotAllowedError`. An out-of-process
+ * iframe is a separate target with its own session, which this install never
+ * enters.
+ *
+ * WHAT IT NEVER DOES: log, echo or measure the payload. The text is validated,
+ * written and dropped; the host logs a refusal REASON and a size, never bytes.
  */
 
 /** The CDP binding the page calls; also the page-visible global's name. */
@@ -58,6 +73,9 @@ export const CLIPBOARD_BINDING = "__localOperatorClipboardWrite";
 
 /** The global the host calls back with the write's outcome. */
 export const CLIPBOARD_ACK = "__localOperatorClipboardAck";
+
+/** The idempotency sentinel: set by the program, non-writable by the page. */
+export const CLIPBOARD_SENTINEL = "__localOperatorClipboardShim";
 
 /**
  * The largest text one page write may carry, in UTF-8 bytes.
@@ -74,9 +92,6 @@ export const CLIPBOARD_SHIM_MAX_BYTES = 1_048_576;
  * Long enough for a slow clipboard, short enough that a page's spinner ends. */
 export const CLIPBOARD_ACK_TIMEOUT_MS = 5_000;
 
-/** The global the HOST calls to arm one write (see `armHostClipboardWrite`). */
-export const CLIPBOARD_ARM = "__localOperatorClipboardArm";
-
 /**
  * How long a host-minted arm survives, in milliseconds.
  *
@@ -88,21 +103,29 @@ export const CLIPBOARD_ARM = "__localOperatorClipboardArm";
  */
 export const CLIPBOARD_ARM_WINDOW_MS = 2_000;
 
-/**
- * The program, as one committed string.
+/** The separator between the ack id and the text in one binding payload.
  *
- * `nonce` is interpolated as a JSON literal; nothing else is interpolated. Every
- * member the program relies on (`userActivation`, `writeText`, `write`,
- * `permissions.query`) is captured at document start, before any page script can
- * redefine it, so a page that patches `navigator.userActivation` cannot turn its
- * own gesture requirement off.
+ * A NEWLINE, because the id is an integer: the host splits on the FIRST one and
+ * everything after it is the text verbatim, newlines included. Chosen so the shim
+ * can build its one argument with string concatenation alone — no `JSON.stringify`
+ * to capture, and therefore nothing in the payload path for a page to swap.
  */
-export function clipboardShimSource(nonce: string): string {
+const PAYLOAD_SEPARATOR = "\n";
+
+/**
+ * The program, as one committed string (a bytecode build turns anything handed to
+ * `Function.prototype.toString()` into a dummy zero-width source, which is the
+ * trap that already broke `select`).
+ *
+ * It interpolates ONE value, and it is data rather than a secret: the names, the
+ * cap and the timeout, as a JSON literal emitted by the HOST. `JSON.stringify` is
+ * used here, at install time, in main — the program itself never calls it.
+ */
+export function clipboardShimSource(): string {
 	const config = JSON.stringify({
 		binding: CLIPBOARD_BINDING,
 		ack: CLIPBOARD_ACK,
-		arm: CLIPBOARD_ARM,
-		nonce,
+		sentinel: CLIPBOARD_SENTINEL,
 		maxBytes: CLIPBOARD_SHIM_MAX_BYTES,
 		timeoutMs: CLIPBOARD_ACK_TIMEOUT_MS,
 	});
@@ -110,15 +133,27 @@ export function clipboardShimSource(nonce: string): string {
   "use strict";
   var clipboard = navigator.clipboard;
   if (!clipboard || typeof clipboard.writeText !== "function") return;
-  if (window.__localOperatorClipboardShim === config.nonce) return;
-  window.__localOperatorClipboardShim = config.nonce;
 
-  // Captured BEFORE any page script runs: the gesture question must be answered
-  // by Chromium's own answer, not by whatever the page left on Navigator.
-  var userActivationGetter = (function () {
-    var descriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, "userActivation");
-    return descriptor && typeof descriptor.get === "function" ? descriptor.get : null;
-  })();
+  // IDEMPOTENT BY A LOCKED SENTINEL: a second install is a no-op, and the page
+  // cannot flip the flag to force one (a re-install would wrap the wrapper, and a
+  // page that could clear it could make any later install believe this document
+  // was never covered).
+  if (window[config.sentinel] === true) return;
+  try {
+    Object.defineProperty(window, config.sentinel, {
+      value: true,
+      configurable: false,
+      writable: false,
+      // Not even enumerable: a page walking globalThis keys learns nothing about
+      // whether this document is covered.
+      enumerable: false,
+    });
+  } catch (error) {
+    // Something non-configurable already owns the name. Leave the document alone
+    // rather than install a second wrapper whose sentinel we cannot own.
+    return;
+  }
+
   var nativeWriteText = clipboard.writeText.bind(clipboard);
   var nativeWrite = typeof clipboard.write === "function" ? clipboard.write.bind(clipboard) : null;
   var nativeQuery = typeof navigator.permissions?.query === "function" ? navigator.permissions.query.bind(navigator.permissions) : null;
@@ -129,45 +164,21 @@ export function clipboardShimSource(nonce: string): string {
     return Promise.reject(new DOMException(message, name || "NotAllowedError"));
   }
 
-  var armUntil = 0;
-
-  function userGestureActive() {
-    try {
-      var activation = userActivationGetter ? userActivationGetter.call(navigator) : navigator.userActivation;
-      return !!(activation && activation.isActive);
-    } catch (error) {
-      return false;
-    }
-  }
-
-  // "arm" is a HOST-dispatched click (see the host's 'armHostClipboardWrite'): the
-  // host's own 'click' dispatches in-page rather than through Chromium's input
-  // pipeline, so it carries no user activation. Everything this grants is what a
-  // REAL click in the same place would have granted the page — one clipboard WRITE
-  // inside the window, never a read (the read path is Chromium's, untouched) —
-  // which is why the arm is a nonce-carrying, single-use, short-lived flag rather
-  // than a mode.
-  function activationState() {
-    if (Date.now() < armUntil) return "arm";
-    return userGestureActive() ? "gesture" : "none";
-  }
-
-  // Host-only. A page cannot mint this: the nonce never leaves this closure, and a
-  // page calling it with a guessed value returns false without arming anything.
-  window[config.arm] = function (nonce, windowMs) {
-    if (nonce !== windowsNonce) return false;
-    var span = Number(windowMs);
-    if (!isFinite(span) || span <= 0) {
-      armUntil = 0;
-      return false;
-    }
-    armUntil = Date.now() + span;
-    return true;
+  // The host calls this through CDP, in THIS world, with an id it was given. A
+  // page may call it too, with any id it likes: that settles the page's own
+  // promise and changes nothing else, because whether a write HAPPENED was
+  // decided in main before this was ever called.
+  window[config.ack] = function (id, ok) {
+    var settled = pending.get(id);
+    if (!settled) return;
+    pending.delete(id);
+    clearTimeout(settled.timer);
+    if (ok) settled.resolve();
+    else settled.reject(new DOMException("the host did not allow the clipboard write", "NotAllowedError"));
   };
 
-  // UTF-8 length WITHOUT TextEncoder: the shim has to be dependency-free (it runs
-  // in whatever the page's world provides) and the host re-measures with
-  // Buffer.byteLength before it writes, so this is the fast pre-check.
+  // UTF-8 length without TextEncoder: the host re-measures with Buffer.byteLength
+  // before it writes, so this is only the fast pre-check the page sees first.
   function sizeOf(text) {
     var bytes = 0;
     for (var i = 0; i < text.length; i += 1) {
@@ -182,49 +193,35 @@ export function clipboardShimSource(nonce: string): string {
     return bytes;
   }
 
-  var windowsNonce = config.nonce;
-
-  // Called by the host through CDP only, and only for an id it issued: the nonce
-  // is the credential, because anything a page can call, a page can fake.
-  window[config.ack] = function (nonce, id, ok) {
-    if (nonce !== windowsNonce) return;
-    const settled = pending.get(id);
-    if (!settled) return;
-    pending.delete(id);
-    clearTimeout(settled.timer);
-    if (ok) settled.resolve();
-    else settled.reject(new DOMException("the host could not write to the clipboard", "NotAllowedError"));
-  };
-
+  /*
+   * NO GESTURE JUDGEMENT HERE, deliberately. This world's
+   * navigator.userActivation, Date.now and JSON.stringify are all page-patchable,
+   * so a check made here is not a control. The host asks the ISOLATED world
+   * instead; this function's only job is to carry the bytes and settle the
+   * promise on the host's answer.
+   */
   function writeThroughHost(text) {
-    var activation = activationState();
-    if (activation === "none") {
-      return refuses("The clipboard write requires a user gesture");
-    }
-    // Consumed by the FIRST write, so one click can never authorize a second copy
-    // the page schedules for later.
-    if (activation === "arm") armUntil = 0;
-    const size = sizeOf(text);
+    var size = sizeOf(text);
     if (size > config.maxBytes) {
       return refuses("the text is too large to copy (" + size + " bytes)", "QuotaExceededError");
     }
-    const send = window[config.binding];
+    var send = window[config.binding];
     if (typeof send !== "function") {
-      // The binding is the only path to the host; without it this program must not
-      // pretend, and the page keeps the native behaviour (a refusal, today).
+      // No binding means no host in this document (an older host, a world the
+      // program reached before the binding existed): keep the native behaviour.
       return nativeWriteText(text);
     }
+    var id = nextId++;
     return new Promise(function (resolve, reject) {
-      const id = nextId++;
-      const timer = setTimeout(function () {
+      var timer = setTimeout(function () {
         pending.delete(id);
         reject(new DOMException("the host did not confirm the clipboard write", "NotAllowedError"));
       }, config.timeoutMs);
       pending.set(id, { resolve: resolve, reject: reject, timer: timer });
       try {
-        // ONE argument, as a JSON string: CDP's bindingCalled event carries a
-        // single payload, so a multi-argument call would silently lose the text.
-        send(JSON.stringify({ nonce: config.nonce, id: id, text: text }));
+        // ONE argument, by concatenation: the id, a newline, the text. No JSON in
+        // the payload path, so there is no captured helper for a page to swap.
+        send(id + ${JSON.stringify(PAYLOAD_SEPARATOR)} + String(text));
       } catch (error) {
         clearTimeout(timer);
         pending.delete(id);
@@ -252,15 +249,15 @@ export function clipboardShimSource(nonce: string): string {
     try {
       Object.defineProperty(clipboard, "write", {
         value: function write(items) {
-          const list = Array.isArray(items) ? items : [items];
-          const first = list[0];
+          var list = Array.isArray(items) ? items : [items];
+          var first = list[0];
           // TEXT ONLY. Anything else (an image, an unknown type) falls through to
-          // the native path, which fails exactly as it does today — the host will
+          // the native path, which fails exactly as it does today: the host will
           // not be talked into copying bytes it never inspected.
           if (list.length !== 1 || !first || typeof first.getType !== "function") {
             return nativeWrite(items);
           }
-          const types = first.types;
+          var types = first.types;
           if (!types || Array.prototype.indexOf.call(types, "text/plain") === -1) {
             return nativeWrite(items);
           }
@@ -291,11 +288,12 @@ export function clipboardShimSource(nonce: string): string {
     try {
       Object.defineProperty(navigator.permissions, "query", {
         value: function query(descriptor) {
-          const name = descriptor && descriptor.name;
+          var name = descriptor && descriptor.name;
           // REPORTED CAPABILITY, NOT A CHROMIUM PERMISSION: pages feature-detect a
           // write with this name before attempting one, and the honest answer for a
-          // document where the write above is installed is "granted". The READ name
-          // is deliberately untouched, so it keeps answering the truth (denied).
+          // document where the write above is installed is "granted" — the host
+          // decides each write. The READ name is deliberately untouched, so it
+          // keeps answering the truth (denied).
           if (name === "clipboard-write") return Promise.resolve(statusFor("granted"));
           return nativeQuery(descriptor);
         },
@@ -330,38 +328,39 @@ export interface ClipboardShimCdp {
 	): () => void;
 }
 
-/** The per-view subscriber, so a re-attach retires the previous install instead
- * of stacking a second one on the same view. */
-const clipboardShimDisposers = new Map<number, () => void>();
+/** One view's host-side bookkeeping. Nothing here is page-reachable. */
+interface ViewState {
+	dispose: () => void;
+	/** `executionContextId` → the frame that context belongs to, from the host's
+	 * own `Runtime.executionContextCreated` events. This is what turns a binding
+	 * event's context id into a FRAME the host can verify. */
+	contexts: Map<number, { frameId: string; isDefault: boolean }>;
+	/** frameId → the isolated world's context id, for the activation question.
+	 * Cached because `Page.createIsolatedWorld` is per frame and repeated calls
+	 * for the same world name are wasted round trips. */
+	isolated: Map<string, number>;
+	/** The target's main frame, learned from `Page.getFrameTree` and refreshed on
+	 * each main-frame commit. */
+	mainFrameId?: string;
+	/** The live arm: a frame and the monotonic instant it stops counting. */
+	arm?: { frameId: string; expiresAt: number };
+	log?: (message: string) => void;
+}
+
+const views = new Map<number, ViewState>();
+
+/** The host's monotonic clock. `Date.now` is page-patchable in the page's world
+ * and irrelevant here; in main it is monotonic time, not wall time, that a window
+ * should be measured with — a system clock change must not extend an arm. */
+const hostNow = (): number => performance.now();
 
 /**
- * The credential in force in each armed view: the host's half of the nonce the
- * shim holds. Kept because the ARM a `click` mints has to name the shim instance
- * that is actually installed — a stale nonce would arm nothing, which is the right
- * failure but a silent one.
- */
-const clipboardShimNonces = new Map<number, string>();
-
-/**
- * Install the page-side write into one view, and wire the binding it calls back
- * into the main process.
+ * Install the transport into one view and wire its binding to the host gate.
  *
  * CALLED FROM `cdp.attach` — every attach, not once per tab: a re-attach is a
  * fresh debugger session whose `Page.addScriptToEvaluateOnNewDocument`
- * registrations are gone, and `runImmediately: true` is what covers the document
- * that is already loaded (a tab re-driven after DevTools took it, and the first
- * document of a tab opened before its attach).
- *
- * COVERAGE, stated rather than implied: a page-target script reaches the main
- * frame and every SAME-PROCESS child frame of that target. An out-of-process
- * iframe (a cross-site frame) is a separate target with its own session, and this
- * install does not reach it — its `writeText` keeps the native behaviour (a
- * refusal), which is the same state it had before this change.
- *
- * WHAT IT NEVER DOES: log, echo or measure the payload. The text is validated,
- * written and dropped; the only thing that reaches a log line is a failure count
- * and the reason, because a copy that silently stops working has to be visible
- * without the value being.
+ * registrations are gone, and the transport has to be in every document the tab
+ * loads.
  */
 export async function installClipboardShim(
 	cdp: ClipboardShimCdp,
@@ -369,25 +368,26 @@ export async function installClipboardShim(
 	webContentsId: number,
 	options: { log?: (message: string) => void } = {},
 ): Promise<void> {
-	const previous = clipboardShimDisposers.get(webContentsId);
+	const previous = views.get(webContentsId);
 	if (previous) {
-		previous();
-		clipboardShimDisposers.delete(webContentsId);
+		previous.dispose();
+		views.delete(webContentsId);
 	}
-	const nonce = randomBytes(16).toString("hex");
-	const source = clipboardShimSource(nonce);
-	let reinstalling = false;
-	/**
-	 * Install the program in one document.
-	 *
-	 * `contextId` is the execution context to install into; without it the page
-	 * target's default (main-frame) context is used.
-	 */
+	const source = clipboardShimSource();
+	const state: ViewState = {
+		dispose: () => undefined,
+		contexts: new Map(),
+		isolated: new Map(),
+		log: options.log,
+	};
+	views.set(webContentsId, state);
+
+	/** Install the program in one document, by execution context. */
 	const apply = async (contextId?: number): Promise<void> => {
-		// `Page.enable` first: the domain carries the navigation and context events
-		// this install re-arms itself from, and an agent that was never enabled
-		// receives none.
 		if (contextId === undefined) {
+			// `Page.enable` first: the domain carries the navigation and context events
+			// this install re-arms itself from, and a target that was never enabled
+			// receives none.
 			await cdp.send(contents, "Page.enable", {});
 			await cdp.send(contents, "Runtime.addBinding", {
 				name: CLIPBOARD_BINDING,
@@ -402,206 +402,338 @@ export async function installClipboardShim(
 			...(contextId === undefined ? {} : { contextId }),
 		});
 	};
+
+	/** Learn (or re-learn) the main frame. Best-effort: an arm can also be minted
+	 * with an explicit frame id, which is what `click` does when it knows it. */
+	const refreshMainFrame = async (): Promise<void> => {
+		try {
+			const tree = await cdp.send<{
+				frameTree?: { frame?: { id?: string } };
+			}>(contents, "Page.getFrameTree", {});
+			const id = tree?.frameTree?.frame?.id;
+			if (typeof id === "string" && id) state.mainFrameId = id;
+		} catch {
+			// No tree, no main-frame fact; arm calls supply their own frame.
+		}
+	};
+
+	let reinstalling = false;
 	/*
-	 * ARM EVERY DOCUMENT THAT COMMITS, because the registration alone does not.
+	 * INSTALL IN EVERY DOCUMENT THAT COMMITS, because the registration alone does
+	 * not.
 	 *
-	 * MEASURED on this runtime (Electron 45.1.0, the proof rig): `runImmediately`
-	 * is inert, and the `Page.addScriptToEvaluateOnNewDocument` registration covered
-	 * the document that was loading when it was made and then no later one — a tab
-	 * that had been driven and then navigated came up reporting `native` while a
-	 * freshly opened view reported `shimmed`. `Page.frameNavigated` fires BEFORE the
-	 * new document's execution context exists, so an evaluate there lands in the
-	 * document that is being replaced (measured: the reinstall was accepted and had
-	 * no effect). The trigger that works is the CONTEXT event: it is the first
-	 * moment a main-world context exists for the new document, and evaluating with
-	 * that context's id installs the program into exactly that document.
-	 *
-	 * The same event covers a same-process CHILD frame, whose default context is
-	 * created the same way: its own `writeText` is then served by the same binding.
-	 * An out-of-process iframe is a separate target with its own session and is NOT
-	 * covered — its write keeps the native refusal.
+	 * MEASURED on this runtime (Electron 45.1.0, the proof rig):
+	 * `runImmediately` is inert, and the `Page.addScriptToEvaluateOnNewDocument`
+	 * registration covered the document that was loading when it was made and then
+	 * no later one — a tab that had been driven and then navigated came up
+	 * reporting `native` while a freshly opened view reported `shimmed`.
+	 * `Page.frameNavigated` fires BEFORE the new document's execution context
+	 * exists, so an evaluate there lands in the document being replaced (measured:
+	 * the reinstall was accepted and had no effect). The trigger that works is the
+	 * CONTEXT event: it is the first moment a main-world context exists for the new
+	 * document, and evaluating with that context's id installs into exactly that
+	 * document. The same event covers a same-process child frame.
 	 */
-	const unsubscribe = cdp.subscribe(webContentsId, (method, params) => {
+	state.dispose = cdp.subscribe(webContentsId, (method, params) => {
 		if (method === "Runtime.bindingCalled") {
 			if (String(params.name ?? "") !== CLIPBOARD_BINDING) return;
-			void answerBinding(cdp, contents, nonce, params);
+			void answerBinding(cdp, contents, webContentsId, state, params);
 			return;
 		}
-		if (method !== "Runtime.executionContextCreated") return;
-		const context = (params.context ?? {}) as {
-			id?: unknown;
-			auxData?: { isDefault?: unknown };
-		};
-		if (context.auxData?.isDefault !== true) return;
-		if (typeof context.id !== "number") return;
-		if (reinstalling || contents.isDestroyed()) return;
-		reinstalling = true;
-		void apply(context.id)
-			.catch((error: unknown) => {
-				// A document that could not be armed keeps the native refusal (the state
-				// this host shipped before). Logged, because a silent version of this is
-				// indistinguishable from a page that never tried to copy.
-				options.log?.(
-					`[browser] could not arm the page clipboard write on view ${webContentsId}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			})
-			.finally(() => {
-				reinstalling = false;
-			});
+		if (method === "Runtime.executionContextCreated") {
+			const context = (params.context ?? {}) as {
+				id?: unknown;
+				auxData?: { frameId?: unknown; isDefault?: unknown };
+			};
+			if (typeof context.id !== "number") return;
+			const frameId = context.auxData?.frameId;
+			if (typeof frameId === "string") {
+				state.contexts.set(context.id, {
+					frameId,
+					isDefault: context.auxData?.isDefault === true,
+				});
+			}
+			if (context.auxData?.isDefault !== true) return;
+			if (reinstalling || contents.isDestroyed()) return;
+			reinstalling = true;
+			void apply(context.id)
+				.catch((error: unknown) => {
+					// A document that could not be armed keeps the native refusal (the state
+					// this host shipped before). Logged, because a silent version of this is
+					// indistinguishable from a page that never tried to copy.
+					options.log?.(
+						`[browser] could not install the page clipboard write on view ${webContentsId}: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				})
+				.finally(() => {
+					reinstalling = false;
+				});
+			return;
+		}
+		if (method === "Runtime.executionContextDestroyed") {
+			const id = params.executionContextId;
+			if (typeof id === "number") {
+				const known = state.contexts.get(id);
+				state.contexts.delete(id);
+				if (known) state.isolated.delete(known.frameId);
+			}
+			return;
+		}
+		if (method === "Runtime.executionContextsCleared") {
+			state.contexts.clear();
+			state.isolated.clear();
+			return;
+		}
+		if (method === "Page.frameNavigated") {
+			const frame = (params.frame ?? {}) as {
+				id?: unknown;
+				parentId?: unknown;
+			};
+			// The main frame's id is the one a click with no frame of its own arms.
+			if (frame.parentId === undefined && typeof frame.id === "string") {
+				state.mainFrameId = frame.id;
+			}
+		}
 	});
-	clipboardShimDisposers.set(webContentsId, unsubscribe);
-	clipboardShimNonces.set(webContentsId, nonce);
 	try {
 		await apply();
+		await refreshMainFrame();
 	} catch (error) {
-		unsubscribe();
-		clipboardShimDisposers.delete(webContentsId);
+		state.dispose();
+		views.delete(webContentsId);
 		throw error;
 	}
 }
 
 /**
- * ARM ONE WRITE for a click the HOST is about to dispatch, in the same execution
- * context that click will run in.
+ * The frame a `click` should arm, when the caller did not name one.
  *
- * WHY THIS EXISTS: the host's `click` action dispatches IN THE PAGE
+ * `undefined` means this host has no main-frame fact for that view yet — an arm
+ * that names no frame is a no-op rather than a wildcard, because an arm for "any
+ * frame" is exactly the borrowed activation the per-frame rule forbids.
+ */
+export function mainFrameOf(webContentsId: number): string | undefined {
+	return views.get(webContentsId)?.mainFrameId;
+}
+
+/**
+ * ARM ONE WRITE for a click the HOST is about to dispatch.
+ *
+ * WHY THIS EXISTS: the host's `click` dispatches IN THE PAGE
  * (`Runtime.callFunctionOn` + `CLICK_FUNCTION`), not through Chromium's input
  * pipeline, so it carries no user activation — and a page's Copy button therefore
  * took the refusal path and showed the operator exactly the symptom this work
- * exists to remove ("Unable to copy to clipboard"), just triggered by an agent
- * rather than by their own mouse. A trusted pointer press cannot be synthesized
- * into the same call without changing what `click` means for every other page
- * (scroll-into-view, frames, the navigation race), so the click instead MINTS an
- * arm the shim consumes.
+ * exists to remove ("Unable to copy to clipboard"), triggered by an agent rather
+ * than by their own mouse.
  *
- * WHAT THE ARM GRANTS, stated so nobody has to infer it: one clipboard WRITE,
- * inside a `CLIPBOARD_ARM_WINDOW_MS` window, consumed by the first write and
- * cleared by the caller when the click completes — the same capability a real
- * click at that spot would have given the page, and nothing else. The READ path is
- * Chromium's and is untouched (the session grants no permission), so a page cannot
- * turn this into a read.
- *
- * `target` is the resolved node's `objectId` (the click's own context, which is the
- * frame's world the click runs in) or a `contextId` when the caller has one.
- * Returns whether the page accepted the arm: a document that was never armed (no
- * shim, an OOPIF, an old host) simply answers false and the click behaves as it
- * did before.
+ * WHAT THE ARM IS: a record in MAIN MEMORY, `{frameId, expiresAt}`, timed by the
+ * host's monotonic clock — nothing in the page, so there is no global to read, no
+ * clock to freeze and no credential to harvest. It admits ONE write for THAT
+ * frame, is consumed by the first accepted write, and is cleared when the click
+ * returns. What it grants is what a real click at that spot would have granted:
+ * one clipboard WRITE inside the window, never a read (reading is Chromium's
+ * permission, which this session denies).
  */
-export async function armHostClipboardWrite(
+export function armHostClipboardWrite(
+	webContentsId: number,
+	frameId: string | undefined,
+	windowMs: number = CLIPBOARD_ARM_WINDOW_MS,
+): boolean {
+	const state = views.get(webContentsId);
+	if (!state) return false;
+	const frame = frameId ?? state.mainFrameId;
+	if (!frame) return false;
+	state.arm = { frameId: frame, expiresAt: hostNow() + windowMs };
+	return true;
+}
+
+/** CLEAR the arm, on the click's own completion: a page cannot hoard a window
+ * past the call that justified it. */
+export function clearHostClipboardArm(webContentsId: number): void {
+	const state = views.get(webContentsId);
+	if (state) state.arm = undefined;
+}
+
+/**
+ * Whether this write may proceed, and the reason when it may not.
+ *
+ * The activation question is asked of the ISOLATED world: `Page.createIsolatedWorld`
+ * for the frame the binding event came from, then `Runtime.evaluate` with THAT
+ * context's id. Page script cannot patch an isolated world's `Navigator`, so this
+ * is the one reading of `userActivation` that is not page-controlled — which is
+ * also why the shim itself no longer asks.
+ */
+async function writeVerdict(
 	cdp: ClipboardShimCdp,
 	contents: { id: number; isDestroyed(): boolean },
-	webContentsId: number,
-	target: { objectId?: string; contextId?: number },
-	windowMs: number = CLIPBOARD_ARM_WINDOW_MS,
-): Promise<boolean> {
-	const nonce = clipboardShimNonces.get(webContentsId);
-	if (!nonce || contents.isDestroyed()) return false;
-	const params: Record<string, unknown> = {
-		functionDeclaration: ARM_FUNCTION,
-		arguments: [
-			{ value: CLIPBOARD_ARM },
-			{ value: nonce },
-			{ value: windowMs },
-		],
-		returnByValue: true,
-	};
+	state: ViewState,
+	frameId: string,
+): Promise<{ allowed: boolean; reason: string }> {
+	let activated = false;
 	try {
-		if (target.objectId !== undefined) {
-			const reply = await cdp.send<{ result?: { value?: unknown } }>(
-				contents,
-				"Runtime.callFunctionOn",
-				{ ...params, objectId: target.objectId },
-			);
-			return reply?.result?.value === true;
-		}
-		if (target.contextId === undefined) return false;
+		const contextId = await isolatedContextFor(cdp, contents, state, frameId);
 		const reply = await cdp.send<{ result?: { value?: unknown } }>(
 			contents,
 			"Runtime.evaluate",
 			{
-				expression: `(${ARM_FUNCTION})(${JSON.stringify(CLIPBOARD_ARM)}, ${JSON.stringify(nonce)}, ${windowMs})`,
-				contextId: target.contextId,
+				expression: "navigator.userActivation.isActive === true",
+				contextId,
 				returnByValue: true,
 			},
 		);
-		return reply?.result?.value === true;
-	} catch {
-		// An arm that cannot be minted is not a failed click: the page keeps the
-		// behaviour it had, which is a copy button that refuses.
-		return false;
+		activated = reply?.result?.value === true;
+	} catch (error) {
+		// No isolated reading means no activation FACT, and an unverifiable write is
+		// refused rather than waved through.
+		return {
+			allowed: false,
+			reason: `could not verify user activation (${error instanceof Error ? error.message : String(error)})`,
+		};
 	}
+	if (activated) {
+		// An accepted write spends the arm too: a click's window must not go on to
+		// authorise a later write the page schedules for itself.
+		clearHostClipboardArmView(state);
+		return { allowed: true, reason: "user activation" };
+	}
+	const arm = state.arm;
+	if (arm && arm.frameId === frameId && arm.expiresAt > hostNow()) {
+		clearHostClipboardArmView(state);
+		return { allowed: true, reason: "agent click arm" };
+	}
+	return {
+		allowed: false,
+		reason: arm
+			? arm.frameId === frameId
+				? "the agent-click arm has expired"
+				: "the agent-click arm was minted for another frame"
+			: "no user activation in this frame and no agent-click arm",
+	};
 }
 
-/**
- * CLEAR the arm, on the click's own completion.
- *
- * Called whether the click worked, threw or navigated: the shim also expires it by
- * time and consumes it on first use, and this is the third lock — a page cannot
- * hoard a window past the call that justified it.
- */
-export async function clearHostClipboardArm(
+function clearHostClipboardArmView(state: ViewState): void {
+	state.arm = undefined;
+}
+
+/** The isolated world's context id for a frame, cached and re-created when the
+ * document it belonged to is gone. */
+async function isolatedContextFor(
 	cdp: ClipboardShimCdp,
 	contents: { id: number; isDestroyed(): boolean },
-	webContentsId: number,
-	target: { objectId?: string; contextId?: number },
-): Promise<void> {
-	await armHostClipboardWrite(cdp, contents, webContentsId, target, 0).catch(
-		() => undefined,
+	state: ViewState,
+	frameId: string,
+): Promise<number> {
+	const cached = state.isolated.get(frameId);
+	if (cached !== undefined) return cached;
+	const created = await cdp.send<{ executionContextId?: number }>(
+		contents,
+		"Page.createIsolatedWorld",
+		{
+			frameId,
+			// A NAME, not a secret: the world is identified by frame and name, and
+			// nothing about this gate depends on the name being unforgeable.
+			worldName: "local-operator-clipboard",
+		},
 	);
+	const contextId = created?.executionContextId;
+	if (typeof contextId !== "number") {
+		throw new Error("Page.createIsolatedWorld returned no executionContextId");
+	}
+	state.isolated.set(frameId, contextId);
+	return contextId;
 }
-
-/** The call the host evaluates to arm (or, with a zero window, to clear); the
- * nonce and the window ride as ARGUMENTS, never inside the source text. */
-const ARM_FUNCTION = `function (name, nonce, windowMs) {
-  const arm = window[name];
-  if (typeof arm !== "function") return false;
-  try { return arm(nonce, windowMs) === true; } catch (error) { return false; }
-}`;
 
 /**
  * One page write, from the binding event to the ack.
  *
- * The order is the contract: write FIRST, ack AFTER, because the page resolves its
- * own promise on the ack and a page that says "Copied" while the clipboard still
- * holds the previous value is worse than one that says it failed. A payload this
- * function cannot trust (wrong nonce, unparseable, oversized) is answered with a
- * failed ack so the page's promise settles rather than hanging.
+ * The order is the contract: DECIDE, WRITE, then ACK — the page resolves its own
+ * promise on the ack, and a page that says "Copied" while the clipboard still
+ * holds the previous value is worse than one that says it failed. Every refusal
+ * settles the page's promise too, so a page never hangs waiting.
  */
 async function answerBinding(
 	cdp: ClipboardShimCdp,
 	contents: { id: number; isDestroyed(): boolean },
-	nonce: string,
+	webContentsId: number,
+	state: ViewState,
 	params: Record<string, unknown>,
 ): Promise<void> {
 	const contextId = params.executionContextId;
-	const ack = (id: unknown, ok: boolean): void => {
-		if (typeof contextId !== "number" || typeof id !== "number") return;
+	const ack = (id: number, ok: boolean): void => {
+		if (typeof contextId !== "number") return;
 		// The ack is evaluated in the SAME context that called the binding (the main
-		// world of that document), so it lands on the shim instance that is waiting.
+		// world of that document), so it lands on the instance that is waiting. It
+		// carries no secret: a page forging one lies to itself.
 		void cdp
 			.send(contents, "Runtime.evaluate", {
-				expression: `${CLIPBOARD_ACK}(${JSON.stringify(nonce)}, ${id}, ${ok ? "true" : "false"})`,
+				expression: `${CLIPBOARD_ACK}(${id}, ${ok ? "true" : "false"})`,
 				contextId,
 				returnByValue: true,
 			})
 			.catch(() => undefined);
 	};
-	let payload: { nonce?: unknown; id?: unknown; text?: unknown };
-	try {
-		payload = JSON.parse(String(params.payload ?? ""));
-	} catch {
+	const raw = String(params.payload ?? "");
+	const splitAt = raw.indexOf(PAYLOAD_SEPARATOR);
+	if (splitAt <= 0) return;
+	const id = Number(raw.slice(0, splitAt));
+	if (!Number.isSafeInteger(id)) return;
+	const text = raw.slice(splitAt + PAYLOAD_SEPARATOR.length);
+
+	// THE FRAME IS THE HOST'S FACT, not the page's claim: it comes from the context
+	// bookkeeping built out of `Runtime.executionContextCreated`.
+	const known =
+		typeof contextId === "number" ? state.contexts.get(contextId) : undefined;
+	if (!known) {
+		// A context this host never saw created (or one already destroyed). There is
+		// no frame to verify, so there is nothing to admit.
+		state.log?.(
+			`[browser] refused a page clipboard write on view ${webContentsId}: unknown execution context`,
+		);
+		ack(id, false);
 		return;
 	}
-	if (!payload || payload.nonce !== nonce) return;
-	if (typeof payload.id !== "number") return;
-	if (typeof payload.text !== "string") {
-		ack(payload.id, false);
+	// MAIN FRAME ONLY, and this is a MEASURED narrowing rather than caution.
+	//
+	// The per-frame design asked the isolated world of the frame the binding came
+	// from, which is correct in principle — but on this runtime (Electron 45.1.0,
+	// measured 2026-11-06 in the proof rig) a SAME-PROCESS CHILD frame's isolated
+	// reading reported the TOP frame's activation: after a trusted press in the main
+	// document, the child's write was admitted with reason "user activation" while
+	// the child itself had none. Reassuring though it would be to call that a
+	// propagation rule, an ambiguous reading is not a control, and the constraint is
+	// explicit that a child frame must never borrow the top frame's activation. So a
+	// non-main frame is refused outright: the host names it in the log and the page
+	// gets the same NotAllowedError the native API would give it.
+	//
+	// WHAT THIS COSTS, stated: a Copy button inside an iframe (a same-process one; an
+	// OOPIF was never covered) does not work through the shim. That is a narrowing of
+	// the previous behaviour on this host, where no page could write at all, so it is
+	// strictly better than what shipped — and a page whose copy lives in a frame
+	// still has the `copy` action, which addresses elements by selector.
+	if (state.mainFrameId !== undefined && known.frameId !== state.mainFrameId) {
+		state.log?.(
+			`[browser] refused a page clipboard write on view ${webContentsId}: frame ${known.frameId} is not the main frame (main-frame-only by design)`,
+		);
+		ack(id, false);
+		return;
+	}
+	const verdict = await writeVerdict(cdp, contents, state, known.frameId);
+	if (!verdict.allowed) {
+		// The REASON travels to the app log and never the bytes: a copy that stops
+		// working has to be visible without the value being.
+		state.log?.(
+			`[browser] refused a page clipboard write on view ${webContentsId} (frame ${known.frameId}): ${verdict.reason}`,
+		);
+		ack(id, false);
 		return;
 	}
 	// Re-checked here as well as in the page: the page's copy of the cap is code it
 	// can patch, and this is the copy that decides what the process writes.
-	if (Buffer.byteLength(payload.text, "utf8") > CLIPBOARD_SHIM_MAX_BYTES) {
-		ack(payload.id, false);
+	if (Buffer.byteLength(text, "utf8") > CLIPBOARD_SHIM_MAX_BYTES) {
+		state.log?.(
+			`[browser] refused a page clipboard write on view ${webContentsId}: over the ${CLIPBOARD_SHIM_MAX_BYTES}-byte cap`,
+		);
+		ack(id, false);
 		return;
 	}
 	try {
@@ -609,9 +741,23 @@ async function answerBinding(
 		// reachable from node-only test bundles, and an electron import at module
 		// scope would make them require the electron binary just to load.
 		const { clipboard } = await import("electron");
-		await clipboard.writeText(payload.text);
-		ack(payload.id, true);
-	} catch {
-		ack(payload.id, false);
+		await clipboard.writeText(text);
+		state.log?.(
+			`[browser] wrote a page clipboard copy on view ${webContentsId} (frame ${known.frameId}, ${verdict.reason})`,
+		);
+		ack(id, true);
+	} catch (error) {
+		state.log?.(
+			`[browser] the clipboard refused a page write on view ${webContentsId}: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		ack(id, false);
 	}
+}
+
+/** Drop a view's install. Exported for tests and for a host that stops. */
+export function forgetClipboardShim(webContentsId: number): void {
+	const state = views.get(webContentsId);
+	if (!state) return;
+	state.dispose();
+	views.delete(webContentsId);
 }
