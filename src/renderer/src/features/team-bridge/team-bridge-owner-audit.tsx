@@ -329,6 +329,14 @@ function AuditTranscript({
 	const wire = new Map(messages.map((message) => [message.id, message]));
 	const chiefLabels = ownerAuditChiefLabels();
 	return (
+		/* NO `accountId`, ON PURPOSE: an audit row mounts the link-preview list and
+		 * refuses it. Preview cards exist to resolve a link on the reader's behalf,
+		 * and an audit is a read of someone else's conversation, so a card there
+		 * would make an outbound request per audited link for a reader who is
+		 * reconstructing what happened rather than reading mail addressed to them.
+		 * Attachments are different (they come from the wire, and the byte route
+		 * carries `attachmentScope.accountId`), so do not "fix" this by passing it
+		 * (#1734 review round 1, R1-m2). */
 		<TeamBridgeMessageList
 			messages={messages.map(ownerAuditToBridgeMessage)}
 			labelFor={(sender) =>
