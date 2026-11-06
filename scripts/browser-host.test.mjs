@@ -10434,6 +10434,10 @@ test("frames 7: a ref with frameId routes to its session; the epoch rule is unch
 			nodeId: "b",
 			role: { value: "textbox" },
 			name: { value: "Number" },
+			// A value the frame's own document carries: the frame walk must project
+			// it exactly as the top-level walk does, or a form inside an iframe
+			// reports its fields without saying what they hold.
+			value: { value: "4242" },
 			backendDOMNodeId: 21,
 		},
 	];
@@ -10454,7 +10458,7 @@ test("frames 7: a ref with frameId routes to its session; the epoch rule is unch
 	assert.ok(frameRef, `a frame ref exists: ${JSON.stringify(record.refs)}`);
 	assert.match(
 		snap.snapshot,
-		new RegExp(`textbox "Number" \\[${frameRef[0]}\\]`),
+		new RegExp(`textbox "Number" \\[${frameRef[0]}\\] = "4242"`),
 	);
 	assert.equal(record.refs.e1.frameId, undefined, "a top ref carries no frame");
 
@@ -10523,6 +10527,70 @@ test("frames 7b: a page with no iframe snapshots with exactly the pre-change com
 			["Accessibility.disable", 2],
 		],
 	);
+});
+
+test("frames 7c: a control's value rides on the snapshot line", async () => {
+	// The measured gap: `combobox "Environment" [collapsed]` could not be told
+	// apart from the same combobox holding `Production`, so the only way to learn
+	// what a settings form was set to was a screenshot. Fixtures are the shapes
+	// `Accessibility.getFullAXTree` returns (measured on Electron 44.3.0): a native
+	// <select> carries the selected option's TEXT on the combobox node, a password
+	// field carries bullets rather than its text, and an option carries no value.
+	const { FRAMES_ACTIONS } = await frameActions();
+	const page = new FramePage();
+	page.addDoc("", 1, []);
+	page.docs.get("").ax = [
+		{
+			nodeId: "1",
+			role: { value: "RootWebArea" },
+			name: { value: "Settings" },
+			childIds: ["2", "3", "4"],
+		},
+		{
+			nodeId: "2",
+			role: { value: "combobox" },
+			name: { value: "Environment" },
+			value: { value: "Production" },
+			backendDOMNodeId: 11,
+			properties: [
+				{ name: "focusable", value: { value: true } },
+				{ name: "expanded", value: { value: false } },
+			],
+		},
+		{
+			nodeId: "3",
+			role: { value: "textbox" },
+			name: { value: "App name" },
+			value: { value: "release-bot" },
+			backendDOMNodeId: 12,
+		},
+		{
+			nodeId: "4",
+			role: { value: "textbox" },
+			name: { value: "Password" },
+			value: { value: "••••••" },
+			backendDOMNodeId: 13,
+		},
+	];
+	const { pool, contents } = await framePool(page);
+	const record = { view: { webContents: contents }, refs: {}, epoch: 1 };
+	const snap = await FRAMES_ACTIONS.snapshot(
+		{ cdp: pool, registry: { requireSurface: () => record, touch: () => {} } },
+		{ tab: "t" },
+	);
+	assert.match(
+		snap.snapshot,
+		/- combobox "Environment" \[e1\] \[collapsed\] = "Production"/,
+	);
+	assert.match(snap.snapshot, /- textbox "App name" \[e2\] = "release-bot"/);
+	assert.match(snap.snapshot, /- textbox "Password" \[e3\] = "••••••"/);
+	assert.ok(
+		!/hunter2|secret/i.test(snap.snapshot),
+		"a password's TEXT never reaches the snapshot line",
+	);
+	// The value is a suffix: every earlier token keeps its position, which the
+	// locator grammar and the ref vocabulary depend on.
+	assert.match(snap.snapshot, /\[e1\] \[collapsed\] = /);
 });
 
 test("frames 8: upload refuses a node that resolved inside a frame", async () => {

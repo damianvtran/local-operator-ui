@@ -300,6 +300,27 @@ const PAGE = `<!doctype html>
 </script>
 </body></html>`;
 
+/* The stand-in page for the accessibility snapshot's SELECTED-VALUE projection.
+ *
+ * The repro that prompted it is a vendor settings form (developer.apple.com's
+ * APNs key creation, and Firebase service accounts) behind a login, so the
+ * controls are reproduced here rather than driven live: a native `<select>` whose
+ * current choice mattered and was invisible on the snapshot line, a filled
+ * textbox, and the two slider shapes Chromium treats differently — measured on
+ * Electron 44.3.0: a native `<input type=range>` carries a `valuetext` property
+ * while a `div[role=slider]` with `aria-valuetext` does NOT (Chromium drops it),
+ * so its numeric value is the honest expectation. */
+const VALUES_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Snapshot values</title></head><body>
+<label for="env">Environment</label>
+<select id="env"><option value="sandbox">Sandbox</option><option value="production" selected>Production</option></select>
+<label for="app">App name</label>
+<input id="app" type="text" value="release-bot" />
+<label for="vol">Volume</label>
+<input id="vol" type="range" min="0" max="10" value="7" />
+<div id="quality" role="slider" tabindex="0" aria-label="Quality" aria-valuemin="0" aria-valuemax="10" aria-valuenow="3" aria-valuetext="Medium"></div>
+</body></html>`;
+
 const PAGE2 = `<!doctype html><html><head><meta charset="utf-8"><title>Proof page two</title></head>
 <body><h1>Second page</h1><p id="second">This is the second proof page.</p></body></html>`;
 
@@ -869,6 +890,11 @@ function startSite(frameOrigin) {
 			res.end(
 				"<!doctype html><title>cookie set</title><p id=cookies>cookies set</p>",
 			);
+			return;
+		}
+		if (url.pathname === "/values") {
+			res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+			res.end(VALUES_PAGE);
 			return;
 		}
 		if (url.pathname === "/page2") {
@@ -1975,6 +2001,48 @@ async function main() {
 		Boolean(nameRef && goRef),
 		`name=${nameRef} go=${goRef}`,
 	);
+	// --- 2b. a control's VALUE on the snapshotted line ----------------------
+	// The gap this measures: `combobox "Environment" [collapsed]` said nothing
+	// about which environment the form was set to, so the only way to learn a fact
+	// the AX tree already carried was a screenshot. `VALUES_PAGE` is the logged-out
+	// stand-in for the repro (an APNs key form and a Firebase service-account form
+	// are behind a login); the checks read the line the agent would have read.
+	const valuesTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/values`,
+		requester: "session:proof",
+	});
+	const valuesSnap = await rpcOk(state, "snapshot", { tab: valuesTab.tab });
+	const valueLine = (pattern) =>
+		valuesSnap.snapshot.split("\n").find((entry) => pattern.test(entry)) ??
+		"(absent)";
+	const comboLine = valueLine(/- combobox /);
+	const fieldLine = valueLine(/- textbox "App name"/);
+	const rangeLine = valueLine(/- slider "Volume"/);
+	const ariaLine = valueLine(/- slider "Quality"/);
+	say(
+		`values snapshot lines:\n  ${comboLine}\n  ${fieldLine}\n  ${rangeLine}\n  ${ariaLine}`,
+	);
+	check(
+		"a combobox's selected option rides on the snapshot line",
+		/= "Production"$/.test(comboLine),
+		comboLine,
+	);
+	check(
+		"a filled textbox's text rides on the snapshot line",
+		/= "release-bot"$/.test(fieldLine),
+		fieldLine,
+	);
+	check(
+		"a native range's value (through its valuetext property) is on the line",
+		/= "7"$/.test(rangeLine),
+		rangeLine,
+	);
+	check(
+		"an ARIA slider shows its numeric value (Chromium surfaces no aria-valuetext)",
+		/= "3"$/.test(ariaLine),
+		ariaLine,
+	);
+	await rpcOk(state, "close", { tab: valuesTab.tab });
 	const typed = await rpcOk(state, "type", {
 		tab: handle,
 		ref: nameRef,
