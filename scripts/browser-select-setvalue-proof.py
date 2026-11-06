@@ -253,10 +253,57 @@ async def cells(url: str, phase: str) -> list[dict]:
             "page_after": {"secret_echo": await page_read("#secret-echo")},
         }
     )
+    # THE RESTORE MATRIX (QA round 2, Q2-1): a refused write must leave the
+    # control and the page exactly as they were — same value, no new event.
+    await wire("setvalue", tab=tab, selector="#level", text="5")
+    await wire("setvalue", tab=tab, selector="#tint", text="#abcdef")
+    events_before = await page_read("#events")
     rows.append(
         {
-            "cell": "setvalue #when with a value the date sanitizer drops -> typed refusal",
+            "cell": "restore baseline: #when=2026-11-06, #level=5, #tint=#abcdef",
+            "actual": {
+                "when": await page_read("#when-echo"),
+                "level": await page_read("#level-echo"),
+                "tint": await page_read("#tint-echo"),
+                "events": events_before,
+            },
+        }
+    )
+    rows.append(
+        {
+            "cell": "setvalue #when 01/03/2027 (refused) -> control restored, nothing dispatched",
             "actual": await wire("setvalue", tab=tab, selector="#when", text="01/03/2027"),
+            "page_after": {
+                "when_echo": await page_read("#when-echo"),
+                "events": await page_read("#events"),
+            },
+        }
+    )
+    rows.append(
+        {
+            "cell": "setvalue #level 99 (refused, would clamp to 10) -> control restored",
+            "actual": await wire("setvalue", tab=tab, selector="#level", text="99"),
+            "page_after": {
+                "level_echo": await page_read("#level-echo"),
+                "events": await page_read("#events"),
+            },
+        }
+    )
+    rows.append(
+        {
+            "cell": "setvalue #tint purple (refused, would become #800080) -> control restored",
+            "actual": await wire("setvalue", tab=tab, selector="#tint", text="purple"),
+            "page_after": {
+                "tint_echo": await page_read("#tint-echo"),
+                "events": await page_read("#events"),
+            },
+        }
+    )
+    rows.append(
+        {
+            "cell": "setvalue #tint #ABCDEF (valid, hex case folded) -> accepted",
+            "actual": await wire("setvalue", tab=tab, selector="#tint", text="#ABCDEF"),
+            "page_after": {"tint_echo": await page_read("#tint-echo")},
         }
     )
     rows.append(

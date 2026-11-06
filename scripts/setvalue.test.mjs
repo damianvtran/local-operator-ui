@@ -380,6 +380,57 @@ describe("setvalue: text fields", () => {
 		f.close();
 	});
 
+	test("a refused write leaves the control and the page EXACTLY as they were", () => {
+		// The refusal is only honest if nothing happened: no prior value lost, and
+		// no `input`/`change` reaching the page's own handlers. Each case first sets
+		// a value the control accepts, so there is something to lose.
+		const cases = [
+			['<input id="x" type="date">', "2026-11-06", "01/03/2027", "YYYY-MM-DD"],
+			[
+				'<input id="x" type="range" min="0" max="10">',
+				"5",
+				"99",
+				"a number between the control's min and max",
+			],
+			['<input id="x" type="color">', "#112233", "purple", "#rrggbb"],
+			['<input id="x" type="color">', "#112233", "notacolour", "#rrggbb"],
+		];
+		for (const [markup, prior, refused, expected] of cases) {
+			const f = fixture(markup);
+			const el = f.doc.querySelector("#x");
+			const good = f.run("#x", prior);
+			assert.equal(good.status, "ready", `${markup} accepts ${prior}`);
+			const eventsBefore = [...f.events];
+			const r = f.run("#x", refused);
+			assert.equal(r.status, "value_rejected", `${markup} refuses ${refused}`);
+			assert.equal(r.expected, expected);
+			assert.equal(
+				el.value,
+				prior,
+				`${markup}: the refused write must not move the control off ${prior}`,
+			);
+			assert.deepEqual(
+				f.events,
+				eventsBefore,
+				`${markup}: a refused write must dispatch nothing`,
+			);
+			f.close();
+		}
+	});
+
+	test("a colour read-back is compared case-insensitively, because browsers fold hex", () => {
+		const f = fixture('<input id="x" type="color">');
+		const r = f.run("#x", "#ABCDEF");
+		assert.equal(
+			r.status,
+			"ready",
+			"#ABCDEF is a valid colour; the stored #abcdef is the same value",
+		);
+		assert.equal(r.value.toLowerCase(), "#abcdef");
+		assert.equal(r.verified, true);
+		f.close();
+	});
+
 	test("the prototype setter bypasses a framework's instance value tracker", () => {
 		const f = fixture('<input id="i" type="text">');
 		const input = f.doc.querySelector("#i");

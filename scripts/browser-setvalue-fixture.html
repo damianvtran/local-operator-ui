@@ -36,6 +36,15 @@
   <div id="name-echo" class="echo">name: (empty)</div>
 </section>
 
+<section id="sanitized-form">
+  <label for="level">Level (0-10)</label>
+  <input id="level" name="level" type="range" min="0" max="10">
+  <div id="level-echo" class="echo">level: (unset)</div>
+  <label for="tint">Tint</label>
+  <input id="tint" name="tint" type="color" value="#112233">
+  <div id="tint-echo" class="echo">tint: (unset)</div>
+</section>
+
 <section id="date-form">
   <label for="when">Start date</label>
   <input id="when" name="when" type="date">
@@ -84,6 +93,10 @@
       name: document.getElementById('name').value,
       nameEcho: document.getElementById('name-echo').textContent,
       when: document.getElementById('when').value,
+      level: document.getElementById('level').value,
+      levelEcho: document.getElementById('level-echo').textContent,
+      tint: document.getElementById('tint').value,
+      tintEcho: document.getElementById('tint-echo').textContent,
       whenEcho: document.getElementById('when-echo').textContent,
       locked: document.getElementById('locked').value,
       combo: document.getElementById('pick').textContent,
@@ -139,6 +152,22 @@
   secret.addEventListener('input', function () {
     document.getElementById('secret-echo').textContent = 'secret: received ' + secret.value.length + ' chars';
     note('secret:input len=' + secret.value.length);
+  });
+
+  // The sanitizing controls the refusal path must leave untouched: each echo is
+  // rewritten by the PAGE's own handler, so an echo that still reads its prior
+  // value plus an unchanged event log is proof that NOTHING was dispatched.
+  var level = document.getElementById('level');
+  level.addEventListener('input', function () { note('level:input=' + level.value); });
+  level.addEventListener('change', function () {
+    document.getElementById('level-echo').textContent = 'level: ' + level.value;
+    note('level:change=' + level.value);
+  });
+  var tint = document.getElementById('tint');
+  tint.addEventListener('input', function () { note('tint:input=' + tint.value); });
+  tint.addEventListener('change', function () {
+    document.getElementById('tint-echo').textContent = 'tint: ' + tint.value;
+    note('tint:change=' + tint.value);
   });
 
   var when = document.getElementById('when');

@@ -15,8 +15,10 @@
  * is only what it would submit — so toggling belongs to `click`. A password
  * field's value is a credential and this answer travels into a transcript, so
  * it is read back internally and never returned. A value-sanitizing input
- * (date, time, number, colour, …) REFUSES a string it cannot parse by keeping
- * "", which must never be reported as a successful write.
+ * (date, time, number, colour, …) refuses a string it does not store as asked,
+ * and a refusal RESTORES the value the control already held (the setter is the
+ * only way to learn what a sanitizer would do, so the write happens first and is
+ * undone), leaving the page exactly as it was and having dispatched nothing.
  *
  * WHY THE PROTOTYPE SETTER RATHER THAN `.value = x`: React (and every
  * framework shaped like it) installs an OWN `value` accessor on the node as its
@@ -191,32 +193,20 @@ export function setvaluePage(this: Element, requested: string): unknown {
 	const proto = isTextarea
 		? win.HTMLTextAreaElement.prototype
 		: win.HTMLInputElement.prototype;
-	(
-		Object.getOwnPropertyDescriptor(proto, "value") as {
-			set: (input: unknown) => void;
-		}
-	).set.call(this, value);
-	dispatch(this);
+	const setValue = (input: string) =>
+		(
+			Object.getOwnPropertyDescriptor(proto, "value") as {
+				set: (input: unknown) => void;
+			}
+		).set.call(this, input);
 	const inputType = isInput ? (this as HTMLInputElement).type : "";
-	const readBack = (this as HTMLInputElement).value;
-	// A password field's value is a CREDENTIAL and this answer travels into a
-	// transcript. Read it back for honesty, then report only whether the write
-	// stuck — never the value itself. The host omits `value` when `redacted`.
-	if (inputType === "password") {
-		return {
-			status: "ready",
-			kind: "input",
-			type: "password",
-			redacted: true,
-			verified: readBack === value,
-		};
-	}
 	// A value-sanitizing input does not store what it was given: it either DROPS
 	// the value (date/time/month/week/number keep "") or COERCES it (range clamps
-	// to min/max, colour falls back to #000000). Both are a write that did not
-	// happen, and reporting either as success is how a form is submitted with an
-	// empty or wrong field. Each entry names the format that type accepts, because
-	// "it silently kept something else" is not an instruction.
+	// to min/max; a colour is parsed, so a CSS name lands as its hex and anything
+	// unparsable becomes #000000). Both are a write that did not happen, and
+	// reporting either as success is how a form is submitted with an empty or
+	// wrong field. Each entry names the format that type accepts, because "it
+	// silently kept something else" is not an instruction.
 	const sanitized: Record<string, string> = {
 		date: "YYYY-MM-DD",
 		time: "HH:MM or HH:MM:SS",
@@ -227,12 +217,49 @@ export function setvaluePage(this: Element, requested: string): unknown {
 		range: "a number between the control's min and max",
 		color: "#rrggbb",
 	};
-	if (value !== "" && readBack !== value && sanitized[inputType]) {
+	const expected = sanitized[inputType];
+	// THE ORDER HERE IS THE CONTRACT: judge the write BEFORE announcing it. A
+	// sanitizer runs INSIDE the value setter, so the only way to learn what a
+	// control makes of a string is to write it — which means a rejection has
+	// already touched the node. Dispatching first would run the page's own
+	// `input`/`change` handlers on a value this program is about to refuse, and
+	// the refusal would then describe a form that has already moved: an agent
+	// told "this field did not take the value" must find it exactly as it was.
+	// So the prior value is snapshotted, the write is sampled, and ANY refusal
+	// restores that snapshot through the same prototype setter WITHOUT
+	// dispatching — unconditionally, rather than assuming which types mutate.
+	const priorValue = (this as HTMLInputElement).value;
+	setValue(value);
+	const sampled = (this as HTMLInputElement).value;
+	// A colour's read-back is FOLDED: Chromium stores `#abcdef` for `#ABCDEF`, so a
+	// case-sensitive compare refused a write that had landed exactly as asked.
+	// The same rule decides `verified`, or the caller would be told a correct hex
+	// did not stick.
+	const sameValue = (stored: string) =>
+		inputType === "color"
+			? stored.toLowerCase() === value.toLowerCase()
+			: stored === value;
+	if (value !== "" && expected && !sameValue(sampled)) {
+		setValue(priorValue);
 		return {
 			status: "value_rejected",
 			tag: tag.toLowerCase(),
 			input_type: inputType,
-			expected: sanitized[inputType],
+			expected,
+		};
+	}
+	dispatch(this);
+	const readBack = (this as HTMLInputElement).value;
+	// A password field's value is a CREDENTIAL and this answer travels into a
+	// transcript. Read it back for honesty, then report only whether the write
+	// stuck — never the value itself. The host omits `value` when `redacted`.
+	if (inputType === "password") {
+		return {
+			status: "ready",
+			kind: "input",
+			type: "password",
+			redacted: true,
+			verified: sameValue(readBack),
 		};
 	}
 	return {
@@ -240,6 +267,6 @@ export function setvaluePage(this: Element, requested: string): unknown {
 		kind: isTextarea ? "textarea" : "input",
 		type: inputType,
 		value: readBack,
-		verified: readBack === value,
+		verified: sameValue(readBack),
 	};
 }

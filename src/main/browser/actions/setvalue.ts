@@ -32,8 +32,15 @@ import { SETVALUE_PAGE_SOURCE } from "./page-programs.gen";
  *
  * THE READ-BACK IS THE PROOF. The program returns the value it read after
  * dispatching `input` and `change`, so a caller verifies state without a
- * screenshot. `verified: false` is a REAL answer (a date field rejects an
- * unparsable string by keeping ""), not an internal error.
+ * screenshot. `verified: false` is a REAL answer (a framework's change handler
+ * reverted the write), not an internal error.
+ *
+ * A REFUSED WRITE CHANGES NOTHING. A value-sanitizing field (date, colour,
+ * range, …) is judged BEFORE its `input`/`change` are dispatched, and a refusal
+ * restores the control's prior value through the same prototype setter without
+ * dispatching, so `value_rejected` genuinely means "the page never moved" — an
+ * agent that retries is working on the form it left, not on one already emptied
+ * or clamped by the refused value.
  */
 
 /** The shape `page-programs/setvalue-page.ts` answers with. */
