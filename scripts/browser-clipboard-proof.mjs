@@ -204,6 +204,9 @@ function nextPage() {
 <script>
   const key = document.getElementById("app-key").textContent.trim();
   document.getElementById("shim").textContent = window.__localOperatorClipboardShim ? "shimmed" : "native";
+  setInterval(function () {
+    document.getElementById("shim").textContent = window.__localOperatorClipboardShim ? "shimmed" : "native";
+  }, 200);
   document.getElementById("copy-again").addEventListener("click", function () {
     navigator.clipboard.writeText(key).then(
       function () { document.getElementById("result").textContent = "click:ok"; },
