@@ -1,0 +1,24 @@
+[
+	{
+		"id": "RU-DB1",
+		"severity": "minor",
+		"key": "ui.teamBridge.events.declined",
+		"related_keys": [
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.withdrawn"
+		],
+		"current": "{actor}: отклонение приглашения для {targets}",
+		"proposed": "{actor}: отклонено приглашение — {targets}",
+		"also_accepts": "keep the nominal form and align the sibling instead: events.declined_self → «{actor}: отклонение приглашения»",
+		"reason": "The rewrite moved this line out of two conventions it previously satisfied. (1) Every other actor-bearing event line with targets puts the names after an em dash (invited, owner_added_agent, removed, consented, withdrawn = 5 of 5); this one now uses «для {targets}», so the name column no longer lines up. (2) The passive family is participle-first («одобрено присоединение — {targets}», «отозвано приглашение — {targets}»); a verbal noun makes the declined/declined_self pair - which round-1 RU-A2 already asked to align - differ in construction rather than only in word order. Meaning is intact either way, hence minor."
+	},
+	{
+		"id": "RU-DB2",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.owner_added_agent",
+		"current": "{actor}: добавление собственного агента — {targets}",
+		"proposed": "no shorter phrasing without losing 'own'; flag for a rendered width check",
+		"reason": "At 51 characters this is now the longest ru event value against 35 in English (+46%); rendered with three targets it is 54 against 41. The 'собственного' is load-bearing (no consent step because the actor owns the agent), so I flag the fit rather than shorten it: the one-line timeline row needs a rendered check, as the first round already noted for this column."
+	}
+]

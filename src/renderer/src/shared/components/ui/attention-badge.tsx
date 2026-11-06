@@ -51,6 +51,23 @@ import { Badge, countLabel } from "./badge";
  *
  * A count of zero or less draws nothing: a badge reading `0` would be a mark
  * that says nothing is being asked.
+ *
+ * THE QUIET REGISTER (`register="quiet"`) IS THE SECOND KIND OF COUNT, and it
+ * exists so a host never reaches for a Badge variant itself (design review
+ * round 1 on the Team Bridge unread work, D1). The rule above splits counts in
+ * two: accent for ATTENTION, the subtle numeral for a TOTAL. A MUTED
+ * conversation's unread is a total - it is shown so the reader can see it, and
+ * deliberately kept out of the sidebar badge, because a mute is the reader
+ * saying "do not interrupt me". Drawing it in the accent pill made the loudest
+ * mark on the rail the one the badge had been told not to count, so a reader
+ * reconciling the badge against the pills saw two accents beside a 0.
+ *
+ * The register is a SEMANTIC flag, not a style: what it changes is the variant
+ * (`attentionQuiet`: borderless, `elevated` ground, `ink-dim` numeral), while
+ * the geometry and the `99+` cap stay this component's - the call site still
+ * passes a number and nothing else. `data-attention-register` states which
+ * register was drawn, so a rendered test can classify the marks it sees rather
+ * than re-reading the class names.
  */
 export type AttentionBadgeProps = Omit<
 	HTMLAttributes<HTMLSpanElement>,
@@ -58,6 +75,17 @@ export type AttentionBadgeProps = Omit<
 > & {
 	count: number;
 	placement?: "inline" | "corner";
+	register?: "attention" | "quiet";
+	/**
+	 * Wrap the CAPPED numeral in words ("2 unread"), for a host whose row has
+	 * no other place to say what the number counts (the Team Bridge thread
+	 * row). It receives the label this component already capped, so the cap
+	 * stays here and a host still cannot pick a variant, class or cap; the
+	 * pill geometry (`size="count"`: fixed `h-4`) is unchanged, so worded and
+	 * bare marks share one height. Corner marks are glyph annotations and
+	 * ignore it.
+	 */
+	format?: (label: string) => string;
 };
 
 /** The digits the badge spells before it caps to `99+`. */
@@ -67,27 +95,35 @@ export const ATTENTION_BADGE_CAP = 99;
 export const ATTENTION_BADGE_CORNER_CAP = 9;
 
 export const AttentionBadge = forwardRef<HTMLSpanElement, AttentionBadgeProps>(
-	({ count, placement = "inline", className, ...props }, ref) => {
+	(
+		{
+			count,
+			placement = "inline",
+			register = "attention",
+			format,
+			className,
+			...props
+		},
+		ref,
+	) => {
 		if (!(count > 0)) return null;
 		return (
 			<Badge
 				ref={ref}
-				variant="emphasis"
+				variant={register === "quiet" ? "attentionQuiet" : "emphasis"}
 				shape="pill"
 				size="count"
 				data-attention-badge=""
+				data-attention-register={register}
 				className={cn(
 					placement === "corner" && "h-3.5 min-w-3.5 px-0.75 leading-none",
 					className,
 				)}
 				{...props}
 			>
-				{countLabel(
-					count,
-					placement === "corner"
-						? ATTENTION_BADGE_CORNER_CAP
-						: ATTENTION_BADGE_CAP,
-				)}
+				{placement === "corner"
+					? countLabel(count, ATTENTION_BADGE_CORNER_CAP)
+					: (format ?? String)(countLabel(count, ATTENTION_BADGE_CAP))}
 			</Badge>
 		);
 	},

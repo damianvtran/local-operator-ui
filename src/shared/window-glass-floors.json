@@ -1,11 +1,10 @@
 {
-	"_why": "Minimum ground alphas, the state/field overlay alphas and the edge mix the window-glass feature paints, derived by scripts/derive-glass-floors.mjs (AA ink over the worst measured backdrop WITH the state overlay stacked; the 3:1 structural edge via a border->ink mix). Asserted by scripts/contrast-contract.mjs. Never hand-lower a value: re-derive.",
 	"alphaFloor": {
 		"under-window": {
 			"dark": {
-				"canvas": 0.59,
-				"surface": 0.67,
-				"elevated": 0.87
+				"canvas": 0.53,
+				"surface": 0.59,
+				"elevated": 0.68
 			},
 			"light": {
 				"canvas": 0.61,
@@ -15,9 +14,9 @@
 		},
 		"menu": {
 			"dark": {
-				"canvas": 0.73,
-				"surface": 0.79,
-				"elevated": 0.94
+				"canvas": 0.67,
+				"surface": 0.72,
+				"elevated": 0.8
 			},
 			"light": {
 				"canvas": 0.79,
@@ -27,9 +26,9 @@
 		},
 		"popover": {
 			"dark": {
-				"canvas": 0.79,
-				"surface": 0.85,
-				"elevated": 0.97
+				"canvas": 0.75,
+				"surface": 0.78,
+				"elevated": 0.86
 			},
 			"light": {
 				"canvas": 0.86,
@@ -45,16 +44,12 @@
 	"laneWash": {
 		"dark": {
 			"role": "sunken",
-			"scale": 0.73
+			"scale": 0.68
 		},
 		"light": {
 			"role": "surface",
 			"scale": 0.72
 		}
-	},
-	"bandFloor": {
-		"dark": 0.91,
-		"light": 0.78
 	},
 	"controlMix": {
 		"under-window": {
@@ -62,18 +57,35 @@
 			"light": 0.2
 		},
 		"menu": {
-			"dark": 0.15,
+			"dark": 0.1,
 			"light": 0.2
 		},
 		"popover": {
-			"dark": 0.15,
+			"dark": 0.1,
 			"light": 0.15
 		}
+	},
+	"bandFloor": {
+		"dark": 0.88,
+		"light": 0.78
+	},
+	"overlayFloor": {
+		"dark": 0.7,
+		"light": 0.5
+	},
+	"overlayInkMix": {
+		"dark": 0.65,
+		"light": 0.6
+	},
+	"overlayEdgeMix": {
+		"dark": 0.3,
+		"light": 0.4
 	},
 	"stateAlpha": {
 		"hover": 0.05,
 		"selected": 0.08,
 		"field": 0.05,
 		"work": 0.08
-	}
+	},
+	"_why": "Minimum ground alphas, the minimum ink and edge mixes the floating overlay carries, the state/field overlay alphas and the edge mix the window-glass feature paints, derived by scripts/derive-glass-floors.mjs (AA ink over the worst measured backdrop WITH the state overlay stacked; the 3:1 structural edge via a border->ink mix; the overlay floor against the least opaque column the app can present, plus the two mixes that carry the semantic inks and the panel's own boundary on it). Asserted by scripts/contrast-contract.mjs. Never hand-lower or hand-pick a value: re-derive."
 }

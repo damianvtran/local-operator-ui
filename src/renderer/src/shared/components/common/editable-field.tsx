@@ -27,6 +27,8 @@ import type { ChangeEvent, FC, FocusEvent, KeyboardEvent } from "react";
 import { t } from "../../../../../i18n/messages";
 
 type EditableFieldProps = {
+	/** Settings search's stable row id, when this field is a searchable row. */
+	searchRow?: string;
 	/**
 	 * Current value of the field
 	 */
@@ -82,6 +84,7 @@ type EditableFieldProps = {
  * @param props - EditableFieldProps
  */
 export const EditableField: FC<EditableFieldProps> = ({
+	searchRow,
 	value,
 	label,
 	onSave,
@@ -308,7 +311,10 @@ export const EditableField: FC<EditableFieldProps> = ({
 		"opacity-0 transition-opacity duration-fast ease-out-quart group-hover:opacity-100 group-focus-within:opacity-100";
 
 	return (
-		<div>
+		<div
+			data-search-row={searchRow}
+			data-search-control={searchRow ? "" : undefined}
+		>
 			{/* Several call sites pass `label=""` because the surrounding heading
 			    already names the field. Rendering the element anyway leaves an
 			    empty flex row and its margin above the control. */}

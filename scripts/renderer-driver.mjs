@@ -24,7 +24,7 @@
  *   shim — in the documented `headless` window mode (`src/main/window-mode.ts` —
  *   a window that is never shown, so nothing can steal the operator's focus).
  *   The binary and not the shim is what makes the teardown reach the app; the
- *   comment on `ELECTRON_BIN` carries the measurement that decided it;
+ *   comment on `electronBinary` carries the measurement that decided it;
  * - the app's own gated dev-driver bridge (`src/main/dev-driver.ts`,
  *   `docs/agent-driver.md`) for the verbs, reached over CDP `Runtime.evaluate`
  *   on the app's OWN debugging port — the same channel AGENTS.md documents for
@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds>
  *                          which built-in scene to run (default: states)
  *   --attach <absolute-path> (with --scene attach, repeatable) one file the
  *                          paperclip press stages; ONLY the native picker is
@@ -266,6 +266,7 @@ import { basename, isAbsolute, join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { sceneAgentMessages } from "./agent-messages-scene.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import { installedElectronBinary } from "./electron-runtime-path.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
 import { isPaintedScrollBox } from "./hub-guard-geometry.mjs";
@@ -286,6 +287,7 @@ import {
 } from "./imagegen-card-fixture.mjs";
 import { sceneLibraryAsset } from "./library-asset-scene.mjs";
 import { sceneMeshTab } from "./mesh-scene.mjs";
+import { sceneNotificationSounds } from "./notification-sounds-scene.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -321,29 +323,15 @@ const ROOT = process.cwd();
  * the run had just deleted, one still answering `GET /json/version` on its
  * `--remote-debugging-port`.
  *
- * `require("electron")` is the same resolution `bin/local-operator-ui.js` uses,
- * so the harness drives the runtime the app ships against, and `child.pid` is
- * the app's own main process — which is what makes the exact-pid teardown below
- * reach it, and what lets the run say out loud which runtime a frame came from
- * (`electronRuntime()`).
+ * Installed package metadata gives the same executable without executing
+ * Electron45's installer-on-require index. Resolution is lazy and refuses a
+ * missing runtime. The app's own main PID, pin checks and exact-PID teardown
+ * remain unchanged; importing a proof script cannot install a runtime.
  */
-const ELECTRON_BIN = (() => {
-	const resolveFromRepo = createRequire(join(ROOT, "package.json"));
-	let binary;
-	try {
-		binary = resolveFromRepo("electron");
-	} catch (error) {
-		throw new Error(
-			`cannot resolve the Electron runtime from ${ROOT}: ${error?.message ?? error}\nInstall this branch's own dependencies first: pnpm install --frozen-lockfile`,
-		);
-	}
-	if (typeof binary !== "string" || !existsSync(binary)) {
-		throw new Error(
-			`the Electron runtime is not on disk at ${String(binary)}\npnpm install --frozen-lockfile (or \`npx install-electron --no\`) fetches it.`,
-		);
-	}
-	return binary;
-})();
+// Resolve only when a launch/main preflight needs it. Even require("electron")
+// is not inert on Electron45: it installs missing dist on import. The shared
+// metadata resolver never executes that package or bootstraps a dependency.
+const electronBinary = () => installedElectronBinary(ROOT);
 
 /**
  * The Electron version installed here, and the version this branch pins.
@@ -1141,7 +1129,7 @@ async function settledWithin(promise, ms) {
  * Kill by exact pid, never a pattern: a `pkill` would take the operator's app too.
  *
  * The signal goes to the app's OWN main process — the pid `spawn` returned once
- * the shim is gone (see `ELECTRON_BIN`) — and the escalation below targets that
+ * the shim is gone (see `electronBinary`) — and the escalation below targets that
  * same pid. That pairing is the whole fix: a SIGTERM the app does honour, and a
  * SIGKILL that lands on the app rather than on a shim that has already exited.
  * Helper processes (renderer, GPU, utility) are the app's own children and exit
@@ -1239,9 +1227,10 @@ async function reapStrays({ graceMs = 5000 } = {}) {
 	}
 }
 
-async function reapLiveBoots({ code, why }) {
-	if (reaping.running) return;
-	reaping.running = true;
+async function drainLiveBoots({ why, strict = true }) {
+	// Imported producers can own additional resources. They must be able to
+	// join app teardown WITHOUT exiting before their own finally blocks run.
+	const errors = [];
 	const boots = [...liveBoots];
 	if (boots.length > 0) {
 		say(`\n[${why}] stopping ${boots.length} app(s) this run started`);
@@ -1251,8 +1240,41 @@ async function reapLiveBoots({ code, why }) {
 			await stopApp(handle);
 		} catch (error) {
 			say(`[${why}] teardown threw: ${error?.message ?? error}`);
+			errors.push(error);
 		}
 	}
+	if (strict) {
+		for (const handle of boots) {
+			if (handle.child.exitCode === null && handle.child.signalCode === null)
+				errors.push(new Error(`owned app ${handle.child.pid} has not exited`));
+		}
+		// Observe the existing run-specific profile witness; never kill an
+		// unidentified descendant merely to turn a failed cleanup green.
+		const deadline = Date.now() + 5000;
+		for (;;) {
+			const observed = thisRunsProcesses();
+			if (!observed.measured) {
+				errors.push(new Error("owned descendant observation unavailable"));
+				break;
+			}
+			if (observed.lines.length === 0) break;
+			if (Date.now() >= deadline) {
+				errors.push(new Error("owned app descendants have not settled"));
+				break;
+			}
+			await wait(100);
+		}
+	}
+	if (strict && errors.length)
+		throw new AggregateError(errors, "owned app drain failed");
+	return { stopped: boots.length, clean: errors.length === 0 };
+}
+
+async function reapLiveBoots({ code, why }) {
+	if (reaping.running) return;
+	reaping.running = true;
+	// Preserve the historical standalone reaper's logging/exit disposition.
+	await drainLiveBoots({ why, strict: false });
 	process.exit(code);
 }
 
@@ -1359,6 +1381,10 @@ function resolvedWindowMode(requested) {
 async function launchApp({
 	armed,
 	apiUrl,
+	// Strict producers bind the executable verified before backend setup. Keep
+	// generic callers' historic ambient override, but never re-resolve a bound
+	// launch through mutable parent environment after an asynchronous preflight.
+	verifiedElectronBinary,
 	/*
 	 * Defaults for the two names a caller that is NOT the CLI has no reason to
 	 * know: the CLI passes both, so its behaviour is unchanged.
@@ -1415,6 +1441,14 @@ async function launchApp({
 	 * binding for later calls that omit the argument (measured: a `null` call
 	 * used to clear the binding a following omitted-argument call needed).
 	 */
+	if (
+		verifiedElectronBinary !== undefined &&
+		verifiedElectronBinary !== installedElectronBinary(ROOT, null)
+	) {
+		throw new Error(
+			"launchApp's verified Electron executable disagrees with the installed runtime",
+		);
+	}
 	if (apiUrl !== undefined) {
 		if (typeof apiUrl !== "string" || apiUrl.trim() === "") {
 			throw new Error(
@@ -1511,11 +1545,11 @@ async function launchApp({
 		throw new Error(`picked inspect port ${inspectPort} is in use`);
 
 	/*
-	 * The BINARY, not `node_modules/.bin/electron` — see `ELECTRON_BIN`. The shim
+	 * The BINARY, not `node_modules/.bin/electron` — see `electronBinary`. The shim
 	 * would make `child.pid` the shim's pid and orphan the app the shim starts.
 	 */
 	const child = spawn(
-		ELECTRON_BIN,
+		verifiedElectronBinary ?? electronBinary(),
 		[
 			// The app directory as an argument rather than `.`: argv[1] is what
 			// Electron loads, so the cwd can be the scratch directory that the
@@ -2062,6 +2096,7 @@ export const rendererDriverApi = Object.freeze({
 	verb,
 	capture,
 	reapLiveBoots,
+	drainLiveBoots,
 });
 
 /** How many RPC envelopes this run has sent, for their ids. */
@@ -11468,8 +11503,10 @@ async function sceneQuestionDock(cdp) {
  *
  * WHY THIS IS A SCENE OF ITS OWN, and why it needs no backend. §I is a set of
  * statements about BOXES: the chat pane keeps a 480px floor; the canvas docks at
- * `min(560, available - 480)`; where that leaves less than the canvas's own 400px
- * floor the canvas stops docking - the `overlay` literal, which draws a flex dock
+ * `min(1200, available - 480)` - `RIGHT_SLOT_MAX_PX`, the ONE ceiling every
+ * right-slot pane draws inside since #1525; where that leaves less than the
+ * canvas's own 400px floor the canvas stops docking - the `overlay` literal,
+ * which draws a flex dock
  * at the row's leftover rather than covering the chat (`canvasPaneMode` carries
  * the note); the sidebar yields to the 56px strip first. Nothing in that list is
  * about data, so the run does not
@@ -11485,7 +11522,8 @@ async function sceneQuestionDock(cdp) {
  *
  * A reader should run it at the four widths §I is written about:
  *
- *     --scene floors --window-size 1380x900   # docked: row 1120, canvas at its 560 cap
+ *     --scene floors --window-size 1380x900   # docked: row 1076 (1380 - 260 sidebar - 44 rail),
+ *                                             #          canvas at the 596 that row leaves
  *     --scene floors --window-size 1024x673   # canvas fit-yield: strip, canvas overlays
  *     --scene floors --window-size 960x673    # canvas fit-yield: strip, canvas docks
  *     --scene floors --window-size 800x600    # expanded dock capped to 276, canvas overlays
@@ -11569,10 +11607,10 @@ async function sceneFloors(cdp) {
 	 * byte-identical, so it is also the scene's proof that the layout has STOPPED MOVING -
 	 * and the canvas's own wrapper carries `transition-[width] duration-base`, which means a
 	 * reading taken before that ends describes a layout that never existed on screen.
-	 * Measured, 2026-09-24: reading first caught chat 942 / canvas 179 at 1380x900 and FAILED
-	 * the pane's 400px floor, while the settled frame shows the 560/560 shape. A false FAIL is
-	 * as bad as a false PASS: it costs a lane a hunt through the code for a defect that is in
-	 * the measurement.
+	 * Measured, 2026-09-24: reading first caught chat 942 / canvas 179 at 1380x900 and
+	 * FAILED the pane's 400px floor, while the settled frame showed the 560/560 shape
+	 * that tree drew. A false FAIL is as bad as a false PASS: it costs a lane a hunt
+	 * through the code for a defect that is in the measurement.
 	 */
 	const mode = paneMounted.last ?? null;
 	const frame = await captureSettled(
@@ -11652,10 +11690,21 @@ async function sceneFloors(cdp) {
 				canvas.width >= 400,
 				`canvas.width=${canvas.width} in a row of ${row.width}: below 400 the pane stops docking (the overlay literal)`,
 			);
+			/*
+			 * THE CEILING IS DERIVED FROM THE MEASURED ROW, not written as a literal
+			 * (review round 1, MAJOR-1). Every right-slot pane draws at most
+			 * `min(RIGHT_SLOT_MAX_PX, row - 480)` (`canvasDockWidth`), so that is the most
+			 * THIS row can give the canvas - and a scene run at a new window size keeps a
+			 * true bound without an edit. The check used to hard-code the canvas's retired
+			 * 560 cap and FAILED the correct 596 the row draws at the scene's own first
+			 * size (1380x900): a false FAIL in the live gate, which is the one place a
+			 * stale ceiling wears a verdict's clothes.
+			 */
+			const canvasCeiling = Math.min(1200, row.width - 480);
 			check(
-				"a docked canvas is no wider than §I's 560px ceiling",
-				canvas.width <= 560 + 1,
-				`canvas.width=${canvas.width}`,
+				"a docked canvas is no wider than the slot's one ceiling over this row",
+				canvas.width <= canvasCeiling + 1,
+				`canvas.width=${canvas.width} against min(1200, ${row.width} - 480) = ${canvasCeiling}`,
 			);
 			check(
 				"the two columns tile the row, the divider between them",
@@ -46634,7 +46683,7 @@ async function sceneMiniView(app, cdp) {
 		return name;
 	};
 	const dictationStartSentence = composerLabel("Start recording");
-	const dictationStopSentence = composerLabel("Confirm recording");
+	const dictationStopSentence = composerLabel("Insert transcript");
 	/*
 	 * The invalid-state sentence is the registrationCopy arm the toast probe
 	 * asserts; it is a `case` return rather than a `key: "…"` entry, so it gets
@@ -46778,7 +46827,7 @@ async function sceneMiniView(app, cdp) {
 		const composerField = `document.querySelector('textarea[aria-label="Message"]')`;
 		const composerSend = `document.querySelector('button[aria-label="Send message"]')`;
 		const composerMicStart = `document.querySelector('button[aria-label="Start recording"]')`;
-		const composerMicConfirm = `document.querySelector('button[aria-label="Confirm recording"]')`;
+		const composerMicConfirm = `document.querySelector('button[aria-label="Insert transcript"]')`;
 		const composerAlert = `document.querySelector('[role="alert"]')`;
 		/*
 		 * THE PALETTE THIS SCENE PHOTOGRAPHS (design N2). `--theme` reached only the MAIN
@@ -50120,14 +50169,14 @@ async function main() {
 	 * `node_modules` symlink. So the version is printed AND asserted, not assumed.
 	 */
 	const runtime = electronRuntime();
-	say(`  electron      ${runtime.installed}   (${ELECTRON_BIN})`);
+	say(`  electron      ${runtime.installed}   (${electronBinary()})`);
 	say(
 		`  electron pin  ${runtime.pinned}   (package.json optionalDependencies)`,
 	);
 	const onThePinnedRuntime = check(
 		"the harness is driving the Electron this branch pins",
 		runtime.installed === runtime.pinned,
-		`installed ${runtime.installed} at ${ELECTRON_BIN}, pinned ${runtime.pinned}`,
+		`installed ${runtime.installed} at ${electronBinary()}, pinned ${runtime.pinned}`,
 	);
 	/*
 	 * AND IT STOPS HERE, before the first boot, when the answer is no.
@@ -50748,6 +50797,26 @@ async function main() {
 					backendRecords: BACKEND_RECORDS,
 					framesDir: FRAMES,
 					electronUserAgent: ELECTRON_USER_AGENT,
+				});
+			/*
+			 * Settings -> Notifications -> Sound over a live daemon (local-operator
+			 * #3403): select, preview, volume, one accepted and one `too_long`
+			 * upload, rename and remove-selected, each read back from the daemon.
+			 * Needs `--backend`, `--sound-ok <file>` and `--sound-long <file>`.
+			 */ else if (SCENE === "notification-sounds")
+				await sceneNotificationSounds({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					clickAt,
+					backend: BACKEND,
+					token: process.env.LOCAL_OPERATOR_DESKTOP_TOKEN ?? null,
+					soundOk: argValue("--sound-ok", null),
+					soundLong: argValue("--sound-long", null),
 				});
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);

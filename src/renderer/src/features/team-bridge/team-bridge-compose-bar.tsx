@@ -90,9 +90,7 @@ export const TeamBridgeComposeBar: FC<{
 								<TeamBridgeProfileCard
 									member={member}
 									label={recipient.label}
-									agentName={
-										recipient.kind === "agent" ? recipient.label : undefined
-									}
+									kind={recipient.kind}
 									onMessage={() => {}}
 									canMessage={false}
 								>
@@ -102,14 +100,15 @@ export const TeamBridgeComposeBar: FC<{
 									>
 										<TeamBridgeAvatar
 											member={member}
+											kind={recipient.kind}
+											endpointId={
+												recipient.kind === "agent"
+													? recipient.endpointId
+													: undefined
+											}
 											label={recipient.label}
 											size={20}
-											className="rounded-[5px] text-[10px]"
-											fallback={
-												recipient.kind === "agent" ? (
-													<Bot size={12} />
-												) : undefined
-											}
+											className="text-[10px]"
 										/>
 										{recipient.label}
 									</button>
@@ -231,24 +230,26 @@ export const TeamBridgeComposeBar: FC<{
 								{member ? (
 									<TeamBridgeAvatar
 										member={member}
+										kind={option.kind}
+										endpointId={
+											option.kind === "agent" ? option.endpointId : undefined
+										}
 										label={option.label}
 										size={20}
-										className="rounded-[5px] text-[10px]"
-										fallback={
-											option.kind === "agent" ? <Bot size={12} /> : undefined
-										}
+										className="text-[10px]"
 									/>
 								) : (
 									<span
 										aria-hidden="true"
 										className={cn(
-											"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] text-[10px] font-medium",
-											/* Borderless, as every Team Bridge plate: the active
-									   option paints `row-hover`, and `media-surface` stays
-									   apart from it by value (see the message list's plate). */
+											"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-semibold",
+											/* Borderless and round, on the identity wash every Team
+									   Bridge plate wears (visual refresh D4, C2), >= ΔE00 3.0
+									   off a `row-hover` option (design round 1, D1). */
+											"bg-accent-alt-wash",
 											option.kind === "agent"
-												? "bg-media-surface text-accent"
-												: "bg-media-surface text-ink-muted",
+												? "text-accent"
+												: "text-accent-alt",
 										)}
 									>
 										{option.kind === "agent" ? (

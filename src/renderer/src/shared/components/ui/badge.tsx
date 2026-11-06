@@ -99,8 +99,12 @@ const badgeVariants = cva(
 				 * operator REVERSED D5 on 2026-10-28: every sidebar and Team Bridge
 				 * attention count now wears it, through the one `AttentionBadge`
 				 * (`attention-badge.tsx`) - call sites never name this variant directly.
-				 * `attentionQuiet` above stays for non-count marks (the preview chip, the
-				 * team avatar bubble).
+				 * `attentionQuiet` above is no longer only the non-count register: it
+				 * also draws a COUNT when the count is a plain total rather than a
+				 * request for the reader - a muted conversation's unread, which the
+				 * sidebar badge excludes by design. `AttentionBadge`'s `register="quiet"`
+				 * sends counts there (design review round 1, D1); no host names this
+				 * variant itself. It keeps the preview chip and the team avatar bubble.
 				 *
 				 * WHY `accent` / `on-accent` AND NOT A NEW ROLE. It is the primary
 				 * button's pair, so it is already a contrast-contracted triple on every

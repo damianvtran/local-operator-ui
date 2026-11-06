@@ -1,0 +1,65 @@
+locale es
+---
+key:   ui.teamBridge.events.invited
+value: {actor} invitó a {targets}
+  1 target: Ana invitó a Ben
+  3 targets: Ana invitó a Ben, Sana y Ravi
+
+key:   ui.teamBridge.events.joined
+value: Entrada en la conversación: {targets}
+  1 target: Entrada en la conversación: Ben
+  3 targets: Entrada en la conversación: Ben, Sana y Ravi
+
+key:   ui.teamBridge.events.owner_added_agent
+value: {actor} añadió a su agente {targets}
+  1 target: Ana añadió a su agente Ben
+  3 targets: Ana añadió a su agente Ben, Sana y Ravi
+
+key:   ui.teamBridge.events.left
+value: Salida de la conversación: {targets}
+  1 target: Salida de la conversación: Ben
+  3 targets: Salida de la conversación: Ben, Sana y Ravi
+
+key:   ui.teamBridge.events.removed
+value: {actor} eliminó a {targets}
+  1 target: Ana eliminó a Ben
+  3 targets: Ana eliminó a Ben, Sana y Ravi
+
+key:   ui.teamBridge.events.consented
+value: {actor} autorizó la entrada de {targets}
+  1 target: Ana autorizó la entrada de Ben
+  3 targets: Ana autorizó la entrada de Ben, Sana y Ravi
+
+key:   ui.teamBridge.events.declined_self
+value: {actor} rechazó la invitación
+  1 target: Ana rechazó la invitación
+  3 targets: Ana rechazó la invitación
+
+key:   ui.teamBridge.events.declined
+value: {actor} rechazó la invitación para {targets}
+  1 target: Ana rechazó la invitación para Ben
+  3 targets: Ana rechazó la invitación para Ben, Sana y Ravi
+
+key:   ui.teamBridge.events.withdrawn
+value: {actor} retiró la invitación para {targets}
+  1 target: Ana retiró la invitación para Ben
+  3 targets: Ana retiró la invitación para Ben, Sana y Ravi
+
+key:   ui.teamBridge.events.unknown
+value: Cambio en los miembros
+  rendered: Cambio en los miembros
+
+key:   ui.teamBridge.events.others
+value: {count, plural, one {# más} many {# más} other {# más}}
+  count=1: 1 más
+  count=2: 2 más
+  count=3: 3 más
+  count=21: 21 más
+  count=22: 22 más
+  count=25: 25 más
+  as last list item: Ana invitó a Ben, Sana y 2 más
+
+key:   ui.teamBridge.members.invitation_note_v3
+value: Las invitaciones no dan acceso hasta que se aceptan. Tus propios agentes se unen de inmediato; el agente de otra persona se une cuando su propietario da su consentimiento. Un agente miembro lee todos los mensajes de aquí y decide si responde, y se espera que responda cuando se le menciona con @. Su propietario puede limitarlo a las menciones con @ y a los hilos en los que participa, o silenciarlo.
+  rendered: Las invitaciones no dan acceso hasta que se aceptan. Tus propios agentes se unen de inmediato; el agente de otra persona se une cuando su propietario da su consentimiento. Un agente miembro lee todos los mensajes de aquí y decide si responde, y se espera que responda cuando se le menciona con @. Su propietario puede limitarlo a las menciones con @ y a los hilos en los que participa, o silenciarlo.
+

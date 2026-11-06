@@ -1,14 +1,12 @@
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import { PanelEdge } from "@shared/components/common/panel-edge";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import {
-	useInfiniteQuery,
-	useMutation,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { composeRefs } from "@shared/lib/compose-refs";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, X } from "lucide-react";
 import {
 	useCallback,
@@ -18,10 +16,14 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { MutableRefObject, RefObject } from "react";
+import type { TeamBridgeFilesCapability } from "../../../../shared/team-bridge-contract";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { MentionField, MentionNotice, useComposerMentions } from "./mentions";
+import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { teamBridgeArrivalStreamKey } from "./team-bridge-arrival-model";
 import {
 	TeamBridgeAttachButton,
@@ -29,6 +31,7 @@ import {
 	attachmentPasteHandlers,
 } from "./team-bridge-attachments";
 import { isAttachmentNotFound } from "./team-bridge-attachments-model";
+import { TeamBridgeFilesStrip } from "./team-bridge-files-strip";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import { manageThreadFocus } from "./team-bridge-thread-focus";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
@@ -38,8 +41,14 @@ import {
 	observeDisplayedThreadReplies,
 } from "./team-bridge-thread-read";
 import { useStickToBottom } from "./use-stick-to-bottom";
-import { teamBridgeKeys, useMarkTeamBridgeRead } from "./use-team-bridge";
+import { teamBridgeKeys, useMarkTeamBridgeThreadRead } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
+import { useTeamBridgeFiles } from "./use-team-bridge-files";
+import {
+	type ReplyWindowMode,
+	replyPageOutsideViewport,
+	useThreadReplyWindow,
+} from "./use-thread-reply-window";
 
 export type ThreadPaneProps = {
 	root: TeamBridgeMessage | null;
@@ -61,6 +70,7 @@ export type ThreadPaneProps = {
 		body: string,
 		clientRef: string,
 		attachmentIds?: readonly string[],
+		files?: readonly string[],
 	) => Promise<unknown>;
 	readOnly?: boolean;
 	/*
@@ -72,6 +82,7 @@ export type ThreadPaneProps = {
 	conversationId?: string;
 	accountId?: string;
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
+	filesCapability?: TeamBridgeFilesCapability | null;
 	hasMore?: boolean;
 	loadingMore?: boolean;
 	onMore?: () => void;
@@ -85,6 +96,12 @@ export type ThreadPaneProps = {
 	reactionContext?: { accountId: string; tenantId: string; disabled?: boolean };
 	/** Story/capture seed only: show the rows' toolbars without hover. */
 	forceToolbar?: boolean;
+	olderError?: boolean;
+	windowMode?: ReplyWindowMode;
+	latestPageAvailable?: boolean;
+	onLatest?: () => void;
+	scrollHostRef?: RefObject<HTMLDivElement>;
+	pinnedGetterRef?: MutableRefObject<(() => boolean) | null>;
 };
 
 /**
@@ -146,6 +163,13 @@ function TeamBridgeThreadPaneBody({
 	conversationId,
 	accountId,
 	attachmentCapability = null,
+	filesCapability = null,
+	windowMode,
+	olderError = false,
+	latestPageAvailable = true,
+	onLatest,
+	scrollHostRef,
+	pinnedGetterRef,
 }: ThreadPaneProps) {
 	useI18nLocale();
 	/*
@@ -193,9 +217,24 @@ function TeamBridgeThreadPaneBody({
 		return observeDisplayedThreadReplies(pane.current, replies, onRead);
 	}, [replies, state, onRead]);
 	const [draft, setDraft] = useState("");
+	// @-mentions (mentions/): inert unless the page provides a mention source.
+	const replyField = useRef<HTMLTextAreaElement>(null);
+	const mentions = useComposerMentions({
+		draftKey: `thread|${conversationId ?? ""}|${root?.id ?? ""}`,
+		text: draft,
+		setText: setDraft,
+		fieldRef: replyField,
+	});
 	const [sending, setSending] = useState(false);
 	const [failed, setFailed] = useState(false);
 	const [imagesBlocked, setImagesBlocked] = useState(false);
+	const files = useTeamBridgeFiles({
+		scopeKey: `${root?.id ?? ""}`,
+		accountId,
+		tenantId,
+		conversationId,
+		capability: filesCapability,
+	});
 	const images = useTeamBridgeAttachments({
 		scopeKey: `${tenantId ?? ""}|${conversationId ?? ""}|${root?.id ?? ""}`,
 		accountId,
@@ -214,26 +253,63 @@ function TeamBridgeThreadPaneBody({
 	const scroll = useStickToBottom({
 		resetKey: `${tenantId ?? ""}:${conversationId ?? ""}:${root?.id ?? ""}:${state}`,
 		contentKey: `${replies.length}:${replies.at(-1)?.id ?? ""}`,
+		preserveAnchor: windowMode !== undefined,
+		rowIds: replies.map((row) => row.id),
+		rowSelector: windowMode
+			? "[data-thread-replies] [data-message-id]"
+			: "[data-message-id]",
+		liveEdgeAvailable: windowMode ? latestPageAvailable : true,
 	});
-	const hasContent = Boolean(draft.trim()) || images.count > 0;
+	useLayoutEffect(() => {
+		if (!pinnedGetterRef) return;
+		pinnedGetterRef.current = scroll.isPinned;
+		return () => {
+			if (pinnedGetterRef.current === scroll.isPinned)
+				pinnedGetterRef.current = null;
+		};
+	}, [pinnedGetterRef, scroll.isPinned]);
+	const combinedScrollRef = useMemo(
+		() => composeRefs(scroll.rootRef, scrollHostRef),
+		[scroll.rootRef, scrollHostRef],
+	);
+	const hasContent =
+		Boolean(draft.trim()) || images.count > 0 || files.chips.length > 0;
+	/* CAN THIS PANE ACTUALLY SEND? An empty state must not INVITE a reply that has
+	 * nowhere to go (design round 1, D3). Only `readOnly` can answer no here: the
+	 * render below dispatches `loading` and `error` before it ever reaches the
+	 * empty branch, so `state` is already `ready` at this use site, and carrying
+	 * it as a term would advertise a case the branch order owns (code round 2,
+	 * F2). With no invitation to make, the empty state renders nothing: the
+	 * read-only note in the composer slot is the sentence that explains the pane,
+	 * and minting a second "No replies yet." variant would owe a translation
+	 * round in seven locales to say what that note already says. */
+	const canStartThread = !readOnly;
 	const submit = async () => {
 		const body = draft.trim();
-		if (images.blocked) {
+		if (images.blocked || files.blocked) {
 			setImagesBlocked(true);
 			return;
 		}
 		if (
 			!hasContent ||
 			images.busy ||
+			files.busy ||
 			lock.current ||
 			readOnly ||
 			state !== "ready"
 		)
 			return;
 		const ids = images.readyIds();
+		// A drop while this send awaits its response belongs to the NEXT draft.
+		// Retire the press-time keys only, like the channel composer; clearing
+		// the live queue would discard files that this request never bound.
+		const fileKeys = files.chips.map((chip) => chip.key);
 		// The idempotency key is reused only for the SAME text AND image set: the
 		// hub's replay check compares both hashes, so a changed set needs a new key.
-		const signature = ids.join(",");
+		const signature = JSON.stringify([
+			ids,
+			files.chips.map((chip) => chip.id ?? chip.key),
+		]);
 		const entry =
 			pending.current?.body === body && pending.current.images === signature
 				? pending.current
@@ -244,8 +320,15 @@ function TeamBridgeThreadPaneBody({
 		setFailed(false);
 		setImagesBlocked(false);
 		scroll.pin();
+		mentions.stage(body);
 		try {
-			await onSend(body, entry.clientRef, ids);
+			const fileIds = files.chips.length
+				? await files.stageInto(conversationId ?? "", tenantId)
+				: [];
+			if (ids.length + fileIds.length > 10)
+				throw new Error("Too many attachments");
+			await onSend(body, entry.clientRef, ids, fileIds);
+			for (const key of fileKeys) files.remove(key);
 			pending.current = null;
 			images.clearSent(ids);
 			setDraft((current) => (current.trim() === body ? "" : current));
@@ -259,11 +342,23 @@ function TeamBridgeThreadPaneBody({
 	};
 	return (
 		<aside
+			/* A sibling reading sidebar, not a surface stacked over the timeline.
+			 * The shared split-page contract owns its material through the top pad. */
+			data-glass-region="page-sidebar"
 			ref={pane}
 			aria-label={t("ui.teamBridge.replies.title")}
-			className="panel-top-pad flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-canvas"
+			/* THE THREAD IS THE THIRD PLANE (visual refresh §3.2): `surface` beside
+			   the `canvas` timeline, with the one sanctioned `PanelEdge` seam on its
+			   leading edge (`relative` is the seam's containing block). It was
+			   `canvas`, the same ground as the timeline it sits beside, so only the
+			   seam separated two reading planes. Rows inside it hover to `elevated`
+			   (`density="compact"`), the next step up from this ground.
+			   `--thread-row-host` / `--thread-row-message-hover` hand both grounds to
+			   the thread row's facepile ring (`team-bridge-thread-row.tsx`). */
+			className="panel-top-pad relative flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-surface [--thread-row-host:var(--color-surface)] [--thread-row-message-hover:var(--color-elevated)]"
 		>
-			<header className="flex h-11 shrink-0 items-center justify-between px-5">
+			<PanelEdge side="start" />
+			<header className="flex h-12 shrink-0 items-center justify-between px-4">
 				<h2 className="font-semibold text-[15px] text-ink">
 					{t("ui.teamBridge.replies.title")}
 				</h2>
@@ -277,12 +372,29 @@ function TeamBridgeThreadPaneBody({
 					<X size={16} />
 				</Button>
 			</header>
+			{windowMode === "legacy" && (
+				<p className="px-5 py-2 text-meta text-ink-dim">
+					{t("ui.teamBridge.replies.legacy_window")}
+				</p>
+			)}
+			{windowMode === "desc" && !latestPageAvailable && (
+				<Button variant="ghost" size="sm" onClick={onLatest}>
+					{t("ui.ownerAudit.refresh")}
+				</Button>
+			)}
+			{windowMode === "desc" &&
+				latestPageAvailable &&
+				scroll.newMessages > 0 && (
+					<Button variant="ghost" size="sm" onClick={scroll.pin}>
+						{t("ui.teamBridge.notify.count", { count: scroll.newMessages })}
+					</Button>
+				)}
 			{/* Radix wraps the content in `display: table; min-width: 100%`, which
 			    grows to the widest row's min-content: one wide table or code line
 			    and every reply's hover ground and toolbar would run past the pane.
 			    A block wrapper is the viewport's width, as the page timeline's is. */}
 			<ScrollArea
-				ref={scroll.rootRef}
+				ref={combinedScrollRef}
 				className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!"
 			>
 				{root && (
@@ -306,50 +418,87 @@ function TeamBridgeThreadPaneBody({
 						forceToolbar={forceToolbar}
 					/>
 				)}
-				{/* Pending/error pages cannot assert an empty count from an empty array. */}
-				{(state === "ready" || root?.reply_count !== undefined) && (
-					<div className="px-5 py-3 text-[12px] text-ink-dim">
-						{t("ui.teamBridge.replies.count", {
-							count: root?.reply_count ?? replies.length,
-						})}
-					</div>
-				)}
-				{state === "loading" ? (
-					<div className="flex justify-center py-8">
-						<Spinner size="sm" label={t("ui.teamBridge.thread.loading")} />
-					</div>
-				) : state === "error" ? (
-					<div role="alert" className="px-5 py-6 text-[13px] text-ink-muted">
+				{/* Pending/error pages cannot assert an empty count from an empty array.
+				    A ZERO IS NOT A COUNT: printing "0 replies" directly above "No
+				    replies yet" states one fact twice (design round 1, D2), so the
+				    line appears only when there is something to count. */}
+				{(state === "ready" || root?.reply_count !== undefined) &&
+					(root?.reply_count ?? replies.length) > 0 && (
+						<div className="px-5 py-3 text-[12px] text-ink-dim">
+							{t("ui.teamBridge.replies.count", {
+								count: root?.reply_count ?? replies.length,
+							})}
+						</div>
+					)}
+				{olderError && (
+					<div role="alert" className="px-5 py-2 text-meta text-ink-muted">
 						<p>{t("ui.teamBridge.thread.error")}</p>
-						<Button variant="ghost" size="sm" onClick={onRetry}>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => {
+								scroll.hold();
+								onMore?.();
+							}}
+						>
 							{t("ui.teamBridge.list.retry")}
 						</Button>
 					</div>
-				) : replies.length === 0 ? (
-					<p className="px-5 py-6 text-[13px] text-ink-muted">
-						{t("ui.teamBridge.replies.empty")}
-					</p>
-				) : (
-					<TeamBridgeMessageList
-						messages={replies}
-						arrivalKey={teamBridgeArrivalStreamKey(
-							tenantId,
-							conversationId,
-							root?.id,
-						)}
-						arrivalsEnabled={!paging}
-						accountId={accountId}
-						labelFor={labelFor}
-						profileFor={profileFor}
-						canMessagePerson={canMessagePerson}
-						onMessagePerson={onMessagePerson}
-						tenantId={tenantId}
-						density="compact"
-						reactionContext={reactionContext}
-						forceToolbar={forceToolbar}
-					/>
 				)}
-				{hasMore && (
+				{windowMode === "desc" && state === "ready" && hasMore && (
+					<Button
+						variant="ghost"
+						size="sm"
+						disabled={loadingMore}
+						onClick={() => {
+							scroll.hold();
+							onMore?.();
+						}}
+						className="mx-5 my-2"
+					>
+						{t("ui.teamBridge.replies.more")}
+					</Button>
+				)}
+				<div data-thread-replies>
+					{state === "loading" ? (
+						<div className="flex justify-center py-8">
+							<Spinner size="sm" label={t("ui.teamBridge.thread.loading")} />
+						</div>
+					) : state === "error" ? (
+						<div role="alert" className="px-5 py-6 text-[13px] text-ink-muted">
+							<p>{t("ui.teamBridge.thread.error")}</p>
+							<Button variant="ghost" size="sm" onClick={onRetry}>
+								{t("ui.teamBridge.list.retry")}
+							</Button>
+						</div>
+					) : replies.length === 0 ? (
+						canStartThread ? (
+							<p className="px-5 py-6 text-[13px] text-ink-muted">
+								{t("ui.teamBridge.replies.empty")}
+							</p>
+						) : null
+					) : (
+						<TeamBridgeMessageList
+							messages={replies}
+							arrivalKey={teamBridgeArrivalStreamKey(
+								tenantId,
+								conversationId,
+								root?.id,
+							)}
+							arrivalsEnabled={!paging}
+							accountId={accountId}
+							labelFor={labelFor}
+							profileFor={profileFor}
+							canMessagePerson={canMessagePerson}
+							onMessagePerson={onMessagePerson}
+							tenantId={tenantId}
+							density="compact"
+							reactionContext={reactionContext}
+							forceToolbar={forceToolbar}
+						/>
+					)}
+				</div>
+				{windowMode !== "desc" && hasMore && (
 					<Button
 						variant="ghost"
 						size="sm"
@@ -380,49 +529,70 @@ function TeamBridgeThreadPaneBody({
 					)}
 					{/* A hub that cannot take images is already explained by the strip's
 					   unsupported note; this alert is only for error-marked chips (R2-02). */}
+					<MentionNotice mentions={mentions} />
 					{imagesBlocked && images.blocked && !images.unsupported && (
 						<p role="alert" className="pb-1 text-[12px] text-danger">
 							{t("ui.teamBridge.attachments.send_blocked")}
 						</p>
 					)}
 					<div
-						className="rounded-xl bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid"
-						{...(state === "ready" ? attachmentPasteHandlers(images) : {})}
+						data-glass-region="composer"
+						className="rounded-md bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid"
+						{...(state === "ready"
+							? attachmentPasteHandlers(images, files)
+							: {})}
 					>
 						<TeamBridgeAttachmentStrip state={images} />
-						<textarea
-							rows={2}
-							aria-label={t("ui.teamBridge.replies.placeholder")}
-							placeholder={t("ui.teamBridge.replies.placeholder")}
-							value={draft}
-							disabled={state !== "ready"}
-							onChange={(e) => setDraft(e.target.value)}
-							onKeyDown={(e) => {
-								if (
-									e.key === "Enter" &&
-									!e.shiftKey &&
-									!e.nativeEvent.isComposing
-								) {
-									e.preventDefault();
-									void submit();
-								}
-							}}
-							className="block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim"
-						/>
+						<TeamBridgeFilesStrip state={files} />
+						<MentionField
+							mentions={mentions}
+							fieldRef={replyField}
+							text={draft}
+						>
+							<textarea
+								ref={replyField}
+								rows={2}
+								aria-label={t("ui.teamBridge.replies.placeholder")}
+								placeholder={t("ui.teamBridge.replies.placeholder")}
+								value={draft}
+								disabled={state !== "ready"}
+								onChange={(e) => setDraft(e.target.value)}
+								{...mentions.bindField({
+									onKeyDown: (e) => {
+										if (
+											e.key === "Enter" &&
+											!e.shiftKey &&
+											!e.nativeEvent.isComposing
+										) {
+											e.preventDefault();
+											void submit();
+										}
+									},
+								})}
+								className="relative block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim"
+							/>
+						</MentionField>
 						<div className="flex items-center gap-2 px-2 pb-2">
 							<span className="min-w-0 flex-1 ps-1.5 text-meta-sm text-ink-dim">
 								{t("ui.teamBridge.composer.hint")}
 							</span>
 							<TeamBridgeAttachButton
 								state={images}
+								files={files}
 								disabled={sending || state !== "ready"}
 							/>
 							<Button
 								size="icon-sm"
-								variant="primary"
-								className="rounded-lg"
+								/* Ghost at rest, accent while sendable: the composer's rule
+								   (design round 1, D3; `team-bridge-composer.tsx`). */
+								variant={hasContent || sending ? "primary" : "ghost"}
+								className="rounded-sm"
 								disabled={
-									!hasContent || images.busy || sending || state !== "ready"
+									!hasContent ||
+									images.busy ||
+									files.busy ||
+									sending ||
+									state !== "ready"
 								}
 								aria-label={t("ui.teamBridge.composer.send")}
 								onClick={() => void submit()}
@@ -457,10 +627,11 @@ export type ThreadPaneMountProps = {
 	onMessagePerson?: ThreadPaneProps["onMessagePerson"];
 	onClose: () => void;
 	reactionContext?: ThreadPaneProps["reactionContext"];
-	/* The attachment lane's two additions ride the mount props, so the shipped-
-	   build gate wrapper passes them through untouched. */
-	accountId?: string;
+	/* The account captured with this pane binds both its reads and its replies
+	   to the same signed-in owner. A missing owner cannot dispatch either. */
+	accountId: string;
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
+	filesCapability?: TeamBridgeFilesCapability | null;
 };
 
 export function TeamBridgeThreadPane(props: ThreadPaneMountProps) {
@@ -480,10 +651,24 @@ function TeamBridgeThreadPaneMount({
 	reactionContext,
 	accountId,
 	attachmentCapability,
+	filesCapability,
 }: ThreadPaneMountProps) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
-	const read = useMarkTeamBridgeRead(conversationId, tenantId);
+	/* The newest reply this pane can know of: the root's rollup `last` seq is not
+	   on the wire, so it is the newest admitted reply row - but only when the
+	   window holds the live edge: a backward window paged into the middle, or
+	   an oldest-first window with pages left, has newer replies it has not
+	   loaded. `undefined` keeps the
+	   badge (see `threadUnreadAfterRead`). Read at settlement through a ref
+	   because the query below is declared after this hook. */
+	const newestReplyRef = useRef<number | undefined>(undefined);
+	const read = useMarkTeamBridgeThreadRead(
+		conversationId,
+		tenantId,
+		rootId,
+		() => newestReplyRef.current,
+	);
 	// Observer recreation (paging/refetch) must not turn a successful read into a
 	// second mutation loop. This ref belongs to the keyed tenant/conversation/root.
 	const acknowledged = useRef(-1);
@@ -500,43 +685,74 @@ function TeamBridgeThreadPaneMount({
 		},
 		[read.mutateAsync],
 	);
+	const scrollHostRef = useRef<HTMLDivElement>(null);
+	const pinnedGetterRef = useRef<(() => boolean) | null>(null);
 	const key = [
 		...teamBridgeKeys.all,
 		"replies",
+		accountId,
 		tenantId,
 		conversationId,
 		rootId,
 	] as const;
-	const query = useInfiniteQuery({
+	const query = useThreadReplyWindow({
 		queryKey: key,
-		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) => loadThreadPage(target, pageParam),
-		getNextPageParam: (page) =>
-			page.has_more ? page.next_after_seq : undefined,
-		refetchInterval: 8_000,
+		identity: { conversationId, rootId },
+		read: (mode, cursor, limit = 50) =>
+			loadThreadPage(
+				target,
+				accountId,
+				mode === "desc" ? undefined : (cursor ?? 0),
+				mode === "desc"
+					? { beforeSeq: cursor, order: "desc", limit }
+					: undefined,
+			),
+		canEvict: (page) =>
+			replyPageOutsideViewport(
+				page,
+				scrollHostRef.current?.querySelector<HTMLElement>(
+					"[data-radix-scroll-area-viewport]",
+				) ?? null,
+			),
+		isAtLiveEdge: () => pinnedGetterRef.current?.() ?? true,
+		poll: true,
 	});
-	const replies = useMemo(
-		() => query.data?.pages.flatMap((page) => page.replies) ?? [],
-		[query.data],
-	);
+	const replies = query.replies;
+	newestReplyRef.current =
+		(query.mode === "desc" && query.latestPageAvailable) ||
+		(query.mode !== "desc" && !query.hasNextPage)
+			? replies.reduce<number | undefined>(
+					(max, reply) =>
+						max === undefined || reply.seq > max ? reply.seq : max,
+					undefined,
+				)
+			: undefined;
+
 	const send = useMutation({
 		mutationFn: ({
 			body,
 			clientRef,
 			attachmentIds,
+			files,
 		}: {
 			body: string;
 			clientRef: string;
 			attachmentIds?: readonly string[];
+			files?: readonly string[];
 		}) =>
 			TeamBridgeApi.send(conversationId, {
 				body,
 				clientRef,
 				tenantId,
+				expectedAccountId: accountId,
 				threadRootId: rootId,
 				attachmentIds,
+				files,
+				// The reply composer's @-mentions for exactly this text.
+				mentions: stagedMentions(conversationId, body),
 			}),
-		onSuccess: async () => {
+		onSuccess: async (_data, { body }) => {
+			clearStagedMentions(conversationId, body);
 			await Promise.all([
 				client.invalidateQueries({ queryKey: key }),
 				client.invalidateQueries({
@@ -548,11 +764,23 @@ function TeamBridgeThreadPaneMount({
 			]);
 		},
 	});
+	// A permanent peek/page refusal must not keep painting the old root above its
+	// error panel; only the existing transient older-page retry keeps its window.
+	const rootForPane =
+		query.isError && !query.keepWindowOnError
+			? null
+			: (query.data?.pages[0]?.root ?? initialRoot ?? null);
 	return (
 		<TeamBridgeThreadPaneView
-			root={query.data?.pages[0]?.root ?? initialRoot ?? null}
+			root={rootForPane}
 			replies={replies}
-			state={query.isPending ? "loading" : query.isError ? "error" : "ready"}
+			state={
+				query.isPending
+					? "loading"
+					: query.isError && (!query.data || !query.keepWindowOnError)
+						? "error"
+						: "ready"
+			}
 			labelFor={labelFor}
 			profileFor={profileFor}
 			canMessagePerson={canMessagePerson}
@@ -560,17 +788,24 @@ function TeamBridgeThreadPaneMount({
 			onClose={onClose}
 			onRead={acknowledge}
 			onRetry={() => void query.refetch()}
-			onSend={(body, clientRef, attachmentIds) =>
-				send.mutateAsync({ body, clientRef, attachmentIds })
+			onSend={(body, clientRef, attachmentIds, files) =>
+				send.mutateAsync({ body, clientRef, attachmentIds, files })
 			}
 			tenantId={tenantId}
 			conversationId={conversationId}
 			accountId={accountId}
 			attachmentCapability={attachmentCapability}
+			filesCapability={filesCapability}
 			readOnly={readOnly}
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}
 			onMore={() => void query.fetchNextPage()}
+			olderError={query.keepWindowOnError}
+			windowMode={query.mode}
+			latestPageAvailable={query.latestPageAvailable}
+			onLatest={() => void query.resetLatest()}
+			scrollHostRef={scrollHostRef}
+			pinnedGetterRef={pinnedGetterRef}
 			reactionContext={reactionContext}
 		/>
 	);

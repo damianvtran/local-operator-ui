@@ -2603,8 +2603,8 @@ test("both pickers describe a row in the backend's words, not the live_state tok
 	// row with no owner, and NOTHING when the backend published no sentence.
 	assert.match(
 		picker,
-		/row\.live_state \? row\.status\?\.label : cold/,
-		"the activity line must read the backend's label",
+		/row\.live_state \? statusLabelText\(row\) : cold/,
+		"the activity line must read the backend's label through the shared status helper",
 	);
 	// Both consumers of the shared read use the same rule. Spelled separately per
 	// string so that deleting either call site is a failure rather than a comment.

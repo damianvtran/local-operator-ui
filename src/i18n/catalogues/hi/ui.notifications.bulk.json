@@ -1,0 +1,14 @@
+{
+	"ui.notifications.bulk.dismiss_all": "सभी हटाएँ",
+	"ui.notifications.bulk.read_hint": "पढ़ा हुआ चिह्नित करने पर भी अपडेट “सभी” में रहते हैं।",
+	"ui.notifications.bulk.dismiss_hint": "हटाने से अपडेट इस दृश्य से हट जाते हैं। पहले जैसा करें से वे वापस आ जाते हैं।",
+	"ui.notifications.bulk.frozen_hint": "यह चयन तय हो चुका है। नए आने वाले आइटम इसमें शामिल नहीं हैं।",
+	"ui.notifications.bulk.confirm_title": "{count, plural, one {# अपडेट हटाएँ?} other {# अपडेट हटाएँ?}}",
+	"ui.notifications.bulk.beyond_page": "इसका असर लोड किए गए पेज से बाहर के अपडेट पर भी होगा।",
+	"ui.notifications.bulk.asks_hint": "बिना जवाब वाले सवाल बने रहते हैं। उन्हें अलग से देखें: सवाल हटाने की कार्रवाई पहले जैसी नहीं की जा सकती।",
+	"ui.notifications.bulk.review_asks": "बिना जवाब वाले सवाल देखें",
+	"ui.notifications.bulk.select_error": "इस दृश्य के आइटम नहीं चुने जा सके। फिर से कोशिश करें।",
+	"ui.notifications.bulk.update_required": "सभी मेल खाते नतीजे चुनने के लिए Local Operator अपडेट करें।",
+	"ui.notifications.bulk.partial": "{changed} बदले · {skipped} छोड़े गए",
+	"ui.notifications.bulk.exclusion_limit": "आप ज़्यादा से ज़्यादा 500 आइटम बाहर कर सकते हैं। अलग-अलग आइटम चुनने के लिए चयन साफ़ करें।"
+}

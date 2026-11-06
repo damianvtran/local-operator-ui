@@ -30,5 +30,10 @@
 	"ui.settings.model.model_setting_options.copy_needs_sign_in_group": "需要登录",
 	"ui.settings.model.system_prompt.saving": "正在保存……",
 	"ui.settings.model.model_setting_options.provider_detail": "{provider}{aggregated, select, yes {，聚合提供商} other {}}{credential, select, signed_in {，已登录} missing {，无凭据} other {}}",
-	"ui.settings.model.system_prompt.load_failed": "无法加载系统提示词：{reason}"
+	"ui.settings.model.system_prompt.load_failed": "无法加载系统提示词：{reason}",
+	"ui.settings.model.system_prompt.rich_text": "富文本",
+	"ui.settings.model.system_prompt.source": "Markdown 源码",
+	"ui.settings.model.system_prompt.source_required": "此文档使用了富文本编辑无法保留的 Markdown 语法。请编辑源码，以完整保留所有指令。",
+	"ui.settings.model.system_prompt.source_edit": "编辑源码",
+	"ui.settings.model.system_prompt.source_stale": "此部分在你编辑时已发生变化。取消后重新打开，以保留最新指令。"
 }

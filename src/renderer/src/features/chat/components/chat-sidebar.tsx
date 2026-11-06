@@ -20,6 +20,7 @@ import { tagHeaderAt, useChatTagDrag } from "@features/chat/use-chat-tag-drag";
  * device half rides the row itself (`chat-remote.ts`).
  */
 import { useMeshNetworks } from "@features/mesh/mesh-store";
+import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	isRemoteReceiptDeferral,
@@ -58,6 +59,7 @@ import {
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
+import { AgentAvatar, AvatarImage } from "@shared/components/ui/avatar";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
 import {
@@ -110,7 +112,6 @@ import {
 	FolderPlus,
 	GitFork,
 	GripVertical,
-	Hourglass,
 	LoaderCircle,
 	type LucideIcon,
 	MessageSquarePlus,
@@ -230,7 +231,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { pinnedRows, unpinnedRows } from "../chat-sections";
-import { subagentClause, subagentMarks } from "../chat-session-subagents";
+import { subagentClause } from "../chat-session-subagents";
 import {
 	agentRecencyMs,
 	filterAgentRows,
@@ -296,6 +297,7 @@ import {
 	tailArrivalAnnouncement,
 	tailExtendDue,
 } from "../sidebar-scope-paging";
+import { builtinOfferSentence } from "./builtin-offer-sentence";
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
@@ -374,7 +376,13 @@ const rowStyle =
  * 138.3 / 210.7 / 179.0 / 165.6px against main's 264px - and a literal written twice is
  * how the two paths drifted when main's row changed shape under this branch's fold.
  */
-const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
+/*
+ * `group/row` and `relative` are the agent picture's pencil (agent profile
+ * pictures, 2026-10-30): the edit link is a SIBLING of the row button, laid over
+ * the picture, and only reachable while this wrapper is hovered or the link
+ * itself holds focus - which is why the class is here rather than on the button.
+ */
+const rowBoxStyle = "group/row relative flex h-8 items-center gap-1 rounded-md";
 
 /*
  * Where the bulk read receipt's label stops fitting, in the width of the header
@@ -528,8 +536,8 @@ const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
  * old `sunken` ground it measured 9.6 — which is why this is a call-site ground
  * and NOT a wash: strengthening `accentWash` for the panels that draw it on
  * `surface` would make every hover tint in the app louder. (The rail no longer
- * paints a ground of its own at all: it is `surface` with a `border-r
- * border-hairline` rule, so nothing on it is drawn on the rung that used to make
+ * paints a ground of its own at all: it is `surface` with the 1px `PanelEdge`
+ * seam on its leading edge, so nothing on it is drawn on the rung that used to make
  * the wash work there. The SETTINGS rail
  * was the other `surface` panel and takes this same role — it imports
  * `rowCurrent` from this file rather than restating it, see the note at the
@@ -745,10 +753,10 @@ import {
 } from "../sidebar-focus-hold";
 
 import {
-	ChatAsksOutstanding,
-	ChatSessionStatus,
-	SubagentRunningMark,
-} from "./chat-session-status";
+	ChatSessionAvatar,
+	ChatSessionAvatarEdit,
+} from "./chat-session-avatar";
+import { ChatAsksOutstanding, statusLabelText } from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -813,13 +821,13 @@ const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
  * the name still carries the state's sentence and nothing else, which is design
  * D2's call and still holds.
  *
- * ONE HOME FOR THE WORDS. The constant is the clause alone and the tooltip's own
- * expression adds the separator, rather than a second copy of the sentence in a
- * form only a tooltip can use: a description is announced straight after the
- * name, where a leading " · " would be read as a separator that is already
- * implied.
+ * ONE HOME FOR THE WORDS. The keyed clause is the sentence alone and the
+ * tooltip's own expression adds the separator, rather than a second copy of the
+ * sentence in a form only a tooltip can use: a description is announced straight
+ * after the name, where a leading " · " would be read as a separator that is
+ * already implied.
  */
-const SILENT_REMEDY = "/stop if it stays silent.";
+const silentRemedyClause = (): string => t("ui.chat.sidebar.row.silent_remedy");
 
 /**
  * The id of a row's remedy sentence, WHEN that row renders one.
@@ -904,6 +912,46 @@ const RowMenuOwner: FC<{
 };
 
 /**
+ * The mark on a row of the sidebar's Agents section: the agent's stored PICTURE
+ * when there is one, and the kind's glyph when there is not.
+ *
+ * WHY IT IS A COMPONENT. The picture is a store read (`useAgentAvatar`), and the
+ * row's body is a FUNCTION called during the sidebar's render rather than a
+ * component - a hook in there would be a hook inside a loop. One component per
+ * row keeps the subscription where React allows it, and keeps it per row, so a
+ * picture changed in Settings repaints this row and no other.
+ *
+ * WHY THE GLYPH IS STILL THE FALLBACK, unlike the transcript (where D11's answer
+ * for an agent with no picture is no mark at all): here the glyph is the row's
+ * KIND - `Users` for a team, `Bot` for an agent - and the name truncates, so the
+ * kind is the one thing that survives the ellipsis.
+ */
+export const EntityMark: FC<{
+	/** The agent's id, or null for a team (which has no picture). */
+	agentId: string | null;
+	glyph: LucideIcon;
+}> = ({ agentId, glyph: Glyph }) => {
+	// 16 = the `size-4` plate below.
+	const avatar = useAgentAvatar(agentId, undefined, 16);
+	if (avatar === null) return <Glyph className="size-4 shrink-0" />;
+	return (
+		/*
+		 * THE RAIL'S PICTURE WEARS THE SAME EDGE AS THE ROSTER'S (design review
+		 * round 1, D1 on #1518). `AgentAvatar` is the one definition of the 1px
+		 * `border-control` edge and the `sunken` plate, on the circle's root.
+		 * Without it this 16px disc had no boundary at all - measured
+		 * `border-top-width: 0` against the roster's 1px - so a picture whose edge
+		 * matched the rail's ground was invisible, while the same picture in the
+		 * roster at least left four arcs.
+		 */
+		<AgentAvatar className="size-4 shrink-0">
+			{/* Decorative: the row prints the name right beside it. */}
+			<AvatarImage src={avatar} alt="" />
+		</AgentAvatar>
+	);
+};
+
+/**
  * THE MENU'S OWN SENTENCE (U-D5): the row's box is a context-menu trigger and
  * carries no `aria-haspopup` - the primitive writes only `data-state` and
  * `data-disabled` on it - so without a clause a screen reader walking the list
@@ -933,8 +981,8 @@ const RowMenuOwner: FC<{
  */
 const rowMenuClause = (isMac: boolean): string =>
 	isMac
-		? "Right-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions."
-		: "Right-click or press Shift+F10 for its actions.";
+		? t("ui.chat.sidebar.row_menu.hint_mac")
+		: t("ui.chat.sidebar.row_menu.hint");
 const rowMenuClauseId = (sessionId: string) => `chat-row-menu-${sessionId}`;
 
 /**
@@ -955,43 +1003,6 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
 		.querySelector<HTMLElement>(`[data-session-row="${CSS.escape(sessionId)}"]`)
 		?.querySelector<HTMLElement>(`[${CHAT_ROW_ACT_ATTR[act]}]`)
 		?.click();
-};
-
-/**
- * The sentence that offers the built-ins, built from the names actually offered.
- *
- * It replaced copy that named activities rather than roles — "roles for coding,
- * review, design, research and coordination" — with no count at all: "research"
- * is not among the packaged profiles, architecture and testing went unnamed, and
- * the number only appeared once the batch had started ("Installing 1 of 6"), so
- * the sentence that sets the expectation for the whole flow was wrong about
- * both what is on offer and how much of it there is (UX round 1, U6). Derived
- * from the rows the backend sent rather than written by hand, because the
- * catalogue is the authority on what can be installed and a second list here
- * can disagree with it.
- */
-const builtinOfferSentence = (
-	builtins: readonly { name: string }[],
-): string => {
-	const names = builtins.map((builtin) => builtin.name);
-	/*
-	 * THE LIST IS JOINED HERE, deliberately: IntlMessageFormat has no list
-	 * formatter, and the English source joins with commas and a bare "and" (no
-	 * Oxford comma) - a shape ICU cannot express for a variable-length list. So the
-	 * count and the pre-joined names are parameters of ONE catalogue message (whose
-	 * arms carry the spelled numbers and the it/them pronoun), and a locale cannot
-	 * change the conjunction. That is a stated limit of keying this sentence, not
-	 * an oversight; moving the join into the catalogue would need a list-format
-	 * placeholder the runtime does not have.
-	 */
-	const list =
-		names.length === 1
-			? names[0]
-			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-	return t("ui.chat.sidebar.agents.builtin_offer", {
-		count: names.length,
-		list,
-	});
 };
 
 /**
@@ -4387,7 +4398,6 @@ export function ChatSidebar({
 		 * ride the row's own accessible name and tooltip (below), which is what
 		 * keeps the pointer and screen-reader channels no narrower than the pixels.
 		 */
-		const marks = subagentMarks(row);
 		/**
 		 * THE ROW'S OWN PRESS, shared by the row's button and by the team mark inside it.
 		 *
@@ -4650,15 +4660,19 @@ export function ChatSidebar({
 					{row.link_down === true
 						? peerLinkDownLabel(row, listNow / 1000)
 						: (peerUncertainLabel(row) ??
-							row.status?.label ??
+							statusLabelText(row) ??
 							(synthesized.has(row.session_id)
-								? "found by search, beyond the chats listed here"
-								: "Recent"))}
-					{silent ? ` · ${SILENT_REMEDY}` : ""}
+								? t("ui.chat.sidebar.row.search_beyond")
+								: t("ui.chat.sidebar.row.recent")))}
+					{silent ? ` · ${silentRemedyClause()}` : ""}
 					{openedByNote(row)}
-					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
-					{unreadMarkKind(row) !== null ? ", unread" : ""}
-					{archived ? ", archived" : ""}
+					{unstarted.has(row.session_id)
+						? t("ui.chat.sidebar.row.not_sent_suffix")
+						: ""}
+					{unreadMarkKind(row) !== null
+						? t("ui.chat.sidebar.row.unread_suffix")
+						: ""}
+					{archived ? t("ui.chat.sidebar.row.archived_suffix") : ""}
 					{/*
 					 * THE SUBAGENT CLAUSE, from the SAME helper the row's `sr-only` sentence
 					 * reads, and gated by it in exactly the same way: empty on a `delegating`
@@ -4674,7 +4688,7 @@ export function ChatSidebar({
 					 * THE RECEIPT'S CLAUSE CLOSES THE LINE, after the flags rather than among
 					 * them: the flags are what the row IS and this is what the app is DOING
 					 * about the mark on it, so it reads as the actionable last word - the slot
-					 * `SILENT_REMEDY` occupies one fact up.
+					 * `silentRemedyClause` occupies one fact up.
 					 */}
 					{readAck ? ` · ${readAck.clause}` : ""}
 				</span>
@@ -4834,7 +4848,13 @@ export function ChatSidebar({
 						/>
 					)}
 				</span>
-				<ChatSessionStatus row={row} nowSeconds={listNow / 1000} />
+				{/*
+				 * THE ROW'S LEADING MARK: its agent's picture with the status on the
+				 * corner, or the status glyph alone (agent profile pictures, 2026-10-30).
+				 * One component so the two arms cannot disagree about the state, and so
+				 * a row without a picture is exactly the cell this file drew before.
+				 */}
+				<ChatSessionAvatar row={row} nowSeconds={listNow / 1000} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
 				 * A leading fact rather than a trailing one, for the reason the archived
@@ -4905,56 +4925,35 @@ export function ChatSidebar({
 				 */}
 				<ChatRowTitle text={conversationTitleForDisplay(row.title)} />
 				{/*
-				 * THE SUBAGENT INDICATOR, immediately after the title and before the
-				 * trailing statement - the placement `sidebar-row-space.md` §2 forces:
-				 * every element here is `shrink-0`, so none of them can be truncated
-				 * away, and the title's clip is the only thing that pays.
+				 * NOTHING IS DRAWN BETWEEN THE TITLE AND THE TRAILING STATEMENT ANY MORE,
+				 * and `sidebar-row-space.md` §2's placement rule is why that is now the only
+				 * shape available: every element in this line is `shrink-0` and the title's
+				 * clip is the one thing that pays for one of them.
 				 *
-				 * TWO MARKS, INDEPENDENTLY DRAWN, because they are two facts: a child at
-				 * work (the shared `SubagentRunningMark` - three equal beads in the accent, the
-				 * app's own "a thing is at work" shape, and the same mark the `delegating`
-				 * rung's primary slot wears) and a child waiting for capacity (`Hourglass`,
-				 * muted). The delegating row is the one place they interact: its primary
-				 * mark already IS the running mark, so `subagentMarks` suppresses the
-				 * running half there and the queued glyph still draws - the trio carries
-				 * "subagents are at work", not "none of them has started".
+				 * THE SUBAGENT INDICATOR USED TO SIT HERE, as two independently drawn
+				 * `shrink-0` glyphs (the three-bead `SubagentRunningMark` for a child at work,
+				 * a muted `Hourglass` for a child waiting for capacity). Both counts are
+				 * optional on the wire and absent means UNKNOWN rather than zero, so a row
+				 * could be painted without them and gain them on the next read - and the glyph
+				 * then took its width out of the title and re-cut the ellipsis under the
+				 * reader. Measured on this fixture at a 264px panel: the clip went 152 ->
+				 * 130px and the cut column 24 -> 21 characters 1.6 s after the first
+				 * contentful frame.
 				 *
-				 * THE SHAPE REPLACED `Share2` (issue #840), AND THE DISC IN TURN REPLACED
-				 * ITSELF (2026-10-06): a share glyph beside the row's own act buttons read as
-				 * an action, so the running mark moved out of the icon vocabulary into the
-				 * app's round-mark one; the disc that landed then read as a generic "record"
-				 * dot rather than as CHILDREN, so it is the operator-ACKed trio now.
-				 * `SubagentRunningMark` carries the geometry, the fusion check and the sizing.
+				 * IT LIVES IN THE LEADING STATUS CELL NOW (`ChatSessionStatus`, and the
+				 * precedence rule is argued at length there): a fixed `size-4` box drawn on
+				 * every row whether or not it holds a glyph, so a count that arrives after the
+				 * row has painted changes what is IN the row and never how much of the title
+				 * is cut. That is the only shape that is invariant AND costs no width - a
+				 * trailing lane reserved on every row was measured here too and took 36px off
+				 * every title, pushing two titles that had rendered whole into ellipsis at a
+				 * 264px panel.
 				 *
-				 * 14px (`size-3.5`, the icon ramp's `sm` step beside `body-sm` text),
-				 * STATIC, and `aria-hidden`: they are ink. The words arrive through the
-				 * row's own `sr-only` sentence and its tooltip, both from
-				 * `subagentClause`, which is the repo's "one predicate, several channels"
-				 * rule.
-				 *
-				 * `data-subagent-mark` is the hook this change's own tests and the
-				 * evidence rigs address the mark by, following the row's existing
-				 * convention (`data-session-time`, `data-session-archived`).
-				 *
-				 * NOTE FOR THE REVIEWER: the row is `gap-1` (4px), so `ms-1` on top of
-				 * it makes the gap before each glyph 8px and one mark cost 22px rather
-				 * than the spec's 18px. `ms-1` is the spec's explicit class list and is
-				 * kept; if the 240px frames show the title starved, dropping `ml-1` is
-				 * the one-word fix that restores the spec's own arithmetic.
+				 * THE WORDS WERE NEVER HERE: they ride the row's `sr-only` sentence and its
+				 * tooltip through `subagentClause` (below), which is the repo's "one
+				 * predicate, several channels" rule. `SubagentRunningMark` still carries the
+				 * geometry of the trio and the reasoning for its shape (issue #840).
 				 */}
-				{marks.running && (
-					<SubagentRunningMark
-						mark="running"
-						className="ms-1 size-3.5 text-accent"
-					/>
-				)}
-				{marks.queued && (
-					<Hourglass
-						aria-hidden="true"
-						data-subagent-mark="queued"
-						className="ms-1 size-3.5 shrink-0 text-ink-muted"
-					/>
-				)}
 				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
 			    rows already inherit the identity from their parent, and a row that
@@ -5175,7 +5174,7 @@ export function ChatSidebar({
 		 */
 		const silentRemedy = silent ? (
 			<span id={silentRemedyId(row.session_id)} className="sr-only">
-				{SILENT_REMEDY}
+				{silentRemedyClause()}
 			</span>
 		) : null;
 		/*
@@ -5370,6 +5369,13 @@ export function ChatSidebar({
 					className={cn(rowBoxStyle, current && rowCurrent)}
 				>
 					{rowButton}
+					{/*
+					 * THE PENCIL, AS A SIBLING OF THE ROW BUTTON (see
+					 * `ChatSessionAvatarEdit` for why it cannot be inside it). It draws
+					 * nothing at all unless the row's agent has a picture and this device
+					 * owns it.
+					 */}
+					<ChatSessionAvatarEdit row={row} nested={nested} />
 					{silentRemedy}
 					{readAckRemedy}
 				</div>,
@@ -6135,6 +6141,9 @@ export function ChatSidebar({
 				 */}
 				{(pinsEnabled || archiveEnabled) && <ChatRowHoverIntent />}
 				{rowButton}
+				{/* The picture's pencil - a sibling of the row button, as in the
+				    no-menu arm above; it draws nothing without a picture. */}
+				<ChatSessionAvatarEdit row={row} nested={nested} />
 				{silentRemedy}
 				{readAckRemedy}
 				{menuRemedy}
@@ -7048,7 +7057,10 @@ export function ChatSidebar({
 						})}
 						title={t("ui.chat.header.new_chat_with", { target: displayName })}
 					>
-						<Icon className="size-4 shrink-0" />
+						<EntityMark
+							agentId={kind === "agent" ? (localId ?? null) : null}
+							glyph={Icon}
+						/>
 						<span className="min-w-0 flex-1 truncate" title={nameTitle}>
 							{displayName}
 						</span>
@@ -7454,8 +7466,14 @@ export function ChatSidebar({
 									 * evidenced by read.
 									 */
 									data-entity-more={key}
-									aria-label={`${foot.aria} in ${displayName}`}
-									title={`${foot.aria} in ${displayName}`}
+									aria-label={t("ui.chat.sidebar.entity.more_in", {
+										label: foot.aria,
+										name: displayName,
+									})}
+									title={t("ui.chat.sidebar.entity.more_in", {
+										label: foot.aria,
+										name: displayName,
+									})}
 									className="block w-full py-1 ps-7 text-start text-meta text-ink-dim underline hover:text-ink"
 									onClick={pressEntityMore}
 								>
@@ -7491,7 +7509,11 @@ export function ChatSidebar({
 			className="text-meta tabular-nums"
 			title={
 				query
-					? `${clipped ? "At least " : ""}${count} ${count === 1 ? "chat matches" : "chats match"} this search${clipped ? "; the list stops there" : ""}`
+					? t("ui.chat.sidebar.search.count_tooltip", {
+							clipped: clipped ? "yes" : "no",
+							count_display: String(count),
+							count,
+						})
 					: undefined
 			}
 		>
@@ -9275,7 +9297,9 @@ export function ChatSidebar({
 									type="button"
 									data-chat-row
 									data-draft-row={row.key}
-									aria-label={`Open ${row.label}`}
+									aria-label={t("ui.chat.sidebar.row.open_draft", {
+										label: row.label,
+									})}
 									title={row.label}
 									onClick={() => {
 										openDraft(row.key);
@@ -9498,7 +9522,7 @@ export function ChatSidebar({
 							title={
 								clearableDraftRows.length === 0
 									? CLEAR_ALL_WHY
-									: "Clear all drafts"
+									: t("ui.chat.sidebar.drafts.clear_all_label")
 							}
 							onClick={(event) => {
 								/*
@@ -10000,7 +10024,7 @@ export function ChatSidebar({
 						data-sidebar-band
 						className="mb-2 flex h-7 shrink-0 items-center justify-end gap-0.5"
 					>
-						<Tooltip content="Search chats and agents">
+						<Tooltip content={t("ui.chat.sidebar.header.search")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
@@ -10024,7 +10048,7 @@ export function ChatSidebar({
 							</Button>
 						</Tooltip>
 						<Popover open={viewOpen} onOpenChange={setViewOpen}>
-							<Tooltip content="View options">
+							<Tooltip content={t("ui.chat.sidebar.header.view_options")}>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
@@ -10095,7 +10119,7 @@ export function ChatSidebar({
 							</PopoverContent>
 						</Popover>
 						<Popover open={createOpen} onOpenChange={setCreateOpen}>
-							<Tooltip content="New agent or team">
+							<Tooltip content={t("ui.chat.sidebar.header.create")}>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
@@ -10152,7 +10176,7 @@ export function ChatSidebar({
 								</button>
 							</PopoverContent>
 						</Popover>
-						<Tooltip content="Open agent…">
+						<Tooltip content={t("ui.chat.sidebar.header.open_agent")}>
 							{/*
 							 * THE FOURTH BAND CONTROL (issue #663): the roster's jump. The
 							 * section filter above survives a cap-bound roster, but a reader

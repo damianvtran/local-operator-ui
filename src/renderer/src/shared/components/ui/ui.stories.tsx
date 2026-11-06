@@ -1293,3 +1293,128 @@ export const SheetOpen: Story = {
 		</Page>
 	),
 };
+
+/**
+ * THE ANCHORED OVERLAYS, ONE PER STORY, OPEN BY STATE (design round 1 and QA
+ * round 1).
+ *
+ * WHY THEY ARE NOT ONLY IN `AllPrimitives`. That story is 4997px tall, and both
+ * review lanes found the same wall: the "Anchored overlays" section sits at
+ * document y 4195-4550, Storybook's fullscreen body clips at the viewport, and
+ * programmatic scroll stops at 2138 in the harness browser this repo's evidence
+ * runs use. So the three surfaces the operator's report names - a menu, a
+ * tooltip, a popover - were the three nobody could photograph, and "the
+ * attribute is in the bundle" had to stand in for "the panel is translucent on
+ * screen". One surface per story is small enough to sit above the fold at any
+ * viewport an evidence run picks.
+ *
+ * EVERY ONE OF THEM OPENS BY PROP, never by a gesture: `open` on the root, or
+ * `checked`/`value` where the state is the row's. The evidence hosts cannot
+ * hover (no pointer), and a click fired by a play function lands on a panel whose
+ * position depends on a layout pass that a screenshot can outrun.
+ *
+ * These are fixtures. Nothing here changes a component's behaviour: the same
+ * primitives, the same `data-glass-overlay` on the same elements, driven by the
+ * props Radix already publishes.
+ */
+export const TooltipOpen: Story = {
+	render: () => (
+		<Page>
+			<div className="flex flex-col items-start gap-2">
+				<span className="text-ink-dim text-meta">Tooltip, open</span>
+				<TooltipProvider>
+					<TooltipRoot open>
+						<TooltipTrigger asChild>
+							<Button variant="secondary" size="icon" aria-label="Copy">
+								<Copy aria-hidden="true" />
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="right">Copy to clipboard</TooltipContent>
+					</TooltipRoot>
+				</TooltipProvider>
+			</div>
+		</Page>
+	),
+};
+
+/** The menu open WITH ITS SUBMENU, which is the pair QA row 16 could not reach. */
+export const DropdownOpen: Story = {
+	render: () => {
+		const [radio, setRadio] = useState("newest");
+		return (
+			<Page>
+				<div className="flex flex-col items-start gap-2 pb-72">
+					<span className="text-ink-dim text-meta">
+						Dropdown menu, open, with its submenu open
+					</span>
+					<DropdownMenu open modal={false}>
+						<DropdownMenuTrigger asChild>
+							<Button variant="secondary">
+								Actions
+								<ChevronDown aria-hidden="true" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start" className="w-56">
+							<DropdownMenuLabel>This conversation</DropdownMenuLabel>
+							<DropdownMenuItem>
+								<Copy aria-hidden="true" />
+								Duplicate
+								<DropdownMenuShortcut>⌘D</DropdownMenuShortcut>
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuLabel>Sort</DropdownMenuLabel>
+							<DropdownMenuRadioGroup value={radio} onValueChange={setRadio}>
+								<DropdownMenuRadioItem value="newest">
+									Newest first
+								</DropdownMenuRadioItem>
+								<DropdownMenuRadioItem value="oldest">
+									Oldest first
+								</DropdownMenuRadioItem>
+							</DropdownMenuRadioGroup>
+							<DropdownMenuSeparator />
+							{/* `open` on the Sub, so the nested panel paints without a hover. */}
+							<DropdownMenuSub open>
+								<DropdownMenuSubTrigger>Move to</DropdownMenuSubTrigger>
+								<DropdownMenuSubContent>
+									<DropdownMenuItem>Archive</DropdownMenuItem>
+									<DropdownMenuItem>Starred</DropdownMenuItem>
+								</DropdownMenuSubContent>
+							</DropdownMenuSub>
+							<DropdownMenuSeparator />
+							{/* The destructive label is the register design round 1 measured -
+							 * and a PRODUCT-length one (design round 2, NIT-1): the real rows are
+							 * phrases in a `w-56` menu, so a bare "Delete" under-reports the
+							 * row's width and its wrap. */}
+							<DropdownMenuItem destructive>
+								<Trash2 aria-hidden="true" />
+								Delete conversation
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
+			</Page>
+		);
+	},
+};
+
+/** A popover open by state, with the body and muted text a panel actually carries. */
+export const PopoverOpen: Story = {
+	render: () => (
+		<Page>
+			<div className="flex flex-col items-start gap-2 pb-72">
+				<span className="text-ink-dim text-meta">Popover, open</span>
+				<Popover open>
+					<PopoverTrigger asChild>
+						<Button variant="outline">Details</Button>
+					</PopoverTrigger>
+					<PopoverContent align="start">
+						<p className="font-medium text-ink">Local model</p>
+						<p className="mt-1 text-ink-muted">
+							Qwen 3 8B, running on this machine. No network calls.
+						</p>
+					</PopoverContent>
+				</Popover>
+			</div>
+		</Page>
+	),
+};

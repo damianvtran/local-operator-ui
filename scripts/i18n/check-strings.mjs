@@ -2,26 +2,44 @@
 /**
  * The i18n ratchet for hardcoded user-facing strings (RFC §2.7, TS half).
  *
- * WHAT IT FLAGS, precisely — the two shapes the RFC's inventory measured
- * (`aria-label`/`placeholder`/`title`/`alt` attribute copy, and JSX text),
+ * WHAT IT FLAGS, precisely — JSX text and the copy-bearing JSX attributes,
  * found through the REAL TypeScript compiler rather than a regex:
  *
  *   - `JsxText` nodes whose text contains a letter (whitespace-only,
  *     punctuation-only — `·`, `—` — and digit-only texts are ignored);
- *   - literal `aria-label` / `placeholder` / `title` / `alt` attributes
- *     whose value contains a letter.
+ *   - a JSX attribute named in `COPY_ATTRIBUTES` whose value carries English
+ *     letters, in EITHER spelling: a literal (`label="Run details"`) or an
+ *     expression whose static text reaches the screen (`label={cond ? "A" :
+ *     "B"}`, `label={`Open ${name}`}`, `label={a ?? "B"}`, `label={"A" + b}`).
+ *     Only the literal pieces count — a call such as `t("ui.x")` or a bare
+ *     identifier exposes no static text, which is exactly what a keyed site
+ *     looks like.
+ *
+ * `COPY_ATTRIBUTES` is the measured list of props that carry prose (the
+ * native four — `aria-label`, `placeholder`, `title`, `alt` — plus the design
+ * system's own prose props: tooltip `content`, panel `label`/`closeLabel`,
+ * form-field `description`/`helperText`/`busyLabel`/`saveLabel`/`dirtyHint`,
+ * and so on). A prop is added only after reading what its component does with
+ * the value: class names, ids, enum values, search terms and test ids are
+ * tokens, never prose, and stay off the list. A prop that is prose on one
+ * component and a token on another is flagged and the token site takes an
+ * `// i18n: ignore <reason>` pragma, so the reason is on the line.
  *
  * KNOWN BOUNDARIES, stated rather than implied (the core checker's own
  * docstring has the same section, and for the same reason — a false negative
  * nothing reports is the one outcome this file must not quietly produce):
  *
  *   - Strings in plain object literals (`{ title: "New chat" }`, menu data,
- *     command definitions) are NOT counted in v1; the extraction slices that
- *     reach those shapes extend this walker then, with their counts.
- *   - A copy attribute whose value is an EXPRESSION (`aria-label={cond ? "A"
- *     : "B"}`) is not counted; only literal values are.
- *   - A string assembled with `+` or a template literal is not counted (the
- *     core checker documents the same blind spot for its own grammar).
+ *     command definitions) are NOT counted by this ratchet; the base-aware
+ *     `check-added-strings.mjs` covers NEW ones on added lines only, and the
+ *     historical ones are listed in the PR that widened this scanner.
+ *   - A prop that is not in `COPY_ATTRIBUTES` is invisible. Adding a prose
+ *     prop to a component is a reason to add its name here.
+ *   - Prose assembled by a function and passed through (`label={describe(x)}`)
+ *     is not counted at the attribute; its literals live in the helper, which
+ *     is an object-literal/helper site under the first bullet.
+ *   - Main-process strings (native dialogs, OS notifications) are outside
+ *     `src/renderer` toast paths and are not counted here.
  *
  * THE RATCHET, mirroring `local-operator/scripts/i18n/check.py`:
  *
@@ -89,12 +107,52 @@ export const BASELINE_NOTE =
 	"Add or raise an entry only through a reviewed `--init --force` capture. " +
 	"See scripts/i18n/check-strings.mjs.";
 
-/** The copy-bearing attributes the RFC's inventory measured. */
+/**
+ * The copy-bearing JSX attributes.
+ *
+ * The first four are native HTML attributes the RFC's inventory measured. The
+ * rest are PROPS of this repository's own components whose value is rendered
+ * as prose (each was read at its component before being listed):
+ *   - `label` / `closeLabel` / `ariaLabel` / `srLabel` / `triggerLabel` /
+ *     `actionLabel` / `busyLabel` / `pendingLabel` / `saveLabel`: control and
+ *     region names, visible or accessible;
+ *   - `content`: the Tooltip body;
+ *   - `description` / `helperText` / `hint` / `meaning` / `what` / `empty` /
+ *     `emptyText` / `listNotice` / `dirtyHint` / `blockedReason`: sentences
+ *     under, beside or in place of a field;
+ *   - `titleText` / `summary` / `header` / `verb` / `text`: headings, disclosure
+ *     summaries, code-block headers, status verbs and notice bodies.
+ */
 export const COPY_ATTRIBUTES = new Set([
 	"aria-label",
 	"placeholder",
 	"title",
 	"alt",
+	"label",
+	"content",
+	"description",
+	"closeLabel",
+	"busyLabel",
+	"titleText",
+	"helperText",
+	"saveLabel",
+	"dirtyHint",
+	"text",
+	"verb",
+	"summary",
+	"ariaLabel",
+	"actionLabel",
+	"pendingLabel",
+	"blockedReason",
+	"empty",
+	"emptyText",
+	"header",
+	"hint",
+	"listNotice",
+	"meaning",
+	"what",
+	"srLabel",
+	"triggerLabel",
 ]);
 
 /** Any Unicode letter — the line between prose and punctuation/format tokens. */
@@ -159,6 +217,51 @@ export function lineSpan(sourceFile, node) {
 		sourceFile.getLineAndCharacterOfPosition(start).line + 1,
 		sourceFile.getLineAndCharacterOfPosition(end).line + 1,
 	];
+}
+
+/**
+ * The literal text nodes whose value is statically present in an expression
+ * that becomes copy: the arms of a conditional, `||` / `??` / `+` operands,
+ * the right side of `&&` (the left is its guard), and every literal span of a
+ * template. Calls, identifiers and member accesses expose no static text, so a
+ * `t("ui.key")` site yields nothing - which is what a keyed site must look
+ * like. Shared with `check-added-strings.mjs` so the two guards cannot drift
+ * on what "static copy" means.
+ */
+export function staticTextNodes(node) {
+	switch (node.kind) {
+		case SyntaxKind.StringLiteral:
+		case SyntaxKind.NoSubstitutionTemplateLiteral:
+			return [node];
+		case SyntaxKind.TemplateExpression:
+			return [node.head, ...node.templateSpans.map((span) => span.literal)];
+		case SyntaxKind.ConditionalExpression:
+			return [
+				...staticTextNodes(node.whenTrue),
+				...staticTextNodes(node.whenFalse),
+			];
+		case SyntaxKind.BinaryExpression: {
+			const operator = node.operatorToken.kind;
+			if (operator === SyntaxKind.AmpersandAmpersandToken) {
+				return staticTextNodes(node.right);
+			}
+			if (
+				operator === SyntaxKind.PlusToken ||
+				operator === SyntaxKind.BarBarToken ||
+				operator === SyntaxKind.QuestionQuestionToken
+			) {
+				return [...staticTextNodes(node.left), ...staticTextNodes(node.right)];
+			}
+			return [];
+		}
+		case SyntaxKind.ParenthesizedExpression:
+		case SyntaxKind.AsExpression:
+		case SyntaxKind.SatisfiesExpression:
+		case SyntaxKind.NonNullExpression:
+			return staticTextNodes(node.expression);
+		default:
+			return [];
+	}
 }
 
 /** The nearest enclosing JSX element/fragment, if any. */
@@ -230,23 +333,34 @@ export function findViolations(sourceFile) {
 		} else if (node.kind === SyntaxKind.JsxAttribute) {
 			const name = node.name?.text;
 			const initializer = node.initializer;
-			if (
-				name !== undefined &&
-				COPY_ATTRIBUTES.has(name) &&
-				initializer?.kind === SyntaxKind.StringLiteral &&
-				LETTER_RE.test(initializer.text)
-			) {
+			if (name !== undefined && COPY_ATTRIBUTES.has(name) && initializer) {
+				/* `label="Run details"` is a literal initializer; `label={...}` is a
+				 * JsxExpression whose static text (conditional arms, template spans,
+				 * `??` fallbacks) is just as visible to the user. Both spellings are
+				 * the same defect, so both are counted - one finding per literal
+				 * piece, because a template with two pieces needs two keys' worth of
+				 * attention and a count of one would let a second slip in. */
+				const pieces =
+					initializer.kind === SyntaxKind.StringLiteral
+						? [initializer]
+						: initializer.kind === SyntaxKind.JsxExpression &&
+								initializer.expression
+							? staticTextNodes(initializer.expression)
+							: [];
 				const exempt =
 					inSpan(lineSpan(sourceFile, node), pragmas) ||
 					(enclosingElement(node)
 						? inSpan(lineSpan(sourceFile, enclosingElement(node)), pragmas)
 						: false);
 				if (!exempt) {
-					findings.push({
-						kind: `attribute:${name}`,
-						line: lineOf(sourceFile, initializer.getStart(sourceFile)),
-						text: collapse(initializer.text),
-					});
+					for (const piece of pieces) {
+						if (!LETTER_RE.test(piece.text)) continue;
+						findings.push({
+							kind: `attribute:${name}`,
+							line: lineOf(sourceFile, piece.getStart(sourceFile)),
+							text: collapse(piece.text),
+						});
+					}
 				}
 			}
 		}

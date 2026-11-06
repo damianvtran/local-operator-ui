@@ -1,0 +1,72 @@
+RENDERS (executed 2026-10-30; intl-messageformat 12.1.3, locale fr; names joined by Intl.ListFormat 'long'/'conjunction' exactly as team-bridge-member-events.tsx does)
+
+-- the corrected value, both target counts
+owner_added_agent 1: Dana a ajouté son agent : Ada
+owner_added_agent 3: Dana a ajouté son agent : Ada, Bo et Cy
+declined_self 1:     Dana a refusé l’invitation
+declined 1:          Dana a refusé l’invitation pour Ada
+declined 3:          Dana a refusé l’invitation pour Ada, Bo et Cy
+
+-- events.others at the counts the brief names
+count= 1: 1 autre
+count= 2: 2 autres
+count= 3: 3 autres
+count= 5: 5 autres
+count=11: 11 autres
+count=21: 21 autres
+
+-- every event sentence as the truncated row actually builds it (2 names shown + N others, then the locale's own conjunction)
+N=1  list = "Ada, Bo et 1 autre"
+   invited            Dana a invité Ada, Bo et 1 autre
+   joined             Arrivée dans la conversation : Ada, Bo et 1 autre
+   owner_added_agent  Dana a ajouté son agent : Ada, Bo et 1 autre
+   left               Départ de la conversation : Ada, Bo et 1 autre
+   removed            Dana a retiré Ada, Bo et 1 autre
+   consented          Dana a autorisé Ada, Bo et 1 autre à rejoindre la conversation
+   declined           Dana a refusé l’invitation pour Ada, Bo et 1 autre
+   withdrawn          Dana a annulé l’invitation pour Ada, Bo et 1 autre
+N=2  list = "Ada, Bo et 2 autres"
+   invited            Dana a invité Ada, Bo et 2 autres
+   joined             Arrivée dans la conversation : Ada, Bo et 2 autres
+   owner_added_agent  Dana a ajouté son agent : Ada, Bo et 2 autres
+   left               Départ de la conversation : Ada, Bo et 2 autres
+   removed            Dana a retiré Ada, Bo et 2 autres
+   consented          Dana a autorisé Ada, Bo et 2 autres à rejoindre la conversation
+   declined           Dana a refusé l’invitation pour Ada, Bo et 2 autres
+   withdrawn          Dana a annulé l’invitation pour Ada, Bo et 2 autres
+N=3  list = "Ada, Bo et 3 autres"
+   invited            Dana a invité Ada, Bo et 3 autres
+   joined             Arrivée dans la conversation : Ada, Bo et 3 autres
+   owner_added_agent  Dana a ajouté son agent : Ada, Bo et 3 autres
+   left               Départ de la conversation : Ada, Bo et 3 autres
+   removed            Dana a retiré Ada, Bo et 3 autres
+   consented          Dana a autorisé Ada, Bo et 3 autres à rejoindre la conversation
+   declined           Dana a refusé l’invitation pour Ada, Bo et 3 autres
+   withdrawn          Dana a annulé l’invitation pour Ada, Bo et 3 autres
+N=5  list = "Ada, Bo et 5 autres"
+   invited            Dana a invité Ada, Bo et 5 autres
+   joined             Arrivée dans la conversation : Ada, Bo et 5 autres
+   owner_added_agent  Dana a ajouté son agent : Ada, Bo et 5 autres
+   left               Départ de la conversation : Ada, Bo et 5 autres
+   removed            Dana a retiré Ada, Bo et 5 autres
+   consented          Dana a autorisé Ada, Bo et 5 autres à rejoindre la conversation
+   declined           Dana a refusé l’invitation pour Ada, Bo et 5 autres
+   withdrawn          Dana a annulé l’invitation pour Ada, Bo et 5 autres
+N=11  list = "Ada, Bo et 11 autres"
+   invited            Dana a invité Ada, Bo et 11 autres
+   joined             Arrivée dans la conversation : Ada, Bo et 11 autres
+   owner_added_agent  Dana a ajouté son agent : Ada, Bo et 11 autres
+   left               Départ de la conversation : Ada, Bo et 11 autres
+   removed            Dana a retiré Ada, Bo et 11 autres
+   consented          Dana a autorisé Ada, Bo et 11 autres à rejoindre la conversation
+   declined           Dana a refusé l’invitation pour Ada, Bo et 11 autres
+   withdrawn          Dana a annulé l’invitation pour Ada, Bo et 11 autres
+N=21  list = "Ada, Bo et 21 autres"
+   invited            Dana a invité Ada, Bo et 21 autres
+   joined             Arrivée dans la conversation : Ada, Bo et 21 autres
+   owner_added_agent  Dana a ajouté son agent : Ada, Bo et 21 autres
+   left               Départ de la conversation : Ada, Bo et 21 autres
+   removed            Dana a retiré Ada, Bo et 21 autres
+   consented          Dana a autorisé Ada, Bo et 21 autres à rejoindre la conversation
+   declined           Dana a refusé l’invitation pour Ada, Bo et 21 autres
+   withdrawn          Dana a annulé l’invitation pour Ada, Bo et 21 autres

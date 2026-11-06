@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "locale": "hi",
+  "namespace": "ui.notifications.bulk",
+  "pr": 1475,
+  "date": "2026-10-28",
+  "head": "2876a8d98e8d52e55d163e6c94651f598f021a1e",
+  "instance": "bulk1475-hi-bulk-20d3c244992f",
+  "auditor": {
+    "agent": "independent-translation-auditor",
+    "role": "coder on team lopdev; independent of translator",
+    "model": "kimi/k3.1-pro",
+    "model_note": "Session began on anthropic/claude-opus-5-5; provider quota fallback served anthropic/claude-sonnet-5-5, openai/gpt-6-astra, then kimi/k3.1-pro. Final semantic audit and receipts use kimi/k3.1-pro.",
+    "instance": "bulk1475-hi-bulk-20d3c244992f"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "HI-B1",
+      "severity": "MINOR",
+      "key": "ui.notifications.bulk.dismiss_hint",
+      "issue": "Uses «पहले जैसा करें» instead of the established Undo action «पूर्ववत करें» (ui.notifications.toast.undo), which the context specifically names.",
+      "disposition": "batch Undo terminology remediation"
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "translator_provenance": {
+    "agent": "prior coder on team lopdev",
+    "model": "anthropic/claude-opus-5-5",
+    "source": "Delegation brief only; no pre-existing scoped receipt or ledger row independently establishes the model.",
+    "commits": [
+      "16d48a25c608aa22a1b965c879c067df7bb1b206",
+      "b565c9c93a (short SHA observed in git log)",
+      "35edec5d428ef1c4a5055534e782d6492db65bcd"
+    ]
+  },
+  "scope": "All 12 hi/ui.notifications.bulk messages read against English, context, core glossary, hi style guide and established notification action labels. No catalogue bytes edited.",
+  "sha256": {
+    "en": "d13b1f95be0829e6cff643cbc86be13872bea0ddc8751d442227e011689a1c2c",
+    "hi": "62a98ae0d154b3f445e688a15f5b3596996ea0cd99509a31ee12d881445f0f6f",
+    "en_context": "1bb8b6f0e191a80618bf34c74c43e35511b46f2db9724ab17159af3746570277"
+  },
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.notifications.bulk.json",
+    "target": "src/i18n/catalogues/hi/ui.notifications.bulk.json",
+    "context": "src/i18n/catalogues/en/ui.notifications.bulk.context.json"
+  },
+  "guidance": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "evidence": {
+    "semantic_review": "native terminology, tone, technical terms, All/Undo/dismiss consistency and frozen-selection context reviewed per key",
+    "mechanical": {
+      "messages": 105,
+      "namespaces": 12,
+      "result": "PASS: exact key sets, ICU argument parity, valid target CLDR categories including other, IntlMessageFormat renders for 0/1/2/4/5/21/1000000/1500000, NFC, no manual bidi controls; ICU-only pseudo expansion preserved syntax/placeholders",
+      "artifact": "scratchpad bulk-i18n-mechanical.json (execution evidence, not a portable receipt dependency)"
+    },
+    "repository_tests": {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/format.test.mjs scripts/i18n/catalogue-locale.test.mjs scripts/i18n/ur-activation.test.mjs",
+      "result": "62 passed, 0 failed"
+    },
+    "limitations": "Catalogue audit only; no rendered-fit or visual RTL frame claimed. Pseudo localization was an ICU-preserving expansion analysis, not a browser layout test."
+  }
+}

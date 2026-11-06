@@ -564,7 +564,75 @@ const railNoticeExpect = (lit, kind, title) => ({
 	},
 });
 
+/*
+ * NO HORIZONTAL OVERFLOW IN THE NOTIFICATIONS DETAIL PANE (the overflow fix). The frame
+ * alone cannot prove "nothing is clipped", because the clip is exactly what hides it;
+ * so the shutter waits until the pane's scroller, its column, and every direct child
+ * report `scrollWidth <= clientWidth`, and the run refuses the frame otherwise.
+ */
+const noPaneOverflowExpect = {
+	expect: {
+		pollMs: 3000,
+		expression: `(() => {
+			const pane = document.querySelector("[data-notification-detail]");
+			if (!pane) return "the detail pane is not drawn";
+			if (!pane.querySelector(".lo-markdown, [data-lo-ask-row]")) return "the pane has no body yet";
+			const column = pane.parentElement;
+			const row = column.parentElement;
+			const limit = Math.min(row.getBoundingClientRect().right, window.innerWidth);
+			const boxes = [column, pane, ...pane.children];
+			/* BOTH readings: a column that GREW past its slot has scrollWidth == clientWidth
+			   and is caught only by its rect against the row and the viewport. */
+			const over = boxes.filter(
+				(box) =>
+					box.scrollWidth > box.clientWidth + 0.5 ||
+					box.getBoundingClientRect().right > limit + 0.5,
+			);
+			if (over.length > 0)
+				return "overflow: " + over.map((box) => (box.tagName + "." + String(box.className).split(" ").slice(0, 3).join(".")) + " sw=" + box.scrollWidth + " cw=" + box.clientWidth + " right=" + Math.round(box.getBoundingClientRect().right) + " limit=" + Math.round(limit)).join("; ");
+			return true;
+		})()`,
+		message:
+			"the detail pane and each direct child fit their width (scrollWidth <= clientWidth)",
+	},
+};
+
 export const STORIES = [
+	/*
+	 * The Notifications detail pane's ask card through each state of one press
+	 * (answered, declined, dismissed, sending, a transport failure with Retry,
+	 * delivered), over two near-identical asks in one conversation; and a body with
+	 * a 200-character unbroken token at three widths (the overflow fix). Each
+	 * play-driven state holds the shutter until its claim is on screen.
+	 */
+	["notifications-page--ask-pane-pending", 1280, 1100],
+	["notifications-page--ask-pane-sending", 1280, 1100],
+	["notifications-page--ask-pane-answered", 1280, 1100],
+	["notifications-page--ask-pane-secret-answered", 1280, 1100],
+	["notifications-page--ask-pane-delivered", 1280, 1100],
+	["notifications-page--ask-pane-declined", 1280, 1100],
+	["notifications-page--ask-pane-dismissed", 1280, 1100],
+	["notifications-page--ask-pane-error", 1280, 1100],
+	["notifications-page--long-body-wide", 1600, 900, noPaneOverflowExpect],
+	["notifications-page--long-body-1024", 1024, 900, noPaneOverflowExpect],
+	["notifications-page--long-body-narrow", 820, 900, noPaneOverflowExpect],
+	/* The same width probe over the ask states: the cards and the filter row. */
+	/* Translucency on: the rounded pane over the window glass (the polish half). */
+	[
+		"notifications-page--long-body-wide",
+		1600,
+		900,
+		{ glass: true, dir: "long-body-wide-glass" },
+	],
+	[
+		"notifications-page--ask-pane-delivered",
+		1024,
+		900,
+		{
+			...noPaneOverflowExpect,
+			dir: "ask-pane-delivered-1024",
+		},
+	],
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
 	 * defaults to, and the reason is a trap that cost real pixels: since the
@@ -4403,6 +4471,20 @@ export const STORIES = [
 	["settings-backend--saving", 1380, 900],
 	["settings-backend--save-failed", 1380, 900],
 	["settings-backend--narrow", 620, 900],
+	/*
+	 * The settings page's own search (issue #1492): the field's resting state
+	 * with its panel open, results, the no-result answer, and the narrow-width
+	 * pressure case. No dark twin is listed — these stories take no theme of
+	 * their own, so the sweep photographs each row once per theme (design D4).
+	 *
+	 * Added on the reviewer's finding (design round 1, D3): without these rows
+	 * this round's frames could only be produced from a patched copy of this
+	 * file, which is not evidence a later round can regenerate.
+	 */
+	["settings-search--idle", 1380, 900],
+	["settings-search--results", 1380, 900],
+	["settings-search--no-results", 1380, 900],
+	["settings-search--long-query", 420, 900],
 	/*
 	 * And the control those rows are built on, which had never been photographed
 	 * in ANY theme or state before this change — its own story was in no row of
@@ -9090,7 +9172,7 @@ export const STORIES = [
 		{
 			expectSentence: [
 				"The new build has landed",
-				"the turns running on this machine kept running",
+				"your sessions kept running",
 			],
 		},
 	],
@@ -9349,7 +9431,7 @@ export const STORIES = [
 		{
 			expectSentence: [
 				"offline while it comes back",
-				"Nothing in flight is cut off",
+				"Running sessions aren't interrupted",
 			],
 		},
 	],
@@ -9455,6 +9537,21 @@ export const STORIES = [
 	 * selector of its own.
 	 */
 	["team-bridge-notification-unavailable-toast--stale-click", 1280, 800],
+	/*
+	 * The owner audit ("{chief of staff}'s messages"), the one surface that shows
+	 * the AGENT's screening verdict to a human and states who can read the
+	 * conversation. Four states, because three of them are things a reader must be
+	 * able to tell apart by looking: a refusal (which is also the answer for a
+	 * caller who does not own the agent), a list that is genuinely empty, a read in
+	 * flight, and the populated window with a collapsed rejection, a row whose body
+	 * the hub did not send, and the agent's own message. 1280x800 is the desktop
+	 * width the section is designed at; the rail is 300px and the panel takes the
+	 * rest, so a narrower frame would not show the message column at all.
+	 */
+	["team-bridge-owner-audit--populated", 1280, 800],
+	["team-bridge-owner-audit--empty", 1280, 800],
+	["team-bridge-owner-audit--loading", 1280, 800],
+	["team-bridge-owner-audit--read-failed", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 	/*
 	 * The roster rows (issues #844, #849): the `@` scope's agent and team rows, one
@@ -12080,6 +12177,22 @@ export const STORIES = [
 	["common-updatefooticon--downloading", 560, 360],
 	["common-updatefooticon--strip-variant", 560, 360],
 	/*
+	 * The tooltip under a real pointer: the update indicator's first words to a
+	 * person, which carry the "running agents are not interrupted" line
+	 * (operator request, 2026-11-03). Hover is asserted before the shutter, and
+	 * the viewport is tall enough to hold the panel above the strip.
+	 */
+	[
+		"common-updatefooticon--both-surfaces",
+		560,
+		360,
+		{
+			hover: "[data-update-foot-icon]",
+			hoverSettleMs: 900,
+			dir: "both-surfaces/tooltip",
+		},
+	],
+	/*
 	 * The band's own states, in the design round's own enumeration (round-2
 	 * review, the D2 residual): the LONGEST version string the band can meet - the
 	 * wide case the truncation fix is about - both surfaces (the separator's
@@ -14141,7 +14254,12 @@ const main = async () => {
 			cdp.events.length = 0;
 
 			await cdp.send("Page.navigate", {
-				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
+				/*
+				 * `glass: true` on a row asks the preview for the window glass through its
+				 * own documented arg (`.storybook/preview.tsx`, `?args=glass:on`), so a
+				 * frame claiming "translucency on" is painted under it rather than flat.
+				 */
+				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}${options?.glass ? ";glass:on" : ""}`,
 			});
 			await sleep(900);
 

@@ -126,5 +126,35 @@
 		"tone": "short section/category noun",
 		"maxCells": 20,
 		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.relative_short": {
+		"role": "sidebar row compact time",
+		"tone": "terse lowercase; factual time since creation or last activity",
+		"maxCells": 6,
+		"note": "All units are selected from numeric elapsed time, never parsed from translated text. Preserve the selected basis; adapt unit abbreviations idiomatically. Width is advisory, not a truncation instruction.",
+		"placeholders": {
+			"unit": "Internal select token: now, minute, hour, day, week, year. Do not translate token names.",
+			"count": "Non-negative elapsed quantity; use locale digits and plural rules."
+		}
+	},
+	"ui.chat.sidebar_view.relative_created": {
+		"role": "sidebar row accessible time sentence",
+		"tone": "terse lowercase; factual time since creation or last activity",
+		"maxCells": 64,
+		"note": "All units are selected from numeric elapsed time, never parsed from translated text. Preserve the selected basis; adapt unit abbreviations idiomatically. Width is advisory, not a truncation instruction.",
+		"placeholders": {
+			"unit": "Internal select token: now, minute, hour, day, week, year. Do not translate token names.",
+			"count": "Non-negative elapsed quantity; use locale digits and plural rules."
+		}
+	},
+	"ui.chat.sidebar_view.relative_active": {
+		"role": "sidebar row accessible time sentence",
+		"tone": "terse lowercase; factual time since creation or last activity",
+		"maxCells": 64,
+		"note": "All units are selected from numeric elapsed time, never parsed from translated text. Preserve the selected basis; adapt unit abbreviations idiomatically. Width is advisory, not a truncation instruction.",
+		"placeholders": {
+			"unit": "Internal select token: now, minute, hour, day, week, year. Do not translate token names.",
+			"count": "Non-negative elapsed quantity; use locale digits and plural rules."
+		}
 	}
 }

@@ -1,6 +1,8 @@
 {
 	"compilerOptions": {
-		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+		// Build-info writes must stay worktree-local, including noEmit checks;
+		// node_modules may be an exact-lock lender shared with other worktrees.
+		"tsBuildInfoFile": "./.cache/typecheck/app.tsbuildinfo",
 		"target": "ES2020",
 		"useDefineForClassFields": true,
 		"lib": ["ES2020", "DOM", "DOM.Iterable"],

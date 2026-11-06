@@ -1,0 +1,119 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (post-merge delta re-audit of PR #1534's two keys onto main 8fe807c157f / #1517)",
+	"date": "2026-10-31",
+	"auditor": "reviewer",
+	"agent": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Session 64e850ffd480 runs as anthropic/claude-opus-5-5 (model named in this session's system prompt); no fallback announced or observed.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.teamBridge",
+	"locale": "fr",
+	"audit_id": "teambridge-builtin-general-merge-audit-64e850ffd480-rebase-fr",
+	"instance": "64e850ffd480-rebase-fr",
+	"session": "64e850ffd480",
+	"integration": {
+		"pr": "damianvtran/local-operator-ui#1534",
+		"branch": "feat/team-bridge-builtin-general",
+		"base": "8fe807c157f6bda1f36690abdada2587531e13f6",
+		"head": "2fc7fd06e72fa0c9d193bcf2d42ee7bc1943673c",
+		"worktree": "~/local-operator-ui/.worktrees/tb-builtin-general"
+	},
+	"independence": "Independent auditor: team radientdev role reviewer, session 64e850ffd480. Did not translate these strings and edited no catalogue; wrote only receipts and ledger rows via ledger-assemble.mjs. Distinct run from 52ac64c365d2, 7306b7beb00c and f8ec94dc2fc6.",
+	"sha256": {
+		"fr": "8b650cd95fa756f530e49f752ff55d8980f01efbce6c9de6780a1cc01901927d",
+		"en": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993"
+	},
+	"context_sha256": "13097f1b24369771c1ea72b45504058da38918c8d6ad1752e211bf6ae3f5d719",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "8b650cd95fa756f530e49f752ff55d8980f01efbce6c9de6780a1cc01901927d"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "13097f1b24369771c1ea72b45504058da38918c8d6ad1752e211bf6ae3f5d719"
+		}
+	},
+	"scope": {
+		"delta_kind": "Merge of b896b79ca5f (via 8c1c795f41c) with main 8fe807c157f6bda1f36690abdada2587531e13f6. Measured: JSON key diff of src/i18n/catalogues/fr/ui.teamBridge.json between main and head = exactly general_topic (added) and humans_topic (changed); with those two keys' lines removed, head bytes equal main's (same for en). Context diff main..head = exactly those two keys. Main's row bytes (source 124d9c3a3423, target e55e8a04a1db) re-hashed equal to main's files and are audited by its row's auditors.",
+		"base_target_sha256": "e55e8a04a1dbe2e4b4b826c03ee420441c5f313e430071c884b85f74c40da80b",
+		"base_en_sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633",
+		"base_bytes_audited_by": [
+			"95c4798301e2-union-a-fr",
+			"2810e9866efc-union-b-fr"
+		],
+		"keys_audited_linguistically": [
+			"ui.teamBridge.builtin.general_topic",
+			"ui.teamBridge.builtin.humans_topic"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.builtin.agents_topic",
+			"ui.teamBridge.members.invitation_note_v3",
+			"ui.teamBridge.events.owner_added_agent"
+		],
+		"prior_audit_of_keys": {
+			"instance": "52ac64c365d2-rebase-fr",
+			"values_byte_identical": true,
+			"context_byte_identical": true
+		},
+		"not_audited": "Every other ui.teamBridge key: byte-identical to main 8fe807c157f, audited by base_bytes_audited_by; not re-litigated.",
+		"references": [
+			{
+				"path": "~/local-operator/i18n/glossary.md",
+				"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+			},
+			{
+				"path": "~/local-operator/i18n/style-guides/fr.md",
+				"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+			}
+		]
+	},
+	"audited_values": {
+		"ui.teamBridge.builtin.general_topic": {
+			"en": "The whole organization: people and their agents. Agents respond only to mentions.",
+			"fr": "Toute l’organisation : les personnes et leurs agents. Les agents ne répondent qu’aux mentions."
+		},
+		"ui.teamBridge.builtin.humans_topic": {
+			"en": "People only, no agents. Messages here notify every person.",
+			"fr": "Personnes uniquement, sans agents. Les messages envoyés ici notifient chaque personne."
+		}
+	},
+	"fidelity": {
+		"ui.teamBridge.builtin.general_topic": "«Toute l’organisation : les personnes et leurs agents» / «Les agents ne répondent qu’aux mentions» — faithful; U+202F before ':' per fr.md; U+2019 apostrophes; 'mentions' matches notify.mention.",
+		"ui.teamBridge.builtin.humans_topic": "«Personnes uniquement, sans agents» / «Les messages envoyés ici notifient chaque personne» — faithful."
+	},
+	"mechanical_checks": {
+		"ui.teamBridge.builtin.general_topic": {
+			"placeholders": "none in en or target",
+			"nfc": true,
+			"invisible_or_bidi_controls": "none",
+			"em_or_en_dash": "none",
+			"u202f_count": 1,
+			"code_points": 94,
+			"en_code_points": 81
+		},
+		"ui.teamBridge.builtin.humans_topic": {
+			"placeholders": "none in en or target",
+			"nfc": true,
+			"invisible_or_bidi_controls": "none",
+			"em_or_en_dash": "none",
+			"u202f_count": 0,
+			"code_points": 86,
+			"en_code_points": 58
+		}
+	},
+	"consistency": "Agent term and mention term in both keys match #1517's newly merged invitation_note_v3 and events.* in this locale.",
+	"findings": [],
+	"verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit",
+	"audit_notes_not_execution_log": true
+}

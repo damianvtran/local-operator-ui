@@ -1,0 +1,14 @@
+{
+	"ui.agents.descriptions.aida": "你的首席助理：替你调度智能体和团队，照看一切进行中的工作，并随时汇报。",
+	"ui.agents.descriptions.architect": "探索代码库，产出带权衡取舍的设计或技术方案；可以起草文档，但从不改动现有源码。",
+	"ui.agents.descriptions.coder": "用完整工具集端到端完成一项范围明确的任务，然后汇报改了什么、如何验证的。",
+	"ui.agents.descriptions.copy_reviewer": "发布前的文字审查：检查面向用户的文案和为普通读者写的文字，关注可理解性、语气、说法有无依据，以及有没有AI腔；问题编号以C开头。",
+	"ui.agents.descriptions.designer": "对用户可见的改动做设计与UX审查，依据实际渲染的画面而非源码判断；问题编号以D开头。",
+	"ui.agents.descriptions.librarian": "资源库的整理智能体：为用户保存的资源命名、撰写描述并打标签，学习其中的用词，让全局目录保持可用。",
+	"ui.agents.descriptions.manager": "协调委派出去的工作，如实汇报状态：哪些已完成、哪些在进行、哪些卡住了、在等谁。",
+	"ui.agents.descriptions.qa_tester": "为改动提供独立的执行验证：先预检测试环境，跑一遍真实路径和反例，然后交出范围明确的QA矩阵，全程不改动仓库。",
+	"ui.agents.descriptions.reviewer": "对diff、MR或PR做独立的代码审查：找出缺陷、按严重程度分级，绝不改动所审查的代码。",
+	"ui.agents.descriptions.scout": "只读调研：在工作区和网络上查证问题，带着证据汇报发现，不改动任何内容。",
+	"ui.agents.descriptions.tui_designer": "设计与审查终端界面：以键盘为先的操作流、在固定小视口中保持信息密度、颜色与Unicode字形回退、实测的几何数据；问题编号以T开头。",
+	"ui.agents.descriptions.ux_reviewer": "端到端走一遍改动的真实流程：能否被找到、反馈是否到位、出错能否恢复、键盘操作路径和文案；问题编号以U开头。"
+}

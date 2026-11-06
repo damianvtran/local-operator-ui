@@ -112,24 +112,48 @@ export const PANEL_RAIL_WIDTH_PX = 44;
 export const CANVAS_PANE_MIN_PX = 400;
 
 /**
- * The widest the canvas may DOCK at, in pixels: §I's other number, the ceiling on
- * `min(560, available - 480)`.
+ * The widest any right-slot pane may be DRAGGED to, in pixels: one ceiling for the
+ * whole slot rather than one per pane.
  *
- * 560 rather than the dock's own 1200 drag ceiling: the draggable range is how wide
- * the user may make the document pane WHEN THERE IS ROOM, while this is what the
- * layout offers it by itself. A dock that took its 1200 preference in a 1120px row
- * would leave the chat column its floor and nothing else, which is the sqeeze §I's
- * floor exists to forbid.
+ * WHY ONE NUMBER. Until it, the panes announced three ceilings - the canvas and
+ * the asks drawer were capped at 560 by the dock (`canvasDockWidth`), the run
+ * panel and the code review pane at 640, the browser and the console at 1200 - so
+ * "the slot's one width" (#677) held for a DRAGGED value only up to the
+ * narrowest pane's cap: one 1000px drag drew 1000 in the browser and 560 in the
+ * canvas, and the separators offered 400..560 on the canvas, 320..640 on the run
+ * pane and the code review pane, and 480..1200 on the browser and the console.
+ * The operator's rule is one column, so the band is one band.
+ *
+ * WHY 1200 AS THE CEILING. It is the largest ceiling that existed (the browser's
+ * and console's own, since their dividers existed), so no pane loses a width it
+ * could already reach while the narrower panes gain the range their siblings had.
+ * It is still bounded by the ROW, which is what keeps `min(ceiling, ...)` from
+ * being a promise the layout cannot keep: every pane's capacity subtracts the
+ * conversation's `CHAT_PANE_MIN_PX`, so at a 1600px window the row leaves 816 and
+ * no pane draws its 1200 there.
+ *
+ * THE FLOORS STAY PER PANE (`CANVAS_PANE_MIN_PX` here, the run/browser/console
+ * floors in the store): a minimum is a property of what a pane holds, a maximum
+ * is a property of the slot.
  */
-export const CANVAS_PANE_MAX_PX = 560;
+export const RIGHT_SLOT_MAX_PX = 1200;
 
 /**
  * The width the canvas docks at, given the row it shares with the chat column.
  *
- * `min(560, available - 480)` (§I), and it is a function rather than a constant
- * because the second term is the one that moves: the row is the work area after the
- * sidebar has taken its own width, and §B1's 480 is subtracted from it so the chat
- * column keeps its floor whatever the canvas asks for.
+ * `min(RIGHT_SLOT_MAX_PX, available - 480)`, and it is a function rather than a
+ * constant because the second term is the one that moves: the row is the work
+ * area after the sidebar has taken its own width, and §B1's 480 is subtracted
+ * from it so the chat column keeps its floor whatever the canvas asks for.
+ *
+ * THE SAME LEFTOVER EVERY OTHER PANE GETS. This used to cap the dock at 560 - "the
+ * width the layout offers it by itself" rather than the drag ceiling - which is
+ * what made an unset canvas open at 560 while an unset run panel opened at 640,
+ * the mismatch `RIGHT_SLOT_MAX_PX` removes. The cap here is the slot's one ceiling,
+ * so the canvas's offering and a sibling pane's capacity are the same subtraction
+ * with the same number over it. The MODE is still decided by the floor alone
+ * (`canvasPaneMode`): 400 is far below 1200, so the ceiling never decides
+ * docked-versus-overlay.
  *
  * `Math.max(0, ...)` because the subtraction must not go negative on a window
  * narrower than the floor itself - the caller's mode decides what to do there
@@ -137,40 +161,134 @@ export const CANVAS_PANE_MAX_PX = 560;
  * its divider still drawn.
  */
 export function canvasDockWidth(rowWidth: number): number {
-	return Math.max(0, Math.min(CANVAS_PANE_MAX_PX, rowWidth - CHAT_PANE_MIN_PX));
+	return Math.max(0, Math.min(RIGHT_SLOT_MAX_PX, rowWidth - CHAT_PANE_MIN_PX));
 }
 
 /**
- * How the canvas occupies the row at this width: docked beside the chat, or
+ * How the right slot occupies the row at this width: docked beside the chat, or
  * stopped docking - the mode the `overlay` literal names.
  *
- * WHAT `overlay` DRAWS TODAY, stated once and here, because several comments had
- * drifted into describing it as a pane that covers the conversation: the mode
- * withholds the divider and writes `data-canvas-mode`/`data-ask-mode`; it does NOT
- * position the pane over the chat. `f0f974ef0a3` drew one (`absolute inset-y-0
- * right-0 z-20`), but `1e88f7fc167` (#564, the PaneSlot refactor) removed that
- * class without its message saying so, and the pane is a flex dock beside the
- * 480px conversation at the row's leftover. Restoring a true overlay is an OPEN
- * design decision, not an accident to fix here: it needs positioning; a width
- * rule that does not fight the one-width resolver; Escape/focus handling (there
- * is no scrim); a lane-gradient stop; and - for the Browser - main-process bounds
- * for the native view.
+ * THIS IS THE ONE PREDICATE, measured from the pane ROW, and it stays one: the
+ * sidebar has already yielded what it will (§B1: below 1024 it is the 56px strip,
+ * which `resolveSidebarLayout` does), and if the slot's own 400px floor still does
+ * not fit beside the chat's 480, the pane stops docking. No second threshold, and
+ * no feedback loop: the sheet an overlay draws is `absolute`, so it never changes
+ * the row it is measured against.
  *
- * §I's order of yielding, in one predicate. The sidebar yields first (§B1: below
- * 1024 it is the 56px strip, which `resolveSidebarLayout` already does), and if
- * the canvas's own 400px floor still does not fit beside the chat's 480 the canvas
- * stops docking and switches to the `overlay` literal.
+ * WHAT `overlay` DRAWS, per occupant, because they differ and the difference is
+ * the whole point of naming the mode:
+ *
+ *  - THE CANVAS is a flex dock at the row's leftover (`canvasDockWidth`). It
+ *    withholds the divider and writes `data-canvas-mode`; it does NOT position
+ *    itself over the chat. `f0f974ef0a3` drew one (`absolute inset-y-0 right-0
+ *    z-20`), but `1e88f7fc167` (#564, the PaneSlot refactor) removed that class
+ *    without its message saying so. A true canvas overlay is still an OPEN design
+ *    decision: it needs positioning, a width rule that does not fight the
+ *    one-width resolver, Escape/focus handling, a lane-gradient stop and - for
+ *    the Browser - main-process bounds for the native view.
+ *  - THE ASK DRAWER DOES draw one (2026-11-03): below this breakpoint
+ *    `askPanePresentation` answers a right-anchored sheet over the row with a
+ *    scrim, an opaque ground and an inert conversation, because a 0-wide flex
+ *    dock is not a readable drawer. The seat of that decision is the function
+ *    below, not this predicate.
  *
  * The run panel has no such mode: §I says it "is never an overlay (it is a reading
  * pane, not a document); it obeys the same 480 floor and closes itself rather than
  * squeezing the chat below it" - which is what the run pane's own separator
- * contract does against the measured capacity. With the positioning
- * removed above, "never an overlay" is no longer a contrast between it and the
- * canvas: no pane covers the conversation today, and the mode is the withheld
- * divider and the data attribute.
+ * contract does against the measured capacity.
  */
 export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
 	return canvasDockWidth(rowWidth) >= CANVAS_PANE_MIN_PX ? "docked" : "overlay";
+}
+
+/**
+ * The clearance the ask sheet leaves at the row's inline start while it is drawn
+ * over the conversation, in pixels.
+ *
+ * A CLICK-TARGET FLOOR, chosen rather than measured: it is a press target on the
+ * scrim (which closes like Escape) and it clears the chat's own leading edge so
+ * the conversation stays legible above the sheet's start. 48 is above the 44px
+ * rail item precedent (`PANEL_RAIL_WIDTH_PX`) that this app treats as the smallest
+ * comfortable control box. The row keeps this strip only where it CAN: a row at or
+ * below the sheet's 400px floor gives the strip up entirely, and so does any row
+ * that would leave less than `ASK_SHEET_MIN_SCRIM_PX` (see `askPanePresentation`).
+ */
+export const ASK_SHEET_SCRIM_GUTTER_PX = 48;
+
+/**
+ * The narrowest strip that still counts as a press target, in pixels.
+ *
+ * A 1px strip is as unpressable as no strip, and the rule that leaves one is an
+ * accident of the 400px floor rather than a design (rows 401-447 would leave
+ * 1-47px). Below this the sheet takes the whole row and the scrim is not drawn: a
+ * target the reader cannot see is worse than no target, and the keyboard door
+ * (Escape) and the drawer's own X are unaffected.
+ */
+export const ASK_SHEET_MIN_SCRIM_PX = 16;
+
+/**
+ * How the ASK DRAWER occupies the row: the geometry one pure function, so the
+ * session mount (`chat-content.tsx`) and the fleet mount (`chat-layout.tsx`)
+ * cannot draw two different sheets and a test can reach the numbers.
+ *
+ * DOCKED is the slot's ordinary flex pane, and its width is the resolver's own
+ * answer for the ask pane (`resolveRightSlotWidth`: `min(preferred,
+ * canvasDockWidth(row))`). OVERLAY is a right-anchored sheet over the row:
+ *
+ *     width = min(preferred, max(min(row, 400), row - 48))
+ *
+ * The 400 floor is kept, so a row that can give the sheet 400 beside a 48px strip
+ * does, and a row narrower than the floor draws the sheet full-row (uncovered 0)
+ * rather than a column too narrow to read its own card - the 0-wide dock this
+ * change exists to remove. `preferred` is `rightSlotPaneWidth(CANVAS_PANE_MIN_PX,
+ * rightSlotWidth)` at the call sites: this module cannot import the store (the
+ * store imports it), so the preference travels as an argument.
+ *
+ * `scrimmed` is whether a strip of conversation remains that can carry a press.
+ * A strip narrower than `ASK_SHEET_MIN_SCRIM_PX` is no target at all, so there the
+ * sheet takes the whole row (`ASK_SHEET_MIN_SCRIM_PX` carries the reasoning): rows
+ * at or below the 400 floor, and the 401-415 band the floor would otherwise leave a
+ * 1-15px sliver of. Those rows are scrimless; Escape and the drawer's X are their
+ * doors.
+ *
+ * UNMEASURED IS DOCKED AT THE PREFERENCE, the idiom `resolveRightSlotWidth`
+ * states: the first frame's row is 0, and callers pass
+ * `rowWidth || Number.MAX_SAFE_INTEGER`, so the sheet never flashes at a bogus
+ * narrow geometry before the observer reports.
+ */
+export type AskPanePresentation = {
+	mode: "docked" | "overlay";
+	width: number;
+	scrimmed: boolean;
+};
+
+export function askPanePresentation(
+	rowWidth: number,
+	preferredWidth: number,
+): AskPanePresentation {
+	if (canvasPaneMode(rowWidth) === "docked") {
+		return {
+			mode: "docked",
+			width: Math.min(preferredWidth, canvasDockWidth(rowWidth)),
+			scrimmed: false,
+		};
+	}
+	const width = Math.min(
+		preferredWidth,
+		Math.max(
+			Math.min(rowWidth, CANVAS_PANE_MIN_PX),
+			rowWidth - ASK_SHEET_SCRIM_GUTTER_PX,
+		),
+	);
+	/*
+	 * The scrim strip exists only when it can be pressed: a strip thinner than
+	 * `ASK_SHEET_MIN_SCRIM_PX` is the same no-target the 400px floor already
+	 * produces below it, so the sheet fills the row instead.
+	 */
+	const strip = rowWidth - width;
+	return strip >= ASK_SHEET_MIN_SCRIM_PX
+		? { mode: "overlay", width, scrimmed: true }
+		: { mode: "overlay", width: rowWidth, scrimmed: false };
 }
 
 /**
@@ -191,12 +309,14 @@ export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
  * call sites refuse the write so a stored preference survives intact for a
  * window that can honour it.
  *
- * `value` CAN LEGITIMATELY EXCEED `maxWidth`: a stored shared width wider than
- * the pane's own ceiling is still drawn (the run panel at a 1600px window with a
- * stored 1000 draws 816 against its 640 ceiling), and clamping either number
- * would lie about the other. That case is measured in
- * `docs/evidence/right-slot-one-default/` and recorded on the PR as
- * found-not-fixed, not silently reshaped here.
+ * `value` IS NOT CLAMPED TO `maxWidth`, and that is deliberate: clamping it would
+ * announce a width the pane is not drawn at. It was reachable once - the run
+ * panel at a 1600px window drew 816 against its own 640 ceiling - and the
+ * slot's one ceiling (`RIGHT_SLOT_MAX_PX`) closed that class, because every
+ * caller now hands in a width held to the same ceiling the separator announces.
+ * The function still refuses to reshape `value`, so a caller that ever hands it a
+ * wider drawing pane gets the truthful pair rather than a second lie; the
+ * property is pinned in `scripts/chat-pane-floors.test.mjs`.
  */
 export function rightSlotDividerContract({
 	capacity,
@@ -235,10 +355,11 @@ export function rightSlotDividerContract({
  * automatic collapse; the viewport no longer overrides the preference by itself.
  *
  * The arithmetic at 1024 is the whole argument: the docked row is
- * `1024 - 260 = 764`, and `canvasDockWidth(764)` is `min(560, 764 - 480) = 284`,
- * below the pane's own 400px floor, so the canvas stops docking. Had the sidebar
- * taken step 1 the row would be `1024 - 56 = 968` and the canvas would dock at
- * 488 with the chat keeping its 480 beside it.
+ * `1024 - 260 - 44 = 720`, and `canvasDockWidth(720)` is
+ * `min(1200, 720 - 480) = 240`, below the pane's own 400px floor, so the canvas
+ * stops docking. Had the sidebar taken step 1 the row would be
+ * `1024 - 56 - 44 = 924` and the canvas would dock at 444 with the chat keeping
+ * its 480 beside it.
  *
  * ONE ROW ARITHMETIC, NOT THE MEASURED ROW, and that is deliberate: the yield
  * decides the sidebar's width, so deciding it from a measurement of the row the

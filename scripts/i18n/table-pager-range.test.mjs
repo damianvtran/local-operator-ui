@@ -49,7 +49,13 @@ const bundle = await build({
 	jsx: "automatic",
 	write: false,
 });
-const bundlePath = new URL("./_table-pager-range.bundle.mjs", import.meta.url);
+// Outside the scanner's scripts/i18n corpus and inside the existing ignored
+// scripts/_*.bundle.mjs convention: another test's real CLI can census an
+// untracked bundle before our unlink and otherwise fail on its disappearance.
+const bundlePath = new URL(
+	`../_table-pager-range-${process.pid}.bundle.mjs`,
+	import.meta.url,
+);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { renderPager, setLocale } = await import(bundlePath.href);
 await unlink(bundlePath);

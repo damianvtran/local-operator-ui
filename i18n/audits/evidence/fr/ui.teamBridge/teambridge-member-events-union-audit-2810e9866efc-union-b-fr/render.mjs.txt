@@ -1,0 +1,38 @@
+// Renders the 12 delta keys with the repo's own intl-messageformat, mirroring
+// team-bridge-member-events.tsx (NAMES_SHOWN=2; others as the LAST ListFormat item).
+import {IntlMessageFormat} from "/Users/damian/local-operator-ui/.worktrees/member-events/node_modules/intl-messageformat/index.js";
+import {parse, TYPE} from "/Users/damian/local-operator-ui/.worktrees/member-events/node_modules/@formatjs/icu-messageformat-parser/index.js";
+import {readFileSync} from "node:fs";
+const L=["en","es","fr","hi","ru","ur","vi","zh-CN"];
+const flat=(o,p="",r={})=>{for(const[k,v]of Object.entries(o)){const kk=p?p+"."+k:k; if(v&&typeof v==="object")flat(v,kk,r);else r[kk]=v;}return r};
+const C={};for(const l of L)C[l]=flat(JSON.parse(readFileSync(`src/i18n/catalogues/${l}/ui.teamBridge.json`)));
+const P="ui.teamBridge.";
+const keys=["members.invitation_note_v3","events.invited","events.joined","events.owner_added_agent","events.left","events.removed","events.consented","events.declined_self","events.declined","events.withdrawn","events.unknown","events.others"].map(k=>P+k);
+// structural: arguments + plural arms + NFC + bidi controls
+const args=(ast,s=new Set(),arms=[])=>{for(const n of ast){if(n.value&&typeof n.value==="string"&&n.type!==TYPE.literal)s.add(n.value);if(n.options){arms.push(Object.keys(n.options).join("/"));for(const o of Object.values(n.options))args(o.value,s,arms);}}return [s,arms]};
+const req={en:["one","other"],es:["one","many","other"],fr:["one","many","other"],hi:["one","other"],ru:["one","few","many","other"],ur:["one","other"],vi:["other"],"zh-CN":["other"]};
+let bad=0;
+for(const k of keys){const [es]=args(parse(C.en[k]));for(const l of L){const v=C[l][k];const [s,arms]=args(parse(v));
+ const pe=[...es].sort().join(),pt=[...s].sort().join();
+ const nfc=v===v.normalize("NFC");const bidi=/[\u200e\u200f\u202a-\u202e\u2066-\u2069\u061c]/.test(v);
+ const pr=new Intl.PluralRules(l).resolvedOptions().pluralCategories;
+ const armOk=arms.every(a=>{const set=a.split("/");return pr.every(c=>set.includes(c))&&set.every(c=>pr.includes(c)||/^=/.test(c))});
+ if(pe!==pt||!nfc||!armOk){bad++;console.log("BAD",l,k,pe,pt,nfc,arms,pr)}
+ if(bidi||/[\u00a0\u202f]/.test(v))console.log("note",l,k,"bidi",bidi,"nbsp",/[\u00a0\u202f]/.test(v));
+}}
+console.log("structural failures:",bad);
+const names={en:["Ben","Sana","Ines","Raj","Mo","Lea"],ur:["بین","ثنا","انیس"],hi:["बेन","सना","इनेस"],"zh-CN":["小明","小红","小刚"]};
+const fmt=(l,k,v)=>new IntlMessageFormat(C[l][k],l).format(v);
+const join=(l,a)=>new Intl.ListFormat(l,{style:"long",type:"conjunction"}).format(a);
+for(const l of L){console.log("\n=====",l);
+ const nm=["Ben","Sana","Ines"];
+ for(const k of keys.filter(k=>k.includes(".events.")&&!k.endsWith("others"))){
+  const one=fmt(l,k,{actor:"Ada",targets:join(l,nm.slice(0,1))});
+  const three=fmt(l,k,{actor:"Ada",targets:join(l,[...nm.slice(0,2),fmt(l,P+"events.others",{count:1})])});
+  console.log(k.slice(P.length+7).padEnd(18),"|",one,"|",three);}
+ for(const n of [1,2,3,5,11,21]){const o=fmt(l,P+"events.others",{count:n});
+  console.log(`  others ${String(n).padStart(2)}: ${o} || invited: ${fmt(l,P+"events.invited",{actor:"Ada",targets:join(l,["Ben","Sana",o])})} || left: ${fmt(l,P+"events.left",{targets:join(l,["Ben","Sana",o])})}`);}
+}
+console.log("\n===== truncated real path: every event line x counts 1/2/3/5/11/21 (2 shown names + others as last ListFormat item)");
+for(const l of L){for(const k of keys.filter(k=>k.includes(".events.")&&!/others|unknown|declined_self/.test(k))){
+ console.log(l, k.slice(P.length+7)+":", [1,2,3,5,11,21].map(n=>fmt(l,k,{actor:"Ada",targets:join(l,["Ben","Sana",fmt(l,P+"events.others",{count:n})])})).join(" | "));}}

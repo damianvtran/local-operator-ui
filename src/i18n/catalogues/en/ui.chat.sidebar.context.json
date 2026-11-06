@@ -453,5 +453,113 @@
 		"placeholders": {
 			"title": "the conversation's own title, inside typographic quotes"
 		}
+	},
+	"ui.chat.sidebar.agents.list_join": {
+		"role": "joiner for the agent-name list inside the built-in installation offer",
+		"tone": "neutral inline enumeration; preserve names verbatim, no sentence punctuation",
+		"length": "Two placeholders plus locale-appropriate separators and spaces.",
+		"note": "Receives two strings per call, not a count. pair joins exactly two names; middle joins a partial list and the next name in lists of three or more; other handles end, the final join in lists of three or more. English deliberately has no serial comma. Each arm owns the whole separator, including spaces: locales may use a different pair/final conjunction, serial comma, or ideographic separators. Zero names produce an empty list and one name is unchanged, with no joiner call. Keep select labels pair, middle and other unchanged.",
+		"placeholders": {
+			"position": "pair for a two-name list, middle for non-final joins, end (the other arm) for the final join of three or more names",
+			"head": "first name or the already joined preceding names; preserve verbatim",
+			"tail": "next agent display name; preserve verbatim"
+		}
+	},
+	"ui.chat.sidebar.row.open_draft": {
+		"role": "Accessible name of a draft row's open button",
+		"tone": "Imperative plus a name",
+		"length_hint": "Two words plus a name",
+		"note": "Names the draft by its own label (an agent or team name, or the draft's first words).",
+		"placeholders": {
+			"label": "The draft row's display label; do not translate."
+		}
+	},
+	"ui.chat.sidebar.entity.more_in": {
+		"role": "Accessible name and tooltip of an entity group's show-more control",
+		"tone": "Sentence fragment joined by 'in'",
+		"length_hint": "Label plus a name",
+		"note": "The label is the already-localised show-more sentence the list helper builds; the name is the group (an agent or team).",
+		"placeholders": {
+			"label": "The show-more sentence (for example 'Show 15 more chats'); interpolate as-is.",
+			"name": "The agent or team name the group belongs to; do not translate."
+		}
+	},
+	"ui.chat.sidebar.search.count_tooltip": {
+		"role": "Tooltip of the match-count badge on a sidebar group while a search is active",
+		"tone": "Plain statement, sentence case, no final period",
+		"length_hint": "One clause",
+		"note": "One claim: how many chats match, with 'at least' and a stop note when the answer was clipped.",
+		"placeholders": {
+			"clipped": "'yes' when the result list was cut off, otherwise 'no'; a select selector, never translate.",
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.sidebar.row_menu.hint": {
+		"role": "screen-reader sentence explaining how to open a conversation row's actions menu",
+		"tone": "instruction, sentence case, trailing period",
+		"length": "Seven words.",
+		"note": "Rendered in an sr-only span referenced by the row's aria-describedby. The menu opens by right-click or Shift+F10; keep both shortcuts literal.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.hint_mac": {
+		"role": "Mac-specific screen-reader sentence explaining how to open a conversation row's actions menu",
+		"tone": "instruction, sentence case, trailing period",
+		"length": "Eleven words plus a parenthetical.",
+		"note": "Mac variant of row_menu.hint. It adds the Fn guidance for keyboards whose F10 key needs Fn; keep both shortcuts and the parenthetical literal.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.search_beyond": {
+		"role": "lower-case status fragment on a row synthesized by search",
+		"tone": "explanatory fragment, lower case, no trailing punctuation",
+		"length": "Nine words.",
+		"note": "Follows the conversation title or status in the row tooltip. It explains that this result came from search and is not one of the chats listed in the current list.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.recent": {
+		"role": "status word for a conversation row whose activity is recent",
+		"tone": "single status word, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Fills the status slot of a row that has no more specific status label. It is the default when the row is recent and is not a time bucket heading.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.not_sent_suffix": {
+		"role": "tooltip suffix marking a draft that was never sent",
+		"tone": "qualifier, lower case, no trailing punctuation",
+		"length": "Three words plus the punctuation that joins it to the preceding phrase.",
+		"note": "English uses a comma because list punctuation differs by locale. Translate the joining punctuation and spacing into the locale's normal form; it follows the status line in the row's hover tooltip and is not a standalone sentence.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.unread_suffix": {
+		"role": "tooltip suffix marking a row with unread activity",
+		"tone": "qualifier, lower case, no trailing punctuation",
+		"length": "One word plus the punctuation that joins it to the preceding phrase.",
+		"note": "English uses a comma because list punctuation differs by locale. Translate the joining punctuation and spacing into the locale's normal form; it follows the status line in the row's hover tooltip and is not a standalone sentence.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.silent_remedy": {
+		"role": "remedy clause for a row whose backend has gone silent",
+		"tone": "imperative clause, sentence case, trailing period",
+		"length": "Six words.",
+		"note": "Rendered after a separator in the row tooltip and standalone in the row's sr-only description. Keep the /stop command literal and the trailing period; the sentence must read naturally after a separator.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.catalogue.show_more": {
+		"role": "section footer control that reveals more rows in that section",
+		"tone": "imperative fragment, sentence case, no trailing punctuation",
+		"length": "Three words plus the count.",
+		"note": "The count is the number of rows the press adds. Translate the whole sentence, including the plural form of 'more'; do not leave a separate English noun. The same control is shown for agents and teams, so do not name a section here.",
+		"placeholders": {
+			"hidden": "Number of rows the press adds; select the locale's CLDR category and keep ::group-off."
+		}
+	},
+	"ui.chat.sidebar.catalogue.show_more_chats": {
+		"role": "list footer control that reveals the next page of conversations",
+		"tone": "imperative fragment, sentence case, no trailing punctuation",
+		"length": "Four words plus the count.",
+		"note": "The count is the number of chats the press adds. Translate the whole sentence, including the plural form of 'chat'; do not leave a separate English noun. Keep the count's CLDR category and ::group-off.",
+		"placeholders": {
+			"add": "Number of chats the press adds; select the locale's CLDR category and keep ::group-off."
+		}
 	}
 }

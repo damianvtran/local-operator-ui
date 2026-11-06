@@ -195,6 +195,13 @@ export function useDesktopCapabilities() {
 export type DesktopFeature =
 	| "session_tags"
 	/**
+	 * The closed human Radient profile/photo relay (`/v1/desktop/account/
+	 * profile` and `/avatar`, core features.py `account_profile`). Settings asks
+	 * this key before offering edits: an older daemon has no such routes, so the
+	 * editor must stay read-only there rather than fail on Save.
+	 */
+	| "account_profile"
+	/**
 	 * The OPTIONAL auto-tag half of a desktop fork: the `auto_tag` body key on
 	 * `sessions.fork` and the naming call's tag contract behind it.
 	 *
@@ -246,6 +253,9 @@ export type DesktopFeature =
 	 * asks drawer exactly as it was - never an empty inbox.
 	 */
 	| "notifications"
+	/** Frozen, filter-wide notification selection and guarded Undo. */
+	| "notification_bulk_selection"
+	| "notification_bulk_ask_read"
 	/**
 	 * The sidebar customisation resource (`GET`/`PUT /v1/desktop/sidebar-layout`,
 	 * design contract § 4). Its own key because the column must render TODAY'S
@@ -291,6 +301,53 @@ export type DesktopFeature =
 	 * capability must never wake it up. See `team-bridge-reaction-gate.ts`.
 	 */
 	| "team_bridge_reactions"
+	/**
+	 * Structured `mentions[]` on a Team Bridge send (local-operator #3204).
+	 * Absent: the composer still inserts readable `@Name` text but sends no
+	 * `mentions`, because an older backend refuses the unknown field.
+	 */
+	| "team_bridge_send_mentions"
+	/**
+	 * Per-thread read cursors (hub slice TR1): `team_bridge.thread_read`
+	 * acknowledges replies against the thread's own cursor. Absent: the thread
+	 * pane keeps acknowledging through the conversation read, which the hub's
+	 * compat rule (replies count against max(conversation, thread) cursor)
+	 * still clears.
+	 */
+	| "team_bridge_thread_reads"
+	/**
+	 * The owner's own agent's per-conversation wake level: the conversation
+	 * menu's "Wake your agent for" group, writing
+	 * `PUT /v1/desktop/team-bridge/conversations/{id}/agent-notify`.
+	 *
+	 * ITS OWN KEY because a released runtime without that route answers every
+	 * pick with a 404, which the menu could only surface as "try again" when no
+	 * retry will ever succeed (review round 1, R1-3). Absent or below version,
+	 * the group is not drawn at all; local-operator advertises it in
+	 * `server/features.py` with the route.
+	 */
+	| "team_bridge_agent_notify"
+	/**
+	 * The hub's server-side LEAVE CASCADE (Team Bridge hub, H4 slice): a person's
+	 * `leave` also withdraws their own agent from that conversation in the same
+	 * transaction. Advertised, the conversation menu calls leave ONLY; absent, it
+	 * calls leave and then a consent `withdraw` of the reader's own active agent
+	 * row (`leaveWithAgentCascade` in `team-bridge-conversation-menu-model.ts`).
+	 */
+	| "team_bridge_leave_withdraws_agent"
+	/**
+	 * An agent's OWN published picture through core's closed endpoint relay
+	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
+	 * `team_bridge.endpoint_avatar` read. Main gates the banner composite on the
+	 * same key, so a plate and a banner agree.
+	 */
+	| "team_bridge_endpoint_avatar"
+	/**
+	 * `GET /v1/agents/{id}/avatar?size=64|128|256` (local-operator #3381): a
+	 * downscaled derivative of the local agent picture. Absent: the renderer
+	 * omits `size` and core serves the 512 px original, as before.
+	 */
+	| "agent_avatar_sizes"
 	| "auth"
 	| "settings"
 	| "commands"
@@ -892,6 +949,17 @@ export type DesktopFeature =
 	 * body, so there is nothing else to negotiate).
 	 */
 	| "approvals"
+	/**
+	 * Typed credential approval (`features.credential_approvals`): the
+	 * `typed_approval` block on a credential row plus `approve-credential` /
+	 * `apply-credential`, the two posts that carry the reviewed digests.
+	 *
+	 * ITS OWN KEY, not a bump of `approvals`, mirroring the backend's reasoning: a
+	 * backend without it has no route that accepts the body, so a renderer that
+	 * offered Approve there would POST into a 404. Absent ⇒ the credential card
+	 * keeps its Deny-and-remedy shape, exactly as before.
+	 */
+	| "credential_approvals"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
@@ -916,6 +984,14 @@ export type DesktopFeature =
 	 * all, which is the pre-voicing behaviour rather than a degraded one.
 	 */
 	| "tts"
+	/**
+	 * NOTIFICATION SOUNDS (`features.notification_sounds`, core
+	 * `server/routes/notification_sounds.py`): the listing, preview audio and
+	 * custom-sound store Settings -> Notifications reads. Absent => the Sound
+	 * group states that the backend is too old and fires no read; the promoted
+	 * master switch still renders (it is a registry row on every backend).
+	 */
+	| "notification_sounds"
 	/*
 	 * THE PRE-EMPTIVE QUOTA NOTICE (`features.quota_notice`; the sibling core
 	 * PRs' `GET /v1/desktop/quota-notice`). ITS OWN KEY, on the rule every

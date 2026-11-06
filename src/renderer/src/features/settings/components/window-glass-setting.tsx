@@ -53,6 +53,9 @@ type WindowGlassSettingProps = {
 	state: WindowGlassState | null;
 	/** Writes a patch and applies main's answer. */
 	onChange: (patch: Partial<GlassSettings>) => Promise<void>;
+
+	/** Settings search's stable row id, when this control is a searchable row. */
+	searchRow?: string;
 };
 
 const coverageLabel = (coverage: GlassCoverage): string =>
@@ -146,6 +149,7 @@ const SegmentRow: FC<{
 export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 	state,
 	onChange,
+	searchRow,
 }) => {
 	useI18nLocale();
 	const sliderId = useId();
@@ -199,6 +203,8 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 
 	return (
 		<div
+			data-search-row={searchRow}
+			data-search-control={searchRow ? "" : undefined}
 			className="flex flex-col gap-4"
 			data-window-glass=""
 			data-glass-gate={state.capability.reason}

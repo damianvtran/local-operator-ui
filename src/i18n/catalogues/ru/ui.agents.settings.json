@@ -61,5 +61,13 @@
 	"ui.agents.settings.security.security_instructions_that_guide_the_agent_s": "Инструкции безопасности, задающие поведение и ограничения агента. Это «системный промпт» для агента безопасности.",
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "Системные инструкции, определяющие поведение и возможности агента. Это «системный промпт» агента.",
 	"ui.agents.settings.chat.error.invalid_seed": "Зерно должно быть числом",
-	"ui.agents.settings.general.error.empty_name": "Имя агента не может быть пустым"
+	"ui.agents.settings.general.error.empty_name": "Имя агента не может быть пустым",
+	"ui.agents.settings.general.profile_picture": "Фото профиля",
+	"ui.agents.settings.general.profile_picture_hint": "Показывается только на этом компьютере. На других устройствах остаётся значок агента по умолчанию.",
+	"ui.agents.settings.general.profile_picture_upload": "Загрузить изображение",
+	"ui.agents.settings.general.profile_picture_remove": "Удалить изображение",
+	"ui.agents.settings.general.profile_picture_error_type": "Этот файл не является изображением, которое может прочитать это приложение. Выберите файл JPEG, PNG, WebP, GIF или AVIF.",
+	"ui.agents.settings.general.profile_picture_error_size": "Это изображение больше {size} MB.",
+	"ui.agents.settings.general.profile_picture_error_decode": "Не удалось прочитать изображение. Попробуйте другой файл.",
+	"ui.agents.settings.general.profile_picture_error_save": "Не удалось сохранить это изображение на этом компьютере. Освободите место и повторите попытку."
 }

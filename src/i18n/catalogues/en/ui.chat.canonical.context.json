@@ -444,6 +444,794 @@
 		"role": "receipt line",
 		"tone": "plain",
 		"note": "How long the turn ran.",
-		"placeholders": { "duration": "A formatted duration such as '4.2 s'." }
+		"placeholders": {
+			"duration": "A formatted duration such as '4.2 s'."
+		}
+	},
+	"ui.chat.canonical.fold.bridge.one": {
+		"role": "singular noun in a collapsed group's count line: '1 team action'",
+		"tone": "lowercase noun phrase",
+		"length": "Two words.",
+		"note": "Counts every other Team Bridge call (reads, lists, reactions, claims) - not messages.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.fold.bridge.other": {
+		"role": "plural noun in a collapsed group's count line: '4 team actions'",
+		"tone": "lowercase noun phrase",
+		"length": "Two words.",
+		"note": "Plural of 'team action'; code prepends the number.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.fold.bridge_post.one": {
+		"role": "singular noun in a collapsed action group's count line, after a number: '1 team message'",
+		"tone": "lowercase noun phrase",
+		"length": "Two words.",
+		"note": "Counts Team Bridge calls that WROTE a message a person reads (post, DM, send, reply). The number is prepended by code as '<n> <noun>'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.fold.bridge_post.other": {
+		"role": "plural noun in a collapsed action group's count line: '3 team messages'",
+		"tone": "lowercase noun phrase",
+		"length": "Two words.",
+		"note": "Plural of 'team message'; code prepends the number. Locales with more plural categories use this 'other' form for all non-one counts.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label": {
+		"role": "screen-reader announcement for 'awaiting acceptance'",
+		"tone": "lowercase clause",
+		"length": "Short.",
+		"note": "",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.note": {
+		"role": "outcome sentence in the expanded view of a DM awaiting acceptance",
+		"tone": "plain statement",
+		"length": "Two short sentences; wraps.",
+		"note": "",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.short": {
+		"role": "SHORT trailing status word, amber, on a mid-width Team Bridge row whose DM waits for the recipient owner's acceptance; replaces 'awaiting acceptance' when the row is too narrow for it",
+		"tone": "lowercase, no punctuation",
+		"length": "Very short: one or two words (aim for under ~12 characters). It exists only so the row's summary keeps its room.",
+		"note": "Same meaning as the full word; the expanded row keeps the full sentence. A warning, not an error.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.title": {
+		"role": "hover tooltip on 'awaiting acceptance'",
+		"tone": "plain explanation",
+		"length": "One sentence.",
+		"note": "",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.word": {
+		"role": "trailing status words, amber, on a Team Bridge DM to an agent whose owner has not accepted it yet",
+		"tone": "lowercase clause",
+		"length": "Two words; never wraps.",
+		"note": "The message was posted, but the agent is not woken until its owner accepts. Not a failure.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.label": {
+		"role": "screen-reader announcement replacing the drawn status words",
+		"tone": "lowercase clause",
+		"length": "Short.",
+		"note": "Spoken in place of the drawn words; carries the same hedge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.note": {
+		"role": "outcome sentence in the expanded view of an inbox-only Team Bridge send",
+		"tone": "plain statement plus one instruction",
+		"length": "Two short sentences; it wraps.",
+		"note": "'DM' is the direct-message feature; keep it short. The instruction tells the reader how to make a message visible.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.short": {
+		"role": "SHORT trailing status word, amber, on a mid-width Team Bridge row whose send/reply only reached a teammate's inbox; replaces 'not posted to a conversation' when the row is too narrow for it",
+		"tone": "lowercase, no punctuation",
+		"length": "Very short: one or two words (aim for under ~12 characters). It exists only so the row's summary keeps its room.",
+		"note": "Same meaning as the full word; the expanded row keeps the full sentence. A warning, not an error.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.title": {
+		"role": "hover tooltip on the 'not posted to a conversation' words",
+		"tone": "plain explanation, one sentence",
+		"length": "One sentence.",
+		"note": "Explains why the row is amber rather than a plain success.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.word": {
+		"role": "trailing status words, amber, on a Team Bridge send/reply that only reached a teammate's inbox",
+		"tone": "lowercase clause, no punctuation",
+		"length": "Short; it sits at the row's right edge and drops whole at narrow widths.",
+		"note": "A warning, not an error: the message was accepted, but no person sees it in Team Bridge. Must not read as failure.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.label": {
+		"role": "screen-reader announcement for 'delivery unconfirmed'",
+		"tone": "lowercase clause",
+		"length": "Short.",
+		"note": "",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.note": {
+		"role": "outcome sentence in the expanded view of an unconfirmed Team Bridge write",
+		"tone": "plain statement plus instruction",
+		"length": "Two sentences; wraps.",
+		"note": "",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.short": {
+		"role": "SHORT trailing status word, amber, on a mid-width Team Bridge row whose post may have landed but was not confirmed; replaces 'delivery unconfirmed' when the row is too narrow for it",
+		"tone": "lowercase, no punctuation",
+		"length": "Very short: one or two words (aim for under ~12 characters). It exists only so the row's summary keeps its room.",
+		"note": "Same meaning as the full word; the expanded row keeps the full sentence. A warning, not an error.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.title": {
+		"role": "hover tooltip on 'delivery unconfirmed' for Team Bridge",
+		"tone": "plain explanation plus one instruction",
+		"length": "Two short sentences.",
+		"note": "",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.word": {
+		"role": "trailing status words, amber, on a Team Bridge write whose confirmation was lost",
+		"tone": "lowercase clause",
+		"length": "Two words; never wraps.",
+		"note": "The hub may have accepted the post; the confirmation did not arrive. Must not read as 'failed', which would invite a duplicate post.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.detail.details": {
+		"role": "label of the disclosure that reveals a Team Bridge row's machine fields (ids, sequence, raw result)",
+		"tone": "one noun, title/sentence case",
+		"length": "One word.",
+		"note": "Quiet secondary control; the content is technical and stays untranslated.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.detail.headline.dm": {
+		"role": "first line of an expanded Team Bridge DM row",
+		"tone": "sentence case, no punctuation",
+		"length": "Short.",
+		"note": "{target} is a person's or agent's name, or 'a DM'.",
+		"placeholders": {
+			"target": "recipient's name, or 'a DM'"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.detail.headline.target": {
+		"role": "first line of an expanded Team Bridge row: the settled verb then what it acted on, e.g. 'Posted in #release', 'Sent to a teammate', 'Read #general (7 messages)'",
+		"tone": "sentence case, no punctuation",
+		"length": "Short; one line.",
+		"note": "{verb} is the row's own verb phrase (its translation from the verb.* keys), {target} the object it acted on. Reorder freely if your language puts the object first.",
+		"placeholders": {
+			"verb": "the settled verb phrase, e.g. 'Posted in'",
+			"target": "#conversation, a name, or a kind word, possibly with a count"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.detail.outcome.failed": {
+		"role": "outcome line in an expanded Team Bridge row whose transport failed",
+		"tone": "label, code in parentheses, error text",
+		"length": "One line; wraps.",
+		"note": "{code} untranslated; {error} verbatim.",
+		"placeholders": {
+			"code": "machine failure code",
+			"error": "the tool's error text, verbatim"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.detail.outcome.posted_at_seq": {
+		"role": "outcome line in an expanded Team Bridge post",
+		"tone": "plain statement, sentence case, no punctuation",
+		"length": "Short.",
+		"note": "'seq' is the conversation's message sequence number, a technical term readers see in Team Bridge; keep it as-is or use the locale's usual abbreviation. Number is ungrouped.",
+		"placeholders": {
+			"seq": "message sequence number in the conversation"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.detail.outcome.refused": {
+		"role": "outcome line in an expanded Team Bridge row the server refused",
+		"tone": "label, machine code in parentheses, then the server's own error text",
+		"length": "One line; wraps.",
+		"note": "{code} is untranslated; {error} is the core's own English error text and is shown verbatim.",
+		"placeholders": {
+			"code": "machine refusal code",
+			"error": "the tool's error text, verbatim"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.fallback.conversation": {
+		"role": "object of a Team Bridge row when there is no name: a group or channel whose name the app does not know",
+		"tone": "indefinite noun phrase, lowercase",
+		"length": "Two words.",
+		"note": "Stands where a name would go after the verb ('Posted in a conversation'). Never an id: ids are deliberately hidden.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.fallback.dm": {
+		"role": "object of a Team Bridge row when there is no name: a direct message whose recipient's name is unknown",
+		"tone": "indefinite noun phrase, lowercase",
+		"length": "Two words.",
+		"note": "Stands where a name would go after the verb ('Posted in a conversation'). Never an id: ids are deliberately hidden.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.fallback.message": {
+		"role": "object of a Team Bridge row when there is no name: an incoming message being claimed or taken up; messages are never named",
+		"tone": "indefinite noun phrase, lowercase",
+		"length": "Two words.",
+		"note": "Stands where a name would go after the verb ('Posted in a conversation'). Never an id: ids are deliberately hidden.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.fallback.teammate": {
+		"role": "object of a Team Bridge row when there is no name: an agent teammate whose name is unknown",
+		"tone": "indefinite noun phrase, lowercase",
+		"length": "Two words.",
+		"note": "Stands where a name would go after the verb ('Posted in a conversation'). Never an id: ids are deliberately hidden.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.outcome.failed": {
+		"role": "trailing status word, in error colour, on a Team Bridge row whose transport failed",
+		"tone": "lowercase word, middle dot, machine code",
+		"length": "Short; never wraps.",
+		"note": "{code} ends in _failed (list_failed, history_failed …) and is never translated.",
+		"placeholders": {
+			"code": "machine failure code, untranslated"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.outcome.failed_bare": {
+		"role": "trailing status word on a failed Team Bridge row with no code",
+		"tone": "lowercase word",
+		"length": "One word.",
+		"note": "Code-less sibling of 'failed · {code}'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.outcome.refused": {
+		"role": "trailing status word, in error colour, on a Team Bridge row the server refused",
+		"tone": "lowercase word, then a middle dot and the machine code",
+		"length": "Short; it never wraps.",
+		"note": "{code} is a machine token (not_member, claimed …): never translate it. Keep the middle-dot separator.",
+		"placeholders": {
+			"code": "machine refusal code, untranslated"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.outcome.refused_bare": {
+		"role": "trailing status word on a refused Team Bridge row with no code",
+		"tone": "lowercase word",
+		"length": "One word.",
+		"note": "The code-less sibling of 'refused · {code}'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.summary.count": {
+		"role": "trailing count on a 'Listed conversations' row",
+		"tone": "parenthesised count",
+		"length": "Short.",
+		"note": "Reads 'Listed conversations (4)' - the verb already names the noun, so only the number appears. Ungrouped digits.",
+		"placeholders": {
+			"count": "number of conversations returned"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.summary.members": {
+		"role": "trailing count on a 'Looked up the team directory' row",
+		"tone": "parenthesised count",
+		"length": "Short.",
+		"note": "Reads 'Looked up the team directory (12 members)'.",
+		"placeholders": {
+			"count": "number of directory members"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.summary.messages": {
+		"role": "object of a Team Bridge read row: the conversation and how many messages came back",
+		"tone": "noun phrase with a parenthesised count",
+		"length": "Short.",
+		"note": "Reads 'Read #release (12 messages)'. Keep the parentheses and the zero case.",
+		"placeholders": {
+			"target": "the conversation, e.g. #release",
+			"count": "number of messages returned"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.target.thread": {
+		"role": "object of a post made inside a thread",
+		"tone": "noun phrase, no punctuation",
+		"length": "The conversation name plus one word.",
+		"note": "Reads 'Posted in #release thread'. {target} is already formatted (#name or a fallback such as 'a conversation').",
+		"placeholders": {
+			"target": "the conversation, e.g. #release, or 'a conversation'"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.ack_done.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: releasing a claimed message once the work is done; object 'a message'",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.ack_done.running": {
+		"role": "verb column of a Team Bridge tool row still running: releasing a claimed message once the work is done; object 'a message'",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.ack_done.settled": {
+		"role": "verb column of a finished Team Bridge tool row: releasing a claimed message once the work is done; object 'a message'",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.ack_working.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: claiming an incoming message so other sessions do not duplicate the work; object 'a message'",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.ack_working.running": {
+		"role": "verb column of a Team Bridge tool row still running: claiming an incoming message so other sessions do not duplicate the work; object 'a message'",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.ack_working.settled": {
+		"role": "verb column of a finished Team Bridge tool row: claiming an incoming message so other sessions do not duplicate the work; object 'a message'",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_create.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: creating a conversation; the object is its #name",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_create.running": {
+		"role": "verb column of a Team Bridge tool row still running: creating a conversation; the object is its #name",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_create.settled": {
+		"role": "verb column of a finished Team Bridge tool row: creating a conversation; the object is its #name",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_history.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: reading a conversation's recent messages; the object is #name with a message count",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_history.running": {
+		"role": "verb column of a Team Bridge tool row still running: reading a conversation's recent messages; the object is #name with a message count",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_history.settled": {
+		"role": "verb column of a finished Team Bridge tool row: reading a conversation's recent messages; the object is #name with a message count",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_post.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: a post into a Team Bridge conversation; the object after it is the conversation (#name) and a preview of the message",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_post.running": {
+		"role": "verb column of a Team Bridge tool row still running: a post into a Team Bridge conversation; the object after it is the conversation (#name) and a preview of the message",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_post.settled": {
+		"role": "verb column of a finished Team Bridge tool row: a post into a Team Bridge conversation; the object after it is the conversation (#name) and a preview of the message",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_thread.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: reading one thread inside a conversation; the object is #name with a message count",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_thread.running": {
+		"role": "verb column of a Team Bridge tool row still running: reading one thread inside a conversation; the object is #name with a message count",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channel_thread.settled": {
+		"role": "verb column of a finished Team Bridge tool row: reading one thread inside a conversation; the object is #name with a message count",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channels.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: listing the conversations the agent can see; a bare count may follow",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channels.running": {
+		"role": "verb column of a Team Bridge tool row still running: listing the conversations the agent can see; a bare count may follow",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.channels.settled": {
+		"role": "verb column of a finished Team Bridge tool row: listing the conversations the agent can see; a bare count may follow",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.directory.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: looking up the people and agents in the team directory; a member count may follow",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.directory.running": {
+		"role": "verb column of a Team Bridge tool row still running: looking up the people and agents in the team directory; a member count may follow",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.directory.settled": {
+		"role": "verb column of a finished Team Bridge tool row: looking up the people and agents in the team directory; a member count may follow",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.dm.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: a direct message; the object is the person or agent's name and a preview",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.dm.running": {
+		"role": "verb column of a Team Bridge tool row still running: a direct message; the object is the person or agent's name and a preview",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.dm.settled": {
+		"role": "verb column of a finished Team Bridge tool row: a direct message; the object is the person or agent's name and a preview",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.react.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: adding an emoji reaction; the object is #name and the emoji",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.react.running": {
+		"role": "verb column of a Team Bridge tool row still running: adding an emoji reaction; the object is #name and the emoji",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.react.settled": {
+		"role": "verb column of a finished Team Bridge tool row: adding an emoji reaction; the object is #name and the emoji",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.react_remove.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: removing an emoji reaction; the object is #name and the emoji",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.react_remove.running": {
+		"role": "verb column of a Team Bridge tool row still running: removing an emoji reaction; the object is #name and the emoji",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.react_remove.settled": {
+		"role": "verb column of a finished Team Bridge tool row: removing an emoji reaction; the object is #name and the emoji",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.reply.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: a reply to an agent-to-agent note; the object is the teammate and a preview",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.reply.running": {
+		"role": "verb column of a Team Bridge tool row still running: a reply to an agent-to-agent note; the object is the teammate and a preview",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.reply.settled": {
+		"role": "verb column of a finished Team Bridge tool row: a reply to an agent-to-agent note; the object is the teammate and a preview",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.send.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: an agent-to-agent note into a teammate's inbox; the object is the teammate and a preview",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.send.running": {
+		"role": "verb column of a Team Bridge tool row still running: an agent-to-agent note into a teammate's inbox; the object is the teammate and a preview",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.send.settled": {
+		"role": "verb column of a finished Team Bridge tool row: an agent-to-agent note into a teammate's inbox; the object is the teammate and a preview",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.shared_conversations.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: listing conversations the owner shared with this agent",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.shared_conversations.running": {
+		"role": "verb column of a Team Bridge tool row still running: listing conversations the owner shared with this agent",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.shared_conversations.settled": {
+		"role": "verb column of a finished Team Bridge tool row: listing conversations the owner shared with this agent",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.shared_history.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: reading a conversation the owner shared; the object is #name with a message count",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Grammar is verb + object: the conversation's name (#name, or 'a conversation') follows, e.g. 'Read shared conversation #launch (7 messages)'. The phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.shared_history.running": {
+		"role": "verb column of a Team Bridge tool row still running: reading a conversation the owner shared; the object is #name with a message count",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Grammar is verb + object: the conversation's name (#name, or 'a conversation') follows, e.g. 'Read shared conversation #launch (7 messages)'. The phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.shared_history.settled": {
+		"role": "verb column of a finished Team Bridge tool row: reading a conversation the owner shared; the object is #name with a message count",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the conversation's name (#name, or 'a conversation') follows, e.g. 'Read shared conversation #launch (7 messages)'. The phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.take_up.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: picking up an incoming message to work on; the object is 'a message' and a preview",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.take_up.running": {
+		"role": "verb column of a Team Bridge tool row still running: picking up an incoming message to work on; the object is 'a message' and a preview",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.take_up.settled": {
+		"role": "verb column of a finished Team Bridge tool row: picking up an incoming message to work on; the object is 'a message' and a preview",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": {
+		"role": "verb column of a Team Bridge tool row whose call was refused or failed: a Team Bridge operation this app version has no words for; the operation's machine name follows",
+		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": {
+		"role": "verb column of a Team Bridge tool row still running: a Team Bridge operation this app version has no words for; the operation's machine name follows",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "A short verb phrase.",
+		"note": "The live sibling of the settled form; same object follows.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": {
+		"role": "verb column of a finished Team Bridge tool row: a Team Bridge operation this app version has no words for; the operation's machine name follows",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "A short verb phrase; the object follows on the same line in monospace.",
+		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.hub_from": {
+		"role": "Summary line of an agent-to-agent hub receipt row",
+		"tone": "Preposition plus a name",
+		"length_hint": "One word plus a name",
+		"note": "Names the sender of a message another agent relayed through the hub.",
+		"placeholders": {
+			"name": "Sender display name from the hub; do not translate."
+		}
+	},
+	"ui.chat.canonical.image_label": {
+		"role": "Accessible name of a picture in the transcript that has no filename",
+		"tone": "Single noun, sentence case",
+		"length_hint": "One word",
+		"note": "One noun; a lone picture is 'Image', never numbered."
+	},
+	"ui.chat.canonical.fold.images_aria": {
+		"role": "Accessible name of a strip or grid of pictures a run produced",
+		"tone": "Count plus noun plus origin",
+		"length_hint": "Four words",
+		"note": "Counts the pictures in the group; the group is one run's output.",
+		"placeholders": {
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.fold.more_images": {
+		"role": "Tooltip and accessible name of the '+N' overflow button in a picture strip",
+		"tone": "Plus sign, count, noun",
+		"length_hint": "Three words",
+		"note": "Begins with a literal plus sign because the visible label is '+N' and the accessible name must contain it (WCAG 2.5.3); keep the plus sign.",
+		"placeholders": {
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": {
+		"role": "Tooltip of the Stop control on a generation that has not started",
+		"tone": "Plain statement",
+		"length_hint": "One sentence",
+		"note": "A queued call can be stopped for certain, so the sentence promises it."
+	},
+	"ui.chat.canonical.image_gen.control.stop_hint_running": {
+		"role": "Tooltip of the Stop control on a generation the provider is already running",
+		"tone": "Two clauses joined by a semicolon",
+		"length_hint": "One sentence",
+		"note": "A running call can only be asked to stop, and the provider may still bill for it."
+	},
+	"ui.chat.canonical.image_gen.batch_summary": {
+		"role": "Fallback summary of a batch of generated sounds when the wire gave none",
+		"tone": "Count plus noun",
+		"length_hint": "Two words",
+		"note": "Preserve the original fallback 'N items', including '1 items': this extraction must not make editorial singular corrections. A supplied summary (even empty) still wins.",
+		"placeholders": {
+			"count": "Numeric batch size for CLDR plural selection. English intentionally says items in every branch to preserve the original fallback.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.lightbox.filmstrip_aria": {
+		"role": "Accessible name of the thumbnail strip under the picture lightbox",
+		"tone": "Count plus noun",
+		"length_hint": "Two words",
+		"note": "Preserve the original 'N images' in every English arm, including '1 images' at catalogue level. The strip is currently guarded by count > 1; this keeps extraction consistent without changing that guard.",
+		"placeholders": {
+			"count": "Numeric image count for CLDR plural selection. English intentionally keeps images in both arms; the strip only renders for count > 1.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.lightbox.show_image": {
+		"role": "Tooltip and accessible name of a thumbnail that jumps to one picture in the lightbox",
+		"tone": "Imperative plus a position",
+		"length_hint": "Five words",
+		"note": "Position of the picture within the group, one-based.",
+		"placeholders": {
+			"index": "One-based position of the picture.",
+			"count": "Total number of pictures in the group."
+		}
+	},
+	"ui.chat.canonical.supplement.details.summary": {
+		"role": "Disclosure summary that opens a supplement row's technical details",
+		"tone": "Single noun, sentence case",
+		"length_hint": "One word",
+		"note": "Single noun; the disclosure holds model, attempts and similar run facts."
+	},
+	"ui.chat.canonical.supplement.withheld.line": {
+		"role": "quiet muted line under a highlights block saying some files the agent pointed at were not shown, and why",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "One short line.",
+		"note": "Shown only when files the agent pinned or named were refused. The reason is one or more already-translated reason phrases joined by the locale's list conjunction; never translate file names (they appear only in the tooltip).",
+		"placeholders": {
+			"count": "number of files not shown; CLDR plural selector, rendered with #",
+			"reason": "one or more translated reason phrases, already joined by Intl.ListFormat"
+		}
+	},
+	"ui.chat.canonical.supplement.withheld.line_no_reason": {
+		"role": "the same withheld line when no reason this build knows was given",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "One short clause.",
+		"note": "Must match the first half of ui.chat.canonical.supplement.withheld.line exactly.",
+		"placeholders": {
+			"count": "number of files not shown; CLDR plural selector, rendered with #"
+		}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_outside": {
+		"role": "reason phrase: the file lives outside the folders highlights may show",
+		"tone": "noun phrase, lower case",
+		"length": "A few words.",
+		"note": "One reason phrase, lower case because it follows a colon in the withheld line. Several distinct reasons are joined with the locale's own list conjunction (Intl.ListFormat), so do not add a word for 'and'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_sensitive": {
+		"role": "reason phrase: the file looks like a credential or other secret, so it is never shown",
+		"tone": "noun phrase, lower case",
+		"length": "Two words.",
+		"note": "One reason phrase, lower case because it follows a colon in the withheld line. Several distinct reasons are joined with the locale's own list conjunction (Intl.ListFormat), so do not add a word for 'and'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_missing": {
+		"role": "reason phrase: the file was deleted or moved before it could be shown",
+		"tone": "short clause, lower case",
+		"length": "A few words.",
+		"note": "One reason phrase, lower case because it follows a colon in the withheld line. Several distinct reasons are joined with the locale's own list conjunction (Intl.ListFormat), so do not add a word for 'and'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_too_large": {
+		"role": "reason phrase: the file is larger than the inline preview limit",
+		"tone": "short phrase, lower case",
+		"length": "A few words.",
+		"note": "One reason phrase, lower case because it follows a colon in the withheld line. Several distinct reasons are joined with the locale's own list conjunction (Intl.ListFormat), so do not add a word for 'and'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_separator": {
+		"role": "Separator joining two or more distinct reason phrases in the withheld line",
+		"tone": "Composition punctuation only, not standalone copy.",
+		"length": "Two characters in English, comma followed by a space.",
+		"note": "Joins separate causes (for example 'too large to preview, sensitive file'). Must NOT be a word for 'and': the reasons are independent, and a conjunction made them read as one compound cause. Use the locale's ordinary list comma, as ui.agents.starters.summary.separator does.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.show_fewer": {
+		"role": "disclosure toggle that collapses an already expanded supplement list",
+		"tone": "imperative phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The counterpart of a count disclosure: the closed state names how many more files or graphics are hidden, and this open state says only that pressing collapses them. Do not add a count.",
+		"placeholders": {}
 	}
 }

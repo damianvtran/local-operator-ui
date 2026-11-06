@@ -1,3 +1,4 @@
+import { askPaintableAnswers } from "@features/chat/ask-queue";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -22,7 +23,11 @@ import { createNotificationFixture } from "../notifications-fixture";
  * The clock is pinned (`NOW`) so the time column and the time groups do not
  * churn between captures.
  */
-import { DrawerTabs, DrawerUpdates } from "./drawer-updates";
+import {
+	DrawerTabs,
+	DrawerUpdates,
+	useSessionUnreadUpdates,
+} from "./drawer-updates";
 import { FlagLine, FlagLinesProvider } from "./flag-line";
 import { OperationProgressLine } from "./operation-progress-line";
 import "../../../styles/index.css";
@@ -34,6 +39,7 @@ import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigat
 import { Badge } from "@shared/components/ui";
 import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
+import { NotificationRow } from "./notification-row";
 import { NotificationsPage } from "./notifications-page";
 
 const NOW = new Date(2026, 9, 25, 15, 4, 0).getTime();
@@ -237,6 +243,25 @@ type Stub = {
 	failAfterFirst?: boolean;
 	detail?: DesktopNotificationDetail | null;
 	capability?: boolean;
+	/**
+	 * The conversation's asks as a STATEFUL list (the ask-pane stories): an accepted
+	 * answer flips the row, the detail route then answers 404 for a settled ask (core's
+	 * `notifications/items.py::detail` rule) and `asks.list` carries the settled row.
+	 */
+	asks?: PendingAsk[];
+	/** How `sessions.answer` answers: settle (default), hang (sending), or fail (503). */
+	answerMode?: "settle" | "hang" | "fail";
+	bulkCapability?: boolean;
+	/**
+	 * One row the store revises AFTER the frozen preview and BEFORE the bulk write,
+	 * so the write really refuses it (`stale_revision`) while the rest land.
+	 *
+	 * This is the only honest way to reach a partial receipt: the counts come out
+	 * of the shipped fixture's own revision check, not out of a caption somebody
+	 * typed next to a hand-built progress line (design round 1, D2).
+	 */
+	refuseOnBulkDismiss?: string;
+	askReadCapability?: boolean;
 };
 
 let stub: Stub = { items: [], waiting: [] };
@@ -270,7 +295,17 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 						projects: 1,
 						desktop_feed: 1,
 						library: 1,
-						...(stub.capability === false ? {} : { notifications: 1 }),
+						...(stub.askReadCapability
+							? { notification_bulk_ask_read: 1 }
+							: {}),
+						...(stub.capability === false
+							? {}
+							: {
+									notifications: 1,
+									...(stub.bulkCapability === false
+										? {}
+										: { notification_bulk_selection: 1 }),
+								}),
 					},
 				},
 			},
@@ -313,22 +348,82 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 								session: found.session,
 								anchor: null,
 								projects: found.projects ?? [],
-								asks: found.source === "ask" ? [ASK] : [],
+								asks:
+									found.source === "ask"
+										? structuredClone(stub.asks ?? [ASK])
+										: [],
 							}
 						: null;
 				})();
-			if (!detail)
+			const settledAsk =
+				stub.asks !== undefined &&
+				String(request.id).startsWith("ask:") &&
+				stub.asks.find((row) => String(request.id).endsWith(`:${row.ask_id}`))
+					?.status !== "open";
+			if (!detail || settledAsk)
 				return { status: 404, body: { detail: "no such notification" } };
 			return { status: 200, body: { result: detail } };
 		}
 		case "notifications.read":
-		case "notifications.dismiss":
+		case "notifications.dismiss": {
+			/*
+			 * THE RACE, REPRODUCED. A dismissal of a frozen snapshot compares each
+			 * row's revision and sequence against what the preview saw; a row that moved
+			 * in between is refused and counted in `skipped_count`. Moving it here -
+			 * after the snapshot was taken, before the store applies the write - is the
+			 * window a real user hits when a job updates a row they are dismissing.
+			 */
+			const refused = stub.refuseOnBulkDismiss;
+			const target = request.target as
+				| { selectionToken?: string; operationToken?: string }
+				| undefined;
+			if (
+				refused &&
+				request.verb === "dismiss" &&
+				target?.selectionToken &&
+				!target.operationToken
+			)
+				fixture.revise(refused);
 			return fixture.request(request);
+		}
 		/*
 		 * The detail pane's real answer component posts here. Removing the ask is
 		 * what makes an "answered ask leaves the reel" claim observable.
 		 */
+		case "asks.list":
+			return {
+				status: 200,
+				body: { result: { asks: structuredClone(stub.asks ?? []) } },
+			};
 		case "sessions.answer": {
+			if (stub.asks !== undefined) {
+				if (stub.answerMode === "hang") return new Promise(() => {});
+				if (stub.answerMode === "fail")
+					return {
+						status: 503,
+						body: { detail: "The local server did not answer." },
+					};
+				const row = stub.asks.find((ask) => ask.ask_id === request.askId);
+				if (row) {
+					if (request.decline === true) row.status = "declined";
+					else if (request.dismiss) {
+						row.status = "dismissed";
+						row.dismissed_reason = (request.dismiss as { reason?: string })
+							.reason as never;
+					} else {
+						row.status = "answered";
+						/*
+						 * Stored as core stores it: a secret question's cell becomes its KEY
+						 * NAME (`asks/queue.py::_guard_secret_cells`), so the stub never hands
+						 * a typed value back for the pane to paint.
+						 */
+						row.answers = askPaintableAnswers(
+							row.questions,
+							request.answers as Record<string, string[]>,
+						);
+					}
+				}
+			}
 			const index = stub.waiting.findIndex((row) =>
 				row.id.endsWith(`:${request.askId}`),
 			);
@@ -472,8 +567,13 @@ export const LoadError: Story = {
 
 /** The mock's populated state on the All filter: waiting group, ×6 repeat, provenance. */
 export const Populated: Story = {
-	/* The local-dismiss receipt must be capturable without racing its 6 s Undo
-	   window; this is the stateful fixture a reviewer drives, not a second toast. */
+	/*
+	 * This parameter holds a container-default toast, and NOTHING on this page takes
+	 * the container default: both receipt paths pass their own lifetime, because an
+	 * Undo offer has to outlive exactly its window (design round 1, D2). A receipt
+	 * that reports a refusal is held by `receiptDuration` itself, which is what
+	 * makes `BulkDismissPartial` below capturable without racing anything.
+	 */
 	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () =>
 		page(
@@ -482,19 +582,47 @@ export const Populated: Story = {
 		),
 };
 
-/** Grouped by conversation instead of time. */
-export const ByConversation: Story = {
+/**
+ * A BULK DISMISS THE STORE PARTLY REFUSES - the partial receipt, in the page.
+ *
+ * WHY THIS STORY EXISTS (design round 1, D2). A partial result is only worth
+ * signing off when it is the page's OWN receipt: the shipped composer choosing
+ * the words from a real receipt, in the page's own toast lane, at the end of a
+ * real bulk dismiss. `OperationStatusPartial` photographs `OperationProgressLine`
+ * alone under a sentence the story invents, which proves the component renders
+ * and says nothing about what an operator actually gets.
+ *
+ * So nothing here invents a result. The fixture revises one selected row in the
+ * window between the frozen preview and the write - a race a real user hits when
+ * a job updates a row they are dismissing - and the store refuses THAT row with
+ * `stale_revision` while the rest land. Drive it: select all, press Dismiss, and
+ * read the held receipt.
+ */
+export const BulkDismissPartial: Story = {
 	render: () =>
 		page(
-			{ items: POPULATED, waiting: WAITING },
 			{
-				prefs: {
-					"notifications-read-state": "all",
-					"notifications-grouping": "conversation",
-				},
+				items: POPULATED,
+				waiting: WAITING,
+				refuseOnBulkDismiss: "n_prreviewcheckeo",
 			},
+			{ prefs: { "notifications-read-state": "all" } },
 		),
 };
+
+/** Grouped by conversation instead of time. */ export const ByConversation: Story =
+	{
+		render: () =>
+			page(
+				{ items: POPULATED, waiting: WAITING },
+				{
+					prefs: {
+						"notifications-read-state": "all",
+						"notifications-grouping": "conversation",
+					},
+				},
+			),
+	};
 
 /** The detail pane open on the ×6 high item: body table, history, project. */
 export const Detail: Story = {
@@ -518,6 +646,312 @@ export const AskDetail: Story = {
 				prefs: { "notifications-read-state": "all" },
 			},
 		),
+};
+
+/*
+ * THE ASK-PANE STATES (the stale-card fix). Two near-identical asks in ONE
+ * conversation - the confusion that motivated the settled row's answer line - and a
+ * play that drives the REAL panel: pick an option, press the door, hold the shutter
+ * until the claimed state is on screen.
+ */
+const SESSION_TWIN = "aaaaaaaaaaa2";
+const twinAsk = (askId: string, question: string): PendingAsk =>
+	({
+		...ASK,
+		ask_id: askId,
+		session_id: SESSION_TWIN,
+		urgent: false,
+		expires_at: NOW + 23 * HOUR,
+		questions: [
+			{
+				id: "rotate",
+				question,
+				recommended: 0,
+				multi: false,
+				options: [
+					{
+						label: "Rotate the edge secret after all three leaks are closed",
+						description: "Then rotate, with you approving the exact commands.",
+					},
+					{ label: "No rotation; closing the leaks is enough" },
+				],
+			},
+		],
+	}) as PendingAsk;
+const TWIN_A = twinAsk(
+	"a-7f3c",
+	"RADIENT_EDGE_SECRET was exposed in WAF samples, WAF logs and the Caddy access log. Should the edge secret be rotated once the fixes are live?",
+);
+const TWIN_B = twinAsk(
+	"a-8e21",
+	"RADIENT_EDGE_SECRET was exposed in WAF samples, WAF logs and the Caddy access log. Should the edge secret be rotated before the fixes are live?",
+);
+const twinState = (answerMode?: Stub["answerMode"]): Stub => ({
+	items: POPULATED,
+	waiting: WAITING,
+	asks: [structuredClone(TWIN_A), structuredClone(TWIN_B)],
+	answerMode,
+});
+const ASK_PANE = {
+	path: `/notifications/${encodeURIComponent(ASK_ID)}`,
+	prefs: { "notifications-read-state": "all" },
+};
+const waitFor = async (done: () => boolean, budgetMs = 6_000) => {
+	const until = Date.now() + budgetMs;
+	while (!done() && Date.now() < until)
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	return done();
+};
+/** Drive ask A's card through one door, holding the shutter until `claimed` holds. */
+const NO_LONGER_NEEDED = /no longer needed/i;
+const driveAsk =
+	(
+		door: "answer" | "secret" | "decline" | "dismiss",
+		claimed: (root: Element) => boolean,
+	) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const root = document.documentElement;
+		root.dataset.capturePending = "true";
+		const card = () =>
+			canvasElement.querySelector(`[data-lo-ask-row="${TWIN_A.ask_id}"]`);
+		const button = (label: string, scope: Element | null = card()) =>
+			[...(scope?.querySelectorAll("button") ?? [])].find(
+				(node) => node.textContent?.trim() === label,
+			) as HTMLButtonElement | undefined;
+		if (!(await waitFor(() => card() !== null))) {
+			root.dataset.captureFailed = "true";
+			return;
+		}
+		if (door === "secret") {
+			/*
+			 * After the first reads land: a value typed into the field the pane drew from
+			 * the detail read alone is lost when the aggregate read re-renders the card.
+			 */
+			await new Promise((resolve) => setTimeout(resolve, 1_500));
+			/*
+			 * Typed the way a reader types (the native setter, then `input`), so the
+			 * frame shows what the pane paints after an accepted SECRET answer: the
+			 * masked key form, never the value (agent review round 1, R1-1).
+			 */
+			const field = card()?.querySelector<HTMLInputElement>(
+				"input[data-ask-secret]",
+			);
+			const setter = Object.getOwnPropertyDescriptor(
+				HTMLInputElement.prototype,
+				"value",
+			)?.set;
+			if (field && setter) {
+				setter.call(field, "sk-story-not-a-real-value");
+				field.dispatchEvent(new Event("input", { bubbles: true }));
+			}
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			button("Send answer")?.click();
+		} else if (door === "answer") {
+			(
+				card()?.querySelector("[data-ask-option]") as HTMLElement | null
+			)?.click();
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			button("Send answer")?.click();
+		} else if (door === "decline") button("Decline")?.click();
+		else {
+			button("Dismiss…")?.click();
+			const reason = () =>
+				[...(card()?.querySelectorAll("button") ?? [])].find((node) =>
+					NO_LONGER_NEEDED.test(node.textContent ?? ""),
+				) as HTMLButtonElement | undefined;
+			await waitFor(() => reason() !== undefined, 2_000);
+			reason()?.click();
+		}
+		if (await waitFor(() => claimed(canvasElement)))
+			delete root.dataset.capturePending;
+		else root.dataset.captureFailed = "true";
+	};
+const settledRow = (root: Element, word: string) =>
+	[...root.querySelectorAll("[data-lo-ask-settled] button")].some((node) =>
+		node.textContent?.startsWith(word),
+	);
+
+/** Two near-identical pending asks in one conversation, both answerable. */
+export const AskPanePending: Story = {
+	render: () => page(twinState(), ASK_PANE),
+};
+/** Send answer pressed; the owner has not answered yet: the card says Sending…. */
+export const AskPaneSending: Story = {
+	render: () => page(twinState("hang"), ASK_PANE),
+	play: driveAsk(
+		"answer",
+		(root) => root.querySelector("[data-lo-ask-sending]") !== null,
+	),
+};
+/** Accepted: the card is Answered — delivering with the chosen option; B stays pending. */
+export const AskPaneAnswered: Story = {
+	render: () => page(twinState(), ASK_PANE),
+	play: driveAsk(
+		"answer",
+		(root) =>
+			root
+				.querySelector(`[data-lo-ask-row="${TWIN_A.ask_id}"]`)
+				?.getAttribute("data-lo-ask-status") === "answered",
+	),
+};
+/** A SECRET question answered: the card names the key, never the typed value (R1-1). */
+export const AskPaneSecretAnswered: Story = {
+	render: () =>
+		page(
+			{
+				...twinState(),
+				asks: [
+					{
+						...structuredClone(TWIN_A),
+						questions: [
+							{
+								id: "edge_secret",
+								question:
+									"Paste the rotated RADIENT_EDGE_SECRET so the worker can update the edge.",
+								secret: true,
+							},
+						],
+					},
+					structuredClone(TWIN_B),
+				],
+			},
+			ASK_PANE,
+		),
+	play: driveAsk("secret", (root) => {
+		const card = root.querySelector(`[data-lo-ask-row="${TWIN_A.ask_id}"]`);
+		return (
+			card?.getAttribute("data-lo-ask-status") === "answered" &&
+			!card.textContent?.includes("sk-story-not-a-real-value")
+		);
+	}),
+};
+/** Delivered: ask A files under Settled, naming its question and its answer. */
+export const AskPaneDelivered: Story = {
+	/*
+	 * The detail read itself carries the delivered row here (an update's detail, or the
+	 * aggregate's row merged over the pane's read - the same rows either way), opened
+	 * on the still-open twin so the route answers.
+	 */
+	render: () =>
+		page(
+			{
+				items: POPULATED,
+				waiting: WAITING,
+				detail: {
+					item: WAITING[0],
+					history: [],
+					session: WAITING[0].session,
+					anchor: null,
+					projects: [],
+					asks: [
+						{
+							...structuredClone(TWIN_A),
+							status: "answered",
+							delivered: true,
+							answered_at: NOW - 2 * MINUTE,
+							answered_by: { surface: "desktop" },
+							answers: {
+								rotate: [
+									"Rotate the edge secret after all three leaks are closed",
+								],
+							},
+						} as PendingAsk,
+						structuredClone(TWIN_B),
+					],
+				},
+			},
+			ASK_PANE,
+		),
+};
+/** Declined: filed under Settled as Declined; B stays pending. */
+export const AskPaneDeclined: Story = {
+	render: () => page(twinState(), ASK_PANE),
+	play: driveAsk("decline", (root) => settledRow(root, "Declined")),
+};
+/** Dismissed with a reason: filed under Settled as Dismissed. */
+export const AskPaneDismissed: Story = {
+	render: () => page(twinState(), ASK_PANE),
+	play: driveAsk("dismiss", (root) => settledRow(root, "Dismissed")),
+};
+/** A transport failure: the sentence and Retry, the chosen option kept. */
+export const AskPaneError: Story = {
+	render: () => page(twinState("fail"), ASK_PANE),
+	play: driveAsk(
+		"answer",
+		(root) => root.querySelector("[data-lo-ask-refused] button") !== null,
+	),
+};
+
+/** A body with a 200-character unbroken token and a long fenced command (the overflow fix). */
+const LONG = "x".repeat(200);
+const longBody = (box?: { width: number; height: number }) =>
+	page(
+		{
+			items: POPULATED,
+			waiting: WAITING,
+			detail: {
+				...DETAIL,
+				item: {
+					...DETAIL.item,
+					title:
+						"Cloud node: Slack works remotely now; Datadog and Google still need your sign-in",
+					body_md: [
+						"**Slack works on the cloud node.** A new remote session read a Slack profile with the key shared at 07:31.",
+						"",
+						"1. **Datadog:** your sign-in on the Mac has expired. On the Mac, run `lop mcp reauth datadog`. New node sessions pick it up without a restart.",
+						"2. **Google Workspace on the node (optional):** sign in now through a tunnel: run `ssh -L 8000:localhost:8000 -i ~/.ssh/lop-mesh-nprod.pem ec2-user@16.52.14.201` and open the sign-in link.",
+						"",
+						`An unbroken token: ${LONG}`,
+						"",
+						"```",
+						`ssh -L 8000:localhost:8000 -i ~/.ssh/lop-mesh-nprod.pem ec2-user@16.52.14.201 -- ${LONG}`,
+						"```",
+					].join("\n"),
+				},
+				/*
+				 * The operator's item carried the conversation's asks too: a delivering card
+				 * with a long question and a settled history - the cards and the filter row
+				 * were among the clipped boxes.
+				 */
+				asks: [
+					{
+						...structuredClone(TWIN_A),
+						status: "answered",
+						delivered: false,
+						answered_at: NOW - 2 * MINUTE,
+						answers: {
+							rotate: [
+								`Allow one more run once the guard delta is reviewed ${LONG}`,
+							],
+						},
+					} as PendingAsk,
+					...(Array.from({ length: 6 }, (_, n) => ({
+						...structuredClone(TWIN_B),
+						ask_id: `a-90${n}0`,
+						status: "answered",
+						delivered: true,
+						answered_at: NOW - (10 + n) * MINUTE,
+						answers: { rotate: ["No rotation; closing the leaks is enough"] },
+					})) as PendingAsk[]),
+				],
+			},
+		},
+		{
+			path: `/notifications/${FRAUD.id}`,
+			prefs: { "notifications-read-state": "all" },
+			...(box ? { box } : {}),
+		},
+	);
+export const LongBodyDetail: Story = { render: () => longBody() };
+/** The same body at the three evidence widths: wide, the 1024 default and narrow. */
+export const LongBodyWide: Story = {
+	render: () => longBody({ width: 1600, height: 900 }),
+};
+export const LongBody1024: Story = {
+	render: () => longBody({ width: 1024, height: 900 }),
+};
+export const LongBodyNarrow: Story = {
+	render: () => longBody({ width: 820, height: 900 }),
 };
 
 /** A hundred and sixty rows over six conversations: the From menu sorts by volume. */
@@ -755,7 +1189,13 @@ const DRAWER_ITEMS: DesktopNotificationItem[] = [
  * scope selector is its own full-width row, so a long translation cannot squeeze
  * three unrelated labels into one 360px line.
  */
-const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
+const Drawer = ({
+	tab,
+	view = "unread",
+}: {
+	tab: "updates" | "asks";
+	view?: "unread" | "read";
+}) => {
 	/*
 	 * THE REAL DIRECTION SEAM, ON THIS STORY TOO (design round 2, D2).
 	 *
@@ -769,7 +1209,12 @@ const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
 	useDocumentDirection();
 	const [current, setCurrent] = useState<"asks" | "updates" | "all">(tab);
 	const [rows, setRows] = useState<PendingAsk[]>([ASK]);
-	const updates = fixture.counts().unread_count;
+	/*
+	 * The product's own count (chat-content reads this hook), not a snapshot of the
+	 * fixture at render: a snapshot stayed put while a mark-read moved everything
+	 * else, which is the drift the drawer's evidence has to show is gone.
+	 */
+	const updates = useSessionUnreadUpdates("aaaaaaaaaaa1", true);
 	return (
 		<LocaleDirectionProvider>
 			<div className="flex h-[560px] w-[404px] shrink-0 bg-canvas">
@@ -800,7 +1245,11 @@ const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
 							),
 							body:
 								current === "updates" ? (
-									<DrawerUpdates sessionId="aaaaaaaaaaa1" nowMs={NOW} />
+									<DrawerUpdates
+										sessionId="aaaaaaaaaaa1"
+										nowMs={NOW}
+										initialView={view}
+									/>
 								) : null,
 						}}
 					/>
@@ -826,6 +1275,18 @@ export const DrawerUpdatesTab: Story = {
 		return (
 			<FreshCache>
 				<Drawer tab="updates" />
+			</FreshCache>
+		);
+	},
+};
+
+/** The Read view: the history a mark-read moves a row into. */
+export const DrawerUpdatesRead: Story = {
+	render: () => {
+		install({ items: DRAWER_ITEMS, waiting: [] });
+		return (
+			<FreshCache>
+				<Drawer tab="updates" view="read" />
 			</FreshCache>
 		);
 	},
@@ -950,4 +1411,240 @@ export const BadgeRegisters: Story = {
 			))}
 		</div>
 	),
+};
+
+/**
+ * Geometry stress, not a second row: render the shipped component, then allow
+ * the content to wrap in the last cases. The invariant must survive taller
+ * content rather than depending on today's ellipsis hiding the defect.
+ * The before run records its failed geometry without stopping the screenshot;
+ * the final story fails closed on any >1px first-line drift or <24px target.
+ */
+export const RowAlignment: Story = {
+	render: () => (
+		<div className="bg-canvas p-6" data-alignment-cases="">
+			<style>{`
+				[data-align-wrap] [data-notification-title] { white-space: normal; overflow: visible; }
+				[data-align-wrap] [role=gridcell]:nth-child(3) > div { align-items: flex-start; }
+				[data-align-wrap] [role=gridcell]:nth-child(3) > div:nth-child(2) { flex-wrap: wrap; }
+				[data-align-wrap] [role=gridcell]:nth-child(3) > div:nth-child(2) > span:last-child { white-space: normal; }
+			`}</style>
+			{[
+				{
+					name: "one-line",
+					width: 600,
+					title: "Build finished",
+					excerpt: "",
+					compact: true,
+				},
+				{
+					name: "two-line",
+					width: 600,
+					title: "Build finished",
+					excerpt: "All checks passed",
+					compact: false,
+				},
+				{
+					name: "wrapped-title",
+					width: 420,
+					title:
+						"A longer update title that wraps across three lines in a narrow list",
+					excerpt: "All checks passed",
+					compact: false,
+					wrap: true,
+				},
+				{
+					name: "wrapped-subtitle",
+					width: 420,
+					title: "Build finished",
+					excerpt:
+						"The checks completed successfully and the deployment is ready for the next scheduled release window",
+					compact: false,
+					wrap: true,
+				},
+				{
+					name: "high-badge",
+					width: 600,
+					title: "Review needed",
+					excerpt: "A decision is waiting",
+					compact: false,
+					high: true,
+				},
+				{
+					name: "compact",
+					width: 420,
+					title: "Review needed",
+					excerpt: "An update in this conversation",
+					compact: true,
+					high: true,
+				},
+			].map((example, index) => (
+				<div
+					key={example.name}
+					data-align-case={example.name}
+					data-align-wrap={example.wrap ? "" : undefined}
+					style={{ width: example.width }}
+					className="mb-4 border-b border-hairline"
+				>
+					<NotificationRow
+						item={item({
+							id: `align-${index}`,
+							title: example.title,
+							excerpt: example.excerpt,
+							priority: example.high ? "high" : "normal",
+						})}
+						nowMs={NOW}
+						open={false}
+						picked={false}
+						selecting
+						focused={false}
+						writesPaused={false}
+						hideSource={example.compact}
+						onOpen={() => {}}
+						onToggleSelect={() => {}}
+						onToggleRead={() => {}}
+						onDismiss={() => {}}
+						onAnswer={() => {}}
+						onFocusRow={() => {}}
+					/>
+				</div>
+			))}
+		</div>
+	),
+	play: async ({ canvasElement }) => {
+		await document.fonts.ready;
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+		);
+		const measurements = [
+			...canvasElement.querySelectorAll<HTMLElement>("[data-align-case]"),
+		].map((row) => {
+			const title = row.querySelector<HTMLElement>("[data-notification-title]");
+			const checkbox = row.querySelector<HTMLElement>('[role="checkbox"]');
+			if (!title || !checkbox)
+				throw new Error("Alignment fixture missing real row controls");
+			const box = checkbox.getBoundingClientRect();
+			const text = title.getBoundingClientRect();
+			const firstLine =
+				text.top + Number.parseFloat(getComputedStyle(title).lineHeight) / 2;
+			return {
+				name: row.dataset.alignCase,
+				checkboxCenter: box.top + box.height / 2,
+				firstLineCenter: firstLine,
+				delta: Math.abs(box.top + box.height / 2 - firstLine),
+				width: box.width,
+				height: box.height,
+			};
+		});
+		canvasElement.dataset.alignmentMeasurements = JSON.stringify(measurements);
+		if (
+			measurements.some(
+				(row) => row.delta > 1 || row.width < 24 || row.height < 24,
+			)
+		)
+			throw new Error(
+				`First-line alignment/target failed: ${JSON.stringify(measurements)}`,
+			);
+	},
+};
+
+/** A bounded shutter latch: async selection must settle before a frame is valid. */
+const bulkStory = async (run: () => Promise<void>) => {
+	document.documentElement.dataset.capturePending = "notifications-bulk";
+	delete document.documentElement.dataset.captureFailed;
+	try {
+		await run();
+		await document.fonts.ready;
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => resolve()),
+		);
+	} catch (error) {
+		document.documentElement.dataset.captureFailed = String(error);
+		throw error;
+	} finally {
+		delete document.documentElement.dataset.capturePending;
+	}
+};
+const waitBulkElement = async (selector: string): Promise<HTMLElement> => {
+	const until = Date.now() + 5_000;
+	while (Date.now() < until) {
+		const node = document.querySelector<HTMLElement>(selector);
+		if (node) return node;
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	}
+	throw new Error(`Bulk story did not reach ${selector}`);
+};
+
+export const BulkAllSelected: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: [] },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async () =>
+		bulkStory(async () => {
+			await waitBulkElement("[data-notification-row]");
+			(await waitBulkElement("[data-notifications-select-all]")).click();
+			await waitBulkElement(
+				'[data-notifications-select-all][data-state="checked"]',
+			);
+		}),
+};
+
+export const BulkMixedAsks: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING, askReadCapability: true },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async () =>
+		bulkStory(async () => {
+			await waitBulkElement("[data-notification-row]");
+			(await waitBulkElement("[data-notifications-select-all]")).click();
+			await waitBulkElement("[data-notifications-asks-stay]");
+		}),
+};
+
+export const BulkBeyondLoaded: Story = {
+	render: () =>
+		page(
+			{ items: HIGH_VOLUME, waiting: [] },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async () =>
+		bulkStory(async () => {
+			await waitBulkElement("[data-notification-row]");
+			(await waitBulkElement("[data-notifications-dismiss-all]")).click();
+			await waitBulkElement("[data-notifications-confirm-view]");
+		}),
+};
+
+export const BulkUndoToast: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: [] },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async () =>
+		bulkStory(async () => {
+			await waitBulkElement("[data-notification-row]");
+			(await waitBulkElement("[data-notifications-dismiss-all]")).click();
+			await waitBulkElement(".Toastify__toast");
+			const until = Date.now() + 5_000;
+			while (
+				document.querySelector("[data-notification-row]") &&
+				Date.now() < until
+			)
+				await new Promise((resolve) => setTimeout(resolve, 20));
+			if (document.querySelector("[data-notification-row]"))
+				throw new Error("Dismiss did not remove the rows");
+		}),
+};
+
+export const BulkOlderCore: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING, bulkCapability: false },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
 };

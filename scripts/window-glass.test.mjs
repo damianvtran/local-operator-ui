@@ -207,20 +207,33 @@ const UTILITY_LAYER_CSS = `
 	.hover\\:bg-sunken:hover { background-color: var(--color-sunken); }
 	.hover\\:bg-surface:hover { background-color: var(--color-surface); }
 	.hover\\:bg-elevated:hover { background-color: var(--color-elevated); }
+	.bg-elevated { background-color: var(--color-elevated); }
 }
 `;
 
 const VEILED_HOVER_MOUNTS = {
 	/* A route pane inside `<main>` (the canvas's own ask pane). */
 	session: `<main data-glass-region="canvas-backing">
-		<div data-glass-region="pane">
+		<div data-glass-region="pane" class="bg-elevated">
 			<div data-glass-block=""><button class="probe-row hover:bg-sunken">option</button></div>
 		</div>
 	</main>`,
 	/* The fleet asks drawer: its pane is a SIBLING of `<main>` (`chat-layout.tsx`). */
 	fleet: `<div class="content-column">
 		<main data-glass-region="canvas-backing"><div></div></main>
-		<div data-glass-region="pane" data-ask-mode="docked">
+		<div data-glass-region="pane" class="bg-elevated" data-ask-mode="docked">
+			<div data-glass-block=""><button class="probe-row hover:bg-sunken">option</button></div>
+		</div>
+	</div>`,
+	/*
+	 * THE ASK SHEET (2026-11-03): the same drawer below the dock breakpoint, drawn
+	 * OVER the conversation. Its mount passes `ground="solid"`, which drops the
+	 * `data-glass-region="pane"` marker - the translucent ground is what let the
+	 * transcript's text show through the sheet.
+	 */
+	overlay: `<div class="content-column">
+		<main data-glass-region="canvas-backing"><div></div></main>
+		<div class="bg-elevated ask-sheet" data-ask-mode="overlay">
 			<div data-glass-block=""><button class="probe-row hover:bg-sunken">option</button></div>
 		</div>
 	</div>`,
@@ -306,6 +319,7 @@ const veiledHoverOutcome = (css, { keepBranches } = {}) => {
 		};
 		const veil = resolve(block);
 		const winner = resolve(row);
+		const paneWinner = resolve(document.querySelector(".bg-elevated"));
 		const translation = rules
 			.filter((rule) => {
 				const value = /background-color:\s*([^;]+);/.exec(rule.body)?.[1] ?? "";
@@ -325,6 +339,9 @@ const veiledHoverOutcome = (css, { keepBranches } = {}) => {
 			veil: !!veil?.value.includes("--lo-ink"),
 			value: winner?.value ?? "none",
 			selector: winner?.selector ?? "none",
+			/* The pane's own ground: what a sheet over the transcript paints. */
+			paneGround: paneWinner?.value ?? "none",
+			paneGlass: /--lo-glass-(?:a|in)-elevated/.test(paneWinner?.value ?? ""),
 			translationSpecificity: translation
 				? `(${specificityOf(translation).join(",")})`
 				: "none",
@@ -1129,6 +1146,18 @@ test("G-11 every region, state and well the CSS names is a marker some component
 			"CSS names data-glass-lane but no component carries it",
 		);
 	/*
+	 * Round 4: a floating overlay is the panel of a portalled primitive (a menu, a
+	 * tooltip, a popover, a dialog, a select, a drawer) plus the fixed update notice.
+	 * It is a valueless marker like the lane, so the same closed-vocabulary rule
+	 * holds it - and `glass-overlay.test.mjs` asserts WHERE on the element it sits,
+	 * which this scan deliberately does not try to do.
+	 */
+	if (/\[data-glass-overlay\]/.test(css))
+		assert.ok(
+			sources.some((source) => /data-glass-overlay/.test(source)),
+			"CSS names data-glass-overlay but no component carries it",
+		);
+	/*
 	 * THE STACKED INK IS FORBIDDEN, NOT MEASURED. A row inside a veiled
 	 * block once took `hover:bg-row-hover` over the veil - ink 5% over ink 9% -
 	 * and the stack measured `inkMuted` 4.03:1 on synthwave and `inkDim` 3.11 on
@@ -1192,6 +1221,27 @@ test("G-11 every region, state and well the CSS names is a marker some component
 		!hover.fleet.selector.includes("main["),
 		"the fleet mount is a sibling of <main>: the selector that wins there cannot be the pane path",
 	);
+	/*
+	 * THE SHEET'S GROUND IS OPAQUE, read from the cascade rather than from a comment
+	 * (2026-11-03). A docked pane wears `data-glass-region="pane"` and the stylesheet
+	 * gives it `color-mix(elevated, --lo-glass-a-elevated)` - translucent by design,
+	 * because it sits over window material. The same rule over the transcript is what
+	 * let the conversation's text show through the drawer. The sheet's mount passes
+	 * `ground="solid"`, so no pane rule matches it and `.bg-elevated`'s opaque role
+	 * wins instead. Both halves are asserted: the marker still veils the docked panes
+	 * (or this control proves nothing), and the sheet resolves to the plain role.
+	 */
+	assert.equal(
+		hover.session.paneGlass,
+		true,
+		"a docked pane must still take the translucent pane ground: otherwise the sheet assertion below proves nothing",
+	);
+	assert.equal(
+		hover.overlay.paneGlass,
+		false,
+		`the ask sheet must resolve to the opaque elevated role, got ${hover.overlay.paneGround} - a translucent sheet over the transcript is the text-bleed the operator reported`,
+	);
+	assert.equal(hover.overlay.paneGround, "var(--color-elevated)");
 	const withoutFleet = veiledHoverOutcome(css, { keepBranches: "pane" });
 	assert.notEqual(
 		withoutFleet.fleet.value,

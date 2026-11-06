@@ -1,3 +1,4 @@
+import { useCustomThemes } from "@shared/themes/custom-theme-store";
 /**
  * Slash command completion for the composer: the command-word phase AND the
  * argument phase, in one listbox.
@@ -58,6 +59,8 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { themes } from "@shared/themes";
+import { appearanceLayerSummary } from "@shared/themes/appearance-summary";
+import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import { useQuery } from "@tanstack/react-query";
 import type { FC, KeyboardEvent } from "react";
 import {
@@ -498,7 +501,20 @@ function useArgumentRows(
 	tags: TagListState | undefined,
 	enabled: boolean,
 ): SlashArgumentListState {
-	const themeName = useUiPreferencesStore((state) => state.themeName);
+	const baseThemeName = useUiPreferencesStore((state) => state.themeName);
+	const customThemeId = useUiPreferencesStore((state) => state.customThemeId);
+	const customThemes = useCustomThemes();
+	const themeName = customThemes.themes.some(
+		(theme) => theme.id === customThemeId,
+	)
+		? customThemeId
+		: baseThemeName;
+	const appearance = useResolvedAppearance();
+	const selectedAccent = useUiPreferencesStore((state) => state.accent);
+	const layerSummary = appearanceLayerSummary(
+		appearance,
+		selectedAccent[appearance.palette.mode],
+	);
 	const { client, provided } = useOptionalQueryClient();
 	// Hooks cannot be called conditionally, so the entity query always runs and
 	// is merely DISABLED for a renderer-local or sessionless source — the entity
@@ -630,12 +646,19 @@ function useArgumentRows(
 	);
 	const localThemes = useMemo(
 		() =>
-			Object.values(themes).map((theme) => ({
+			[
+				...Object.values(themes),
+				...customThemes.themes.map((theme) => ({
+					id: theme.id,
+					name: theme.name,
+					description: theme.name,
+				})),
+			].map((theme) => ({
 				value: theme.id,
 				name: theme.name,
 				description: theme.description,
 			})),
-		[],
+		[customThemes],
 	);
 
 	/*
@@ -656,13 +679,20 @@ function useArgumentRows(
 					? themeName
 					: entities.data?.current;
 
+	/* The `/agent` rows print a shipped seed's description in the active language
+	 * (`argumentRows`), so a language switch must rebuild them. The rest of this
+	 * popup's rows are literal English and ignore the locale. */
+	const locale = useI18nLocale();
 	return useMemo(() => {
+		void locale;
 		if (!source) {
 			return { rows: [], loading: false, error: null, needsSession: false };
 		}
 		if (source === "theme") {
 			return {
-				rows: argumentRows("theme", localThemes, current),
+				rows: argumentRows("theme", localThemes, current).map((row) =>
+					row.current && layerSummary ? { ...row, detail: layerSummary } : row,
+				),
 				loading: false,
 				error: null,
 				needsSession: false,
@@ -875,6 +905,7 @@ function useArgumentRows(
 	}, [
 		source,
 		localThemes,
+		layerSummary,
 		entities.data,
 		entities.isLoading,
 		entities.isError,
@@ -894,6 +925,7 @@ function useArgumentRows(
 		draftRosterSource,
 		draftTeams,
 		draftProfiles,
+		locale,
 	]);
 }
 
@@ -952,7 +984,9 @@ export function useSlashCompletion({
 	 * The tag surface's own capability. The command description reuses the
 	 * audited `ui.chat.tags.label` key; the slash popup itself is an English
 	 * surface today (its rows and footers are literal), so this memo needs no
-	 * locale subscription of its own.
+	 * locale subscription of its own. The one exception is the `/agent` argument
+	 * list, whose shipped-seed descriptions are catalogue copy: the
+	 * argument-source hook subscribes for that.
 	 */
 	const tagsEnabled = desktopFeatureEnabled(capabilities.data, "session_tags");
 	/*
@@ -2374,7 +2408,7 @@ function argumentRowContent(
 							? t("ui.chat.tags.remove_named", { name: value.name })
 							: t("ui.chat.tags.add")
 						: value.current
-							? "Current"
+							? t("ui.chat.pickers.picker_host.current")
 							: undefined
 				}
 				className={cn(

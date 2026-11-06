@@ -1,0 +1,45 @@
+[
+	{
+		"id": "UR-A1",
+		"severity": "major",
+		"key": "ui.teamBridge.events.owner_added_agent",
+		"current": "{actor} نے اپنا ایجنٹ {targets} شامل کیا",
+		"proposed": "{actor} نے اپنا ایجنٹ شامل کیا: {targets}",
+		"reason": "Urdu marks the plural on both the possessive and the verb, so singular «اپنا ایجنٹ … شامل کیا» against a rolled-up multi-name list is wrong («اپنے ایجنٹس … شامل کیے» when several is the normal case); the colon keeps one grammatical string for 1 and for 3."
+	},
+	{
+		"id": "UR-A2",
+		"severity": "minor",
+		"key": "ui.teamBridge.events.declined_self",
+		"related_keys": [
+			"ui.teamBridge.events.declined"
+		],
+		"current": "{actor} نے دعوت مسترد کر دی",
+		"proposed": "{actor} نے دعوت سے انکار کر دیا",
+		"reason": "One English term, two local terms: the invitations surface already renders decline as «انکار» (invitations.decline, .declining, .declined, .declined_unnamed) while these two event lines introduce «مسترد»; align on انکار. Same for events.declined → «{actor} نے {targets} کے لیے دعوت سے انکار کر دیا»."
+	},
+	{
+		"id": "UR-A3",
+		"severity": "minor",
+		"key": "ui.teamBridge.events.unknown",
+		"current": "اراکین میں تبدیلی ہوئی",
+		"proposed": "ارکان میں تبدیلی ہوئی",
+		"reason": "members is «ارکان» in the other eight places this locale renders it (members.title, role lines, remove_label); «اراکین», besides the drift, is the plural form most Urdu authorities reject."
+	},
+	{
+		"id": "UR-A4",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.others",
+		"current": "{count, plural, one {# دیگر} other {# دیگر}}",
+		"proposed": "{count, plural, one {مزید #} other {مزید #}}",
+		"reason": "«2 دیگر» with no head noun reads incomplete as the last list item ('…، اور 2 دیگر'); «مزید #» renders '…and 2 more' idiomatically for both arms."
+	},
+	{
+		"id": "UR-A5",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.joined",
+		"current": "{targets} گفتگو میں شامل",
+		"proposed": "گفتگو میں شمولیت: {targets}",
+		"reason": "The line has no finite verb while its sibling events.left does («چھوڑ دی»), so it reads as a heading; the nominal form is number-neutral, unlike «شامل ہو گئے»/«شامل ہو گیا» which force a count."
+	}
+]

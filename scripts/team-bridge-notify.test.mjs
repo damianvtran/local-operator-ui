@@ -882,13 +882,10 @@ test("reply summary seq/root survive planning, native click and old-root navigat
 			tenantId: "tnt_1",
 			threadId: "bcmsg_oldroot",
 		});
-		// THE HOLD DROPS THE THREAD ROOT FROM THE ROUTE. Main still parks the
-		// ids it was given (the click target is a fact), but this build does not
-		// route a thread - see `TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD` in
-		// `team-bridge-notify.ts`.
+		// Main parks the exact click target and the shipped route retains it.
 		assert.equal(
 			limits.teamBridgeOpenPath(target),
-			"/team-bridge?tenant=tnt_1&conversation=bcv_1",
+			"/team-bridge?tenant=tnt_1&conversation=bcv_1&thread=bcmsg_oldroot",
 		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
@@ -1668,9 +1665,16 @@ test("sender kinds and owner-avatar equality fail safe without suppressing deliv
 			agent_name: "Aida",
 			avatar: { account_id: "acc_ben", hash: "0123456789abcdef" },
 		});
-		assert.equal(
-			limits.parseTeamBridgeNotifyRequest(request({ sender })).sender.kind,
-			kind,
+		const parsed = limits.parseTeamBridgeNotifyRequest(request({ sender }));
+		assert.equal(parsed.sender.kind, kind);
+		/* 2026-10-30: an agent never carries its owner's photo. The shared
+		   parser drops the reference, so no producer can put the owner's face
+		   on an agent banner; delivery and the name are unaffected. */
+		assert.deepEqual(
+			parsed.sender.avatar,
+			kind === "person"
+				? { account_id: "acc_ben", hash: "0123456789abcdef" }
+				: undefined,
 		);
 		sender.avatar.account_id = "acc_someone_else";
 		assert.equal(
@@ -1736,6 +1740,31 @@ test("cold sender enrichment posts within its deadline; completion never re-aler
 	}
 });
 
+test("an agent banner title composes through the shared chief rule: owner exactly once", async () => {
+	// The main process used to splice "{agent} ({person})" itself, so an agent
+	// the directory names after its owner titled the banner "Ben Tran (Ben
+	// Tran)" while the app read "Ben Tran's chief of staff" (2026-11-03 sweep).
+	const cases = [
+		["Aida", "Aida (Ben Tran)"],
+		["Ben Tran", "Ben Tran’s chief of staff"],
+		["ben  tran", "Ben Tran’s chief of staff"],
+	];
+	for (const [agentName, expected] of cases) {
+		const { dir, file } = tempFile();
+		try {
+			const h = harness({ file });
+			await h.notifier.notify(
+				request({
+					sender: personSender({ kind: "person_agent", agent_name: agentName }),
+				}),
+			);
+			assert.equal(h.banners[0].options.title, expected, agentName);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}
+});
+
 test("warm composite follows the person source kind; agent title names its owner and agent", async () => {
 	const { dir, file } = tempFile();
 	const images = {
@@ -1779,8 +1808,9 @@ const compositePng = (tag = "untagged") => {
 	Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(data);
 	data.writeUInt32BE(13, 8);
 	data.write("IHDR", 12);
-	data.writeUInt32BE(64, 16);
-	data.writeUInt32BE(64, 20);
+	// The composite size main asks core for (256: covers a 2x/Windows banner).
+	data.writeUInt32BE(256, 16);
+	data.writeUInt32BE(256, 20);
 	data.write(tag, 33);
 	return data;
 };
@@ -1791,7 +1821,9 @@ const tagOf = (data) =>
 const coreTag = (input) =>
 	input.avatar
 		? `photo/${input.kind}/${input.accountId}/${input.avatar.hash}`
-		: `initials/${input.kind}/${input.accountId}/${input.initials}`;
+		: input.endpointAvatar
+			? `endpoint/${input.endpointAvatar.endpoint_id}/${input.endpointAvatar.hash}`
+			: `initials/${input.kind}/${input.accountId}/${input.initials}`;
 const coreBytes = (input) => ({
 	kind: "bytes",
 	status: 200,
@@ -1906,7 +1938,7 @@ test("single-flight shares one request and photo is requested at banner size", a
 	const first = cache.read(r, 250);
 	const second = cache.read(r, 250);
 	assert.equal(calls.length, 1);
-	assert.equal(calls[0].size, 64);
+	assert.equal(calls[0].size, 256);
 	release({
 		kind: "bytes",
 		status: 200,
@@ -2483,13 +2515,15 @@ test("M2 a warmed person composite never answers an agent banner", async () => {
 		"composite:photo/person/acc_ben/0123456789abcdef",
 	);
 	const before = core.calls.length;
+	// The renderer never attaches an avatar to an agent (2026-10-30), so the
+	// agent sender here is the shape that actually reaches main.
 	const agent = request({
-		sender: personSender({ kind: "person_agent", agent_name: "Aida", avatar }),
+		sender: personSender({ kind: "person_agent", agent_name: "Aida" }),
 	});
 	assert.equal(
 		await cache.read(agent, 250),
-		"composite:photo/person_agent/acc_ben/0123456789abcdef",
-		"the agent banner carries core's agent-marker composite",
+		"composite:initials/person_agent/acc_ben/BT",
+		"the agent banner carries core's agent composite, never the owner's photo",
 	);
 	assert.deepEqual(
 		core.calls.slice(before).map((input) => input.kind),
@@ -2507,7 +2541,7 @@ test("M2 a roster carrying a member's agent warms both variants", async () => {
 		tenantId: "tnt_1",
 		members: [
 			personSender({ avatar }),
-			personSender({ kind: "person_agent", agent_name: "Aida", avatar }),
+			personSender({ kind: "person_agent", agent_name: "Aida" }),
 		],
 	});
 	await settle();
@@ -2518,12 +2552,11 @@ test("M2 a roster carrying a member's agent warms both variants", async () => {
 				sender: personSender({
 					kind: "person_agent",
 					agent_name: "Aida",
-					avatar,
 				}),
 			}),
 			250,
 		),
-		"composite:photo/person_agent/acc_ben/0123456789abcdef",
+		"composite:initials/person_agent/acc_ben/BT",
 	);
 	assert.equal(
 		await cache.read(request({ sender: personSender({ avatar }) }), 250),
@@ -3413,3 +3446,159 @@ test("m5 a roster sent while a known account is settling is refused", async () =
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
+
+/*
+ * AN AGENT BANNER WEARS THE AGENT'S OWN PICTURE (2026-10-31): the parser admits
+ * an endpoint picture for a `person_agent` only, and main asks core for the
+ * composite by endpoint — gated on core's `team_bridge_endpoint_avatar`.
+ */
+test("the sender parser admits an endpoint picture for person_agent only, endpoint shape only", () => {
+	const own = { endpoint_id: "bep_aida", hash: "fedcba9876543210" };
+	const agent = limits.parseTeamBridgeNotifyRequest(
+		request({
+			sender: personSender({
+				kind: "person_agent",
+				agent_name: "Aida",
+				endpoint_avatar: own,
+			}),
+		}),
+	).sender;
+	assert.deepEqual(agent.endpoint_avatar, own);
+	assert.equal(agent.avatar, undefined);
+	// A person never carries one.
+	assert.equal(
+		limits.parseTeamBridgeNotifyRequest(
+			request({ sender: personSender({ endpoint_avatar: own }) }),
+		).sender.endpoint_avatar,
+		undefined,
+	);
+	// Only the endpoint shape: an account-shaped or malformed picture is dropped,
+	// and the banner (name, delivery) survives.
+	for (const bad of [
+		{ account_id: "acc_ben", hash: "fedcba9876543210" },
+		{ endpoint_id: "bep/../x", hash: "fedcba9876543210" },
+		{ endpoint_id: "bep_aida", hash: "FEDCBA9876543210" },
+		{ endpoint_id: "bep_aida" },
+		"bep_aida",
+	]) {
+		const parsed = limits.parseTeamBridgeNotifyRequest(
+			request({
+				sender: personSender({
+					kind: "person_agent",
+					agent_name: "Aida",
+					endpoint_avatar: bad,
+				}),
+			}),
+		);
+		assert.equal(parsed.sender.agent_name, "Aida");
+		assert.equal(parsed.sender.endpoint_avatar, undefined, JSON.stringify(bad));
+	}
+});
+
+test("an agent banner asks core for its own endpoint picture, keyed apart from the owner's photo", async () => {
+	const core = fakeCore();
+	const cache = imageCache({
+		request: core.request,
+		endpointAvatars: () => true,
+	});
+	const owner = { accountId: "acct_a", epoch: 1 };
+	const own = { endpoint_id: "bep_aida", hash: "fedcba9876543210" };
+	const agent = personSender({
+		kind: "person_agent",
+		agent_name: "Aida",
+		endpoint_avatar: own,
+	});
+	const person = personSender({
+		avatar: photoOf("acc_ben", "0123456789abcdef"),
+	});
+	cache.syncDirectory({ owner, tenantId: "tnt_1", members: [person, agent] });
+	await settle();
+	const before = core.calls.length;
+	assert.equal(
+		await cache.read(request({ sender: agent }), 250),
+		"composite:endpoint/bep_aida/fedcba9876543210",
+	);
+	assert.equal(
+		await cache.read(request({ sender: person }), 250),
+		"composite:photo/person/acc_ben/0123456789abcdef",
+	);
+	assert.equal(core.calls.length, before, "both warmed, separate entries");
+	const agentCalls = core.calls.filter((c) => c.kind === "person_agent");
+	assert.ok(agentCalls.length >= 1);
+	for (const call of agentCalls) assert.equal(call.avatar, undefined);
+	assert.deepEqual(
+		agentCalls.find((c) => c.endpointAvatar)?.endpointAvatar,
+		own,
+	);
+});
+
+test("an older core (no endpoint capability) keeps the agent glyph and is never sent the new shape", async () => {
+	const core = fakeCore();
+	const cache = imageCache({ request: core.request });
+	const agent = personSender({
+		kind: "person_agent",
+		agent_name: "Aida",
+		endpoint_avatar: { endpoint_id: "bep_aida", hash: "fedcba9876543210" },
+	});
+	cache.syncDirectory({
+		owner: { accountId: "acct_a", epoch: 1 },
+		tenantId: "tnt_1",
+		members: [agent],
+	});
+	await settle();
+	assert.equal(
+		await cache.read(request({ sender: agent }), 250),
+		"composite:initials/person_agent/acc_ben/BT",
+	);
+	assert.ok(core.calls.length >= 1);
+	for (const call of core.calls) assert.equal(call.endpointAvatar, undefined);
+});
+
+/*
+ * CODE REVIEW ROUND 1, F1. When core draws the glyph where the agent's own
+ * picture was asked for (`X-Avatar-Fallback: glyph` → `fallback: true`), main
+ * shows it but keeps it only for the 30 s failure TTL, so a hub blip does not
+ * pin the glyph on that agent's banners for the 15-minute photo lease. A real
+ * picture keeps the full lease.
+ */
+for (const fallback of [true, false]) {
+	test(`an agent picture composite ${fallback ? "core fell back on" : "core drew"} expires after ${fallback ? "the failure TTL" : "the photo lease"}`, async () => {
+		let now = 0;
+		const calls = [];
+		const cache = imageCache({
+			now: () => now,
+			endpointAvatars: () => true,
+			request: async (input) => {
+				calls.push(input);
+				return {
+					...coreBytes(input),
+					...(fallback && input.endpointAvatar ? { fallback: true } : {}),
+				};
+			},
+		});
+		const agent = personSender({
+			kind: "person_agent",
+			agent_name: "Aida",
+			endpoint_avatar: { endpoint_id: "bep_aida", hash: "fedcba9876543210" },
+		});
+		const banner = request({ sender: agent });
+		assert.equal(
+			await cache.read(banner, 250),
+			"composite:endpoint/bep_aida/fedcba9876543210",
+		);
+		const photoCalls = () => calls.filter((c) => c.endpointAvatar).length;
+		assert.equal(photoCalls(), 1);
+		now = notifierModule.TEAM_BRIDGE_IMAGE_NEGATIVE_TTL_MS + 1;
+		await cache.read(banner, 250);
+		assert.equal(
+			photoCalls(),
+			fallback ? 2 : 1,
+			fallback
+				? "a fallback glyph must be re-asked after the failure TTL"
+				: "a real picture is served from its lease",
+		);
+		now = notifierModule.TEAM_BRIDGE_IMAGE_TTL_MS - 1;
+		await cache.read(banner, 250);
+		assert.equal(photoCalls(), fallback ? 3 : 1);
+	});
+}

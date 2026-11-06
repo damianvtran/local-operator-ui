@@ -42,9 +42,15 @@ import { conversationTitle, storedLabel } from "./team-bridge-model";
  * (`TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY`); when the hub serves a newer version
  * this pin is what answers `consent_version_unknown`, which the view reports as
  * "update the app" rather than as a retryable failure.
+ *
+ * v2 (wake-on-every-message): an accepted agent is now woken for EVERY message
+ * and judges relevance itself, so v1's "woken only when @-mentioned" is no
+ * longer what the owner agrees to. agent-server accepts both v1 (older clients)
+ * and v2; this client sends only v2 and shows only v2's text. v1's key stays in
+ * the catalogue as the record of what earlier consents agreed to.
  */
 export const TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION =
-	"bridge_agent_participation_v1";
+	"bridge_agent_participation_v2";
 
 /**
  * The consent statement for THAT version, as an i18n key named for it.
@@ -217,8 +223,9 @@ export function railInvitationsEntryShown(
  *
  * Accept moves the caller's agent row to `active`; decline to `removed` —
  * exactly the server's two transitions. The member's `notify` is NEVER touched:
- * accepting must not unmute the agent (it joins on the agent default, `mute`,
- * and is woken only by mentions until its owner chooses otherwise). Paging
+ * the level is the hub's to set on activation (`all` since
+ * wake-on-every-message), so the refetch in `onSettled` brings the served value
+ * rather than this patch guessing one. Paging
  * fields and every other row are preserved.
  */
 export function withAgentInvitationAnswer(

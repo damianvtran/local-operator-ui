@@ -242,6 +242,8 @@ type BackendUpdateInfo = {
 	detail?: string;
 	/** True when the install follows a source tree on this machine. */
 	sourceBuild?: boolean;
+	/** Whether the press cannot interrupt a running session - see main's field. */
+	nonDisruptive?: boolean;
 	/**
 	 * The build the server SERVING this app reports, when it was readable.
 	 *
@@ -556,6 +558,14 @@ export const UpdateContainer = ({
 		<div
 			/* The drag-strip opt-out; see the note above. */
 			data-titlebar-no-drag=""
+			/*
+			 * THE FLOATING-LAYER MARKER. This card is `fixed`, not portalled, so the
+			 * derived scan in `scripts/glass-overlay.test.mjs` cannot see it - it is a
+			 * NAMED entry there, kept with this attribute. It belongs to the same class
+			 * as a menu or a dialog: pinned over the app rather than sitting in it, and
+			 * the operator reported it as an opaque plate over glass.
+			 */
+			data-glass-overlay=""
 			{...(onClose ? { "data-release-detail": "" } : {})}
 			ref={cardRef}
 			/*
@@ -2366,7 +2376,11 @@ export const UpdateNotification = ({
 					 * this listener is the only door a UI release comes through - the
 					 * periodic, launch and post-wake checks all arrive here.
 					 */
-					noteQuietOffer(UpdateType.UI, { version: info.version });
+					noteQuietOffer(UpdateType.UI, {
+						version: info.version,
+						/* An app install restarts only this window; runtimes are detached. */
+						nonDisruptive: true,
+					});
 				}
 			},
 		);
@@ -2586,6 +2600,8 @@ export const UpdateNotification = ({
 						 * not read it - omitted there rather than guessed from raw notes.
 						 */
 						summary: enhancedInfo.releaseNotes?.summary ?? null,
+						/* Main's reading of the route: true only on `entry-point`. */
+						nonDisruptive: enhancedInfo.nonDisruptive === true,
 					});
 					/*
 					 * A new offer SUPERSEDES the failure notice, exactly as it supersedes

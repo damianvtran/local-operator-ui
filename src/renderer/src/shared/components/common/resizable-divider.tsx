@@ -358,7 +358,16 @@ export const ResizableDivider = ({
 	return (
 		<div
 			className={cn(
-				"relative z-10 shrink-0",
+				/*
+				 * `z-25`: ABOVE the panel seam (`panel-edge.tsx`, `z-20`) and BELOW the
+				 * chrome lane (`chat-layout.tsx`, `z-30`). The seam is decoration and
+				 * the state line is part of the handle's affordance, so the 2px line
+				 * must not lose a column to it on hover or drag (agent review round 1,
+				 * M2; QA round 1, Q-2 measured the seam at x=259 over the line at
+				 * x=258-259). The lane stays on top so the window's drag strip still
+				 * wins in the top 32px.
+				 */
+				"relative z-25 shrink-0",
 				horizontal ? "h-0 w-full" : "h-full w-0",
 			)}
 		>

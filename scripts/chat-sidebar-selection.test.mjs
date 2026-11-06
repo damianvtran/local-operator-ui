@@ -380,8 +380,17 @@ const TEAM_BRIDGE_PAGE =
 	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
 const TEAM_BRIDGE_RAIL =
 	"src/renderer/src/features/team-bridge/team-bridge-rail.tsx";
-/** The rail's own row base, as the module spells it (stubbed into its `cn`). */
-const ROW = literalOf(TEAM_BRIDGE_RAIL, "ROW");
+const CHAT_LAYOUT = "src/renderer/src/shared/components/common/chat-layout.tsx";
+/**
+ * The rail's own row base, as the module spells it (stubbed into its `cn`).
+ *
+ * The module spells it `RAIL_ROW`. The owner-audit round (b2e790dac63) renamed it
+ * from `ROW` and exported it, because the audit section reuses the base rather
+ * than copying the class; the string and the role are the same one. So do NOT
+ * "restore" a local `ROW` here: `merged()` builds the call out of the rail's own
+ * argument text, and the stub key has to be the identifier that text reads.
+ */
+const RAIL_ROW = literalOf(TEAM_BRIDGE_RAIL, "RAIL_ROW");
 
 const rowDragging = literalOf(SIDEBAR, "rowDragging");
 const rowDraggingMark = literalOf(SIDEBAR, "rowDraggingMark");
@@ -1544,7 +1553,13 @@ const ROW_STATE_GROUNDS = [
 				TEAM_BRIDGE_RAIL,
 				"data-conversation-id={conversation.id}",
 			),
-		stubs: { ROW, selected: true, unread: 0, organizationName: "", rowCurrent },
+		stubs: {
+			RAIL_ROW,
+			selected: true,
+			unread: 0,
+			organizationName: "",
+			rowCurrent,
+		},
 		ground: () =>
 			literalClassAt(
 				TEAM_BRIDGE_PAGE,
@@ -1571,6 +1586,32 @@ const ROW_STATE_GROUNDS = [
 				"after",
 			),
 		groundFile: TEAM_BRIDGE_PAGE,
+	},
+	{
+		/*
+		 * The same rail rows IN THE APP, where the rail is portaled into the shell's
+		 * left column on `/team-bridge` (the sidebar swap, operator 2026-11-03). The
+		 * hosted `<aside>` paints no ground of its own - the shell's route host does,
+		 * exactly as `SidebarNavigation`'s root does - so the ground these rows sit
+		 * on is read from `chat-layout.tsx`'s host, not from the page.
+		 */
+		what: "the Team Bridge rail in the shell's column",
+		rowFile: TEAM_BRIDGE_RAIL,
+		expression: () =>
+			expressionAfter(
+				TEAM_BRIDGE_RAIL,
+				"data-conversation-id={conversation.id}",
+			),
+		stubs: {
+			RAIL_ROW,
+			selected: true,
+			unread: 0,
+			organizationName: "",
+			rowCurrent,
+		},
+		ground: () =>
+			literalClassAt(CHAT_LAYOUT, "data-route-sidebar-host=", "after"),
+		groundFile: CHAT_LAYOUT,
 	},
 	{
 		what: "the agents page's roster row",
@@ -1895,7 +1936,7 @@ const TEAM_BUBBLE =
 const TEAM_BUBBLE_COMPOSITION =
 	/badgeVariants\(\{[\s\S]*?variant:\s*"attentionQuiet"[\s\S]*?shape:\s*"pill"[\s\S]*?size:\s*"count"/;
 
-test("the account row's plate is Team Bridge's borderless rounded-square plate", () => {
+test("the account row's plate is Team Bridge's borderless round plate", () => {
 	const row = sourceOf(ACCOUNT_ROW);
 	assert.ok(
 		row.includes("hover:bg-row-hover"),
@@ -1914,8 +1955,8 @@ test("the account row's plate is Team Bridge's borderless rounded-square plate",
 			`the account row's ${element.trim()} no longer paints \`bg-media-surface\` — it reads ${JSON.stringify(plate)}. \`scripts/contrast-contract.mjs\` measures that fill against \`surface\` and \`rowHover\`; on the root it is also the backing a transparent photo needs once Radix unmounts the fallback (design review round 1, D4)`,
 		);
 		assert.ok(
-			plate.includes("rounded-md") && !plate.includes("rounded-full"),
-			`the account row's ${element.trim()} is not Team Bridge's rounded-square plate — it reads ${JSON.stringify(plate)}. \`TeamBridgeAvatar\` draws the same person's photo at \`rounded-md\`, and one person must not be two shapes (design review round 1, D1)`,
+			plate.includes("rounded-full") && !plate.includes("rounded-md"),
+			`the account row's ${element.trim()} is not Team Bridge's round plate — it reads ${JSON.stringify(plate)}. \`TeamBridgeAvatar\` draws the same person's photo at \`rounded-full\` (visual refresh, 2026-11-04), and one person must not be two shapes (design review round 1, D1)`,
 		);
 		const edge = plate.find((c) => EDGE_LIKE.test(c));
 		assert.equal(
@@ -2106,6 +2147,14 @@ const GROUND_ROLES = [
 	 * `scripts/contrast-contract.mjs`.
 	 */
 	"bg-media-surface",
+	/*
+	 * THE IDENTITY WASHES (Team Bridge visual refresh, contract C2): the round
+	 * person and agent plates moved off `media-surface` onto `accent-alt-wash` /
+	 * `accent-wash`. Listed for the same reason as the fill above - so those
+	 * plates stay in this inventory rather than dropping out of it.
+	 */
+	"bg-accent-alt-wash",
+	"bg-accent-wash",
 ];
 
 /*
@@ -2139,7 +2188,7 @@ const TEAM_BRIDGE_PROFILE =
 const CARRIED_GROUNDS = {
 	// Extraction must not make the rail's shared avatar invisible to the sweep.
 	TeamBridgeAvatar: {
-		ground: "bg-surface,bg-media-surface",
+		ground: "bg-surface,bg-accent-alt-wash",
 		file: TEAM_BRIDGE_PROFILE,
 		anchor: "export function TeamBridgeAvatar",
 	},
@@ -2147,6 +2196,18 @@ const CARRIED_GROUNDS = {
 		ground: "bg-sunken",
 		file: "src/renderer/src/shared/components/ui/avatar.tsx",
 		anchor: "<AvatarPrimitive.Fallback",
+	},
+	/*
+	 * THE AGENT MARK'S PLATE (design review round 1, D1 + D2). The edge and the
+	 * `sunken` fill live on the CARD's own root - the one element whose radius is
+	 * the circle - so a call site with only a size override is still an object
+	 * over its row, and the sweep can see it. Without this entry the plate would
+	 * vanish from the inventory the moment the classes moved out of the call site.
+	 */
+	AgentAvatar: {
+		ground: "bg-sunken",
+		file: "src/renderer/src/shared/components/ui/avatar.tsx",
+		anchor: "export const AgentAvatar",
 	},
 	Switch: {
 		ground: "bg-sunken",
@@ -2405,11 +2466,26 @@ const PLATES_INSIDE_ROW_STATES = [
 		fact: "bg-media-surface",
 	},
 	{
+		/* The plate is the ROOT now (design review round 1, D1): the 1px edge is
+		   on the circle's owner, so it is continuous rather than four arcs, and a
+		   transparent picture sits on the `sunken` fill behind it (D2). */
 		what: "the agents sidebar's avatar",
+		file: AGENTS_SIDEBAR,
+		element: "AgentAvatar",
+		ground: "bg-sunken",
+		edge: true,
+	},
+	{
+		/* The same object's fill arm. Its edge is the root's one pixel above it;
+		 * this entry records that the fallback still paints the mark\'s `sunken`
+		 * ground, so the pair (fill + edge) is read from the one element that owns
+		 * the circle rather than duplicated. */
+		what: "the agents sidebar's avatar fallback",
 		file: AGENTS_SIDEBAR,
 		element: "AvatarFallback",
 		ground: "bg-sunken",
-		edge: true,
+		edge: false,
+		fact: "bg-sunken",
 	},
 	{
 		what: "the schedules list's switch",
@@ -2433,42 +2509,24 @@ const PLATES_INSIDE_ROW_STATES = [
 		edge: false,
 		fact: "object-cover",
 	},
-	{
-		/*
-		 * THE TEAM BRIDGE INITIAL PLATES ARE BORDERLESS BY REQUEST (the operator,
-		 * 2026-10-25), and their FILL is what replaced the edge they used to wear.
-		 * They carried `sunken` + `border-control` because `sunken` lands on the
-		 * row-hover rung on some palettes; they now carry `media-surface`, and the
-		 * pair is measured rather than argued: it clears `canvas` deltaE00 >= 4.00,
-		 * `surface` >= 5.96 and `row-hover` >= 3.70 across all 59 palettes, where
-		 * the baseline `sunken` bottoms out at 1.86 against `row-hover`. That row
-		 * lives in `scripts/contrast-contract.mjs` as `team bridge borderless person
-		 * and agent plates`.
-		 *
-		 * THE PIN THAT KEEPS THIS ENTRY HONEST IS THE FILL ITSELF. This table's key
-		 * carries the ground, so moving the plate back onto a rung does not quietly
-		 * pass: the sweep stops finding this entry and the stale-entry assertion
-		 * fires. The same plate is drawn on the rail, in the compose suggestions and
-		 * in the thread-intro header; the sweep sees the three call sites that sit
-		 * inside a row state; `TEAM_BRIDGE_PLATE_SITES` below also follows the shared
-		 * primitive and the caller overrides after profile extraction.
-		 */
-		what: "the Team Bridge thread's sender avatar",
-		file: TEAM_BRIDGE_MESSAGES,
-		element: "span",
-		ground: "bg-media-surface",
-		edge: false,
-		fact: "bg-media-surface",
-	},
+	/*
+	 * THE MESSAGE ROW'S SENDER PLATE LEFT THIS INVENTORY (Team Bridge visual
+	 * refresh D7, 2026-11-04): the row no longer paints a row state - its hover
+	 * is an inset `::before` tint one ground up (`hover:before:bg-surface`),
+	 * not `row-hover` - so its plate is no longer an object over one. The plate
+	 * itself is pinned by `TEAM_BRIDGE_PLATE_SITES` below and measured by the
+	 * "team bridge person/agent identity plate" rows in the contrast contract.
+	 */
+
 	{
 		/* The To: suggestion list's person initial, the same plate: the active option
 		   takes `rowHover`, and the fill is what keeps the initial visible there. */
 		what: "the Team Bridge compose suggestion's initial",
 		file: TEAM_BRIDGE_COMPOSE,
 		element: "span",
-		ground: "bg-media-surface",
+		ground: "bg-accent-alt-wash",
 		edge: false,
-		fact: "bg-media-surface",
+		fact: "rounded-full",
 	},
 	{
 		/* Directory-backed suggestions use the shared primitive; the span above
@@ -2478,9 +2536,9 @@ const PLATES_INSIDE_ROW_STATES = [
 		what: "the Team Bridge compose suggestion's shared avatar",
 		file: TEAM_BRIDGE_COMPOSE,
 		element: "TeamBridgeAvatar",
-		ground: "bg-surface,bg-media-surface",
+		ground: "bg-surface,bg-accent-alt-wash",
 		edge: false,
-		fact: "bg-media-surface",
+		fact: "rounded-full",
 	},
 	{
 		/* The chief's inline shared avatar is visible to the row-state sweep.
@@ -2489,12 +2547,42 @@ const PLATES_INSIDE_ROW_STATES = [
 		what: "the Team Bridge rail shared avatar",
 		file: TEAM_BRIDGE_RAIL,
 		element: "TeamBridgeAvatar",
-		/* TWO GROUNDS, the shape this table already allows: the plate takes
-		   `media-surface` on a plain row and `surface` on the SELECTED row, because
-		   `rowSelected` is where the quiet fill bottoms out (design round 1, D1). */
-		ground: "bg-surface,bg-media-surface",
+		/* TWO GROUNDS, the shape this table already allows: the plate takes the
+		   identity wash `accent-alt-wash` on a plain row (every kind since design
+		   round 1 D1 on #1668; agent kind reads from its accent ink) and `surface`
+		   on the SELECTED row, where the wash sits close to `rowSelected` on a few
+		   palettes. */
+		ground: "bg-surface,bg-accent-alt-wash",
 		edge: false,
-		fact: "bg-media-surface",
+		fact: "rounded-full",
+	},
+	{
+		/* THE WORKSPACE TILE (visual refresh §3.3, C2): the org initial on
+		   `accent-alt-wash` inside the switcher trigger, which hovers to
+		   `row-hover`. Borderless like every identity plate: the `accent-alt`
+		   initial (>= 4.5:1 on the wash, "team bridge person identity plate")
+		   carries it on the hovered trigger, not an edge. */
+		what: "the Team Bridge workspace tile",
+		file: "src/renderer/src/features/team-bridge/team-bridge-org-switcher.tsx",
+		element: "span",
+		ground: "bg-accent-alt-wash",
+		edge: false,
+		fact: "text-accent-alt",
+	},
+	{
+		/* NOT PART OF THE TEAM BRIDGE WORK, recorded because the sweep now watches
+		   the identity washes (the visual refresh added them to `GROUND_ROLES`).
+		   The canvas finder's tiled-image Expand control is a ghost icon button
+		   whose `accent-wash` is a pressed-looking ground behind an `ink` glyph;
+		   the glyph, not the fill, is what the reader finds over the row. The
+		   fact pinned is the fill itself, so this entry goes stale (and fails)
+		   if the control's ground ever moves. */
+		what: "the canvas finder's tiled-image expand control",
+		file: FINDER_FILES_VIEW,
+		element: "Button",
+		ground: "bg-accent-wash",
+		edge: false,
+		fact: "bg-accent-wash",
 	},
 	{
 		/* NOT PART OF THE PLATE WORK, recorded because the sweep now watches the
@@ -2560,32 +2648,33 @@ const TEAM_BRIDGE_PLATE_SITES = [
 	{
 		what: "the shared rail avatar's initial plate",
 		file: TEAM_BRIDGE_PROFILE,
-		anchor: 'selected ? "bg-surface" : "bg-media-surface"',
+		anchor:
+			'selected ? "bg-surface" : "bg-accent-alt-wash",\n\t\t\t\tclassName,',
 	},
 	{
 		what: "the message row's sender plate",
 		file: "src/renderer/src/features/team-bridge/team-bridge-message-list.tsx",
-		anchor: '? "bg-media-surface text-accent"',
+		anchor: '"bg-accent-alt-wash",',
 	},
 	{
 		what: "the rail's person plate",
 		file: "src/renderer/src/features/team-bridge/team-bridge-rail.tsx",
-		anchor: 'className="rounded-[5px] text-[10px]"',
+		anchor: 'className="text-[10px]"',
 	},
 	{
 		what: "the rail's chief plate",
 		file: "src/renderer/src/features/team-bridge/team-bridge-rail.tsx",
-		anchor: 'className="rounded-[5px] text-accent"',
+		anchor: 'className="text-accent"',
 	},
 	{
 		what: "the compose suggestion's initial",
 		file: "src/renderer/src/features/team-bridge/team-bridge-compose-bar.tsx",
-		anchor: '? "bg-media-surface text-accent"',
+		anchor: '"bg-accent-alt-wash",',
 	},
 	{
 		what: "the thread intro's header plate",
 		file: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
-		anchor: '? "bg-media-surface text-accent"',
+		anchor: '"bg-accent-alt-wash",',
 	},
 ];
 
@@ -2611,7 +2700,7 @@ function assertRailAvatarContract(rail, expression) {
 	}
 	assert.match(
 		expression,
-		/selected\s*\?\s*"bg-surface"\s*:\s*"bg-media-surface"/,
+		/selected\s*\?\s*"bg-surface"\s*:\s*"bg-accent-alt-wash"/,
 		"the selected avatar must retain its distinct fill",
 	);
 	assert.doesNotMatch(
@@ -2642,7 +2731,7 @@ test("shared rail avatars preserve selection and reject broken paint contracts",
 		() =>
 			assertRailAvatarContract(
 				rail,
-				expression.replace('"bg-surface"', '"bg-media-surface"'),
+				expression.replace('"bg-surface"', '"bg-accent-alt-wash"'),
 			),
 		/selected avatar must retain its distinct fill/,
 	);

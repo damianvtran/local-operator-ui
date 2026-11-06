@@ -16,6 +16,8 @@
  * what this thing IS versus where it stands right now.
  */
 
+import { t } from "@shared/i18n";
+
 import type {
 	DesktopCapabilities,
 	TagCategory,
@@ -30,6 +32,12 @@ import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-
  * the same leaf.
  */
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
+/*
+ * Relative for the same reason as the import above (the slash test bundles run
+ * without path aliases). The resolver itself reaches `@shared/i18n`, which the
+ * bundling tests already alias.
+ */
+import { agentDescriptionText } from "../../agents/utils/agent-description";
 import { brandOf } from "../../providers/provider-catalog";
 /*
  * The picker's own validation, limits and duplicate rule. Imported rather than
@@ -168,14 +176,17 @@ export function modelDefaultActionRow(
 	return {
 		kind: "action",
 		id: "model-default",
-		name: "Set current model as default",
+		name: t("ui.chat.pickers.models.set_as_default"),
 		description: model
-			? `Save the current model (${provider}/${modelId}) as the default for new sessions.`
-			: "No active session model is available to save.",
+			? t("ui.chat.slash_arguments.model_default_description", {
+					provider,
+					model: modelId,
+				})
+			: t("ui.chat.slash_arguments.model_default_unavailable"),
 		model,
 		clickText: model
-			? "Click does the same."
-			: "A session model is required before this action can save a default.",
+			? t("ui.chat.slash_arguments.model_default_click")
+			: t("ui.chat.slash_arguments.model_default_required"),
 		disabled: model === null,
 	};
 }
@@ -700,6 +711,13 @@ type ProfileEntity = {
 	value?: unknown;
 	name?: unknown;
 	description?: unknown;
+	/**
+	 * Registry provenance of an `agent` row (`builtin` | `installed` | `custom`),
+	 * present on both the draft roster (`profiles.list`) and the session's
+	 * `commands.entities` agent arm. Only read to decide whether `description`
+	 * is a shipped sentence that has a catalogue translation.
+	 */
+	source?: unknown;
 	kind?: unknown;
 	members?: unknown;
 	/**
@@ -784,8 +802,12 @@ export const TITLE_REFRESH_ROWS: readonly ArgumentRow[] = [
 	{
 		value: "--refresh",
 		name: "--refresh",
-		description: "Re-read the conversation and name it again",
-		detail: "resumes auto-naming",
+		get description() {
+			return t("ui.chat.slash_arguments.refresh_description");
+		},
+		get detail() {
+			return t("ui.chat.slash_arguments.refresh_detail");
+		},
 		aliases: ["refresh", "update", "retitle", "--update", "--retitle"],
 	},
 ];
@@ -1094,7 +1116,19 @@ export function argumentRows(
 					name,
 					slug: name !== value ? value : undefined,
 					aliases: label?.trim() && name !== value ? [value] : undefined,
-					description: asText(row.description),
+					/* An `/agent` row is a registry profile whose description may be a
+					 * shipped seed sentence (installed seeds serve their ROUTING text),
+					 * so it renders through the same resolver as the roster and the
+					 * pickers; a team's description is always the operator's. Unknown
+					 * or missing `source` resolves to nothing and stays raw. */
+					description:
+						command === "agent"
+							? agentDescriptionText({
+									name: base,
+									source: asText(row.source) || undefined,
+									description: asText(row.description),
+								})
+							: asText(row.description),
 					// The TUI's own row detail for these lists is the profile
 					// KIND (role/specialist) — the fact a user picks a hat by. A
 					// team row carries none, so its detail column is empty rather

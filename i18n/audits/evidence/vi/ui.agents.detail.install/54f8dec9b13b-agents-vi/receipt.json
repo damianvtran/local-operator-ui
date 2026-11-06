@@ -1,0 +1,231 @@
+{
+ "instance": "54f8dec9b13b-agents-vi",
+ "locale": "vi",
+ "audit_date": "2026-10-30",
+ "scope": {
+  "kind": "new-key delta",
+  "namespaces": [
+   "ui.agents.descriptions",
+   "ui.agents.detail.install"
+  ],
+  "keys": 14,
+  "what": "Agents page card blurbs (12) plus the two install button labels, committed verbatim to src/i18n/catalogues/vi/"
+ },
+ "status": "passed",
+ "verdict": "pass",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "54f8dec9b13b",
+  "model": "radient/auto",
+  "actual_model_source": "harness model-switch notices: configured selector anthropic/claude-sonnet-5-5 (session tail-anchor selected_model), quota fallbacks openai/gpt-6-astra then kimi/k3.1-pro then radient/auto; radient/auto served this audit",
+  "independent_from_translator_session": true,
+  "translator_session": "d38ee1d7a9c2",
+  "translator_evidence": "agents-i18n/vi/translator.log (session runtime line d38ee1d7a9c2, api.radienthq.com completions); this session wrote none of the 14 values"
+ },
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 3,
+  "NIT": 5
+ },
+ "inputs": {
+  "en_catalogue": {
+   "path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+   "sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+  },
+  "en_context": {
+   "path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+   "sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+  },
+  "en_catalogue_install": {
+   "path": "src/i18n/catalogues/en/ui.agents.detail.install.json",
+   "sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0"
+  },
+  "en_context_install": {
+   "path": "src/i18n/catalogues/en/ui.agents.detail.install.context.json",
+   "sha256": "f82578e4390f18d396fa229286d5395492618bd93ccbfa43d8d0dbe5a6530307"
+  },
+  "target": {
+   "path": "agents-i18n/vi/ui.agents.descriptions.json",
+   "sha256": "dfa4ae25ba6396f90ef5c9780b55d86ecb51aedebd984f8ce6bb6674db6d1284"
+  },
+  "target_install": {
+   "path": "agents-i18n/vi/ui.agents.detail.install.json",
+   "sha256": "4dc3819e133363b0a8e8e16bc43996e3a402db62eef697db2f01299de159d6f9"
+  },
+  "delivered_en_snapshot": {
+   "path": "agents-i18n/vi/ui.agents.descriptions.en.json",
+   "sha256": "c865345f35a1f50313a2dd6cc6afa4f06d80144a2312ac691bacd1932edf2f1f",
+   "note": "re-serialised copy of the catalogue source (indent=1); parsed content is identical to src/i18n/catalogues/en/ui.agents.descriptions.json, only whitespace differs"
+  },
+  "delivered_en_snapshot_install": {
+   "path": "agents-i18n/vi/ui.agents.detail.install.en.json",
+   "sha256": "cb0674b7f65c48806d427a9ed2702c9d77e4bd6ff866f9966bc6f7762b84bcc9",
+   "note": "re-serialised copy; parsed content identical to the catalogue source"
+  },
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "revision": "local-operator 9bedda19165"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/vi.md",
+   "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+   "revision": "local-operator 9bedda19165"
+  }
+ },
+ "namespaces": {
+  "ui.agents.descriptions": {
+   "status": "passed",
+   "keys_audited": 12,
+   "sha256": {
+    "en": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+    "vi": "dfa4ae25ba6396f90ef5c9780b55d86ecb51aedebd984f8ce6bb6674db6d1284"
+   },
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 3,
+    "NIT": 5
+   },
+   "findings": [
+    {
+     "id": "V-M1",
+     "severity": "MINOR",
+     "key": "ui.agents.descriptions.copy_reviewer",
+     "current": "\"chữ sản phẩm người dùng thấy\"",
+     "problem": "Same concept as \"copy\" is rendered \"câu chữ\" at the head of the same string and \"chữ\" here; \"chữ sản phẩm\" is an awkward compound to parse at a glance on a 256 px card line.",
+     "suggestion": "\"câu chữ sản phẩm mà người dùng thấy\" (or \"câu chữ trong sản phẩm người dùng thấy\")."
+    },
+    {
+     "id": "V-M2",
+     "severity": "MINOR",
+     "key": "ui.agents.descriptions.qa_tester",
+     "current": "\"kiểm tra sơ bộ dàn thử\"",
+     "problem": "\"dàn thử\" for \"rig\" is an unreviewed coinage with no occurrence in the vi catalogue and is not the conventional engineering term; the translator itself flagged this row as the one open glossary question.",
+     "suggestion": "\"giàn thử\" (conventional test-rig form) or \"môi trường thử\"; record whichever is chosen in i18n/glossary.md or the vi guide."
+    },
+    {
+     "id": "V-M3",
+     "severity": "MINOR",
+     "key": "ui.agents.descriptions.ux_reviewer",
+     "current": "\"Đi trọn luồng thật của thay đổi từ đầu đến cuối\"",
+     "problem": "Pleonasm: \"trọn\" and \"từ đầu đến cuối\" both carry \"the whole\"; doubled in a card blurb it reads clumsy.",
+     "suggestion": "\"Đi hết luồng thật của thay đổi: …\" or \"Đi luồng thật của thay đổi từ đầu đến cuối: …\"."
+    },
+    {
+     "id": "V-N1",
+     "severity": "NIT",
+     "key": "ui.agents.descriptions.copy_reviewer",
+     "current": "\"cơ sở cho khẳng định\"",
+     "problem": "Collocation for \"claim support\"; \"cơ sở cho\" + bare noun reads thin in a criteria list.",
+     "suggestion": "\"căn cứ cho các khẳng định\" or \"tính có căn cứ của khẳng định\"."
+    },
+    {
+     "id": "V-N2",
+     "severity": "NIT",
+     "key": "ui.agents.descriptions.copy_reviewer",
+     "current": "\"lối viết đặc trưng của AI\"",
+     "problem": "\"AI-isms\" names a defect class (AI-flavoured tics); the Vietnamese is neutral description (\"the writing style characteristic of AI\") and loses the critical edge.",
+     "suggestion": "\"lối viết rập khuôn kiểu AI\" (keeps AI as Latin)."
+    },
+    {
+     "id": "V-N3",
+     "severity": "NIT",
+     "key": "ui.agents.descriptions.qa_tester",
+     "current": "\"trường hợp lỗi\"",
+     "problem": "\"negative cases\" is deliberately invalid/adversarial input, not merely error cases; the shorthand narrows the claim.",
+     "suggestion": "\"trường hợp không hợp lệ\" or \"ca kiểm thử âm\"."
+    },
+    {
+     "id": "V-N4",
+     "severity": "NIT",
+     "key": "ui.agents.descriptions.tui_designer",
+     "current": "\"hình học đo được\"",
+     "problem": "Reads \"measurable geometry\"; the English asserts geometry that is measured (numbers, not impressions).",
+     "suggestion": "\"hình học đã đo\"."
+    },
+    {
+     "id": "V-N5",
+     "severity": "NIT",
+     "key": "ui.agents.descriptions.reviewer",
+     "current": "\"Rà soát mã độc lập cho diff, MR hoặc PR\"",
+     "problem": "\"mã độc lập\" is momentarily available as a noun phrase (\"independent code\") before the following clause disambiguates; the sibling qa_tester card puts the adverb first (\"Bằng chứng thực thi độc lập\").",
+     "suggestion": "\"Rà soát độc lập mã cho diff, MR hoặc PR\" (or \"Rà soát mã một cách độc lập cho …\")."
+    }
+   ]
+  },
+  "ui.agents.detail.install": {
+   "status": "passed",
+   "keys_audited": 2,
+   "sha256": {
+    "en": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+    "vi": "4dc3819e133363b0a8e8e16bc43996e3a402db62eef697db2f01299de159d6f9"
+   },
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+   },
+   "findings": []
+  }
+ },
+ "checks": {
+  "mechanical": {
+   "json_valid": true,
+   "key_sets_equal_to_en": {
+    "ui.agents.descriptions": true,
+    "ui.agents.detail.install": true
+   },
+   "missing_keys": 0,
+   "extra_keys": 0,
+   "nfc": true,
+   "lf_only": true,
+   "trailing_newline": true,
+   "tab_indent": true,
+   "bom": false,
+   "placeholders_or_icu": "none in source or target (no braces/angle brackets, no plural/select)",
+   "ellipsis": "U+2026 in ui.agents.detail.install.action.installing",
+   "char_spacing": "no double spaces, NBSP, ZWSP or untrimmed values",
+   "identical_to_english": 0,
+   "length_ratio": {
+    "mean": 1.06,
+    "max": 1.2,
+    "max_key": "ui.agents.detail.install.action.install_to_edit",
+    "note": "vi runs about 6% longer than en on average; the 1.20 case is an 18-char button label. Card blurbs truncate with an ellipsis by design at 256 px and wrap on the detail page, so no overflow finding"
+   },
+   "repo_validator": "node scripts/i18n/generate.mjs --check at 604ffbce462: 'src/i18n/keys.gen.ts is byte-identical to a fresh generation' (exit 0). The locale catalogue is not yet in the tree, so pnpm check-i18n / check-coverage cannot speak for these bytes; ledger-assemble's key-completeness rule was applied directly instead"
+  },
+  "internal_consistency": {
+   "agent": "tác nhân (glossary §2; 488 vi values)",
+   "operator": "người vận hành",
+   "library": "Thư viện (capitalised mid-sentence, as shipped)",
+   "catalog": "chỉ mục (as shipped in ui.library.*)",
+   "asset": "tệp (as shipped in ui.library.*)",
+   "workspace": "không gian làm việc (glossary §2)",
+   "team": "nhóm",
+   "terminal": "kept English (as shipped)",
+   "code": "mã (dominant shipped rendering, e.g. ui.agents.config.examples.reads_code)",
+   "render": "kết xuất (as shipped)",
+   "install": "Cài / Đang cài / bản (as shipped in ui.agents.starters.*)",
+   "findings": "phát hiện mang tiền tố C/D/T/U, consistent across all four cards",
+   "kept_latin": "diff, MR, PR, QA, UX, AI, unicode, terminal untouched; no product or role name translated in any value",
+   "chief_of_staff": "chánh văn phòng is the recorded vi call (style guide, wave-2, 2026-10-11)"
+  },
+  "rtl": "not applicable (vi is LTR)",
+  "passes": 2
+ },
+ "method": {
+  "pass_1": "Mechanical (key parity, JSON, NFC, placeholders, ellipsis, whitespace, ratio) then per-value semantic comparison against the English source and its context sidecar.",
+  "pass_2": "Values re-read in isolation and paraphrased back to English before comparison; then checked against the core glossary and the vi style guide. Second pass withdrew one finding from pass 1 (a register objection to \"Chánh văn phòng\": the vi guide records chief of staff -> chánh văn phòng as a binding wave-2 decision) and confirmed the rest.",
+  "tools": "python (json/unicodedata/hashlib) locally; node scripts/i18n/generate.mjs --check; no translation or MT service used"
+ },
+ "notes": "No BLOCKER and no MAJOR: every value carries the English claim, nothing dropped or added, and the register is consistent with the shipped vi catalogue. Findings are polish (3 MINOR, 5 NIT), all in ui.agents.descriptions; the install labels have none. Delivered .en.json snapshots differ from the catalogue English only in whitespace (verified by parsed-content equality), so the namespace sha256 values name the catalogue bytes the ledger will re-derive.",
+ "retention": {
+  "intended_record_path": "i18n/audits/evidence/vi/ui.agents.descriptions/agents-vi-54f8dec9b13b/record.json",
+  "receipt_path": "i18n/receipts/54f8dec9b13b-agents-vi.json",
+  "note": "Install namespace is covered by the same record (its own namespace block). Artifacts staged in the requesting session's scratchpad agents-audit/vi/ and its evidence/ mirror; commit them with the locale files and keep this receipt byte-identical so its sha256 still binds."
+ },
+ "ledger_note_suggestion": "PR seed-agent keys (12 blurbs + 2 install labels) at 604ffbce462: 0 blocker/major, 3 minor + 5 NIT, second pass clean. Record: i18n/audits/evidence/vi/ui.agents.descriptions/agents-vi-54f8dec9b13b/record.json"
+}

@@ -1,0 +1,26 @@
+[
+	{
+		"id": "VI-D1",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.joined",
+		"current": "{targets} đã tham gia",
+		"proposed": "{targets} đã rời đi (trim events.left to match) or restore «đã tham gia cuộc trò chuyện»",
+		"reason": "The shortened joined line dropped its object while the paired events.left still says «đã rời cuộc trò chuyện»; a native reader supplies «cuộc trò chuyện» from the screen, so this is register/symmetry rather than comprehension, but the pair now reads unevenly."
+	},
+	{
+		"id": "VI-D2",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.unknown",
+		"current": "Thành viên đã thay đổi",
+		"proposed": "Thay đổi thành viên",
+		"reason": "«Thành viên đã thay đổi» reads 'the members changed'; the English is 'Membership changed' (a change to membership). The namespace's own members.mutation_error already uses the noun phrase «Thay đổi thành viên chưa được lưu», and the proposed form is 18 cells against the current 22."
+	},
+	{
+		"id": "VI-D3",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.owner_added_agent",
+		"current": "{actor} đã thêm tác nhân của mình là {targets}",
+		"proposed": "no text change proposed — measure the row first",
+		"reason": "46 cells against the English 35 (1.31×, up from 43 pre-delta); vi runs long and the row is one line. Flagged for a rendered width check, not for rewording."
+	}
+]

@@ -1,0 +1,89 @@
+{
+  "instance": "04a59c335e4f-bridge-hi",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "04a59c335e4f",
+    "model": "anthropic/claude-opus-5-5",
+    "actual_model_source": "session model; no provider fallback occurred during this audit",
+    "independent_from_translator_session": true,
+    "used_mt_or_translation_service": false
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "audit_date": "2026-10-30",
+  "checkout_head": "434b86d279cee960473c0db84a0871322c49686b",
+  "branch": "feat/bridge-tool-row",
+  "pr": "damianvtran/local-operator-ui#1529",
+  "translator": {
+    "agent": "i18n-translator (lopdev PR #1529 translator lanes)",
+    "model": "radient/auto (round 1, provider fallback); anthropic/claude-opus-5-5 (delta round 2: the 4 *.short / detail.headline.target keys)",
+    "source": "manager brief; translator session ids not recorded in commits"
+  },
+  "sha256": {
+    "en": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a",
+    "hi": "966fa23b074ff9f1bfa4bd1d67d3114f5e3ba7343f522d1e3d62672c93dc92d1"
+  },
+  "reviewed_previous": {
+    "ledger_row": "hi/ui.chat.canonical",
+    "source_sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+    "target_sha256": "dd90a0705cb5cf400ded64eae5a95b0018400694cf525bf07f86da132fbb0c19",
+    "instance": "7e866ab4fe5f-ov2-hi",
+    "commit": "f6e5c3eb62e"
+  },
+  "scope": "Re-audit of ui.chat.canonical at its new source hash. Delta since the last audited bytes (f6e5c3eb62e): 88 keys added in both en and hi (all ui.chat.canonical.tool_row.bridge.* and fold.bridge*), 0 changed, 0 removed — every value outside the 88 is byte-identical to the audited row's bytes (dd90a070…/da2c87f6…). All 88 new keys read in full against en + context sidecar; unchanged keys spot-checked (tool_row.pending, generic_verb.*, outcome.*, image_gen.control.*) and re-swept mechanically.",
+  "key_count": 168,
+  "keys_read_in_full": 88,
+  "checks": [
+    "key parity 168/168; placeholder sets identical en/hi for every key",
+    "288 sentinel renders through intl-messageformat (the UI runtime's formatter, src/i18n/messages.ts) with locale hi at counts 0/1/2/3/5/11/21/22/1000000: 0 lost placeholders; summary.members 0 → '(कोई सदस्य नहीं)', 1 → '(1 सदस्य)', 1000000 → '(10,00,000 सदस्य)'; summary.count and posted_at_seq ::group-off render ungrouped '1000000'",
+    "NFC on every value; no Cf/bidi controls (U+200B–200F, 202A–202E, 2066–2069, FEFF)",
+    "hi plural categories one/other present wherever en has plural; =0 arms kept",
+    "cross-repo: all 42 verb values and the 14 outcome/fallback/detail pairs are byte-identical to core wire.tool_rows.bridge hi after both repos' fixes",
+    "overflow: *.short values ≤ 10 terminal cells (स्वीकार होना बाकी = 10 cells; पोस्ट नहीं हुआ = 9; अपुष्ट = 4), within the sidecar 'aim for under ~12 characters' in rendered width; awaiting_acceptance.short is 17 code points, flagged for the rendered narrow-width check, not blocking"
+  ],
+  "findings": [
+    {
+      "id": "hi-br-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.word",
+      "keys": [
+        "ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.word",
+        "ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.short",
+        "ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label",
+        "ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.title"
+      ],
+      "before": {
+        "word": "स्वीकृति बाकी",
+        "short": "स्वीकृति बाकी",
+        "label": "पोस्ट हो गया, मालिक की स्वीकृति बाकी",
+        "title": "पोस्ट हो गया, लेकिन एजेंट को जगाने से पहले उसके मालिक को स्वीकृति देनी होगी।"
+      },
+      "after": {
+        "word": "स्वीकार होना बाकी",
+        "short": "स्वीकार होना बाकी",
+        "label": "पोस्ट हो गया, मालिक द्वारा स्वीकार होना बाकी",
+        "title": "पोस्ट हो गया, लेकिन एजेंट को जगाने से पहले उसके मालिक को इसे स्वीकार करना होगा।"
+      },
+      "reason": "Glossary collision: core glossary/hi style guide fix स्वीकृति(याँ) as 'approval(s)', and 47 hi UI strings use it that way, so 'awaiting acceptance' read as 'approval pending' (a tool-approval concept) on an amber status word; the verb स्वीकार is the shipped rendering of 'accept', already used by the sibling .note value.",
+      "disposition": "fixed by the auditor in this audit; same fix applied to core wire.tool_rows.bridge hi (local-operator a4218e25942)"
+    }
+  ],
+  "accepted_not_findings": [
+    "SOV verb-first log-line register (verb then object) — team decision, deferred",
+    "pre-split fold plural keys (fold.bridge_post one/other both 'टीम संदेश') — deferred per brief; Hindi invariant noun is correct in direct case"
+  ],
+  "not_verified": [
+    "native-speaker naturalness",
+    "rendered desktop frame at narrow width with hi copy"
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 0
+  },
+  "verdict": "pass"
+}

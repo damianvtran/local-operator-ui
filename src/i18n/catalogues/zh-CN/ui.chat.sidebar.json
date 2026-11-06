@@ -58,5 +58,18 @@
 	"ui.chat.sidebar.row_menu.unpin": "取消置顶",
 	"ui.chat.sidebar.pins.pin_label": "置顶“{title}”",
 	"ui.chat.sidebar.pins.unpin_label": "取消置顶“{title}”",
-	"ui.chat.sidebar.section.current_chat": "当前对话"
+	"ui.chat.sidebar.section.current_chat": "当前对话",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head}和{tail}} middle {{head}、{tail}} other {{head}和{tail}}}",
+	"ui.chat.sidebar.row.open_draft": "打开{label}",
+	"ui.chat.sidebar.entity.more_in": "{label}，位于{name}",
+	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {至少有} other {}}{count, plural, other {{count_display}个对话}}匹配此搜索{clipped, select, yes {；列表到此为止} other {}}",
+	"ui.chat.sidebar.row_menu.hint": "右键点击或按 Shift+F10 查看其操作。",
+	"ui.chat.sidebar.row_menu.hint_mac": "右键点击或按 Shift+F10（多数 Mac 键盘需配合 Fn）查看其操作。",
+	"ui.chat.sidebar.row.search_beyond": "由搜索找到，不在此处列表中",
+	"ui.chat.sidebar.row.recent": "最近",
+	"ui.chat.sidebar.row.not_sent_suffix": "，尚未发送",
+	"ui.chat.sidebar.row.unread_suffix": "，未读",
+	"ui.chat.sidebar.row.silent_remedy": "/stop 若持续无响应。",
+	"ui.chat.sidebar.catalogue.show_more": "再显示{hidden, plural, other {{hidden, number, ::group-off}条}}",
+	"ui.chat.sidebar.catalogue.show_more_chats": "再显示{add, plural, other {{add, number, ::group-off}个对话}}"
 }

@@ -64,6 +64,7 @@ const bundle = await build({
 		contents: `
 			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { TeamBridgeArchivedChannelsView, TeamBridgeArchivedBanner } from "./src/renderer/src/features/team-bridge/team-bridge-archive";
+			export { conversationMenuItemIds } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu-model";
 			export { archiveMutationOptions, unarchiveMutationOptions, deleteMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { canArchiveConversation, canManageArchivedConversation, withoutConversation, withConversationStatus, selectableConversations, landingAfterRemoval, withAppendedPage, archivedChannelRows, isNotAMemberRefusal } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 		`,
@@ -224,6 +225,11 @@ test("only a channel the server says the caller may administer offers archive", 
 		ui.canArchiveConversation(conversation({ builtin: "humans" })),
 		false,
 		"#humans and #agents can never be archived",
+	);
+	assert.equal(
+		ui.canArchiveConversation(conversation({ builtin: "general" })),
+		false,
+		"#general can never be archived either",
 	);
 	for (const kind of ["dm", "group"])
 		assert.equal(ui.canArchiveConversation(conversation({ kind })), false);
@@ -474,8 +480,29 @@ test("the channels header offers Archived channels, and a row offers Archive onl
 		),
 	);
 	assert.match(html, /aria-label="Channel options"/);
+	/* EVERY ROW HAS A MENU NOW (operator 2026-11-04: leave, members and
+	   notifications on each channel), so the "…" itself no longer signals
+	   archive authority. Archive is one ITEM of that menu, and it is offered
+	   only where `canArchiveConversation` says so: asserted on the model the
+	   row renders, because a closed Radix menu draws no items to markup. */
 	const menus = html.match(/aria-label="More actions for [^"]+"/g) ?? [];
-	assert.deepEqual(menus, ['aria-label="More actions for mine"']);
+	assert.deepEqual(menus.sort(), [
+		'aria-label="More actions for humans"',
+		'aria-label="More actions for mine"',
+		'aria-label="More actions for theirs"',
+	]);
+	const archiveOffered = (row) =>
+		ui
+			.conversationMenuItemIds({
+				conversation: row,
+				selfAccountId: "acct_self",
+				archivable: ui.canArchiveConversation(row),
+				wiring: { notify: true, leave: true, archive: true },
+			})
+			.includes("archive");
+	assert.equal(archiveOffered(mine), true);
+	assert.equal(archiveOffered(theirs), false);
+	assert.equal(archiveOffered(builtin), false);
 });
 
 test("the archived view states loading, error, empty and populated", () => {
@@ -589,4 +616,16 @@ test("isNotAMemberRefusal reads the typed code and nothing looser", () => {
 	);
 	assert.equal(ui.isNotAMemberRefusal(new Error("not_a_member")), false);
 	assert.equal(ui.isNotAMemberRefusal(null), false);
+});
+
+test("landingAfterRemoval falls back to #general before #humans", () => {
+	const rows = [
+		row("humans", { builtin: "humans" }),
+		row("general", { builtin: "general" }),
+		row("a"),
+	];
+	assert.deepEqual(ui.landingAfterRemoval(rows, "gone"), {
+		type: "conversation",
+		id: "general",
+	});
 });

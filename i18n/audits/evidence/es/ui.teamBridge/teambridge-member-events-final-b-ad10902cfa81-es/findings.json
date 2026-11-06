@@ -1,0 +1,15 @@
+[
+ {
+  "id": "ES-FB1",
+  "severity": "minor",
+  "key": "ui.teamBridge.events.joined",
+  "keys": [
+   "ui.teamBridge.events.joined",
+   "ui.teamBridge.events.left"
+  ],
+  "current": "Entrada en la conversación: {targets} / Salida de la conversación: {targets}",
+  "proposed": "no text change forced — flag for a rendered fit check; if the row clips, 'Entrada: {targets}' / 'Salida: {targets}'",
+  "reason": "Measured 2.3x and 2.6x the English (37 and 36 code points vs 16 and 14) in a timeline row that truncates and pushes the rest into a tooltip. The nominal 'Entrada en la conversación' is the correct form — a finite verb would have to agree with an unknown number of names — so this is a width flag, not a wording defect. Carries forward the identical measurement recorded as ES-B1 on the previous bytes; the text did not change.",
+  "disposition": "flag for rendered check"
+ }
+]

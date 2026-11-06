@@ -1,0 +1,120 @@
+{
+	"audit_id": "7964ce9a3364-agents2-ur",
+	"audit_date": "2026-10-30",
+	"date": "2026-10-30",
+	"locale": "ur",
+	"namespace": "ui.agents.descriptions",
+	"source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+	"translator": {
+		"agent": "i18n-translator"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "7964ce9a3364",
+		"model": "radient/auto",
+		"actual_model_source": "session-model-at-audit; the session's primary anthropic/claude-sonnet-5-5 failed on provider quota and fell back openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto before this audit ran",
+		"independent_from_translator_session": true,
+		"result": "clean-with-findings",
+		"receipt": "i18n/receipts/7964ce9a3364-agents2-ur.json",
+		"receipt_sha256": "fa839ddfc28038fe0568912b012d69ed57de861a6326ba27c1da2765601332b3"
+	},
+	"key_count": 12,
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+			"sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+			"sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.agents.descriptions.json",
+			"sha256": "ff3f4b16e22122c507cb65c87183b415779622f393129fae3c4670b8a995dae0"
+		}
+	},
+	"findings": [
+		{
+			"id": "G1",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.descriptions.reviewer",
+				"ui.agents.descriptions.qa_tester"
+			],
+			"key": "ui.agents.descriptions.reviewer",
+			"current": "diff، MR یا PR کا آزادانہ کوڈ جائزہ:… / تبدیلی کے اجرا کا آزاد ثبوت:…",
+			"problem": "One English word, two Urdu words, introduced by this round's fix: qa_tester was changed from آزادانہ to آزاد while reviewer kept آزادانہ. The one attributive precedent in the ur catalogues is آزاد (ui.settings.integrations.json:36, '…جو اپنے کرالر کے ساتھ ایک آزاد ویب انڈیکس ہے'); آزادانہ occurs nowhere else in them.",
+			"fix": "Use آزاد in both: 'diff، MR یا PR کا آزاد کوڈ جائزہ:…' — or revert qa_tester to آزادانہ; whichever, one form across the roster.",
+			"introduced_by_correction": true
+		},
+		{
+			"id": "G2",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.descriptions.ux_reviewer"
+			],
+			"key": "ui.agents.descriptions.ux_reviewer",
+			"current": "تبدیلی کے حقیقی فلو کو شروع سے آخر تک چلتا ہے:…",
+			"problem": "چلنا is intransitive; کو marks a direct object, so 'فلو کو … چلتا ہے' is ungrammatical. The catalogue's کو + چل forms are all چلانا (running an app or job) or a dative subject ('کام کو … چاہیے'), never 'walks X'. Meaning survives, so this is polish, not a claim error.",
+			"fix": "تبدیلی کے حقیقی فلو میں شروع سے آخر تک چلتا ہے (154 chars, ratio 1.14) — or '…فلو سے شروع سے آخر تک گزرتا ہے'.",
+			"introduced_by_correction": false,
+			"note": "Pre-existing; round 1 did not report it."
+		},
+		{
+			"id": "G3",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.descriptions.librarian"
+			],
+			"key": "ui.agents.descriptions.librarian",
+			"current": "آپ کے رکھے اثاثوں کے نام، تفصیل اور ٹیگ بناتا ہے،…",
+			"problem": "نام بنانا is the 'make a name for oneself' idiom, not naming: 'names, describes and tags' compressed under one بنانا puts a reputation phrase where a metadata action belongs (the defect class round 1 raised for کاپی).",
+			"fix": "آپ کے رکھے اثاثوں کو نام اور تفصیل دیتا ہے اور ٹیگ لگاتا ہے (166 chars, ratio 1.11) — or the fuller '…کے نام رکھتا ہے، ان کی تفصیل لکھتا ہے اور ٹیگ لگاتا ہے' (ratio 1.18) if the roster line can take it.",
+			"introduced_by_correction": false,
+			"note": "Pre-existing; round 1 did not report it."
+		},
+		{
+			"id": "G4",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.descriptions.scout"
+			],
+			"key": "ui.agents.descriptions.scout",
+			"current": "صرف پڑھنے والی تحقیق:…",
+			"problem": "پڑھنے والی also means 'worth reading' (پڑھنے والی کتاب), so the head term flickers between 'read-only' and 'the only research worth reading' before the closing 'کچھ نہیں بدلتا' settles it.",
+			"fix": "صرف پڑھنے تک محدود تحقیق:… — the head grows from 20 to 24 chars and the whole value stays shorter than English (ratio 0.99).",
+			"introduced_by_correction": false
+		}
+	],
+	"namespace_status": "passed",
+	"artifacts": [
+		{
+			"path": "i18n/receipts/7964ce9a3364-agents2-ur.json",
+			"sha256": "fa839ddfc28038fe0568912b012d69ed57de861a6326ba27c1da2765601332b3"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.descriptions/7964ce9a3364-agents2-ur/record.json",
+			"sha256": "self (this file)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.descriptions/7964ce9a3364-agents2-ur/receipt.json",
+			"sha256": "fa839ddfc28038fe0568912b012d69ed57de861a6326ba27c1da2765601332b3"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.descriptions/7964ce9a3364-agents2-ur/verdict.txt",
+			"sha256": "099c76624e3457c81038b4489457f0b0806d8e48a8b01151085c3aa19e7eb6fe"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.descriptions/7964ce9a3364-agents2-ur/findings.md",
+			"sha256": "983f29b2b4983400c566e84c1ea0135a5b9f2495d78e0f6f938ed885f2a2a1f4"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.descriptions/7964ce9a3364-agents2-ur/auditor.log",
+			"sha256": "6f6cf2a5b92234beabe24c0bae16bc142ed911bf59c2c117c6b07bdf6501edab"
+		}
+	],
+	"retention": {
+		"record_of_truth": "i18n/receipts/7964ce9a3364-agents2-ur.json (byte-identical copy of the auditor's receipt)",
+		"note": "record.json restates the receipt; the copied logs are the auditor's own execution output, not notes."
+	}
+}

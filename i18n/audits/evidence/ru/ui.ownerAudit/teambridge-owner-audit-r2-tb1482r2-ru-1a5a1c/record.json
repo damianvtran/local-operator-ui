@@ -1,0 +1,119 @@
+{
+	"audit_id": "teambridge-owner-audit-r2-tb1482r2-ru-1a5a1c",
+	"date": "2026-10-29",
+	"locale": "ru",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "475476c2104a400fa6f4bc39bee98e4e82541d40",
+	"tree_state": "the audited bytes are this commit's; the auditor ran on the working tree that became 475476c2104a plus the auditor's own target-catalogue fixes",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"method": "LLM translator subagent per locale, reading the English catalogue and its context sidecar and the locale's own existing namespace for terminology; no MT service referenced. Session began on anthropic/claude-opus-5-5 and was moved to radient/auto by provider-quota fallbacks before the translation was written."
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"date": "2026-10-29",
+			"result": "clean-with-findings",
+			"instance": "tb1482r2-ru-1a5a1c",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			},
+			"receipt": "i18n/receipts/tb1482r2-ru-1a5a1c.json",
+			"receipt_sha256": "fed872c4cc0ed76b70f163b03e3175b18d169f1f32e4292b8b62f5af1377a3bb",
+			"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope."
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor: a separate subagent run from the translator's, which authored none of the strings as delivered and wrote its receipts before the ledger row was assembled. The findings/resolved_findings split in this receipt is the auditor's own. Neither translator nor auditor was a native speaker of the locale; that limitation is recorded below.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.ownerAudit.json",
+			"sha256": "e1363d77ba02c6247534a85de9fa1c18b97b6728948587a4ae1a31e2ecaeb1aa"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.disclosure": {
+			"en": "You can read this audit because you own the chief of staff it covers. The other members are told that agent owners can audit the conversation.",
+			"target": "Вам доступен этот период проверки, потому что этот координатор принадлежит вам. Остальным участникам сообщают, что владельцы агентов могут проверять разговор."
+		},
+		"ui.ownerAudit.viewers_label": {
+			"en": "Also readable by",
+			"target": "Также могут читать"
+		},
+		"ui.ownerAudit.left": {
+			"en": "The audit ends here. Your chief of staff left this conversation, so later messages are not in it.",
+			"target": "На этом период проверки заканчивается. Ваш координатор покинул этот разговор, поэтому последующих сообщений в проверке нет."
+		},
+		"ui.ownerAudit.removed": {
+			"en": "The audit ends here. Your chief of staff was removed from this conversation, so later messages are not in it.",
+			"target": "На этом период проверки заканчивается. Ваш координатор был удалён из этого разговора, поэтому последующих сообщений в проверке нет."
+		},
+		"ui.ownerAudit.window_unconfirmed": {
+			"en": "The end of this audit is unknown. Your chief of staff’s membership in this conversation could not be confirmed.",
+			"target": "Конец периода проверки неизвестен. Участие вашего координатора в этом разговоре не подтверждено."
+		},
+		"ui.ownerAudit.page_cutoff": {
+			"en": "Older messages are not shown yet. Load older messages to read what came before.",
+			"target": "Более ранние сообщения пока не показаны. Загрузите предыдущие сообщения, чтобы прочитать их."
+		}
+	},
+	"scope": "Round 2: the six keys changed by the D2/D3 copy round. The rest of the namespace was audited in an earlier round and is out of scope here.",
+	"notes": "ui.ownerAudit.viewer is retired in every catalogue; the removal is part of this round and was checked by the auditor.",
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.page_cutoff",
+			"detail": "Two synonyms for the same referent inside one string: \"Более ранние сообщения\" then \"предыдущие сообщения\". Correct and readable; the second echoes the ui.ownerAudit.older button (\"Загрузить предыдущие сообщения\") on purpose, so left open as a preference.",
+			"resolved": false
+		}
+	],
+	"resolved_findings": [
+		{
+			"severity": "MAJOR",
+			"key": "ui.ownerAudit.left",
+			"detail": "Second sentence read \"...покинул этот разговор, поэтому последующих сообщений в нём нет.\": \"в нём\" binds to the nearest masculine antecedent, \"разговор\", so the line asserted the CONVERSATION has no later messages — false (the conversation continues without the agent) and exactly what the sidecar forbids (\"do not imply the conversation was archived, ended, or that messages were deleted\"). English \"it\" is the audit. FIXED: \"...поэтому последующих сообщений в проверке нет.\"",
+			"resolved": true
+		},
+		{
+			"severity": "MAJOR",
+			"key": "ui.ownerAudit.removed",
+			"detail": "Same ambiguous \"в нём\" in the shared second half (\"...был удалён из этого разговора, поэтому последующих сообщений в нём нет.\"), asserting no later messages in the conversation rather than none in the audit. FIXED with the same wording as ui.ownerAudit.left, as the sidecar requires: \"...поэтому последующих сообщений в проверке нет.\"",
+			"resolved": true
+		},
+		{
+			"severity": "MINOR",
+			"key": "ui.ownerAudit.disclosure",
+			"detail": "\"Вы можете читать этот период проверки\" put a time span in the object slot of \"читать\" (one reads an audit, not a period). FIXED: \"Вам доступен этот период проверки, потому что этот координатор принадлежит вам.\" — reason clause retained, so the disclosure is not weakened to a bare \"you can read this\".",
+			"resolved": true
+		}
+	],
+	"references": {
+		"ledger_entry": "i18n/ledger.json -> ru/ui.ownerAudit",
+		"receipt": "i18n/receipts/tb1482r2-ru-1a5a1c.json",
+		"context_sidecar": "src/i18n/catalogues/en/ui.ownerAudit.context.json"
+	},
+	"artifacts": {
+		"receipt": "i18n/receipts/tb1482r2-ru-1a5a1c.json",
+		"receipt_sha256": "fed872c4cc0ed76b70f163b03e3175b18d169f1f32e4292b8b62f5af1377a3bb",
+		"ledger_entry": "i18n/ledger.json -> ru/ui.ownerAudit"
+	},
+	"limitations": [
+		"No native-speaker review: translation and audit were both LLM agents.",
+		"The audit ran on radient/auto after provider-quota fallbacks from anthropic/claude-opus-5-5.",
+		"No rendered frame in any of the seven locales was reviewed; only the English surface was captured."
+	]
+}

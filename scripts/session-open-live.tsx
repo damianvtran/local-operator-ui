@@ -44,6 +44,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import { DESKTOP_STREAM_DETAIL } from "../src/shared/desktop-stream-notice";
+import { appendJournalOrderIds } from "../src/shared/journal-order-query";
 import { installPreloadStubs } from "./session-switch-bridge";
 
 installPreloadStubs();
@@ -87,7 +88,15 @@ w.api.desktop = {
 	},
 	stream: {
 		subscribe: (
-			args: { sessionId: string; epoch?: string; afterSeq?: number },
+			args: {
+				sessionId: string;
+				epoch?: string;
+				afterSeq?: number;
+				openFrame?: boolean;
+				journalOrder?: boolean;
+				orderIds?: string[];
+				peerJournalSource?: boolean;
+			},
 			onEvent: (event: StreamEvent) => void,
 		) => {
 			const controller = new AbortController();
@@ -98,6 +107,45 @@ w.api.desktop = {
 			if (args.epoch) query.set("epoch", args.epoch);
 			if (args.afterSeq !== undefined)
 				query.set("after_seq", String(args.afterSeq));
+			/*
+			 * The SAME negotiation main's relay sends (`src/main/desktop-stream.ts`
+			 * `subscribe`). Without it this shim asked for the pre-open-frame page —
+			 * every row's full bytes, counted in journal rows — so the harness timed a
+			 * snapshot about three times the one the packaged app is served (measured
+			 * 694 KB against 221 KB on a 512 MB transcript) and its numbers described
+			 * no build anyone runs. Mirrored, not imported: the relay's builder lives
+			 * in main and adds the bearer, which the dev proxy owns here.
+			 */
+			if (args.openFrame === true) query.set("open_frame", "1");
+			if (args.journalOrder === true) {
+				query.set("journal_order", "1");
+				if (args.peerJournalSource === true)
+					query.set("peer_journal_source", "1");
+			}
+			query.set("supplements", "1");
+			if (args.journalOrder === true)
+				// Sized against the path MAIN sends (review #1680 R1-1): the id budget is
+				// a byte count over path + query, so the dev proxy's own path would keep
+				// a slightly different id set from the packaged app's.
+				appendJournalOrderIds(
+					query,
+					`/v1/desktop/sessions/${args.sessionId}/events`,
+					args.orderIds ?? [],
+				);
+			/*
+			 * The stream is not a `/__desktop` op, so the op log below cannot see it;
+			 * logging it here is what lets a run say how long the click took to reach
+			 * the subscription and how long the snapshot took after it — the two
+			 * halves of "painted" the op list alone cannot separate.
+			 */
+			const streamOp: Op = {
+				op: "stream.snapshot",
+				sessionId: args.sessionId,
+				startedAt: performance.now(),
+				settledAt: 0,
+				bytes: 0,
+			};
+			ops.push(streamOp);
 			void (async () => {
 				try {
 					const response = await nativeFetchForStream(
@@ -130,6 +178,14 @@ w.api.desktop = {
 								.filter((line) => line.startsWith("data: "))
 								.map((line) => line.slice(6))
 								.join("\n");
+							if (
+								data &&
+								streamOp.settledAt === 0 &&
+								data.includes('"type":"snapshot"')
+							) {
+								streamOp.settledAt = performance.now();
+								streamOp.bytes = data.length;
+							}
 							if (data) onEvent({ kind: "data", data });
 							cut = buffer.indexOf("\n\n");
 						}
@@ -155,6 +211,8 @@ type Op = {
 	sessionId?: string;
 	startedAt: number;
 	settledAt: number;
+	/** Payload size, recorded for the stream's snapshot frame only. */
+	bytes?: number;
 };
 
 /*
@@ -232,6 +290,26 @@ const typeAndSend = (text: string) => {
 	return true;
 };
 
+/*
+ * The ops one open issued, relative to its click. Read at PAINT the list freezes
+ * every request still in flight as `settle: null` - which on a slow route is
+ * exactly the request whose share the bench exists to attribute (QA #3446 round 1,
+ * Q2: `sessions.userAttachments` unsettled on 9/10 runs, because it outlived the
+ * paint). So the driver reads it again through `settledOps()` once those requests
+ * land (bounded), and the paint-time numbers are untouched.
+ */
+const opsSince = (before: number, clickAt: number) =>
+	ops.slice(before).map((entry) => ({
+		op: entry.op,
+		start: Math.round((entry.startedAt - clickAt) * 10) / 10,
+		settle:
+			entry.settledAt > 0
+				? Math.round((entry.settledAt - clickAt) * 10) / 10
+				: null,
+		...(entry.bytes ? { bytes: entry.bytes } : {}),
+	}));
+let lastRun: { before: number; clickAt: number } | null = null;
+
 type Run = {
 	target: string;
 	clickAt: number;
@@ -239,7 +317,12 @@ type Run = {
 	paintedAt: number | null;
 	sendableAt: number | null;
 	timedOut: boolean;
-	ops: Array<{ op: string; start: number; settle: number | null }>;
+	ops: Array<{
+		op: string;
+		start: number;
+		settle: number | null;
+		bytes?: number;
+	}>;
 };
 
 const open = (target: string, deadlineMs = 30_000) =>
@@ -274,14 +357,8 @@ const open = (target: string, deadlineMs = 30_000) =>
 		const finish = (timedOut: boolean) => {
 			unsubscribe();
 			run.timedOut = timedOut;
-			run.ops = ops.slice(before).map((entry) => ({
-				op: entry.op,
-				start: Math.round((entry.startedAt - run.clickAt) * 10) / 10,
-				settle:
-					entry.settledAt > 0
-						? Math.round((entry.settledAt - run.clickAt) * 10) / 10
-						: null,
-			}));
+			run.ops = opsSince(before, run.clickAt);
+			lastRun = { before, clickAt: run.clickAt };
 			resolve(run);
 		};
 		const tick = () => {
@@ -307,6 +384,17 @@ const open = (target: string, deadlineMs = 30_000) =>
 	ready: false,
 	open,
 	typeAndSend,
+	/**
+	 * The last open's ops re-read now, so a request that outlived the paint carries
+	 * its settle time. Only ops issued before `cutoffMs` (ms after that click) are
+	 * kept: later ones belong to the drain wait, not to the open.
+	 */
+	settledOps: (cutoffMs: number) =>
+		lastRun
+			? opsSince(lastRun.before, lastRun.clickAt).filter(
+					(op) => op.start <= cutoffMs,
+				)
+			: [],
 	/** Every `sessions.message` this page has issued, with its settle time. */
 	messages: () =>
 		ops

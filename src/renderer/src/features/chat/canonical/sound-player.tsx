@@ -52,6 +52,7 @@
  * one quiet line instead of a dead control.
  */
 
+import { ICON_BUTTON_CLASS } from "@shared/components/common/icon-button-class";
 import { Spinner } from "@shared/components/common/spinner";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -95,6 +96,14 @@ export type SoundPlayerProps = {
 	peaks: readonly number[] | null;
 	/** The record's stated duration, shown until metadata can speak instead. */
 	durationHint?: number | null;
+	/**
+	 * Blank the total clock while the length is unknown (no hint, no metadata
+	 * yet) instead of printing `0:00` (design review PR #1652, D1): a written
+	 * MP3's hint is 0, and ten cells of `0:00 0:00` read as empty audio. The
+	 * slot keeps its width (`invisible`), so the clock landing causes no
+	 * reflow. Opt-in, so every other seat keeps today's rendering.
+	 */
+	hideUnknownTotal?: boolean;
 	variant?: SoundPlayerVariant;
 	className?: string;
 };
@@ -105,15 +114,13 @@ const CLICK_SLOP_PX = 4;
 /** Arrow-key seek step: these sounds are 0.5–30 s, where 1 s is perceptible. */
 const NUDGE_SECONDS = 1;
 
-const ICON_BUTTON_CLASS =
-	"flex min-h-11 min-w-11 shrink-0 items-center justify-center text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:text-ink-disabled";
-
 export const SoundPlayer = ({
 	ownerId,
 	src,
 	label,
 	peaks,
 	durationHint = null,
+	hideUnknownTotal = false,
 	variant = "full",
 	className,
 }: SoundPlayerProps) => {
@@ -478,7 +485,11 @@ export const SoundPlayer = ({
 				className={ICON_BUTTON_CLASS}
 				disabled={loading}
 				onClick={() => void toggle()}
-				aria-label={`${playing ? "Pause" : "Play"} ${label}`}
+				aria-label={
+					playing
+						? t("ui.chat.audio.pause_label", { label })
+						: t("ui.chat.audio.play_label", { label })
+				}
 			>
 				{loading ? (
 					<Spinner size="sm" />
@@ -546,8 +557,11 @@ export const SoundPlayer = ({
 			</span>
 			{
 				<span
+					data-sound-total=""
+					aria-hidden={hideUnknownTotal && duration <= 0 ? true : undefined}
 					className={cn(
 						"min-w-10 shrink-0 text-center text-meta text-ink-dim tabular-nums",
+						hideUnknownTotal && duration <= 0 && "invisible",
 					)}
 				>
 					{formatClock(duration)}

@@ -30,5 +30,10 @@
 	"ui.settings.model.model_setting_options.copy_needs_sign_in_group": "سائن ان درکار ہے",
 	"ui.settings.model.system_prompt.saving": "محفوظ ہو رہا ہے…",
 	"ui.settings.model.model_setting_options.provider_detail": "{provider}{aggregated, select, yes {، یکجا} other {}}{credential, select, signed_in {، سائن ان ہے} missing {، اسناد نہیں} other {}}",
-	"ui.settings.model.system_prompt.load_failed": "سسٹم پرامپٹ لوڈ نہیں ہو سکا؛ {reason}"
+	"ui.settings.model.system_prompt.load_failed": "سسٹم پرامپٹ لوڈ نہیں ہو سکا؛ {reason}",
+	"ui.settings.model.system_prompt.rich_text": "فارمیٹ شدہ متن",
+	"ui.settings.model.system_prompt.source": "Markdown ماخذ",
+	"ui.settings.model.system_prompt.source_required": "اس دستاویز میں Markdown کی ایسی ساخت استعمال ہوئی ہے جسے بصری تدوین برقرار نہیں رکھ سکتی۔ تمام ہدایات محفوظ رکھنے کے لیے ماخذ میں ترمیم کریں۔",
+	"ui.settings.model.system_prompt.source_edit": "ماخذ میں ترمیم کریں",
+	"ui.settings.model.system_prompt.source_stale": "آپ کی ترمیم کے دوران یہ حصہ بدل گیا ہے۔ تازہ ترین ہدایات برقرار رکھنے کے لیے منسوخ کریں اور اسے دوبارہ کھولیں۔"
 }

@@ -52,6 +52,12 @@ export const TeamBridgeOrgSwitcher: FC<{
 	totalUnread: number;
 	membershipsLoading?: boolean;
 	organizationsFailed?: boolean;
+	/**
+	 * The unread aggregate is being re-read behind an already-painted count
+	 * (tb-instant-open). The trigger states that the badge below it is being
+	 * refreshed instead of leaving a stale number looking current.
+	 */
+	unreadRefreshing?: boolean;
 	/** Story/capture seed only: opens the menu so its rows are visible. */
 	defaultOpen?: boolean;
 	/** Refetch the memberships after a failed read; shown as a menu action. */
@@ -63,6 +69,7 @@ export const TeamBridgeOrgSwitcher: FC<{
 	totalUnread,
 	membershipsLoading = false,
 	organizationsFailed = false,
+	unreadRefreshing = false,
 	defaultOpen = false,
 	onRetry,
 }) => {
@@ -80,18 +87,37 @@ export const TeamBridgeOrgSwitcher: FC<{
 					type="button"
 					aria-label={t("ui.teamBridge.scope.trigger", { name: title })}
 					title={title}
+					aria-busy={unreadRefreshing || undefined}
 					className={cn(
-						"group flex h-[30px] min-w-0 flex-1 items-center gap-2 rounded-md px-2",
-						"text-start text-[13px] text-ink transition-colors duration-fast",
+						"group flex h-10 min-w-0 flex-1 items-center gap-2 rounded-sm px-2",
+						"text-start text-ink transition-colors duration-fast",
 						"hover:bg-row-hover data-[state=open]:bg-row-hover",
 					)}
 				>
-					<Building2
-						size={16}
+					{/*
+					 * THE WORKSPACE TILE (visual refresh §3.3; contract C2). Slack's and
+					 * Discord's workspace mark: a 28px tile with the organization's
+					 * initial in `accent-alt` on `accent-alt-wash` - the theme's identity
+					 * pair, the same one a person's letter avatar wears, so "who/which"
+					 * reads in one hue across the column. "All organizations" (and an
+					 * unknown scope) has no single initial, so it keeps the building.
+					 * Its left edge sits on the column's one 16px line with Back,
+					 * Drafts and every section row (design D2 on #1660).
+					 */}
+					<span
 						aria-hidden="true"
-						className="shrink-0 text-ink-muted"
-					/>
-					<span className="min-w-0 flex-1 truncate font-medium">{title}</span>
+						data-org-tile=""
+						className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-accent-alt-wash font-semibold text-[13px] text-accent-alt"
+					>
+						{scope !== TEAM_BRIDGE_ALL_SCOPE && current?.name.trim() ? (
+							current.name.trim().charAt(0).toUpperCase()
+						) : (
+							<Building2 size={16} />
+						)}
+					</span>
+					<span className="min-w-0 flex-1 truncate font-semibold text-[15px]">
+						{title}
+					</span>
 					<ChevronDown
 						size={14}
 						aria-hidden="true"

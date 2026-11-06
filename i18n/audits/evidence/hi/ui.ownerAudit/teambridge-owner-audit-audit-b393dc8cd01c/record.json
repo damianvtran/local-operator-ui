@@ -1,0 +1,310 @@
+{
+	"audit_id": "teambridge-owner-audit-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"locale": "hi",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "b393dc8cd01c-owneraudit-hi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-hi.json",
+			"receipt_sha256": "57105c29401bcd38edcde2692620b678ecab091826147f129ad4e5845756a4bc"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.ownerAudit.json",
+			"sha256": "eec5f2b5be9a88348e741bbdc04c2e9844c035dd7de4e8938b84ccbced081a69"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "ad77dcc43ee06d1f43ef6c2a6422c33ee458534b805d888cb413a4f9ebf8226c"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.title": {
+			"en": "Your chief of staff’s messages",
+			"target": "आपके चीफ़ ऑफ़ स्टाफ़ के संदेश"
+		},
+		"ui.ownerAudit.read_only": {
+			"en": "Read-only history. Sending, reactions and editing are unavailable.",
+			"target": "केवल पढ़ने योग्य इतिहास। भेजना, प्रतिक्रिया देना और संपादन उपलब्ध नहीं हैं।"
+		},
+		"ui.ownerAudit.loading": {
+			"en": "Loading audited messages",
+			"target": "ऑडिट किए गए संदेश लोड हो रहे हैं"
+		},
+		"ui.ownerAudit.error": {
+			"en": "Audited messages could not be loaded.",
+			"target": "ऑडिट किए गए संदेश लोड नहीं हो सके।"
+		},
+		"ui.ownerAudit.retry": {
+			"en": "Try again",
+			"target": "फिर कोशिश करें"
+		},
+		"ui.ownerAudit.refresh": {
+			"en": "Refresh",
+			"target": "रीफ़्रेश करें"
+		},
+		"ui.ownerAudit.empty_list": {
+			"en": "No audited conversations in this organization.",
+			"target": "इस संगठन में ऑडिट की गई कोई बातचीत नहीं है।"
+		},
+		"ui.ownerAudit.empty_history": {
+			"en": "No messages in the audit window for this conversation.",
+			"target": "इस बातचीत की ऑडिट अवधि में कोई संदेश नहीं है।"
+		},
+		"ui.ownerAudit.unnamed": {
+			"en": "Unnamed conversation",
+			"target": "बिना नाम वाली बातचीत"
+		},
+		"ui.ownerAudit.agent": {
+			"en": "Chief of staff",
+			"target": "चीफ़ ऑफ़ स्टाफ़"
+		},
+		"ui.ownerAudit.more": {
+			"en": "Load more",
+			"target": "और लोड करें"
+		},
+		"ui.ownerAudit.older": {
+			"en": "Load older messages",
+			"target": "पुराने संदेश लोड करें"
+		},
+		"ui.ownerAudit.admitted": {
+			"en": "Admitted to your chief of staff",
+			"target": "आपके चीफ़ ऑफ़ स्टाफ़ ने स्वीकार किया"
+		},
+		"ui.ownerAudit.rejected": {
+			"en": "Rejected by your chief of staff’s screening",
+			"target": "आपके चीफ़ ऑफ़ स्टाफ़ की जाँच ने अस्वीकार किया"
+		},
+		"ui.ownerAudit.not_screened": {
+			"en": "Not screened by your chief of staff",
+			"target": "आपके चीफ़ ऑफ़ स्टाफ़ ने जाँच नहीं की"
+		},
+		"ui.ownerAudit.unknown_status": {
+			"en": "Status unknown",
+			"target": "स्थिति अज्ञात"
+		},
+		"ui.ownerAudit.own": {
+			"en": "Sent by your chief of staff",
+			"target": "आपके चीफ़ ऑफ़ स्टाफ़ ने भेजा"
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"en": "Message text unavailable.",
+			"target": "संदेश का पाठ उपलब्ध नहीं है।"
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"en": "Attachment expired; bytes are unavailable.",
+			"target": "अटैचमेंट की समय-सीमा समाप्त; सामग्री उपलब्ध नहीं है।"
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"en": "Attachment present; downloading is unavailable in this view.",
+			"target": "अटैचमेंट मौजूद है; इस दृश्य में डाउनलोड उपलब्ध नहीं है।"
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"en": "Unknown sender",
+			"target": "अज्ञात प्रेषक"
+		},
+		"ui.ownerAudit.reveal": {
+			"en": "Show message text",
+			"target": "संदेश का पाठ दिखाएँ"
+		},
+		"ui.ownerAudit.active": {
+			"en": "Your chief of staff is still a member.",
+			"target": "आपके चीफ़ ऑफ़ स्टाफ़ अब भी सदस्य हैं।"
+		},
+		"ui.ownerAudit.left": {
+			"en": "Your chief of staff left this conversation; later messages are outside the audit window.",
+			"target": "आपके चीफ़ ऑफ़ स्टाफ़ इस बातचीत से निकल गए; बाद के संदेश ऑडिट अवधि से बाहर हैं।"
+		},
+		"ui.ownerAudit.removed": {
+			"en": "Your chief of staff was removed; later messages are outside the audit window.",
+			"target": "आपके चीफ़ ऑफ़ स्टाफ़ को हटा दिया गया; बाद के संदेश ऑडिट अवधि से बाहर हैं।"
+		},
+		"ui.ownerAudit.disclosure": {
+			"en": "Visible only to you as this agent’s owner; other members see that owner auditing is enabled.",
+			"target": "इस एजेंट के मालिक के रूप में केवल आप देख सकते हैं; अन्य सदस्य देख सकते हैं कि मालिक ऑडिट सक्षम है।"
+		},
+		"ui.ownerAudit.viewer": {
+			"en": "Also visible to {name}, an agent owner.",
+			"target": "एजेंट के मालिक {name} भी देख सकते हैं।"
+		},
+		"ui.ownerAudit.replies": {
+			"en": "Read thread replies",
+			"target": "थ्रेड के उत्तर पढ़ें"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.ownerAudit.title",
+			"ui.ownerAudit.read_only",
+			"ui.ownerAudit.loading",
+			"ui.ownerAudit.error",
+			"ui.ownerAudit.retry",
+			"ui.ownerAudit.refresh",
+			"ui.ownerAudit.empty_list",
+			"ui.ownerAudit.empty_history",
+			"ui.ownerAudit.unnamed",
+			"ui.ownerAudit.agent",
+			"ui.ownerAudit.more",
+			"ui.ownerAudit.older",
+			"ui.ownerAudit.admitted",
+			"ui.ownerAudit.rejected",
+			"ui.ownerAudit.not_screened",
+			"ui.ownerAudit.unknown_status",
+			"ui.ownerAudit.own",
+			"ui.ownerAudit.body_unavailable",
+			"ui.ownerAudit.attachment_expired",
+			"ui.ownerAudit.attachment_unavailable",
+			"ui.ownerAudit.unknown_sender",
+			"ui.ownerAudit.reveal",
+			"ui.ownerAudit.active",
+			"ui.ownerAudit.left",
+			"ui.ownerAudit.removed",
+			"ui.ownerAudit.disclosure",
+			"ui.ownerAudit.viewer",
+			"ui.ownerAudit.replies"
+		],
+		"new_namespace": true,
+		"note": "first audit of this namespace; all 28 keys"
+	},
+	"notes": "Namespace-wide audit against en + context (owner vs agent, screening vs authorship, audit window). Open findings: 0; resolved by this run: 2.",
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "I18N-hi-1",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.title",
+				"ui.ownerAudit.agent",
+				"ui.ownerAudit.admitted",
+				"ui.ownerAudit.rejected",
+				"ui.ownerAudit.not_screened",
+				"ui.ownerAudit.own",
+				"ui.ownerAudit.active",
+				"ui.ownerAudit.left",
+				"ui.ownerAudit.removed",
+				"ui.ownerAudit.refresh"
+			],
+			"reason": "Style guide (hi.md: keep nukta consistently) and shipped 'चीफ़ ऑफ़ स्टाफ़' (ui.teamBridge.chief.fallback); 'चीफ ऑफ स्टाफ' and 'रीफ्रेश' dropped the nukta (shipped 'रीफ़्रेश' in ui.code_review).",
+			"change": {
+				"ui.ownerAudit.title": {
+					"before": "आपके चीफ ऑफ स्टाफ के संदेश",
+					"after": "आपके चीफ़ ऑफ़ स्टाफ़ के संदेश"
+				},
+				"ui.ownerAudit.agent": {
+					"before": "चीफ ऑफ स्टाफ",
+					"after": "चीफ़ ऑफ़ स्टाफ़"
+				},
+				"ui.ownerAudit.admitted": {
+					"before": "आपके चीफ ऑफ स्टाफ ने स्वीकार किया",
+					"after": "आपके चीफ़ ऑफ़ स्टाफ़ ने स्वीकार किया"
+				},
+				"ui.ownerAudit.rejected": {
+					"before": "आपके चीफ ऑफ स्टाफ की जाँच ने अस्वीकार किया",
+					"after": "आपके चीफ़ ऑफ़ स्टाफ़ की जाँच ने अस्वीकार किया"
+				},
+				"ui.ownerAudit.not_screened": {
+					"before": "आपके चीफ ऑफ स्टाफ ने जाँच नहीं की",
+					"after": "आपके चीफ़ ऑफ़ स्टाफ़ ने जाँच नहीं की"
+				},
+				"ui.ownerAudit.own": {
+					"before": "आपके चीफ ऑफ स्टाफ ने भेजा",
+					"after": "आपके चीफ़ ऑफ़ स्टाफ़ ने भेजा"
+				},
+				"ui.ownerAudit.active": {
+					"before": "आपके चीफ ऑफ स्टाफ अब भी सदस्य हैं।",
+					"after": "आपके चीफ़ ऑफ़ स्टाफ़ अब भी सदस्य हैं।"
+				},
+				"ui.ownerAudit.left": {
+					"before": "आपके चीफ ऑफ स्टाफ इस वार्तालाप से निकल गए; बाद के संदेश ऑडिट अवधि से बाहर हैं।",
+					"after": "आपके चीफ़ ऑफ़ स्टाफ़ इस बातचीत से निकल गए; बाद के संदेश ऑडिट अवधि से बाहर हैं।"
+				},
+				"ui.ownerAudit.removed": {
+					"before": "आपके चीफ ऑफ स्टाफ को हटा दिया गया; बाद के संदेश ऑडिट अवधि से बाहर हैं।",
+					"after": "आपके चीफ़ ऑफ़ स्टाफ़ को हटा दिया गया; बाद के संदेश ऑडिट अवधि से बाहर हैं।"
+				},
+				"ui.ownerAudit.refresh": {
+					"before": "रीफ्रेश करें",
+					"after": "रीफ़्रेश करें"
+				}
+			}
+		},
+		{
+			"id": "I18N-hi-2",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.empty_list",
+				"ui.ownerAudit.empty_history",
+				"ui.ownerAudit.unnamed",
+				"ui.ownerAudit.left"
+			],
+			"reason": "Terminology consistency: 'वार्तालाप' (masculine, and mis-agreed with 'की गई') broke the shipped 'बातचीत' (~322 occurrences incl. ui.teamBridge.thread.not_available).",
+			"change": {
+				"ui.ownerAudit.empty_list": {
+					"before": "इस संगठन में ऑडिट की गई कोई वार्तालाप नहीं है।",
+					"after": "इस संगठन में ऑडिट की गई कोई बातचीत नहीं है।"
+				},
+				"ui.ownerAudit.empty_history": {
+					"before": "इस वार्तालाप की ऑडिट अवधि में कोई संदेश नहीं है।",
+					"after": "इस बातचीत की ऑडिट अवधि में कोई संदेश नहीं है।"
+				},
+				"ui.ownerAudit.unnamed": {
+					"before": "बिना नाम वाली वार्तालाप",
+					"after": "बिना नाम वाली बातचीत"
+				},
+				"ui.ownerAudit.left": {
+					"before": "आपके चीफ ऑफ स्टाफ इस वार्तालाप से निकल गए; बाद के संदेश ऑडिट अवधि से बाहर हैं।",
+					"after": "आपके चीफ़ ऑफ़ स्टाफ़ इस बातचीत से निकल गए; बाद के संदेश ऑडिट अवधि से बाहर हैं।"
+				}
+			}
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_hi": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b393dc8cd01c-owneraudit-hi.json",
+			"sha256": "57105c29401bcd38edcde2692620b678ecab091826147f129ad4e5845756a4bc"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117)."
+}

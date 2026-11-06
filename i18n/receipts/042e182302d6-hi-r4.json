@@ -1,0 +1,28 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "042e182302d6-hi-r4",
+  "locale": "hi",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "hi": "27716c3babc80e93f011750154c72adbb0bdf4eea60b74978186d47169d53b58",
+    "en": "2fcf17dc6b7bbddb910416e3ba82abad9ecd1f661b61abe444b0e8c2ed42dc75"
+  },
+  "context_sha256": "9681ad57324460012001e99cbc54464f2f56bee71359e65179c9393494b06db9",
+  "scope": "Round 4: the English source moved under this branch (rebase onto origin/main 7993d87c913) - main added keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus and reworded the seven reserved.browser_* rows, while the branch adds category.speech_to_text, keyboard_shortcuts_section.shortcut_capture_description, recording.inactive_claimed and recording.invalid_stored_value. All 68 keys were re-read against the English bytes now on disk; the earlier evidence is superseded because both the English and the target bytes moved.",
+  "findings": [],
+  "checks": [
+    "Current English, context and target SHA-256 recomputed from the bytes on disk; this receipt names exactly those bytes.",
+    "Key parity verified: 68 keys in the locale file against 68 in English - no missing, extra, empty or duplicate key.",
+    "JSON validity and NFC normalisation checked for every value; no manual bidi control characters.",
+    "Every message parsed with the project's own ICU parser (@formatjs/icu-messageformat-parser): all 68 parse, and every key's placeholder set equals the English one ({label} and {digit, number, ::group-off} included).",
+    "Full semantic read of both files: all 68 English messages against their translations, with the 12 changed/new keys read sentence by sentence.",
+    "Glossary and this locale's style guide read as the binding terminology source; their bytes are hashed in `references`.",
+    "hi style guide: आप address, polite imperatives, danda । for full stops, settled loan कैश kept, no nukta drift."
+  ],
+  "references": {
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  }
+}

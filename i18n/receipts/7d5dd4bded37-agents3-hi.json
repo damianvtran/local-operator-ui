@@ -1,0 +1,210 @@
+{
+	"instance": "7d5dd4bded37-agents3-hi",
+	"audit_id": "7d5dd4bded37-agents3-hi",
+	"locale": "hi",
+	"audit_date": "2026-10-30",
+	"scope": "hi / ui.agents.routing — the 12 routing sentences an installed agent card and the destination pickers show (install writes this text into the registry's single description field, so it is also what routing search embeds). Audited against the en catalogue and its context sidecar. Not one of the high-visibility groups that require a second independent pass (onboarding, errors, settings); none was performed.",
+	"scope_namespaces": [
+		"ui.agents.routing"
+	],
+	"status": "passed",
+	"verdict": "pass",
+	"key_count": 12,
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "7d5dd4bded37",
+		"model": "radient/auto",
+		"actual_model_source": "harness session-header model-switch notices: primary anthropic/claude-sonnet-5-5 failed on provider quota and fell back openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; what radient/auto resolves to upstream is not visible from this session",
+		"independent_from_translator_session": true,
+		"independence_disclosure": "by agent and session, not by model: the translation lane also ended on radient/auto through the same provider-quota fallback, disclosed rather than claimed as model independence",
+		"wrote_or_edited_values": false
+	},
+	"translator": {
+		"agent": "agents2-i18n translation lane",
+		"session": "30bd8250d874",
+		"manager_session": "3ef6295a5545",
+		"model": "radient/auto",
+		"model_source": "read from that lane's own translator.log model-switch lines; not observed live by this auditor"
+	},
+	"namespaces": {
+		"ui.agents.routing": {
+			"namespace": "ui.agents.routing",
+			"key_count": 12,
+			"status": "passed",
+			"sha256": {
+				"en": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+				"hi": "28637db8ff58f46f78d2d50ece9c9cdfcc948829af594a4ecdb86ab717a44dbd"
+			},
+			"audited_paths": {
+				"en": "src/i18n/catalogues/en/ui.agents.routing.json",
+				"context": "src/i18n/catalogues/en/ui.agents.routing.context.json",
+				"target": "hi/ui.agents.routing.json (agents2-i18n staging copy; not yet in src/i18n/catalogues/hi/)"
+			}
+		}
+	},
+	"context_sha256": "c9c0c1183cd3ddc1d22e4b4cd41d2940daeda0dfe213ff4db51c627d0a48452f",
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 4,
+		"NIT": 4
+	},
+	"verdict_source": {
+		"blocker_or_major_remaining": false,
+		"rule": "passed only if no BLOCKER or MAJOR remains"
+	},
+	"findings": [
+		{
+			"id": "R1",
+			"severity": "MINOR",
+			"namespace": "ui.agents.routing",
+			"key": "ui.agents.routing.aida",
+			"current": "…कई एजेंटों पर साथ-साथ काम शुरू करवाना…",
+			"problem": "'पर' makes the agents the surface the work is started on ('work started onto several agents'); the English says parallel work spread ACROSS agents, i.e. they are the workers. Recoverable but the card is read at a glance.",
+			"suggestion": "कई एजेंटों में साथ-साथ काम शुरू करवाना (या कई एजेंटों के बीच), rest unchanged",
+			"class": "idiom/accuracy"
+		},
+		{
+			"id": "R2",
+			"severity": "MINOR",
+			"namespace": "ui.agents.routing",
+			"key": "ui.agents.routing.ux_reviewer",
+			"current": "किसी बदलाव का उपयोगकर्ता “अनुभव” देखना",
+			"problem": "The quotes sit on अनुभव only, so उपयोगकर्ता is read as the possessor ('the user of a change') and the head noun is lost; the settled compound उपयोगकर्ता अनुभव (user experience) is the thing under review. 'देखना' also drops review to 'seeing' where every other agent key says समीक्षा.",
+			"suggestion": "किसी बदलाव के “उपयोगकर्ता अनुभव” की समीक्षा करना — rest of the sentence unchanged",
+			"class": "clarity/idiom"
+		},
+		{
+			"id": "R3",
+			"severity": "MINOR",
+			"namespace": "ui.agents.routing",
+			"key": "ui.agents.routing.copy_reviewer",
+			"current": "…दावों का आधार, और AI जैसी बनावटी बातें हटाना।",
+			"problem": "'AI-isms' becomes 'AI-like artificial things' (बातें = things/talk), losing the writing object that every other criterion in the list has; हटाना then hangs off the end of the list as if it were the whole sentence's verb. Same wording as the sibling descriptions key, so the two families agree — the defect is shared, not divergent.",
+			"suggestion": "…दावों का आधार, और AI जैसी बनावटी भाषा हटाना। (language, not 'things')",
+			"class": "accuracy"
+		},
+		{
+			"id": "R4",
+			"severity": "MINOR",
+			"namespace": "ui.agents.routing",
+			"key": "ui.agents.routing.librarian, ui.agents.routing.reviewer, ui.agents.routing.scout",
+			"current": "ढूँढना (3 occurrences: librarian, reviewer, scout)",
+			"problem": "ढ is written without its nukta; standard Hindi has ढूँढ़ना and the hi style guide makes nukta part of the spelling ('keep nukta consistently'). House-wide rather than new: the merged hi catalogue has the same spelling in ui.teamBridge and ui.agents.descriptions (2 occurrences) and no nukta form anywhere, so this should be fixed once, house-wide.",
+			"suggestion": "ढूँढ़ना in all three keys, and in the two merged occurrences in the same change",
+			"class": "orthography"
+		},
+		{
+			"id": "R5",
+			"severity": "NIT",
+			"namespace": "ui.agents.routing",
+			"key": "ui.agents.routing.coder",
+			"current": "…और बिना और फ़ैसलों के पूरा हो सके।",
+			"problem": "'बिना और फ़ैसलों के' is a calque of 'without further decisions'; Hindi wants a determiner and the oblique singular here.",
+			"suggestion": "…और बिना किसी और फ़ैसले के पूरा हो सके।",
+			"class": "idiom"
+		},
+		{
+			"id": "R6",
+			"severity": "NIT",
+			"namespace": "ui.agents.routing",
+			"key": "ui.agents.routing.tui_designer",
+			"current": "कीबोर्ड से चलने वाले फ़्लो",
+			"problem": "Flattens 'keyboard-first' to 'keyboard-driven'; the priority claim (the keyboard decides the design) is lost. Identical wording to the sibling descriptions key, so fixing one should fix both.",
+			"suggestion": "कीबोर्ड-प्रधान फ़्लो",
+			"class": "accuracy"
+		},
+		{
+			"id": "R7",
+			"severity": "NIT",
+			"namespace": "ui.agents.routing",
+			"key": "ui.agents.routing.designer",
+			"current": "…स्क्रीन या टर्मिनल UI की समीक्षा, लेआउट, स्पेसिंग, रंग या टेक्स्ट ठीक लगते हैं या नहीं…",
+			"problem": "The 'whether …' clause is dropped after a comma, so it reads as another list member beside 'the review', not the question the review asks.",
+			"suggestion": "…की समीक्षा कि लेआउट, स्पेसिंग, रंग या टेक्स्ट ठीक लगते हैं या नहीं…",
+			"class": "syntax"
+		},
+		{
+			"id": "R8",
+			"severity": "NIT",
+			"namespace": "ui.agents.routing",
+			"key": "ui.agents.routing.reviewer",
+			"current": "किसी PR, MR, diff, commit रेंज या पैच में…",
+			"problem": "The artefacts are treated three ways in one line: PR/MR/diff Latin, 'commit' Latin with a Devanagari रेंज, पैच transliterated. The context note keeps the team's own abbreviations; one policy per line would read cleaner.",
+			"suggestion": "किसी PR, MR, diff, commit range या patch में… (all Latin), or transliterate the whole set consistently",
+			"class": "terminology"
+		}
+	],
+	"mechanical": {
+		"json": "valid, 12 members, no duplicate members, member order identical to en",
+		"keys": "identical set and count (12/12); none added or dropped",
+		"icu": "no braces, plural, select or nested arguments in either file, so no CLDR categories apply",
+		"placeholders": "none in en or hi (no {name}, %s, ${...})",
+		"markup": "no Rich/markup tags, no backticks, no code spans in either file",
+		"typography": "NFC on all 12 values; no ZWJ/ZWNJ/ZWSP/BOM; no NBSP or U+202F; no space before punctuation; 13 danda = 12 finals + 1 internal; every value ends with a danda",
+		"fit": "no value materially longer than English: character ratios 0.75-1.07, terminal-cell ratios 0.67-0.93; max 323 cells (copy_reviewer) vs 354 en. Card truncates ~320 px with an ellipsis and English already overflows there, so no regression",
+		"identical_to_english": "none",
+		"repo_commands_run": [
+			{
+				"command": "node scripts/i18n/generate.mjs --check",
+				"cwd": "/Users/damian/lo-agents-i18n",
+				"result": "exit 0 — src/i18n/keys.gen.ts byte-identical to a fresh generation",
+				"caveat": "tree freshness only: this namespace is NOT in src/i18n/catalogues/hi/ yet, so the repo tooling cannot and does not validate the audited bytes; the mechanical checks above were run directly on the audited files"
+			},
+			{
+				"command": "node agents2-audit/hi/rules-probe.mjs",
+				"cwd": "/Users/damian/lo-agents-i18n",
+				"result": "derived agent=i18n-auditor instance=7d5dd4bded37-agents3-hi model=radient/auto result=clean-with-findings findings 0/0/4/4, source_sha256 and target_sha256 equal to the files on disk — the receipt binds under the repo's own ledger rules",
+				"caveat": "this validates the receipt contract, not the translation"
+			}
+		]
+	},
+	"sibling_consistency": {
+		"compared_with": "agents-i18n/hi/ui.agents.descriptions.json, sha256 16aaf542b53ebe7c1b9941c287cccaa3b692f4880b928044413acb84b3c53eb4 (byte-identical to the merged src/i18n/catalogues/hi/ui.agents.descriptions.json)",
+		"status": "agrees",
+		"agrees_on": [
+			"agent -> एजेंट",
+			"team -> टीम",
+			"run/work -> चल रहा / चल रहे",
+			"review -> समीक्षा + खामियाँ",
+			"user -> उपयोगकर्ता",
+			"Library -> लाइब्रेरी",
+			"assets -> एसेट्स",
+			"repository -> रेपो",
+			"independent -> स्वतंत्र"
+		],
+		"shared_defects": [
+			"AI-isms wording in copy_reviewer (this file R3, sibling H2)",
+			"keyboard-first flattened in tui_designer (this file R6, sibling H7)",
+			"ढूँढ without nukta (this file R4, sibling H3)"
+		],
+		"divergence": "the sibling calls the librarian 'लाइब्रेरी का व्यवस्थापक एजेंट' (administrator) while this family correctly says 'लाइब्रेरी को व्यवस्थित करना'; the sibling audit's own H1 asked for that fix, so the sibling is the side to align, not this one"
+	},
+	"artifacts": [
+		{
+			"path": "agents2-audit/hi/findings.md",
+			"sha256": "aaf8d2d3d60effeff99ad8ea7492c9ffc57e8594f28cf060a06bcbd0ee262577"
+		},
+		{
+			"path": "agents2-audit/hi/verdict.txt",
+			"sha256": "b447ac2f276c0bbf1758f15d6d3124057bdca5f559248f3d0b467a46995653ab"
+		},
+		{
+			"path": "agents2-audit/hi/auditor.log",
+			"sha256": "live session log of 7d5dd4bded37, still being appended — not hashed; it is execution output, not notes"
+		},
+		{
+			"path": "agents2-audit/hi/rules-probe.mjs",
+			"sha256": "8765b2906660a21c013fe713360ee19f5fcb400e8ab32d41b771fccf1b4ead3d"
+		},
+		{
+			"path": "agents2-audit/hi/receipt.json",
+			"sha256": "self (this file)"
+		}
+	],
+	"retention": {
+		"record_of_truth": "pending the manager: this directory is the audit's staging copy, not the artifact of record",
+		"intended_tracked_record": "i18n/audits/evidence/hi/ui.agents.routing/7d5dd4bded37-agents3-hi/record.json once the namespace lands in the tree",
+		"note": "scratch is temporary work in progress; nothing here has been committed, and no ledger row was written"
+	}
+}

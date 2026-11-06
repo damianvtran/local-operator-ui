@@ -2449,7 +2449,7 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	);
 	assert.match(
 		source,
-		/if \(isInputDisabled\) return;\s*if \(noProvider\) return;/,
+		/if \(isInputDisabled\) return false;\s*if \(noProvider\) return false;/,
 		"the form's submit path still sends when nothing can answer",
 	);
 	/*
@@ -2461,7 +2461,7 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 */
 	assert.match(
 		source,
-		/if \(noModel\) \{\s*explainRefusedSend\(\);\s*return;\s*\}/,
+		/if \(noModel\) \{\s*explainRefusedSend\(\);\s*return false;\s*\}/,
 		"the submit path still sends with no model to run on",
 	);
 	/*
@@ -2477,7 +2477,7 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 */
 	assert.match(
 		source,
-		/isInputDisabled \|\|\s*sendRefused \|\|/,
+		/refused: isInputDisabled \|\| sendRefused,/,
 		"the Send control must report the same state the key does",
 	);
 	assert.match(
@@ -2526,7 +2526,7 @@ test("the disabled Send press answers the way Enter does, and keeps the caret (U
 	);
 	assert.match(
 		source,
-		/isInputDisabled \|\|\s*sendRefused \|\|\s*\(!newMessage\.trim\(\) && attachments\.length === 0\)/,
+		/const hasPayload = newMessage\.trim\(\) !== "" \|\| attachments\.length > 0;[\s\S]*?hasPayload,\s*refused: isInputDisabled \|\| sendRefused,/,
 		"the empty box keeps its own disabling term OUTSIDE the refusal's pair: it is disabled for its own reason, so it keeps the browser's press behaviour",
 	);
 });
@@ -2554,8 +2554,8 @@ test("the composer notice carries the connect action the fold re-laid into it (F
 	);
 	assert.match(
 		source,
-		/label: "Connect a provider"/,
-		"the action names what the no-connection line offers",
+		/get label\(\)\s*\{\s*return t\("ui\.chat\.composer\.connect_provider"\);\s*\}/,
+		"the action resolves the specific connect-provider catalogue key when displayed, rather than pinning pre-i18n source syntax",
 	);
 	assert.match(
 		source,

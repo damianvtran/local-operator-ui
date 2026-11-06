@@ -1,0 +1,2 @@
+PASS
+Re-issue of b15dd1eb2014-agents-ru in the canonical per-namespace hash shape: all 14 ru values re-read and unchanged on today's bytes, 0 blocker / 0 major, 2 MINOR + 3 NIT carried verbatim (RU-01..RU-05) plus observation RU-06.

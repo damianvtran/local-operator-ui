@@ -1,0 +1,258 @@
+{
+	"audit_id": "tb1482-merge-delta-audit-2026-10-29-zh-CN",
+	"date": "2026-10-29",
+	"locale": "zh-CN",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "deec129a81282dbdacf5f14490cc94029fb1165d",
+	"tree_state": "the audited bytes are the uncommitted merge working tree (origin/main 2d13419f2257 merged into the branch at deec129a8128); conflicts were already resolved before this run and this run changed no catalogue byte",
+	"worktree": "~/local-operator-ui/.worktrees/tb-1482-merge",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"method": "LLM translator subagent per locale, reading the English catalogue, its context sidecar and the locale's own namespace for terminology; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "kimi/k3.1-pro",
+			"model_provenance": "Harness preamble for this session read 'Model: anthropic/claude-opus-5-5'. Three sequential provider-quota fallbacks were then announced in-session (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro; reason each time 'provider failure: quota'), and kimi/k3.1-pro is the last model the harness announced, so that is the name recorded here rather than a guess. `lop config list` on this host still shows hosting=anthropic, model_name=claude-sonnet-5-5 as the configured default: the fallback chain, not the config, decided what executed these turns. No further switch notice was seen before these receipts were written, and the judgement here spans the whole chain.",
+			"date": "2026-10-29",
+			"result": "clean-with-findings",
+			"instance": "tb1482mg-zh-cn-6eeefd82",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 3
+			},
+			"receipt": "i18n/receipts/tb1482mg-zh-cn-6eeefd82.json",
+			"receipt_sha256": "822159532f47d31e55a3cc3fd666eb9a2ccd3eeb19690f23c8b2c7078c4bb3b8",
+			"scope": "Whole namespace: all 30 keys of ui.ownerAudit, read against the English source and its context sidecar in this merge's bytes."
+		}
+	],
+	"independence": "Independent auditor: agent role i18n-auditor, a different agent from the translator (i18n-translator, per the translation records read here). None of the 31 audited strings was authored by this run. Five of them were FIXED by this run after the audit recorded them, at the operator's direction: es ui.ownerAudit.read_only (plural agreement), hi ui.ownerAudit.viewers_label and ui.ownerAudit.disclosure (label form and legal register), vi and zh-CN ui.teamBridge.thread.not_available (open vs access). Each fix is recorded in resolved_findings with before and after text, and every sha256 in this receipt names the POST-fix bytes now in the tree, so the receipt audits what ships rather than what preceded the fix. The ledger rows were written by scripts/i18n/ledger-assemble.mjs, never by hand. Every sha256 was recomputed from the files in this worktree.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.ownerAudit.json",
+			"sha256": "31b220b56fb05d78dd2edd399fee6ca8c2c7806c2c83cc24ceebbe7bddee7c19"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e"
+		}
+	},
+	"register": "你 register throughout (the zh-CN guide rejects 您), matching the neighbouring zh-CN ui.teamBridge strings ('打个招呼吧'). '审计' is the locale's term for the audit; '审计时段' renders the audit window. '首席助理' is the product term, identical in title, agent and own. No space is inserted between Chinese and any Latin run - there is none in these strings.",
+	"audited": {
+		"ui.ownerAudit.title": {
+			"en": "Your chief of staff’s messages",
+			"target": "你的首席助理的消息",
+			"verdict": "PASS. '你的首席助理的消息' names the section with the established product term; identical to ui.ownerAudit.agent."
+		},
+		"ui.ownerAudit.read_only": {
+			"en": "Read-only history. Sending, reactions and editing are unavailable.",
+			"target": "只读历史记录。无法发送、回应或编辑。",
+			"verdict": "PASS. '只读历史记录。无法发送、回应或编辑。' - read-only stated, all three affordances named (回应 for reactions)."
+		},
+		"ui.ownerAudit.loading": {
+			"en": "Loading audited messages",
+			"target": "正在加载审计消息",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.error": {
+			"en": "Audited messages could not be loaded.",
+			"target": "无法加载审计消息。",
+			"verdict": "PASS. '无法加载审计消息。' is about the read; it does not say the conversation does not exist and does not imply the agent has no conversations."
+		},
+		"ui.ownerAudit.retry": {
+			"en": "Try again",
+			"target": "重试",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.refresh": {
+			"en": "Refresh",
+			"target": "刷新",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.empty_list": {
+			"en": "No audited conversations in this organization.",
+			"target": "此组织中没有已审计的对话。",
+			"verdict": "PASS. '此组织中没有已审计的对话。' keeps the per-tenant scope; nothing about the agent being new or idle."
+		},
+		"ui.ownerAudit.empty_history": {
+			"en": "No messages in the audit window for this conversation.",
+			"target": "此对话的审计时段内没有消息。",
+			"verdict": "PASS. '此对话的审计时段内没有消息。' names the window rather than calling the conversation empty."
+		},
+		"ui.ownerAudit.unnamed": {
+			"en": "Unnamed conversation",
+			"target": "未命名对话",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.agent": {
+			"en": "Chief of staff",
+			"target": "首席助理",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.more": {
+			"en": "Load more",
+			"target": "加载更多",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.older": {
+			"en": "Load older messages",
+			"target": "加载较早的消息",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.page_cutoff": {
+			"en": "Older messages are not shown yet. Load older messages to read what came before.",
+			"target": "较早的消息尚未显示。加载较早的消息即可阅读此前的内容。",
+			"verdict": "PASS. Bounded page stated without error register; the second sentence carries '加载较早的消息', identical to ui.ownerAudit.older."
+		},
+		"ui.ownerAudit.admitted": {
+			"en": "Admitted to your chief of staff",
+			"target": "已被你的首席助理接收",
+			"verdict": "PASS. '已被你的首席助理接收' - passive verdict with the agent as the receiving party; no security-vetting sense."
+		},
+		"ui.ownerAudit.rejected": {
+			"en": "Rejected by your chief of staff’s screening",
+			"target": "已被你的首席助理的筛选拒绝",
+			"verdict": "PASS. '已被你的首席助理的筛选拒绝' names the screening (筛选); no deletion, block or malice."
+		},
+		"ui.ownerAudit.not_screened": {
+			"en": "Not screened by your chief of staff",
+			"target": "未经你的首席助理筛选",
+			"verdict": "PASS. '未经你的首席助理筛选' states that no verdict exists; not pending, not awaiting review."
+		},
+		"ui.ownerAudit.unknown_status": {
+			"en": "Status unknown",
+			"target": "状态未知",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.own": {
+			"en": "Sent by your chief of staff",
+			"target": "由你的首席助理发送",
+			"verdict": "PASS. '由你的首席助理发送' names the author, not the reader."
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"en": "Message text unavailable.",
+			"target": "消息正文不可用。",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"en": "Attachment expired; bytes are unavailable.",
+			"target": "附件已过期；内容不可用。",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"en": "Attachment present; downloading is unavailable in this view.",
+			"target": "包含附件；此视图无法下载。",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"en": "Unknown sender",
+			"target": "未知发送者",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.reveal": {
+			"en": "Show message text",
+			"target": "显示消息正文",
+			"verdict": "PASS. '显示消息正文' - reading affordance, no warning vocabulary."
+		},
+		"ui.ownerAudit.active": {
+			"en": "Your chief of staff is still a member.",
+			"target": "你的首席助理仍是成员。",
+			"verdict": "PASS. '你的首席助理仍是成员。' present fact; '成员' matches ui.teamBridge.member.count."
+		},
+		"ui.ownerAudit.left": {
+			"en": "The audit ends here. Your chief of staff left this conversation, so later messages are not in it.",
+			"target": "审计到此结束。你的首席助理已离开此对话，因此之后的消息不包含在内。",
+			"verdict": "PASS after the round-2 fix to window_unconfirmed's sibling construction; '因此之后的消息不包含在内。' leaves the container implicit, which is recorded as a NIT. Nothing implies the conversation ended or that messages were deleted."
+		},
+		"ui.ownerAudit.removed": {
+			"en": "The audit ends here. Your chief of staff was removed from this conversation, so later messages are not in it.",
+			"target": "审计到此结束。你的首席助理已被移出此对话，因此之后的消息不包含在内。",
+			"verdict": "PASS. Same shared half as ui.ownerAudit.left, as the sidecar requires; '已被移出' is passive with no blame."
+		},
+		"ui.ownerAudit.window_unconfirmed": {
+			"en": "The end of this audit is unknown. Your chief of staff’s membership in this conversation could not be confirmed.",
+			"target": "此审计在何处结束尚不明确。无法确认你的首席助理在此对话中的成员身份。",
+			"verdict": "PASS after the round-2 fix. '此审计在何处结束尚不明确。无法确认你的首席助理在此对话中的成员身份。' - the endpoint is unknown rather than a timestamp, membership unconfirmed."
+		},
+		"ui.ownerAudit.disclosure": {
+			"en": "You can read this audit because you own the chief of staff it covers. The other members are told that agent owners can audit the conversation.",
+			"target": "你可以阅读此审计，因为你是它所涵盖的首席助理的所有者。其他成员会被告知，智能体所有者可以审计此对话。",
+			"verdict": "PASS. Both required facts present ('你是它所涵盖的首席助理的所有者'; '其他成员会被告知，智能体所有者可以审计此对话。'), no exclusivity claim, no covert vocabulary. NIT on 会 recorded."
+		},
+		"ui.ownerAudit.viewers_label": {
+			"en": "Also readable by",
+			"target": "也可查看者",
+			"verdict": "PASS on every hard requirement with a NIT recorded: '也可查看者' carries 也, has no colon, no placeholder and excludes the reader, but 者 leaves the referent implicit."
+		},
+		"ui.ownerAudit.replies": {
+			"en": "Read thread replies",
+			"target": "阅读讨论串回复",
+			"verdict": "PASS. '阅读讨论串回复' - action phrase, no count; '讨论串' is this app's term for a thread (ui.teamBridge.replies.title)."
+		}
+	},
+	"checks": {
+		"placeholders": "every ui.ownerAudit sidecar entry declares placeholders {}; the teamBridge key declares {}; no target string in this delta contains { } or < >",
+		"plurals": "no ICU plural in this delta (all 31 keys are plain strings), so no locale plural category is exercised here",
+		"mechanical": "key sets equal to English in both namespaces; NFC; no bidi controls; no NBSP, double space or leading/trailing space; no Latin run in hi/ru/ur/zh-CN; no Devanagari in ur and no Arabic script in hi",
+		"terms": "product term for the chief of staff identical in title, agent and own, and consistent with the locale's ui.teamBridge ('chief.fallback', 'section.chiefs', 'thread.intro_chief'); member and archive terms in the teamBridge key match that locale's ui.teamBridge.member.count and ui.teamBridge.archive.list",
+		"sidecar": "the en context sidecar for thread.not_available was read in full: role, tone ('never accusatory'), length (two short sentences), placeholders {} and the note requiring both reasons without revealing which and forbidding any implication that the conversation does not exist - each target was checked against those four requirements individually, not against the English wording"
+	},
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.disclosure",
+			"current": "其他成员会被告知，智能体所有者可以审计此对话。",
+			"proposed": "其他成员被告知，智能体所有者可以审计此对话。",
+			"reason": "会 leans future ('will be told') where the source states a standing present fact and the other six locales render it in the present. 会被告知 is idiomatic habitual Chinese and the fact holds either way, so this is a preference; dropping 会 would track the English tense exactly."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.viewers_label",
+			"current": "也可查看者",
+			"proposed": "也可查看的成员",
+			"reason": "Satisfies every hard requirement (label, 也 for 'also', no colon, no placeholder, reader excluded) and is compact, but 者 leaves the referent implicit, so the label can be read as 'viewable items' rather than the people whose names are listed below it; it also uses 查看 where the disclosure directly above says 阅读. Recorded, not churned."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.left",
+			"current": "因此之后的消息不包含在内。",
+			"proposed": "因此之后的消息不在此审计内。",
+			"reason": "The shared second half (identical in ui.ownerAudit.removed, as the sidecar requires) leaves the container implicit where English says 'not in it' (the audit). 不包含在内 carries no antecedent binding the way a pronoun does; this is not the ru 'в нём' defect class because nothing asserts the conversation ended, so it is a clarity preference."
+		}
+	],
+	"resolved_findings": [],
+	"inherited_resolved": {
+		"note": "the round-2 receipts for this locale fixed strings in this namespace before this run; those fixes are part of the bytes audited here and were re-read, not taken on trust",
+		"source": "i18n/audits/evidence/zh-CN/ui.ownerAudit/teambridge-owner-audit-r2-*"
+	},
+	"notes": "ui.ownerAudit.viewer is retired in every catalogue; its absence was checked. The round-2 fix to window_unconfirmed (a timestamp instead of an unknown endpoint) was re-read here and holds.",
+	"limitations": [
+		"No rendered frame: this role has no browser tool and the host is source-only, so fit is judged from character counts and the sidecars' length fields (no maxCells is declared for these keys).",
+		"No second independent audit of this delta at whole-namespace scope.",
+		"Neither the translator nor this auditor is a native speaker of these locales; the judgement is documented key by key so a native reviewer can check the reasoning rather than trust a verdict."
+	],
+	"references": {
+		"previous_receipts_this_workspace": {
+			"ui.ownerAudit": "i18n/audits/evidence/zh-CN/ui.ownerAudit/teambridge-owner-audit-r2-*",
+			"ui.teamBridge": "i18n/audits/evidence/zh-CN/ui.teamBridge/tbm-notavail-merge-20261029-zh-CN",
+			"note": "their target and English hashes were re-derived here and match these bytes; this receipt supersedes neither, it re-audits the same bytes at whole-namespace scope"
+		},
+		"style_guide": "~/local-operator/i18n/style-guides/zh-CN.md",
+		"glossary": "~/local-operator/i18n/glossary.md"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/tb1482mg-zh-cn-6eeefd82.json",
+			"sha256": "822159532f47d31e55a3cc3fd666eb9a2ccd3eeb19690f23c8b2c7078c4bb3b8"
+		}
+	}
+}

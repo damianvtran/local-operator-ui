@@ -332,8 +332,15 @@ export class AgentMessagesModel {
 			// H4 must atomically bind/validate account+credential+organization+
 			// endpoint+designation before enrollment or wake. A queued generic
 			// PATCH cannot be unsent; these fences are not enrollment authority.
-			const designation =
-				sessionId && sessionIdPattern.test(sessionId) ? sessionId : "";
+			// Preserve an existing explicit designation across re-onboarding. Otherwise
+			// target only the durable CoS read supplied by the hook; never whichever
+			// task happens to be displayed. An unresolved target stays empty so the
+			// backend alone can default an unset designation to its durable Aida session.
+			const designation = this.snapshot.status?.local.session
+				? this.snapshot.status.local.session
+				: sessionId && sessionIdPattern.test(sessionId)
+					? sessionId
+					: "";
 			await this.ports.localSetting("team_bridge.session", designation);
 			if (!this.isConsentCurrent(identity, generation)) return;
 			await this.ports.localSetting("team_bridge.enabled", true);

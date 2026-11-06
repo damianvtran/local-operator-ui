@@ -1,0 +1,22 @@
+intl-messageformat renders - vi - auditor B session 94934cc4a6fd
+(repo's own intl-messageformat; Intl.ListFormat conjunction for the name list)
+
+===== vi =====
+
+--- events.owner_added_agent
+  value: {actor} đã thêm tác nhân của mình là {targets}
+  1 target : Ana đã thêm tác nhân của mình là Ana
+  3 targets: Ana đã thêm tác nhân của mình là Ana, Ben và Sana
+  owner_invite (single target, the proved case): Ana đã thêm tác nhân của mình là Ana
+
+--- events.joined
+  value: {targets} đã tham gia
+  1 target : Ana đã tham gia
+  3 targets: Ana, Ben và Sana đã tham gia
+
+--- events.unknown
+  value: Thành viên đã thay đổi
+  1 target : Thành viên đã thay đổi
+
+
+render failures for this locale: 0

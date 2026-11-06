@@ -74,7 +74,9 @@ const bundle = await build({
 		contents: `
 			export { TeamBridgePageView, TeamBridgePreviewBanner } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { TeamBridgeConversationMenu } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu";
+			export { conversationMenuSections, conversationMenuItemIds } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu-model";
 			export { notifyMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS, ownActiveAgent, agentNotifyLevel, ownAgentMenuState, withOwnAgentNotify } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-channels.mjs",
@@ -256,7 +258,30 @@ test("a preview shows the join banner and never a message body", () => {
 	assert.match(html, /You’re previewing this channel/);
 	assert.match(html, /Join to see its history and get notifications/);
 	assert.match(html, />Join</);
-	assert.match(html, /24 members/);
+	/* The header's one quiet fact is the channel's own topic when it has one
+	   (design round 1 on #1668, D2), else the plain member count, which a
+	   preview reads from the aggregate since it has no member rows. */
+	assert.match(html, /Design critiques/);
+	const untopiced = conversation({
+		discoverable: true,
+		member: false,
+		member_count: 24,
+		members: [],
+		topic: null,
+	});
+	assert.match(
+		renderToStaticMarkup(
+			createElement(
+				ui.TeamBridgePageView,
+				viewProps({
+					target: { type: "conversation", id: untopiced.id },
+					conversations: [untopiced],
+					messageState: "ready",
+				}),
+			),
+		),
+		/24 members/,
+	);
 	// The cached body and the composer are both wrong on a non-member pane.
 	assert.doesNotMatch(html, /SECRET PREVIEW BODY/);
 	assert.doesNotMatch(html, /Message this conversation/);
@@ -303,8 +328,9 @@ test("a refused join is stated above a still-available action", () => {
 test("the header menu's trigger names the control", () => {
 	const html = renderToStaticMarkup(
 		createElement(ui.TeamBridgeConversationMenu, {
+			sections: [[{ id: "notify" }]],
 			conversation: { notify: "all", muted: false },
-			onNotifyChange: () => {},
+			handlers: { onNotifyChange: () => {} },
 		}),
 	);
 	assert.match(html, /aria-label="Conversation options"/);
@@ -327,6 +353,219 @@ test("the menu renders the model's levels and toggle, inside Radix's radio group
 	assert.match(source, /notificationPreference\(conversation\)/);
 	// Story/capture seed: the open state is a prop, never a click from the test.
 	assert.match(source, /<DropdownMenu defaultOpen=\{defaultOpen\}>/);
+});
+
+/*
+ * YOUR AGENT'S WAKE LEVEL (wake-on-every-message). The menu offers it only for
+ * the reader's OWN ACTIVE agent; the checked row is the served level and never
+ * a guess; the optimistic patch moves only that agent row.
+ */
+test("the 'Wake your agent for' group is offered only for the reader's own active agent", () => {
+	const self = "acct_self";
+	const agentRow = (account, state, notify) => ({
+		account_id: account,
+		kind: "agent",
+		display_label: "Robo",
+		role: "member",
+		state,
+		...(notify ? { notify } : {}),
+	});
+	const humanRow = {
+		account_id: self,
+		kind: "human",
+		display_label: "Me",
+		role: "member",
+		state: "active",
+	};
+	const of = (members) => ({ members });
+	// Active own agent with a served level.
+	assert.deepEqual(
+		ui.ownAgentMenuState(
+			of([humanRow, agentRow(self, "active", "mention")]),
+			self,
+		),
+		{ notify: "mention" },
+	);
+	// Active own agent, older hub serving no level: nothing is checked, not a guessed "all".
+	assert.deepEqual(ui.ownAgentMenuState(of([agentRow(self, "active")]), self), {
+		notify: null,
+	});
+	// An unknown served value is not trusted either.
+	assert.deepEqual(
+		ui.ownAgentMenuState(of([agentRow(self, "active", "loud")]), self),
+		{ notify: null },
+	);
+	// Invited (answered on the Invitations screen), left, or someone else's agent: no control.
+	for (const members of [
+		[agentRow(self, "invited")],
+		[agentRow(self, "left")],
+		[agentRow(self, "removed")],
+		[agentRow("acct_other", "active", "all")],
+		[humanRow],
+	])
+		assert.equal(ui.ownAgentMenuState(of(members), self), undefined);
+	// No resolved account: no control.
+	assert.equal(
+		ui.ownAgentMenuState(of([agentRow(self, "active")]), undefined),
+		undefined,
+	);
+	// Menu order is loudest first, and every label is an agentNotify key.
+	assert.deepEqual(
+		ui.TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS.map((option) => option.value),
+		["all", "mention", "mute"],
+	);
+	assert.deepEqual(
+		ui.TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS.map((option) => option.labelKey),
+		[
+			"ui.teamBridge.agentNotify.all",
+			"ui.teamBridge.agentNotify.mention",
+			"ui.teamBridge.agentNotify.mute",
+		],
+	);
+});
+
+test("the agent-level patch moves only the reader's own active agent, in that org's row", () => {
+	const self = "acct_self";
+	const row = (id, tenant) => ({
+		id,
+		tenant_id: tenant,
+		notify: "all",
+		muted: false,
+		members: [
+			{
+				account_id: self,
+				kind: "human",
+				display_label: "Me",
+				role: "member",
+				state: "active",
+			},
+			{
+				account_id: self,
+				kind: "agent",
+				display_label: "Robo",
+				role: "member",
+				state: "active",
+				notify: "all",
+			},
+			{
+				account_id: "acct_other",
+				kind: "agent",
+				display_label: "Theirs",
+				role: "member",
+				state: "active",
+				notify: "all",
+			},
+		],
+	});
+	const page = {
+		conversations: [row("bcv_1", "tnt_1"), row("bcv_1", "tnt_2")],
+		has_more: true,
+	};
+	const next = ui.withOwnAgentNotify(
+		page,
+		{ conversationId: "bcv_1", tenantId: "tnt_1" },
+		self,
+		"mute",
+	);
+	const [hit, otherOrg] = next.conversations;
+	assert.equal(hit.members[1].notify, "mute");
+	// The reader's own banner register is a different field and does not move.
+	assert.equal(hit.notify, "all");
+	assert.equal(hit.muted, false);
+	assert.equal(hit.members[2].notify, "all");
+	assert.equal(hit.members[0].notify, undefined);
+	// Same id in another org is a different conversation.
+	assert.deepEqual(otherOrg, page.conversations[1]);
+	assert.equal(next.has_more, true);
+});
+
+test("the menu draws the agent group from the model, separately labelled, before Archive", () => {
+	const source = readFileSync(
+		`${ROOT}/src/renderer/src/features/team-bridge/team-bridge-conversation-menu.tsx`,
+		"utf8",
+	);
+	assert.match(source, /TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS\.map/);
+	// The group is the model's `agent_notify` item, not an inline guess.
+	assert.match(source, /case "agent_notify":/);
+	assert.match(
+		source,
+		/aria-label=\{t\("ui\.teamBridge\.agentNotify\.label"\)\}/,
+	);
+	// The agent group writes through its own callback, never the reader's notify.
+	assert.match(
+		source,
+		/handlers\.onAgentNotifyChange\?\.\(asTeamBridgeNotify\(next\)\)/,
+	);
+});
+
+/*
+ * ARCHIVE IS LAST, AND STAYS LAST (operator, 2026-10-29).
+ *
+ * The operator reported Archive sitting where a mis-click is easy. The menu's
+ * ORDER now lives in ONE model (`conversationMenuSections`) that the header and
+ * every rail row render, so the pin moved from the component's source to the
+ * model's output: for every viewer that may archive, Archive is the last item
+ * of the last section, after a separator from the preferences. Positional on
+ * purpose: a test that merely checked the item exists would pass again the
+ * moment someone moved it.
+ */
+test("archive is the last action in the conversation menu, after every other", () => {
+	const self = "acct_self";
+	const member = (account_id, kind = "human", state = "active") => ({
+		account_id,
+		kind,
+		display_label: kind === "agent" ? "Aida" : "Damian",
+		role: "owner",
+		state,
+		endpoint_id: kind === "agent" ? "bep_aida" : undefined,
+	});
+	const wiring = {
+		viewMembers: true,
+		addMembers: true,
+		join: true,
+		notify: true,
+		agentNotify: true,
+		ownAgent: true,
+		leave: true,
+		archive: true,
+	};
+	for (const members of [
+		[member(self)],
+		[member(self), member(self, "agent")],
+	]) {
+		const sections = ui.conversationMenuSections({
+			conversation: conversation({
+				members,
+				can_administer: true,
+				notify: "all",
+			}),
+			selfAccountId: self,
+			agentNotifyEnabled: true,
+			archivable: true,
+			wiring,
+		});
+		const ids = sections.flat().map((item) => item.id);
+		assert.equal(ids.at(-1), "archive", ids.join(","));
+		const last = sections.at(-1);
+		assert.ok(
+			!sections
+				.slice(0, -1)
+				.flat()
+				.some((item) => item.id === "archive"),
+		);
+		// A separator (a section boundary) sits between the preferences and it.
+		const notifySection = sections.findIndex((section) =>
+			section.some((item) => item.id === "notify"),
+		);
+		assert.ok(notifySection >= 0 && sections.indexOf(last) > notifySection);
+	}
+	// And the renderer draws sections in order with nothing appended after them.
+	const source = readFileSync(
+		`${ROOT}/src/renderer/src/features/team-bridge/team-bridge-conversation-menu.tsx`,
+		"utf8",
+	);
+	assert.match(source, /sections\.map\(\(section, index\)/);
+	assert.match(source, /index > 0 && <DropdownMenuSeparator \/>/);
 });
 
 test("the notify options restore both cached pages when the write is refused", async () => {

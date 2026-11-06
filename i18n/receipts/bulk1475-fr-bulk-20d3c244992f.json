@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "locale": "fr",
+  "namespace": "ui.notifications.bulk",
+  "pr": 1475,
+  "date": "2026-10-28",
+  "head": "2876a8d98e8d52e55d163e6c94651f598f021a1e",
+  "instance": "bulk1475-fr-bulk-20d3c244992f",
+  "auditor": {
+    "agent": "independent-translation-auditor",
+    "role": "coder on team lopdev; independent of translator",
+    "model": "kimi/k3.1-pro",
+    "model_note": "Session began on anthropic/claude-opus-5-5; provider quota fallback served anthropic/claude-sonnet-5-5, openai/gpt-6-astra, then kimi/k3.1-pro. Final semantic audit and receipts use kimi/k3.1-pro.",
+    "instance": "bulk1475-fr-bulk-20d3c244992f"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "FR-B1",
+      "severity": "MINOR",
+      "key": "ui.notifications.bulk.asks_hint",
+      "issue": "Uses a normal space before the colon; the binding fr style guide requires U+202F.",
+      "disposition": "batch copy punctuation remediation"
+    },
+    {
+      "id": "FR-B2",
+      "severity": "MINOR",
+      "key": "ui.notifications.bulk.dismiss_all",
+      "issue": "«Tout masquer» and «Masquer» diverge from the established notification dismiss action «Ignorer» (ui.notifications.row.dismiss and ui.notifications.select.dismiss).",
+      "disposition": "batch action terminology remediation"
+    },
+    {
+      "id": "FR-B3",
+      "severity": "NIT",
+      "key": "ui.notifications.bulk.confirm_title",
+      "issue": "Plural question marks use a normal space rather than the style guide’s U+202F.",
+      "disposition": "batch copy punctuation remediation"
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "translator_provenance": {
+    "agent": "prior coder on team lopdev",
+    "model": "anthropic/claude-opus-5-5",
+    "source": "Delegation brief only; no pre-existing scoped receipt or ledger row independently establishes the model.",
+    "commits": [
+      "16d48a25c608aa22a1b965c879c067df7bb1b206",
+      "b565c9c93a (short SHA observed in git log)",
+      "35edec5d428ef1c4a5055534e782d6492db65bcd"
+    ]
+  },
+  "scope": "All 12 fr/ui.notifications.bulk messages read against English, context, core glossary, fr style guide and established notification action labels. No catalogue bytes edited.",
+  "sha256": {
+    "en": "d13b1f95be0829e6cff643cbc86be13872bea0ddc8751d442227e011689a1c2c",
+    "fr": "6563969128cb6629fc1acb95f39c0e111eb29d441cc73148051ecb477228edd4",
+    "en_context": "1bb8b6f0e191a80618bf34c74c43e35511b46f2db9724ab17159af3746570277"
+  },
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.notifications.bulk.json",
+    "target": "src/i18n/catalogues/fr/ui.notifications.bulk.json",
+    "context": "src/i18n/catalogues/en/ui.notifications.bulk.context.json"
+  },
+  "guidance": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    }
+  },
+  "evidence": {
+    "semantic_review": "native terminology, tone, technical terms, All/Undo/dismiss consistency and frozen-selection context reviewed per key",
+    "mechanical": {
+      "messages": 105,
+      "namespaces": 12,
+      "result": "PASS: exact key sets, ICU argument parity, valid target CLDR categories including other, IntlMessageFormat renders for 0/1/2/4/5/21/1000000/1500000, NFC, no manual bidi controls; ICU-only pseudo expansion preserved syntax/placeholders",
+      "artifact": "scratchpad bulk-i18n-mechanical.json (execution evidence, not a portable receipt dependency)"
+    },
+    "repository_tests": {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/format.test.mjs scripts/i18n/catalogue-locale.test.mjs scripts/i18n/ur-activation.test.mjs",
+      "result": "62 passed, 0 failed"
+    },
+    "limitations": "Catalogue audit only; no rendered-fit or visual RTL frame claimed. Pseudo localization was an ICU-preserving expansion analysis, not a browser layout test."
+  }
+}

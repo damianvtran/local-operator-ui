@@ -26,5 +26,10 @@
 	"ui.chat.asks.settled_heading": "طے شدہ",
 	"ui.chat.asks.close_asks": "سوالات بند کریں",
 	"ui.chat.asks.all_asks": "تمام سوالات",
-	"ui.chat.asks.conversation_asks": "اس گفتگو کے سوالات"
+	"ui.chat.asks.conversation_asks": "اس گفتگو کے سوالات",
+	"ui.chat.asks.status.withdrawn": "واپس لیا گیا — ایجنٹ کو اب جواب کی ضرورت نہیں",
+	"ui.chat.asks.status.withdrawn_label": "واپس لیا گیا",
+	"ui.chat.asks.outstanding_count": "{count, plural, =1 {{count_display} سوال} other {{count_display} سوالات}}",
+	"ui.chat.asks.outstanding_aria": "{label} زیر التوا۔ ایجنٹ آپ کے جواب پر رکا ہوا نہیں ہے۔",
+	"ui.chat.asks.answer_aria": "آپ کا جواب اس سوال پر: {question}"
 }

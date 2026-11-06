@@ -1,0 +1,5 @@
+{
+	"ui.notifications.bulk_updates.read": "{count, plural, one {Marcar # actualización como leída} other {Marcar # actualizaciones como leídas}}",
+	"ui.notifications.bulk_updates.unread": "{count, plural, one {Marcar # actualización como no leída} other {Marcar # actualizaciones como no leídas}}",
+	"ui.notifications.bulk_updates.new_items": "Los elementos nuevos desde que hiciste la selección no están incluidos."
+}

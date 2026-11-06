@@ -48,5 +48,22 @@
 	"ui.agents.detail.tools.empty": "अभी कोई टूल नहीं। नीचे एक जोड़ें, या सभी टूल चालू करें।",
 	"ui.agents.detail.tools.every_tool_aria": "इस एजेंट को हर टूल दें",
 	"ui.agents.detail.tools.may_use_any": "यह एजेंट सत्र में उपलब्ध हर टूल इस्तेमाल कर सकता है।",
-	"ui.agents.detail.tools.placeholder": "टूल का नाम"
+	"ui.agents.detail.tools.placeholder": "टूल का नाम",
+	"ui.agents.detail.origin.created_locally": "इसे इसी कंप्यूटर पर बनाया गया था।",
+	"ui.agents.detail.tools.remove_aria": "{tool} को हटाएँ",
+	"ui.agents.detail.tools.add_label": "टूल जोड़ें",
+	"ui.agents.detail.field.when_to_use": "इस एजेंट का इस्तेमाल कब करें",
+	"ui.agents.detail.field.when_to_use_hint": "एक वाक्य, जिसे पढ़कर मॉडल तय करता है कि यह एजेंट कब सही रहेगा।",
+	"ui.agents.detail.field.instructions_hint": "एजेंट को क्या करने को कहा गया है। यही एजेंट का पूरा व्यवहार है।",
+	"ui.agents.detail.section.delegation_hint": "यह एजेंट उप-एजेंटों को काम सौंप सकता है या नहीं, और किस प्रयास श्रेणी पर चलता है।",
+	"ui.agents.detail.field.effort_loading": "प्रयास श्रेणियाँ लोड हो रही हैं",
+	"ui.agents.detail.field.effort_helper": "श्रेणियाँ बैकएंड की उप-एजेंट मॉडल सेटिंग्स से आती हैं।",
+	"ui.agents.detail.field.effort_inherit_hint": "सत्र का अपना प्रयास इस्तेमाल करें",
+	"ui.agents.detail.field.effort_configured_hint": "सेटिंग्स में कॉन्फ़िगर की गई श्रेणी",
+	"ui.agents.detail.field.how_it_works": "दूसरों के साथ यह कैसे काम करता है",
+	"ui.agents.detail.empty.description": "अभी कोई विवरण नहीं — एक जोड़ें, ताकि मॉडल जान सके कि इस एजेंट को कब चुनना है।",
+	"ui.agents.detail.empty.instructions": "अभी कोई निर्देश नहीं।",
+	"ui.agents.detail.action.create_copy": "यह कॉपी बनाएँ",
+	"ui.agents.detail.action.creating": "बनाया जा रहा है…",
+	"ui.agents.detail.action.discard_new_agent": "यह नया एजेंट बनाना छोड़ दें?"
 }

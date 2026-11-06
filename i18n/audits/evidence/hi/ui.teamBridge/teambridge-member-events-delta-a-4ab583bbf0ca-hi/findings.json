@@ -1,0 +1,10 @@
+[
+	{
+		"id": "HI-D1",
+		"severity": "major",
+		"key": "ui.teamBridge.events.others",
+		"current": "{count, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}",
+		"proposed": "revert to the invariant tail {count, plural, one {# अन्य} other {# अन्य}} unless the five postpositional event lines are restructured",
+		"reason": "The new head noun is nominative, but five of the eleven event sentences place {targets} before a postposition (invited/removed/consented «को», declined/withdrawn «के लिए»), so the real truncated render is «Dana ने Ava, Ben, और 3 अन्य लोग के लिए आमंत्रण अस्वीकार कर दिया» where Hindi requires लोगों. The delta escalated a tolerant bare «अन्य» into a wrong case ending on a plural noun; adding the head noun needs either an oblique tail (which then breaks the nominative joined/left lines) or a restructure of the five postpositional lines."
+	}
+]

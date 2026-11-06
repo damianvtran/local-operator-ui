@@ -1,0 +1,395 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-source-first-translation-audit",
+ "date": "2026-10-25",
+ "locale": "hi",
+ "namespace": "ui.onboarding.tour",
+ "instance": "hi-onboarding-tour-e38c1c237313",
+ "instance_basis": "12-hex prefix of the sha256 of hi's ui.onboarding.tour catalogue at the audited candidate; the instance names the exact target bytes this run read.",
+ "status": "changes_requested",
+ "source": {
+  "repo": "damianvtran/local-operator-ui",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-onboarding",
+  "source_head": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+  "source_head_provenance": "declared by the delegating manager; not re-derived in this run (the run's resource hold forbids git commands).",
+  "en_path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+  "context_path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+  "target_path": "src/i18n/catalogues/hi/ui.onboarding.tour.json",
+  "target_status": "uncommitted working-tree candidate (manager-declared). This receipt does not claim the candidate is, or is not, in the source commit: no git operation was run to place it."
+ },
+ "sha256": {
+  "en": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+  "hi": "e38c1c23731374b3838a4bab113be94a7e6187d8536cbc237dba06c3fd69c033"
+ },
+ "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+ "bytes": {
+  "en": 20065,
+  "context": 61441,
+  "hi": 38907
+ },
+ "keys": 123,
+ "translator": {
+  "agent": "translator",
+  "session": "14d8806aa603",
+  "model": "radient/auto",
+  "provenance": "session and model declared by the delegating manager; this auditor did not observe the translator run."
+ },
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "7f5e35dd3eb0",
+  "model": "radient/auto",
+  "actual_model_source": "harness session model (system prompt: Model: radient/auto); no fallback model was used",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independence_basis": "Distinct session 7f5e35dd3eb0 from the translator session 14d8806aa603; this run authored no catalogue value, edited no catalogue, ledger, generated or code file, and read the target only from the worktree bytes. It wrote this receipt only."
+ },
+ "scope": "Full namespace: every one of the 123 English values, its 123 context sidecar entries and the 123 Hindi values, read side by side; the composed tour bodies (tour-copy.ts run order) and the live app labels the copy quotes or describes.",
+ "checks": [
+  {
+   "check": "sha256 of en / context / hi",
+   "command": "python hashlib.sha256 over the three files",
+   "actual": "en 81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976 (20065 B); context 7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906 (61441 B); hi e38c1c23731374b3838a4bab113be94a7e6187d8536cbc237dba06c3fd69c033 (38907 B)",
+   "result": "PASS - all three equal the hashes declared for this audit"
+  },
+  {
+   "check": "key set, order, duplicates",
+   "command": "json.load with duplicate-member hook on all three files",
+   "actual": "123/123/123 keys; no duplicate members; key order identical in en, context and hi; no en-only, hi-only or context-only key",
+   "result": "PASS"
+  },
+  {
+   "check": "ICU arguments / plural / select / markup",
+   "command": "regex scan {..}|<..>|#|%s|${..} over en and hi",
+   "actual": "0 hits in en, 0 hits in hi; every value is a plain string",
+   "result": "PASS - source carries no arguments or CLDR plural/select categories, so locale category coverage is N/A (not skipped: absent in source)"
+  },
+  {
+   "check": "placeholder and code-token survival",
+   "command": "token scan plus per-key comparison",
+   "actual": "no {placeholder}, no ICU branch, no <tag>; Cmd/Ctrl+K retained byte-identical in canvas_documents_view.body.3; the '#' / '@' / ',' / '>' prefixes are code spans from tour-copy.ts, not copy, and no Hindi value contains '#'",
+   "result": "PASS"
+  },
+  {
+   "check": "NFC, invisible characters, whitespace",
+   "command": "unicodedata.normalize('NFC') and category scan",
+   "actual": "0 non-NFC values in en, context or hi; no NBSP, ZWJ or ZWNJ; no double spaces in hi; leading/trailing whitespace identical en-vs-hi on all 123 keys, including the 8 fragment keys whose leading space is structure",
+   "result": "PASS"
+  },
+  {
+   "check": "namespace completeness against the tour",
+   "command": "37 ids parsed from tour-steps.ts in file order; title notes parsed from the context sidecar",
+   "actual": "37 steps; step numbers 1..37 unique and in the same file order; every 'Step id:' matches its title key prefix; all 123 keys belong to a step or the shared action.* group; 0 uncovered keys",
+   "result": "PASS"
+  },
+  {
+   "check": "joined shortcut prose",
+   "command": "concatenated the exact run order in tour-copy.ts with paletteDoorLabel() values for Mac and non-Mac",
+   "actual": "hi step 7 renders: '... कहीं से भी [⌘P] Mac पर, और [Ctrl+P] Windows या Linux पर दबाकर खोल सकते हैं ...' and '... शुरू करें: [#] चैट के लिए, [@] एजेंट और टीमों के लिए, [,] सेटिंग्स के लिए, और [>] कमांड और पेजों के लिए।'; second paragraph renders both doors [⌘K]/[Ctrl+K] and [⌘⇧P]/[Ctrl+Shift+P] and ends 'आप साइडबार में “खोजें” पर क्लिक करके भी इसे खोल सकते हैं।'",
+   "result": "PASS - the '#' prefix leads to chats (matching the English 'for chats'), not to files; three distinct doors, no duplicated or invented chord, no omitted action"
+  },
+  {
+   "check": "quoted-label parity with the app",
+   "command": "exact-value join across the 86 en and 86 hi namespace files",
+   "actual": "'View agent settings' -> एजेंट की सेटिंग्स देखें (ui.agents.dialogs); 'Create schedule' -> शेड्यूल बनाएँ (ui.schedules); 'Recommended' -> सुझाया गया; 'Search' -> खोजें (ui.shell); 'Appearance' -> दिखावट; 'Agent Hub' -> एजेंट हब; 'Canvas' -> कैनवस; 'Automatic' kept Latin as in ui.common.account Radient Automatic; 'Get' is kept Latin - no Hindi catalogue defines that control label, so the Latin quoting cannot disagree with a translated label",
+   "result": "PASS"
+  },
+  {
+   "check": "glossary and style-guide conformance",
+   "command": "read core i18n/glossary.md (§1 product names, §2 core terminology) and i18n/style-guides/hi.md, then compared the 123 values",
+   "actual": "आप address throughout, 0 तुम/तू forms, 0 '!', 0 'कृपया' padding; danda for full stops in prose, '?' as-is; curly “ ” quotes for quoted prose and labels; nukta kept (फ़/ज़/ड़); Latin kept for Local Operator, Radient, AI, PDF, PNG, JPG, Excel, Word, CSV, HTML, markdown, mermaid, iframe, macOS/Windows/Linux words (Mac/Windows/Linux), GitHub Issues, Cmd/Ctrl+K; glossary terms schedule->शेड्यूल, team->टीम, device->डिवाइस, prompt->प्रॉम्प्ट, model->मॉडल, agent->एजेंट, tool->टूल, skill n/a, workspace->कार्यक्षेत्र (one exception recorded as T3)",
+   "result": "PASS with findings (see T2, T3, T4)"
+  },
+  {
+   "check": "width budget",
+   "command": "cell count (combining marks weighted 0) for the 51 keys whose sidecar states a 1.5x budget",
+   "actual": "0 of 51 exceed 1.5x; highest ratio 1.08 (welcome.title); hi totals 9218 cells against en 13562",
+   "result": "PASS as a text metric only - not a rendered measurement"
+  },
+  {
+   "check": "register and idiom sweep",
+   "command": "regex inventory of sentence-final imperatives and second-person forms",
+   "actual": "22 values end in a -ें polite imperative; 3 -इए variants found (T4); no तुम/तू; no T/V split found beyond T4",
+   "result": "PASS with finding T4"
+  }
+ ],
+ "findings": [
+  {
+   "id": "T1",
+   "severity": "major",
+   "dimension": "accuracy + glossary consistency",
+   "keys": [
+    "ui.onboarding.tour.welcome.body.1",
+    "ui.onboarding.tour.welcome.list.1.item.6",
+    "ui.onboarding.tour.schedules_overview.title",
+    "ui.onboarding.tour.schedules_overview.body.1"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.welcome.body.1",
+     "current": "Local Operator एक AI एजेंट प्लेटफ़ॉर्म है जहाँ आप सक्रिय AI एजेंट की एक टीम बना सकते हैं जो आपका साथ दे और आपका रोज़ का बोझ हल्का करने में मदद करे।",
+     "proposed": "Local Operator एक AI एजेंट प्लेटफ़ॉर्म है जहाँ आप खुद पहल करने वाले AI एजेंट की एक टीम बना सकते हैं जो आपका साथ दे और आपका रोज़ का बोझ हल्का करने में मदद करे।"
+    },
+    {
+     "key": "ui.onboarding.tour.welcome.list.1.item.6",
+     "current": "सक्रिय एजेंट के लिए शेड्यूल",
+     "proposed": "पहल करने वाले एजेंट के लिए शेड्यूल"
+    },
+    {
+     "key": "ui.onboarding.tour.schedules_overview.title",
+     "current": "शेड्यूल वाले सक्रिय एजेंट",
+     "proposed": "शेड्यूल वाले पहल करने वाले एजेंट"
+    },
+    {
+     "key": "ui.onboarding.tour.schedules_overview.body.1",
+     "current": "... इससे वे सिर्फ़ जवाब देने वाले बॉट से आगे बढ़कर सक्रिय एजेंट बन जाते हैं ...",
+     "proposed": "... इससे वे सिर्फ़ जवाब देने वाले बॉट से आगे बढ़कर खुद पहल करने वाले एजेंट बन जाते हैं ..."
+    }
+   ],
+   "reason": "'proactive' is narrowed to 'सक्रिय', which is this catalogue set's established rendering of 'Active' (ui.schedules.schedule_form_dialog.active, ui.projects.project_model.active and ui.chat.pickers.info_model.active all read सक्रिय) and loses the self-starting claim the sentence contrasts with 'reactive'; the app already renders 'Proactive' as पहल करने वाला (ui.agents.refusals.class.label.proactive), so पहल करने वाले keeps one English term to one Hindi term."
+  },
+  {
+   "id": "T2",
+   "severity": "minor",
+   "dimension": "glossary consistency (same feature named three ways)",
+   "keys": [
+    "ui.onboarding.tour.action.close",
+    "ui.onboarding.tour.tour_complete.title",
+    "ui.onboarding.tour.welcome.body.3"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.action.close",
+     "current": "टूर बंद करें",
+     "proposed": "परिचय बंद करें"
+    },
+    {
+     "key": "ui.onboarding.tour.tour_complete.title",
+     "current": "टूर पूरा हुआ",
+     "proposed": "परिचय पूरा हुआ"
+    },
+    {
+     "key": "ui.onboarding.tour.welcome.body.3",
+     "current": "इस वॉकथ्रू में हम ये चीज़ें देखेंगे:",
+     "proposed": "इस परिचय में हम ये चीज़ें देखेंगे:"
+    }
+   ],
+   "reason": "The same tour the user launches from Settings is called परिचय there ('ऐप का परिचय', 'ऐप का परिचय देखें', and the description's 'ऐप का शुरुआती परिचय'), while this namespace names it टूर in two strings and वॉकथ्रू in a third; pick one term (परिचय is the shipped one) or record the deviation in the hi guide and align Settings in its own wave."
+  },
+  {
+   "id": "T3",
+   "severity": "minor",
+   "dimension": "glossary consistency",
+   "keys": [
+    "ui.onboarding.tour.canvas_open_button.body.1"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.canvas_open_button.body.1",
+     "current": "कैनवस खोलने के लिए यहाँ क्लिक करें — फ़ाइलों और गतिशील विज़ुअलाइज़ेशन के लिए एक जगह, जहाँ आप अपने एजेंट के साथ ज़्यादा लचीले ढंग से काम कर सकते हैं, योजना बना सकते हैं और उनसे जुड़ सकते हैं।",
+     "proposed": "कैनवस खोलने के लिए यहाँ क्लिक करें — फ़ाइलों और गतिशील विज़ुअलाइज़ेशन के लिए एक कार्यक्षेत्र, जहाँ आप अपने एजेंट के साथ ज़्यादा लचीले ढंग से काम कर सकते हैं, योजना बना सकते हैं और उनसे जुड़ सकते हैं।"
+    }
+   ],
+   "reason": "The English noun here is the same one the glossary row and the hi style guide settle as कार्यक्षेत्र, and the other four occurrences in this namespace (canvas_feature.body.1, canvas_feature.title, canvas_files_view.body.1, welcome.list.1.item.3) use कार्यक्षेत्र; 'एक जगह' ('a place') is both drift and a weaker claim."
+  },
+  {
+   "id": "T4",
+   "severity": "minor",
+   "dimension": "register / style-guide conformance",
+   "keys": [
+    "ui.onboarding.tour.attachments.body.4",
+    "ui.onboarding.tour.chat_input.list.1.item.1",
+    "ui.onboarding.tour.chat_input.list.1.item.2"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.attachments.body.4",
+     "current": "... अपने एजेंट से उसे कोड करने को कहिए।",
+     "proposed": "... अपने एजेंट से उसे कोड करने को कहें।"
+    },
+    {
+     "key": "ui.onboarding.tour.chat_input.list.1.item.1",
+     "current": "“मेरे Documents फ़ोल्डर में कनाडा के सभी बड़े शहरों वाली स्प्रेडशीट बनाइए।”",
+     "proposed": "“मेरे Documents फ़ोल्डर में कनाडा के सभी बड़े शहरों वाली स्प्रेडशीट बनाएँ।”"
+    },
+    {
+     "key": "ui.onboarding.tour.chat_input.list.1.item.2",
+     "current": "“AI पर ताज़ा ख़बरें वेब पर खोजिए और एक विस्तृत रिपोर्ट बनाइए।”",
+     "proposed": "“AI पर ताज़ा ख़बरें वेब पर खोजें और एक विस्तृत रिपोर्ट बनाएँ।”"
+    }
+   ],
+   "reason": "The hi style guide pins the polite imperative in -ें (सहेजें, हटाएँ, रद्द करें) and the rest of this namespace uses it (करें, चुनें, दबाएँ, बनाएँ, कहें, देखें); the three -इए forms sit inside the same step (body.2 already says कहें) and inside the same quoted three-item list (item.3 already ends करें), so the mix is visible on one screen."
+  },
+  {
+   "id": "T5",
+   "severity": "minor",
+   "dimension": "grammar / agreement",
+   "keys": [
+    "ui.onboarding.tour.canvas_files_view.body.1"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.canvas_files_view.body.1",
+     "current": "फ़ाइलें व्यू से आप अपने एजेंट के बनाई फ़ाइलें या अपनी मौजूदा बातचीत से जुड़ी फ़ाइलें देख और खोल सकते हैं।",
+     "proposed": "फ़ाइलें व्यू से आप अपने एजेंट द्वारा बनाई गई फ़ाइलें या अपनी मौजूदा बातचीत से जुड़ी फ़ाइलें देख और खोल सकते हैं।"
+    }
+   ],
+   "reason": "'एजेंट के बनाई फ़ाइलें' attaches a masculine possessive to a feminine participle without the standard passive frame; 'एजेंट द्वारा बनाई गई' is the grammatical form a native reader expects."
+  },
+  {
+   "id": "T6",
+   "severity": "minor",
+   "dimension": "accuracy (UI instruction)",
+   "keys": [
+    "ui.onboarding.tour.agent_list.body.2"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.agent_list.body.2",
+     "current": "... टूलबार के ऊपर वाला एजेंट बनाने का बटन इस्तेमाल करें।",
+     "proposed": "... टूलबार में सबसे ऊपर वाला एजेंट बनाने का बटन इस्तेमाल करें।"
+    }
+   ],
+   "reason": "The English says the button is at the top of the toolbar; 'टूलबार के ऊपर वाला' reads 'the one above the toolbar', which can point a user following the spotlight to the wrong place."
+  },
+  {
+   "id": "T7",
+   "severity": "minor",
+   "dimension": "accuracy (scope of 'full')",
+   "keys": [
+    "ui.onboarding.tour.canvas_feature.body.2"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.canvas_feature.body.2",
+     "current": "... वह पूरे markdown व्यूअर में रेंडर होगी, जिसमें कोड ब्लॉक, टेबल, mermaid डायग्राम और बहुत कुछ समर्थित है।",
+     "proposed": "... वह पूर्ण markdown व्यूअर में रेंडर होगी, जिसमें कोड ब्लॉक, टेबल, mermaid डायग्राम और बहुत कुछ समर्थित है।"
+    }
+   ],
+   "reason": "'full markdown viewer' means a full-capability viewer; 'पूरे व्यूअर में' ('in the whole viewer') shifts the modifier onto the viewer as a whole."
+  },
+  {
+   "id": "T8",
+   "severity": "nit",
+   "dimension": "idiom (calque)",
+   "keys": [
+    "ui.onboarding.tour.agent_capabilities.body.2"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.agent_capabilities.body.2",
+     "current": "... कि कब उन्हें काम की लंबी यात्रा शुरू करनी है ...",
+     "proposed": "... कि कब उन्हें कई चरणों में टूल का इस्तेमाल करते हुए कोई काम पूरा करने के लिए आगे बढ़ना है ..."
+    }
+   ],
+   "reason": "'work journey' rendered as 'काम की लंबी यात्रा' is a literal travel metaphor; Hindi product prose would state the multi-step work directly."
+  },
+  {
+   "id": "T9",
+   "severity": "nit",
+   "dimension": "grammar",
+   "keys": [
+    "ui.onboarding.tour.create_schedule_dialog.body.2"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.create_schedule_dialog.body.2",
+     "current": "... जब काम चलना बंद कर दे।",
+     "proposed": "... जब काम चलना बंद हो जाए।"
+    }
+   ],
+   "reason": "'काम चलना बंद कर दे' makes the task the causer of stopping; the intransitive 'बंद हो जाए' matches the English ('should stop running')."
+  },
+  {
+   "id": "T10",
+   "severity": "nit",
+   "dimension": "idiom",
+   "keys": [
+    "ui.onboarding.tour.view_agent_settings.body.2"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.view_agent_settings.body.2",
+     "current": "... डिफ़ॉल्ट सेटिंग्स होती हैं जो ज़्यादातर मामलों में अच्छी चलती हैं ...",
+     "proposed": "... डिफ़ॉल्ट सेटिंग्स होती हैं जो ज़्यादातर मामलों में अच्छी तरह काम करती हैं ..."
+    }
+   ],
+   "reason": "'settings run well' is a calque of 'work well'; settings 'काम करती हैं' in idiomatic Hindi."
+  },
+  {
+   "id": "T11",
+   "severity": "nit",
+   "dimension": "glossary consistency (shared label)",
+   "keys": [
+    "ui.onboarding.tour.action.next"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.action.next",
+     "current": "आगे",
+     "proposed": "अगला (or record the footer form as a deliberate exception in the hi guide)"
+    }
+   ],
+   "reason": "The same English label 'Next' renders अगला in ui.mesh.mesh_approvals_tray.next and ui.chat.pickers.table_pager.next while the tour footer says आगे; a tour footer may legitimately prefer आगे, but the divergence should be decided and recorded."
+  },
+  {
+   "id": "T12",
+   "severity": "nit",
+   "dimension": "idiom (repetition)",
+   "keys": [
+    "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3"
+   ],
+   "instances": [
+    {
+     "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3",
+     "current": "... अपनी चैट, एजेंट, सेटिंग्स, पेज और कार्रवाइयाँ और बहुत कुछ पा सकें।",
+     "proposed": "... अपनी चैट, एजेंट, सेटिंग्स, पेज, कार्रवाइयाँ और बहुत कुछ पा सकें।"
+    }
+   ],
+   "reason": "Two 'और' in one list read as a stumble; the second list separator can be a comma."
+  }
+ ],
+ "findings_summary": {
+  "blocker": 0,
+  "major": 1,
+  "minor": 6,
+  "nit": 5
+ },
+ "observations": [
+  {
+   "id": "O1",
+   "kind": "INFO",
+   "text": "Harness display redaction: one English noun is replaced by a redaction marker in tool output at canvas_feature.body.1, canvas_feature.title, canvas_files_view.body.1, canvas_open_button.body.1 and welcome.list.1.item.3. It was not reconstructed from context. The core glossary row for that term carries the Hindi rendering कार्यक्षेत्र and six other locale renderings (espace de travail, espacio de trabajo, 工作区, рабочее пространство, không gian làm việc, ورک اسپیس), which is where the term's identity and the settled Hindi rendering are sourced; the target uses कार्यक्षेत्र in four of the five occurrences (T3 records the fifth)."
+  },
+  {
+   "id": "O2",
+   "kind": "INFO",
+   "text": "The '# फ़ाइलें' lead was checked and is not in the audited bytes: no Hindi value contains '#', and the prefix-# fragment is body.1.4 ' चैट के लिए, ', so the joined sentence reads '# चैट के लिए' - matching the English 'for chats'. Likewise no chord is duplicated or invented: the chords are code spans from paletteDoorLabel() (⌘P/Ctrl+P, ⌘K/Ctrl+K, ⌘⇧P/Ctrl+Shift+P) and only the connector key repeats, three times."
+  },
+  {
+   "id": "O3",
+   "kind": "INFO",
+   "text": "Context-vs-source mismatch outside the target: welcome.image.1.alt's sidecar note says the figure shows a 'message thread' while the English value says 'message bubbles'. The Hindi follows the English value ('संदेश के बबल'), which is correct for the target; the sidecar is the stale side and this receipt does not edit it."
+  },
+  {
+   "id": "O4",
+   "kind": "INFO",
+   "text": "'memory' is rendered मेमोरी where the app means the stored memory object and याद where the English is conversational recollection ('memory of the conversation'); both are consistent with existing hi usage (ui.canvas.code_memory and ui.settings.imports use मेमोरी) and no change is requested."
+  },
+  {
+   "id": "O5",
+   "kind": "INFO",
+   "text": "'Documents' is kept Latin in the quoted example prompt (chat_input.list.1.item.1). The string is example user input naming a filesystem folder, and §1 keeps paths/names as-is; the product's Documents view itself is दस्तावेज़ elsewhere. No change requested."
+  }
+ ],
+ "verdict": {
+  "namespace": "changes requested - 0 blockers, 1 major (T1 proactive->सक्रिय), 6 minors, 5 nits; structure, placeholders, key order, NFC and the joined shortcut prose are clean",
+  "overall": "changes requested: one meaning-level term collision blocks a clean round; everything else is polish. No placeholder, ICU, markup, spacing or key-integrity defect was found in 123 keys."
+ },
+ "limits": [
+  "No rendered or browser evidence: this run ran under a resource hold that forbids an app build, bundle, full suites, installs and browser launch, so overflow was assessed with a cell-count budget only (51 budgeted keys, max 1.08x English) and no pixel, line-height, conjunct-wrap or truncation claim is made. A rendered pass of the 37-step panel is still required before release.",
+  "No native-speaker human review: this audit read the core glossary and the hi style guide and is independent of the translator, but it does not substitute for native glossary/style conformance sign-off.",
+  "No git: the source head, the uncommitted candidate status and the translator session/model are manager-declared; this receipt verifies only the three file hashes, which match the declared values exactly.",
+  "N/A by source: no ICU arguments, plurals or select categories exist in this namespace, so CLDR category coverage was not applicable; hi is LTR, so no RTL check applies.",
+  "Pseudo-localization was not run (no build/CLI under the hold)."
+ ]
+}

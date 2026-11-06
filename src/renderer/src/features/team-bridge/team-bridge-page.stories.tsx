@@ -1,14 +1,20 @@
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import {
 	beginRadientAuthorityTransition,
 	radientUserKeys,
 } from "@shared/hooks/radient-account-authority";
 import { t } from "@shared/i18n";
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fireEvent, userEvent, waitFor, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	type CSSProperties,
 	type ComponentProps,
+	type FC,
+	type ReactNode,
 	useEffect,
 	useLayoutEffect,
 	useState,
@@ -23,6 +29,7 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import type { OwnerAuditConversation } from "../../../../shared/team-bridge-owner-audit-contract";
 /*
  * WHY THIS SIDE-EFFECT IMPORT IS HERE, ABOVE THE COMPONENTS. Since the page
  * mounts the shared `MessageInput`, the composer reaches
@@ -36,9 +43,13 @@ import type {
  * so the install has to happen before anything in this module renders.
  */
 import "../chat/components/story-electron-shim";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { teamBridgeComposerKey } from "@shared/store/team-bridge-composer-rows";
+import agentPortrait from "../../assets/images/storybook-avatar-portrait.jpg";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
-import { draftStorageKey } from "./team-bridge-drafts";
+import { useUiPreferencesStore } from "../../shared/store/ui-preferences-store";
+import { draftStorageKey, draftTargetKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
@@ -47,7 +58,13 @@ import {
 	draftCreateInput,
 	organizationOptions,
 } from "./team-bridge-model";
+import {
+	OwnerAuditRailView,
+	OwnerAuditSectionHeader,
+	type OwnerAuditSlot,
+} from "./team-bridge-owner-audit";
 import { TeamBridgePageView } from "./team-bridge-page";
+import { RailGroupHeader } from "./team-bridge-rail";
 import { scheduledLocalInput } from "./team-bridge-scheduling";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
 import { threadTargetFromSearch } from "./team-bridge-thread-read";
@@ -92,6 +109,64 @@ const useMacChromeSimulation = () => {
 			}
 		};
 	}, []);
+};
+
+/**
+ * THE PAGE IN THE APP'S SHELL ON ITS OWN ROUTE (the sidebar swap, operator
+ * 2026-11-03): `ChatLayout` in route mode, exactly as `app.tsx` mounts it on
+ * `/team-bridge`. The navigation passed as `sidebar` is a marker element rather
+ * than `SidebarNavigation` (which needs the whole desktop bridge) - route mode
+ * does not mount it, and a frame that showed it would be the regression. The
+ * rail is portaled into the shell's column with its Back row and foot.
+ * `collapsed` sets the user's strip preference, which route mode overrides.
+ */
+const InTheShell: FC<{
+	collapsed?: boolean;
+	/** Open the fleet asks drawer: the yield that once squeezed the column (M1). */
+	fleetDrawer?: boolean;
+	children: ReactNode;
+}> = ({ collapsed = false, fleetDrawer = false, children }) => {
+	useMacChromeSimulation();
+	/* The app writes `<html dir>` from the locale (`app.tsx`); Storybook does not,
+	   so the Urdu frame would keep the column on the LTR side without this. */
+	useDocumentDirection();
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		const before = useUiPreferencesStore.getState();
+		const restore = {
+			isSidebarCollapsed: before.isSidebarCollapsed,
+			isAskDrawerOpen: before.isAskDrawerOpen,
+			askDrawerScope: before.askDrawerScope,
+		};
+		useUiPreferencesStore.getState().setSidebarCollapsed(collapsed);
+		if (fleetDrawer)
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				askDrawerScope: "fleet",
+			});
+		setReady(true);
+		return () => useUiPreferencesStore.setState(restore);
+	}, [collapsed, fleetDrawer]);
+	if (!ready) return null;
+	return (
+		<div
+			className="relative flex h-screen flex-col overflow-hidden"
+			style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+		>
+			<ChatLayout
+				sidebar={<nav data-story-app-nav="">app navigation</nav>}
+				routeSidebar={{}}
+				content={
+					<main
+						data-glass-region="canvas-backing"
+						className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas"
+					>
+						{children}
+					</main>
+				}
+			/>
+		</div>
+	);
 };
 
 const dm: TeamBridgeConversation = {
@@ -368,6 +443,97 @@ const directoryPeople = [
 	},
 ];
 
+/**
+ * The SECOND organization's roster, for the union view's frames.
+ *
+ * Different names on purpose: the union's whole claim is that two organizations
+ * read apart under their own headers, and the reader's real switcher lists
+ * sibling organizations whose members share first names. This roster therefore
+ * carries its own chief (Juno's owner, Ben) rather than reusing the first
+ * organization's, and the reader is a member here too - so "you" appears under
+ * both headers, which is correct and must not read as a duplicated row.
+ */
+const northwindPeople = [
+	{
+		account_id: self,
+		display_label: "Damian",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_ines",
+		display_label: "Ines Rocha",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_tomas",
+		display_label: "Tomas Vidal",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		/* A chief of staff in THIS organization: the union's Chiefs section has
+		   one row per organization, not one for the account. */
+		agent: { endpoint_id: "bep_otto", name: "Otto", state: "active" },
+	},
+];
+
+/**
+ * A SECOND organization whose name is long enough to truncate in the 288px rail
+ * (design round 1, D3): "Northwind Collective" fits, so no earlier frame could
+ * show what a truncated header looks like, and a truncated name is not
+ * recoverable by sight without the header's `title`.
+ */
+const longNameOrganization: TeamBridgeOrganization = {
+	tenantId: asTeamBridgeTenantId("tnt_2"),
+	name: "Northwind Collective - Field Operations, Europe & Middle East",
+	role: "member",
+	unread: 4,
+};
+
+/**
+ * THE EVIDENCE STORIES HOLD ONE CONVERSATION, so the sections under test - the
+ * organization groups, and the audit rail after them - are ON SCREEN at the
+ * 1280x720 the frames are taken at. Nothing is hidden by a scroll: the harness
+ * browser's scroll action moves the window, and this page is `overflow: hidden`
+ * with the rail as its own scroll container, so a below-the-fold group could not
+ * be captured at all. The row set is the only thing these stories narrow; the
+ * organization fixtures, rosters and read states are the general ones.
+ */
+const compactConversations: TeamBridgeConversation[] = [];
+
+/** The roster minus the two bridge-off rows, so three organization groups fit. */
+const compactRoster = directoryPeople.slice(0, 3);
+
+/*
+ * THE AUDIT FRAMES PUT THE ROSTERS AWAY. The audit section is the last one on the
+ * rail, so at 720px every row above it is space it does not have; the audit
+ * stories therefore answer both rosters empty (never unread - that would be
+ * D4's spinner) and spend the height on the section under review. The roster
+ * states have their own frames.
+ */
+
+/** ONE row in a third organization, so the grouped rail's height is exercised. */
+const acmePeople = [
+	{
+		account_id: "acct_wren",
+		display_label: "Wren Achebe",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+];
+
+/** A third organization, named and sized like a real customer's sibling tenant. */
+const acmeOrganization: TeamBridgeOrganization = {
+	tenantId: asTeamBridgeTenantId("tnt_3"),
+	name: "Field Operations (EMEA)",
+	role: "admin",
+	unread: 0,
+};
+
 /** A DM with one of the roster's people, so that row's DM already exists. */
 const beaDm: TeamBridgeConversation = {
 	...dm,
@@ -391,11 +557,11 @@ const beaDm: TeamBridgeConversation = {
 };
 
 /**
- * The member row prints role and state in ONE sentence ("Member · Invited; not
- * active yet"), so the matcher has to look INSIDE that text rather than equal
- * it. Top-level so the regex is not rebuilt on every call.
+ * An invited member wears the quiet "Invited" pill (members dialog polish,
+ * 2026-10-30); the old "Member · Invited; not active yet" line is gone.
+ * Top-level so the regex is not rebuilt on every call.
  */
-const INVITED_NOT_ACTIVE = /Invited; not active yet/;
+const INVITED_NOT_ACTIVE = /^Invited$/;
 
 const meta = {
 	title: "Team Bridge/Page",
@@ -403,10 +569,15 @@ const meta = {
 	parameters: { layout: "fullscreen" },
 	// Storybook's root has no height of its own; the app's shell gives the page
 	// `flex-1 min-h-0`. The board supplies the same constraint so the capture
-	// shows the real composition rather than a page collapsed to its content.
+	// shows the real composition rather than a page collapsed to its content -
+	// WHICH IS WHY THIS IS A FLEX COLUMN AND NOT A BARE `h-dvh`. `flex-1` on the
+	// page is inert in a block parent, so every frame taken from here showed the
+	// page at its content height (measured 2026-10-30: 565px in a 720px frame,
+	// a 155px band of empty canvas under the composer): the board claimed the
+	// shell's constraint in the comment above and did not deliver it.
 	decorators: [
 		(Story) => (
-			<div className="h-dvh">
+			<div className="flex h-dvh flex-col">
 				<Story />
 			</div>
 		),
@@ -414,6 +585,18 @@ const meta = {
 	args: {
 		selfAccountId: self,
 		conversations: [dm, channel, group],
+		/*
+		 * THE HUB TAKES IMAGES, which is what offers the bar's attach control at
+		 * all (`canAttach`): without it the composer draws a field and a send arrow
+		 * and every frame here would photograph a control set the shipping app does
+		 * not have.
+		 */
+		attachmentCapability: {
+			enabled: true,
+			max_count: 10,
+			max_bytes: 10 * 1024 * 1024,
+			mime_types: ["image/png", "image/jpeg", "image/webp"],
+		},
 		target: { type: "conversation", id: dm.id },
 		messages,
 		organizations: [minervaOrganization, northwindOrganization],
@@ -436,6 +619,53 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PopulatedDirectMessage: Story = {};
+
+/*
+ * A STAGED CHIP, WHICH IS A HEIGHT THE BAR CANNOT REFUSE.
+ *
+ * The chip row sits ABOVE the bar and is content, so a composer holding one is
+ * taller than an empty one and that is correct (the operator's criterion 7,
+ * 2026-10-30). The frame exists because the attach control opens an OS file
+ * dialog that no capture can drive, and a review should not have to take the
+ * chip's geometry on trust: the row is seeded into the very store row the box
+ * reads its draft from, so what renders is the shipping attachment card, not a
+ * mock of it.
+ */
+export const ComposerWithAttachment: Story = {
+	decorators: [
+		(Story) => {
+			useEffect(() => {
+				/*
+				 * THE CHIP IS SET, NOT ADDED. The input store outlives a reload, so a
+				 * fixture that only appends grows a chip on every mount - measured,
+				 * six of them in one frame. Removing what the row already holds and
+				 * adding one is the whole public API this needs.
+				 */
+				const store = useConversationInputStore.getState();
+				const key = teamBridgeComposerKey(
+					self,
+					minervaOrganization.tenantId,
+					draftTargetKey({ type: "conversation", id: dm.id }),
+				);
+				for (const chip of store.inputByConversation[key]?.attachments ?? [])
+					store.removeAttachment(key, chip.id);
+				store.addAttachment(key, {
+					/*
+					 * A DATA URL, WITH THE NAME THE CARD PRINTS. A filesystem path is what
+					 * a real chip holds, but a frame cannot read one: the renderer has no
+					 * bytes behind a path it was only told about, so the card would paint
+					 * a broken thumbnail. `;name=` is where `AttachmentsPreview` reads a
+					 * chip's label from, so the frame shows the real card - thumbnail,
+					 * name, remove control - and the geometry it exists to show.
+					 */
+					id: "frame-staged-chip",
+					path: "data:image/png;name=launch-checklist.png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAQklEQVR4nO3OQQ0AIAwAsclBBP6DLFxwPJpUQOfs9ZXJB0JCQkL1QEhISKgeCAkJCdUDISEhoXogJCQkVA+EhIQeu0KTjJdXODqoAAAAAElFTkSuQmCC",
+				});
+			}, []);
+			return <Story />;
+		},
+	],
+};
 
 /*
  * The rail's Invitations entry (D5) beside the unread counts: the reader's own
@@ -465,17 +695,20 @@ export const InvitationWaiting: Story = {
 };
 
 /**
- * The row's real hover FILL, beside the borderless human and agent plates.
- * Synthetic mouse events cannot set the browser's trusted :hover state, so this
- * capture-only rule mirrors the exact production hover declaration; the frame
- * and geometry read the resulting computed background, not just a class.
+ * The row's real hover FILL, beside the round identity plates, with the
+ * overlay toolbar it reveals. Synthetic mouse events cannot set the browser's
+ * trusted :hover state, so this capture-only rule mirrors the exact production
+ * hover declarations (the inset `::before` box on `surface`, the toolbar's
+ * reveal); the frame and geometry read the resulting computed styles.
  */
 export const HoveredMessageRow: Story = {
 	decorators: [
 		(Story) => (
 			<>
 				<style>
-					{"[data-capture-hover] { background-color: var(--color-row-hover); }"}
+					{
+						"[data-capture-hover]::before { background-color: var(--color-surface); } [data-capture-hover] [data-message-toolbar] > div { opacity: 1; pointer-events: auto; }"
+					}
 				</style>
 				<Story />
 			</>
@@ -601,6 +834,68 @@ export const ChannelSelected: Story = {
 };
 
 /**
+ * THREE DAYS OF HISTORY, SCROLLED TO THE NEWEST (#1668 QA round 1 Q2, UX
+ * round 1 U1). Each day is its own sticky containing block, so exactly one
+ * day pill is stuck under the pane's top at any scroll offset - the stacked
+ * "Mor · Today · er 2" pill is the regression this frame guards. Each day is
+ * a same-sender run inside the five-minute window, so the grouped rows (one
+ * 24px line each, hover clock on one line) render too.
+ */
+const dayRun = (
+	dayOffset: number,
+	startSeq: number,
+	sender: TeamBridgeMessage["sender"],
+	bodies: string[],
+): TeamBridgeMessage[] =>
+	bodies.map((body, index) => {
+		const at = new Date();
+		at.setDate(at.getDate() - dayOffset);
+		at.setHours(10, index, 0, 0);
+		return {
+			id: `bcmsg_day${dayOffset}_${index}`,
+			conversation_id: channel.id,
+			seq: startSeq + index,
+			sender,
+			body,
+			origin: sender.kind,
+			created_at: at.toISOString(),
+		};
+	});
+const multiDayAda = {
+	account_id: "acct_agent",
+	kind: "agent",
+	display_label: "Ada's agent",
+} as const;
+const multiDaySelf = {
+	account_id: "acct_self",
+	kind: "human",
+	display_label: "Damian",
+} as const;
+export const MultiDayGroupedRuns: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [
+			...dayRun(2, 1, multiDaySelf, [
+				"Kicking off the launch checklist.",
+				"Owners are in the doc.",
+				"Ping me with blockers.",
+			]),
+			...dayRun(1, 4, multiDayAda, [
+				"Two items are still open.",
+				"The migration dry run passed.",
+				"Release notes are drafted.",
+				"Waiting on the final copy review.",
+			]),
+			...dayRun(0, 8, multiDaySelf, [
+				"Copy review is done.",
+				"Ship it after lunch.",
+				"Thanks, everyone.",
+			]),
+		],
+	},
+};
+
+/**
  * The preview state: header metadata and the join banner, never a body.
  *
  * The messages are deliberately attached to the preview conversation in this
@@ -674,6 +969,31 @@ export const ErrorState: Story = {
 	},
 };
 
+/**
+ * THE D1 PAIR (design round 1). A failed list read over rows the watcher's cache
+ * already painted: the rail keeps the rows and says the refresh is what failed.
+ * This is reachable in production - `list.isError` after any good read lands
+ * here - and the sentence used to claim the conversations could not be loaded
+ * while they sat visible underneath it.
+ */
+export const ErrorWithCachedRows: Story = {
+	args: { listState: "error" },
+};
+
+/**
+ * The list behind painted rows is being re-read. The dot names the read in
+ * `data-rail-refreshing`; it wears `ink-dim`, never the attention hue green
+ * (D2) - that hue is the unread count on the rows below it.
+ */
+export const RefreshingRows: Story = {
+	args: { refreshingRows: true },
+};
+
+/** The unread read is in flight behind painted rows - same ink, different read. */
+export const RefreshingUnread: Story = {
+	args: { refreshingUnread: true },
+};
+
 export const ThreadError: Story = {
 	args: { messageState: "error" },
 };
@@ -694,16 +1014,127 @@ export const SingleOrganization: Story = {
 	},
 };
 
+/**
+ * ONE organization with a full roster: the shipped single-organization rail, with
+ * no subheaders and no captions. The union predicate in `team-bridge-org-rosters`
+ * is `mergedView && organizations.length > 1`, so this frame must look exactly
+ * like `People` above.
+ */
+export const SingleOrganizationRoster: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		conversations: [dm, beaDm, channel, group],
+		target: { type: "conversation", id: dm.id },
+		people: directoryPeople,
+	},
+};
+
 /** Several organizations, one selected: the menu holds the others. */
 export const MultipleOrganizations: Story = {};
 
-/** The account-wide view: merged, newest first, every row labelled with its org. */
+/**
+ * THE UNION VIEW WITH ROSTERS - the operator's own shape, and the frame the
+ * design review renders.
+ *
+ * Channels, Groups and Direct messages stay flat and carry the organization on
+ * each row; People and Chiefs of staff group under one organization subheader
+ * each, because a person's row has nowhere else to say which organization it
+ * would act in. `dm` belongs to Minerva, so Minerva's own People row paints it
+ * and it must not appear again under Direct messages.
+ */
 export const AllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
-		conversations: [dm, channel, group, northwindChannel],
+		conversations: [dm, beaDm, channel, group, northwindChannel],
 		target: { type: "conversation", id: dm.id },
 		messageState: "ready",
+		directories: { tnt_1: directoryPeople, tnt_2: northwindPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/**
+ * ONE organization's roster answered empty: its own header and an honest empty
+ * line, while the other organization's rows are untouched. An organization that
+ * draws an empty line is an organization that was CHECKED.
+ */
+export const AllOrganizationsEmptyRoster: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: compactConversations,
+		target: null,
+		directories: { tnt_1: compactRoster, tnt_2: [] },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/**
+ * ONE organization's roster read failed: an inline failure and its retry under
+ * that organization's header, and the failing organization never blanks the
+ * other's rows.
+ */
+export const AllOrganizationsRosterFailed: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: compactConversations,
+		target: null,
+		directories: { tnt_1: compactRoster },
+		directoryStates: { tnt_1: "ready", tnt_2: "error" },
+		directoryErrors: {
+			tnt_2: { status: 503, message: "The directory is unavailable." },
+		},
+	},
+};
+
+/** Both rosters still in flight: each header carries its own read's spinner. */
+export const AllOrganizationsRostersLoading: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		target: { type: "conversation", id: dm.id },
+		directories: {},
+		directoryStates: { tnt_1: "loading", tnt_2: "loading" },
+	},
+};
+
+/**
+ * A LONG ORGANIZATION NAME (design round 1, D3): the subheader truncates in the
+ * 288px rail instead of wrapping, and `title` recovers the full name on hover.
+ * Flat rows keep their 11px caption, so both name treatments are in one frame.
+ */
+export const AllOrganizationsLongOrgName: Story = {
+	args: {
+		organizations: [minervaOrganization, longNameOrganization],
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		// ONE flat row and ONE roster row per organization: the long header and a
+		// flat row's 11px caption have to be in the same frame (design D3).
+		conversations: [northwindChannel],
+		target: null,
+		directories: { tnt_1: compactRoster, tnt_2: northwindPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/**
+ * Three organizations, one of them holding a single row: the rail scrolls and
+ * the subheaders stay reachable rather than the groups running out of height.
+ */
+export const ThreeOrganizations: Story = {
+	args: {
+		organizations: [
+			minervaOrganization,
+			northwindOrganization,
+			acmeOrganization,
+		],
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		target: { type: "conversation", id: dm.id },
+		directories: {
+			tnt_1: directoryPeople,
+			tnt_2: northwindPeople,
+			tnt_3: acmePeople,
+		},
+		directoryStates: { tnt_1: "ready", tnt_2: "ready", tnt_3: "ready" },
 	},
 };
 
@@ -772,6 +1203,14 @@ export const LoadingAllOrganizations: Story = {
 		target: null,
 		messages: [],
 		messageState: "idle",
+		/*
+		 * THE ROSTERS ARE PENDING TOO (design round 1, D4). Without these the
+		 * groups fell back to "ready" with zero members and claimed "No one else
+		 * has joined this organization yet." for a read that had never answered;
+		 * the code now reports `loading` for that case as well, so this story
+		 * states what production states.
+		 */
+		directoryStates: { tnt_1: "loading", tnt_2: "loading" },
 	},
 };
 
@@ -783,6 +1222,10 @@ export const EmptyAllOrganizations: Story = {
 		target: null,
 		messages: [],
 		messageState: "idle",
+		// AN ANSWERED EMPTY, not an unread roster: the two now render differently
+		// (design D4), and this story is about the create hint.
+		directories: { tnt_1: [], tnt_2: [] },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
 	},
 };
 
@@ -795,38 +1238,146 @@ export const EmptyAllOrganizations: Story = {
  * native window chrome; the production value comes from the same property.
  */
 export const FlushToTheWindowTop: Story = {
-	render: () => {
-		useMacChromeSimulation();
-		return (
-			<div
-				className="relative flex h-screen flex-col overflow-hidden"
-				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
-			>
-				<ChatLayout
-					sidebar={<div className="panel-top-pad h-full bg-surface" />}
-					content={
-						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
-							<TeamBridgePageView
-								listState="ready"
-								messageState="ready"
-								conversations={[channel, group, dm]}
-								target={{ type: "conversation", id: channel.id }}
-								messages={messages}
-								organizations={[minervaOrganization, northwindOrganization]}
-								scope={asTeamBridgeTenantId("tnt_1")}
-								totalUnread={3}
-								selfAccountId={self}
-								onTarget={() => {}}
-								onSend={() => undefined}
-								onNewChannel={() => {}}
-								onScopeChange={() => {}}
-							/>
-						</main>
-					}
-				/>
-			</div>
-		);
+	render: () => (
+		<InTheShell>
+			<TeamBridgePageView
+				listState="ready"
+				messageState="ready"
+				conversations={[channel, group, dm]}
+				target={{ type: "conversation", id: channel.id }}
+				messages={messages}
+				organizations={[minervaOrganization, northwindOrganization]}
+				scope={asTeamBridgeTenantId("tnt_1")}
+				totalUnread={3}
+				selfAccountId={self}
+				onTarget={() => {}}
+				onSend={() => undefined}
+				onNewChannel={() => {}}
+				onScopeChange={() => {}}
+			/>
+		</InTheShell>
+	),
+};
+
+/**
+ * ONE SIDEBAR (the swap's main frame): the bridge rail fills the app's left
+ * column, with Back on top and the account foot below, and no second column.
+ */
+export const InShellChannelSelected: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: channel.id,
+		})),
 	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * The user's collapsed-strip preference on this route: the column still docks,
+ * because the rail has no 56px form; the preference is kept for the way back.
+ */
+export const InShellCollapsedPreference: Story = {
+	...InShellChannelSelected,
+	render: (args) => (
+		<InTheShell collapsed>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * The fleet asks drawer open (round 1, M1/Q2): at ~936-1139px the nav would
+ * yield to its 56px strip, but the bridge column has no strip form and stays
+ * docked. Capture at 1000px wide.
+ */
+export const InShellFleetDrawerOpen: Story = {
+	...InShellChannelSelected,
+	render: (args) => (
+		<InTheShell fleetDrawer>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * ONE INLINE INSET, BOTH SIDES (operator, 2026-11-04): every trailing mark the
+ * rail can draw at rest - the organization chevron and "+", a count beside a
+ * mute bell, a mute bell alone, the Invitations count, the audit list - in the
+ * docked column, so the capture shows each band's leading mark on the 16px line
+ * and each row's last mark ending 16px from the column's end edge.
+ * `scripts/team-bridge-sidebar-inset.test.mjs` pins the classes behind it.
+ */
+export const InShellSidebarInset: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		totalUnread: minervaOrganization.unread,
+		conversations: [
+			{
+				...channel,
+				members: [
+					...channel.members,
+					{
+						account_id: self,
+						kind: "agent",
+						display_label: "Robo Damian",
+						role: "member",
+						state: "invited",
+					},
+				],
+			},
+			mutedChannel,
+			{
+				...mutedChannel,
+				id: "bcv_ch_muted_read",
+				name: "qa-coordination",
+				unread_count: 0,
+				last_read_seq: 12,
+			},
+			group,
+			dm,
+		],
+		target: { type: "conversation", id: channel.id },
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: channel.id,
+		})),
+		people: directoryPeople,
+		onOpenArchived: () => {},
+		archivedConversations: [
+			{ ...channel, id: "bcv_ch_old", name: "old-launch", status: "archived" },
+		],
+		ownerAudit: staticOwnerAudit([minervaOrganization], "ready"),
+	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/** Urdu: the column is on the right, and Back's arrow points right. */
+export const InShellUrdu: Story = {
+	...InShellChannelSelected,
+	args: { ...InShellChannelSelected.args, locale: "ur" } as Story["args"],
+};
+
+/**
+ * An early state (the eligibility gate) still owns the column: the Back row
+ * and a quiet title, so a gated reader always has a way out.
+ */
+export const InShellEligibilityGate: Story = {
+	args: { eligibility: "plan_required" },
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
 };
 
 /**
@@ -868,12 +1419,190 @@ export const PeopleDisabled: Story = {
 	},
 };
 
-/** The merged scope has no single roster, and says so instead of guessing. */
+/**
+ * The union view's People section with every roster answered: one organization
+ * subheader per group, the reader's own row under each - correct, they are a
+ * member of both - and no organization caption inside a group.
+ */
 export const PeopleAllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [dm, beaDm, channel, group, northwindChannel],
-		people: directoryPeople,
+		directories: { tnt_1: directoryPeople, tnt_2: northwindPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/*
+ * THE CHIEF-OF-STAFF AUDIT IN BOTH VIEWS.
+ *
+ * WHY A STATIC SLOT. The page takes the audit as an `OwnerAuditSlot`, which the
+ * container builds with `useOwnerAuditSurface` - a hook that reads the audit
+ * routes through the query cache and the desktop transport. Neither exists
+ * here, so these stories hand the page a slot built from the SAME exported
+ * pieces the hook composes (`OwnerAuditSectionHeader` + one `OwnerAuditRailView`
+ * per organization) with each organization's read state fixed. What that buys:
+ * the frames show where the audit sits in the union rail - after Chiefs of
+ * staff, grouped per organization - and how its loading line reads beside the
+ * rosters. What it does NOT buy: any claim that the routes answer, or that the
+ * selection moves (the panel is never opened here); the hook's behaviour is
+ * pinned by `scripts/team-bridge-owner-audit-render.test.mjs`.
+ *
+ * The organization subheader is the shared `RailGroupHeader` with the `bare`
+ * inset, because the audit section carries no `RailSection` padding of its own;
+ * with several organizations that is the union rail's one subheader treatment,
+ * and with ONE organization there is no subheader at all, exactly as the hook
+ * omits it when `organizations.length === 1`. The hook file belongs to the audit
+ * lane (#1513), so this mirrors its structure rather than changing it.
+ */
+const auditConversation = (
+	organization: TeamBridgeOrganization,
+	overrides: Pick<OwnerAuditConversation, "id" | "kind" | "name"> &
+		Partial<OwnerAuditConversation>,
+): OwnerAuditConversation => ({
+	tenant_id: organization.tenantId,
+	visibility: "private",
+	status: "active",
+	last_message_at: "2026-10-29T15:20:00Z",
+	latest_seq: 12,
+	members: [],
+	member_count: 2,
+	viewers: [],
+	agent: {
+		account_id: "acct_aida",
+		display_label: "Aida",
+		state: "active",
+		joined_seq: 1,
+	},
+	...overrides,
+});
+
+const auditRows: Record<string, OwnerAuditConversation[]> = {
+	[minervaOrganization.tenantId]: [
+		auditConversation(minervaOrganization, {
+			id: "bconv_audit_ben",
+			kind: "dm",
+			name: null,
+			members: [
+				{
+					account_id: "acct_ben",
+					kind: "human",
+					display_label: "Ben Okafor",
+					role: "member",
+					state: "active",
+				},
+				{
+					account_id: "acct_aida",
+					kind: "agent",
+					display_label: "Aida",
+					role: "member",
+					state: "active",
+				},
+			],
+		}),
+		auditConversation(minervaOrganization, {
+			id: "bconv_audit_deploys",
+			kind: "channel",
+			name: "deployments",
+		}),
+	],
+	[northwindOrganization.tenantId]: [
+		auditConversation(northwindOrganization, {
+			id: "bconv_audit_launch",
+			kind: "channel",
+			name: "launch-room",
+		}),
+	],
+};
+
+function staticOwnerAudit(
+	organizations: TeamBridgeOrganization[],
+	state: "loading" | "ready",
+): OwnerAuditSlot {
+	return {
+		active: false,
+		clear: () => {},
+		panel: null,
+		rail: () => (
+			<section
+				className={cn("mt-4", SIDEBAR_INSET)}
+				aria-label={t("ui.ownerAudit.title")}
+			>
+				<OwnerAuditSectionHeader />
+				{organizations.map((organization, index) => (
+					<div key={organization.tenantId}>
+						{/* Mirrors `useOwnerAuditSurface` exactly, D2's first-group rule
+						    included - a story that drifts from production cannot evidence
+						    production's pixels. */}
+						{organizations.length > 1 && (
+							<RailGroupHeader
+								id={`owner-audit-${organization.tenantId}`}
+								name={organization.name}
+								first={index === 0}
+							/>
+						)}
+						<OwnerAuditRailView
+							conversations={auditRows[organization.tenantId] ?? []}
+							state={state}
+							onSelect={() => {}}
+							retry={() => {}}
+						/>
+					</div>
+				))}
+			</section>
+		),
+	};
+}
+
+/** The union rail while every organization's audit list is still being read. */
+export const AllOrganizationsAuditLoading: Story = {
+	args: {
+		...AllOrganizations.args,
+		// The audit rail must be on screen with its headers (see above).
+		conversations: compactConversations,
+		// Inherited from AllOrganizations.args; that conversation is not in this
+		// story's list, and a pane saying "not open to you" is not what is under
+		// review here.
+		target: null,
+		directories: { tnt_1: [], tnt_2: [] },
+		ownerAudit: staticOwnerAudit(
+			[minervaOrganization, northwindOrganization],
+			"loading",
+		),
+	},
+};
+
+/** The union rail with each organization's audited conversations listed. */
+export const AllOrganizationsAuditPopulated: Story = {
+	args: {
+		...AllOrganizations.args,
+		// The audit rail must be on screen with its headers (see above).
+		conversations: compactConversations,
+		// Inherited from AllOrganizations.args; that conversation is not in this
+		// story's list, and a pane saying "not open to you" is not what is under
+		// review here.
+		target: null,
+		directories: { tnt_1: [], tnt_2: [] },
+		ownerAudit: staticOwnerAudit(
+			[minervaOrganization, northwindOrganization],
+			"ready",
+		),
+	},
+};
+
+/** One organization, audit still loading: no organization subheader anywhere. */
+export const SingleOrganizationAuditLoading: Story = {
+	args: {
+		...SingleOrganizationRoster.args,
+		ownerAudit: staticOwnerAudit([minervaOrganization], "loading"),
+	},
+};
+
+/** One organization, audit listed: the shipped single-organization rail. */
+export const SingleOrganizationAuditPopulated: Story = {
+	args: {
+		...SingleOrganizationRoster.args,
+		ownerAudit: staticOwnerAudit([minervaOrganization], "ready"),
 	},
 };
 
@@ -1129,7 +1858,7 @@ export const AddMembersDialog: Story = {
 		// An invited agent is never painted as active.
 		await expect(body.getByText(INVITED_NOT_ACTIVE)).toBeInTheDocument();
 		await expect(
-			body.getByRole("button", { name: "Remove Ben Tran" }),
+			body.getByRole("button", { name: "Remove Ben Tran from conversation" }),
 		).toBeInTheDocument();
 	},
 };
@@ -1154,7 +1883,7 @@ export const AddMembersPlainMember: Story = {
 	play: async ({ canvasElement }) => {
 		const body = within(canvasElement.ownerDocument.body);
 		await expect(
-			body.queryByRole("button", { name: "Remove Ben Tran" }),
+			body.queryByRole("button", { name: "Remove Ben Tran from conversation" }),
 		).not.toBeInTheDocument();
 	},
 };
@@ -1174,6 +1903,67 @@ export const BuiltinHumansChannel: Story = {
 		...slackRail,
 		target: { type: "conversation", id: humansChannel.id },
 		messages: [],
+	},
+};
+
+/** Built-in #agents, with its topic in the header (agents see every message). */
+export const BuiltinAgentsChannel: Story = {
+	args: {
+		...slackRail,
+		target: { type: "conversation", id: agentsChannel.id },
+		messages: [],
+	},
+};
+
+/*
+ * THE READER'S OWN AGENT IN A GROUP, with the runtime advertising
+ * `team_bridge_agent_notify`: the header menu carries "Wake your agent for".
+ */
+const groupWithOwnAgent: TeamBridgeConversation = {
+	...ownedGroup,
+	members: [
+		...ownedGroup.members,
+		{
+			account_id: self,
+			kind: "agent",
+			display_label: "Aida",
+			role: "member",
+			state: "active",
+			notify: "mention",
+		} as TeamBridgeConversation["members"][number],
+	],
+};
+const ownAgentArgs = {
+	...ownedGroupArgs,
+	conversations: [groupWithOwnAgent, ...slackRail.conversations],
+	target: { type: "conversation" as const, id: groupWithOwnAgent.id },
+	agentNotifyCapabilityState: "enabled" as const,
+	onAgentNotifyChange: () => {},
+};
+
+/** The header menu with the reader's own agent's wake level. */
+export const AgentWakeMenu: Story = {
+	args: { ...ownAgentArgs, defaultMenuOpen: true },
+};
+
+/*
+ * A REFUSED agent wake-level write (design round 1, D5): the menu has closed,
+ * the previous level is back, and the line under the header names which
+ * setting was not saved.
+ */
+export const AgentWakeSettingError: Story = {
+	args: { ...ownAgentArgs, agentNotifyFailed: true },
+};
+
+/*
+ * A runtime that does not advertise `team_bridge_agent_notify` (R1-3): the same
+ * menu with no agent group, rather than a control every pick of which fails.
+ */
+export const AgentWakeMenuOlderRuntime: Story = {
+	args: {
+		...ownAgentArgs,
+		agentNotifyCapabilityState: "below-version",
+		defaultMenuOpen: true,
 	},
 };
 
@@ -1465,6 +2255,9 @@ const threadTarget = {
 
 export const ThreadSummaryRow: Story = {
 	args: {
+		/* Without the capability the timeline draws no thread row at all, so this
+		   story showed nothing it is named for (design round 1 on #1672, D1). */
+		threadsCapabilityState: "enabled",
 		target: { type: "conversation", id: channel.id },
 		messages: [threadRoot],
 	},
@@ -1490,6 +2283,34 @@ export const ThreadAtMinimumWindow: Story = {
 		<div className="h-[700px] w-[800px] max-w-full">
 			<TeamBridgePageView {...args} />
 		</div>
+	),
+};
+
+/** The thread takeover below a 1024px conversation region, in the shell. */
+export const InShellThreadAtMinimumWindow: Story = {
+	args: {
+		/* The thread capability, so the pane really mounts and the takeover's
+		   start edge is in the frame (the inline board leaves it unset). */
+		threadsCapabilityState: "enabled",
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
 	),
 };
 
@@ -1532,8 +2353,12 @@ export const ThreadDeepLinkFromSearch: Story = {
 			>
 				<ChatLayout
 					sidebar={<div className="panel-top-pad h-full bg-surface" />}
+					routeSidebar={{}}
 					content={
-						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						<main
+							data-glass-region="canvas-backing"
+							className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas"
+						>
 							<TeamBridgePageView {...args} />
 						</main>
 					}
@@ -1762,16 +2587,27 @@ export const LegacyMemberLabelsAllOrganizations: Story = {
 function ProfileDirectoryStory({
 	avatarState,
 	longFields = false,
+	agentPicture = false,
 	...args
 }: ComponentProps<typeof TeamBridgePageView> & {
 	avatarState: "ready" | "loading" | "error" | "decode-error" | "empty";
 	longFields?: boolean;
+	/** Aida publishes her OWN picture (hub `agent.avatar_url`), served only
+	 * through the endpoint relay op — a distinct portrait from Bea's photo, so
+	 * a regression to the owner's face is unmistakable. */
+	agentPicture?: boolean;
 }) {
 	const [client] = useState(() => {
 		const value = new QueryClient({
 			defaultOptions: { queries: { retry: false } },
 		});
 		value.setQueryData(radientUserKeys.user(), { account: { id: self } });
+		// A core serving agent pictures: plates read them only when advertised.
+		if (agentPicture)
+			value.setQueryData(desktopKeys.capabilities, {
+				desktop_available: true,
+				features: { team_bridge_endpoint_avatar: 1 },
+			});
 		return value;
 	});
 	const [target, setTarget] = useState(args.target);
@@ -1781,6 +2617,19 @@ function ProfileDirectoryStory({
 		const media = async (
 			input: DesktopMediaRequest,
 		): Promise<DesktopMediaResponse> => {
+			if (
+				agentPicture &&
+				input.op === "team_bridge.endpoint_avatar" &&
+				input.endpointId === "ep_bea"
+			) {
+				const bytes = await (await fetch(agentPortrait)).arrayBuffer();
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "image/jpeg",
+					data: new Uint8Array(bytes),
+				};
+			}
 			if (input.op !== "team_bridge.avatar")
 				return {
 					status: 404,
@@ -1818,7 +2667,7 @@ function ProfileDirectoryStory({
 			beginRadientAuthorityTransition(client);
 			client.clear();
 		};
-	}, [avatarState, client]);
+	}, [agentPicture, avatarState, client]);
 	const people = directoryPeople.map((member) =>
 		member.account_id !== "acct_bea" || avatarState === "empty"
 			? {
@@ -1833,6 +2682,12 @@ function ProfileDirectoryStory({
 						name: "Aida",
 						endpoint_id: "ep_bea",
 						state: "active" as const,
+						...(agentPicture
+							? {
+									avatar_url:
+										"/v1/messaging/endpoints/ep_bea/avatar?v=a1a1a1a1a1a1a1a1",
+								}
+							: {}),
 					},
 					profile: {
 						display_name: "Bea",
@@ -2493,5 +3348,205 @@ export const LongContentRowsStayInColumn: Story = {
 				await expect(tb.right).toBeLessThanOrEqual(r.right + EDGE_TOLERANCE);
 			}
 		}
+	},
+};
+
+/*
+ * AN AGENT NEVER WEARS ITS OWNER'S FACE (2026-10-30). Bea has a real photo,
+ * and her chief of staff "Aida" rides on the same directory row. Before the
+ * fix every Aida surface showed Bea's photo, because the plate looked the
+ * picture up by the owner's account id. These boards show each surface with
+ * the photo READY, so a regression shows Bea's face where the Bot glyph
+ * belongs. Bea's own (human) plate is the control: it must still show her
+ * photo.
+ */
+const agentAvatarChannel: TeamBridgeConversation = {
+	...channel,
+	members: [
+		...channel.members.map((member) =>
+			member.account_id === "acct_bea"
+				? { ...member, account_id: "acc_bea" }
+				: member,
+		),
+		{
+			account_id: "acc_bea",
+			kind: "agent",
+			display_label: "Aida",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+const agentAvatarArgs = {
+	...profileArgs,
+	conversations: [agentAvatarChannel, profileArgs.conversations[0]],
+	target: { type: "conversation" as const, id: agentAvatarChannel.id },
+	messages: [
+		{
+			...messages[0],
+			id: "agent-avatar-human",
+			conversation_id: agentAvatarChannel.id,
+			sender: {
+				account_id: "acc_bea",
+				kind: "human" as const,
+				display_label: "Bea",
+			},
+			body: "Aida, can you summarise the launch checklist?",
+		},
+		{
+			...messages[1],
+			id: "agent-avatar-agent",
+			conversation_id: agentAvatarChannel.id,
+			seq: 2,
+			sender: {
+				account_id: "acc_bea",
+				kind: "agent" as const,
+				display_label: "Aida",
+			},
+			body: "Two items remain open: the pricing copy and the status page.",
+		},
+	],
+};
+export const AgentAvatarMessages: Story = {
+	args: agentAvatarArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarProfileCard: Story = {
+	args: agentAvatarArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const row = canvasElement.querySelector(
+			'[data-message-id="agent-avatar-agent"]',
+		);
+		const trigger = row?.querySelector<HTMLButtonElement>("button");
+		if (!trigger) throw new Error("Agent message avatar missing");
+		trigger.focus();
+		await within(canvasElement.ownerDocument.body).findByRole("dialog");
+	},
+};
+export const AgentAvatarMembersDialog: Story = {
+	args: { ...agentAvatarArgs, initialMembersOpen: true },
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarChiefDraft: Story = {
+	args: {
+		...agentAvatarArgs,
+		target: { type: "chief" as const, accountId: "acc_bea" },
+		messages: [],
+		messageState: "idle" as const,
+	},
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarComposeChips: Story = {
+	args: {
+		...agentAvatarArgs,
+		target: {
+			type: "compose" as const,
+			recipients: [
+				{
+					kind: "agent" as const,
+					accountId: "acc_bea",
+					endpointId: "ep_bea",
+					label: "Aida (Bea)",
+				},
+			],
+		},
+		messages: [],
+		messageState: "idle" as const,
+	},
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const field = within(canvasElement).getByRole("combobox");
+		field.focus();
+	},
+};
+
+/*
+ * AN AGENT WEARS ITS OWN PICTURE (2026-10-31). The same boards with Aida's
+ * hub-published picture (`agent.avatar_url`, read through the endpoint relay):
+ * every Aida surface shows HER portrait with the agent mark painted over it,
+ * and Bea's own plate still shows Bea's photo. Before this change these were
+ * the Bot glyph, by design, because no endpoint relay existed.
+ */
+const agentPictureRender = (
+	args: ComponentProps<typeof TeamBridgePageView>,
+) => <ProfileDirectoryStory {...args} avatarState="ready" agentPicture />;
+export const AgentOwnPictureMessages: Story = {
+	args: agentAvatarArgs,
+	render: agentPictureRender,
+};
+export const AgentOwnPictureProfileCard: Story = {
+	...AgentAvatarProfileCard,
+	render: agentPictureRender,
+};
+export const AgentOwnPictureMembersDialog: Story = {
+	...AgentAvatarMembersDialog,
+	render: agentPictureRender,
+};
+export const AgentOwnPictureMention: Story = {
+	args: agentAvatarArgs,
+	render: agentPictureRender,
+	play: async ({ canvasElement }) => {
+		const field = await within(canvasElement).findByRole("combobox");
+		await userEvent.type(field, "@Ai");
+	},
+};
+
+/*
+ * THE MEMBERS PANEL FROM THE HEADER COUNT (operator 2026-11-04). The count is
+ * a button; these frames are the header's hover and keyboard-focus states and
+ * the panel docked in the thread pane's slot on a wide page.
+ */
+export const MemberCountHover: Story = {
+	args: ChannelSelected.args,
+	play: async ({ canvasElement }) => {
+		const count = canvasElement.querySelector<HTMLElement>(
+			'button[aria-label^="View "]',
+		);
+		if (count) await userEvent.hover(count);
+	},
+};
+
+export const MemberCountFocused: Story = {
+	args: ChannelSelected.args,
+	play: async ({ canvasElement }) => {
+		const count = canvasElement.querySelector<HTMLElement>(
+			'button[aria-label^="View "]',
+		);
+		// Keyboard focus, so `:focus-visible` paints the outline ring.
+		count?.focus();
+		await userEvent.keyboard("{Shift>}{Tab}{/Shift}{Tab}");
+	},
+};
+
+export const MembersPanelOpen: Story = {
+	args: { ...ChannelSelected.args, initialMembersPanelOpen: true },
+};
+
+/*
+ * THE CONVERSATION MENU ON THE PAGE (operator 2026-11-04). The header "…" with
+ * the new membership and departure items, wired the way the container wires
+ * them; and the partial-leave line: the reader left, the follow-up withdraw of
+ * their own agent failed, so the page states the true state with a retry.
+ */
+/* The same room as `AgentWakeMenu` (the operator's screenshot state: wake
+   group, no Leave), now wired with the menu's new writes: the before/after pair. */
+const conversationMenuArgs = {
+	...ownAgentArgs,
+	onAddMembers: () => Promise.resolve(),
+	onMenuLeave: () => Promise.resolve({ status: "left" as const }),
+	onMenuOwnAgent: () => Promise.resolve(),
+	onMenuJoin: () => {},
+	onOpenMembersFor: () => {},
+};
+export const ConversationMenuHeader: Story = {
+	args: { ...conversationMenuArgs, defaultMenuOpen: true },
+};
+export const ConversationMenuPartialLeave: Story = {
+	args: {
+		...ChannelSelected.args,
+		partialLeave: { name: "#launch", retrying: false, retryFailed: false },
+		onRetryPartialLeave: () => {},
+		onDismissPartialLeave: () => {},
 	},
 };

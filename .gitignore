@@ -4,6 +4,9 @@ node_modules/
 # so it materialises inside the working tree and is ~52k files of cache.
 .pnpm-store/
 
+# Incremental typecheck metadata belongs to this worktree, not borrowed dependencies.
+/.cache/typecheck/
+
 # Build outputs
 dist/
 out/

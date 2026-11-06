@@ -38,6 +38,7 @@
 
 import { type BrowserWindow, type NativeImage, Notification } from "electron";
 import { t } from "../i18n/index";
+import { composeChiefLabel } from "../shared/team-bridge-labels";
 import {
 	TEAM_BRIDGE_NOTIFY_MAX_TITLE,
 	type TeamBridgeNotifyAuthority,
@@ -54,6 +55,7 @@ import {
 	type LifetimeNotification,
 	NotificationLifetime,
 } from "./notification-lifetime";
+import { notificationSoundOptions } from "./notification-sound";
 import type {
 	TeamBridgeNotificationDirectory,
 	TeamBridgeNotificationImageSource,
@@ -81,6 +83,8 @@ export type TeamBridgeBannerOptions = {
 	subtitle?: string;
 	body: string;
 	silent: boolean;
+	/** macOS: the staged notification sound's file name (`notification-sound.ts`). */
+	sound?: string;
 	/** Sender composite or app fallback. Electron 44.3.0 maps macOS icon to
 	 * UNNotificationAttachment (thumbnail); the bundle icon remains attribution.
 	 * Windows uses appLogoOverride/crop=none; Linux passes libnotify image-data. */
@@ -557,12 +561,21 @@ export class TeamBridgeNotifier {
 		 * the exemption is one line, and it is spelled.
 		 */
 		const sender = request.sender;
+		/*
+		 * The agent title goes through the renderer's one composition rule
+		 * (`composeChiefLabel`), not a bare "{agent} ({person})": the directory
+		 * names an endpoint enrolled without an agent name after its OWNER, and
+		 * splicing that read "Ben Tran (Ben Tran)" where every in-app surface
+		 * reads "Ben Tran's chief of staff" (2026-11-03 sweep).
+		 */
 		const title = sender
 			? safeTeamBridgeBannerText(
 					sender.kind === "person_agent"
-						? t("ui.teamBridge.chief.label", {
-								person: sender.display_name,
-								agent: sender.agent_name ?? "",
+						? composeChiefLabel(sender.agent_name ?? "", sender.display_name, {
+								named: (agent, person) =>
+									t("ui.teamBridge.chief.label", { agent, person }),
+								unnamed: (person) =>
+									t("ui.teamBridge.chief.unnamed", { person }),
 							})
 						: sender.display_name,
 					TEAM_BRIDGE_NOTIFY_MAX_TITLE,
@@ -578,7 +591,9 @@ export class TeamBridgeNotifier {
 				{ ...request, title },
 				this.options.platform ?? process.platform,
 			),
-			silent: burst,
+			// A coalesced replacement stays silent ("no second sound"); otherwise
+			// the configured sound (or none), see `notification-sound.ts`.
+			...notificationSoundOptions(burst),
 			...(icon ? { icon } : {}),
 		});
 		/*
@@ -596,6 +611,8 @@ export class TeamBridgeNotifier {
 			conversationId,
 			tenantId: request.tenantId,
 			...(request.threadId ? { threadId: request.threadId } : {}),
+			// An id, not text: the click's highlight target, safe to retain.
+			...(request.messageId ? { messageId: request.messageId } : {}),
 		};
 		this.retainTarget(notification, target);
 		notification.show();

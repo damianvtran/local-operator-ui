@@ -1,0 +1,221 @@
+{
+  "audit_id": "teambridge-pr1522-agent-wake-audit-3b03d764a645-fr",
+  "date": "2026-10-30",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "pr": 1522,
+  "branch": "feat/agent-wake-copy (PR head branch)",
+  "source_commit": "8337799a142b0f158a2ad99ed58d1c9ef9b544d2",
+  "translator": {
+    "agent": "coder (PR authoring session)",
+    "session": "78e9c26fde14 (per the manager's dispatch; not recorded in the commit)",
+    "model": "not supplied by the commit",
+    "commit": "8337799a142b0f158a2ad99ed58d1c9ef9b544d2",
+    "method": "Author-drafted per the commit message; no MT service or translation API in the tree"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-30",
+      "result": "clean-with-findings",
+      "instance": "3b03d764a645-fr",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/3b03d764a645-fr.json",
+      "receipt_sha256": "ad2841a4331bcde34c600367421b437ed8150b56e60030fb244534ae6bca66e7",
+      "scope": "PR #1522 nine-key delta (agentNotify.* x5, builtin.agents_topic, consent v2, invitations.accepted[_unnamed]) against English 91c63b91500b; other keys unchanged.",
+      "note": "9-key delta audit (PR #1522 agent wake copy). FR-N1 (nit) Receipt i18n/receipts/3b03d764a645-fr.json."
+    }
+  ],
+  "independence": "Independent auditor: Local Operator session 3b03d764a645 (lopdev team, task role, dispatched by manager 1c27e252dbd4 as i18n auditor). It authored none of the audited strings; they were drafted in commit 8337799a142 by the PR authoring session. This session read them, edited only the ru consent clause recorded as RU-I1, and wrote this receipt, its evidence record and the ledger row via ledger-assemble.mjs. Corpus comparisons read from shipped catalogues; no MT service or translation API.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "91c63b91500b8585b96d9f228b35a0fa0566c35ee9ce779ad3e572b6d410b0c0"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "ea106c8a2c193e96f63d4598591301943edc0d2808fc8227b58c5e03bf365d8b"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "28ee289fc8b86eb97b855f781d32486d2ac882d388f26b568aa6aeca1f09700f"
+    }
+  },
+  "scope": {
+    "delta_kind": "Nine-key delta from PR #1522 commit 8337799a142: five added (ui.teamBridge.agentNotify.label/all/mention/mute/error), one added consent key (invitations.consent.bridge_agent_participation_v2), three changed (builtin.agents_topic, invitations.accepted, invitations.accepted_unnamed). Derived by comparing every English key of origin/main 9d7c5fd911e with HEAD a0fd1d5f95b: no other English value changed, none removed; no non-English value changed outside these nine.",
+    "keys_audited_linguistically": [
+      "ui.teamBridge.agentNotify.label",
+      "ui.teamBridge.agentNotify.all",
+      "ui.teamBridge.agentNotify.mention",
+      "ui.teamBridge.agentNotify.mute",
+      "ui.teamBridge.agentNotify.error",
+      "ui.teamBridge.builtin.agents_topic",
+      "ui.teamBridge.invitations.consent.bridge_agent_participation_v2",
+      "ui.teamBridge.invitations.accepted",
+      "ui.teamBridge.invitations.accepted_unnamed"
+    ],
+    "keys_read_for_consistency": [
+      "ui.teamBridge.notify.label",
+      "ui.teamBridge.notify.all",
+      "ui.teamBridge.notify.mention",
+      "ui.teamBridge.notify.mute",
+      "ui.teamBridge.notify.error",
+      "ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+      "ui.common.models.default",
+      "ui.settings.configuration.retention_duration_control.duration_default"
+    ],
+    "not_audited": "The other 280 keys: unchanged by this delta and covered by the row's earlier audits (kept under `superseded`)."
+  },
+  "english": {
+    "ui.teamBridge.agentNotify.label": {
+      "value": "Your agent",
+      "context_note": "Conversation menu. Heads the three-level choice of how often the READER'S OWN AI agent (chief of staff) is woken in this conversation. Distinct from the reader's own notification preferences above it: this setting is about the agent, not about the reader's banners.",
+      "context_role": "menu section heading / radio group label",
+      "context_length": "2 words.",
+      "placeholders": []
+    },
+    "ui.teamBridge.agentNotify.all": {
+      "value": "Every message (default)",
+      "context_note": "The agent is woken for every message here and decides for itself whether to reply. '(default)' marks this as the level a new member gets; keep it parenthetical.",
+      "context_role": "agent wake level (radio row)",
+      "context_length": "2-3 words plus the parenthetical; one line in a ~240px menu.",
+      "placeholders": []
+    },
+    "ui.teamBridge.agentNotify.mention": {
+      "value": "Only @-mentions",
+      "context_note": "The agent is woken only when someone @-mentions it. Keep '@-mentions' as the product's mention term.",
+      "context_role": "agent wake level (radio row)",
+      "context_length": "2-3 words; one line in a ~240px menu.",
+      "placeholders": []
+    },
+    "ui.teamBridge.agentNotify.mute": {
+      "value": "Never wakes",
+      "context_note": "The agent is never woken in this conversation, not even by an @-mention. Describes the agent's state (it never wakes), not an action on the reader.",
+      "context_role": "agent wake level (radio row)",
+      "context_length": "1-2 words; one line in a ~240px menu.",
+      "placeholders": []
+    },
+    "ui.teamBridge.agentNotify.error": {
+      "value": "Your agent’s setting was not saved. Try again.",
+      "context_note": "A refused write of the reader's own agent's wake level. The menu has closed and the previous level is restored; this line explains why. Mirrors ui.teamBridge.notify.error.",
+      "context_role": "inline error under the thread header",
+      "context_length": "One short sentence.",
+      "placeholders": []
+    },
+    "ui.teamBridge.builtin.agents_topic": {
+      "value": "Every teammate's chief of staff. Agents see every message and reply when relevant or @-mentioned.",
+      "context_note": "Describes the built-in #agents channel: every enrolled agent is a member and sees every message; each agent replies when the message is relevant to it or when it is @-mentioned.",
+      "context_role": "channel header topic",
+      "context_length": "One sentence; may truncate.",
+      "placeholders": []
+    },
+    "ui.teamBridge.invitations.consent.bridge_agent_participation_v2": {
+      "value": "Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can limit it to @-mentions or mute it.",
+      "context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. The consent statement the owner agrees to by pressing Accept; the key names the participation version it is consent to (bridge_agent_participation_v2), so ANY change to this English text needs a new version and a new key. Keep every fact: from now on the agent can read the conversation's messages AND post there; it is woken for EVERY message and judges for itself whether to reply; an @-mention means a reply is expected; the owner can narrow it to @-mentions only or mute it (the 'Your agent' menu). 'Mute it' here means the agent is never woken.",
+      "context_role": "invitations consent",
+      "context_length": "Two or three sentences; permit wrapping.",
+      "placeholders": []
+    },
+    "ui.teamBridge.invitations.accepted": {
+      "value": "Accepted. {agent} now sees every message here and replies when it’s relevant or @-mentioned.",
+      "context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned.",
+      "context_role": "invitations accepted",
+      "context_length": "One or two sentences; permit wrapping.",
+      "placeholders": [
+        "agent"
+      ]
+    },
+    "ui.teamBridge.invitations.accepted_unnamed": {
+      "value": "Accepted. Your agent now sees every message here and replies when it’s relevant or @-mentioned.",
+      "context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence.",
+      "context_role": "invitations accepted unnamed",
+      "context_length": "One or two sentences; permit wrapping.",
+      "placeholders": []
+    }
+  },
+  "audited": {
+    "ui.teamBridge.agentNotify.label": {
+      "en": "Your agent",
+      "translation": "Votre agent"
+    },
+    "ui.teamBridge.agentNotify.all": {
+      "en": "Every message (default)",
+      "translation": "Chaque message (par défaut)"
+    },
+    "ui.teamBridge.agentNotify.mention": {
+      "en": "Only @-mentions",
+      "translation": "Mentions avec @ uniquement"
+    },
+    "ui.teamBridge.agentNotify.mute": {
+      "en": "Never wakes",
+      "translation": "Jamais réveillé"
+    },
+    "ui.teamBridge.agentNotify.error": {
+      "en": "Your agent’s setting was not saved. Try again.",
+      "translation": "Le réglage de votre agent n’a pas été enregistré. Réessayez."
+    },
+    "ui.teamBridge.builtin.agents_topic": {
+      "en": "Every teammate's chief of staff. Agents see every message and reply when relevant or @-mentioned.",
+      "translation": "Les chefs de cabinet de toute l’équipe. Les agents voient chaque message et répondent quand c’est pertinent ou quand on les mentionne avec @."
+    },
+    "ui.teamBridge.invitations.consent.bridge_agent_participation_v2": {
+      "en": "Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can limit it to @-mentions or mute it.",
+      "translation": "En acceptant, vous permettez à votre agent de lire et de publier des messages dans cette conversation à partir de maintenant. Il voit chaque message et décide s’il doit répondre ; une mention avec @ signifie qu’il doit répondre. Vous pouvez le limiter aux mentions avec @ ou le mettre en sourdine."
+    },
+    "ui.teamBridge.invitations.accepted": {
+      "en": "Accepted. {agent} now sees every message here and replies when it’s relevant or @-mentioned.",
+      "translation": "Accepté. {agent} voit désormais chaque message ici et répond quand c’est pertinent ou quand on le mentionne avec @."
+    },
+    "ui.teamBridge.invitations.accepted_unnamed": {
+      "en": "Accepted. Your agent now sees every message here and replies when it’s relevant or @-mentioned.",
+      "translation": "Accepté. Votre agent voit désormais chaque message ici et répond quand c’est pertinent ou quand on le mentionne avec @."
+    }
+  },
+  "findings": [
+    {
+      "severity": "nit",
+      "id": "FR-N1",
+      "key": "ui.teamBridge.invitations.consent.bridge_agent_participation_v2",
+      "detail": "'décide s’il doit répondre ; une mention avec @ signifie qu’il doit répondre' repeats 'doit répondre' in adjacent clauses. Meaning is exact (the English also repeats 'reply'), and the consent text is versioned, so the repetition is accepted rather than churned; a native pass may prefer 'décide s’il répond'.",
+      "disposition": "accepted - no change"
+    }
+  ],
+  "status": "passed",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "docs_I18N": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    },
+    "ledger_rules": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    },
+    "ledger_assemble": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/3b03d764a645-fr.json",
+      "sha256": "ad2841a4331bcde34c600367421b437ed8150b56e60030fb244534ae6bca66e7"
+    },
+    "ledger_row": "i18n/ledger.json#entries[locale=fr,namespace=ui.teamBridge]"
+  },
+  "limitations": "Auditor competence: strong. Verdict confidence: high. Not claimed: rendered fit, native-speaker register sign-off (owed before any release claim for vi/hi/ur).",
+  "audit_notes_not_execution_log": "Notes and findings are this auditor's linguistic judgement, not command output. Corpus counts were read from catalogue files on disk."
+}

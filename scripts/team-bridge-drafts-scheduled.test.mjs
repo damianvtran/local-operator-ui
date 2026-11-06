@@ -287,6 +287,47 @@ test("corrupt recipient storage cannot crash the To bar; scope keys cannot colli
 	assert.deepEqual(model.readDrafts({ getItem: () => "{broken" }, "key"), {});
 });
 
+/*
+ * #1511 R7 M1: a scheduled first message obeys the same tenant rule as a sent
+ * one. The draft was written in org_shared; a create receipt naming org_other
+ * must neither move the view nor queue the author's words in that organization,
+ * and a Retry must not create another group behind the refusal (m2).
+ */
+test("a foreign-tenant create receipt schedules nothing, moves nothing, and Retry creates no second group", async () => {
+	const events = [];
+	let creates = 0;
+	const args = {
+		tenantId: "org_shared",
+		body: "SECRET",
+		clientRef: "ref-foreign",
+		sendAt: "2030-01-01T12:00:00Z",
+		recipients: [
+			{ kind: "human", accountId: "b", label: "Bea" },
+			{ kind: "human", accountId: "c", label: "Cora" },
+		],
+		remembered: new Map(),
+		onCreated: (id) => events.push(["moved", id]),
+		create: async () => {
+			creates++;
+			return { id: "bcv_foreign", tenant_id: "org_other" };
+		},
+		schedule: async (request) => {
+			events.push(["schedulePOST", request.tenant_id, request.body]);
+			return { id: "scheduled" };
+		},
+	};
+	await assert.rejects(model.scheduleTeamBridgeDraft(args), /another tenant/);
+	assert.deepEqual(events, [], "no view move and no schedule POST");
+	await assert.rejects(model.scheduleTeamBridgeDraft(args), /another tenant/);
+	assert.deepEqual(events, [], "Retry still schedules nothing");
+	assert.equal(creates, 1, "Retry after the refusal creates no second group");
+	assert.equal(
+		[...args.remembered.values()].some((entry) => entry.id === "bcv_foreign"),
+		false,
+		"the foreign conversation is never remembered as this draft's",
+	);
+});
+
 test("first create succeeds, schedule response is lost, reload retry reuses conversation and client_ref", async () => {
 	const events = [];
 	let acknowledged;
@@ -1099,7 +1140,23 @@ test("a held schedule can be explicitly discarded before a fresh send or schedul
 				await act(async () => send.click());
 				assert.equal(sends.length, 1);
 				assert.equal(sends[0][0], body);
-				assert.equal(sends[0][1], entry.clientRef);
+				/*
+				 * WHAT THIS USED TO PIN: the send reused the key the discard wrote into the
+				 * draft. That pinned the defect behind production's swallowed sends - a
+				 * persisted draft key may already be spent, and the hub REPLAYS a spent key
+				 * with matching text (200, no new row). A fresh send now always mints its own
+				 * key; the property the discard owes is only that the HELD attempt's key never
+				 * goes out again, since that schedule may still fire.
+				 */
+				assert.notEqual(sends[0][1], "held-reference");
+				/*
+				 * THE GUARD (round 4 retrospective, R4-01): the line above alone passed
+				 * vacuously, because the discard has already replaced `"held-reference"` in
+				 * the draft - a send that reused the draft key still differed from it. The
+				 * key the discard wrote is the one a regression would put on the wire.
+				 */
+				assert.notEqual(sends[0][1], entry.clientRef);
+				assert.ok(sends[0][1]);
 			} else {
 				await act(async () =>
 					element

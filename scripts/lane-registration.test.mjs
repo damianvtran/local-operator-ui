@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import { discoverDesktopTests } from "./desktop-test-inventory.mjs";
 
 /*
  * Every lane in `scripts/` must RUN somewhere.
@@ -18,6 +19,13 @@ import { test } from "node:test";
  * The lane list itself is the thing that drifts: a new file lands, the diff
  * looks like one new test file, and nothing fails until somebody asks why the
  * suite count did not move.
+ *
+ * `test:desktop` no longer spells its files out (2026-10-31: the inventory is
+ * derived by `desktop-test-inventory.mjs`, because the literal list conflicted
+ * on every pull request that added a test). So "named by a script" now means
+ * "in that derived inventory" for the desktop suite, and a literal mention in a
+ * script value or workflow for every other runner - an EXEMPT file must still
+ * be named by the place its reason says it runs.
  */
 
 /** A lane file: the top-level `scripts/*.test.mjs` shape every runner names. */
@@ -30,9 +38,15 @@ test("every scripts/*.test.mjs lane is named by a package.json script or a workf
 		.filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
 		.map((name) => readFileSync(join(workflowsDir, name), "utf8"))
 		.join("\n");
+	const desktop = new Set(discoverDesktopTests("."));
 	const missing = readdirSync("scripts")
 		.filter((name) => LANE_FILE.test(name))
-		.filter((name) => !packageJson.includes(name) && !workflows.includes(name));
+		.filter(
+			(name) =>
+				!desktop.has(`scripts/${name}`) &&
+				!packageJson.includes(name) &&
+				!workflows.includes(name),
+		);
 	assert.deepEqual(
 		missing,
 		[],

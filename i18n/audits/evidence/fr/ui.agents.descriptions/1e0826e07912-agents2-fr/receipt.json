@@ -1,0 +1,282 @@
+{
+	"locale": "fr",
+	"instance": "1e0826e07912-agents2-fr",
+	"audit_round": 2,
+	"scope": [
+		"ui.agents.descriptions",
+		"ui.agents.detail.install"
+	],
+	"audit_date": "2026-10-30",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "1e0826e07912",
+		"model": "radient/auto",
+		"actual_model_source": "session-model-at-audit; the session's primary anthropic/claude-sonnet-5-5 failed on provider quota and fell back openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto before this audit ran",
+		"independent_from_translator_session": true,
+		"translator_session": "3ef6295a5545",
+		"independent_from_round1_auditor": true,
+		"round1_auditor_session": "6b56c14dd76e",
+		"spawn_note": "This auditor is a spawned agent session (LOP_RUNTIME_ADOPT_SESSION=1, LOP_SPAWN_CHAIN records the supervising runtime); it never authored, edited or previously audited these values."
+	},
+	"verifies": {
+		"round1_receipt": "scratchpad/agents-audit/fr/receipt.json",
+		"round1_verdict": "changes_requested",
+		"round1_counts": {
+			"BLOCKER": 0,
+			"MAJOR": 1,
+			"MINOR": 6,
+			"NIT": 2
+		}
+	},
+	"input_sha256": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+			"sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+		},
+		"en_context": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+			"sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+		},
+		"en_install": {
+			"path": "src/i18n/catalogues/en/ui.agents.detail.install.json",
+			"sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0"
+		},
+		"en_install_context": {
+			"path": "src/i18n/catalogues/en/ui.agents.detail.install.context.json",
+			"sha256": "f82578e4390f18d396fa229286d5395492618bd93ccbfa43d8d0dbe5a6530307"
+		},
+		"target": {
+			"path": "scratchpad/agents-i18n/fr/ui.agents.descriptions.json (staged; not yet under src/i18n/catalogues/fr/)",
+			"sha256": "c97aa95926e4a6ddd1e07b9cedb0178b18fddcd940db3c06d5bd3f7cf1418f02"
+		},
+		"target_install": {
+			"path": "scratchpad/agents-i18n/fr/ui.agents.detail.install.json (staged; not yet under src/i18n/catalogues/fr/)",
+			"sha256": "a80c0c6880cd9417dd3eff3c0ad60115367219e58249998296efa3cf3eb63b59"
+		},
+		"en_handed_copy": {
+			"path": "scratchpad/agents-i18n/fr/*.en.json",
+			"sha256": {
+				"ui.agents.descriptions.en.json": "c865345f35a1f50313a2dd6cc6afa4f06d80144a2312ac691bacd1932edf2f1f",
+				"ui.agents.detail.install.en.json": "cb0674b7f65c48806d427a9ed2702c9d77e4bd6ff866f9966bc6f7762b84bcc9"
+			}
+		},
+		"note": "The handed-over *.en.json copies are value-identical to the repo sources but re-indented with one space, so their hashes differ (descriptions c865345f..., install cb0674b7...). The ledger row must carry the repo hashes recorded above."
+	},
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 0,
+		"NIT": 2
+	},
+	"verdict": "pass",
+	"verdict_reason": "All nine round-1 findings are addressed on the bytes: the F1 MAJOR (bare 'rend') is gone from manager, qa_tester and scout, the six MINOR repairs read as native French, and N1 is fixed; N2 is withdrawn because the core glossary pins workspace -> 'espace de travail' for fr. No placeholder, plural or markup surface exists (all 14 values are literal ICU), typography is exact, and the two remaining NITs are a coined verb and length the fixes added, neither affecting meaning or layout.",
+	"namespaces": {
+		"ui.agents.descriptions": {
+			"status": "passed",
+			"keys_audited": 12,
+			"sha256": "c97aa95926e4a6ddd1e07b9cedb0178b18fddcd940db3c06d5bd3f7cf1418f02",
+			"findings": [
+				{
+					"id": "NIT-1",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.descriptions.coder",
+						"ui.agents.descriptions.tui_designer"
+					],
+					"current": {
+						"ui.agents.descriptions.coder": "Réalise de bout en bout une tranche de travail délimitée avec l’ensemble des outils, puis rend compte des changements et de la façon dont ils ont été vérifiés.",
+						"ui.agents.descriptions.tui_designer": "Conception et revue d’interfaces en terminal : parcours pensés d’abord pour le clavier, densité dans de petites zones d’affichage fixes, replis pour la couleur et Unicode, géométrie mesurée ; signale des constats préfixés T."
+					},
+					"problem": "Length the remediation added: coder 159/121 = 1.31x and tui_designer 224/178 = 1.26x exceed the fr guide's recorded 15-25% band (group mean 1.195, up from round 1's 1.14; five of fourteen values now over 1.20). No layout is at risk — the roster line is `truncate` at 256 px with the full sentence in the row's title (agents-page.tsx:1988), the detail page wraps it in a ReadBlock, and install_to_edit is an auto-width secondary Button (agent-detail.tsx:914-921).",
+					"suggestion": "Optional, on a future touch: coder compresses to 'Réalise de bout en bout une tranche de travail délimitée avec tous les outils, puis rend compte des changements et de leur vérification.' (136 chars, 1.12x) at the cost of 'how it was verified' becoming 'their verification'. tui_designer has no compression that keeps both the viewport and Unicode nuance. No action required.",
+					"round1_relation": "new (consequence of the F4 and F7 fixes)"
+				},
+				{
+					"id": "NIT-2",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.descriptions.qa_tester"
+					],
+					"current": "Preuve d’exécution indépendante pour un changement : pré-vérifie le banc d’essai, parcourt les chemins réels et les cas négatifs, puis fournit une matrice QA ciblée sans modifier le dépôt.",
+					"problem": "'pré-vérifie' is a coinage and hyphenated: French forms pré- + verb solid (préinscrire, prévisualiser, préremplir, prévalider), and the settled phrasing is 'vérifie au préalable' / 'contrôle en amont'. The fix itself is right on meaning — the pre- sense round 1 asked for is present.",
+					"suggestion": "Leave as is; take 'vérifie au préalable' only if the line is touched for another reason (it costs 11 characters the card does not have to spare).",
+					"round1_relation": "new (introduced while fixing F6); meaning fix accepted"
+				}
+			]
+		},
+		"ui.agents.detail.install": {
+			"status": "passed",
+			"keys_audited": 2,
+			"sha256": "a80c0c6880cd9417dd3eff3c0ad60115367219e58249998296efa3cf3eb63b59",
+			"findings": [],
+			"note": "Byte-identical to round 1's target hash — unchanged by the remediation, as round 1 found nothing here. install_to_edit is 1.53x on an auto-width secondary button that sizes to its label; the sidecar forbids shortening it to a bare 'Installer', and 'modifier' matches the sibling Edit label (ui.agents.detail.action.edit = 'Modifier')."
+		}
+	},
+	"round1_verification": {
+		"F1": {
+			"severity": "MAJOR",
+			"status": "fixed",
+			"evidence": "manager 'rend compte honnêtement'; qa_tester 'puis fournit une matrice QA ciblée'; scout 'présente ses constats, preuves à l'appui' — no bare transitive 'rend' remains"
+		},
+		"F2": {
+			"severity": "MINOR",
+			"status": "fixed",
+			"evidence": "aida 'orchestre des agents et des équipes en votre nom'"
+		},
+		"F3": {
+			"severity": "MINOR",
+			"status": "fixed",
+			"evidence": "architect 'peut rédiger des documents, mais ne modifie jamais le code existant'"
+		},
+		"F4": {
+			"severity": "MINOR",
+			"status": "fixed",
+			"evidence": "coder 'Réalise de bout en bout une tranche de travail délimitée ... puis rend compte des changements'"
+		},
+		"F5": {
+			"severity": "MINOR",
+			"status": "fixed",
+			"evidence": "copy_reviewer 'compréhension, ton, étayage des affirmations, tics de l'IA'"
+		},
+		"F6": {
+			"severity": "MINOR",
+			"status": "fixed",
+			"evidence": "qa_tester 'pré-vérifie le banc d'essai ... les cas négatifs' (spelling of the coinage: NIT-2)"
+		},
+		"F7": {
+			"severity": "MINOR",
+			"status": "fixed",
+			"evidence": "tui_designer 'parcours pensés d'abord pour le clavier, densité dans de petites zones d'affichage fixes'"
+		},
+		"N1": {
+			"severity": "NIT",
+			"status": "fixed",
+			"evidence": "reviewer 'ne modifie jamais le code qu'il relit'"
+		},
+		"N2": {
+			"severity": "NIT",
+			"status": "withdrawn",
+			"evidence": "scout still reads 'dans l'espace de travail et sur le web'; core glossary i18n/glossary.md §2 pins workspace -> 'espace de travail' for fr, so round 1's 'dossier de travail' suggestion would have broken the glossary. The 12 catalogue values cited are the session's working directory as a filesystem path (e.g. ui.chat.directory.enter_path_label 'Chemin du dossier de travail'), a different concept."
+		},
+		"open_round1_findings": 0
+	},
+	"fit": {
+		"ui.agents.descriptions.aida": {
+			"en_chars": 122,
+			"fr_chars": 138,
+			"ratio": 1.13
+		},
+		"ui.agents.descriptions.architect": {
+			"en_chars": 136,
+			"fr_chars": 166,
+			"ratio": 1.22
+		},
+		"ui.agents.descriptions.coder": {
+			"en_chars": 121,
+			"fr_chars": 159,
+			"ratio": 1.31
+		},
+		"ui.agents.descriptions.copy_reviewer": {
+			"en_chars": 177,
+			"fr_chars": 185,
+			"ratio": 1.05
+		},
+		"ui.agents.descriptions.designer": {
+			"en_chars": 123,
+			"fr_chars": 138,
+			"ratio": 1.12
+		},
+		"ui.agents.descriptions.librarian": {
+			"en_chars": 150,
+			"fr_chars": 164,
+			"ratio": 1.09
+		},
+		"ui.agents.descriptions.manager": {
+			"en_chars": 115,
+			"fr_chars": 136,
+			"ratio": 1.18
+		},
+		"ui.agents.descriptions.qa_tester": {
+			"en_chars": 165,
+			"fr_chars": 188,
+			"ratio": 1.14
+		},
+		"ui.agents.descriptions.reviewer": {
+			"en_chars": 126,
+			"fr_chars": 143,
+			"ratio": 1.13
+		},
+		"ui.agents.descriptions.scout": {
+			"en_chars": 133,
+			"fr_chars": 151,
+			"ratio": 1.14
+		},
+		"ui.agents.descriptions.tui_designer": {
+			"en_chars": 178,
+			"fr_chars": 224,
+			"ratio": 1.26
+		},
+		"ui.agents.descriptions.ux_reviewer": {
+			"en_chars": 135,
+			"fr_chars": 167,
+			"ratio": 1.24
+		},
+		"ui.agents.detail.install.action.install_to_edit": {
+			"en_chars": 15,
+			"fr_chars": 23,
+			"ratio": 1.53
+		},
+		"ui.agents.detail.install.action.installing": {
+			"en_chars": 11,
+			"fr_chars": 13,
+			"ratio": 1.18
+		}
+	},
+	"mechanical": {
+		"json_valid": true,
+		"key_parity": "12/12 and 2/2, key order identical to English",
+		"icu_parse": "pass — 28 values (14 x 2 locales) parsed with the repo's own @formatjs/icu-messageformat-parser; all literal, no arguments/plurals/selects/tags, so placeholder and CLDR parity is vacuous rather than untested",
+		"identical_to_english": 0,
+		"nfc": "14/14",
+		"nnbsp_before_punctuation": "U+202F before every : ; ! ? — 0 violations",
+		"apostrophe": "U+2019 only; no straight quote",
+		"ellipsis": "one U+2026 (installing); no '...'",
+		"nbsp": "no U+00A0",
+		"file_shape": "tab indent, LF, trailing newline, no BOM, no edge or doubled spaces",
+		"tokens_kept": [
+			"diff",
+			"MR",
+			"PR",
+			"QA",
+			"UX",
+			"Unicode",
+			"web",
+			"IA",
+			"C",
+			"D",
+			"T",
+			"U"
+		],
+		"commands_run": [
+			"node agents-audit2/fr/validate.mjs <input dir> — exit 0, ALL ASSERTIONS HELD",
+			"python3 agents-audit2/fr/claimcheck.py — exit 0, round-1 findings still open: none",
+			"node scripts/i18n/generate.mjs --check — exit 0",
+			"node scripts/i18n/context-parity.mjs — exit 0",
+			"node scripts/i18n/ledger-check.mjs — exit 0 (742 rows)"
+		],
+		"gates_do_not_cover_this_namespace": "The fr targets are absent from src/i18n/catalogues/fr/ and the ledger holds no row for either namespace (0 of 742), so those green results are evidence about the tree, not about these two files. Ledger assembly is the coordinator's step; both hashes are above."
+	},
+	"artifacts": {
+		"receipt": "scratchpad/agents-audit2/fr/receipt.json",
+		"report": "scratchpad/agents-audit2/fr/findings.md",
+		"verdict": "scratchpad/agents-audit2/fr/verdict.txt",
+		"validator": "scratchpad/agents-audit2/fr/validate.mjs",
+		"claim_check": "scratchpad/agents-audit2/fr/claimcheck.py",
+		"execution_log": "scratchpad/agents-audit2/fr/audit.log"
+	},
+	"limits": [
+		"No rendered frame: the fr targets are not in the tree, so no locale rig could render them; fit is judged from the components' own source (truncate + title, ReadBlock, auto-width Button), not a screenshot.",
+		"One reading pass by one session (this auditor), though each value was judged twice — once for the round-1 claim and once independently.",
+		"This directory is staging for the requesting session; the tracked evidence bundle under i18n/audits/evidence/fr/<namespace>/<audit-id>/ is the coordinator's to assemble."
+	]
+}

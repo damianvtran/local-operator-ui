@@ -1,0 +1,48 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "radient/auto",
+ "model_provenance": "radient/auto. Fallback, disclosed: the session started on anthropic/claude-opus-5-5, lost it to provider quota and moved openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; this delta re-audit ran on radient/auto.",
+ "fallback": "radient/auto (primary anthropic/claude-opus-5-5 unavailable: provider quota)",
+ "independence": "Separate session (98d6ccb52026) from the PR coder and from the translator of this namespace. The verdict was rebuilt from the English source, the en context sidecar, the render sites in tour-copy.ts, sibling fragments, the glossary and the locale style guide - not from the author's claims. Delta scope: the one value the previous round edited.",
+ "instance": "98d6ccb52026-tc1-delta",
+ "session": "98d6ccb52026",
+ "locale": "ur",
+ "branch": "feat/i18n-onboarding",
+ "head": "877225cb8337d2f09f73bf57455e8faf455a6a96",
+ "pr": "damianvtran/local-operator-ui#1419",
+ "date": "2026-10-30",
+ "status": "passed",
+ "scope": "ui.onboarding.tour: TC1 delta re-audit at 877225cb833. The comma-fragment value (pre_command_palette_open_canvas.body.1.5) lost the space that preceded the ',' chip in all eight catalogues, and the en context sidecar's width claim and note were corrected. Nothing else in the namespace changed.",
+ "inputs_sha256": {
+  "en_context (ui.onboarding.tour.context.json)": "fe6c1c0ff5717552c5fe320e22713d9ec1a8149f13c4246161220fe2585ade89",
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/ur.md)": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+ },
+ "namespaces": {
+  "ui.onboarding.tour": {
+   "namespace": "ui.onboarding.tour",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 123,
+   "sha256": {
+    "en": "6b1936e04b1cb48d8151dcc191dda23fffb45c8555162d1d5d37c600480c8792",
+    "ur": "fe858ca6c5ca1a373c141cbabccdab1d3f7d9777ca8cf75c098dc0cf972c9cc4"
+   },
+   "context_sha256": "fe6c1c0ff5717552c5fe320e22713d9ec1a8149f13c4246161220fe2585ade89",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+    "target": "src/i18n/catalogues/ur/ui.onboarding.tour.json",
+    "context": "src/i18n/catalogues/en/ui.onboarding.tour.context.json"
+   },
+   "findings": [],
+   "verified": [
+    "the comma-fragment value differs from the previously audited bytes by exactly one U+0020 removed at its end (TC1): the run now reads '...@ for agents and teams , for settings...' as '...@ for agents and teams, for settings...' with the ',' keycap chip supplying the comma",
+    "no space precedes the punctuation chip in this locale; the leading space that separates the chip from the previous run is unchanged",
+    "every other value in the file is byte-identical to the round-4 audited target; one key changed per file, nothing retranslated",
+    "the en context sidecar's width claim for that key is 21, equal to len(value); all 123 claims in the namespace equal len(value)"
+   ]
+  }
+ }
+}

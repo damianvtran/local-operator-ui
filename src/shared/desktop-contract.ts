@@ -29,6 +29,10 @@ import type {
 	TeamBridgeOpenResult,
 } from "./team-bridge-notify";
 
+const DOT_ONLY_VARIABLE_KEY = /^\.+$/;
+const PUBLICATION_FORMAT_POINT = /\p{Cf}/u;
+const PUBLICATION_PATH_SEPARATOR = /[/\\:]/;
+
 const id = z
 	.string()
 	.min(1)
@@ -156,6 +160,23 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  * is refused HERE, by name, rather than by the daemon's generic 422.
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
+/**
+ * What a typed credential decision echoes back: the backend's
+ * `CredentialApprovalAcknowledgment`, field for field. The two credential
+ * operations are the model's own `Literal`, and both digests its
+ * `^sha256:[0-9a-f]{64}$` pattern, so a malformed echo is refused HERE, by
+ * name, instead of by the daemon's generic 422.
+ */
+export const CREDENTIAL_APPROVAL_OPERATIONS = [
+	"credential_finite_share",
+	"credential_inheritance",
+] as const;
+export const CREDENTIAL_APPROVAL_DIGEST = /^sha256:[0-9a-f]{64}$/;
+const credentialApprovalAcknowledgment = {
+	operation: z.enum(CREDENTIAL_APPROVAL_OPERATIONS),
+	requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+	disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+};
 /**
  * The Library's two opaque identifiers, bounded at the boundary.
  *
@@ -506,6 +527,34 @@ const teamBridgeAttachmentIds = z
 	.array(id)
 	.max(4)
 	.refine((ids) => new Set(ids).size === ids.length, "Duplicate attachment");
+/*
+ * STRUCTURED @-MENTIONS on a send: local-operator #3204's `MentionIn`,
+ * `{kind, account_id, endpoint_id?}`, max 50 and distinct (the backend 422s a
+ * duplicate). Strict so a stray field fails here, in the renderer's own
+ * request, rather than as a remote refusal of a message the reader typed.
+ * Sent only when the backend advertises `team_bridge_send_mentions`; absent
+ * otherwise, so an older backend sees the unchanged body.
+ */
+export const teamBridgeMentionsSchema = z
+	.array(
+		z
+			.object({
+				kind: z.enum(["human", "agent"]),
+				account_id: id,
+				endpoint_id: id.optional(),
+			})
+			.strict(),
+	)
+	.max(50)
+	.refine(
+		(rows) =>
+			new Set(
+				rows.map(
+					(row) => `${row.kind}:${row.account_id}:${row.endpoint_id ?? ""}`,
+				),
+			).size === rows.length,
+		"Duplicate mention",
+	);
 // Mirrors ScheduleUnit in the renderer's api/local-operator/types.ts and the
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
@@ -532,7 +581,7 @@ const scheduleUnit = z.enum(["minutes", "hours", "days"]);
  * cannot answer this (review round 1, C-03).
  */
 export function isAddressableVariableKey(key: string): boolean {
-	return !/^\.+$/.test(key);
+	return !DOT_ONLY_VARIABLE_KEY.test(key);
 }
 
 /**
@@ -805,7 +854,7 @@ const isPublicationControl = (point: number): boolean =>
  * different keys — the shadowing an exact local name lookup cannot see.
  */
 const isPublicationFormat = (point: number): boolean =>
-	/\p{Cf}/u.test(String.fromCodePoint(point));
+	PUBLICATION_FORMAT_POINT.test(String.fromCodePoint(point));
 
 /** The bidi overrides a rendered name would use to differ from its bytes. */
 const isPublicationBidiOverride = (point: number): boolean =>
@@ -898,7 +947,8 @@ export function publicationNameRule(name: string): string | null {
 	if (!trimmed) return "must not be empty";
 	if (publicationCharCount(trimmed) > PUBLICATION_NAME_MAX_CHARS)
 		return `must be at most ${PUBLICATION_NAME_MAX_CHARS} characters`;
-	if (/[/\\:]/.test(trimmed)) return 'must not contain "/", "\\" or ":"';
+	if (PUBLICATION_PATH_SEPARATOR.test(trimmed))
+		return 'must not contain "/", "\\" or ":"';
 	if (publicationHasCodePoint(trimmed, isPublicationBidiOverride))
 		return "must not contain Unicode bidirectional override characters";
 	if (publicationHasCodePoint(trimmed, isPublicationControlWhitespace))
@@ -1262,9 +1312,28 @@ const notificationId = z
 	.regex(/^(?:n_[a-z2-7]{4,32}|ask:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+)$/);
 
 /* The one-of-three target a read/dismiss write names (contract § 5.2). */
+// A selection token freezes the filtered result on core, not just the loaded
+// page. Exclusions can only narrow that snapshot. Existing observed-id callers
+// retain their original request shape and revision safeguards.
+const notificationSelectionTarget = z
+	.object({
+		selectionToken: z.string().min(1).max(512),
+		reconcileIds: z.array(notificationId).max(500).optional(),
+		excludedIds: z.array(notificationId).max(500).optional(),
+	})
+	.strict();
+const notificationUndoTarget = z
+	.object({
+		operationToken: z.string().min(1).max(512),
+		reconcileIds: z.array(notificationId).max(500).optional(),
+	})
+	.strict();
 const notificationsTarget = z.union([
 	z
 		.object({
+			throughSeq: z.number().int().min(0).optional(),
+			receipt: z.literal(true).optional(),
+			reconcileIds: z.array(notificationId).max(500).optional(),
 			items: z
 				.array(
 					z
@@ -1436,6 +1505,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			subscribe: z.boolean().optional(),
 			autoPush: z.boolean().optional(),
 			confirmPublicEgress: z.boolean().optional(),
+			// Adoption is receipt-bound: previews cannot authorize a later overwrite.
+			dryRun: z.boolean().optional(),
+			adoptionStrategy: z.enum(["merge", "keep-local", "take-hub"]).optional(),
+			allowLlm: z.boolean().optional(),
+			confirm: z.boolean().optional(),
+			adoptionReceipt: z.string().min(16).max(128).optional(),
 		})
 		.strict(),
 	/*
@@ -3469,6 +3544,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 						 * reads as "degrade to the verification-page link".
 						 */
 						"signup.resend",
+						/*
+						 * The Team free trial ops (teams-trial §3; core PR #3386).
+						 * Named here and in `shared/api/radient/proxy.ts` for the
+						 * reason above.
+						 */
+						"team_trial.eligibility",
+						"team_trial.start",
+						"team_trial.status",
 					]),
 					request_id: requestId.optional(),
 					tenant_id: id.optional(),
@@ -3730,9 +3813,51 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id.optional(),
 		})
 		.strict(),
+	/*
+	 * LEAVE, as its own op beside `join` (members panel, 2026-11-04). The
+	 * `lifecycle` op's `leave` action reaches the same core route, but this one
+	 * is shaped for the panel's "Leave" row. The row's organization is sent as
+	 * `tenant_id` for core's owner receipt, but the hub's leave handler does NOT
+	 * read a tenant today: it resolves the caller's first active membership, so
+	 * a leave on a conversation in another organization is refused as not found
+	 * (shown inline) rather than routed there (review round 1, R2). Both
+	 * halves of the owner receipt ride the QUERY, which is where core's
+	 * `POST .../leave` reads them (`_conversation_owner_query`; the route has
+	 * no body model). Leaving is the leave/re-add boundary: re-entry needs a
+	 * fresh invitation, which is why the panel confirms first.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.leave"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.notify"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			notify: z.enum(["all", "mention", "mute"]),
+		})
+		.strict(),
+	/*
+	 * The OWNER'S OWN AGENT'S wake level in one conversation — a different
+	 * member row from the reader's `notify` above. The hub wakes an agent member
+	 * on every message when its level is `all` (the default since the
+	 * wake-on-every-message change), on @-mentions of it plus replies in
+	 * threads it follows at `mention`, and never — @-mentions included — at
+	 * `mute`. Only the runtime knows which endpoint is the owner's agent, so
+	 * the renderer names the conversation and the level, never an endpoint id;
+	 * local-operator resolves the endpoint and calls the hub's endpoint-addressed
+	 * notify route. Owner-guarded like every Team Bridge write: a level chosen
+	 * under one account must not land under another.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.agent_notify"),
 			expected_account_id: id.optional(),
 			conversation_id: id,
 			tenant_id: id.optional(),
@@ -3790,9 +3915,54 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			expected_account_id: id.optional(),
 			conversation_id: id,
 			account_id: id,
-			decision: z.enum(["accept", "decline"]),
-			consent_version: z.string().min(1).max(128),
+			/*
+			 * `withdraw` takes an ACTIVE own agent out (agent-server #227; core
+			 * `ConversationConsentIn`). Only accept/decline answer an invitation,
+			 * so only they carry `consent_version`: leaving is not consenting,
+			 * and core refuses a version on withdraw. The pairing is enforced on
+			 * the union's `superRefine` below, because a refined member is a
+			 * `ZodEffects` the discriminated union refuses.
+			 */
+			decision: z.enum(["accept", "decline", "withdraw"]),
+			consent_version: z.string().min(1).max(128).optional(),
+			/* Pins ONE of the caller's agent rows (an owner may have several
+			   endpoints); the hub owns the "is this one of yours" rule. */
+			endpoint_id: id.optional(),
 			tenant_id: id.optional(),
+		})
+		.strict(),
+	// Owner audit is a separate human-only read plane. No endpoint selector or
+	// write op is admitted here; the runtime derives the caller's own agent.
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.conversations"),
+			expected_account_id: id,
+			tenant_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			cursor: z.string().min(1).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.messages"),
+			expected_account_id: id,
+			tenant_id: id,
+			conversation_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			before_seq: z.number().int().nonnegative().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.replies"),
+			expected_account_id: id,
+			tenant_id: id,
+			conversation_id: id,
+			message_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			after_seq: z.number().int().nonnegative().optional(),
+			before_seq: z.number().int().positive().optional(),
+			order: z.enum(["asc", "desc"]).optional(),
 		})
 		.strict(),
 	z
@@ -3805,12 +3975,15 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			endpoint_id: id.optional(),
 		})
 		.strict(),
+	/* Reactions have no receipt-less legacy caller: the captured account and
+	 * target tenant are required before main may dispatch either verb. */
 	z
 		.object({
 			op: z.literal("team_bridge.reactions.toggle"),
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			expected_account_id: id,
+			tenant_id: id,
 			emoji: z.string().min(1),
 			active: z.boolean(),
 		})
@@ -3828,20 +4001,31 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* Reply in this root message's thread; the hub validates the root. */
 			thread_root_id: id.optional(),
 			attachment_ids: teamBridgeAttachmentIds.optional(),
+			files: z
+				.array(id)
+				.min(1)
+				.max(10)
+				.refine((ids) => new Set(ids).size === ids.length, "Duplicate file")
+				.optional(),
+			mentions: teamBridgeMentionsSchema.optional(),
 		})
 		.strict(),
 	/*
 	 * One thread (root + replies, oldest-first) under the history gate. Paging
 	 * runs FORWARD with an inclusive `after_seq`, because a thread reads top-down.
+	 * The captured account binds this read to the bearer main dispatches with.
 	 */
 	z
 		.object({
 			op: z.literal("team_bridge.messages.replies"),
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			expected_account_id: id,
+			tenant_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
+			before_seq: z.number().int().positive().optional(),
+			order: z.enum(["asc", "desc"]).optional(),
 		})
 		.strict(),
 	z
@@ -3913,6 +4097,24 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			muted: z.boolean().optional(),
 		})
 		.strict(),
+	/*
+	 * THREAD READ (hub slice TR1; server PR pending). A separate op rather than
+	 * a `message_id` on `team_bridge.read`: the conversation cursor and a thread
+	 * cursor are different rows on the hub, and a combined op would let a thread
+	 * acknowledgement advance the channel's cursor past unseen timeline rows.
+	 * Callers dispatch it only when `features.team_bridge_thread_reads >= 1`;
+	 * an older runtime never sees it.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.thread_read"),
+			expected_account_id: id,
+			conversation_id: id,
+			message_id: id,
+			tenant_id: id,
+			seq: z.number().int().nonnegative(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.unread"),
@@ -3976,6 +4178,33 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 */
 	z
 		.object({ op: z.literal("tts.paths") })
+		.strict(),
+	/*
+	 * THE NOTIFICATION-SOUND SURFACE (`features.notification_sounds`, core
+	 * `server/routes/notification_sounds.py`): the listing Settings renders, and
+	 * the two edits a custom sound takes. Selection, volume and on/off are NOT
+	 * here: they are `notifications.sound.*` registry keys and go through
+	 * `settings.edit` like every other row (one write funnel). Audio and upload
+	 * carry bytes, so they ride the media relay (`desktop-media.ts`).
+	 *
+	 * `id` is shape-checked because it becomes a path segment: the catalog's
+	 * slugs and core's `custom-<slug>-<hex>` ids are both lower-case kebab.
+	 */
+	z
+		.object({ op: z.literal("notification_sounds.list") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("notification_sounds.rename"),
+			id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+			name: z.string().min(1).max(200),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("notification_sounds.remove"),
+			id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+		})
 		.strict(),
 	z.object({ op: z.literal("config.get") }).strict(),
 	z.object({ op: z.literal("config.update"), value: configUpdate }).strict(),
@@ -4115,6 +4344,39 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
+	/*
+	 * THE TYPED CREDENTIAL DECISIONS (`features.credential_approvals`). A credential
+	 * permission cannot ride the bodiless `approve` above: that request proves
+	 * nothing about which disclosure was on screen, so the backend refuses it for
+	 * these records on purpose (`network/credentials/desktop_approval.py`, "WHY THE
+	 * GENERIC /approve STAYS REFUSED"). These two carry what the card REVIEWED - the
+	 * operation and the two digests the row served - and the server recomputes both
+	 * from the record on disk and refuses a mismatch before any signer runs.
+	 *
+	 * THE DIGESTS ARE ECHOED, NEVER COMPUTED HERE. The renderer has no canonical
+	 * JSON encoder that matches the backend's byte for byte, and a digest this app
+	 * minted would be a claim about a disclosure the server did not serve. So the
+	 * shape is pinned to the backend model's own pattern
+	 * (`CredentialApprovalAcknowledgment`, strict, `extra: forbid`) and the value is
+	 * whatever the list row carried.
+	 *
+	 * `approveCredential` is review -> sign -> apply in one call;
+	 * `applyCredential` is the retry of a signed card whose apply did not finish.
+	 */
+	z
+		.object({
+			op: z.literal("approvals.approveCredential"),
+			approvalId,
+			...credentialApprovalAcknowledgment,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("approvals.applyCredential"),
+			approvalId,
+			...credentialApprovalAcknowledgment,
+		})
+		.strict(),
 	/*
 	 * THE FLEET ASKS READ (`GET /v1/desktop/asks`), the cross-session companion of
 	 * the per-session queue the canonical frame carries. A GET with no parameters
@@ -4530,6 +4792,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("notifications.list"),
+			preview: z.literal(true).optional(),
+			includeAskReads: z.boolean().optional(),
+			// No selection_token/excluded_ids here: core's recount WITH exclusions
+			// is the PATCH body form ({op:"preview"}); 500 IDs in a GET URL exceed
+			// h11's request-line limit. The page recounts exclusions locally.
+			countSessionIds: z.array(sessionId).max(50).optional(),
+			kind: z.enum(["all", "asks", "updates"]).optional(),
+			bulkPriority: z.enum(["any", "high", "normal_up"]).optional(),
 			state: z.enum(["unread", "all", "dismissed"]).optional(),
 			source: z.enum(["notify", "ask"]).optional(),
 			priority: z.enum(["high", "normal", "low"]).optional(),
@@ -4559,15 +4829,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("notifications.read"),
-			verb: z.enum(["read", "unread"]),
-			target: notificationsTarget,
+			// Guard Undo like a read: the journal may restore a prior read mark.
+			verb: z.enum(["read", "unread", "undo"]),
+			target: z.union([
+				notificationsTarget,
+				notificationSelectionTarget,
+				notificationUndoTarget,
+			]),
 		})
 		.strict(),
 	z
 		.object({
 			op: z.literal("notifications.dismiss"),
 			verb: z.enum(["dismiss", "undismiss"]),
-			target: notificationsTarget,
+			target: z.union([notificationsTarget, notificationSelectionTarget]),
 		})
 		.strict(),
 	/*
@@ -4628,12 +4903,63 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/* Consent: accept/decline carry the participation version, withdraw
+		   never does (core `ConversationConsentIn._version_per_decision`). */
+		if (
+			request.op === "team_bridge.conversations.consent" &&
+			(request.decision === "withdraw") !==
+				(request.consent_version === undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"accept and decline require consent_version; withdraw carries none", // i18n: ignore wire validation diagnostic
+				path: ["consent_version"],
+			});
+		}
+		if (
+			(request.op === "notifications.read" ||
+				request.op === "notifications.dismiss") &&
+			"items" in request.target &&
+			Boolean(request.target.receipt) !==
+				(request.target.throughSeq !== undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Receipt writes require a sequence boundary", // i18n: ignore wire validation diagnostic
+				path: ["target"],
+			});
+		}
+		if (
+			request.op === "notifications.read" &&
+			(request.verb === "undo") !== "operationToken" in request.target
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Undo requires an operation token, and only undo accepts one", // i18n: ignore wire validation diagnostic
+				path: ["target"],
+			});
+		}
 		/*
 		 * Image-only messages: an empty body is legal only when images carry the
 		 * message (contract §3, "body may be empty iff attachment_ids non-empty").
 		 * A PATCH that omits `body` keeps the stored one, so only an explicit
 		 * empty body needs a non-empty set beside it.
 		 */
+		if (request.op === "team_bridge.messages.send" && request.files) {
+			const images = request.attachment_ids ?? [];
+			if (
+				images.length + request.files.length > 10 ||
+				request.files.some((file) => images.includes(file))
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Invalid combined attachment set", // i18n: ignore request-schema diagnostic, not rendered interface copy
+					path: ["files"],
+				});
+			}
+		}
+
 		if (
 			request.op === "team_bridge.messages.send" ||
 			request.op === "team_bridge.scheduled.create" ||
@@ -4642,7 +4968,8 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		) {
 			if (
 				request.body?.trim() === "" &&
-				(request.attachment_ids?.length ?? 0) === 0
+				(request.attachment_ids?.length ?? 0) === 0 &&
+				!(request.op === "team_bridge.messages.send" && request.files?.length)
 			) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -4664,6 +4991,22 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				code: z.ZodIssueCode.custom,
 				path: ["tenant_id"],
 				message: "Guarded conversation writes require an explicit tenant",
+			});
+			return;
+		}
+		/* A threaded send has no receipt-less compatibility path. Keep this on
+		 * the union: a member-level refine would make the discriminated union
+		 * invalid, while an optional field alone would let a caller forget the
+		 * account receipt and dispatch a reply as whoever signs in next. */
+		if (
+			request.op === "team_bridge.messages.send" &&
+			request.thread_root_id !== undefined &&
+			!request.expected_account_id
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["expected_account_id"],
+				message: "Thread replies require the captured account", // i18n: ignore request-schema diagnostic
 			});
 			return;
 		}
@@ -6468,7 +6811,10 @@ export function desktopRequestDeadlineMs(
 	// Op-keyed rather than request-keyed, because the gesture's bound is a property
 	// of the op alone: a caller holding only the op string (a story, a test) gets
 	// the same number the transport uses.
-	if (op === "approvals.approve") return APPROVAL_APPROVE_DEADLINE_MS;
+	// The typed approve signs through the same presence-gated signer before it
+	// applies, so it waits on the same human gesture. Its retry never signs.
+	if (op === "approvals.approve" || op === "approvals.approveCredential")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "tunnel.setup.run") return PHONE_SETUP_RUN_DEADLINE_MS;
 	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
@@ -6582,6 +6928,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.conversations.get",
 	"team_bridge.messages.list",
 	"team_bridge.messages.replies",
+	"team_bridge.owner_audit.conversations",
+	"team_bridge.owner_audit.messages",
+	"team_bridge.owner_audit.replies",
 	"team_bridge.unread",
 	"team_bridge.directory",
 	"team_bridge.status",
@@ -6734,7 +7083,7 @@ export function desktopRequestDeadlineDetail(
 	 * half: answering again is SAFE, because the store keeps the first decision and
 	 * refuses a second rather than repeating one (write-once, F3).
 	 */
-	if (op === "approvals.approve") {
+	if (op === "approvals.approve" || op === "approvals.approveCredential") {
 		return {
 			code,
 			message: `The app waits up to ${seconds} seconds for an approval, and the signing prompt was still open when it stopped waiting. The request was sent, so the decision may or may not have landed: read the approvals again — if the record still waits, answering it again is safe, because the store keeps the first decision and refuses a second.`,
@@ -6927,7 +7276,19 @@ export type DesktopStreamSubscription = {
  * (`desktop-media.ts`); this is the renderer-facing type so preload and callers
  * agree on the shape.
  */
+/** Captured human-owner receipt; no URL, destination path, MIME or filename. */
+export type DesktopOwnerAuditAttachmentScope = {
+	tenantId: string;
+	conversationId: string;
+	messageId: string;
+	attachmentId: string;
+	expectedAccountId: string;
+};
+
 export type DesktopMediaRequest =
+	| ({
+			op: "team_bridge.owner_audit.attachment";
+	  } & DesktopOwnerAuditAttachmentScope)
 	| { op: "speech.create"; request: Record<string, unknown> }
 	| { op: "speech.agent"; agentId: string; request: Record<string, unknown> }
 	| {
@@ -6938,6 +7299,52 @@ export type DesktopMediaRequest =
 	  }
 	| { op: "agent.import"; fileName: string }
 	| { op: "agent.export"; agentId: string }
+	/*
+	 * A LOCAL AGENT'S PROFILE PICTURE (core `GET|PUT|DELETE
+	 * /v1/agents/{id}/avatar`). Bytes both ways, so the relay rather than the
+	 * JSON transport; the bearer stays in main, so an `<img src>` can never point
+	 * at the route itself and the renderer paints a blob URL instead.
+	 *
+	 * `sha256` on the read is the content address the agent record published
+	 * (`avatar.sha256`): main sends it as `?v=` so a changed picture is a
+	 * different URL to every cache between here and core, and the renderer files
+	 * the blob under the same digest. The PUT carries the cropped image as a raw
+	 * body (core sniffs and re-normalises it); the DELETE carries nothing.
+	 */
+	| {
+			op: "agent.avatar";
+			agentId: string;
+			sha256: string;
+			/**
+			 * A downscaled derivative (core `agent_avatar_sizes`). Sent only when
+			 * core advertises the feature; absent, the 512 px original as before.
+			 */
+			size?: 64 | 128 | 256;
+	  }
+	// Human profile operations are intentionally disjoint from local agents.
+	// The opaque scope binds writes to the login that commissioned the editor.
+	| { op: "account.profile"; expectedAccountId: string }
+	| {
+			op: "account.profile.update";
+			expectedAccountId: string;
+			scope: string;
+			fields: {
+				display_name?: string;
+				title?: string;
+				description?: string;
+				timezone?: string;
+			};
+	  }
+	| { op: "account.avatar.put"; expectedAccountId: string; scope: string }
+	| {
+			op: "account.avatar.delete";
+			expectedAccountId: string;
+			scope: string;
+			mode: "uploaded" | "provider";
+			confirmed: true;
+	  }
+	| { op: "agent.avatar.put"; agentId: string }
+	| { op: "agent.avatar.delete"; agentId: string }
 	// A durable transcript row references an image by content digest with the
 	// payload stripped, and the JSON transport's envelope has nowhere to put
 	// bytes — which is what puts a screenshot fetch on this relay rather than
@@ -7002,6 +7409,8 @@ export type DesktopMediaRequest =
 	 */
 	| {
 			op: "team_bridge.attachment.upload";
+			mode?: "image" | "file";
+			fileName?: string;
 			tenantId: string;
 			conversationId: string;
 			/* The captured-owner receipt the runtime now REQUIRES on these routes:
@@ -7032,6 +7441,21 @@ export type DesktopMediaRequest =
 			size: 64 | 256;
 	  }
 	/*
+	 * An AGENT's own published picture, by ENDPOINT (never by its owner's
+	 * account, which is how an owner's face reached an agent on 2026-10-30).
+	 * Same closure as the account op: typed id/hash/size, never a URL; core's
+	 * `/v1/desktop/team-bridge/endpoints/{id}/avatar` relay holds the hub
+	 * credential and fences the read to `expectedAccountId`. An older core
+	 * answers 404 and the plate keeps the agent glyph.
+	 */
+	| {
+			op: "team_bridge.endpoint_avatar";
+			expectedAccountId: string;
+			endpointId: string;
+			hash: string;
+			size: 64 | 256;
+	  }
+	/*
 	 * A Library audio asset's PRE-RENDER peaks, as the same `{version, bars,
 	 * peaks}` JSON a generated sound's attachment waveform route serves. Audio
 	 * assets that came from a session carry the sidecar the producer wrote; a
@@ -7040,6 +7464,18 @@ export type DesktopMediaRequest =
 	 * synthesized shape.
 	 */
 	| { op: "library.waveform"; assetId: string }
+	/*
+	 * One notification sound as gain-baked `audio/wav` (core
+	 * `features.notification_sounds`). Main uses it to stage the banner sound;
+	 * `volume` is 0-100 and goes through the backend's own gain curve.
+	 */
+	| { op: "notification_sounds.audio"; soundId: string; volume: number }
+	/*
+	 * Add one custom notification sound (core `POST /v1/notification-sounds`,
+	 * multipart `file` + optional `name`). `fileName` is display text for the
+	 * daemon's refusal copy only; it never becomes a path on either side.
+	 */
+	| { op: "notification_sounds.upload"; fileName: string; name?: string }
 	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
@@ -7079,6 +7515,13 @@ export type DesktopMediaResponse =
 			 * exactly as the JSON transport's refusals are (design § 3.5, § 5.1).
 			 */
 			code?: DesktopRefusalCode;
+			/**
+			 * The daemon's own refusal code and params, forwarded only for
+			 * `notification_sounds.upload` (main `desktop-media.ts`): that row's copy
+			 * and remedy switch on the code (`too_long`, `unsupported_format` ...),
+			 * which the closed pairing table above cannot carry.
+			 */
+			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
 
 export type DesktopAPI = {
@@ -7089,6 +7532,7 @@ export type DesktopAPI = {
 		request: DesktopMediaRequest,
 		bytes: Uint8Array | null,
 	) => Promise<DesktopMediaResponse>;
+
 	/**
 	 * Arm ONE supplement-frame mount (turn-supplements memo §4.1, lane U-b).
 	 *
@@ -7519,6 +7963,18 @@ export type BackendSetting = {
 	 * `retention-duration.ts`).
 	 */
 	unit?: string | null;
+	/**
+	 * A SEVENTH additive field: the other words a reader might type for this row
+	 * (`"dark mode"` for the theme row, `"retries"` for a failover key). It is
+	 * the registry's vocabulary, not the renderer's — the settings search folds
+	 * these into its index so a synonym the backend owns is found without this
+	 * app inventing a second, drifting list of its own (issue #1492).
+	 *
+	 * OPTIONAL and read with `?? []`, exactly like the six above: an older server
+	 * sends nothing, and the search then matches on label, help, key, section and
+	 * choice labels — the behaviour it had before the field existed.
+	 */
+	synonyms?: string[];
 };
 /**
  * The one-time "delegated sessions were cleaned up" notice, as
@@ -7841,6 +8297,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/deny`,
 				method: "POST",
 			};
+		/*
+		 * The typed pair: the body is the backend model's three fields and nothing
+		 * else (the model forbids extras), each copied from the request unchanged so
+		 * the digests reach the server exactly as the list row served them.
+		 */
+		case "approvals.approveCredential":
+		case "approvals.applyCredential":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/${
+					request.op === "approvals.approveCredential"
+						? "approve-credential"
+						: "apply-credential"
+				}`,
+				method: "POST",
+				body: {
+					operation: request.operation,
+					request_digest: request.requestDigest,
+					disclosure_digest: request.disclosureDigest,
+				},
+			};
 		case "profiles.list":
 			return { path: "/v1/desktop/profiles", method: "GET" };
 		case "profiles.get":
@@ -7939,6 +8415,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 					...(request.confirmPublicEgress !== undefined
 						? { confirm_public_egress: request.confirmPublicEgress }
+						: {}),
+					...(request.dryRun !== undefined ? { dry_run: request.dryRun } : {}),
+					...(request.adoptionStrategy !== undefined
+						? { adoption_strategy: request.adoptionStrategy }
+						: {}),
+					...(request.allowLlm !== undefined
+						? { allow_llm: request.allowLlm }
+						: {}),
+					...(request.confirm !== undefined
+						? { confirm: request.confirm }
+						: {}),
+					...(request.adoptionReceipt !== undefined
+						? { adoption_receipt: request.adoptionReceipt }
 						: {}),
 				},
 			};
@@ -9442,12 +9931,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 						}
 					: {}),
 			};
+		case "team_bridge.conversations.leave":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/leave${conversationOwnerQuery(request)}`,
+				method: "POST",
+			};
 		case "team_bridge.conversations.notify":
 			return {
 				/* The read route's notify field (agent-server #148); no `seq`, so
 				   this write cannot advance the cursor. */
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
 				method: "POST",
+				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					notify: request.notify,
+				},
+			};
+		case "team_bridge.conversations.agent_notify":
+			return {
+				/* local-operator's own route: it maps the conversation to the
+				   owner's agent endpoint, so no endpoint id crosses this boundary. */
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/agent-notify`,
+				method: "PUT",
 				body: {
 					...(request.expected_account_id
 						? { expected_account_id: request.expected_account_id }
@@ -9491,9 +9999,40 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					decision: request.decision,
-					consent_version: request.consent_version,
+					...(request.consent_version
+						? { consent_version: request.consent_version }
+						: {}),
+					...(request.endpoint_id ? { endpoint_id: request.endpoint_id } : {}),
 				},
 			};
+		case "team_bridge.owner_audit.conversations":
+		case "team_bridge.owner_audit.messages":
+		case "team_bridge.owner_audit.replies": {
+			const query = new URLSearchParams({
+				expected_account_id: request.expected_account_id,
+				tenant_id: request.tenant_id,
+			});
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			let path = "/v1/desktop/team-bridge/owner-audit/conversations";
+			if (request.op === "team_bridge.owner_audit.conversations") {
+				if (request.cursor !== undefined) query.set("cursor", request.cursor);
+			} else {
+				path += `/${encodeURIComponent(request.conversation_id)}/messages`;
+				if (request.op === "team_bridge.owner_audit.messages") {
+					if (request.before_seq !== undefined)
+						query.set("before_seq", String(request.before_seq));
+				} else {
+					path += `/${encodeURIComponent(request.message_id)}/replies`;
+					if (request.after_seq !== undefined)
+						query.set("after_seq", String(request.after_seq));
+					if (request.before_seq !== undefined)
+						query.set("before_seq", String(request.before_seq));
+					if (request.order !== undefined) query.set("order", request.order);
+				}
+			}
+			return { path: `${path}?${query}`, method: "GET" };
+		}
 		case "team_bridge.messages.list": {
 			const query = new URLSearchParams();
 			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
@@ -9514,10 +10053,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				? {
 						path,
 						method: "PUT",
-						body: request.tenant_id ? { tenant_id: request.tenant_id } : {},
+						body: {
+							expected_account_id: request.expected_account_id,
+							tenant_id: request.tenant_id,
+						},
 					}
 				: {
-						path: `${path}${tenantQuery(request.tenant_id)}`,
+						path: `${path}${conversationOwnerQuery(request)}`,
 						method: "DELETE",
 					};
 		}
@@ -9539,6 +10081,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.attachment_ids?.length
 						? { attachment_ids: request.attachment_ids }
 						: {}),
+					...(request.files?.length ? { files: request.files } : {}),
+					// Omitted (never `[]`) when empty: the pre-mention wire, byte for byte.
+					...(request.mentions?.length ? { mentions: request.mentions } : {}),
 				},
 			};
 		case "team_bridge.scheduled.list":
@@ -9593,12 +10138,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "DELETE",
 			};
 		case "team_bridge.messages.replies": {
-			const query = new URLSearchParams();
-			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			const query = new URLSearchParams({
+				expected_account_id: request.expected_account_id,
+				tenant_id: request.tenant_id,
+			});
 			if (request.limit !== undefined)
 				query.set("limit", String(request.limit));
 			if (request.after_seq !== undefined)
 				query.set("after_seq", String(request.after_seq));
+			if (request.before_seq !== undefined)
+				query.set("before_seq", String(request.before_seq));
+			if (request.order !== undefined) query.set("order", request.order);
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/replies${suffix}`,
@@ -9616,6 +10166,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					...(request.seq === undefined ? {} : { seq: request.seq }),
 					...(request.muted === undefined ? {} : { muted: request.muted }),
+				},
+			};
+		case "team_bridge.thread_read":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/read`,
+				method: "POST",
+				body: {
+					expected_account_id: request.expected_account_id,
+					tenant_id: request.tenant_id,
+					seq: request.seq,
 				},
 			};
 		case "team_bridge.unread": {
@@ -9677,6 +10237,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "tts.paths":
 			return { path: "/v1/tts/paths", method: "GET" };
+		case "notification_sounds.list":
+			return { path: "/v1/notification-sounds", method: "GET" };
+		case "notification_sounds.rename":
+			return {
+				path: `/v1/notification-sounds/${request.id}`,
+				method: "PATCH",
+				body: { name: request.name },
+			};
+		case "notification_sounds.remove":
+			return {
+				path: `/v1/notification-sounds/${request.id}`,
+				method: "DELETE",
+			};
 		case "config.get":
 			return { path: "/v1/config", method: "GET" };
 		case "config.update":
@@ -9998,6 +10571,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "notifications.list": {
 			const query = new URLSearchParams();
+			if (request.preview) query.set("preview", "true");
+			if (request.includeAskReads) query.set("include_ask_reads", "true");
+			for (const id of request.countSessionIds ?? [])
+				query.append("count_session_ids", id);
+			if (request.kind) query.set("kind", request.kind);
+			if (request.bulkPriority)
+				query.set("bulk_priority", request.bulkPriority);
 			if (request.state) query.set("state", request.state);
 			if (request.source) query.set("source", request.source);
 			if (request.priority) query.set("priority", request.priority);
@@ -10059,10 +10639,33 @@ export function desktopEndpoint(request: DesktopRequest): {
 
 /** The PATCH body's target half, in the route's snake_case (contract § 5.2). */
 function notificationsTargetBody(
-	target: z.infer<typeof notificationsTarget>,
+	target:
+		| z.infer<typeof notificationsTarget>
+		| z.infer<typeof notificationSelectionTarget>
+		| z.infer<typeof notificationUndoTarget>,
 ): Record<string, unknown> {
+	if ("selectionToken" in target)
+		return {
+			selection_token: target.selectionToken,
+			...(target.reconcileIds ? { reconcile_ids: target.reconcileIds } : {}),
+			...(target.excludedIds ? { excluded_ids: target.excludedIds } : {}),
+		};
+	if ("operationToken" in target)
+		return {
+			operation_token: target.operationToken,
+			...(target.reconcileIds ? { reconcile_ids: target.reconcileIds } : {}),
+		};
 	if ("items" in target) {
 		return {
+			...(target.receipt
+				? {
+						receipt: true,
+						through_seq: target.throughSeq,
+						...(target.reconcileIds
+							? { reconcile_ids: target.reconcileIds }
+							: {}),
+					}
+				: {}),
 			ids: target.items.map((item) => ({
 				id: item.id,
 				revision: item.revision,

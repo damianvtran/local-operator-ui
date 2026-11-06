@@ -1,0 +1,236 @@
+{
+  "schema": 1,
+  "locale": "ur",
+  "audit_date": "2026-11-03T09:19:53.674Z",
+  "instance": "25304c88781e-ur-census-second",
+  "agent": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "key_count": 5,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "25304c88781e-ur-census-second",
+    "session": "25304c88781e",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "actual_model_source": "Host model-switch notice: temporary openai/gpt-6.1-sol fallback after anthropic/claude-opus-5-5 quota failure; initial configured model anthropic/claude-sonnet-5-5. Audit analysis and execution performed on openai/gpt-6.1-sol."
+  },
+  "scope": {
+    "base": "6dd43fd7494",
+    "head": "19868532b9cd2bca0eca468dbf22572d8dd78a5b",
+    "pass": "second independent high-visibility five-key delta only",
+    "operator_request": "Make sure to continue the work all the way for all languages to get the entire UI completely translated",
+    "first_audit_read": false,
+    "translation_service_used": false
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "en_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+      "ur_sha256": "656e54c5f0c354929765afc16f7d6805301fdfcce4bbc8311e5fe03b73b73890",
+      "key_count": 3,
+      "keys": [
+        "ui.chat.session_status.effort_level.low",
+        "ui.chat.session_status.effort_level.medium",
+        "ui.chat.session_status.effort_level.high"
+      ],
+      "findings": [],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.json",
+          "sha256": "656e54c5f0c354929765afc16f7d6805301fdfcce4bbc8311e5fe03b73b73890"
+        }
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "en_sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab",
+      "ur_sha256": "f529b7913b8809704e6e16706faac642d03a02f7715582bf92aa8d37d6107459",
+      "key_count": 2,
+      "keys": [
+        "ui.chat.run_details.wake.armed_count",
+        "ui.chat.run_details.wake.cadence_once"
+      ],
+      "findings": [],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+          "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+          "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.run_details.json",
+          "sha256": "f529b7913b8809704e6e16706faac642d03a02f7715582bf92aa8d37d6107459"
+        }
+      }
+    }
+  },
+  "findings": [],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "semantic_notes": [
+    "کم / متوسط / زیادہ form a natural, distinct ascending effort scale; neutral product register, no address/formality issue.",
+    "بیداری uses glossary noun; فعال ہے / فعال ہیں correctly distinguishes singular and plural armed states, not delivery completion.",
+    "ایک بار is an idiomatic one-time cadence, also valid in embedded schedule prose. Committed keepRepeatLabel uses a separate keep_as_once key on null cadence; repeating schedule embeds only the non-null branch.",
+    "No manual bidi controls, arrows, Latin literals or punctuation in the three effort labels or cadence. Count display remains the Latin-digit raw interpolation. Logical string order checked; visual bidi ordering/shaping not exercised.",
+    "No numeric maxCells/maxChars hints for these five keys; effort labels are single words, cadence is a natural two-word equivalent, and wake count remains a brief status clause. No measured layout claim."
+  ],
+  "limits": [
+    "Committed catalogue and call-site static review only; no native UI, browser, screenshots, pseudolocale or pixel/geometry proof.",
+    "Focused repo messageArguments validator helper and existing ICU parser/formatter executed; no full scanner, generator, build, tsc, dependency installation or worktree.",
+    "Receipt created in session scratch under explicit no-repo-edits instruction; manager must retain the same bytes in repository evidence and use one receipt for both ledger rows. No ledger written by auditor."
+  ],
+  "audit_notes_not_execution_log": [
+    {
+      "namespace": "ui.chat",
+      "added_keys": 3,
+      "unchanged_existing_keys": 203,
+      "namespace_target_total": 206,
+      "mechanical": "PASS",
+      "entries": [
+        {
+          "key": "ui.chat.session_status.effort_level.low",
+          "en": "Low",
+          "ur": "کم",
+          "arguments": [],
+          "unicode_codepoints": 2,
+          "context": {
+            "role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+            "tone": "single plain word, capitalised as a menu item",
+            "length": "One word; the status strip reading is a few cells wide.",
+            "note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+            "placeholders": {}
+          }
+        },
+        {
+          "key": "ui.chat.session_status.effort_level.medium",
+          "en": "Medium",
+          "ur": "متوسط",
+          "arguments": [],
+          "unicode_codepoints": 5,
+          "context": {
+            "role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+            "tone": "single plain word, capitalised as a menu item",
+            "length": "One word; the status strip reading is a few cells wide.",
+            "note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+            "placeholders": {}
+          }
+        },
+        {
+          "key": "ui.chat.session_status.effort_level.high",
+          "en": "High",
+          "ur": "زیادہ",
+          "arguments": [],
+          "unicode_codepoints": 5,
+          "context": {
+            "role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+            "tone": "single plain word, capitalised as a menu item",
+            "length": "One word; the status strip reading is a few cells wide.",
+            "note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+            "placeholders": {}
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "ui.chat.run_details",
+      "added_keys": 2,
+      "unchanged_existing_keys": 89,
+      "namespace_target_total": 91,
+      "mechanical": "PASS",
+      "entries": [
+        {
+          "key": "ui.chat.run_details.wake.armed_count",
+          "en": "{count, plural, =1 {{count_display} wake armed} other {{count_display} wakes armed}}",
+          "ur": "{count, plural, =1 {{count_display} بیداری فعال ہے} one {{count_display} بیداری فعال ہے} other {{count_display} بیداریاں فعال ہیں}}",
+          "arguments": [
+            [
+              "count",
+              "number"
+            ],
+            [
+              "count_display",
+              "string"
+            ]
+          ],
+          "unicode_codepoints": 131,
+          "context": {
+            "role": "count clause naming how many scheduled wakes are armed, on the composer's wakes chip and as the trailing tally of the run panel's Wakes section",
+            "tone": "short status clause, lowercase after the number, no trailing punctuation",
+            "length_hint": "Three words",
+            "note": "A wake is a scheduled follow-up the agent set for itself; armed means it is set and will fire. One string serves both surfaces so they cannot drift. Provide every CLDR plural category the language needs.",
+            "placeholders": {
+              "count": "Numeric selector for CLDR plural categories. English uses exact =1 to preserve the original strict count === 1 branch; translators add their CLDR arms.",
+              "count_display": "Raw String(count), preserving the former JavaScript interpolation without rounding or grouping. Print this, not count."
+            }
+          },
+          "cldr_categories": [
+            "one",
+            "other"
+          ],
+          "arms": [
+            "=1",
+            "one",
+            "other"
+          ],
+          "formatted": [
+            {
+              "count": 0,
+              "category": "other",
+              "output": "0 بیداریاں فعال ہیں"
+            },
+            {
+              "count": 1,
+              "category": "one",
+              "output": "1 بیداری فعال ہے"
+            },
+            {
+              "count": 2,
+              "category": "other",
+              "output": "2 بیداریاں فعال ہیں"
+            },
+            {
+              "count": 1.5,
+              "category": "other",
+              "output": "1.5 بیداریاں فعال ہیں"
+            },
+            {
+              "count": 1000,
+              "category": "other",
+              "output": "1000 بیداریاں فعال ہیں"
+            }
+          ],
+          "distinct_selector_display": "RAW-001 بیداری فعال ہے"
+        },
+        {
+          "key": "ui.chat.run_details.wake.cadence_once",
+          "en": "once",
+          "ur": "ایک بار",
+          "arguments": [],
+          "unicode_codepoints": 7,
+          "context": {
+            "role": "cadence of a wake that fires a single time, in a wake row and inside the schedule sentences that quote a wake's repeat",
+            "tone": "single lowercase word, no punctuation",
+            "length_hint": "One word",
+            "note": "Opposite of 'every {duration}'. It is embedded mid-sentence by other strings (for example 'keep as once'), so it must read as a lowercase adverb.",
+            "placeholders": {}
+          }
+        }
+      ]
+    }
+  ]
+}

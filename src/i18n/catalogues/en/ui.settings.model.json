@@ -30,5 +30,10 @@
 	"ui.settings.model.model_setting_options.copy_needs_sign_in_group": "Needs sign-in",
 	"ui.settings.model.system_prompt.saving": "Saving...",
 	"ui.settings.model.model_setting_options.provider_detail": "{provider}{aggregated, select, yes {, aggregated} other {}}{credential, select, signed_in {, signed in} missing {, no credential} other {}}",
-	"ui.settings.model.system_prompt.load_failed": "Failed to load system prompt: {reason}"
+	"ui.settings.model.system_prompt.load_failed": "Failed to load system prompt: {reason}",
+	"ui.settings.model.system_prompt.rich_text": "Rich text",
+	"ui.settings.model.system_prompt.source": "Markdown source",
+	"ui.settings.model.system_prompt.source_required": "This document uses Markdown that rich editing cannot preserve. Edit the source to keep all instructions intact.",
+	"ui.settings.model.system_prompt.source_edit": "Edit source",
+	"ui.settings.model.system_prompt.source_stale": "This part changed while you were editing it. Cancel and open it again to keep the latest instructions."
 }

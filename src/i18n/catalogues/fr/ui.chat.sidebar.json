@@ -58,5 +58,18 @@
 	"ui.chat.sidebar.row_menu.unarchive": "Désarchiver la conversation",
 	"ui.chat.sidebar.row_menu.unpin": "Désépingler la conversation",
 	"ui.chat.sidebar.pins.pin_label": "Épingler « {title} »",
-	"ui.chat.sidebar.pins.unpin_label": "Désépingler « {title} »"
+	"ui.chat.sidebar.pins.unpin_label": "Désépingler « {title} »",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} et {tail}} middle {{head}, {tail}} other {{head} et {tail}}}",
+	"ui.chat.sidebar.row.open_draft": "Ouvrir {label}",
+	"ui.chat.sidebar.entity.more_in": "{label} dans {name}",
+	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {Au moins } other {}}{count, plural, one {{count_display} conversation correspond} many {{count_display} de conversations correspondent} other {{count_display} conversations correspondent}} à cette recherche{clipped, select, yes { ; la liste s’arrête là} other {}}",
+	"ui.chat.sidebar.row_menu.hint": "Cliquez avec le bouton droit ou appuyez sur Shift+F10 pour accéder à ses actions.",
+	"ui.chat.sidebar.row_menu.hint_mac": "Cliquez avec le bouton droit ou appuyez sur Shift+F10 (avec Fn sur la plupart des claviers Mac) pour accéder à ses actions.",
+	"ui.chat.sidebar.row.search_beyond": "trouvée par la recherche, au-delà des conversations listées ici",
+	"ui.chat.sidebar.row.recent": "Récente",
+	"ui.chat.sidebar.row.not_sent_suffix": ", pas encore envoyée",
+	"ui.chat.sidebar.row.unread_suffix": ", non lue",
+	"ui.chat.sidebar.row.silent_remedy": "/stop si le silence persiste.",
+	"ui.chat.sidebar.catalogue.show_more": "Afficher {hidden, plural, one {{hidden, number, ::group-off} de plus} many {{hidden, number, ::group-off} de plus} other {{hidden, number, ::group-off} de plus}}",
+	"ui.chat.sidebar.catalogue.show_more_chats": "Afficher {add, plural, one {{add, number, ::group-off} conversation de plus} many {{add, number, ::group-off} de conversations de plus} other {{add, number, ::group-off} conversations de plus}}"
 }

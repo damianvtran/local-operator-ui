@@ -21,6 +21,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * picker that reads as a bug.
  */
 
+import { agentDescriptionText } from "@features/agents/utils/agent-description";
 import {
 	useProfiles,
 	useTeams,
@@ -82,7 +83,12 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 	teamsEnabled,
 	profilesEnabled,
 }) => {
-	useI18nLocale();
+	/*
+	 * Bound rather than called for its effect: the option list keys shipped seed
+	 * copy inside its memo, so the locale has to be one of that memo's deps or a
+	 * language switch would leave the dialog printing the previous language.
+	 */
+	const locale = useI18nLocale();
 	const [selection, setSelection] =
 		useState<StartSessionSelection>(START_SESSION_PLAIN);
 	const [refusal, setRefusal] = useState<string | null>(null);
@@ -104,6 +110,8 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 	}, [open]);
 
 	const options = useMemo<SearchableOption[]>(() => {
+		/* The dependency the seed copy below is read through - see the binding. */
+		void locale;
 		const rows: SearchableOption[] = [
 			{
 				id: PLAIN_OPTION_ID,
@@ -148,20 +156,27 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 				},
 			});
 		}
+		/*
+		 * THE SHIPPED SENTENCE, NOT THE FIELD (agent review round 1, R1-2). These are
+		 * profiles-registry rows, so they carry the `source` the resolution needs, and
+		 * an INSTALLED seed serves its routing text in this field - English unless it
+		 * resolves to a key. `|| profile.kind` stays: a row with no description still
+		 * shows what kind of agent it is rather than an empty line.
+		 */
 		for (const profile of (profiles.data ?? []).filter(
 			(row) => row.source !== "builtin",
 		)) {
 			rows.push({
 				id: agentOptionId(profile.name),
 				name: profile.name,
-				description: profile.description || profile.kind,
+				description: agentDescriptionText(profile) || profile.kind,
 				get group() {
 					return t("ui.projects.project_start_session.agents");
 				},
 			});
 		}
 		return rows;
-	}, [teams.data, profiles.data]);
+	}, [teams.data, profiles.data, locale]);
 
 	const selectedOption =
 		options.find((option) => option.id === optionIdFor(selection)) ??

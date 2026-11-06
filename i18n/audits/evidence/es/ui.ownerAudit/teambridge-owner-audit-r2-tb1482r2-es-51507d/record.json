@@ -1,0 +1,122 @@
+{
+	"audit_id": "teambridge-owner-audit-r2-tb1482r2-es-51507d",
+	"date": "2026-10-29",
+	"locale": "es",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "475476c2104a400fa6f4bc39bee98e4e82541d40",
+	"tree_state": "the audited bytes are this commit's; the auditor ran on the working tree that became 475476c2104a plus the auditor's own target-catalogue fixes",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"method": "LLM translator subagent per locale, reading the English catalogue and its context sidecar and the locale's own existing namespace for terminology; no MT service referenced. Session began on anthropic/claude-opus-5-5 and was moved to radient/auto by provider-quota fallbacks before the translation was written."
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"date": "2026-10-29",
+			"result": "clean-with-findings",
+			"instance": "tb1482r2-es-51507d",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 3
+			},
+			"receipt": "i18n/receipts/tb1482r2-es-51507d.json",
+			"receipt_sha256": "34df2fadaf20bf93f78157eec964376290cafcf904c6dd239f7e73aead73dc4f",
+			"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope."
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor: a separate subagent run from the translator's, which authored none of the strings as delivered and wrote its receipts before the ledger row was assembled. The findings/resolved_findings split in this receipt was applied at assembly: the auditor's own `resolved: true` entries were moved into `resolved_findings` unchanged, because `findings` carries only what is still open in this repository's convention. No severity, key or detail was altered. Neither translator nor auditor was a native speaker of the locale; that limitation is recorded below.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/es/ui.ownerAudit.json",
+			"sha256": "16ce57d2ff7c968dee0d20ae6a2767c3e23dd22ec8562f0816528b9e8a64de8b"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.disclosure": {
+			"en": "You can read this audit because you own the chief of staff it covers. The other members are told that agent owners can audit the conversation.",
+			"target": "Puedes leer esta auditoría porque eres propietario del jefe de gabinete al que cubre. A los demás miembros se les indica que los propietarios de agentes pueden auditar la conversación."
+		},
+		"ui.ownerAudit.viewers_label": {
+			"en": "Also readable by",
+			"target": "También visible para"
+		},
+		"ui.ownerAudit.left": {
+			"en": "The audit ends here. Your chief of staff left this conversation, so later messages are not in it.",
+			"target": "La auditoría termina aquí. Tu jefe de gabinete abandonó esta conversación, así que no incluye los mensajes posteriores."
+		},
+		"ui.ownerAudit.removed": {
+			"en": "The audit ends here. Your chief of staff was removed from this conversation, so later messages are not in it.",
+			"target": "La auditoría termina aquí. Tu jefe de gabinete fue eliminado de esta conversación, así que no incluye los mensajes posteriores."
+		},
+		"ui.ownerAudit.window_unconfirmed": {
+			"en": "The end of this audit is unknown. Your chief of staff’s membership in this conversation could not be confirmed.",
+			"target": "Se desconoce el final de esta auditoría. No se pudo confirmar que tu jefe de gabinete sea miembro de esta conversación."
+		},
+		"ui.ownerAudit.page_cutoff": {
+			"en": "Older messages are not shown yet. Load older messages to read what came before.",
+			"target": "Los mensajes anteriores aún no se muestran. Carga los mensajes anteriores para leer lo que vino antes."
+		}
+	},
+	"scope": "Round 2: the six keys changed by the D2/D3 copy round. The rest of the namespace was audited in an earlier round and is out of scope here.",
+	"notes": "ui.ownerAudit.viewer is retired in every catalogue; the removal is part of this round and was checked by the auditor.",
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.disclosure",
+			"detail": "Register: \"A los demas miembros se les indica que...\" renders \"The other members are told that...\" with \"indicar\", which leans administrative in Spanish; the context sidecar asks for \"plain, unapologetic, no legal register\". \"se les dice\" would be plainer. Left open: both sentences state the two required facts correctly (the reader's basis, and that agent owners can audit), carry no exclusivity claim, and read naturally."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.disclosure",
+			"detail": "\"eres propietario\" addresses the reader with a masculine-gendered noun. Consistent with this locale's established convention (e.g. ui.agents.publication.insufficient_role.body \"Pide a un propietario de la organizacion...\", ui.hub.teams.org.no_access_body \"Un propietario puede invitarte de nuevo\"), so left unfixed as a convention, not a defect; a neutral \"tienes la propiedad\" would remove the gender if the locale ever moves."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.viewers_label",
+			"detail": "\"Tambien visible para\" renders \"Also readable by\" with \"visible\" rather than \"legible\". Acceptable: it labels a <ul> of other agent owners' names (component renders it as a bare <p> above the list), carries \"tambien\" as required, has no colon, no placeholder and three words, and reuses the wording of the round-1 ui.ownerAudit.viewer sentence it replaces. \"Tambien legible para\" would track the English noun more literally at the cost of naturalness; left open."
+		}
+	],
+	"resolved_findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.ownerAudit.left",
+			"resolved": true,
+			"detail": "Anaphor collision in the cut-off clause. Before: \"La auditoria termina aqui. Tu jefe de gabinete abandono esta conversacion, asi que los mensajes posteriores quedan fuera de ella.\" Two feminine singular antecedents precede \"ella\" and the nearer one is \"esta conversacion\", not \"la auditoria\", so a plausible reading states that later messages are outside the CONVERSATION (false; they exist, they are only outside the audit). Logic favours the audit, which is why this is MINOR and not MAJOR, but the notice must not be re-read to be understood. After: \"...asi que no incluye los mensajes posteriores.\" The subject of \"incluye\" can only be \"la auditoria\" (\"esta conversacion\" sits inside a prepositional phrase and cannot be its subject), so the English fact is stated without a pronoun; the string is also 10 chars shorter (EN 97 / ES 129 -> 119, ratio 1.33 -> 1.23)."
+		},
+		{
+			"severity": "MINOR",
+			"key": "ui.ownerAudit.removed",
+			"resolved": true,
+			"detail": "Same anaphor collision as ui.ownerAudit.left, identical construction. Before: \"...fue eliminado de esta conversacion, asi que los mensajes posteriores quedan fuera de ella.\" After: \"...fue eliminado de esta conversacion, asi que no incluye los mensajes posteriores.\" EN 109 / ES 137 -> 127, ratio 1.26 -> 1.17. The rest of the string was already correct: it says the audit ends here, names the cause (removed from this conversation) and promises no way to load the cut messages."
+		}
+	],
+	"references": {
+		"ledger_entry": "i18n/ledger.json -> es/ui.ownerAudit",
+		"receipt": "i18n/receipts/tb1482r2-es-51507d.json",
+		"context_sidecar": "src/i18n/catalogues/en/ui.ownerAudit.context.json"
+	},
+	"artifacts": {
+		"receipt": "i18n/receipts/tb1482r2-es-51507d.json",
+		"receipt_sha256": "34df2fadaf20bf93f78157eec964376290cafcf904c6dd239f7e73aead73dc4f",
+		"ledger_entry": "i18n/ledger.json -> es/ui.ownerAudit"
+	},
+	"limitations": [
+		"No native-speaker review: translation and audit were both LLM agents.",
+		"The audit ran on radient/auto after provider-quota fallbacks from anthropic/claude-opus-5-5.",
+		"No rendered frame in any of the seven locales was reviewed; only the English surface was captured."
+	]
+}

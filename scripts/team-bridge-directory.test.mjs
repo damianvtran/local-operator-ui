@@ -583,16 +583,10 @@ test("machine-only off names this machine, claims no consent step, and links to 
  * compiled and rendered every pane sender as "Unknown person"; the page now
  * passes `(sender) => labelFor(sender, thread.tenantId)`.
  *
- * THAT RENDER PATH IS HELD IN THIS BUILD. `teamBridgeThreadsAvailable` is false
- * whatever the runtime advertises (`team-bridge-thread-gate.ts`), so the page
- * with a `threadLink` renders NO pane and NO reply affordance - even with the
- * capability answering `enabled`, which is the case this test uses. What is
- * left to pin is the hold at the real view plus the tenant-scoped wiring in
- * source, which is what the feature returns on. The pane's own sender naming is
- * unreachable until the constant flips; asserting it here would be an assertion
- * about a surface no build mounts.
+ * The real page proves the capability half: enabled mounts the thread and
+ * reply affordance, while every unresolved or unsupported answer hides them.
  */
-test("the held page mounts no thread pane or reply affordance, and keeps the tenant-scoped label wiring", async () => {
+test("the page mounts its thread only for the enabled capability, with tenant-scoped labels", async () => {
 	const { QueryClient, QueryClientProvider } = await import(
 		"@tanstack/react-query"
 	);
@@ -632,8 +626,7 @@ test("the held page mounts no thread pane or reply affordance, and keeps the ten
 				),
 			),
 		);
-	// EVERY capability answer is held, `enabled` included: an absent prop is the
-	// "no capabilities read" mount and must behave like `unknown`.
+	// An absent prop is the "no capabilities read" mount and behaves as unknown.
 	for (const state of [
 		undefined,
 		"unknown",
@@ -643,10 +636,17 @@ test("the held page mounts no thread pane or reply affordance, and keeps the ten
 	]) {
 		const html = render(state);
 		const label = state ?? "absent";
-		// The timeline itself still renders; only the thread lane is withheld.
 		assert.match(html, /Thread root body/, `${label}: timeline`);
-		assert.doesNotMatch(html, /aria-label="Thread"/, `${label}: pane`);
-		assert.doesNotMatch(html, /Reply in thread/, `${label}: reply`);
+		assert.equal(
+			html.includes('aria-label="Thread"'),
+			state === "enabled",
+			`${label}: pane`,
+		);
+		assert.equal(
+			html.includes("Reply in thread"),
+			state === "enabled",
+			`${label}: reply`,
+		);
 	}
 	const pageSource = readFileSync(
 		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
@@ -736,12 +736,13 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 			viewProps({ people: [bea], conversations: [dm], listState: "ready" }),
 		),
 	);
-	assert.match(
-		ready,
-		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
-		),
-	);
+	/*
+	 * The row's accessible name carries its unread count (design review round 3,
+	 * D10): a person row's `aria-label` replaces its visible text, so without the
+	 * count a screen reader heard only "Message Bea" on a row with 2 unread.
+	 */
+	const beaName = `${ui.t("ui.teamBridge.people.message", { name: "Bea" })} ${ui.t("ui.teamBridge.unread.count", { count: 2 })}`;
+	assert.match(ready, new RegExp(`aria-label="${beaName}"`));
 	assert.doesNotMatch(ready, new RegExp(`data-conversation-id="${dm.id}"`));
 	assert.match(ready, /aria-label="2 unread"/);
 	for (const listState of ["loading", "error"]) {
@@ -753,9 +754,7 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 		);
 		assert.match(
 			html,
-			new RegExp(
-				`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
-			),
+			new RegExp(`aria-label="${beaName}"`),
 			`${listState} list keeps the row`,
 		);
 	}
@@ -1011,7 +1010,13 @@ test("a payload whose every row is unrenderable says so, not 'nobody joined'", (
 	assert.doesNotMatch(html, /No one else has joined/);
 });
 
-test("the row time moves to the header and a relative+absolute tooltip", () => {
+/*
+ * THE TIME LIVES IN THE ROW'S TOOLTIP ONLY (Team Bridge visual refresh D8,
+ * 2026-11-04). It used to be repeated in the channel header as "· 10 hours ago";
+ * last-active time is the least useful fact a header can carry, so the header
+ * dropped it and the tooltip is the one place it survives.
+ */
+test("the row time lives in a relative+absolute tooltip, not the row or the header", () => {
 	const at = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
 	const channel = conversation({
 		id: "bcv_time",
@@ -1033,7 +1038,8 @@ test("the row time moves to the header and a relative+absolute tooltip", () => {
 	assert.ok(row && header);
 	assert.doesNotMatch(visible(row), /10 hours ago/);
 	assert.match(row, /title="10 hours ago · [^"]+"/);
-	assert.match(visible(header), /10 hours ago/);
+	assert.doesNotMatch(visible(header), /10 hours ago/);
+	assert.match(visible(header), /release-proof-0\.84\.2/);
 });
 
 test("the merged row also keeps its visible time out of the row", () => {
@@ -1062,12 +1068,12 @@ test("the merged row also keeps its visible time out of the row", () => {
 		/<button[^>]*data-conversation-id="bcv_channel_merged"[\s\S]*?<\/button>/,
 	)?.[0];
 	const header = html
-		.match(/<header[^>]*flex h-11[^>]*>[\s\S]*?<\/header>/g)
+		.match(/<header[^>]*flex h-12[^>]*>[\s\S]*?<\/header>/g)
 		?.at(-1);
 	assert.ok(row, "merged row rendered");
 	assert.ok(header, "merged header rendered");
 	assert.doesNotMatch(visible(row), /10 hours ago/);
-	assert.match(visible(header), /10 hours ago/);
+	assert.doesNotMatch(visible(header), /10 hours ago/);
 	assert.match(visible(row), /Minerva/);
 });
 
@@ -1257,18 +1263,45 @@ test("people loading is announced without displacing the conversation list", () 
 	assert.match(html, /data-conversation-id="bcv_dm_bea"/);
 });
 
-test("the merged scope explains why it has no People list and queries none", () => {
+test("the merged scope lists each organization's roster under its own header", () => {
 	const html = renderToStaticMarkup(
 		createElement(
 			TeamBridgePageView,
 			viewProps({
 				scope: "all",
-				people: [person()],
+				/*
+				 * The single-organization roster prop is NOT the union's source: only
+				 * the per-organization reads are, so a stale `people` cannot colour it.
+				 */
+				people: [person({ display_label: "Stale Org" })],
+				organizations: [
+					{ tenantId: "tnt_1", name: "Minerva", role: "owner", unread: 0 },
+					{
+						tenantId: "tnt_2",
+						name: "Northwind Log",
+						role: "member",
+						unread: 0,
+					},
+				],
+				directories: {
+					tnt_1: [person()],
+					tnt_2: [person({ account_id: "acct_inez", display_label: "Inez" })],
+				},
+				directoryStates: { tnt_1: "ready", tnt_2: "ready" },
 			}),
 		),
 	);
-	assert.match(html, /Choose an organization to see its people/);
-	assert.doesNotMatch(html, /Message Bea/);
+	/*
+	 * THE OPERATOR'S REPORT, INVERTED. People used to say "Choose an organization
+	 * to see its people." and every union account read that as the end of the
+	 * road. Each organization's roster is now listed under a header naming it.
+	 */
+	assert.doesNotMatch(html, /Choose an organization to see its people/);
+	assert.match(html, /<h3[^>]*>Minerva</);
+	assert.match(html, /<h3[^>]*>Northwind Log</);
+	assert.match(html, /Message Bea/);
+	assert.match(html, /Message Inez/);
+	assert.doesNotMatch(html, /Stale Org/);
 });
 
 // ---------------------------------------------------------------------------
@@ -1350,8 +1383,16 @@ test("the merged view names senders from the conversation's own organization dir
 		),
 	);
 	assert.deepEqual(senderNames(html), ["Damian Tran", "Bea", "Unknown person"]);
-	// The rail's DM row is titled from the same directory, not "Member".
-	assert.match(html, /data-conversation-id="bcv_dm_bea"[\s\S]*?Bea/);
+	/*
+	 * ONE DM IS ONE ROW. Bea's People row IS her DM, so the union no longer lists
+	 * a second "@ Bea" conversation row beside it: the row that carries her name
+	 * is the person row, and it opens that DM.
+	 */
+	assert.doesNotMatch(html, /data-conversation-id="bcv_dm_bea"/);
+	assert.match(html, /data-team-bridge-person="acct_bea"/);
+	// AND IT IS NAMED FROM THAT ORGANIZATION'S DIRECTORY (review round 1, m2):
+	// the row's own accessible name carries the directory label, not "Member".
+	assert.match(html, /aria-label="Message Bea"/);
 	assert.doesNotMatch(visible(html), /\bMember\b/);
 });
 
@@ -1657,5 +1698,55 @@ test("profile Message selects the person/chief rail in one tenant and the exact 
 				?.tenant_id,
 			dm.tenant_id,
 		);
+	}
+});
+
+/*
+ * THE AGENT'S OWN PICTURE AT THE BOUNDARY (agent review round 3, F7). F6 made
+ * the directory schema reuse the resolver's route, but nothing tested that the
+ * schema ACCEPTS what the hub serves: replacing the regex with a pattern that
+ * matches nothing passed every suite, because the other avatar_url cases here
+ * are account URLs and `identity-avatar.test.mjs` calls the resolver directly.
+ * With `.catch(undefined)` on the field, that failure mode is a silently
+ * missing picture, so the served route and the stale one are pinned together.
+ */
+test("the directory carries an agent's own picture only on the served endpoint route", () => {
+	const hash = "0123456789abcdef";
+	const withAgent = (avatar_url) => ({
+		members: [
+			{
+				...selfMember,
+				agent: {
+					endpoint_id: "bep_aida",
+					name: "Aida",
+					state: "active",
+					avatar_url,
+				},
+			},
+		],
+	});
+	// The literal route agent-server's `BridgeEndpointAvatarPointer.AvatarURL`
+	// builds (`/v1/messaging/endpoints/<id>/avatar?v=<hash>`), not a string
+	// derived from the constant under test.
+	const served = `/v1/messaging/endpoints/bep_aida/avatar?v=${hash}`;
+	assert.equal(
+		model.teamBridgeDirectorySchema.parse(withAgent(served)).members[0].agent
+			?.avatar_url,
+		served,
+	);
+	for (const stale of [
+		`/v1/endpoints/bep_aida/avatar?v=${hash}`,
+		`/v1/agent/endpoints/bep_aida/avatar?v=${hash}`,
+		`/v1/messaging/endpoint/bep_aida/avatar?v=${hash}`,
+		`/v1/messaging/endpoints/bep_aida/avatar?v=${hash.toUpperCase()}`,
+		"/v1/messaging/endpoints/bep_aida/avatar",
+		"https://evil.example/avatar",
+		42,
+	]) {
+		const parsed = model.teamBridgeDirectorySchema.parse(withAgent(stale));
+		// The row survives — a bad picture never costs a person their agent.
+		assert.equal(parsed.members.length, 1);
+		assert.equal(parsed.members[0].agent?.name, "Aida");
+		assert.equal(parsed.members[0].agent?.avatar_url, undefined);
 	}
 });

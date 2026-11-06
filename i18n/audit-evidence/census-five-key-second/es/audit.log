@@ -1,0 +1,15 @@
+REPO_VALIDATOR namespaceGap ui.chat: assigned keys have context; namespace uncovered=["ui.chat.highlights.file_resolution_failed","ui.chat.usage.blocked","ui.chat.usage.continue","ui.chat.usage.eligibility_unknown","ui.chat.usage.family_caps","ui.chat.usage.unlimited"] (baseline equality separately verified); key parity 206/206
+REPO_VALIDATOR messageArguments + ICU/Cf/source-difference ui.chat.session_status.effort_level.low: PASS []
+REPO_VALIDATOR messageArguments + ICU/Cf/source-difference ui.chat.session_status.effort_level.medium: PASS []
+REPO_VALIDATOR messageArguments + ICU/Cf/source-difference ui.chat.session_status.effort_level.high: PASS []
+REPO_VALIDATOR namespaceGap ui.chat.run_details: assigned keys have context; namespace uncovered=[] (baseline equality separately verified); key parity 91/91
+REPO_VALIDATOR messageArguments + ICU/Cf/source-difference ui.chat.run_details.wake.armed_count: PASS [["count","number"],["count_display","string"]]
+REPO_VALIDATOR messageArguments + ICU/Cf/source-difference ui.chat.run_details.wake.cadence_once: PASS []
+FORMAT count=0: 0 despertares activados
+FORMAT count=1: 1 despertar activado
+FORMAT count=2: 2 despertares activados
+FORMAT count=1.5: 1.5 despertares activados
+FORMAT count=1000000: 1000000 de despertares activados
+FORMAT count=1500000: 1500000 despertares activados
+CLDR categories: one, many, other; count selects, count_display prints: PASS
+TOTAL assigned keys=5; BLOCKER=0 MAJOR=0 MINOR=0 NIT=0; source-only audit, no native/pixel proof

@@ -1,0 +1,40 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "tb1482r2-ru-1a5a1c",
+  "status": "passed",
+  "namespace": "ui.ownerAudit",
+  "sha256": {
+    "ru": "e1363d77ba02c6247534a85de9fa1c18b97b6728948587a4ae1a31e2ecaeb1aa",
+    "en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.ownerAudit.page_cutoff",
+      "detail": "Two synonyms for the same referent inside one string: \"Более ранние сообщения\" then \"предыдущие сообщения\". Correct and readable; the second echoes the ui.ownerAudit.older button (\"Загрузить предыдущие сообщения\") on purpose, so left open as a preference.",
+      "resolved": false
+    }
+  ],
+  "resolved_findings": [
+    {
+      "severity": "MAJOR",
+      "key": "ui.ownerAudit.left",
+      "detail": "Second sentence read \"...покинул этот разговор, поэтому последующих сообщений в нём нет.\": \"в нём\" binds to the nearest masculine antecedent, \"разговор\", so the line asserted the CONVERSATION has no later messages — false (the conversation continues without the agent) and exactly what the sidecar forbids (\"do not imply the conversation was archived, ended, or that messages were deleted\"). English \"it\" is the audit. FIXED: \"...поэтому последующих сообщений в проверке нет.\"",
+      "resolved": true
+    },
+    {
+      "severity": "MAJOR",
+      "key": "ui.ownerAudit.removed",
+      "detail": "Same ambiguous \"в нём\" in the shared second half (\"...был удалён из этого разговора, поэтому последующих сообщений в нём нет.\"), asserting no later messages in the conversation rather than none in the audit. FIXED with the same wording as ui.ownerAudit.left, as the sidecar requires: \"...поэтому последующих сообщений в проверке нет.\"",
+      "resolved": true
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.ownerAudit.disclosure",
+      "detail": "\"Вы можете читать этот период проверки\" put a time span in the object slot of \"читать\" (one reads an audit, not a period). FIXED: \"Вам доступен этот период проверки, потому что этот координатор принадлежит вам.\" — reason clause retained, so the disclosure is not weakened to a bare \"you can read this\".",
+      "resolved": true
+    }
+  ],
+  "scope": "Round 2: the six changed keys only; earlier round out of scope."
+}

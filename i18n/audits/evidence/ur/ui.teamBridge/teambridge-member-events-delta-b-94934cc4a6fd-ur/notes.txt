@@ -1,0 +1,10 @@
+AUDITOR B (delta round) - NOTES, distinct from the execution logs beside them
+
+Locale ur  Namespace ui.teamBridge  Session 94934cc4a6fd  Model radient/auto
+
+1. Verdict: changes_requested - 0 blocker, 1 major (UR-DB1: events.declined_self and events.declined), 0 minor, 0 nit.
+2. The glossary half of the delta is good: مسترد is gone from the file entirely and events.* now uses انکار, matching invitations.decline / .declining / .declined. اراکین -> ارکان closes the members drift (اراکین appears zero times now). events.others «مزید #» is invariant, so splicing it into the کو / کے لیے positions is safe: «… اور مزید 3 کو مدعو کیا» reads correctly.
+3. The grammar half is not finished. «انکار» is masculine, so the ergative perfective needs «کر دیا»; both delta lines keep «کر دی». The old construction «دعوت مسترد کر دی» was correct because the verb agreed with the feminine دعوت - changing the noun to «سے انکار» without changing the ending is what breaks it.
+4. The file is otherwise rigorous about this agreement: «ہٹا دیا» (masc.), «منظوری دی» (fem.), «گفتگو چھوڑ دی» (fem.), and invitations.declined writes «انکار کر دیا گیا». Three independent signals point the same way, and round-1 UR-A2 had already proposed «کر دیا»; the applied variant dropped the final alif.
+5. Not re-raised, per the recorded rejected context: the singular agent noun in events.owner_added_agent (server-proved single target).
+6. Independently, the other delta auditor reached the same conclusion on both lines; the mechanism above is mine, verified against the file's own agreement pattern and the core catalogue's «انکار کر دیا».

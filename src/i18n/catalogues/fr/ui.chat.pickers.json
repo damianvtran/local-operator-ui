@@ -165,11 +165,11 @@
 	"ui.chat.pickers.destination_pickers.set_goal": "Définir l’objectif",
 	"ui.chat.pickers.destination_pickers.write_and_command_tools_prompt_before_running": "les outils d’écriture et de commande demandent une autorisation avant de s’exécuter",
 	"ui.chat.pickers.destination_pickers.tools_run_without_asking": "les outils s’exécutent sans demander d’autorisation",
-	"ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i": "Approbations par défaut de toutes les sessions suivantes : {string}. Cette session les suit sauf si elle a son propre choix.",
+	"ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i": "Approbations par défaut de toutes les sessions qui suivent ce réglage : {string}. Cette session le suit, sauf si elle a son propre choix.",
 	"ui.chat.pickers.destination_pickers.whether_write_and_command_tools_ask_before_running": "Détermine si les outils d’écriture et de commande demandent une autorisation avant de s’exécuter.",
 	"ui.chat.pickers.destination_pickers.scope": "Portée",
 	"ui.chat.pickers.destination_pickers.this_session": "Cette session",
-	"ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it": "Valeur par défaut de toutes les sessions suivantes",
+	"ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it": "Valeur par défaut de toutes les sessions qui suivent ce réglage",
 	"ui.chat.pickers.destination_pickers.applies_to_this_session_only": "S’applique uniquement à cette session.",
 	"ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title": "Un nom explicite remplace le titre généré.",
 	"ui.chat.pickers.destination_pickers.name": "Nom",
@@ -737,5 +737,7 @@
 	"ui.chat.pickers.slash.click.stages": "Cliquez pour préparer /{label}.",
 	"ui.chat.pickers.slash.enter_needs_a_pick": "Entrée a besoin d’une ligne choisie : ↓ puis Entrée · Tab complète cette ligne.",
 	"ui.chat.pickers.slash.phase.arguments": "Arguments",
-	"ui.chat.pickers.slash.region_label": "Commandes slash"
+	"ui.chat.pickers.slash.region_label": "Commandes slash",
+	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "Aucun agent n’est enregistré.",
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "S’applique à la conversation qui va être lancée."
 }

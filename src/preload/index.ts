@@ -61,6 +61,10 @@ import {
 	isMiniViewRegistrationState,
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
+import {
+	NOTIFICATION_SOUND_PLAY_CHANNEL,
+	NOTIFICATION_TEST_CHANNEL,
+} from "../shared/notification-sound";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import type {
 	TeamBridgeNotificationSender,
@@ -436,11 +440,34 @@ const api = {
 		}
 	},
 	/**
+	 * The clipboard's plain text, read SYNCHRONOUSLY - for a composer's `paste`
+	 * handler only (issue #1573, `pasteInsertsOnlyFileNames`).
+	 *
+	 * WHY SYNC, AND WHY NOT `clipboard` HERE. A macOS paste that carries a file
+	 * gives the event `types: ["Files"]` and no `text/plain`, while Chromium's
+	 * default insert still types the pasteboard's plain string (the file name).
+	 * Cancelling that insert has to be decided before the handler returns, and
+	 * `navigator.clipboard.readText()` is async. Electron 45's `clipboard`
+	 * module is promise-only too, so main reads it and answers a `sendSync`.
+	 * Never throws; `""` means "nothing to read" and keeps the default insert.
+	 */
+	readPasteTextSync: (): string => {
+		try {
+			const text = ipcRenderer.sendSync("clipboard:paste-plain-text");
+			return typeof text === "string" ? text : "";
+		} catch {
+			return "";
+		}
+	},
+	/**
 	 * Bytes for the in-app viewers. No encoding: a PDF is not text, and base64
 	 * would inflate it by a third on both sides of the boundary.
 	 */
 	readFileBytes: (filePath: string, maxBytes?: number) =>
 		ipcRenderer.invoke("read-file-bytes", filePath, maxBytes),
+	// No script or path input: main inspects only this window's existing PDF guest.
+	pdfViewerStatus: (blobUrl: string) =>
+		ipcRenderer.invoke("pdf-viewer-status", blobUrl),
 	/**
 	 * Upload one composer attachment to the daemon's attachment store.
 	 *
@@ -495,6 +522,30 @@ const api = {
 			ipcRenderer.removeListener(EXTERNAL_OPEN_REFUSED_CHANNEL, handler);
 		};
 	},
+	/**
+	 * A notification sound main could not hand to the OS (Windows/Linux, or a
+	 * macOS staging failure): gain-baked WAV bytes for the renderer's own
+	 * player. Anything but bytes is dropped here, so the player never builds a
+	 * source out of whatever else might arrive on the channel.
+	 */
+	onNotificationSound: (
+		callback: (bytes: Uint8Array) => void,
+	): (() => void) => {
+		const handler = (_event: IpcRendererEvent, bytes: unknown) => {
+			if (bytes instanceof Uint8Array && bytes.byteLength > 0) callback(bytes);
+		};
+		ipcRenderer.on(NOTIFICATION_SOUND_PLAY_CHANNEL, handler);
+		return () => {
+			ipcRenderer.removeListener(NOTIFICATION_SOUND_PLAY_CHANNEL, handler);
+		};
+	},
+	/**
+	 * Raise one real banner with the configured notification sound (Settings'
+	 * "Send test notification"; `main/notification-test.ts`).
+	 */
+	sendTestNotification: (): Promise<
+		{ shown: true } | { shown: false; reason: "unsupported" | "suppressed" }
+	> => ipcRenderer.invoke(NOTIFICATION_TEST_CHANNEL),
 	showItemInFolder: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
 
@@ -937,6 +988,7 @@ const api = {
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
 			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
 		}): Promise<unknown> =>
 			ipcRenderer.invoke("browser-approvals-card-open", input),
 		closeApprovalsCard: (): Promise<unknown> =>
@@ -946,6 +998,7 @@ const api = {
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
 			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
 			requesterLabels?: Readonly<Record<string, string>>;
 		}): Promise<unknown> =>
 			ipcRenderer.invoke("browser-approvals-card-context", input),
@@ -1511,6 +1564,23 @@ const api = {
 		/** The current state, for a freshly mounted settings row or the mini header. */
 		getRegistration: (): Promise<MiniViewRegistrationState> =>
 			ipcRenderer.invoke(MINI_VIEW_REGISTRATION_GET),
+	},
+
+	recordingShortcut: {
+		get: () => ipcRenderer.invoke("recording-shortcut:get"),
+		markPending: (value?: string): void => {
+			ipcRenderer.send("recording-shortcut:pending", value);
+		},
+		onChange: (callback: (state: unknown) => void): (() => void) => {
+			const handler = (_event: IpcRendererEvent, state: unknown) =>
+				callback(state);
+			ipcRenderer.on("recording-shortcut:change", handler);
+			return () =>
+				ipcRenderer.removeListener("recording-shortcut:change", handler);
+		},
+		syncClaims: (rev: number, claims: unknown): void => {
+			ipcRenderer.send("recording-shortcut:claims", rev, claims);
+		},
 	},
 
 	/** Opens a native dialog to select a directory */

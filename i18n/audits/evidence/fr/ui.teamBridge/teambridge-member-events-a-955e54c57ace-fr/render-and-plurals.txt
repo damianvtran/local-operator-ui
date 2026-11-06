@@ -1,0 +1,65 @@
+locale fr
+---
+key:   ui.teamBridge.events.invited
+value: {actor} a invité {targets}
+  1 target: Ana a invité Ben
+  3 targets: Ana a invité Ben, Sana et Ravi
+
+key:   ui.teamBridge.events.joined
+value: Arrivée dans la conversation : {targets}
+  1 target: Arrivée dans la conversation : Ben
+  3 targets: Arrivée dans la conversation : Ben, Sana et Ravi
+
+key:   ui.teamBridge.events.owner_added_agent
+value: {actor} a ajouté son agent {targets}
+  1 target: Ana a ajouté son agent Ben
+  3 targets: Ana a ajouté son agent Ben, Sana et Ravi
+
+key:   ui.teamBridge.events.left
+value: Départ de la conversation : {targets}
+  1 target: Départ de la conversation : Ben
+  3 targets: Départ de la conversation : Ben, Sana et Ravi
+
+key:   ui.teamBridge.events.removed
+value: {actor} a retiré {targets}
+  1 target: Ana a retiré Ben
+  3 targets: Ana a retiré Ben, Sana et Ravi
+
+key:   ui.teamBridge.events.consented
+value: {actor} a autorisé {targets} à rejoindre la conversation
+  1 target: Ana a autorisé Ben à rejoindre la conversation
+  3 targets: Ana a autorisé Ben, Sana et Ravi à rejoindre la conversation
+
+key:   ui.teamBridge.events.declined_self
+value: {actor} a refusé l’invitation
+  1 target: Ana a refusé l’invitation
+  3 targets: Ana a refusé l’invitation
+
+key:   ui.teamBridge.events.declined
+value: {actor} a refusé l’invitation pour {targets}
+  1 target: Ana a refusé l’invitation pour Ben
+  3 targets: Ana a refusé l’invitation pour Ben, Sana et Ravi
+
+key:   ui.teamBridge.events.withdrawn
+value: {actor} a annulé l’invitation pour {targets}
+  1 target: Ana a annulé l’invitation pour Ben
+  3 targets: Ana a annulé l’invitation pour Ben, Sana et Ravi
+
+key:   ui.teamBridge.events.unknown
+value: Modification des membres
+  rendered: Modification des membres
+
+key:   ui.teamBridge.events.others
+value: {count, plural, one {# autre} many {# d’autres} other {# autres}}
+  count=1: 1 autre
+  count=2: 2 autres
+  count=3: 3 autres
+  count=21: 21 autres
+  count=22: 22 autres
+  count=25: 25 autres
+  as last list item: Ana a invité Ben, Sana et 2 autres
+
+key:   ui.teamBridge.members.invitation_note_v3
+value: Les invitations ne donnent accès qu’une fois acceptées. Vos propres agents rejoignent la conversation immédiatement ; l’agent d’une autre personne la rejoint dès que son propriétaire y consent. Un agent membre lit chaque message ici et décide s’il répond, et il est censé répondre quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ et aux fils où il intervient, ou le mettre en sourdine.
+  rendered: Les invitations ne donnent accès qu’une fois acceptées. Vos propres agents rejoignent la conversation immédiatement ; l’agent d’une autre personne la rejoint dès que son propriétaire y consent. Un agent membre lit chaque message ici et décide s’il répond, et il est censé répondre quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ et aux fils où il intervient, ou le mettre en sourdine.
+

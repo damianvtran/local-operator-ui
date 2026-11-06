@@ -1,0 +1,20 @@
+{
+	"ui.settings.search.field.label": "सेटिंग्स खोजें",
+	"ui.settings.search.field.placeholder": "सेटिंग्स खोजें",
+	"ui.settings.search.empty.summary": "इस पेज की सभी सेटिंग्स और कनेक्ट हुई सेवा की रजिस्ट्री में खोजता है।",
+	"ui.settings.search.empty.shortcut": "इस पेज पर कहीं से भी खोजने के लिए {shortcut} दबाएँ।",
+	"ui.settings.search.no_results.title": "“{query}” से कुछ मेल नहीं खाता।",
+	"ui.settings.search.no_results.hint": "कोई दूसरा शब्द आज़माएँ, या पेज देखते रहने के लिए फ़ील्ड खाली करें।",
+	"ui.settings.search.no_results.clear": "खोज साफ़ करें",
+	"ui.settings.search.results.count": "{count, plural, one {# परिणाम} other {# परिणाम}}",
+	"ui.settings.search.results.more": "{count, plural, one {# और परिणाम नहीं दिखाया गया} other {# और परिणाम नहीं दिखाए गए}}",
+	"ui.settings.search.panel.label": "सेटिंग्स के परिणाम",
+	"ui.settings.search.reason.label": "नाम से मेल",
+	"ui.settings.search.reason.synonym": "संबंधित शब्द से मेल",
+	"ui.settings.search.reason.key": "सेटिंग कुंजी से मेल",
+	"ui.settings.search.reason.choice": "विकल्प से मेल",
+	"ui.settings.search.reason.section": "सेक्शन से मेल",
+	"ui.settings.search.reason.description": "विवरण से मेल",
+	"ui.settings.search.jump.missing": "वह सेटिंग अभी स्क्रीन पर नहीं है।",
+	"ui.settings.search.row.section_hint": "{section} में"
+}

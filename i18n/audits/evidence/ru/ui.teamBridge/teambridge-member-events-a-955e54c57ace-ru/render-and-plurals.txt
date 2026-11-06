@@ -1,0 +1,65 @@
+locale ru
+---
+key:   ui.teamBridge.events.invited
+value: {actor}: приглашение в разговор — {targets}
+  1 target: Ana: приглашение в разговор — Ben
+  3 targets: Ana: приглашение в разговор — Ben, Sana и Ravi
+
+key:   ui.teamBridge.events.joined
+value: Теперь в разговоре: {targets}
+  1 target: Теперь в разговоре: Ben
+  3 targets: Теперь в разговоре: Ben, Sana и Ravi
+
+key:   ui.teamBridge.events.owner_added_agent
+value: {actor}: добавлен собственный агент — {targets}
+  1 target: Ana: добавлен собственный агент — Ben
+  3 targets: Ana: добавлен собственный агент — Ben, Sana и Ravi
+
+key:   ui.teamBridge.events.left
+value: Выход из разговора: {targets}
+  1 target: Выход из разговора: Ben
+  3 targets: Выход из разговора: Ben, Sana и Ravi
+
+key:   ui.teamBridge.events.removed
+value: {actor}: удаление из разговора — {targets}
+  1 target: Ana: удаление из разговора — Ben
+  3 targets: Ana: удаление из разговора — Ben, Sana и Ravi
+
+key:   ui.teamBridge.events.consented
+value: {actor}: одобрено присоединение — {targets}
+  1 target: Ana: одобрено присоединение — Ben
+  3 targets: Ana: одобрено присоединение — Ben, Sana и Ravi
+
+key:   ui.teamBridge.events.declined_self
+value: {actor}: приглашение отклонено
+  1 target: Ana: приглашение отклонено
+  3 targets: Ana: приглашение отклонено
+
+key:   ui.teamBridge.events.declined
+value: {actor}: отклонено приглашение — {targets}
+  1 target: Ana: отклонено приглашение — Ben
+  3 targets: Ana: отклонено приглашение — Ben, Sana и Ravi
+
+key:   ui.teamBridge.events.withdrawn
+value: {actor}: отозвано приглашение — {targets}
+  1 target: Ana: отозвано приглашение — Ben
+  3 targets: Ana: отозвано приглашение — Ben, Sana и Ravi
+
+key:   ui.teamBridge.events.unknown
+value: Состав участников изменён
+  rendered: Состав участников изменён
+
+key:   ui.teamBridge.events.others
+value: {count, plural, one {ещё #} few {ещё #} many {ещё #} other {ещё #}}
+  count=1: ещё 1
+  count=2: ещё 2
+  count=3: ещё 3
+  count=21: ещё 21
+  count=22: ещё 22
+  count=25: ещё 25
+  as last list item: Ana: приглашение в разговор — Ben, Sana и ещё 2
+
+key:   ui.teamBridge.members.invitation_note_v3
+value: Приглашения не дают доступа, пока их не примут. Ваши собственные агенты присоединяются сразу; чужой агент — после согласия его владельца. Агент-участник читает все сообщения здесь и сам решает, отвечать ли; при упоминании через @ от него ожидается ответ. Владелец может ограничить его упоминаниями через @ и ветками с его участием или перевести его в режим «Без звука».
+  rendered: Приглашения не дают доступа, пока их не примут. Ваши собственные агенты присоединяются сразу; чужой агент — после согласия его владельца. Агент-участник читает все сообщения здесь и сам решает, отвечать ли; при упоминании через @ от него ожидается ответ. Владелец может ограничить его упоминаниями через @ и ветками с его участием или перевести его в режим «Без звука».
+

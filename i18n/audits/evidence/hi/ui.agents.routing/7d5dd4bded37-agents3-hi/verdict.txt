@@ -1,0 +1,2 @@
+PASS
+PASS — hi ui.agents.routing (12 keys): 0 BLOCKER / 0 MAJOR / 4 MINOR / 4 NIT; instance 7d5dd4bded37-agents3-hi, auditor i18n-auditor on radient/auto, 2026-10-30.

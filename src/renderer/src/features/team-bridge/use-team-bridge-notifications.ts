@@ -40,11 +40,18 @@
  *
  * WHAT THE BANNER SAYS (tb-os-notifications). A banner that only said "someone
  * sent a message" made the person open the app to learn who and what. So for
- * each candidate the watcher reads the ONE newest message through the existing
- * history route (`limit: 1`, newest-first by contract) and composes sender /
- * place / preview (`team-bridge-banner-format.ts`). That read:
- *  - goes straight through `TeamBridgeApi`, NOT the query cache, so the body
- *    is held in a local for the length of one call and then dropped;
+ * each candidate the watcher reads the conversation's newest page and composes
+ * sender / place / preview (`team-bridge-banner-format.ts`). That read:
+ *  - goes THROUGH THE TIMELINE'S OWN QUERY ENTRY (`teamBridgeMessagesQueryOptions`),
+ *    and the banner is raised only after that entry holds the message. It used
+ *    to go straight through `TeamBridgeApi` with `limit: 1` and drop the body,
+ *    which left the page's cached history at whatever it was when the reader
+ *    last looked: a click painted that stale page and the announced message
+ *    appeared seconds later (operator report, 2026-10-30). The body therefore
+ *    lives in the renderer's in-memory query cache exactly as it does when the
+ *    page itself reads it (garbage-collected after the cache's idle window,
+ *    never persisted). A reply is merged into its thread's cached pages the
+ *    same way when the thread pane has been opened;
  *  - is the signed-in HUMAN's own history read, which the hub answers with
  *    bodies for a human member (an agent member's history withholds them until
  *    admitted; this surface never reads as an agent);
@@ -70,17 +77,26 @@ import {
 	radientAuthoritySnapshot,
 	subscribeRadientAuthority,
 } from "@shared/hooks/radient-account-authority";
-import { teamBridgeAvatarVersion } from "@shared/hooks/use-account-avatar";
 import { t } from "@shared/i18n";
 import {
+	type InfiniteData,
 	type QueryClient,
+	isCancelledError,
 	useMutationState,
 	useQueries,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
+import {
+	directoryIdentity,
+	resolveIdentityAvatar,
+} from "../../../../shared/identity-avatar";
+import type {
+	TeamBridgeDirectoryMember,
+	TeamBridgeMessage,
+	TeamBridgeThreadPage,
+} from "../../../../shared/team-bridge-contract";
 import {
 	TEAM_BRIDGE_NOTIFY_MAX_TITLE,
 	type TeamBridgeNotificationSender,
@@ -113,15 +129,18 @@ import {
 } from "./team-bridge-notify-policy";
 import {
 	bridgeOwnerCurrent,
+	captureBridgeStatusAuthority,
 	readForBridgeOwner,
 	useTeamBridgeAccount,
 } from "./team-bridge-owner";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { assertThreadPage } from "./team-bridge-thread-read";
+import { patchTeamBridgeListsFromUnread } from "./team-bridge-unread-sync";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
 import {
 	type TeamBridgeDirectoryReads,
 	teamBridgeKeys,
+	teamBridgeMessagesQueryOptions,
 	useTeamBridgeDirectories,
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
@@ -163,16 +182,34 @@ function bannerPlace(
  * and wait. `undefined` when the member cannot be described (e.g. an agent
  * banner for a member with no named agent).
  */
-function notificationSender(
+/**
+ * The identity a sender descriptor pictures. Exported so the KIND ARGUMENT is
+ * testable on its own: `parseTeamBridgeNotificationSender` also drops an agent's
+ * `avatar`, which means a test that only inspects the parsed descriptor passes
+ * even when this function hands the resolver the owner's kind (agent review
+ * round 1, F2 — the mutation `directoryIdentity(member, "human")` here is
+ * invisible to the descriptor assertions). One caller (`notificationSender`).
+ */
+export function senderIdentity(
+	member: TeamBridgeDirectoryMember,
+	kind: TeamBridgeNotificationSender["kind"],
+) {
+	return directoryIdentity(member, kind === "person_agent" ? "agent" : "human");
+}
+
+export function notificationSender(
 	member: TeamBridgeDirectoryMember,
 	kind: TeamBridgeNotificationSender["kind"],
 ): TeamBridgeNotificationSender | undefined {
-	// Directory identity, not a message's possibly stale composed label.
-	// Source=none wins even if an old avatar_url lingers in a response.
-	const photo =
-		member.profile?.avatar?.source === "none"
-			? null
-			: teamBridgeAvatarVersion(member);
+	// Directory identity, not a message's possibly stale composed label. The
+	// picture comes from the one identity resolver, which honours source=none
+	// and NEVER gives an agent its owner's photo: a `person_agent` banner shows
+	// the agent's OWN picture when the hub publishes one, else the glyph (core),
+	// never the owner's face (2026-10-30). The plate reads the same resolver, so
+	// a banner and a message row cannot disagree about an agent's picture.
+	const resolved = resolveIdentityAvatar(senderIdentity(member, kind)).src;
+	const photo = resolved?.type === "account" ? resolved : null;
+	const own = resolved?.type === "endpoint" ? resolved : null;
 	return parseTeamBridgeNotificationSender({
 		v: 1,
 		kind,
@@ -187,6 +224,9 @@ function notificationSender(
 		),
 		...(photo
 			? { avatar: { account_id: photo.accountId, hash: photo.hash } }
+			: {}),
+		...(own
+			? { endpoint_avatar: { endpoint_id: own.endpointId, hash: own.hash } }
 			: {}),
 	});
 }
@@ -211,6 +251,92 @@ function directoryPeople(
 }
 
 /**
+ * Fold a banner's reply into its thread's cached pages, when the thread pane
+ * has been opened before (an entry exists). Without this the pane would paint
+ * its old pages on the click and show the announced reply only on its next
+ * poll - the timeline bug, one level down.
+ *
+ * Only the LAST page may grow, and only when it says no later page exists:
+ * pages are forward cursors over an oldest-first thread, so appending to a
+ * page that has a successor would put the reply out of order. The row is the
+ * server's own (its `client_ref` included), never a reconstruction.
+ */
+function mergeReplyIntoThreadCache(
+	client: QueryClient,
+	candidate: TeamBridgeNotifyCandidate,
+	threadId: string,
+	reply: TeamBridgeMessage,
+): void {
+	// The thread pane's key is the UNOWNED replies key; match it exactly.
+	const key = teamBridgeKeys.replies(
+		candidate.tenantId,
+		candidate.conversationId,
+		threadId,
+	);
+	client.setQueryData<InfiniteData<TeamBridgeThreadPage>>(key, (current) => {
+		const last = current?.pages.at(-1);
+		if (!current || !last || last.has_more) return current;
+		if (
+			current.pages.some((page) =>
+				page.replies.some((row) => row.id === reply.id),
+			)
+		)
+			return current;
+		return {
+			...current,
+			pages: [
+				...current.pages.slice(0, -1),
+				{
+					...last,
+					replies: [...last.replies, reply].sort((a, b) => a.seq - b.seq),
+				},
+			],
+		};
+	});
+}
+
+/**
+ * The banner's own read of a conversation's newest page.
+ *
+ * WHY `fetchQuery`, AND WHAT "JOIN" MEANS HERE (agent review round 1, n1). It
+ * carries the reader itself, so an entry whose observer is long gone still
+ * refreshes, and a read already in flight for the same key is JOINED rather
+ * than cancelled - `Query.fetch` only cancels an in-flight fetch when the
+ * CALLER passes `cancelRefetch`, and `fetchQuery` never does.
+ *
+ * PASSING `cancelRefetch: false` EXPLICITLY IS NOT AVAILABLE, which is why this
+ * note is here instead of a flag: the property is not part of `FetchQueryOptions`
+ * in this version (tsc rejects it), and it would change nothing anyway - an
+ * absent `cancelRefetch` is already falsy in `Query.fetch`, so this call already
+ * joins. The round-1 suggestion assumed the flag was what made the join happen;
+ * it is the default, and the flag is unreachable from this API.
+ *
+ * THE EXPOSURE THAT IS REAL is the other direction: anyone else can cancel this
+ * read. `invalidateQueries`/`refetchQueries` for this key passes `cancelRefetch:
+ * true` and aborts the running fetch, which surfaces here as a rejected
+ * `CancelledError`, a banner degraded to metadata, and a click with no message
+ * to land on. That is why the call site retries once (see the catch below).
+ */
+function timelineReadOptions(
+	client: QueryClient,
+	conversationId: string,
+	tenantId: string,
+	accountId: string,
+) {
+	return {
+		...teamBridgeMessagesQueryOptions(
+			client,
+			conversationId,
+			tenantId,
+			accountId,
+		),
+		// The entry may hold a page fetched before this message existed; a
+		// fresher-looking stale page is the bug itself.
+		staleTime: 0,
+	};
+}
+
+/**
  * Compose and send one banner. Never throws, never logs.
  *
  * The newest message is read at notify time (see the module doc for why this
@@ -229,13 +355,13 @@ async function deliverTeamBridgeBanner(
 	let senderLabel = candidate.senderLabel;
 	let sender: TeamBridgeNotificationSender | undefined;
 	let preview: string | null = null;
+	/* Set only once the message is in the cache a click will render from. */
+	let messageId: string | undefined;
 	/*
-	 * NO THREAD READ WHILE THE HOLD IS ON. A reply banner would otherwise address
-	 * `listReplies` for its preview, which is one of the thread paths carrying
-	 * the reported #1304 cross-account isolation defects. Treated as an ordinary
-	 * message instead: the timeline read below excludes replies, so a held reply
-	 * banner degrades to its metadata (or is skipped) rather than touching the
-	 * thread cache, and the click target carries no thread root either.
+	 * A thread preview is read only in a build that ships the guarded thread
+	 * contract. The observed account supplies the required receipt, and the
+	 * authority comparison above prevents a delayed preview crossing to the next
+	 * signed-in account. Older/held builds use the ordinary message read instead.
 	 */
 	const authority = observedRadientAuthority(client);
 	if (authority.accountId !== selfAccountId) return;
@@ -247,26 +373,56 @@ async function deliverTeamBridgeBanner(
 		// Timeline history excludes replies. Address the candidate's thread and
 		// inclusive sequence cursor directly: one row bounds the read even for an
 		// old, long thread; never page through its private history for a banner.
-		const newest = threadId
-			? assertThreadPage(
-					await TeamBridgeApi.listReplies(candidate.conversationId, threadId, {
-						tenantId: candidate.tenantId,
-						afterSeq: candidate.seq,
-						limit: 1,
-					}),
-					{
-						tenantId: candidate.tenantId,
-						conversationId: candidate.conversationId,
-						rootId: threadId,
-					},
-				).replies.find((reply) => reply.seq === candidate.seq)
-			: (
-					await TeamBridgeApi.listMessages(candidate.conversationId, {
-						tenantId: candidate.tenantId,
-						limit: 1,
-					})
-				).messages[0];
+		let newest: TeamBridgeMessage | undefined;
+		if (threadId) {
+			newest = assertThreadPage(
+				await TeamBridgeApi.listReplies(candidate.conversationId, threadId, {
+					tenantId: candidate.tenantId,
+					accountId: selfAccountId,
+					afterSeq: candidate.seq,
+					limit: 1,
+				}),
+				{
+					tenantId: candidate.tenantId,
+					conversationId: candidate.conversationId,
+					rootId: threadId,
+				},
+			).replies.find((reply) => reply.seq === candidate.seq);
+			if (newest && stillCurrent())
+				mergeReplyIntoThreadCache(client, candidate, threadId, newest);
+		} else {
+			/*
+			 * WRITE BEFORE NOTIFY. The one read lands in the timeline's own cache
+			 * entry (same key, same reader as the page), so by the time the banner
+			 * can be clicked the page already holds the message it announces.
+			 */
+			const read = () =>
+				client.fetchQuery(
+					timelineReadOptions(
+						client,
+						candidate.conversationId,
+						candidate.tenantId,
+						selfAccountId,
+					),
+				);
+			const page = await read().catch((error: unknown) => {
+				// Cancelled from outside: ask again, once (see the helper).
+				if (!isCancelledError(error)) throw error;
+				return read();
+			});
+			newest = page.messages.reduce<TeamBridgeMessage | undefined>(
+				(max, message) =>
+					max === undefined || message.seq > max.seq ? message : max,
+				undefined,
+			);
+		}
 		if (newest && newest.seq >= candidate.seq) {
+			/*
+			 * Timeline messages only. A reply's click opens its thread pane, which
+			 * has no row target to land on; a `message` parameter the page has to
+			 * ignore is the kind `teamBridgeOpenPath` refuses to emit.
+			 */
+			if (!threadId) messageId = newest.id;
 			if (
 				newest.sender.kind === "human" &&
 				newest.sender.account_id === selfAccountId
@@ -358,6 +514,9 @@ async function deliverTeamBridgeBanner(
 			// pane; omitted for a top-level message, and omitted entirely while the
 			// hold is on (see `threadId` above).
 			...(threadId ? { threadId } : {}),
+			// The click's scroll/highlight target; present only when the cache
+			// the page renders from already holds it (see WRITE BEFORE NOTIFY).
+			...(messageId ? { messageId } : {}),
 			tenantId: candidate.tenantId,
 			...(sender ? { sender } : {}),
 			seq: candidate.seq,
@@ -367,6 +526,54 @@ async function deliverTeamBridgeBanner(
 			viewing: teamBridgeViewingConversation() === candidate.conversationId,
 		})
 		.catch(() => undefined);
+}
+
+/**
+ * Keep caches the page will paint from current while the page is closed.
+ *
+ * Runs for EVERY tenant unread answer, whether or not anything banners (muted,
+ * notifications off, the reader already looking): a banner is only one way
+ * back into a conversation, and a rail click into a conversation visited
+ * earlier painted its cached page from then, with the new message landing on
+ * the next poll (operator report, 2026-10-30).
+ *
+ *  - Conversation-list rows take the unread row's count and cursors, so the
+ *    rail and the nav badge read one set of numbers (`team-bridge-unread-sync.ts`).
+ *  - A timeline entry that ALREADY EXISTS for a conversation whose `latest_seq`
+ *    moved since the last answer is refetched, exactly that key. A conversation
+ *    never opened gets no entry: this adds no read for history nobody looked at.
+ *    The first answer only records the seq; `latest_seq` also advances for
+ *    replies, which the timeline excludes, so comparing against the cached
+ *    page's newest seq would refetch a reply-active thread on every poll.
+ *    Joining (not cancelling) a banner's in-flight read of the same key keeps
+ *    that banner from degrading to metadata.
+ */
+function syncUnmountedConversations(
+	client: QueryClient,
+	accountId: string,
+	tenantId: string,
+	rows: ReadonlyArray<{ conversation_id: string; latest_seq: number }> &
+		Parameters<typeof patchTeamBridgeListsFromUnread>[3],
+	observed: Map<string, number>,
+): void {
+	patchTeamBridgeListsFromUnread(client, accountId, tenantId, rows);
+	for (const row of rows) {
+		const key = `${tenantId}\u0000${row.conversation_id}`;
+		const previous = observed.get(key);
+		observed.set(key, row.latest_seq);
+		if (previous === undefined || row.latest_seq <= previous) continue;
+		const options = teamBridgeMessagesQueryOptions(
+			client,
+			row.conversation_id,
+			tenantId,
+			accountId,
+		);
+		if (client.getQueryState(options.queryKey)?.data === undefined) continue;
+		// `fetchQuery`, not `refetchQueries`: it carries the reader itself, so an
+		// entry whose observer is long gone still refreshes, and an in-flight read
+		// of the same key (a banner's) is joined rather than cancelled.
+		void client.fetchQuery({ ...options, staleTime: 0 }).catch(() => undefined);
+	}
 }
 
 /**
@@ -619,6 +826,8 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	});
 
 	const cursors = useRef<Map<string, number>>(new Map());
+	/** `latest_seq` last seen per tenant+conversation (see `syncUnmountedConversations`). */
+	const observedLatest = useRef<Map<string, number>>(new Map());
 	/** Organizations whose first unread answer (or zero total) has been seen. */
 	const seededOrganizations = useRef<Set<string>>(new Set());
 	const previousAccount = useRef<string | undefined>(undefined);
@@ -677,6 +886,7 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		// until it landed, so there is no other account's cache to clear.
 		if (previous === undefined) return;
 		cursors.current = new Map();
+		observedLatest.current = new Map();
 		seededOrganizations.current = new Set();
 		lastPlanKey.current = null;
 		void client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
@@ -738,6 +948,14 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 					latest_seq: row.latest_seq,
 				}),
 			);
+			if (selfAccountId)
+				syncUnmountedConversations(
+					client,
+					selfAccountId,
+					organization.tenant_id,
+					data.conversations ?? [],
+					observedLatest.current,
+				);
 			const seeded = seededOrganizations.current.has(organization.tenant_id);
 			const owner = observedRadientAuthority(client);
 			// A message discovered during an optimistic mute has no delivery to
@@ -790,9 +1008,12 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 			if (!active || notificationsOff || !selfAccountId) continue;
 			const account = selfAccountId;
 			const authToken = radientAuthoritySnapshot(client);
-			const bridgeStatus = client.getQueryData(
-				teamBridgeKeys.statusFor(account),
-			);
+			/* The SAME authority projection the owner-read fence uses, never the
+			 * cached object's identity: a status refetch mid-delivery installs a
+			 * new object (checked_at/fetched_at move every time) for an unchanged
+			 * authority, and an identity compare silently dropped that banner.
+			 * Sharing the projection is what keeps the two fences from drifting. */
+			const bridgeStatusHolds = captureBridgeStatusAuthority(client, account);
 			for (const candidate of plan.candidates) {
 				void deliverTeamBridgeBanner(
 					client,
@@ -801,8 +1022,7 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 					() =>
 						accountRef.current === account &&
 						radientAuthoritySnapshot(client) === authToken &&
-						client.getQueryData(teamBridgeKeys.statusFor(account)) ===
-							bridgeStatus &&
+						bridgeStatusHolds() &&
 						activeRef.current &&
 						!notificationsOffRef.current &&
 						bridgeOwnerCurrent(client, account),

@@ -54,24 +54,43 @@ export const neon: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1C2029",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #1C2029 -> #161A23 (L* 12.22 -> 9.24)
+		 * surface #212737 -> #1B2131 (L* 15.75 -> 12.88)
+		 * elevated #272E46 -> #202840 (L* 19.34 -> 16.48)
+		 * sunken #1B1B1F -> #151519 (L* 9.92 -> 6.92)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `mediaSurface`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#161A23",
 		// The old grounds 080C18 and 0D1220 measured 1.04:1 apart, close enough to
 		// read as one surface. Surface and elevated are spread along the same
 		// desaturated blue ramp so a card and a menu are actually distinguishable.
-		surface: "#212737",
-		elevated: "#272E46",
-		sunken: "#1B1B1F",
+		surface: "#1B2131",
+		elevated: "#202840",
+		sunken: "#151519",
 
 		// The user block's fill: `surface` itself, which already clears the
 		// role's ΔE00 4.0 floor off this canvas (measured 4.23).
-		messageSurface: "#212737",
+		messageSurface: "#1B2131",
 		// The media slot's well: ΔE00 4.06 off the canvas, where `sunken` alone
 		// measures 3.62 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
 		// The LIGHTNESS half gates the stop here: a ΔE00-clearing candidate
 		// (`#1B1B1E`, 2.34 L*) comes earlier on the line, so the walk carries it
 		// one step further to this value, which clears both halves (2.70 L*).
-		mediaSurface: "#1b1a1e",
+		// Lifted #100F16 -> #111016 (L* 4.60 -> 4.95) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.10 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#111016",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -90,8 +109,8 @@ export const neon: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.88 `L*` and 8.2 `C*`,
 		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#2B2E38",
-		rowSelected: "#293248",
+		rowHover: "#242731",
+		rowSelected: "#222B41",
 
 		ink: "#E0E0E0",
 		/*
@@ -124,10 +143,10 @@ export const neon: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `surface` is the tightest ground at ΔE00 12.46.
 		 */
-		hairline: "#1F4050",
+		hairline: "#173949",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.69:1 there against `hairline`'s 1.56:1.
-		hairlineStrong: "#264555",
+		hairlineStrong: "#1E3E4E",
 		// Derived. The old theme bounded inputs with cyan at 20 percent alpha, about
 		// 1.3:1 — a neon outline that was not actually there.
 		borderControl: "#6F8F99",
@@ -144,7 +163,7 @@ export const neon: ThemeDefinition = {
 		   the hue the same palette's editor already paints string literals in. */
 		// The cyan at a faint tint. The theme's own hover fills used the same cyan
 		// at 10 to 15 percent, so this is the value it was already reaching for.
-		accentWash: "#072734",
+		accentWash: "#00212E",
 		onAccent: "#000E0F",
 		/*
 		 * No second hue to carry: this palette is desktop-only, so it has no TUI
@@ -162,18 +181,18 @@ export const neon: ThemeDefinition = {
 		 * 2.0), 10.94:1 for `accentAlt` on it, and 12.85 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#351D25",
+		accentAltWash: "#2F171F",
 
 		// Neon has no green. This one is placed about 37 degrees off the cyan
 		// accent, which is far enough that a success state does not read as a
 		// primary action — the nearer greens all looked like dim cyan.
 		success: "#2BFF88",
-		successWash: "#0C2925",
+		successWash: "#05221E",
 		successBorder: "#1B9256",
 
 		// The orange the old file used for its ask highlights.
 		warning: "#FFA500",
-		warningWash: "#261E15",
+		warningWash: "#20180D",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -194,7 +213,7 @@ export const neon: ThemeDefinition = {
 		 * re-pick of the palette's colour.
 		 */
 		danger: "#FF5EAF",
-		dangerWash: "#260B28",
+		dangerWash: "#210222",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -205,7 +224,7 @@ export const neon: ThemeDefinition = {
 		// Info is the accent cyan. The theme's only other bright hues are the pink,
 		// which is danger, and the orange, which is warning.
 		info: "#00EFFF",
-		infoWash: "#072734",
+		infoWash: "#00212E",
 		infoBorder: "#048997",
 
 		overlayShadow: "0 12px 32px -12px rgb(0 0 0 / 0.75)",

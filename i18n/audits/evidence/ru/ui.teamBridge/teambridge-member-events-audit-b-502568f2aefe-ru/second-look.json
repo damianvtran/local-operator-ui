@@ -1,0 +1,40 @@
+{
+	"schema": 1,
+	"kind": "audit-amendment (second look)",
+	"audit_id": "teambridge-member-events-audit-b-502568f2aefe-ru",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"model": "radient/radient-research/radient-ultra",
+	"session": "502568f2aefe",
+	"instance": "502568f2aefe-ru",
+	"bound_receipt": {
+		"path": "i18n/receipts/502568f2aefe-ru.json",
+		"sha256": "f35547d8b4e6056f6af42cbcffc3014b59cd0bbc4157199a266690630137efad",
+		"findings": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 2,
+			"nit": 0
+		}
+	},
+	"why_an_amendment_and_not_a_new_receipt": "First-pass verdicts were written before any other auditor's receipt was read (receipts 502568f2aefe-* were created first). A second look afterwards added findings I had under-weighted and confirmed one I had missed: (1) the multi-name owner_added_agent number problem, which I had filed for vi only, applies to every locale whose grammar marks number on the agent noun or verb (fr, es, hi, ur, ru; zh-CN and vi are unaffected on number); (2) ur renders 'decline' as both انکار and مسترد inside one namespace; (3) hi/ur events.others has no head noun. Two proposals in the other auditor's report were rejected after checking the grammar: «A rejoint la conversation : {targets}» (the passe compose auxiliary must agree with its subject, so «A» is wrong for a three-name list - «ont rejoint» - reintroducing the very number problem it was meant to solve), and ru «ещё один» (the ru `one` arm also covers 21, 31, 101, so it would render «и ещё один» for 21 hidden names).",
+	"ledger_behaviour": "scripts/i18n/ledger-assemble.mjs refuses to replace an instance with different receipt bytes ('one run is one audit; a second audit needs its own instance'), and recording the same auditor under a second instance would misrepresent independence. The row therefore keeps the receipt above; this companion carries the auditor's final view. ledger.json was not hand-edited.",
+	"added_findings": [
+		{
+			"severity": "minor",
+			"id": "RU-B3",
+			"key": "ui.teamBridge.events.owner_added_agent",
+			"current": "{actor}: добавлен собственный агент — {targets}",
+			"proposed": "{actor}: добавление собственного агента — {targets}",
+			"reason": "The passive singular «добавлен ... агент» describes one agent while a rolled-up line can list several; the verbal noun is number-neutral and already this locale's own pattern in events.removed («удаление из разговора»), so the fix costs nothing and stays inside the ru colon style. Masked today only because no fixture exercises a multi-name owner_invite.",
+			"disposition": "fix recommended"
+		}
+	],
+	"final_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 3,
+		"nit": 0
+	},
+	"final_verdict": "clean-with-findings: 0 blocker, 0 major, 3 minor, 0 nit."
+}

@@ -1,5 +1,6 @@
 {
 	"ui.common.layout.chat_layout.resize_the_sidebar": "调整侧边栏大小（{sidebartogglecap}）",
+	"ui.common.layout.chat_layout.resize_the_sidebar_plain": "调整侧边栏大小",
 	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "调整请求区大小。双击重置共享窗格宽度。",
 	"ui.common.layout.sidebar_header.search_agents": "搜索智能体",
 	"ui.common.layout.sidebar_header.create_a_new_agent": "创建新智能体",
@@ -7,5 +8,10 @@
 	"ui.common.layout.sidebar_header.import_agent": "导入智能体",
 	"ui.common.layout.sidebar_header.new_agent": "新建智能体",
 	"ui.common.layout.toasts.dismiss": "关闭此通知",
-	"ui.common.layout.toasts.notifications": "通知"
+	"ui.common.layout.toasts.notifications": "通知",
+	"ui.common.layout.chat_layout.resize_canvas_double_click_resets_the_shared_pane_width": "调整画布大小。双击重置共享窗格宽度。",
+	"ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width": "调整运行详情大小。双击重置共享窗格宽度。",
+	"ui.common.layout.chat_layout.resize_browser_double_click_resets_the_shared_pane_width": "调整浏览器大小。双击重置共享窗格宽度。",
+	"ui.common.layout.chat_layout.resize_console_double_click_resets_the_shared_pane_width": "调整控制台大小。双击重置共享窗格宽度。",
+	"ui.common.layout.chat_layout.resize_code_review_double_click_resets_the_shared_pane_width": "调整代码审查大小。双击重置共享窗格宽度。"
 }

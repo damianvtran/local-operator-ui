@@ -1,0 +1,28 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "kimi/k3.1-pro",
+  "instance": "ff24e557ff85-zh-cn",
+  "locale": "zh-CN",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "zh-CN": "2f25f05e9792f68ab7d60bce63b47a30837de093d57504af0686cb6a93b6f968",
+    "en": "cdc8d66af4e558046072d06df97e638feab4b7579b6f3abba097c30949d7835c"
+  },
+  "context_sha256": "7873c3c486821688257a22f7b13d1c28f36017d7865fd3a6a72a7740861f64d9",
+  "scope": "The three keys added for recording shortcuts; pre-existing catalogue bytes checked only for matching control terminology.",
+  "findings": [],
+  "checks": [
+    "Current-byte SHA-256 matches the supplied English, context and Simplified Chinese hashes.",
+    "Exact full-catalogue key parity; the diff adds exactly the three scoped keys.",
+    "Placeholder parity (none in scoped keys), JSON validity and NFC normalization.",
+    "Simplified Chinese glossary/style, concise pronoun-free register and full-width prose punctuation.",
+    "语音转文字 denotes speech input conversion, not spoken output; Esc and 重置 match existing controls.",
+    "Immediate save, cue-only clearing and visible last-working fallback are preserved.",
+    "Short heading and wrapping one/two-line copy reviewed for CJK semantic/layout fit; no bidi controls present."
+  ],
+  "references": {
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  }
+}

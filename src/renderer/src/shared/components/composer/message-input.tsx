@@ -80,11 +80,20 @@ import {
 	COMPOSER_TEXTAREA_SELECTOR,
 	registerComposerFocus,
 } from "@features/chat/composer-field";
+import {
+	type SendRecordingPhase,
+	dictatedSendCheck,
+	dictatedWouldAnswerGate,
+	sendRecordingNext,
+	slotARole,
+	slotBRole,
+	slotCRole,
+} from "@features/chat/composer-slots";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
 } from "@features/chat/draft-selection";
-import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
+import { useRoleGuard } from "@features/chat/hooks/use-role-guard";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
 import { connectProviderForSelector } from "@features/chat/pickers/model-catalogue-listing";
@@ -124,18 +133,21 @@ import {
 	type SendOutcome,
 	composerPlaceholder,
 	isOffRecordAsk,
+	joinTranscript,
 	settleOffRecordPayload,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
+import { useRecordingShortcutLabel } from "@shared/hooks/use-recording-shortcut";
 import {
 	SpeechToTextPriority,
 	resolvePushToTalkBinding,
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
-import { type WithoutParams, t } from "@shared/i18n";
+import { type WithoutParams, isolateLtr, t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	type RadientSpeechBlock,
@@ -156,6 +168,7 @@ import {
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
+import { pasteInsertsOnlyFileNames } from "@shared/utils/paste-utils";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
 	dismissToast,
@@ -747,9 +760,13 @@ export type MessageInputProps = {
 	 * review round 1, m1; QA round 1, Q2). `fillable` is false for an ask with
 	 * more than one secret question: one value names no field there, so the
 	 * confirm's primary control opens the panel instead of putting anything
-	 * (design round 1, D2). `onOpen` opens the asks panel -- with `focus: false`
-	 * when the open is a RESULT of the composer (a refused fill) rather than a
-	 * press, so the caret stays in the box. `onFill` posts one value as that
+	 * (design round 1, D2). `onOpen` opens the asks panel and RESOLVES WHETHER THE
+	 * SURFACE TOOK THE KEYBOARD: a press (no options) always does, a refused fill
+	 * (`focus: false`) does only where the composer cannot keep the caret - under
+	 * the overlay sheet, where the box is `inert` - and a landed fill
+	 * (`focus: false, openInSheet: false`) never does and does not open the sheet
+	 * at all. The caller decides the caret with that answer rather than assuming
+	 * the box is focusable. `onFill` posts one value as that
 	 * field's answer and resolves WHAT HAPPENED, not merely whether it landed: a
 	 * refusal, a lock, an expired ask and a missing session are four different
 	 * sentences, and `false` collapsed them into "nothing happened" (agent review
@@ -760,7 +777,10 @@ export type MessageInputProps = {
 	secretAsk?: {
 		key: string;
 		fillable: boolean;
-		onOpen: (options?: { focus?: boolean }) => void;
+		onOpen: (options?: {
+			focus?: boolean;
+			openInSheet?: boolean;
+		}) => boolean;
 		onFill: (value: string, key: string) => Promise<SecretFillOutcome>;
 	} | null;
 	/**
@@ -831,21 +851,6 @@ export type MessageInputProps = {
 	 * landed instead of re-teaching `Esc stops` while it is already in flight.
 	 */
 	canonicalStop?: { active: boolean; stopping?: boolean; onStop: () => void };
-	/**
-	 * Whether this session's backend negotiates `session_interrupt` at all.
-	 *
-	 * The control's SLOT can only be held on a backend that could ever fill it, so
-	 * this is the outer half of the reservation's gate - an invisible placeholder
-	 * that no control will ever stand in for is a gap, not a reservation. It is the
-	 * same capability `canonicalStop.active` is folded with at the call site, so the
-	 * reservation cannot outlive the control it reserves for.
-	 *
-	 * It is no longer the whole gate: the slot is held while a turn runs and for a
-	 * grace window after it ends, and is empty once the row has settled (the
-	 * operator's report that the standing gap put the dictation control away from
-	 * Send). See the reservation at the row and `interrupt-slot-grace.ts`.
-	 */
-	canonicalStopAvailable?: boolean;
 	/**
 	 * The last interrupt's own answer, or null for the common silent case.
 	 *
@@ -1850,7 +1855,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			hasNewActivity = false,
 			scrollToBottom = () => {},
 			canonicalStop,
-			canonicalStopAvailable = false,
 			interruptNotice,
 			sendError,
 			stopConfirmation,
@@ -2016,6 +2020,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [isPreparing, setIsPreparing] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
+		/*
+		 * "SEND RECORDING": stop, transcribe and submit in one press. The phase is
+		 * the whole of that step (`composer-slots.ts`), and slot B holds its busy
+		 * face from the press until the submit settles or fails - it never shows
+		 * Stop in between, because the box emptying on a send is exactly what would
+		 * flip a Send into a Stop under a double click.
+		 */
+		const [sendRecordingPhase, setSendRecordingPhase] =
+			useState<SendRecordingPhase>("idle");
+		/*
+		 * What the press captured: the draft as it stood, so the check after the
+		 * transcript lands can tell "the box holds exactly draft + transcript" from
+		 * "the user typed while the words were in flight". `transcript` is null
+		 * until a usable one arrives.
+		 */
+		const dictatedSendRef = useRef<{
+			draftAtPress: string;
+			transcript: string | null;
+		} | null>(null);
 		/*
 		 * THE TAKE THAT OUTLIVED ITS FAILURE (#1087).
 		 *
@@ -3224,6 +3247,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			draftUnredacted: disclosureOver,
 		});
+
+		/*
+		 * A send this composer made is unacknowledged: the one fact slot B's role
+		 * function and the Send-recording hold read (`composer-slots.ts`).
+		 */
+		const sendBusy = sendInFlight || sendUnsettled;
 
 		/*
 		 * The reset: when the box is EMPTY and no send of this composer is still
@@ -4815,6 +4844,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			secretConfirmGroup.current?.focus();
 		}, [secretFilling]);
 
+		/**
+		 * THE LAST CONFIRM PRESS ASKED THE PANEL TO TAKE THE KEYBOARD.
+		 *
+		 * The retirement effect below moves focus back into the box whenever the
+		 * confirm disappears - right for a dismissal, a send, and a refusal whose panel
+		 * stayed out of the way. It is wrong when the same press opened a surface that
+		 * took the keyboard itself (the sheet under the overlay): that write lands
+		 * after the panel's own layout effect and would pull the caret out of a surface
+		 * the user just asked for. One press, one answer, read once.
+		 */
+		const openTookKeyboard = useRef(false);
+
 		/*
 		 * THE CONFIRM IS BOUND TO ITS ASK (agent review round 1, m1; QA round 1,
 		 * Q1/Q2). If the ask goes away - answered in the panel, expired, declined -
@@ -4841,6 +4882,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * so a press that left the keyboard on a confirm control is found by
 			 * `contains` and handed back to the box.
 			 */
+			if (openTookKeyboard.current) {
+				openTookKeyboard.current = false;
+				return;
+			}
 			const active = document.activeElement;
 			if (
 				active !== null &&
@@ -4874,6 +4919,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const guardSecretSend = useCallback(
 			(text: string): boolean => {
 				if (!secretAsk || !looksLikeSecret(text)) return false;
+				/*
+				 * A NEW ATTEMPT STARTS WITH A CLEAN FOCUS LEDGER (agent review round 3,
+				 * MINOR-2). The retirement effect's first line returns when there is no
+				 * confirm, so a press that ENDED one - `openTookKeyboard` set, confirm
+				 * already null - leaves the flag standing; the next retirement would then
+				 * skip the caret it owes the box, once, for a press it never belonged to.
+				 */
+				openTookKeyboard.current = false;
 				setSecretConfirm({ value: text.trim(), key: secretAsk.key });
 				return true;
 			},
@@ -4926,8 +4979,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!secretAsk.fillable) {
 				setSecretConfirm(null);
 				setSecretRefusal(t("ui.chat.composer.secret_fill_multi"));
-				secretAsk.onOpen({ focus: false });
-				textareaRef.current?.focus();
+				/*
+				 * A PRESS, not a result (agent review round 2, M2-r2): the control is
+				 * labelled "Open asks panel", and the panel is where the user must choose
+				 * the field. It takes the keyboard in BOTH presentations, so this branch
+				 * does not put the caret back in the box - doing so would be the second
+				 * thing deciding focus, and under the sheet the box is about to be inert.
+				 */
+				secretAsk.onOpen();
+				openTookKeyboard.current = true;
 				return;
 			}
 			setSecretFilling(true);
@@ -4964,12 +5024,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			setSecretRefusal(secretFillSentence(outcome));
 			/*
 			 * THE PANEL IS WHERE THE ASK IS, so a refusal puts it on screen beside the
-			 * sentence - including the owner's own refusal on the card - without taking
-			 * the caret out of the box (`focus: false`, QA round 1, Q3). An
-			 * `unavailable` pane has no session to open onto, so it is left closed.
+			 * sentence - including the owner's own refusal on the card. `focus: false`
+			 * asks it not to take the caret; the ANSWER says whether it could keep that
+			 * promise (agent review round 2, M2-r2). DOCKED this box gets the caret back
+			 * (QA round 1, Q3) and the card's own refusal-recovery focus then moves it on
+			 * to the masked field or Retry - the keyboard ends in the pane, which is
+			 * where the next act is (agent review round 3, Q1: corrected; the composer's
+			 * hand-back is real, it is just not the last write). Under the overlay sheet
+			 * the box is inert and cannot hold it, so the sheet takes it instead of
+			 * letting it fall to `<body>`. An `unavailable` pane has no session to open
+			 * onto, so it is left closed and the box keeps the caret.
 			 */
-			if (outcome !== "unavailable") secretAsk.onOpen({ focus: false });
-			textareaRef.current?.focus();
+			const takesFocus =
+				outcome === "unavailable" ? false : secretAsk.onOpen({ focus: false });
+			openTookKeyboard.current = takesFocus;
+			if (!takesFocus) textareaRef.current?.focus();
 		}, [
 			secretAsk,
 			secretConfirm,
@@ -6390,62 +6459,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/*
-		 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER A TURN ENDS.
-		 *
-		 * The reservation itself is argued at the row (see `data-interrupt-slot`
-		 * below); the clock it runs on is `useInterruptSlotHold`, which owns the
-		 * edge, the single timer and its disposal, and which the review round's own
-		 * test drives through the measured sequence. What belongs here is the ONE
-		 * thing the argument decides and the gate cannot: the edge the window opens
-		 * on is the Stop control's own state (`canonicalStop?.active`), never the
-		 * capability or a busy flag - that argument and the gate's own
-		 * `!canonicalStop?.active` term are what between them keep the box off the
-		 * row while the control is drawn there.
-		 */
-		const slotHold = useInterruptSlotHold(Boolean(canonicalStop?.active));
-
-		/*
 		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because the strip's width
 		 * ladders ask about it and a second copy of the condition is how they drift.
 		 *
-		 * The row's right group is `[mic][send]` in the ordinary state and gains a
-		 * THIRD 32px box in two: while a turn runs (`canonicalStop.active` draws the
-		 * danger Square), and for the grace window after it ends, where the invisible
-		 * `data-interrupt-slot` below holds the same box open - `slotHold.held` for
-		 * the 500ms window, `isRecording` for as long as a live recording needs a press
-		 * in the box the Stop just left kept off the dictation control.
+		 * The group is two fixed slots, `[A][B]` = 68px (60px small view), in every
+		 * state except a live recording, where `[C Insert][A Cancel][B Send
+		 * recording]` draws a third box to the LEFT of the other two = 104px (92px).
+		 * A running turn is NOT a third box any more: Stop stands in Send's own slot.
 		 *
-		 * WHY THE STRIP IS TOLD ABOUT IT (issue #788). Effort, cost and context are
-		 * shed by container-range queries carrying a state pair, because a container
-		 * query can see a width but not a SIBLING: the readings returned at the band's
-		 * upper edge into a row that by then carried 36px more controls, and overran
-		 * them by ~8px with the model name already at its `min-w-14` floor. It did
-		 * that at EVERY column above the band, not just at its edge, because the
-		 * composer box is capped at `--lo-chat-measure` (810 shipped,
-		 * `styles/index.css`), so the row is 778px at every column from 858 up - no
-		 * width exists at which the running row fits the fullest cluster, which is why
-		 * those three rungs are stated on the state rather than on a wider band.
-		 * Measured on both trees by `scripts/composer-readings-geometry.mjs`.
-		 *
-		 * THE DURATION READS THE GROUP ITSELF. It is not on that ladder any more: the
-		 * strip measures this group's left edge at runtime against the reading's own
-		 * box, found by the `data-lo-composer-controls` marker below rather than by
-		 * these terms. A box this predicate never anticipated - the `Starting
-		 * recording` caption, a future control - is therefore accounted for by the
-		 * measurement without teaching this condition about it. The flag remains the
-		 * three width ladders' input, and only theirs.
-		 *
-		 * AND THE SLOT'S OWN JSX READS `interruptSlotDrawn` rather than repeating the
-		 * condition, so a change to when the box is drawn cannot leave a ladder
-		 * behind - the two questions have one answer by construction.
+		 * WHY THE STRIP IS TOLD (issue #788). Effort, cost and context are shed by
+		 * container-range queries, and a container query can see a width but not a
+		 * SIBLING growing, so those three ladders carry a state pair; the 780/740/675
+		 * arms now apply only while recording. The duration reading measures the
+		 * group's real left edge (`data-lo-composer-controls`) instead and needs no
+		 * flag.
 		 */
-		const interruptSlotDrawn =
-			canonicalStopAvailable &&
-			!canonicalStop?.active &&
-			(slotHold.held || isRecording) &&
-			!(isLoading && currentJobId);
-		const controlsThirdBox =
-			Boolean(canonicalStop?.active) || interruptSlotDrawn;
+		const controlsThirdBox = isRecording;
 
 		/*
 		 * Whether the suggestion chips are inert.
@@ -6473,11 +6502,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * change — typed, transcribed, or restored from the draft store —
 		 * because a native textarea does not grow on its own.
 		 *
-		 * `newMessage`, `isRecording` and `isTranscribing` are triggers, not
-		 * reads: the body only touches the ref, so the linter sees them as
-		 * surplus. They are what tell the textarea to re-measure, and removing
-		 * them leaves it stuck at its previous height after a transcription
-		 * lands or a draft is restored.
+		 * `newMessage`, `isRecording`, `isTranscribing` and `isPreparing` are
+		 * triggers, not reads: the body only touches the ref, so the linter sees
+		 * them as surplus. They are what tell the textarea to re-measure, and
+		 * removing them leaves it stuck at its previous height after a
+		 * transcription lands or a draft is restored.
+		 *
+		 * `isPreparing` is here because the press opens the recording lane in the
+		 * same frame and the field must settle in THAT commit: re-measured only at
+		 * the handover it changed height a second time (34px to 28px at a 520px
+		 * column, where the placeholder swap to "Recording" wraps differently), so
+		 * one press cost two height changes (design round 3, D14).
 		 */
 		// biome-ignore lint/correctness/useExhaustiveDependencies: deps are re-measure triggers, not values read in the body
 		useEffect(() => {
@@ -6485,7 +6520,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!el) return;
 			el.style.height = "auto";
 			el.style.height = `${el.scrollHeight}px`;
-		}, [newMessage, textareaRef, isRecording, isTranscribing]);
+		}, [newMessage, textareaRef, isRecording, isTranscribing, isPreparing]);
 
 		/*
 		 * A HOST-GATED EMPTY BOX FITS ITS SENTENCE (#1458 design r1 D3 / UX U9).
@@ -6727,6 +6762,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						}
 						setAudioBlob(null);
 						audioChunksRef.current = [];
+						/*
+						 * A DISCARDED TAKE ENDS A PENDING "SEND RECORDING" (too short, or
+						 * cancelled): no transcription request will ever settle it, so
+						 * without this slot B would hold its busy face for good.
+						 */
+						dictatedSendRef.current = null;
+						setSendRecordingPhase((phase) =>
+							sendRecordingNext(phase, { type: "discarded" }),
+						);
 					};
 				}
 				recorder.stop();
@@ -6948,14 +6992,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					setIsPreparing(false);
 					console.error("Error accessing microphone:", err);
 					showErrorToast(
-						"Error accessing microphone. Please ensure microphone permissions are granted.",
+						t(
+							"ui.canvas.inline_edit.error_accessing_microphone_please_ensure_microphone_permissions_are_gran",
+						),
 					);
 				}
 			} else {
 				console.error("This runtime exposes no MediaRecorder");
 				/* Not "your browser": this is a desktop app, and the person reading
 				   this did not choose a browser and cannot change it. */
-				showErrorToast("Dictation is not available on this device.");
+				showErrorToast(
+					t("ui.canvas.inline_edit.dictation_is_not_available_on_this_device"),
+				);
 			}
 		}, [canEnableRecordingFeature, isInputDisabled]);
 
@@ -6968,6 +7016,44 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!isRecording) return;
 			settleRecordingAttempt("abort");
 		}, [isRecording, settleRecordingAttempt]);
+
+		/*
+		 * "SEND RECORDING": stop the take, transcribe it and submit the words as a
+		 * message in one press. Only the PRESS lives here - it records the draft the
+		 * words will join and releases the take exactly as Confirm does. The send
+		 * itself is the effect after `handleSubmit`, because it must run against the
+		 * render in which the transcript is in the box, and only after a check that
+		 * the box is what the press would have sent.
+		 */
+		const handleSendRecording = useCallback(() => {
+			if (!isRecording || sendRecordingPhase !== "idle") return;
+			// The same refusals as a plain Send, plus a send of this composer still
+			// going out: its clear would park the transcript instead of boxing it.
+			if (isInputDisabled || noProvider || noModel || sendBusy) return;
+			/*
+			 * A RECORDER THAT ALREADY DIED has no `onstop` to come, so entering the
+			 * phase would hold slot B and the mic inert until a remount. Settle it as
+			 * Insert transcript would and send nothing.
+			 */
+			if (mediaRecorderRef.current?.state !== "recording") {
+				settleRecordingAttempt("release");
+				return;
+			}
+			dictatedSendRef.current = { draftAtPress: newMessage, transcript: null };
+			setSendRecordingPhase((phase) =>
+				sendRecordingNext(phase, { type: "press" }),
+			);
+			settleRecordingAttempt("release");
+		}, [
+			isRecording,
+			sendRecordingPhase,
+			isInputDisabled,
+			noProvider,
+			noModel,
+			sendBusy,
+			newMessage,
+			settleRecordingAttempt,
+		]);
 
 		useEffect(() => {
 			/*
@@ -6984,6 +7070,20 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			const handleKeyDown = (event: globalThis.KeyboardEvent) => {
 				if (isRecording) {
 					if (event.key === "Enter") {
+						/*
+						 * A FOCUSED CLUSTER BUTTON KEEPS ITS OWN ENTER (UX round 1, U2).
+						 * Enter on Cancel or Send recording used to be swallowed here and
+						 * run Insert transcript instead - the one key press that does the
+						 * opposite of the control it is on. The button's native activation
+						 * (detail 0, never guarded) is the answer; this window-level
+						 * shortcut is for focus anywhere else.
+						 */
+						const target = event.target;
+						if (
+							target instanceof Element &&
+							target.closest("[data-lo-composer-controls] button")
+						)
+							return;
 						event.preventDefault();
 						handleConfirmRecording();
 					} else if (event.key === "Escape") {
@@ -7025,6 +7125,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			handleCancelRecording,
 			handleStopRecording,
 		]);
+
+		/*
+		 * The press of "Send recording" ends WITHOUT a send: stable (a ref and a
+		 * setState), so `handleSendAudio`'s dependencies are unchanged.
+		 */
+		const endDictatedSend = useCallback(() => {
+			if (!dictatedSendRef.current) return;
+			dictatedSendRef.current = null;
+			setSendRecordingPhase((phase) =>
+				sendRecordingNext(phase, { type: "transcript", usable: false }),
+			);
+		}, []);
 
 		const handleSendAudio = useCallback(async () => {
 			if (!audioBlob) return;
@@ -7074,6 +7186,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * the two writes one (its contract is in `use-message-input`).
 					 */
 					appendTranscriptText(newText);
+					if (dictatedSendRef.current) {
+						// The words are in (or parked for a send's clear); the check
+						// effect below decides whether the box is exactly what the press
+						// would have sent.
+						dictatedSendRef.current.transcript = newText;
+						setSendRecordingPhase((phase) =>
+							sendRecordingNext(phase, { type: "transcript", usable: true }),
+						);
+					}
 				} else {
 					/*
 					 * A SUCCESSFUL, EMPTY TRANSCRIPT IS SAID OUT LOUD (UX round 1, U3): the
@@ -7082,6 +7203,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * succeeded; the take held no speech.
 					 */
 					showInfoToast(emptyTranscriptionMessage());
+					endDictatedSend();
 				}
 				// The take landed: nothing is left to offer back.
 				setDictationFailure(null);
@@ -7092,7 +7214,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * is gone, or a newer take replaced it; a toast about a request nobody is
 				 * waiting for would outlive the state it describes.
 				 */
-				if (controller.signal.aborted) return;
+				if (controller.signal.aborted) {
+					endDictatedSend();
+					return;
+				}
 				// The raw server message stays on the console; the toast names the
 				// cause in a sentence a person can act on (see
 				// `transcriptionFailureMessage`), because "please try again" cannot
@@ -7114,6 +7239,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * pixels apart - the louder one without the control, over the composer's
 				 * own mic and send - was the duplication this deletes.
 				 */
+				// A failed transcription sends NOTHING: the press ends here, the typed
+				// draft is untouched, and the kept take (if any) is offered back by the
+				// row below - a retry appends to the box and never auto-sends.
+				endDictatedSend();
 				const transient = isTransientTranscriptionFailure(error);
 				setDictationFailure(
 					transient ? transcriptionFailureRowMessage(error) : null,
@@ -7124,7 +7253,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					setIsTranscribing(false);
 				}
 			}
-		}, [audioBlob, appendTranscriptText]);
+		}, [audioBlob, appendTranscriptText, endDictatedSend]);
 
 		/**
 		 * Send the kept take again.
@@ -7224,8 +7353,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				),
 		);
 
-		const handleSubmit = (e: FormEvent) => {
-			e.preventDefault();
+		/**
+		 * The form's submit, as a function of nothing but the box.
+		 *
+		 * `dictated` is the "Send recording" caller: the words in the box came from a
+		 * microphone and the user has not read them, so the three doors that turn a
+		 * draft into something OTHER than a plain message are closed to it - a
+		 * transcript that begins with a slash must not run a command, an open
+		 * credential capture must not mint a span, and text that looks like a secret
+		 * must not skip the confirm that the typed path raises. In each case nothing
+		 * is sent and the words stay in the box for review. Returns whether the
+		 * submit path was entered.
+		 */
+		const runSubmit = (dictated = false): boolean => {
 			/*
 			 * THE REFUSAL COMES FIRST HERE TOO (review round 1, MAJOR 2), and this is
 			 * the guard the `readOnly` attribute cannot supply: `handleSubmit` is the
@@ -7235,9 +7375,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * the second of two - and it is the one that holds if a future control
 			 * submits this form.
 			 */
-			if (isInputDisabled) return;
+			if (isInputDisabled) return false;
 			// One more way in: nothing connected means no send, whichever control asked.
-			if (noProvider) return;
+			if (noProvider) return false;
 			/*
 			 * AND THE SAME RULE ONE STEP PAST IT: a provider this app cannot name a model
 			 * for cannot answer either, so a press that reaches here is refused and
@@ -7245,9 +7385,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			if (noModel) {
 				explainRefusedSend();
-				return;
+				return false;
 			}
-			if (!newMessage.trim() && attachments.length === 0) return;
+			if (!newMessage.trim() && attachments.length === 0) return false;
 			/*
 			 * THE CAPTURE IS ASKED FIRST, exactly as the key handler asks it, so the
 			 * button and the key cannot disagree about an open masked span (design
@@ -7256,7 +7396,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * takes the planner below to the picker — the same two outcomes Enter
 			 * has, by construction, because it is the same function.
 			 */
-			if (submitCapture()) return;
+			if (dictated && isTyping(capture)) return false;
+			/*
+			 * AN APPROVAL GATE IS ANSWERED BY THIS SAME PRESS (agent review round 1,
+			 * M1): `chat-page.tsx` takes the sent text of a pending gate through
+			 * `approvalAnswerValue`, where "yes", "ok" or "1" is an approval. Words from
+			 * a microphone the user has not read must never be one - a stray "ok" from
+			 * the room would approve a tool action - so a transcript that WOULD answer
+			 * the gate stays in the box for the user to read and send by hand.
+			 */
+			if (dictated && awaitingAnswer && dictatedWouldAnswerGate(newMessage))
+				return false;
+			if (submitCapture()) return true;
 			/*
 			 * The SAME planner the Enter key consults, so the Send button and the
 			 * key cannot disagree about whether a draft is a command — and every
@@ -7266,8 +7417,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			const plan = planForDraft(newMessage, caret);
 			if (plan.kind !== "send") {
+				if (dictated) return false;
 				void applyPlan(plan, newMessage, caret);
-				return;
+				return true;
 			}
 			/*
 			 * THE QUEUED SECRET ASK'S CONFIRM, on exactly the line the planner called
@@ -7276,9 +7428,68 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * `Send as message` on the confirm reaches `submitMessage` directly, which is
 			 * that press's whole meaning.
 			 */
-			if (guardSecretSend(newMessage)) return;
+			if (dictated) {
+				if (secretAsk && looksLikeSecret(newMessage)) return false;
+			} else if (guardSecretSend(newMessage)) return true;
 			submitMessage();
+			return true;
 		};
+		const handleSubmit = (e: FormEvent) => {
+			e.preventDefault();
+			runSubmit();
+		};
+		const runSubmitRef = useRef(runSubmit);
+		runSubmitRef.current = runSubmit;
+
+		/*
+		 * THE SEND HALF OF "SEND RECORDING", run against the render in which the
+		 * transcript is in the box.
+		 *
+		 * Three questions, in order, each of which ends the press WITHOUT a send:
+		 *   1. is the take still being transcribed? (wait - `onSubmit` refuses it)
+		 *   2. does the box hold exactly the draft-at-press joined with the
+		 *      transcript? Anything else means the user typed or pasted while the
+		 *      words were in flight, and sending would ship text they never meant to
+		 *      send together; the box is left as it is.
+		 *   3. does the normal submit path accept it? It is the SAME function Enter
+		 *      and the Send button reach (attachments, steer-vs-prompt, the
+		 *      no-provider refusal), run in dictated mode so a transcript can never
+		 *      be read as a slash command, mint a credential span or skip the
+		 *      secret confirm.
+		 * Then slot B keeps its busy face until `sendBusy` falls: the submit sets it
+		 * synchronously, so the first `submitting` render already sees it, and a
+		 * submit that was never entered is released on that same render.
+		 */
+		useEffect(() => {
+			if (sendRecordingPhase === "ready-to-submit") {
+				if (isTranscribing) return;
+				const pending = dictatedSendRef.current;
+				if (!pending || pending.transcript === null) {
+					setSendRecordingPhase("idle");
+					return;
+				}
+				const { intact } = dictatedSendCheck({
+					draftAtPress: pending.draftAtPress,
+					transcript: pending.transcript,
+					current: newMessage,
+					join: joinTranscript,
+				});
+				dictatedSendRef.current = null;
+				const entered = intact ? runSubmitRef.current(true) : false;
+				setSendRecordingPhase((phase) =>
+					sendRecordingNext(phase, {
+						type: "checked",
+						draftIntact: intact && entered,
+					}),
+				);
+				return;
+			}
+			if (sendRecordingPhase === "submitting" && !sendBusy) {
+				setSendRecordingPhase((phase) =>
+					sendRecordingNext(phase, { type: "settled", sendBusy: false }),
+				);
+			}
+		}, [sendRecordingPhase, isTranscribing, newMessage, sendBusy]);
 
 		/*
 		 * KEEP THE CARET ON A PRESS THAT LANDS ON A CONTROL THE BOX IS REFUSING WITH
@@ -7435,7 +7646,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * is asked for its word only while those bytes are still in the draft, exactly
 			 * like the cancel's, so an emptied box is prose again.
 			 */
-			if (pasted) pastedRun.current = pastedCredentialRun(pasted);
+			/*
+			 * A PASTED FILE IS NOT ALSO PASTED AS ITS NAME (issue #1573). A Finder copy
+			 * puts the file name(s) on `text/plain` beside the file items; the loop below
+			 * attaches the files, so letting the browser's insert run as well typed the
+			 * name into the prompt. Cancelled ONLY when that text is nothing but the
+			 * names (`pastedTextIsOnlyFileNames`) - prose pasted alongside a file is the
+			 * operator's and still lands. This sits AFTER the credential branch on
+			 * purpose: an armed capture owns the paste whatever it carries. On macOS
+			 * the event omits that `text/plain` entirely (QA round 1, Q1), so the
+			 * predicate reads the pasteboard synchronously when files arrive alone.
+			 * Only a paste whose insert still happens records its provenance run
+			 * (review round 1, R3): a cancelled insert brings no bytes into the draft.
+			 */
+			if (pasteInsertsOnlyFileNames(event.clipboardData ?? null))
+				event.preventDefault();
+			else if (pasted) pastedRun.current = pastedCredentialRun(pasted);
 			const items = event.clipboardData?.items;
 			if (items) {
 				for (let i = 0; i < items.length; i++) {
@@ -7717,12 +7943,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						undoCap: lockedRunUndoCap(platform === "darwin"),
 					});
 
-		const shortcutText = useMemo(() => {
-			if (platform === "darwin") {
-				return "Cmd+Shift+S";
-			}
-			return "Ctrl+Shift+S";
-		}, [platform]);
+		const shortcutText = useRecordingShortcutLabel(
+			platform === "darwin" ? "mac" : platform === "win32" ? "win" : "linux",
+			// Main dispatches start-speech only to the main window. The transcriptless
+			// mini composer still records through its button, but has no chord door.
+			!transcriptless,
+		);
 
 		/*
 		 * WHERE FOCUS GOES WHEN A STAGED QUOTE IS REMOVED (UX round 1, U2).
@@ -7797,7 +8023,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				(sendError?.message && NO_PROVIDER_NOTICE.test(sendError.message))
 					? [
 							{
-								label: "Connect a provider",
+								// The memo survives locale changes; resolve copy when displayed.
+								get label() {
+									return t("ui.chat.composer.connect_provider");
+								},
 								onClick: () => useConnectProviderStore.getState().openConnect(),
 							},
 						]
@@ -8070,6 +8299,67 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const micControlShown =
 			isPreparing ||
 			(!isRecording && !isTranscribing && !(isLoading && currentJobId));
+
+		/*
+		 * THE CLUSTER'S ROLES (`composer-slots.ts` owns the rules and the matrix).
+		 *
+		 * Two fixed slots, `[A][B]`, plus a third LEFT of them only while recording.
+		 * Send and Stop are the SAME slot (B), so they are never drawn together and
+		 * nothing the user aimed at moves when a turn starts or ends. Each role below
+		 * is its own keyed button: a press that began on one role cannot complete as a
+		 * click on another, because the old element unmounts.
+		 */
+		const dictationPhase = isRecording
+			? "recording"
+			: isTranscribing
+				? "transcribing"
+				: isPreparing
+					? "preparing"
+					: "idle";
+		const hasPayload = newMessage.trim() !== "" || attachments.length > 0;
+		const slotA = slotARole(dictationPhase, sendRecordingPhase);
+		const slotC = slotCRole(dictationPhase);
+		const slotB = slotBRole({
+			dictation: dictationPhase,
+			alive: Boolean(canonicalStop?.active),
+			stopping: canonicalStop?.stopping === true,
+			hasPayload,
+			refused: isInputDisabled || sendRefused,
+			sendBusy,
+			sendRecording: sendRecordingPhase,
+			// Dictated words are not sent unreviewed inside a masked capture.
+			reviewRequired: isTyping(capture),
+		});
+		/*
+		 * Stop and its pressed face are ONE element (same key): the press flips
+		 * `stopping` while the pointer or the keyboard focus is still on it, and a
+		 * remount there would drop focus mid-gesture.
+		 */
+		const slotBKey = slotB.role === "stop-busy" ? "stop" : slotB.role;
+		const { ignore: ignoreCancelPress, arming: cancelArming } = useRoleGuard(
+			slotC ?? "none",
+		);
+		const { ignore: ignoreConfirmPress, arming: confirmArming } =
+			useRoleGuard(slotA);
+		const { ignore: ignoreSlotBPress, arming: slotBArming } =
+			useRoleGuard(slotBKey);
+		/*
+		 * A FOCUSED CONTROL THAT LEAVES THE ROW TAKES THE CARET WITH IT. When a role
+		 * flip unmounts the button focus was on (Send -> Connecting, Confirm ->
+		 * spinner), focus falls to <body> and the next keystroke goes nowhere; hand
+		 * it to the field instead - but only if the cluster HAD focus, and not when
+		 * the user blurred it on purpose (a focusout whose target is still mounted).
+		 */
+		const clusterHadFocusRef = useRef(false);
+		const rolesKey = `${slotA}|${slotB.role}|${slotC}`;
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `rolesKey` is the trigger; the body reads only refs and the document
+		useEffect(() => {
+			if (!clusterHadFocusRef.current) return;
+			const active = document.activeElement;
+			if (active && active !== document.body) return;
+			clusterHadFocusRef.current = false;
+			textareaRef.current?.focus({ preventScroll: true });
+		}, [rolesKey]);
 
 		const inputContent = (
 			<form
@@ -9471,37 +9761,42 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							/>
 						</div>
 						{/*
-						 * NO PREPARING STRIP IN THIS SLOT, and the slot is the reason rather
-						 * than tidiness (design round 1, D2). The acknowledgment used to be a
-						 * one-line strip here - "the same slot the recording lane takes" - and
-						 * that claim was false as geometry: the lane is 84px tall where the
-						 * strip was 40px with its gap, so a press moved the composer TWICE
-						 * (card top 774 -> 734 while preparing, then 690 at handover) inside a
-						 * card whose bottom edge is pinned. The acknowledgment now rides in
-						 * the control row below - a row that exists at every width and in
-						 * every state - so a press costs the composer exactly 0px, and the
-						 * only movement left is the recording lane's own, unchanged
-						 * appearance (the lane's drawn geometry is not part of this fix).
+						 * THE LANE, from the PRESS (design round 1 D2, round 3 D14; QA round 3
+						 * Q-1). The press is answered before the recorder exists - the
+						 * microphone acquisition is the one genuinely slow part of the click
+						 * path (830 ms cold on this fleet, past two minutes under swap
+						 * exhaustion) - and the answer used to be a separate one-line row
+						 * that grew the card, after which the lane grew it AGAIN at handover:
+						 * the field jumped twice per press. Here the SAME block that the take
+						 * will occupy opens at once, at its final height, with "Starting
+						 * recording" in its label row, and the handover to recording swaps
+						 * the words and starts the waveform without moving anything. So a
+						 * press costs ONE height change, the lane's own (84px, `composer-
+						 * slots-proof.mjs` asserts the preparing and recording heights are
+						 * equal), and in the bottom-anchored chat band the controls row does
+						 * not move at all. It is not 0px: a press that adds a lane to the
+						 * card cannot be free, and the claim that it was is retired.
 						 *
-						 * AN `absolute` OVERLAY IN THIS SLOT was the alternative and it is
-						 * rejected on the record: the next thing in this box's flow is the
-						 * control row itself, so a line drawn over the slot would cover the
-						 * controls it exists to answer. The row is where a line can be added
-						 * without buying height - see the acknowledgment below, which is a
-						 * child of that row and not of this one.
+						 * NOT IN THE CONTROLS ROW and not an overlay (design round 2, D9):
+						 * as a flex item it grew the 68px cluster and pushed Send past the
+						 * card's edge, and as an overlay it painted over the readings.
+						 *
+						 * The block carries a status and no control, so the pointer map does
+						 * not move. Its words are a live region (`<output>`), and the ring on
+						 * the mic's busy face is the surface's one indeterminate element.
 						 */}
-						{/*
-						 * THE RECORDING STATE, as a full-width block under the field it belongs
-						 * to (operator feedback via Aida, 2026-09-29): the lane spans the
-						 * field's own content column, its label row sits over it, and nothing
-						 * is washed or bordered - it reads as composer chrome, on the same
-						 * step of ground the box itself uses. The controls stay in the
-						 * cluster below, where `Confirm recording`/`Cancel recording` already
-						 * hold the boxes the interrupt-slot geometry reserves; this block
-						 * carries a status and no control, so the pointer map does not move.
-						 */}
-						{isRecording && (
-							<AudioRecordingIndicator isRecording={isRecording} />
+						{(isRecording || (isPreparing && micControlShown)) && (
+							<AudioRecordingIndicator
+								isRecording={isRecording}
+								preparingLabel={
+									!isRecording && isPreparing
+										? isSmallView
+											? t("ui.chat.composer.starting")
+											: t("ui.chat.composer.starting_recording")
+										: null
+								}
+								sendsNow={slotB.role === "send-recording" && slotB.enabled}
+							/>
 						)}
 						{isTranscribing && (
 							<div
@@ -9511,7 +9806,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								<span className="font-medium text-body-sm text-ink-muted">
 									{t("ui.chat.composer.processing_audio")}
 								</span>
-								<WaveformAnimation />
+								{/*
+								 * ONE LIVE ELEMENT FOR A SEND-RECORDING WAIT (design D13): slot A
+								 * already spins for it, so the caption is words only there. A plain
+								 * dictation has no spinner in the row and keeps its waveform.
+								 */}
+								{sendRecordingPhase === "idle" && <WaveformAnimation />}
 							</div>
 						)}
 						{/*
@@ -9831,416 +10131,362 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 */}
 								<div
 									data-lo-composer-controls={true}
-									className="ms-auto flex order-3 items-center gap-1"
+									onFocus={() => {
+										clusterHadFocusRef.current = true;
+									}}
+									onBlur={(event) => {
+										// A removed button reports a disconnected target; a user
+										// who tabbed or clicked away reports a mounted one.
+										if (event.target.isConnected) {
+											clusterHadFocusRef.current = false;
+										}
+									}}
+									className="ms-auto flex order-3 shrink-0 items-center gap-1"
 								>
-									{/*
-									 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
-									 * via Aida, 2026-10-01). The microphone acquisition is the one part
-									 * of the click path that is genuinely slow - 830 ms cold on this
-									 * fleet, and measured past two minutes under swap exhaustion - and it
-									 * used to be silent: the screen looked exactly as it did before the
-									 * press. This line, with the control's own busy face beside it, is
-									 * that window's answer, both written in the click's own frame.
-									 *
-									 * IT LIVES IN THIS ROW, NOT UNDER THE FIELD (design round 1, D2): a
-									 * line of its own grew the card on the press. This row is 32px in
-									 * every state, so an ~18px child cannot make it taller - and the line
-									 * is added to the INLINE-START of a group this row anchors with
-									 * `ms-auto`, so the mic and send controls keep the x they had: the
-									 * free space between the readings and this group is what pays.
-									 *
-									 * ONE INDETERMINATE ELEMENT ON THIS SURFACE (branding § 5's
-									 * "one such element per surface"): the ring is on the control below
-									 * and this line is words, so the acknowledgment is one live element
-									 * rather than two spinners for one wait (UX round 1, U4).
-									 */}
-									{isPreparing && micControlShown && (
-										<output
-											data-preparing-indicator=""
-											/*
-											 * THE STATE IS ANNOUNCED, not merely painted (agent review round 2,
-											 * minor a). `aria-busy` on the button is the control's half and screen
-											 * readers expose it inconsistently; the words are the other half, and they
-											 * are only announced if they ARE a live region - a bare span changes on
-											 * screen and says nothing to a reader that is not looking at it. The caption
-											 * carries the text, so the region goes here rather than on the ring - as an
-											 * `<output>` rather than a `role="status"` attribute, which is this file's
-											 * established spelling of the same thing (the interrupt notice and the
-											 * no-model hint both use the element).
-											 */
-											/*
-											 * The five-word copy is the composer's own; the SMALL VIEW's
-											 * shorter one is this row's existing yield rule rather than a
-											 * second wording - the model selector shortens to its glyph, the
-											 * usage reading drops below 480px of composer and the cwd chip
-											 * truncates at the same pressure, and a truncated "Starting
-											 * recor..." is not a sentence. `shrink-0` puts this line on the
-											 * yielding side of that bargain rather than letting it compress
-											 * into an ellipsis of its own.
-											 */
-											className="shrink-0 font-medium text-body-sm text-ink-muted"
-										>
-											{isSmallView
-												? t("ui.chat.composer.starting")
-												: t("ui.chat.composer.starting_recording")}
-										</output>
-									)}
-									{micControlShown && (
+									{slotC === "confirm" && (
 										<Tooltip
-											content={
-												isPreparing
-													? t("ui.chat.composer.starting_recording")
-													: !canEnableRecordingFeature
-														? recordingUnavailableReason
-														: t("ui.chat.composer.start_recording_hint", {
-																shortcut: shortcutText,
-																pushToTalk: resolvePushToTalkBinding().label,
-															})
-											}
+											key="confirm"
+											content={t("ui.chat.composer.insert_transcript_hint")}
 										>
 											<span>
 												<Button
-													variant="ghost"
-													size={isSmallView ? "icon-sm" : "icon"}
-													className="text-ink-dim hover:bg-elevated hover:text-ink"
-													onPointerDown={holdCaretOnRefusedPress}
-													onClick={handleStartRecording}
-													aria-label={t("ui.chat.composer.start_recording")}
-													/*
-													 * BUSY IS ITS OWN FACE (operator feedback via Aida,
-													 * 2026-10-01): while the recorder is being acquired the
-													 * control shows the acknowledgment instead of the mic glyph.
-													 * It is NOT disabled while it does (design round 1, D1) -
-													 * the handler's own guard is what refuses a second press,
-													 * and the hold contract reaches the same handler without
-													 * consulting `disabled` at all. The label stays "Start
-													 * recording" - the control IS still the start control, and
-													 * `aria-busy` plus the captioned line in this row carry the
-													 * state.
-													 * carry the state; the reader that keys on this label
-													 * (`scripts/renderer-driver.mjs`, the mini-view scene)
-													 * keeps resolving it.
-													 */
-													aria-busy={isPreparing || undefined}
-													/*
-													 * `isLoading` IS NOT A TERM HERE (the operator's report): the
-													 * composer's own writability is `isInputDisabled`, and a send in
-													 * flight does not make this box unwritable - mid-turn messages
-													 * ride the steer path, and dictation is a state OF this box. The
-													 * old term closed the control for the whole admit-to-first-answer
-													 * window while the box itself stayed writable; the manager's own
-													 * gate (the registration below) carries the same correction.
-													 *
-													 * `isPreparing` IS NOT A TERM EITHER (design round 1, D1):
-													 * disabling the control during the acknowledgment made the one
-													 * control the user just pressed go inert on a 32px target, and it
-													 * was redundant besides - a second press inside the acquisition
-													 * is refused by the handler's own `recordingAttemptRef` guard,
-													 * which is the door the hold contract reaches the same callback
-													 * through and which `disabled` never covered anyway. `aria-busy`
-													 * is what says the control is working, so no gate is needed to
-													 * say it twice.
-													 */
-													disabled={
-														isInputDisabled || !canEnableRecordingFeature
-													}
-												>
-													{isPreparing ? (
-														/*
-														 * ONE RING ON THIS SURFACE (design round 1, D3): this is the composer's only
-														 * indeterminate element - the caption in the row beside it is words - which is
-														 * branding § 5's "one such element per surface". The track's ROLE is fixed in
-														 * `Spinner` itself rather than patched here, and that is measured: a call-site
-														 * `border-control` flattens this ring's accent quadrant (tailwind-merge merges
-														 * the track and the quadrant as one border colour), so the ring came back
-														 * `#837c6d` on both sides - a circle with nothing visibly rotating in it.
-														 */
-														<Spinner size="sm" />
-													) : (
-														<Mic aria-hidden="true" />
-													)}
-												</Button>
-											</span>
-										</Tooltip>
-									)}
-									{isRecording && (
-										<>
-											<Tooltip
-												content={t("ui.chat.composer.confirm_recording_hint")}
-											>
-												<span>
-													<Button
-														variant="ghost"
-														size={isSmallView ? "icon-sm" : "icon"}
-														className="text-success hover:bg-success-wash hover:text-success"
-														onClick={handleConfirmRecording}
-														aria-label={t("ui.chat.composer.confirm_recording")}
-														/*
-														 * NO `disabled` HERE, and NOT gated on the composer's refusal either
-														 * (the refusal contract's own test forbids that gate anywhere in this
-														 * file - see composer-refusal.test.mjs): the control must stay
-														 * pressable while a recording exists, including in a box that refuses
-														 * input, because the alternative is a live microphone nothing can
-														 * stop. Loading used to sit here and closed the pointer door for the
-														 * whole turn; the handler's own guard is what keeps it safe (a press
-														 * with nothing recording is a no-op).
-														 */
-													>
-														<Check aria-hidden="true" />
-													</Button>
-												</span>
-											</Tooltip>
-											<Tooltip
-												content={t("ui.chat.composer.cancel_recording_hint")}
-											>
-												<span>
-													<Button
-														variant="ghost"
-														size={isSmallView ? "icon-sm" : "icon"}
-														className="text-danger hover:bg-danger-wash hover:text-danger"
-														onClick={handleCancelRecording}
-														aria-label={t("ui.chat.composer.cancel_recording")}
-														// NO `disabled`: cancelling is the mic's own off switch and must work
-														// even where the box refuses input (see the confirm control above).
-													>
-														<X aria-hidden="true" />
-													</Button>
-												</span>
-											</Tooltip>
-										</>
-									)}
-									{/*
-									 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER THE
-									 * TURN IT BELONGED TO ENDS - and empty otherwise.
-									 *
-									 * THE HAZARD, MEASURED TWICE. Pressing Stop used to slide the
-									 * dictation control 36px right - 32px of control plus the row's
-									 * 4px gap - into the exact centre of the box the press had just
-									 * landed in, so a reflex second press started a MICROPHONE
-									 * RECORDING. UX round 1 (U1) and QA (Q1) found it independently
-									 * on the unreserved build: the element at the Stop's own centre
-									 * was `button[aria-label="Start recording"]` once the turn
-									 * settled, and a press there reported `recording_started: true`.
-									 * A 120ms double press still hit Stop twice, which is what made
-									 * it a trap rather than something a user notices.
-									 *
-									 * WHY A GRACE RATHER THAN A STANDING RESERVATION. Holding the
-									 * box for as long as the capability is negotiated removes the
-									 * hazard and leaves the idle composer with a one-control gap
-									 * between dictation and Send, which the operator reported as a
-									 * defect of its own ("the dictation control should sit beside
-									 * Send"). Both cannot hold: the right cluster is right-justified
-									 * (`ms-auto`), so the dictation control sits exactly one
-									 * control-plus-gap - the Stop's own 32px plus the row's 4px -
-									 * further from Send while the Stop is rendered than with it gone,
-									 * and an idle row whose dictation control sits BESIDE Send is the
-									 * row in which the control has moved into the vacated box - the layout
-									 * cannot be preserved, only the hazard bounded. What a user
-									 * needs protection from is the moment the turn ends, which is
-									 * when the reflex press arrives; a row that has settled since is
-									 * a row nobody is mid-double-press on. So the box is held while
-									 * the turn runs and for `INTERRUPT_SLOT_GRACE_MS` (500) after the
-									 * control leaves, then released to nothing. The window's own
-									 * reasoning, the measurement behind the number and what it costs
-									 * (a second press more than 500ms after the turn settles lands on
-									 * the dictation control, which by then is where it is drawn) live
-									 * in `interrupt-slot-grace.ts`, where they can be tested without
-									 * a browser.
-									 *
-									 * WHAT IS DELIBERATELY NOT DONE: the recording action is never
-									 * refused, gated or greyed. The dictation control stays visible,
-									 * live and pressable at every instant, and during the grace it is
-									 * at its busy position - the row the operator sees today. The
-									 * reservation (the window's grace, or the in-flight dictation case
-									 * below) decides whether an invisible placeholder sits beside a
-									 * control, and nothing else. A control that looks live but is not
-									 * would be a worse defect than the gap it replaced, and it would
-									 * refuse a deliberate press.
-									 *
-									 * ALTERNATIVES CONSIDERED AND REJECTED. (a) No guard at all:
-									 * reintroduces the MAJOR above. (b) Putting Stop to the LEFT of
-									 * the dictation control, so the dictation control never moves:
-									 * changes the running layout the operator explicitly asked to keep
-									 * and moves Stop away from Send, where the hand that just sent the
-									 * message already is. (c) Refusing or greying the first press
-									 * inside the window: a control that looks live but is not, a grey
-									 * flicker after every turn, and a deliberate press refused. (d)
-									 * Holding the box while the pointer rests in it: a standing gap
-									 * for exactly the user who just pressed Stop, i.e. the reported
-									 * defect restored for the one person it was measured on.
-									 *
-									 * THE START-OF-TURN TRANSITION IS DELIBERATELY NOT CHANGED (noted
-									 * so a later reader does not "fix" it by symmetry). When the turn
-									 * starts, the Stop appears in the box the dictation control had
-									 * occupied, so the DICTATION control moves 36px LEFT - 32px of
-									 * control plus the row's 4px gap - and Send does not move at all:
-									 * it is pinned to the row's right edge in every state (measured,
-									 * default rung: Send 1307 while running, inside the window and
-									 * settled; the dictation control 1271 settled and 1235 running).
-									 * The residual is the mirror of the one this box exists for: a press
-									 * aimed at the dictation control's own position lands on the Stop
-									 * once the Stop is drawn there, so a user reaching for dictation as a
-									 * turn starts stops the turn instead. It stays unchanged on the
-									 * merits: the control that ARRIVES is the one the new turn needs,
-									 * stopping a turn is legible and recoverable (the transcript says
-									 * "Interrupted") where a silent microphone recording is not, and the
-									 * only alternative that removes it - holding the box while idle too -
-									 * is the operator's own reported defect.
-									 *
-									 * THE BOX IS HELD WHILE A DICTATION IS IN FLIGHT, on a different
-									 * reason than the window. While `isRecording` the row draws
-									 * `[Confirm recording][Cancel recording]` where the dictation control
-									 * and Send were (Send is gated on `!isRecording`), and the held box
-									 * renders AFTER them: `[Confirm 1235][Cancel 1271][box 1307]`, which
-									 * is this record's own `inFlight.grace`. Release the box and both
-									 * controls move 36px right, to the two-control row the PREVIOUS
-									 * head's record carries - a different head, so it is named with the
-									 * path to it: `git show 043b0b7c3:docs/evidence/interrupt-live/
-									 * interrupt-proof.json`, `slot.recordingCancelled.aim.rect.left =
-									 * 1307`, i.e. `[Confirm 1271][Cancel 1307]`. (That head's step is
-									 * that row with the box already released, which is why its Cancel
-									 * sits a slot right of this head's own `slot.recordingCancelled` -
-									 * the same aim, 1271, in the row with the box HELD. Same field,
-									 * two rows: read the record each number belongs to.) The slot the
-									 * Stop itself occupies in that shape is 1307, from THIS record
-									 * (`inFlight.pressed.rect.left`), so a
-									 * reflex press at the Stop's own centre would land on **Cancel
-									 * recording** and DISCARD in-flight audio - a mistimed Stop press
-									 * would throw away a recording the user made deliberately, which is
-									 * why the box is held for as long as the dictation controls are
-									 * rendered rather than only for the window.
-									 *
-									 * WHAT THIS SHAPE COSTS, stated because the honest version is not
-									 * "nothing visible": the row's rightmost VISIBLE control sits one
-									 * control-plus-gap short of the row's right edge for the whole
-									 * recording, because the third slot is held empty and the box draws
-									 * no ink. That is a TRAILING void - both controls are drawn where the
-									 * right-justified cluster puts them and nothing is displaced - and it
-									 * is not introduced here: it is `origin/main`'s own recording row,
-									 * whose reservation was unconditional. Against `main` this change
-									 * removes the void from the idle row and leaves this one alone.
-									 *
-									 * AND STARTING A RECORDING MOVES THE PAIR 36px LEFT: the third slot
-									 * fills from the instant `isRecording` is true, so `[mic 1271]
-									 * [Send 1307]` becomes `[Confirm 1235][Cancel 1271][box 1307]` - the
-									 * slot that was just pressed (the dictation control's own, 1271) comes
-									 * back as **Cancel recording**, where without the box it would be
-									 * Confirm. Legible and one press from recovery, and the alternative
-									 * (filling the slot only once a window opens during a recording)
-									 * trades it for a 36px jump at the moment a turn ends under a
-									 * recording - the re-layout class this change exists to bound. The
-									 * same class of note as the start-of-turn transition above, for the
-									 * same reason: recorded so a later reader does not "fix" it by
-									 * symmetry.
-									 *
-									 * `isTranscribing` deliberately gets no such term, and that is a
-									 * statement rather than an omission: `!isTranscribing` gates both the
-									 * dictation control and Send, so while a transcription is in flight
-									 * the row draws nothing a press could reach in the vacated box, and a
-									 * term for it would be symmetry rather than a fix.
-									 *
-									 * `aria-hidden`, no focus and no pointer events: this is geometry,
-									 * not a control - nothing may be reachable, announced or pressed
-									 * there. Gated on the same legacy condition the mic is (`isLoading
-									 * && currentJobId`), because that path hides the mic and renders
-									 * its own `Stop agent` in this cluster; reserving a slot nothing
-									 * will fill would move a control for no reason.
-									 */}
-									{interruptSlotDrawn && (
-										<span
-											aria-hidden="true"
-											data-interrupt-slot=""
-											className={cn(
-												"pointer-events-none invisible flex items-center",
-											)}
-										>
-											{/*
-											 * THE RESERVATION IS THE STOP'S OWN BOX, INVISIBLE, and that is
-											 * what makes "holding the place moves nothing" true rather than
-											 * nearly true (chat redesign §G3, U3).
-											 *
-											 * The control is the icon-only red square again (operator report,
-											 * 2026-09-26 - see the live branch below), so this renders that
-											 * SAME markup invisible: `visibility: hidden` keeps layout,
-											 * unlike `display: none`, so the two boxes agree by construction
-											 * rather than by a measured width that could drift. It carries
-											 * NO accessible name and no labelling attribute, because it must
-											 * stay out of the live probes that select the control by its own
-											 * name and must not be announced.
-											 */}
-											<Button
-												variant="danger"
-												size={isSmallView ? "icon-sm" : "icon"}
-												type="button"
-												tabIndex={-1}
-											>
-												<Square aria-hidden="true" />
-											</Button>
-										</span>
-									)}
-									{canonicalStop?.active && (
-										/*
-										 * THE STOP IS THE ICON-ONLY RED SQUARE IT WAS BEFORE THE
-										 * REDESIGN (operator report, 2026-09-26).
-										 *
-										 * The redesign relabelled it - a `surface` control with a
-										 * `border-control` edge, the word `Stop` and a visible `Esc` cap
-										 * (§G3, U3) - and the operator's verdict was that the row it sits
-										 * in is now over-full: the label and cap crowded a row that
-										 * already carries five other items, and at their window width the
-										 * cap read as a fragment clipped under this button. Restored: the
-										 * bare `danger` square, `icon-sm`/`icon` like its `Stop agent`
-										 * sibling above.
-										 *
-										 * WHAT THE LABEL'S REMOVAL KEEPS, deliberately, because an
-										 * icon-only destructive-adjacent control is worse than a
-										 * labelled one when it loses them: `aria-label="Stop"` is the
-										 * button's accessible NAME, `aria-keyshortcuts="Escape"` still
-										 * states the key binding to assistive tech, and the tooltip
-										 * still says both in words. The VISIBLE cap is what went, not
-										 * the binding.
-										 */
-										<Tooltip content={t("ui.chat.composer.stop_work_hint")}>
-											<span>
-												<Button
-													variant="danger"
+													data-composer-slot="c"
+													variant="outline"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
-													onClick={canonicalStop.onStop}
-													aria-label={t("ui.chat.composer.stop")}
-													aria-keyshortcuts="Escape"
-													/*
-													 * THE PRESSED HOLD (design round 2, D6). While the press
-													 * window is live the square wears the `danger` variant's own
-													 * pressed composite - the exact three classes on the
-													 * variant's `active:` line, applied by ATTRIBUTE rather than
-													 * `:active` because the hold must outlive the pointer (an
-													 * Escape press leaves it elsewhere entirely), and the two
-													 * frames measured byte-identical rest-vs-pending without
-													 * it. `button.tsx`'s header documents the composite as two
-													 * authored roles (`danger-wash`, `danger`), not a new one,
-													 * and it is deliberately NOT the `disabled:` line: the
-													 * control is engaged, not unavailable - still focusable,
-													 * still named `Stop`, announced busy to assistive tech.
-													 * The glyph stays the `Square`; the rung already carries
-													 * the spinner a second one would duplicate.
-													 */
-													data-stopping={
-														canonicalStop.stopping === true ? "true" : undefined
-													}
-													aria-busy={
-														canonicalStop.stopping === true ? true : undefined
-													}
 													className={cn(
-														"data-[stopping]:border-danger data-[stopping]:text-ink data-[stopping]:bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
+														"border-success-border bg-success-wash text-success hover:bg-success-wash",
+														confirmArming && "opacity-72",
 													)}
+													onClick={(event) => {
+														if (ignoreConfirmPress(event.detail)) return;
+														handleConfirmRecording();
+													}}
+													aria-label={t("ui.chat.composer.insert_transcript")}
+													/*
+													 * NO `disabled` HERE, and NOT gated on the composer's refusal either
+													 * (the refusal contract's own test forbids that gate anywhere in this
+													 * file - see composer-refusal.test.mjs): the control must stay
+													 * pressable while a recording exists, including in a box that refuses
+													 * input, because the alternative is a live microphone nothing can
+													 * stop. The handler's own guard keeps it safe (a press with nothing
+													 * recording is a no-op).
+													 */
 												>
-													<Square aria-hidden="true" />
+													<Check aria-hidden="true" />
 												</Button>
 											</span>
 										</Tooltip>
 									)}
-									{isLoading && currentJobId ? (
+									{(slotA === "mic" || slotA === "mic-preparing") &&
+										micControlShown && (
+											<Tooltip
+												key="mic"
+												content={
+													<ShortcutText
+														text={
+															isPreparing
+																? t("ui.chat.composer.starting_recording")
+																: !canEnableRecordingFeature
+																	? recordingUnavailableReason
+																	: shortcutText === null
+																		? t("ui.chat.composer.start_recording")
+																		: t(
+																				"ui.chat.composer.start_recording_hint",
+																				{
+																					shortcut: isolateLtr(shortcutText),
+																					pushToTalk:
+																						resolvePushToTalkBinding().label,
+																				},
+																			)
+														}
+													/>
+												}
+											>
+												<span>
+													<Button
+														data-composer-slot="a"
+														variant="ghost"
+														size={isSmallView ? "icon-sm" : "icon"}
+														className="text-ink-dim hover:bg-elevated hover:text-ink"
+														onPointerDown={holdCaretOnRefusedPress}
+														onClick={handleStartRecording}
+														aria-label={t("ui.chat.composer.start_recording")}
+														/*
+														 * BUSY IS ITS OWN FACE (operator feedback via Aida,
+														 * 2026-10-01): while the recorder is being acquired the
+														 * control shows the acknowledgment instead of the mic glyph.
+														 * It is NOT disabled while it does (design round 1, D1) -
+														 * the handler's own guard is what refuses a second press,
+														 * and the hold contract reaches the same handler without
+														 * consulting `disabled` at all. The label stays "Start
+														 * recording" - the control IS still the start control, and
+														 * `aria-busy` plus the captioned line in this row carry the
+														 * state.
+														 * carry the state; the reader that keys on this label
+														 * (`scripts/renderer-driver.mjs`, the mini-view scene)
+														 * keeps resolving it.
+														 */
+														aria-busy={isPreparing || undefined}
+														/*
+														 * `isLoading` IS NOT A TERM HERE (the operator's report): the
+														 * composer's own writability is `isInputDisabled`, and a send in
+														 * flight does not make this box unwritable - mid-turn messages
+														 * ride the steer path, and dictation is a state OF this box. The
+														 * old term closed the control for the whole admit-to-first-answer
+														 * window while the box itself stayed writable; the manager's own
+														 * gate (the registration below) carries the same correction.
+														 *
+														 * `isPreparing` IS NOT A TERM EITHER (design round 1, D1):
+														 * disabling the control during the acknowledgment made the one
+														 * control the user just pressed go inert on a 32px target, and it
+														 * was redundant besides - a second press inside the acquisition
+														 * is refused by the handler's own `recordingAttemptRef` guard,
+														 * which is the door the hold contract reaches the same callback
+														 * through and which `disabled` never covered anyway. `aria-busy`
+														 * is what says the control is working, so no gate is needed to
+														 * say it twice.
+														 */
+														disabled={
+															isInputDisabled || !canEnableRecordingFeature
+														}
+													>
+														{isPreparing ? (
+															/*
+															 * ONE RING ON THIS SURFACE (design round 1, D3): this is the composer's only
+															 * indeterminate element - the caption in the row beside it is words - which is
+															 * branding § 5's "one such element per surface". The track's ROLE is fixed in
+															 * `Spinner` itself rather than patched here, and that is measured: a call-site
+															 * `border-control` flattens this ring's accent quadrant (tailwind-merge merges
+															 * the track and the quadrant as one border colour), so the ring came back
+															 * `#837c6d` on both sides - a circle with nothing visibly rotating in it.
+															 */
+															<Spinner size="sm" />
+														) : (
+															<Mic aria-hidden="true" />
+														)}
+													</Button>
+												</span>
+											</Tooltip>
+										)}
+									{slotA === "spinner" && (
+										/*
+										 * THE MIC'S OWN PRESS POINT WHILE A TAKE IS BEING TRANSCRIBED, or
+										 * its words are going out as a message: inert and busy rather than
+										 * a live mic, so a second press cannot start a new take over the one
+										 * in flight. `aria-disabled`, never `disabled`, so focus stays.
+										 */
+										<Button
+											key="spinner"
+											data-composer-slot="a"
+											variant="ghost"
+											size={isSmallView ? "icon-sm" : "icon"}
+											type="button"
+											className="text-ink-dim"
+											aria-busy={true}
+											aria-disabled={true}
+											aria-label={t("ui.chat.composer.processing_audio")}
+											onClick={(event) => event.preventDefault()}
+										>
+											<Spinner size="sm" />
+										</Button>
+									)}
+									{slotA === "cancel" && (
+										<Tooltip
+											key="cancel"
+											content={t("ui.chat.composer.cancel_recording_hint")}
+										>
+											<span>
+												<Button
+													data-composer-slot="a"
+													variant="outline"
+													size={isSmallView ? "icon-sm" : "icon"}
+													type="button"
+													className={cn(
+														// A neutral outline body with the glyph in danger red: the
+														// one colour cue that says "this throws the take away", and
+														// not a loud third fill beside the green disc. The red fill
+														// is for hover and focus only.
+														"text-danger hover:bg-danger-wash hover:text-danger focus-visible:bg-danger-wash",
+														cancelArming && "opacity-72",
+													)}
+													onClick={(event) => {
+														// A reflex press right after the row flips to recording
+														// would discard a take the user just began.
+														if (ignoreCancelPress(event.detail)) return;
+														handleCancelRecording();
+													}}
+													aria-label={t("ui.chat.composer.cancel_recording")}
+													// NO `disabled`: cancelling is the mic's own off switch and must work
+													// even where the box refuses input.
+												>
+													<X aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+									)}
+									{(slotB.role === "send-recording" ||
+										slotB.role === "send-recording-busy") && (
+										<Tooltip
+											key="send-recording"
+											content={t("ui.chat.composer.send_recording_hint")}
+										>
+											<span>
+												<Button
+													data-composer-slot="b"
+													variant="primary"
+													size={isSmallView ? "icon-sm" : "icon"}
+													type="button"
+													className={cn(
+														"rounded-full disabled:bg-surface",
+														// The held face after the press: the same disc, quieter, and
+														// STATIC - slot A carries this wait's one spinner (design
+														// round 1, D1).
+														(slotB.role === "send-recording-busy" ||
+															slotBArming) &&
+															"opacity-72",
+													)}
+													aria-busy={
+														slotB.role === "send-recording-busy" || undefined
+													}
+													aria-disabled={
+														slotB.role === "send-recording-busy" || undefined
+													}
+													/*
+													 * THE SAME REFUSAL AS SEND: no provider or model disables it and
+													 * the press explains why (the caret-holding press handler), so
+													 * the two controls cannot disagree about a refused send.
+													 */
+													onPointerDown={holdCaretOnSendPress}
+													onClick={(event) => {
+														// Inert while held, without `disabled`: focus stays on the
+														// control that was pressed.
+														if (slotB.role === "send-recording-busy") return;
+														if (ignoreSlotBPress(event.detail)) return;
+														handleSendRecording();
+													}}
+													// The held face keeps the primary disc (design D1: reduced emphasis, not
+													// a disabled grey) and is inert through `aria-disabled` and the click
+													// guard above, so it never drops focus.
+													disabled={
+														!slotB.enabled &&
+														slotB.role !== "send-recording-busy"
+													}
+													aria-label={
+														aside !== null && !awaitingAnswer
+															? t("ui.chat.composer.ask_aside")
+															: t("ui.chat.composer.send_recording")
+													}
+												>
+													{/* The idle Send's own glyph: one icon for one press point. */}
+													<Send aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+									)}
+									{slotB.role === "connecting" && (
+										/*
+										 * THE SLOT'S HELD FACE while a send goes out, from the press until
+										 * the submit settles. The box empties on admission, so without this
+										 * the slot would flip to Stop under the finger that just pressed
+										 * Send - and a double click would interrupt the run it just started.
+										 * Inert (`aria-disabled`, never `disabled`, so focus stays).
+										 */
+										<Button
+											key="connecting"
+											data-composer-slot="b"
+											variant="secondary"
+											size={isSmallView ? "icon-sm" : "icon"}
+											type="button"
+											className="rounded-full"
+											aria-busy={true}
+											aria-disabled={true}
+											aria-label={t("ui.chat.composer.placeholder.sending")}
+											onClick={(event) => event.preventDefault()}
+										>
+											<Spinner size="sm" />
+										</Button>
+									)}
+									{(slotB.role === "stop" || slotB.role === "stop-busy") &&
+										canonicalStop && (
+											/*
+											 * THE STOP IS THE ICON-ONLY RED SQUARE IT WAS BEFORE THE
+											 * REDESIGN (operator report, 2026-09-26).
+											 *
+											 * The redesign relabelled it - a `surface` control with a
+											 * `border-control` edge, the word `Stop` and a visible `Esc` cap
+											 * (§G3, U3) - and the operator's verdict was that the row it sits
+											 * in is now over-full: the label and cap crowded a row that
+											 * already carries five other items, and at their window width the
+											 * cap read as a fragment clipped under this button. Restored: the
+											 * bare `danger` square, `icon-sm`/`icon` like its `Stop agent`
+											 * sibling above.
+											 *
+											 * WHAT THE LABEL'S REMOVAL KEEPS, deliberately, because an
+											 * icon-only destructive-adjacent control is worse than a
+											 * labelled one when it loses them: `aria-label="Stop"` is the
+											 * button's accessible NAME, `aria-keyshortcuts="Escape"` still
+											 * states the key binding to assistive tech, and the tooltip
+											 * still says both in words. The VISIBLE cap is what went, not
+											 * the binding.
+											 */
+											<Tooltip
+												key="stop"
+												content={t("ui.chat.composer.stop_work_hint")}
+											>
+												<span>
+													<Button
+														data-composer-slot="b"
+														variant="danger"
+														size={isSmallView ? "icon-sm" : "icon"}
+														type="button"
+														onClick={(event) => {
+															// Stop-busy is inert, and a reflex press inside the guard
+															// window after Stop ARRIVES in the slot is ignored (pointer
+															// only; Esc and the keyboard are instant).
+															if (slotB.role === "stop-busy") return;
+															if (ignoreSlotBPress(event.detail)) return;
+															canonicalStop.onStop();
+														}}
+														aria-label={t("ui.chat.composer.stop")}
+														aria-keyshortcuts="Escape"
+														/*
+														 * THE PRESSED HOLD (design round 2, D6). While the press
+														 * window is live the square wears the `danger` variant's own
+														 * pressed composite - the exact three classes on the
+														 * variant's `active:` line, applied by ATTRIBUTE rather than
+														 * `:active` because the hold must outlive the pointer (an
+														 * Escape press leaves it elsewhere entirely), and the two
+														 * frames measured byte-identical rest-vs-pending without
+														 * it. `button.tsx`'s header documents the composite as two
+														 * authored roles (`danger-wash`, `danger`), not a new one,
+														 * and it is deliberately NOT the `disabled:` line: the
+														 * control is engaged, not unavailable - still focusable,
+														 * still named `Stop`, announced busy to assistive tech.
+														 * The glyph stays the `Square`; the rung already carries
+														 * the spinner a second one would duplicate.
+														 */
+														data-stopping={
+															canonicalStop.stopping === true
+																? "true"
+																: undefined
+														}
+														aria-busy={
+															canonicalStop.stopping === true ? true : undefined
+														}
+														className={cn(
+															"data-[stopping]:border-danger data-[stopping]:text-ink data-[stopping]:bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
+															// A Stop that arrived because a SEND flipped the slot ignores a pointer
+															// press for ~500 ms; the ramp says so (opacity, never `disabled`).
+															slotBArming && "opacity-72",
+														)}
+													>
+														<Square aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+										)}
+									{isLoading && currentJobId && (
 										<Tooltip content={t("ui.chat.composer.stop_agent")}>
 											<span>
 												<Button
@@ -10254,10 +10500,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 												</Button>
 											</span>
 										</Tooltip>
-									) : (
-										!isRecording &&
-										!isTranscribing && (
+									)}
+									{(slotB.role === "send" || slotB.role === "steer") &&
+										!(isLoading && currentJobId) && (
 											<Tooltip
+												key={slotB.role}
 												content={
 													/*
 													 * THE VERB FOLLOWS THE DESTINATION (UX round 1, U5). While an aside is
@@ -10277,7 +10524,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													 */
 													aside !== null && !awaitingAnswer
 														? t("ui.chat.composer.ask_aside")
-														: t("ui.chat.composer.send_message")
+														: slotB.role === "steer"
+															? /* Stop is the same slot as Send, so while text is typed the
+															     pointer has no Stop: the tooltip is where Esc is said. */
+																t("ui.chat.composer.steer_hint")
+															: t("ui.chat.composer.send_message")
 												}
 											>
 												<span>
@@ -10311,15 +10562,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													 * failed by naming the size rather than the comment.
 													 */}
 													<Button
+														data-composer-slot="b"
 														variant="primary"
 														size={isSmallView ? "icon-sm" : "icon"}
 														type="submit"
 														onPointerDown={holdCaretOnSendPress}
-														disabled={
-															isInputDisabled ||
-															sendRefused ||
-															(!newMessage.trim() && attachments.length === 0)
-														}
+														disabled={!slotB.enabled}
 														className="rounded-full disabled:bg-surface"
 														aria-label={
 															aside !== null && !awaitingAnswer
@@ -10331,8 +10579,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													</Button>
 												</span>
 											</Tooltip>
-										)
-									)}
+										)}
 								</div>
 							</div>
 						</div>

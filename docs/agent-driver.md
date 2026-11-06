@@ -306,8 +306,9 @@ It prints `[refusing] this tree is not on the pinned runtime …` and exits 1 wi
 nothing booted and no frame written, so a worktree inheriting a stale shared
 `node_modules` cannot populate a frames directory at all — which is what makes
 the pin worth stating: a committed frame is only reproducible on the runtime that
-produced it (a 35.x build renders this window as a 1380x872 viewport against
-44.3.0's 1380x868, and every pixel hash differs). With `--keep` the scratch tree
+produced it (a 35.x build renders this window as a 1380x872 viewport, Electron
+44.3.0 as 1380x868 and 45.1.0 as 1380x900, and every pixel hash differs). With
+`--keep` the scratch tree
 is named rather than removed; otherwise the refusal removes the tree it had just
 created, since nothing has run in it.
 
@@ -652,7 +653,8 @@ rule:
   claim: that the chord moves the app to `/chat` and stages a fresh draft, and
   that with no catalogue answering the press changes nothing at all.
 - **`floors`** — §I's pane floors, measured rather than argued: the chat column's
-  480px floor, the canvas docking at `min(560, available - 480)`, and the `overlay`
+  480px floor, the canvas docking at `min(1200, available - 480)` (the slot's one ceiling,
+  `RIGHT_SLOT_MAX_PX`; 640 is the width it opens at), and the `overlay`
   literal it falls back to where the row cannot give the pane its own 400px floor
   (a flex dock beside the column, not a cover: the mode's positioning was removed
   with the PaneSlot refactor - `canvasPaneMode` carries the note). It is run at
@@ -662,7 +664,8 @@ rule:
   instead of passing on a reading it could not take. It captures the frame BEFORE it
   reads the boxes, because the canvas's wrapper carries `transition-[width]` and a
   reading taken mid-transition describes a layout that was never on screen - measured:
-  chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame shows.
+  chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame showed (the
+  shape the pane drew before it took the slot's one 1200 ceiling).
 
 
 - **`route-tops`** — the top of every route the shell draws: `/chat` as the control
@@ -826,6 +829,62 @@ rule:
   change in a run that reported a settled frame), and a dark frame carrying the
   app's own `List agents request failed: 503` toast in one run out of two.
 
+## Opt-in real-core model uncertainty case
+
+`scripts/asks-app-regression.mjs --case model-uncertainty --leg candidate`
+adds one explicitly selected case to the existing macOS producer, not to its
+three default fixture-backed cases. The native CI job owns execution after source
+review; missing compiled outputs, build receipt, pinned Electron or published core
+refuse setup. Do not install/download a local Electron or substitute the operator's
+daemon. There is no historical native-control claim for this case.
+
+The canonical build seals input/output hashes, checkout, lock and runtime pin.
+Core is the published 0.94.15 native wheel; CI verifies its release target and
+wheel digest before reusing the now-idle core environment. The real CLI owns port
+8080, authentication, lifespan and its truthful serve record. A case-only ASGI
+wrapper sits **inside** that listener: an external proxy is rejected by production
+discovery or bypassed in favour of the real upstream. Main/preload are unchanged.
+
+Only initial cached A/B rows are seeded, with the production capture stamp and
+model serialization. Live discovery remains genuinely empty and its response is
+held. Native chat's initial live-A SSE is captured before subscription delivery,
+released ONCE, and correlated with its processed consumer receipt and DOM baseline.
+After the one B intent loses its ACK, genuine post-B SSE and the independent
+POST-ACK ModelPicker GET stay held through both unknown frames. Only B-SSE is
+released first: the default remains fenced while the picker GET is pending; that
+GET then releases live B for DOM settlement. The `model-b-sse-get-pending` frame
+replaces the former stale-A caption. **Delayed native stale-A delivery is NOT
+covered**; prior backend/component stale-projection proofs are not native pixels. The model
+picker cannot issue that GET before the awaited command: no pre-B native GET is
+invented. Cold HTTP remains separately labelled backend/component proof, **not a
+native cold-state caption or claim**. Original messages keep epoch/sequence and
+request causality; no old JSON becomes a fresh read. Settlement uncertainty is scoped to the active model dialog: the historical transcript notice remains attributed to the lost reply and does not contradict a separately reconciled picker. Active-dialog uncertainty still blocks settlement. The B command reaches the real
+owner exactly once; independent live-owner and journal-B verification precedes
+loss of its success ACK through a 504 transport fault. All attempts are recorded
+before forwarding, and the backend does **not** enforce the candidate's default
+write fence. An explicit final save must send hosting then model_name and persist B
+in the real isolated YAML. A private parent pipe controls delivery, never an HTTP
+route available to the renderer; losing that pipe stops only its owned daemon.
+
+The existing armed driver exposes a bounded metadata-only observer, disabled in
+ordinary launches. Canonical receipts are emitted after the actual flush; model
+GET receipts after real interpretation/finally. Receipt cursors precede release,
+so a previously consumed duplicate epoch/seq cannot certify a new delivery. Only
+then does the driver observe React/CSS settlement, post-frame neutral/disabled
+controls and actual default gestures with zero invocations/attempts. Fresh B must
+appear in the dialog's rendered current-model description before unlock/save.
+The app drains without exiting, then the real backend and recorded descendants
+join. Both exit receipts and acceptance written AFTER cleanup are mandatory; CI
+rejects a zero process status without those artifacts. Old default-case reapers
+keep their existing standalone exit behavior.
+
+This case uses the asks producer's hit-tested CDP input and `capturePage`, including
+consecutive frames and geometry. It claims neither focused/foreground behaviour
+nor WCV compositor pixels. Pure contract tests and backend-only loopback proofs
+are prerequisites, **not** evidence that the native flow passed. Failed setup
+stops dispatch; native evidence remains outstanding until the reviewed CI case
+actually runs.
+
 ## What it cannot prove, and what it is not for
 
 - **It is not a substitute for the `browser` tool.** This drives the app's own
@@ -908,3 +967,61 @@ The same position holds for `docs/evidence/projects-inline-edit/` (the
 `project-inline-edit` scene's frames, nine per palette) and for
 `docs/evidence/project-open-no-autofocus/` (the `project-open` pair, four frames
 per palette per tree).
+
+## Fixed owner-audit startup scene (isolated native QA only)
+
+`LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE=team-bridge-owner-audit` selects exactly one
+startup scene through the existing armed dev-driver preload bridge. It is not a
+route/JS input, new IPC executor, synthetic notification or export-dialog driver.
+The scene waits for the **actual** Team Bridge capability and settled account
+journal before navigating once to `/team-bridge`. A startup hash alone is not
+sufficient: the route's catch-all can redirect it to chat before capability loads.
+
+Admission is main-process-only and uses the captured launch environment, not
+`.env`. It requires all of: existing driver armed; unpackaged checkout; resolved
+window mode `headless`; `LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT` explicitly naming an
+isolated rig root; canonical HOME/config/requested userData/actual Electron
+userData all beneath that root; requested and actual userData equal; backend
+manager disabled in both launch controls and effective settings; explicitly
+configured HTTP loopback stub selected by discovery. Missing, noncanonical or
+escaping paths fail closed. Default port 1111, remote URLs, credentials in URLs,
+paths/query/hash, a different selected daemon and absent/unknown scenes refuse.
+Normal/inactive/packaged negative cases are pure tests, never visible launches.
+
+QA owns one bounded candidate build and native run. After the candidate is built
+and an isolated stub is listening, this is the startup portion of that bounded
+rig (the rig must supervise/reap the entire exact process tree on exit):
+
+```sh
+# RIG is an absolute session-scratch directory, STUB_PORT its isolated daemon's
+# non-default loopback port, REPO the absolute candidate worktree path.
+mkdir -p "$RIG/home" "$RIG/config" "$RIG/profile" "$RIG/frames" "$RIG/home/Library/Application Support/Local Operator/logs"
+env -u XPC_FLAGS \
+  HOME="$RIG/home" LOCAL_OPERATOR_CONFIG_DIR="$RIG/config" \
+  LOCAL_OPERATOR_LOG_DIR="$RIG/home/Library/Application Support/Local Operator/logs" LOCAL_OPERATOR_UI_TELEMETRY=off \
+  VITE_DISABLE_BACKEND_MANAGER=true \
+  VITE_LOCAL_OPERATOR_API_URL="http://127.0.0.1:$STUB_PORT" \
+  LOCAL_OPERATOR_UI_DEV_DRIVER=1 \
+  LOCAL_OPERATOR_UI_DEV_DRIVER_OUT="$RIG/frames" \
+  LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT="$RIG" \
+  LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE=team-bridge-owner-audit \
+  "$REPO/node_modules/.bin/electron" "$REPO/out/main/index.js" \
+  --window-mode=headless --user-data-dir="$RIG/profile" --use-mock-keychain
+```
+
+Strip inherited `CMUX_*` variables as well. No remote-debugging port or external
+browser is needed or permitted by this recipe. The absolute app entry must
+exist; never start Electron with switches alone. The stub supplies real daemon
+capability/account/status/audit protocol responses; no fake answers are installed
+in the application. Deliberately delay capability/account settlement and confirm
+ordinary Team Bridge requests arrive only after readiness. A disabled capability
+must produce no forced navigation or owner-audit requests.
+
+Verify actual selected daemon, hidden/unfocused state, source/compiled identity,
+real hook rejection, real durable Logger records, strict documented Python export
+and exact-process-tree reap. Export remains the strict metadata-only command in
+[owner-audit-read-diagnostics.md](owner-audit-read-diagnostics.md), reading the
+run's real log under the recipe's HOME. Execute that command unchanged with
+`HOME="$RIG/home"`; the explicit log override above uses its exact standard path. No export UI automation is added. Source and
+pure-hook tests do not replace this full-candidate native evidence; the original
+production first-open cause remains unknown until its real exception is captured.

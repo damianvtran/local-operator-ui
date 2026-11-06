@@ -1,0 +1,12 @@
+# mechanical checks - vi / ui.teamBridge.events.consented_owner @ 14d0b6781ac9
+value              : {actor} đã đồng ý cho tác nhân của mình là {targets} tham gia
+graphemes          : 61 (sibling 40, event-family max 46 = events.owner_added_agent)
+placeholders       : ["actor","targets"] (source ["actor","targets"])
+sentinel render    : ⟦A⟧ đã đồng ý cho tác nhân của mình là ⟦T⟧ tham gia
+sentinel counts    : actor 1, targets 1 (each must be 1)
+missing value      : actor -> MISSING_VALUE, targets -> MISSING_VALUE
+ICU node types     : [1,0]   plural/select: false
+leading/trailing   : false
+NFC                : true   bidi controls: 0   ZWNJ/ZWJ: 0
+sha256 en          : 4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c
+sha256 target      : f343309983b424b98da742d2299fce75200bcb32147ac86f6c3953e3d1a2d899

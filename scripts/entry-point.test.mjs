@@ -69,6 +69,15 @@ const desktopShardRefusal = {
 		/Desktop shard proof failed: Expected explicit plan \(metadata-only\), run, receipt or verify mode/,
 };
 
+/** `pnpm test:desktop`'s derived-inventory entry: a bad mode must refuse aloud. */
+const desktopInventoryRefusal = {
+	script: "desktop-test-inventory.mjs",
+	args: ["invalid-mode"],
+	status: 1,
+	stdout: /^$/,
+	stderr: /Desktop test inventory failed: Expected `list` or `run/,
+};
+
 /** A `package.json` shaped like this repository's: tab-indented, one version line. */
 const packageJson = (version) =>
 	`{\n\t"name": "local-operator-ui",\n\t"version": "${version}",\n\t"private": true\n}\n`;
@@ -202,6 +211,39 @@ function cases(root) {
 	);
 	return [
 		{ ...desktopShardRefusal, cwd: plain, env: {} },
+		{ ...desktopInventoryRefusal, cwd: plain, env: {} },
+		{
+			// Technical help exercises the real shared entry door without sealing
+			// outputs or loading Python/core/native/network/keychain prerequisites.
+			script: "model-uncertainty-native.mjs",
+			args: ["--help"],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /^model-uncertainty-native: --write-build-receipt <path>\n$/,
+			stderr: /^$/,
+		},
+		{
+			script: "desktop-suite-checkpoints.mjs",
+			args: ["invalid-mode", "unused-state"],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /Desktop checkpoint supervision failed: Usage:/,
+		},
+		{
+			// ci.yml consumes the real installed identity, not an import-only
+			// module. Drive its successful answer from this installed checkout so
+			// both spellings must resolve jsdom/nwsapi and hash the actual locks.
+			script: "desktop-test-lane-bound.mjs",
+			args: ["--identity", join(SCRIPTS, "onboarding-tour-i18n.test.mjs")],
+			cwd: join(SCRIPTS, ".."),
+			env: {},
+			status: 0,
+			stdout: /"nwsapi":\{"path":"[^"]+","version":"[^"]+"\}/,
+			stderr: /^$/,
+		},
 		{
 			// Reject the SHA before any Linux/compiler/dependency control can start.
 			// This is the diagnostic's own CLI verdict, not a blanket exemption.
@@ -297,6 +339,17 @@ function cases(root) {
 			stdout: /^$/,
 			stderr:
 				/^notifications native scene refused: this environment cannot honestly own a foreground desktop\. Missing LOCAL_OPERATOR_UI_NATIVE_SCENE=notifications, CI=true, GITHUB_ACTIONS=true, RUNNER_ENVIRONMENT=github-hosted, .*LOCAL_OPERATOR_CORE_BIN, LOCAL_OPERATOR_CORE_PYTHON, LOCAL_OPERATOR_CORE_REF\. No headless fallback is taken/,
+		},
+		{
+			// Refusal must precede Electron resolution through either entry spelling.
+			script: "app-icon-badge-scene.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr:
+				/native badge scene refused: CI=true, GITHUB_ACTIONS=true, GitHub-hosted runner/,
 		},
 		{
 			// The group, asked for WITHOUT the profile that authorizes it: the door stays
@@ -736,6 +789,74 @@ test("every release script runs when it is reached through a symlinked path", ()
 	}
 });
 
+test("checkpoint supervisor CLI refuses through physical and symlinked paths", () => {
+	const root = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(),
+			"checkpoint-entry-point-",
+		),
+	);
+	try {
+		const bin = stubBin(root);
+		const kase = cases(root).find(
+			(entry) => entry.script === "desktop-suite-checkpoints.mjs",
+		);
+		assert.ok(kase);
+		const alias = join(root, "linked-scripts");
+		symlinkSync(SCRIPTS, alias);
+		const direct = run(join(SCRIPTS, kase.script), kase, bin, root);
+		const linked = run(join(alias, kase.script), kase, bin, root);
+		assert.equal(direct.status, 1);
+		assert.match(direct.stderr, kase.stderr);
+		assert.equal(direct.stdout, "");
+		assert.deepEqual(linked, direct);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("desktop diagnostic identity CLI answers identically through direct and symlinked paths", () => {
+	const root = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(),
+			"diagnostic-entry-point-",
+		),
+	);
+	try {
+		const bin = stubBin(root);
+		const kase = cases(root).find(
+			(entry) => entry.script === "desktop-test-lane-bound.mjs",
+		);
+		assert.ok(kase, "workflow identity CLI must be in the driven table");
+		const alias = join(root, "linked-scripts");
+		symlinkSync(SCRIPTS, alias);
+		assert.notEqual(realpathSync(alias), alias);
+		const direct = run(join(SCRIPTS, kase.script), kase, bin, root);
+		const linked = run(join(alias, kase.script), kase, bin, root);
+		assert.equal(direct.status, 0, direct.stderr);
+		assert.match(direct.stdout, kase.stdout);
+		assert.equal(direct.stderr, "");
+		assert.equal(linked.status, 0, linked.stderr);
+		assert.equal(
+			linked.stdout,
+			direct.stdout,
+			"a symlinked CLI must not silently do nothing",
+		);
+		assert.equal(linked.stderr, direct.stderr);
+		const identity = JSON.parse(direct.stdout);
+		assert.equal(identity.node, process.version);
+		assert.equal(identity.checkoutSha.length, 40);
+		assert.equal(identity.installedLockSha256.length, 64);
+		assert.equal(identity.checkoutLockSha256.length, 64);
+		assert.ok(identity.jsdom.path);
+		assert.ok(identity.jsdom.version);
+		assert.ok(identity.nwsapi.path);
+		assert.ok(identity.nwsapi.version);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
 test("a script reached through a symlinked NAME answers too, not just a symlinked directory", () => {
 	// The other spelling of the same defect, and the one the table above does not
 	// cover: `ln -s scripts/check-runtime-deps.mjs /tmp/alias.mjs && node
@@ -910,6 +1031,8 @@ function workflowInvokedScripts() {
  * asserted below to be exactly that, so this list cannot become a place to hide.
  */
 const NO_ENTRY_POINT_COMPARISON = {
+	"browser-focus-stability-proof.mjs":
+		"`focus-stability-diagnostic.yml`; runs unconditionally at import and requires --out; no entry-point comparison (native mode separately fenced to explicitly armed disposable CI)",
 	"check-edit-diffs.mjs":
 		"`pnpm check-edit-diffs`; runs at import, and exits on its own result",
 	"npx-smoke-test.mjs": "`ci.yml`'s npx smoke test; runs at import",
@@ -988,6 +1111,42 @@ test("every script a workflow invokes is driven here, or says why it needs no en
 			),
 			`${name} is exempt here as a script with nothing to resolve, but it compares process.argv[1] itself`,
 		);
+	}
+});
+
+test("model producer help is driven through physical/symlink paths and inert URL import", () => {
+	const root = mkdtempSync(join(tmpdir(), "model-help-entry-"));
+	try {
+		const kase = cases(root).find(
+			(row) => row.script === "model-uncertainty-native.mjs",
+		);
+		assert(kase);
+		const bin = stubBin(root);
+		const link = join(root, "linked-scripts");
+		symlinkSync(SCRIPTS, link);
+		for (const script of [
+			join(SCRIPTS, kase.script),
+			join(link, kase.script),
+		]) {
+			const cli = run(script, kase, bin, root);
+			assert.equal(cli.status, 0, cli.stderr);
+			assert.match(cli.stdout, kase.stdout);
+			assert.match(cli.stderr, kase.stderr);
+			const imported = spawnSync(
+				process.execPath,
+				[
+					"--input-type=module",
+					"-e",
+					`await import(${JSON.stringify(pathToFileURL(script).href)})`,
+				],
+				{ cwd: kase.cwd, env: caseEnv(bin), encoding: "utf8", timeout: 15000 },
+			);
+			assert.equal(imported.status, 0, imported.stderr);
+			assert.equal(imported.stdout, "");
+			assert.equal(imported.stderr, "");
+		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
 	}
 });
 

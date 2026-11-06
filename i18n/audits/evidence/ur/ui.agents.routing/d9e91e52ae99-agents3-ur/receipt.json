@@ -1,0 +1,230 @@
+{
+ "instance": "d9e91e52ae99-agents3-ur",
+ "audit_id": "d9e91e52ae99-agents3-ur",
+ "locale": "ur",
+ "audit_date": "2026-10-30",
+ "scope": "ur / ui.agents.routing - the 12 routing sentences an INSTALLED agent card and the destination pickers show (install writes this text into the registry's single description field, so it is also what routing search embeds). Audited against the en catalogue and its context sidecar. Not one of the high-visibility groups that require a second independent pass (onboarding, errors, settings); none was performed, and that determination is recorded rather than assumed.",
+ "scope_namespaces": [
+  "ui.agents.routing"
+ ],
+ "status": "passed",
+ "verdict": "pass",
+ "verdict_line": "PASS - 0 BLOCKER / 0 MAJOR / 6 MINOR / 5 NIT; no claim reversed, no guard weakened, nothing materially longer than English (max ratio 1.058, total 0.949).",
+ "key_count": 12,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "d9e91e52ae99",
+  "model": "anthropic/claude-sonnet-5-5",
+  "actual_model_source": "harness session header at audit time ('Model: anthropic/claude-sonnet-5-5'); no model-switch notice is visible in the retained context after compaction, so an earlier fallback before that point cannot be ruled out from inside this session",
+  "independent_from_translator_session": true,
+  "translator_session": "3ef6295a5545",
+  "wrote_or_edited_values": false
+ },
+ "translator": {
+  "agent": "agents2-i18n translation lane",
+  "session": "3ef6295a5545 (manager scratchpad; translator lane log present)",
+  "model": "not observable from this session"
+ },
+ "namespaces": {
+  "ui.agents.routing": {
+   "namespace": "ui.agents.routing",
+   "key_count": 12,
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 12,
+   "sha256": {
+    "en": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+    "ur": "134a3957fec19233626db50fe574571c0e950452319e3524f38fa39d1717d4ca"
+   },
+   "audited_paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.routing.json",
+    "context": "src/i18n/catalogues/en/ui.agents.routing.context.json",
+    "target": "scratchpad/agents2-i18n/ur/ui.agents.routing.json (handover copy; not yet in src/i18n/catalogues/ur/)"
+   },
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 6,
+    "NIT": 5
+   },
+   "finding_ids": [
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M5",
+    "M6",
+    "N1",
+    "N2",
+    "N3",
+    "N4",
+    "N5"
+   ]
+  }
+ },
+ "context_sha256": "c9c0c1183cd3ddc1d22e4b4cd41d2940daeda0dfe213ff4db51c627d0a48452f",
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 6,
+  "NIT": 5
+ },
+ "verdict_source": {
+  "blocker_or_major_remaining": false,
+  "rule": "passed only if no BLOCKER or MAJOR remains"
+ },
+ "findings": [
+  {
+   "id": "M1",
+   "severity": "MINOR",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.librarian",
+   "current": "محفوظ اثاثوں کے نام اور ٹیگ بنانا",
+   "problem": "Both verbs are the wrong collocation. Naming an asset is نام رکھنا - the catalogue's own form is in ui.chat.tags.auto_tag_help ('فورک کا نام رکھتے وقت') - while نام بنانا carries the 'make a name for oneself' idiom. Tagging an asset is ٹیگ لگانا; ٹیگ بنانا means creating a tag object, which is exactly what ui.chat.tags.empty means by 'ٹیگ بنائیں'. The same construction sits in the sibling descriptions value, so the defect is family-wide rather than new here.",
+   "fix": "محفوظ اثاثوں کے نام رکھنا اور ٹیگ لگانا — clause 28->34 chars, whole value 128->134 (ratio 1.11 vs en 121); still inside the card's ellipsis.",
+   "evidence": "global: 'نام رکھ' 1 hit (ui.chat.tags.auto_tag_help), 'ٹیگ لگ' 0, 'ٹیگ بنا' 3 (all create-a-tag)."
+  },
+  {
+   "id": "M2",
+   "severity": "MINOR",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.copy_reviewer",
+   "current": "کوڈ کمنٹس",
+   "problem": "House-term inconsistency. The corpus renders 'comment' as تبصرہ/تبصرے in all 21 occurrences (ui.code_review, ui.hub.comments, ui.chat.commentary_actions) and never as کمنٹ (0 across 6801 shipped ur values) - including the code-review surface this card is read beside. کمنٹس is idiomatic Pakistani dev Urdu, so this is a consistency call, not a comprehension one; no glossary file exists in this repo, so the evidence is corpus usage, not a formal glossary.",
+   "fix": "کوڈ تبصرے (same length; ratio unchanged 0.960).",
+   "evidence": "global 'تبصر' 21 / 'کمنٹ' 0."
+  },
+  {
+   "id": "M3",
+   "severity": "MINOR",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.copy_reviewer",
+   "current": "AI-isms کا خاتمہ",
+   "problem": "Cross-family mismatch on one house term. This file follows its sidecar exactly ('AI-isms' ... stays untranslated), while the sibling ui.agents.descriptions value renders the same English term as AI کے مخصوص انداز. Both strings describe the same agent and a user can see the roster line and the installed card together. The routing side is the conformant one, so the fix belongs in the sibling, not here.",
+   "fix": "No change to this file. Align ui.agents.descriptions.copy_reviewer to AI-isms, or record the divergence deliberately in that namespace's ledger note.",
+   "evidence": "routing keeps Latin per src/i18n/catalogues/en/ui.agents.routing.context.json; descriptions value read from scratchpad/agents-i18n/ur/ui.agents.descriptions.json."
+  },
+  {
+   "id": "M4",
+   "severity": "MINOR",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.tui_designer",
+   "current": "ٹرمینل یوزر انٹرفیسز کی ڈیزائننگ یا ان کا جائزہ",
+   "problem": "Two slips in the opening clause. یوزر occurs 0 times in the shipped Urdu corpus while the app says صارف 11 times, including صارف انٹرفیس in ui.settings.updates - and EN spells 'user' out here, so it is not a keep-English token. And کی ڈیزائننگ is the gerund-of construction; the family's own parallel form is ڈیزائن کرنا ('ٹرمینل انٹرفیسز ڈیزائن کرنا اور ان کا جائزہ لینا') and the corpus has 0 'ڈیزائننگ' against 1 'ڈیزائن کر'.",
+   "fix": "ٹرمینل صارف انٹرفیسز ڈیزائن کرنا یا ان کا جائزہ (229 chars, ratio 0.881 unchanged).",
+   "evidence": "global 'یوزر' 0 / 'صارف' 11 / 'صارف انٹرفیس' 1 / 'ڈیزائننگ' 0."
+  },
+  {
+   "id": "M5",
+   "severity": "MINOR",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.designer",
+   "current": "لے آؤٹ، اسپیسنگ، رنگ یا عبارت کا اچھی طرح پڑھا جانا",
+   "problem": "'reads well' is carried in as the passive پڑھا جانا ('to be read') and distributed over layout, spacing and colour, which are not read in Urdu - a layout کا پڑھا جانا is a calque, the text idiom belongs to عبارت alone. The 'whether' question is also nominalised into a list item, so it reads as a third activity beside the review instead of the question the review asks (the hi audit raised the same nominalisation as R7).",
+   "fix": "لے آؤٹ، اسپیسنگ، رنگ یا عبارت پڑھنے میں اچھے لگیں (211 chars, ratio 1.045)."
+  },
+  {
+   "id": "M6",
+   "severity": "MINOR",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.ux_reviewer",
+   "current": "— اس سے الگ کہ وہ دکھتی کیسی ہے، یعنی بصری/ڈیزائن جائزہ۔",
+   "problem": "The exclusion points at the wrong thing. EN excludes 'a visual/design review of how it looks'; the Urdu makes 'how it looks' (وہ دکھتی کیسی ہے) the referent of الگ and then apposes یعنی بصری/ڈیزائن جائزہ to it, so the appearance question and the design review are equated. وہ دکھتی کیسی ہے also inverts natural Urdu order (کیسی دکھتی ہے). The contrast survives, which is why this is polish rather than a claim error.",
+   "fix": "— یہ اس بصری/ڈیزائن جائزے سے الگ ہے، جو یہ دیکھتا ہے کہ وہ کیسی دکھتی ہے۔ (280 chars, ratio 1.089; offset by the rest of the value staying short)."
+  },
+  {
+   "id": "N1",
+   "severity": "NIT",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.architect",
+   "current": "یہ طے کرنا کہ کوئی چیز کیسے بنے گی",
+   "problem": "The sidecar asks for HOW's capitalisation to be carried by whatever device the locale uses. Urdu has one and this family already uses it - ux_reviewer marks EXPERIENCE with ہی (صارف کے تجربے ہی کو). Here کیسے sits unmarked in an otherwise neutral clause.",
+   "fix": "…یہ طے کرنا کہ کوئی چیز بالکل کیسے بنے گی: (168 chars, ratio 0.994)."
+  },
+  {
+   "id": "N2",
+   "severity": "NIT",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.tui_designer",
+   "current": "کی بورڈ پر مبنی فلو",
+   "problem": "'keyboard-first' asserts priority (the keyboard is the primary input, the mouse optional); کی بورڈ پر مبنی says only that the flow is keyboard-based. The wording is byte-identical to the sibling descriptions key, so it is a family-wide choice and one fix should cover both.",
+   "fix": "کی بورڈ کو ترجیح دینے والا فلو (240 chars, ratio 0.923)."
+  },
+  {
+   "id": "N3",
+   "severity": "NIT",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.reviewer",
+   "current": "PR، MR، diff، commit رینج یا پیچ میں",
+   "problem": "One compound term is split across scripts: commit stays Latin while its head noun is transliterated رینج, inside an enumerated list whose other entries are wholly Latin (PR, MR, diff). Bidi order is correct, so this is typographic consistency, not a rendering break.",
+   "fix": "commit range (147 chars, ratio 0.936) - or کمیٹ رینج if the transliteration is preferred; pick one treatment for the whole term.",
+   "evidence": "global 'رینج' 1 (ui.chat.pickers.session_panel.range)."
+  },
+  {
+   "id": "N4",
+   "severity": "NIT",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.scout",
+   "current": "فنکشن یا کلاس کہاں متعین ہے",
+   "problem": "متعین carries 'determined / set / resolved' in this corpus (ui.chat.session_status.no_model_resolved: 'ابھی کوئی ماڈل متعین نہیں ہوا'), so 'کہاں متعین ہے' reads 'where it is set'. For a definition in source the code sense is ڈیفائن / بیان کیا گیا. Recoverable from context, hence a NIT.",
+   "fix": "…فنکشن یا کلاس کہاں ڈیفائن ہے یہ ڈھونڈنا (257 chars, ratio 0.996)."
+  },
+  {
+   "id": "N5",
+   "severity": "NIT",
+   "namespace": "ui.agents.routing",
+   "key": "ui.agents.routing.aida",
+   "current": "ایجنٹس کے درمیان متوازی کام شروع کرنا",
+   "problem": "'across agents' becomes 'among the agents'. کے درمیان is the ordinary Urdu 'among' and the parallel-work sense survives, but it locates the work in the space between agents rather than making them the workers it is spread over (the hi audit graded the same construct R1, the fr M1). A crisper form names the agents as the field.",
+   "fix": "ایجنٹس میں متوازی کام شروع کرنا (119 chars, ratio 0.875)."
+  }
+ ],
+ "checks_run": [
+  "key set: 12 keys on both sides, identical set (script compare) - no key added or dropped",
+  "ICU: both catalogues parsed with the repo's own @formatjs/icu-messageformat-parser; no argument/plural/select/tag on either side, so placeholder parity is vacuous and stated as vacuous rather than assumed: 'PARITY OK: 12 keys, ICU parsed both sides, no unknown/missing/stub'",
+  "node scripts/i18n/generate.mjs --catalogues <stage>/catalogues --out <stage>/keys.gen.ts -> GEN OK; output imports the ur bundle and carries 14 ui.agents.routing references, so the file is ingestible as a bundle",
+  "node scripts/i18n/check-duplicates.mjs --dir src/i18n/catalogues/ur -> 109 files scanned, 0 duplicate keys",
+  "node scripts/i18n/generate.mjs --check on the tree -> 'byte-identical to a fresh generation' (proves the TREE is fresh; it cannot cover this unlanded file, see limits)",
+  "NFC: all 12 values NFC-normalised; no ZWNJ/ZWJ; no U+064A/0643/0647/0649/0629 or tatweel (wrong Arabic letter forms); em dash U+2014 is the only non-Arabic-block punctuation besides ASCII brackets/colon/slash",
+  "forms: no value identical to English, none empty, every value ends with ۔; Arabic comma ، and Arabic semicolon ؛ used; ASCII parentheses balanced 3/3; 5 em dashes matching EN's 5",
+  "bidi: Latin runs (UI, UX, API, CLI, Unicode, PR, MR, diff, commit, LinkedIn, X, AI-isms, RFC) are space-delimited LTR islands; the Arabic comma resolves L between two L runs, so PR، MR، diff، commit keeps its logical order; no Latin run is left adjacent to unbalanced RTL punctuation",
+  "fit: character-count ratio per value, max 1.058 (librarian 128/121), total 0.949 (2298/2422) - no value materially longer than its English counterpart",
+  "tokens: per-key Latin-token inventory; every token is on the keep list, none translated; 'commit range' handling is N3"
+ ],
+ "cross_family": {
+  "sibling": "scratchpad/agents-i18n/ur/ui.agents.descriptions.json (12 values, same agents)",
+  "mandated_vocabulary": {
+   "agent": "ایجنٹ / ایجنٹس in both - agree",
+   "team": "ٹیم in routing (aida), ٹیموں in descriptions - same word, agree",
+   "run": "routing uses no run-noun, so there is nothing to contradict; descriptions renders 'execution proof' as اجرا and the catalogue's run-noun elsewhere is رن"
+  },
+  "also_checked": "'in flight' جاری کام in both; work کام; review جائزہ; change تبدیلی; user-visible صارف کو نظر آنے والی; Library لائبریری; copy عبارت; feedback فیڈبیک; discoverability دریافت کی سہولت - all agree",
+  "mismatches": [
+   "AI-isms (M3) - routing Latin per its sidecar, descriptions translated"
+  ],
+  "observations": [
+   "independent: descriptions.reviewer uses آزادانہ attributively (its own round-2 G1); routing uses آزاد attributive (coder) and آزادانہ adverbial (qa_tester), which is the grammatically correct split - routing is the correct side, no change here",
+   "designer: 'ڈیزائن/UX کا ایک دور' (routing) vs 'ڈیزائن اور UX جائزہ' (descriptions) - the English differs too ('a design/UX round' vs 'Design and UX review'), so not a mismatch; دور for 'round' has a house precedent in ui.code_review.lane.round ('دور {round} · {state}') and was therefore NOT raised as a finding"
+  ]
+ },
+ "fit": {
+  "card": "one editor card line and one picker row at about 320 px, truncated with an ellipsis",
+  "max_ratio": 1.058,
+  "max_ratio_key": "ui.agents.routing.librarian",
+  "total_ratio": 0.949,
+  "note": "character counts are a proxy for card fit, not a rendered measurement; the card truncates by design, so a small growth is not an overflow"
+ },
+ "limits": [
+  "The target is a handover copy: src/i18n/catalogues/ur/ui.agents.routing.json does not exist in the tree yet, so the in-tree gates (generate --check, coverage, ledger-check) cannot see it. Evidence for it is the staged generate plus the ICU parity run against the repo's own parser, both recorded above.",
+  "The ledger bind cannot run while the file is outside src/i18n/catalogues/ur/ - ledger-assemble refuses any --file that is not src/i18n/catalogues/<locale>/<namespace>.json. The bind is the manager's step once the catalogue lands.",
+  "No glossary file exists in this repo (no *glossary* artifact, and docs/I18N.md points at the CORE repo's glossary). Terminology findings are graded on the shipped Urdu corpus (6801 values) and are labelled as such rather than cited against a glossary that is not here.",
+  "Second independent pass: ui.agents.routing is agent-card copy, not one of the named high-visibility groups; a single pass was performed and the determination is recorded, matching the hi auditor's reading.",
+  "Retention: this receipt and audit.log are scratchpad artifacts of the audit run; the tracked i18n/audits/evidence/<locale>/<namespace>/<audit-id>/record.json is assembled with the ledger bind, so no unmerged bundle is claimed to be on main."
+ ],
+ "artifacts": {
+  "receipt": "scratchpad/agents2-audit/ur/receipt.json",
+  "verdict": "scratchpad/agents2-audit/ur/verdict.txt",
+  "execution_log": "scratchpad/agents2-audit/ur/audit.log",
+  "bind_probe": "scratchpad/agents2-audit/ur/bind-probe-ur.mjs"
+ }
+}

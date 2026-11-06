@@ -1,0 +1,14 @@
+{
+	"ui.agents.descriptions.aida": "Your chief of staff: orchestrates agents and teams on your behalf, keeps an eye on everything in flight, and reports back.",
+	"ui.agents.descriptions.architect": "Explores a codebase and produces a design or technical proposal with trade-offs; may draft documents but never modifies existing source.",
+	"ui.agents.descriptions.coder": "Implements one bounded slice of work end to end with the full toolset, then reports what changed and how it was verified.",
+	"ui.agents.descriptions.copy_reviewer": "Review of written copy before it ships: user-visible product copy and prose for a general reader, on comprehension, tone, claim support and AI-isms; reports C-prefixed findings.",
+	"ui.agents.descriptions.designer": "Design and UX review of a user-visible change, judged from rendered frames rather than source; reports D-prefixed findings.",
+	"ui.agents.descriptions.librarian": "The Library's organizing agent: names, describes and tags the assets the operator keeps, learns their vocabulary, and keeps the global catalog usable.",
+	"ui.agents.descriptions.manager": "Coordinates delegated work and reports honest status: what is done, what is in flight, what is blocked and on whom.",
+	"ui.agents.descriptions.qa_tester": "Independent execution proof for a change: preflights the rig, exercises real paths and negative cases, and reports a scoped QA matrix without editing the repository.",
+	"ui.agents.descriptions.reviewer": "Independent code review of a diff, MR, or PR: finds defects, classifies them by severity, and never edits the code it reviews.",
+	"ui.agents.descriptions.scout": "Read-only research: investigates a question across the workspace and on the web, and reports findings with evidence. Changes nothing.",
+	"ui.agents.descriptions.tui_designer": "Designing and reviewing terminal interfaces: keyboard-first flows, density in small fixed viewports, colour and unicode fallbacks, measured geometry; reports T-prefixed findings.",
+	"ui.agents.descriptions.ux_reviewer": "Walks a change's real flow end to end: discoverability, feedback, error recovery, keyboard paths and copy; reports U-prefixed findings."
+}

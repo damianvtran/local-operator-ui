@@ -1,0 +1,2 @@
+PASS
+fr ui.agents.routing (12 keys, en d7903758 fr e11467ee): 0 BLOCKER, 0 MAJOR, 5 MINOR, 4 NIT - claim, register, glossary and typography hold; longest ratio 1.1975 (reviewer), all inside the 15-25% band.

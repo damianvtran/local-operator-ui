@@ -17,13 +17,15 @@ import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { joinTranscript } from "@shared/hooks/use-message-input";
+import { useRecordingShortcutLabel } from "@shared/hooks/use-recording-shortcut";
 import {
 	SpeechToTextPriority,
 	resolvePushToTalkBinding,
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
@@ -296,12 +298,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
 	const canEnableRecordingFeature = canUseRadientSpeech;
 
-	const shortcutText = useMemo(() => {
-		if (platform === "darwin") {
-			return "⌘+Shift+S";
-		}
-		return "Ctrl+Shift+S";
-	}, [platform]);
+	const shortcutText = useRecordingShortcutLabel(
+		platform === "darwin" ? "mac" : platform === "win32" ? "win" : "linux",
+	);
 
 	const acceptAllTooltipText =
 		platform === "darwin"
@@ -1081,12 +1080,21 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							{!isRecording && !isTranscribing && !isLoading && (
 								<Tooltip
 									content={
-										!canEnableRecordingFeature
-											? speechUnavailableReason("recording", speechBlock)
-											: t("ui.canvas.inline_edit.start_recording_or_hold", {
-													shortcuttext: shortcutText,
-													label: resolvePushToTalkBinding().label,
-												})
+										<ShortcutText
+											text={
+												!canEnableRecordingFeature
+													? speechUnavailableReason("recording", speechBlock)
+													: shortcutText === null
+														? t("ui.canvas.inline_edit.start_recording")
+														: t(
+																"ui.canvas.inline_edit.start_recording_or_hold",
+																{
+																	shortcuttext: isolateLtr(shortcutText),
+																	label: resolvePushToTalkBinding().label,
+																},
+															)
+											}
+										/>
 									}
 								>
 									<span>

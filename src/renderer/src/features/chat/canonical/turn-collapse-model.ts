@@ -53,7 +53,7 @@ import {
 	peerIdentity,
 } from "../components/trace/receipt-row-model";
 import type { HubReceipt } from "../components/trace/receipt-row-model";
-import { isPartialDelivery } from "../components/trace/tool-row-model";
+import { isPartialDelivery, toolOp } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
 import { isImageGenTool } from "./image-gen-card-model";
 import { freezeRecordDeep } from "./record-immutability";
@@ -2481,7 +2481,18 @@ function factsOf(
 	for (const row of workRows) {
 		if (row.record.kind !== "tool") continue;
 		const failedHere = isFailedCall(row.record);
-		actions.push({ name: ledgerName(row.record), failed: failedHere });
+		/*
+		 * The op rides along because the count line splits some families by it
+		 * (`bridge` posts vs actions, `jobs cancel`, `todo view`): without it the
+		 * turn bar counted every Team Bridge post as a `team action` while the
+		 * fold group beside it said `team messages` - the two surfaces naming one
+		 * run two ways (found by the condense parity fixture's `Bp` cases).
+		 */
+		actions.push({
+			name: ledgerName(row.record),
+			failed: failedHere,
+			op: toolOp(row.record.args),
+		});
 		if (failedHere) {
 			failed += 1;
 			firstFailedId ??= row.record.id;

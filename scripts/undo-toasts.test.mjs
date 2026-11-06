@@ -177,7 +177,8 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 	"@shared/api/local-operator/backend-error":
 		"export const compatibilityBannerShown = () => false;",
 	"react-router-dom": "export const useNavigate = () => () => undefined;",
-	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";`,
+	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";
+export const isThemeName = (id) => id === "localOperatorDark";`,
 	"@shared/hooks/use-canonical-session": `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";

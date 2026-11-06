@@ -1,0 +1,38 @@
+locale   key                                   parse placeholders          ICU arms
+===== hi (297 keys in namespace)
+    events.invited                 args=[actor,targets] plural=- 
+      1 target: Dana ने Ava को आमंत्रित किया
+      3 targets: Dana ने Ava, Ben, और Cleo को आमंत्रित किया cells=37 (en 25)
+    events.joined                  args=[targets] plural=- 
+      1 target: Ava बातचीत में शामिल
+      3 targets: Ava, Ben, और Cleo बातचीत में शामिल cells=26 (en 16)
+    events.owner_added_agent       args=[actor,targets] plural=- 
+      1 target: Dana ने अपना एजेंट Ava जोड़ा
+      3 targets: Dana ने अपना एजेंट Ava, Ben, और Cleo जोड़ा cells=37 (en 35)
+    events.left                    args=[targets] plural=- 
+      1 target: Ava ने बातचीत छोड़ दी
+      3 targets: Ava, Ben, और Cleo ने बातचीत छोड़ दी cells=27 (en 14)
+    events.removed                 args=[actor,targets] plural=- 
+      1 target: Dana ने Ava को हटा दिया
+      3 targets: Dana ने Ava, Ben, और Cleo को हटा दिया cells=32 (en 25)
+    events.consented               args=[actor,targets] plural=- 
+      1 target: Dana ने Ava को शामिल होने की मंज़ूरी दी
+      3 targets: Dana ने Ava, Ben, और Cleo को शामिल होने की मंज़ूरी दी cells=48 (en 34)
+    events.declined_self           args=[actor] plural=- 
+      1 target: Dana ने आमंत्रण अस्वीकार कर दिया
+      3 targets: Dana ने आमंत्रण अस्वीकार कर दिया cells=35 (en 31)
+    events.declined                args=[actor,targets] plural=- 
+      1 target: Dana ने Ava के लिए आमंत्रण अस्वीकार कर दिया
+      3 targets: Dana ने Ava, Ben, और Cleo के लिए आमंत्रण अस्वीकार कर दिया cells=52 (en 45)
+    events.withdrawn               args=[actor,targets] plural=- 
+      1 target: Dana ने Ava के लिए आमंत्रण वापस ले लिया
+      3 targets: Dana ने Ava, Ben, और Cleo के लिए आमंत्रण वापस ले लिया cells=48 (en 45)
+    events.unknown                 args=[] plural=- 
+      1 target: सदस्यों में बदलाव हुआ
+      3 targets: सदस्यों में बदलाव हुआ cells=21 (en 18)
+  * events.others                  args=[] plural=count:one/other 
+      render: 1->1 अन्य व्यक्ति  2->2 अन्य लोग  3->3 अन्य लोग  5->5 अन्य लोग  11->11 अन्य लोग  21->21 अन्य लोग cells=56 (en 47)
+    members.invitation_note_v3     args=[] plural=- 
+      1 target: आमंत्रण स्वीकार होने तक पहुँच नहीं देते। आपके अपने एजेंट तुरंत जुड़ जाते हैं; किसी और का एजेंट अपने स्वामी की सहमति के बाद जुड़ता है। सदस्य एजेंट यहाँ का हर संदेश पढ़ता है और तय करता है कि जवाब दे या नहीं, और @ से उल्लेख होने पर उससे जवाब देने की अपेक्षा की जाती है। उसका स्वामी उसे केवल @ वाले उल्लेखों और उन थ्रेड तक सीमित कर सकता है जिनमें वह शामिल है, या म्यूट कर सकता है।
+      3 targets: आमंत्रण स्वीकार होने तक पहुँच नहीं देते। आपके अपने एजेंट तुरंत जुड़ जाते हैं; किसी और का एजेंट अपने स्वामी की सहमति के बाद जुड़ता है। सदस्य एजेंट यहाँ का हर संदेश पढ़ता है और तय करता है कि जवाब दे या नहीं, और @ से उल्लेख होने पर उससे जवाब देने की अपेक्षा की जाती है। उसका स्वामी उसे केवल @ वाले उल्लेखों और उन थ्रेड तक सीमित कर सकता है जिनमें वह शामिल है, या म्यूट कर सकता है। cells=376 (en 310)
+  quote census (namespace): “=7 ”=7

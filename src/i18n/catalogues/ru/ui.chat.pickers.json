@@ -165,11 +165,11 @@
 	"ui.chat.pickers.destination_pickers.set_goal": "Задать цель",
 	"ui.chat.pickers.destination_pickers.write_and_command_tools_prompt_before_running": "инструменты записи и команд спрашивают перед запуском",
 	"ui.chat.pickers.destination_pickers.tools_run_without_asking": "инструменты выполняются без запроса",
-	"ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i": "Одобрения по умолчанию для всех последующих сессий: {string}. Эта сессия следует им, если у неё нет собственного выбора.",
+	"ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i": "Одобрения по умолчанию для всех сессий, которые их используют: {string}. Эта сессия использует их, если у неё нет собственного выбора.",
 	"ui.chat.pickers.destination_pickers.whether_write_and_command_tools_ask_before_running": "Спрашивать ли у вас перед запуском инструментов записи и команд.",
 	"ui.chat.pickers.destination_pickers.scope": "Область",
 	"ui.chat.pickers.destination_pickers.this_session": "Эта сессия",
-	"ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it": "Значение по умолчанию для всех последующих сессий",
+	"ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it": "Значение по умолчанию для всех сессий, которые его используют",
 	"ui.chat.pickers.destination_pickers.applies_to_this_session_only": "Действует только для этой сессии.",
 	"ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title": "Явное имя имеет приоритет над автоматически созданным названием.",
 	"ui.chat.pickers.destination_pickers.name": "Название",
@@ -737,5 +737,7 @@
 	"ui.chat.pickers.slash.click.stages": "Нажатие готовит /{label} к запуску.",
 	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter требует выбора строки: ↓, затем Enter · Tab дополняет эту строку.",
 	"ui.chat.pickers.slash.phase.arguments": "Аргументы",
-	"ui.chat.pickers.slash.region_label": "Slash-команды"
+	"ui.chat.pickers.slash.region_label": "Slash-команды",
+	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "Нет зарегистрированных агентов.",
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "Применяется к разговору, который начинает этот чат."
 }

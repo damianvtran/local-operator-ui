@@ -1,0 +1,97 @@
+{
+	"audit_id": "tb1482-merge-delta-audit-2026-10-29-ru",
+	"date": "2026-10-29",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"source_commit": "deec129a81282dbdacf5f14490cc94029fb1165d",
+	"tree_state": "the audited bytes are the uncommitted merge working tree; only ui.teamBridge.thread.not_available (value plus context entry) is new in this merge",
+	"worktree": "~/local-operator-ui/.worktrees/tb-1482-merge",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced (per the notavail translation records)"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "kimi/k3.1-pro",
+			"model_provenance": "Harness preamble for this session read 'Model: anthropic/claude-opus-5-5'. Three sequential provider-quota fallbacks were then announced in-session (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro; reason each time 'provider failure: quota'), and kimi/k3.1-pro is the last model the harness announced, so that is the name recorded here rather than a guess. `lop config list` on this host still shows hosting=anthropic, model_name=claude-sonnet-5-5 as the configured default: the fallback chain, not the config, decided what executed these turns. No further switch notice was seen before these receipts were written, and the judgement here spans the whole chain.",
+			"date": "2026-10-29",
+			"result": "clean",
+			"instance": "tb1482mg-ru-6eeefd82",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/tb1482mg-ru-6eeefd82.json",
+			"receipt_sha256": "4053f1e8ca582bdcced56858fcb0a0fa33bb78e3ddf5827f496d6a3be6e6ed6b",
+			"scope": "Only the one key this merge adds, ui.teamBridge.thread.not_available, plus its English context sidecar entry; the rest of the namespace is inherited byte-identically from origin/main."
+		}
+	],
+	"independence": "Independent auditor: agent role i18n-auditor, a different agent from the translator (i18n-translator, per the translation records read here). None of the 31 audited strings was authored by this run. Five of them were FIXED by this run after the audit recorded them, at the operator's direction: es ui.ownerAudit.read_only (plural agreement), hi ui.ownerAudit.viewers_label and ui.ownerAudit.disclosure (label form and legal register), vi and zh-CN ui.teamBridge.thread.not_available (open vs access). Each fix is recorded in resolved_findings with before and after text, and every sha256 in this receipt names the POST-fix bytes now in the tree, so the receipt audits what ships rather than what preceded the fix. The ledger rows were written by scripts/i18n/ledger-assemble.mjs, never by hand. Every sha256 was recomputed from the files in this worktree.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "5be0c55997d0a97f363ea54652eba52fbe908ae36dd94c5e48129ebf9ae4e470"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "34bc0dae2931715e750884b5ced9fb81b1aa3e74d8cbd546f40ac1258a27d4b6"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "9f939b02dd8e6433b57c0aa6a7e7c51334869f7490278c2538ce989e54b40b5f"
+		}
+	},
+	"english": {
+		"ui.teamBridge.thread.not_available": {
+			"value": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"context_note": "Shown for an addressed conversation id the caller cannot open: the list only carries conversations the caller participates in, so this covers both \"not a member\" and \"archived\" without revealing which. It replaces the draft intro, which wrongly told a reader their history was empty when the conversation actually held messages (2026-10-28). Do not imply the conversation does not exist.",
+			"placeholders": {},
+			"length": "Two short sentences.",
+			"tone": "plain, factual, never accusatory"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.thread.not_available": {
+			"en": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"target": "Этот разговор вам недоступен. Возможно, вы не являетесь его участником или он был архивирован.",
+			"verdict": "вы register. 'Этот разговор вам недоступен' states access, never existence; 'участником' matches ui.teamBridge.member.count ('участник') and 'архивирован' matches ui.teamBridge.archive.list ('Архивных каналов нет'). 'Возможно, … или …' offers both reasons and asserts neither. Not accusatory. 108 chars against en 98."
+		}
+	},
+	"checks": {
+		"both_reasons": "each target offers 'not a member' and 'archived' as the two possibilities",
+		"neither_asserted": "each target hedges both (puede que / il se peut / हो सकता है / возможно / ہو سکتا ہے / có thể / 可能…也可能), so the reader cannot tell which applies",
+		"existence": "every target speaks about access/availability/open state and none says or implies that the conversation does not exist or that messages were deleted",
+		"tone": "no target blames the reader; the subject is the reader's access, not a fault",
+		"neighbours": "register matches the locale's neighbouring ui.teamBridge thread strings, which are the audience for this placeholder",
+		"terms": "member and archive terms match ui.teamBridge.member.count and ui.teamBridge.archive.list in the same locale",
+		"mechanical": "no placeholder, no ICU, NFC, no bidi controls, no Latin run in hi/ru/ur/zh-CN, two sentences, corrected stops"
+	},
+	"findings": [],
+	"resolved_findings": [],
+	"notes": "вы register. 'Этот разговор вам недоступен' states access, never existence; 'участником' matches ui.teamBridge.member.count ('участник') and 'архивирован' matches ui.teamBridge.archive.list ('Архивных каналов нет'). 'Возможно, … или …' offers both reasons and asserts neither. Not accusatory. 108 chars against en 98.",
+	"limitations": [
+		"No rendered frame: this role has no browser tool and the host is source-only, so fit is judged from character counts and the sidecars' length fields (no maxCells is declared for these keys).",
+		"No second independent audit of this delta at whole-namespace scope.",
+		"Neither the translator nor this auditor is a native speaker of these locales; the judgement is documented key by key so a native reviewer can check the reasoning rather than trust a verdict."
+	],
+	"references": {
+		"previous_receipts_this_workspace": {
+			"ui.ownerAudit": "i18n/audits/evidence/ru/ui.ownerAudit/teambridge-owner-audit-r2-*",
+			"ui.teamBridge": "i18n/audits/evidence/ru/ui.teamBridge/tbm-notavail-merge-20261029-ru",
+			"note": "their target and English hashes were re-derived here and match these bytes; this receipt supersedes neither, it re-audits the same bytes at whole-namespace scope"
+		},
+		"style_guide": "~/local-operator/i18n/style-guides/ru.md",
+		"glossary": "~/local-operator/i18n/glossary.md"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/tb1482mg-ru-6eeefd82.json",
+			"sha256": "4053f1e8ca582bdcced56858fcb0a0fa33bb78e3ddf5827f496d6a3be6e6ed6b"
+		}
+	}
+}

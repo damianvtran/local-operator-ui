@@ -1,0 +1,51 @@
+{
+  "initial_audit_head": "946d14774e7",
+  "verified_head": "4847bbbf4bcd0e2670c49db40f9e34f08c17971b",
+  "comparisons": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.editor.json",
+      "sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
+      "byte_identical": true
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.settings.appearance.editor.json",
+      "sha256": "eb11747fcf2e76e29ffdcd0cd1302a4d50bc9806bab879eb262f0bd3796d7283",
+      "byte_identical": true
+    },
+    "es": {
+      "path": "src/i18n/catalogues/es/ui.settings.appearance.editor.json",
+      "sha256": "926548473cb176304fee25be98675ff2cf553418aceef7907d9116fb8412b7dd",
+      "byte_identical": true
+    },
+    "zh-CN": {
+      "path": "src/i18n/catalogues/zh-CN/ui.settings.appearance.editor.json",
+      "sha256": "efded103ce8508cadc0292444dfe7276a297c3d11ca5e40af8fc4322ae44fba9",
+      "byte_identical": true
+    },
+    "ru": {
+      "path": "src/i18n/catalogues/ru/ui.settings.appearance.editor.json",
+      "sha256": "0796fa7726946e0d4f34ed5fcf7d22c9ef9310422a23767d553564da0e3f427c",
+      "byte_identical": true
+    },
+    "vi": {
+      "path": "src/i18n/catalogues/vi/ui.settings.appearance.editor.json",
+      "sha256": "47c3101adae79dc04d3b4ddf79517afb0ae22189fd01fb674b28e2fcc4ee08e9",
+      "byte_identical": true
+    },
+    "ur": {
+      "path": "src/i18n/catalogues/ur/ui.settings.appearance.editor.json",
+      "sha256": "1c27fd1286753487898afcb844f087ccd3ab8fa50342286b84ef76f0f3bab6f7",
+      "byte_identical": true
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.settings.appearance.editor.json",
+      "sha256": "f5efeeaa94e9a6caa560429c42fe85325fbc4c7b53f1478dfac52835b44312f3",
+      "byte_identical": true
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.editor.context.json",
+      "sha256": "54275d64949c816bbe01065076b8d5c97b4761bf55e1703d77d8a48190165241",
+      "byte_identical": true
+    }
+  }
+}

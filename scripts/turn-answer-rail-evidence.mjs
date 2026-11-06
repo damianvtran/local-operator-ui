@@ -262,7 +262,7 @@ const shootSettings = async (theme, on, helpOpen = false) => {
 	const found = await evaluate(`(() => {
 		const chip = [...document.querySelectorAll("button")].find((b) => /^Show advanced/.test(b.textContent.trim()));
 		if (chip && chip.getAttribute("aria-pressed") === "false") chip.click();
-		const input = document.querySelector('input[aria-label="Search settings"]');
+		const input = document.querySelector('input[aria-label="Search settings by name, description or key"]');
 		const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
 		setter.call(input, "turn answer");
 		input.dispatchEvent(new Event("input", { bubbles: true }));

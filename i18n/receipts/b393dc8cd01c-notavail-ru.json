@@ -1,0 +1,99 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (single-key delta)",
+	"audit_id": "teambridge-not-available-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"instance": "b393dc8cd01c-notavail-ru",
+	"instance_note": "Auditor session b393dc8cd01c; per-namespace, per-locale suffix so every ledger row carries a distinct instance.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header: 'Model: anthropic/claude-opus-5-5'.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"integration": {
+		"branch": "feat/team-bridge-owner-audit-ui",
+		"reviewed_head": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+		"base": "e6320fbd33 (feat(sidebar) #1465)",
+		"worktree": "~/local-operator-ui-worktrees/team-bridge-owner-audit",
+		"pr": "not yet opened",
+		"note": "audited bytes are the working tree at reviewed_head plus this run's uncommitted catalogue fixes; the parent commits them"
+	},
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"inherited_byte_identical": {
+			"previous_receipt": "i18n/receipts/6d269032fdc7-r3-ru.json",
+			"previous_receipt_sha256": "f1e445f0d28d5ae49a4356a8bc92a92ed7c8cba39e80aba8e8d88e2c1528a847",
+			"previous_target_sha256": "13c4ae135e70247bfe6926bb8590273ab29636be1f3e5478aabb943e78432535",
+			"note": "target at a975a0b4ec with the single ui.teamBridge.thread.not_available line removed hashes to the previously audited target bytes (base e6320fbd33); git numstat e6320fbd33..a975a0b4ec = 1 added, 0 removed."
+		},
+		"english_change": "en adds only thread.not_available (value + context note); no other en key changed."
+	},
+	"sha256": {
+		"en": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4",
+		"ru": "5a00be5b41801b252d1121a7512cc960d64a8fa3471fe1065b7d5f5e128fb7ae"
+	},
+	"context_sha256": "cc89c0d9a5392c195e6f26a997b269f7db50c3741840adb05a2d73ac14c3f03b",
+	"english": {
+		"ui.teamBridge.thread.not_available": {
+			"value": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"context_note": "Shown for an addressed conversation id the caller cannot open: the list only carries conversations the caller participates in, so this covers both \"not a member\" and \"archived\" without revealing which. It replaces the draft intro, which wrongly told a reader their history was empty when the conversation actually held messages (2026-10-28). Do not imply the conversation does not exist.",
+			"placeholders": {}
+		}
+	},
+	"audited_strings": {
+		"ui.teamBridge.thread.not_available": "Этот разговор вам недоступен. Возможно, вы не являетесь его участником или он был архивирован."
+	},
+	"checks": {
+		"placeholders": "none in source; target verified to contain no { } < > (no ICU, no Trans tags)",
+		"sentences": "two sentences (94 chars; en 98)",
+		"non_disclosure": "both reasons offered as possibilities, neither asserted",
+		"existence": "access wording only; nothing implies the conversation does not exist",
+		"bidi_controls": "none",
+		"nfc": "NFC"
+	},
+	"notes": "вы lowercase; 'разговор', 'участник', 'архивирован' all match shipped ru; 'недоступен' is access-only; 'Возможно ... или ...' undisclosed.",
+	"findings": [],
+	"resolved_findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		}
+	},
+	"execution": [
+		{
+			"command": "git diff e6320fbd33..a975a0b4ec --numstat -- src/i18n",
+			"result": "en ownerAudit(+30)/context(+14), en teamBridge(+1)/context(+7), each locale ownerAudit +30 and teamBridge +1"
+		},
+		{
+			"command": "python3 NFC/bidi/placeholder/key-parity scan of the target catalogue",
+			"result": "no bidi controls, NFC, placeholders and key set match en"
+		}
+	],
+	"audit_notes_not_execution_log": "notes, checks and findings are this auditor's linguistic judgement, not command output",
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117).",
+	"evidence_record": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-not-available-audit-b393dc8cd01c/record.json"
+}

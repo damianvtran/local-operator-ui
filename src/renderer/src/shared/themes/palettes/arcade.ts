@@ -90,22 +90,42 @@ export const arcade: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#202021",
-		surface: "#27272A",
-		elevated: "#2D2D31",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #202021 -> #1B1B1C (L* 12.29 -> 9.80)
+		 * surface #27272A -> #222225 (L* 15.75 -> 13.34)
+		 * elevated #2D2D31 -> #28282C (L* 18.61 -> 16.26)
+		 * sunken #1A1A1A -> #141515 (L* 9.26 -> 6.68)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `elevated`, `rowHover`, `messageSurface`, `warningWash`. `pnpm check-themes`
+		 * is the measurement for each.
+		 */
+		canvas: "#1B1B1C",
+		surface: "#222225",
+		elevated: "#28282C",
 		// The TUI's 050506 darkened one step to clear the four-ground separation
 		// floor: against `canvas` it measured 1.030:1, sitting exactly on the
 		// contract's 1.03.
-		sunken: "#1A1A1A",
+		sunken: "#141515",
 
 		// The user block's fill: ΔE00 4.08 off the canvas, where `surface` alone
 		// measures 2.65 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2b2b2f",
+		messageSurface: "#26262A",
 		// The media slot's well: ΔE00 4.26 off the canvas, where `sunken` alone
 		// measures 2.05 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#141513",
+		// Lifted #0C0E0B -> #10120F (L* 3.76 -> 5.21) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.10 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#10120F",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -124,8 +144,8 @@ export const arcade: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.58 `L*` and 3.4 `C*`,
 		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#2D2D31",
-		rowSelected: "#303039",
+		rowHover: "#28282C",
+		rowSelected: "#2A2A33",
 
 		ink: "#E8E8E4",
 		/*
@@ -165,10 +185,10 @@ export const arcade: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 5.20.
 		 */
-		hairline: "#3C3C43",
+		hairline: "#36363D",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.72:1 there against `hairline`'s 1.59:1.
-		hairlineStrong: "#414148",
+		hairlineStrong: "#3B3B42",
 		// The TUI `edge-hi` 3A3A42 lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
@@ -189,7 +209,7 @@ export const arcade: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#2A2413",
+		accentWash: "#251F0C",
 		onAccent: "#040406",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -205,11 +225,11 @@ export const arcade: ThemeDefinition = {
 		 * 2.0), 6.60:1 for `accentAlt` on it, and 9.92 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2A2132",
+		accentAltWash: "#251C2D",
 
 		// 45E055, the 1-up green.
 		success: "#45E055",
-		successWash: "#122615",
+		successWash: "#0C200E",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -220,7 +240,7 @@ export const arcade: ThemeDefinition = {
 		// FF9430, the bonus-round orange: distinct from the yellow accent by hue, and
 		// from the red danger by the 15 ΔE00 separation floor.
 		warning: "#FF9430",
-		warningWash: "#2A1C11",
+		warningWash: "#25170A",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -240,7 +260,7 @@ export const arcade: ThemeDefinition = {
 		 * re-pick of the palette's colour.
 		 */
 		danger: "#FF6660",
-		dangerWash: "#2A1315",
+		dangerWash: "#250D0E",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -250,7 +270,7 @@ export const arcade: ThemeDefinition = {
 
 		// 52B4FF, the ice-level blue and the TUI's `signal`.
 		info: "#52B4FF",
-		infoWash: "#13202C",
+		infoWash: "#0D1B27",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

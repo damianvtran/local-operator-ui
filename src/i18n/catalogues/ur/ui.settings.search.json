@@ -1,0 +1,20 @@
+{
+	"ui.settings.search.field.label": "ترتیبات تلاش کریں",
+	"ui.settings.search.field.placeholder": "ترتیبات تلاش کریں",
+	"ui.settings.search.empty.summary": "اس صفحے کی تمام ترتیبات اور منسلک سروس کی رجسٹری میں تلاش کرتا ہے۔",
+	"ui.settings.search.empty.shortcut": "اس صفحے پر کہیں سے بھی تلاش کرنے کے لیے {shortcut} دبائیں۔",
+	"ui.settings.search.no_results.title": "“{query}” سے کچھ نہیں ملا۔",
+	"ui.settings.search.no_results.hint": "کوئی دوسرا لفظ آزمائیں، یا صفحہ دیکھتے رہنے کے لیے خانہ صاف کریں۔",
+	"ui.settings.search.no_results.clear": "تلاش صاف کریں",
+	"ui.settings.search.results.count": "{count, plural, one {# نتیجہ} other {# نتائج}}",
+	"ui.settings.search.results.more": "{count, plural, one {# مزید نتیجہ نہیں دکھایا گیا} other {# مزید نتائج نہیں دکھائے گئے}}",
+	"ui.settings.search.panel.label": "ترتیبات کے نتائج",
+	"ui.settings.search.reason.label": "نام سے مطابقت",
+	"ui.settings.search.reason.synonym": "متعلقہ اصطلاح سے مطابقت",
+	"ui.settings.search.reason.key": "ترتیب کی کلید سے مطابقت",
+	"ui.settings.search.reason.choice": "اختیار سے مطابقت",
+	"ui.settings.search.reason.section": "حصے سے مطابقت",
+	"ui.settings.search.reason.description": "وضاحت سے مطابقت",
+	"ui.settings.search.jump.missing": "وہ ترتیب ابھی اسکرین پر موجود نہیں ہے۔",
+	"ui.settings.search.row.section_hint": "{section} میں"
+}

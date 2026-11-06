@@ -1,0 +1,59 @@
+{
+	"audit_id": "teambridge-member-events-union-audit-95c4798301e2-union-a-ru",
+	"date": "2026-10-30",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"branch": "fix/team-bridge-member-events",
+	"source_commit": "local head 599309fdd9946546fee3138904bdd1f31722623d (not pushed), rebased onto 3b369d6341c7eeed159c3bcbb1b1f4db759265d4",
+	"auditors": [
+		{
+			"agent": "translation-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"session": "95c4798301e2",
+			"instance": "95c4798301e2-union-a-ru",
+			"date": "2026-10-30",
+			"result": "clean-with-findings",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "Independent auditor: lopdev translation-auditor, session 95c4798301e2; authored none of the audited strings; edited no catalogue or code; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct from b20548e9b2d9 and any union auditor B.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "47f525ae908445904c507ac9e1386fdaa8181c6a5a6aca8b9f46d22180eea523"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "00427edaa47dbd8ae0e3573de3e5310a7c7326efe539e734e864637c347fe303"
+		},
+		"receipt": {
+			"path": "i18n/receipts/95c4798301e2-union-a-ru.json",
+			"sha256": "e4fd56fdfb5d9db9e771cd4b70df779b3a9bef5f694ca635aa3abddcc754d9a4"
+		},
+		"rendered": {
+			"path": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-member-events-union-audit-95c4798301e2-union-a-ru/rendered.txt",
+			"sha256": "d9f5d66721bcd5bf57de6b78bb5bc30adc9b8e4695df5f44386840b621ecaa67"
+		}
+	},
+	"findings": [
+		{
+			"severity": "minor",
+			"id": "RU-A1",
+			"key": "ui.teamBridge.events.declined",
+			"disposition": "recorded; not gating"
+		}
+	]
+}

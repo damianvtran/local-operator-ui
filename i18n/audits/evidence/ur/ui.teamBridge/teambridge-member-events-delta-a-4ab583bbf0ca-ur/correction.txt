@@ -1,0 +1,9 @@
+CORRECTION — companion to the immutable receipt
+
+Receipt: i18n/receipts/4ab583bbf0ca-ur.json (hash-bound by i18n/ledger.json; never edited after assembly).
+
+The receipt's UR-D1 reason ends with a self-contradictory parenthetical — «0 hits in 1,921 core ur strings and 297 here». The measured facts are:
+  - core ur catalogues (local_operator/i18n/catalogues/ur, 1,921 strings): 0 occurrences of «انکار کر دی» (no alif), 1 of «انکار کر دیا» (wire.errors.desktop.remote_refusal_silent), 11 of «مسترد».
+  - ui.teamBridge ur (297 keys): exactly 2 occurrences of «انکار کر دی», and both are the two delta lines named in UR-D1/UR-D2; «انکار کر دیا گیا» appears in invitations.declined and invitations.declined_unnamed.
+
+findings.json and record.json beside this file carry the corrected sentence. The receipt is left byte-identical so its ledger binding stays checkable; this file is the authoritative reading of the parenthetical.

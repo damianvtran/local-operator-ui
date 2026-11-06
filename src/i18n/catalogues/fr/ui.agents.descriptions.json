@@ -1,0 +1,14 @@
+{
+	"ui.agents.descriptions.aida": "Votre cheffe de cabinet : orchestre des agents et des équipes en votre nom, garde un œil sur tout ce qui est en cours et vous rend compte.",
+	"ui.agents.descriptions.architect": "Explore une base de code et propose une conception ou une solution technique avec ses compromis ; peut rédiger des documents, mais ne modifie jamais le code existant.",
+	"ui.agents.descriptions.coder": "Réalise de bout en bout une tranche de travail délimitée avec l’ensemble des outils, puis rend compte des changements et de la façon dont ils ont été vérifiés.",
+	"ui.agents.descriptions.copy_reviewer": "Revue avant publication des textes visibles par l’utilisateur et de la prose grand public : compréhension, ton, étayage des affirmations, tics de l’IA ; signale des constats préfixés C.",
+	"ui.agents.descriptions.designer": "Revue de design et d’UX d’un changement visible par l’utilisateur, d’après le rendu réel et non le code ; signale des constats préfixés D.",
+	"ui.agents.descriptions.librarian": "L’agent qui organise la Bibliothèque : nomme, décrit et étiquette les éléments que vous conservez, apprend leur vocabulaire et garde le catalogue global utilisable.",
+	"ui.agents.descriptions.manager": "Coordonne le travail délégué et rend compte honnêtement : ce qui est fait, ce qui est en cours, ce qui est bloqué et de qui cela dépend.",
+	"ui.agents.descriptions.qa_tester": "Preuve d’exécution indépendante pour un changement : pré-vérifie le banc d’essai, parcourt les chemins réels et les cas négatifs, puis fournit une matrice QA ciblée sans modifier le dépôt.",
+	"ui.agents.descriptions.reviewer": "Revue de code indépendante d’un diff, d’une MR ou d’une PR : repère les défauts, les classe par gravité, ne modifie jamais le code qu’il relit.",
+	"ui.agents.descriptions.scout": "Recherche en lecture seule : étudie une question dans l’espace de travail et sur le web, puis présente ses constats, preuves à l’appui. Ne change rien.",
+	"ui.agents.descriptions.tui_designer": "Conception et revue d’interfaces en terminal : parcours pensés d’abord pour le clavier, densité dans de petites zones d’affichage fixes, replis pour la couleur et Unicode, géométrie mesurée ; signale des constats préfixés T.",
+	"ui.agents.descriptions.ux_reviewer": "Suit un changement de bout en bout dans son parcours réel : découvrabilité, retours, reprise après erreur, chemins clavier et textes ; signale des constats préfixés U."
+}

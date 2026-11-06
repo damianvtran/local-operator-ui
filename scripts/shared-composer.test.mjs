@@ -222,10 +222,17 @@ window.matchMedia = (query) => {
 	return mediaQueries.get(key);
 };
 
+const ipcListeners = new Map();
 window.electron = {
 	ipcRenderer: {
-		on: () => () => {},
-		removeListener: () => {},
+		// Kept so a case can send the channel main sends (`start-speech-to-text`).
+		on: (channel, listener) => {
+			ipcListeners.set(channel, listener);
+			return () => {};
+		},
+		removeListener: (channel) => {
+			ipcListeners.delete(channel);
+		},
 		send: () => {},
 		invoke: async (channel) =>
 			channel === "get-platform-info"
@@ -248,7 +255,7 @@ window.electron = {
  * 1, MINOR 1).
  */
 const transportOps = [];
-globalThis.fetch = async (url, init) => {
+globalThis.fetch = async (_url, init) => {
 	let request = {};
 	try {
 		request = JSON.parse(init?.body ?? "{}");
@@ -486,9 +493,66 @@ after(async () => {
 	});
 });
 
+test("the composer notice renders the keyed connect-provider action", async () => {
+	/*
+	 * A source pin alone mistook the i18n getter for a missing action (#1552).
+	 * Read the shipped composer's notice, not the empty-chat connect card: an
+	 * action removed from the notice must fail even if that other door survives.
+	 */
+	const frame = await mount({
+		sendError: { message: "No model provider is configured yet" },
+	});
+	try {
+		const labels = Array.from(
+			frame.container.querySelectorAll("[data-composer-notice] button"),
+			(button) => button.textContent,
+		);
+		assert.deepEqual(labels, [t("ui.chat.composer.connect_provider")]);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
 /* ------------------------------------------------------------------ */
 /* 1. The mount blocker: no QueryClient provider, no throw              */
 /* ------------------------------------------------------------------ */
+
+test("session metadata rerenders preserve the composer's existing draft caret", async () => {
+	try {
+		const frame = await mount({ autoFocus: false });
+		const field = frame.textarea();
+		assert.ok(field);
+		const setter = Object.getOwnPropertyDescriptor(
+			window.HTMLTextAreaElement.prototype,
+			"value",
+		).set;
+		await act(async () => {
+			setter.call(field, "focusproof");
+			field.dispatchEvent(new window.Event("input", { bubbles: true }));
+		});
+		field.focus();
+		field.setSelectionRange(2, 6);
+		for (let revision = 0; revision < 4; revision++) {
+			await frame.rerender({
+				messages: [],
+				sessionStatus: {
+					frontend: null,
+					servingLocality: revision % 2 ? "remote" : "local",
+				},
+			});
+			assert.equal(
+				frame.textarea(),
+				field,
+				"session metadata cannot replace the input node",
+			);
+			assert.equal(document.activeElement, field);
+			assert.equal(field.value, "focusproof");
+			assert.deepEqual([field.selectionStart, field.selectionEnd], [2, 6]);
+		}
+	} finally {
+		await act(async () => root?.unmount());
+	}
+});
 
 test("the composer mounts in a document with no QueryClient, on the props a standalone host passes", async () => {
 	/*
@@ -1109,7 +1173,7 @@ test("the mic acknowledges the press while the stream is still pending, and the 
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	assert.ok(micControl(), "the mic control is mounted");
 	await act(async () => {
@@ -1195,7 +1259,7 @@ test("Escape settles the acknowledgment window and the discarded stream never be
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	await act(async () => {
 		micControl().click();
@@ -1279,7 +1343,7 @@ test("a release inside the window re-opens it: the next press is a fresh attempt
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	/* The hold door: pressed and released inside the acquisition. */
 	const { code } = resolvePushToTalkBinding();
@@ -1386,7 +1450,7 @@ test("a refusal belonging to an abandoned press leaves the successor's attempt a
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 	const lane = () =>
 		frame.container.querySelector("[data-recording-indicator]");
 
@@ -1520,7 +1584,7 @@ test("an unmount during a live take stops the recorder rather than leaving the m
 		},
 	});
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	await act(async () => {
 		frame.container.querySelector('[aria-label="Start recording"]').click();
@@ -1571,7 +1635,7 @@ test("the acknowledgment survives the turn going busy, and the deferred take sti
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 	const lane = () =>
 		frame.container.querySelector("[data-recording-indicator]");
 
@@ -1668,7 +1732,7 @@ test("a release inside the acquisition window clears the acknowledgment without 
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	/* The hold door: the real manager's capture dispatch, released mid-acquisition. */
 	const { code } = resolvePushToTalkBinding();
@@ -1928,7 +1992,7 @@ test("with autoFocus={false} the end of a dictation take still hands the caret b
 		 * state the hand-back's falling edge is read off.
 		 */
 		assert.ok(
-			frame.container.querySelector('[aria-label="Confirm recording"]'),
+			frame.container.querySelector('[aria-label="Insert transcript"]'),
 			"the hold reached the capture path, so the take this case ends is a real one",
 		);
 		await act(async () => {
@@ -2053,7 +2117,7 @@ test("the push-to-talk chord asks the box to be on screen (agent review round 1,
 		const quiet = async () => {
 			for (let pass = 0; pass < 30; pass++) {
 				const busy = frame.container.querySelector(
-					'[aria-label="Confirm recording"], [data-preparing-indicator], [data-transcribing-indicator]',
+					'[aria-label="Insert transcript"], [data-preparing-indicator], [data-transcribing-indicator]',
 				);
 				if (busy === null) return true;
 				await settle();
@@ -2088,7 +2152,7 @@ test("the push-to-talk chord asks the box to be on screen (agent review round 1,
 			"a box the reader cannot see must not answer the chord",
 		);
 		assert.equal(
-			frame.container.querySelector('[aria-label="Confirm recording"]'),
+			frame.container.querySelector('[aria-label="Insert transcript"]'),
 			null,
 			"and no take's feedback exists off screen",
 		);
@@ -2110,7 +2174,7 @@ test("the push-to-talk chord asks the box to be on screen (agent review round 1,
 			"on screen the chord starts the take - the gate is the box's visibility, not dictation itself",
 		);
 		assert.ok(
-			frame.container.querySelector('[aria-label="Confirm recording"]'),
+			frame.container.querySelector('[aria-label="Insert transcript"]'),
 			"and the take's own feedback is what the gate protects",
 		);
 		await release();
@@ -2185,4 +2249,75 @@ test("the chat keeps its behaviour: the page's probe and callback reach the comp
 		/onCredentialsStored=/,
 		"the credential-store invalidation is wired at the host",
 	);
+});
+
+/*
+ * THE START RECORDING CHORD TAKES OVER A HOLD THAT IS ALREADY RECORDING (QA
+ * round 2, Q1). Main claims the chord, so the renderer hears the
+ * `start-speech-to-text` channel instead of a key. With a hold on a modifier
+ * the chord also begins with (Command or Control), the hold has engaged first;
+ * the chord must then end that take and start its own. The manager asked the
+ * registry for an ACTIVE handler after the abort, but the composer's `isActive`
+ * reads render state (`isRecording`), which the abort cannot have updated yet,
+ * so a take that had already started left the chord with no recording at all.
+ * The stub handler in `hold-main-claimed-chord.test.mjs` has no such state,
+ * which is why it could not see this.
+ */
+test("the Start recording chord replaces a hold that is already recording", async () => {
+	mic.calls = 0;
+	mic.recorders.length = 0;
+	mic.next = async () => fakeStream();
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Insert transcript"]');
+	const { code } = resolvePushToTalkBinding();
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.ok(confirm(), "the hold is recording");
+	assert.equal(mic.calls, 1);
+
+	const chord = ipcListeners.get("start-speech-to-text");
+	assert.ok(chord, "the manager listens for the channel main sends");
+	await act(async () => {
+		chord();
+	});
+	await settle();
+	assert.equal(mic.calls, 2, "the chord asked for its own take");
+	assert.ok(confirm(), "a recording is up after the chord");
+	assert.equal(
+		mic.recorders.filter((recorder) => recorder.state === "recording").length,
+		1,
+		"exactly one live recorder: the hold's was ended",
+	);
+
+	// The modifier's release no longer owns the take: the chord's take stays.
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.ok(confirm(), "releasing the old hold does not end the chord's take");
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
 });

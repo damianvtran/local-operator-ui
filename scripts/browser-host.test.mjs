@@ -96,6 +96,9 @@ const bundle = await build({
 			// below can pin the dispatched code to them; the gate that keeps them equal
 			// to the vendored driver's functions is scripts/check-geometry-sources.test.mjs.
 			'export * from "./src/main/browser/actions/geometry-sources.gen";',
+			// The main-process locale store, reached through the SAME module graph the host
+			// resolves `t()` from, so a test can drive the language the host speaks.
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "./src/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -133,6 +136,9 @@ const {
 	// budget expiry should leave queued from `RESTORE_CONCURRENCY`, and a literal
 	// would read green the day the number moves.
 	RESTORE_CONCURRENCY,
+	clearRegisteredCatalogues,
+	registerCatalogue,
+	setLocale,
 	RESTORE_TAB_TIMEOUT_MS,
 	RESTORE_BUDGET_MS,
 	surfaceToken,
@@ -2045,6 +2051,39 @@ test("the projection names each tab's conversation — and never its capability"
 		!/"nonce"/.test(wire) && !/"handle"/.test(wire),
 		"and no field is named for one either",
 	);
+});
+
+test("an untitled tab is named by main in the language main speaks (Q-T2-4)", async () => {
+	// The projection hands the strip a READY title, so the renderer's own `New tab`
+	// fallback never runs for it: main owns the word. The census saw it in English
+	// under Urdu because it was a string literal here.
+	const { host } = makeHost();
+	await host.newTab(null);
+	try {
+		setLocale("en");
+		assert.equal(
+			host.chromeState().tabs.at(-1).title,
+			"New tab",
+			"English is byte-for-byte what it was",
+		);
+		registerCatalogue("ur", {
+			"ui.browser.browser_tab_strip.new_tab": "UR[new tab]",
+		});
+		setLocale("ur");
+		assert.equal(
+			host.chromeState().tabs.at(-1).title,
+			"UR[new tab]",
+			"a translated catalogue changes what main paints",
+		);
+		assert.equal(
+			host.chromeState().tabs.at(-1).url,
+			"about:blank",
+			"and only the title: the URL the chrome keys on is untouched",
+		);
+	} finally {
+		clearRegisteredCatalogues();
+		setLocale("en");
+	}
 });
 
 test("a tab the user opens in a conversation belongs to it, and still gives no agent a capability (R1)", async () => {
@@ -7774,11 +7813,150 @@ test("/health carries the capabilities this build serves", async () => {
 		"query",
 		"download",
 		"upload",
+		"press",
+		"press_chord",
+		"hover",
+		"select",
 		"network_start",
 		"network_stop",
 		"network_read",
 		"network_clear",
+		"record_start",
+		"record_stop",
+		"record_size",
+		"record_quality",
 	]);
+});
+
+test("a record_start whose answer is refused aborts the capture it began", async () => {
+	// The result-side document assertion runs AFTER `record_start` has already
+	// registered a capture (review N5). If it refuses the answer, the footage the
+	// refusal is about must not keep recording into an approved path.
+	const { host, registry, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-refused-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	const originalSend = cdp.send;
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			// The page leaves for an unapproved origin while the start is in flight,
+			// which is exactly what the result-side check discards the answer for.
+			record.view.webContents.url = "https://forbidden.example/";
+			registry.bumpEpoch(record.tabId);
+		}
+		if (method === "Page.stopScreenRecording") {
+			cdp.calls.push({ method, params: sendParams });
+			return { stream: "s-refused" };
+		}
+		return originalSend(contents, method, sendParams, options);
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "clip.mp4") },
+				"rec",
+			),
+		(error) => error.code === "origin_not_allowed",
+	);
+	cdp.send = originalSend;
+	// F1: dropping the bookkeeping is not enough — Chromium's recorder has to be
+	// stopped, or the next start on this tab is refused with "Screencast is
+	// already active". The stop and the stream close must both have been sent.
+	assert.ok(
+		cdp.calls.some((call) => call.method === "Page.stopScreenRecording"),
+		"the refused start's recorder was stopped",
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "IO.close" && call.params?.handle === "s-refused",
+		),
+		"and its stream was closed",
+	);
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.data?.reason === "record_not_active",
+	);
+	assert.equal(existsSync(join(dir, "clip.mp4")), false);
+});
+
+test("record_start and record_stop share the tab's command lane", async () => {
+	// Review round 1, MINOR 2: dropping both verbs from TAB_SCOPED left every test
+	// green, so "the two verbs serialise on one tab" was a comment, not a pin. The
+	// lane does not queue; it refuses the second command with `busy`. So while a
+	// start is in flight, an overlapping stop AND an overlapping second start on the
+	// same tab must both read `busy` (and send no CDP call), and the tab is usable
+	// again once the start lands.
+	const { host, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-lane-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const originalSend = cdp.send;
+	let releaseStart = () => {};
+	const startHeld = new Promise((resolve) => {
+		releaseStart = resolve;
+	});
+	let startEntered = () => {};
+	const startIsInFlight = new Promise((resolve) => {
+		startEntered = resolve;
+	});
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			startEntered();
+			await startHeld;
+			return {};
+		}
+		if (method === "Page.stopScreenRecording") return { stream: "s-lane" };
+		return originalSend(contents, method, sendParams, options);
+	};
+	const start = host.dispatch(
+		"record_start",
+		{ ...params, tab: opened.tab, path: join(dir, "lane.mp4") },
+		"lane-start",
+	);
+	await startIsInFlight;
+	// If the lane were missing the overlapping calls could wait on the held start
+	// forever; releasing it on a timer makes that a failed assertion, not a hang.
+	const safety = setTimeout(releaseStart, 1500);
+	const before = cdp.calls.length;
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.code === "busy",
+		"a stop overlapping a start is refused by the tab lane",
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "second.mp4") },
+				"lane-second",
+			),
+		(error) => error.code === "busy",
+		"a second start overlapping the first is refused by the tab lane",
+	);
+	assert.equal(cdp.calls.length, before, "the refused calls reached no CDP");
+	clearTimeout(safety);
+	releaseStart();
+	await start;
+	// The lane is free again: the stop now finds the recording the start made.
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop2"),
+		(error) => error.code !== "busy",
+	);
+	cdp.send = originalSend;
+	assert.equal(existsSync(join(dir, "second.mp4")), false);
 });
 
 test("the state file carries the same list, from the same constant", () => {
@@ -11700,5 +11878,773 @@ test("page controls work while an app overlay hides the view, and only then (Q2-
 	await assert.rejects(
 		() => host.controlPage(id, "open"),
 		/no longer presented/,
+	);
+});
+
+// press shares the existing owned-tab fixture: these are CDP contract tests,
+// not a claim that Chromium delivers keys to a hidden native view.
+async function openPressTab(host, owner = {}) {
+	const params = {
+		...owner,
+		url: "https://press.example/",
+		requester: owner.requester ?? "session:press",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	return host.dispatch("open", params, "open");
+}
+
+test("press closed wire admits the method and preserves unsupported_key", async () => {
+	assert.ok(METHODS.includes("press"));
+	assert.equal(METHODS.indexOf("press"), METHODS.indexOf("type") + 1);
+	assert.ok(ERROR_CODES.includes("unsupported_key"));
+	assert.ok(HOST_CAPABILITIES.includes("press"));
+	assert.equal(COMMAND_TIMEOUTS_S.press, 25);
+});
+
+for (const [key, code, virtualKeyCode, modifiers] of [
+	["Tab", "Tab", 9, 0],
+	["Shift+Tab", "Tab", 9, 8],
+	["Enter", "Enter", 13, 0],
+	["Escape", "Escape", 27, 0],
+	["ArrowUp", "ArrowUp", 38, 0],
+	["ArrowDown", "ArrowDown", 40, 0],
+	["ArrowLeft", "ArrowLeft", 37, 0],
+	["ArrowRight", "ArrowRight", 39, 0],
+]) {
+	test(`press ${key} dispatches only the named native key pair to the owned contents`, async () => {
+		const { host, registry, cdp } = makeHost();
+		const owner = {
+			requester: "session:press",
+			owner_proof: "p".repeat(40),
+			owner_generation: "press-g1",
+			allocation_id: "press-allocation",
+		};
+		const opened = await openPressTab(host, owner);
+		const record = registry.requireSurface(opened.tab);
+		const contents = record.view.webContents;
+		const visibility = [...record.view.visibility];
+		contents.focus = () => assert.fail("press must not focus OS contents");
+		const originalSend = cdp.send;
+		const keys = [];
+		cdp.send = async (target, method, params) => {
+			if (method.startsWith("Input.")) keys.push({ target, method, params });
+			return originalSend(target, method, params);
+		};
+		cdp.calls.length = 0;
+		const result = await host.dispatch(
+			"press",
+			{ ...owner, tab: opened.tab, key },
+			"press",
+		);
+		assert.equal(result.key, key);
+		assert.equal(result.navigated, false);
+		assert.deepEqual(record.view.visibility, visibility);
+		assert.deepEqual(
+			keys,
+			["keyDown", "keyUp"].map((type) => ({
+				target: contents,
+				method: "Input.dispatchKeyEvent",
+				params: {
+					key: code,
+					code,
+					windowsVirtualKeyCode: virtualKeyCode,
+					modifiers,
+					type,
+					...(key === "Enter" && type === "keyDown"
+						? { text: "\r", unmodifiedText: "\r" }
+						: {}),
+				},
+			})),
+		);
+		assert.ok(cdp.calls.some((call) => call.method === "Fetch.enable"));
+		assert.ok(cdp.calls.some((call) => call.method === "Fetch.disable"));
+		assert.equal(contents.listenerCount("did-start-navigation"), 0);
+	});
+}
+
+test("press validation refuses arbitrary keys and modifier syntax before any input", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	cdp.calls.length = 0;
+	for (const key of [
+		undefined,
+		null,
+		9,
+		{},
+		"",
+		"tab",
+		"Shift",
+		// Not refused any more (the chord grammar admits them), so they are NOT
+		// here: Ctrl+Tab, Shift+Enter, a. The refusals below are what stays closed.
+		"Ctrl+Nope",
+		"Shift+Shift+a",
+		"ab",
+		"hunter2-hunter2",
+		"__proto__",
+	]) {
+		await assert.rejects(
+			host.dispatch("press", { tab: opened.tab, key }, "press"),
+			(error) =>
+				error.code === "unsupported_key" && error.message.includes(String(key)),
+		);
+	}
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("press retains missing-tab, owner proof, generation, foreign-owner and origin fences", async () => {
+	const { host, registry, cdp } = makeHost();
+	const owner = {
+		requester: "session:press",
+		owner_proof: "p".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "alloc",
+	};
+	const opened = await openPressTab(host, owner);
+	cdp.calls.length = 0;
+	for (const override of [
+		{ owner_generation: "stale" },
+		{ owner_proof: "short" },
+		{ requester: "session:foreign" },
+		{ requester: "session:foreign", owner_proof: "q".repeat(40) },
+	]) {
+		await assert.rejects(
+			host.dispatch(
+				"press",
+				{ ...owner, tab: opened.tab, key: "Enter", ...override },
+				"press",
+			),
+			{ code: "owner_refused" },
+		);
+	}
+	await assert.rejects(
+		host.dispatch("press", { ...owner, key: "Tab" }, "missing"),
+		{ code: "tab_closed" },
+	);
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ ...owner, tab: "ui:missing", key: "Tab" },
+			"closed",
+		),
+		{ code: "tab_closed" },
+	);
+	registry.requireSurface(opened.tab).view.webContents.url =
+		"https://unapproved.example/";
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ ...owner, tab: opened.tab, key: "Enter" },
+			"origin",
+		),
+		{ code: "origin_not_allowed" },
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("press releases after debugger failure without masking the typed failure", async () => {
+	const { host, registry, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	const originalSend = cdp.send;
+	const attempts = [];
+	cdp.send = async (contents, method, params) => {
+		if (method === "Input.dispatchKeyEvent") {
+			attempts.push(params.type);
+			throw Object.assign(new Error("detached"), {
+				code: params.type === "keyDown" ? "debugger_conflict" : "tab_closed",
+			});
+		}
+		return originalSend(contents, method, params);
+	};
+	await assert.rejects(
+		host.dispatch("press", { tab: opened.tab, key: "Shift+Tab" }, "press"),
+		{ code: "debugger_conflict" },
+	);
+	assert.deepEqual(attempts, ["keyDown", "keyUp"]);
+	assert.equal(
+		registry
+			.requireSurface(opened.tab)
+			.view.webContents.listenerCount("did-start-navigation"),
+		0,
+	);
+	assert.ok(cdp.calls.some((call) => call.method === "Fetch.disable"));
+});
+
+test("press keeps the per-hop gate over an asynchronous Enter redirect", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	let hop = null;
+	cdp.subscribe = (_id, listener) => {
+		hop = listener;
+		return () => {
+			hop = null;
+		};
+	};
+	const originalSend = cdp.send;
+	const pending = [];
+	cdp.send = async (contents, method, params) => {
+		if (method === "Input.dispatchKeyEvent" && params.type === "keyUp") {
+			pending.push(
+				new Promise((resolve) =>
+					setTimeout(() => {
+						assert.ok(
+							hop,
+							"gate must survive keyUp until navigation grace ends",
+						);
+						hop("Fetch.requestPaused", {
+							requestId: "approved-hop",
+							request: { url: "https://press.example/redirect" },
+						});
+						hop("Fetch.requestPaused", {
+							requestId: "forbidden-hop",
+							request: { url: "https://forbidden.example/" },
+						});
+						resolve();
+					}, 0),
+				),
+			);
+		}
+		return originalSend(contents, method, params);
+	};
+	const result = await host.dispatch(
+		"press",
+		{ tab: opened.tab, key: "Enter" },
+		"press",
+	);
+	await Promise.all(pending);
+	assert.equal(result.url, "https://press.example/");
+	assert.equal(
+		registry.requireSurface(opened.tab).view.webContents.getURL(),
+		result.url,
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "Fetch.continueRequest" &&
+				call.params.requestId === "approved-hop",
+		),
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "Fetch.failRequest" &&
+				call.params.requestId === "forbidden-hop" &&
+				call.params.errorReason === "BlockedByClient",
+		),
+	);
+	assert.equal(hop, null);
+});
+
+test("press unsupported_key crosses the real RPC envelope without becoming internal", async () => {
+	const { host } = makeHost();
+	const opened = await openPressTab(host);
+	const server = await startRpcServer({
+		key: "press-isolated-key",
+		dispatch: (method, params, id) => host.dispatch(method, params, id),
+		log: () => {},
+	});
+	try {
+		const response = await fetch(`http://127.0.0.1:${server.port}${RPC_PATH}`, {
+			method: "POST",
+			headers: { [KEY_HEADER]: "press-isolated-key" },
+			body: JSON.stringify({
+				id: "unsupported",
+				method: "press",
+				params: { tab: opened.tab, key: "Ctrl+Nope" },
+			}),
+		});
+		assert.equal(response.status, 200);
+		const body = await response.json();
+		assert.equal(body.ok, false);
+		assert.equal(body.error.code, "unsupported_key");
+		assert.equal(body.error.message, "unsupported key: Ctrl+Nope");
+		assert.equal(body.error.data.key, "Ctrl+Nope");
+	} finally {
+		await server.close();
+	}
+});
+
+// ---- press chords and hover (harness issue #3248) ---------------------------
+
+test("press admits chords: modifiers ride ONE key pair, and a shortcut carries no text", async () => {
+	for (const [key, expected, canonical] of [
+		[
+			"Control+K",
+			{ key: "k", code: "KeyK", windowsVirtualKeyCode: 75, modifiers: 2 },
+			"Control+K",
+		],
+		[
+			"cmd+k",
+			{ key: "k", code: "KeyK", windowsVirtualKeyCode: 75, modifiers: 4 },
+			"Meta+k",
+		],
+		[
+			"Ctrl+Shift+ArrowLeft",
+			{
+				key: "ArrowLeft",
+				code: "ArrowLeft",
+				windowsVirtualKeyCode: 37,
+				modifiers: 10,
+			},
+			"Control+Shift+ArrowLeft",
+		],
+		[
+			"e",
+			{
+				key: "e",
+				code: "KeyE",
+				windowsVirtualKeyCode: 69,
+				modifiers: 0,
+				text: "e",
+				unmodifiedText: "e",
+			},
+			"e",
+		],
+		[
+			"F5",
+			{ key: "F5", code: "F5", windowsVirtualKeyCode: 116, modifiers: 0 },
+			"F5",
+		],
+	]) {
+		const { host, cdp, registry } = makeHost();
+		const opened = await openPressTab(host);
+		const contents = registry.requireSurface(opened.tab).view.webContents;
+		contents.focus = () => assert.fail("press must not focus OS contents");
+		cdp.calls.length = 0;
+		const result = await host.dispatch(
+			"press",
+			{ tab: opened.tab, key },
+			"press",
+		);
+		assert.equal(
+			result.key,
+			canonical,
+			`${key} reports its canonical spelling`,
+		);
+		const keys = cdp.calls.filter(
+			(call) => call.method === "Input.dispatchKeyEvent",
+		);
+		assert.deepEqual(
+			keys.map((call) => call.params),
+			["keyDown", "keyUp"].map((type) => ({
+				...Object.fromEntries(
+					Object.entries(expected).filter(
+						([field]) =>
+							type === "keyDown" || !["text", "unmodifiedText"].includes(field),
+					),
+				),
+				type,
+			})),
+			key,
+		);
+		assert.ok(
+			!cdp.calls.some((call) => call.method.startsWith("Input.dispatchMouse")),
+		);
+	}
+});
+
+test("press with a selector focuses the element first, refuses one that will not take focus, and sends nothing then", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	const send = cdp.send;
+	let focusAnswer = true;
+	cdp.send = async (contents, method, params) => {
+		if (method === "DOM.resolveNode") {
+			cdp.calls.push({ method, params });
+			return { object: { objectId: "obj-1" } };
+		}
+		if (
+			method === "Runtime.callFunctionOn" &&
+			String(params?.functionDeclaration ?? "").includes("preventScroll")
+		) {
+			cdp.calls.push({ method, params });
+			return { result: { value: focusAnswer } };
+		}
+		return send(contents, method, params);
+	};
+	cdp.calls.length = 0;
+	await host.dispatch(
+		"press",
+		{ tab: opened.tab, key: "e", selector: "#item" },
+		"press",
+	);
+	const order = cdp.calls.map((call) => call.method);
+	assert.ok(
+		order.indexOf("Runtime.callFunctionOn") <
+			order.indexOf("Input.dispatchKeyEvent"),
+		`focus precedes the key: ${order.join(",")}`,
+	);
+	const focusCall = cdp.calls.find(
+		(call) => call.method === "Runtime.callFunctionOn",
+	);
+	assert.ok(
+		!focusCall.params.functionDeclaration.includes("not_editable"),
+		"focus does not require an editable (that is type's check)",
+	);
+	focusAnswer = false;
+	cdp.calls.length = 0;
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ tab: opened.tab, key: "e", selector: "#item" },
+			"press",
+		),
+		(error) =>
+			error.code === "element_not_found" &&
+			/cannot take focus/.test(error.message),
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("hover is in the wire vocabulary, advertised beside press, lane-scoped, and not a navigating action", async () => {
+	assert.ok(METHODS.includes("hover"));
+	assert.ok(isMethod("hover"));
+	assert.equal(
+		METHODS.at(-2),
+		"hover",
+		"appended: no existing method's index moved",
+	);
+	assert.ok(HOST_CAPABILITIES.includes("hover"));
+	// The harness gates extended press on this exact token; `press` alone is true of
+	// every older desktop build, so it is not evidence of chord support.
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("press_chord"),
+		HOST_CAPABILITIES.indexOf("press") + 1,
+	);
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("hover"),
+		HOST_CAPABILITIES.indexOf("press_chord") + 1,
+	);
+	assert.ok(!METHODS.includes("press_chord"), "a token, not a wire method");
+	assert.ok(!isMethod("press_chord"));
+	assert.equal(COMMAND_TIMEOUTS_S.hover, 20);
+	// Behavioural proof of set membership, not a source grep: TAB_SCOPED puts it in
+	// the per-tab lane (a second concurrent command is refused as `busy`), and it
+	// arms NO per-hop gate (`Fetch.enable`), which click/type/press do.
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	cdp.calls.length = 0;
+	await host
+		.dispatch("hover", { tab: opened.tab, x: 10, y: 20 }, "hover")
+		.catch(() => undefined);
+	assert.ok(
+		!cdp.calls.some((call) => call.method === "Fetch.enable"),
+		"no per-hop gate around hover",
+	);
+	assert.ok(
+		cdp.calls.some((call) => call.method === "Input.dispatchMouseEvent"),
+	);
+});
+
+test("hover refuses selector+coordinates, a lone coordinate and nothing, before any page work", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	for (const params of [
+		{ selector: "#a", x: 1, y: 2 },
+		{ ref: "e1", x: 1, y: 2 },
+		{ selector: "#a", x: 1 },
+		{ x: 1 },
+		{ y: 2 },
+		{},
+		{ x: "1", y: "2" },
+		{ x: Number.NaN, y: 2 },
+	]) {
+		cdp.calls.length = 0;
+		await assert.rejects(
+			host.dispatch("hover", { tab: opened.tab, ...params }, "hover"),
+			(error) =>
+				error.code === "internal" &&
+				error.data.reason === "invalid_arguments" &&
+				typeof error.data.param === "string",
+			JSON.stringify(params),
+		);
+		assert.equal(
+			cdp.calls.length,
+			0,
+			`${JSON.stringify(params)} touched the page`,
+		);
+	}
+});
+
+test("hover by position sends ONE buttonless mouseMoved and reports the hit_test descriptor", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	const contents = registry.requireSurface(opened.tab).view.webContents;
+	contents.isolatedResult = {
+		count: 1,
+		elements: [{ tag: "li", id: "row-1" }],
+	};
+	contents.focus = () => assert.fail("hover must not focus OS contents");
+	cdp.calls.length = 0;
+	const result = await host.dispatch(
+		"hover",
+		{ tab: opened.tab, x: 40.5, y: 90 },
+		"hover",
+	);
+	const moves = cdp.calls.filter(
+		(call) => call.method === "Input.dispatchMouseEvent",
+	);
+	assert.deepEqual(
+		moves.map((call) => call.params),
+		[
+			{
+				type: "mouseMoved",
+				x: 40.5,
+				y: 90,
+				button: "none",
+				buttons: 0,
+				pointerType: "mouse",
+			},
+		],
+	);
+	assert.equal(result.x, 40.5);
+	assert.equal(result.y, 90);
+	assert.deepEqual(result.hit, contents.isolatedResult);
+	assert.equal(result.url, "https://press.example/");
+	assert.ok(
+		!cdp.calls.some((call) =>
+			["Fetch.enable", "Input.dispatchKeyEvent"].includes(call.method),
+		),
+	);
+});
+
+test("hover by selector scrolls first, points at the box centre, and refuses a box-less element without moving", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	registry.requireSurface(opened.tab).view.webContents.isolatedResult = {
+		count: 1,
+		elements: [],
+	};
+	const send = cdp.send;
+	let centre = { x: 100.004, y: 200.996 };
+	cdp.send = async (contents, method, params) => {
+		if (method === "DOM.resolveNode") {
+			cdp.calls.push({ method, params });
+			return { object: { objectId: "obj-1" } };
+		}
+		if (
+			method === "Runtime.callFunctionOn" &&
+			String(params?.functionDeclaration ?? "").includes(
+				"getBoundingClientRect",
+			)
+		) {
+			cdp.calls.push({ method, params });
+			return { result: { value: centre } };
+		}
+		return send(contents, method, params);
+	};
+	cdp.calls.length = 0;
+	const result = await host.dispatch(
+		"hover",
+		{ tab: opened.tab, selector: "#row-1" },
+		"hover",
+	);
+	const order = cdp.calls.map((call) => call.method);
+	assert.ok(
+		order.indexOf("DOM.scrollIntoViewIfNeeded") <
+			order.indexOf("Input.dispatchMouseEvent"),
+	);
+	assert.equal(result.x, 100);
+	assert.equal(result.y, 201);
+	centre = null;
+	cdp.calls.length = 0;
+	await assert.rejects(
+		host.dispatch("hover", { tab: opened.tab, selector: "#hidden" }, "hover"),
+		(error) =>
+			error.code === "element_not_found" && /no box/.test(error.message),
+	);
+	assert.ok(
+		!cdp.calls.some((call) => call.method === "Input.dispatchMouseEvent"),
+	);
+});
+
+test("hover retains missing-tab, owner proof, generation, foreign-owner and origin fences", async () => {
+	const { host, registry, cdp } = makeHost();
+	const owner = {
+		requester: "session:press",
+		owner_proof: "p".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "alloc",
+	};
+	const opened = await openPressTab(host, owner);
+	cdp.calls.length = 0;
+	for (const override of [
+		{ owner_generation: "stale" },
+		{ owner_proof: "short" },
+		{ requester: "session:foreign" },
+		{ requester: "session:foreign", owner_proof: "q".repeat(40) },
+	]) {
+		await assert.rejects(
+			host.dispatch(
+				"hover",
+				{ ...owner, tab: opened.tab, x: 1, y: 2, ...override },
+				"hover",
+			),
+			{ code: "owner_refused" },
+		);
+	}
+	await assert.rejects(
+		host.dispatch("hover", { ...owner, x: 1, y: 2 }, "missing"),
+		{
+			code: "tab_closed",
+		},
+	);
+	await assert.rejects(
+		host.dispatch(
+			"hover",
+			{ ...owner, tab: "ui:missing", x: 1, y: 2 },
+			"closed",
+		),
+		{ code: "tab_closed" },
+	);
+	registry.requireSurface(opened.tab).view.webContents.url =
+		"https://unapproved.example/";
+	await assert.rejects(
+		host.dispatch("hover", { ...owner, tab: opened.tab, x: 1, y: 2 }, "origin"),
+		{ code: "origin_not_allowed" },
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("a hover whose page handler navigates to an unapproved origin is refused with the origin named and the landing reverted (review R1-3)", async () => {
+	// `hover` cannot navigate by itself, but a page's own mouseenter handler can, and
+	// measured against the built app it was first refused as a bare `changed` while the
+	// tab STAYED on the unapproved page. Membership in NAVIGATING_ACTIONS is what names
+	// the origin and reverts; this pins it, and that no per-hop `Fetch` gate is armed.
+	const { host, cdp, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const record = registry.requireSurface(tab);
+	record.view.webContents.isolatedResult = { count: 1, elements: [] };
+	const perform = host.perform.bind(host);
+	host.perform = async (method, params, requestId) => {
+		const result = await perform(method, params, requestId);
+		record.view.webContents.url = "https://forbidden.example/landed";
+		registry.bumpEpoch(record.tabId);
+		return result;
+	};
+	cdp.calls.length = 0;
+	await assert.rejects(
+		() => host.dispatch("hover", { ...owner, tab, x: 10, y: 10 }, "hover"),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.reason === "unapproved" &&
+			error.data.origin === "https://forbidden.example",
+	);
+	assert.equal(record.view.webContents.url, "https://approved.example/");
+	assert.ok(
+		record.view.webContents.loaded.includes("https://approved.example/"),
+	);
+	assert.ok(
+		!cdp.calls.some((call) => call.method === "Fetch.enable"),
+		"hover arms no per-hop gate",
+	);
+});
+
+for (const failure of ["null hit", "read throws"]) {
+	test(`hover navigation is authorized and restored even when the post-move ${failure} prevents perform from returning (review R2)`, async () => {
+		const { host, cdp, registry } = makeHost();
+		const { owner, tab } = await openApprovedTab(host);
+		const record = registry.requireSurface(tab);
+		const contents = record.view.webContents;
+		// Unlike the R1 test (navigation AFTER perform returned), this is the page's
+		// mouseenter handler running DURING the move. The new document has no hit at
+		// that point, or its context disappeared: both make perform THROW before its
+		// return-side document check. Neither may leave the forbidden landing open.
+		contents.isolatedResult = null;
+		if (failure === "read throws")
+			contents.isolatedError = new Error("context destroyed");
+		const send = cdp.send;
+		cdp.send = async (target, method, params) => {
+			if (method === "Input.dispatchMouseEvent") {
+				contents.url = "https://forbidden.example/landed";
+				registry.bumpEpoch(record.tabId);
+			}
+			return send(target, method, params);
+		};
+		cdp.calls.length = 0;
+		await assert.rejects(
+			host.dispatch("hover", { ...owner, tab, x: 10, y: 10 }, "hover"),
+			(error) =>
+				error.code === "origin_not_allowed" &&
+				error.data.reason === "unapproved" &&
+				error.data.origin === "https://forbidden.example",
+		);
+		assert.equal(contents.url, "https://approved.example/");
+		assert.ok(contents.loaded.includes("https://approved.example/"));
+		assert.ok(!cdp.calls.some((call) => call.method === "Fetch.enable"));
+	});
+}
+
+test("hover's original hit failure survives when the landing document is still approved", async () => {
+	const { host, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const contents = registry.requireSurface(tab).view.webContents;
+	contents.isolatedResult = null;
+	const loads = contents.loaded.length;
+	await assert.rejects(
+		host.dispatch("hover", { ...owner, tab, x: 10, y: 10 }, "hover"),
+		(error) =>
+			error.code === "element_not_found" &&
+			error.message.includes("no element at point"),
+	);
+	assert.equal(
+		contents.loaded.length,
+		loads,
+		"no spurious restore without an unapproved landing",
+	);
+});
+
+test("select is advertised, owned/document scoped, and restores forbidden change-handler landings without Fetch", async () => {
+	assert.ok(METHODS.includes("select"));
+	assert.ok(isMethod("select"));
+	assert.ok(HOST_CAPABILITIES.includes("select"));
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("select"),
+		HOST_CAPABILITIES.indexOf("hover") + 1,
+	);
+	assert.equal(COMMAND_TIMEOUTS_S.select, 25);
+	const { host, cdp, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const contents = registry.requireSurface(tab).view.webContents;
+	const original = cdp.send;
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode") return { object: { objectId: "select" } };
+		if (method === "Runtime.callFunctionOn") {
+			if (params.functionDeclaration.includes("tagName === 'SELECT'"))
+				return { result: { value: true } };
+			if (params.arguments?.[0]?.value === "apply") {
+				contents.url = "https://forbidden.example/selected";
+				registry.bumpEpoch(registry.requireSurface(tab).tabId);
+				throw new Error("context destroyed on change");
+			}
+		}
+		return original(target, method, params);
+	};
+	cdp.calls.length = 0;
+	await assert.rejects(
+		host.dispatch(
+			"select",
+			{ ...owner, tab, selector: "#s", options: ["Beta"] },
+			"select",
+		),
+		(e) =>
+			e.code === "origin_not_allowed" &&
+			e.data.origin === "https://forbidden.example",
+	);
+	assert.equal(contents.url, "https://approved.example/");
+	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	await assert.rejects(
+		host.dispatch(
+			"select",
+			{
+				...owner,
+				tab,
+				selector: "#s",
+				options: [0],
+				owner_generation: "stale",
+			},
+			"select",
+		),
+		{ code: "owner_refused" },
 	);
 });

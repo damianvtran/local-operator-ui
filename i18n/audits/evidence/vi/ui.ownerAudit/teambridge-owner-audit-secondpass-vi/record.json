@@ -1,0 +1,46 @@
+{
+	"schema": 1,
+	"record_kind": "audit evidence record (second independent pass)",
+	"audit_id": "teambridge-owner-audit-secondpass-vi",
+	"date": "2026-10-28",
+	"locale": "vi",
+	"namespace": "ui.ownerAudit",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"role": "reviewer",
+		"session": "9de729bbb191",
+		"instance": "9de729bbb191-secondpass-vi",
+		"model": "anthropic/claude-opus-5-5",
+		"model_provenance": "harness session header",
+		"model_fallback": "quota descent after all linguistic work; mechanical ledger write only",
+		"independence": "Independent of auditor b393dc8cd01c whose auditor-authored replacements this pass re-audits; it wrote no catalogue byte (the operator applied its prescribed wording)."
+	},
+	"scope": {
+		"kind": "narrow second pass",
+		"auditor_under_review": "b393dc8cd01c",
+		"keys": [
+			"ui.ownerAudit.read_only",
+			"ui.ownerAudit.removed"
+		],
+		"not_reaudited": "all other ui.ownerAudit keys and ui.teamBridge.thread.not_available, unchanged since that audit"
+	},
+	"paths": {
+		"english": "src/i18n/catalogues/en/ui.ownerAudit.json",
+		"target": "src/i18n/catalogues/vi/ui.ownerAudit.json",
+		"receipt": "i18n/receipts/9de729bbb191-secondpass-vi.json"
+	},
+	"sha256": {
+		"en": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+		"vi": "df9a9a9536d3d428dfc24ec2b0ec7d6c579a84aa2ebc03d2796801fe507cb096",
+		"receipt": "f4d176d1a97f090552e60d0bb132fa7c49275fae4571861e178a5fa53fb5a655"
+	},
+	"result": "clean",
+	"status": "passed",
+	"findings": [],
+	"resolved_findings": [
+		"I18N2-vi-1",
+		"I18N2-vi-2"
+	],
+	"verdict": "vi: auditor-authored replacements sound; ledger row re-audited at these bytes.",
+	"note": "Notes are linguistic judgement, not an execution log"
+}

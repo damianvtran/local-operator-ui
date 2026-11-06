@@ -36,7 +36,7 @@ re-encode would transform the artefact without changing what it is judged as.
 | --- | --- | --- |
 | `recommended-selected/` | `chat-asks-queued-asks--recommended-selected` | the drawer now draws the mark at all (it drew nothing before), keyed on `question.recommended`. Label bolded + `▸ Recommended` beside it |
 | `recommended-passed-over/` | `chat-asks-queued-asks--recommended-passed-over` | the deciding state: `production` selected, `staging` still bolded and badged |
-| `full-text-at-width/` | `chat-asks-queued-asks--full-text-at-width` | 452-char question, 65-char label, 320-char description at the family's 560px cap |
+| `full-text-at-width/` | `chat-asks-queued-asks--full-text-at-width` | 452-char question, 65-char label, 320-char description at 560px (the family's cap when the frame was taken; a mid-band width now) |
 | `full-text-at-floor/` | `chat-asks-queued-asks--full-text-at-floor` | the same card at the 400px floor |
 | `session-row-asks/` | `chat-session-status--asks-outstanding` | the session row mark: accent glyph + count digits |
 | `dock-recommended/` | `chat-ask-options--options` | the dock card, unchanged in behaviour and re-shot against the shared badge |

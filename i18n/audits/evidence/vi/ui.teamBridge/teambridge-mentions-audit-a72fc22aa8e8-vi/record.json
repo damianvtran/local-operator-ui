@@ -1,0 +1,71 @@
+{
+	"record_kind": "translation audit record (independent delta audit, PR #1532 mention copy)",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "task",
+		"session": "a72fc22aa8e8",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Independent auditor: session a72fc22aa8e8 (team lopdev, role task, assignment 'i18n audit ui#1532'). The translations were authored by the lopdev coder in commit d97fab7df10 (self-translated); this session did not author them. Prior ui.teamBridge auditors' rows are superseded, not reused."
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"commit": "d97fab7df10"
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+			"sha256": "1e0d2f55b7ec9cb4751bf115853de68bcb0fea471e4db5fde7c0bc8ae8d23901"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "2df42931aef59c5be610d072d70731a1bd71500306235a501bed8fdc9640511a"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/a72fc22aa8e8-vi.json",
+		"sha256": "9f83beae71277d350454d4dc0998ed0a019830e7e5fc9bcba920ed3cb86fada9"
+	},
+	"head_at_audit": "b6b35c048dd48e825e4929ab8847f1bc60d779cf",
+	"pr": "damianvtran/local-operator-ui#1532",
+	"keys": [
+		"ui.teamBridge.mentions.listbox_label",
+		"ui.teamBridge.mentions.empty",
+		"ui.teamBridge.mentions.section.member_human",
+		"ui.teamBridge.mentions.section.member_agent",
+		"ui.teamBridge.mentions.section.org_human",
+		"ui.teamBridge.mentions.section.org_agent",
+		"ui.teamBridge.mentions.agent_secondary",
+		"ui.teamBridge.mentions.tag.not_member",
+		"ui.teamBridge.mentions.tag.bridge_off",
+		"ui.teamBridge.mentions.notice.not_member",
+		"ui.teamBridge.mentions.notice.invite_failed",
+		"ui.teamBridge.mentions.notice.invite",
+		"ui.teamBridge.mentions.notice.silent"
+	],
+	"findings": {
+		"residual": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		},
+		"remediated_in_audit": []
+	},
+	"status": "clean",
+	"notes": "Audit notes, not an execution log. Width judged in characters against the 22rem popover (truncating rows) and wrapping notice; no rendered-frame claim."
+}

@@ -1,3 +1,4 @@
+import { useCustomThemes } from "@shared/themes/custom-theme-store";
 /**
  * Destination adapters: one component per `native_action` destination.
  *
@@ -13,6 +14,10 @@
  * duplicating an editor here. Everything else renders in the host.
  */
 
+import {
+	agentDescriptionText,
+	withAgentDescriptionText,
+} from "@features/agents/utils/agent-description";
 import { autoTagSupported, forkAutoTag } from "@features/chat/chat-auto-tag";
 import { parseSidebarView } from "@features/chat/chat-sidebar-view";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
@@ -34,10 +39,18 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
-import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import {
+	type CanonicalSessionHandle,
+	resyncCanonicalSession,
+} from "@shared/hooks/use-canonical-session";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import {
+	type ModelAuthorityReceipt,
+	observeModelAuthority,
+} from "../../../dev-driver/model-authority-observer";
+import { statusLabelText } from "../components/chat-session-status";
 
 /**
  * The model this session is RUNNING, for a dialog whose job is not to offer the
@@ -62,6 +75,8 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
+import { appearanceLayerSummary } from "@shared/themes/appearance-summary";
+import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import {
 	showErrorToast,
 	showInfoToast,
@@ -868,6 +883,27 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const [live, setLive] = useState(false);
 	const [pickedCurrent, setPickedCurrent] = useState<string | null>(null);
+	// A lost ACK is not a refusal. Hold fresh model intents until a read-only
+	// authoritative snapshot answers; never replay the possibly accepted UUID.
+	const [unconfirmedModel, setUnconfirmedModel] = useState(false);
+	const unconfirmedModelRef = useRef(false);
+	// Feedback belongs to one mounted intent and one bridge receipt generation.
+	// Owner/frontend epochs are a different clock; never use them for this guard.
+	const modelFeedbackIntent = useRef(0);
+	const modelFeedbackContext = useRef({
+		sessionId,
+		receipt: canonical.receipt,
+	});
+	if (modelFeedbackContext.current.sessionId !== sessionId)
+		modelFeedbackIntent.current += 1;
+	modelFeedbackContext.current = { sessionId, receipt: canonical.receipt };
+	useEffect(
+		() => () => {
+			modelFeedbackIntent.current += 1;
+		},
+		[],
+	);
+
 	/*
 	 * WHICH VIEW OF THE CATALOGUE THIS DIALOG SHOWS.
 	 *
@@ -1403,6 +1439,13 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const saveModelDefault = useCallback(
 		(model: { provider: string; model_id: string }) => {
+			observeModelAuthority({
+				carrier: "default-save",
+				sessionId: "",
+				epoch: null,
+				seq: null,
+				disposition: "invoked",
+			});
 			/*
 			 * Chained, as the effort dialog's are: the last write asked for is the
 			 * last write config.yml sees, whatever order the answers come back in
@@ -1584,6 +1627,8 @@ export const ModelPicker: FC<PickerContext> = ({
 				model_id: modelId,
 				display_name: option.label,
 			};
+			const feedbackIntent = ++modelFeedbackIntent.current;
+			const feedbackReceipt = modelFeedbackContext.current.receipt;
 			canonical.paintPendingModel(model);
 			switching.current = true;
 			let run: Awaited<ReturnType<typeof command.run>>;
@@ -1593,10 +1638,90 @@ export const ModelPicker: FC<PickerContext> = ({
 				switching.current = false;
 			}
 			const { outcome, result: failure } = run;
-			if (!outcome || isNativeAction(outcome) || outcome.kind === "error") {
+			if (
+				!outcome ||
+				isNativeAction(outcome) ||
+				outcome.kind === "error" ||
+				failure.tone === "error"
+			) {
 				// The owner refused (or the call itself failed): the band goes back to
 				// the authoritative model rather than keeping a paint that never landed.
 				canonical.clearPendingModel();
+				if (run.unconfirmed) {
+					unconfirmedModelRef.current = true;
+					setUnconfirmedModel(true);
+					note(failure.text);
+					if (persistDefaultRef.current) persist.setResult(failure);
+					// Armed evidence observes this REAL consumer after interpretation;
+					// ordinary launches retain no metadata and change no control flow.
+					let authorityReceipt: ModelAuthorityReceipt = {
+						carrier: "model-get",
+						sessionId,
+						epoch: null,
+						seq: null,
+						disposition: "failed",
+					};
+					try {
+						// Unlike the one-shot composer hook, this read must distinguish
+						// failure from success before enabling another mutation. A cold
+						// carried snapshot is not proof of the owner's current selection.
+						const snapshot = await desktopResult<{
+							session_id?: string;
+							epoch?: string;
+							seq?: number;
+							payload: { frontend: CanonicalFrontendSync; cold: boolean };
+						}>({ op: "sessions.get", sessionId });
+						const state = snapshot.payload.frontend.snapshot;
+						const selector = modelSelector(state.selected_model);
+						if (snapshot.payload.cold === false && selector) {
+							setPickedCurrent(selector);
+							unconfirmedModelRef.current = false;
+							setUnconfirmedModel(false);
+							// Retire only this uncertain intent's active feedback once its
+							// intended selection is independently confirmed. History's note
+							// remains; a newer command/save result must never be erased.
+							const current = modelFeedbackContext.current;
+							if (
+								modelFeedbackIntent.current === feedbackIntent &&
+								current.sessionId === sessionId &&
+								snapshot.session_id === sessionId &&
+								state.session_id === sessionId &&
+								selector === value &&
+								feedbackReceipt &&
+								current.receipt &&
+								snapshot.epoch === feedbackReceipt.epoch &&
+								current.receipt.epoch === feedbackReceipt.epoch &&
+								typeof snapshot.seq === "number" &&
+								snapshot.seq >= feedbackReceipt.seq &&
+								snapshot.seq >= current.receipt.seq
+							) {
+								command.setResult((current) =>
+									current === failure ? null : current,
+								);
+								persist.setResult((current) =>
+									current === failure ? null : current,
+								);
+							}
+						}
+						authorityReceipt = {
+							carrier: "model-get",
+							sessionId,
+							epoch: snapshot.epoch ?? null,
+							seq: snapshot.seq ?? null,
+							disposition:
+								snapshot.payload.cold === false && selector
+									? "live"
+									: "cold-or-invalid",
+						};
+					} catch {
+						// Keep the neutral uncertainty and disabled choices, not a
+						// fabricated unchanged model or a second command request.
+					} finally {
+						resyncCanonicalSession(sessionId);
+						observeModelAuthority(authorityReceipt);
+					}
+					return;
+				}
 				/*
 				 * And the failure is reported WHEREVER it lands (UX U2).
 				 *
@@ -1647,6 +1772,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			canonical,
 			command,
 			note,
+			sessionId,
 			rowAuth,
 			draft,
 			draftPick.pick,
@@ -1708,6 +1834,10 @@ export const ModelPicker: FC<PickerContext> = ({
 		),
 	] as const;
 	const onPersistDefaultChange = (checked: boolean) => {
+		// A missing receipt can follow an accepted switch. Until a LIVE read
+		// identifies the selection, even a queued/programmatic checkbox callback
+		// must not persist the last-known model or change the checkbox's intent.
+		if (unconfirmedModel || unconfirmedModelRef.current) return;
 		persistDefaultRef.current = checked;
 		setPersistDefault(checked);
 		if (!checked) {
@@ -1813,7 +1943,11 @@ export const ModelPicker: FC<PickerContext> = ({
 								"ui.chat.pickers.destination_pickers.choose_the_model_for_this_session",
 							)
 			}
-			options={options}
+			options={
+				unconfirmedModel
+					? options.map((option) => ({ ...option, disabled: true }))
+					: options
+			}
 			/*
 			 * The model picker's own search rule: the catalogue's ids are not strings
 			 * the user wrote, so the shared contiguous test is too narrow for them and
@@ -1965,6 +2099,13 @@ export const ModelPicker: FC<PickerContext> = ({
 						? t("ui.chat.pickers.destination_pickers.switching_the_model8e7138")
 						: t("ui.chat.pickers.destination_pickers.saving_the_default9573f2")
 			}
+			blockedHint={
+				unconfirmedModel
+					? t(
+							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+						)
+					: undefined
+			}
 			result={draft ? draftPick.result : pickResult}
 			toolbar={
 				/*
@@ -2010,6 +2151,7 @@ export const ModelPicker: FC<PickerContext> = ({
 						{!draft && (
 							<PickerCheck
 								checked={persistDefault}
+								disabled={unconfirmedModel}
 								onCheckedChange={onPersistDefaultChange}
 								tone="muted"
 							>
@@ -2038,7 +2180,12 @@ export const ModelPicker: FC<PickerContext> = ({
 								variant="ghost"
 								size="sm"
 								type="button"
-								disabled={!modelInForce || command.busy || persist.busy}
+								disabled={
+									!modelInForce ||
+									command.busy ||
+									persist.busy ||
+									unconfirmedModel
+								}
 								onClick={() => {
 									if (modelInForce) void saveModelDefault(modelInForce);
 								}}
@@ -2123,7 +2270,7 @@ export const EffortPicker: FC<PickerContext> = ({
 	draft,
 	note,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	/*
 	 * A session's rungs come from the owner (`command-entities?command=effort`),
 	 * which is the list `/effort <rung>` itself validates against. A DRAFT pane has
@@ -2265,18 +2412,18 @@ export const EffortPicker: FC<PickerContext> = ({
 	 */
 	const rungInForce = acceptedRung ?? currentRung;
 
-	const options = useMemo<PickerOption[]>(
-		() =>
-			rungs.map((value) => ({
-				value,
-				// `value` stays the raw lowercase rung -- it is what `/effort <rung>`
-				// is sent and what `currentRung === value` compares. Only the LABEL
-				// is the title-cased human form, matching the chip and the model name.
-				label: effortDisplay(value),
-				current: rungInForce === value,
-			})),
-		[rungs, rungInForce],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		// t() reads at call time; locale invalidates the display-only labels.
+		void locale;
+		return rungs.map((value) => ({
+			value,
+			// `value` stays the raw lowercase rung -- it is what `/effort <rung>`
+			// is sent and what `currentRung === value` compares. Only the LABEL
+			// is the title-cased human form, matching the chip and the model name.
+			label: effortDisplay(value),
+			current: rungInForce === value,
+		}));
+	}, [rungs, rungInForce, locale]);
 	const label = model
 		? `${model.provider}/${model.model_id}`
 		: t("ui.chat.pickers.destination_pickers.the_current_model");
@@ -2551,8 +2698,39 @@ export const EffortPicker: FC<PickerContext> = ({
 
 export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 	const locale = useI18nLocale();
-	const themeName = useUiPreferencesStore((state) => state.themeName);
+	const customThemes = useCustomThemes();
+	const customThemeId = useUiPreferencesStore((state) => state.customThemeId);
+	const baseThemeName = useUiPreferencesStore((state) => state.themeName);
+	const selectedId = customThemes.themes.some(
+		(theme) => theme.id === customThemeId,
+	)
+		? customThemeId
+		: baseThemeName;
+	const choices = useMemo(() => {
+		void locale;
+		return [
+			...Object.values(themes),
+			...customThemes.themes.map((theme) => ({
+				id: theme.id,
+				name: theme.name,
+				description: t("ui.settings.appearance.editor.base", {
+					name: theme.base,
+				}),
+			})),
+		];
+	}, [customThemes, locale]);
 	const setTheme = useUiPreferencesStore((state) => state.setTheme);
+	/*
+	 * The CURRENT row follows the painted composition, not the name alone: when
+	 * a contrast preset or the user's accent is layered over the theme, its meta
+	 * says so ("Strong contrast, your accent"), so the list never claims the
+	 * stock palette while the app paints another (see `appearanceLayerSummary`).
+	 */
+	const resolvedAppearance = useResolvedAppearance();
+	const accentRef = useUiPreferencesStore(
+		(state) => state.accent[resolvedAppearance.palette.mode],
+	);
+	const layerSummary = appearanceLayerSummary(resolvedAppearance, accentRef);
 	const [result, setResult] = useState<PickerResult | null>(null);
 	/*
 	 * The theme a fully-qualified argument NAMES, resolved at render so the FIRST
@@ -2574,31 +2752,42 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 		const wanted = action.args.trim();
 		if (!wanted) return null;
 		return (
-			Object.values(themes).find(
+			choices.find(
 				(theme) =>
 					theme.id.toLowerCase() === wanted.toLowerCase() ||
 					theme.name.toLowerCase() === wanted.toLowerCase(),
 			) ?? null
 		);
-	}, [action.args]);
+	}, [action.args, choices]);
 	const options = useMemo<PickerOption[]>(() => {
 		void locale;
-		return Object.values(themes).map((theme) => ({
+		return choices.map((theme) => ({
 			value: theme.id,
 			label: theme.name,
 			description: theme.description,
-			current: theme.id === themeName,
+			current: theme.id === selectedId,
+			...(theme.id === selectedId && layerSummary
+				? { meta: layerSummary }
+				: {}),
 			group: theme.id.startsWith("localOperator")
 				? "Local Operator"
 				: t("ui.chat.pickers.destination_pickers.ports"),
 		}));
-	}, [themeName, locale]);
+	}, [selectedId, choices, locale, layerSummary]);
 	// A typed argument (`/theme dracula`) is a direct pick when it names a theme.
 	useEffect(() => {
 		const wanted = action.args.trim();
 		if (!wanted) return;
 		if (requested) {
-			setTheme(requested.id as ThemeName);
+			const custom = customThemes.themes.find(
+				(theme) => theme.id === requested.id,
+			);
+			if (custom)
+				useUiPreferencesStore.setState({
+					themeName: custom.base as ThemeName,
+					customThemeId: custom.id,
+				});
+			else setTheme(requested.id as ThemeName);
 			setResult({
 				tone: "success",
 				text: t("ui.chat.pickers.destination_pickers.theme", {
@@ -2613,7 +2802,7 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 				}),
 			});
 		}
-	}, [action.args, requested, setTheme]);
+	}, [action.args, requested, setTheme, customThemes]);
 	return (
 		<PickerHost
 			open
@@ -2632,7 +2821,13 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 			 */
 			options={requested ? undefined : options}
 			onPick={(value, option) => {
-				setTheme(value as ThemeName);
+				const custom = customThemes.themes.find((theme) => theme.id === value);
+				if (custom)
+					useUiPreferencesStore.setState({
+						themeName: custom.base as ThemeName,
+						customThemeId: custom.id,
+					});
+				else setTheme(value as ThemeName);
 				setResult({
 					tone: "success",
 					text: t("ui.chat.pickers.destination_pickers.theme_058ec5", {
@@ -2652,6 +2847,14 @@ type ProfileRow = {
 	name?: string;
 	kind?: string;
 	description?: string;
+	/**
+	 * Registry provenance (`builtin` | `installed` | `custom`). Present on the
+	 * agent arm of the session's `commands.entities` route, whose rows are the
+	 * registry's `profile_detail` projection (core `desktop_catalogues.py`); a
+	 * team row has none. Read only to decide whether `description` is shipped
+	 * copy (`agentDescriptionText`), never to address anything.
+	 */
+	source?: string;
 	/** A team's free-text display name, when the row carries one. */
 	label?: string;
 	/** Extra TUI-safe keys a team resolves under. Typed for the wire shape;
@@ -2670,6 +2873,15 @@ type ProfileRow = {
  * placeholder all read. `value` - what `onPick` selects, what `submit` sends
  * and what the detail query asks for - never routes through this.
  */
+/**
+ * Agent rows resolve their description through the shared resolver
+ * (`withAgentDescriptionText`); a team's description is always the operator's.
+ */
+const withLocalizedAgentDescription = (
+	row: ProfileRow,
+	which: "team" | "agent",
+): ProfileRow => (which === "agent" ? withAgentDescriptionText(row) : row);
+
 const readableProfileName = (row: ProfileRow | undefined, fallback: string) =>
 	teamDisplayName({ name: row?.name ?? fallback, label: row?.label });
 
@@ -2681,7 +2893,13 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	canonical,
 	action,
 }) => {
-	useI18nLocale();
+	/*
+	 * Bound to the frame rather than called for its effect: the roster below keys
+	 * shipped seed copy at memo time, so the locale belongs in that memo's deps -
+	 * `void locale` inside is the dependency the earlier arms of this file already
+	 * take for the same reason.
+	 */
+	const locale = useI18nLocale();
 	const [selected, setSelected] = useState<string | null>(null);
 	/*
 	 * THE DRAFT BRANCH (issue #780): mounted with no session — the dispatcher's
@@ -2713,7 +2931,12 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	const chartMode = (action.data as { mode?: string }).mode === "chart";
 
 	const listRows = useMemo<ProfileRow[]>(() => {
-		if (!draftMode) return list.data?.entities ?? [];
+		void locale;
+		if (!draftMode) {
+			return (list.data?.entities ?? []).map((row) =>
+				withLocalizedAgentDescription(row, which),
+			);
+		}
 		return which === "team"
 			? (draftTeams.data ?? []).map((team) => ({
 					value: team.name,
@@ -2724,10 +2947,26 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 			: (draftProfiles.data ?? []).map((profile) => ({
 					value: profile.name,
 					name: profile.name,
-					description: profile.description,
+					/*
+					 * THE SHIPPED SENTENCE, NOT THE FIELD (agent review round 1, R1-2).
+					 * These rows ARE the profiles registry's, so they carry the provenance
+					 * the resolution needs - and an installed seed serves its routing text
+					 * in this field, which stays English unless it resolves to a key. The
+					 * non-draft arm above takes the same resolver: the session's entity
+					 * route returns the registry's `profile_detail` rows, which carry
+					 * `source` too (agent review round 2, R2-1).
+					 */
+					description: agentDescriptionText(profile),
 					kind: profile.kind,
 				}));
-	}, [draftMode, which, list.data, draftTeams.data, draftProfiles.data]);
+	}, [
+		draftMode,
+		which,
+		list.data,
+		draftTeams.data,
+		draftProfiles.data,
+		locale,
+	]);
 	const listLoading = draftMode
 		? which === "team"
 			? draftTeams.isLoading
@@ -2767,7 +3006,11 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	 * `instructions`.
 	 */
 	const selectedRow = (
-		draftMode ? listRows : (detail.data?.entities ?? [])
+		draftMode
+			? listRows
+			: (detail.data?.entities ?? []).map((row) =>
+					withLocalizedAgentDescription(row, which),
+				)
 	).find((row) => row.value === selected);
 	const chart = detail.data?.current as
 		| Record<string, unknown>
@@ -3394,9 +3637,12 @@ function sessionLabel(row: SessionRow) {
  * Stop picker is where a not-answering row SENDS a person — so the one surface
  * that acts on the state was the one naming it in a word no other surface uses
  * (every other one says "not answering"). The row already carries the backend's
- * sentence (`status.label`, the same value the sidebar's tooltip and its
- * accessible name carry), and the contract is explicit that a client must not
- * re-derive status, so the label is READ and never rebuilt here.
+ * sentence (`status.label`), and the contract is explicit that a client must not
+ * re-derive status, so the label is READ and never rebuilt here. The one
+ * translated exception is shared with the sidebar rather than copied: the
+ * stable `recent` code goes through `statusLabelText`, so the picker and the
+ * sidebar name the same state in the same language; every other code keeps the
+ * backend's own label.
  *
  * AN ABSENT LABEL RENDERS NO LINE, deliberately. The alternative — falling back
  * to the raw `live_state` — is the defect, and inventing words for a state this
@@ -3410,7 +3656,7 @@ function sessionLabel(row: SessionRow) {
  * own label ("Recent") would say less than they do.
  */
 const sessionActivity = (row: SessionRow, cold: string): string | undefined =>
-	row.live_state ? row.status?.label : cold;
+	row.live_state ? statusLabelText(row) : cold;
 
 export const StopPicker: FC<PickerContext> = ({
 	sessionId,
@@ -4241,7 +4487,9 @@ export const FastPicker: FC<PickerContext> = ({
 			 */
 			description={
 				draft
-					? "Applies to the conversation this chat starts."
+					? t(
+							"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts",
+						)
 					: t(
 							"ui.chat.pickers.destination_pickers.applies_to_this_session_only",
 						)

@@ -99,6 +99,12 @@ export type AgentMessagesSettingsProps = {
 	 * (`/settings?setting=team_bridge.enabled`, design round 1 D1).
 	 */
 	focus?: boolean;
+	/**
+	 * A second reveal of the same row, from a second search jump. The `focused`
+	 * ref keeps the reveal idempotent so a repaint cannot steal the caret; a new
+	 * nonce re-arms it (see `language-dialog.tsx`'s `focusNonce`).
+	 */
+	focusNonce?: number;
 };
 
 /**
@@ -135,6 +141,7 @@ export function AgentMessagesSettings({
 	sessions = [],
 	onOpenSession,
 	focus = false,
+	focusNonce,
 }: AgentMessagesSettingsProps) {
 	useI18nLocale();
 	const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -290,6 +297,12 @@ export function AgentMessagesSettings({
 	 */
 	const sectionRoot = useRef<HTMLDivElement>(null);
 	const focused = useRef(false);
+	const focusNonceRef = useRef(focusNonce);
+	useEffect(() => {
+		if (focusNonce === focusNonceRef.current) return;
+		focusNonceRef.current = focusNonce;
+		focused.current = false;
+	}, [focusNonce]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `status` is a re-run trigger, not a value the body reads - a status refresh can enable the control (served consent arrives) after the settings read has settled.
 	useEffect(() => {
 		if (!focus) {
@@ -304,7 +317,7 @@ export function AgentMessagesSettings({
 		if (!control) return;
 		control.focus();
 		focused.current = true;
-	}, [focus, load, pending, status]);
+	}, [focus, focusNonce, load, pending, status]);
 
 	if (availability === "absent") return null;
 
@@ -726,6 +739,8 @@ const SettingsState: FC<SettingsStateProps> = ({
 				</p>
 				<EndpointConsent settings={settings} status={status} readOnly />
 				<LocalSwitch
+					searchRow="agent-messages.enabled"
+					searchTerms="team bridge team_bridge enabled devices"
 					value={localEnabled}
 					disabled={disabled}
 					description={t("ui.agentMessages.settings.local.stays_enrolled")}
@@ -788,6 +803,8 @@ const SettingsState: FC<SettingsStateProps> = ({
 					<div className="flex flex-wrap items-center gap-3">
 						<Button
 							data-agent-messages-action="turn_on_again"
+							data-search-row="agent-messages.enabled"
+							data-search-control
 							onClick={() => void enable()}
 							disabled={disabled || !consent}
 						>
@@ -810,6 +827,8 @@ const SettingsState: FC<SettingsStateProps> = ({
 					<div className="flex flex-wrap items-center gap-3">
 						<Button
 							data-agent-messages-action="enable"
+							data-search-row="agent-messages.enabled"
+							data-search-control
 							onClick={() => void enable()}
 							disabled={disabled || !consent}
 						>
@@ -852,6 +871,8 @@ const SettingsState: FC<SettingsStateProps> = ({
 						/>
 					)}
 					<LocalSwitch
+						searchRow="agent-messages.enabled"
+						searchTerms="team bridge team_bridge enabled devices"
 						value={localEnabled}
 						disabled={disabled}
 						description={t("ui.agentMessages.settings.local.stays_enrolled")}
@@ -923,6 +944,8 @@ const SettingsState: FC<SettingsStateProps> = ({
 					    `off_local` gate: Resume reactivates the endpoint and leaves
 					    the machine off. Same control and write as C. */}
 					<LocalSwitch
+						searchRow="agent-messages.enabled"
+						searchTerms="team bridge team_bridge enabled devices"
 						value={localEnabled}
 						disabled={disabled}
 						description={t("ui.agentMessages.settings.local.stays_enrolled")}
@@ -1039,10 +1062,32 @@ const LocalSwitch: FC<{
 	disabled: boolean;
 	description: string;
 	onChange: (next: boolean) => Promise<void> | void;
-}> = ({ value, disabled, description, onChange }) => {
+	/**
+	 * Settings search's stable row id, when this switch IS one of the page's
+	 * searchable rows. The `team_bridge.enabled` preference is machine-local,
+	 * so its only editor is this control — which is why the row has to exist
+	 * here for a search result to land on it (review round 1, backend note).
+	 */
+	searchRow?: string;
+	/**
+	 * Extra words this row is searchable by, beyond the copy it prints.
+	 *
+	 * The switch's visible name is "this machine"'s own wording; the SETTING it
+	 * edits is `team_bridge.enabled`, and a reader who knows the feature by its
+	 * name types "team bridge". The registry's own row for that key is not
+	 * indexed (it is promoted to this control), so without terms the feature's
+	 * name finds nothing at all (UX round 1, U1).
+	 */
+	searchTerms?: string;
+}> = ({ value, disabled, description, onChange, searchRow, searchTerms }) => {
 	const id = useId();
 	return (
-		<div className="flex items-start justify-between gap-4">
+		<div
+			data-search-row={searchRow}
+			data-search-control={searchRow ? "" : undefined}
+			data-search-terms={searchTerms}
+			className="flex items-start justify-between gap-4"
+		>
 			<div className="min-w-0">
 				<p id={id} className="text-body-sm text-ink">
 					{t("ui.agentMessages.settings.local.label")}
@@ -1068,7 +1113,18 @@ const SessionDesignation: FC<{
 }> = ({ value, sessions, pending, disabled, onSave }) => {
 	const known = sessions.some((session) => session.session_id === value);
 	return (
-		<div className="flex flex-col gap-2">
+		<div
+			data-search-row="agent-messages.session"
+			data-search-control
+			/*
+			 * The heading prints this row's own wording; the SETTING behind it is
+			 * `team_bridge.session`, and the reader looking for it types the
+			 * feature's name. Same reason as the machine switch's terms (UX round
+			 * 1, U1).
+			 */
+			data-search-terms="team bridge team_bridge session"
+			className="flex flex-col gap-2"
+		>
 			<h3 className="text-heading text-ink">
 				{t("ui.agentMessages.settings.session.title")}
 			</h3>

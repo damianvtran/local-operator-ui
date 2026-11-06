@@ -43,6 +43,7 @@ import {
 	CHAT_MEASURE,
 } from "@features/chat/chat-measure";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
+import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
@@ -110,6 +111,7 @@ import {
 	skillComposerGate,
 } from "../skills-library-model";
 import { CLASS_LABEL, classOf } from "../utils/agent-class";
+import { agentDescriptionText } from "../utils/agent-description";
 import { AgentCreate, AgentDetail } from "./agent-detail";
 import {
 	DetailSkeleton,
@@ -120,6 +122,7 @@ import {
 } from "./detail-parts";
 import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
+import { MissingDefinitionError } from "./missing-definition-error";
 import {
 	SKILL_SCOPE_LABEL,
 	SkillDetail,
@@ -257,6 +260,31 @@ export function AgentsPage() {
 		"skill_library",
 	);
 	const skillMode = wantsSkills && skillsOffered && !creating;
+	/*
+	 * THE PICTURE PENCIL'S DEEP LINK (`?edit=picture`, agent review round 1, M1).
+	 *
+	 * `AgentAvatarEditLink` navigates here with it, and `agent-avatar-field.tsx`
+	 * is the only thing that reads it - but the field exists only inside this
+	 * page's AGENT PANE and only while that pane is editing, so the link arrived
+	 * at a page that drew the pane in view mode: nothing mounted the editor,
+	 * nothing scrolled, nothing took focus, and the parameter was never dropped.
+	 * Every promise the link's own doc comments make was unkept.
+	 *
+	 * Read here beside the page's other parameters and handed to the pane as the
+	 * SEED of its edit state (`AgentDetail`'s `openPictureEditor`): the pane opens
+	 * editing, which mounts the field, which then scrolls itself into view, takes
+	 * focus and drops the parameter (its own one-shot contract).
+	 *
+	 * GATED ON THE SAME FACTS THE PANE IS: a selected name, not a create form,
+	 * not the skills or the team tab. The link only ever addresses an existing
+	 * agent profile, so a stray `edit` on any other surface must change nothing.
+	 */
+	const pictureEditRequested =
+		params.get("edit") === "picture" &&
+		Boolean(name) &&
+		!creating &&
+		!teamMode &&
+		!skillMode;
 	const catalogueEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		teamMode ? "team_catalogue" : "profile_catalogue",
@@ -1334,15 +1362,17 @@ export function AgentsPage() {
 									<PaneError
 										title={
 											teamMode
-												? "Teams could not be read"
-												: "Agents could not be read"
+												? t("ui.agents.detail.read_state.list_failed_teams")
+												: t("ui.agents.detail.read_state.list_failed_agents")
 										}
 										what={
 											listError instanceof Error
 												? listError.message
-												: "The request did not complete."
+												: t("ui.agents.detail.read_state.request_failed")
 										}
-										meaning="Nothing is lost. This is a read that failed — the backend answered an error, which is different from the backend being out of date."
+										meaning={t(
+											"ui.agents.detail.read_state.list_failed_meaning",
+										)}
 										onRetry={refreshAll}
 										retrying={profiles.isFetching || teams.isFetching}
 									/>
@@ -1351,18 +1381,9 @@ export function AgentsPage() {
 						   definition" while something is on its way (D4). */
 									<DetailSkeleton />
 								) : selected && detailError ? (
-									<PaneError
-										title={
-											teamMode
-												? `“${selected}” could not be read`
-												: `“${selected}” could not be read`
-										}
-										what={
-											detailError instanceof Error
-												? detailError.message
-												: "The request did not complete."
-										}
-										meaning="The definition may have been removed, or the backend refused the read."
+									<MissingDefinitionError
+										name={selected}
+										error={detailError}
 										onRetry={() => {
 											void profileDetail.refetch();
 											void teamDetail.refetch();
@@ -1467,6 +1488,7 @@ export function AgentsPage() {
 										teams={teams.data}
 										effortTiers={effortTiers}
 										askEnabled={run.enabled}
+										openPictureEditor={pictureEditRequested}
 										onDirtyChange={reportDirty}
 										belowHeader={hubPane(
 											"agent",
@@ -1570,7 +1592,7 @@ export function AgentsPage() {
 							focusToken={skillMode ? skillAskFocus : 0}
 							blockedReason={
 								editDirty
-									? "Finish or cancel your edit first."
+									? t("ui.agents.pages.blocked_edit")
 									: skillMode && skillGate !== null
 										? t(SKILL_GATE_KEY[skillGate])
 										: null
@@ -1801,6 +1823,24 @@ export function AskPaneCopy({ teamMode }: { teamMode: boolean }) {
 	);
 }
 
+const RosterMark = ({ agentId }: { agentId: string | null }) => (
+	/*
+	 * ONE MARK, ONE COMPONENT. `AgentMark` subscribes per row (it is rendered by
+	 * the map, so calling the hook here would subscribe the whole list to one
+	 * picture) and answers the roster's existing glyph when the agent has none -
+	 * which is why a row without a picture is the row it was before pictures.
+	 */
+	<AgentMark
+		agentId={agentId}
+		className="size-4"
+		cssPx={16}
+		fallback={
+			<Bot aria-hidden="true" className="size-4 shrink-0 text-ink-dim" />
+		}
+		glyph={<Bot className="size-3" aria-hidden="true" />}
+	/>
+);
+
 /**
  * The roster, as a list with roving focus.
  *
@@ -1864,10 +1904,25 @@ function Roster({
 	 * of buttons with roving `tabIndex` is exactly that.
 	 */
 	return (
-		<ul aria-label={teamMode ? "Teams" : "Agents"} className="space-y-0.5">
+		<ul
+			aria-label={
+				teamMode
+					? t("ui.agents.pages.tab.teams")
+					: t("ui.agents.pages.tab.agents")
+			}
+			className="space-y-0.5"
+		>
 			{rows.map((row) => {
 				const isProfile = "source" in row;
 				const mark = marked.get(`${teamMode ? "team" : "agent"}:${row.name}`);
+				/*
+				 * THE BLURB THE READER SEES, not the wire's always-English field: a
+				 * shipped agent prints the catalogue's sentence for its seed, and every
+				 * other row - uploaded, edited, a team - prints its own text untouched
+				 * (`agent-description.ts` states the rule). The tooltip and the line
+				 * below share this value so the two cannot word one row two ways.
+				 */
+				const blurb = isProfile ? agentDescriptionText(row) : row.description;
 				return (
 					<li key={row.name}>
 						<button
@@ -1887,11 +1942,7 @@ function Roster({
 							 * identifier reachable without giving the count its own line back,
 							 * which is what made rows 57 px.
 							 */
-							title={
-								row.description
-									? `${rowLabel(row)} - ${row.description}`
-									: rowLabel(row)
-							}
+							title={blurb ? `${rowLabel(row)} - ${blurb}` : rowLabel(row)}
 							className={cn(
 								"flex min-h-12 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-start hover:bg-row-hover",
 								/*
@@ -1929,6 +1980,7 @@ function Roster({
 							 * made row heights ragged (44 / 51 / 57 px) when a Badge wrapped.
 							 */}
 							<span className="flex w-full items-center gap-2">
+								{isProfile ? <RosterMark agentId={row.agent_id} /> : null}
 								<span className="min-w-0 truncate text-body-sm text-ink">
 									{rowLabel(row)}
 								</span>
@@ -1979,10 +2031,8 @@ function Roster({
 										<span className="text-ink-dim"> ·</span>
 									</span>
 								) : null}
-								{row.description ? (
-									<span className="min-w-0 flex-1 truncate">
-										{row.description}
-									</span>
+								{blurb ? (
+									<span className="min-w-0 flex-1 truncate">{blurb}</span>
 								) : (
 									/*
 									 * A ROW WITH NO DESCRIPTION SAYS SO (design review round 1 D4 =
@@ -2024,10 +2074,16 @@ function propsFilter(
 		 * for that. Either way the row they mean is the row that survives the
 		 * filter.
 		 */
+		/*
+		 * THE DESCRIPTION IS MATCHED AS IT IS PRINTED (agent-description.ts), not as
+		 * the wire spells it: on a French page the row shows the catalogue's French
+		 * sentence, so a reader who types a word from it must find it - the same rule
+		 * the skills filter already follows for its translated source word.
+		 */
 		return (
 			printName(row.name).toLowerCase().includes(needle) ||
 			row.name.toLowerCase().includes(needle) ||
-			(row.description ?? "").toLowerCase().includes(needle)
+			agentDescriptionText(row).toLowerCase().includes(needle)
 		);
 	});
 }

@@ -79,16 +79,32 @@ const PICKERS_ENGLISH = JSON.parse(
  * scheduling, focus or paint - those are QA's and the design round's, on real
  * frames.
  */
-function mount(action) {
+function mount(action, { customThemes = [], customThemeId = null } = {}) {
 	const applied = [];
 	const states = [];
 	const effects = [];
 	const hosts = [];
 	let index = 0;
-	const state = { themeName: "dark", setTheme: (id) => applied.push(id) };
+	const state = {
+		themeName: "dark",
+		customThemeId,
+		setTheme: (id) => applied.push(id),
+		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
+	};
+	const library = { themes: customThemes };
+	const store = Object.assign((selector) => selector(state), {
+		setState: (next) => {
+			Object.assign(state, next);
+			applied.push(next.customThemeId ?? next.themeName);
+		},
+	});
 	const deps = {
 		themes: THEMES,
-		useUiPreferencesStore: (selector) => selector(state),
+		// Same library and preference capabilities the shipped picker consumes.
+		// Keeping these explicit makes missing hooks fail at the boundary, rather
+		// than teaching the runtime to tolerate an impossible browser environment.
+		useCustomThemes: () => library,
+		useUiPreferencesStore: store,
 		useState: (initial) => {
 			const at = index++;
 			if (!(at in states)) {
@@ -107,6 +123,14 @@ function mount(action) {
 			effects.push(fn);
 		},
 		useI18nLocale: () => {},
+		/* The layered-appearance seams at the IDENTITY path: no contrast or
+		   accent layer, so the current row carries no meta - the resolution
+		   rules under test are unchanged by them. */
+		useResolvedAppearance: () => ({
+			identity: true,
+			palette: { mode: "dark" },
+		}),
+		appearanceLayerSummary: () => null,
 		t: (key, values) => {
 			const message = PICKERS_ENGLISH[key] ?? key;
 			if (!values) return message;
@@ -148,7 +172,13 @@ function mount(action) {
 	const firstPaint = hosts.at(-1);
 	for (const effect of effects.splice(0)) effect();
 	render();
-	return { applied, firstPaint, host: hosts.at(-1), mounts: hosts.length };
+	return {
+		applied,
+		firstPaint,
+		host: hosts.at(-1),
+		mounts: hosts.length,
+		state,
+	};
 }
 
 test("a bare `/theme` keeps the full picker", () => {
@@ -202,6 +232,28 @@ test("an argument that is not a theme keeps the grid, beside the warning", () =>
 		text: 'No desktop theme named "nope".',
 	});
 	assert.deepEqual(applied, []);
+});
+
+test("saved custom themes use the same chooser and qualified confirmation while retaining the built-in base", () => {
+	const custom = { id: "custom-harbour", name: "Harbour", base: "dracula" };
+	const bare = mount(
+		{ args: "" },
+		{ customThemes: [custom], customThemeId: custom.id },
+	);
+	assert.equal(bare.host.options.length, 3);
+	assert.equal(
+		bare.host.options.find((option) => option.value === custom.id)?.current,
+		true,
+	);
+	const qualified = mount({ args: "  HARBOUR  " }, { customThemes: [custom] });
+	assert.equal(qualified.host.options, undefined);
+	assert.deepEqual(qualified.applied, [custom.id]);
+	assert.equal(qualified.state.themeName, "dracula");
+	assert.equal(qualified.state.customThemeId, custom.id);
+	assert.deepEqual(qualified.host.result, {
+		tone: "success",
+		text: "Theme: Harbour",
+	});
 });
 
 test("the no-list shape is the host's own gate, not a local convention", () => {

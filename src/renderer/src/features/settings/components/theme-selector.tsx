@@ -3,6 +3,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { definitionOf, isThemeName } from "@shared/themes";
 import { type ThemeName, themes } from "@shared/themes";
 import {
 	Aperture,
@@ -45,6 +46,7 @@ import {
 	MoonStar,
 	Mountain,
 	MountainSnow,
+	Palette,
 	Radio,
 	Sailboat,
 	Shirt,
@@ -69,11 +71,14 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { FC, KeyboardEvent } from "react";
+import { paletteBlock } from "../../../../../shared/theme-engine/css.mjs";
+import { deriveCustomPalette } from "../../../../../shared/theme-engine/custom.mjs";
 import {
 	type TileGridGroup,
 	isTileNavKey,
 	nextTileIndex,
 } from "../theme-grid-navigation";
+import { useCustomThemeActions } from "./custom-theme-actions";
 
 /**
  * The mark shown beside each theme's name.
@@ -283,7 +288,7 @@ const SELECTED_TILE_GROUND =
  * scoped `[data-theme]` subtree, and it states no state — `accentAlt` is identity
  * and category, never interaction (see `palette-contract.ts`).
  */
-const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
+const ThemeSwatch: FC<{ id: string }> = ({ id }) => (
 	<div data-theme={id} aria-hidden="true" className="flex h-full bg-canvas">
 		<div className="flex w-1/4 flex-col gap-1 bg-sunken p-1">
 			<span className="flex h-2.5 items-center rounded-xs bg-accent-wash px-1">
@@ -460,7 +465,7 @@ const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
  * edited in this one.
  */
 const ThemeOptionTile: FC<{
-	id: ThemeName;
+	id: string;
 	name: string;
 	description: string;
 	isSelected: boolean;
@@ -478,7 +483,7 @@ const ThemeOptionTile: FC<{
 	onSelect,
 	onFocusTile,
 }) => {
-	const Icon = THEME_ICONS[id];
+	const Icon = THEME_ICONS[id as ThemeName] ?? Palette;
 
 	return (
 		<Tooltip side="bottom" align="start" content={description}>
@@ -665,11 +670,34 @@ const measureTileGrids = (root: Element): TileGridGroup[] =>
 export const ThemeSelector: FC = () => {
 	useI18nLocale();
 	const { themeName, setTheme } = useUiPreferencesStore();
+	const custom = useCustomThemeActions();
+	const selectedId =
+		custom.library.themes.find((theme) => theme.id === custom.active)?.id ??
+		themeName;
+	const customItems = custom.library.themes.flatMap((item) => {
+		const base = definitionOf(item.base)?.palette;
+		if (!base) return [];
+		const palette = deriveCustomPalette(base, item);
+		return [
+			{
+				id: item.id,
+				name: item.name,
+				description: t("ui.settings.appearance.editor.base", {
+					name: isThemeName(item.base) ? themes[item.base].name : item.base,
+				}),
+				css: paletteBlock(item.id, palette),
+			},
+		];
+	});
 
 	// Not memoized: the headings come from t(), and a memo with no dependencies would
 	// keep the previous language after a live switch. Only two filters run per render.
 	const all = Object.values(themes);
 	const groups = [
+		{
+			label: t("ui.settings.appearance.editor.custom_group"),
+			items: customItems,
+		},
 		{
 			label: t("ui.settings.appearance.theme_selector.dark"),
 			items: all.filter((theme) => theme.theme.palette.mode === "dark"),
@@ -688,13 +716,13 @@ export const ThemeSelector: FC = () => {
 	 * tile of the set is the fallback when the stored name is not in the rendered
 	 * set — so no state leaves the picker with zero tab stops.
 	 */
-	const [focusedId, setFocusedId] = useState<ThemeName | null>(null);
+	const [focusedId, setFocusedId] = useState<string | null>(null);
 
 	const tabStop = useMemo(() => {
 		const order = groups.flatMap((group) => group.items.map((item) => item.id));
 		if (focusedId && order.includes(focusedId)) return focusedId;
-		return order.includes(themeName) ? themeName : order[0];
-	}, [groups, focusedId, themeName]);
+		return order.includes(selectedId) ? selectedId : order[0];
+	}, [groups, focusedId, selectedId]);
 
 	/**
 	 * Move focus by arrow, Home or End.
@@ -735,7 +763,23 @@ export const ThemeSelector: FC = () => {
 		 * that renders the list owns the provider, with this surface's own delays.
 		 */
 		<TooltipProvider>
-			<div onKeyDown={moveFocus} className="flex flex-col gap-6">
+			<div
+				onKeyDown={moveFocus}
+				/*
+				 * NOT a search row. Read as one row, its label was the whole
+				 * subtree's text — "DarkLocal Operator DarkCatppuccin Macchiato…" —
+				 * because JSX emits no separator between sibling names, and no
+				 * honest label exists for it without a new localized title (the
+				 * picker's own headings are "Dark"/"Light"). The Appearance
+				 * section result is this grid's destination, and the registry's
+				 * `tui.theme` row covers the word itself (review round 1, M3).
+				 */
+				data-search-ignore="the theme picker is a grid of fifty-nine choices; the Appearance section result is its destination"
+				className="flex flex-col gap-6"
+			>
+				{custom.header}
+				<style>{customItems.map((item) => item.css).join("\n")}</style>
+				{custom.dialogs}
 				{groups.map((group) => (
 					<div key={group.label}>
 						<h3 className="px-1 pb-2 text-meta text-ink-dim">{group.label}</h3>
@@ -764,16 +808,30 @@ export const ThemeSelector: FC = () => {
 							className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2"
 						>
 							{group.items.map(({ id, name, description }) => (
-								<ThemeOptionTile
-									key={id}
-									id={id}
-									name={name}
-									description={description}
-									isSelected={id === themeName}
-									isTabStop={id === tabStop}
-									onSelect={() => setTheme(id)}
-									onFocusTile={() => setFocusedId(id)}
-								/>
+								<div key={id} className="group relative min-w-0">
+									<ThemeOptionTile
+										id={id}
+										name={name}
+										description={description}
+										isSelected={id === selectedId}
+										isTabStop={id === tabStop}
+										onSelect={() => {
+											const item = custom.library.themes.find(
+												(item) => item.id === id,
+											);
+											if (item && isThemeName(item.base))
+												useUiPreferencesStore.setState({
+													themeName: item.base,
+													customThemeId: id,
+												});
+											else if (isThemeName(id)) setTheme(id);
+										}}
+										onFocusTile={() => setFocusedId(id)}
+									/>
+									<div className="absolute end-1 top-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+										{custom.menu(id, id === tabStop)}
+									</div>
+								</div>
 							))}
 						</div>
 					</div>

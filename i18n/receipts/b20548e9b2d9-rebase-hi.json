@@ -1,0 +1,89 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (post-rebase delta re-audit, one added key)",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness for session b20548e9b2d9 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.teamBridge",
+	"locale": "hi",
+	"audit_id": "teambridge-reaction-pills-rebase-audit-b20548e9b2d9-rebase-hi",
+	"instance": "b20548e9b2d9-rebase-hi",
+	"session": "b20548e9b2d9",
+	"integration": {
+		"branch": "fix/team-bridge-reaction-pills",
+		"base": "d62accf9db03190b52b96fa424f34018bb6c29bb",
+		"head": "edf12eb5a39e9baf8833b7c2b17f0f092a130524",
+		"state": "local head, not pushed",
+		"worktree": "~/local-operator-ui/.worktrees/reaction-pills"
+	},
+	"independence": "Independent auditor: lopdev translation-auditor, session b20548e9b2d9; authored none of the audited strings (translator agent 'translator'); edited no catalogue; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct run from ffe897895c10.",
+	"sha256": {
+		"hi": "d729a6f2655bdb72faba93daaaa925cc109b514336366c8fa39bf35528e57fae",
+		"en": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96"
+	},
+	"context_sha256": "5a724b7553d2575759c7fbb8fcd1fa9e6e78c4a56a8bbe1418f28f26f5d4f9de",
+	"scope": {
+		"delta_kind": "Rebase onto origin/main d62accf. Mechanical: git diff d62accf -- src/i18n/catalogues adds exactly one line per target catalogue (ui.teamBridge.reactions.others) and one en line plus one context entry; JSON key diff: 1 added, 0 removed, 0 changed; target bytes with that line removed are byte-identical to d62accf's.",
+		"base_target_sha256": "6f968790b4e22d2590a99d802af0ffb786c822b8452828fc85644c938265cd1b",
+		"base_en_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+		"base_bytes_audited_by": [
+			"b5610aecd5f2-hi",
+			"e49c0ab64b49-hi"
+		],
+		"keys_audited_linguistically": [
+			"ui.teamBridge.reactions.others"
+		],
+		"prior_audit_of_key": {
+			"instance": "ffe897895c10-others-hi",
+			"value_byte_identical": true
+		},
+		"not_audited": "Every other ui.teamBridge key: byte-identical to d62accf, whose row was audited by the instances in base_bytes_audited_by (now moved to superseded by the assembler)."
+	},
+	"audited": {
+		"ui.teamBridge.reactions.others": {
+			"en": "{others, plural, one {# other} other {# others}}",
+			"translation": "{others, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}"
+		}
+	},
+	"checks": {
+		"placeholders": "@formatjs/icu-messageformat-parser: one top-level plural on `others`; every arm uses `#`; nothing dropped/renamed/added.",
+		"no_conjunction": "No word for 'and' in the value; Intl.ListFormat supplies it once.",
+		"unicode": "NFC; no Cc/Cf (no RLM/LRM/FSI/PDI), no NBSP.",
+		"rendered": [
+			"{\"l\":\"hi\",\"top\":1,\"arg\":\"others\",\"cats\":[\"one\",\"other\"],\"arms\":[\"one\",\"other\"],\"bad\":[],\"missing\":[],\"armsHaveHash\":true,\"and\":false,\"nfc\":true,\"cf\":[]}",
+			"  1:Ada, Bea, Cleo, और 1 अन्य व्यक्ति | 2:Ada, Bea, Cleo, और 2 अन्य लोग | 3:Ada, Bea, Cleo, और 3 अन्य लोग | 5:Ada, Bea, Cleo, और 5 अन्य लोग | 11:Ada, Bea, Cleo, और 11 अन्य लोग | 21:Ada, Bea, Cleo, और 21 अन्य लोग | 22:Ada, Bea, Cleo, और 22 अन्य लोग | 25:Ada, Bea, Cleo, और 25 अन्य लोग"
+		],
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/others-recheck.mjs (repo node_modules intl-messageformat + Intl.ListFormat long conjunction; Node v24.22.1)"
+	},
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"audit_notes_not_execution_log": "findings and linguistic judgement are auditor notes; checks.rendered is verbatim command output.",
+	"limitations": "No rendered app frame of the tooltip; no native-speaker sign-off."
+}

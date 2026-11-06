@@ -21,6 +21,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { ASK_SESSION_IDS, startAsksAppFixture } from "./asks-app-fixture.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	modelUncertaintyCase,
+	runOwnedModelCase,
+	startModelBackend,
+	verifyModelBuild,
+} from "./model-uncertainty-native.mjs";
 const execute = promisify(execFile);
 // Hosted macOS arm64 has 7 GB RAM, but Node 22 defaults this isolated builder
 // to ~2 GB: run 39671897399 aborted in control-renderer chunk generation at
@@ -461,6 +467,7 @@ async function waitForDevtoolsPort(handle, api, timeoutMs = 60_000) {
  * binary is resolved.
  */
 export const CASES = {
+	"model-uncertainty": modelUncertaintyCase,
 	asks: {
 		purpose:
 			"The asks rail's open/close policy, driven through every door the user has (rail item, drawer X, Escape, header menu, composer chip) with the browser pane underneath it. The first case, and the one the 1107 rounds were reviewed against.",
@@ -793,7 +800,15 @@ export const CASES = {
  * onboarding-script reload, the readiness waits, the frame/measurement store, and
  * a finally that reaps exactly the app this run started.
  */
-async function runCase(scenarioName, kind, root, output, records) {
+async function runCase(
+	scenarioName,
+	kind,
+	root,
+	output,
+	records,
+	realBackend = null,
+	verifiedElectronBinary = undefined,
+) {
 	process.chdir(root);
 	process.argv.push(
 		"--backend",
@@ -816,11 +831,47 @@ async function runCase(scenarioName, kind, root, output, records) {
 	let rc = 1;
 	const frames = [];
 	const failures = [];
+	let appDrain;
+	const drainModelApp = (why) => {
+		if (!appDrain)
+			appDrain = (async () => {
+				const receipt = await api.drainLiveBoots({ why });
+				assert.equal(
+					receipt.clean,
+					true,
+					"owned app exit/descendants not settled",
+				);
+				writeFileSync(
+					join(output, "owned-app-exit.json"),
+					JSON.stringify(receipt),
+				);
+			})();
+		return appDrain;
+	};
 	for (const name of ["SIGTERM", "SIGINT"])
-		process.once(
-			name,
-			() => void api.reapLiveBoots({ code: 143, why: `CI ${name}` }),
-		);
+		process.once(name, () => {
+			if (!realBackend) {
+				void api.reapLiveBoots({ code: 143, why: `CI ${name}` });
+				return;
+			}
+			void (async () => {
+				try {
+					try {
+						try {
+							cdp?.close();
+						} finally {
+							await drainModelApp(`CI ${name}`);
+						}
+					} finally {
+						await realBackend.close();
+					}
+				} catch (error) {
+					console.error("owned model case interruption cleanup failed", error);
+				} finally {
+					process.exit(143);
+				}
+			})();
+		});
 	const save = () =>
 		writeFileSync(
 			join(output, "measurements.json"),
@@ -992,6 +1043,7 @@ async function runCase(scenarioName, kind, root, output, records) {
 	const ctx = {
 		kind,
 		api,
+		realBackend,
 		get cdp() {
 			return cdp;
 		},
@@ -1006,11 +1058,23 @@ async function runCase(scenarioName, kind, root, output, records) {
 		session,
 	};
 	try {
+		if (realBackend)
+			assert.equal(
+				typeof api.drainLiveBoots,
+				"function",
+				"real-core case requires a non-exiting owned app drain",
+			);
+		if (realBackend)
+			assert(
+				verifiedElectronBinary,
+				"model launch needs the preflight-verified executable",
+			);
 		api.prepareDriverContext({ apiUrl: "http://127.0.0.1:8080" });
 		const app = await api.launchApp({
 			armed: true,
 			apiUrl: "http://127.0.0.1:8080",
 			tag: `asks-ci-${kind}`,
+			verifiedElectronBinary,
 		});
 		writeFileSync(
 			join(output, "owned-app.json"),
@@ -1074,26 +1138,118 @@ async function runCase(scenarioName, kind, root, output, records) {
 				frames.some((entry) => entry.label === label),
 				`${scenarioName} ${kind}: promised frame ${JSON.stringify(label)} was not captured (have ${JSON.stringify(frames.map((entry) => entry.label))})`,
 			);
-		frames.push({
-			label: "acceptance",
-			verdict: "PASS",
-			coverage: scenario.coverage,
-		});
+		if (!realBackend)
+			frames.push({
+				label: "acceptance",
+				verdict: "PASS",
+				coverage: scenario.coverage,
+			});
 		save();
 		rc = 0;
 	} catch (error) {
 		failures.push(error.stack);
 		save();
 	} finally {
-		cdp?.close();
-		await api.reapLiveBoots({
-			code: rc,
-			why: `CI ${scenarioName} ${kind} case complete`,
-		});
+		const why = `CI ${scenarioName} ${kind} case complete`;
+		if (realBackend) {
+			try {
+				cdp?.close();
+			} finally {
+				await drainModelApp(why);
+			}
+		} else {
+			cdp?.close();
+			await api.reapLiveBoots({ code: rc, why });
+		}
 	}
+	return rc;
 }
 
 async function main() {
+	// This explicit opt-in never starts/widens the read-only asks fixture.
+	if (
+		process.argv[process.argv.indexOf("--case") + 1] === "model-uncertainty"
+	) {
+		assert.equal(
+			process.argv[process.argv.indexOf("--leg") + 1],
+			"candidate",
+			"model case currently admits the reviewed candidate leg only",
+		);
+		assert(
+			process.env.CI && process.platform === "darwin",
+			"existing macOS native producer owns model-case execution",
+		);
+		const root = process.env.ASKS_APP_ROOT;
+		const output = process.env.ASKS_OUTPUT;
+		assert(root && output, "model case needs its frozen app root/output");
+		// Carry the strict preflight's actual executable through to spawn. Merely
+		// scrubbing the child env cannot constrain the parent's Electron resolver.
+		const verifiedElectronBinary = verifyModelBuild(
+			root,
+			process.env.MODEL_CASE_BUILD_RECEIPT,
+		);
+		mkdirSync(output, { recursive: true });
+		const backend = await startModelBackend({
+			output,
+			scratchParent: tmpdir(),
+		});
+		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = backend.token;
+		return runOwnedModelCase({
+			backend,
+			run: async () => {
+				writeFileSync(
+					join(output, "provenance.json"),
+					JSON.stringify(
+						{
+							build: JSON.parse(
+								readFileSync(process.env.MODEL_CASE_BUILD_RECEIPT),
+							),
+							core: (await backend.state()).identity,
+							expectedPublishedTarget:
+								"a8c96c2ac1d71b776f40ed68ae5a2322bbe3c1ed",
+							coverage:
+								"candidate compiled app with published real core; no historical native control or WCV compositor claim",
+						},
+						null,
+						2,
+					),
+				);
+				return await runCase(
+					"model-uncertainty",
+					"candidate",
+					root,
+					output,
+					backend.records,
+					backend,
+					verifiedElectronBinary,
+				);
+			},
+			accept: async () => {
+				const receipt = JSON.parse(
+					readFileSync(join(output, "owned-core-exit.json")),
+				);
+				assert.equal(
+					receipt.clean,
+					true,
+					"required joined backend exit receipt missing",
+				);
+				const appExit = JSON.parse(
+					readFileSync(join(output, "owned-app-exit.json")),
+				);
+				assert.equal(appExit.clean, true);
+				assert.equal(appExit.stopped, 1, "single native app was not joined");
+				const path = join(output, "measurements.json");
+				const measurement = JSON.parse(readFileSync(path));
+				measurement.frames.push({
+					label: "acceptance",
+					verdict: "PASS",
+					coverage: modelUncertaintyCase.coverage,
+					cleanup: receipt,
+				});
+				writeFileSync(path, JSON.stringify(measurement, null, 2));
+			},
+		});
+	}
 	if (process.argv.includes("--case")) {
 		const i = process.argv.indexOf("--case");
 		const scenario = process.argv[i + 1];
@@ -1154,7 +1310,7 @@ async function main() {
 			]),
 		),
 		control: ASKS_CONTROL,
-		cases: Object.keys(CASES),
+		cases: Object.keys(CASES).filter((name) => !CASES[name].optInOnly),
 		captures: [],
 		physical1106:
 			"NOT COVERED: capturePage excludes sibling native WebContentsView/compositor",
@@ -1171,7 +1327,9 @@ async function main() {
 			path: "control-source.tar",
 			sha256: sha(readFileSync(controlArchive)),
 		};
-		for (const [scenarioName, scenario] of Object.entries(CASES)) {
+		for (const [scenarioName, scenario] of Object.entries(CASES).filter(
+			([, entry]) => !entry.optInOnly,
+		)) {
 			for (const kind of ["control", "candidate"]) {
 				fixture.setMode("loading");
 				const root =

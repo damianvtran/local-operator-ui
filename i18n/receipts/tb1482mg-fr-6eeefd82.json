@@ -1,0 +1,109 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (namespace-wide delta at a merge)",
+	"audit_id": "tb1482-merge-delta-audit-2026-10-29-fr",
+	"date": "2026-10-29",
+	"instance": "tb1482mg-fr-6eeefd82",
+	"instance_note": "One auditor run (2026-10-29) covering this merge's whole copy delta in fr: the 30-key ui.ownerAudit namespace plus the single added ui.teamBridge.thread.not_available key and its context sidecar entry. The instance carries a per-locale suffix so every ledger row holds a distinct instance; the same receipt bytes back both rows of this locale, which is one run auditing two namespaces, not two audits.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"model_provenance": "Harness preamble for this session read 'Model: anthropic/claude-opus-5-5'. Three sequential provider-quota fallbacks were then announced in-session (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro; reason each time 'provider failure: quota'), and kimi/k3.1-pro is the last model the harness announced, so that is the name recorded here rather than a guess. `lop config list` on this host still shows hosting=anthropic, model_name=claude-sonnet-5-5 as the configured default: the fallback chain, not the config, decided what executed these turns. No further switch notice was seen before these receipts were written, and the judgement here spans the whole chain.",
+	"independence": "Independent auditor: agent role i18n-auditor, a different agent from the translator (i18n-translator, per the translation records read here). None of the 31 audited strings was authored by this run. Five of them were FIXED by this run after the audit recorded them, at the operator's direction: es ui.ownerAudit.read_only (plural agreement), hi ui.ownerAudit.viewers_label and ui.ownerAudit.disclosure (label form and legal register), vi and zh-CN ui.teamBridge.thread.not_available (open vs access). Each fix is recorded in resolved_findings with before and after text, and every sha256 in this receipt names the POST-fix bytes now in the tree, so the receipt audits what ships rather than what preceded the fix. The ledger rows were written by scripts/i18n/ledger-assemble.mjs, never by hand. Every sha256 was recomputed from the files in this worktree.",
+	"status": "passed",
+	"locale": "fr",
+	"integration": {
+		"repo": "damianvtran/local-operator-ui",
+		"branch": "feat/team-bridge-owner-audit-ui",
+		"worktree": "~/local-operator-ui/.worktrees/tb-1482-merge",
+		"head": "deec129a81282dbdacf5f14490cc94029fb1165d",
+		"merge_head": "2d13419f2257f89f944a6077f40918b1c70de528",
+		"merge_state": "merge of origin/main into the branch, uncommitted at audit time: conflicts already resolved, nothing staged by this run",
+		"note": "audited bytes are this working tree after this run's five copy fixes (listed in resolved_findings); this run wrote the catalogue fixes, its receipts, its evidence records and the ledger rows - it did not commit, push or merge"
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"source": "per-locale translation records under i18n/audits/evidence/<locale>/ui.ownerAudit/teambridge-owner-audit-r2-* and .../ui.teamBridge/notavail-*"
+	},
+	"namespaces": {
+		"ui.ownerAudit": {
+			"namespace": "ui.ownerAudit",
+			"status": "passed",
+			"sha256": {
+				"en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+				"fr": "ff52aea829176e4d8c38b10d92dbcce0199d72eda3b26434a890aae94ae6aed2"
+			},
+			"context_sha256": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e",
+			"keys_audited": 30,
+			"findings": [
+				{
+					"severity": "NIT",
+					"key": "ui.ownerAudit.page_cutoff",
+					"current": "Les messages précédents ne sont pas encore affichés. Chargez les messages précédents pour lire ce qui précède.",
+					"proposed": "Les messages plus anciens ne sont pas encore affichés. Chargez les messages précédents pour lire ce qui précède.",
+					"reason": "The stem repeats three times in two sentences ('précédents … précédents … précède'). English repeats 'older' twice as well and the second sentence must keep charging the same phrase as the ui.ownerAudit.older button, so only the first sentence could be reworded; recorded rather than churned."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.ownerAudit.window_unconfirmed",
+					"current": "L’appartenance de votre cheffe de cabinet à cette conversation n’a pas pu être confirmée.",
+					"proposed": "Le statut de membre de votre cheffe de cabinet …",
+					"reason": "'Appartenance' renders membership while ui.ownerAudit.active in the same namespace says 'est toujours membre'. Both are correct French and membership is not a pinned term, so this is a consistency preference, not a defect."
+				}
+			]
+		},
+		"ui.teamBridge": {
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"sha256": {
+				"en": "5be0c55997d0a97f363ea54652eba52fbe908ae36dd94c5e48129ebf9ae4e470",
+				"fr": "81d6e57b239eb71a8bc18b68a09e15727d45fe9f3381a6d402ee14ba5406a4ed"
+			},
+			"context_sha256": "9f939b02dd8e6433b57c0aa6a7e7c51334869f7490278c2538ce989e54b40b5f",
+			"keys_audited": 1,
+			"findings": [],
+			"scope": "only the one key this merge adds (ui.teamBridge.thread.not_available) and its context sidecar entry; the rest of ui.teamBridge is inherited byte-identically from origin/main, whose row this receipt does not re-audit"
+		}
+	},
+	"checks": {
+		"placeholders": "every ui.ownerAudit sidecar entry declares placeholders {}; the teamBridge key declares {}; no target string in this delta contains { } or < >",
+		"plurals": "no ICU plural in this delta (all 31 keys are plain strings), so no locale plural category is exercised here",
+		"mechanical": "key sets equal to English in both namespaces; NFC; no bidi controls; no NBSP, double space or leading/trailing space; no Latin run in hi/ru/ur/zh-CN; no Devanagari in ur and no Arabic script in hi",
+		"terms": "product term for the chief of staff identical in title, agent and own, and consistent with the locale's ui.teamBridge ('chief.fallback', 'section.chiefs', 'thread.intro_chief'); member and archive terms in the teamBridge key match that locale's ui.teamBridge.member.count and ui.teamBridge.archive.list",
+		"sidecar": "the en context sidecar for thread.not_available was read in full: role, tone ('never accusatory'), length (two short sentences), placeholders {} and the note requiring both reasons without revealing which and forbidding any implication that the conversation does not exist - each target was checked against those four requirements individually, not against the English wording"
+	},
+	"scope": "Merged copy delta in fr: the whole ui.ownerAudit namespace (30 keys) and the one added ui.teamBridge key. Strings unchanged by this merge were checked for consistency with the delta (register, product terms) and are covered by their own prior receipts, which this one does not re-derive.",
+	"references": {
+		"previous_receipts_this_workspace": {
+			"ui.ownerAudit": "i18n/audits/evidence/fr/ui.ownerAudit/teambridge-owner-audit-r2-*",
+			"ui.teamBridge": "i18n/audits/evidence/fr/ui.teamBridge/tbm-notavail-merge-20261029-fr",
+			"note": "their target and English hashes were re-derived here and match these bytes; this receipt supersedes neither, it re-audits the same bytes at whole-namespace scope"
+		},
+		"style_guide": "~/local-operator/i18n/style-guides/fr.md",
+		"glossary": "~/local-operator/i18n/glossary.md"
+	},
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.page_cutoff",
+			"current": "Les messages précédents ne sont pas encore affichés. Chargez les messages précédents pour lire ce qui précède.",
+			"proposed": "Les messages plus anciens ne sont pas encore affichés. Chargez les messages précédents pour lire ce qui précède.",
+			"reason": "The stem repeats three times in two sentences ('précédents … précédents … précède'). English repeats 'older' twice as well and the second sentence must keep charging the same phrase as the ui.ownerAudit.older button, so only the first sentence could be reworded; recorded rather than churned."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.window_unconfirmed",
+			"current": "L’appartenance de votre cheffe de cabinet à cette conversation n’a pas pu être confirmée.",
+			"proposed": "Le statut de membre de votre cheffe de cabinet …",
+			"reason": "'Appartenance' renders membership while ui.ownerAudit.active in the same namespace says 'est toujours membre'. Both are correct French and membership is not a pinned term, so this is a consistency preference, not a defect."
+		}
+	],
+	"resolved_findings": [],
+	"limitations": [
+		"No rendered frame: this role has no browser tool and the host is source-only, so fit is judged from character counts and the sidecars' length fields (no maxCells is declared for these keys).",
+		"No second independent audit of this delta at whole-namespace scope.",
+		"Neither the translator nor this auditor is a native speaker of these locales; the judgement is documented key by key so a native reviewer can check the reasoning rather than trust a verdict."
+	]
+}

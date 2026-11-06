@@ -99,12 +99,15 @@ type DefaultEffortSelectProps = {
 	modelName: string;
 	/** Whether a deep link named this row and it should be revealed and focused. */
 	focus?: boolean;
+	/** A second reveal of the same row, from a second search jump (see `general`). */
+	focusNonce?: number;
 };
 
 export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	hosting,
 	modelName,
 	focus = false,
+	focusNonce,
 }) => {
 	/* Copy-bearing projections recompute after a locale change, as every
 	 * surface's do: `t()` reads the active locale at call time, and this hook is
@@ -228,6 +231,12 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	/* Focus once per link, not on every repaint: refocusing a settled row would
 	 * steal the caret from a reader already typing in it. */
 	const focused = useRef(false);
+	const focusNonceRef = useRef(focusNonce);
+	useEffect(() => {
+		if (focusNonce === focusNonceRef.current) return;
+		focusNonceRef.current = focusNonce;
+		focused.current = false;
+	}, [focusNonce]);
 
 	/*
 	 * The one write path. On success the registry is invalidated so this row
@@ -350,6 +359,7 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	 * disabled input is a no-op. Native `focus()` also scrolls the row into view,
 	 * which is what "revealed" means for a link that lands the section.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `focusNonce` is a re-run trigger, not a value this body reads — the reset effect above clears the idempotence ref when it changes, and this effect must re-run in the same commit to take the caret.
 	useEffect(() => {
 		if (!focus) {
 			focused.current = false;
@@ -358,7 +368,7 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 		if (state.disabled || focused.current) return;
 		container.current?.querySelector<HTMLElement>("[role=combobox]")?.focus();
 		focused.current = true;
-	}, [focus, state.disabled]);
+	}, [focus, focusNonce, state.disabled]);
 	const shownSelectedId = pendingValue ?? state.selectedId;
 	const selectedOption =
 		options.find((option) => option.id === shownSelectedId) ??

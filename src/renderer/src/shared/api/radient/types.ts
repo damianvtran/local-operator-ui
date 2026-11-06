@@ -138,10 +138,16 @@ export type AccountInfo = {
 	metadata?: Record<string, string>;
 	/**
 	 * The person's optional presentation (agent-server #216). ADDITIVE: an older
-	 * hub omits it. Only `avatar` is read here, for the sidebar's own photo; its
-	 * `hash` pins the version the private avatar relay serves.
+	 * hub omits it. Human profile fields belong to the OAuth account, never an
+	 * agent document; `hash` pins the version the private avatar relay serves.
+	 * Optional fields preserve compatibility with accounts created before the
+	 * profile API. An explicit empty string clears a field on PATCH.
 	 */
 	profile?: {
+		display_name?: string;
+		title?: string;
+		description?: string;
+		timezone?: string;
 		avatar?: { source?: string; hash?: string } | null;
 	} | null;
 	/**

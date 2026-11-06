@@ -1,0 +1,74 @@
+{
+	"ui.agents.routing.aida": {
+		"note": "The shipped routing text for the Aida agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. It answers 'when do I pick this one?', so it is written as an occasion, not a summary. The three situations are examples; translate them naturally rather than preserving the colon-list shape when the target language reads better as a sentence.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.architect": {
+		"note": "The shipped routing text for the Architect agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. 'HOW' is capitalised on purpose, contrasting with the design agent's sibling sentence; keep the emphasis with whatever device the locale uses.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.coder": {
+		"note": "The shipped routing text for the Coder agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. 'Ticket', 'feature', 'bug', 'function' are ordinary developer vocabulary and take the target language's usual terms; identifiers and seed names stay untranslated.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.copy_reviewer": {
+		"note": "The shipped routing text for the Copy Reviewer agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. Long on purpose: it names the two copy surfaces (product copy, prose for a general reader) and the review criteria. 'AI-isms' is the house term for machine-sounding phrasing and stays untranslated.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.designer": {
+		"note": "The shipped routing text for the Designer agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. 'LOOKS' is capitalised to contrast with the experience review; keep the emphasis. The sentence names occasions for choosing the design agent, not the artefacts it produces.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.librarian": {
+		"note": "The shipped routing text for the Librarian agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. 'The Library' is the product's own asset catalogue and keeps its capital; 'assets' are the files and artefacts the operator saves.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.manager": {
+		"note": "The shipped routing text for the Manager agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. The coordinating agent's occasions: several agents or repositories, blocked work, a status roll-up. 'Agent' stays the product word for a configured assistant.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.qa_tester": {
+		"note": "The shipped routing text for the QA tester agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. 'Pull request', 'patch' and 'feature' are ordinary development vocabulary; 'end to end' is the settled phrase for a check that runs the real path.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.reviewer": {
+		"note": "The shipped routing text for the Reviewer agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. The reviewable artefacts (pull request, merge request, diff, commit range, patch) keep the team's own abbreviations where the locale does too, and the sentence never promises edits.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.scout": {
+		"note": "The shipped routing text for the Scout agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. The research agent's occasions, ending in an explicit read-only promise. State that promise plainly rather than softening it: it is the constraint the operator relies on.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.tui_designer": {
+		"note": "The shipped routing text for the TUI Designer agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. Terminal-interface occasions: keyboard-first flows, density in small fixed terminals, colour and unicode support, progressive disclosure. 'CLI' stays as the abbreviation.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	},
+	"ui.agents.routing.ux_reviewer": {
+		"note": "The shipped routing text for the UX Reviewer agent. The registry keeps ONE description field per profile and this is what install writes into it, because it is what search embeds and matches against — so this sentence, not the shorter blurb, is what the agent card and the destination pickers show after install. 'EXPERIENCE' is capitalised to contrast with the visual review, and the sentence deliberately says 'as distinct from' - keep both.",
+		"role": "agent routing sentence",
+		"tone": "plain, addressed to the operator; names occasions for choosing the agent, no marketing adjectives",
+		"width": "one editor card line and one picker row at about 320 px, truncated with an ellipsis; the whole sentence is also what search matches, so keep the trigger words (review, test, design) recognisable in the target language."
+	}
+}

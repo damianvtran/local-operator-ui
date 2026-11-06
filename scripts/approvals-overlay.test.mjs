@@ -70,6 +70,7 @@ export class WebContentsView {
     this.handlers = new Map();
     /* Every URL this child was asked to load; the first-paint test reads it. */
     this.loadedUrls = [];
+    this.loadParentStates = [];
     this.mainFrame = { url: "file:///tmp/browser-approvals-overlay.html" };
     this.webContents = {
       id: 70 + state.views.length,
@@ -86,6 +87,7 @@ export class WebContentsView {
       },
       loadURL: (url) => {
         this.loadedUrls.push(String(url));
+        this.loadParentStates.push(this.proofAttached === true);
         setTimeout(() => {
           for (const cb of this.handlers.get("did-finish-load") ?? []) cb();
         }, 0);
@@ -194,6 +196,83 @@ async function waitFor(
 		`timed out waiting for ${label}: ${JSON.stringify(snapshot())}`,
 	);
 }
+
+test("controller: hidden startup loads detached and hide/reshow preserves the ready native child", async () => {
+	const children = [];
+	const window = {
+		isDestroyed: () => false,
+		contentView: {
+			get children() {
+				return children;
+			},
+			addChildView(view) {
+				const at = children.indexOf(view);
+				if (at >= 0) children.splice(at, 1);
+				children.push(view);
+				view.proofAttached = true;
+			},
+			removeChildView(view) {
+				const at = children.indexOf(view);
+				if (at >= 0) children.splice(at, 1);
+				view.proofAttached = false;
+			},
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window,
+		documentUrl: "file:///app/out/renderer/browser-approvals-overlay.html",
+	});
+	try {
+		const warm = mod.electron.focusState.views.at(-1);
+		assert.equal(warm.visible, false);
+		assert.deepEqual(
+			children,
+			[],
+			"startup hidden document must not be a native sibling during load",
+		);
+		assert.deepEqual(
+			warm.loadParentStates,
+			[false],
+			"first navigation starts AFTER native detachment",
+		);
+		controller.setModel({ entries: entries(1) });
+		controller.onLayout({
+			presented: true,
+			contentRect: rect(0, 0, 1000, 700),
+			revision: 1,
+		});
+		await waitFor(() => controller.facts().visible, "ready card presentation");
+		const shown = children.at(-1);
+		assert.ok(shown);
+		assert.equal(shown.visible, true);
+		controller.setModel({ entries: [] });
+		assert.deepEqual(children, []);
+		assert.equal(shown.visible, false);
+		controller.setModel({ entries: entries(1) });
+		await waitFor(() => controller.facts().visible, "same ready card reshow");
+		assert.equal(
+			children.at(-1),
+			shown,
+			"dismissal must not replace a loaded native document",
+		);
+		controller.onLayout({
+			presented: false,
+			contentRect: rect(0, 0, 1000, 700),
+			revision: 2,
+		});
+		assert.deepEqual(children, []);
+		controller.onLayout({
+			presented: true,
+			contentRect: rect(0, 0, 1000, 700),
+			revision: 3,
+		});
+		await waitFor(() => controller.facts().visible, "route return card");
+		assert.equal(children.at(-1), shown);
+	} finally {
+		controller.dispose("test");
+		assert.deepEqual(children, []);
+	}
+});
 
 test("geometry: wide content anchors the card to the content rect's bottom-right corner", () => {
 	const bounds = mod.approvalsCardBoundsFor({
@@ -382,18 +461,21 @@ test("controller: successive hidden palette changes load the newest palette", as
 		documentUrl: "https://example.test/browser-approvals-overlay.html",
 		palette: null,
 	});
-	const first = children.at(-1);
+	const first = mod.electron.focusState.views.at(-1);
 	controller.setContext({ theme: "dark", palette: "obsidian" });
-	const second = children.at(-1);
+	const second = mod.electron.focusState.views.at(-1);
 	controller.setContext({ theme: "light", palette: "kanagawaLotus" });
-	const third = children.at(-1);
+	const third = mod.electron.focusState.views.at(-1);
 	assert.notEqual(second, first, "the first hidden palette change rebuilds");
 	assert.notEqual(third, second, "the second change must rebuild again");
 	assert.equal(third.loadedUrls.length, 1);
 	const loaded = new URL(third.loadedUrls[0]);
 	assert.equal(loaded.searchParams.get("palette"), "kanagawaLotus");
 	assert.equal(loaded.searchParams.get("theme"), "light");
-	assert.equal(children.length, 1, "only the newest child remains attached");
+	assert.equal(children.length, 0, "the newest hidden child remains detached");
+	assert.equal(first.destroyed, true);
+	assert.equal(second.destroyed, true);
+	assert.equal(third.destroyed, false);
 	await waitFor(() => controller.facts().ready, "the newest document load");
 	controller.dispose("test");
 });
@@ -420,9 +502,9 @@ test("controller: a superseded load rejection does not latch off the replacement
 		documentUrl: "https://example.test/browser-approvals-overlay.html",
 		palette: null,
 	});
-	const stale = children.at(-1);
+	const stale = mod.electron.focusState.views.at(-1);
 	controller.setContext({ theme: "dark", palette: "obsidian" });
-	const replacement = children.at(-1);
+	const replacement = mod.electron.focusState.views.at(-1);
 	assert.notEqual(replacement, stale);
 	await waitFor(
 		() => controller.facts().ready,
@@ -552,7 +634,7 @@ test("controller: a zero-width load is not measured as the card height", async (
 	});
 	controller.setModel({ entries: entries(2) });
 	assert.equal(
-		children.at(-1).bounds.height,
+		mod.electron.focusState.views.at(-1).bounds.height,
 		112,
 		"first show rebuilds at the 96 DIP floor, not the 0-width measurement",
 	);
@@ -716,7 +798,12 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 		revision: 4,
 	});
 	assert.equal(view.visible, false, "route loss hides the card");
-	assert.equal(children.length, 1, "hiding does not destroy it");
+	assert.equal(children.length, 0, "hiding removes the native parent");
+	assert.equal(
+		view.destroyed,
+		false,
+		"detaching must not destroy the document",
+	);
 	assert.equal(controller.facts().presented, false);
 
 	controller.onLayout({
@@ -1476,6 +1563,91 @@ test("D1: a height growth that the child's viewport did not follow rebuilds the 
 		controller.state().available,
 		true,
 		"a rebuild is not a failure",
+	);
+	controller.dispose("test");
+});
+
+/*
+ * A COMPOSED PALETTE TRAVELS AS VALUES (layered appearance picker). The app
+ * names a contrast preset or custom accent `lo-<hash>`, which the card's static
+ * stylesheet has no block for and its CSP (`style-src 'self'`) forbids injecting,
+ * so the model carries the role values. They are renderer data crossing into
+ * main and on into another document: a full, known-role, grammar-valid set or
+ * nothing - never a partial palette, never free CSS.
+ */
+test("model: composed palette vars are all-or-nothing and grammar-checked", async () => {
+	const { loadPalettes } = await import("./palette-source.mjs");
+	const { mode: _mode, ...roles } = loadPalettes().find(
+		(p) => p.id === "obsidian",
+	).palette;
+	const base = {
+		seq: 1,
+		entries: [],
+		locale: "en",
+		dir: "ltr",
+		theme: "dark",
+		palette: "lo-abc123",
+	};
+	const ok = mod.approvalsCardModelFrom({ ...base, paletteVars: roles });
+	assert.equal(ok.palette, "lo-abc123");
+	assert.deepEqual(ok.paletteVars, roles, "a full valid set is carried as-is");
+
+	const extra = mod.approvalsCardModelFrom({
+		...base,
+		paletteVars: { ...roles, "background-image": "url(x)" },
+	});
+	assert.equal(
+		Object.hasOwn(extra.paletteVars, "background-image"),
+		false,
+		"an unknown key is dropped",
+	);
+	for (const [label, vars] of [
+		["css injection", { ...roles, canvas: "red; } body { display: none" }],
+		["missing role", (({ canvas: _c, ...rest }) => rest)(roles)],
+		["named colour", { ...roles, ink: "white" }],
+		["not an object", "canvas:#000"],
+	]) {
+		assert.equal(
+			mod.approvalsCardModelFrom({ ...base, paletteVars: vars }).paletteVars,
+			null,
+			`${label} refuses the whole set`,
+		);
+	}
+	assert.equal(
+		mod.sanitizeApprovalsCardModel({
+			...ok,
+			paletteVars: { canvas: "#000000" },
+		}).paletteVars,
+		null,
+		"the re-validation pass refuses a partial set too",
+	);
+});
+
+test("controller: a palette change carries its vars and a built-in clears them", async () => {
+	const controller = new mod.ApprovalsOverlayController({
+		window: {
+			contentView: {
+				children: [],
+				addChildView() {},
+				removeChildView() {},
+			},
+			isDestroyed: () => false,
+		},
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		palette: null,
+	});
+	const { loadPalettes } = await import("./palette-source.mjs");
+	const { mode: _mode, ...roles } = loadPalettes().find(
+		(p) => p.id === "obsidian",
+	).palette;
+	controller.setModel({ entries: entries(1) });
+	controller.setContext({ palette: "lo-abc123", paletteVars: roles });
+	assert.deepEqual(controller.model.paletteVars, roles);
+	controller.setContext({ palette: "obsidian", paletteVars: null });
+	assert.equal(
+		controller.model.paletteVars,
+		null,
+		"a built-in name must not inherit the previous composition's values",
 	);
 	controller.dispose("test");
 });

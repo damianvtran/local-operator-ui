@@ -1,0 +1,19 @@
+intl-messageformat renders - hi - auditor B session 94934cc4a6fd
+(repo's own intl-messageformat; Intl.ListFormat conjunction for the name list)
+
+===== hi =====
+
+--- events.others
+  value: {count, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}
+  count= 1: 1 अन्य व्यक्ति
+  count= 2: 2 अन्य लोग
+  count= 3: 3 अन्य लोग
+  count= 5: 5 अन्य लोग
+  count=11: 11 अन्य लोग
+  count=21: 21 अन्य लोग
+  as last list item (2 hidden, naive join): Ana, Ben, और 2 अन्य लोग
+  as last list item (3 hidden, naive join): Ana, Ben, और 3 अन्य लोग
+
+render failures: 0
+
+render failures for this locale: 0

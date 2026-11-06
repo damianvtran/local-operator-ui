@@ -1,0 +1,122 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (second independent pass, auditor-authored replacements)",
+	"audit_id": "teambridge-owner-audit-secondpass-vi",
+	"date": "2026-10-28",
+	"instance": "9de729bbb191-secondpass-vi",
+	"instance_note": "Reviewer session 9de729bbb191 with a per-locale suffix so each ledger row carries a distinct instance (precedent: b393dc8cd01c-owneraudit-<locale>).",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header: 'Model: anthropic/claude-opus-5-5'.",
+	"model_fallback": {
+		"announced": true,
+		"observed": true,
+		"chain": [
+			"anthropic/claude-opus-5-5",
+			"anthropic/claude-sonnet-5-5",
+			"openai/gpt-6-astra",
+			"kimi/k3.1-pro",
+			"radient/auto"
+		],
+		"note": "Quota exhaustion on the pinned model late in the turn. Every linguistic judgement, finding and prescribed string here was authored on anthropic/claude-opus-5-5; the fallbacks carried only the mechanical ledger write and the ledger-check re-run, which changed no wording."
+	},
+	"independence": "Second independent pass (reviewer role, session 9de729bbb191), independent of auditor b393dc8cd01c, whose replacements it re-audits: it authored none of them. Narrow scope: only the strings that auditor wrote itself. This reviewer wrote no catalogue byte; the operator applied the prescribed wording. It wrote only the two receipts and the two ledger rows via ledger-assemble.mjs.",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"integration": {
+		"branch": "feat/team-bridge-owner-audit-ui",
+		"reviewed_head": "a6ae8155c37e5a876ae6cf43876f25fafcd351a0",
+		"base": "e6320fbd33 (feat(sidebar) #1465)",
+		"worktree": "~/local-operator-ui-worktrees/team-bridge-owner-audit",
+		"pr": "not yet opened",
+		"note": "Reviews the auditor-authored replacement strings at HEAD a6ae8155c3; the four fixes are uncommitted working-tree bytes named by sha256 below."
+	},
+	"locale": "vi",
+	"namespace": "ui.ownerAudit",
+	"scope": {
+		"kind": "second independent pass, narrow",
+		"auditor_under_review": "b393dc8cd01c",
+		"keys_audited_linguistically": [
+			"ui.ownerAudit.read_only",
+			"ui.ownerAudit.removed"
+		],
+		"confirmed_auditor_fixes": [
+			"I18N-vi-1 (four corrupted words: Người, rời, thời gian)",
+			"I18N-vi-2 (chánh văn phòng)",
+			"I18N-vi-3 (tác nhân)",
+			"I18N-vi-4 (luồng, câu trả lời)"
+		],
+		"not_reaudited": "The other ui.ownerAudit keys and ui.teamBridge.thread.not_available were audited by b393dc8cd01c and are unchanged since; out of scope."
+	},
+	"sha256": {
+		"en": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+		"vi": "df9a9a9536d3d428dfc24ec2b0ec7d6c579a84aa2ebc03d2796801fe507cb096"
+	},
+	"audited_strings": {
+		"ui.ownerAudit.read_only": {
+			"before": "Lịch sử chỉ đọc. Không thể gửi, bày tỏ cảm xúc hoặc chỉnh sửa.",
+			"after": "Lịch sử chỉ đọc. Không thể gửi, thêm cảm xúc hoặc chỉnh sửa."
+		},
+		"ui.ownerAudit.removed": {
+			"before": "Chánh văn phòng của bạn đã bị xóa; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra.",
+			"after": "Chánh văn phòng của bạn đã bị xóa khỏi cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra."
+		}
+	},
+	"checks": {
+		"citation_chief": "chánh văn phòng recorded in the Minerva skill copy of the vi style guide (vi.md:74) and ships in 10 keys, incl. ui.teamBridge.chief.fallback, chief.unnamed, section.chiefs, thread.intro_chief, ui.agentMessages.settings.hold.chief_of_staff, ui.onboarding.extras.greeting_done/greeting_owed.",
+		"citation_agent": "tác nhân appears in 442 keys; tác tử in 0.",
+		"citation_thread": "luồng ships in ui.teamBridge.replies.title/action/close/empty and câu trả lời in replies.count/more/empty. luồng also means stream in ui.common.errors.event_stream_*, but the thread sense is already shipped, so no new collision.",
+		"citation_reaction": "Thêm cảm xúc is the shipped form (ui.teamBridge.reactions.add); bày tỏ cảm xúc occurs in 0 other keys.",
+		"unicode": "all values NFC; no format controls; codepoint scan finds no ờờ doubling and no stray space in Người, rời, thời gian; the only U+1EDF hits are the legitimate sở in sở hữu"
+	},
+	"notes": "Second pass over the auditor-authored vi replacements: the corruption fix, chánh văn phòng, tác nhân, luồng and câu trả lời all confirmed shipped. I18N2-vi-1 and I18N2-vi-2 (minor wording) found and fixed before signature.",
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "I18N2-vi-1",
+			"severity": "minor",
+			"status": "resolved",
+			"resolved_by": "operator, applying reviewer 9de729bbb191 wording verbatim",
+			"keys": [
+				"ui.ownerAudit.read_only"
+			],
+			"finding": "bày tỏ cảm xúc (express feelings) is not the shipped reaction term the receipt cites",
+			"fix": "bày tỏ cảm xúc -> thêm cảm xúc, matching ui.teamBridge.reactions.add"
+		},
+		{
+			"id": "I18N2-vi-2",
+			"severity": "minor",
+			"status": "resolved",
+			"resolved_by": "operator, applying reviewer 9de729bbb191 wording verbatim",
+			"keys": [
+				"ui.ownerAudit.removed"
+			],
+			"finding": "bị xóa alone reads as deleted, colliding with the deletion sense used for archives and agents",
+			"fix": "đã bị xóa -> đã bị xóa khỏi cuộc trò chuyện này, matching the removal sense of compose.remove (Bỏ), and now parallel to the left sibling which already says đã rời cuộc trò chuyện này"
+		}
+	],
+	"limitations": "The prescribed replacement wording for the strings this pass found wrong was authored by this reviewer and applied by the operator verbatim. This is the second signature over auditor b393dc8cd01c, which the rule requires; it is not an authorship-independent third signature on this reviewer own corrections, and a further independent reviewer would be needed for that if the programme wants it.",
+	"audit_notes_not_execution_log": "notes, checks and findings are this reviewer linguistic judgement, not command output",
+	"execution": [
+		{
+			"command": "shasum -a 256 src/i18n/catalogues/vi/ui.ownerAudit.json",
+			"result": "df9a9a9536d3d428dfc24ec2b0ec7d6c579a84aa2ebc03d2796801fe507cb096"
+		},
+		{
+			"command": "python3 JSON parse + NFC/format-control scan of the changed values",
+			"result": "all NFC, no bidi/format controls, 28/28 keys, tab indent and trailing newline preserved"
+		},
+		{
+			"command": "python3 grep of the other catalogues for each claimed shipped term",
+			"result": "every citation resolves; counts recorded in checks"
+		}
+	]
+}

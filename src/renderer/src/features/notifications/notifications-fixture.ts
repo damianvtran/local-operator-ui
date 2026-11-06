@@ -8,6 +8,7 @@ import type {
 	NotificationTarget,
 	NotificationVerb,
 } from "./notification-operations";
+import { type NotificationFilters, filterItems } from "./notifications-model";
 
 /**
  * Stateful evidence fixture, never a production transport. It implements the
@@ -139,6 +140,341 @@ export function createNotificationFixture(
 		publish();
 		return structuredClone(result);
 	};
+	// Fixture-only server snapshots/journals. The renderer never receives the
+	// captured rows: these model core's opaque-token route, including same-seq
+	// fences and Undo refusing a later write rather than clobbering it.
+	type Snapshot = {
+		rows: DesktopNotificationItem[];
+		asks: number;
+		boundary: number;
+		v2?: boolean;
+		sessions: string[];
+		signature?: string;
+		receipt?: BulkReceipt;
+	};
+	type BulkReceipt = {
+		selection_version?: 2;
+		changed_update_count: number;
+		changed_ask_count: number;
+		waiting_unread_delta: number;
+		counts_high_water: number;
+		changed_count: number;
+		skipped_count: number;
+		skipped_ask_count: number;
+		eligible_count: number;
+		excluded_count: number;
+		unread_delta: number;
+		session_counts: Record<
+			string,
+			{
+				changed_count: number;
+				unread_delta: number;
+				waiting_unread_delta: number;
+				unread_count: number;
+			}
+		>;
+		operation_token: string;
+		through_seq: number;
+		expires_at: number;
+		replayed: boolean;
+		unread_count: number;
+		waiting_count: number;
+		waiting_unread_count: number;
+		high_water: number;
+	};
+	const snapshots = new Map<string, Snapshot>();
+	const journals = new Map<
+		string,
+		{
+			rows: { before: DesktopNotificationItem; postSeq: number }[];
+			undone?: BulkReceipt;
+			v2?: boolean;
+		}
+	>();
+	const preview = (request: {
+		state?: string;
+		kind?: string;
+		bulkPriority?: string;
+		sessionId?: string;
+		countSessionIds?: string[];
+		includeAskReads?: boolean;
+	}) => {
+		const filters: NotificationFilters = {
+			kind: (request.kind ?? "all") as NotificationFilters["kind"],
+			priority: (request.bulkPriority ??
+				"any") as NotificationFilters["priority"],
+			from: request.sessionId ?? null,
+		};
+		const rows = filterItems(items, filters).filter(
+			(row) => request.state !== "unread" || !row.read,
+		);
+		const askRows = filterItems(waiting, filters);
+		const v2 = Boolean(request.includeAskReads);
+		const token = `fixture-selection-${snapshots.size + 1}`;
+		snapshots.set(token, {
+			rows: structuredClone([...rows, ...(v2 ? askRows : [])]),
+			asks: askRows.length,
+			boundary: highWater,
+			v2,
+			sessions: request.countSessionIds ?? [],
+		});
+		const totals = (
+			updates: DesktopNotificationItem[],
+			asks: DesktopNotificationItem[],
+		) => ({
+			eligible_count: updates.length + (v2 ? asks.length : 0),
+			eligible_unread_count:
+				updates.filter((row) => !row.read).length +
+				(v2 ? asks.filter((row) => !row.read).length : 0),
+			...(v2
+				? {
+						eligible_update_count: updates.length,
+						eligible_unread_update_count: updates.filter((row) => !row.read)
+							.length,
+						eligible_ask_count: asks.length,
+						eligible_unread_ask_count: asks.filter((row) => !row.read).length,
+					}
+				: {}),
+		});
+		return {
+			selection: {
+				token,
+				through_seq: highWater,
+				expires_at: Date.now() + 600_000,
+				...totals(rows, askRows),
+				skipped_ask_count: v2 ? 0 : askRows.length,
+				session_counts: Object.fromEntries(
+					(request.countSessionIds ?? []).map((id) => [
+						id,
+						totals(
+							rows.filter((row) => row.session.id === id),
+							askRows.filter((row) => row.session.id === id),
+						),
+					]),
+				),
+				...(v2
+					? {
+							selection_version: 2,
+							operation_counts: {
+								read: {
+									eligible_count: rows.length + askRows.length,
+									skipped_ask_count: 0,
+								},
+								unread: {
+									eligible_count: rows.length + askRows.length,
+									skipped_ask_count: 0,
+								},
+								dismiss: {
+									eligible_count: rows.length,
+									skipped_ask_count: askRows.length,
+								},
+								undismiss: {
+									eligible_count: rows.length,
+									skipped_ask_count: askRows.length,
+								},
+							},
+						}
+					: {}),
+			},
+		};
+	};
+	const withReconciliation = (receipt: BulkReceipt, ids?: string[]) => ({
+		...structuredClone(receipt),
+		...counts(),
+		...(ids
+			? {
+					reconciliation: {
+						items: structuredClone(
+							[...items, ...waiting].filter((row) => ids.includes(row.id)),
+						),
+						absent_ids: ids.filter(
+							(id) => ![...items, ...waiting].some((row) => row.id === id),
+						),
+						high_water: highWater,
+					},
+				}
+			: {}),
+	});
+
+	const bulkPatch = (
+		verb: string,
+		target: {
+			selectionToken?: string;
+			excludedIds?: string[];
+			operationToken?: string;
+			items?: { id: string; revision: number }[];
+			throughSeq?: number;
+			reconcileIds?: string[];
+		},
+	) => {
+		const beforeCount = counts().unread_count;
+		const beforeAskCount = counts().waiting_unread_count;
+		let v2 = Boolean(target.reconcileIds);
+		const session_counts: BulkReceipt["session_counts"] = {};
+		const operationToken = `fixture-operation-${journals.size + 1}`;
+		let skipped = 0;
+		const changed: { before: DesktopNotificationItem; postSeq: number }[] = [];
+		const apply = (
+			row: DesktopNotificationItem,
+			desired: DesktopNotificationItem,
+		) => {
+			const before = structuredClone(row);
+			const unreadBefore = !row.read && !row.dismissed;
+			row.read = desired.read;
+			row.dismissed = desired.dismissed;
+			row.read_via = row.read ? "explicit" : null;
+			row.seq = ++highWater;
+			changed.push({ before, postSeq: row.seq });
+			const own = session_counts[row.session.id] ?? {
+				changed_count: 0,
+				unread_delta: 0,
+				waiting_unread_delta: 0,
+				unread_count: 0,
+			};
+			own.changed_count++;
+			if (row.source === "ask")
+				own.waiting_unread_delta += Number(!row.read) - Number(unreadBefore);
+			else
+				own.unread_delta +=
+					Number(!row.read && !row.dismissed) - Number(unreadBefore);
+			session_counts[row.session.id] = own;
+		};
+		let snapshot: Snapshot | undefined;
+		let excluded = 0;
+		let eligible = 0;
+		if (verb === "undo") {
+			const journal = journals.get(target.operationToken ?? "");
+			if (!journal) throw new Error("unknown operation token");
+			if (journal.undone)
+				return withReconciliation(
+					{ ...journal.undone, replayed: true },
+					target.reconcileIds,
+				);
+			v2 ||= Boolean(journal.v2);
+			eligible = journal.rows.length;
+			for (const entry of journal.rows) {
+				const row = [...items, ...waiting].find(
+					(candidate) => candidate.id === entry.before.id,
+				);
+				if (
+					!row ||
+					row.seq !== entry.postSeq ||
+					row.revision !== entry.before.revision
+				) {
+					skipped++;
+					continue;
+				}
+				apply(row, entry.before);
+			}
+		} else {
+			const exclusion = new Set(target.excludedIds ?? []);
+			const signature = JSON.stringify([verb, [...exclusion].sort()]);
+			snapshot = target.selectionToken
+				? snapshots.get(target.selectionToken)
+				: undefined;
+			if (target.selectionToken && !snapshot)
+				throw new Error("unknown selection token");
+			if (snapshot?.receipt) {
+				if (snapshot.signature !== signature)
+					throw new Error("selection_operation_conflict");
+				return withReconciliation(
+					{ ...snapshot.receipt, replayed: true },
+					target.reconcileIds,
+				);
+			}
+			v2 ||= Boolean(snapshot?.v2);
+			const captured =
+				snapshot?.rows ??
+				(target.items ?? [])
+					.map((token) => {
+						const row = [...items, ...waiting].find(
+							(candidate) => candidate.id === token.id,
+						);
+						return row ? { ...row, revision: token.revision } : null;
+					})
+					.filter((row): row is DesktopNotificationItem => row !== null);
+			for (const prior of captured) {
+				if (exclusion.has(prior.id)) {
+					excluded++;
+					continue;
+				}
+				if (prior.source === "ask" && (!snapshot?.v2 || verb === "dismiss"))
+					continue;
+				eligible++;
+				const row = [...items, ...waiting].find(
+					(candidate) => candidate.id === prior.id,
+				);
+				if (
+					!row ||
+					row.revision !== prior.revision ||
+					(prior.source === "ask"
+						? row.seq !== prior.seq
+						: row.seq > (snapshot?.boundary ?? target.throughSeq ?? 0))
+				) {
+					skipped++;
+					continue;
+				}
+				const desired = {
+					...row,
+					read: verb === "read" ? true : verb === "unread" ? false : row.read,
+					dismissed: verb === "dismiss" ? true : row.dismissed,
+				};
+				if (row.read === desired.read && row.dismissed === desired.dismissed) {
+					skipped++;
+					continue;
+				}
+				apply(row, desired);
+			}
+			if (snapshot) snapshot.signature = signature;
+		}
+		for (const id of new Set([
+			...(snapshot?.sessions ?? []),
+			...Object.keys(session_counts),
+		])) {
+			const own = session_counts[id] ?? {
+				changed_count: 0,
+				unread_delta: 0,
+				waiting_unread_delta: 0,
+				unread_count: 0,
+			};
+			own.unread_count = items.filter(
+				(row) => row.session.id === id && !row.read && !row.dismissed,
+			).length;
+			session_counts[id] = own;
+		}
+		const receipt: BulkReceipt = {
+			...(v2 ? { selection_version: 2 as const } : {}),
+			changed_update_count: changed.filter(
+				(row) => row.before.source === "notify",
+			).length,
+			changed_ask_count: changed.filter((row) => row.before.source === "ask")
+				.length,
+			waiting_unread_delta: counts().waiting_unread_count - beforeAskCount,
+			counts_high_water: highWater,
+			...counts(),
+			changed_count: changed.length,
+			skipped_count: skipped,
+			skipped_ask_count:
+				snapshot?.v2 && verb !== "dismiss" ? 0 : (snapshot?.asks ?? 0),
+			eligible_count: eligible,
+			excluded_count: excluded,
+			unread_delta: counts().unread_count - beforeCount,
+			session_counts,
+			operation_token: operationToken,
+			through_seq: highWater,
+			expires_at: Date.now() + 600_000,
+			replayed: false,
+		};
+		journals.set(operationToken, { rows: changed, v2 });
+		if (snapshot) snapshot.receipt = receipt;
+		if (verb === "undo") {
+			const journal = journals.get(target.operationToken ?? "");
+			if (journal) journal.undone = receipt;
+		}
+		publish();
+		return withReconciliation(receipt, target.reconcileIds);
+	};
+
 	/**
 	 * The FAILURE-capable send the planner is driven with: a fixture write error
 	 * must stop a batch and report "not confirmed", never look like a no-op.
@@ -180,6 +516,10 @@ export function createNotificationFixture(
 			publish();
 			return next;
 		},
+		arriveAsk(next: DesktopNotificationItem) {
+			waiting.push(next);
+			publish();
+		},
 		/** Ask changes intentionally preserve notify high-water (R1 regression). */
 		replaceAsk(next: DesktopNotificationItem) {
 			waiting.splice(0, waiting.length, next);
@@ -203,7 +543,11 @@ export function createNotificationFixture(
 			if (request.op === "notifications.list")
 				return {
 					status: 200,
-					body: { result: list(request as Parameters<typeof list>[0]) },
+					body: {
+						result: request.preview
+							? preview(request as Parameters<typeof preview>[0])
+							: list(request as Parameters<typeof list>[0]),
+					},
 				};
 			if (request.op === "notifications.count")
 				return { status: 200, body: { result: counts() } };
@@ -221,10 +565,19 @@ export function createNotificationFixture(
 				return {
 					status: 200,
 					body: {
-						result: patch(
-							request.verb as NotificationVerb,
-							request.target as NotificationTarget,
-						),
+						result: (() => {
+							const target = request.target as Parameters<
+								typeof bulkPatch
+							>[1] & { receipt?: boolean };
+							return target.selectionToken ||
+								target.operationToken ||
+								target.receipt
+								? bulkPatch(String(request.verb), target)
+								: patch(
+										request.verb as NotificationVerb,
+										request.target as NotificationTarget,
+									);
+						})(),
 					},
 				};
 			}

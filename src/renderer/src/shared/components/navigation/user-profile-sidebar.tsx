@@ -150,7 +150,11 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 		 * initials: no photo, signed out, a failed read, or a core older than
 		 * 0.90.13, whose avatar relay 404s.
 		 */
-		const avatarUrl = useOwnAccountAvatar(user?.radientUser.account, 64);
+		const avatarUrl = useOwnAccountAvatar(
+			user?.radientUser.account,
+			// The plate is `size-7`: 28 CSS px, variant picked per DPR.
+			28,
+		);
 
 		const row = (
 			<button
@@ -194,12 +198,13 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				 *
 				 * ONE PERSON, ONE SHAPE (design review round 1, D1). Team Bridge draws
 				 * this same person's photo, through this same `use-account-avatar.ts`
-				 * cache, on `TeamBridgeAvatar`'s rounded-square plate (`rounded-md`,
-				 * `team-bridge-profile-card.tsx`), and the operator asked for
-				 * rounded-square images. So the root overrides the shared primitive's
-				 * `rounded-full` with that same token rather than a new radius, and
-				 * the photo, the initials and a transparent upload's backing all share
-				 * one box. `size-7` is unchanged, so the swap moves no geometry.
+				 * cache, on `TeamBridgeAvatar`'s plate (`team-bridge-profile-card.tsx`),
+				 * and this row is the foot of the Team Bridge column too. That plate
+				 * went ROUND in the Team Bridge visual refresh (2026-11-04: § 5
+				 * reserves `rounded-full` for avatars, and the square read as a tile),
+				 * so this root follows it, and the photo, the initials and a
+				 * transparent upload's backing still share one box. `size-7` is
+				 * unchanged, so the swap moves no geometry.
 				 *
 				 * BORDERLESS, ON THE FILL TEAM BRIDGE ALREADY MEASURED (D2, D4). The
 				 * plate used to be `elevated` with a `border-control` ring, because
@@ -217,7 +222,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				 * row and change colour under the pointer. The class half is pinned in
 				 * `scripts/chat-sidebar-selection.test.mjs`.
 				 */}
-				<Avatar className="size-7 shrink-0 rounded-md bg-media-surface">
+				<Avatar className="size-7 shrink-0 rounded-full bg-media-surface">
 					{/*
 					 * Radix mounts the image only once it has LOADED, so the fallback
 					 * holds the plate until then and a slow or failed decode never
@@ -229,7 +234,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 					{avatarUrl && (
 						<AvatarImage src={avatarUrl} alt="" className="lo-avatar-arrival" />
 					)}
-					<AvatarFallback className="rounded-md bg-media-surface text-ink-muted">
+					<AvatarFallback className="rounded-full bg-media-surface text-ink-muted">
 						{userInitials ?? <User size={14} aria-hidden="true" />}
 					</AvatarFallback>
 				</Avatar>

@@ -1,5 +1,6 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { PdfViewerStatus } from "../main/pdf-viewer-status";
 import type { UpdateCheckVerdict } from "../main/update-check-verdict";
 import type {
 	BackendUpdateCompletion,
@@ -34,6 +35,10 @@ import type {
 	MiniViewRegistrationState,
 	MiniViewSummonedPayload,
 } from "../shared/mini-view";
+import type {
+	ChordClaim,
+	RecordingShortcutState,
+} from "../shared/recording-shortcut";
 import type {
 	WindowChromeColors,
 	WindowChromeFacts,
@@ -115,6 +120,14 @@ declare global {
 			 * main, the preload and this file all import, so a channel or a payload
 			 * shape cannot drift between them.
 			 */
+			recordingShortcut: {
+				get: () => Promise<RecordingShortcutState>;
+				markPending: (value?: string) => void;
+				onChange: (
+					callback: (state: RecordingShortcutState) => void,
+				) => () => void;
+				syncClaims: (rev: number, claims: ChordClaim[]) => void;
+			};
 			miniView: {
 				onSummoned: (
 					callback: (payload: MiniViewSummonedPayload) => void,
@@ -164,6 +177,7 @@ declare global {
 					dir?: "ltr" | "rtl";
 					theme?: "light" | "dark";
 					palette?: string | null;
+					paletteVars?: Record<string, string> | null;
 				}) => Promise<unknown>;
 				closeApprovalsCard: () => Promise<unknown>;
 				setApprovalsCardContext: (input: {
@@ -171,6 +185,7 @@ declare global {
 					dir?: "ltr" | "rtl";
 					theme?: "light" | "dark";
 					palette?: string | null;
+					paletteVars?: Record<string, string> | null;
 					requesterLabels?: Readonly<Record<string, string>>;
 				}) => Promise<unknown>;
 				onChord: (
@@ -493,6 +508,15 @@ declare global {
 			 */
 			getPathForFile: (file: File) => string;
 			/**
+			 * The clipboard's plain text, synchronously, for a composer `paste`
+			 * handler deciding whether to cancel the browser's insert (issue
+			 * #1573): a macOS file paste omits `text/plain` from the event while
+			 * Chromium still inserts the file's name. Blocks the renderer for one
+			 * main-process read; call it only from inside a paste handler. `""`
+			 * when there is nothing to read or the read failed.
+			 */
+			readPasteTextSync: () => string;
+			/**
 			 * Bytes for the in-app viewers (PDF, image, audio). The failure case is a
 			 * discriminant rather than an `Error`, because structured clone strips a
 			 * custom Error's prototype and `instanceof` would never be true here.
@@ -501,6 +525,8 @@ declare global {
 				filePath: string,
 				maxBytes?: number,
 			) => Promise<ReadFileBytesResponse>;
+			/** Parse status of this app window's already mounted native PDF guest. */
+			pdfViewerStatus: (blobUrl: string) => Promise<PdfViewerStatus>;
 			/**
 			 * Upload one composer attachment to the daemon's attachment store. Main owns
 			 * the read and the multipart POST; the renderer receives the stored record
@@ -537,6 +563,20 @@ declare global {
 			 * first, because `showItemInFolder` returns nothing and will happily
 			 * reveal the parent of a path that does not exist.
 			 */
+			/**
+			 * Subscribe to notification sounds main asks this window to play (its
+			 * fallback when the OS cannot play them). Returns the unsubscribe.
+			 */
+			onNotificationSound?: (
+				callback: (bytes: Uint8Array) => void,
+			) => () => void;
+			/**
+			 * Raise one real banner with the configured notification sound.
+			 * Optional: absent outside Electron (Storybook, browser development).
+			 */
+			sendTestNotification?: () => Promise<
+				{ shown: true } | { shown: false; reason: "unsupported" | "suppressed" }
+			>;
 			showItemInFolder: (filePath: string) => Promise<FileActionOutcome>;
 			systemInfo: {
 				getAppVersion: () => Promise<string>;
@@ -619,6 +659,8 @@ declare global {
 						detail?: string;
 						/** True when the install follows a source tree, not the release. */
 						sourceBuild?: boolean;
+						/** Whether the press cannot interrupt a running session (`entry-point` route only). */
+						nonDisruptive?: boolean;
 						/**
 						 * The version the daemon SERVING this app reports, when it was
 						 * readable. `currentVersion` above is the install on disk, which an

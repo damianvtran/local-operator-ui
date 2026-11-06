@@ -26,6 +26,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/trace-fold-model";',
 			'export { isInternalReceipt, receiptFamilyOf } from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
+			'export { bridgeReceiptOf } from "./src/renderer/src/features/chat/components/trace/bridge-receipt-model";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -46,6 +47,7 @@ const {
 	FOLD_MIN_ACTIONS,
 	FOLD_MIN_RECEIPTS,
 	actionClass,
+	foldCountSegments,
 	foldCounts,
 	foldCountUnits,
 	foldImages,
@@ -61,6 +63,7 @@ const {
 	foldSummaryUnits,
 	isInternalReceipt,
 	receiptFamilyOf,
+	bridgeReceiptOf,
 	receiptFoldUnits,
 	turnFeet,
 } = await import(moduleUrl);
@@ -559,6 +562,7 @@ test("internal receipt classification is structural, and stays narrow", () => {
 		{ kind: "peer" },
 		{ kind: "wake" },
 		{ kind: "custom", customType: "hub_message" },
+		{ kind: "custom", customType: "team_bridge_message" },
 		{ kind: "custom", customType: "job_result" },
 		{ kind: "custom", customType: "monitor_prompt" },
 	]) {
@@ -1533,4 +1537,123 @@ test("the header's image clause names the count, and a run with none has no clau
 	);
 	assert.equal(foldMediaClause(2), "2 images");
 	assert.equal(foldMediaClause(30), "30 images");
+});
+
+/* ---------------------------- Team Bridge rows --------------------------- */
+
+/*
+ * `bridge` counts like `jobs cancel`: a call that WROTE something a person
+ * reads is a `team message` (`kind:bridge:post`), every other op a `team action`
+ * (`kind:bridge`). The keys are the cross-surface contract the condense parity
+ * fixture pins; the words are this app's own.
+ */
+test("bridge calls count as team messages or team actions, by op", () => {
+	const segments = foldCountSegments([
+		{ name: "bridge", op: "channel_post", failed: false },
+		{ name: "bridge", op: "dm", failed: false },
+		{ name: "bridge", op: "send", failed: false },
+		{ name: "bridge", op: "reply", failed: false },
+		{ name: "bridge", op: "channel_history", failed: false },
+		{ name: "bridge", op: "react-remove", failed: false },
+		{ name: "bridge", failed: false },
+	]);
+	assert.deepEqual(
+		segments.map(({ key, count, label }) => [key, count, label]),
+		[
+			["kind:bridge:post", 4, "4 team messages"],
+			["kind:bridge", 3, "3 team actions"],
+		],
+	);
+	assert.equal(
+		foldCounts([{ name: "bridge", op: "dm", failed: false }]),
+		"1 team message",
+	);
+	assert.equal(
+		foldCounts([{ name: "bridge", op: "directory", failed: false }]),
+		"1 team action",
+	);
+	assert.equal(
+		foldCounts([
+			{ name: "bridge", op: "channel_post", failed: false },
+			{ name: "send", failed: false },
+		]),
+		// Unlisted kinds sort by count, then noun - `message` before `team message`.
+		"1 message · 1 team message",
+		"bridge and send stay separate nouns inside one condensed run",
+	);
+});
+
+test("bridge rows join a tool group and a bridge+send run condenses", () => {
+	const tool = (id, name, op) =>
+		row(id, "trace", { toolName: name, args: op ? { op } : {} });
+	const options = {
+		nameOf: (r) => r.record.toolName,
+		opOf: (r) => r.record.args?.op ?? "",
+		failedOf: () => false,
+		durationOf: () => 1,
+		isFoldable: (r) => r.record.kind === "tool",
+	};
+	const groups = foldRuns(
+		[
+			tool("a", "read"),
+			tool("b", "bridge", "channel_post"),
+			tool("c", "send"),
+			tool("d", "bridge", "channel_history"),
+			tool("e", "bridge", "dm"),
+		],
+		options,
+	);
+	assert.equal(groups.length, 1, "a bridge row never breaks the group");
+	assert.deepEqual(
+		groups[0].rows.map((r) => r.record.id),
+		["a", "b", "c", "d", "e"],
+	);
+	assert.deepEqual(
+		groups[0].summary.countUnits.map(({ key, count }) => [key, count]),
+		[
+			["class:files", 1],
+			["kind:bridge:post", 2],
+			["kind:send", 1],
+			["kind:bridge", 1],
+		],
+	);
+});
+
+test("Bridge receipt metadata never turns a model envelope or alleged admission into a body", () => {
+	const legacy = bridgeReceiptOf({
+		sender: { name: "Example member" },
+		text: "from Root (human)\nBody: do not display",
+	});
+	assert.equal(legacy.sender.name, "Example member");
+	assert.equal(legacy.sender.kind, undefined);
+	assert.equal(legacy.conversation.kind, undefined);
+	assert.equal(legacy.attachmentCount, undefined);
+	const current = bridgeReceiptOf({
+		bridge_receipt: {
+			v: 1,
+			sender: { name: "Example agent", kind: "agent" },
+			conversation: { kind: "dm", label: "Project notes" },
+			attachment_count: 2,
+			admission: { state: "admitted" },
+			body: "Private alleged body",
+			images: [{ attachment: "fake" }],
+		},
+	});
+	assert.equal(current.sender.kind, "agent");
+	assert.equal(current.conversation.kind, "dm");
+	assert.equal(current.attachmentCount, 2);
+	assert.equal("body" in current, false);
+	assert.equal("images" in current, false);
+	for (const count of [-1, 1.5, "2", Number.POSITIVE_INFINITY])
+		assert.equal(
+			bridgeReceiptOf({ bridge_receipt: { v: 1, attachment_count: count } })
+				.attachmentCount,
+			undefined,
+		);
+	assert.equal(
+		bridgeReceiptOf({
+			bridge_receipt: { v: 2, sender: { name: "Future format" } },
+		}).sender.name,
+		"",
+	);
 });

@@ -1,0 +1,23 @@
+intl-messageformat renders - ru - auditor B session 94934cc4a6fd
+(repo's own intl-messageformat; Intl.ListFormat conjunction for the name list)
+
+===== ru =====
+
+--- events.joined
+  value: Присоединение к разговору: {targets}
+  1 target : Присоединение к разговору: Ana
+  3 targets: Присоединение к разговору: Ana, Ben и Sana
+
+--- events.declined
+  value: {actor}: отклонение приглашения для {targets}
+  1 target : Ana: отклонение приглашения для Ana
+  3 targets: Ana: отклонение приглашения для Ana, Ben и Sana
+
+--- events.owner_added_agent
+  value: {actor}: добавление собственного агента — {targets}
+  1 target : Ana: добавление собственного агента — Ana
+  3 targets: Ana: добавление собственного агента — Ana, Ben и Sana
+  owner_invite (single target, the proved case): Ana: добавление собственного агента — Ana
+
+
+render failures for this locale: 0

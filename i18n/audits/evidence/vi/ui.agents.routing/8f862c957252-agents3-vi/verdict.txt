@@ -1,0 +1,2 @@
+PASS
+12 keys audited (ui.agents.routing, vi); 0 BLOCKER, 0 MAJOR, 2 MINOR, 3 NIT; translator log 2026-10-30.

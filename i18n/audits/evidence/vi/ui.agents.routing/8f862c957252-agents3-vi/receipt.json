@@ -1,0 +1,252 @@
+{
+ "instance": "8f862c957252-agents3-vi",
+ "locale": "vi",
+ "audit_date": "2026-10-30",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "8f862c957252",
+  "model": "radient/auto",
+  "actual_model_source": "harness model-switch notices: configured selector anthropic/claude-sonnet-5-5; provider quota fallbacks openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; radient/auto served the whole audit (read, measure, judge)",
+  "independent_from_translator_session": true,
+  "translator_evidence": "agents2-i18n/vi/translator.log; this session wrote none of the 12 values and edited neither file"
+ },
+ "scope": {
+  "kind": "pending new-key delta (not yet in src/i18n/catalogues/vi/)",
+  "namespace": "ui.agents.routing",
+  "keys": 12,
+  "what": "Installed-agent routing sentences ('when to pick this agent') served to the card and destination pickers; the registry's single description field, also what search embeds",
+  "source": "src/i18n/catalogues/en/ui.agents.routing.json",
+  "target": "agents2-i18n/vi/ui.agents.routing.json"
+ },
+ "status": "passed",
+ "verdict": "pass",
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 2,
+  "NIT": 3
+ },
+ "findings": [
+  {
+   "id": "V-M1",
+   "severity": "MINOR",
+   "key": "ui.agents.routing.architect, ui.agents.routing.designer, ui.agents.routing.ux_reviewer",
+   "current": "\"Quyết định xây thế nào…\" / \"Kiểm tra vẻ ngoài…\" / \"Rà soát trải nghiệm người dùng…\"",
+   "problem": "All three sidecars make the capitalised word a load-bearing device ('HOW' vs the designer's 'LOOKS' vs the ux_reviewer's 'EXPERIENCE'; architect note: 'keep the emphasis', designer: 'keep the emphasis', ux_reviewer: 'keep both'). vi drops the device in all three, so the deliberate three-way contrast between the cards is carried only by the verbs. All-caps Vietnamese would read as shouting and is not this guide's register, so the loss is a style loss, not a meaning loss.",
+   "suggestion": "Carry the contrast lexically and front it: architect \"Quyết định CÁCH xây…\" is shouty — prefer \"Quyết định trước cách xây…\" with 'cách xây' fronted; designer \"Xét vẻ ngoài…\" vs ux_reviewer \"Xét trải nghiệm…\" (matched verb pair makes the contrast explicit). Record the device in the vi guide if adopted."
+  },
+  {
+   "id": "V-M2",
+   "severity": "MINOR",
+   "key": "ui.agents.routing.copy_reviewer",
+   "current": "\"chữ sản phẩm người dùng thấy\"",
+   "problem": "Without the relativiser the run momentarily parses as 'chữ sản phẩm' (the product's writing) before 'người dùng thấy' attaches; the same string later writes user-visible text as 'chữ người dùng thấy', so the two spellings of one concept sit 60 characters apart on a card line read at a glance. Same compound the sibling descriptions audit flagged (V-M1).",
+   "suggestion": "\"câu chữ trong sản phẩm mà người dùng thấy\" — and use \"câu chữ người dùng thấy\" for the later 'Use on user-visible text' clause so one concept has one spelling."
+  },
+  {
+   "id": "V-N1",
+   "severity": "NIT",
+   "key": "ui.agents.routing.librarian",
+   "current": "\"tệp đã lưu\"",
+   "problem": "'saved assets' covers files AND artefacts (the sidecar says so explicitly); 'tệp' narrows the card to files only.",
+   "suggestion": "\"tài nguyên đã lưu\" (or \"tệp và hiện vật đã lưu\")."
+  },
+  {
+   "id": "V-N2",
+   "severity": "NIT",
+   "key": "ui.agents.routing.tui_designer",
+   "current": "\"bảng trạng thái\"",
+   "problem": "'status dashboards' renders as 'status table/board'; vi keeps 'dashboard' or uses 'bảng điều khiển', and this agent's own subject is terminal dashboards, so the weaker compound undersells the artefact.",
+   "suggestion": "\"bảng điều khiển trạng thái\" or keep \"dashboard\" as the kept-English term."
+  },
+  {
+   "id": "V-N3",
+   "severity": "NIT",
+   "key": "ui.agents.routing.manager",
+   "current": "\"công việc nhiều phần\" / \"thúc đẩy việc đang bị chặn\"",
+   "problem": "'multi-part work' is a literal calque ('công việc nhiều phần' reads as 'work, many parts'); 'chasing what is blocked' takes 'thúc đẩy' (push forward), where the sense is chasing up stalled work.",
+   "suggestion": "\"công việc gồm nhiều phần\" and \"đôn đốc những việc đang bị chặn\"."
+  }
+ ],
+ "namespaces": {
+  "ui.agents.routing": {
+   "status": "passed",
+   "keys_audited": 12,
+   "sha256": {
+    "en": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+    "vi": "ee3d78fd74d8ad2bf7b90e4a75782c7487e5da1746a5bc1900ade2f0c3f39615"
+   },
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 2,
+    "NIT": 3
+   },
+   "findings": [
+    {
+     "id": "V-M1",
+     "severity": "MINOR",
+     "key": "ui.agents.routing.architect, ui.agents.routing.designer, ui.agents.routing.ux_reviewer",
+     "current": "\"Quyết định xây thế nào…\" / \"Kiểm tra vẻ ngoài…\" / \"Rà soát trải nghiệm người dùng…\"",
+     "problem": "All three sidecars make the capitalised word a load-bearing device ('HOW' vs the designer's 'LOOKS' vs the ux_reviewer's 'EXPERIENCE'; architect note: 'keep the emphasis', designer: 'keep the emphasis', ux_reviewer: 'keep both'). vi drops the device in all three, so the deliberate three-way contrast between the cards is carried only by the verbs. All-caps Vietnamese would read as shouting and is not this guide's register, so the loss is a style loss, not a meaning loss.",
+     "suggestion": "Carry the contrast lexically and front it: architect \"Quyết định CÁCH xây…\" is shouty — prefer \"Quyết định trước cách xây…\" with 'cách xây' fronted; designer \"Xét vẻ ngoài…\" vs ux_reviewer \"Xét trải nghiệm…\" (matched verb pair makes the contrast explicit). Record the device in the vi guide if adopted."
+    },
+    {
+     "id": "V-M2",
+     "severity": "MINOR",
+     "key": "ui.agents.routing.copy_reviewer",
+     "current": "\"chữ sản phẩm người dùng thấy\"",
+     "problem": "Without the relativiser the run momentarily parses as 'chữ sản phẩm' (the product's writing) before 'người dùng thấy' attaches; the same string later writes user-visible text as 'chữ người dùng thấy', so the two spellings of one concept sit 60 characters apart on a card line read at a glance. Same compound the sibling descriptions audit flagged (V-M1).",
+     "suggestion": "\"câu chữ trong sản phẩm mà người dùng thấy\" — and use \"câu chữ người dùng thấy\" for the later 'Use on user-visible text' clause so one concept has one spelling."
+    },
+    {
+     "id": "V-N1",
+     "severity": "NIT",
+     "key": "ui.agents.routing.librarian",
+     "current": "\"tệp đã lưu\"",
+     "problem": "'saved assets' covers files AND artefacts (the sidecar says so explicitly); 'tệp' narrows the card to files only.",
+     "suggestion": "\"tài nguyên đã lưu\" (or \"tệp và hiện vật đã lưu\")."
+    },
+    {
+     "id": "V-N2",
+     "severity": "NIT",
+     "key": "ui.agents.routing.tui_designer",
+     "current": "\"bảng trạng thái\"",
+     "problem": "'status dashboards' renders as 'status table/board'; vi keeps 'dashboard' or uses 'bảng điều khiển', and this agent's own subject is terminal dashboards, so the weaker compound undersells the artefact.",
+     "suggestion": "\"bảng điều khiển trạng thái\" or keep \"dashboard\" as the kept-English term."
+    },
+    {
+     "id": "V-N3",
+     "severity": "NIT",
+     "key": "ui.agents.routing.manager",
+     "current": "\"công việc nhiều phần\" / \"thúc đẩy việc đang bị chặn\"",
+     "problem": "'multi-part work' is a literal calque ('công việc nhiều phần' reads as 'work, many parts'); 'chasing what is blocked' takes 'thúc đẩy' (push forward), where the sense is chasing up stalled work.",
+     "suggestion": "\"công việc gồm nhiều phần\" and \"đôn đốc những việc đang bị chặn\"."
+    }
+   ]
+  }
+ },
+ "inputs": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.agents.routing.json",
+   "sha256": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.agents.routing.context.json",
+   "sha256": "c9c0c1183cd3ddc1d22e4b4cd41d2940daeda0dfe213ff4db51c627d0a48452f"
+  },
+  "target": {
+   "path": "agents2-i18n/vi/ui.agents.routing.json",
+   "sha256": "ee3d78fd74d8ad2bf7b90e4a75782c7487e5da1746a5bc1900ade2f0c3f39615"
+  },
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/vi.md",
+   "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+  },
+  "sibling_family": {
+   "en": {
+    "path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+    "sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+   },
+   "vi": {
+    "path": "agents-i18n/vi/ui.agents.descriptions.json",
+    "sha256": "dfa4ae25ba6396f90ef5c9780b55d86ecb51aedebd984f8ce6bb6674db6d1284"
+   }
+  }
+ },
+ "checks": {
+  "mechanical": {
+   "json_valid": true,
+   "key_parity": true,
+   "keys_en": 12,
+   "keys_vi": 12,
+   "duplicate_keys_raw_scan": "none",
+   "placeholders_or_icu": "none in either file (no braces, tags or code spans)",
+   "markup_tokens_intact": true,
+   "nfc": {
+    "en": true,
+    "vi": true,
+    "nfd_form": false
+   },
+   "identical_to_english": [],
+   "technical_tokens_preserved": [
+    "UI",
+    "RFC",
+    "LinkedIn",
+    "X",
+    "AI-isms",
+    "diff",
+    "API",
+    "CLI",
+    "unicode",
+    "daemon"
+    ],
+   "note_product_name": "'Library' renders 'Thư viện' (capital kept, Vietnamese word) — matches the audited sibling family, no finding",
+   "typography": "no double space, no edge whitespace, no straight quotes, no unspaced dash, no ASCII ellipsis; em dash used as ' — '"
+  },
+  "width": {
+   "measure": "unicode chars; no East-Asian wide or combining marks in either file, so cells == chars",
+   "en_total_chars": 2422,
+   "vi_total_chars": 2372,
+   "total_ratio": 0.98,
+   "mean_ratio": 0.98,
+   "per_key_ratio": {
+    "aida": 1.04,
+    "architect": 0.98,
+    "coder": 0.86,
+    "copy_reviewer": 1.04,
+    "designer": 1.15,
+    "librarian": 0.83,
+    "manager": 1.01,
+    "qa_tester": 1.07,
+    "reviewer": 0.91,
+    "scout": 0.84,
+    "tui_designer": 0.93,
+    "ux_reviewer": 1.04
+   },
+   "longest_ratio": {
+    "key": "ui.agents.routing.designer",
+    "ratio": 1.15,
+    "delta_chars": 30
+   },
+   "verdict": "no overflow finding: the en values are themselves 121-354 chars and truncate by design at ~320 px, so a +15 % outlier changes truncation point, not layout"
+  },
+  "glossary_and_style": {
+   "agent": "tác nhân (3x) — glossary §2, no Latin 'agent' left in prose",
+   "team": "nhóm — glossary §2",
+   "Library": "Thư viện, capitalised — sidecar + sibling family",
+   "repository": "kho mã",
+   "kept_english": [
+    "pull request",
+    "merge request",
+    "diff",
+    "commit",
+    "ticket",
+    "terminal",
+    "unicode",
+    "daemon"
+    ],
+   "pronoun_policy": "no 'bạn' used — guide says drop pronouns in non-contact strings; routing sentences are occasion lists, correct",
+   "passives": "no 'được' padding; 'không bao giờ' preserves the hard restriction on code comments"
+  },
+  "sibling_consistency": {
+   "agent": "tác nhân in both families — agree",
+   "team": "nhóm in both — agree",
+   "run_work": "phần việc / việc in both, no conflicting rendering — agree",
+   "library": "Thư viện in both — agree",
+   "repo": "kho mã in both — agree",
+   "review_verb": "rà soát in both — agree",
+   "divergence_noted_not_flagged": "'AI-isms' is kept Latin here (routing sidecar orders it) while the sibling descriptions renders 'lối viết đặc trưng của AI'; the routing text conforms to its own sidecar, so the finding belongs to the sibling, not this file"
+  },
+  "second_pass": "all 12 keys re-read independently after the first pass; no BLOCKER or MAJOR found on either pass"
+ },
+ "ledger": {
+  "row_appended": false,
+  "reason": "target catalogue is not yet in src/i18n/catalogues/vi/, so a ledger row naming this namespace would fail ledger-check's target-hash binding until the translation lands; the manager's write instruction is receipt.json + verdict.txt only"
+ },
+ "audit_notes_not_execution_log": "The mechanical readings in checks are values this session computed from the two files; no validator was run in place because the vi catalogue is not yet on disk in the repo."
+}

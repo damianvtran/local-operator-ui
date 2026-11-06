@@ -1,0 +1,83 @@
+{
+	"audit_id": "5f1c69790d92-agents-hi",
+	"audit_date": "2026-10-30",
+	"date": "2026-10-30",
+	"locale": "hi",
+	"namespace": "ui.agents.detail.install",
+	"source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+	"translator": {
+		"agent": "i18n-translator (translation lane)",
+		"session": "bfeac33a273e",
+		"model": "radient/auto",
+		"model_source": "read from the translation lane's own translator.log model-switch lines; not observed live by this auditor",
+		"independence_disclosure": "the translator lane and this audit run ended on the same underlying model (radient/auto) through the same provider quota fallback; independence here is by agent and session, not by model, and is disclosed rather than claimed."
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "5f1c69790d92",
+		"model": "radient/auto",
+		"actual_model_source": "harness session header (model-switch notices): primary anthropic/claude-sonnet-5-5 failed on quota and fell back openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; what radient/auto resolves to upstream is not visible from this session",
+		"independent_from_translator_session": true,
+		"result": "clean-with-findings",
+		"receipt": "i18n/receipts/5f1c69790d92-agents-hi.json",
+		"receipt_sha256": "a7d5e5fe6ac07dc0c6b933aba7fbc6587d19d4859ccab65c752fdcaf2ee8d488"
+	},
+	"key_count": 2,
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.detail.install.json",
+			"sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.detail.install.context.json",
+			"sha256": "f82578e4390f18d396fa229286d5395492618bd93ccbfa43d8d0dbe5a6530307"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.agents.detail.install.json",
+			"sha256": "6720bcf334c63b5e7444d01c28963fd70775893da987d959880018a89a0a64c7"
+		}
+	},
+	"findings": [
+		{
+			"id": "H4",
+			"severity": "MINOR",
+			"namespace": "ui.agents.detail.install",
+			"key": "ui.agents.detail.install.action.install_to_edit",
+			"current": "संपादन के लिए इंस्टॉल करें",
+			"problem": "Fit: 25 cells vs 15 for 'Install to edit' (1.67x; 26 vs 15 characters). Not rendered in this audit, so this is a check to run, not an observed overflow: the label shares a shrink-0 header row with नई चैट and the key carries no maxCells hint. The pending label is shorter than this one, so the button does not grow when the install starts.",
+			"suggestion": "Keep if the header tolerates it; संपादन हेतु इंस्टॉल करें (23 cells) is the lever if it does not. Confirm on a rendered frame in the design round.",
+			"class": "fit"
+		}
+	],
+	"namespace_status": "passed",
+	"artifacts": [
+		{
+			"path": "i18n/receipts/5f1c69790d92-agents-hi.json",
+			"sha256": "a7d5e5fe6ac07dc0c6b933aba7fbc6587d19d4859ccab65c752fdcaf2ee8d488"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.detail.install/5f1c69790d92-agents-hi/record.json",
+			"sha256": "self (this file)"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.detail.install/5f1c69790d92-agents-hi/receipt.json",
+			"sha256": "a7d5e5fe6ac07dc0c6b933aba7fbc6587d19d4859ccab65c752fdcaf2ee8d488"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.detail.install/5f1c69790d92-agents-hi/verdict.txt",
+			"sha256": "d996b078155d2478b277ad5962f3fb2b4a55b3a02e090bb2578f3e9d5fef1a73"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.detail.install/5f1c69790d92-agents-hi/findings.md",
+			"sha256": "53ebdce7675d85b760ade65248894ac71cce5966a9d73137d6d210c26eb33f20"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.detail.install/5f1c69790d92-agents-hi/auditor.log",
+			"sha256": "6bd9d65407d43044b2f71e2d6243396c836d22f5e428873a45859f149cdfaf5c"
+		}
+	],
+	"retention": {
+		"record_of_truth": "i18n/receipts/5f1c69790d92-agents-hi.json (byte-identical copy of the auditor's receipt)",
+		"note": "record.json restates the receipt; the copied logs are the auditor's own execution output, not notes."
+	}
+}

@@ -27,6 +27,7 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { teamBridgeAttachmentCapabilitySchema } from "../../../../shared/team-bridge-contract";
 import { onDraftRevocation } from "../../shared/store/team-bridge-draft-account";
+import { pasteInsertsOnlyFileNames } from "../../shared/utils/paste-utils";
 import {
 	IMAGE_JPEG_QUALITY,
 	IMAGE_MAX_EDGE,
@@ -175,6 +176,31 @@ export function uploadFailure(
  */
 export function isAttachmentNotFound(error: unknown): boolean {
 	return (error as { code?: unknown })?.code === "attachment_not_found";
+}
+
+/**
+ * A send refused because its `client_ref` was already used by a DIFFERENT message.
+ *
+ * The hub answers 409 here and it is right to: the key is an idempotency key, so
+ * seeing it twice with different content means two distinct messages are claiming
+ * one identity. The defect this detects is on our side - a key reused across
+ * messages instead of across retries of one message - and it is recoverable: the
+ * payload is new, so it needs a NEW key rather than another press of Send.
+ *
+ * Matched on the DECLARED code when the proxy forwards it, and otherwise on the
+ * hub's own sentence, because the refusal arrives through the runtime proxy and
+ * older builds of it do not forward the code. The sentence fallback is deliberately
+ * narrow (`client_ref`), so it cannot swallow an unrelated 409 such as a
+ * conversation-level conflict, which must keep its own error.
+ */
+const CLIENT_REF_MENTION = /client_ref/i;
+
+export function isClientRefConflict(error: unknown): boolean {
+	const coded = (error as { code?: unknown })?.code;
+	if (coded === "client_ref_conflict" || coded === "conflict_client_ref")
+		return true;
+	const message = (error as { message?: unknown })?.message;
+	return typeof message === "string" && CLIENT_REF_MENTION.test(message);
 }
 
 /**
@@ -336,6 +362,24 @@ export function imageFiles(list: DataTransfer | null | undefined): File[] {
 	for (const file of Array.from(list.files ?? []))
 		if (isImageCandidate(file)) files.push(file);
 	return files;
+}
+
+/**
+ * Whether a paste whose images were just taken should also cancel the
+ * browser's text insert: yes when the text that insert would type is empty or
+ * only the pasted files' names - a Finder file copy, which otherwise typed
+ * "shot.png" beside its own chip (issue #1573). Real prose alongside the
+ * images is the reader's and is kept. On macOS the event carries no
+ * `text/plain` for a file paste even when the pasteboard has prose, so the
+ * text comes from `pasteInsertsOnlyFileNames`' synchronous pasteboard read,
+ * the chat composer's source of truth; a files-only paste with nothing on the
+ * pasteboard still cancels, as the original rule did. One predicate for both
+ * bridge paste handlers, so they cannot drift.
+ */
+export function imagePasteCancelsText(
+	data: Pick<DataTransfer, "types" | "getData" | "items" | "files">,
+): boolean {
+	return pasteInsertsOnlyFileNames(data);
 }
 
 /*

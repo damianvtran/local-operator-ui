@@ -1,0 +1,354 @@
+
+======================================================================
+locale es
+======================================================================
+
+key:   ui.teamBridge.events.invited
+en:    {actor} invited {targets}
+es: {actor} invitó a {targets}
+  1 target: Dana invitó a Ben
+  3 targets: Dana invitó a Ava, Ben y Sana
+
+key:   ui.teamBridge.events.joined
+en:    {targets} joined
+es: Entrada en la conversación: {targets}
+  1 target: Entrada en la conversación: Ben
+  3 targets: Entrada en la conversación: Ava, Ben y Sana
+
+key:   ui.teamBridge.events.owner_added_agent
+en:    {actor} added their agent {targets}
+es: {actor} añadió a su agente: {targets}
+  1 target: Dana añadió a su agente: Ben
+  3 targets: Dana añadió a su agente: Ava, Ben y Sana
+
+key:   ui.teamBridge.events.left
+en:    {targets} left
+es: Salida de la conversación: {targets}
+  1 target: Salida de la conversación: Ben
+  3 targets: Salida de la conversación: Ava, Ben y Sana
+
+key:   ui.teamBridge.events.removed
+en:    {actor} removed {targets}
+es: {actor} eliminó a {targets}
+  1 target: Dana eliminó a Ben
+  3 targets: Dana eliminó a Ava, Ben y Sana
+
+key:   ui.teamBridge.events.consented
+en:    {actor} approved {targets} joining
+es: {actor} autorizó la entrada de {targets}
+  1 target: Dana autorizó la entrada de Ben
+  3 targets: Dana autorizó la entrada de Ava, Ben y Sana
+
+key:   ui.teamBridge.events.declined_self
+en:    {actor} declined the invitation
+es: {actor} rechazó la invitación
+  rendered: Dana rechazó la invitación
+
+key:   ui.teamBridge.events.declined
+en:    {actor} declined the invitation for {targets}
+es: {actor} rechazó la invitación para {targets}
+  1 target: Dana rechazó la invitación para Ben
+  3 targets: Dana rechazó la invitación para Ava, Ben y Sana
+
+key:   ui.teamBridge.events.withdrawn
+en:    {actor} withdrew the invitation for {targets}
+es: {actor} retiró la invitación para {targets}
+  1 target: Dana retiró la invitación para Ben
+  3 targets: Dana retiró la invitación para Ava, Ben y Sana
+
+key:   ui.teamBridge.events.unknown
+en:    Membership changed
+es: Cambio en los miembros
+  rendered: Cambio en los miembros
+
+key:   ui.teamBridge.events.others
+en:    {count, plural, one {# other} other {# others}}
+es: {count, plural, one {# más} many {# más} other {# más}}
+  count= 1: 1 más
+  count= 2: 2 más
+  count= 3: 3 más
+  count= 5: 5 más
+  count=11: 11 más
+  count=21: 21 más
+  truncated events.invited: Dana invitó a Ava, Ben, Sana y 2 más
+  truncated events.removed: Dana eliminó a Ava, Ben, Sana y 2 más
+  truncated events.consented: Dana autorizó la entrada de Ava, Ben, Sana y 2 más
+  truncated events.declined: Dana rechazó la invitación para Ava, Ben, Sana y 2 más
+  truncated events.withdrawn: Dana retiró la invitación para Ava, Ben, Sana y 2 más
+  truncated events.joined: Entrada en la conversación: Ava, Ben, Sana y 2 más
+  truncated events.left: Salida de la conversación: Ava, Ben, Sana y 2 más
+  truncated events.owner_added_agent: Dana añadió a su agente: Ava, Ben, Sana y 2 más
+
+key:   ui.teamBridge.members.invitation_note_v3
+en:    Invitations don’t grant access until accepted. Your own agents join right away; someone else’s agent joins once its owner consents. A member agent reads every message here and decides whether to reply, and is expected to reply when @-mentioned. Its owner can limit it to @-mentions and its threads, or mute it.
+es: Las invitaciones no dan acceso hasta que se aceptan. Tus propios agentes se unen de inmediato; el agente de otra persona se une cuando su propietario da su consentimiento. Un agente miembro lee todos los mensajes de aquí y decide si responde, y se espera que responda cuando se le menciona con @. Su propietario puede limitarlo a las menciones con @ y a los hilos en los que participa, o silenciarlo.
+
+======================================================================
+locale fr
+======================================================================
+
+key:   ui.teamBridge.events.invited
+en:    {actor} invited {targets}
+fr: {actor} a invité {targets}
+  1 target: Dana a invité Ben
+  3 targets: Dana a invité Ava, Ben et Sana
+
+key:   ui.teamBridge.events.joined
+en:    {targets} joined
+fr: Arrivée dans la conversation : {targets}
+  1 target: Arrivée dans la conversation : Ben
+  3 targets: Arrivée dans la conversation : Ava, Ben et Sana
+
+key:   ui.teamBridge.events.owner_added_agent
+en:    {actor} added their agent {targets}
+fr: {actor} a ajouté son agent : {targets}
+  1 target: Dana a ajouté son agent : Ben
+  3 targets: Dana a ajouté son agent : Ava, Ben et Sana
+
+key:   ui.teamBridge.events.left
+en:    {targets} left
+fr: Départ de la conversation : {targets}
+  1 target: Départ de la conversation : Ben
+  3 targets: Départ de la conversation : Ava, Ben et Sana
+
+key:   ui.teamBridge.events.removed
+en:    {actor} removed {targets}
+fr: {actor} a retiré {targets}
+  1 target: Dana a retiré Ben
+  3 targets: Dana a retiré Ava, Ben et Sana
+
+key:   ui.teamBridge.events.consented
+en:    {actor} approved {targets} joining
+fr: {actor} a autorisé {targets} à rejoindre la conversation
+  1 target: Dana a autorisé Ben à rejoindre la conversation
+  3 targets: Dana a autorisé Ava, Ben et Sana à rejoindre la conversation
+
+key:   ui.teamBridge.events.declined_self
+en:    {actor} declined the invitation
+fr: {actor} a refusé l’invitation
+  rendered: Dana a refusé l’invitation
+
+key:   ui.teamBridge.events.declined
+en:    {actor} declined the invitation for {targets}
+fr: {actor} a refusé l’invitation pour {targets}
+  1 target: Dana a refusé l’invitation pour Ben
+  3 targets: Dana a refusé l’invitation pour Ava, Ben et Sana
+
+key:   ui.teamBridge.events.withdrawn
+en:    {actor} withdrew the invitation for {targets}
+fr: {actor} a annulé l’invitation pour {targets}
+  1 target: Dana a annulé l’invitation pour Ben
+  3 targets: Dana a annulé l’invitation pour Ava, Ben et Sana
+
+key:   ui.teamBridge.events.unknown
+en:    Membership changed
+fr: Modification des membres
+  rendered: Modification des membres
+
+key:   ui.teamBridge.events.others
+en:    {count, plural, one {# other} other {# others}}
+fr: {count, plural, one {# autre} many {# d’autres} other {# autres}}
+  count= 1: 1 autre
+  count= 2: 2 autres
+  count= 3: 3 autres
+  count= 5: 5 autres
+  count=11: 11 autres
+  count=21: 21 autres
+  truncated events.invited: Dana a invité Ava, Ben, Sana et 2 autres
+  truncated events.removed: Dana a retiré Ava, Ben, Sana et 2 autres
+  truncated events.consented: Dana a autorisé Ava, Ben, Sana et 2 autres à rejoindre la conversation
+  truncated events.declined: Dana a refusé l’invitation pour Ava, Ben, Sana et 2 autres
+  truncated events.withdrawn: Dana a annulé l’invitation pour Ava, Ben, Sana et 2 autres
+  truncated events.joined: Arrivée dans la conversation : Ava, Ben, Sana et 2 autres
+  truncated events.left: Départ de la conversation : Ava, Ben, Sana et 2 autres
+  truncated events.owner_added_agent: Dana a ajouté son agent : Ava, Ben, Sana et 2 autres
+
+key:   ui.teamBridge.members.invitation_note_v3
+en:    Invitations don’t grant access until accepted. Your own agents join right away; someone else’s agent joins once its owner consents. A member agent reads every message here and decides whether to reply, and is expected to reply when @-mentioned. Its owner can limit it to @-mentions and its threads, or mute it.
+fr: Les invitations ne donnent accès qu’une fois acceptées. Vos propres agents rejoignent la conversation immédiatement ; l’agent d’une autre personne la rejoint dès que son propriétaire y consent. Un agent membre lit chaque message ici et décide s’il répond, et il est censé répondre quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ et aux fils où il intervient, ou le mettre en sourdine.
+
+======================================================================
+locale hi
+======================================================================
+
+key:   ui.teamBridge.events.invited
+en:    {actor} invited {targets}
+hi: {actor} ने {targets} को आमंत्रित किया
+  1 target: Dana ने Ben को आमंत्रित किया
+  3 targets: Dana ने Ava, Ben, और Sana को आमंत्रित किया
+
+key:   ui.teamBridge.events.joined
+en:    {targets} joined
+hi: {targets} बातचीत में शामिल
+  1 target: Ben बातचीत में शामिल
+  3 targets: Ava, Ben, और Sana बातचीत में शामिल
+
+key:   ui.teamBridge.events.owner_added_agent
+en:    {actor} added their agent {targets}
+hi: {actor} ने अपना एजेंट {targets} जोड़ा
+  1 target: Dana ने अपना एजेंट Ben जोड़ा
+  3 targets: Dana ने अपना एजेंट Ava, Ben, और Sana जोड़ा
+
+key:   ui.teamBridge.events.left
+en:    {targets} left
+hi: {targets} ने बातचीत छोड़ दी
+  1 target: Ben ने बातचीत छोड़ दी
+  3 targets: Ava, Ben, और Sana ने बातचीत छोड़ दी
+
+key:   ui.teamBridge.events.removed
+en:    {actor} removed {targets}
+hi: {actor} ने {targets} को हटा दिया
+  1 target: Dana ने Ben को हटा दिया
+  3 targets: Dana ने Ava, Ben, और Sana को हटा दिया
+
+key:   ui.teamBridge.events.consented
+en:    {actor} approved {targets} joining
+hi: {actor} ने {targets} को शामिल होने की मंज़ूरी दी
+  1 target: Dana ने Ben को शामिल होने की मंज़ूरी दी
+  3 targets: Dana ने Ava, Ben, और Sana को शामिल होने की मंज़ूरी दी
+
+key:   ui.teamBridge.events.declined_self
+en:    {actor} declined the invitation
+hi: {actor} ने आमंत्रण अस्वीकार कर दिया
+  rendered: Dana ने आमंत्रण अस्वीकार कर दिया
+
+key:   ui.teamBridge.events.declined
+en:    {actor} declined the invitation for {targets}
+hi: {actor} ने {targets} के लिए आमंत्रण अस्वीकार कर दिया
+  1 target: Dana ने Ben के लिए आमंत्रण अस्वीकार कर दिया
+  3 targets: Dana ने Ava, Ben, और Sana के लिए आमंत्रण अस्वीकार कर दिया
+
+key:   ui.teamBridge.events.withdrawn
+en:    {actor} withdrew the invitation for {targets}
+hi: {actor} ने {targets} के लिए आमंत्रण वापस ले लिया
+  1 target: Dana ने Ben के लिए आमंत्रण वापस ले लिया
+  3 targets: Dana ने Ava, Ben, और Sana के लिए आमंत्रण वापस ले लिया
+
+key:   ui.teamBridge.events.unknown
+en:    Membership changed
+hi: सदस्यों में बदलाव हुआ
+  rendered: सदस्यों में बदलाव हुआ
+
+key:   ui.teamBridge.events.others
+en:    {count, plural, one {# other} other {# others}}
+hi: {count, plural, one {# अन्य} other {# अन्य}}
+  count= 1: 1 अन्य
+  count= 2: 2 अन्य
+  count= 3: 3 अन्य
+  count= 5: 5 अन्य
+  count=11: 11 अन्य
+  count=21: 21 अन्य
+  truncated events.invited: Dana ने Ava, Ben, Sana, और 2 अन्य को आमंत्रित किया
+  truncated events.removed: Dana ने Ava, Ben, Sana, और 2 अन्य को हटा दिया
+  truncated events.consented: Dana ने Ava, Ben, Sana, और 2 अन्य को शामिल होने की मंज़ूरी दी
+  truncated events.declined: Dana ने Ava, Ben, Sana, और 2 अन्य के लिए आमंत्रण अस्वीकार कर दिया
+  truncated events.withdrawn: Dana ने Ava, Ben, Sana, और 2 अन्य के लिए आमंत्रण वापस ले लिया
+  truncated events.joined: Ava, Ben, Sana, और 2 अन्य बातचीत में शामिल
+  truncated events.left: Ava, Ben, Sana, और 2 अन्य ने बातचीत छोड़ दी
+  truncated events.owner_added_agent: Dana ने अपना एजेंट Ava, Ben, Sana, और 2 अन्य जोड़ा
+
+key:   ui.teamBridge.members.invitation_note_v3
+en:    Invitations don’t grant access until accepted. Your own agents join right away; someone else’s agent joins once its owner consents. A member agent reads every message here and decides whether to reply, and is expected to reply when @-mentioned. Its owner can limit it to @-mentions and its threads, or mute it.
+hi: आमंत्रण स्वीकार होने तक पहुँच नहीं देते। आपके अपने एजेंट तुरंत जुड़ जाते हैं; किसी और का एजेंट अपने स्वामी की सहमति के बाद जुड़ता है। सदस्य एजेंट यहाँ का हर संदेश पढ़ता है और तय करता है कि जवाब दे या नहीं, और @ से उल्लेख होने पर उससे जवाब देने की अपेक्षा की जाती है। उसका स्वामी उसे केवल @ वाले उल्लेखों और उन थ्रेड तक सीमित कर सकता है जिनमें वह शामिल है, या म्यूट कर सकता है।
+
+======================================================================
+locale ur
+======================================================================
+
+key:   ui.teamBridge.events.invited
+en:    {actor} invited {targets}
+ur: {actor} نے {targets} کو مدعو کیا
+  1 target: Dana نے Ben کو مدعو کیا
+  3 targets: Dana نے Ava، Ben، اور Sana کو مدعو کیا
+
+key:   ui.teamBridge.events.joined
+en:    {targets} joined
+ur: {targets} گفتگو میں شامل
+  1 target: Ben گفتگو میں شامل
+  3 targets: Ava، Ben، اور Sana گفتگو میں شامل
+
+key:   ui.teamBridge.events.owner_added_agent
+en:    {actor} added their agent {targets}
+ur: {actor} نے اپنا ایجنٹ {targets} شامل کیا
+  1 target: Dana نے اپنا ایجنٹ Ben شامل کیا
+  3 targets: Dana نے اپنا ایجنٹ Ava، Ben، اور Sana شامل کیا
+
+key:   ui.teamBridge.events.left
+en:    {targets} left
+ur: {targets} نے گفتگو چھوڑ دی
+  1 target: Ben نے گفتگو چھوڑ دی
+  3 targets: Ava، Ben، اور Sana نے گفتگو چھوڑ دی
+
+key:   ui.teamBridge.events.removed
+en:    {actor} removed {targets}
+ur: {actor} نے {targets} کو ہٹا دیا
+  1 target: Dana نے Ben کو ہٹا دیا
+  3 targets: Dana نے Ava، Ben، اور Sana کو ہٹا دیا
+
+key:   ui.teamBridge.events.consented
+en:    {actor} approved {targets} joining
+ur: {actor} نے {targets} کو شامل ہونے کی منظوری دی
+  1 target: Dana نے Ben کو شامل ہونے کی منظوری دی
+  3 targets: Dana نے Ava، Ben، اور Sana کو شامل ہونے کی منظوری دی
+
+key:   ui.teamBridge.events.declined_self
+en:    {actor} declined the invitation
+ur: {actor} نے دعوت سے انکار کر دیا
+  rendered: Dana نے دعوت سے انکار کر دیا
+
+key:   ui.teamBridge.events.declined
+en:    {actor} declined the invitation for {targets}
+ur: {actor} نے {targets} کے لیے دعوت سے انکار کر دیا
+  1 target: Dana نے Ben کے لیے دعوت سے انکار کر دیا
+  3 targets: Dana نے Ava، Ben، اور Sana کے لیے دعوت سے انکار کر دیا
+
+key:   ui.teamBridge.events.withdrawn
+en:    {actor} withdrew the invitation for {targets}
+ur: {actor} نے {targets} کے لیے دعوت واپس لے لی
+  1 target: Dana نے Ben کے لیے دعوت واپس لے لی
+  3 targets: Dana نے Ava، Ben، اور Sana کے لیے دعوت واپس لے لی
+
+key:   ui.teamBridge.events.unknown
+en:    Membership changed
+ur: ارکان میں تبدیلی ہوئی
+  rendered: ارکان میں تبدیلی ہوئی
+
+key:   ui.teamBridge.events.others
+en:    {count, plural, one {# other} other {# others}}
+ur: {count, plural, one {مزید #} other {مزید #}}
+  count= 1: مزید 1
+  count= 2: مزید 2
+  count= 3: مزید 3
+  count= 5: مزید 5
+  count=11: مزید 11
+  count=21: مزید 21
+  truncated events.invited: Dana نے Ava، Ben، Sana، اور مزید 2 کو مدعو کیا
+  truncated events.removed: Dana نے Ava، Ben، Sana، اور مزید 2 کو ہٹا دیا
+  truncated events.consented: Dana نے Ava، Ben، Sana، اور مزید 2 کو شامل ہونے کی منظوری دی
+  truncated events.declined: Dana نے Ava، Ben، Sana، اور مزید 2 کے لیے دعوت سے انکار کر دیا
+  truncated events.withdrawn: Dana نے Ava، Ben، Sana، اور مزید 2 کے لیے دعوت واپس لے لی
+  truncated events.joined: Ava، Ben، Sana، اور مزید 2 گفتگو میں شامل
+  truncated events.left: Ava، Ben، Sana، اور مزید 2 نے گفتگو چھوڑ دی
+  truncated events.owner_added_agent: Dana نے اپنا ایجنٹ Ava، Ben، Sana، اور مزید 2 شامل کیا
+
+key:   ui.teamBridge.members.invitation_note_v3
+en:    Invitations don’t grant access until accepted. Your own agents join right away; someone else’s agent joins once its owner consents. A member agent reads every message here and decides whether to reply, and is expected to reply when @-mentioned. Its owner can limit it to @-mentions and its threads, or mute it.
+ur: دعوتیں قبول ہونے تک رسائی نہیں دیتیں۔ آپ کے اپنے ایجنٹ فوراً شامل ہو جاتے ہیں؛ کسی اور کا ایجنٹ اپنے مالک کی رضامندی کے بعد شامل ہوتا ہے۔ رکن ایجنٹ یہاں ہر پیغام پڑھتا ہے اور خود طے کرتا ہے کہ جواب دے یا نہیں، اور @ کے ساتھ ذکر ہونے پر اس سے جواب کی توقع کی جاتی ہے۔ اس کا مالک اسے صرف @ والے ذکر اور ان تھریڈز تک محدود کر سکتا ہے جن میں وہ شریک ہے، یا اسے خاموش کر سکتا ہے۔
+
+======================================================================
+plural-category probe: attachments.failed_count
+======================================================================
+
+es: {count, plural, one {No se puede enviar # imagen.} other {No se pueden enviar # imágenes.}}
+  count=      1 (CLDR one  ): on disk → No se puede enviar 1 imagen.
+  count=      2 (CLDR other): on disk → No se pueden enviar 2 imágenes.
+  count=      3 (CLDR other): on disk → No se pueden enviar 3 imágenes.
+  count=1000000 (CLDR many ): on disk → No se pueden enviar 1.000.000 imágenes.
+  probe with a many arm, count=1000000: 1.000.000 de imágenes no se pueden enviar.
+
+fr: {count, plural, one {# image ne peut pas être envoyée.} other {# images ne peuvent pas être envoyées.}}
+  count=      1 (CLDR one  ): on disk → 1 image ne peut pas être envoyée.
+  count=      2 (CLDR other): on disk → 2 images ne peuvent pas être envoyées.
+  count=      3 (CLDR other): on disk → 3 images ne peuvent pas être envoyées.
+  count=1000000 (CLDR many ): on disk → 1 000 000 images ne peuvent pas être envoyées.
+  probe with a many arm, count=1000000: 1 000 000 d’images ne peuvent pas être envoyées.

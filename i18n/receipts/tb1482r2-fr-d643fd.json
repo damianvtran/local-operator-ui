@@ -1,0 +1,24 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "tb1482r2-fr-d643fd",
+  "status": "passed",
+  "namespace": "ui.ownerAudit",
+  "sha256": {
+    "fr": "ff52aea829176e4d8c38b10d92dbcce0199d72eda3b26434a890aae94ae6aed2",
+    "en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.ownerAudit.page_cutoff",
+      "detail": "Lexical stem repeated three times in two sentences: \"Les messages précédents ne sont pas encore affichés. Chargez les messages précédents pour lire ce qui précède.\" Faithful (English repeats \"older\" twice too) and the second sentence must keep charging the same phrase as the ui.ownerAudit.older button, so left unfixed; only a future round wanting to break the repetition would reword the first sentence (e.g. \"Les messages plus anciens ne sont pas encore affichés.\")."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.ownerAudit.window_unconfirmed",
+      "detail": "\"L'appartenance de votre cheffe de cabinet à cette conversation n'a pas pu être confirmée.\" uses \"appartenance\" for membership while this namespace's own ui.ownerAudit.active says \"Votre cheffe de cabinet est toujours membre.\" Correct French and membership is not a pinned term, so left open; \"le statut de membre\" would align the two if a future round wants one noun."
+    }
+  ],
+  "scope": "Round 2: the six changed keys only; earlier round out of scope."
+}

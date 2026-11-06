@@ -708,7 +708,13 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			view.batch ? (
 				<SoundBatch
 					items={view.batch}
-					summary={view.batchSummary ?? `${view.batch.length} items`}
+					summary={
+						view.batchSummary ??
+						t("ui.chat.canonical.image_gen.batch_summary", {
+							count_display: String(view.batch.length),
+							count: view.batch.length,
+						})
+					}
 					scope={scope}
 				/>
 			) : view.state === "done" && view.images.length > 0 ? (
@@ -794,8 +800,8 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 										 */
 										view.state === "queued" ||
 										(view.state === "cancelling" && !view.generating)
-										? "Stops before the provider is called."
-										: "Requests a stop; the provider may finish anyway."
+										? t("ui.chat.canonical.image_gen.control.stop_hint_queued")
+										: t("ui.chat.canonical.image_gen.control.stop_hint_running")
 									: undefined
 							}
 							onClick={

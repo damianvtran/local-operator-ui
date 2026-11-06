@@ -1,5 +1,9 @@
 import { subscribeLocale } from "../../../../i18n/locale";
 import { t } from "../../../../i18n/messages";
+import {
+	modelAuthorityObserverArmed,
+	observeModelAuthority,
+} from "../../dev-driver/model-authority-observer";
 /**
  * Canonical desktop session stream consumption.
  *
@@ -5517,6 +5521,20 @@ export function useCanonicalSessionStream(
 					batchEdge,
 				);
 			}
+			// Witness the actual flush, not the wire callback that only enqueued
+			// frames. React/CSS settlement is a separate driver observation AFTER
+			// this completion; no payload or model value enters the witness.
+			if (modelAuthorityObserverArmed())
+				for (const frame of frames) {
+					if (!("epoch" in frame && "seq" in frame)) continue;
+					observeModelAuthority({
+						carrier: "canonical-sse",
+						sessionId,
+						epoch: frame.epoch,
+						seq: frame.seq,
+						disposition: "processed",
+					});
+				}
 		};
 
 		/**

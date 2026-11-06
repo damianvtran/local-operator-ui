@@ -2,7 +2,10 @@
 /**
  * Capacity partitioning, not a runtime-balancing or memory-fault cure.
  *
- * package.json's literal test:desktop command is the only inventory. Keep local
+ * The inventory is DERIVED from the tree by `desktop-test-inventory.mjs` (every
+ * `.test.mjs` file under `scripts/`, recursively, minus its explained `EXEMPT`
+ * table), not read off a hand-kept list in package.json; that module's header
+ * says why. Keep local
  * full-suite use unchanged; CI selects one deterministic partition and delegates
  * to the existing runner with argv, never a shell or a second test manifest.
  * Importing this module performs no test import, process launch or file writes.
@@ -17,43 +20,58 @@ import {
 	realpathSync,
 	writeFileSync,
 } from "node:fs";
-import { constants } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	DESKTOP_COMMAND,
+	EXTERNAL_TESTS,
+	TEST_ROOT,
+	discoverDesktopTests,
+	runNode,
+	selectDesktopTests,
+} from "./desktop-test-inventory.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
-export const SHARD_COUNT = 3;
+// FOUR, NOT THREE, on measured memory headroom rather than balance: at
+// concurrency 3 the guarded runner's process group was killed by the 7.8 GB
+// budget at 7.9 GB (run 40992181176) and again at 8.2 GB (run 40996898976) on the
+// SAME 205-file shard inventory, both after `ok 1060` with zero failures. The ceiling therefore sits inside the run-to-run distribution,
+// so fewer files per process group is what buys headroom; the budget and the
+// concurrency guard are deliberately untouched.
+export const SHARD_COUNT = 4;
 const RUNNER = "scripts/run-desktop-tests.mjs";
 const SHA = /^[a-f0-9]{40}$/;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-export function inventory(command) {
+/**
+ * The desktop inventory of `root`, after checking `scripts.test:desktop` is the
+ * derived entry point and nothing else.
+ *
+ * A branch that still carries the old literal file list (or any other command)
+ * is refused rather than half-honoured: its paths would be ignored by the walk,
+ * and a CI plan that silently disagreed with what `pnpm test:desktop` runs is
+ * the drift this planner exists to rule out.
+ */
+export function inventory(command, root = ROOT) {
+	assertDesktopCommand(command);
+	return discoverDesktopTests(root);
+}
+
+export function assertDesktopCommand(command) {
 	if (typeof command !== "string" || !command.trim())
 		throw new Error("Missing scripts.test:desktop command");
-	const words = command.trim().split(/\s+/);
-	if (words.shift() !== "node" || words.shift() !== RUNNER || !words.length) {
+	if (command !== DESKTOP_COMMAND)
 		throw new Error(
-			`Unsupported test:desktop grammar; expected node ${RUNNER} <literal .test.mjs paths>`,
+			`Unsupported test:desktop grammar; expected exactly ${JSON.stringify(DESKTOP_COMMAND)} (the inventory is derived, not listed)`,
 		);
-	}
-	for (const file of words) {
-		if (
-			!/^(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_.-]+\.test\.mjs$/.test(file) ||
-			file.split("/").some((p) => p === "." || p === "..")
-		) {
-			throw new Error(
-				`Unsafe/unsupported test path ${JSON.stringify(file)}: no flags, quotes, glob, shell operators or traversal`,
-			);
-		}
-	}
-	if (new Set(words).size !== words.length)
-		throw new Error("Duplicate test:desktop path");
-	return words.sort();
 }
 
 export function partition(files, count = SHARD_COUNT) {
-	if (![2, 3].includes(count))
-		throw new Error("Partition count must be 2 or 3");
+	// The floor of 2 keeps a single-shard "partition" from masquerading as
+	// capacity work; the ceiling is whatever the CI matrix advertises, so a count
+	// nobody runs cannot silently pass here.
+	if (![2, 3, 4].includes(count))
+		throw new Error("Partition count must be 2, 3 or 4");
 	if (!files.length || new Set(files).size !== files.length)
 		throw new Error("Empty or duplicate inventory");
 	const groups = Array.from({ length: count }, () => []);
@@ -91,23 +109,46 @@ export function plan(root, head, checkout, metadataPackage, metadataGitTree) {
 	const pkg = JSON.parse(
 		readFileSync(metadataPackage ?? join(root, "package.json"), "utf8"),
 	);
-	const files = inventory(pkg.scripts?.["test:desktop"]);
+	assertDesktopCommand(pkg.scripts?.["test:desktop"]);
+	let files;
 	if (metadataGitTree) {
-		// Explicit metadata mode accepts an immutable git-ls-tree export, not
-		// execution proof. Real CI run/receipt/verify must lstat actual files.
-		const entries = new Set();
+		// Explicit metadata mode derives the SAME inventory from an immutable
+		// git-ls-tree export, not execution proof. Real CI run/receipt/verify must
+		// walk and lstat actual files. A link under the test root fails closed,
+		// exactly as the real walk does.
+		const candidates = [];
 		for (const line of readFileSync(metadataGitTree, "utf8")
 			.trimEnd()
 			.split("\n")) {
-			const match = /^(100644|100755) blob [a-f0-9]{40}\t(.+)$/.exec(line);
-			if (match) entries.add(match[2]);
-		}
-		for (const file of files)
-			if (!entries.has(file))
+			const match = /^([0-9]{6}) (blob|tree|commit) [a-f0-9]{40}\t(.+)$/.exec(
+				line,
+			);
+			if (
+				!match ||
+				!(
+					match[3].startsWith(`${TEST_ROOT}/`) ||
+					EXTERNAL_TESTS.includes(match[3]) ||
+					EXTERNAL_TESTS.some((file) => file.startsWith(`${match[3]}/`))
+				)
+			)
+				continue;
+			if (match[1] === "120000" || match[2] === "commit")
 				throw new Error(
-					`Inventory file absent or unsafe in pinned Git tree: ${file}`,
+					`Inventory path absent or unsafe in pinned Git tree: ${match[3]}`,
 				);
-	} else validateFiles(root, files);
+			if (/^(100644|100755)$/.test(match[1]) && match[3].endsWith(".test.mjs"))
+				candidates.push(match[3]);
+		}
+		for (const file of EXTERNAL_TESTS)
+			if (!candidates.includes(file))
+				throw new Error(
+					`External desktop test missing from pinned Git tree: ${file}`,
+				);
+		files = selectDesktopTests(candidates.sort());
+	} else {
+		files = discoverDesktopTests(root);
+		validateFiles(root, files);
+	}
 	const digest = createHash("sha256")
 		.update(`${files.join("\n")}\n`)
 		.digest("hex");
@@ -156,17 +197,15 @@ export function tapSummary(text) {
 /** Actual guarded-runner argv cardinality, not the number of nested TAP cases. */
 export function observedRunnerFileCount(text) {
 	const lines = text.split(/\r?\n/).filter((line) => {
-		// The real runner shares this prefix across count, memory, lane and
-		// warning lines. Only cardinality candidates belong to uniqueness.
-		// Keep malformed counts as candidates so they cannot hide beside a
-		// good count; nested TAP comments and indentation are not evidence.
-		return (
-			!/^desktop tests: (?:memory bound\b|per-lane bound\b|WARNING\b)/u.test(
-				line,
-			) &&
-			/^desktop tests:\s*(?:[+-]?\d|.*\b(?:files?|concurrency|cap)\b)/.test(
-				line,
-			)
+		// Parent diagnostics use the same namespace, but their JSON `file`
+		// fields are not argv cardinality. Admit only the anchored count-record
+		// envelope, not arbitrary occurrences of "file" later in a log line.
+		// Keep malformed true records (bad number, comma or concurrency) in the
+		// candidate set so one cannot hide beside a good record. Nested TAP
+		// comments and indentation remain ineligible as execution evidence.
+		if (line.startsWith("desktop tests: diagnostic ")) return false;
+		return /^desktop tests:\s*(?:[+-]?\d|\S+\s+files?\b|files?\b|(?:no\s+)?concurrency\b|cap\b)/.test(
+			line,
 		);
 	});
 	if (lines.length !== 1)
@@ -190,7 +229,7 @@ export function receipt(expected, index, text, rc, elapsed) {
 	if (expected.metadataOnly || expected.mode === "metadata-only")
 		throw new Error("Metadata-only plan cannot produce execution success");
 	if (!Number.isInteger(index) || index < 0 || index >= SHARD_COUNT)
-		throw new Error("Invalid shard index (expected 0, 1, 2)");
+		throw new Error(`Invalid shard index (expected 0..${SHARD_COUNT - 1})`);
 	if (rc !== 0 || !Number.isFinite(elapsed) || elapsed < 0)
 		throw new Error("Only a completed rc=0 suite may write a success receipt");
 	const runnerFileCount = observedRunnerFileCount(text);
@@ -302,12 +341,13 @@ export function loadReceipts(directoryRoot, runId, attempt) {
 	if (!/^[0-9]+$/.test(runId ?? "") || !/^[0-9]+$/.test(attempt ?? ""))
 		throw new Error("Missing run/attempt identity");
 	const names = readdirSync(directoryRoot).sort();
-	const expectedNames = [0, 1, 2].map(
-		(i) => `desktop-shard-proof-${runId}-${attempt}-${i}`,
+	const expectedNames = Array.from(
+		{ length: SHARD_COUNT },
+		(_, i) => `desktop-shard-proof-${runId}-${attempt}-${i}`,
 	);
 	if (JSON.stringify(names) !== JSON.stringify(expectedNames))
 		throw new Error(
-			"Expected exactly this run attempt's three named receipt artifacts",
+			`Expected exactly this run attempt's ${SHARD_COUNT} named receipt artifacts`,
 		);
 	return names.map((name, index) => {
 		const directory = join(directoryRoot, name);
@@ -405,13 +445,17 @@ export async function main(args) {
 	if (mode === "verify") {
 		const rows = loadReceipts(o.receipts, o["run-id"], o.attempt);
 		console.log(
-			`Desktop Tests: ${verify(expected, rows, o.unit, o.classifier, o.workers)} (${expected.total} files, 3 disjoint shards)`,
+			`Desktop Tests: ${verify(expected, rows, o.unit, o.classifier, o.workers)} (${expected.total} files, ${expected.count} disjoint shards)`,
 		);
 		return 0;
 	}
 	const index = Number(o.index);
-	if (!/^[012]$/.test(o.index ?? ""))
-		throw new Error("Expected --index 0, 1 or 2");
+	if (
+		!/^[0-9]+$/.test(o.index ?? "") ||
+		!Number.isInteger(index) ||
+		index >= SHARD_COUNT
+	)
+		throw new Error(`Expected --index 0..${SHARD_COUNT - 1}`);
 	if (mode === "receipt") {
 		if (!o.output || !o.log || o.rc === undefined || o.elapsed === undefined)
 			throw new Error("Receipt requires --output, --log, --rc and --elapsed");
@@ -433,27 +477,7 @@ export async function main(args) {
 	}
 	// This is the ONLY execution path. Builtin-only plan/verify never reaches it.
 	// The existing runner owns concurrency, memory, lane and hardlink protections.
-	const { spawn } = await import("node:child_process");
-	const child = spawn(process.execPath, [RUNNER, ...expected.shards[index]], {
-		cwd: o.root ?? ROOT,
-		stdio: "inherit",
-	});
-	const forward = (signal) => child.kill(signal);
-	const interrupt = () => forward("SIGINT");
-	const terminate = () => forward("SIGTERM");
-	process.on("SIGINT", interrupt);
-	process.on("SIGTERM", terminate);
-	try {
-		return await new Promise((resolveExit, reject) => {
-			child.once("error", reject);
-			child.once("exit", (code, signal) =>
-				resolveExit(code ?? 128 + (constants.signals[signal] ?? 1)),
-			);
-		});
-	} finally {
-		process.off("SIGINT", interrupt);
-		process.off("SIGTERM", terminate);
-	}
+	return runNode([RUNNER, ...expected.shards[index]], o.root ?? ROOT);
 }
 
 if (isEntryPoint(import.meta.url)) {

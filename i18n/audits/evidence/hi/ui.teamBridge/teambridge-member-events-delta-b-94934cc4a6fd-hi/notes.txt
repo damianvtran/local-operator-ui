@@ -1,0 +1,9 @@
+AUDITOR B (delta round) - NOTES, distinct from the execution logs beside them
+
+Locale hi  Namespace ui.teamBridge  Session 94934cc4a6fd  Model radient/auto
+
+1. First-pass verdict (bound receipt): clean. Final verdict (this amendment): changes_requested - 0 blocker, 1 major (HI-DB1), 0 minor, 0 nit.
+2. Why the first pass was wrong: I judged «3 अन्य लोग» in isolation, where it is correct Hindi. It is never read in isolation - the tail is spliced as the {targets} list's last element (team-bridge-member-events.tsx:96-104), and five hi event lines put {targets} before a postposition (को x3, के लिए x2), where Hindi needs the oblique «लोगों».
+3. The composed strings are in compose-hi.txt: «Dana ने Ava, Ben, और 3 अन्य लोग को आमंत्रित किया» and «… 3 अन्य लोग के लिए आमंत्रण अस्वीकार कर दिया», beside the round-1 tail through the same positions («… 3 अन्य को …», grammatical because अन्य does not inflect).
+4. Recommendation: revert the tail to «{count, plural, one {# अन्य} other {# अन्य}}». A tail cannot know the case of the position it lands in, so the invariant form is the only one that works everywhere; giving it a head noun needs the five sentences restructured instead, which is a bigger change than this delta.
+5. The amendment is a companion, not a replacement: the bound receipt is immutable and stays in the ledger; this record carries my final view on the same bytes. The row already reads changes_requested because the other auditor raised the same key, so the aggregate is unchanged.

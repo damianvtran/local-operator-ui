@@ -16,5 +16,10 @@
 	"ui.chat.attachments.playback_position": "پلے بیک کا مقام",
 	"ui.chat.attachments.playback_rate": "پلے بیک کی رفتار",
 	"ui.chat.attachments.playback_rate_option": "{rate}x",
-	"ui.chat.attachments.volume": "آواز کا حجم"
+	"ui.chat.attachments.volume": "آواز کا حجم",
+	"ui.chat.attachments.open_named": "{name} کھولیں",
+	"ui.chat.attachments.expand_aria": "{name} کو بڑا کریں",
+	"ui.chat.attachments.expand_title": "{name} کو بڑا کرنے کے لیے کلک کریں",
+	"ui.chat.attachments.open_title": "{name} کھولنے کے لیے کلک کریں",
+	"ui.chat.attachments.not_viewable": "فائل دیکھی نہیں جا سکتی: {name}"
 }

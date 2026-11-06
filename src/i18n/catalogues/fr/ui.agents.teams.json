@@ -21,5 +21,22 @@
 	"ui.agents.teams.section.members": "Membres",
 	"ui.agents.teams.section.members_aria": "Membres",
 	"ui.agents.teams.section.project_brief": "Brief de projet",
-	"ui.agents.teams.section.what_for": "À quoi elle sert"
+	"ui.agents.teams.section.what_for": "À quoi elle sert",
+	"ui.agents.teams.field.name_hint": "Comment vous et vos conversations désignerez cette équipe.",
+	"ui.agents.teams.field.name_label": "Nom de l’équipe",
+	"ui.agents.teams.section.manager_hint": "L’agent qui mène la conversation et décide qui travaille sur quoi.",
+	"ui.agents.teams.field.manager_label": "Agent responsable",
+	"ui.agents.teams.field.manager_list_notice": "Agents et équipes sur cet ordinateur",
+	"ui.agents.teams.section.members_hint": "Les membres à qui le responsable peut déléguer, combien de chacun, et le modèle sur lequel chacun s’exécute.",
+	"ui.agents.teams.field.loading_agents": "Chargement des agents",
+	"ui.agents.teams.field.member_aria": "Membre {index, number, ::group-off}",
+	"ui.agents.teams.field.member_kind_aria": "Type du membre {index, number, ::group-off}",
+	"ui.agents.teams.action.fewer_aria": "Un {role} de moins",
+	"ui.agents.teams.action.more_aria": "Un {role} de plus",
+	"ui.agents.teams.field.count_aria": "Nombre de {role} : {count, number, ::group-off}",
+	"ui.agents.teams.field.what_for_label": "À quoi sert cette équipe",
+	"ui.agents.teams.action.create": "Créer l’équipe",
+	"ui.agents.teams.action.creating": "Création…",
+	"ui.agents.teams.action.discard_question": "Abandonner cette équipe ?",
+	"ui.agents.teams.empty.description": "Aucune description pour l’instant."
 }

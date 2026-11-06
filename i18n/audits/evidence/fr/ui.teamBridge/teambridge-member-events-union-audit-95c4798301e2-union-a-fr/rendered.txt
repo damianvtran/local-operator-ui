@@ -1,0 +1,23 @@
+fr
+ 1 invited            Damian a invité Ben
+ 1 joined             Arrivée dans la conversation : Ben
+ 1 owner_added_agent  Damian a ajouté son agent : Ben
+ 1 left               Départ de la conversation : Ben
+ 1 removed            Damian a retiré Ben
+ 1 consented          Damian a autorisé Ben à rejoindre la conversation
+ 1 declined_self      Damian a refusé l’invitation
+ 1 declined           Damian a refusé l’invitation pour Ben
+ 1 withdrawn          Damian a annulé l’invitation pour Ben
+ 1 unknown            Modification des membres
+ 3 invited            Damian a invité Ben, Sana et Ola
+ 3 joined             Arrivée dans la conversation : Ben, Sana et Ola
+ 3 owner_added_agent  Damian a ajouté son agent : Ben, Sana et Ola
+ 3 left               Départ de la conversation : Ben, Sana et Ola
+ 3 removed            Damian a retiré Ben, Sana et Ola
+ 3 consented          Damian a autorisé Ben, Sana et Ola à rejoindre la conversation
+ 3 declined_self      Damian a refusé l’invitation
+ 3 declined           Damian a refusé l’invitation pour Ben, Sana et Ola
+ 3 withdrawn          Damian a annulé l’invitation pour Ben, Sana et Ola
+ 3 unknown            Modification des membres
+ others: 1→1 autre | 2→2 autres | 3→3 autres | 5→5 autres | 11→11 autres | 21→21 autres
+ truncated: Damian a invité Ben, Sana et 2 autres

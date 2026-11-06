@@ -1,0 +1,106 @@
+{
+	"schema": 1,
+	"receipt_kind": "independent copy-delta re-audit (in-sentence unnamed recipient, round 3), one locale",
+	"audit_id": "delivery-recipient-unnamed-reaudit-r3-122b7f54cbdc",
+	"date": "2026-11-03",
+	"agent": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness system prompt for session 122b7f54cbdc (Model: anthropic/claude-opus-5-5); no fallback announced or observed during the run.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"instance": "122b7f54cbdc-es",
+	"session": "122b7f54cbdc",
+	"status": "passed",
+	"result": "clean",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+		"es": "6145efc174102e4bc885e5ff013d5245d929e3195f8363bb4b5d7fc47b946cbc"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+		"sha256": "c1545312b0378ded7100b626653a8e401d959b86ad4afb8d39c86833af6538f7",
+		"delta_entries_present": true,
+		"note": "Context catalogue byte-identical to cebd8e90785; the ui.teamBridge.delivery.recipient_unnamed entry (recipient name inside a delivery status sentence; lower case where the language allows; must not repeat the person) governs this delta."
+	},
+	"reference_hashes": {
+		"~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"~/local-operator/i18n/style-guides/es.md": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+		"core_commit": "b42471d3935cb7e95d64428af27c32626665f4c0"
+	},
+	"integration": {
+		"pr": 1643,
+		"branch": "fix/delivery-recipient-label",
+		"reviewed_head": "4dbd846d54140336419ff3c393e12a2ed79e83dd",
+		"previous_audit_head": "70646b20d3ab9078135ee4356764fb1c2f4a08d1",
+		"remediation_commit": "4dbd846d54140336419ff3c393e12a2ed79e83dd",
+		"author_job": "da8eee3a55f2",
+		"remediation_jobs": [
+			"8f0b8996f1e1",
+			"f43f06d59eea"
+		],
+		"round": 3,
+		"prior_round_receipt": "i18n/receipts/2fd8346bf635-es.json"
+	},
+	"scope": {
+		"keys": [
+			"ui.teamBridge.delivery.recipient_unnamed",
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending"
+		],
+		"kind": "Round-3 independent audit of the remediation delta of 4dbd846d vs cebd8e90785 in this catalogue, plus each of the ten ui.teamBridge.delivery.{refused*,held*,pending} sentences composed with BOTH recipient forms (ui.teamBridge.chief.label 'Aida (Ben Tran)' and ui.teamBridge.delivery.recipient_unnamed), checking round-2 findings and regressions. Unchanged namespace content is inherited, not re-audited.",
+		"base_target_sha256_prefix": "24499fe63669",
+		"unchanged_proof": "Parsed cebd8e90785 and head catalogues: identical key sets; the only values changed are ui.teamBridge.delivery.refused, the five refused_* and pending. held, held_screening_unavailable, held_awaiting_review, recipient_unnamed and chief.label are byte-identical. en and the fr/hi/ur/ru/zh-CN catalogues are byte-identical to cebd8e90785."
+	},
+	"independence": "copy-reviewer session 122b7f54cbdc on the radientdev team. Authored none of PR #1643 (author coder job da8eee3a55f2, remediation jobs 8f0b8996f1e1 and f43f06d59eea), none of the translations, and is neither the round-1 auditor (session 7fc20c1e3809) nor the round-2 auditor (session 2fd8346bf635); prior receipts were read for their findings only and every verdict here was re-derived from the catalogue bytes at the reviewed head. Edited no catalogue value; its only writes are these receipts and the ledger rows ledger-assemble derives from them.",
+	"placeholder_check": {
+		"key": "ui.teamBridge.delivery.recipient_unnamed",
+		"placeholders": [
+			"person"
+		],
+		"exactly_person": true,
+		"delivery_sentences_placeholders": [
+			"recipient"
+		],
+		"recipient_exactly_once_in_each_of_ten": true
+	},
+	"out_of_scope_observations": [],
+	"copy_scan": "design-qa copy_scan.py over src/i18n/catalogues/{es,vi}/ui.teamBridge.json: scanned 2 files, 948 candidate strings; 0 findings",
+	"not_audited": [
+		"Unchanged namespace language",
+		"Runtime ICU execution",
+		"Rendered fit and RTL layout",
+		"Pseudo-localization"
+	],
+	"execution_limitations": "Source and composition review (values substituted with agent Aida / person Ben Tran, and the sender.unknown_agent fallback); no rendered frames captured by this auditor.",
+	"findings": [],
+	"prior_findings": {
+		"C5": "fixed in 4dbd846d: the seven sentences now use 'para', which does not contract, so the unnamed form reads 'Mensaje para el jefe de gabinete de Ben Tran no entregado…' / 'Analizado; entrega pendiente para el jefe de gabinete de Ben Tran'; no 'a el' or 'de el' remains in any of the ten compositions. held* unchanged and still correct ('a que el jefe … lo analice' introduces a clause, no contraction).",
+		"C4": "remains fixed (article present in every unnamed composition)."
+	},
+	"per_key_verdict": {
+		"ui.teamBridge.delivery.refused": "PASS: Mensaje para Aida (Ben Tran) no entregado. Rechazado por la moderación. | Mensaje para el jefe de gabinete de Ben Tran no entregado. Rechazado por la moderación.",
+		"ui.teamBridge.delivery.refused_manipulation": "PASS: Mensaje para Aida (Ben Tran) no entregado: rechazado por su moderación (parecía un intento de manipular al agente) | Mensaje para el jefe de gabinete de Ben Tran no entregado: rechazado por su moderación (parecía un intento de manipular al agente)",
+		"ui.teamBridge.delivery.refused_personal_info": "PASS: Mensaje para Aida (Ben Tran) no entregado: rechazado por su moderación (parecía una solicitud de información personal) | Mensaje para el jefe de gabinete de Ben Tran no entregado: rechazado por su moderación (parecía una solicitud de información personal)",
+		"ui.teamBridge.delivery.refused_abusive": "PASS: Mensaje para Aida (Ben Tran) no entregado: rechazado por su moderación (parecía contenido abusivo) | Mensaje para el jefe de gabinete de Ben Tran no entregado: rechazado por su moderación (parecía contenido abusivo)",
+		"ui.teamBridge.delivery.refused_unsafe_content": "PASS: Mensaje para Aida (Ben Tran) no entregado: rechazado por su moderación (parecía contenido o enlaces no seguros) | Mensaje para el jefe de gabinete de Ben Tran no entregado: rechazado por su moderación (parecía contenido o enlaces no seguros)",
+		"ui.teamBridge.delivery.refused_out_of_scope": "PASS: Mensaje para Aida (Ben Tran) no entregado: rechazado por su moderación (parecía una solicitud fuera de lo que gestiona este agente) | Mensaje para el jefe de gabinete de Ben Tran no entregado: rechazado por su moderación (parecía una solicitud fuera de lo que gestiona este agente)",
+		"ui.teamBridge.delivery.held": "PASS: Esperando a que Aida (Ben Tran) lo analice… | Esperando a que el jefe de gabinete de Ben Tran lo analice…",
+		"ui.teamBridge.delivery.held_screening_unavailable": "PASS: Esperando a que Aida (Ben Tran) lo analice. El análisis no está disponible temporalmente. | Esperando a que el jefe de gabinete de Ben Tran lo analice. El análisis no está disponible temporalmente.",
+		"ui.teamBridge.delivery.held_awaiting_review": "PASS: Esperando a que Aida (Ben Tran) lo analice. El mensaje está pendiente de revisión. | Esperando a que el jefe de gabinete de Ben Tran lo analice. El mensaje está pendiente de revisión.",
+		"ui.teamBridge.delivery.pending": "PASS: Analizado; entrega pendiente para Aida (Ben Tran) | Analizado; entrega pendiente para el jefe de gabinete de Ben Tran",
+		"ui.teamBridge.delivery.recipient_unnamed": "PASS: 'el jefe de gabinete de {person}'; {person} only; lowercase in-sentence; term 'jefe de gabinete' matches chief.unnamed / section.chiefs / chief.fallback in this namespace."
+	},
+	"composition_notes": "Named and unnamed forms both grammatical in all ten sentences. Parentheticals of the five refused_* values byte-identical to cebd8e90785. 'Mensaje para X no entregado' is a terse status fragment consistent with the guide's 'Terse: \"Guardado\"' rule; 'por la moderación' (refused) vs 'por su moderación' (refused_*) mirrors English 'by moderation' / 'by their moderation'. Fallback 'Agente desconocido' also composes cleanly. The guide's no-Title-Case rule holds."
+}

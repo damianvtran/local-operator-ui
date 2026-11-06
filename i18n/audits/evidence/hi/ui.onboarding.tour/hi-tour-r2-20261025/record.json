@@ -1,0 +1,166 @@
+{
+ "audit_id": "hi-tour-r2-20261025",
+ "date": "2026-10-25",
+ "locale": "hi",
+ "namespace": "ui.onboarding.tour",
+ "source_commit": "34e6964513eb2ec7aeb6d50aa9cd2010af071610",
+ "scope": "Round 2 delta pass on the final bytes for ui.onboarding.tour: all 12 round-1 findings fixed, 19 changed keys and 104 unchanged retained byte-identically. Round 1 receipt remains immutable evidence. Text-only; rendered fit unverified.",
+ "status": "audited",
+ "high_visibility": {
+  "group": "onboarding",
+  "second_independent_audit_required": true,
+  "second_independent_audit": "performed",
+  "second_instance": "hi-onboarding-tour-second-audit-18b1a47b6b83"
+ },
+ "translator": {
+  "agent": "translator",
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "job": "1a52ed60d4b5",
+  "session": "1a52ed60d4b5"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "result": "clean",
+   "instance": "hi-onboarding-tour-r2-cc19dcba2a86",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/hi-onboarding-tour-r2-cc19dcba2a86.json",
+   "receipt_sha256": "54921db331360122f64bbb810fbba8476bcca45589555192677eddbbfeb6e526",
+   "scope": "Round 2 delta pass on the final bytes: all 12 round-1 findings fixed, 19 changed keys and 104 unchanged retained byte-identically. Round 1 receipt i18n/receipts/hi-onboarding-tour-e38c1c237313.json remains immutable evidence. First-independent-audit scope only; rendered fit unverified.",
+   "note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+  },
+  {
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "result": "clean-with-findings",
+   "instance": "hi-onboarding-tour-second-audit-18b1a47b6b83",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 5,
+    "nit": 3
+   },
+   "receipt": "i18n/receipts/hi-onboarding-tour-second-audit-18b1a47b6b83.json",
+   "receipt_sha256": "a489e5f7b2e021b04c40c55b70adf054583020b9b1e39b41a0fe978087125087",
+   "scope": "Second independent audit of the unchanged final bytes. First audit hi-onboarding-tour-r2-cc19dcba2a86 remains on the row; two distinct instances now evidence the high-visibility rule. 5 minor/3 nit.",
+   "note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "hi-onboarding-tour-e38c1c237313",
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "status": "changes_requested",
+   "result": "changes_requested",
+   "keys_audited": 123,
+   "target_sha256": "e38c1c23731374b3838a4bab113be94a7e6187d8536cbc237dba06c3fd69c033",
+   "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+   "findings": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 6,
+    "nit": 5
+   },
+   "receipt": {
+    "path": "i18n/receipts/hi-onboarding-tour-e38c1c237313.json",
+    "sha256": "984aa293334a97db4635680aba0d05680df1c69ad819c1b32adff848ded79f05"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "hi-onboarding-tour-r2-cc19dcba2a86",
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 123,
+   "target_sha256": "cc19dcba2a867fb2e7a64266a3c53b4d5c82722919da9323532337488d82cfb7",
+   "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": {
+    "path": "i18n/receipts/hi-onboarding-tour-r2-cc19dcba2a86.json",
+    "sha256": "54921db331360122f64bbb810fbba8476bcca45589555192677eddbbfeb6e526"
+   }
+  },
+  {
+   "receipt": {
+    "path": "i18n/receipts/hi-onboarding-tour-second-audit-cc19dcba2a86.json",
+    "sha256": "a489e5f7b2e021b04c40c55b70adf054583020b9b1e39b41a0fe978087125087"
+   },
+   "instance": "hi-onboarding-tour-second-audit-18b1a47b6b83",
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "status": "clean-with-findings",
+   "result": "changes_requested",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 5,
+    "nit": 3
+   },
+   "target_sha256": null,
+   "keys_audited": 123,
+   "round": 2,
+   "label": "second independent audit on final bytes"
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+   "sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+   "sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/hi/ui.onboarding.tour.json",
+   "sha256": "cc19dcba2a867fb2e7a64266a3c53b4d5c82722919da9323532337488d82cfb7"
+  }
+ },
+ "limitations": "Text-only catalogues audit. The high-visibility second independent audit is now performed; no rendered frame, browser fit, native-speaker sign-off or release approval is claimed.",
+ "second_audit": {
+  "receipt": {
+   "path": "i18n/receipts/hi-onboarding-tour-second-audit-cc19dcba2a86.json",
+   "sha256": "a489e5f7b2e021b04c40c55b70adf054583020b9b1e39b41a0fe978087125087"
+  },
+  "instance": "hi-onboarding-tour-second-audit-18b1a47b6b83",
+  "agent": "translation-auditor",
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "status": "clean-with-findings",
+  "result": "changes_requested",
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 5,
+   "nit": 3
+  },
+  "target_sha256": null,
+  "keys_audited": 123
+ },
+ "carried_source_observations": [
+  "Agent Hub hardcoded Get control: fr « Obtenir » is correct; the source control must be localized in the upcoming agent-hub source slice.",
+  "English ‘Create schedule’ quote does not match the ‘New scheduled task’ control; carried source/programme item, not fixed by target edits.",
+  "Comma-prefix join artefact in the command-palette fragments; carried source/programme item."
+ ]
+}

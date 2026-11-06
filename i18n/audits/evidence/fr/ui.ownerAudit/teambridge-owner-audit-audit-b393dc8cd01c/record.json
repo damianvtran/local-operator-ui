@@ -1,0 +1,274 @@
+{
+	"audit_id": "teambridge-owner-audit-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"locale": "fr",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "b393dc8cd01c-owneraudit-fr",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-fr.json",
+			"receipt_sha256": "28520ed68f57c86d954265b4c6f63c2f65d69563f4acc928e80c1382184b06a8"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.ownerAudit.json",
+			"sha256": "600eca2119f9911e8febed0361c9848e20a2f48f044ff5d15ea172a1d9923ef8"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "ad77dcc43ee06d1f43ef6c2a6422c33ee458534b805d888cb413a4f9ebf8226c"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.title": {
+			"en": "Your chief of staff’s messages",
+			"target": "Messages de votre cheffe de cabinet"
+		},
+		"ui.ownerAudit.read_only": {
+			"en": "Read-only history. Sending, reactions and editing are unavailable.",
+			"target": "Historique en lecture seule. L’envoi, les réactions et la modification sont indisponibles."
+		},
+		"ui.ownerAudit.loading": {
+			"en": "Loading audited messages",
+			"target": "Chargement des messages audités"
+		},
+		"ui.ownerAudit.error": {
+			"en": "Audited messages could not be loaded.",
+			"target": "Impossible de charger les messages audités."
+		},
+		"ui.ownerAudit.retry": {
+			"en": "Try again",
+			"target": "Réessayer"
+		},
+		"ui.ownerAudit.refresh": {
+			"en": "Refresh",
+			"target": "Actualiser"
+		},
+		"ui.ownerAudit.empty_list": {
+			"en": "No audited conversations in this organization.",
+			"target": "Aucune conversation auditée dans cette organisation."
+		},
+		"ui.ownerAudit.empty_history": {
+			"en": "No messages in the audit window for this conversation.",
+			"target": "Aucun message dans la fenêtre d’audit de cette conversation."
+		},
+		"ui.ownerAudit.unnamed": {
+			"en": "Unnamed conversation",
+			"target": "Conversation sans nom"
+		},
+		"ui.ownerAudit.agent": {
+			"en": "Chief of staff",
+			"target": "Cheffe de cabinet"
+		},
+		"ui.ownerAudit.more": {
+			"en": "Load more",
+			"target": "Charger plus"
+		},
+		"ui.ownerAudit.older": {
+			"en": "Load older messages",
+			"target": "Charger les messages précédents"
+		},
+		"ui.ownerAudit.admitted": {
+			"en": "Admitted to your chief of staff",
+			"target": "Admis par votre cheffe de cabinet"
+		},
+		"ui.ownerAudit.rejected": {
+			"en": "Rejected by your chief of staff’s screening",
+			"target": "Rejeté par le filtrage de votre cheffe de cabinet"
+		},
+		"ui.ownerAudit.not_screened": {
+			"en": "Not screened by your chief of staff",
+			"target": "Non filtré par votre cheffe de cabinet"
+		},
+		"ui.ownerAudit.unknown_status": {
+			"en": "Status unknown",
+			"target": "Statut inconnu"
+		},
+		"ui.ownerAudit.own": {
+			"en": "Sent by your chief of staff",
+			"target": "Envoyé par votre cheffe de cabinet"
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"en": "Message text unavailable.",
+			"target": "Texte du message indisponible."
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"en": "Attachment expired; bytes are unavailable.",
+			"target": "Pièce jointe expirée ; son contenu est indisponible."
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"en": "Attachment present; downloading is unavailable in this view.",
+			"target": "Pièce jointe présente ; le téléchargement est indisponible dans cette vue."
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"en": "Unknown sender",
+			"target": "Expéditeur inconnu"
+		},
+		"ui.ownerAudit.reveal": {
+			"en": "Show message text",
+			"target": "Afficher le texte du message"
+		},
+		"ui.ownerAudit.active": {
+			"en": "Your chief of staff is still a member.",
+			"target": "Votre cheffe de cabinet est toujours membre."
+		},
+		"ui.ownerAudit.left": {
+			"en": "Your chief of staff left this conversation; later messages are outside the audit window.",
+			"target": "Votre cheffe de cabinet a quitté cette conversation ; les messages ultérieurs sont hors de la fenêtre d’audit."
+		},
+		"ui.ownerAudit.removed": {
+			"en": "Your chief of staff was removed; later messages are outside the audit window.",
+			"target": "Votre cheffe de cabinet a été retirée ; les messages ultérieurs sont hors de la fenêtre d’audit."
+		},
+		"ui.ownerAudit.disclosure": {
+			"en": "Visible only to you as this agent’s owner; other members see that owner auditing is enabled.",
+			"target": "Visible uniquement par vous en tant que propriétaire de cet agent ; les autres membres voient que l’audit par le propriétaire est activé."
+		},
+		"ui.ownerAudit.viewer": {
+			"en": "Also visible to {name}, an agent owner.",
+			"target": "Également visible par {name}, propriétaire d’un agent."
+		},
+		"ui.ownerAudit.replies": {
+			"en": "Read thread replies",
+			"target": "Lire les réponses du fil"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.ownerAudit.title",
+			"ui.ownerAudit.read_only",
+			"ui.ownerAudit.loading",
+			"ui.ownerAudit.error",
+			"ui.ownerAudit.retry",
+			"ui.ownerAudit.refresh",
+			"ui.ownerAudit.empty_list",
+			"ui.ownerAudit.empty_history",
+			"ui.ownerAudit.unnamed",
+			"ui.ownerAudit.agent",
+			"ui.ownerAudit.more",
+			"ui.ownerAudit.older",
+			"ui.ownerAudit.admitted",
+			"ui.ownerAudit.rejected",
+			"ui.ownerAudit.not_screened",
+			"ui.ownerAudit.unknown_status",
+			"ui.ownerAudit.own",
+			"ui.ownerAudit.body_unavailable",
+			"ui.ownerAudit.attachment_expired",
+			"ui.ownerAudit.attachment_unavailable",
+			"ui.ownerAudit.unknown_sender",
+			"ui.ownerAudit.reveal",
+			"ui.ownerAudit.active",
+			"ui.ownerAudit.left",
+			"ui.ownerAudit.removed",
+			"ui.ownerAudit.disclosure",
+			"ui.ownerAudit.viewer",
+			"ui.ownerAudit.replies"
+		],
+		"new_namespace": true,
+		"note": "first audit of this namespace; all 28 keys"
+	},
+	"notes": "Namespace-wide audit against en + context (owner vs agent, screening vs authorship, audit window). Open findings: 0; resolved by this run: 1.",
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "I18N-fr-1",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.title",
+				"ui.ownerAudit.agent",
+				"ui.ownerAudit.admitted",
+				"ui.ownerAudit.rejected",
+				"ui.ownerAudit.not_screened",
+				"ui.ownerAudit.own",
+				"ui.ownerAudit.active",
+				"ui.ownerAudit.left",
+				"ui.ownerAudit.removed"
+			],
+			"reason": "Terminology consistency: 'chef de cabinet' broke the shipped fr rendering 'cheffe de cabinet' (ui.teamBridge.chief.fallback, ui.agentMessages.settings.hold.*, ui.onboarding.extras.greeting_*). Agreement follows: removed 'retiré' -> 'retirée'.",
+			"change": {
+				"ui.ownerAudit.title": {
+					"before": "Messages de votre chef de cabinet",
+					"after": "Messages de votre cheffe de cabinet"
+				},
+				"ui.ownerAudit.agent": {
+					"before": "Chef de cabinet",
+					"after": "Cheffe de cabinet"
+				},
+				"ui.ownerAudit.admitted": {
+					"before": "Admis par votre chef de cabinet",
+					"after": "Admis par votre cheffe de cabinet"
+				},
+				"ui.ownerAudit.rejected": {
+					"before": "Rejeté par le filtrage de votre chef de cabinet",
+					"after": "Rejeté par le filtrage de votre cheffe de cabinet"
+				},
+				"ui.ownerAudit.not_screened": {
+					"before": "Non filtré par votre chef de cabinet",
+					"after": "Non filtré par votre cheffe de cabinet"
+				},
+				"ui.ownerAudit.own": {
+					"before": "Envoyé par votre chef de cabinet",
+					"after": "Envoyé par votre cheffe de cabinet"
+				},
+				"ui.ownerAudit.active": {
+					"before": "Votre chef de cabinet est toujours membre.",
+					"after": "Votre cheffe de cabinet est toujours membre."
+				},
+				"ui.ownerAudit.left": {
+					"before": "Votre chef de cabinet a quitté cette conversation ; les messages ultérieurs sont hors de la fenêtre d’audit.",
+					"after": "Votre cheffe de cabinet a quitté cette conversation ; les messages ultérieurs sont hors de la fenêtre d’audit."
+				},
+				"ui.ownerAudit.removed": {
+					"before": "Votre chef de cabinet a été retiré ; les messages ultérieurs sont hors de la fenêtre d’audit.",
+					"after": "Votre cheffe de cabinet a été retirée ; les messages ultérieurs sont hors de la fenêtre d’audit."
+				}
+			}
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_fr": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b393dc8cd01c-owneraudit-fr.json",
+			"sha256": "28520ed68f57c86d954265b4c6f63c2f65d69563f4acc928e80c1382184b06a8"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117)."
+}

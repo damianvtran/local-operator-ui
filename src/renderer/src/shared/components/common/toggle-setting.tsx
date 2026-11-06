@@ -19,10 +19,17 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Spinner } from "@shared/components/common/spinner";
 import { Switch } from "@shared/components/ui";
 import type { LucideIcon } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FC } from "react";
 
 type ToggleSettingProps = {
+	/** Settings search's stable row id, when this control is a searchable row. */
+	searchRow?: string;
+	/**
+	 * Extra words settings search matches this row by, that its label does not
+	 * print (`data-search-terms`). Localized by the caller.
+	 */
+	searchTerms?: string;
 	/**
 	 * Current value of the setting
 	 */
@@ -59,6 +66,19 @@ type ToggleSettingProps = {
 	 * off: the row stays visible (so its reason can be read) instead of vanishing.
 	 */
 	disabled?: boolean;
+
+	/**
+	 * SAVE IN PLACE (opt-in). By default a save swaps the control for a spinner
+	 * (toggle) or disables it (slider), and a focused control that is disabled
+	 * or unmounted drops keyboard focus to <body>: the second arrow press or
+	 * Space lands nowhere (notification-sound QA round 1, Q1 / UX U1). With this
+	 * set, the control stays mounted, enabled and focused while saving; the row
+	 * says so with `aria-busy` and a small spinner beside the control, and a
+	 * change made mid-save is passed to `onChange` like any other, so the CALLER
+	 * must order its writes (Notifications serializes per key). Off by default
+	 * because the existing callers rely on the save being exclusive.
+	 */
+	savingInPlace?: boolean;
 };
 
 /**
@@ -69,6 +89,8 @@ type ToggleSettingProps = {
  * @param props - ToggleSettingProps
  */
 export const ToggleSetting: FC<ToggleSettingProps> = ({
+	searchRow,
+	searchTerms,
 	value,
 	label,
 	description,
@@ -76,9 +98,31 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	icon: Icon,
 	isSaving = false,
 	disabled = false,
+	savingInPlace = false,
 }) => {
 	useI18nLocale();
 	const [isOn, setIsOn] = useState(value);
+	/*
+	 * FOLLOW THE PROP. The local copy exists for the optimistic flip, but a
+	 * value written by someone else (a second control for the same key, an
+	 * agent, another surface) must reach the switch too; without this it kept
+	 * showing the value it mounted with (QA round 1, Q2 / UX U3). Keyed on the
+	 * prop, so an optimistic flip is only overwritten when the prop changes.
+	 */
+	/*
+	 * ...EXCEPT WHILE ITS OWN PRESSES ARE IN FLIGHT (review round 2, m1). Two
+	 * queued presses (on -> off -> on): the first write's refetch brings
+	 * `false`, and syncing then flipped the focused switch back until the
+	 * second landed. In place, the sync waits for the last press to settle;
+	 * `settled` re-runs it then, so a failed write still shows the truth.
+	 */
+	const pendingPresses = useRef(0);
+	const [settled, setSettled] = useState(0);
+	useEffect(() => {
+		void settled;
+		if (savingInPlace && pendingPresses.current > 0) return;
+		setIsOn(value);
+	}, [value, savingInPlace, settled]);
 	const fieldId = useId();
 	const labelId = `${fieldId}-label`;
 	const descriptionId = `${fieldId}-description`;
@@ -87,9 +131,22 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	 * Handles toggling the switch
 	 */
 	const handleToggle = async (checked: boolean) => {
-		if (isSaving || disabled) return;
+		if ((isSaving && !savingInPlace) || disabled) return;
 
 		setIsOn(checked);
+
+		if (savingInPlace) {
+			pendingPresses.current += 1;
+			try {
+				await onChange(checked);
+			} catch (error) {
+				console.error("Error toggling setting:", error);
+			} finally {
+				pendingPresses.current -= 1;
+				if (pendingPresses.current === 0) setSettled((n) => n + 1);
+			}
+			return;
+		}
 
 		try {
 			await onChange(checked);
@@ -101,10 +158,17 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	};
 
 	return (
-		<div className="flex items-start justify-between gap-4">
+		<div
+			data-search-row={searchRow}
+			data-search-terms={searchRow ? searchTerms : undefined}
+			data-search-control={searchRow ? "" : undefined}
+			className="flex items-start justify-between gap-4"
+			aria-busy={savingInPlace && isSaving ? true : undefined}
+		>
 			<div className="min-w-0 flex-1">
 				<span
 					id={labelId}
+					data-search-label=""
 					className="flex min-h-6 items-center gap-2 text-body text-ink"
 				>
 					{Icon && (
@@ -129,8 +193,14 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 
 			{/* Fixed height so swapping the switch for the saving spinner does not
 			    reflow the row. */}
-			<div className="flex h-6 shrink-0 items-center">
-				{isSaving ? (
+			<div className="flex h-6 shrink-0 items-center gap-2">
+				{savingInPlace && isSaving && (
+					<Spinner
+						size="xs"
+						label={t("ui.common.forms.toggle_setting.saving", { label: label })}
+					/>
+				)}
+				{isSaving && !savingInPlace ? (
 					<Spinner
 						size="md"
 						label={t("ui.common.forms.toggle_setting.saving", { label: label })}

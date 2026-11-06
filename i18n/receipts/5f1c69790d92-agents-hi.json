@@ -1,0 +1,307 @@
+{
+	"instance": "5f1c69790d92-agents-hi",
+	"locale": "hi",
+	"audit_date": "2026-10-30",
+	"status": "passed",
+	"verdict": "pass",
+	"scope": "hi, both namespaces, every value read: ui.agents.descriptions (12 Agents-page card blurbs) and ui.agents.detail.install (2 install button labels); 14 keys, none exempted.",
+	"scope_namespaces": [
+		"ui.agents.descriptions",
+		"ui.agents.detail.install"
+	],
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "5f1c69790d92",
+		"model": "radient/auto",
+		"actual_model_source": "harness session header (model-switch notices): primary anthropic/claude-sonnet-5-5 failed on quota and fell back openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; what radient/auto resolves to upstream is not visible from this session",
+		"independent_from_translator_session": true,
+		"note": "Did not translate and did not edit any catalogue, ledger or receipt outside this directory; no translation or MT service was used to compare or back-translate."
+	},
+	"translator": {
+		"agent": "i18n-translator (translation lane)",
+		"session": "bfeac33a273e",
+		"model": "radient/auto",
+		"model_source": "read from the translation lane's own translator.log model-switch lines; not observed live by this auditor",
+		"independence_disclosure": "the translator lane and this audit run ended on the same underlying model (radient/auto) through the same provider quota fallback; independence here is by agent and session, not by model, and is disclosed rather than claimed."
+	},
+	"input_sha256": {
+		"en": {
+			"src/i18n/catalogues/en/ui.agents.descriptions.json": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"src/i18n/catalogues/en/ui.agents.detail.install.json": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0"
+		},
+		"context": {
+			"src/i18n/catalogues/en/ui.agents.descriptions.context.json": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398",
+			"src/i18n/catalogues/en/ui.agents.detail.install.context.json": "f82578e4390f18d396fa229286d5395492618bd93ccbfa43d8d0dbe5a6530307"
+		},
+		"target": {
+			"ui.agents.descriptions.json": "16aaf542b53ebe7c1b9941c287cccaa3b692f4880b928044413acb84b3c53eb4",
+			"ui.agents.detail.install.json": "6720bcf334c63b5e7444d01c28963fd70775893da987d959880018a89a0a64c7"
+		},
+		"en_export_copies_as_read": {
+			"ui.agents.descriptions.en.json": "c865345f35a1f50313a2dd6cc6afa4f06d80144a2312ac691bacd1932edf2f1f",
+			"ui.agents.detail.install.en.json": "cb0674b7f65c48806d427a9ed2702c9d77e4bd6ff866f9966bc6f7762b84bcc9",
+			"note": "the scratchpad English exports are value-identical to the committed en catalogues (verified by JSON equality) but differ in indentation, so their byte hashes differ; the ledger comparison uses the committed en bytes above."
+		}
+	},
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 4,
+		"NIT": 4
+	},
+	"findings": [
+		{
+			"id": "H1",
+			"severity": "MINOR",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.librarian",
+			"current": "लाइब्रेरी का व्यवस्थापक एजेंट: …",
+			"problem": "'organizing agent' is rendered व्यवस्थापक (administrator/manager), which names a different function from organising the catalogue; the same roster also lists a Manager agent, so the two roles read closer than the source makes them.",
+			"suggestion": "लाइब्रेरी को व्यवस्थित करने वाला एजेंट: … (or लाइब्रेरी का संयोजक एजेंट), rest unchanged",
+			"class": "accuracy/terminology"
+		},
+		{
+			"id": "H2",
+			"severity": "MINOR",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.copy_reviewer",
+			"current": "…और AI जैसी बनावटी बातें",
+			"problem": "'AI-isms' means AI-flavoured writing tells; the Hindi says 'AI-like artificial things', dropping the writing object, while every other criterion in that list is a property of the text.",
+			"suggestion": "…और AI जैसी बनावटी भाषा (or …और AI की पहचान देने वाली घिसी-पिटी बातें)",
+			"class": "accuracy"
+		},
+		{
+			"id": "H3",
+			"severity": "MINOR",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.reviewer",
+			"current": "खामियाँ ढूँढता है",
+			"problem": "ड़ carries no nukta (ढूँढ़ता), against the hi style guide's binding nukta rule. The catalogue's only other use, ui.teamBridge.create.channel_description ('ढूँढकर'), has the same defect, so a fix should cover both.",
+			"suggestion": "खामियाँ ढूँढ़ता है — or the everyday खामियाँ खोजता है, which sidesteps the orthography",
+			"class": "orthography"
+		},
+		{
+			"id": "H4",
+			"severity": "MINOR",
+			"namespace": "ui.agents.detail.install",
+			"key": "ui.agents.detail.install.action.install_to_edit",
+			"current": "संपादन के लिए इंस्टॉल करें",
+			"problem": "Fit: 25 cells vs 15 for 'Install to edit' (1.67x; 26 vs 15 characters). Not rendered in this audit, so this is a check to run, not an observed overflow: the label shares a shrink-0 header row with नई चैट and the key carries no maxCells hint. The pending label is shorter than this one, so the button does not grow when the install starts.",
+			"suggestion": "Keep if the header tolerates it; संपादन हेतु इंस्टॉल करें (23 cells) is the lever if it does not. Confirm on a rendered frame in the design round.",
+			"class": "fit"
+		},
+		{
+			"id": "H5",
+			"severity": "NIT",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.aida",
+			"current": "आपकी ओर से एजेंट और टीमें चलाती हैं",
+			"problem": "The object has no को, so the clause can be read with एजेंट और टीमें as subject ('agents and teams run on your behalf') instead of the thing she runs; the following clauses resolve it, but a card is read at a glance.",
+			"suggestion": "आपकी ओर से एजेंटों और टीमों को चलाती हैं",
+			"class": "clarity"
+		},
+		{
+			"id": "H6",
+			"severity": "NIT",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.designer",
+			"current": "स्रोत के बजाय रेंडर किए गए फ़्रेम से",
+			"problem": "The English verb ('judged') has no Hindi counterpart, so the comparison hangs off the noun phrase and फ़्रेम से is a thin instrument.",
+			"suggestion": "स्रोत के बजाय रेंडर किए गए फ़्रेम के आधार पर",
+			"class": "idiom"
+		},
+		{
+			"id": "H7",
+			"severity": "NIT",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.tui_designer",
+			"current": "कीबोर्ड से चलने वाले फ़्लो",
+			"problem": "Flattens 'keyboard-first' to 'keyboard-driven'; the priority claim (the keyboard decides the design) is lost.",
+			"suggestion": "कीबोर्ड-प्रधान फ़्लो",
+			"class": "accuracy"
+		},
+		{
+			"id": "H8",
+			"severity": "NIT",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.aida",
+			"current": "चलाती हैं … नज़र रखती हैं … बताती हैं",
+			"problem": "Honorific plural, while every other agent in the same list is plain singular (करता है). It reads as deliberate persona warmth — the sidecar asks for a warm register — but it is a register split inside one roster.",
+			"suggestion": "No change required if deliberate; align to चलाती है … रखती है … बताती है if the roster should read uniformly",
+			"class": "register"
+		}
+	],
+	"namespaces": {
+		"ui.agents.descriptions": {
+			"namespace": "ui.agents.descriptions",
+			"status": "passed",
+			"keys_audited": 12,
+			"sha256": {
+				"en": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+				"hi": "16aaf542b53ebe7c1b9941c287cccaa3b692f4880b928044413acb84b3c53eb4"
+			},
+			"en_sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"hi_sha256": "16aaf542b53ebe7c1b9941c287cccaa3b692f4880b928044413acb84b3c53eb4",
+			"findings": [
+				{
+					"id": "H1",
+					"severity": "MINOR",
+					"namespace": "ui.agents.descriptions",
+					"key": "ui.agents.descriptions.librarian",
+					"current": "लाइब्रेरी का व्यवस्थापक एजेंट: …",
+					"problem": "'organizing agent' is rendered व्यवस्थापक (administrator/manager), which names a different function from organising the catalogue; the same roster also lists a Manager agent, so the two roles read closer than the source makes them.",
+					"suggestion": "लाइब्रेरी को व्यवस्थित करने वाला एजेंट: … (or लाइब्रेरी का संयोजक एजेंट), rest unchanged",
+					"class": "accuracy/terminology"
+				},
+				{
+					"id": "H2",
+					"severity": "MINOR",
+					"namespace": "ui.agents.descriptions",
+					"key": "ui.agents.descriptions.copy_reviewer",
+					"current": "…और AI जैसी बनावटी बातें",
+					"problem": "'AI-isms' means AI-flavoured writing tells; the Hindi says 'AI-like artificial things', dropping the writing object, while every other criterion in that list is a property of the text.",
+					"suggestion": "…और AI जैसी बनावटी भाषा (or …और AI की पहचान देने वाली घिसी-पिटी बातें)",
+					"class": "accuracy"
+				},
+				{
+					"id": "H3",
+					"severity": "MINOR",
+					"namespace": "ui.agents.descriptions",
+					"key": "ui.agents.descriptions.reviewer",
+					"current": "खामियाँ ढूँढता है",
+					"problem": "ड़ carries no nukta (ढूँढ़ता), against the hi style guide's binding nukta rule. The catalogue's only other use, ui.teamBridge.create.channel_description ('ढूँढकर'), has the same defect, so a fix should cover both.",
+					"suggestion": "खामियाँ ढूँढ़ता है — or the everyday खामियाँ खोजता है, which sidesteps the orthography",
+					"class": "orthography"
+				},
+				{
+					"id": "H5",
+					"severity": "NIT",
+					"namespace": "ui.agents.descriptions",
+					"key": "ui.agents.descriptions.aida",
+					"current": "आपकी ओर से एजेंट और टीमें चलाती हैं",
+					"problem": "The object has no को, so the clause can be read with एजेंट और टीमें as subject ('agents and teams run on your behalf') instead of the thing she runs; the following clauses resolve it, but a card is read at a glance.",
+					"suggestion": "आपकी ओर से एजेंटों और टीमों को चलाती हैं",
+					"class": "clarity"
+				},
+				{
+					"id": "H6",
+					"severity": "NIT",
+					"namespace": "ui.agents.descriptions",
+					"key": "ui.agents.descriptions.designer",
+					"current": "स्रोत के बजाय रेंडर किए गए फ़्रेम से",
+					"problem": "The English verb ('judged') has no Hindi counterpart, so the comparison hangs off the noun phrase and फ़्रेम से is a thin instrument.",
+					"suggestion": "स्रोत के बजाय रेंडर किए गए फ़्रेम के आधार पर",
+					"class": "idiom"
+				},
+				{
+					"id": "H7",
+					"severity": "NIT",
+					"namespace": "ui.agents.descriptions",
+					"key": "ui.agents.descriptions.tui_designer",
+					"current": "कीबोर्ड से चलने वाले फ़्लो",
+					"problem": "Flattens 'keyboard-first' to 'keyboard-driven'; the priority claim (the keyboard decides the design) is lost.",
+					"suggestion": "कीबोर्ड-प्रधान फ़्लो",
+					"class": "accuracy"
+				},
+				{
+					"id": "H8",
+					"severity": "NIT",
+					"namespace": "ui.agents.descriptions",
+					"key": "ui.agents.descriptions.aida",
+					"current": "चलाती हैं … नज़र रखती हैं … बताती हैं",
+					"problem": "Honorific plural, while every other agent in the same list is plain singular (करता है). It reads as deliberate persona warmth — the sidecar asks for a warm register — but it is a register split inside one roster.",
+					"suggestion": "No change required if deliberate; align to चलाती है … रखती है … बताती है if the roster should read uniformly",
+					"class": "register"
+				}
+			]
+		},
+		"ui.agents.detail.install": {
+			"namespace": "ui.agents.detail.install",
+			"status": "passed",
+			"keys_audited": 2,
+			"sha256": {
+				"en": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+				"hi": "6720bcf334c63b5e7444d01c28963fd70775893da987d959880018a89a0a64c7"
+			},
+			"en_sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+			"hi_sha256": "6720bcf334c63b5e7444d01c28963fd70775893da987d959880018a89a0a64c7",
+			"findings": [
+				{
+					"id": "H4",
+					"severity": "MINOR",
+					"namespace": "ui.agents.detail.install",
+					"key": "ui.agents.detail.install.action.install_to_edit",
+					"current": "संपादन के लिए इंस्टॉल करें",
+					"problem": "Fit: 25 cells vs 15 for 'Install to edit' (1.67x; 26 vs 15 characters). Not rendered in this audit, so this is a check to run, not an observed overflow: the label shares a shrink-0 header row with नई चैट and the key carries no maxCells hint. The pending label is shorter than this one, so the button does not grow when the install starts.",
+					"suggestion": "Keep if the header tolerates it; संपादन हेतु इंस्टॉल करें (23 cells) is the lever if it does not. Confirm on a rendered frame in the design round.",
+					"class": "fit"
+				}
+			]
+		}
+	},
+	"method": {
+		"audit_notes_not_execution_log": true,
+		"mechanical": "node --test scripts/i18n/locale-parity.test.mjs in /Users/damian/lo-agents-i18n: baseline 44/44 pass; re-run with these two files copied verbatim into src/i18n/catalogues/hi/ -> 44/44 pass, including the hi cases (ships at least one message; defines each key in at most one namespace file; carries EVERY key of each namespace file it ships; names only keys the English source defines; preserves every ICU placeholder from the English source; is not an English stub). The copies were then removed; git status is clean.",
+		"character_checks": "python utf-8 read: NFC round-trip for all 14 values; no BOM; no ZWSP/ZWNJ/ZWJ; no NBSP or double spaces; no leading/trailing space; every description ends with danda (।) and none has a space before it; installing ends with U+2026 (not three dots); key sets and key order identical to English; JSON parses; tab-indented, trailing newline, matching the repository's catalogue bytes style.",
+		"placeholders_cldr": "no ICU arguments, plurals or selects appear in these 14 English values, so CLDR category coverage is not exercisable here (declared n/a, not silently skipped).",
+		"tokens": "Kept-Latin tokens verified intact in the target: AI, UX, QA, diff, MR, PR, unicode, plus the C-/D-/T-/U- finding prefixes. None was translated or transliterated.",
+		"width": "cell_len measurement per value against English (Devanagari combining marks counted as zero width): descriptions 0.81x-1.16x, i.e. none materially longer than its source (max: ux_reviewer 1.16x, reviewer 1.15x); install_to_edit 1.67x and installing 1.55x, measured, reported as H4.",
+		"second_pass": "the 14 values were re-read once more after the first pass, focused on claim survival and negation (architect/reviewer/qa_tester/scout keep their negations). That pass produced H5 and confirmed H1-H4; no BLOCKER or MAJOR was withdrawn.",
+		"not_done": "no rendered frame was captured in this audit: overflow, wrapping at 256 px and the header row are the design pass's evidence, not claimed here."
+	},
+	"checked_and_accepted": [
+		"लाइब्रेरी for the Library surface matches ui.library.* and ui.chat.directory.folder.library; लाइब्रेरी का ... is the same noun the rest of the locale uses.",
+		"मुद्दे for 'findings' matches ui.code_review.attention.findings; समीक्षा for review matches ui.code_review.",
+		"कार्यक्षेत्र (workspace) and एजेंट/टीम/ऑपरेटर follow i18n/glossary.md §2 and the existing hi corpus (ui.projects, ui.mesh).",
+		"इंस्टॉल for install matches ui.common.updates.* and ui.agents.detail.alert.builtin_body, so the button and the alert above it agree.",
+		"transliterated technical loans (कोडबेस, टूलसेट, व्यूपोर्ट, रिग, डिज़ाइन, कैटलॉग, फ़्रेम) follow the hi guide's loan policy (टोकन/डिवाइस precedent); रिग is opaque but the English 'rig' is equally opaque to a source reader, so the opacity is inherited from the source, not introduced.",
+		"no value is identical to its English source, and every value is a genuine Hindi rendering."
+	],
+	"handoff": {
+		"ledger_result": "clean-with-findings (0 blocker, 0 major, 4 minor, 4 nit across both namespaces) - the result scripts/i18n/ledger-rules.mjs derives from these counts",
+		"per_namespace_derived_counts": {
+			"ui.agents.descriptions": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 3,
+				"nit": 4
+			},
+			"ui.agents.detail.install": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			}
+		},
+		"evidence_id": "agentsblurbs-20261030-5f1c697",
+		"evidence_paths": {
+			"ui.agents.descriptions": "i18n/audits/evidence/hi/ui.agents.descriptions/agentsblurbs-20261030-5f1c697/record.json",
+			"ui.agents.detail.install": "i18n/audits/evidence/hi/ui.agents.detail.install/agentsblurbs-20261030-5f1c697/record.json"
+		},
+		"prepared_files_in_this_directory": [
+			"receipt.json",
+			"verdict.txt",
+			"findings.md",
+			"record.ui.agents.descriptions.json",
+			"record.ui.agents.detail.install.json",
+			"ledger-rows.json"
+		],
+		"ledger_notes": {
+			"ui.agents.descriptions": "agentsblurbs-20261030-5f1c697 hi/ui.agents.descriptions: PASS 0B/0M/3m/4n; record i18n/audits/evidence/hi/ui.agents.descriptions/agentsblurbs-20261030-5f1c697/record.json; receipt i18n/receipts/5f1c69790d92-agents-hi.json",
+			"ui.agents.detail.install": "agentsblurbs-20261030-5f1c697 hi/ui.agents.detail.install: PASS 0B/0M/1m/0n; record i18n/audits/evidence/hi/ui.agents.detail.install/agentsblurbs-20261030-5f1c697/record.json; receipt i18n/receipts/5f1c69790d92-agents-hi.json"
+		},
+		"ledger_note_lengths": {
+			"ui.agents.descriptions": 221,
+			"ui.agents.detail.install": 225
+		},
+		"ledger_command": "node scripts/i18n/ledger-assemble.mjs --locale hi --file src/i18n/catalogues/hi/<namespace>.json --auditor-instance 5f1c69790d92-agents-hi --auditor-model radient/auto --result clean-with-findings --receipt i18n/receipts/5f1c69790d92-agents-hi.json --translator-agent 'i18n-translator' --translator-model radient/auto --date 2026-10-30 --scope <scope> --note \"<the namespace's note above>\"",
+		"receipt_copy": "copy receipt.json to i18n/receipts/5f1c69790d92-agents-hi.json byte-for-byte; the gate re-hashes it",
+		"verified_end_to_end": "assembled both rows into a scratch tree and ran checkLedger(): {failures: [], checked: 2}; with one added space in a hi value the same gate failed with 'stale target_sha256' - the green is not vacuous",
+		"auditor_wrote_no_repository_file": true
+	},
+	"artifacts": {
+		"receipt.json": "this file",
+		"verdict.txt": "PASS plus the one-line reason",
+		"findings.md": "the same findings with the reasoning, for the wave's remediation round"
+	}
+}

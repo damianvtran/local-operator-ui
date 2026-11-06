@@ -1,0 +1,87 @@
+{
+	"audit_id": "teambridge-not-available-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"source_commit": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "b393dc8cd01c-notavail-vi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/b393dc8cd01c-notavail-vi.json",
+			"receipt_sha256": "79e99b42ec050d5b57260970323212c0f1cea4075a8ab5a78676a6feb5911abb"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+			"sha256": "76a8c7ddb95746f185e671a55302bff6eabf7063e0d310fe5557756819c9aef9"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "cc89c0d9a5392c195e6f26a997b269f7db50c3741840adb05a2d73ac14c3f03b"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.thread.not_available": {
+			"en": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"target": "Bạn không thể mở cuộc trò chuyện này. Có thể bạn không phải là thành viên, hoặc cuộc trò chuyện đã được lưu trữ."
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"inherited_byte_identical": {
+			"previous_receipt": "i18n/receipts/6d269032fdc7-r3-vi.json",
+			"previous_receipt_sha256": "71faf1200f76f5a10e3062170178a1fcda4754e909de58c2e96c8710884ab9c9",
+			"previous_target_sha256": "538c492eed7dcebfd3ac0d74914bbcb8c010adfd978849b6f82f1cc91d058a06",
+			"note": "target at a975a0b4ec with the single ui.teamBridge.thread.not_available line removed hashes to the previously audited target bytes (base e6320fbd33); git numstat e6320fbd33..a975a0b4ec = 1 added, 0 removed."
+		},
+		"english_change": "en adds only thread.not_available (value + context note); no other en key changed."
+	},
+	"notes": "bạn; 'thành viên'/'lưu trữ' match archive.*; 'không thể mở' is access-only; 'Có thể ... hoặc ...' undisclosed.",
+	"findings": [],
+	"resolved_findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_vi": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b393dc8cd01c-notavail-vi.json",
+			"sha256": "79e99b42ec050d5b57260970323212c0f1cea4075a8ab5a78676a6feb5911abb"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117)."
+}

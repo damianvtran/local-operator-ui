@@ -1,0 +1,38 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "instance": "tb1482r2-zh-cn-007251",
+ "status": "passed",
+ "namespace": "ui.ownerAudit",
+ "sha256": {
+  "zh-CN": "31b220b56fb05d78dd2edd399fee6ca8c2c7806c2c83cc24ceebbe7bddee7c19",
+  "en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "key": "ui.ownerAudit.disclosure",
+   "detail": "Second sentence \"其他成员会被告知，智能体所有者可以审计此对话。\" uses 会, which leans future (\"will be told\") where English states a standing present fact (\"The other members are told\") and the other locales render it in the present (fr \"sont informés\", es «se les indica», ru «сообщают», vi \"được thông báo\", hi बताया जाता है, ur بتایا جاتا ہے). 会被告知 is idiomatic habitual Chinese and the fact holds either way, so left unfixed; a future copy pass could drop 会 (\"其他成员被告知，…\"). The rest of the key is correct and was verified: reader's own basis present (你是…首席助理的所有者), the other-members fact present, no exclusivity claim (the previous round's \"仅你…可见\" is gone), no legal/covert vocabulary."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.ownerAudit.viewers_label",
+   "detail": "\"也可查看者\" satisfies every hard requirement (label not sentence, carries 也 for \"also\", no colon, no placeholder, reader excluded) and is compact. Two preferences only: 者 leaves the referent implicit, so the label could be read as \"viewable items\" rather than \"people who can also view\" (the list below it is names; hi/ur make the person explicit with ये लोग / یہ افراد), and it switches to 查看 where the disclosure directly above says 阅读. Suggest \"也可查看的成员\" if a future round touches it. Left unfixed: not a defect, and changing it is a preference the next copy pass can take."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.ownerAudit.left",
+   "detail": "The shared second half \"因此之后的消息不包含在内。\" (identical in ui.ownerAudit.removed, as the sidecar requires) leaves the container implicit where English says \"not in it\" (= the audit). Chinese 不包含在内 carries no antecedent binding the way a pronoun does, and fr (\"n'y figurent pas\") and es (\"quedan fuera de ella\") use the same ellipsis in this round, so this is not the ru \"в нём\" defect class and was left unfixed; \"不在此审计内\" would state the container explicitly if a later pass wants it. Verified on both keys: the audit ends here, what was cut is stated, no way to load the later messages is promised, 被移出 is passive with no blame, and neither line implies the conversation ended or that messages were deleted."
+  }
+ ],
+ "resolved_findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.ownerAudit.window_unconfirmed",
+   "detail": "First sentence narrowed English \"The end of this audit is unknown\" to a timestamp: \"此审计的结束时间未知\" (\"the end TIME of this audit is unknown\"). The unknown here is the audit's endpoint, not a clock value, and the narrowing lets a reader infer the audit's extent is known and only its closing time is not, which weakens the one job of this panel copy (see the target's own 审计到此结束 in left/left's counterpart). Every other locale kept the extent sense (fr \"la fin ... est inconnue\", fr/de not applicable, es «se desconoce el final», ru «конец периода проверки неизвестен», vi «kết thúc ở đâu»). FIXED. before: \"此审计的结束时间未知。无法确认你的首席助理在此对话中的成员身份。\" after: \"此审计在何处结束尚不明确。无法确认你的首席助理在此对话中的成员身份。\" The replacement also pairs with the namespace's established 结束 (ui.ownerAudit.left \"审计到此结束\") and keeps the neutral uncertainty vocabulary the sidecar asks for (no 错误/失败/服务器).",
+   "resolved": true
+  }
+ ],
+ "scope": "Round 2: the six changed keys (disclosure, viewers_label, left, removed, window_unconfirmed, page_cutoff) plus the two scope checks named in the brief (ui.ownerAudit.viewer absent, ui.ownerAudit.active unchanged and still a quiet membership statement); earlier round out of scope.",
+ "instance_note": "Instance id lower-cased at assembly: the assembler mints ids that must match /^[a-z0-9_-]+$/, and the id handed to this audit was minted with the locale code upper-cased. Nothing else changed."
+}

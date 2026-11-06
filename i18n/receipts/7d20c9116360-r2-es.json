@@ -1,0 +1,174 @@
+{
+	"auditor": "reviewer",
+	"model": "radient/auto",
+	"model_disclosure": "Disclosed fallback: the session's primary model anthropic/claude-opus-5-5 was unavailable (provider quota) and the harness routed this run through openai/gpt-6-astra and kimi/k3.1-pro before settling on radient/auto; both audit rounds were completed on radient/auto.",
+	"round": 2,
+	"instance": "7d20c9116360-r2-es",
+	"locale": "es",
+	"namespace": "ui.agents.avatar",
+	"date": "2026-10-30",
+	"head": "c987fbd854b58cad8baec533c6236139f8c25c34",
+	"status": "passed",
+	"result": "clean",
+	"sha256": {
+		"en": "a0c10160f8a35aaae96efb01f9608dc62becc48aa4c85df119849e5eb2604a83",
+		"es": "efb5c469b87c8d0e599e9535136f229ed9250337b49c8ef7eb3b76bc91b0c017"
+	},
+	"source_sha256": "a0c10160f8a35aaae96efb01f9608dc62becc48aa4c85df119849e5eb2604a83",
+	"target_sha256": "efb5c469b87c8d0e599e9535136f229ed9250337b49c8ef7eb3b76bc91b0c017",
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"round_1_disposition": [
+		{
+			"id": "A-hi-zoom",
+			"severity": "minor",
+			"keys": [
+				"ui.agents.avatar.editor.zoom_in",
+				"ui.agents.avatar.editor.zoom_out"
+			],
+			"disposition": "fixed",
+			"detail": "ज़ूम इन / ज़ूम आउट → ज़ूम बढ़ाएँ / ज़ूम घटाएँ, the settled pair in ui.chat.mermaid, ui.common.viewer, ui.library.preview and ui.projects.project_timeline."
+		},
+		{
+			"id": "A-ur-zoom",
+			"severity": "minor",
+			"keys": [
+				"ui.agents.avatar.editor.zoom_in",
+				"ui.agents.avatar.editor.zoom_out"
+			],
+			"disposition": "fixed",
+			"detail": "زوم اِن / زوم آؤٹ → زوم بڑھائیں / زوم گھٹائیں, matching the same four sibling namespaces."
+		},
+		{
+			"id": "A-ur-arrows",
+			"severity": "minor",
+			"keys": [
+				"ui.agents.avatar.editor.instructions"
+			],
+			"detail": "ur «تیر والے بٹن» (arrow buttons) → «تیر کی کلیدیں» (arrow keys), matching the other six locales and the cropper's actual keyboard affordance.",
+			"disposition": "fixed"
+		},
+		{
+			"id": "A-zh-term",
+			"severity": "minor",
+			"keys": [
+				"ui.agents.avatar.edit_link",
+				"ui.agents.avatar.editor.recenter",
+				"ui.agents.avatar.editor.replace",
+				"ui.agents.avatar.editor.save",
+				"ui.agents.avatar.editor.error_save",
+				"ui.agents.avatar.editor.error_remove",
+				"ui.agents.avatar.editor.remove",
+				"ui.agents.avatar.editor.upload"
+			],
+			"disposition": "fixed",
+			"detail": "照片 → 头像 across all eight user-facing keys, agreeing with ui.agents.settings.general.profile_picture (头像). 图片 remains the generic image word in error_decode / error_size / error_type, which is correct."
+		},
+		{
+			"id": "A-fr-unit",
+			"severity": "minor",
+			"keys": [
+				"ui.agents.avatar.editor.error_size",
+				"ui.agents.avatar.editor.hint"
+			],
+			"disposition": "fixed",
+			"detail": "{size} Mo / 10 Mo → {size} MB / 10 MB, matching the audited ui.agents.publication {size} KiB sibling and ui.agents.settings."
+		},
+		{
+			"id": "A-ru-unit",
+			"severity": "minor",
+			"keys": [
+				"ui.agents.avatar.editor.error_size",
+				"ui.agents.avatar.editor.hint"
+			],
+			"disposition": "fixed",
+			"detail": "{size} МБ / 10 МБ → {size} MB / 10 MB, same decision."
+		},
+		{
+			"id": "A-ru-surface",
+			"severity": "minor",
+			"keys": [
+				"ui.agents.avatar.editor.preview_sidebar",
+				"ui.agents.avatar.editor.previews"
+			],
+			"disposition": "fixed",
+			"detail": "«Предпросмотр в списке бесед» → «в списке чатов» (the ru sidebar calls itself Чаты) and «В размерах, в которых изображение показывает приложение» → «В тех размерах, в которых его показывает приложение»."
+		},
+		{
+			"id": "A-hi-image",
+			"severity": "nit",
+			"keys": [
+				"ui.agents.avatar.editor.error_decode",
+				"ui.agents.avatar.editor.error_size",
+				"ui.agents.avatar.editor.error_type"
+			],
+			"disposition": "recorded",
+			"detail": "छवि (the image/file) still differs from तस्वीर (the agent's picture) in the same namespace and from #1517's settings refusals; the image/picture split is defensible and remains for the hi guide to record, not a defect in this namespace."
+		},
+		{
+			"id": "A-hi-crop",
+			"severity": "nit",
+			"keys": [
+				"ui.agents.avatar.editor.crop_area",
+				"ui.agents.avatar.editor.error_encode"
+			],
+			"disposition": "recorded",
+			"detail": "क्रॉप / क्रॉप क्षेत्र transliteration unchanged; no corpus precedent, hi guide prefers a settled term. Cosmetic."
+		},
+		{
+			"id": "A-ru-zoom",
+			"severity": "nit",
+			"keys": [
+				"ui.agents.avatar.editor.zoom_in",
+				"ui.agents.avatar.editor.zoom_out"
+			],
+			"disposition": "recorded",
+			"detail": "Приблизить / Отдалить unchanged; four of five sibling surfaces say Увеличить / Уменьшить, ui.projects.project_timeline supplies the precedent. Cosmetic."
+		},
+		{
+			"id": "A-zh-space",
+			"severity": "nit",
+			"keys": [
+				"ui.agents.avatar.edit_link",
+				"ui.agents.avatar.editor.error_size",
+				"ui.agents.avatar.editor.error_type",
+				"ui.agents.avatar.editor.hint",
+				"ui.agents.avatar.editor.instructions"
+			],
+			"disposition": "recorded",
+			"detail": "Spaces between Chinese text and Latin/digit runs unchanged against the zh-CN guide's no-space rule (corpus 1079 no-space to 31 with-space). Cosmetic."
+		},
+		{
+			"id": "A-zh-ellipsis",
+			"severity": "nit",
+			"keys": [
+				"ui.agents.avatar.editor.saving"
+			],
+			"disposition": "recorded",
+			"detail": "Single «…» unchanged against the zh-CN guide's «……» (siblings: 194 double, 4 single, two of those Latin token abbreviations). Cosmetic."
+		}
+	],
+	"scope": "ui.agents.avatar (27 keys, now including editor.upload and editor.remove) — round-2 full-namespace re-audit of es against English, the core glossary, the es style guide and #1517's ui.agents.settings terms, on PR #1537 head c987fbd854b58cad8baec533c6236139f8c25c34. Whole-file hashes bound.",
+	"passed_checks": [
+		"key set identical to English (27/27) including the two new upload/remove keys",
+		"ICU placeholder parity: {name}, {size}, {width}, {height}, {value} present and unaltered in every key that carries them",
+		"no ICU plural/select arms in this namespace; {size} is a whole-megabyte digit with no inflecting noun",
+		"no manual bidi control characters (RLM/LRM/FSI/PDI/LRI/RLI) in ur; Latin format names left to the render layer's isolation",
+		"format list JPEG/PNG/WebP/GIF matches AGENT_AVATAR_MIME_TYPES in src/renderer/src/shared/agent-avatar/avatar-image.ts",
+		"no key left in English except the es/fr loanword Zoom and the numeric {value}×",
+		"English context sidecar covers all 27 keys, including the two new ones (context entry present for editor.upload and editor.remove)",
+		"punctuation conventions per locale (ur ۔ ،, hi ।, zh-CN ，。、, fr ’)",
+		"upload/remove wording agrees with #1517's ui.agents.settings verbs per locale (Subir/Quitar, Téléverser/Retirer, अपलोड/हटाएँ, Загрузить/Удалить, اپ لوڈ/ہٹائیں, Tải lên/Gỡ, 上传/移除)"
+	],
+	"limitations": [
+		"Browser and rendered-frame capture are not in this auditor's tool set: no screenshot, pseudo-localization or measured-overflow evidence is claimed.",
+		"Overflow was reasoned from the call sites, not measured: the editor's buttons are w-fit, the settings row wraps (flex-wrap with min-w-0), the preview names are image aria-labels, and no truncate/whitespace-nowrap is applied anywhere in the avatar surfaces. The new upload/remove labels are no longer than the replace/save labels already in the row.",
+		"Agent semantic read; no native-speaker review."
+	],
+	"independence": "Auditor did not translate, write or edit any catalogue, context or key file; it re-read the current bytes and verified each round-1 fix against them before reading the remediation commit message."
+}

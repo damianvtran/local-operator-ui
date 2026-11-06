@@ -58,21 +58,27 @@ export type PanelRailItemProps = Omit<
  * carries that channel for a text row; an icon-only rail has no weight to change,
  * so the bar is what survives a theme whose `rowSelected` sits close to `surface`.
  * The bar is a `before:` pseudo-element so it costs no layout, and it sits ON
- * THE RAIL'S LEADING EDGE (design round 1, D2 and D7; re-seated when the rail's
- * hairline came out): 6px outside the 32px control - the item is centred in the
- * 44px rail, so the gutter is 6px a side - and 2px wide, so its outer column IS
- * the rail's leading-edge column; it ends 4px outside the control, clear of the
- * keyboard focus ring, which is drawn at a 1px offset on this rail
- * (`focus-visible:outline-offset-1!`, below) and so occupies 1px-3px outside the
- * control. The offset was 6.5px while the rail wore a leading `border-l
- * border-hairline`: 6.5 = the 5.5px gutter the 1px border left, plus the border,
- * and the bar covered the hairline's column. With the border gone the gutter is
- * 6px, so an untouched 6.5 would have put the bar half a pixel OUTSIDE the rail,
- * straddling the pane; the re-seat keeps the bar's measured position identical
- * (pageX = the rail's leading edge, verified against the before/after frames).
- * Before that, the bar was at 2px-4px and the default 2px-offset ring at 2px-4px:
- * the same pixels, both `accent`, so a focused lit item showed ring only and lost
- * its non-colour "lit" signal in exactly the state a keyboard user is in.
+ * THE RAIL'S LEADING EDGE (design round 1, D2 and D7): 6px outside the 32px
+ * control - the item is centred in the 44px rail, so the gutter is 6px a side -
+ * and 2px wide, so its outer column IS the rail's leading-edge column; it ends
+ * 4px outside the control, clear of the keyboard focus ring, which is drawn at
+ * a 1px offset on this rail (`focus-visible:outline-offset-1!`, below) and so
+ * occupies 1px-3px outside the control. The offset was 6.5px while the rail
+ * wore a leading `border-l border-hairline`: 6.5 = the 5.5px gutter the 1px
+ * border left, plus the border, and the bar covered the hairline's column.
+ * With the border gone the gutter is 6px, so an untouched 6.5 would have put
+ * the bar half a pixel OUTSIDE the rail, straddling the pane; the re-seat keeps
+ * the bar's measured position identical (pageX = the rail's leading edge,
+ * verified against the before/after frames). Before that, the bar was at
+ * 2px-4px and the default 2px-offset ring at 2px-4px: the same pixels, both
+ * `accent`, so a focused lit item showed ring only and lost its non-colour
+ * "lit" signal in exactly the state a keyboard user is in.
+ *
+ * THE SEAM SHARES THAT COLUMN AND THE BAR PAINTS OVER IT (2026-10-30). The
+ * rail's `PanelEdge` is `z-20` and its 1px is the bar's outer column, so the
+ * bar carries `before:z-25`: the seam is decoration, the lit mark is state, and
+ * a bar cut to 1px of accent plus 1px of hairline blend is what design review
+ * round 1 (D2) and agent review round 1 (M3) found on the frame.
  *
  * The ghost variant's own `hover:bg-accent-wash` is overridden on both states:
  * the wash is the transient "a pointer is here" idiom and `rowSelected` must keep
@@ -80,7 +86,7 @@ export type PanelRailItemProps = Omit<
  * comment records (design round 2, D2-1).
  */
 const LIT =
-	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-start-[6px] before:w-0.5 before:rounded-full before:bg-accent";
+	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-start-[6px] before:z-25 before:w-0.5 before:rounded-full before:bg-accent";
 const IDLE =
 	"text-ink-muted hover:bg-row-hover hover:text-ink active:bg-row-hover active:text-ink";
 

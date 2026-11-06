@@ -143,9 +143,16 @@ export async function saveImmediateLanguageValue(options: {
  * dirty forms survive a backend locale update. The select represents confirmed
  * state even while its next requested value is pending or was rejected.
  */
-export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
-	focus = false,
-}) => {
+export const GeneralLanguageSetting: FC<{
+	focus?: boolean;
+	/**
+	 * A monotonic nonce for a SECOND reveal of the same row. The `focused` ref
+	 * makes the reveal idempotent, which is what stops a repaint from stealing
+	 * the caret — and is also why a second Enter on the same search result did
+	 * nothing. A new nonce re-arms it.
+	 */
+	focusNonce?: number;
+}> = ({ focus = false, focusNonce }) => {
 	useI18nLocale();
 	const queryClient = useQueryClient();
 	const capabilities = useDesktopCapabilities();
@@ -170,6 +177,13 @@ export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
 	const writing = useRef(false);
 	const container = useRef<HTMLDivElement>(null);
 	const focused = useRef(false);
+	const focusNonceRef = useRef(focusNonce);
+	useEffect(() => {
+		if (focusNonce === focusNonceRef.current) return;
+		focusNonceRef.current = focusNonce;
+		focused.current = false;
+	}, [focusNonce]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `focusNonce` is a re-run trigger, not a value this body reads — the reset effect above clears the idempotence ref when it changes, and this effect must re-run in the same commit to take the caret.
 	useEffect(() => {
 		if (!focus) {
 			focused.current = false;
@@ -178,7 +192,7 @@ export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
 		if (!setting || focused.current) return;
 		container.current?.querySelector<HTMLElement>("[role=combobox]")?.focus();
 		focused.current = true;
-	}, [focus, setting]);
+	}, [focus, focusNonce, setting]);
 	useEffect(() => {
 		if (settings.isSuccess && !settings.isFetching) setReadbackUnknown(false);
 	}, [settings.isFetching, settings.isSuccess]);
@@ -244,6 +258,10 @@ export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
 			<div
 				ref={container}
 				data-setting-key={LANGUAGE_SETTING_KEY}
+				/* One settings-search row: its rendered text is the row's title and
+				   its summary, and the landing control is the picker inside it. */
+				data-search-row="general.language"
+				data-search-control
 				className="flex flex-col gap-3"
 				aria-busy={pending}
 			>

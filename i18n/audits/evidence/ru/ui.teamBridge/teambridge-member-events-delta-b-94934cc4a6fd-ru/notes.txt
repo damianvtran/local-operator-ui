@@ -1,0 +1,10 @@
+AUDITOR B (delta round) - NOTES, distinct from the execution logs beside them
+
+Locale ru  Namespace ui.teamBridge  Session 94934cc4a6fd  Model radient/auto
+
+1. Verdict: clean-with-findings - 0 blocker, 0 major, 1 minor (RU-DB1, events.declined), 1 nit (RU-DB2, width).
+2. What the delta improved: events.joined now pairs with events.left (Присоединение к разговору / Выход из разговора), and events.owner_added_agent now matches events.removed (добавление … — targets / удаление … — targets). Both are real gains in parallelism; the verbal-noun style is the namespace's own.
+3. What the delta cost: events.declined was rewritten from the participle-first shape «{actor}: отклонено приглашение — {targets}» to the nominal «{actor}: отклонение приглашения для {targets}». That leaves it the only actor-bearing line with targets that does not use the «— {targets}» name column (invited, owner_added_agent, removed, consented, withdrawn all do), and it also breaks the participle-first family (одобрено присоединение, отозвано приглашение). The pair round-1 RU-A2 asked to align is now further apart, because declined_self stayed «{actor}: приглашение отклонено».
+4. Two ways out, both one line: revert to «{actor}: отклонено приглашение — {targets}», or keep the nominal and change declined_self to «{actor}: отклонение приглашения». I recommend the first: it restores both conventions and drops the mild «для» calque.
+5. RU-DB2 is a fit flag, not a wording fault: 51 characters against 35 in English (+46%), 54 against 41 rendered. «собственного» is load-bearing (no consent step because the actor owns the agent), so I did not propose a shorter string; the one-line timeline row needs a rendered width check.
+6. Not re-raised, per the recorded rejected context: the singular agent noun in events.owner_added_agent (server-proved single target).

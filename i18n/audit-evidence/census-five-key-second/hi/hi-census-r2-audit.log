@@ -1,0 +1,16 @@
+{"key":"ui.chat.session_status.effort_level.low","text":"कम","codepoints":2,"graphemes":2,"maxCells":null,"maxChars":null,"mechanical":"PASS"}
+{"key":"ui.chat.session_status.effort_level.medium","text":"मध्यम","codepoints":5,"graphemes":3,"maxCells":null,"maxChars":null,"mechanical":"PASS"}
+{"key":"ui.chat.session_status.effort_level.high","text":"उच्च","codepoints":4,"graphemes":2,"maxCells":null,"maxChars":null,"mechanical":"PASS"}
+{"namespace":"ui.chat","key_parity":"PASS","only_expected_additions":"PASS","unchanged_existing_values":"PASS","en_sha256":"270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27","hi_sha256":"7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a","context_sha256":"efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1","total_keys":206,"audited_keys":3}
+plural case 0 one 0 जागृति सक्रिय
+plural case 0.5 one 0.5 जागृति सक्रिय
+plural case 1 one 1 जागृति सक्रिय
+plural case 2 other 2 जागृतियाँ सक्रिय
+plural case 21 other 21 जागृतियाँ सक्रिय
+plural case 1000 other 1000 जागृतियाँ सक्रिय
+{"key":"ui.chat.run_details.wake.armed_count","text":"{count, plural, =1 {{count_display} जागृति सक्रिय} one {{count_display} जागृति सक्रिय} other {{count_display} जागृतियाँ सक्रिय}}","codepoints":128,"graphemes":108,"maxCells":null,"maxChars":null,"mechanical":"PASS"}
+{"key":"ui.chat.run_details.wake.cadence_once","text":"एक बार","codepoints":6,"graphemes":5,"maxCells":null,"maxChars":null,"mechanical":"PASS"}
+{"namespace":"ui.chat.run_details","key_parity":"PASS","only_expected_additions":"PASS","unchanged_existing_values":"PASS","en_sha256":"f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab","hi_sha256":"af866c4e536679f7445e8c5c2cb748590f1fe56dc5313c22ebda82a0482a9b4e","context_sha256":"da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911","total_keys":91,"audited_keys":2}
+deriveReceiptAudit {"agent":"i18n-auditor","instance":"786d3d9ff0bb-hi-census-r2","model":"openai/gpt-6.1-sol","result":"clean","findings":{"blocker":0,"major":0,"minor":0,"nit":0},"source_sha256":"270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27","target_sha256":"7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a","receipt_sha256":"0e7893e85078c0a4cb231f7da4e9f55b31cfa97ee8dfdfbf11492be71212750a"}
+deriveReceiptAudit {"agent":"i18n-auditor","instance":"786d3d9ff0bb-hi-census-r2","model":"openai/gpt-6.1-sol","result":"clean","findings":{"blocker":0,"major":0,"minor":0,"nit":0},"source_sha256":"f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab","target_sha256":"af866c4e536679f7445e8c5c2cb748590f1fe56dc5313c22ebda82a0482a9b4e","receipt_sha256":"0e7893e85078c0a4cb231f7da4e9f55b31cfa97ee8dfdfbf11492be71212750a"}
+{"receipt":"/Users/damian/.local-operator/sessions/786d3d9ff0bb/scratchpad/hi-census-r2-receipt.json","sha256":"0e7893e85078c0a4cb231f7da4e9f55b31cfa97ee8dfdfbf11492be71212750a","status":"passed","findings":0,"namespaces":2,"keys":5,"heap_limit_MiB":256}

@@ -24,11 +24,13 @@
  *      rooted anywhere else - the conversation's `canvas` included - shows the
  *      wrong ground in the strip, and one without the pad puts its toolbar under
  *      the traffic lights. This file reads each pane's own class string.
- *   2. **No seam rule on the slot's wrappers.** The boundary is the tone step
- *      the ladder already draws — the sidebar's `surface`, the conversation's
- *      `canvas` and the slot's `elevated` — and a `border-l border-hairline`
- *      beside the step is the second way of saying one thing, and the operator's
- *      ask was borderless.
+ *   2. **The seam is ONE `PanelEdge`, never a border.** The boundary is the tone
+ *      step the ladder already draws — the sidebar's `surface`, the
+ *      conversation's `canvas` and the slot's `elevated` — plus one 1px
+ *      `hairline` child on the leading edge (`panel-edge.tsx`, 2026-10-30: the
+ *      operator's report that the panels have no readable edge in light themes).
+ *      A `border-l border-hairline` beside the step is the second way of saying
+ *      one thing, and it was also a rule that began at y=32.
  *   3. **No ground of its own on the slot's chrome bars.** A bar that paints a
  *      ground is the band the operator reported. The bar's height (40px) is the
  *      slot's, and this file checks the panes agree on it, because a bar that moved
@@ -123,6 +125,17 @@ const RAIL_RULE_UTILITY =
 	/(?:^|[\s"'`:!])(?:border|divide|shadow|ring|outline)(?![a-zA-Z])/;
 /* The rail root's ground, the one class the negative pin must still find. */
 const RAIL_GROUND = /\bbg-surface\b/;
+/* The one seam element each plane mounts (2026-10-30). `start` faces the content
+ * on a pane's leading edge and the rail's; `end` is the sidebar column's. */
+const PANEL_EDGE_START = /<PanelEdge side="start" \/>/;
+const PANEL_EDGE_END = /<PanelEdge side="end" \/>/;
+/* The component itself, and the harness that draws the rail's own column. */
+const PANEL_EDGE_FILE =
+	"src/renderer/src/shared/components/common/panel-edge.tsx";
+const PANEL_RAIL_FRAME =
+	"src/renderer/src/shared/components/navigation/panel-rail-frame.tsx";
+const RESIZABLE_DIVIDER =
+	"src/renderer/src/shared/components/common/resizable-divider.tsx";
 /* The panel rail host's own ground (#872), in the shell. */
 const RAIL_HOST_GROUND =
 	/data-panel-rail-host=""[\s\S]{0,500}?className="[^"]*\b(bg-[\w-]+)\b[^"]*"/;
@@ -141,7 +154,18 @@ const DRAG_IN_SLOT = /<PaneSlot[\s\S]{0,400}?data-titlebar-drag/;
 /* The drawer slot's own two reads (agent review round 1, N3), at module scope for
  * the reason the note above the other shapes gives: a literal rebuilt per call is
  * work `useTopLevelRegex` is right to refuse. */
-const ASK_SLOT_MODE = /data-ask-mode=\{canvasDocked \? "docked" : "overlay"\}/;
+const ASK_SLOT_MODE = /data-ask-mode=\{askPresentation\.mode\}/;
+/*
+ * THE ASK SHEET'S TWO MOUNTS, in the shape the geometry decision gives them
+ * (2026-11-03): `absolute inset-y-0 end-0 z-40 max-w-full shadow-overlay` with an
+ * inline width from `askPanePresentation`, and NO `absolute inset-0` - the
+ * full-row cover that hid the conversation with no seam and no press target.
+ */
+const ASK_SHEET_CLASS =
+	/"absolute inset-y-0 end-0 z-40 max-w-full shadow-overlay"/;
+const ASK_SLOT_WIDTH = /width=\{askPresentation\.width\}/;
+const ASK_SCRIM =
+	/askPresentation\.scrimmed[\s\S]{0,400}?data-ask-scrim=""[\s\S]{0,200}?bg-scrim/;
 const RIGHT_SLOT_OCCUPIED = /const rightSlotOccupied =([\s\S]{0,400}?);/;
 /* #868's publisher and mount-gate reads, at module scope for the same reason.
  * The publisher's shape shrank to `{mounted, session}` with the always-visible
@@ -154,6 +178,12 @@ const HAS_SESSION = /const hasSession = Boolean\(sessionId\);/;
 const SESSION_ASKS_GATE =
 	/const sessionAsksOpen =\s*isAskDrawerOpen && askDrawerScope === "session" && Boolean\(sessionId\);/;
 const DRAWABLE_BODY = /const rightSlotPaneDrawable = \([\s\S]*?\n\};\n/;
+/* The asks drawer's content measure and the scroller it hangs inside (design review
+ * round 1, D1). The wrappers are read by shape rather than by position: the measure
+ * must be a CHILD of the scroller that keeps the pane's width, or the scrollbar
+ * ends up inside the constrained column and narrows it whenever the queue grows. */
+const DRAWER_SCROLLER = /"min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2"/;
+const DRAWER_MEASURE = /className=\{cn\("w-full max-w-\[720px\]"\)\}/;
 const DRAWABLE_ASK =
 	/if \(pane === "ask"\) \{\s*return \(\s*state\.askDrawerScope === "fleet" \|\|\s*\(state\.rightSlotRoute\.mounted && state\.rightSlotRoute\.session\)\s*\);\s*\}/;
 /* Every durable pane draws on a mounted route (the always-visible rail, D2): the
@@ -275,19 +305,23 @@ test("every pane in the slot paints its own ground and pads its first row", () =
 	);
 });
 
-test("the panel rail paints the lane's final stop with no rule on its leading edge, on both ground branches (#872)", () => {
+test("the panel rail paints the lane's final stop and its HOST carries the seam (#872; B1)", () => {
 	/*
 	 * The lane is a mirror of the columns' grounds, and the rail is a column: the
 	 * host's own class and the lane's last stop are ONE decision stated twice, so
 	 * they are compared here rather than either being restated as a literal. The
 	 * rail is chrome (`surface`, the sidebar's rung), NOT a slot wrapper - its file
-	 * is not in PANE_HOSTS - and it draws NO rule of its own: the boundary to the
-	 * slot's `elevated` (or the conversation's `canvas` with no pane) is the tone
-	 * step, the same way the sidebar's edge is carried, and the `border-l
-	 * border-hairline` that used to sit here was the same second-way-of-saying-one-
-	 * thing the no-seam test below refuses for the slot's wrappers. This is a
-	 * NEGATIVE pin - the rail root's class list carries its ground and nothing that
-	 * draws a line - so a rule cannot quietly return to the window's edge.
+	 * is not in PANE_HOSTS.
+	 *
+	 * THE SEAM IS `PanelEdge`, AND IT IS MOUNTED ON THE HOST, NOT ON THE RAIL ROOT
+	 * (agent review round 1, B1; QA round 1, Q-1). The root is the host's
+	 * `panel-top-pad` CONTENT box, so a seam inside it began at y=32 on macOS - the
+	 * mid-air line this change exists to remove. The host is the full-height box
+	 * that paints the ground, so `relative` there plus `<PanelEdge side="start" />`
+	 * resolves `inset-y-0` to y0. Both are asserted below: the mount can no longer
+	 * drift back into the padded root without failing here, and the root still
+	 * carries its ground and NOTHING that draws a line - a border cannot return to
+	 * it as a second way of drawing the edge.
 	 */
 	const layoutSource = read(CHAT_LAYOUT);
 	const host = layoutSource.match(RAIL_HOST_GROUND);
@@ -299,6 +333,21 @@ test("the panel rail paints the lane's final stop with no rule on its leading ed
 		host[1],
 		"bg-surface",
 		"the rail host must paint the rail's own `surface` from y0: it is the panel in that column now, and the lane cannot paint it",
+	);
+	/*
+	 * The host's two load-bearing classes: `panel-top-pad` keeps the rail's first
+	 * item below the OS controls while the box keeps y0, and `relative` is what makes
+	 * the seam's `inset-y-0` resolve against THIS box rather than the page.
+	 */
+	assert.match(
+		layoutSource,
+		/className="panel-top-pad relative h-full shrink-0 bg-surface"/,
+		`${CHAT_LAYOUT}: the rail host must be \`panel-top-pad relative h-full shrink-0 bg-surface\`. Without \`relative\` the seam resolves against the page and the host is no longer the box that anchors it (agent review round 1, B1).`,
+	);
+	assert.match(
+		withoutComments(layoutSource),
+		/data-panel-rail-host=""[\s\S]*?className="panel-top-pad relative h-full shrink-0 bg-surface"[\s\S]{0,120}?<PanelEdge side="start" \/>/,
+		`${CHAT_LAYOUT}: the rail's seam must be mounted on \`data-panel-rail-host\`. The rail's own root is a \`panel-top-pad\` content box and a seam inside it starts at the pad (y=32 on macOS), which is the defect this change removes (agent review round 1, B1; QA round 1, Q-1).`,
 	);
 	const rail = read(
 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
@@ -351,14 +400,150 @@ test("the panel rail paints the lane's final stop with no rule on its leading ed
 	);
 });
 
-test("no seam rule on the slot's wrappers, in the app or in the harness", () => {
+/*
+ * THE DRAWER'S CONTENT MEASURE (design review round 1, D1). The slot's one ceiling
+ * reaches 1200 with the one-band change, and until this measure existed the card
+ * filled it: 1176 wide around a 277px question run at a 1200 pane. The card is a
+ * decision, not a surface to scan, so the column stops at 720 - and the mount is
+ * checked, not just the constant, because a measure that drifted onto the scroller
+ * would look identical at the 640 default and only show up as a reflowing measure
+ * on a queue taller than the window.
+ */
+test("the asks drawer's content stops at one measure, inside a full-width scroller", () => {
+	const source = withoutComments(
+		read("src/renderer/src/features/chat/components/asks/ask-drawer.tsx"),
+	);
+	const scroller = DRAWER_SCROLLER.exec(source);
+	assert.ok(
+		scroller,
+		"the drawer's scroller lost the class this test reads; without it the pane has no column that owns the overflow",
+	);
+	const measure = DRAWER_MEASURE.exec(source);
+	assert.ok(
+		measure,
+		"the asks drawer has no content measure again: at a 1200 pane the card fills the band around a 277px question run",
+	);
+	assert.ok(
+		scroller.index < measure.index &&
+			!/max-w-/.test(source.slice(scroller.index, measure.index)),
+		"the measure moved onto the scroller (or above it): the scrollbar would then sit inside the constrained column and narrow the measure whenever the queue overflows",
+	);
+});
+
+test("the seam is one `PanelEdge`, never a border, in the app or in the harness", () => {
 	for (const host of PANE_HOSTS) {
 		const source = withoutComments(read(host));
 		assert.ok(
 			!source.includes("border-l border-hairline"),
-			`${host} draws \`border-l border-hairline\` beside the pane slot. The slot's seam is the tone step the ladder already draws (\`surface\` / \`canvas\` / \`elevated\`), and the operator's ask was borderless; a rule beside the step is a second way of saying one thing — and a harness copy of it photographs a boundary the product does not draw (design review round 1, D1).`,
+			`${host} draws \`border-l border-hairline\` beside the pane slot. The slot's seam is the tone step plus ONE \`PanelEdge\` (\`panel-edge.tsx\`), and a border beside that is a second way of saying one thing - and a harness copy of it photographs a boundary the product does not draw (design review round 1, D1).`,
 		);
 	}
+	/*
+	 * The seam's one spelling, and the three planes that mount it. A panel whose
+	 * seam moves into a border, or a fourth plane that grows its own copy, fails
+	 * here rather than in a frame nobody re-shot.
+	 */
+	assert.match(
+		withoutComments(read(SLOT_COMPONENT)),
+		PANEL_EDGE_START,
+		`${SLOT_COMPONENT} no longer mounts \`<PanelEdge side="start" />\`: every right-slot pane lost its seam`,
+	);
+	assert.match(
+		withoutComments(read(CHAT_LAYOUT)),
+		PANEL_EDGE_END,
+		`${CHAT_LAYOUT} no longer mounts \`<PanelEdge side="end" />\`: the shell's sidebar column lost its seam`,
+	);
+	assert.match(
+		withoutComments(read(CHAT_LAYOUT)),
+		PANEL_EDGE_START,
+		`${CHAT_LAYOUT} no longer mounts \`<PanelEdge side="start" />\` on the rail host: the rail lost its seam (agent review round 1, B1)`,
+	);
+	/*
+	 * THE RAIL ROOT MUST NOT MOUNT IT. That is the B1 shape: the root is inside the
+	 * host's `panel-top-pad` content box, so a seam there starts at the pad. The
+	 * frame harness mirrors the host mount, because the arms that compose a row by
+	 * hand photograph the same edge.
+	 */
+	assert.doesNotMatch(
+		withoutComments(
+			read("src/renderer/src/shared/components/navigation/panel-rail.tsx"),
+		),
+		/<PanelEdge\b/,
+		"panel-rail.tsx mounts a `PanelEdge` again. The seam belongs on the rail's full-height HOST (`chat-layout.tsx`, and `panel-rail-frame.tsx` for the stories): inside this root it starts at the `panel-top-pad` pad, y=32 on macOS (agent review round 1, B1).",
+	);
+	assert.match(
+		withoutComments(read(PANEL_RAIL_FRAME)),
+		/<PanelEdge side="start" \/>/,
+		`${PANEL_RAIL_FRAME} lost the rail's seam: the story arms that draw their own row photograph an edge the app would draw (B1)`,
+	);
+});
+
+/*
+ * THE SEAM'S OWN GEOMETRY, WHICH NO FRAME CAN HOLD ACROSS THEMES.
+ *
+ * Agent review round 1 (m4): the old pin only matched `<PanelEdge side="start" />`
+ * anywhere in a host file, so a switch from `start-0`/`end-0` to `left-0`/`right-0`
+ * would have broken RTL silently, and nothing asserted the element was passive or
+ * above the panel's own rows. Those three properties are statements about the
+ * class string, so they are pinned here rather than described in a comment.
+ */
+test("the seam is passive, full height, logically placed and above the panel's rows", () => {
+	const source = withoutComments(read(PANEL_EDGE_FILE));
+	const required = {
+		"pointer-events-none":
+			"the seam is decoration: a pixel of it must never take a click from the panel beside it",
+		absolute:
+			"the seam must cost no layout (a border would take a pixel from the panel)",
+		"inset-y-0": "the seam must span the whole box it is mounted on",
+		"w-px": "the seam must be one pixel, never a rule",
+		"z-20":
+			"the seam must paint above sticky rows and inset shadows inside the panel",
+		"bg-hairline/75":
+			"the seam is `hairline` at the alpha `scripts/contrast-contract.mjs` measures; that gate also reads this class and fails if the two disagree (QA round 1, Q-3)",
+	};
+	for (const [utility, why] of Object.entries(required)) {
+		assert.ok(
+			source.includes(utility),
+			`${PANEL_EDGE_FILE}: the seam's class list lost \`${utility}\` - ${why}.`,
+		);
+	}
+	assert.match(
+		source,
+		/side === "start" \? "start-0" : "end-0"/,
+		`${PANEL_EDGE_FILE}: the seam is no longer placed with the logical \`start-0\`/\`end-0\`. A physical \`left-0\`/\`right-0\` puts it on the window's outer edge in RTL - the side with no neighbour (agent review round 1, m4). RTL has no rendered frame in this change; this class is the whole guarantee.`,
+	);
+	/*
+	 * `data-panel-edge` had no reader beyond the evidence rigs (agent review round
+	 * 1, nit 2). It is this pin's handle now: the seam is read by its attribute, so
+	 * the component cannot drop it without failing here.
+	 */
+	assert.match(
+		source,
+		/data-panel-edge=\{side\}/,
+		`${PANEL_EDGE_FILE}: the seam lost \`data-panel-edge={side}\`, the handle the evidence rigs find it by.`,
+	);
+});
+
+/*
+ * THE ONE MARK THAT MUST SURVIVE THE SEAM AT ITS COLUMN (agent review round 1,
+ * M2; QA round 1, Q-2). `ResizableDivider`'s wrapper is a stacking context, so
+ * its 2px state line only paints above the seam when the wrapper's own z-index
+ * does: `z-25` over the seam's `z-20`, and below the chrome lane's `z-30` so the
+ * window's drag strip still wins. A frame catches this only while hovered; this
+ * pin holds when nobody is looking.
+ */
+test("the divider's state line paints above the seam", () => {
+	const source = withoutComments(read(RESIZABLE_DIVIDER));
+	assert.match(
+		source,
+		/"relative z-25 shrink-0"/,
+		`${RESIZABLE_DIVIDER}: the divider's wrapper must carry \`relative z-25 shrink-0\`. At \`z-10\` its stacking context sat below the panel seam's \`z-20\`, so the seam covered one of the state line's two columns on hover and drag (agent review round 1, M2; QA round 1, Q-2).`,
+	);
+	assert.match(
+		source,
+		/"pointer-events-none absolute z-12"/,
+		`${RESIZABLE_DIVIDER}: the state line's own class changed; re-read the stacking argument above before updating this pin.`,
+	);
 });
 
 test("the slot's box is spelled once, and every mount site uses that one", () => {
@@ -458,8 +643,55 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 	const mode = source.match(ASK_SLOT_MODE);
 	assert.ok(
 		mode,
-		`${CHAT_CONTENT} no longer writes the drawer slot's \`data-ask-mode\` from \`canvasDocked\`. The canvas dock's \`data-canvas-mode\` is what a rig reads to tell a docked pane from one that has stopped docking; the drawer's slot is read the same way or a rig cannot tell them apart either.`,
+		`${CHAT_CONTENT} no longer writes the drawer slot's \`data-ask-mode\` from \`askPresentation.mode\`. The canvas dock's \`data-canvas-mode\` is what a rig reads to tell a docked pane from one that has stopped docking; the drawer's slot is read the same way or a rig cannot tell them apart either.`,
 	);
+	/*
+	 * THE PRESENTATION'S TWO HALVES, pinned at BOTH mounts: the sheet class list and
+	 * the presentation's width, the scrim that closes it, and the absence of the
+	 * `absolute inset-0` cover this change replaced. A sheet that lost its width would
+	 * be the over-constrained box `pane-slot.tsx` warns about; one that lost its
+	 * `max-w-full` could overrun a row one reflow old; and one that kept `inset-0`
+	 * would hide the conversation again with no seam and no press target.
+	 */
+	for (const [mount, file] of [
+		["session", CHAT_CONTENT],
+		["fleet", CHAT_LAYOUT],
+	]) {
+		const text = withoutComments(read(file));
+		assert.match(
+			text,
+			ASK_SHEET_CLASS,
+			`the ${mount} ask mount no longer draws the sheet's class list (\`absolute inset-y-0 end-0 z-40 max-w-full shadow-overlay\`). Below the dock breakpoint the drawer is a right-anchored sheet over the row; a full-row \`inset-0\` box is the cover the operator reported.`,
+		);
+		assert.match(
+			text,
+			ASK_SLOT_WIDTH,
+			`the ${mount} ask mount no longer draws \`askPresentation.width\`. The width and the mode come from one function so the pane, the scrim and \`data-ask-mode\` cannot disagree.`,
+		);
+		assert.match(
+			text,
+			ASK_SCRIM,
+			`the ${mount} ask mount no longer draws the scrim that closes the sheet. The strip of conversation beside the sheet is the press target; Escape alone leaves a pointer user with no question mark over what covers them.`,
+		);
+		/*
+		 * AND THE COVER IS GONE, read from the slot's own attributes rather than
+		 * from the file: the scrim legitimately spells `absolute inset-0`, so a
+		 * whole-file scan would refuse the fix along with the defect.
+		 */
+		const slotTag = new RegExp(
+			mount === "session"
+				? '<PaneSlot[\\s\\S]{0,800}?tourTag="ask-drawer-slot"'
+				: '<PaneSlot[\\s\\S]{0,800}?tourTag="ask-fleet-slot"',
+		).exec(text)?.[0];
+		assert.ok(
+			slotTag,
+			`the ${mount} ask mount no longer names its slot (tourTag)`,
+		);
+		assert.ok(
+			!slotTag.includes('"absolute inset-0"'),
+			`the ${mount} ask mount pins its slot to \`absolute inset-0\` again: the drawer would cover the whole row with no seam and no press target`,
+		);
+	}
 	const reservation = source.match(RIGHT_SLOT_OCCUPIED);
 	assert.ok(
 		reservation,
@@ -559,5 +791,72 @@ test("the shell's sidebar yield reads the drawable-aware derivation (#868)", () 
 	assert.ok(
 		!SIDEBAR_BARE_FLAGS.test(layout),
 		`${CHAT_LAYOUT} restates the canvas/asks disjunction again - the second copy #868 removed`,
+	);
+});
+
+test("the covered content is inert while the sheet is up, on both mounts", () => {
+	/*
+	 * THE PR'S HEADLINE BEHAVIOUR, pinned as source because the property is an
+	 * attribute a layout effect writes, not a class: the content behind the scrim
+	 * must not be tabbable or readable by a screen reader.
+	 *
+	 * M1 (review round 1) / Q1 (QA round 1): the FLEET mount had no equivalent of
+	 * the session's chat column, so Tab walked nine stops into the covered chat. It
+	 * now inerts a `display: contents` wrapper around `{content}` - no box, so the
+	 * flex row and the lane's stop do not move.
+	 *
+	 * m5: each assignment is read with its presentation gate in ONE expression, so
+	 * an edit that drops the mode check (and inerts a docked pane) fails here
+	 * rather than in a keyboard pass; both are written from layout effects, the
+	 * phase that lands before paint. m2's programmatic-open guard is pinned too:
+	 * the sheet must not be opened as a RESULT over an inert composer.
+	 */
+	const session = withoutComments(read(CHAT_CONTENT));
+	const shell = withoutComments(read(CHAT_LAYOUT));
+	for (const [mount, text, assignment, label] of [
+		[
+			"session",
+			session,
+			/column\.inert = sessionAsksOpen && askPresentation\.mode === "overlay"/,
+			"the chat column",
+		],
+		[
+			"fleet",
+			shell,
+			/element\.inert = fleetAsksOpen && askPresentation\.mode === "overlay"/,
+			"the covered content wrapper",
+		],
+	]) {
+		assert.match(
+			text,
+			assignment,
+			`the ${mount} mount no longer inerts ${label} while the sheet is up`,
+		);
+		assert.match(
+			text,
+			/useLayoutEffect\(\(\) => \{[\s\S]{0,600}?\.inert =/,
+			`the ${mount} mount no longer sets inert from a layout effect (a passive effect paints inert content first)`,
+		);
+	}
+	assert.match(
+		shell,
+		/data-ask-covered-content=""[\s\S]{0,120}?className="contents"/,
+		`${CHAT_LAYOUT} no longer wraps the covered content in the display:contents marker the rig reads`,
+	);
+	/*
+	 * PRESS VERSUS RESULT (review round 2, M2-r2). A press must open in both
+	 * presentations; a LANDED result must not open the sheet; and a refused result
+	 * must be allowed to land there, because the composer it would leave the caret in
+	 * is inert. The three arms are pinned as the one expression that decides them.
+	 */
+	assert.match(
+		session,
+		/if \(sheet && options\?\.focus === false && options\.openInSheet === false\)\s*\n?\s*return false;/,
+		`${CHAT_CONTENT} opens the sheet for a landed result again: that arm exists to leave the caret in the composer, which the sheet inerts`,
+	);
+	assert.match(
+		session,
+		/const takesFocus = options\?\.focus !== false \|\| sheet;/,
+		`${CHAT_CONTENT} no longer answers whether an open took the keyboard, so the composer cannot know whether to take the caret back`,
 	);
 });

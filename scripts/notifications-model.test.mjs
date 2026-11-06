@@ -59,6 +59,38 @@ const {
 	IN_VIEW_DWELL_MS,
 } = model;
 
+test("deep reel reconciles existing revisions without admitting unseen notifications", () => {
+	const original = item({ id: "known", revision: 1, seq: 1 });
+	const updated = {
+		...original,
+		revision: 2,
+		seq: 3,
+		title: "Updated in place",
+	};
+	const arrival = item({ id: "new", seq: 4 });
+	const window = { items: [original], waiting: [], high_water: 1 };
+	const facts = { ...window, items: [arrival, updated], high_water: 4 };
+	const merged = model.mergeWindowForReel(facts, window, false);
+	assert.equal(merged.items.length, 1);
+	assert.equal(merged.items[0].title, "Updated in place");
+	assert.equal(merged.newerCount, 1);
+});
+
+test("deep reel defers new ask IDs but removes settled asks", () => {
+	const pending = item({ id: "ask-known", source: "ask" });
+	const arrival = item({ id: "ask-new", source: "ask" });
+	const window = { items: [], waiting: [pending], high_water: 1 };
+	const facts = { ...window, waiting: [arrival], high_water: 2 };
+	const merged = model.mergeWindowForReel(facts, window, false);
+	assert.equal(merged.reelWaiting.length, 0);
+	assert.equal(
+		merged.waiting.length,
+		1,
+		"bulk read retains its authoritative waiting scope",
+	);
+	assert.equal(merged.newerCount, 1);
+});
+
 const NOW = new Date(2026, 9, 25, 15, 0, 0).getTime();
 const HOUR = 3_600_000;
 
@@ -1286,4 +1318,32 @@ test("R8-4: a dismissed row leaves the reel, and R8-3 keeps the facts' waiting w
 		"and the new ask is visible to Mark all read",
 	);
 	assert.equal(deep.high_water, 12, "and the boundary is the fresh one");
+});
+
+/*
+ * THE RECEIPT'S LIFETIME FOLLOWS WHAT IT SAYS (design round 1, D2).
+ *
+ * The bug this pins was invisible to the model tests and to every story: both
+ * receipt call sites passed the Undo window to `showInfoToast`, so a receipt
+ * reporting a refusal expired on the timer of an offer it was not making. Held
+ * to the two branches here because the page can only be driven to ONE of them
+ * in a capture - the partial one, which the design round photographed - and the
+ * clean case has to be provable without racing a six-second window by hand.
+ */
+test("a receipt is held when it reports an exception, and keeps the Undo window otherwise", () => {
+	assert.equal(
+		model.receiptDuration(false),
+		model.UNDO_WINDOW_MS,
+		"an all-succeeded receipt is still an Undo offer and keeps its window",
+	);
+	assert.equal(
+		model.receiptDuration(false),
+		6_000,
+		"and that window is the six seconds the Undo itself is valid for",
+	);
+	assert.equal(
+		model.receiptDuration(true),
+		Number.POSITIVE_INFINITY,
+		"a receipt reporting a skip, a refusal or an unresolved count is held",
+	);
 });

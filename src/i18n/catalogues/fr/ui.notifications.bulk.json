@@ -1,0 +1,14 @@
+{
+	"ui.notifications.bulk.dismiss_all": "Tout masquer",
+	"ui.notifications.bulk.read_hint": "Les mises à jour marquées comme lues restent dans Tout.",
+	"ui.notifications.bulk.dismiss_hint": "Masquer retire les mises à jour. Annuler les restaure.",
+	"ui.notifications.bulk.frozen_hint": "Cette sélection est figée. Les nouveaux éléments ne sont pas inclus.",
+	"ui.notifications.bulk.confirm_title": "{count, plural, one {Masquer # mise à jour ?} other {Masquer # mises à jour ?}}",
+	"ui.notifications.bulk.beyond_page": "Cela concerne aussi des mises à jour au-delà de la page chargée.",
+	"ui.notifications.bulk.asks_hint": "Les questions sans réponse restent affichées. Examinez-les séparément : leur suppression est irréversible.",
+	"ui.notifications.bulk.review_asks": "Examiner les questions sans réponse",
+	"ui.notifications.bulk.select_error": "Impossible de sélectionner cette vue. Réessayez.",
+	"ui.notifications.bulk.update_required": "Mettez à jour Local Operator pour sélectionner tous les résultats correspondants.",
+	"ui.notifications.bulk.partial": "{changed} modifiés · {skipped} ignorés",
+	"ui.notifications.bulk.exclusion_limit": "Vous pouvez exclure jusqu’à 500 éléments. Effacez la sélection pour choisir des éléments individuellement."
+}

@@ -113,9 +113,11 @@ export const ChatStatusStripView = ({
 					 * that answers "did that button do anything". Both lines are in the name now,
 					 * in the order the strip draws them, so collapsing cannot lose one.
 					 */
-					aria-label={`Connection status: ${display.title}${
-						outcome ? ` ${outcome}` : ""
-					} Show details`}
+					aria-label={t("ui.chat.status.pill_aria", {
+						title: display.title,
+						hasOutcome: outcome ? "yes" : "no",
+						outcome: outcome ?? "",
+					})}
 				>
 					<span
 						aria-hidden="true"

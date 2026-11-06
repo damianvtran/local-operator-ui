@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit, RE-AUDIT of in-audit remediation (ui#1532 mentions)",
+  "date": "2026-10-30",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "session": "93e37e001a89",
+  "instance": "93e37e001a89-es",
+  "status": "passed",
+  "result": "clean",
+  "locale": "es",
+  "namespace": "ui.teamBridge",
+  "independence": "Independent re-audit by session 93e37e001a89. It neither authored nor applied these remediations: the changes come from auditor session a72fc22aa8e8 and sit uncommitted in the working tree. Read-only; no repo file edited.",
+  "scope": {
+    "primary": [
+      "ui.teamBridge.mentions.empty",
+      "ui.teamBridge.mentions.notice.invite_failed"
+    ]
+  },
+  "sha256": {
+    "es": "9d7730188b047e96b3e8cc9a7c4907d89021f9c1d5769f993d91ec919dfb11ad",
+    "en": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5"
+  },
+  "files": {
+    "en": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/tb-mentions/src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5"
+    },
+    "target": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/tb-mentions/src/i18n/catalogues/es/ui.teamBridge.json",
+      "sha256": "9d7730188b047e96b3e8cc9a7c4907d89021f9c1d5769f993d91ec919dfb11ad"
+    },
+    "context": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/tb-mentions/src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "2df42931aef59c5be610d072d70731a1bd71500306235a501bed8fdc9640511a"
+    }
+  },
+  "findings": [],
+  "verdict": "Both changes accepted. empty: “ ” per es.md L103 and matches es sibling ui.agents.pages.empty.search «Nada coincide con “{query}”». invite_failed: «mencionar a {name} sin notificar» removes the gendered clitic «mencionarlo», is accurate vs en and matches the button «Mencionar sin notificar»."
+}

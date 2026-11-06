@@ -6,6 +6,7 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { Profiler, createElement as h } from "react";
+const HELLO_COPY = /hello/;
 const I18N_SEAM = /^@shared\/i18n(?:\/use-locale)?$/;
 const API_SEAM = /^@shared\/api\/local-operator\/team-bridge-api$/;
 const PROSE_SEAM = /^\.\/team-bridge-markdown$/;
@@ -27,6 +28,7 @@ for (const key of [
 	"KeyboardEvent",
 	"CustomEvent",
 	"MutationObserver",
+	"NodeFilter",
 	"HTMLInputElement",
 	"localStorage",
 	"navigator",
@@ -89,10 +91,10 @@ const bundle = await build({
 					contents: args.path.includes("emoji-support")
 						? "export const canRenderEmoji=(emoji)=>!globalThis.__unsupportedGlyphs?.has(emoji); export const warmEmojiProbeCache=()=>{globalThis.__warmCalls=(globalThis.__warmCalls??0)+1; return ()=>{}};"
 						: args.path.includes("api/")
-							? "export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)};"
+							? "export class TeamBridgeAttachmentError extends Error { constructor(status, code) { super('team bridge attachment request failed'); this.name='TeamBridgeAttachmentError'; this.status=status; this.code=code; } } export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)}; export const requireBridgeWriteAccount=(accountId)=>{if(!accountId) throw new Error('Team Bridge write account required'); return accountId;};"
 							: args.path.includes("markdown")
 								? "export const TeamBridgeMarkdown=({children})=>children;"
-								: 'export const t=(key)=>key; export const useI18nLocale=()=>"en";export const formatDate=()=>"today";export const formatTime=()=>"12:00";',
+								: 'export const t=(key)=>key; export const useI18nLocale=()=>"en";export const formatDate=()=>"today";export const formatTime=()=>"12:00";export const formatNumber=(value)=>String(value);',
 					loader: "js",
 				}));
 			},
@@ -109,7 +111,7 @@ const {
 	TeamBridgeMessageList,
 	TeamBridgeThreadPaneView,
 	TeamBridgeEmojiPicker,
-	useReactionPreferences,
+	useReactionPreferences: _useReactionPreferences,
 } = await import(file.href);
 await unlink(file);
 after(() => dom.window.close());
@@ -125,7 +127,7 @@ const reaction = {
 	reacted_by_me: false,
 	sample_labels: ["Bea"],
 };
-const visibleText = (node) =>
+const _visibleText = (node) =>
 	[...node.querySelectorAll("span")]
 		.filter((span) => !span.classList.contains("sr-only"))
 		.map((span) => span.textContent)
@@ -173,9 +175,14 @@ test("missing optional reactions settle without an effect-render loop", async ()
 	await m.close();
 });
 
-test("the held reaction views render nothing and issue no toggle", async () => {
-	globalThis.__reactionApi = () => {
-		throw new Error("no reaction call may be issued while held");
+test("the shipped reaction views render and send the captured account on toggle", async () => {
+	const calls = [];
+	globalThis.__reactionApi = async (...args) => {
+		calls.push(args);
+		return {
+			message_id: props.messageId,
+			reactions: [{ ...reaction, count: 3, reacted_by_me: true }],
+		};
 	};
 	const m = mount();
 	await act(() =>
@@ -183,11 +190,21 @@ test("the held reaction views render nothing and issue no toggle", async () => {
 			h(TeamBridgeReactions, {
 				...props,
 				reactions: [reaction],
-				defaultOpen: true,
 			}),
 		),
 	);
-	assert.equal(m.host.textContent, "", "standalone chips");
+	assert.ok(m.host.querySelector('[data-reaction-layout="chips"]'));
+	await click(m.host.querySelector('[data-reaction-layout="chips"] button'));
+	assert.deepEqual(calls, [
+		[
+			props.conversationId,
+			props.messageId,
+			reaction.emoji,
+			true,
+			props.tenantId,
+			props.accountId,
+		],
+	]);
 	const grid = mount();
 	await act(() =>
 		grid.root.render(
@@ -198,13 +215,100 @@ test("the held reaction views render nothing and issue no toggle", async () => {
 			}),
 		),
 	);
-	assert.equal(grid.host.textContent, "", "emoji grid");
-	assert.equal(grid.host.querySelector("button"), null);
+	assert.ok(grid.host.textContent.length > 0, "emoji grid");
+	assert.ok(grid.host.querySelector("input"));
 	await grid.close();
 	await m.close();
 });
 
-test("a held message list mounts no reaction controls for any account", async () => {
+/*
+ * The pill polish round (operator, 2026-10-30): one hover label (the Tooltip,
+ * no native `title`), a reactor list that states the remainder past the
+ * three-name sample, an optimistic flip, and a busy mark only on the pressed
+ * pill. Geometry (one 24px height, no width change while busy) is a layout
+ * fact jsdom cannot measure; the Storybook `Pending` and `ManyReactionsWrap`
+ * plays measure it in a real browser.
+ */
+test("reaction pills: one hover label, full reactor list, optimistic toggle with one busy mark", async () => {
+	let answer;
+	globalThis.__reactionApi = () =>
+		new Promise((resolve) => {
+			answer = resolve;
+		});
+	const m = mount();
+	await act(() =>
+		m.root.render(
+			h(TeamBridgeReactions, {
+				...props,
+				reactions: [
+					reaction,
+					{
+						emoji: "👀",
+						count: 12,
+						reacted_by_me: false,
+						sample_labels: ["Ada", "Bea", "Cleo"],
+					},
+				],
+			}),
+		),
+	);
+	const pills = [...m.host.querySelectorAll("[data-reaction-pill]")];
+	assert.equal(pills.length, 2);
+	for (const pill of pills) assert.equal(pill.getAttribute("title"), null);
+	const description = (pill) =>
+		m.host.querySelector(`[id="${pill.getAttribute("aria-describedby")}"]`)
+			.textContent;
+	// The i18n seam returns the key, so the remainder item is the key itself:
+	// what this pins is that the item is appended, not its English wording.
+	// `reaction` is count 2 with one sampled name: one reactor is unnamed.
+	assert.equal(description(pills[0]), "Bea and ui.teamBridge.reactions.others");
+	assert.equal(
+		description(pills[1]),
+		"Ada, Bea, Cleo, and ui.teamBridge.reactions.others",
+	);
+	// The VISIBLE tooltip carries the same list (agent review round 1, R1):
+	// focus opens the Radix tooltip, and its content is what the operator reads.
+	await act(async () => {
+		pills[1].focus();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	const tip = document.querySelector("[role=tooltip]");
+	assert.ok(tip, "the pill's tooltip opens on focus");
+	assert.equal(
+		tip.textContent,
+		"Ada, Bea, Cleo, and ui.teamBridge.reactions.others",
+	);
+	// The `+` is hidden and pointer-inert at rest and revealed by its message
+	// row's hover/focus (agent review round 1, R2): jsdom has no `:hover`, so
+	// the reveal is pinned by its classes; the Storybook `AddRevealedWithRow`
+	// play measures the computed opacity in a real browser.
+	const add = m.host.querySelector("[data-reaction-add]");
+	for (const cls of [
+		"opacity-0",
+		"pointer-events-none",
+		"group-hover/message:opacity-100",
+		"group-focus-within/message:opacity-100",
+		"[@media(hover:none)]:opacity-100",
+	])
+		assert.ok(add.classList.contains(cls), `the + rests with ${cls}`);
+	await click(pills[0]);
+	assert.equal(pills[0].getAttribute("aria-pressed"), "true", "optimistic");
+	assert.equal(m.host.querySelectorAll(".animate-spin").length, 1);
+	assert.ok(
+		pills[0].querySelector(".animate-spin"),
+		"busy mark on the pressed pill",
+	);
+	await act(async () => {
+		answer({
+			message_id: props.messageId,
+			reactions: [{ ...reaction, count: 3, reacted_by_me: true }],
+		});
+	});
+	assert.equal(m.host.querySelectorAll(".animate-spin").length, 0);
+	await m.close();
+});
+
+test("a shipped message list mounts reaction controls for the captured account", async () => {
 	const m = mount();
 	for (const accountId of ["a", "b"]) {
 		await act(() =>
@@ -216,18 +320,17 @@ test("a held message list mounts no reaction controls for any account", async ()
 				}),
 			),
 		);
-		assert.equal(
+		assert.ok(
 			m.host.querySelector('[data-reaction-layout="chips"]'),
-			null,
 			accountId,
 		);
-		assert.equal(m.host.querySelector('[role="toolbar"]'), null, accountId);
+		assert.ok(m.host.querySelector('[role="toolbar"]'), accountId);
 	}
-	assert.match(m.host.textContent, /hello/);
+	assert.match(m.host.textContent, HELLO_COPY);
 	await m.close();
 });
 
-async function search(host, value) {
+async function _search(host, value) {
 	const input = host.querySelector("input");
 	const set = Object.getOwnPropertyDescriptor(
 		window.HTMLInputElement.prototype,
@@ -239,7 +342,7 @@ async function search(host, value) {
 	});
 }
 
-test("a held row draws no chips whether or not the message carries reactions", async () => {
+test("a row without a reaction context stays inert while an owned row draws chips", async () => {
 	const m = mount();
 	await act(() =>
 		m.root.render(
@@ -259,8 +362,8 @@ test("a held row draws no chips whether or not the message carries reactions", a
 			}),
 		),
 	);
-	assert.equal(m.host.querySelector('[data-reaction-layout="chips"]'), null);
-	assert.match(m.host.textContent, /hello/);
+	assert.ok(m.host.querySelector('[data-reaction-layout="chips"]'));
+	assert.match(m.host.textContent, HELLO_COPY);
 	await m.close();
 });
 
@@ -272,7 +375,7 @@ test("a held row draws no chips whether or not the message carries reactions", a
  */
 /* A border or a shadow on the toolbar would break docs/branding.md: borderless
    chrome, and the one shadow only for objects that leave the flow. */
-const CHROME_EDGE = /\b(border|shadow)/;
+const _CHROME_EDGE = /\b(border|shadow)/;
 const rowMessage = {
 	id: "bcmsg_toolbar01",
 	conversation_id: "bcv_example1",
@@ -302,21 +405,18 @@ const named = (scope, name) =>
 		(b) => b.getAttribute("aria-label") === name,
 	);
 
-test("the held row offers no Reply in thread control, so no focus hand-off exists (review round 3, F1)", async () => {
-	// The F1 defect is unreachable while the hold is on: the control itself is
-	// not rendered, even when the caller passes an `onReply`. The hand-off test
-	// returns with the feature.
+test("the shipped row offers Reply in thread and preserves its focus hand-off", async () => {
 	const m = mount();
-	await renderList(m, {
-		onReply: () => assert.fail("the held row must not expose a reply route"),
-	});
-	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
+	let replies = 0;
+	await renderList(m, { onReply: () => replies++ });
+	const reply = named(m.host, "ui.teamBridge.replies.action")[0];
+	assert.ok(reply);
+	await click(reply);
+	assert.equal(replies, 1);
 	await m.close();
 });
 
-test("the held thread pane renders nothing, even when mounted directly (review round 3, M1)", async () => {
-	// The view's own wrapper is the hold's front door: a story or rig that
-	// imports `TeamBridgeThreadPaneView` cannot render the unsafe body.
+test("the shipped thread pane renders its root and reply", async () => {
 	const m = mount();
 	await act(() =>
 		m.root.render(
@@ -334,33 +434,30 @@ test("the held thread pane renders nothing, even when mounted directly (review r
 			}),
 		),
 	);
-	assert.equal(m.host.querySelector('[role="toolbar"]'), null);
+	assert.ok(m.host.querySelector('[role="toolbar"]'));
 	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
-	assert.equal(m.host.textContent, "", "no pane body may render");
+	assert.match(m.host.textContent, HELLO_COPY);
 	await m.close();
 });
 
-test("a held list does not warm the emoji probe cache it cannot open", async () => {
-	// Agent review round 1, m1: the warm-up walks ~4000 canvas readbacks on the
-	// first Team Bridge mount. With the reactions hold closed no toolbar, picker
-	// or chip renders, so that walk is pure cost on the operator's first load.
+test("a shipped list schedules the emoji probe used by its picker", async () => {
 	globalThis.__warmCalls = undefined;
 	const m = mount();
 	await renderList(m, { forceToolbar: true });
-	assert.equal(
-		globalThis.__warmCalls,
-		undefined,
-		"the held build must not schedule the emoji probe walk",
+	assert.ok(
+		globalThis.__warmCalls > 0,
+		"the shipped reaction surface warms its emoji probe",
 	);
 	await m.close();
 	globalThis.__warmCalls = undefined;
 });
 
-test("a held row renders no toolbar: neither react nor reply", async () => {
+test("a shipped row exposes its message toolbar with both react and reply", async () => {
 	const m = mount();
 	await renderList(m, { forceToolbar: true });
-	assert.equal(m.host.querySelector('[role="toolbar"]'), null);
-	assert.equal(named(m.host, "ui.teamBridge.reactions.add").length, 0);
-	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
+	const toolbar = m.host.querySelector('[data-message-toolbar=""]');
+	assert.ok(toolbar);
+	assert.equal(named(toolbar, "ui.teamBridge.reactions.add").length, 1);
+	assert.equal(named(toolbar, "ui.teamBridge.replies.action").length, 1);
 	await m.close();
 });

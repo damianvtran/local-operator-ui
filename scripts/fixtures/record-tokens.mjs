@@ -124,6 +124,8 @@ export const RECORDS = {
 	}),
 	J: (id, i) => custom(id, i, "job_result"),
 	H: (id, i) => custom(id, i, "hub_message"),
+	// Incoming Bridge is distinct from Bp/Ba outgoing tool operations.
+	Bi: (id, i) => custom(id, i, "team_bridge_message"),
 	X: (id, i) => custom(id, i, "monitor_prompt"),
 	Q: (id, i) => custom(id, i, "session_mcp_unavailable"),
 	I: (id, i) => custom(id, i, "session_incident", "error"),
@@ -203,6 +205,20 @@ export const RECORDS = {
 	Ak: (id, i) => foldTool(id, i, "agent"),
 	/** A TODO write: the `kind:todo` ID arm. */
 	Td: (id, i) => foldTool(id, i, "todo"),
+	/**
+	 * Team Bridge, both halves of its split noun: a POST (`kind:bridge:post`,
+	 * the ops a person reads) and an ACTION (`kind:bridge`, everything else).
+	 * The split reads the call's `op`, so these carry args - the phone's port
+	 * must reproduce the same keys from the same op.
+	 */
+	Bp: (id, i) => ({
+		...foldTool(id, i, "bridge"),
+		args: { op: "channel_post", channel_id: "bcv_1", body: "b" },
+	}),
+	Ba: (id, i) => ({
+		...foldTool(id, i, "bridge"),
+		args: { op: "channel_history", channel_id: "bcv_1" },
+	}),
 	/** A FAILED call: the group's `failedCount` and the bar's failure tally. */
 	Fa: (id, i) => ({ ...foldTool(id, i, "bash"), isError: true }),
 	/** A call that reported a DURATION: `workedSeconds`, and a bar's `Took`. */

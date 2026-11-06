@@ -2700,6 +2700,51 @@ function harnessSources() {
  */
 const HARNESS_PYTHON_SPAWN_SITES = [
 	{
+		file: "scripts/model-uncertainty-native.mjs",
+		name: "execFileSync",
+		index: 2,
+		binding:
+			/export function modelBackendPythonEnv[\s\S]*?return pythonChildEnv\([\s\S]*?const env = modelBackendPythonEnv\(/,
+		why: "production catalogue seed; shared boundary strips ambient Python variables and adds only the owned guard path",
+	},
+	{
+		file: "scripts/model-uncertainty-native.mjs",
+		name: "execFileSync",
+		index: 3,
+		binding:
+			/export function modelBackendPythonEnv[\s\S]*?return pythonChildEnv\([\s\S]*?const env = modelBackendPythonEnv\(/,
+		why: "read-only YAML durability probe; shared boundary strips ambient Python variables and adds only the owned guard path",
+	},
+	{
+		file: "scripts/model-uncertainty-native.mjs",
+		name: "spawn",
+		index: 1,
+		binding:
+			/export function modelBackendPythonEnv[\s\S]*?return pythonChildEnv\([\s\S]*?const env = modelBackendPythonEnv\(/,
+		why: "owned real-core server; shared boundary strips ambient Python variables and adds only the owned guard path",
+	},
+	{
+		file: "scripts/model-uncertainty-native.test.mjs",
+		name: "execFileSync",
+		index: 4,
+		env: /env:\s*pythonChildEnv\(/,
+		why: "the pure Python delivery contracts use the canonical no-bytecode harness environment",
+	},
+	{
+		file: "scripts/model-uncertainty-native.test.mjs",
+		name: "execFileSync",
+		index: 5,
+		binding: /const guarded = modelBackendPythonEnv\(/,
+		why: "hostile-prefix control executes the actual model backend environment builder against only an owned fake app and import marker",
+	},
+	{
+		file: "scripts/browser-hover-press-proof.mjs",
+		name: "spawn",
+		index: 2,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "selection proof's real harness venv Python: isolated HOME/config, fresh bytecode cache with writes disabled, explicitly pinned PYTHONPATH, notifications and telemetry suppressed independently of the Electron child",
+	},
+	{
 		file: "scripts/check-evidence.mjs",
 		name: "spawnSync",
 		index: 1,
@@ -2775,6 +2820,20 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		index: 2,
 		env: /env:\s*pythonChildEnv\(\)/,
 		why: "the runtime's own `read_transcript_page`, driven against the isolated session copy; this is the site review R1 / QA Q0 caught inheriting the ambient environment, and it was run on the operator's machine to produce the fixture",
+	},
+	{
+		file: "scripts/app-icon-badge-scene.mjs",
+		name: "execFileSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\{/,
+		why: "the pinned core store writer uses the scene HOME/config/token via an explicitly sealed Python environment",
+	},
+	{
+		file: "scripts/app-icon-badge-scene.mjs",
+		name: "spawn",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\{/,
+		why: "the pinned core server uses the same isolated scene environment and never inherits ambient Python bindings",
 	},
 	{
 		file: "scripts/notifications-app-scene.mjs",

@@ -1,0 +1,32 @@
+zh-CN
+ 1 invited            Damian邀请了本
+ 1 joined             本已加入对话
+ 1 owner_added_agent  Damian添加了自己的智能体本
+ 1 left               本已离开对话
+ 1 removed            Damian移除了本
+ 1 consented          Damian已同意本加入
+ 1 declined_self      Damian拒绝了邀请
+ 1 declined           Damian代本拒绝了邀请
+ 1 withdrawn          Damian撤回了对本的邀请
+ 1 unknown            成员已变更
+ 3 invited            Damian邀请了本、莎娜和奥拉
+ 3 joined             本、莎娜和奥拉已加入对话
+ 3 owner_added_agent  Damian添加了自己的智能体本、莎娜和奥拉
+ 3 left               本、莎娜和奥拉已离开对话
+ 3 removed            Damian移除了本、莎娜和奥拉
+ 3 consented          Damian已同意本、莎娜和奥拉加入
+ 3 declined_self      Damian拒绝了邀请
+ 3 declined           Damian代本、莎娜和奥拉拒绝了邀请
+ 3 withdrawn          Damian撤回了对本、莎娜和奥拉的邀请
+ 3 unknown            成员已变更
+ others: 1→其他1名成员 | 2→其他2名成员 | 3→其他3名成员 | 5→其他5名成员 | 11→其他11名成员 | 21→其他21名成员
+ truncated: Damian邀请了本、莎娜和其他2名成员
+en arms one/other CLDR one/other
+es arms one/many/other CLDR one/many/other
+fr arms one/many/other CLDR one/many/other
+hi arms one/other CLDR one/other
+ru arms one/few/many/other CLDR one/few/many/other
+ur arms one/other CLDR one/other
+vi arms other CLDR other
+zh-CN arms other CLDR other
+bad 0

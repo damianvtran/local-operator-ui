@@ -1,0 +1,23 @@
+{
+	"ui.notifications.bulk_updates.read": {
+		"role": "button",
+		"context": "Frozen-all selection v1 supports read only for update notifications, NOT ask notifications. Label must explicitly say updates and state exactly which count it acts on. count is eligible selected updates (not total selection including asks). Disabled for ask-only frozen selections. Explicit individual selection retains existing all-item action. Keep distinct from dismiss, which removes updates.",
+		"tone": "concise, factual",
+		"placeholders": {
+			"count": "integer number of eligible selected updates; ICU plural"
+		}
+	},
+	"ui.notifications.bulk_updates.unread": {
+		"role": "button",
+		"context": "Frozen-all selection v1 supports unread only for update notifications, NOT ask notifications. Label must explicitly say updates and state exactly which count it acts on. count is eligible selected updates (not total selection including asks). Disabled for ask-only frozen selections. Explicit individual selection retains existing all-item action. Keep distinct from dismiss, which removes updates.",
+		"tone": "concise, factual",
+		"placeholders": {
+			"count": "integer number of eligible selected updates; ICU plural"
+		}
+	},
+	"ui.notifications.bulk_updates.new_items": {
+		"role": "status",
+		"context": "A live line in the frozen-selection bar, shown when a new or newly revised notification or an unobserved pending ask is visible after the selection gesture. New items stay visible and unchecked; the frozen count still describes the server snapshot. Never imply the new ask was hidden, dismissed, or answered. One documented round-trip membership edge is not resolved by this copy.",
+		"tone": "calm and concise"
+	}
+}

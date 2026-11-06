@@ -1,0 +1,46 @@
+
+===== hi  (tail value: {count, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}  ->  rendered: 3 अन्य लोग)
+
+  events.invited  [postposition को]
+    shown: Dana ने Ava, Ben, और 3 अन्य लोग को आमंत्रित किया
+
+  events.removed  [postposition को]
+    shown: Dana ने Ava, Ben, और 3 अन्य लोग को हटा दिया
+
+  events.consented  [postposition को]
+    shown: Dana ने Ava, Ben, और 3 अन्य लोग को शामिल होने की मंज़ूरी दी
+
+  events.declined  [postposition के लिए]
+    shown: Dana ने Ava, Ben, और 3 अन्य लोग के लिए आमंत्रण अस्वीकार कर दिया
+
+  events.withdrawn  [postposition के लिए]
+    shown: Dana ने Ava, Ben, और 3 अन्य लोग के लिए आमंत्रण वापस ले लिया
+
+  events.joined  [control: subject position (direct)]
+    shown: Ava, Ben, और 3 अन्य लोग बातचीत में शामिल
+
+  events.owner_added_agent  [control: object without postposition]
+    shown: Dana ने अपना एजेंट Ava, Ben, और 3 अन्य लोग जोड़ा
+
+  -- round-1 tail ({count, plural, one {# अन्य} other {# अन्य}}) rendered: 3 अन्य
+     events.declined: Dana ने Ava, Ben, और 3 अन्य के लिए आमंत्रण अस्वीकार कर दिया
+     events.invited: Dana ने Ava, Ben, और 3 अन्य को आमंत्रित किया
+
+===== ur  (tail value: {count, plural, one {مزید #} other {مزید #}}  ->  rendered: مزید 3)
+
+  events.invited  [postposition کو]
+    shown: Dana نے Ava، Ben، اور مزید 3 کو مدعو کیا
+
+  events.declined  [postposition کے لیے]
+    shown: Dana نے Ava، Ben، اور مزید 3 کے لیے دعوت سے انکار کر دی
+
+  events.withdrawn  [postposition کے لیے]
+    shown: Dana نے Ava، Ben، اور مزید 3 کے لیے دعوت واپس لے لی
+
+===== zh-CN  (tail value: {count, plural, other {其他#名成员}}  ->  rendered: 其他3名成员)
+
+  events.declined  [no case inflection in Chinese]
+    shown: Dana代Ava、Ben和其他3名成员拒绝了邀请
+
+  events.invited  [no case inflection in Chinese]
+    shown: Dana邀请了Ava、Ben和其他3名成员

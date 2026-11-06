@@ -1,5 +1,14 @@
 # One default width for the right slot's panes, and separators that announce what they draw
 
+> **As measured on the tree before #1525.** Every number below is this set's
+> record of the tree it ran on: the canvas capped at 560, the run pane's ceiling
+> at 640, the browser and console at 1200. #1525 gave the slot ONE ceiling
+> (`RIGHT_SLOT_MAX_PX`, 1200) for every pane, which retires the canvas's 560 and
+> the run pane's 640 - so `min(560, row - 480)` and "the pane's own 640 ceiling"
+> below describe THAT tree, not the current one. The rig carries the same banner
+> (`scripts/right-slot-one-default-evidence.mjs`): re-derive its expectations
+> before running it as evidence again.
+
 The [#872](https://github.com/damianvtran/local-operator-ui/issues/872) follow-up,
 built to the disposition the lane recorded on the issue
 ([comment](https://github.com/damianvtran/local-operator-ui/issues/872#issuecomment-6068677546)):

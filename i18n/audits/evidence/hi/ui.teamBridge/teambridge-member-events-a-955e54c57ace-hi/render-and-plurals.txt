@@ -1,0 +1,65 @@
+locale hi
+---
+key:   ui.teamBridge.events.invited
+value: {actor} ने {targets} को आमंत्रित किया
+  1 target: Ana ने Ben को आमंत्रित किया
+  3 targets: Ana ने Ben, Sana, और Ravi को आमंत्रित किया
+
+key:   ui.teamBridge.events.joined
+value: {targets} बातचीत में शामिल
+  1 target: Ben बातचीत में शामिल
+  3 targets: Ben, Sana, और Ravi बातचीत में शामिल
+
+key:   ui.teamBridge.events.owner_added_agent
+value: {actor} ने अपना एजेंट {targets} जोड़ा
+  1 target: Ana ने अपना एजेंट Ben जोड़ा
+  3 targets: Ana ने अपना एजेंट Ben, Sana, और Ravi जोड़ा
+
+key:   ui.teamBridge.events.left
+value: {targets} ने बातचीत छोड़ दी
+  1 target: Ben ने बातचीत छोड़ दी
+  3 targets: Ben, Sana, और Ravi ने बातचीत छोड़ दी
+
+key:   ui.teamBridge.events.removed
+value: {actor} ने {targets} को हटा दिया
+  1 target: Ana ने Ben को हटा दिया
+  3 targets: Ana ने Ben, Sana, और Ravi को हटा दिया
+
+key:   ui.teamBridge.events.consented
+value: {actor} ने {targets} को शामिल होने की मंज़ूरी दी
+  1 target: Ana ने Ben को शामिल होने की मंज़ूरी दी
+  3 targets: Ana ने Ben, Sana, और Ravi को शामिल होने की मंज़ूरी दी
+
+key:   ui.teamBridge.events.declined_self
+value: {actor} ने आमंत्रण अस्वीकार कर दिया
+  1 target: Ana ने आमंत्रण अस्वीकार कर दिया
+  3 targets: Ana ने आमंत्रण अस्वीकार कर दिया
+
+key:   ui.teamBridge.events.declined
+value: {actor} ने {targets} के लिए आमंत्रण अस्वीकार कर दिया
+  1 target: Ana ने Ben के लिए आमंत्रण अस्वीकार कर दिया
+  3 targets: Ana ने Ben, Sana, और Ravi के लिए आमंत्रण अस्वीकार कर दिया
+
+key:   ui.teamBridge.events.withdrawn
+value: {actor} ने {targets} के लिए आमंत्रण वापस ले लिया
+  1 target: Ana ने Ben के लिए आमंत्रण वापस ले लिया
+  3 targets: Ana ने Ben, Sana, और Ravi के लिए आमंत्रण वापस ले लिया
+
+key:   ui.teamBridge.events.unknown
+value: सदस्यों में बदलाव हुआ
+  rendered: सदस्यों में बदलाव हुआ
+
+key:   ui.teamBridge.events.others
+value: {count, plural, one {# अन्य} other {# अन्य}}
+  count=1: 1 अन्य
+  count=2: 2 अन्य
+  count=3: 3 अन्य
+  count=21: 21 अन्य
+  count=22: 22 अन्य
+  count=25: 25 अन्य
+  as last list item: Ana ने Ben, Sana, और 2 अन्य को आमंत्रित किया
+
+key:   ui.teamBridge.members.invitation_note_v3
+value: आमंत्रण स्वीकार होने तक पहुँच नहीं देते। आपके अपने एजेंट तुरंत जुड़ जाते हैं; किसी और का एजेंट अपने स्वामी की सहमति के बाद जुड़ता है। सदस्य एजेंट यहाँ का हर संदेश पढ़ता है और तय करता है कि जवाब दे या नहीं, और @ से उल्लेख होने पर उससे जवाब देने की अपेक्षा की जाती है। उसका स्वामी उसे केवल @ वाले उल्लेखों और उन थ्रेड तक सीमित कर सकता है जिनमें वह शामिल है, या म्यूट कर सकता है।
+  rendered: आमंत्रण स्वीकार होने तक पहुँच नहीं देते। आपके अपने एजेंट तुरंत जुड़ जाते हैं; किसी और का एजेंट अपने स्वामी की सहमति के बाद जुड़ता है। सदस्य एजेंट यहाँ का हर संदेश पढ़ता है और तय करता है कि जवाब दे या नहीं, और @ से उल्लेख होने पर उससे जवाब देने की अपेक्षा की जाती है। उसका स्वामी उसे केवल @ वाले उल्लेखों और उन थ्रेड तक सीमित कर सकता है जिनमें वह शामिल है, या म्यूट कर सकता है।
+

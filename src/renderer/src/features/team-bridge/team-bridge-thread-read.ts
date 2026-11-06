@@ -47,11 +47,18 @@ export function assertThreadPage(
 }
 
 /** Address the root directly, even if its row has aged out of the timeline page. */
-export async function loadThreadPage(target: ThreadTarget, afterSeq?: number) {
+export async function loadThreadPage(
+	target: ThreadTarget,
+	accountId: string,
+	afterSeq?: number,
+	window?: { beforeSeq?: number; order?: "asc" | "desc"; limit?: 1 | 50 },
+) {
 	return assertThreadPage(
 		await TeamBridgeApi.listReplies(target.conversationId, target.rootId, {
 			tenantId: target.tenantId,
+			accountId,
 			afterSeq,
+			...(window ? { limit: 50, ...window } : {}),
 		}),
 		target,
 	);

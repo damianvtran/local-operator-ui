@@ -1,0 +1,46 @@
+{
+	"record_kind": "translation audit record (second independent auditor)",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "translation-auditor",
+		"session": "e49c0ab64b49",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Second independent auditor: session e49c0ab64b49 (team lopdev, role translation-auditor), distinct from translator (translator / anthropic/claude-opus-5-5) and from first auditor session b5610aecd5f2. Verdicts were formed from the catalogues, context sidecar, glossary and style guides BEFORE reading the first auditor's receipts; comparison recorded below. No catalogue edited."
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "b455c94115fd1cd10490a94d2537a41dad3889e65154e0b4f4397b3dde6f5626"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/e49c0ab64b49-fr.json",
+		"sha256": "95c940c4103607bb86c1dc55081f0590cf1b5ad7b982b03839d312ec11d468b2"
+	},
+	"findings": [
+		{
+			"severity": "nit",
+			"id": "A2-FR-N1",
+			"key": "ui.teamBridge.members.invitation_note_v2",
+			"current": "il lit alors chaque message ici",
+			"proposed": "il lit alors tous les messages",
+			"reason": "\"chaque message ici\" calques \"every message here\"; \"tous les messages\" is the natural French collective, and \"ici\" is already carried by \"rejoint la conversation\". Meaning unaffected."
+		}
+	],
+	"status": "clean-with-findings: 0 blocker, 0 major, 0 minor, 1 nit",
+	"first_auditor": {
+		"session": "b5610aecd5f2",
+		"receipt": "i18n/receipts/b5610aecd5f2-fr.json"
+	},
+	"notes_not_execution_log": "Linguistic judgements; no command output is reproduced here."
+}

@@ -1,0 +1,695 @@
+/**
+ * Agent profile pictures, owned by the local backend.
+ *
+ * THE SEAM. #1517 (bbqben) built the surfaces against three names -
+ * `useAgentAvatar(id)`, `setAgentAvatar(id, image)` and `clearAgentAvatar(id)` -
+ * over a `localStorage` proof of concept, so the backend could arrive without
+ * moving a surface. This module is that swap: the same three names, now backed
+ * by core's `/v1/agents/{id}/avatar` (agent profile pictures contract, frozen
+ * 2026-10-30). `agent.yml`'s `avatar: {sha256, mime, bytes, updated_at} | null`
+ * is the authority; nothing here keeps a second copy of it.
+ *
+ * WHY THE HOOK ANSWERS A `blob:` URL AND NOT THE ROUTE. The contract says a
+ * client addresses the bytes as `/v1/agents/{id}/avatar?v=<sha>`. This app
+ * cannot hand that to an `<img>`: the route needs the bearer, and the bearer
+ * lives in MAIN and never crosses IPC (`src/main/desktop-media.ts`). So the
+ * bytes ride the media relay (`agent.avatar`) and are painted from a refcounted
+ * object URL filed under that same address (`shared/lib/blob-url-cache.ts`),
+ * which is why `agentAvatarPath` still exists: it is the cache key, and it is
+ * the URL any bearer-free client (the browser dev proxy, a future mobile view)
+ * would build.
+ *
+ * HOW A SURFACE LEARNS A PICTURE EXISTS, WITHOUT A FETCH PER ROW. Two sources,
+ * both of which already arrive with data the surface reads anyway:
+ *   - the agents list (`GET /v1/agents` -> `avatar`), read ONCE into a map by
+ *     `useAgentAvatarMap` below - the roster, the editor and the header use it;
+ *   - the session row (`avatar_sha256`), which the sidebar passes in as a hint so
+ *     a conversation row never waits on the agents list at all.
+ * Only a digest that is actually on screen costs a byte read, and the read is
+ * shared by every surface showing the same digest.
+ *
+ * HOW A CHANGE REACHES OTHER SURFACES. A write from this window invalidates the
+ * agents queries and re-reads the session catalogue. A write from anywhere else
+ * in the same backend process arrives as the feed's `agent.avatar.changed`
+ * frame (`applyAgentAvatarFrame`). A write from the CLI is another process and
+ * publishes no frame; it shows up on the next agents/catalogue read, which is
+ * the contract's "consumers reconcile on agent.yml".
+ */
+
+import {
+	desktopControlResponse,
+	desktopMedia,
+	mediaError,
+} from "@shared/api/local-operator/desktop-api";
+import type {
+	AgentAvatarMeta,
+	AgentListResult,
+	CRUDResponse,
+} from "@shared/api/local-operator/types";
+import { queryClient } from "@shared/api/query-client";
+import {
+	useDevicePixelRatio,
+	usePassiveDesktopFeature,
+} from "@shared/hooks/display-density";
+import {
+	createBlobUrl,
+	peek,
+	publish,
+	release,
+	retain,
+} from "@shared/lib/blob-url-cache";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	type QueryClient,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import {
+	type AgentAvatarSize,
+	pickAgentAvatarSize,
+} from "../../../../shared/avatar-variant";
+import {
+	type AgentAvatarMap,
+	SHA256,
+	agentAvatarPath,
+	avatarMetaOf,
+} from "./agent-avatar-meta";
+import { sanitizeAvatarImages } from "./avatar-image";
+
+export {
+	agentAvatarPath,
+	avatarMetaOf,
+	sessionPictureEditable,
+} from "./agent-avatar-meta";
+export type { AgentAvatarMap } from "./agent-avatar-meta";
+
+/**
+ * The query key of the avatar map. Under `["agents"]` on purpose: every
+ * existing agent mutation already invalidates that prefix (`use-update-agent`,
+ * the hub download), so an agent created, renamed or deleted anywhere refreshes
+ * the map without this module having to know about those writers.
+ */
+export const agentAvatarsQueryKey = ["agents", "avatars"] as const;
+
+/**
+ * The agents route's own page ceiling (`legacy.agents.list` caps `perPage` at
+ * 500). One page is the whole roster on every machine measured; an agent past
+ * it draws the glyph, which is the fallback every surface already has.
+ */
+const AVATAR_MAP_PAGE = 500;
+
+/**
+ * The query client the mounted surfaces read through.
+ *
+ * The writes below are plain functions (an editor's click handler, a feed
+ * frame), not hooks, so they cannot ask React for the client. They use the one
+ * the last mounted reader registered, falling back to the app's singleton: in
+ * the app those are the same object, and in Storybook (one client per story,
+ * `.storybook/preview.tsx`) the registered one is the story's, so a story's
+ * Save repaints that story rather than a client nothing renders.
+ */
+let activeClient: QueryClient | null = null;
+const client = (): QueryClient => activeClient ?? queryClient;
+
+/**
+ * Every agent id the last map read LISTED, picture or not.
+ *
+ * The migration must tell "this backend has no such agent" (keep the entry)
+ * from "this agent exists and has no picture yet" (upload it). The map holds
+ * only agents WITH a picture, so on its own it cannot; the agents page's cached
+ * list used to supply the rest, which is the dependency Q-2 removed - with only
+ * the shell's layer mounted nothing else has listed the agents. Kept beside the
+ * read that produced it so the two cannot disagree.
+ */
+let listedAgentIds: ReadonlySet<string> = new Set();
+
+async function readAvatarMap(): Promise<AgentAvatarMap> {
+	const response = await desktopControlResponse({
+		op: "legacy.agents.list",
+		page: 1,
+		perPage: AVATAR_MAP_PAGE,
+	});
+	if (!response.ok) throw new Error(`agents list ${response.status}`);
+	const body = (await response.json()) as CRUDResponse<AgentListResult>;
+	const map: AgentAvatarMap = {};
+	const listed = new Set<string>();
+	for (const agent of body.result?.agents ?? []) {
+		listed.add(agent.id);
+		const meta = avatarMetaOf(agent.avatar);
+		if (meta) map[agent.id] = meta;
+	}
+	listedAgentIds = listed;
+	return map;
+}
+
+/**
+ * The picture records of every local agent, read once and shared.
+ *
+ * It also runs the one-time `localStorage` migration (below) the first time a
+ * map arrives, because the migration's question - "does the backend already
+ * have a picture for this agent?" - is exactly this map.
+ */
+export function useAgentAvatarMap(enabled = true) {
+	activeClient = useQueryClient();
+	const query = useQuery({
+		queryKey: agentAvatarsQueryKey,
+		queryFn: readAvatarMap,
+		enabled,
+		staleTime: 30_000,
+		// A failed read is the glyph everywhere, never an error surface: pictures
+		// are decoration on every surface that reads this map.
+		retry: 1,
+		refetchOnWindowFocus: false,
+	});
+	const data = query.data;
+	useEffect(() => {
+		if (data) void migrateLocalAvatars(data);
+	}, [data]);
+	return query;
+}
+
+/**
+ * The app's agent-avatar layer: mounted ONCE, by the shell (`app.tsx`), so the
+ * #1517 `localStorage` migration runs on every launch whichever page is open
+ * (QA round 1, Q-2).
+ *
+ * WHY THE SHELL AND NOT A SURFACE. The migration is triggered by the first map
+ * read (`useAgentAvatarMap`), but the chat header and the sidebar rows pass the
+ * session row's `avatar_sha256` as a hint, which turns that read OFF for them
+ * (`useAgentAvatar`: `enabled = ... && !hinted`). A person who upgraded and
+ * stayed in chat therefore kept a picture in `localStorage` that nothing drew
+ * and nothing uploaded until they happened to open the Agents page. The map is
+ * one shared query, so reading it here costs one list request per staleness
+ * window, not one per surface, and the migration's own rules (backend wins,
+ * unknown ids kept, failure retried next launch, upload once then clear) are
+ * unchanged - only WHEN it first runs moves.
+ */
+export function useAgentAvatarLayer(): void {
+	useAgentAvatarMap(true);
+}
+
+/** The record for one agent, or null when it has none (or none is known yet). */
+export function useAgentAvatarMeta(
+	agentId: string | null | undefined,
+): AgentAvatarMeta | null {
+	const { data } = useAgentAvatarMap(Boolean(agentId));
+	return (agentId && data?.[agentId]) || null;
+}
+
+/**
+ * The picture for one agent as a paintable URL, or `null` when it has none.
+ *
+ * `sha256Hint` is the session row's `avatar_sha256`: when a caller has it the
+ * agents list is not consulted at all (`undefined` means "no hint, look it up";
+ * `null` means "the row says there is none"). A digest that fails to load also
+ * answers `null`, so every caller's fallback glyph covers a missing file too.
+ */
+export function useAgentAvatar(
+	agentId: string | null | undefined,
+	sha256Hint?: string | null,
+	/**
+	 * The CSS size the picture is drawn at. With core's `agent_avatar_sizes`
+	 * the read asks for the smallest derivative covering `cssPx x DPR`
+	 * (`pickAgentAvatarSize`); omitted (the editor's crop preview, which must
+	 * see the stored original) or without the feature, the 512 px original.
+	 */
+	cssPx?: number,
+): string | null {
+	return useAgentAvatarState(agentId, sha256Hint, cssPx).url;
+}
+
+/** What `useAgentAvatarState` answers: the URL, and whether the answer is final. */
+export type AgentAvatarState = {
+	/** The paintable URL, or null for no picture AND for bytes that did not resolve. */
+	url: string | null;
+	/**
+	 * False while the answer is still being read (the agents map in flight, or
+	 * the bytes being fetched). True once it is final, INCLUDING a final "no
+	 * picture" and a final "the bytes did not resolve" - the two a bare URL cannot
+	 * tell from a read in progress, and the two `decideAvatarMark` must not draw a
+	 * plate for.
+	 */
+	settled: boolean;
+	/**
+	 * The agents list could not be read, so "no picture" is not known. Only an
+	 * unhinted read can be unreadable.
+	 */
+	unreadable?: boolean;
+	/**
+	 * A digest is known for the agent (the caller's hint, or the agents map's
+	 * row): a picture is on its way. The presence decision holds a cold plate
+	 * only for a claimed digest, so a pictureless agent never flashes an empty
+	 * box. An unhinted read claims nothing until the map answers.
+	 */
+	claimed?: boolean;
+};
+
+/**
+ * `useAgentAvatar` with the one fact its URL cannot carry: whether `null` is an
+ * answer or only the absence of one. The presence decision
+ * (`avatar-presence.ts`) needs it (with `claimed`) so a cold load holds a
+ * plate only for a picture that is actually coming.
+ */
+export function useAgentAvatarState(
+	agentId: string | null | undefined,
+	sha256Hint?: string | null,
+	/** The CSS size the picture is drawn at; see the rule on `useAgentAvatar`. */
+	cssPx?: number,
+): AgentAvatarState {
+	const hinted = sha256Hint !== undefined;
+	const { data, isPending, isError } = useAgentAvatarMap(
+		Boolean(agentId) && !hinted,
+	);
+	const sha256 = hinted
+		? sha256Hint && SHA256.test(sha256Hint)
+			? sha256Hint
+			: null
+		: agentId
+			? (data?.[agentId]?.sha256 ?? null)
+			: null;
+	const size = useAgentAvatarSize(cssPx);
+	const bytes = useAvatarBytes(agentId ?? null, sha256, size);
+	/*
+	 * The map is only consulted unhinted, and a pending map says nothing yet about
+	 * whether the agent has a picture. A disabled query is `isPending` too, which
+	 * is why the term is gated on the same condition that enabled it.
+	 */
+	const mapSettled = hinted || !agentId || !isPending;
+	/*
+	 * A FAILED LIST READ IS NOT "NO PICTURE" (agent review m-3). With the map in
+	 * error and no data, every agent looks pictureless, which is not an answer.
+	 * `unreadable` lets the presence decision say so (it draws nothing); a
+	 * hinted read never consults the map, so it cannot be unreadable.
+	 */
+	const unreadable = !hinted && Boolean(agentId) && isError && !data;
+	return {
+		url: bytes.url,
+		settled: mapSettled && bytes.settled,
+		unreadable,
+		claimed: sha256 !== null,
+	};
+}
+
+/*
+ * RIGHT-SIZED LOCAL AGENT PICTURES (operator report 2026-11-03, retina
+ * avatars: "keep bandwidth sensible"). Every surface used to read the 512 px
+ * original (~240 KB for a photo) to draw it at 16-80 CSS px. A core that
+ * advertises `agent_avatar_sizes` serves 64/128/256 derivatives, so the read
+ * asks for the smallest one that still covers the device pixels - sharp on a
+ * retina panel, a fraction of the bytes. Live in both inputs: the DPR store
+ * re-picks when the window changes display, and the passive capability read
+ * re-picks when the capability answer lands after first paint.
+ */
+function useAgentAvatarSize(cssPx: number | undefined): AgentAvatarSize | null {
+	const served = usePassiveDesktopFeature("agent_avatar_sizes");
+	const dpr = useDevicePixelRatio();
+	return served && cssPx !== undefined ? pickAgentAvatarSize(cssPx, dpr) : null;
+}
+
+/**
+ * Bytes for one (agent, digest) pair, through the shared blob cache.
+ *
+ * The discipline is `use-file-blob-url`'s: `peek` in render so a warm mount
+ * paints on its first frame, `retain`/`release` only in the effect. A digest is
+ * immutable, so the cache key never needs invalidating - a new picture is a new
+ * key, and the old one is revoked when its last holder lets go.
+ */
+function useAvatarBytes(
+	agentId: string | null,
+	sha256: string | null,
+	size: AgentAvatarSize | null,
+): AgentAvatarState {
+	/*
+	 * The size is part of the key: a 64 and a 256 of one digest are different
+	 * bytes, and surfaces drawing the same size share one read and one blob.
+	 * Unsized keeps the contract address unchanged, so the original's cache
+	 * entry is the one it always was.
+	 */
+	const key =
+		agentId && sha256
+			? `${agentAvatarPath(agentId, sha256)}${size ? `&size=${size}` : ""}`
+			: null;
+	/*
+	 * THE KEY TRAVELS WITH THE URL, so a render can tell a fresh answer from the
+	 * previous key's (agent review round 1, m1). `url` alone was seeded once by a
+	 * lazy initializer, so when `key` changed on a MOUNTED component the render
+	 * that preceded the effect returned the OLD key's URL - one painted frame of
+	 * the previous agent's face. Reachable in practice: the chat header's mark is
+	 * not keyed by session, so switching between two agents that both have
+	 * pictures re-renders this hook with a new agent id.
+	 *
+	 * With the key held beside it, the render below falls through to `peek(key)`
+	 * for a key it has no answer for: the new digest's warm bytes if they are
+	 * already cached, nothing otherwise - never the picture that was on screen a
+	 * moment ago. The effect then corrects it as before.
+	 *
+	 * `settled` rides with them for the same reason: it is true only for the key
+	 * it was written under, so a key change reads as unsettled until the new
+	 * key's fetch lands or fails.
+	 */
+	const [drawn, setDrawn] = useState<{
+		key: string | null;
+		url: string | null;
+		settled: boolean;
+	}>(() => {
+		const warm = key ? peek(key) : null;
+		return { key, url: warm, settled: !key || warm !== null };
+	});
+	useEffect(() => {
+		if (!key || !agentId || !sha256) {
+			setDrawn({ key, url: null, settled: true });
+			return;
+		}
+		const cached = retain(key);
+		if (cached) {
+			setDrawn({ key, url: cached, settled: true });
+			return () => release(key);
+		}
+		setDrawn({ key, url: null, settled: false });
+		let cancelled = false;
+		let held = false;
+		void desktopMedia(
+			{ op: "agent.avatar", agentId, sha256, ...(size ? { size } : {}) },
+			null,
+		)
+			.then((result) => {
+				if (cancelled) return;
+				if (result.kind !== "bytes") {
+					// A 404 or an error body: a FINAL "no bytes", not a read in progress.
+					setDrawn({ key, url: null, settled: true });
+					return;
+				}
+				publish(key, createBlobUrl(result.data as BlobPart, result.mimeType));
+				const joined = retain(key);
+				held = joined !== null;
+				setDrawn({ key, url: joined, settled: true });
+			})
+			.catch(() => {
+				// A relay that rejected outright is the same answer as a 404: the glyph.
+				if (!cancelled) setDrawn({ key, url: null, settled: true });
+			});
+		return () => {
+			cancelled = true;
+			if (held) release(key);
+		};
+	}, [key, agentId, sha256, size]);
+	if (!key) return { url: null, settled: true };
+	if (drawn.key === key) return { url: drawn.url, settled: drawn.settled };
+	const warm = peek(key) ?? null;
+	return { url: warm, settled: warm !== null };
+}
+
+/* ------------------------------------------------------------------ *
+ * WRITES IN FLIGHT
+ * ------------------------------------------------------------------ */
+
+/**
+ * The agents whose picture this window is writing or clearing right now.
+ *
+ * Kept here, beside the two writers, because they are plain functions (see
+ * `client()` above) and so is the answer a mark needs: "is a write for MY agent
+ * in flight?". A mark that offered its door while the editor's own request was
+ * still open would lead to a pane that is read-only until it settles. Counted,
+ * not boolean, so two overlapping writes for one agent release it only when both
+ * have.
+ */
+const writing = new Map<string, number>();
+const writingListeners = new Set<() => void>();
+
+function setWriting(agentId: string, on: boolean): void {
+	const next = (writing.get(agentId) ?? 0) + (on ? 1 : -1);
+	if (next > 0) writing.set(agentId, next);
+	else writing.delete(agentId);
+	for (const listener of writingListeners) listener();
+}
+
+/** Whether a picture write for this agent is in flight in this window. */
+export function useAgentAvatarWriting(
+	agentId: string | null | undefined,
+): boolean {
+	return useSyncExternalStore(
+		(listener) => {
+			writingListeners.add(listener);
+			return () => writingListeners.delete(listener);
+		},
+		() => Boolean(agentId && writing.has(agentId)),
+		() => false,
+	);
+}
+
+/**
+ * Re-read everything that carries a digest: the agents queries (the map and
+ * every list/detail under the same prefix) and the session catalogue (whose
+ * rows carry `avatar_sha256`). One function so a local write and a feed frame
+ * cannot refresh different sets.
+ */
+function refreshAvatarReaders(): Promise<unknown> {
+	return Promise.allSettled([
+		client().invalidateQueries({ queryKey: ["agents"] }),
+		useCanonicalSessionsStore.getState().fetchSessions(),
+	]);
+}
+
+/**
+ * The longest a finished write keeps `writing` up while the readers re-read.
+ * A slow or hung refresh must not leave the door closed for good; the feed
+ * frame and the next read repair the picture either way.
+ */
+const WRITE_SETTLE_MS = 5000;
+
+/** Resolves when the readers have re-read, or after `WRITE_SETTLE_MS`. */
+function refreshAndSettle(): Promise<void> {
+	return new Promise((resolve) => {
+		const timer = setTimeout(resolve, WRITE_SETTLE_MS);
+		void refreshAvatarReaders().then(() => {
+			clearTimeout(timer);
+			resolve();
+		});
+	});
+}
+
+/**
+ * Stores a picture for one agent. `image` is the editor's cropped 512px PNG;
+ * core re-normalises whatever it is sent, so this does not re-encode.
+ *
+ * Resolves with the new record when core answers with one, and throws a
+ * readable error otherwise - the editor states it beside its buttons.
+ *
+ * `writing` STAYS UP UNTIL THE READERS HAVE RE-READ (agent review m-2). It used
+ * to drop the moment the bytes were accepted, but the session row still carried
+ * the OLD digest (none, for a first picture) until the catalogue refetched, so a
+ * slot read "settled, no picture, door open" for a beat between the upload
+ * finishing and the face. Held to the refresh, a replaced picture keeps its door
+ * closed until the new face is read, and the editor's busy state does not drop
+ * early.
+ * The promise this returns does NOT wait for that: the editor's own "saved"
+ * state must not lag a catalogue read.
+ */
+export async function setAgentAvatar(
+	agentId: string,
+	image: Blob,
+): Promise<AgentAvatarMeta | null> {
+	const bytes = new Uint8Array(await image.arrayBuffer());
+	setWriting(agentId, true);
+	let result: Awaited<ReturnType<typeof desktopMedia>>;
+	try {
+		result = await desktopMedia({ op: "agent.avatar.put", agentId }, bytes);
+	} catch (error) {
+		setWriting(agentId, false);
+		throw error;
+	}
+	/*
+	 * Core's refusal sentence (unsupported_type, too_large, too_many_pixels,
+	 * undecodable) arrives as the relay's `detail`; `mediaError` carries it as
+	 * the message, which is the one place the server's own reason is readable.
+	 */
+	if (result.status >= 400 || result.kind === "error") {
+		setWriting(agentId, false);
+		throw mediaError(result);
+	}
+	const meta =
+		result.kind === "json"
+			? avatarMetaOf(
+					(result.body as { avatar?: unknown } | null)?.avatar ?? result.body,
+				)
+			: null;
+	if (meta) {
+		client().setQueryData<AgentAvatarMap>(agentAvatarsQueryKey, (map) => ({
+			...(map ?? {}),
+			[agentId]: meta,
+		}));
+	}
+	void refreshAndSettle().then(() => setWriting(agentId, false));
+	return meta;
+}
+
+/** Forgets one agent's picture, leaving the fallback glyph in its place. */
+export async function clearAgentAvatar(agentId: string): Promise<void> {
+	setWriting(agentId, true);
+	let result: Awaited<ReturnType<typeof desktopMedia>>;
+	try {
+		result = await desktopMedia({ op: "agent.avatar.delete", agentId }, null);
+	} catch (error) {
+		setWriting(agentId, false);
+		throw error;
+	}
+	// 404 is "already unset": the state the user asked for, not a failure.
+	if (
+		result.status !== 404 &&
+		(result.status >= 400 || result.kind === "error")
+	) {
+		setWriting(agentId, false);
+		throw mediaError(result);
+	}
+	client().setQueryData<AgentAvatarMap>(agentAvatarsQueryKey, (map) => {
+		if (!map) return map;
+		const { [agentId]: _removed, ...rest } = map;
+		return rest;
+	});
+	// Held like the write above: a cleared picture whose row still claims a digest
+	// must not flash a live door over the old face either.
+	void refreshAndSettle().then(() => setWriting(agentId, false));
+}
+
+/**
+ * Apply one `agent.avatar.changed` feed frame.
+ *
+ * Called by the transport (`use-desktop-feed.ts`) rather than subscribed to
+ * here, because only the transport holds the feed; it hands over the payload
+ * and this module, which owns the keys, decides what to refresh. The map is
+ * patched first so a mounted surface repaints on this frame rather than after
+ * the re-read, then the readers are refreshed so the authority confirms it.
+ */
+export function applyAgentAvatarFrame(payload: {
+	agent_id: string;
+	sha256: string | null;
+}): void {
+	if (typeof payload?.agent_id !== "string" || !payload.agent_id) return;
+	client().setQueryData<AgentAvatarMap>(agentAvatarsQueryKey, (map) => {
+		if (!map) return map;
+		const { [payload.agent_id]: previous, ...rest } = map;
+		if (!payload.sha256 || !SHA256.test(payload.sha256)) return rest;
+		return {
+			...rest,
+			[payload.agent_id]: {
+				...(previous ?? { mime: "image/png", bytes: 0, updated_at: "" }),
+				sha256: payload.sha256,
+			},
+		};
+	});
+	void refreshAvatarReaders();
+}
+
+/* ------------------------------------------------------------------ *
+ * ONE-TIME MIGRATION FROM #1517's `localStorage` STORE
+ * ------------------------------------------------------------------ */
+
+/** #1517's storage key (`zustand` persist: `{state: {images}, version}`). */
+export const LEGACY_AVATAR_STORAGE_KEY = "agent-avatar-storage";
+
+let migration: Promise<void> | null = null;
+
+/** Test seam: forget that a migration ran in this document. */
+export function resetAgentAvatarMigrationForTests(): void {
+	migration = null;
+	listedAgentIds = new Set();
+}
+
+function readLegacyImages(): Record<string, string> {
+	try {
+		const raw = globalThis.localStorage?.getItem(LEGACY_AVATAR_STORAGE_KEY);
+		if (!raw) return {};
+		const parsed = JSON.parse(raw) as { state?: { images?: unknown } };
+		// The same filter #1517's hydrate used: a tampered entry is not uploaded.
+		return sanitizeAvatarImages(parsed?.state?.images);
+	} catch {
+		return {};
+	}
+}
+
+function writeLegacyImages(images: Record<string, string>): void {
+	try {
+		if (Object.keys(images).length === 0) {
+			globalThis.localStorage?.removeItem(LEGACY_AVATAR_STORAGE_KEY);
+			return;
+		}
+		globalThis.localStorage?.setItem(
+			LEGACY_AVATAR_STORAGE_KEY,
+			JSON.stringify({ state: { images }, version: 0 }),
+		);
+	} catch {
+		// A blocked store keeps its entries; the next launch tries again.
+	}
+}
+
+function dataUrlBytes(dataUrl: string): Blob | null {
+	const match = /^data:(image\/[a-z]+);base64,(.+)$/.exec(dataUrl);
+	if (!match) return null;
+	try {
+		const binary = atob(match[2]);
+		const bytes = new Uint8Array(binary.length);
+		for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+		return new Blob([bytes], { type: match[1] });
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Move pictures #1517 stored on this machine into the backend, once.
+ *
+ * The rules, each a deliberate answer:
+ * - An agent the backend ALREADY has a picture for: the backend wins, the local
+ *   copy is dropped without uploading (it is the older, smaller 256px one).
+ * - An agent this backend does not list: the entry is KEPT. It may belong to a
+ *   different backend this app is paired with on another launch, and dropping
+ *   it would lose the only copy.
+ * - An upload that fails: the entry is KEPT and retried next launch.
+ * Everything else is uploaded and then cleared, entry by entry, so an
+ * interrupted migration never re-uploads a picture it already moved.
+ */
+export function migrateLocalAvatars(map: AgentAvatarMap): Promise<void> {
+	if (migration) return migration;
+	migration = (async () => {
+		const images = readLegacyImages();
+		const ids = Object.keys(images);
+		if (ids.length === 0) {
+			writeLegacyImages({});
+			return;
+		}
+		const known = new Set(
+			(
+				client()
+					.getQueriesData<AgentListResult>({ queryKey: ["agents"] })
+					.flatMap(([, value]) =>
+						Array.isArray(value?.agents) ? value.agents : [],
+					) as { id: string }[]
+			).map((agent) => agent.id),
+		);
+		for (const agentId of Object.keys(map)) known.add(agentId);
+		for (const agentId of listedAgentIds) known.add(agentId);
+		const remaining = { ...images };
+		for (const agentId of ids) {
+			if (map[agentId]) {
+				delete remaining[agentId];
+				continue;
+			}
+			if (known.size > 0 && !known.has(agentId)) continue;
+			const blob = dataUrlBytes(images[agentId]);
+			if (!blob) {
+				delete remaining[agentId];
+				continue;
+			}
+			try {
+				await setAgentAvatar(agentId, blob);
+				delete remaining[agentId];
+			} catch {
+				// Kept for the next launch (see the rules above).
+			}
+			writeLegacyImages(remaining);
+		}
+		writeLegacyImages(remaining);
+	})();
+	return migration;
+}

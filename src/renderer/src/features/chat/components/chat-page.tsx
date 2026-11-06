@@ -2,6 +2,8 @@ import {
 	useAidaDisplayName,
 	useAidaTarget,
 } from "@features/aida/use-aida-target";
+import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
+import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
 import {
 	backendPaneSentence,
 	compatibilityBannerShown,
@@ -18,6 +20,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import {
 	type ChatTarget,
+	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
@@ -85,6 +88,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
+import { TURN_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
 import {
 	asideAskBlockedReason,
 	askAside,
@@ -1017,32 +1021,34 @@ function SessionPanel({
 	 * roster on screen past the stream it describes.
 	 */
 	const runFrontend = canonical.frontend ?? canonical.heldFrontend;
-	const runDetails = useMemo(
-		() =>
-			sessionId && runFrontend
-				? deriveRunDetails({
-						jobs: runFrontend.jobs,
-						todos: runFrontend.todos,
-						/*
-						 * The armed wake schedules ride the same derivation, which is what puts the
-						 * composer's wake chip, the pane's Wakes section and the section's tally on
-						 * ONE list: the chip is gated on `runDetails.wakes.length` and the section
-						 * renders those same rows, so a second read of the wire here would be a
-						 * second source of truth for a count the user can see twice on one screen.
-						 */
-						wakes: runFrontend.wakes,
-						/*
-						 * The armed monitors ride the same derivation, which is what puts the
-						 * composer's monitor chip, the pane's Monitors section and the section's
-						 * trailing tally on ONE list — the wake wiring's own argument, one count
-						 * over: a second read of the wire here would be a second source of truth
-						 * for a count the user can see twice on one screen.
-						 */
-						monitors: runFrontend.monitors,
-					})
-				: null,
-		[sessionId, runFrontend],
-	);
+	const runDetailsLocale = useI18nLocale();
+	const runDetails = useMemo(() => {
+		// Cadence labels are derived copy. A retained frontend is unchanged when
+		// language moves, so locale must invalidate these rows without a new frame.
+		void runDetailsLocale;
+		return sessionId && runFrontend
+			? deriveRunDetails({
+					jobs: runFrontend.jobs,
+					todos: runFrontend.todos,
+					/*
+					 * The armed wake schedules ride the same derivation, which is what puts the
+					 * composer's wake chip, the pane's Wakes section and the section's tally on
+					 * ONE list: the chip is gated on `runDetails.wakes.length` and the section
+					 * renders those same rows, so a second read of the wire here would be a
+					 * second source of truth for a count the user can see twice on one screen.
+					 */
+					wakes: runFrontend.wakes,
+					/*
+					 * The armed monitors ride the same derivation, which is what puts the
+					 * composer's monitor chip, the pane's Monitors section and the section's
+					 * trailing tally on ONE list — the wake wiring's own argument, one count
+					 * over: a second read of the wire here would be a second source of truth
+					 * for a count the user can see twice on one screen.
+					 */
+					monitors: runFrontend.monitors,
+				})
+			: null;
+	}, [sessionId, runFrontend, runDetailsLocale]);
 	/*
 	 * The run panel's MCP half, read here for the reason the model is derived here:
 	 * this is the component that owns the session identity and the capabilities, and
@@ -3666,6 +3672,92 @@ function SessionPanel({
 		[boundRow?.binding?.agent, boundRow?.binding?.team]
 			.filter(Boolean)
 			.join(" · ");
+	/*
+	 * THE AGENT'S PICTURE FOR THIS PANE (operator request, 2026-10-30).
+	 *
+	 * WHY THE JOIN IS HERE. `useAgentAvatar` is keyed by the AGENT's id, and a
+	 * conversation carries its agent's NAME and nothing else (`SessionBinding` is
+	 * `{agent, team}`, two strings). The profile catalogue is the one thing that
+	 * holds both (`agent_id` beside `name`), so the pane that already reads the
+	 * conversation's binding is where the two meet - once per pane, rather than a
+	 * query per row. The same chain the header uses to say who is speaking, in the
+	 * same precedence (`||`, so the wire's empty-string "unset" falls through),
+	 * with the draft's own target last: a pane with no session yet still knows
+	 * which agent was picked.
+	 *
+	 * A TEAM CHAT WEARS ITS MANAGER'S PICTURE, and that is core's answer rather
+	 * than this join's (review round 1, R-4). Attaching a team CLAIMS the agent
+	 * slot for that team's manager (`_claim_agent_slot_for_team` in
+	 * `local_operator/session/session.py`, issue #2014: one session, one persona),
+	 * so the wire's `active_agent` already names the manager and the join below
+	 * finds the manager's profile. The manager is the slot that speaks for the
+	 * team, so the picture names the speaker - nothing here invents a team picture,
+	 * and no team has a picture of its own. The DRAFT arm is the narrower one: it
+	 * reads `kind === "agent"` alone, because a team that is only PICKED has no
+	 * manager speaking yet, and a name that happened to match a profile would be a
+	 * wrong mark rather than none.
+	 *
+	 * `agent_id` is null for the packaged profiles (they have no registry row to
+	 * key a picture by), which is why the chain ends at null and the transcript
+	 * draws nothing: no picture is a state, not a failure.
+	 *
+	 * WHAT IT CANNOT SAY, and why it is the pane's answer rather than each row's:
+	 * the wire carries no per-record agent, so a conversation's mark names the
+	 * agent in force NOW. Switching agent mid-conversation repaints the earlier
+	 * turns' marks with the new picture - a claim those turns would not make if
+	 * the journal recorded who answered them. Stated here because a reader of the
+	 * frames is entitled to know which fact the mark is.
+	 */
+	const speakerAgent =
+		canonical.frontend?.active_agent ||
+		boundRow?.binding?.agent ||
+		(draft?.target?.kind === "agent" ? draft.target.name : "") ||
+		null;
+	const agentProfiles = useProfiles(
+		Boolean(speakerAgent) &&
+			desktopFeatureEnabled(panelCapabilities.data, "profile_catalogue"),
+	);
+	const speakerAgentId =
+		agentProfiles.data?.find((row) => row.name === speakerAgent)?.agent_id ??
+		null;
+	// The turn mark's box, i.e. the size its bytes are read at.
+	const avatarSize = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
+	);
+	/*
+	 * THE TURN HEAD'S MARK: the picture when it resolves, else nothing - decided by
+	 * the one function the header also asks (`decideAvatarMark`). A pictureless
+	 * agent draws no mark and reserves no line above its first row. Ownership is
+	 * the row's own answer (`sessionPictureEditable`: a remote conversation's
+	 * agent is another device's), and a draft has no row, which is the same
+	 * "local" answer a plain page's rows get. `pictureDoor` is false: the turn's
+	 * picture has never been a link.
+	 *
+	 * `cssPx` is the box `MessageAvatar` draws it at, from the same size table -
+	 * the read asks for the derivative that covers THAT box, so a `large` mark is
+	 * not served the `small` step's 64 px file on a retina panel.
+	 *
+	 * `sha256Hint` IS THE ROW'S DIGEST, only when the row is about this speaker
+	 * (QA Q-1): unhinted, the read claims nothing until the agents map answers,
+	 * so a pictured agent drew nothing and then popped in 24px. The row's claim
+	 * lets the cold head hold its plate. Not hinted otherwise (`undefined`, look
+	 * it up): a live switch to another agent, or a row with no digest - the map
+	 * also knows a picture set in this window before the row refetches, and a
+	 * `null` hint would never consult it. Unclaimed still draws nothing.
+	 */
+	const rowSpeaks =
+		speakerAgentId !== null && boundRow?.agent_id === speakerAgentId;
+	const agentAvatar = useAgentSlotMark({
+		agentId: speakerAgentId,
+		agentName: speakerAgent,
+		sha256Hint: (rowSpeaks && boundRow?.avatar_sha256) || undefined,
+		owned: sessionPictureEditable({
+			agent_id: speakerAgentId,
+			locality: boundRow?.locality,
+		}),
+		pictureDoor: false,
+		cssPx: TURN_AVATAR_BOX[avatarSize].px,
+	});
 	// The header names the conversation the user clicked, so it falls back to the
 	// catalogue row's name for the same reason `loaded` falls back to its binding:
 	// `conversation_title` is the journalled title only, and the row's name is
@@ -4625,9 +4717,11 @@ function SessionPanel({
 								 * declares immutable, so the two lines now state one fact.
 								 */
 								starting
-								? (loadedTargetDisplay ?? "Starting the session")
+								? (loadedTargetDisplay ?? t("ui.chat.header.starting_session"))
 								: draft?.sessionId
-									? canonical.frontend?.cwd || cwd || "Canonical chat"
+									? canonical.frontend?.cwd ||
+										cwd ||
+										t("ui.chat.header.canonical_chat")
 									: /*
 										 * A DRAFT WITH NO SESSION STATES WHERE IT WILL RUN, NOT WHAT IT
 										 * WILL DO (§H, U23). This slot held "The session starts when you
@@ -4700,6 +4794,8 @@ function SessionPanel({
 					isOptionsSidebarOpen={false}
 					onCloseOptions={() => setOptions(false)}
 					agentId={identity}
+					agentAvatar={agentAvatar}
+					agentSpeakerName={speakerAgent}
 					turnTerminal={canonical.turnsCompleted}
 					/*
 					 * Draft: the store's staged cwd, which `admitChatDraft` passes to

@@ -1,0 +1,70 @@
+{
+	"audit_id": "b15dd1eb2014-agents-ru",
+	"audit_date": "2026-10-30",
+	"date": "2026-10-30",
+	"locale": "ru",
+	"namespace": "ui.agents.descriptions",
+	"source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+	"translator": {
+		"agent": "i18n-translator"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "b15dd1eb2014",
+		"model": "radient/auto",
+		"actual_model_source": "fallback — primary anthropic/claude-sonnet-5-5 failed on provider quota; served openai/gpt-6-astra → kimi/k3.1-pro → radient/auto during this run (served model at audit time: radient/auto, per this run's auditor.log)",
+		"independent_from_translator_session": null,
+		"result": "clean",
+		"receipt": "i18n/receipts/b15dd1eb2014-agents-ru.json",
+		"receipt_sha256": "4bf9454f2c991e29a364c5769ce7e822d3c4dd9d06f405189c7f2337a1265822"
+	},
+	"key_count": 12,
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+			"sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+			"sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.agents.descriptions.json",
+			"sha256": "f5c8dae6b17e71be0e018dc47244135903cbeb7a5b802ba569d6ce98594822a4"
+		}
+	},
+	"findings": [
+		"RU-01",
+		"RU-02",
+		"RU-03",
+		"RU-04",
+		"RU-05"
+	],
+	"namespace_status": "passed",
+	"artifacts": [
+		{
+			"path": "i18n/receipts/b15dd1eb2014-agents-ru.json",
+			"sha256": "4bf9454f2c991e29a364c5769ce7e822d3c4dd9d06f405189c7f2337a1265822"
+		},
+		{
+			"path": "i18n/audits/evidence/ru/ui.agents.descriptions/b15dd1eb2014-agents-ru/record.json",
+			"sha256": "self (this file)"
+		},
+		{
+			"path": "i18n/audits/evidence/ru/ui.agents.descriptions/b15dd1eb2014-agents-ru/receipt.json",
+			"sha256": "4bf9454f2c991e29a364c5769ce7e822d3c4dd9d06f405189c7f2337a1265822"
+		},
+		{
+			"path": "i18n/audits/evidence/ru/ui.agents.descriptions/b15dd1eb2014-agents-ru/verdict.txt",
+			"sha256": "ef8e14cd3ff37ce607a255d60b4e9d6c66b78c670b77c30a3bf156d8883ee8cd"
+		},
+		{
+			"path": "i18n/audits/evidence/ru/ui.agents.descriptions/b15dd1eb2014-agents-ru/auditor.log",
+			"sha256": "c3dfd9b3f13e9d77cf799aa08f964d80c109a6e72fa5f771f2cad2789519e894"
+		}
+	],
+	"retention": {
+		"record_of_truth": "i18n/receipts/b15dd1eb2014-agents-ru.json (byte-identical copy of the auditor's receipt)",
+		"note": "record.json restates the receipt; the copied logs are the auditor's own execution output, not notes."
+	}
+}

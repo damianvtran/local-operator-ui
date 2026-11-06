@@ -18,6 +18,7 @@
  * values neither grammar can bind.
  */
 
+import { physicalKey } from "../../../../shared/recording-shortcut";
 import { normalizeChord } from "./keymap-chord";
 
 /**
@@ -102,6 +103,7 @@ export const CAPTURE_KEY_NAMES: Record<string, string> = {
 /** What a capture reads off a keyboard event; structural, so tests can build it. */
 export type CaptureEventShape = {
 	key: string;
+	code?: string;
 	ctrlKey: boolean;
 	altKey: boolean;
 	shiftKey: boolean;
@@ -157,6 +159,11 @@ export function chordFromEvent(
 	if (event.metaKey || event.ctrlKey) tokens.push("primary");
 	if (event.altKey) tokens.push("alt");
 	if (event.shiftKey) tokens.push("shift");
-	const name = CAPTURE_KEY_NAMES[event.key] ?? event.key.toLowerCase();
+	const key = physicalKey({
+		key: event.key,
+		code: event.code,
+		alt: event.altKey,
+	});
+	const name = CAPTURE_KEY_NAMES[key] ?? key.toLowerCase();
 	return normalizeChord(composeCapturedChord(tokens, name));
 }

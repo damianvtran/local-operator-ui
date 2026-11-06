@@ -58,5 +58,18 @@
 	"ui.chat.sidebar.row_menu.archive": "Lưu trữ cuộc trò chuyện",
 	"ui.chat.sidebar.row_menu.pin": "Ghim cuộc trò chuyện",
 	"ui.chat.sidebar.row_menu.unarchive": "Khôi phục cuộc trò chuyện",
-	"ui.chat.sidebar.row_menu.unpin": "Bỏ ghim cuộc trò chuyện"
+	"ui.chat.sidebar.row_menu.unpin": "Bỏ ghim cuộc trò chuyện",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} và {tail}} middle {{head}, {tail}} other {{head} và {tail}}}",
+	"ui.chat.sidebar.row.open_draft": "Mở {label}",
+	"ui.chat.sidebar.entity.more_in": "{label} trong {name}",
+	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {Ít nhất } other {}}{count, plural, other {{count_display} cuộc trò chuyện}} khớp với tìm kiếm này{clipped, select, yes {; danh sách dừng ở đó} other {}}",
+	"ui.chat.sidebar.row_menu.hint": "Nhấp chuột phải hoặc nhấn Shift+F10 để mở thao tác của mục này.",
+	"ui.chat.sidebar.row_menu.hint_mac": "Nhấp chuột phải hoặc nhấn Shift+F10 (với Fn trên hầu hết bàn phím Mac) để mở thao tác của mục này.",
+	"ui.chat.sidebar.row.search_beyond": "do tìm kiếm tìm ra, ngoài các cuộc trò chuyện được liệt kê ở đây",
+	"ui.chat.sidebar.row.recent": "Gần đây",
+	"ui.chat.sidebar.row.not_sent_suffix": ", chưa gửi",
+	"ui.chat.sidebar.row.unread_suffix": ", chưa đọc",
+	"ui.chat.sidebar.row.silent_remedy": "/stop nếu vẫn im lặng.",
+	"ui.chat.sidebar.catalogue.show_more": "Hiện thêm {hidden, plural, other {{hidden, number, ::group-off}}}",
+	"ui.chat.sidebar.catalogue.show_more_chats": "Hiện thêm {add, plural, other {{add, number, ::group-off} cuộc trò chuyện}}"
 }

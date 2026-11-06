@@ -1,0 +1,92 @@
+{
+	"audit_id": "teambridge-delivery-a18b2b0c-audit-439bcc181f80-hi",
+	"date": "2026-11-02",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"branch_head": "a18b2b0c0aba4b7c9092cd023bd42e509c6c477d",
+	"merge_base_main": "7e3e1614871611dc69c8590598294b407f3e1c73",
+	"auditors": [
+		{
+			"agent": "task",
+			"agent_detail": "task (lopdev team member, acting as independent i18n auditor of record)",
+			"model": "anthropic/claude-opus-5-5",
+			"session": "439bcc181f80",
+			"instance": "439bcc181f80",
+			"date": "2026-11-02",
+			"result": "clean",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "lopdev team 'task' session 439bcc181f80. Authored none of PR #1521's English strings, none of its translations (translator session 7f91449c7aa6 and later remediation commits), none of the catalogue commits on the branch and none of the prior receipts/audits; verified no branch artifact or commit message references 439bcc181f80. Edited no catalogue value and no repo file.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "3545d3a8da3eb8e35b069e3f0d46940f977e851c6a8ae46d040e2a7b55e73cb6"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "9c1b09f38ec15860f89863f1e0f7ef2535859b92ea81700305257809c234501a"
+		}
+	},
+	"style_guide": {
+		"path": "~/local-operator i18n/style-guides/hi.md",
+		"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+		"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"core_commit": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9"
+	},
+	"scope": {
+		"keys_audited": [
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending",
+			"ui.teamBridge.delivery.info_refused",
+			"ui.teamBridge.delivery.info_held",
+			"ui.teamBridge.delivery.info_label"
+		]
+	},
+	"linguistic_review": "'मॉडरेशन', 'जाँच', 'मालिक' (majority namespace term: 28 vs 3 'स्वामी' in pre-existing non-delta keys), 'एजेंट' per glossary; Hindi danda । full stops; hedge 'जैसा लगा' preserved; 'उनके मॉडरेशन' recipient-side.",
+	"findings": [
+		{
+			"id": "I-hi",
+			"severity": "INFO",
+			"key": "ui.teamBridge.delivery.*",
+			"locale": "hi",
+			"note": "'मॉडरेशन', 'जाँच', 'मालिक' (majority namespace term: 28 vs 3 'स्वामी' in pre-existing non-delta keys), 'एजेंट' per glossary; Hindi danda । full stops; hedge 'जैसा लगा' preserved; 'उनके मॉडरेशन' recipient-side."
+		},
+		{
+			"id": "I-hi-owner",
+			"severity": "INFO",
+			"key": "ui.teamBridge.members.invitation_note_v2",
+			"locale": "hi",
+			"note": "Observation outside the PR delta: pre-existing main keys use 'स्वामी' for owner (3 values) while the namespace majority and this delta use 'मालिक'. Not a defect of #1521; not counted."
+		}
+	],
+	"status": "passed",
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/439bcc181f80.json",
+			"sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d"
+		}
+	},
+	"notes_not_execution_log": "Audit notes by the auditor; mechanical checks were run as Python over the catalogue bytes at the head above, and ledger-check/assemble were exercised in a scratch copy, not the repo."
+}

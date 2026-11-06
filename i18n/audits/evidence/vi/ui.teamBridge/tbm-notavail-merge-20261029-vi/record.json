@@ -1,0 +1,110 @@
+{
+	"audit_id": "teambridge-notavail-merge-audit-tbm-20261029",
+	"date": "2026-10-29",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"source_commit": "uncommitted merge of origin/main aafa890e3c9825fa1e19c423c022f5a651116c20 into feat/team-bridge-owner-audit-ui (branch head 0d793e3f3a89cfaed81b1222e378c2656d5381b8)",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"model_provenance": "Harness model header at run start read 'Model: anthropic/claude-opus-5-5'. Mid-run the harness announced four sequential provider-quota fallbacks (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro, then radient/auto) and its current header line reads 'You are now running as radient/auto'. radient/auto is therefore the model executing the final analysis and writing these receipts; the earlier reading in this run was performed under anthropic/claude-opus-5-5 before the first switch. Where one model must be named it is radient/auto, per the last header the harness issued - not a guess.",
+			"model_fallback": {
+				"announced": true,
+				"observed": true,
+				"chain": [
+					"anthropic/claude-opus-5-5 (start)",
+					"anthropic/claude-sonnet-5-5",
+					"openai/gpt-6-astra",
+					"kimi/k3.1-pro",
+					"radient/auto"
+				],
+				"note": "Four provider-quota switches were announced by the harness during this run; reason given each time: 'provider failure: quota'. The linguistic judgement in these receipts is the delegated run's, but it spans those models, which is why the chain is recorded rather than a single name."
+			},
+			"date": "2026-10-29",
+			"result": "clean-with-findings",
+			"instance": "tbm-20261029-vi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/tbm-20261029-vi.json",
+			"receipt_sha256": "4dba23c1907e83262887d0280cdf71db2bae8da4f2d1812cf79864eb0e5fc2c4"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (agent role i18n-auditor; delegated subagent of the parent's run teambridge-notavail-merge-audit-tbm-20261029). It authored none of the translated strings: the not_available values were delivered by i18n-translator job 64be94d56ced (per the prior notavail receipts) and this run verified they are byte-identical to the bytes those receipts audited. No finding reached blocker/major, so this run edited no catalogue at all: every target sha256 here names the unmodified merged working-tree bytes. It wrote only its own receipts and evidence records; it did not commit, push, merge, or touch i18n/ledger.json.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "5be0c55997d0a97f363ea54652eba52fbe908ae36dd94c5e48129ebf9ae4e470"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+			"sha256": "aa3b492c16afdacea7251491d7af6f89f238b3cb901727fc16fb27280a9d875d"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "9f939b02dd8e6433b57c0aa6a7e7c51334869f7490278c2538ce989e54b40b5f"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.thread.not_available": {
+			"en": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"target": "Bạn không thể mở cuộc trò chuyện này. Có thể bạn không phải là thành viên, hoặc cuộc trò chuyện đã được lưu trữ."
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"inherited_byte_identical": {
+			"previous_receipt": "i18n/receipts/c6f6f47ef39d-r2-vi.json",
+			"previous_receipt_sha256": "35663a131ad3954aad8773fda35037539e4898984d9b2b961a81a905a5d9764f",
+			"previous_target_sha256": "05a8acff0b19e4258afa6b94fe59a350fb707cc182ebabb6e5406d63b54c6018",
+			"note": "Proof re-derived here, not taken on trust: removing the single line whose stripped form starts with \"ui.teamBridge.thread.not_available\" from the merged src/i18n/catalogues/vi/ui.teamBridge.json and sha256-ing the remainder gives 05a8acff0b19e4258afa6b94fe59a350fb707cc182ebabb6e5406d63b54c6018, byte-identical to `git show origin/main:src/i18n/catalogues/vi/ui.teamBridge.json` (sha256 05a8acff0b19e4258afa6b94fe59a350fb707cc182ebabb6e5406d63b54c6018) - which is the target_sha256 this ledger row already records (05a8acff0b19e4258afa6b94fe59a350fb707cc182ebabb6e5406d63b54c6018). A difflib unified diff of origin/main against the merged file reports exactly 1 added line and 0 removed, so main's audited bytes are inherited intact and only the new key is new."
+		},
+		"english_change": "en adds only thread.not_available (value + context note); no other en key changed."
+	},
+	"notes": "bạn register at a blocking state, which the vi guide permits; 'thành viên' and 'lưu trữ' match member.count and the archive copy; 'Có thể … hoặc …' hedges both reasons. One MINOR: 'Bạn không thể mở' makes the reader the subject of an inability and renders 'open' as the action verb, so the line reads like a technical failure to open rather than a permission state - the other six locales all frame it as access. 112 chars, +14% on en 98, within the vi guide's 'vi runs long' note; flagged for a rendered check.",
+	"findings": [
+		{
+			"id": "m1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.thread.not_available",
+			"current": "Bạn không thể mở cuộc trò chuyện này. Có thể bạn không phải là thành viên, hoặc cuộc trò chuyện đã được lưu trữ.",
+			"proposed": "Bạn không thể truy cập cuộc trò chuyện này. Có thể bạn không phải là thành viên, hoặc cuộc trò chuyện đã được lưu trữ.",
+			"reason": "The source states a permission fact ('is not open to you'); 'không thể mở' states an inability to perform the open action, which a reader can take for a load failure, and it is the only one of the seven that frames the state as an action rather than access. 'truy cập' is the locale's settled access verb (68 uses) and keeps both stated reasons coherent."
+		}
+	],
+	"resolved_findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_vi": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/tbm-20261029-vi.json",
+			"sha256": "4dba23c1907e83262887d0280cdf71db2bae8da4f2d1812cf79864eb0e5fc2c4"
+		}
+	},
+	"limitations": "No rendered evidence: this role has no browser tool and the host is source-only, so fit is judged by character and cell count, not a rendered frame - no maxCells is declared for this key in the en sidecar. fr (117 chars, +19%) and vi (112, +14%) are the two a rendered check should look at first. ur was checked at the code-point level only (no bidi controls, correct Urdu stops, no Latin run); there is no FriBidi or terminal render. Translator provenance (job 64be94d56ced) is inherited from the prior receipts rather than re-verified - what this run did verify is that the delivered strings are byte-identical to those audited. This run is a delegated subagent with no session id of its own, so the instance id is the parent's; and the model changed mid-run under provider quota (see model_provenance), so the judgement spans more than one model. i18n/ledger.json is itself unmerged (UU) at this merge: the working-tree copy read here takes main's rows (c6f6f47ef39d-r2-* with main's target bytes), while the branch side of the conflict names the b393dc8cd01c-notavail-* receipts against the pre-merge branch bytes, so previous_receipt/previous_target_sha256 follow the working tree and the main side - resolving the conflict the other way would change what 'previous' means, not the bytes audited."
+}

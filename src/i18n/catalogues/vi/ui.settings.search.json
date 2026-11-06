@@ -1,0 +1,20 @@
+{
+	"ui.settings.search.field.label": "Tìm cài đặt",
+	"ui.settings.search.field.placeholder": "Tìm cài đặt",
+	"ui.settings.search.empty.summary": "Tìm trong mọi cài đặt trên trang này và trong danh mục của dịch vụ đang kết nối.",
+	"ui.settings.search.empty.shortcut": "Nhấn {shortcut} để tìm kiếm từ bất kỳ đâu trên trang này.",
+	"ui.settings.search.no_results.title": "Không có kết quả nào khớp với “{query}”.",
+	"ui.settings.search.no_results.hint": "Thử từ khác, hoặc xóa nội dung ô tìm kiếm để tiếp tục xem trang.",
+	"ui.settings.search.no_results.clear": "Xóa tìm kiếm",
+	"ui.settings.search.results.count": "{count, plural, other {# kết quả}}",
+	"ui.settings.search.results.more": "{count, plural, other {Còn # kết quả chưa hiển thị}}",
+	"ui.settings.search.panel.label": "Kết quả cài đặt",
+	"ui.settings.search.reason.label": "khớp tên",
+	"ui.settings.search.reason.synonym": "khớp thuật ngữ liên quan",
+	"ui.settings.search.reason.key": "khớp khóa cài đặt",
+	"ui.settings.search.reason.choice": "khớp tùy chọn",
+	"ui.settings.search.reason.section": "khớp mục",
+	"ui.settings.search.reason.description": "khớp mô tả",
+	"ui.settings.search.jump.missing": "Cài đặt đó hiện không có trên màn hình.",
+	"ui.settings.search.row.section_hint": "Trong {section}"
+}

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientContext } from "@tanstack/react-query";
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo } from "react";
 
 /**
  * A QueryClient for a hook that must be callable in a document which may not
@@ -34,10 +34,17 @@ export const useOptionalQueryClient = (): {
 	const fallback = useMemo(
 		() =>
 			new QueryClient({
-				defaultOptions: { queries: { enabled: false, retry: false } },
+				defaultOptions: {
+					queries: { enabled: false, retry: false, gcTime: 0 },
+				},
 			}),
 		[],
 	);
+	useEffect(() => {
+		if (provided) return;
+		// Disabled queries still have GC timers; this private client owns them.
+		return () => fallback.clear();
+	}, [provided, fallback]);
 	return useMemo(
 		() =>
 			provided

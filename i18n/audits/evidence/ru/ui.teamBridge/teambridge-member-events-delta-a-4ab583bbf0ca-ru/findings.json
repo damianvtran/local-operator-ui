@@ -1,0 +1,18 @@
+[
+	{
+		"id": "RU-D1",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.declined",
+		"current": "{actor}: отклонение приглашения для {targets}",
+		"proposed": "{actor}: отклонение приглашения — {targets}",
+		"reason": "The delta replaced the pre-delta «отклонено приглашение — {targets}» with a «для {targets}» tail; the other five actor-prefixed event lines (invited, removed, consented, owner_added_agent, withdrawn) all put the name list after an em dash, so this is the only line in the family that breaks the rhythm. Meaning and grammar are fine either way."
+	},
+	{
+		"id": "RU-D2",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.joined",
+		"current": "Присоединение к разговору: {targets}",
+		"proposed": "no text change proposed — measure the row first",
+		"reason": "36 cells at one target against the English 16 (2.25×, up from 29 pre-delta): the widest events line in ru now. The nominalisation is the ru house pattern and its sibling «Выход из разговора: {targets}» is 29, so this is a rendered-width flag on the one-line timeline row, not a wording defect."
+	}
+]

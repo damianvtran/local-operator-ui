@@ -1,0 +1,18 @@
+[
+	{
+		"id": "UR-D1",
+		"severity": "major",
+		"key": "ui.teamBridge.events.declined_self",
+		"current": "{actor} نے دعوت سے انکار کر دی",
+		"proposed": "{actor} نے دعوت سے انکار کر دیا",
+		"reason": "انکار is masculine, so the perfective light verb is دیا, not دی; the delta swapped مسترد کر دی (where feminine دی agreed with دعوت) for «سے انکار» and kept the old ending, producing the only «انکار کر دی» forms in either Urdu catalogue: 0 hits in 1,921 core ur strings, and inside this 297-key namespace the only two are these delta lines, against «انکار کر دیا» in the namespace's own invitations.declined and in the core's remote_refusal_silent. The accepted round-1 remedy UR-A2 proposed «کر دیا»; the applied bytes drop the final alif."
+	},
+	{
+		"id": "UR-D2",
+		"severity": "major",
+		"key": "ui.teamBridge.events.declined",
+		"current": "{actor} نے {targets} کے لیے دعوت سے انکار کر دی",
+		"proposed": "{actor} نے {targets} کے لیے دعوت سے انکار کر دیا",
+		"reason": "Same agreement slip in the on-behalf line: the term alignment مسترد → انکار is an improvement and now matches invitations.decline/declining/declined, but the light verb kept the feminine ending the old مسترد construction required."
+	}
+]

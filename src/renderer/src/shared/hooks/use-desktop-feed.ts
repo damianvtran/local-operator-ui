@@ -41,6 +41,7 @@
  * The line the sidebar renders from this is the cheapest honest answer.
  */
 
+import { applyAgentAvatarFrame } from "@shared/agent-avatar/agent-avatar";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -176,6 +177,8 @@ export type NotificationsFrame = {
 };
 
 let latestNotificationsFrame: NotificationsFrame | null = null;
+/** The last `agent.avatar.changed` frame applied (see its branch below). */
+let lastAvatarFrameKey: string | null = null;
 const notificationsFrameListeners = new Set<() => void>();
 
 function publishNotificationsFrame(
@@ -380,6 +383,21 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			 */
 			if (frame.type === "notifications") {
 				publishNotificationsFrame(frame);
+				return;
+			}
+			/*
+			 * A local agent's picture changed. Applied by the module that owns the
+			 * picture's query keys (`shared/agent-avatar/agent-avatar.ts`), once per
+			 * frame: this hook is mounted by more than one component, and each mount
+			 * receives every frame, so the key collapses N deliveries into one
+			 * refresh the way `publishNotificationsFrame` does.
+			 */
+			if (frame.type === "agent.avatar.changed") {
+				const key = `${frame.epoch}:${frame.seq}`;
+				if (lastAvatarFrameKey !== key) {
+					lastAvatarFrameKey = key;
+					applyAgentAvatarFrame(frame.payload);
+				}
 				return;
 			}
 			/*

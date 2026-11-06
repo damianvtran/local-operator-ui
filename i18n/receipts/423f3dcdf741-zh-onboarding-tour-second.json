@@ -1,0 +1,298 @@
+{
+  "auditor": "translation-auditor",
+  "model": "radient/auto (harness launch route exposed by this session; the concrete upstream provider/model is not exposed; no fallback was selected by the auditor)",
+  "instance": "423f3dcdf741-zh-onboarding-tour-second",
+  "session": "423f3dcdf741",
+  "date": "2026-10-25",
+  "locale": "zh-CN",
+  "namespace": "ui.onboarding.tour",
+  "audit_round": "second independent audit (round 2 of the high-visibility pair)",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "keys_read": 123,
+  "keys_audited": 123,
+  "keys_by_namespace": {
+    "ui.onboarding.tour": 123
+  },
+  "source_ref": "worktree HEAD 405e69c012654900f454fa4ca023100290369555 (clean catalogue tree); review target commit d2b78cf as supplied; the target catalogue is committed at HEAD and matches that commit's file",
+  "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+  "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+  "target_sha256": "d9f501fe2ea4c8a763e1718977b65a3e7d22f0f19760ffb16b80f43e2163c4ec",
+  "sha256": {
+    "en": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+    "context": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+    "zh-CN": "d9f501fe2ea4c8a763e1718977b65a3e7d22f0f19760ffb16b80f43e2163c4ec"
+  },
+  "bytes": {
+    "en": 20065,
+    "context": 61441,
+    "zh-CN": 18543
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "radient/auto",
+    "job": "641048ab14c2",
+    "session": "e04adff0eda4"
+  },
+  "first_auditor": {
+    "agent": "translation-auditor",
+    "model": "radient/auto",
+    "instance": "8e3ddc335bf2-zh-onboarding-tour",
+    "session": "1a288d3f5e7c",
+    "receipt": "i18n/receipts/8e3ddc335bf2-zh-onboarding-tour.json",
+    "receipt_sha256": "81abd05c8477e0c08fa09c48a8498963ca0c84dd6846eb51aa1c722295091060"
+  },
+  "independence": "Separate run and session from both the translator job (641048ab14c2 / e04adff0eda4) and the first auditor (8e3ddc335bf2-zh-onboarding-tour / session 1a288d3f5e7c). This instance re-read all 123 English, all 123 context and all 123 target values from the committed files, formed its findings before opening the first receipt, and does not inherit the first receipt's verdict. Findings overlap where the defects are real; the composition differs (two first-round nits declined, four findings new here).",
+  "scope": "Full second independent audit of the single namespace ui.onboarding.tour for zh-CN: 123 English, 123 context-sidecar and 123 target values read side by side; command-palette joined strings rendered from tour-copy.ts runs with the real paletteDoorLabel() keycaps; both wordless figures assessed from their code (no text nodes, no <img>); control labels checked against the shipped zh-CN catalogues. Text-only: no browser/rendered frame, build, test suite, install or native-speaker sign-off.",
+  "verdict_by_namespace": {
+    "ui.onboarding.tour": "clean-with-findings"
+  },
+  "verdict": "clean-with-findings: 0 blocker, 0 major, 5 minor, 6 nit across 123 values. The target reads as native Simplified Chinese product copy: 你 throughout, stable glossary terms, fullwidth punctuation and “ ” quotes, no placeholder/ICU/bidi/NFC risk because every message is parameterless. Remaining findings are semantic/idiomatic polish. The two control-name mismatches a user can actually see (Get; Create schedule) come from root UI/source defects, not from this translation, and are carried separately instead of being charged to the translator.",
+  "findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 5,
+    "nit": 6
+  },
+  "findings": [
+    {
+      "id": "Z2-01",
+      "severity": "minor",
+      "key": "ui.onboarding.tour.select_model.body.1",
+      "current": "选择提供商后，再选择AI模型。标记为“推荐”的模型已知能与Local Operator良好配合，其他模型的性能可能不稳定。如果某个你预期会被推荐、却未列出的模型在Local Operator中表现良好，欢迎通过GitHub Issues或邮件告诉我们。",
+      "proposed": "选择提供商后，再选择AI模型。标为“推荐”的模型经过验证，能与Local Operator良好配合，其他模型的性能可能不稳定。如果某个你预期会被推荐、却未列出的模型，欢迎通过GitHub Issues或邮件告诉我们它在Local Operator中的表现。",
+      "reason": "Two defects in one value: “已知能与…良好配合” is a literal passive for “known to work well”, and “在Local Operator中表现良好，欢迎…告诉我们” narrows the English “let us know if it works well”, which asks for the result either way. Asking for the model's performance restores the open solicitation. (Converges with first-round ZH-T3 on the narrowing; the calque is recorded here too.)"
+    },
+    {
+      "id": "Z2-02",
+      "severity": "minor",
+      "key": "ui.onboarding.tour.chat_input.body.2",
+      "current": "一些可以尝试的强大请求：",
+      "proposed": "以下请求值得一试：",
+      "reason": "“强大” does not collocate with “请求” in Chinese (it modifies ability or features), so “Some powerful requests” has been rendered word for word. The list itself already shows the requests are capable; a verb-forward lead-in is the idiomatic replacement. (Converges with ZH-T2.)"
+    },
+    {
+      "id": "Z2-03",
+      "severity": "minor",
+      "key": "ui.onboarding.tour.navigate_agent_hub.body.1",
+      "current": "让我们去智能体中心看看社区创建的智能体。点击导航栏中的“智能体中心”图标。 / 现在，我们来探索“设置”菜单，把Local Operator调整成你喜欢的样子。",
+      "proposed": "接下来去智能体中心看看社区创建的智能体。… / 接下来看看“设置”菜单，把Local Operator调整成你喜欢的样子。",
+      "reason": "“让我们去…” and “我们来探索…菜单” are calques of “Let's visit” / “let's explore” and drift from the tour's own terse voice at navigate_schedules (“我们去…看看”). “探索菜单” also treats a menu as territory; 看看/了解一下 is what a native walkthrough says. Same screen family, two keys, one fix.",
+      "keys": [
+        "ui.onboarding.tour.navigate_agent_hub.body.1",
+        "ui.onboarding.tour.navigate_settings.body.1"
+      ]
+    },
+    {
+      "id": "Z2-04",
+      "severity": "minor",
+      "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.2.5",
+      "current": "（Windows或Linux）则会在应用自身的命令和页面上打开，适合你要找这类内容时使用。你也可以直接点击侧栏的“搜索”来打开它。",
+      "proposed": "（Windows或Linux）则直接打开应用自身的命令和页面，适合你要找这类内容时使用。你也可以直接点击侧栏的“搜索”来打开它。",
+      "reason": "“在应用自身的命令和页面上打开” reads as opening a window on top of a surface; “opens it on the app's own commands and pages” means the palette opens scoped to those sources. 打开应用自身的命令和页面 states that directly. (The fragment is judged inside the joined paragraph below.)"
+    },
+    {
+      "id": "Z2-05",
+      "severity": "minor",
+      "key": "ui.onboarding.tour.tour_complete.body.1",
+      "current": "你已经了解了Local Operator的主要功能。接下来尽情探索，发现AI智能体为你提供帮助的各种方式吧。祝你自动化愉快。",
+      "proposed": "你已经了解了Local Operator的主要功能。接下来尽情探索，发现AI智能体为你提供帮助的各种方式吧。祝你用得顺手。",
+      "reason": "“祝你自动化愉快” is “Happy automating” word for word; Chinese well-wishing needs an activity or experience (使用愉快 / 用得顺手 / 自动化之旅愉快). The closing line is high-visibility, so the calque is worth fixing even though it is understandable."
+    },
+    {
+      "id": "Z2-06",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.create_schedule.title",
+      "current": "设置周期任务",
+      "proposed": "设置定时任务",
+      "reason": "The namespace, ui.schedules.* and the sidebar all use 定时任务 for schedule, and the same step's body quotes “创建定时任务”. 周期任务 gives one step two names for one object. (Converges with ZH-T5.)"
+    },
+    {
+      "id": "Z2-07",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.create_schedule.body.2",
+      "current": "你也可以创建只在将来某个时间运行一次的任务。 / 你也可以安排只在将来某个时间运行一次的任务。",
+      "proposed": "两处统一为「你也可以创建只在将来某个时间运行一次的任务。」",
+      "reason": "The two English values are byte-identical; the target renders one with 创建 and the other with 安排. Same sentence on two tour steps should use one verb. (Converges with ZH-T4.)",
+      "keys": [
+        "ui.onboarding.tour.create_schedule.body.2",
+        "ui.onboarding.tour.create_schedule_dialog.body.3"
+      ]
+    },
+    {
+      "id": "Z2-08",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.4",
+      "current": "' 用于对话，' / ' 用于智能体和团队，' / ' 用于设置，以及' / ' 用于命令和页面。'",
+      "proposed": "去掉四个前缀片段的引导空格（#用于对话，@用于智能体和团队，,用于设置，以及>用于命令和页面），与同段按键片段和 connector 的处理统一。",
+      "reason": "Optional consistency nit, not a rule breach: the sidecar says CJK may omit the structural space, and all four prefix fragments keep it while the keycap fragments and connector drop it. If normalised, do all four together and re-check the “，,” chip join in a rendered frame first; removing the space alone would glue the comma chip harder to 用于.",
+      "keys": [
+        "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.4",
+        "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5",
+        "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.6",
+        "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.7"
+      ]
+    },
+    {
+      "id": "Z2-09",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.upload_agent_hub_dialog.body.1",
+      "current": "此对话框会把智能体的指令集发布到社区。发布需要Radient账户，注册免费，且不按智能体数量收费。确认前你可以查看详情。发布的只是描述智能体的内容，即名称、描述、指令和工具范围；对话、执行历史、记忆、计划和与本机相关的配置都不会离开你的电脑。提交前请确保智能体符合各项要求。",
+      "proposed": "提交前，确保智能体符合各项要求。",
+      "reason": "The zh-CN style guide allows 请 only where the English says please (blocking dialogs). “Make sure your agent meets the required criteria before submitting” has no please, and the rest of this namespace is verb-forward without it. (Converges with ZH-T9.)"
+    },
+    {
+      "id": "Z2-10",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.canvas_documents_view.body.3",
+      "current": "在文档中选中想要智能体改进的文字，按Cmd/Ctrl+K即可调出内联AI编辑器。",
+      "proposed": "在文档中选中想要智能体改进的文字，按Cmd/Ctrl+K即可调出行内AI编辑器。",
+      "reason": "For an editor acting on selected text, Chinese product copy says 行内; 内联 is the CSS/function sense. Optional polish; no glossary row decides it. (Converges with ZH-T6.)"
+    },
+    {
+      "id": "Z2-11",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.schedules_overview.title",
+      "current": "主动型智能体与定时任务",
+      "proposed": "带定时任务的主动型智能体",
+      "reason": "“Proactive agents with schedules” is about agents that have schedules; “与” coordinates two separate things (agents and schedules). The step body is precisely about agents becoming proactive through schedules, so the possessive relation is worth keeping in the heading."
+    }
+  ],
+  "observations": [
+    {
+      "id": "Z2-O1",
+      "note": "Widths: every body paragraph is materially narrower than its English source (longest Chinese body 292 cells, agent_capabilities.body.1, against 457 English characters); no body exceeds its English width in cells. Label budgets hold: action.next 下一步 is exactly 1.50x (6 cells vs 4 characters, the only string on the cap), upload_agent_hub_dialog.title is 1.16x (22 vs 19), every other title/alt is at or below 1.0x. Cell counts only — no measured glyph widths and no pixel/overflow claim; the footer, step-7 chip paragraph and the two alt labels still need a rendered pass."
+    },
+    {
+      "id": "Z2-O2",
+      "note": "Controls: 下一步 = ui.onboarding.tour.action.next is used by the 36 advancing steps, 完成 = action.finish once on the final step (tour-steps.ts:1273), 返回 = action.back on the steps with a back button, and 关闭导览 = action.close is the Shepherd accessible close label (tour-steps.ts:1292). Register is standard for a tour footer; no T/V or capitalization mismatch (Chinese has no case)."
+    },
+    {
+      "id": "Z2-O3",
+      "note": "Quoted labels verified against shipped zh-CN values: “查看智能体设置” = ui.agents.dialogs.menu.settings; “智能体中心” = ui.shell.sidebar_navigation.agent_hub; “定时任务” = ui.shell.sidebar_navigation.schedules; “设置” = ui.shell.user_profile_sidebar.settings; “搜索” = ui.shell.sidebar_navigation.search; “推荐” = ui.common.models.model_select.recommended; “Automatic” is kept Latin exactly as ui.common.models leaves it. The two exceptions are the source defects S1 and S2 below."
+    },
+    {
+      "id": "Z2-O4",
+      "note": "Glossary/style conformance: agent 智能体, tool 工具, prompt 提示词, schedule 定时任务, canvas 画布, workspace 工作区, credits 额度, cost 费用, hosting provider 模型提供商 (the dominant existing form, e.g. ui.common.models.hosting_select.hosting_provider), tour 导览. 你 everywhere, 0 您, 0 啦/哦/呀, 0 ！, fullwidth punctuation, “ ” quotes only, no ASCII punctuation adjacent to CJK, no ellipsis, all 123 values NFC-normalized, no bidi/zero-width controls."
+    },
+    {
+      "id": "Z2-O5",
+      "note": "Figures (code-only assessment): both tour figures are wordless structural HTML — WELCOME_FIGURE and AGENT_CAPABILITIES_FIGURE in tour-copy.ts:105-147 contain only <div>/<span> with class names, aria-hidden inner markup, no text nodes and no <img>/raster source; renderBlock wraps them in role=\"img\" with aria-label = t(altKey). The two alt values describe the drawing (带侧栏、消息气泡和输入框的聊天窗口; 三个依次相连的智能体工作步骤), never say 图片/截图 and do not describe product copy. No English screenshot exists in these figures; no pixels were inspected."
+    },
+    {
+      "id": "Z2-O6",
+      "note": "Joined strings were executed, not eyeballed: the run order in TOUR_BODIES.pre_command_palette_open_canvas was concatenated with paletteDoorLabel() values from palette-shortcut.ts:182-190 (⌘P/Ctrl+P, ⌘K/Ctrl+K, ⌘⇧P/Ctrl+Shift+P). Keycap order is correct (everything first; then chats before commands), the platform qualifiers use fullwidth parentheses directly after each keycap, and all four prefix chips (# @ , >) survive in code order. See joined_renders."
+    },
+    {
+      "id": "Z2-O7",
+      "note": "Context compliance checked against all directive-bearing sentences in the sidecar: example user inputs keep their quotation marks and use “ ”; “tools” and “code memory” are translated as prose with Chinese quotes, not treated as control labels; Cmd/Ctrl+K is byte-identical to the source and not reformatted; “+” and “Agent Hub” quotes match their controls; the close label says it closes the tour. All 99 distinct width budgets were inspected."
+    },
+    {
+      "id": "Z2-O8",
+      "note": "Typography: the 14 English double spaces were collapsed (0 double spaces in the target); titles are period-free, bodies keep 。; no ASCII comma/colon/question mark sits next to CJK; quote pairs are balanced; UTF-8, tab-indented, trailing newline, 18543 bytes."
+    }
+  ],
+  "source_observations": [
+    {
+      "id": "Z2-S1",
+      "severity": "source-defect",
+      "area": "agent-card.tsx / ui.onboarding.tour.download_agent.body.1",
+      "note": "The Agent Hub card renders the literal English `Get` at src/renderer/src/features/agent-hub/components/agent-card.tsx:413 (aria-label `Download ${displayName}` is hardcoded too), so no locale shows a translated 获取 control. The tour quotes “获取”, which is the correct translation of the English quote but does not name anything on screen. Root fix belongs to agent-card.tsx (key the label); an interim catalogue-only workaround would quote “Get”, but that would not make the product localised. Not counted as a translator finding."
+    },
+    {
+      "id": "Z2-S2",
+      "severity": "source-defect",
+      "area": "tour-steps.ts / ui.onboarding.tour.create_schedule.body.1",
+      "note": "The create-schedule tour step anchors button[data-tour-tag=\"create-schedule-button\"] (tour-steps.ts:1017-1021), whose visible label is ui.schedules.schedules_page.new_scheduled_task = 新建定时任务 (en: New scheduled task). The tour quotes “Create schedule” / “创建定时任务”, which is ui.schedules.schedule_form_dialog.create_schedule — a legacy dialog label, not the anchored control. English and Chinese share the defect; the translation is faithful. Root copy/tour fix, not a translator finding."
+    },
+    {
+      "id": "Z2-S3",
+      "severity": "source-defect",
+      "area": "step-7 comma keycap / joined paragraph 1",
+      "note": "The comma chip sits where English says “teams, , for settings”, so the joined Chinese paragraph contains “，,” (“…用于智能体和团队，, 用于设置…”). This is structural to the shared run order and cannot be fixed cleanly in one catalogue value; fix the English run order/copy first. A rendered check of this paragraph is still owed (not performed here); no pixel claim is made."
+    },
+    {
+      "id": "Z2-S4",
+      "severity": "source-defect",
+      "area": "download_agent title vs Get",
+      "note": "download_agent.title = “Download an agent” → 下载智能体, while its body and the real control say “Get”. The mismatch exists in English; the target mirrors it. Root copy-consistency issue; not counted against the translator."
+    }
+  ],
+  "prior_receipt_dispositions": {
+    "first_receipt": "i18n/receipts/8e3ddc335bf2-zh-onboarding-tour.json",
+    "first_receipt_sha256": "81abd05c8477e0c08fa09c48a8498963ca0c84dd6846eb51aa1c722295091060",
+    "first_result": "clean-with-findings (0 blocker, 0 major, 3 minor, 6 nit)",
+    "target_bytes_changed_since_first": false,
+    "remediation_required": false,
+    "note": "The first audit passed, so no remediation round was owed and the target hash is unchanged. This pass re-derived every value and does not inherit that verdict.",
+    "concur": [
+      "ZH-T2 -> Z2-02",
+      "ZH-T3 -> Z2-01",
+      "ZH-T4 -> Z2-07",
+      "ZH-T5 -> Z2-06",
+      "ZH-T6 -> Z2-10",
+      "ZH-T8 -> Z2-08 (reframed: the sidecar permits the space; recorded as a consistency preference, not a rule breach)",
+      "ZH-T9 -> Z2-09"
+    ],
+    "not_adopted": [
+      "ZH-T1: “尽管按需创建，帮你处理日常事务” is acceptable Chinese; the purpose clause can attach to the create action. No change recommended.",
+      "ZH-T7: quoting UI labels (“定时任务”, “设置”, “搜索”) helps the reader locate the control and is consistent across the namespace; the English having no quotes is not a defect. No change recommended."
+    ],
+    "new_in_this_pass": [
+      "Z2-03",
+      "Z2-04",
+      "Z2-05",
+      "Z2-11"
+    ]
+  },
+  "joined_renders": {
+    "method": "Renderer's own run order (tour-copy.ts TOUR_BODIES.pre_command_palette_open_canvas; key runs = t(key), code runs = literal <code> content, renderRuns concatenates with no separator), with paletteDoorLabel() from palette-shortcut.ts:182-190. Scratch string join only — no DOM, browser, build or component render.",
+    "keycaps_from_code": {
+      "everything": [
+        "⌘P",
+        "Ctrl+P"
+      ],
+      "chats": [
+        "⌘K",
+        "Ctrl+K"
+      ],
+      "commands": [
+        "⌘⇧P",
+        "Ctrl+Shift+P"
+      ]
+    },
+    "step7_paragraph_1": "再快速看看另一个强大功能：命令面板。在应用的任何位置，按下⌘P（Mac）或Ctrl+P（Windows或Linux）即可打开。这是一个可以从应用任意位置唤出的便捷窗口，让你用键盘访问对话、智能体、设置、页面和各项操作等。用这种方式进入应用的各个分区，往往比层层点击菜单更快。输入一个词即可一次搜索全部内容，也可以先输入前缀缩小范围：# 用于对话，@ 用于智能体和团队，, 用于设置，以及> 用于命令和页面。",
+    "step7_paragraph_1_sha256": "456a447be34803898740666885c48ac55c708306771cbbc8e38a1544650b1597",
+    "step7_paragraph_2": "急着开始对话？按下⌘K（Mac）或Ctrl+K（Windows或Linux），命令面板会直接以对话为搜索范围打开，一步跳到目标对话；而按下⌘⇧P（Mac）或Ctrl+Shift+P（Windows或Linux）则会在应用自身的命令和页面上打开，适合你要找这类内容时使用。你也可以直接点击侧栏的“搜索”来打开它。",
+    "step7_paragraph_2_sha256": "4bc45b99ec741bfe835fef9ea06465348ef17ff4f3616832620eeb26e069a0f9",
+    "checks": "Keycap order matches the run array; platform qualifiers are fullwidth and directly after the keycap; all four prefix chips are present in source order; no fragment is missing or duplicated."
+  },
+  "mechanical": {
+    "key_parity": "123/123 keys, identical names and identical order; context 123/123",
+    "duplicate_keys": "none (raw-text scan)",
+    "icu": {
+      "plural_blocks": 0,
+      "select_blocks": 0,
+      "skeletons": 0,
+      "markup_tags": 0,
+      "parameter_tokens": 0,
+      "note": "Verified parameterless: 0 '{' and 0 '}' across all 246 English+target values; tour-copy.ts narrows tour keys to WithoutParams. CLDR plural categories are N/A — zh-CN requires only other, and no plural message exists."
+    },
+    "nfc": "all 123 values NFC-normalized",
+    "bidi_invisible": "none (U+200B–200F, U+202A–202E, U+2066–2069, U+FEFF absent)",
+    "whitespace_structure": "4 prefix fragments keep the English structural leading space; keycap fragments, connector and body fragments drop it. The sidecar permits CJK omission; analysed as joined strings (Z2-08).",
+    "punctuation": "fullwidth prose punctuation; “ ” only; balanced; no ASCII punctuation adjacent to CJK; no ellipsis; no double spaces",
+    "register": "你 only; 0 您; 0 啦/哦/呀; 0 ！; titles period-free",
+    "formatting": "UTF-8, tab-indented, trailing newline; 20065 / 61441 / 18543 bytes"
+  },
+  "overflow": "No body overflow risk: the longest Chinese body is 292 cells (agent_capabilities.body.1) against 457 English characters, and no body is wider than its English source in cells. Labels are at or below 1.5x: 下一步 exactly 1.50x, 上传智能体到智能体中心 1.16x, all others ≤1.0x. These are cell counts (CJK 2 / ASCII 1), not measured glyph widths; no pixel claim. Rendered checks still owed: footer 返回/下一步/完成; step-7 four-chip paragraph (especially “，,”); the two alt labels as announced by a screen reader.",
+  "glossary": {
+    "path": "local-operator/i18n/glossary.md",
+    "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "local-operator/i18n/style-guides/zh-CN.md",
+    "style_guide_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+    "catalogue_contract": "local-operator-ui docs/I18N.md read for the receipt/ledger contract"
+  },
+  "access_gaps": "The sanctioned masked-copy reader (read_public_copy) is allowlisted to local_operator core paths and refused this repository's UI catalogue path; no masked value was decoded or reconstructed. The only masked token in the English tour copy is the glossary's [redacted] noun; the glossary row fixes its zh-CN rendering as 工作区, and the target uses 工作区 in all five occurrences (canvas_feature.body.1, canvas_feature.title, canvas_open_button.body.1, canvas_files_view.body.1, welcome.list.1.item.3). Some tour-copy.ts key identifiers were display-masked in this session's tool output; the run order was read from the visible run structure and the committed catalogues, not from a secret store, and the keycap values came from paletteDoorLabel() in palette-shortcut.ts.",
+  "limitations": "Text-only second audit. No browser (the harness browser host is unavailable in this run), no OS launch, no build/tests/full suite/install, no pseudo-localization, no native-speaker or design/UX sign-off. Widths are cell counts, not rendered geometry. The target tree carries other locales' untracked second-audit receipts written by their own auditors; they were not read or modified, and only the zh-CN catalogue was audited. Source defects S1–S4 are carried, not waived."
+}

@@ -11,11 +11,12 @@
  *
  * The fix is the container, not the symptom: the panel is now a member of the
  * CANVAS FAMILY - right-docked, a 40px chrome bar, its own scroller, the family's
- * width arithmetic (`min(560, row - 480)`, floor 400, the `overlay` literal below
- * the floor - a flex dock, not a cover, since the positioning was removed; see
- * `chat-sidebar-layout.ts`). The card can no longer be the widest thing on the
- * screen because it fills a pane the family sizes, which is also why there is no
- * separate width rule here for it to fight with.
+ * width arithmetic (`min(RIGHT_SLOT_MAX_PX, row - 480)`, floor 400). Below the dock
+ * breakpoint it is a right-anchored SHEET over the row that cannot host it
+ * (`askPanePresentation`), with a scrim and an opaque ground, because a 0-wide flex
+ * dock is not a readable drawer. The card can no longer be the widest thing on the
+ * screen because it fills a pane the family sizes, and it opens at the same width
+ * as every other pane in the slot; there is no separate width rule here.
  *
  * ## One right pane at a time
  *
@@ -210,6 +211,21 @@ const keyboardLeftOnMenuPress = (active: Element): boolean =>
 	active === document.body || active.matches(MENU_TRIGGER_SELECTOR);
 
 /**
+ * Whether the element is inside a subtree an `inert` ancestor has covered.
+ *
+ * THE PRESS LATCH BELOW NEEDS THIS, not merely "focus is on BODY": a click on
+ * chrome that cannot take focus, or a blur, also parks the keyboard on body
+ * while the drawer waits for its records, and adopting the latch there would
+ * pull focus into the drawer after the user moved away (agent review round 2,
+ * m-r2-2). `inert` blurs the focused descendant to body AND marks the subtree,
+ * so the marker is what distinguishes our own open from a keyboard that left.
+ * The property reflects the attribute in every engine the app ships on, so
+ * `closest` reads the same fact the parent's layout effect wrote.
+ */
+const insideInert = (element: Element | null): boolean =>
+	element !== null && element.closest("[inert]") !== null;
+
+/**
  * HOW MANY TIMES the claim below may re-take the keyboard before it gives up.
  *
  * A BOUND, NOT A TUNING KNOB. The menu's close writes focus more than once on
@@ -236,6 +252,27 @@ export type AskDrawerProps = {
 	 * drawer.
 	 */
 	scope: AskScope;
+	/**
+	 * THE GROUND THIS DRAWER PAINTS, chosen by the mount from the presentation it
+	 * was drawn in (2026-11-03). "glass" is the pane's translucent window-glass
+	 * ground (`data-glass-region="pane"`): correct for a pane DOCKED beside the
+	 * conversation over window material, wrong for the sheet drawn OVER the
+	 * conversation, where the transcript shows through it. "solid" drops that
+	 * marker so `bg-elevated` is opaque. Defaults to "glass", the pane's existing
+	 * ground, so every existing mount and story keeps what it had.
+	 */
+	ground?: "glass" | "solid";
+	/**
+	 * WHETHER THIS SURFACE COVERS CONTENT, which is what decides whether a press on
+	 * SOMEONE ELSE'S control survives its own commit (agent review round 3, MINOR-1).
+	 * The sheet's mount inerts or removes the control that opened it, so the press is
+	 * latched and the keyboard follows it in; the docked pane takes nothing away, so a
+	 * control that still holds focus keeps it - and a composer the user is typing in
+	 * must never be pulled into the pane by a request it did not make. Chosen by the
+	 * mount from `askPanePresentation`'s mode, beside `ground` and from the same fact;
+	 * defaults to "docked" so every existing mount and story keeps its behaviour.
+	 */
+	presentation?: "docked" | "overlay";
 	/**
 	 * The door that closes the drawer WITHOUT answering. The caller owns the flag
 	 * (the store does), so this reports the request rather than applying it - AND
@@ -310,6 +347,8 @@ export type AskDrawerProps = {
 export const AskDrawer = ({
 	frontend,
 	scope,
+	ground = "glass",
+	presentation = "docked",
 	onClose,
 	onAnswer,
 	onDecline,
@@ -703,6 +742,8 @@ export const AskDrawer = ({
 
 	const wasBootstrapped = useRef(false);
 	const doorRef = useRef<Element | null>(null);
+	/* The press itself, latched before the unread wait (see the entry effect). */
+	const pressedDoorRef = useRef<Element | null>(null);
 	useLayoutEffect(() => {
 		/*
 		 * THE CLAIM RE-ARMS ON EVERY COMMIT UNTIL IT SETTLES, including a commit a
@@ -772,6 +813,38 @@ export const AskDrawer = ({
 		 * menu row as a no-op.
 		 */
 		if (door !== null || requested) openedByDoor.current = true;
+		/*
+		 * THE DOOR IS LATCHED AS SOON AS IT IS SEEN, BEFORE THE WAIT BELOW CAN RETURN
+		 * (agent review round 1, m1). The covered column is `inert` on this same commit
+		 * - the parent's layout effect runs AFTER this one, and `inert` blurs the chip
+		 * to `<body>` - so a later commit of the unread wait cannot re-read the press.
+		 * Only a real DOOR is latched (`pressedDoorRef`), never the menu's trigger: the
+		 * request path has its own guard and must keep it.
+		 */
+		if (door !== null) pressedDoorRef.current = door;
+		else if (
+			presentation === "overlay" &&
+			requested &&
+			!viaMenu.current &&
+			pressedDoorRef.current === null &&
+			active !== document.body
+		) {
+			/*
+			 * A CHORD'S PRESSED CONTROL IS THE SAME KIND OF ORIGIN (agent review round 2,
+			 * M2-r2). A press that opens the sheet from an ordinary button - the notice's
+			 * "Open asks", the confirm's "Open asks panel" - is latched here too: the button
+			 * may still hold focus on this commit and is then blurred by the covered
+			 * column's `inert`, or removed with the confirm, and either way the keyboard
+			 * must end in the sheet rather than on `<body>`. The menu's trigger keeps its
+			 * own guard and is never latched as a press (`viaMenu`).
+			 *
+			 * AND ONLY THE SHEET LATCHES (agent review round 3, MINOR-1): the docked
+			 * pane takes nothing away, so a control still holding focus - the composer
+			 * the user is typing in, most of all - keeps it. Latching there made an asks
+			 * request pull the caret out of the box.
+			 */
+			pressedDoorRef.current = active;
+		}
 		const root = rootRef.current;
 		/* No container yet: nothing to move focus into, and the one-shot is not spent. */
 		if (root === null) return;
@@ -802,7 +875,29 @@ export const AskDrawer = ({
 		 */
 		if ((door !== null || requested) && frameUnread) return;
 		wasBootstrapped.current = true;
-		if (door === null && !requested) return;
+		/*
+		 * THE LATCHED PRESS IS ACCEPTED WHERE OUR OWN COMMIT LEFT THE KEYBOARD (agent
+		 * review round 1, m1): focus on the body is not the user moving away, it is the
+		 * covered column being made inert under the chip they pressed - or that control
+		 * removed outright -, and a user who went anywhere else still has no `door` here
+		 * and stands the move down, as before.
+		 *
+		 * AND THE TWO READINGS ARE BOTH EVIDENCE, because `<body>` alone is not (agent
+		 * review round 2, m-r2-2): a click on non-focusable chrome parks the keyboard in
+		 * exactly that place. The latched origin is adopted when the keyboard is still ON
+		 * it, or when it went to `<body>` and our own commit took the control away - the
+		 * covered column marks it `inert`, or the confirm that held it was removed
+		 * (`!isConnected`). Anything else means the user moved on. Only a SHEET has a
+		 * latch to adopt at all (see the latch above).
+		 */
+		const latched = pressedDoorRef.current;
+		const latchedPressOk =
+			latched !== null &&
+			(active === latched ||
+				(active === document.body &&
+					(insideInert(latched) || !latched.isConnected)));
+		const pressedDoor = door ?? (latchedPressOk ? latched : null);
+		if (pressedDoor === null && !requested) return;
 		/*
 		 * THE RETURN TARGET: the pressed door itself, or - for the menu's request -
 		 * the trigger Radix handed the keyboard back to (`MENU_TRIGGER_SELECTOR`).
@@ -816,11 +911,11 @@ export const AskDrawer = ({
 		 * elsewhere (the composer, a palette) keeps their newer act. Either way the
 		 * one-shot is SPENT above, so a later Tab cannot resurrect the move.
 		 */
-		if (door !== null) doorRef.current = door;
+		if (pressedDoor !== null) doorRef.current = pressedDoor;
 		/* The request's target was recorded when the request was SEEN (above); this
 		 * is the fallback for a paint that could not find one then. */
 		if (viaMenu.current) doorRef.current ??= menuReturnTarget(active);
-		if (door === null && !keyboardLeftOnMenuPress(active)) return;
+		if (pressedDoor === null && !keyboardLeftOnMenuPress(active)) return;
 		/*
 		 * THE LIST'S FIRST CONTROL, not the bar's and not the filter's (UX round 1, U4;
 		 * agent review round 1, m1). The bar leads the DOM and its first focusable is
@@ -1004,7 +1099,14 @@ export const AskDrawer = ({
 					: t("ui.chat.asks.conversation_asks")
 			}
 			data-lo-ask-surfaces=""
-			data-glass-region="pane"
+			/*
+			 * THE GLASS MARKER IS THE PRESENTATION'S, not the component's (2026-11-03): the
+			 * CSS gives every `[data-glass-region="pane"]` a TRANSLUCENT `elevated`
+			 * (`styles/index.css`, net alpha inside `<main>`), which is what a docked pane
+			 * wants over window material and what makes text bleed through when the same
+			 * pane is drawn over the transcript. The sheet mount passes `ground="solid"`.
+			 */
+			data-glass-region={ground === "glass" ? "pane" : undefined}
 			data-ask-drawer={scope}
 			tabIndex={-1}
 			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
@@ -1090,55 +1192,79 @@ export const AskDrawer = ({
 				)}
 			>
 				{/*
-				 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
-				 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
-				 * clipped-list statement for a PUBLISHED frame (`asks` OR `asks_open` present),
-				 * including the live-but-empty one the drawer used to render as nothing. The
-				 * two unpublishable frames are NOT one state: an UNREAD frame is a progress
-				 * state that will resolve, and a RESOLVED frame that publishes no engine is a
-				 * terminal answer about the runtime - the same words over both parked a
-				 * permanent `Reading the asks…` on a runtime that will never read anything.
-				 * So each gets its own honest line, and the second is not a claim that can
-				 * never complete.
+				 * THE CONTENT MEASURE (design review round 1, D1). The slot's one ceiling
+				 * reached 1200 with #1525, and this drawer had no measure of its own: at a
+				 * 1200 pane the card was 1176 wide around a 277px question run and 165px of
+				 * actions - the decision affordance, by design the first thing in the
+				 * hierarchy (§ 7), reduced to the smallest object in the largest box. The
+				 * card is a decision to read, not a surface to scan, so the column stops
+				 * growing at 720: wide enough for the card's option rows at the 640 opening
+				 * width plus a description column, and past that the pane's ground carries
+				 * the air instead of empty rows inside a heavy border.
+				 *
+				 * THE WRAPPER AND NOT THE SCROLLER, because the scroller has to keep the
+				 * pane's width: a scrollbar inside the constrained column would narrow the
+				 * measure every time the queue grows past the window, which reads as a jump
+				 * (AGENTS.md, "Scrollbars sit outside the content constraint"). It stays
+				 * start-aligned, so the cards hold the same left edge as the chrome bar's
+				 * scope line above them, and `max-w` in logical space flips with the
+				 * document under RTL. The chrome bar and the tab strip are chrome and keep
+				 * the pane's full width, as the bar does on every pane in this family.
 				 */}
-				{view.published ? (
-					<AskPanel
-						view={view}
-						nowMs={now}
-						answering={answering}
-						outcomes={outcomes}
-						drafts={drafts ?? EMPTY_DRAFTS}
-						onDraftChange={onDraftChange ?? noopDraftChange}
-						onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
-						onDecline={(task) => onDecline?.(task.ask_id)}
-						onRevise={
-							onRevise === undefined
-								? undefined
-								: (task, answers) => onRevise(task.ask_id, answers)
-						}
-						onDismiss={
-							onDismiss === undefined
-								? undefined
-								: (task, reason) => onDismiss(task.ask_id, reason)
-						}
+				<div className={cn("w-full max-w-[720px]")}>
+					{/*
+					 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
+					 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
+					 * clipped-list statement for a PUBLISHED frame (`asks` OR `asks_open` present),
+					 * including the live-but-empty one the drawer used to render as nothing. The
+					 * two unpublishable frames are NOT one state: an UNREAD frame is a progress
+					 * state that will resolve, and a RESOLVED frame that publishes no engine is a
+					 * terminal answer about the runtime - the same words over both parked a
+					 * permanent `Reading the asks…` on a runtime that will never read anything.
+					 * So each gets its own honest line, and the second is not a claim that can
+					 * never complete.
+					 */}
+					{view.published ? (
+						<AskPanel
+							view={view}
+							nowMs={now}
+							answering={answering}
+							outcomes={outcomes}
+							drafts={drafts ?? EMPTY_DRAFTS}
+							onDraftChange={onDraftChange ?? noopDraftChange}
+							onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
+							onDecline={(task) => onDecline?.(task.ask_id)}
+							onRevise={
+								onRevise === undefined
+									? undefined
+									: (task, answers) => onRevise(task.ask_id, answers)
+							}
+							onDismiss={
+								onDismiss === undefined
+									? undefined
+									: (task, reason) => onDismiss(task.ask_id, reason)
+							}
+							/*
+							 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
+							 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the
+							 * conversation the user is in, so naming it on every card would be the same word
+							 * N times. The panel stays scope-agnostic, which is what lets one list serve
+							 * both contexts.
+							 */
+							conversationOf={conversationOf}
+						/>
+					) : (
 						/*
-						 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
-						 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the
-						 * conversation the user is in, so naming it on every card would be the same word
-						 * N times. The panel stays scope-agnostic, which is what lets one list serve
-						 * both contexts.
+						 * `frameUnread` is `view.unread`, so this is the unresolved frame; the other
+						 * falsy-`published` case is the resolved-but-unsupported one below it.
 						 */
-						conversationOf={conversationOf}
-					/>
-				) : (
-					/*
-					 * `frameUnread` is `view.unread`, so this is the unresolved frame; the other
-					 * falsy-`published` case is the resolved-but-unsupported one below it.
-					 */
-					<p className="text-ink-muted text-body">
-						{frameUnread ? ASK_DRAWER_UNREAD_LINE : ASK_DRAWER_UNAVAILABLE_LINE}
-					</p>
-				)}
+						<p className="text-ink-muted text-body">
+							{frameUnread
+								? ASK_DRAWER_UNREAD_LINE
+								: ASK_DRAWER_UNAVAILABLE_LINE}
+						</p>
+					)}
+				</div>
 			</div>
 		</section>
 	);

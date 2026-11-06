@@ -436,6 +436,107 @@ export function runsOf(rows: Row[]): TurnRun[] {
 }
 
 /**
+ * The rows that OPEN an agent turn, by record id: where the agent's picture is
+ * drawn.
+ *
+ * WHY THIS EXISTS AT ALL, given D11 deleted the avatar. D11's cost was a 40px
+ * gutter under EVERY agent row so that one absolutely positioned 28px glyph
+ * could sit in it, repeated once per record, and the fact it marked - "the agent
+ * is speaking" - was already said by the register (a user turn is a filled
+ * block, an agent turn is prose on no ground). The operator has since asked for
+ * the agent's own PICTURE in the transcript, and that fact is NOT in the
+ * register: which agent a turn belongs to is new information, so the mark comes
+ * back under D11's constraints rather than against them -
+ *
+ *   - drawn ONCE per turn, at its head, never once per record;
+ *   - a row of its own ABOVE the turn's first line, so no row's text measure
+ *     changes (a mark that sits beside the first line would narrow every line
+ *     of that row, which is the gutter D11 measured and removed);
+ *   - no glyph when there is no picture: the register still carries "speaking",
+ *     and a placeholder per turn is the repetition D11 deleted.
+ *
+ * WHAT A HEAD IS, stated from the same partition `runsOf` uses. A turn opens at
+ * a user row, and the agent's first row after it is the head. Two consequences
+ * are deliberate:
+ *
+ *   - a STEER inside an open turn is not a new turn, so the agent's answer to
+ *     it carries no second mark (the 32px `turn` gap still marks the boundary;
+ *     the mark is identity, not rhythm);
+ *   - a run whose opening user row is above the loaded page is marked only when
+ *     it starts at row index 0 of the list it was given - which, on a paged
+ *     history, is the first LOADED row and not necessarily the transcript's
+ *     first (review round 1, R-6: the old wording claimed the latter). The
+ *     consequence is stated rather than fixed: when an older page prepends, the
+ *     mark moves from one leading run to the newer one. That is the cheaper of
+ *     the two wrong answers - the alternative, anchoring on the window's own
+ *     edge, is a mark that walks up with every page - and the strict rule
+ *     (`opensWithUserRow` only) would drop the mark from the welcome turn, the
+ *     one case where index 0 really is the conversation's start.
+ *
+ * Rows that PAINT NOTHING are skipped (a quiet `no_reply` call is in the row
+ * list and is dropped at paint), so the picture never lands on an invisible row
+ * and leaves a gap under itself.
+ *
+ * AND THE ROW MUST BE THE AGENT'S OWN VOICE (review round 1, R-1). `assistant`
+ * rows are what the agent said, and a `tool` row is what it did; everything else
+ * in the row list is a STATEMENT about the conversation — a notice, a custom
+ * row, a peer delivery, a wake, a compaction — which can sit inside a turn while
+ * the agent is not the one speaking. Electing one of those put the picture over
+ * a harness statement or, in the first repro, over the reader's own message: the
+ * skip loop could walk past `span.endIndex` and land on the NEXT span's opening
+ * row. Both halves of that are the one rule — the head is the first row of THIS
+ * turn that is the agent itself — so both are fixed here: the loop stops at the
+ * span's end, and only an assistant row or a non-quiet tool row may be elected.
+ */
+/**
+ * Whether a SLOT draws the turn's mark.
+ *
+ * THE HEAD IS A ROW; THE MARK IS DRAWN AT A SLOT (review round 2, R2-1). A row
+ * list is not what the transcript paints: a collapsed bar hides a whole
+ * segment, a fold hides a run, and either can begin at a statement row (a
+ * notice, a peer delivery, a wake) with the elected head - the first row THAT
+ * TURN which is the agent's own voice - a later tool row inside it. Asking
+ * `heads.has(slot's first row)` therefore lost the mark for those turns while
+ * the head set was right. Containment is the rule: a slot draws the mark when
+ * ANY row it renders is the head, and the slot's first line is where it is
+ * drawn.
+ *
+ * ONE FUNCTION FOR BOTH READERS - the render pass and the DOM window's height
+ * estimate - so the signature cannot claim a mark the rows do not draw.
+ */
+export function slotCarriesTurnHead(
+	rows: readonly Row[],
+	heads: ReadonlySet<string>,
+): boolean {
+	return rows.some((row) => heads.has(row.record.id));
+}
+
+export function agentTurnHeads(rows: Row[]): Set<string> {
+	const heads = new Set<string>();
+	const renders = (row: Row | undefined) =>
+		row !== undefined &&
+		(row.record.kind === "assistant" ||
+			(row.record.kind === "tool" && !isQuietTurnCall(row.record)));
+
+	for (const span of runsOf(rows)) {
+		const anchored =
+			rows[span.openingIndex]?.record.kind === "user" ||
+			span.openingIndex === 0;
+		if (!anchored) continue;
+		let index = span.openingIndex;
+		while (index <= span.endIndex && !renders(rows[index])) index += 1;
+		// Nothing in this span is the agent speaking (a turn that is only a quiet
+		// close, or a run of statements): there is no head, and the row at `index`
+		// belongs to the next span.
+		if (index > span.endIndex) continue;
+		const head = rows[index];
+		if (head === undefined) continue;
+		heads.add(head.record.id);
+	}
+	return heads;
+}
+
+/**
  * Is this row a STATEMENT rather than a row of the turn's own work?
  *
  * These are the rows that report something ABOUT the conversation — a session

@@ -1,0 +1,44 @@
+{
+	"record_kind": "translation audit record (targeted re-audit, auditor B of two)",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "translation-auditor",
+		"session": "d5ed40af1448",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Auditor B (team lopdev, role translation-auditor, session d5ed40af1448), run independently of the concurrent auditor A; distinct from the translator and from prior auditor sessions b5610aecd5f2 and e49c0ab64b49 (whose A2-RU-M1 proposal this remediation applies). Verdict formed from the catalogue bytes, context sidecar and ru style guide. No catalogue edited."
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "d7c706a137f2f6d7734372442f8ee305c61373542a7bb7167329e2fb446270b8"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/d5ed40af1448-ru.json",
+		"sha256": "ad59a42d77642ec81408aa72ca26e3e9c3201d6538f98b622302fb38f9e8a135"
+	},
+	"head_at_audit": "d71058ce222f96b09168fb267af7e05ef5cf5a6b",
+	"findings": [],
+	"prior_findings_resolved": [
+		{
+			"id": "A2-RU-M1",
+			"resolution": "applied verbatim as proposed; verified in bytes at d71058ce222"
+		}
+	],
+	"status": "clean: 0 blocker, 0 major, 0 minor, 0 nit",
+	"notes_not_execution_log": "Linguistic judgements are in the receipt's `judgement` block; no command output is reproduced here."
+}

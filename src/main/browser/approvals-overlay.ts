@@ -20,8 +20,8 @@
  * bounds change. Only `open()` — the shield's explicit click — may focus it.
  * The page keeps typing and keeps its first responder while the card is shown.
  *
- * LIFETIME: one lazy child per host window; hidden rather than destroyed when
- * the queue empties or the page stops being presented. A tab switch with an
+ * LIFETIME: one prewarmed child per host window; hidden AND detached rather than
+ * destroyed when the queue empties or the page stops being presented. A tab switch with an
  * unchanged content rect does not hide it; a content-rect RESIZE rebuilds it
  * because Electron 44.3.0 leaves the replacement WebContents viewport at the
  * old size otherwise (see `applyBounds`). A load failure or crash latches off,
@@ -46,6 +46,7 @@ import {
 	type ApprovalsCardModel,
 	isApprovalsCardDecision,
 } from "../../shared/browser-approvals-overlay";
+import { sanitizePaletteVars } from "../../shared/theme-engine/roles.mjs";
 import {
 	APPROVALS_CARD_MIN_HEIGHT,
 	type ApprovalsCardBounds,
@@ -57,6 +58,7 @@ import {
 	approvalsCardModelFrom,
 	paletteName,
 } from "./approvals-overlay-model";
+import { setBrowserViewPresented } from "./view-presentation";
 
 export interface ApprovalsOverlayLayout {
 	presented: boolean;
@@ -260,6 +262,8 @@ export class ApprovalsOverlayController {
 	private dismissed: Set<string>;
 	private requesterLabels: Record<string, string>;
 	private palette: string | null;
+	/** The composed palette's role values; see `ApprovalsCardModel.paletteVars`. */
+	private paletteVars: Record<string, string> | null;
 	private actionError: "stale" | "unavailable" | null;
 	private explicitOpen: boolean;
 	private pendingFocus: boolean;
@@ -305,6 +309,7 @@ export class ApprovalsOverlayController {
 		this.dismissed = new Set();
 		this.requesterLabels = { ...(deps.requesterLabels ?? {}) };
 		this.palette = deps.palette ?? null;
+		this.paletteVars = null;
 		this.actionError = null;
 		this.explicitOpen = false;
 		this.pendingFocus = false;
@@ -360,11 +365,10 @@ export class ApprovalsOverlayController {
 		ipcMain.on(APPROVALS_CARD_DISMISS_CHANNEL, this.onDismissAction);
 		ipcMain.on(APPROVALS_CARD_DECIDE_CHANNEL, this.onDecideAction);
 		/*
-		 * ATTACH THE CHILD BEFORE THE PAGE IS FOCUSED, not when the first request
-		 * arrives. A native child attached while the window already owns a focused
-		 * page can become first responder even when it is hidden; attaching at host
-		 * construction (before any page exists) keeps the auto-present path from
-		 * moving focus when the card is later shown.
+		 * Prewarm without a native parent: loading a hidden attached child can
+		 * become first responder even before any browser page exists (the app's
+		 * composer and palette still own input). First-size while attached, then
+		 * detach before navigation; only the ready presentation path may reattach.
 		 */
 		this.constructing = true;
 		try {
@@ -387,6 +391,7 @@ export class ApprovalsOverlayController {
 		dir?: "ltr" | "rtl";
 		theme?: "light" | "dark";
 		palette?: string | null;
+		paletteVars?: Record<string, string> | null;
 		requesterLabels?: Readonly<Record<string, string>>;
 		busy?: boolean;
 		error?: "stale" | "unavailable" | null;
@@ -399,7 +404,7 @@ export class ApprovalsOverlayController {
 		if (input.theme === "light" || input.theme === "dark") {
 			this.theme = input.theme;
 		}
-		if ("palette" in input) this.palette = input.palette ?? null;
+		if ("palette" in input) this.adoptPalette(input);
 		if (input.requesterLabels) {
 			this.requesterLabels = { ...input.requesterLabels };
 		}
@@ -412,6 +417,7 @@ export class ApprovalsOverlayController {
 			dir: this.dir,
 			theme: this.theme,
 			palette: this.palette,
+			paletteVars: this.paletteVars,
 			requesterLabels: this.requesterLabels,
 			view: this.model?.view ?? "request",
 			focus: false,
@@ -463,6 +469,7 @@ export class ApprovalsOverlayController {
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
 			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
 			requesterLabels?: Readonly<Record<string, string>>;
 		} = {},
 	): void {
@@ -474,7 +481,7 @@ export class ApprovalsOverlayController {
 		if (input.theme === "light" || input.theme === "dark") {
 			this.theme = input.theme;
 		}
-		if ("palette" in input) this.palette = input.palette ?? null;
+		if ("palette" in input) this.adoptPalette(input);
 		if (input.requesterLabels) {
 			this.requesterLabels = { ...input.requesterLabels };
 		}
@@ -499,6 +506,7 @@ export class ApprovalsOverlayController {
 				dir: this.dir,
 				theme: this.theme,
 				palette: this.palette,
+				paletteVars: this.paletteVars,
 				requesterLabels: this.requesterLabels,
 				view: "request",
 				focus: false,
@@ -520,6 +528,20 @@ export class ApprovalsOverlayController {
 	}
 
 	/**
+	 * Take a palette name and, with it, the composed values it may need. The two
+	 * always move together: a stale set of values under a new name would paint the
+	 * card in the previous composition. The values are re-validated here even
+	 * though the model builder validates again - main holds them between pushes.
+	 */
+	private adoptPalette(input: {
+		palette?: string | null;
+		paletteVars?: Record<string, string> | null;
+	}): void {
+		this.palette = input.palette ?? null;
+		this.paletteVars = sanitizePaletteVars(input.paletteVars);
+	}
+
+	/**
 	 * Update the app context the card renders in. The renderer pushes this on
 	 * mount and on every locale/theme change; without it an auto-presented card
 	 * stays in `en` until the first explicit open (U5).
@@ -529,6 +551,7 @@ export class ApprovalsOverlayController {
 		dir?: "ltr" | "rtl";
 		theme?: "light" | "dark";
 		palette?: string | null;
+		paletteVars?: Record<string, string> | null;
 		requesterLabels?: Readonly<Record<string, string>>;
 	}): void {
 		if (this.disposed) return;
@@ -555,8 +578,10 @@ export class ApprovalsOverlayController {
 			this.theme = input.theme;
 			changed = true;
 		}
+		/* The id is a hash of the composed values (`lo-<hash>`), so an unchanged
+		   name means unchanged vars: comparing the name is comparing both. */
 		if ("palette" in input && (input.palette ?? null) !== this.palette) {
-			this.palette = input.palette ?? null;
+			this.adoptPalette(input);
 			changed = true;
 		}
 		if (input.requesterLabels) {
@@ -575,6 +600,7 @@ export class ApprovalsOverlayController {
 				dir: this.dir,
 				theme: this.theme,
 				palette: this.palette,
+				paletteVars: this.paletteVars,
 				requesterLabels: this.requesterLabels,
 				view: this.model.view,
 				focus: false,
@@ -795,6 +821,7 @@ export class ApprovalsOverlayController {
 				dir: this.dir,
 				theme: this.theme,
 				palette: this.palette,
+				paletteVars: this.paletteVars,
 				requesterLabels: this.requesterLabels,
 				view: this.model.view,
 				focus: false,
@@ -840,6 +867,7 @@ export class ApprovalsOverlayController {
 			dir: this.dir,
 			theme: this.theme,
 			palette: this.palette,
+			paletteVars: this.paletteVars,
 			requesterLabels: this.requesterLabels,
 			view: this.model.view,
 			focus: false,
@@ -1051,8 +1079,8 @@ export class ApprovalsOverlayController {
 		// The replacement document must be laid out at the same bounds it will be
 		// shown at, not the old 264-wide viewport.
 		view.setBounds(bounds.view);
-		view.setVisible(true);
-		this.visible = true;
+		// The new document loads without a native parent. Its ready callback
+		// measures and presents it; showing during navigation can steal input.
 	}
 
 	private releaseView(reason: string): void {
@@ -1138,7 +1166,7 @@ export class ApprovalsOverlayController {
 				height: 0,
 			};
 			view.setBounds(initial);
-			view.setVisible(this.bounds !== null);
+			this.hideNativeChild(view);
 			this.view = view;
 			this.ready = false;
 			const onFinish = () => {
@@ -1302,6 +1330,7 @@ export class ApprovalsOverlayController {
 			dir: this.dir,
 			theme: this.theme,
 			palette: this.palette,
+			paletteVars: this.paletteVars,
 			focus: focus === true,
 		};
 		this.model = model;
@@ -1321,10 +1350,17 @@ export class ApprovalsOverlayController {
 			});
 	}
 
+	private hideNativeChild(view: WebContentsView): void {
+		view.setVisible(false);
+		if (!this.window.isDestroyed()) {
+			setBrowserViewPresented(this.window.contentView, view, false);
+		}
+	}
+
 	private hide(): void {
 		if (this.view) {
 			try {
-				this.view.setVisible(false);
+				this.hideNativeChild(this.view);
 			} catch {
 				// Already gone.
 			}

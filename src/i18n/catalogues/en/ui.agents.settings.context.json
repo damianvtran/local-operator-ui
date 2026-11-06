@@ -370,5 +370,56 @@
 		"role": "section note",
 		"tone": "plain, helpful",
 		"note": "Says that a blank option keeps the product's tested default."
+	},
+	"ui.agents.settings.general.profile_picture": {
+		"role": "Field label for the agent's profile picture",
+		"tone": "Short descriptive noun phrase.",
+		"length_hint": "Single-line field label, about 15 English characters.",
+		"note": "Names the picture shown beside this agent's name in the agents sidebar. It is a mark stored on this computer, not part of the agent's definition."
+	},
+	"ui.agents.settings.general.profile_picture_hint": {
+		"role": "Hint under the profile-picture controls",
+		"tone": "Plain statement of a limit, not an apology.",
+		"length_hint": "One short sentence; wrapping is allowed.",
+		"note": "States that the picture is stored on this machine only, so it is absent on another computer or on mobile."
+	},
+	"ui.agents.settings.general.profile_picture_upload": {
+		"role": "Button that opens the image file picker",
+		"tone": "Action verb phrase; sentence case.",
+		"length_hint": "Small button label beside the picture preview, about 12 English characters.",
+		"note": "Opens a native file picker; the chosen image is downscaled and stored locally."
+	},
+	"ui.agents.settings.general.profile_picture_remove": {
+		"role": "Button that forgets the stored picture",
+		"tone": "Action verb phrase; quiet, since the default mark returns.",
+		"length_hint": "Small ghost button label, about 12 English characters.",
+		"note": "Shown only when a picture exists. Removing it restores the default agent mark."
+	},
+	"ui.agents.settings.general.profile_picture_error_type": {
+		"role": "Error shown after picking an unsupported file type",
+		"tone": "Neutral explanation with the accepted formats named.",
+		"length_hint": "One to two sentences beside the controls; wrapping is allowed.",
+		"note": "Triggered by SVG, PDF, a video or any non-image file. The accepted list must stay in the same order as the picker's filter."
+	},
+	"ui.agents.settings.general.profile_picture_error_size": {
+		"role": "Error shown after picking an image above the size ceiling",
+		"tone": "Neutral statement of the limit.",
+		"length_hint": "One short sentence.",
+		"note": "The ceiling, in megabytes. Keep the number a placeholder; it is read from the constant that enforces it.",
+		"placeholders": {
+			"size": "Whole number of megabytes, for example 8."
+		}
+	},
+	"ui.agents.settings.general.profile_picture_error_decode": {
+		"role": "Error shown when the picked image cannot be decoded",
+		"tone": "Neutral, offers the next step.",
+		"length_hint": "One short sentence.",
+		"note": "A corrupt, truncated or mislabelled image file."
+	},
+	"ui.agents.settings.general.profile_picture_error_save": {
+		"role": "Error shown when the picture was read but this computer refused to store it",
+		"tone": "Plain statement of a local limit with the next step.",
+		"length_hint": "Two short sentences beside the controls; wrapping is allowed.",
+		"note": "Not a decode failure: the file was an image this app could read, and the browser refused the local write (a full or blocked store). The picture is visible until the app reloads, then it is gone."
 	}
 }

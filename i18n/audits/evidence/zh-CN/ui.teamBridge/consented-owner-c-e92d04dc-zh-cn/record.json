@@ -1,0 +1,115 @@
+{
+	"schema": 1,
+	"record_kind": "independent locale audit C - ui.teamBridge.events.consented_owner, re-read under the fixed owner predicate",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"model_provenance": "This session started as anthropic/claude-opus-5-5; the harness switched it to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto (provider failure: quota). Every catalogue read, render and verdict below was produced under radient/auto.",
+	"session": "e92d04dc040c",
+	"instance": "consented-owner-c-e92d04dc-zh-cn",
+	"audit_id": "consented-owner-c-e92d04dc-zh-cn",
+	"locale": "zh-CN",
+	"namespace": "ui.teamBridge",
+	"branch": "fix/team-bridge-member-events",
+	"head_at_audit": "14d0b6781ac94da7431a18106ec2a1b3fcbd628d",
+	"status": "passed",
+	"result": "clean",
+	"hashes": {
+		"en_sha256": "4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c",
+		"target_sha256": "88761fbda9d8de5c7c0253809149ebf3be68e62f42ce8a8a109a754f29ad2f1a"
+	},
+	"bytes_unchanged": {
+		"claim": "the catalogue bytes are the ones the round-B audits recorded - no byte moved while the render contract was fixed in code",
+		"how": "sha256 of both files on disk; the target hash equals the one recorded in i18n/receipts/consented-owner-b-*-zh-cn.json, and `git show --stat 14d0b6781ac9` lists only scripts/team-bridge-member-events.test.mjs and team-bridge-member-events-model.ts"
+	},
+	"predicate_verification": {
+		"commit": "14d0b6781ac94da7431a18106ec2a1b3fcbd628d",
+		"guards": [
+			"if (line.targets.length !== 1) return false;",
+			"if (line.actor.kind !== \"human\") return false;"
+		],
+		"tests": [
+			"consented: two agent targets in one line keep the shipped arm (CO-B1)",
+			"consented: an agent-kind actor keeps the shipped arm (CO-B2)"
+		],
+		"executed": "node --test scripts/team-bridge-member-events.test.mjs -> 25 pass / 0 fail",
+		"behaviour": "the owner arm took exactly one of the three shapes below in every locale, and the two fallbacks kept the shipped sentence"
+	},
+	"values": {
+		"en_source": "{actor} approved their agent {targets} joining",
+		"target": "{actor}已同意自己的智能体{targets}加入",
+		"sibling": "{actor}已同意{targets}加入",
+		"owner_added_agent": "{actor}添加了自己的智能体{targets}"
+	},
+	"renders": {
+		"owner_arm_one_target_human_actor": "Sana Ketabchi已同意自己的智能体Aida (Sana Ketabchi)加入",
+		"owner_arm_predicate": true,
+		"two_targets_falls_to_shipped_arm": "Sana Ketabchi已同意Aida (Sana Ketabchi)和Scout (Sana Ketabchi)加入",
+		"two_targets_predicate": false,
+		"agent_actor_falls_to_shipped_arm": "Aida (Sana Ketabchi)已同意Scout (Sana Ketabchi)加入",
+		"agent_actor_predicate": false
+	},
+	"icu": {
+		"node_types": [
+			1,
+			0
+		],
+		"arguments": [
+			"actor",
+			"targets"
+		],
+		"sibling_arguments": [
+			"actor",
+			"targets"
+		],
+		"plural_or_select": false,
+		"sentinel_render": "⟦A⟧已同意自己的智能体⟦T⟧加入",
+		"sentinel_actor_count": 1,
+		"sentinel_targets_count": 1,
+		"missing_value_errors": {
+			"actor": "MISSING_VALUE",
+			"targets": "MISSING_VALUE"
+		}
+	},
+	"unicode": {
+		"nfc": true,
+		"bidi_controls": [],
+		"joiners": [],
+		"leading_or_trailing_space": false
+	},
+	"width": {
+		"graphemes": 27,
+		"sibling_graphemes": 21,
+		"delta_vs_sibling": 6,
+		"event_family_max": 31,
+		"event_family_max_key": "ui.teamBridge.events.others",
+		"render_characters": 44
+	},
+	"keys_read": {
+		"primary": 1,
+		"inherited_byte_unchanged": 297,
+		"cross_checked": "the 12-key ui.teamBridge.events block for list joining, the consent noun in members.invitation_note_v3, and the agent term across all 298 keys"
+	},
+	"findings": [
+		{
+			"severity": "info",
+			"id": "CO-C1",
+			"key": "ui.teamBridge.events.consented_owner",
+			"current": "{actor}已同意自己的智能体{targets}加入",
+			"detail": "Within the family envelope: 27 graphemes against 31 (events.others). No rendered check requested on width grounds. The sentence span is `min-w-0 truncate` (team-bridge-member-events.tsx:145), so any line over budget ellipsizes; the fixed text added by this key is \"their agent\" (6 graphemes over its sibling), and display names dominate the rest."
+		},
+		{
+			"severity": "info",
+			"id": "CO-C2",
+			"key": "ui.teamBridge.events.consented (en sidecar entry)",
+			"detail": "Carried, not re-raised: auditor B's CO-B3 (receipt i18n/receipts/consented-owner-b-*.json) still stands - the sibling sidecar's role line reads \"an agent's owner approved the agent joining\" while the sibling now also renders for a non-owner actor, a multi-target group and an agent-kind actor. Not fixed by 14d0b6781ac9, which touches only the model and its test. Source-side; no catalogue change follows for this locale."
+		}
+	],
+	"verdict": "clean",
+	"scope": "ui.teamBridge.events.consented_owner in zh-CN, re-read against the English source and its sidecar at the SAME bytes the round-B audit saw, under the fixed predicate (14d0b6781ac9); the other 297 keys are byte-identical and are not re-audited.",
+	"predicate_controls": {
+		"negative": "re-ran the PRE-fix predicate body (14d0b6781ac^: `return line.targets.every(...)`) against the same line objects the two named tests build: two agent targets -> true (shipped guard -> false); agent-kind actor -> true (shipped guard -> false); one human-owned target -> true (shipped -> true). The guards decide the outcome; the tests are not passing for an unrelated reason.",
+		"executed": "node --test scripts/team-bridge-member-events.test.mjs -> # tests 25 / # pass 25 / # fail 0, both new tests named and green"
+	}
+}

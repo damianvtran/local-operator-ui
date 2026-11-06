@@ -1,0 +1,218 @@
+{
+ "audit_id": "fr-tour-r2-20261025",
+ "date": "2026-10-25",
+ "locale": "fr",
+ "namespace": "ui.onboarding.tour",
+ "source_commit": "34e6964513eb2ec7aeb6d50aa9cd2010af071610",
+ "scope": "Round 2 delta pass on the final bytes for ui.onboarding.tour: 12 remediated values and 111 unchanged values retained byte-identically from round 1. Round 1 receipt remains immutable evidence. Text-only; rendered fit unverified.",
+ "status": "audited",
+ "high_visibility": {
+  "group": "onboarding",
+  "second_independent_audit_required": true,
+  "second_independent_audit": "performed",
+  "second_instance": "339c96eeb7b8"
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "job": "2660ff7c036b",
+  "session": "52d18db33cf5"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+   "date": "2026-10-25",
+   "result": "clean",
+   "instance": "339c96eeb7b8",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/339c96eeb7b8.json",
+   "receipt_sha256": "358ba31ffa70d6c5b5e9a0896bad01a543a949f093d3146743ef2d7565e23f85",
+   "scope": "Second independent confirmation of the 4-byte remediated final file (vous forms and one nit). Earlier audits of prior bytes are superseded history, not current evidence. Clean: 0 blocker/major/minor/nit. FR masked-source access gap remains recorded in the evidence record.",
+   "note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "59527dfbb84b",
+   "agent": "translation-auditor",
+   "model": "radient/auto (harness launch selector explicit_model; concrete routed upstream provider/model not exposed in this session transcript)",
+   "date": "2026-10-25",
+   "status": "changes_requested",
+   "result": "changes_requested",
+   "keys_audited": 123,
+   "target_sha256": "38cbe51d8ace1f257f91d4625408869eea1166838cb2f19c3207184a7b3304d4",
+   "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+   "findings": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 4,
+    "nit": 4
+   },
+   "receipt": {
+    "path": "i18n/receipts/59527dfbb84b-fr.json",
+    "sha256": "d190c87856141e2a91364358112784f3798a421452b69a6118b0d5395215a922"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "59527dfbb84b",
+   "agent": "translation-auditor",
+   "model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+   "date": "2026-10-25",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 123,
+   "target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+   "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   },
+   "receipt": {
+    "path": "i18n/receipts/59527dfbb84b-fr-r2.json",
+    "sha256": "90c11dfe6c0a92103e42730ee1fc61de25e4478d1a4b3c38e7f05fbc45a2bcd9"
+   }
+  },
+  {
+   "receipt": {
+    "path": "i18n/receipts/339c96eeb7b8-fr-tour-second-audit.json",
+    "sha256": "2110096564337ff21e67b98e26ad17d5b429fbcda9423e8e2be0a85ae8e122b1"
+   },
+   "instance": "339c96eeb7b8",
+   "agent": "translation-auditor",
+   "model": "radient/auto (harness launch route; the concrete routed upstream provider/model is not exposed in this session transcript; no fallback invoked by the auditor)",
+   "date": "2026-10-25",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   },
+   "target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+   "keys_audited": 123,
+   "round": 3,
+   "label": "second independent audit on the pre-remediation bytes"
+  },
+  {
+   "receipt": {
+    "path": "i18n/receipts/339c96eeb7b8-fr-tour-second-audit-confirmation.json",
+    "sha256": "358ba31ffa70d6c5b5e9a0896bad01a543a949f093d3146743ef2d7565e23f85"
+   },
+   "instance": "339c96eeb7b8",
+   "agent": "translation-auditor",
+   "model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+   "date": "2026-10-25",
+   "status": "passed",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "target_sha256": "5099b1bab0b5c78f723ef41abb3b83acc9f4716d0fc9739fd60dbad0102d5e5b",
+   "keys_audited": 123,
+   "round": 4,
+   "label": "second independent audit on final bytes"
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+   "sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+   "sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.onboarding.tour.json",
+   "sha256": "5099b1bab0b5c78f723ef41abb3b83acc9f4716d0fc9739fd60dbad0102d5e5b"
+  }
+ },
+ "limitations": "Text-only catalogues audit. The high-visibility second independent audit is now performed; no rendered frame, browser fit, native-speaker sign-off or release approval is claimed.",
+ "superseded": [
+  {
+   "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+   "target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+   "auditors": [
+    {
+     "agent": "translation-auditor",
+     "model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+     "date": "2026-10-25",
+     "result": "clean-with-findings",
+     "instance": "59527dfbb84b",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 0
+     },
+     "receipt": "i18n/receipts/59527dfbb84b.json",
+     "receipt_sha256": "90c11dfe6c0a92103e42730ee1fc61de25e4478d1a4b3c38e7f05fbc45a2bcd9",
+     "scope": "Round 2 pass on the final bytes: 12 remediated values, 111 unchanged retained byte-identically from round 1. Round 1 receipt i18n/receipts/59527dfbb84b-fr.json (sha256 d190c87856141e2a91364358112784f3798a421452b69a6118b0d5395215a922) requested changes and remains immutable evidence. First-independent-audit scope only; rendered fit unverified.",
+     "note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+    }
+   ],
+   "status": "audited"
+  }
+ ],
+ "second_audit": {
+  "receipt": {
+   "path": "i18n/receipts/339c96eeb7b8-fr-tour-second-audit-confirmation.json",
+   "sha256": "358ba31ffa70d6c5b5e9a0896bad01a543a949f093d3146743ef2d7565e23f85"
+  },
+  "instance": "339c96eeb7b8",
+  "agent": "translation-auditor",
+  "model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+  "date": "2026-10-25",
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  },
+  "target_sha256": "5099b1bab0b5c78f723ef41abb3b83acc9f4716d0fc9739fd60dbad0102d5e5b",
+  "keys_audited": 123
+ },
+ "carried_source_observations": [
+  "Agent Hub hardcoded Get control: fr « Obtenir » is correct; the source control must be localized in the upcoming agent-hub source slice.",
+  "English ‘Create schedule’ quote does not match the ‘New scheduled task’ control; carried source/programme item, not fixed by target edits.",
+  "Comma-prefix join artefact in the command-palette fragments; carried source/programme item."
+ ],
+ "second_audit_history": {
+  "receipt": {
+   "path": "i18n/receipts/339c96eeb7b8-fr-tour-second-audit.json",
+   "sha256": "2110096564337ff21e67b98e26ad17d5b429fbcda9423e8e2be0a85ae8e122b1"
+  },
+  "instance": "339c96eeb7b8",
+  "agent": "translation-auditor",
+  "model": "radient/auto (harness launch route; the concrete routed upstream provider/model is not exposed in this session transcript; no fallback invoked by the auditor)",
+  "date": "2026-10-25",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 1,
+   "nit": 1
+  },
+  "target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+  "keys_audited": 123
+ },
+ "access_gap": "FR access gap, preserved honestly: five EN keys display-masked in the audit source, 118/123 legible; masked values were not reconstructed; glossary cross-check only."
+}

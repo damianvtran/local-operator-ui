@@ -1,0 +1,15 @@
+[
+ {
+  "id": "FR-FB1",
+  "severity": "minor",
+  "key": "ui.teamBridge.events.joined",
+  "keys": [
+   "ui.teamBridge.events.joined",
+   "ui.teamBridge.events.left"
+  ],
+  "current": "Arrivée dans la conversation : {targets} / Départ de la conversation : {targets}",
+  "proposed": "no text change forced — flag for a rendered fit check; if the row clips, 'Arrivée : {targets}' / 'Départ : {targets}'",
+  "reason": "Measured 2.5x and 2.6x the English (40 and 37 code points vs 16 and 14) in a timeline row that truncates to a tooltip; the U+202F before each colon counts a cell too. The nominalisation is the right call (a finite verb would need number agreement with an unknown name count), so this is a width flag, not a wording defect. Carries forward the identical class recorded as FR-B1 on the previous bytes; the text did not change.",
+  "disposition": "flag for rendered check"
+ }
+]

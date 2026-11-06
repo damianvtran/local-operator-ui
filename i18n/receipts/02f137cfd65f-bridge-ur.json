@@ -1,0 +1,158 @@
+{
+ "instance": "02f137cfd65f-bridge-ur",
+ "round": 1,
+ "locale": "ur",
+ "audit_date": "2026-10-30",
+ "checkout_head": "b4e3341fc41aecf8e1c51504cc45e06f5f07b73e",
+ "checkout_head_short": "b4e3341fc4",
+ "branch": "feat/bridge-tool-row",
+ "pr": "damianvtran/local-operator-ui#1529",
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "02f137cfd65f",
+  "team": "lopdev (audit-ur)",
+  "model": "anthropic/claude-opus-5-5",
+  "actual_model_source": "no provider fallback",
+  "independent_from_translator_session": true
+ },
+ "translator": {
+  "agent": "translator agents for PR #1529 (round 1 + delta round 2)",
+  "model": "radient/auto (round 1, fallback); anthropic/claude-opus-5-5 (delta round 2)"
+ },
+ "scope": "ui.chat.canonical at its current source hash: the 88 keys added by the Team Bridge row (tool_row.bridge.* 84, fold.bridge* 4) read in full against en + context sidecar; the 80 pre-existing keys proved byte-identical (en and ur) to the bytes the last audited row bound (en da2c87f6…, ur cc62cd89…, at f6e5c3eb62) and spot-checked",
+ "reviewed_previous": {
+  "instance": "463b28c1ba8b-ov2-ur",
+  "receipt": "i18n/receipts/463b28c1ba8b-ov2-ur.json",
+  "sha256": {
+   "en": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+   "target": "cc62cd8900c3592765722f85a0dd2d49f8d0e30eee51a94df62a2ac3b927692c"
+  }
+ },
+ "findings": [],
+ "fixed": [
+  {
+   "id": "UR-B1",
+   "severity": "MAJOR",
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.{word,label,title,note}",
+   "en": "awaiting acceptance / owner's acceptance / must accept",
+   "was": "منظوری کا انتظار · مالک کی منظوری کا انتظار · منظوری دینی ہو گی · منظور کرنی ہو گی",
+   "now": "قبولیت کا انتظار · مالک کی قبولیت کا انتظار · قبول کرنا ہو گا · قبول کرنی ہو گی",
+   "problem": "منظوری is the glossary term for approvals (pending tool approvals, relay.asks.pending.kind_approval «منظوری درکار»); an amber «منظوری کا انتظار» on a tool row reads as a pending tool approval the operator must act on. The concept is the owner accepting the DM/invitation, which Team Bridge already renders as قبول (ui.teamBridge.invitations.accept «قبول کریں»).",
+   "commit": "this commit"
+  },
+  {
+   "id": "UR-B2",
+   "severity": "MINOR",
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.{note,title}",
+   "en": "the hub may have taken…",
+   "was": "ممکن ہے hub نے …",
+   "now": "ممکن ہے ہب نے …",
+   "problem": "Latin 'hub' inside Urdu prose; every other ur UI string writes the generic noun as ہب (ui.agents.publication.*, ui.common.errors.public_hub_*). It is not a product name or identifier.",
+   "commit": "this commit"
+  },
+  {
+   "id": "UR-B3",
+   "severity": "MINOR",
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.bridge.detail.headline.dm",
+   "en": "Direct message to {target}",
+   "was": "{target} کو ڈی ایم",
+   "now": "{target} کو براہ راست پیغام",
+   "problem": "The Team Bridge UI names a DM براہ راست پیغام (ui.teamBridge.kind.dm, section.directs); the headline has room for the full form. Bare fallbacks (fallback.dm «ایک ڈی ایم») and the inbox_only advice keep ڈی ایم.",
+   "commit": "this commit"
+  },
+  {
+   "id": "UR-B4",
+   "severity": "MINOR",
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.bridge.outcome.{refused,refused_bare}; ui.chat.canonical.tool_row.bridge.detail.outcome.refused",
+   "en": "refused · {code} / refused / Refused ({code}): {error}",
+   "was": "رد کر دیا گیا …",
+   "now": "مسترد …",
+   "problem": "The ur catalogues' settled word for a refusal is مسترد (hub/server/API-key refusals across ui.agents, ui.settings, ui.mesh); رد کر دیا گیا is also 13 cells for a one-word status slot (sidecar: 'One word') vs 5.",
+   "commit": "this commit"
+  }
+ ],
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 0,
+  "NIT": 0
+ },
+ "counts_fixed_in_audit": {
+  "BLOCKER": 0,
+  "MAJOR": 1,
+  "MINOR": 3,
+  "NIT": 0
+ },
+ "verdict": "pass",
+ "status": "passed",
+ "namespaces": {
+  "ui.chat.canonical": {
+   "status": "passed",
+   "keys_audited": 88,
+   "file_keys": 168,
+   "sha256": {
+    "en": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a",
+    "target": "507c5f4202344e4a98caab29d9b6fd8e0b55ba2711db0a0dd5e0bba6133a9483"
+   },
+   "findings": []
+  }
+ },
+ "input_sha256": {
+  "src/i18n/catalogues/en/ui.chat.canonical.json": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a",
+  "src/i18n/catalogues/ur/ui.chat.canonical.json": "507c5f4202344e4a98caab29d9b6fd8e0b55ba2711db0a0dd5e0bba6133a9483",
+  "src/i18n/catalogues/en/ui.chat.canonical.context.json": "7ccd1b3894f3a6565186f1ef3f5b24e15699c8ecda6b1ff85a3768f784fb3979"
+ },
+ "checks": [
+  {
+   "id": "key-parity",
+   "result": "pass",
+   "detail": "168/168 keys, en == ur key set"
+  },
+  {
+   "id": "unchanged-bytes",
+   "result": "pass",
+   "detail": "per-key diff vs f6e5c3eb62: en and ur 80 keys present, 0 changed, 0 removed; 88 added, all .bridge"
+  },
+  {
+   "id": "icu-args",
+   "result": "pass",
+   "detail": "124 renders through src/i18n/messages.ts translate(…,'ur') (esbuild bundle, intl-messageformat) with sentinel strings and counts 0/1/2/3/5/11/21/22/1000000/12345; every non-numeric placeholder appears exactly once, no {,},# residue, no fallback to key"
+  },
+  {
+   "id": "plural-categories",
+   "result": "pass",
+   "detail": "Intl.PluralRules('ur') 0/1/2/21 -> other/one/other/other; =0 arms render «کوئی رکن نہیں» / «کوئی پیغام نہیں»; seq/count ::group-off renders 12345 ungrouped"
+  },
+  {
+   "id": "typography-bidi",
+   "result": "pass",
+   "detail": "no U+061C/200E/200F/202A-202E/2066-2069; all values NFC; Urdu ۔ and ، used; Latin islands ({code}, seq, Team Bridge) left byte-identical"
+  },
+  {
+   "id": "cross-repo",
+   "result": "pass",
+   "detail": "verb/outcome/target values match core wire.tool_rows.bridge ur byte-for-byte after the same fixes (UR-W1..W3 in core ledger row)"
+  }
+ ],
+ "notes": [
+  {
+   "key": "ui.chat.canonical.tool_row.bridge.fallback.teammate",
+   "status": "accepted",
+   "detail": "«ایک ساتھی ایجنٹ» names an agent teammate, which is what the sidecar says this is; not the bare person word ٹیم کا رکن."
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.bridge.verb.*.settled|running|failed",
+   "status": "accepted-deferred",
+   "detail": "verb-only SOV forms («بھیجا», «پوسٹ کیا») sit before the target in the row; the slot-order change is the known deferred decision, not reopened. headline.target reorders to {target} {verb}, which reads correctly."
+  },
+  {
+   "key": "ui.chat.canonical.fold.bridge.one|other; ui.chat.canonical.fold.bridge_post.one|other",
+   "status": "accepted-deferred",
+   "detail": "pre-split fold plural keys are the known deferred decision; one/other values themselves are correct Urdu."
+  }
+ ]
+}

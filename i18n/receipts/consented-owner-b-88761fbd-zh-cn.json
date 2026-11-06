@@ -1,0 +1,54 @@
+{
+	"auditor": "translation-auditor",
+	"auditor_model": "radient/auto",
+	"model": "radient/auto",
+	"instance": "consented-owner-b-88761fbd-zh-cn",
+	"namespace": "ui.teamBridge",
+	"locale": "zh-CN",
+	"key": "ui.teamBridge.events.consented_owner",
+	"date": "2026-10-30",
+	"session": "8cf6d0aaac7b",
+	"status": "passed",
+	"sha256": {
+		"en": "4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c",
+		"zh-CN": "88761fbda9d8de5c7c0253809149ebf3be68e62f42ce8a8a109a754f29ad2f1a"
+	},
+	"findings": [
+		{
+			"severity": "info",
+			"id": "CO-B1",
+			"key": "ui.teamBridge.events.consented_owner",
+			"current": "{actor}已同意自己的智能体{targets}加入",
+			"proposed": "(unchanged) — this locale's two-target render is number-neutral and correct; the upstream cardinality fix is the renderer's",
+			"detail": "A consent roll-up (two records sharing one request_id — the grouping key team-bridge-member-events-model.ts:144-156 groups on) produces one line with two targets, and the owner arm renders the possessive singular over the pair: « Sana Ketabchi已同意自己的智能体Aida (Sana Ketabchi)和Scout (Sana Ketabchi)加入 » — Chinese does not mark grammatical number, so this reads correctly. English has the same defect (\"their agent A and B\"), so this is not a translation error: the sentence's grammatical number depends on a cardinality nothing enforces, and the en sidecar's \"always exactly one name for this key\" is that unenforced assumption. No local change follows: the only defect on the two-target path is upstream. Reachability: the UI merges these events itself; whether the hub emits two consent records under one request_id is unverified (the server is not deployed and no corpus is readable here)."
+		},
+		{
+			"severity": "minor",
+			"id": "CO-B2",
+			"key": "teamBridgeEventOwnerConsent (src/renderer/src/features/team-bridge/team-bridge-member-events-model.ts:191)",
+			"current": "return line.targets.every((target) => target.kind === \"agent\" && target.account_id === line.actor.account_id);",
+			"proposed": "if (line.actor.kind !== \"human\") return false;  /* before the every() test; the cardinality guard is CO-B1 */",
+			"detail": "The predicate compares account ids but never the actor's kind. An agent party carries its OWNER's account_id (the contract's own statement, restated in the model's docstring), so a consent whose actor is an agent on the same account takes the owner arm and the sentence claims a relation an agent cannot have. Executed: actor = agent \"Aida (Sana Ketabchi)\", target = agent \"Scout (Sana Ketabchi)\" renders Aida (Sana Ketabchi)已同意自己的智能体Scout (Sana Ketabchi)加入 — for this locale the self-approval reading the audit was asked about becomes possible only through this hole, never through the wording. Minor: no readable corpus proves the hub records an agent as the consenting actor; the guard costs one line and makes the predicate match its own docstring (\"the actor owns the target\")."
+		},
+		{
+			"severity": "minor",
+			"id": "CO-B3",
+			"key": "ui.teamBridge.events.consented (en sidecar entry, unchanged by this branch)",
+			"current": "role: \"timeline system line: an agent's owner approved the agent joining\"; note: \"The owner gave consent for their agent to join this conversation. Reads 'X approved Y joining'.\"",
+			"proposed": "role: \"timeline system line: a consent the owner arm does not claim (the actor is not the sole owner of every target)\"; note: \"Reads 'X approved Y joining'. Claims no relation between actor and target (design round 1, D1); the owner's own act reads through ui.teamBridge.events.consented_owner.\"",
+			"detail": "The sibling now renders whenever the owner arm's predicate is false — the non-owner case, a mixed group, and (once CO-B1 is fixed) any multi-target group — so its sidecar still tells the next translator the key is the owner's line and invites a possessive into the arm that is designed to claim no relation. This locale's sibling value (Sana Ketabchi已同意Aida (Sana Ketabchi)加入) already claims none; only the English context is stale."
+		},
+		{
+			"severity": "info",
+			"id": "CO-B4",
+			"key": "ui.teamBridge.events.consented_owner",
+			"current": "{actor}已同意自己的智能体{targets}加入",
+			"detail": "Length is not a concern in this locale: 55 cells against the namespace's previous maximum of 51 (ui.teamBridge.events.owner_added_agent) and English's 63. No rendered check is requested on width grounds."
+		}
+	],
+	"scope": "Auditor B on the one key this branch adds to ui.teamBridge (ui.teamBridge.events.consented_owner) and its en sidecar entry, in zh-CN; the other 297 keys of the namespace are byte-identical to the base (verified: the commit adds one key per file and changes no other value) and are not re-audited here.",
+	"note": "Consented-owner delta audit, auditor B (session 8cf6d0aaac7b, radient/auto). 0 major / 2 minor / 0 nit. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/consented-owner-audit-b-20261030-zh-CN/record.json",
+	"branch": "fix/team-bridge-member-events",
+	"head": "9d19fc6d58e9cfe78577316e505a0799b87e5550",
+	"independence": "Auditor B did not author any audited string: the translations were produced by the translator role in a separate session, and auditor B read the catalogue bytes, the English source, the en sidecar, the renderer and the glossary/style guide directly."
+}

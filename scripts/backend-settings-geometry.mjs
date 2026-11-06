@@ -108,7 +108,7 @@ const STATES = {
 	}`,
 	/** A search that matches a handful of rows across several sections. */
 	filtered: `() => {
-		const input = document.querySelector('input[aria-label="Search settings"]');
+		const input = document.querySelector('input[aria-label="Search settings by name, description or key"]');
 		const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
 		setter.call(input, 'cache');
 		input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -142,7 +142,7 @@ const STATES = {
 	}`,
 	/** A search that matches nothing. */
 	empty: `() => {
-		const input = document.querySelector('input[aria-label="Search settings"]');
+		const input = document.querySelector('input[aria-label="Search settings by name, description or key"]');
 		const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
 		setter.call(input, 'zzzzzz');
 		input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -360,7 +360,7 @@ const PROBE = `(() => {
 		headers,
 		headerHeight: headers.length ? round(headers.reduce((a, h) => a + h.height, 0) / headers.length) : null,
 		filterBarHeight: (() => {
-			const input = region.querySelector('input[aria-label="Search settings"]');
+			const input = region.querySelector('input[aria-label="Search settings by name, description or key"]');
 			if (!input) return null;
 			const bar = input.closest('div').parentElement;
 			return bar ? round(rect(bar).height) : null;

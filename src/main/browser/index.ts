@@ -39,6 +39,10 @@ import {
 	presentPopupWindow,
 } from "../window-raise";
 import {
+	createRecordingEncoderService,
+	disposeAllRecordingEncoders,
+} from "./actions/recording-encoder-host";
+import {
 	AddressOverlayController,
 	type AddressOverlayFacts,
 } from "./address-overlay";
@@ -53,6 +57,7 @@ import {
 	browserPageOwnsChord,
 	createBrowserChordRouter,
 } from "./browser-chord";
+import { observeBrowserLocale } from "./browser-locale";
 import { CdpPool } from "./cdp";
 import {
 	type ConsentAttentionPayload,
@@ -144,6 +149,7 @@ import {
 	domainScopeAvailable,
 } from "./vendor/driver/origin-policy";
 import { PSL_RULES } from "./vendor/driver/psl.gen";
+import { setBrowserViewPresented } from "./view-presentation";
 
 /**
  * The browser host: wiring, lifecycle, and the per-view security handlers.
@@ -188,6 +194,8 @@ export interface StartBrowserHostOptions {
 	window: BrowserWindow;
 	/** The trusted renderer URL, for the IPC sender check. */
 	expectedUrl: string;
+	/** App-owned boolean only: no origin, requester, or content leaves the host. */
+	onPendingConsentChanged?: (pending: boolean) => void;
 	appVersion: string;
 	/** `userData` — where the approvals store, `session.json` and the extensions
 	 * directory live. */
@@ -293,6 +301,16 @@ export interface StartBrowserHostOptions {
 		enabled: boolean;
 		documentUrl: string;
 		/** S6b's purpose-built preload for the card document. */
+		preloadPath: string;
+	};
+	/**
+	 * The hidden H.264 encoder window behind `record_start {quality: "high"}`. Both
+	 * values are the app's own bundled files, derived from the trusted renderer URL
+	 * and `__dirname` in `src/main/index.ts`, never caller-supplied. Absent means
+	 * `high` is refused `record_quality_unavailable` and `standard` is unchanged.
+	 */
+	recordingEncoder?: {
+		documentUrl: string;
 		preloadPath: string;
 	};
 	log: (message: string) => void;
@@ -1105,6 +1123,16 @@ async function initializeBrowserHost(
 				addressOverlay?.onLayout(snapshot);
 				approvalsOverlay?.onLayout(snapshot);
 			},
+			(view, presented) => {
+				// Closing a window can start host teardown after its native object is
+				// gone. Skip only parenting: every remaining tab must still be released.
+				if (options.window.isDestroyed()) return;
+				setBrowserViewPresented(
+					options.window.contentView,
+					view as unknown as WebContentsView,
+					presented,
+				);
+			},
 		);
 		registryForDownloads = registry;
 		rollback.add(async () => {
@@ -1225,9 +1253,9 @@ async function initializeBrowserHost(
 			log,
 		});
 		syncApprovalsOverlay = () => {
-			// No card (kill switch, an embedder that passed none, or a child that
-			// failed to build): no read, no timer, no clock.
-			if (!approvalsOverlay) return;
+			// The app icon uses this SAME expiry clock even without an overlay.
+			// No parallel timer/renderer lifetime or second approval model.
+			if (!approvalsOverlay && !options.onPendingConsentChanged) return;
 			if (approvalsExpiryTimer) {
 				clearTimeout(approvalsExpiryTimer);
 				approvalsExpiryTimer = null;
@@ -1239,6 +1267,7 @@ async function initializeBrowserHost(
 				...entry,
 				requesterSessionId: sessionRequesterOf(entry.requester),
 			}));
+			options.onPendingConsentChanged?.(entries.length > 0);
 			approvalsOverlay?.setModel({ entries });
 			if (entries.length === 0) return;
 			const delay = approvalsExpiryDelay(entries);
@@ -1267,6 +1296,13 @@ async function initializeBrowserHost(
 			approvals,
 			ownership,
 			downloads,
+			recordingEncoder: options.recordingEncoder
+				? createRecordingEncoderService({
+						documentUrl: options.recordingEncoder.documentUrl,
+						preloadPath: options.recordingEncoder.preloadPath,
+						log,
+					})
+				: undefined,
 			log,
 			onChanged: notifyChanged,
 			facts: () => facts,
@@ -1293,6 +1329,10 @@ async function initializeBrowserHost(
 					}
 				: undefined,
 		});
+		// Main can resolve language after renderer renegotiation. Publish from the
+		// actual locale owner, not from the renderer's earlier request or a timer.
+		const stopLocaleUpdates = observeBrowserLocale(options.window);
+		rollback.add(stopLocaleUpdates);
 		respondToConsent = (entryId, decision) =>
 			host.respondToConsent(entryId, decision);
 		// The store exists from here on; every later clear reaches it. Assigned
@@ -1667,6 +1707,7 @@ async function initializeBrowserHost(
 			sessionCookies: () => restoreReport,
 			...(addressOverlay ? { addressOverlay: probeAddressOverlay } : {}),
 			stop: async () => {
+				stopLocaleUpdates();
 				detachChords();
 				host.flushHistory();
 				/*
@@ -1713,6 +1754,10 @@ async function initializeBrowserHost(
 					approvalsExpiryTimer = null;
 				}
 				approvalsOverlay?.dispose("host-stop");
+				// Every hidden encoder window, before the views: a recording's own abort
+				// reaches the same dispose through `cdp.close()`, and this is the one that
+				// does not depend on a tab still being attached (D21).
+				disposeAllRecordingEncoders();
 				registry.destroyAll();
 				await Promise.allSettled([...releases]);
 				await cdp.close();
@@ -1792,6 +1837,10 @@ async function initializeBrowserHost(
 			// tab occupies the content rect, so a tab created in the background paints
 			// nothing over the app's own UI while it loads.
 			view.setVisible(false);
+			// Size while attached FIRST, preserving the background viewport. Hiding
+			// alone still lets a navigation commit take native input from any UI
+			// field; only an explicitly presented page belongs in this window.
+			setBrowserViewPresented(window.contentView, view, false);
 			return view;
 		}
 

@@ -1,0 +1,110 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (independent delta audit of the 13 new ui.teamBridge.mentions.* keys)",
+	"date": "2026-10-30",
+	"auditor": "task",
+	"agent": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Session a72fc22aa8e8 ran as anthropic/claude-opus-5-5 (the model named in this session's system prompt); no fallback announced or observed.",
+	"session": "a72fc22aa8e8",
+	"instance": "a72fc22aa8e8-hi",
+	"audit_id": "teambridge-mentions-audit-a72fc22aa8e8-hi",
+	"status": "passed",
+	"result": "clean",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"independence": "Independent auditor: session a72fc22aa8e8 (team lopdev, role task, assignment 'i18n audit ui#1532'). The translations were authored by the lopdev coder in commit d97fab7df10 (self-translated); this session did not author them. Prior ui.teamBridge auditors' rows are superseded, not reused.",
+	"integration": {
+		"pr": "damianvtran/local-operator-ui#1532",
+		"branch": "feat/tb-mention-autocomplete",
+		"head_at_audit": "b6b35c048dd48e825e4929ab8847f1bc60d779cf",
+		"worktree": "~/local-operator-ui/.worktrees/tb-mentions"
+	},
+	"scope": {
+		"primary": [
+			"ui.teamBridge.mentions.listbox_label",
+			"ui.teamBridge.mentions.empty",
+			"ui.teamBridge.mentions.section.member_human",
+			"ui.teamBridge.mentions.section.member_agent",
+			"ui.teamBridge.mentions.section.org_human",
+			"ui.teamBridge.mentions.section.org_agent",
+			"ui.teamBridge.mentions.agent_secondary",
+			"ui.teamBridge.mentions.tag.not_member",
+			"ui.teamBridge.mentions.tag.bridge_off",
+			"ui.teamBridge.mentions.notice.not_member",
+			"ui.teamBridge.mentions.notice.invite_failed",
+			"ui.teamBridge.mentions.notice.invite",
+			"ui.teamBridge.mentions.notice.silent"
+		],
+		"delta_verified": "git diff origin/main -- src/i18n/catalogues/<locale>/ui.teamBridge.json adds exactly these 13 keys (the 285 pre-existing values are byte-identical to the bytes the superseded audits read); en/ui.teamBridge.json changed only by the same 13 additions.",
+		"call_sites": [
+			"src/renderer/src/features/team-bridge/mentions/mention-popover.tsx (listbox label, section headers, tags; popover w-[min(22rem,…)], rows truncate)",
+			"src/renderer/src/features/team-bridge/mentions/mention-source.tsx:57 (agent_secondary)",
+			"src/renderer/src/features/team-bridge/mentions/mention-notice.tsx (notice text and buttons)"
+		],
+		"references": [
+			{
+				"path": "~/local-operator/i18n/style-guides/hi.md",
+				"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+			},
+			{
+				"path": "~/local-operator/i18n/glossary.md",
+				"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+			}
+		]
+	},
+	"sha256": {
+		"hi": "6ee6106298d95073e9968d865e6534f88a1fcdc1b4d59b150b3a3e7fad9f6cb0",
+		"en": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "6ee6106298d95073e9968d865e6534f88a1fcdc1b4d59b150b3a3e7fad9f6cb0"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "2df42931aef59c5be610d072d70731a1bd71500306235a501bed8fdc9640511a"
+		}
+	},
+	"values_audited": {
+		"ui.teamBridge.mentions.listbox_label": "उल्लेख करने के लिए लोग और एजेंट",
+		"ui.teamBridge.mentions.empty": "“{query}” से कोई मेल नहीं खाता",
+		"ui.teamBridge.mentions.section.member_human": "इस बातचीत में लोग",
+		"ui.teamBridge.mentions.section.member_agent": "इस बातचीत में एजेंट",
+		"ui.teamBridge.mentions.section.org_human": "दूसरे लोग",
+		"ui.teamBridge.mentions.section.org_agent": "दूसरे एजेंट",
+		"ui.teamBridge.mentions.agent_secondary": "{person} का चीफ़ ऑफ़ स्टाफ़",
+		"ui.teamBridge.mentions.tag.not_member": "इस चैनल में नहीं",
+		"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge बंद है",
+		"ui.teamBridge.mentions.notice.not_member": "{name} इस बातचीत में शामिल नहीं है।",
+		"ui.teamBridge.mentions.notice.invite_failed": "{name} को आमंत्रित नहीं किया जा सका। आप फिर भी सूचना दिए बिना उल्लेख कर सकते हैं।",
+		"ui.teamBridge.mentions.notice.invite": "आमंत्रित करें",
+		"ui.teamBridge.mentions.notice.silent": "सूचना दिए बिना उल्लेख करें"
+	},
+	"fidelity_and_tone": "एजेंट per glossary; चीफ़ ऑफ़ स्टाफ़ matches chief.unnamed; उल्लेख matches notify.mention; danda । per hi.md; “ ” quotes; आप-register matches catalogue.",
+	"mechanical_checks": {
+		"placeholders": "{query}/{person}/{name} preserved exactly, one each, matching English",
+		"nfc": "all 13 values NFC",
+		"bidi_or_invisible_controls": "none (U+200B-U+200F, U+202A-U+202E, U+2066-U+2069 scan empty)",
+		"key_set": "identical to English",
+		"length": "max length ratio vs English <= 1.6 on 1-5 word strings; headers/tags/secondary truncate in a 22rem row, notice text wraps; measured in characters, not as a rendered frame"
+	},
+	"remediated_findings": [],
+	"remediated_findings_note": "Raised by this auditor and fixed before the receipt was bound; listed for the record, not counted, because the bytes this receipt names no longer contain them.",
+	"findings": [],
+	"info": [
+		{
+			"severity": "INFO",
+			"key": "ui.teamBridge.mentions.tag.not_member",
+			"note": "English source says 'channel' while its context says the row can be a group or direct message; every locale follows the English word. A source-copy question for the author, not a translation defect."
+		}
+	],
+	"verdict": "clean on the bound bytes: 0 blocker, 0 major, 0 minor, 0 nit residual; 0 finding(s) remediated in-audit (none)",
+	"evidence_record": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-mentions-audit-a72fc22aa8e8-hi/record.json",
+	"audit_notes_not_execution_log": true
+}

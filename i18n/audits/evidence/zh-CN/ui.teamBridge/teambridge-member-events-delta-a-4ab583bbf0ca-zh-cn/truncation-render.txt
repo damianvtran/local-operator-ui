@@ -1,0 +1,13 @@
+===== zh-CN
+  events.others(3 hidden)      : 其他3名成员
+  invited      shown (5 names, 3 hidden): Dana邀请了Ava、Ben和其他3名成员
+               full  (5 names)            : Dana邀请了Ava、Ben、Sana、Ravi和Cleo
+  joined       shown (5 names, 3 hidden): Ava、Ben和其他3名成员已加入对话
+               full  (5 names)            : Ava、Ben、Sana、Ravi和Cleo已加入对话
+  declined     shown (5 names, 3 hidden): Dana代Ava、Ben和其他3名成员拒绝了邀请
+               full  (5 names)            : Dana代Ava、Ben、Sana、Ravi和Cleo拒绝了邀请
+  withdrawn    shown (5 names, 3 hidden): Dana撤回了对Ava、Ben和其他3名成员的邀请
+               full  (5 names)            : Dana撤回了对Ava、Ben、Sana、Ravi和Cleo的邀请
+  declined_self                : Dana拒绝了邀请
+  owner_added_agent            : Dana添加了自己的智能体Ava
+  unknown                      : 成员已变更

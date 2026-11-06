@@ -1,0 +1,313 @@
+{
+  "instance": "fe0ca00c9b3e-agents2-zh-cn",
+  "locale": "zh-CN",
+  "audit_date": "2026-10-30",
+  "round": 2,
+  "audit_kind": "independent re-audit of a translator remediation",
+  "scope": "Agents page, zh-CN: the 12 shipped agent card blurbs (ui.agents.descriptions) and the 2 install button labels (ui.agents.detail.install), audited as the bytes that go into src/i18n/catalogues/zh-CN/. Round 1 (instance b138babe8ba8-agents-zh-cn) returned changes_requested; this run verifies the correction on the bytes and audits the group afresh.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "fe0ca00c9b3e",
+    "model": "radient/auto",
+    "actual_model_source": "fallback in-session: primary anthropic/claude-sonnet-5-5 hit provider quota; the run was switched to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto, which carried the remainder of the run and the final judgement",
+    "independent_from_translator_session": true,
+    "translator_session": "3ef6295a5545 (values read only; this auditor did not write them and did not produce round 1)",
+    "previous_audit_instance": "b138babe8ba8-agents-zh-cn"
+  },
+  "translator": {
+    "agent": "i18n-translator (invoked by the delegating session)",
+    "session": "3ef6295a5545",
+    "model": "not stated in translator.log; requests routed to api.radienthq.com",
+    "method": "LLM reasoning, no machine-translation service"
+  },
+  "source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+  "input_sha256": {
+    "en": [
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+        "sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.detail.install.json",
+        "sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0"
+      }
+    ],
+    "context": [
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+        "sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.detail.install.context.json",
+        "sha256": "f82578e4390f18d396fa229286d5395492618bd93ccbfa43d8d0dbe5a6530307"
+      }
+    ],
+    "target": [
+      {
+        "path": "agents-i18n/zh-CN/ui.agents.descriptions.json (shipping copy)",
+        "sha256": "22de799fc8c1a1b5cfac9c2cbaf9c96dc19f59294aa2b2f79a1d8f2bff93b747"
+      },
+      {
+        "path": "agents-i18n/zh-CN/ui.agents.detail.install.json (shipping file)",
+        "sha256": "82853faa89e460d3520051ac97be4c22a8f18907fdff82971d9cd60949b69568"
+      }
+    ],
+    "translator_english_copies": [
+      {
+        "path": "agents-i18n/zh-CN/ui.agents.descriptions.en.json",
+        "sha256": "c865345f35a1f50313a2dd6cc6afa4f06d80144a2312ac691bacd1932edf2f1f"
+      },
+      {
+        "path": "agents-i18n/zh-CN/ui.agents.detail.install.en.json",
+        "sha256": "cb0674b7f65c48806d427a9ed2702c9d77e4bd6ff866f9966bc6f7762b84bcc9"
+      }
+    ],
+    "note": "The English hashes that matter for staleness are the on-disk catalogue bytes above; ledger-assemble compares them. The translator's .en.json copies differ from those bytes in indentation only (1-space/2-space vs tab), values byte-identical on every key after JSON parse — verified key by key, 12/12 and 2/2."
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 2,
+    "by_namespace": {
+      "ui.agents.descriptions": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 2
+      },
+      "ui.agents.detail.install": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "note": "whole-receipt totals; per-namespace counts are what the ledger derives"
+  },
+  "verdict": "pass",
+  "round1_disposition": {
+    "findings_total": 10,
+    "closed": 9,
+    "still_open": 1,
+    "open_ids": [
+      "ZH-NIT-2"
+    ],
+    "new_in_round_2": [
+      "ZH-MINOR-6",
+      "ZH-NIT-5"
+    ],
+    "items": [
+      {
+        "id": "ZH-MAJOR-1",
+        "severity": "MAJOR",
+        "key": "ui.agents.descriptions.aida",
+        "disposition": "fixed",
+        "evidence": "current value opens 你的首席助理; this checkout's zh-CN catalogues contain 首席助理 in 11 keys and 幕僚长 in none (grep over src/i18n/catalogues/zh-CN, 106 files)",
+        "note": "the fix also rewrote the closing clause — see ZH-MINOR-6"
+      },
+      {
+        "id": "ZH-MINOR-1",
+        "severity": "MINOR",
+        "key": "ui.agents.descriptions.librarian",
+        "disposition": "fixed",
+        "evidence": "素材 now 0 occurrences in the shipped zh-CN catalogues, 资源 35; the value reads 为用户保存的资源",
+        "note": ""
+      },
+      {
+        "id": "ZH-MINOR-2",
+        "severity": "MINOR",
+        "key": "ui.agents.descriptions.librarian",
+        "disposition": "fixed",
+        "current": "学习其中的用词",
+        "note": "person no longer switches 用户→你的"
+      },
+      {
+        "id": "ZH-MINOR-3",
+        "severity": "MINOR",
+        "key": "ui.agents.descriptions.qa_tester",
+        "disposition": "fixed",
+        "current": "跑一遍真实路径和反例",
+        "note": "success claim 跑通 removed"
+      },
+      {
+        "id": "ZH-MINOR-4",
+        "severity": "MINOR",
+        "key": "ui.agents.descriptions.copy_reviewer",
+        "disposition": "fixed",
+        "current": "问题编号以C开头 / 以D / 以T / 以U",
+        "note": "all four prefixed-findings values now use 问题编号, matching ui.code_review's 问题 for findings"
+      },
+      {
+        "id": "ZH-MINOR-5",
+        "severity": "MINOR",
+        "key": "ui.agents.descriptions.copy_reviewer",
+        "disposition": "fixed",
+        "current": "AI腔 · UX审查 · QA矩阵 · 对diff、MR或PR · Unicode字形回退 · 问题编号以C开头",
+        "note": "regex sweep of all 14 values: 0 CJK↔Latin space insertions"
+      },
+      {
+        "id": "ZH-NIT-1",
+        "severity": "NIT",
+        "key": "ui.agents.descriptions.copy_reviewer",
+        "disposition": "fixed",
+        "current": "关注可理解性、语气、说法有无依据"
+      },
+      {
+        "id": "ZH-NIT-2",
+        "severity": "NIT",
+        "key": "ui.agents.descriptions.tui_designer",
+        "disposition": "open",
+        "current": "颜色与Unicode字形回退",
+        "note": "carried into round 2 as ZH-NIT-2"
+      },
+      {
+        "id": "ZH-NIT-3",
+        "severity": "NIT",
+        "key": "ui.agents.descriptions.scout",
+        "disposition": "fixed",
+        "current": "在工作区和网络上查证问题",
+        "note": "本地 dropped"
+      },
+      {
+        "id": "ZH-NIT-4",
+        "severity": "NIT",
+        "key": "ui.agents.detail.install.action.install_to_edit",
+        "disposition": "fixed",
+        "current": "安装可编辑副本",
+        "note": "adopted the suggested verb-first wording; sidecar's \"do not shorten to a bare Install\" is honoured"
+      }
+    ],
+    "note": "All six blocker/major/minor findings from round 1 are fixed on the bytes, verified independently against this checkout's shipped zh-CN catalogues rather than against the fix log. One NIT (ZH-NIT-2) is unfixed and carried forward; it does not gate."
+  },
+  "namespaces": {
+    "ui.agents.descriptions": {
+      "status": "passed",
+      "keys_audited": 12,
+      "sha256": {
+        "en": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+        "zh-CN": "22de799fc8c1a1b5cfac9c2cbaf9c96dc19f59294aa2b2f79a1d8f2bff93b747"
+      },
+      "findings": [
+        {
+          "id": "ZH-MINOR-6",
+          "severity": "MINOR",
+          "key": "ui.agents.descriptions.aida",
+          "english": "Your chief of staff: orchestrates agents and teams on your behalf, keeps an eye on everything in flight, and reports back.",
+          "current": "你的首席助理：替你调度智能体和团队，照看一切进行中的工作，并随时汇报。",
+          "problem": "NEW IN ROUND 2, introduced by the remediation itself. Round 1's value said 并向你汇报; while fixing 幕僚长→首席助理 the translator also rewrote the closing clause to 并随时汇报, which was not part of the finding being answered. 随时 adds a cadence/availability claim the English does not make (\"reports back\" states no frequency), and the clause lost its addressee 向你. No polarity, permission or safety defect, and a reader is not misled, so MINOR rather than MAJOR.",
+          "suggestion": "你的首席助理：替你调度智能体和团队，照看一切进行中的工作，并向你汇报。（若确要表达\"随时可汇报\"的可用性，写 并随时向你汇报）",
+          "round1_ref": "ZH-MAJOR-1 (disposition: fixed, with this collateral change)",
+          "introduced_by_remediation": true
+        },
+        {
+          "id": "ZH-NIT-2",
+          "severity": "NIT",
+          "key": "ui.agents.descriptions.tui_designer",
+          "english": "Designing and reviewing terminal interfaces: keyboard-first flows, density in small fixed viewports, colour and unicode fallbacks, measured geometry; reports T-prefixed findings.",
+          "current": "设计与审查终端界面：以键盘为先的操作流、在固定小视口中保持信息密度、颜色与Unicode字形回退、实测的几何数据；问题编号以T开头。",
+          "problem": "Carried from round 1, still open: 字形 narrows \"unicode fallbacks\" to glyph substitution, where the source also covers width and coverage. The context sidecar defines unicode fallbacks as glyphs substituted when a font lacks a glyph, so the wording is defensible; 回退 alone is broader and shorter.",
+          "suggestion": "颜色与Unicode回退",
+          "round1_ref": "ZH-NIT-2 (disposition: NOT FIXED, still a NIT)",
+          "introduced_by_remediation": false
+        },
+        {
+          "id": "ZH-NIT-5",
+          "severity": "NIT",
+          "key": "ui.agents.descriptions.scout",
+          "english": "Read-only research: investigates a question across the workspace and on the web, and reports findings with evidence. Changes nothing.",
+          "current": "只读调研：在工作区和网络上查证问题，带着证据汇报发现，不改动任何内容。",
+          "problem": "NEW IN ROUND 2. 查证 means verify/confirm, narrower than \"investigates\", and 问题 then leans \"an issue\" rather than \"a question\"; 汇报发现 also uses the bare nominal 发现 where the shipped catalogue calls findings 问题. The verb-object 汇报发现 is defensible idiomatic Chinese, which is why this is a NIT and not a repeat of round 1's ZH-MINOR-4 (that one was the attributive 发现的编号, which does read as \"the discovery's number\").",
+          "suggestion": "只读调研：在工作区和网络上调查问题，并带着证据汇报结果，不改动任何内容。",
+          "round1_ref": "new observation (round 1's ZH-NIT-3 on this key was fixed: 本地 dropped)",
+          "introduced_by_remediation": false
+        }
+      ],
+      "first_round_status": "changes_requested",
+      "note": "0 blocker, 0 major, 1 minor, 2 nit on the current bytes"
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+        "zh-CN": "82853faa89e460d3520051ac97be4c22a8f18907fdff82971d9cd60949b69568"
+      },
+      "findings": [],
+      "first_round_status": "passed (1 NIT)",
+      "note": "clean; the round-1 NIT on install_to_edit was adopted"
+    }
+  },
+  "checks": {
+    "repo_validator": {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs",
+      "where": "isolated copy /Users/damian/lop-audit-zh-parity: src/i18n/catalogues copied from the checkout, node_modules symlinked to the checkout's tree (no second install), the two audited files placed at catalogues/zh-CN/ — the shared checkout was never written to",
+      "result": "44/44 pass (0 fail) with the audited bytes in place; the six zh-CN assertions all pass",
+      "zh_cn_assertions": [
+        "ships at least one message",
+        "defines each key in at most one namespace file",
+        "carries EVERY key of each namespace file it ships",
+        "names only keys the English source defines",
+        "preserves every ICU placeholder from the English source",
+        "is not an English stub"
+      ]
+    },
+    "key_parity": {
+      "en_keys": 12,
+      "zh-CN_keys": 12,
+      "both_directions": "equal; 0 missing, 0 extra",
+      "key_order": "equals English",
+      "install": "2/2 equal"
+    },
+    "placeholders": {
+      "icu_arguments_in_source": 0,
+      "icu_arguments_in_target": 0,
+      "note": "no plurals/selects/markup/backticks in this group, so no CLDR categories apply and nothing can be mismatched"
+    },
+    "typography": {
+      "nfc": "all 14 values verified NFC (unicodedata.is_normalized over both files)",
+      "encoding": "UTF-8, no BOM",
+      "line_endings": "LF, tab indent, single trailing newline",
+      "ellipsis": "U+2026 twice in 正在安装……, matching the zh-CN style guide (…… not ...)",
+      "spacing": "regex sweep for CJK↔Latin insertions across all 14 values: 0 violations",
+      "punctuation": "full-width ，。：；、 in prose; no half-width Latin punctuation outside Latin/code runs"
+    },
+    "identical_to_english": "none",
+    "terminology": "checked against this checkout's shipped zh-CN catalogues (106 files): 首席助理 11 keys / 幕僚长 0; 资源 35 / 素材 0; 资源库 is the Library; 问题 is the catalogue's rendering of findings (ui.code_review.attention.findings, lane.state.findings_open); AI runs are tight (AI模型, AI提供商); diff/MR/PR stay Latin per the sidecar; agent→智能体, workspace→工作区 per the style guide",
+    "idiom_register": "你 formality, pronoun-dropping, verb-forward phrasing, zero marketing adjectives — all per the zh-CN style guide; no calque or literal-translation tells found",
+    "rtl": "not applicable (zh-CN is LTR)",
+    "fit": {
+      "hints": "no maxChars/maxCells hints exist for this group; the roster truncates at 256 px in both languages",
+      "ratios_em_cjk2to1": {
+        "aida": 0.57,
+        "architect": 0.57,
+        "coder": 0.6,
+        "copy_reviewer": 0.71,
+        "designer": 0.66,
+        "librarian": 0.64,
+        "manager": 0.68,
+        "qa_tester": 0.64,
+        "reviewer": 0.63,
+        "scout": 0.53,
+        "tui_designer": 0.7,
+        "ux_reviewer": 0.78,
+        "install_to_edit": 0.93,
+        "installing": 0.91
+      },
+      "note": "every value renders narrower than its English source; none is materially longer, so no card/tab/button overflow is introduced"
+    }
+  },
+  "retention": {
+    "record_of_truth": "i18n/receipts/fe0ca00c9b3e-agents2-zh-cn.json (byte-identical copy of this file)",
+    "evidence": "i18n/audits/evidence/zh-CN/<namespace>/fe0ca00c9b3e-agents2-zh-cn/{record.json,receipt.json,verdict.txt,audit.log}",
+    "audit_log": "agents-audit2/zh-CN/auditor.log is the harness execution log of this run; the copies under i18n/audits/evidence/ are snapshots taken at write time",
+    "target_bytes": "taken from the translator's shipping files in the delegating session's scratchpad; the checkout has no zh-CN ui.agents.descriptions/ui.agents.detail.install yet",
+    "pending_at_commit": "the files are not yet on disk under src/i18n/catalogues/zh-CN/, so ledger-assemble cannot run yet; re-read the bytes there before merging and re-hash — if they differ, this receipt no longer names the bytes and the namespace needs re-audit",
+    "ledger_status_if_assembled": "ui.agents.descriptions => clean-with-findings (0 major, 1 minor, 2 nit); ui.agents.detail.install => clean"
+  },
+  "method": {
+    "inputs": "read-only scratch copies at sessions/3ef6295a5545/scratchpad/agents-i18n/zh-CN/ audited as the bytes that will be committed",
+    "language": "judged by native-fluent reasoning in zh-CN; no translation/MT service used for comparison or back-translation",
+    "round1_as_claim_list": "the round-1 receipt was read as a list of claims and each one re-checked on the bytes, including its terminology counts (grep over the shipped catalogue), rather than trusted"
+  }
+}

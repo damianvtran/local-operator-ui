@@ -260,6 +260,17 @@ const bundle = await build({
 		"@shared": `${process.cwd()}/src/renderer/src/shared`,
 		"@features": `${process.cwd()}/src/renderer/src/features`,
 		"@assets": `${process.cwd()}/src/renderer/src/assets`,
+		/*
+		 * The surface reads its appearance through `use-resolved-appearance`, which
+		 * reaches `base-theme` and MUI's `createTheme`. Left as a bare
+		 * `@mui/material/styles`, the bundle hands Node a DIRECTORY specifier and Node
+		 * refuses it (`ERR_UNSUPPORTED_DIR_IMPORT`). MUI ships that path as a directory of
+		 * ESM files for bundlers, and each file in it imports its siblings the same way,
+		 * so naming `styles/index.js` only moves the failure down a level. The `node/`
+		 * build is that same module as CommonJS, which Node's ESM loader does resolve -
+		 * named exports included - so the surface keeps the REAL MUI.
+		 */
+		"@mui/material/styles": "@mui/material/node/styles/index.js",
 	},
 	loader: { ".css": "empty", ".png": "empty" },
 	write: false,

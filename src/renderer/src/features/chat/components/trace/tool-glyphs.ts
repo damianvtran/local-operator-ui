@@ -29,11 +29,14 @@ import {
 	FileText,
 	FolderOpen,
 	Globe,
+	Hourglass,
 	Inbox,
 	ListChecks,
 	type LucideIcon,
 	MailQuestion,
 	Mailbox,
+	MessageSquareOff,
+	MessagesSquare,
 	Monitor,
 	PictureInPicture2,
 	Plug,
@@ -114,6 +117,16 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 	 * round; a design round on these frames owns the last word here too.
 	 */
 	sessions: PictureInPicture2,
+	/*
+	 * `bridge` (Team Bridge) wears the mark the app already uses for Team Bridge
+	 * itself - the nav item and the command palette's conversation entry - so
+	 * the row a reader sees in the transcript and the place it leads to share
+	 * one shape. Two overlapping speech bubbles: a conversation among people,
+	 * which is what the tool writes into. Not `Send` (`send`, one note to one
+	 * peer session) and not `Inbox` (`peer`, a message arriving). The TUI
+	 * mirrors it with `nf-fa-comments` and an ASCII `↔`.
+	 */
+	bridge: MessagesSquare,
 };
 
 export function toolIcon(toolName: string): LucideIcon {
@@ -174,3 +187,15 @@ export const ErrorGlyph = X;
 export const InterruptedGlyph = CircleSlash;
 export const MailboxGlyph = Mailbox;
 export const DeliveryUnconfirmedGlyph = MailQuestion;
+/**
+ * Team Bridge's two amber marks. `inbox_only` is a message accepted into a
+ * peer's inbox and NOT posted to any conversation: a speech bubble struck
+ * through says "not in the conversation", which is the fact the reader needs
+ * (and is neither `bridge`'s own `MessagesSquare` nor `send`'s `Mailbox`, so a
+ * mark cannot be read as a tool glyph). `awaiting_acceptance` is a DM parked on
+ * the recipient owner's acceptance: an hourglass, waiting on someone else - a
+ * settled shape, unlike the rings this app spins for in-progress work. The
+ * design round owns the last word on both.
+ */
+export const InboxOnlyGlyph = MessageSquareOff;
+export const AwaitingAcceptanceGlyph = Hourglass;

@@ -1,0 +1,64 @@
+{
+	"audit_id": "54f8dec9b13b-agents-vi",
+	"audit_date": "2026-10-30",
+	"date": "2026-10-30",
+	"locale": "vi",
+	"namespace": "ui.agents.detail.install",
+	"source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+	"translator": {
+		"agent": "i18n-translator"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "54f8dec9b13b",
+		"model": "radient/auto",
+		"actual_model_source": "harness model-switch notices: configured selector anthropic/claude-sonnet-5-5 (session tail-anchor selected_model), quota fallbacks openai/gpt-6-astra then kimi/k3.1-pro then radient/auto; radient/auto served this audit",
+		"independent_from_translator_session": true,
+		"result": "clean",
+		"receipt": "i18n/receipts/54f8dec9b13b-agents-vi.json",
+		"receipt_sha256": "22d1f8404b358605c87a52887a268229984a0afaf15cfb07fe53c1faddc27a62"
+	},
+	"key_count": 2,
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.detail.install.json",
+			"sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.detail.install.context.json",
+			"sha256": "f82578e4390f18d396fa229286d5395492618bd93ccbfa43d8d0dbe5a6530307"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.agents.detail.install.json",
+			"sha256": "4dc3819e133363b0a8e8e16bc43996e3a402db62eef697db2f01299de159d6f9"
+		}
+	},
+	"findings": [],
+	"namespace_status": "passed",
+	"artifacts": [
+		{
+			"path": "i18n/receipts/54f8dec9b13b-agents-vi.json",
+			"sha256": "22d1f8404b358605c87a52887a268229984a0afaf15cfb07fe53c1faddc27a62"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.agents.detail.install/54f8dec9b13b-agents-vi/record.json",
+			"sha256": "self (this file)"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.agents.detail.install/54f8dec9b13b-agents-vi/receipt.json",
+			"sha256": "22d1f8404b358605c87a52887a268229984a0afaf15cfb07fe53c1faddc27a62"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.agents.detail.install/54f8dec9b13b-agents-vi/verdict.txt",
+			"sha256": "c73bb43d01993b401272c5e685b3e0e8c1806ae1840016a054daa7863d7bd126"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.agents.detail.install/54f8dec9b13b-agents-vi/auditor.log",
+			"sha256": "196fc5bb4e4f68972e7f4e3819fb49b8290c7a5d4c5a14133b2ad16ecee73116"
+		}
+	],
+	"retention": {
+		"record_of_truth": "i18n/receipts/54f8dec9b13b-agents-vi.json (byte-identical copy of the auditor's receipt)",
+		"note": "record.json restates the receipt; the copied logs are the auditor's own execution output, not notes."
+	}
+}

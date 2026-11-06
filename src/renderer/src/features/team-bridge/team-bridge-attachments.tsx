@@ -1,3 +1,8 @@
+import {
+	type TeamBridgeFilesState,
+	splitBridgeFiles,
+	transferredFiles,
+} from "./use-team-bridge-files";
 /**
  * Team Bridge image attachments: the composer strip and the message's images.
  *
@@ -11,21 +16,25 @@
  * pointed at by it.
  *
  * Fail closed: only an absent/`bound` state is fetched (`attachmentView`).
- * `expired` says "Image expired"; every other state says "Image unavailable"
- * and makes no request. A fetch that fails is the same "unavailable" receipt,
- * with a retry, because the commonest cause is a transient relay error.
+ * Terminal descriptors share a generic unavailable card and make no request.
+ * A member fetch may offer explicit retry for a transient relay error, never
+ * for an authenticated refusal. Audit descriptors never enter this byte flow.
  *
  * Bytes are never logged and no element carries the attachment's id, digest
  * or filename as text (D9). Alt text is a positional label ("Image 2 of 4").
  */
 
-import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import {
+	TeamBridgeApi,
+	TeamBridgeAttachmentError,
+} from "@shared/api/local-operator/team-bridge-api";
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
+	blobAt,
 	createBlobUrl,
 	peek,
 	publish,
@@ -40,6 +49,7 @@ import {
 	ImageIcon,
 	ImageOff,
 	ImagePlus,
+	Paperclip,
 	RotateCw,
 	X,
 } from "lucide-react";
@@ -50,10 +60,22 @@ import type {
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import { AttachmentFrame } from "../chat/components/message-item/attachment-frame";
+import { downloadBlob } from "../chat/utils/image-actions";
+import { toBridgeFileDescriptor } from "./attachments/attachment-model";
+import {
+	BridgeAttachmentGroup,
+	type BridgeImageSlot,
+} from "./attachments/bridge-attachment-group";
+import {
+	type InlineImageBox,
+	InlineImageFailure,
+	InlineImageTile,
+} from "./attachments/inline-image-tile";
 import {
 	type AttachmentFailure,
 	attachmentView,
 	imageFiles,
+	imagePasteCancelsText,
 	uploadPreview,
 } from "./team-bridge-attachments-model";
 import type {
@@ -354,38 +376,63 @@ export const TeamBridgeAttachmentStrip: FC<{
  */
 export const TeamBridgeAttachButton: FC<{
 	state: TeamBridgeAttachmentsState;
+	files?: TeamBridgeFilesState;
 	disabled?: boolean;
-}> = ({ state, disabled = false }) => {
+}> = ({ state, files, disabled = false }) => {
 	useI18nLocale();
 	const input = useRef<HTMLInputElement>(null);
-	if (!state.enabled) return null;
-	const full = state.count >= state.max;
+	if (!state.enabled && !files?.enabled) return null;
+	const full = files?.enabled
+		? state.count + files.chips.length >= 10
+		: state.count >= state.max;
 	return (
 		<>
 			<Button
 				variant="ghost"
 				size="icon"
-				aria-label={t("ui.teamBridge.attachments.add")}
+				aria-label={t(
+					files?.enabled
+						? "ui.teamBridge.files.add"
+						: "ui.teamBridge.attachments.add",
+				)}
 				title={
 					full
 						? t("ui.teamBridge.attachments.limit", { max: state.max })
-						: t("ui.teamBridge.attachments.add")
+						: t(
+								files?.enabled
+									? "ui.teamBridge.files.add"
+									: "ui.teamBridge.attachments.add",
+							)
 				}
 				disabled={disabled || full}
 				onClick={() => input.current?.click()}
 			>
-				<ImagePlus size={16} aria-hidden="true" />
+				{files?.enabled ? (
+					<Paperclip size={16} aria-hidden="true" />
+				) : (
+					<ImagePlus size={16} aria-hidden="true" />
+				)}
 			</Button>
 			<input
 				ref={input}
 				type="file"
 				// A hint for the OS picker only; the bytes are sniffed regardless.
-				accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif"
+				accept={
+					files?.enabled
+						? undefined
+						: "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif"
+				}
 				multiple
 				hidden
 				tabIndex={-1}
 				onChange={(event) => {
-					state.add(Array.from(event.target.files ?? []));
+					const selected = Array.from(event.target.files ?? []);
+					if (files)
+						void splitBridgeFiles(selected).then((parts) => {
+							state.add(parts.images);
+							files.add(parts.generic);
+						});
+					else state.add(selected);
 					// Reset so picking the same file twice still fires a change.
 					event.target.value = "";
 				}}
@@ -401,7 +448,8 @@ export const TeamBridgeAttachButton: FC<{
 type FetchState =
 	| { state: "loading" }
 	| { state: "ready"; url: string }
-	| { state: "failed" };
+	| { state: "failed" }
+	| { state: "unavailable" };
 
 /*
  * In-flight fetches by cache key, so N mounts of one picture (the timeline
@@ -412,31 +460,42 @@ type FetchState =
  */
 const inflight = new Map<
 	string,
-	{ promise: Promise<boolean>; holders: number }
+	{ promise: Promise<"ready" | "failed" | "unavailable">; holders: number }
 >();
 
 function fetchInto(
 	key: string,
 	input: Parameters<typeof TeamBridgeApi.attachmentBytes>[0],
-): Promise<boolean> {
+): Promise<"ready" | "failed" | "unavailable"> {
 	const existing = inflight.get(key);
 	if (existing) {
 		existing.holders += 1;
 		return existing.promise;
 	}
-	const record = { holders: 1, promise: Promise.resolve(false) };
+	const record: {
+		holders: number;
+		promise: Promise<"ready" | "failed" | "unavailable">;
+	} = { holders: 1, promise: Promise.resolve("unavailable") };
 	record.promise = (async () => {
 		try {
 			const { data, mimeType } = await TeamBridgeApi.attachmentBytes(input);
 			const url = createBlobUrl(data as BlobPart, mimeType);
 			if (record.holders <= 0) {
 				revokeBlobUrl(url);
-				return false;
+				return "unavailable";
 			}
 			publish(key, url);
-			return true;
-		} catch {
-			return false;
+			return "ready";
+		} catch (error) {
+			// A refusal is not a transient failure. Never turn a 401/403/404
+			// into a retry action or switch to another authority's route.
+			return error instanceof TeamBridgeAttachmentError &&
+				(error.status === null ||
+					error.status >= 500 ||
+					error.status === 408 ||
+					error.status === 429)
+				? "failed"
+				: "unavailable";
 		} finally {
 			inflight.delete(key);
 		}
@@ -473,8 +532,12 @@ function useBridgeAttachmentUrl(
 		void fetchInto(key, input).then((ok) => {
 			joined = false;
 			if (!live) return;
-			const url = ok ? retain(key) : null;
-			setState(url ? { state: "ready", url } : { state: "failed" });
+			const url = ok === "ready" ? retain(key) : null;
+			setState(
+				url
+					? { state: "ready", url }
+					: { state: ok === "failed" ? "failed" : "unavailable" },
+			);
 		});
 		return () => {
 			live = false;
@@ -492,77 +555,46 @@ function useBridgeAttachmentUrl(
  * DELETED AND WITHHELD LOOK THE SAME ON PURPOSE (design round 1, D7): the
  * reader is told the picture is not available to them, never why - "withheld"
  * vs "deleted" would tell a member what an agent's screening or another
- * member's account did. Only retention ("expired") is a fact about time that
- * is safe to state. The box is the tile's own `boxFor` size, so a retry that
- * succeeds does not move the message below it (D4).
+ * member's account did. Structured cards also withhold retention reasons.
+ * The box is the tile's own slot, so a retry that succeeds does not move the
+ * message below it (D4). The look is the shared inline failure tile.
  */
 const Placeholder: FC<{
 	kind: "expired" | "unavailable" | "failed";
 	label: string;
-	box: { width: number; height: number };
+	box: InlineImageBox;
 	onRetry?: () => void;
-}> = ({ kind, label, box, onRetry }) => {
-	const copy =
-		kind === "expired"
-			? t("ui.teamBridge.attachments.expired")
-			: t("ui.teamBridge.attachments.unavailable");
-	const copyId = useId();
-	return (
-		<div
-			role="img"
-			aria-label={label}
-			aria-describedby={copyId}
-			data-attachment-placeholder={kind}
-			style={{ width: box.width, height: box.height }}
-			className="flex flex-col items-center justify-center gap-1 rounded-sm border border-control bg-sunken px-2 text-center text-[12px] text-ink-dim"
-		>
-			{kind === "expired" ? (
-				<Clock size={16} aria-hidden="true" />
-			) : (
-				<ImageOff size={16} aria-hidden="true" />
-			)}
-			<span id={copyId}>{copy}</span>
-			{kind === "failed" && onRetry && (
-				<button
-					type="button"
-					onClick={onRetry}
-					/* 24px tall hit area for a text control (D5). */
-					className="min-h-6 rounded-sm px-1.5 text-accent hover:underline"
-				>
-					{t("ui.teamBridge.attachments.retry_load")}
-				</button>
-			)}
-		</div>
-	);
-};
+}> = ({ kind, label, box, onRetry }) => (
+	<InlineImageFailure
+		kind={kind}
+		label={label}
+		box={box}
+		copy={
+			kind === "expired"
+				? t("ui.teamBridge.attachments.expired")
+				: t("ui.teamBridge.attachments.unavailable")
+		}
+		onRetry={onRetry}
+		retryLabel={t("ui.teamBridge.attachments.retry_load")}
+		attributes={{ "data-attachment-placeholder": kind }}
+	/>
+);
 
 /*
- * Tile geometry. One picture gets room (up to 360×240, aspect kept from the
- * descriptor so the box does not reflow when the bytes land); several share
- * a row of 2:3-ish tiles. The reserved box IS the loading state.
- *
- * `compact` is the thread pane: at an 800px window it is ~360px wide with
- * ~272px of content, so 156px tiles stacked four in one column and pushed
- * half the set below the composer (design round 2, D12). 128×88 lets two sit
- * side by side (2 × 128 + 8 gap = 264), so four images are a 2×2 grid.
+ * SAVING A PICTURE THE READER CAN ALREADY SEE. The tile holds this session's
+ * blob URL for bytes the member relay already authorised and delivered; the
+ * save writes those same bytes through the platform's save dialog
+ * (`downloadBlob`), so no new byte route, authority or path exists. Owner
+ * audit tiles do not get this (no download from the audit, #1634).
+ * The image contract carries no file name, so the dialog proposes a generic
+ * one with the extension the mime implies. The caller offers Save only while
+ * `blobAt` still has the bytes, so the control never silently does nothing
+ * (agent review round 1, nit 1).
  */
-const boxFor = (
-	attachment: TeamBridgeAttachment,
-	single: boolean,
-	compact = false,
-) => {
-	if (!single)
-		return compact ? { width: 128, height: 88 } : { width: 156, height: 104 };
-	const maxW = compact ? 264 : 360;
-	const maxH = compact ? 176 : 240;
-	const { width, height } = attachment;
-	if (!width || !height) return { width: 240, height: 160 };
-	const scale = Math.min(maxW / width, maxH / height, 1);
-	return {
-		width: Math.max(64, Math.round(width * scale)),
-		height: Math.max(64, Math.round(height * scale)),
-	};
-};
+function saveBridgeImage(blob: Blob, mime: string, index: number) {
+	const extension = mime === "image/jpeg" ? "jpg" : "png";
+	downloadBlob(blob, `image-${index + 1}.${extension}`);
+}
 
 const MessageImage: FC<{
 	message: TeamBridgeMessage;
@@ -571,7 +603,7 @@ const MessageImage: FC<{
 	attachment: TeamBridgeAttachment;
 	index: number;
 	count: number;
-	density: "regular" | "compact";
+	slot: BridgeImageSlot;
 	onOpen: (index: number) => void;
 	register: (index: number, url: string | null) => void;
 	buttonRef: (node: HTMLButtonElement | null) => void;
@@ -582,14 +614,25 @@ const MessageImage: FC<{
 	attachment,
 	index,
 	count,
-	density,
+	slot,
 	onOpen,
 	register,
 	buttonRef,
 }) => {
-	const view = tenantId === null ? "unavailable" : attachmentView(attachment);
+	const view =
+		tenantId === null || !accountId
+			? "unavailable"
+			: attachmentView(attachment);
 	const [attempt, setAttempt] = useState(0);
-	const key = `team-bridge:${tenantId}:${message.conversation_id}:${message.id}:${attachment.id}`;
+	// Member and owner-audit resources never share an authority/cache key.
+	const key = JSON.stringify([
+		"team-bridge-member",
+		accountId,
+		tenantId,
+		message.conversation_id,
+		message.id,
+		attachment.id,
+	]);
 	const source = useBridgeAttachmentUrl(
 		key,
 		{
@@ -610,55 +653,37 @@ const MessageImage: FC<{
 	const url = source.state === "ready" ? source.url : null;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: publish the URL to the lightbox set when it changes.
 	useEffect(() => register(index, url), [url, index]);
-	const box = boxFor(attachment, count === 1, density === "compact");
-	if (view !== "fetch")
-		return (
-			<Placeholder
-				kind={view === "expired" ? "expired" : "unavailable"}
-				label={label}
-				box={box}
-			/>
-		);
+	const saveBlob = url ? blobAt(url) : null;
+	if (view !== "fetch" || source.state === "unavailable")
+		return <Placeholder kind="unavailable" label={label} box={slot.box} />;
 	if (source.state === "failed")
 		return (
 			<Placeholder
 				kind="failed"
 				label={label}
-				box={box}
+				box={slot.box}
 				onRetry={() => setAttempt((value) => value + 1)}
 			/>
 		);
 	return (
-		<button
-			ref={buttonRef}
-			type="button"
-			aria-label={t("ui.teamBridge.attachments.open", {
+		<InlineImageTile
+			url={url}
+			box={slot.box}
+			fit={slot.fit}
+			overflow={slot.overflow}
+			label={label}
+			openLabel={t("ui.teamBridge.attachments.open", {
 				index: String(index + 1),
 				count: String(count),
 			})}
-			title={t("ui.teamBridge.attachments.open", {
-				index: String(index + 1),
-				count: String(count),
-			})}
-			disabled={!url}
-			onClick={() => onOpen(index)}
-			className="group/tile block cursor-zoom-in rounded-sm leading-none disabled:cursor-progress"
-		>
-			<AttachmentFrame
-				boundary="control"
-				style={{ width: box.width, height: box.height }}
-				data-attachment-reserved={url ? undefined : ""}
-			>
-				{url && (
-					<img
-						src={url}
-						alt={label}
-						draggable={false}
-						className="size-full object-cover"
-					/>
-				)}
-			</AttachmentFrame>
-		</button>
+			buttonRef={buttonRef}
+			onOpen={() => onOpen(index)}
+			onDownload={
+				saveBlob
+					? () => saveBridgeImage(saveBlob, attachment.mime, index)
+					: undefined
+			}
+		/>
 	);
 };
 
@@ -677,11 +702,15 @@ export const TeamBridgeMessageAttachments: FC<{
 }> = ({ message, tenantId, density = "regular", accountId }) => {
 	useI18nLocale();
 	const attachments = message.attachments ?? [];
+	/* S3b generic files ride beside the images as metadata-only cards; they
+	 * never enter this component's byte relay, cache or lightbox. */
+	const files = (message.files ?? []).map(toBridgeFileDescriptor);
+	const fileCount = Math.max(files.length, message.file_count ?? 0);
 	const [open, setOpen] = useState<number | null>(null);
 	const [urls, setUrls] = useState<(string | null)[]>([]);
 	const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 	const restore = useRef<HTMLElement | null>(null);
-	if (attachments.length === 0) return null;
+	if (attachments.length === 0 && fileCount === 0) return null;
 	const count = attachments.length;
 	const register = (index: number, url: string | null) =>
 		setUrls((previous) => {
@@ -703,32 +732,31 @@ export const TeamBridgeMessageAttachments: FC<{
 				});
 	return (
 		<>
-			<ul
-				aria-label={t("ui.teamBridge.attachments.in_message", { count })}
-				className="mt-1.5 flex flex-wrap gap-2"
-			>
-				{attachments.map((attachment, index) => (
-					<li key={attachment.id}>
-						<MessageImage
-							message={message}
-							tenantId={tenantId}
-							accountId={accountId}
-							attachment={attachment}
-							index={index}
-							count={count}
-							density={density}
-							register={register}
-							buttonRef={(node) => {
-								buttons.current[index] = node;
-							}}
-							onOpen={(next) => {
-								restore.current = buttons.current[next] ?? null;
-								setOpen(next);
-							}}
-						/>
-					</li>
-				))}
-			</ul>
+			<BridgeAttachmentGroup
+				attachments={attachments}
+				compact={density === "compact"}
+				files={files}
+				fileCount={fileCount}
+				renderPreview={(attachment, index, slot) => (
+					<MessageImage
+						message={message}
+						tenantId={tenantId}
+						accountId={accountId}
+						attachment={attachment}
+						index={index}
+						count={count}
+						slot={slot}
+						register={register}
+						buttonRef={(node) => {
+							buttons.current[index] = node;
+						}}
+						onOpen={(next) => {
+							restore.current = buttons.current[next] ?? null;
+							setOpen(next);
+						}}
+					/>
+				)}
+			/>
 			<ImageLightbox
 				src={open === null ? undefined : (urls[open] ?? undefined)}
 				pending={open !== null && !urls[open]}
@@ -842,30 +870,44 @@ export const TeamBridgeScheduledAttachments: FC<{
 
 /**
  * Paste and drop on the composer box. Only IMAGE files are taken; text in the
- * same paste flows into the field untouched (the default is prevented only
- * when the clipboard carried nothing but images). A paste of images on a hub
- * without the capability falls through to the hook's "unsupported" note.
+ * same paste flows into the field untouched, UNLESS that text is nothing but
+ * the pasted files' names - the `text/plain` a Finder file copy carries, which
+ * used to be typed into the reply beside its chip (issue #1573,
+ * `pastedTextIsOnlyFileNames`). A paste of images on a hub without the
+ * capability falls through to the hook's "unsupported" note.
  */
-export function attachmentPasteHandlers(state: TeamBridgeAttachmentsState) {
+export function attachmentPasteHandlers(
+	state: TeamBridgeAttachmentsState,
+	generic?: TeamBridgeFilesState,
+) {
+	const add = (data: DataTransfer) => {
+		if (generic)
+			void splitBridgeFiles(transferredFiles(data)).then((parts) => {
+				state.add(parts.images);
+				generic.add(parts.generic);
+			});
+		else state.add(imageFiles(data));
+	};
 	return {
 		onPaste: (event: ClipboardEvent<HTMLElement>) => {
-			const files = imageFiles(event.clipboardData);
+			const files = generic
+				? transferredFiles(event.clipboardData)
+				: imageFiles(event.clipboardData);
 			if (files.length === 0) return;
-			const hasText = Array.from(event.clipboardData.types).includes(
-				"text/plain",
-			);
-			if (!hasText) event.preventDefault();
-			state.add(files);
+			if (imagePasteCancelsText(event.clipboardData)) event.preventDefault();
+			add(event.clipboardData);
 		},
 		onDragOver: (event: DragEvent<HTMLElement>) => {
 			if (Array.from(event.dataTransfer.types).includes("Files"))
 				event.preventDefault();
 		},
 		onDrop: (event: DragEvent<HTMLElement>) => {
-			const files = imageFiles(event.dataTransfer);
+			const files = generic
+				? transferredFiles(event.dataTransfer)
+				: imageFiles(event.dataTransfer);
 			if (files.length === 0) return;
 			event.preventDefault();
-			state.add(files);
+			add(event.dataTransfer);
 		},
 	};
 }

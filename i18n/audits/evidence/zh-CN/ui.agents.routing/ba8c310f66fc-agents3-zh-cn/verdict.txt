@@ -1,0 +1,2 @@
+PASS
+0 blocker / 0 major / 5 minor / 4 nit across 12/12 zh-CN ui.agents.routing values: no claim reversed, no guard weakened to MAJOR, every value materially shorter than its English; the minors are one cross-family vocabulary slip (在办 vs 进行中), ticket->需求, a narrowed never-list, one register dip and one collapsed small/fixed disjunction.

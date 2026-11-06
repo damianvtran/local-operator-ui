@@ -663,9 +663,12 @@ test("Team Bridge page: the view mounts the banner in its notice slot", () => {
 		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 		"utf8",
 	);
+	// The slot is a fragment since the Team trial note shares it (the trial
+	// note first, then this banner), so the pin asserts the banner is INSIDE
+	// the `notice` prop rather than its only child.
 	assert.match(
 		source,
-		/notice=\{<TeamBridgeDefaultOnBanner status=\{status\.data\} \/>\}/,
+		/notice=\{\s*<>\s*\{trialNote\.note\}\s*<TeamBridgeDefaultOnBanner status=\{status\.data\} \/>\s*<\/>\s*\}/,
 	);
 	assert.match(source, /\{notice\}/);
 });

@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -15,6 +17,7 @@ import {
 	MessageCircleQuestion,
 	MessageSquare,
 	Pause,
+	Timer,
 	WifiOff,
 } from "lucide-react";
 import {
@@ -22,6 +25,7 @@ import {
 	peerUncertainLabel,
 } from "../../mesh/peer-presence";
 import { asksOutstandingLabel } from "../ask-queue";
+import { hasWork, subagentMarks } from "../chat-session-subagents";
 
 /** Resting codes that legitimately render as a plain ring. */
 const KNOWN_RESTING = new Set(["idle", "recent"]);
@@ -105,6 +109,7 @@ export function ChatAsksOutstanding({
 	 * and `null` is the same absence - neither is a claim of zero. */
 	open?: number | null;
 }) {
+	useI18nLocale();
 	const count = typeof open === "number" ? open : row.asks_open;
 	if (typeof count !== "number" || !Number.isFinite(count) || count <= 0)
 		return null;
@@ -120,7 +125,9 @@ export function ChatAsksOutstanding({
 		 */
 		<span
 			role="img"
-			aria-label={`${asksOutstandingLabel(count)} outstanding. The agent is not blocked on you.`}
+			aria-label={t("ui.chat.asks.outstanding_aria", {
+				label: asksOutstandingLabel(count),
+			})}
 			className={cn("inline-flex shrink-0 items-center gap-0.5")}
 		>
 			{/*
@@ -266,7 +273,7 @@ export function SubagentRunningMark({
 	 * type says so rather than leaving the next call site to discover an invisible mark at runtime.
 	 */
 	className: string;
-	/** The rig/test hook (`data-subagent-mark`). Passed only where the mark stands for the ROW's own running subagents - the `delegating` rung shares the component but not the hook. */
+	/** The rig/test hook (`data-subagent-mark`): "this mark stands for the ROW's own running children". The one call site that draws the mark - the row's status cell - passes it, which is what its readers (`scripts/session-switch.tsx`, the sidebar rigs) count. */
 	mark?: string;
 }) {
 	return (
@@ -298,30 +305,95 @@ export function SubagentRunningMark({
 	);
 }
 
-export function ChatSessionStatus({
-	row,
-	nowSeconds = Date.now() / 1000,
-}: { row: CanonicalSessionRow; nowSeconds?: number }) {
+/**
+ * The status label both the sidebar's tooltip/accessible name and the Stop
+ * picker read, with the one translated exception.
+ *
+ * `status.label` is a WIRE label, not copy: the backend's resting code
+ * `recent` carries the English word "Recent" (core `session/catalog.py`).
+ * The sidebar already owns the translated equivalent for that one state, so
+ * substitute it by the stable transport code rather than by spelling. Every
+ * other code keeps the backend's own label: those carry counts, causes and
+ * state-specific detail this client does not reconstruct, and copying them
+ * here would make a second source of truth.
+ */
+export function statusLabelText(
+	row: Pick<CanonicalSessionRow, "status">,
+): string | undefined {
+	if (row.status?.code === "recent") return t("ui.chat.sidebar.row.recent");
+	return row.status?.label;
+}
+
+/**
+ * The sentence the status contributes to the row's accessible name.
+ *
+ * ONE SPELLING, because the row now has two arms (the glyph, or a badge on a
+ * picture) and a reader must hear the same words in both. `unread` is a LEVEL
+ * the ink carries visually, so the name has to say it - and only where a mark
+ * is actually drawn (`unreadMark`), never on a quiet row.
+ *
+ * THE SUFFIX HAS ONE OWNER, AND IT IS THIS FUNCTION (agent review round 1,
+ * R1-B1/R1-B2). It used to be appended here AND again in the `sr-only` span, so
+ * a complete unread row's name read "Complete, unread, unread" - which is what
+ * four cases in `scripts/chat-session-status.test.mjs` and the added-strings
+ * guard (the second literal) both failed on. Anything that renders this
+ * sentence therefore renders it WHOLE; no call site may add the level itself.
+ *
+ * Gated on `unreadMark`, not on `row.attention?.unseen`, and the gating is the
+ * contract rather than a preference: this module's own test asserts that an
+ * ACKNOWLEDGED row renders IDENTICALLY to an unacknowledged one for every code
+ * that draws NO mark, so an unconditional suffix changes what an acknowledged
+ * busy, wedged or gated row says - and a busy row claiming ", unread" is the
+ * reported defect in the one place the ink cannot show it.
+ *
+ * The marks are the predicate's three: `complete`, and the `error` and
+ * `interrupted` codes the runtime labels "Unseen error" / "Unseen interruption"
+ * and ranks as outstanding completions. The suffix is the translated `ui.chat.sidebar.row.unread_suffix`, not an English literal, so this sentence and the visible tooltip name the same level in the same language.
+ *
+ * THE TWO FAILURE CODES THEREFORE SAY "UNSEEN" TWICE - "Unseen error, unread" -
+ * and that redundancy is ACCEPTED rather than trimmed (design D4 and QA Q-2 both
+ * raised it). Gating the suffix on `unreadMark === "complete"` would be a
+ * SECOND rule about which codes carry the suffix, which is the two-derivations
+ * class this whole change removes: the suffix would become the check's property
+ * rather than the mark's, and a counted row's name would say nothing about the
+ * mark it draws. It is also the CLIENT's own statement of the level, where the
+ * "Unseen" in the label is the backend's word for it - which is what keeps the
+ * name true if that label is ever reworded for a code whose ink does not step
+ * between read and unseen.
+ */
+export function statusSpokenText(
+	row: CanonicalSessionRow,
+	nowSeconds: number,
+	mark: ReturnType<typeof sessionStatusMark>,
+): string {
+	const label = mark.linkDown
+		? peerLinkDownLabel(row, nowSeconds)
+		: (mark.uncertainLabel ??
+			statusLabelText(row) ??
+			t("ui.chat.sidebar.row.recent"));
+	return `${label}${mark.unreadMark !== null ? t("ui.chat.sidebar.row.unread_suffix") : ""}`;
+}
+
+/**
+ * What one row's status cell draws, as data.
+ *
+ * EXTRACTED SO TWO SURFACES CANNOT DISAGREE (agent profile pictures, 2026-10-30).
+ * The chat sidebar now has two arms for the same row - the status glyph alone
+ * when the agent has no picture, and a status badge on the corner of its
+ * picture when it has one - and a second copy of these chains would let the
+ * same conversation read "waiting" in one arm and "running" in the other. Every
+ * rule the chains state (the unread level, the louder-fact precedence, the
+ * `delegating` rung, the ink ladder) is unchanged and lives here once;
+ * `ChatSessionStatus` below renders it and `ChatSessionStatusBadge` shrinks it.
+ */
+export function sessionStatusMark(row: CanonicalSessionRow) {
 	const code = row.status?.code;
-	/*
-	 * `delegating`'s mark is the RUNNING MARK below rather than a Lucide icon:
-	 * the glyph slot renders one or the other, and the chain underneath is not
-	 * asked for an icon on this code (see `SubagentRunningMark`).
-	 */
 	const linkDown = row.locality === "remote" && row.link_down === true;
-	// Same shape (the link IS lost), quieter ink: amber is the escalation.
 	const reconnecting = linkDown && row.link_reconnecting === true;
 	const uncertainLabel = peerUncertainLabel(row);
 	const delegating = !uncertainLabel && !linkDown && code === "delegating";
-	/*
-	 * WHAT THIS ROW IS DRAWING, asked of the ONE predicate (`unreadMarkKind`) the
-	 * accessible name below, the sidebar row's tooltip and the bulk control's
-	 * count all ask. It reads `status.code`, which is the runtime's own
-	 * `shows_completion_mark` precedence over the wire; `unseen` alone cannot
-	 * answer it, because a session that finished a turn and then started another
-	 * still carries `unseen` — a LEVEL, cleared only by an acknowledgement — while
-	 * drawing a spinner, and that row must claim neither the check nor "unread".
-	 */
+	const subagents = subagentMarks(row);
+	const queuedOnly = subagents.queued && !hasWork(row.subagents_running);
 	const unreadMark = unreadMarkKind(row);
 	// Completion is still the outcome after reading it; only its attention
 	// mark rests. Keep failures, work and pending gates independent of receipts.
@@ -435,6 +507,74 @@ export function ChatSessionStatus({
 										code === "delegating"
 										? "text-accent"
 										: "text-ink-dim";
+	return {
+		code,
+		linkDown,
+		reconnecting,
+		uncertainLabel,
+		delegating,
+		queuedOnly,
+		unreadMark,
+		Icon,
+		ink,
+	};
+}
+
+export function ChatSessionStatus({
+	row,
+	nowSeconds = Date.now() / 1000,
+}: { row: CanonicalSessionRow; nowSeconds?: number }) {
+	/*
+	 * THE ROW'S OWN CHILDREN, DRAWN IN THIS CELL RATHER THAN BESIDE THE TITLE
+	 * (first-paint completeness, 2026-10-30).
+	 *
+	 * WHY THEY MOVED HERE AT ALL. Both counts are optional on the wire and absent
+	 * means UNKNOWN, not zero, so a row can paint without them and gain them on the
+	 * next read. The trailing glyphs were `shrink-0` and the title is the row's only
+	 * `flex-1`, so a mark arriving late took its width out of the title and re-cut
+	 * the ellipsis under the reader: measured at a 264px panel, the title's clip went
+	 * 152 -> 130px and its cut column 24 -> 21 characters 1.6 s after the first
+	 * contentful frame. This box is `size-4` and drawn on every row whether or not it
+	 * holds a glyph, so a fact that arrives later changes what is IN the row and
+	 * never how much of the title is cut. Two alternatives were measured and refused:
+	 * a trailing lane reserved on every row cost 36px of every title (two titles that
+	 * had rendered whole went into ellipsis at 264), and a lane reserved only while
+	 * the counts were unknown merely turned the shrink into a regrow.
+	 *
+	 * WHICH GLYPH, AND WHY ONLY ONE CODE QUALIFIES (design round 1, D1 - BLOCKER).
+	 * The runtime already orders the facts a row can carry, and it puts child
+	 * activity near the BOTTOM: `catalog.py` ranks wedged, a parked gate, a busy or
+	 * silent runtime and an unread outcome all above `delegating`, in its own words
+	 * "the rungs above it are all LOUDER facts about the row rather than about its
+	 * children". `resume.SessionRow.delegating` is non-None whenever any child runs or
+	 * queues, so a live count only ever coexists with a LOUDER code - and a first cut
+	 * of this change asked the counts first, which meant it never ADDED a mark, it
+	 * only HID the louder one: an approval row lost its parked-gate bubble, an error
+	 * row lost its alert, an unread completion lost its check (while the bulk control
+	 * still counted it as unread), and the one animated busy row stopped animating.
+	 *
+	 * So the cell asks the CODE, not the counts: `delegating` is the one rung where
+	 * child activity IS the row's top fact, and it is the rung that already drew this
+	 * mark before the change. Every louder code keeps its own glyph, and the counts it
+	 * carries stay in the name channel (below). Under that rule the trio also stops
+	 * being ambiguous between `delegating` and "children running under another code"
+	 * (D3): only `delegating` can draw it.
+	 *
+	 * THE QUEUED STATE HAS ITS OWN SILHOUETTE (D2). It used to be an `Hourglass`,
+	 * which is the glyph of `waiting` in this same cell and was told apart by ink
+	 * alone - two states, one picture. It is a `Timer` now: still "not started yet",
+	 * and a silhouette nothing else in this cell wears.
+	 */
+	/*
+	 * THE CELL'S FACTS COME FROM THE ONE PREDICATE (see `sessionStatusMark`).
+	 * The long reasons for what each rung draws - the child counts' box, the
+	 * `delegating`-only trio, the queued silhouette, the unread level - live
+	 * there, beside the chains themselves, so this component cannot drift from
+	 * the badge that draws the same state at 10px.
+	 */
+	const mark = sessionStatusMark(row);
+	const { Icon, ink, delegating, queuedOnly } = mark;
+
 	return (
 		/*
 		 * NO `title` ON THIS SPAN (review round 1, MINOR 1). It used to carry
@@ -449,46 +589,92 @@ export function ChatSessionStatus({
 		 */
 		<span className="flex size-4 shrink-0">
 			{delegating ? (
-				<SubagentRunningMark className={cn("size-4", ink)} />
+				queuedOnly ? (
+					/*
+					 * A QUEUE WITH NOTHING RUNNING is the one child fact the trio cannot
+					 * carry, so it takes the cell - and it takes it by the same rule as the
+					 * trio: only on the rung whose top fact is what its children are doing.
+					 */
+					<Timer
+						aria-hidden="true"
+						data-subagent-mark="queued"
+						className="size-4 text-ink-muted"
+					/>
+				) : (
+					<SubagentRunningMark
+						className={cn("size-4", ink)}
+						/*
+						 * THE HOOK IS PASSED HERE (agent review round 1, R1-1). Its own rule used to
+						 * withhold it on this rung, because the rung shared the component with the
+						 * row's trailing indicator and the hook had to mean "the ROW's own running
+						 * children" rather than "this row's status rung". The fusion leaves ONE place
+						 * the mark can be drawn, and there it always means exactly that, so the
+						 * attribute belongs on it - `scripts/session-switch.tsx` counts the cue by
+						 * it, and a hook the product never renders is a reader that reports zero.
+						 */
+						mark="running"
+					/>
+				)
 			) : (
+				/*
+				 * EVERY OTHER CODE KEEPS ITS OWN GLYPH (D1). A row can carry a live child
+				 * count under an approval, an error, an unread completion or a spinner, and
+				 * in every one of those the child count is the quieter fact: the runtime
+				 * ranks it below them, the row's own sentence still carries it, and hiding
+				 * the louder glyph to show it turns "waiting for you" into "work in
+				 * progress".
+				 */
 				<Icon className={cn("size-4", ink)} aria-hidden="true" />
 			)}
-			<span className="sr-only">
-				{linkDown
-					? peerLinkDownLabel(row, nowSeconds)
-					: (uncertainLabel ?? row.status?.label ?? "Recent")}
-				{/*
-				 * THE UNREAD SEMANTIC IS AN INK STEP, so on its own it tells a screen
-				 * reader nothing — the arrival is visible only to someone looking at
-				 * the glyph — and the name carries it in the cases the ink moves to a
-				 * state of its own (review round 3, R3-3).
-				 *
-				 * Gated on `unreadMark`, not on `row.attention?.unseen`, and the gating
-				 * is the contract rather than a preference: this module's own test
-				 * asserts that an ACKNOWLEDGED row renders IDENTICALLY to an
-				 * unacknowledged one for every code that draws NO mark, so an
-				 * unconditional suffix changes what an acknowledged busy, wedged or
-				 * gated row says — and a busy row claiming ", unread" is the reported
-				 * defect in the one place the ink cannot show it.
-				 *
-				 * The marks are the predicate's three: `complete`, and the `error` and
-				 * `interrupted` codes the runtime labels "Unseen error" / "Unseen
-				 * interruption" and ranks as outstanding completions.
-				 *
-				 * THE TWO FAILURE CODES THEREFORE SAY "UNSEEN" TWICE — "Unseen error,
-				 * unread" — and that redundancy is ACCEPTED rather than trimmed (design
-				 * D4 and QA Q-2 both raised it). Gating the suffix on `unreadMark ===
-				 * "complete"` would be a SECOND rule about which codes carry the
-				 * suffix, which is the two-derivations class this whole change removes:
-				 * the suffix would become the check's property rather than the mark's,
-				 * and a counted row's name would say nothing about the mark it draws.
-				 * It is also the CLIENT's own statement of the level, where the
-				 * "Unseen" in the label is the backend's word for it — which is what
-				 * keeps the name true if that label is ever reworded for a code whose
-				 * ink does not step between read and unseen.
-				 */}
-				{unreadMark !== null ? ", unread" : ""}
-			</span>
+			<span className="sr-only">{statusSpokenText(row, nowSeconds, mark)}</span>
+		</span>
+	);
+}
+
+/**
+ * The same status, shrunk to sit on the corner of a session's picture.
+ *
+ * WHY A CORNER BADGE (operator's ask: "the running/done/waiting/attention
+ * states must stay legible, so never hide status behind the avatar"). A row
+ * with a picture would otherwise spend the leading slot on the picture and lose
+ * the one mark that says what the conversation is doing. The badge keeps BOTH:
+ * the avatar takes the slot the status glyph had, and the glyph rides its
+ * bottom-trailing corner at 10px on a `sunken` plate with the ring the row's
+ * ground provides, so the shape and the ink are the ones `sessionStatusMark`
+ * decided for the full-size cell.
+ *
+ * THE PLATE IS NOT DECORATION. A 10px glyph directly on a photo is illegible on
+ * a busy image; the fill separates it from the pixels behind it, and the ink
+ * still carries the state (`text-accent` for running, `text-success` for a done
+ * turn, `text-warning` for waiting, `text-danger` for a failure) exactly as the
+ * full cell does.
+ *
+ * `data-session-status` survives on the badge: the rigs and the stylesheet read
+ * that hook, and a row that swapped its glyph for a picture must not disappear
+ * from their measurements.
+ */
+export function ChatSessionStatusBadge({
+	row,
+	className,
+}: {
+	row: CanonicalSessionRow;
+	className?: string;
+}) {
+	const { Icon, ink, delegating, queuedOnly } = sessionStatusMark(row);
+	return (
+		<span
+			aria-hidden="true"
+			data-session-status=""
+			className={cn(
+				"pointer-events-none absolute -end-0.5 -bottom-0.5 flex size-2.5 items-center justify-center rounded-full bg-sunken",
+				className,
+			)}
+		>
+			{delegating && !queuedOnly ? (
+				<SubagentRunningMark className="size-2" />
+			) : (
+				<Icon className={cn("size-2", ink)} />
+			)}
 		</span>
 	);
 }

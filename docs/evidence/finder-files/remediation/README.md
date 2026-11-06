@@ -30,7 +30,8 @@ All app launches were serial and reaped by the shipped driver. Owned daemon and
 gateway process tree (4 processes) was terminated and waited: remaining0.
 
 Width is measured, not inferred from a requested window. `canvasDockWidth` and
-`CANVAS_PANE_MAX_PX` in `chat-sidebar-layout.ts:117,133` cap the real dock at560.
+`CANVAS_PANE_MAX_PX` in `chat-sidebar-layout.ts` capped the real dock at 560 on
+the tree this matrix measured (the cap is now the slot's one `RIGHT_SLOT_MAX_PX`).
 -1184×800 window → **400px dock**.
 -920×800 window → **340px overlay**.
 -1380×900 window → **560px dock**.

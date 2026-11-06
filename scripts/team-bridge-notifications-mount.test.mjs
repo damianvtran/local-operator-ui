@@ -30,7 +30,10 @@ const membershipsFixturePath = join(scratch, "memberships-fixture.mjs");
 const toastFixturePath = join(scratch, "toast-fixture.mjs");
 writeFileSync(
 	toastFixturePath,
-	"export const toasts = []; export const showInfoToast = (message) => { toasts.push(message); }; export const showErrorToast = () => {}; export const showSuccessToast = () => {};",
+	// The bundle also links the rail's profile-card edge, which imports the rest
+	// of the toast manager: stub the whole surface so the graph links (the suite
+	// asserts what the watcher toasts, not these helpers).
+	"export const toasts = []; export const showInfoToast = (message) => { toasts.push(message); }; export const showErrorToast = (message) => { toasts.push(message); }; export const showSuccessToast = () => {}; export const showWarningToast = () => {}; export const dismissToast = () => {};",
 );
 const mountPath = new URL(
 	`./_team-bridge-notifications-mount-${process.pid}.mjs`,
@@ -64,6 +67,10 @@ export const fixture = {
 const tenantOf = (scope) =>
 	typeof scope === "string" ? scope : scope.tenantId;
 
+export const requireBridgeWriteAccount = (accountId) => {
+	if (!accountId) throw new Error("Team Bridge write account required");
+	return accountId;
+};
 export const TeamBridgeApi = {
 	async listMessages(id, options) {
 		fixture.calls.history.push({ id, ...options });
@@ -90,6 +97,11 @@ export const TeamBridgeApi = {
 		if (fixture.listGate) await fixture.listGate;
 		return fixture.conversations;
 	},
+	async markRead(id, options) {
+		fixture.calls.markRead = [...(fixture.calls.markRead ?? []), { id, ...options }];
+		if (fixture.markReadGate) await fixture.markReadGate;
+		return { conversation_id: id, last_read_seq: options.seq, unread_count: 0, muted: false };
+	},
 	async unread(scope) {
 		const tenant = tenantOf(scope);
 		fixture.calls.unread.push(tenant);
@@ -112,11 +124,16 @@ export function useMembershipsQuery() {
 const bundled = await build({
 	stdin: {
 		contents: `
-			export { useTeamBridgeNotifications } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
+			export { useTeamBridgeNotifications, notificationSender, senderIdentity } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
+			export { resolveIdentityAvatar } from "./src/shared/identity-avatar";
 			export { toasts } from "@shared/utils/toast-manager";
 			export { useTeamBridgeNotificationOpen } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
 			export { beginRadientAuthoritySignOut, beginRadientAuthorityTransition, settleRadientAuthority } from "./src/renderer/src/shared/hooks/radient-account-authority";
-			export { teamBridgeKeys, notifyMutationOptions } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { teamBridgeKeys, notifyMutationOptions, useMarkTeamBridgeRead, useTeamBridgeConversations, useTeamBridgeStatus } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { AttentionBadge } from "@shared/components/ui/attention-badge";
+			export { cancelTeamBridgeUnreadReads, teamBridgeUnreadView, useTeamBridgeUnreadView, withSharedUnread } from "./src/renderer/src/features/team-bridge/team-bridge-unread-sync";
+			export { useTeamBridgeNavItem } from "./src/renderer/src/features/team-bridge/team-bridge-nav";
+			export { unreadRegister } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 			export { fixture, TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 		`,
 		resolveDir: process.cwd(),
@@ -125,6 +142,7 @@ const bundled = await build({
 	format: "esm",
 	platform: "node",
 	packages: "external",
+	jsx: "automatic",
 	write: false,
 	alias: {
 		"@shared/utils/toast-manager": toastFixturePath,
@@ -180,10 +198,10 @@ const notifyRow = (conversationId, latestSeq) => ({
 	muted: false,
 });
 
-const mount = async () => {
+const mount = async ({ Extra = null, url = "http://localhost/" } = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
-		url: "http://localhost/",
+		url,
 	});
 	const previous = {
 		window: globalThis.window,
@@ -194,12 +212,18 @@ const mount = async () => {
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 	api.toasts.length = 0;
 	const notifications = [];
+	/* What the cache held at the instant each notify IPC was made. */
+	const cacheAtNotify = [];
 	const authorities = [];
 	const routes = [];
+	const routeOptions = [];
 	let pendingOpen = null;
 	let openListener;
 	let routeEnabled = true;
-	const navigate = (path) => routes.push(path);
+	const navigate = (path, options) => {
+		routes.push(path);
+		routeOptions.push(options);
+	};
 	dom.window.api = {
 		desktop: {
 			teamBridge: {
@@ -207,6 +231,15 @@ const mount = async () => {
 					authorities.push(authority);
 				},
 				notify: async (request) => {
+					cacheAtNotify.push(
+						client.getQueryData(
+							api.teamBridgeKeys.messages(
+								request.conversationId,
+								request.tenantId,
+								request.owner.accountId,
+							),
+						),
+					);
 					notifications.push(request);
 					return { shown: true };
 				},
@@ -250,7 +283,7 @@ const mount = async () => {
 	const Probe = () => {
 		api.useTeamBridgeNotifications(enabled);
 		api.useTeamBridgeNotificationOpen(routeEnabled, navigate);
-		return null;
+		return Extra ? React.createElement(Extra) : null;
 	};
 	const root = createRoot(dom.window.document.getElementById("root"));
 	await act(async () => {
@@ -265,8 +298,11 @@ const mount = async () => {
 	return {
 		client,
 		notifications,
+		cacheAtNotify,
+		host: dom.window.document.getElementById("root"),
 		authorities,
 		routes,
+		routeOptions,
 		emitOpen: (target) => {
 			pendingOpen = target;
 			openListener?.();
@@ -338,6 +374,7 @@ const resetFixture = () => {
 	fixture.thread = { root: null, replies: [] };
 	fixture.directoryMembers = [];
 	fixture.releaseList = null;
+	fixture.markReadGate = null;
 	fixture.calls = {
 		identity: 0,
 		conversations: 0,
@@ -602,11 +639,8 @@ test("a zero-total org's first message before the conversation list resolves sti
 /**
  * Deferred real transport edges reproduce R1-2 through the mounted hook.
  *
- * THE REPLIES ARM IS NOT A TRANSPORT HERE ANY MORE. The build holds the thread
- * surface closed, so a reply candidate is delivered from the TIMELINE read
- * instead of `listReplies` (see `use-team-bridge-notifications.ts` and
- * `team-bridge-thread-gate.ts`). The history arm below keeps the race matrix;
- * the held reply path has its own test after it.
+ * The history arm below keeps the race matrix; the guarded reply preview has
+ * its own receipt-bearing test after it.
  */
 // Directory is now a synchronous cache join, not a network edge. Keep the
 // live-policy race matrix on history and prove no directory read below.
@@ -681,10 +715,13 @@ for (const pending of ["history"]) {
 					`pending ${pending} read`,
 				);
 				assert.equal(mounted.notifications.length, 0);
+				// The timeline's own read, ONE PAGE of it (`limit` is the paged
+				// history contract; the read used to ask for the whole conversation),
+				// and it lands in the cache entry the page renders from.
 				assert.deepEqual(fixture.calls.history[0], {
 					id: "bcv_race",
 					tenantId: "tnt_race",
-					limit: 1,
+					limit: 60,
 				});
 				assert.equal(fixture.calls.replies.length, 0);
 				if (disable === "setting") {
@@ -734,9 +771,10 @@ for (const pending of ["history"]) {
 					assert.equal(mounted.notifications[0].tenantId, "tnt_race");
 					assert.equal(mounted.notifications[0].seq, 1);
 					assert.equal(mounted.notifications[0].threadId, undefined);
+					assert.equal(mounted.notifications[0].messageId, "bcmsg_root");
 					assert.equal(
 						api.teamBridgeOpenPath(mounted.notifications[0]),
-						"/team-bridge?tenant=tnt_race&conversation=bcv_race",
+						"/team-bridge?tenant=tnt_race&conversation=bcv_race&message=bcmsg_root",
 					);
 				}
 				// Cursors consume silenced seqs; re-enabling must not replay them.
@@ -762,15 +800,114 @@ for (const pending of ["history"]) {
 }
 
 /*
- * A REPLY CANDIDATE ON THE HELD BUILD. The same fixture the reply-enrichment
- * matrix used to drive `listReplies` with: a conversation whose newest seq is a
- * thread reply. The hold routes it through the timeline read, which excludes
- * replies, so the banner carries no preview and no thread root - and the click
- * path lands on the conversation. The adversarial thread-page scenarios that
- * suite screened (wrong root/conversation, later seq, read failure) are
- * unreachable while the hold is on because no thread read is issued at all.
+ * THE BANNER'S STATUS FENCE COMPARES AUTHORITY, NOT IDENTITY (fix/owner-audit-fence).
+ *
+ * The delivery predicate used to compare the cached status OBJECT captured at
+ * planning time against the one in cache after the preview read. The status
+ * query refetches on window focus, and the runtime's answer moves `checked_at` /
+ * `fetched_at` on every check, so structural sharing never keeps the reference:
+ * a refetch landing while a preview read was out dropped that banner silently.
+ * It now shares `captureBridgeStatusAuthority` with the owner-read fence. Both
+ * directions: a content-only refetch still banners; a genuine change does not.
  */
-test("a reply candidate reads the timeline, never the thread, and opens the conversation", async () => {
+for (const [change, expectation] of [
+	["a content-only", "still banners"],
+	["a genuine authority", "drops the banner"],
+]) {
+	test(`${change} status refetch while the preview read is pending ${expectation}`, async () => {
+		resetFixture();
+		const org = {
+			tenant_id: "tnt_race",
+			tenant_name: "Race Org",
+			unread: 0,
+			eligible: true,
+		};
+		fixture.account = { total: 0, organizations: [org] };
+		fixture.conversations = {
+			conversations: [conversation("bcv_race", "tnt_race")],
+		};
+		fixture.messages = {
+			messages: [
+				{
+					id: "bcmsg_root",
+					seq: 1,
+					sender: {
+						account_id: "acct_bob",
+						kind: "human",
+						display_label: "Bob",
+					},
+					body: "message",
+					conversation_id: "bcv_race",
+				},
+			],
+		};
+		let release;
+		fixture.historyGate = new Promise((resolve) => {
+			release = resolve;
+		});
+		const mounted = await mount();
+		try {
+			await until(
+				() =>
+					fixture.calls.conversations > 0 &&
+					fixture.calls.unread.includes("account") &&
+					mounted.client.getQueryData(
+						api.teamBridgeKeys.statusFor(fixture.identity),
+					) !== undefined,
+				"seed",
+			);
+			await settle();
+			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+			fixture.tenants.tnt_race = {
+				total: 1,
+				conversations: [notifyRow("bcv_race", 1)],
+			};
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await until(() => fixture.calls.history.length === 1, "history pending");
+			const key = api.teamBridgeKeys.statusFor(fixture.identity);
+			const before = mounted.client.getQueryData(key);
+			await act(async () => {
+				await mounted.client.fetchQuery({
+					queryKey: key,
+					queryFn: async () => ({
+						...before,
+						checked_at: "2026-10-30T09:01:07.412Z",
+						fetched_at: "2026-10-30T09:01:07.412Z",
+						...(change === "a genuine authority"
+							? { local: { enabled: false } }
+							: {}),
+					}),
+					staleTime: 0,
+				});
+			});
+			assert.notEqual(
+				mounted.client.getQueryData(key),
+				before,
+				"the refetch must install a new status object, or nothing was exercised",
+			);
+			await act(async () => release());
+			await settle();
+			assert.equal(
+				mounted.notifications.length,
+				change === "a content-only" ? 1 : 0,
+			);
+		} finally {
+			release();
+			await mounted.teardown();
+		}
+	});
+}
+
+/*
+ * A reply preview is a real thread read in the shipped build. Its query must
+ * carry the observed account and candidate tenant, and the click retains the
+ * same thread target rather than degrading to the conversation timeline.
+ */
+test("a reply candidate reads its guarded thread with the observed account and opens the reply", async () => {
 	resetFixture();
 	const root = {
 		id: "bcmsg_root",
@@ -845,23 +982,27 @@ test("a reply candidate reads the timeline, never the thread, and opens the conv
 			() => mounted.notifications.length === 1,
 			"the metadata banner",
 		);
-		await until(
-			() => fixture.calls.history.length === 1,
-			"the timeline fallback",
-		);
+		await until(() => fixture.calls.replies.length === 1, "the thread read");
 		await settle();
-		assert.deepEqual(fixture.calls.replies, [], "no thread read while held");
-		assert.deepEqual(fixture.calls.history, [
-			{ id: "bcv_reply", tenantId: "tnt_reply", limit: 1 },
+		assert.deepEqual(fixture.calls.replies, [
+			{
+				id: "bcv_reply",
+				rootId: "bcmsg_root",
+				tenantId: "tnt_reply",
+				accountId: "acct_alice",
+				afterSeq: 2,
+				limit: 1,
+			},
 		]);
+		assert.deepEqual(fixture.calls.history, []);
 		const banner = mounted.notifications[0];
-		assert.equal(banner.threadId, undefined, "no thread target on the click");
+		assert.equal(banner.threadId, "bcmsg_root");
 		assert.equal(banner.seq, 2);
 		assert.equal(banner.tenantId, "tnt_reply");
-		assert.doesNotMatch(banner.body, /Private reply|Root-only history/);
+		assert.match(banner.body, /Private reply preview/);
 		assert.equal(
 			api.teamBridgeOpenPath(banner),
-			"/team-bridge?tenant=tnt_reply&conversation=bcv_reply",
+			"/team-bridge?tenant=tnt_reply&conversation=bcv_reply&thread=bcmsg_root",
 		);
 	} finally {
 		await mounted.teardown();
@@ -910,6 +1051,34 @@ for (const account of ["acct_bob", undefined]) {
 		}
 	});
 }
+
+test("a click while already on Team Bridge REPLACES the entry, elsewhere it pushes (round 1, M2/Q1)", async () => {
+	/*
+	 * A push on the bridge stacks a second `/team-bridge` entry, and the column's
+	 * Back then spends a press moving between two bridge entries. The end-to-end
+	 * history walk is in `team-bridge-sidebar-swap.test.mjs`; this pins the hook.
+	 */
+	for (const [url, expected] of [
+		["http://localhost/#/team-bridge", { replace: true }],
+		[
+			"http://localhost/#/team-bridge?tenant=t&conversation=c",
+			{ replace: true },
+		],
+		["http://localhost/#/settings", undefined],
+		["http://localhost/#/team-bridge-elsewhere", undefined],
+	]) {
+		resetFixture();
+		const mounted = await mount({ url });
+		try {
+			await act(async () => mounted.emitOpen(clickTarget()));
+			await settle();
+			assert.equal(mounted.routes.length, 1, url);
+			assert.deepEqual(mounted.routeOptions[0], expected, url);
+		} finally {
+			await mounted.teardown();
+		}
+	}
+});
 
 test("capability-delayed click is discarded on owner change, while matching owner routes once", async () => {
 	resetFixture();
@@ -1383,4 +1552,883 @@ test("m2 a deliberate sign-out publishes settled absence, not a refresh hold", a
 	} finally {
 		await mounted.teardown();
 	}
+});
+
+/*
+ * NOTIFY / CLICK / BADGE SYNC (operator report 2026-10-30). The banner's
+ * message must already be in the cache a click renders from; a conversation
+ * visited earlier must not paint a stale page; and the nav badge, the rows
+ * and the org counts are one set of numbers.
+ */
+const message = (id, conversationId, seq, extra = {}) => ({
+	id,
+	conversation_id: conversationId,
+	seq,
+	sender: { account_id: "acct_bob", kind: "human", display_label: "Bob" },
+	body: `body ${id}`,
+	created_at: "2026-10-30T12:00:00Z",
+	...extra,
+});
+
+/** Seed one org at zero, then let a first message arrive in `conversationId`. */
+const arrive = async (mounted, org, rows) => {
+	fixture.account = {
+		total: rows.reduce(
+			(sum, row) => sum + (row.muted ? 0 : row.unread_count),
+			0,
+		),
+		organizations: [{ ...org, unread: rows.length ? 1 : 0 }],
+	};
+	fixture.tenants[org.tenant_id] = { total: 1, conversations: rows };
+	await act(async () =>
+		mounted.client.invalidateQueries({
+			queryKey: api.teamBridgeKeys.unreadPrefix,
+		}),
+	);
+};
+
+test("write before notify: IPC fires only once the timeline cache holds the message, and names it", async () => {
+	resetFixture();
+	const org = {
+		tenant_id: "tnt_w",
+		tenant_name: "W",
+		unread: 0,
+		eligible: true,
+	};
+	fixture.account = { total: 0, organizations: [org] };
+	// The list already names seq 2: the planner pairs list and unread rows on it.
+	fixture.conversations = {
+		conversations: [{ ...conversation("bcv_w", "tnt_w"), latest_seq: 2 }],
+	};
+	const stale = message("bcmsg_old", "bcv_w", 1);
+	const fresh = message("bcmsg_new", "bcv_w", 2, { client_ref: "cref_new" });
+	fixture.messages = { messages: [fresh, stale] };
+	let release;
+	fixture.historyGate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const mounted = await mount();
+	// The reader visited this conversation earlier: a stale page is cached. It
+	// carries a membership event line (#1539) the banner's fresh read omits.
+	const key = api.teamBridgeKeys.messages("bcv_w", "tnt_w", "acct_alice");
+	const joined = {
+		id: "bcev_seen",
+		event_seq: 1,
+		kind: "joined",
+		actor: { kind: "human", account_id: "acct_bob", display_label: "Bob" },
+		targets: [],
+		after_seq: 1,
+		at: "2026-10-30T14:02:11.123Z",
+	};
+	mounted.client.setQueryData(key, { messages: [stale], events: [joined] });
+	try {
+		await until(
+			() =>
+				fixture.calls.conversations > 0 &&
+				fixture.calls.unread.includes("account"),
+			"seed reads",
+		);
+		await settle();
+		await arrive(mounted, org, [
+			{ ...notifyRow("bcv_w", 2), unread_count: 1, last_read_seq: 1 },
+		]);
+		await until(() => fixture.calls.history.length >= 1, "banner history read");
+		await settle();
+		assert.equal(
+			mounted.notifications.length,
+			0,
+			"no IPC while the read is pending",
+		);
+		await act(async () => release());
+		await until(() => mounted.notifications.length === 1, "the banner");
+		const page = mounted.cacheAtNotify[0];
+		assert.ok(
+			page?.messages.some((row) => row.id === "bcmsg_new"),
+			"the cache the page renders from held the message when IPC was made",
+		);
+		assert.equal(
+			page.messages.find((row) => row.id === "bcmsg_new").client_ref,
+			"cref_new",
+			"rows keep client_ref (optimistic-send matching)",
+		);
+		/*
+		 * ONE MERGE FOR EVERY CACHE WRITER. The banner's read goes through the same
+		 * `teamBridgeMessagesQueryOptions` as the timeline, so #1539's event carry
+		 * applies to it too: a fresh page that omits a line the reader already saw
+		 * must not wipe it from the timeline the click opens. A watcher that fetched
+		 * with its own queryFn would drop `bcev_seen` here.
+		 */
+		assert.deepEqual(
+			(page.events ?? []).map((line) => line.id),
+			["bcev_seen"],
+			"the banner's write keeps event lines already on the page",
+		);
+		const banner = mounted.notifications[0];
+		assert.equal(banner.conversationId, "bcv_w");
+		assert.equal(banner.messageId, "bcmsg_new");
+		assert.equal(
+			api.teamBridgeOpenPath(banner),
+			"/team-bridge?tenant=tnt_w&conversation=bcv_w&message=bcmsg_new",
+		);
+	} finally {
+		release?.();
+		await mounted.teardown();
+	}
+});
+
+test("an unmounted, previously visited conversation is refreshed when latest_seq advances, even with nothing to banner", async () => {
+	resetFixture();
+	const org = {
+		tenant_id: "tnt_u",
+		tenant_name: "U",
+		unread: 1,
+		eligible: true,
+	};
+	fixture.account = { total: 1, organizations: [org] };
+	const muted = {
+		...conversation("bcv_u", "tnt_u"),
+		notify: "mute",
+		muted: true,
+	};
+	const never = conversation("bcv_never", "tnt_u");
+	fixture.conversations = { conversations: [muted, never] };
+	fixture.tenants.tnt_u = {
+		total: 0,
+		conversations: [
+			{ ...notifyRow("bcv_u", 1), muted: true },
+			notifyRow("bcv_never", 1),
+		],
+	};
+	const mounted = await mount();
+	const key = api.teamBridgeKeys.messages("bcv_u", "tnt_u", "acct_alice");
+	mounted.client.setQueryData(key, {
+		messages: [message("bcmsg_1", "bcv_u", 1)],
+	});
+	try {
+		await until(
+			() => fixture.calls.unread.includes("tnt_u"),
+			"first tenant read",
+		);
+		await settle();
+		assert.equal(
+			fixture.calls.history.length,
+			0,
+			"first observation reads no history",
+		);
+		fixture.messages = {
+			messages: [
+				message("bcmsg_2", "bcv_u", 2),
+				message("bcmsg_1", "bcv_u", 1),
+			],
+		};
+		fixture.tenants.tnt_u = {
+			total: 0,
+			conversations: [
+				{ ...notifyRow("bcv_u", 2), unread_count: 2, muted: true },
+				{ ...notifyRow("bcv_never", 3), unread_count: 3 },
+			],
+		};
+		await act(async () =>
+			mounted.client.invalidateQueries({
+				queryKey: api.teamBridgeKeys.unreadPrefix,
+			}),
+		);
+		await until(
+			() => mounted.client.getQueryData(key)?.messages.length === 2,
+			"the cached timeline refreshed",
+		);
+		assert.deepEqual(
+			fixture.calls.history.filter((call) => call.id === "bcv_u"),
+			/* One page: the refresh reads the newest page and merges it into the
+			   retained window rather than re-walking the history. */
+			[{ id: "bcv_u", tenantId: "tnt_u", limit: 60 }],
+			"exactly the changed key, once",
+		);
+		assert.equal(mounted.notifications.length, 0, "muted: nothing bannered");
+		assert.equal(
+			mounted.client.getQueryData(
+				api.teamBridgeKeys.messages("bcv_never", "tnt_u", "acct_alice"),
+			),
+			undefined,
+			"a never-visited conversation gets no history entry",
+		);
+		// The cached list rows took the unread rows' counts.
+		const rows = mounted.client.getQueryData(
+			api.teamBridgeKeys.conversations("all", "acct_alice"),
+		).conversations;
+		assert.equal(rows.find((row) => row.id === "bcv_u").unread_count, 2);
+		// `latest_seq` stays the list's own: the planner pairs on it.
+		assert.equal(rows.find((row) => row.id === "bcv_u").latest_seq, 1);
+		assert.equal(rows.find((row) => row.id === "bcv_never").unread_count, 3);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+/** A conversation row in any of the shapes the rail draws. */
+const railRow = (id, tenantId, kind, unread, extra = {}) => ({
+	...conversation(id, tenantId),
+	kind,
+	unread_count: unread,
+	latest_seq: 10,
+	last_read_seq: 10 - unread,
+	...extra,
+});
+
+/*
+ * The ARITHMETIC of the merge, across every row kind and organization. The
+ * rendered claim - that the nav badge a reader sees equals the accent marks the
+ * rows draw - is the test below (agent review round 1, n3: this one compares the
+ * view with itself, which cannot catch a merge hole).
+ */
+test("the view attributes every row kind and organization to one total", async () => {
+	/*
+	 * The rail's categories: channel, built-in channel, group, DM, a chief-of-
+	 * staff DM (an agent member), a conversation whose count is a thread reply
+	 * (the hub folds replies into the conversation's counter), one in a second
+	 * organization (other org / collapsed in a scoped view) and a muted one
+	 * (its row shows the count; the badge never does).
+	 */
+	resetFixture();
+	const a = { tenant_id: "tnt_a", tenant_name: "A", eligible: true };
+	const b = { tenant_id: "tnt_b", tenant_name: "B", eligible: true };
+	const rowsA = [
+		railRow("bcv_ch", "tnt_a", "channel", 2),
+		railRow("bcv_humans", "tnt_a", "channel", 1, { builtin: "humans" }),
+		railRow("bcv_grp", "tnt_a", "group", 3),
+		railRow("bcv_dm", "tnt_a", "dm", 1),
+		railRow("bcv_cos", "tnt_a", "dm", 4, {
+			members: [
+				member("Alice", "human", "active", "acct_alice"),
+				member("Aida", "agent", "active", "acct_bob"),
+			],
+		}),
+		railRow("bcv_thread", "tnt_a", "group", 1, {
+			last_thread_root_id: "bcmsg_root",
+		}),
+		railRow("bcv_muted", "tnt_a", "channel", 5, {
+			notify: "mute",
+			muted: true,
+		}),
+	];
+	const rowsB = [railRow("bcv_other", "tnt_b", "group", 6)];
+	const unreadRows = (rows) =>
+		rows.map((row) => ({
+			conversation_id: row.id,
+			unread_count: row.unread_count,
+			last_read_seq: row.last_read_seq,
+			latest_seq: row.latest_seq,
+			muted: row.muted,
+		}));
+	// The tenant-scoped list is OLDER than the unread poll: a's group gained one.
+	const client = new QueryClient();
+	const owner = "acct_alice";
+	client.setQueryData(api.teamBridgeKeys.conversations("tnt_a", owner), {
+		conversations: rowsA.map((row) =>
+			row.id === "bcv_grp" ? { ...row, unread_count: 2 } : row,
+		),
+	});
+	client.setQueryData(api.teamBridgeKeys.conversations("all", owner), {
+		conversations: [...rowsA, ...rowsB].map((row) =>
+			row.id === "bcv_grp" ? { ...row, unread_count: 2 } : row,
+		),
+	});
+	await new Promise((resolve) => setTimeout(resolve, 2));
+	client.setQueryData(api.teamBridgeKeys.unread("tnt_a", owner), {
+		total: 12,
+		conversations: unreadRows(rowsA),
+	});
+	client.setQueryData(api.teamBridgeKeys.unread("tnt_b", owner), {
+		total: 6,
+		conversations: unreadRows(rowsB),
+	});
+	client.setQueryData(api.teamBridgeKeys.unread("all", owner), {
+		total: 18,
+		organizations: [
+			{ ...a, unread: 12 },
+			{ ...b, unread: 6 },
+		],
+	});
+	const view = api.teamBridgeUnreadView(client, owner);
+	for (const scope of ["tnt_a", "all"]) {
+		const shown = client
+			.getQueryData(api.teamBridgeKeys.conversations(scope, owner))
+			.conversations.map((row) => api.withSharedUnread(row, view));
+		const badgeable = shown
+			.filter((row) => !row.muted)
+			.reduce((sum, row) => sum + row.unread_count, 0);
+		if (scope === "all")
+			assert.equal(view.total, badgeable, "badge == merged rail");
+		else
+			assert.equal(view.byTenant.get("tnt_a"), badgeable, "org A == its rail");
+		assert.equal(
+			shown.find((row) => row.id === "bcv_grp").unread_count,
+			3,
+			"the older list row takes the newer unread row's count",
+		);
+		assert.equal(shown.find((row) => row.id === "bcv_muted").unread_count, 5);
+	}
+	assert.equal(view.total, 18);
+	assert.equal(view.byTenant.get("tnt_b"), 6);
+	// A list row that landed AFTER the aggregate zeroed its org still counts:
+	// the badge never claims less than a row shows.
+	const late = new QueryClient();
+	late.setQueryData(
+		api.teamBridgeKeys.unread("all", owner),
+		{
+			total: 0,
+			organizations: [
+				{ tenant_id: "tnt_a", tenant_name: "A", unread: 0, eligible: true },
+			],
+		},
+		{ updatedAt: 1 },
+	);
+	late.setQueryData(
+		api.teamBridgeKeys.conversations("all", owner),
+		{
+			conversations: [railRow("bcv_late", "tnt_a", "group", 2)],
+		},
+		{ updatedAt: 2 },
+	);
+	assert.equal(api.teamBridgeUnreadView(late, owner).total, 2);
+	// An org whose rows the watcher has not read keeps the aggregate's count.
+	client.removeQueries({
+		queryKey: api.teamBridgeKeys.unread("tnt_b", owner),
+		exact: true,
+	});
+	assert.equal(
+		api.teamBridgeUnreadView(client, owner).byTenant.get("tnt_b"),
+		6,
+	);
+	// An aggregate that names no organization keeps the server total.
+	const legacy = new QueryClient();
+	legacy.setQueryData(api.teamBridgeKeys.unread("all", owner), {
+		total: 7,
+		organizations: [],
+	});
+	assert.equal(api.teamBridgeUnreadView(legacy, owner).total, 7);
+});
+
+/** Which attention marks a rendered subtree drew, by register. */
+const marksIn = (host) => {
+	const marks = [...host.querySelectorAll("[data-attention-register]")];
+	const of = (register) =>
+		marks
+			.filter((mark) => mark.dataset.attentionRegister === register)
+			.map((mark) => ({
+				count: Number(mark.textContent.replace("+", "")),
+				className: mark.className,
+			}));
+	return { accent: of("attention"), quiet: of("quiet") };
+};
+
+test("the rendered nav badge equals the rendered row marks, and a muted row's count is quiet", async () => {
+	/*
+	 * TWO RENDERED NUMBERS, NOT THE VIEW AGAINST ITSELF (agent review round 1,
+	 * n3). The arithmetic test above maps rows through the same view it compares
+	 * against, so a hole in the merge - or a category dropped from both sides -
+	 * still passes. Here the badge is the production nav hook's number drawn by
+	 * the shared `AttentionBadge`, and each row mark is drawn by that same shared
+	 * component from the ROW's own production derivation (`withSharedUnread` over
+	 * the conversation-list cache), so the two sides travel different code. The
+	 * registers come from `unreadRegister`, the model function the rail row uses
+	 * (`sidebar-attention-badge.test.mjs` pins that the row calls it), so this
+	 * test cannot disagree with the shipped row.
+	 *
+	 * The classification half is design round 1's D1: an ACCENT row count is
+	 * attention and sums to the nav badge; a muted row's count is a TOTAL, so it
+	 * renders in the quiet numeral, stays visible, and is excluded from the
+	 * badge. Before D1 both drew the accent pill, so a reader saw accent "1"s
+	 * beside a nav 0.
+	 */
+	resetFixture();
+	fixture.identity = "acct_alice";
+	const rows = [
+		railRow("bcv_ch", "tnt_a", "channel", 2),
+		railRow("bcv_dm", "tnt_a", "dm", 1),
+		{
+			...railRow("bcv_muted", "tnt_a", "channel", 5),
+			notify: "mute",
+			muted: true,
+		},
+	];
+	fixture.conversations = { conversations: rows };
+	const unreadRows = rows.map((row) => ({
+		conversation_id: row.id,
+		unread_count: row.unread_count,
+		last_read_seq: row.last_read_seq,
+		latest_seq: row.latest_seq,
+		muted: row.muted,
+	}));
+	// Three unmuted (2 + 1); the muted five stays on its row and out of the badge.
+	fixture.account = {
+		total: 3,
+		organizations: [
+			{ tenant_id: "tnt_a", tenant_name: "A", unread: 3, eligible: true },
+		],
+	};
+	fixture.tenants.tnt_a = { total: 8, conversations: unreadRows };
+	const Extra = () => {
+		const status = api.useTeamBridgeStatus(true);
+		const ready = status.data?.account_id === "acct_alice";
+		const list = api.useTeamBridgeConversations("all", ready, "acct_alice");
+		const nav = api.useTeamBridgeNavItem(true);
+		const view = api.useTeamBridgeUnreadView(ready ? "acct_alice" : undefined);
+		const rail = (list.data?.conversations ?? []).map((row) =>
+			api.withSharedUnread(row, view),
+		);
+		return React.createElement(
+			React.Fragment,
+			null,
+			React.createElement(api.AttentionBadge, {
+				count: nav?.attention ?? 0,
+				"data-testid": "nav-badge",
+			}),
+			React.createElement(
+				"ul",
+				{ "data-testid": "rows" },
+				rail.map((row) =>
+					React.createElement(
+						"li",
+						{ key: row.id, "data-conversation-id": row.id },
+						React.createElement(api.AttentionBadge, {
+							count: row.unread_count,
+							register: api.unreadRegister(row),
+						}),
+					),
+				),
+			),
+		);
+	};
+	const mounted = await mount({ Extra });
+	try {
+		const rowsHost = () => mounted.host.querySelector('[data-testid="rows"]');
+		await until(
+			() =>
+				mounted.host.querySelector('[data-testid="nav-badge"]')?.textContent ===
+					"3" && rowsHost().querySelectorAll("li").length === 3,
+			"nav badge 3 beside three rail rows",
+		);
+		const nav = Number(
+			mounted.host.querySelector('[data-testid="nav-badge"]').textContent,
+		);
+		const { accent, quiet } = marksIn(rowsHost());
+		assert.equal(
+			accent.reduce((total, mark) => total + mark.count, 0),
+			nav,
+			"the accent row counts are exactly the rendered nav badge",
+		);
+		assert.deepEqual(
+			accent.map((mark) => mark.count).sort((a, b) => a - b),
+			[1, 2],
+			"the two unmuted rows wear the accent register",
+		);
+		for (const mark of accent) {
+			assert.match(mark.className, /bg-accent/);
+			assert.match(mark.className, /text-on-accent/);
+		}
+		assert.deepEqual(
+			quiet.map((mark) => mark.count),
+			[5],
+			"the muted row's count is drawn, in the quiet register",
+		);
+		assert.match(quiet[0].className, /bg-elevated/);
+		assert.match(quiet[0].className, /text-ink-dim/);
+		assert.ok(
+			!accent.some((mark) => mark.count === 5),
+			"a muted count never takes the accent",
+		);
+		assert.equal(nav, 3, "the muted five is out of the badge");
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("cancelling a stale read leaves the conversation list successful, never errored", async () => {
+	/*
+	 * A CANCELLED READ IS NOT A FAILURE THE READER CAN ACT ON (quality review
+	 * round 3, Q3/m1). `query.cancel()` without options leaves the entry in an
+	 * error state in TanStack 5.73.3, so the cancel added in round 2 could flash
+	 * the rail's `error_stale` line and a Retry control over rows already on
+	 * screen. `cancel({ revert: true })` restores the state the fetch started
+	 * from; this pin is that the rows AND the status survive it.
+	 */
+	const client = new QueryClient();
+	const key = api.teamBridgeKeys.conversations("all", "acct_alice");
+	client.setQueryData(key, {
+		conversations: [railRow("bcv_cancel", "tnt_a", "channel", 2)],
+	});
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const read = client
+		.fetchQuery({
+			queryKey: key,
+			queryFn: async () => {
+				await gate;
+				return { conversations: [] };
+			},
+			staleTime: 0,
+		})
+		.catch((error) => error);
+	for (let attempt = 0; attempt < 100; attempt += 1) {
+		if (client.getQueryState(key).fetchStatus === "fetching") break;
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	}
+	assert.equal(
+		client.getQueryState(key).fetchStatus,
+		"fetching",
+		"a read is genuinely in flight",
+	);
+	api.cancelTeamBridgeUnreadReads(client, "acct_alice");
+	release();
+	assert.ok((await read) instanceof Error, "the cancelled read rejects");
+	const state = client.getQueryState(key);
+	assert.equal(state.fetchStatus, "idle");
+	assert.equal(
+		state.status,
+		"success",
+		"no error state, so no stale-error row",
+	);
+	assert.equal(
+		state.data.conversations.map((row) => row.id).join(),
+		"bcv_cancel",
+		"the rows on screen are the ones that were already there",
+	);
+});
+
+test("a muted row keeps its quiet count when the aggregate reports its organization at zero (A/B)", async () => {
+	/*
+	 * THE AGGREGATE'S ZERO EXCLUDES MUTED ROWS BY CONTRACT, so it means "no
+	 * UNMUTED unread", never "no unread" (design review round 2, D5). The
+	 * zeroing rule still applies to un-muted rows - for them the org-level zero
+	 * is authoritative and stale rows have to stop claiming otherwise - but it
+	 * used to zero muted rows too, emptying the quiet numeral in exactly the state
+	 * the quiet register exists for. A mute is the reader saying "do not interrupt
+	 * me", so the muted conversation is very often the only thing waiting.
+	 *
+	 * A/B on ONE seed: identical cache shapes, only the `muted` flag differs. The
+	 * muted row keeps its count; its un-muted twin is cleared; neither count
+	 * reaches the badge.
+	 */
+	const owner = "acct_alice";
+	const seeded = (muted) => {
+		const client = new QueryClient();
+		client.setQueryData(
+			api.teamBridgeKeys.conversations("all", owner),
+			{
+				conversations: [
+					railRow(
+						"bcv_mute",
+						"tnt_a",
+						"channel",
+						3,
+						muted ? { muted: true, notify: "mute" } : {},
+					),
+				],
+			},
+			{ updatedAt: 100 },
+		);
+		client.setQueryData(
+			api.teamBridgeKeys.unread("all", owner),
+			{
+				total: 0,
+				organizations: [
+					{ tenant_id: "tnt_a", tenant_name: "A", unread: 0, eligible: true },
+				],
+			},
+			{ updatedAt: 200 },
+		);
+		return api.teamBridgeUnreadView(client, owner);
+	};
+	const key = "tnt_a\u0000bcv_mute";
+	const quiet = seeded(true);
+	assert.equal(
+		quiet.rows.get(key).unread,
+		3,
+		"the muted conversation's own count survives the aggregate's zero",
+	);
+	assert.equal(quiet.total, 0, "and it still does not raise the badge");
+	const unMuted = seeded(false);
+	assert.equal(
+		unMuted.rows.get(key).unread,
+		0,
+		"an un-muted row is still cleared by the newer org-level zero",
+	);
+	assert.equal(unMuted.total, 0);
+});
+
+test("mark-read decrements the row and the nav badge in the same render, and rolls back on refusal", async () => {
+	for (const outcome of ["success", "refused"]) {
+		resetFixture();
+		const org = {
+			tenant_id: "tnt_r",
+			tenant_name: "R",
+			unread: 3,
+			eligible: true,
+		};
+		fixture.account = { total: 3, organizations: [org] };
+		const row = {
+			...conversation("bcv_r", "tnt_r"),
+			latest_seq: 3,
+			unread_count: 3,
+		};
+		fixture.conversations = { conversations: [row] };
+		fixture.tenants.tnt_r = {
+			total: 3,
+			conversations: [{ ...notifyRow("bcv_r", 3), unread_count: 3 }],
+		};
+		let release;
+		fixture.markReadGate = new Promise((resolve, reject) => {
+			release =
+				outcome === "success" ? resolve : () => reject(new Error("refused"));
+		});
+		const renders = [];
+		let markRead;
+		const Extra = () => {
+			const nav = api.useTeamBridgeNavItem(true);
+			const view = api.useTeamBridgeUnreadView("acct_alice");
+			markRead = api.useMarkTeamBridgeRead("bcv_r", "tnt_r");
+			const shown = view.rows.get("tnt_r\u0000bcv_r")?.unread;
+			renders.push({ nav: nav?.attention, row: shown });
+			return null;
+		};
+		const mounted = await mount({ Extra });
+		try {
+			await until(
+				() => renders.at(-1)?.nav === 3 && renders.at(-1)?.row === 3,
+				"badge and row at 3",
+			);
+			const before = renders.length;
+			await act(async () => {
+				markRead.mutate({ seq: 3 });
+			});
+			const after = renders.slice(before);
+			assert.ok(after.length > 0);
+			assert.ok(
+				after.every((frame) => (frame.nav === 0) === (frame.row === 0)),
+				`row and badge never disagree: ${JSON.stringify(after)}`,
+			);
+			assert.deepEqual(
+				after.at(-1),
+				{ nav: 0, row: 0 },
+				"cleared together, before the server answers",
+			);
+			assert.equal(fixture.calls.markRead.length, 1);
+			if (outcome === "refused") {
+				// The server still says 3: a refused write restores both at once.
+				await act(async () => release());
+				await until(
+					() => renders.at(-1)?.nav === 3 && renders.at(-1)?.row === 3,
+					"rolled back together",
+				);
+			} else {
+				// The server's answer after the read, on every route.
+				fixture.account = { total: 0, organizations: [{ ...org, unread: 0 }] };
+				fixture.conversations = {
+					conversations: [{ ...row, unread_count: 0, last_read_seq: 3 }],
+				};
+				fixture.tenants.tnt_r = {
+					total: 0,
+					conversations: [
+						{ ...notifyRow("bcv_r", 3), unread_count: 0, last_read_seq: 3 },
+					],
+				};
+				await act(async () => release());
+				await settle();
+				assert.deepEqual(renders.at(-1), { nav: 0, row: 0 });
+				assert.ok(
+					renders
+						.slice(before)
+						.every((frame) => (frame.nav === 0) === (frame.row === 0)),
+					"still never disagree after the server reconciles",
+				);
+			}
+		} finally {
+			release?.();
+			await mounted.teardown();
+		}
+	}
+});
+
+/*
+ * AN AGENT'S BANNER NEVER CARRIES ITS OWNER'S PHOTO (2026-10-30). The owner
+ * has a real photo on the directory row; the agent rides on that row. The
+ * `person_agent` sender must reach IPC with no avatar reference, so main asks
+ * core for the glyph composite rather than the owner's face. The human control
+ * on the same row still carries the photo reference, so a pass is not just
+ * "photos never load".
+ */
+for (const kind of ["agent", "human"]) {
+	test(`banner sender for a ${kind} on a photographed owner row`, async () => {
+		resetFixture();
+		const owner = "2fc3a222-9e22-4c85-8b94-0b11c81972f7";
+		const hash = "0123456789abcdef";
+		const org = {
+			tenant_id: "tnt_agent",
+			tenant_name: "Agent Org",
+			unread: 0,
+			eligible: true,
+		};
+		fixture.account = { total: 0, organizations: [org] };
+		fixture.conversations = {
+			conversations: [conversation("bcv_agent", "tnt_agent")],
+		};
+		fixture.messages = {
+			messages: [
+				{
+					id: "bcmsg_agent",
+					seq: 1,
+					sender: {
+						account_id: owner,
+						kind,
+						display_label: kind === "agent" ? "Aida" : "Damian Tran",
+					},
+					body: "status update",
+					conversation_id: "bcv_agent",
+				},
+			],
+		};
+		fixture.directoryMembers = [
+			{
+				account_id: owner,
+				display_label: "Damian Tran",
+				role: "owner",
+				bridge_enabled: true,
+				bridge_state: "active",
+				avatar_url: `/v1/accounts/${owner}/avatar?v=${hash}`,
+				profile: {
+					display_name: "Damian Tran",
+					avatar: { source: "uploaded", hash, updated_at: "2026-10-01" },
+				},
+				agent: { endpoint_id: "ep_aida", name: "Aida", state: "active" },
+			},
+		];
+		const mounted = await mount();
+		mounted.client.setQueryData(
+			api.teamBridgeKeys.directory("tnt_agent", fixture.identity),
+			{ members: fixture.directoryMembers },
+		);
+		try {
+			await until(() => fixture.calls.unread.includes("account"), "seed reads");
+			await settle();
+			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+			fixture.tenants.tnt_agent = {
+				total: 1,
+				conversations: [{ ...notifyRow("bcv_agent", 1), unread_count: 1 }],
+			};
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await until(() => mounted.notifications.length === 1, "the banner");
+			const sender = mounted.notifications[0].sender;
+			if (kind === "agent") {
+				assert.equal(sender.kind, "person_agent");
+				assert.equal(sender.agent_name, "Aida");
+				assert.equal(
+					sender.avatar,
+					undefined,
+					"an agent banner must not reference the owner's photo",
+				);
+			} else {
+				assert.equal(sender.kind, "person");
+				assert.deepEqual(sender.avatar, { account_id: owner, hash });
+			}
+		} finally {
+			await mounted.teardown();
+		}
+	});
+}
+
+/*
+ * THE KIND ARGUMENT IS PINNED ON ITS OWN (agent review round 1, F2). A
+ * descriptor-only test cannot see this: `parseTeamBridgeNotificationSender`
+ * drops `avatar` on a `person_agent` anyway, so passing the owner's kind here
+ * used to leave the banner assertions green. `senderIdentity` is the one place
+ * the descriptor's kind becomes the resolver's kind, and these are the two
+ * mutations that matter — dropping the mapping, and asking for the human.
+ */
+test("a person_agent sender resolves through the agent identity, never the owner's", () => {
+	const owner = "2fc3a222-9e22-4c85-8b94-0b11c81972f7";
+	const hash = "0123456789abcdef";
+	const row = {
+		account_id: owner,
+		display_label: "Damian Tran",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active",
+		avatar_url: `/v1/accounts/${owner}/avatar?v=${hash}`,
+		profile: {
+			display_name: "Damian Tran",
+			avatar: { source: "uploaded", hash, updated_at: "2026-10-01" },
+		},
+		agent: { endpoint_id: "bep_aida", name: "Aida", state: "active" },
+	};
+	const agentIdentity = api.senderIdentity(row, "person_agent");
+	assert.equal(agentIdentity.kind, "agent");
+	assert.deepEqual(api.resolveIdentityAvatar(agentIdentity).src, null);
+	// The control: the same row as a person still resolves to their photo.
+	const humanIdentity = api.senderIdentity(row, "person");
+	assert.equal(humanIdentity.kind, "human");
+	assert.deepEqual(api.resolveIdentityAvatar(humanIdentity).src, {
+		type: "account",
+		accountId: owner,
+		hash,
+	});
+	// And the descriptor carries no photo for the agent, for the same reason.
+	assert.equal(api.notificationSender(row, "person_agent")?.avatar, undefined);
+	assert.deepEqual(api.notificationSender(row, "person")?.avatar, {
+		account_id: owner,
+		hash,
+	});
+});
+
+/*
+ * THE BANNER AND THE PLATE AGREE (2026-10-31). Both read the one resolver, so
+ * an agent whose hub directory publishes its own picture carries exactly that
+ * endpoint and version on the banner descriptor, and nothing of its owner's.
+ */
+test("a person_agent banner carries the agent's own endpoint picture, the same one the plate resolves", () => {
+	const owner = "2fc3a222-9e22-4c85-8b94-0b11c81972f7";
+	const ownerHash = "0123456789abcdef";
+	const agentHash = "fedcba9876543210";
+	const row = {
+		account_id: owner,
+		display_label: "Damian Tran",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active",
+		avatar_url: `/v1/accounts/${owner}/avatar?v=${ownerHash}`,
+		profile: {
+			display_name: "Damian Tran",
+			avatar: { source: "uploaded", hash: ownerHash, updated_at: "2026-10-01" },
+		},
+		agent: {
+			endpoint_id: "bep_aida",
+			name: "Aida",
+			state: "active",
+			avatar_url: `/v1/messaging/endpoints/bep_aida/avatar?v=${agentHash}`,
+		},
+	};
+	const plate = api.resolveIdentityAvatar(
+		api.senderIdentity(row, "person_agent"),
+	).src;
+	assert.deepEqual(plate, {
+		type: "endpoint",
+		endpointId: "bep_aida",
+		hash: agentHash,
+	});
+	const banner = api.notificationSender(row, "person_agent");
+	assert.deepEqual(banner?.endpoint_avatar, {
+		endpoint_id: plate.endpointId,
+		hash: plate.hash,
+	});
+	assert.equal(banner?.avatar, undefined, "never the owner's photo");
+	// The person banner on the same row: the owner's photo, no endpoint picture.
+	const person = api.notificationSender(row, "person");
+	assert.deepEqual(person?.avatar, { account_id: owner, hash: ownerHash });
+	assert.equal(person?.endpoint_avatar, undefined);
 });

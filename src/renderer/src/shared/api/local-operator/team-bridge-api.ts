@@ -18,6 +18,10 @@ import {
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
 import {
+	type TeamBridgeFile,
+	teamBridgeFileSchema,
+} from "../../../../../shared/team-bridge-contract";
+import {
 	TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE,
 	type TeamBridgeAttachment,
 	type TeamBridgeConversation,
@@ -29,6 +33,7 @@ import {
 	type TeamBridgeReadScope,
 	type TeamBridgeReadState,
 	type TeamBridgeThreadPage,
+	type TeamBridgeThreadReadState,
 	type TeamBridgeUnread,
 	teamBridgeAttachmentUploadSchema,
 	teamBridgeConversationListSchema,
@@ -41,6 +46,7 @@ import {
 	teamBridgeScheduledListSchema,
 	teamBridgeScheduledMessageSchema,
 	teamBridgeThreadPageSchema,
+	teamBridgeThreadReadStateSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
 import {
@@ -89,6 +95,31 @@ export async function teamBridgeWriteOwner(
 		);
 	return { expected_account_id: accountId, tenant_id: tenantId };
 }
+
+/**
+ * The captured account a send must carry, or a loud refusal.
+ *
+ * `send` requires `expectedAccountId` because every send is owner-guarded: a
+ * top-level one is checked by `teamBridgeWriteOwner` and a threaded reply is
+ * refused by `desktopRequestSchema` without it. A caller holding a possibly
+ * unresolved account therefore fails here, before any request exists, instead
+ * of posting as whoever signs in next. Renderer call sites reach this through
+ * `useBridgeOwner`/`accountId`, both of which are optional until the account
+ * read answers.
+ */
+export function requireBridgeWriteAccount(
+	accountId: string | undefined,
+): string {
+	if (!accountId) throw new Error("Team Bridge write account required");
+	return accountId;
+}
+
+/** One wire mention row: `{kind, account_id, endpoint_id?}` (local-operator #3204). */
+export type TeamBridgeMentionRow = {
+	kind: "human" | "agent";
+	account_id: string;
+	endpoint_id?: string;
+};
 
 export const TeamBridgeApi = {
 	async scheduledList(tenantId: string) {
@@ -147,7 +178,8 @@ export const TeamBridgeApi = {
 		messageId: string,
 		emoji: string,
 		active: boolean,
-		tenantId?: string,
+		tenantId: string,
+		accountId: string,
 	) {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.reactions.toggle",
@@ -155,7 +187,8 @@ export const TeamBridgeApi = {
 			message_id: messageId,
 			emoji,
 			active,
-			...(tenantId ? { tenant_id: tenantId } : {}),
+			tenant_id: tenantId,
+			expected_account_id: accountId,
 		});
 		return teamBridgeReactionsSchema.parse(answer);
 	},
@@ -296,17 +329,29 @@ export const TeamBridgeApi = {
 	async listReplies(
 		conversationId: string,
 		rootId: string,
-		options: { tenantId?: string; limit?: number; afterSeq?: number } = {},
+		options: {
+			tenantId: string;
+			accountId: string;
+			limit?: number;
+			afterSeq?: number;
+			beforeSeq?: number;
+			order?: "asc" | "desc";
+		},
 	): Promise<TeamBridgeThreadPage> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.messages.replies",
 			conversation_id: conversationId,
 			message_id: rootId,
-			...(options.tenantId ? { tenant_id: options.tenantId } : {}),
+			tenant_id: options.tenantId,
+			expected_account_id: options.accountId,
 			...(options.limit === undefined ? {} : { limit: options.limit }),
 			...(options.afterSeq === undefined
 				? {}
 				: { after_seq: options.afterSeq }),
+			...(options.beforeSeq === undefined
+				? {}
+				: { before_seq: options.beforeSeq }),
+			...(options.order === undefined ? {} : { order: options.order }),
 		});
 		return teamBridgeThreadPageSchema.parse(answer);
 	},
@@ -316,13 +361,22 @@ export const TeamBridgeApi = {
 		input: {
 			clientRef: string;
 			body: string;
-			expectedAccountId?: string;
+			/* REQUIRED, not optional. Every send is owner-guarded now, and a
+			 * threaded reply is refused by the request schema without it, so a
+			 * caller that dropped the receipt would ship a path that 422s. Making
+			 * it required at this boundary means deleting it fails `check-types`
+			 * instead of failing at runtime on the reply the user just typed. */
+			expectedAccountId: string;
 			tenantId?: string;
 			/* Set to reply in that root's thread; omitted for a channel-level post. */
 			threadRootId?: string;
 			/* Staged uploads this message binds. Omitted (never `[]`) when text-only,
 			   so a text-only send stays byte-identical for an older hub. */
 			attachmentIds?: readonly string[];
+			files?: readonly string[];
+			/* Structured @-mentions (`team_bridge_send_mentions`). The caller
+			   gates on the capability; omitted when empty, like the images. */
+			mentions?: readonly TeamBridgeMentionRow[];
 		},
 	): Promise<unknown> {
 		return desktopResult<unknown>({
@@ -335,11 +389,21 @@ export const TeamBridgeApi = {
 			conversation_id: conversationId,
 			client_ref: input.clientRef,
 			body: input.body,
+			/* A threaded reply REQUIRES the captured owner: `desktopRequestSchema`
+			 * refuses `thread_root_id` without `expected_account_id`, so a caller
+			 * that forgets it fails before main opens a socket rather than posting
+			 * the reply as whoever signs in next. A top-level send reaches the same
+			 * field through `teamBridgeWriteOwner` above. */
+			...(input.expectedAccountId
+				? { expected_account_id: input.expectedAccountId }
+				: {}),
 			...(input.tenantId ? { tenant_id: input.tenantId } : {}),
 			...(input.threadRootId ? { thread_root_id: input.threadRootId } : {}),
 			...(input.attachmentIds?.length
 				? { attachment_ids: [...input.attachmentIds] }
 				: {}),
+			...(input.files?.length ? { files: [...input.files] } : {}),
+			...(input.mentions?.length ? { mentions: [...input.mentions] } : {}),
 		});
 	},
 
@@ -375,6 +439,38 @@ export const TeamBridgeApi = {
 		return teamBridgeAttachmentUploadSchema.parse(
 			body && typeof body === "object" && "result" in body ? body.result : body,
 		).attachment;
+	},
+
+	/** Human generic-file upload, deliberately separate from image preparation.
+	 * The runtime negotiates S3a headers; bytes remain opaque and never use the
+	 * unregistered download scaffold. Only a subsequent `files` send binds it. */
+	async uploadFile(
+		tenantId: string,
+		conversationId: string,
+		bytes: Uint8Array,
+		expectedAccountId: string,
+		fileName: string,
+	): Promise<TeamBridgeFile> {
+		const answer = await desktopMedia(
+			{
+				op: "team_bridge.attachment.upload",
+				tenantId,
+				conversationId,
+				expectedAccountId,
+				mode: "file",
+				fileName,
+			},
+			bytes,
+		);
+		if (answer.kind !== "json")
+			throw new TeamBridgeAttachmentError(
+				answer.kind === "error" ? answer.status : null,
+				answer.kind === "error" ? answer.code : undefined,
+			);
+		const body = answer.body as { result?: unknown } | null;
+		const payload =
+			body && typeof body === "object" && "result" in body ? body.result : body;
+		return teamBridgeFileSchema.parse((payload as { file?: unknown })?.file);
 	},
 
 	/** Discard a staged upload the author removed. Idempotent on the hub. */
@@ -439,6 +535,29 @@ export const TeamBridgeApi = {
 		return { data: answer.data, mimeType: answer.mimeType };
 	},
 
+	/**
+	 * An agent's own picture through core's closed ENDPOINT relay. A separate
+	 * method (not an `accountId` that happens to be an endpoint) so an agent
+	 * picture and an account picture can never be requested through one shape.
+	 */
+	async endpointAvatarBytes(input: {
+		expectedAccountId: string;
+		endpointId: string;
+		hash: string;
+		size: 64 | 256;
+	}): Promise<{ data: Uint8Array; mimeType: string }> {
+		const answer = await desktopMedia(
+			{ op: "team_bridge.endpoint_avatar", ...input },
+			null,
+		);
+		if (answer.kind !== "bytes")
+			throw new TeamBridgeAttachmentError(
+				answer.kind === "error" ? answer.status : null,
+				answer.kind === "error" ? answer.code : undefined,
+			);
+		return { data: answer.data, mimeType: answer.mimeType };
+	},
+
 	async markRead(
 		conversationId: string,
 		input: {
@@ -457,6 +576,30 @@ export const TeamBridgeApi = {
 			...(input.muted === undefined ? {} : { muted: input.muted }),
 		});
 		return teamBridgeReadStateSchema.parse(answer);
+	},
+
+	/**
+	 * Acknowledge a THREAD's replies up to `seq` (hub slice TR1). Owner-guarded
+	 * like every write: the receipt is required, so the hub refuses a read
+	 * replayed under another signed-in account. The answer is the viewer's new
+	 * thread state, parsed leniently (see `teamBridgeThreadReadStateSchema`):
+	 * its count is what the thread row shows the moment the read lands.
+	 */
+	async markThreadRead(
+		conversationId: string,
+		rootId: string,
+		input: { seq: number; tenantId: string; expectedAccountId: string },
+	): Promise<TeamBridgeThreadReadState> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.thread_read",
+			conversation_id: conversationId,
+			message_id: rootId,
+			tenant_id: input.tenantId,
+			expected_account_id: input.expectedAccountId,
+			seq: input.seq,
+		});
+		const parsed = teamBridgeThreadReadStateSchema.safeParse(answer ?? {});
+		return parsed.success ? parsed.data : {};
 	},
 
 	/**
@@ -597,6 +740,53 @@ export const TeamBridgeApi = {
 	},
 
 	/**
+	 * Leave one conversation as the signed-in person (members panel "Leave").
+	 *
+	 * Its own op rather than `leave()` above (the lifecycle action), so the
+	 * panel's answer and refusal have one shape. `tenantId` feeds core's owner
+	 * receipt only: the hub's leave handler ignores a tenant and resolves the
+	 * caller's first active membership, so leaving a conversation in another
+	 * organization comes back as a not-found refusal, not a routed leave
+	 * (review round 1, R2).
+	 * Re-entry after leaving needs a fresh invitation (core's route docstring).
+	 */
+	async leaveConversation(input: {
+		conversationId: string;
+		tenantId: string;
+		expectedAccountId?: string;
+	}): Promise<unknown> {
+		return desktopResult<unknown>({
+			op: "team_bridge.conversations.leave",
+			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
+			conversation_id: input.conversationId,
+		});
+	},
+
+	/**
+	 * Take the caller's OWN ACTIVE agent out of a conversation (consent
+	 * `withdraw`, agent-server #227). Withdraw is not consent, so it sends no
+	 * `consent_version`. `endpointId` pins which of the owner's agents leaves
+	 * when the participant row carries one; without it the hub resolves the
+	 * owner's single agent row, and refuses `rule=ambiguous` if there are two.
+	 */
+	async withdrawAgent(input: {
+		conversationId: string;
+		accountId: string;
+		tenantId: string;
+		endpointId?: string;
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.consent",
+			...(await teamBridgeWriteOwner(input.accountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			account_id: input.accountId,
+			decision: "withdraw",
+			...(input.endpointId ? { endpoint_id: input.endpointId } : {}),
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
+	/**
 	 * Answer an invitation for the caller's OWN agent (agent-server `Consent`).
 	 *
 	 * An agent added to a channel or group stays `invited` until its owner
@@ -604,8 +794,10 @@ export const TeamBridgeApi = {
 	 * can never take it for itself. `accountId` is the owner's account (the hub
 	 * refuses any other with `agent_not_permitted`), and the owner guard rides
 	 * along so a request started under one account cannot land under another.
-	 * The answer is the conversation's post-state; accepting changes only the
-	 * member's state, never its notification register, so it still joins muted.
+	 * The answer is the conversation's post-state; this request names only the
+	 * decision, never a notification level: the hub activates the agent at its
+	 * own default (`all` since wake-on-every-message), and the owner narrows it
+	 * afterwards through `setAgentNotify`.
 	 */
 	async answerAgentInvitation(input: {
 		conversationId: string;
@@ -613,6 +805,8 @@ export const TeamBridgeApi = {
 		tenantId: string;
 		decision: "accept" | "decline";
 		consentVersion: string;
+		/** Pins one of the owner's agent rows (members panel); optional. */
+		endpointId?: string;
 	}): Promise<TeamBridgeConversation> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.consent",
@@ -621,6 +815,7 @@ export const TeamBridgeApi = {
 			account_id: input.accountId,
 			decision: input.decision,
 			consent_version: input.consentVersion,
+			...(input.endpointId ? { endpoint_id: input.endpointId } : {}),
 		});
 		return teamBridgeConversationSchema.parse(answer);
 	},
@@ -647,5 +842,31 @@ export const TeamBridgeApi = {
 			notify,
 		});
 		return teamBridgeReadStateSchema.parse(answer);
+	},
+
+	/**
+	 * Set how often the OWNER'S OWN AGENT is woken in one conversation.
+	 *
+	 * Distinct from `setNotify`, which is the reader's own banner register: this
+	 * writes the agent member's level, which the hub reads to decide whether a
+	 * non-mention message wakes the agent at all (`all`), only an @-mention or a
+	 * reply in a thread it follows does (`mention`), or nothing does, not even
+	 * an @-mention (`mute`). The runtime resolves the owner's
+	 * agent endpoint, so the renderer never names one. The answer is the
+	 * conversation's post-state, whose agent row carries the effective level.
+	 */
+	async setAgentNotify(input: {
+		conversationId: string;
+		tenantId: string;
+		accountId: string;
+		notify: TeamBridgeNotify;
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.agent_notify",
+			...(await teamBridgeWriteOwner(input.accountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			notify: input.notify,
+		});
+		return teamBridgeConversationSchema.parse(answer);
 	},
 };

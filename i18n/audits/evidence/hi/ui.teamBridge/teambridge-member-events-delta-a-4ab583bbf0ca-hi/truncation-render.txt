@@ -1,0 +1,13 @@
+===== hi
+  events.others(3 hidden)      : 3 अन्य लोग
+  invited      shown (5 names, 3 hidden): Dana ने Ava, Ben, और 3 अन्य लोग को आमंत्रित किया
+               full  (5 names)            : Dana ने Ava, Ben, Sana, Ravi, और Cleo को आमंत्रित किया
+  joined       shown (5 names, 3 hidden): Ava, Ben, और 3 अन्य लोग बातचीत में शामिल
+               full  (5 names)            : Ava, Ben, Sana, Ravi, और Cleo बातचीत में शामिल
+  declined     shown (5 names, 3 hidden): Dana ने Ava, Ben, और 3 अन्य लोग के लिए आमंत्रण अस्वीकार कर दिया
+               full  (5 names)            : Dana ने Ava, Ben, Sana, Ravi, और Cleo के लिए आमंत्रण अस्वीकार कर दिया
+  withdrawn    shown (5 names, 3 hidden): Dana ने Ava, Ben, और 3 अन्य लोग के लिए आमंत्रण वापस ले लिया
+               full  (5 names)            : Dana ने Ava, Ben, Sana, Ravi, और Cleo के लिए आमंत्रण वापस ले लिया
+  declined_self                : Dana ने आमंत्रण अस्वीकार कर दिया
+  owner_added_agent            : Dana ने अपना एजेंट Ava जोड़ा
+  unknown                      : सदस्यों में बदलाव हुआ

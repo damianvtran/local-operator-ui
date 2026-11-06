@@ -1,0 +1,40 @@
+{
+ "schema": 1,
+ "auditor": "reviewer",
+ "role": "independent i18n auditor (team lopdev reviewer); did not translate these files and edited no translated string",
+ "agent": "reviewer",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "session banner: anthropic/claude-sonnet-5-5; no provider fallback occurred in this run",
+ "fallback": false,
+ "instance": "1f5234f0f81c-ur",
+ "locale": "ur",
+ "namespace": "ui.agents.settings",
+ "date": "2026-10-30",
+ "head": "26c1dde39f4595a5de7bc22dad1dca00c45582b9",
+ "status": "passed",
+ "result": "clean",
+ "independence": "The translator was a separate agent (coder, radient/auto, per its handoff record) whose work landed in 26c1dde39f. This auditor formed its own read of each string before opening the handoff, authored no catalogue, key, context or ledger entry before this run, and edited no translated string; it writes only this receipt, the ledger row derived from it and the retention record.",
+ "translator": {
+  "agent": "coder",
+  "model": "radient/auto",
+  "note": "recorded from the translator handoff (served model as the harness reported it; not observed serving by this auditor). The pre-existing ledger row names an earlier translator (i18n-translator); the assembler keeps a row's translator on a re-bind, so this delta's translator is evidenced here and in the retention record."
+ },
+ "sha256": {
+  "ur": "bc8b50a79b62b11b191e76251d52e6a25e6b35015a76fb0fb96d496dc3a485c1",
+  "en": "e509f98c52eb5da5359599e00a8430c41cb6aef36830aea5aa4f0feeb441c8c8"
+ },
+ "context_sha256": "e91e7a0d832b02e0c8b1c58f2f18f67ec93da82dd2627d2b05d95413a5d65041",
+ "reference_sha256": {
+  "glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+ },
+ "findings": [],
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "scope": "ui.agents.settings for ur: the 7 keys ui.agents.settings.general.profile_picture{,_hint,_upload,_remove,_error_type,_error_size,_error_decode} added by 26c1dde39f, each read against the English value, the context sidecar entry, i18n/glossary.md and i18n/style-guides/ur.md (core origin/main ab5426872). The other 63 keys are byte-identical to the parent commit (checked) and are not re-audited. Whole-file hashes are bound.",
+ "notes": "آپ-polite imperatives; no U+200E/200F/2066-2069 or any Cf character in the 7 values (checked); Urdu comma ، in the format list matches teamBridge sibling; اپ لوڈ spaced as in corpus; ہٹائیں matches 35 Remove strings. Mechanical, re-derived here: key set and order == English (70/70); exactly 7 values differ from parent; @formatjs/icu-messageformat-parser accepts all 7; {size} is the only argument and only in error_size; no Cf/bidi control characters; NFC-clean. NOT verified by this audit: native-speaker naturalness (agent semantic read, no native reader), rendered fit in the settings row (hint wraps; buttons are nowrap in a flex-wrap row), screenshots, RTL layout proof."
+}

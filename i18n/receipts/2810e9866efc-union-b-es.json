@@ -1,0 +1,172 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (post-union delta re-audit, auditor B)",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness for session 2810e9866efc (anthropic/claude-opus-5-5); no fallback announced or observed.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.teamBridge",
+	"locale": "es",
+	"audit_id": "teambridge-member-events-union-audit-2810e9866efc-union-b-es",
+	"instance": "2810e9866efc-union-b-es",
+	"session": "2810e9866efc",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"base": "3b369d6341c7eeed159c3bcbb1b1f4db759265d4",
+		"head": "599309fdd9946546fee3138904bdd1f31722623d",
+		"state": "local head, not pushed",
+		"worktree": "~/local-operator-ui/.worktrees/member-events"
+	},
+	"independence": "Auditor B (lopdev translation-auditor, session 2810e9866efc), independent of auditor A (95c4798301e2); authored none of the audited strings and none of A's receipts, formed every verdict before reading A's output; edited no catalogue or code; wrote only this receipt, its evidence bundle and the row via ledger-assemble.mjs.",
+	"sha256": {
+		"es": "23f73b7f7541c100a592e190e4058e764ee8a85fd3eb8de2fbb7286975ca9dd7",
+		"en": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633"
+	},
+	"context_sha256": "47f525ae908445904c507ac9e1386fdaa8181c6a5a6aca8b9f46d22180eea523",
+	"scope": {
+		"delta_kind": "Union onto origin/main 3b369d6341c7eeed159c3bcbb1b1f4db759265d4. Mechanical (union.log): vs 3b369d6341c7eeed159c3bcbb1b1f4db759265d4 this file has 299 keys, 12 added, 0 changed, 0 removed, and every raw line of main's file is present in the union; the added set equals en's.",
+		"main_bytes_relied_on": {
+			"target_sha256_prefix": "559b5718f4a5c5ed",
+			"ledger_row_on_main_audited_by": [
+				"b20548e9b2d9-rebase-es"
+			],
+			"receipt_names_those_bytes": true
+		},
+		"delta_bytes_relied_on": {
+			"pre_union_branch_head": "6ec9e2372e5",
+			"pre_union_target_sha256_prefix": "f6a8d8147a831ae4",
+			"delta12_values_byte_identical": true,
+			"note": "Re-read linguistically regardless; prior branch receipts (e.g. 4ab583bbf0ca-*, 502568f2aefe-*) consulted only for open dispositions after verdicts were formed."
+		},
+		"keys_audited_linguistically": [
+			"ui.teamBridge.members.invitation_note_v3",
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.joined",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.unknown",
+			"ui.teamBridge.events.others"
+		],
+		"not_audited": "The other 287 keys: byte-identical to main's audited bytes."
+	},
+	"audited": {
+		"ui.teamBridge.members.invitation_note_v3": {
+			"en": "Invitations don’t grant access until accepted. Your own agents join right away; someone else’s agent joins once its owner consents. A member agent reads every message here and decides whether to reply, and is expected to reply when @-mentioned. Its owner can limit it to @-mentions and its threads, or mute it.",
+			"translation": "Las invitaciones no dan acceso hasta que se aceptan. Tus propios agentes se unen de inmediato; el agente de otra persona se une cuando su propietario da su consentimiento. Un agente miembro lee todos los mensajes de aquí y decide si responde, y se espera que responda cuando se le menciona con @. Su propietario puede limitarlo a las menciones con @ y a los hilos en los que participa, o silenciarlo."
+		},
+		"ui.teamBridge.events.invited": {
+			"en": "{actor} invited {targets}",
+			"translation": "{actor} invitó a {targets}"
+		},
+		"ui.teamBridge.events.joined": {
+			"en": "{targets} joined",
+			"translation": "Entrada en la conversación: {targets}"
+		},
+		"ui.teamBridge.events.owner_added_agent": {
+			"en": "{actor} added their agent {targets}",
+			"translation": "{actor} añadió a su agente: {targets}"
+		},
+		"ui.teamBridge.events.left": {
+			"en": "{targets} left",
+			"translation": "Salida de la conversación: {targets}"
+		},
+		"ui.teamBridge.events.removed": {
+			"en": "{actor} removed {targets}",
+			"translation": "{actor} eliminó a {targets}"
+		},
+		"ui.teamBridge.events.consented": {
+			"en": "{actor} approved {targets} joining",
+			"translation": "{actor} autorizó la entrada de {targets}"
+		},
+		"ui.teamBridge.events.declined_self": {
+			"en": "{actor} declined the invitation",
+			"translation": "{actor} rechazó la invitación"
+		},
+		"ui.teamBridge.events.declined": {
+			"en": "{actor} declined the invitation for {targets}",
+			"translation": "{actor} rechazó la invitación para {targets}"
+		},
+		"ui.teamBridge.events.withdrawn": {
+			"en": "{actor} withdrew the invitation for {targets}",
+			"translation": "{actor} retiró la invitación para {targets}"
+		},
+		"ui.teamBridge.events.unknown": {
+			"en": "Membership changed",
+			"translation": "Cambio en los miembros"
+		},
+		"ui.teamBridge.events.others": {
+			"en": "{count, plural, one {# other} other {# others}}",
+			"translation": "{count, plural, one {# más} many {# más} other {# más}}"
+		}
+	},
+	"checks": {
+		"placeholders": "@formatjs/icu-messageformat-parser argument sets identical to en for all 12 keys; declined_self carries only {actor}; others carries only {count}. structural failures: 0 (render.log).",
+		"icu_arms": "events.others arms equal Intl.PluralRules(locale) categories exactly (en one/other, es/fr one/many/other, ru one/few/many/other, hi/ur one/other, vi/zh-CN other); every arm uses #; no conjunction inside.",
+		"unicode": "NFC for all 12 values; no bidi/format controls; NBSP class only fr U+202F before ':' (house convention).",
+		"rendered": "repo node_modules intl-messageformat + Intl.ListFormat(long, conjunction), NAMES_SHOWN=2 as in team-bridge-member-events.tsx: every event line at 1 and 3 targets, and the truncated path at others counts 1/2/3/5/11/21 for every naming line (render.log).",
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/ureB/render.mjs (copied as render.mjs.txt); Node v24.22.1",
+		"linguistic_notes": "Nominal joined/left («Entrada/Salida en/de la conversación: …») avoids gender agreement; consistent tú register; «# más» across one/many/other; v3 note keeps 'se espera que responda' (expectation) and the own-agent/other's-agent split."
+	},
+	"findings": [
+		{
+			"severity": "INFO",
+			"id": "B-SRC1",
+			"key": "ui.teamBridge.events.owner_added_agent",
+			"current": "en: {actor} added their agent {targets}",
+			"proposed": "source-side: e.g. an ICU select/plural on the target count ('their agent'/'their agents'), then re-translate",
+			"reason": "The model merges owner_invite joins by request_id and an event may carry several targets, so the singular 'their agent' renders over a multi-name list in en ('Ada added their agent Ben, Sana, and 1 other') and is carried into es/fr/hi/ru/ur (singular possessive+noun); vi/zh-CN are number-neutral. Not a translation defect; not counted."
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9",
+			"sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-es/render.log",
+			"sha256": "130ae8750415fbd370561c6729f77d0b27b63e4bbfd4aa70330d41680bc61723"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-es/union.log",
+			"sha256": "0c83341db9d5f91ab034a467a2c2befe38d05709f56aa64bd9d60a5a79eef152"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-es/delta-prior.log",
+			"sha256": "3817d216fb455e5dab76f26531f5d1ebb2986d34bdc2b20417be180895abe2aa"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-es/render.mjs.txt",
+			"sha256": "adb0f81fdca3d6584825231e3487c9540a8ef2e3ed161e3a4ae7224fe65a7671"
+		}
+	],
+	"audit_notes_not_execution_log": "findings and linguistic_notes are auditor judgement; *.log artifacts are verbatim command output.",
+	"limitations": "No rendered app frame (overflow judged from ratios: vi owner_added_agent 2.3x, ru/es/fr joined 2.3-2.6x — single-line truncate span, names dominate); no native-speaker sign-off."
+}

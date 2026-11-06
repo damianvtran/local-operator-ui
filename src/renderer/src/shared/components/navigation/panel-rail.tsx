@@ -364,22 +364,33 @@ export const PanelRail: FC<PanelRailProps> = ({
 				className={cn(
 					"relative flex h-full w-full flex-col items-center gap-1 bg-surface",
 					/*
-					 * NO RULE ON THE LEADING EDGE (the operator's ask: the rail should be
-					 * borderless "like the left sidebar"). The boundary is the TONE STEP
-					 * alone - `surface` against the slot's `elevated` (a pane open) or the
-					 * conversation's `canvas` (no pane) - because that is how the sidebar's
-					 * own edge is carried, and the rail follows it. That is a choice, not a
-					 * proof of sufficiency: the ladder asserts these pairs at 2.0, the floor
-					 * for small FIELDS, while `REGION_SEPARATION_FLOOR` (4.0) in
-					 * `scripts/contrast-contract.mjs` is the stronger bar it sets for two
-					 * full-height planes with no line between them. The measured steps over
-					 * the 59 palettes are min 2.05 (`sage`, pane closed) and 2.02 (`arcade`,
-					 * pane open); `localOperatorDark`/`Light` read 2.77 / 3.29 and 2.32 /
-					 * 2.50 (closed / open). Its ABSENCE is pinned by `scripts/pane-slot-ground.test.mjs`, because
-					 * the `border-l border-hairline` this replaced drew a line from y=32
-					 * under the lane downwards - the "doesn't go all the way up" seam - and
-					 * a pin is the only thing that keeps a second way of drawing the edge
-					 * from quietly returning.
+					 * ONE SEAM ON THE RAIL'S EDGE, AND IT IS NOT ON THIS ELEMENT (B1). The
+					 * boundary is the TONE STEP - `surface` against the slot's `elevated` (a
+					 * pane open) or the conversation's `canvas` (no pane) - plus one 1px
+					 * `hairline` at 75% (`panel-edge.tsx`, 2026-10-30). The step alone is a
+					 * field-floor separation (min 2.05 `sage` with the pane closed, 2.02
+					 * `arcade` with it open; 2.77/3.29 and 2.32/2.50 for
+					 * `localOperatorDark`/`Light`), and the operator's 2026-10-30 report is
+					 * that it does not read in light themes.
+					 *
+					 * THE SEAM IS MOUNTED BY THE SHELL ON THIS RAIL'S HOST, NOT HERE. This
+					 * root is the host's `panel-top-pad` CONTENT box, so it starts at the pad:
+					 * an `inset-y-0` child of it began the seam at y=32 on macOS - the exact
+					 * mid-air line this change exists to remove (agent review round 1, B1).
+					 * `chat-layout.tsx`'s `data-panel-rail-host` is the full-height box that
+					 * paints the rail's ground, and it carries the `relative` and the
+					 * `<PanelEdge side="start" />`; `panel-rail-frame.tsx` mirrors that for
+					 * the story harnesses.
+					 *
+					 * IT IS NOT A BORDER ON THIS ROOT, WHICH IS WHY THIS ROOT'S CLASS LIST
+					 * STILL CARRIES NO RULE. The `border-l border-hairline` that used to sit
+					 * here drew from y=32 down - the "doesn't go all the way up" seam - and a
+					 * border would also take a pixel from a 44px column. `PanelEdge` states
+					 * the mechanism and its measurements; `panel-edge.tsx` also records why
+					 * the rail's earlier "borderless" round was the right call for the border
+					 * and the wrong one as a permanent rule. `scripts/pane-slot-ground.test.mjs`
+					 * pins both halves: no rule utility on this root, and the seam element
+					 * mounted on the host.
 					 */
 					/*
 					 * THE FIRST ITEM'S TOP IS THE CAPTION INSET PLUS 4px, set as PADDING (design

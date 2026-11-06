@@ -58,6 +58,146 @@
 	}
 }
 
+/* The message a Team Bridge notification click named: an accent wash on the row
+ * that fades back to the row's own ground over 1.4 s, so the eye finds the
+ * message it was told about and is then left alone. 1400 ms is
+ * `JUMP_HIGHLIGHT_MS` (`shared/lib/jump-highlight.ts`), the chat surface's
+ * checkpoint landing flash: one cue, one time, and the page's clear timer reads
+ * the same constant (design review round 1, D4). The row keeps its box, so
+ * nothing moves.
+ *
+ * WHY THE WASH IS AN OVERLAY, NOT THE ROW'S OWN BACKGROUND (design round 1,
+ * D3). Painting `background-color` on the row meant the animated value won over
+ * the row's `hover:bg-row-hover` for the whole life of the class - including
+ * the tail after the fade had finished, because `both` holds the end keyframe -
+ * so the exact second a reader reached for the row its hover feedback was gone,
+ * and any future hover or selection styling on a message row would inherit the
+ * hole. The wash now lives on an `::after` band: the row is its own stacking
+ * context (`isolation`), the band sits at `z-index: -1` so it paints ABOVE the
+ * row's background (hover, current) and BELOW its content, and it takes no
+ * pointer events. The row's own tints keep working underneath - a hovered row
+ * under the band measures 1.349:1 dark / 1.270:1 light against the pane, so the
+ * hover remains independent in a solid window. Covered glass instead uses
+ * one derived selected veil, excluding hover while the target cue is present.
+ *
+ * WHY 12% ACCENT OVER THE SOLID GROUND, NOT THE FLAT `accent-wash` TOKEN (design
+ * round 1, D2). `accent-wash` on this pane measured 1.044:1 dark and 1.061:1
+ * light - fainter than the row hover tint (1.084:1) and the rail's selected row
+ * (1.127:1 / 1.135:1), so the mark the reader was TOLD about was drawn more
+ * quietly than one their pointer merely rested on. 12% of the accent role
+ * composited over the pane is 1.237:1 dark and 1.176:1 light: above the hover
+ * tint and above the selected row in both themes, so the hierarchy reads
+ * arrival > current > hover. It is a role, mixed at paint time - no new raw
+ * colour - and 12% is the ceiling: at 14% the 12 px muted glyph inside the row
+ * drops to 4.39:1 in the dark theme, under the 4.5:1 AA floor the round-1
+ * design evidence measured on this surface. Reduced motion keeps the cue but
+ * drops the fade: the band holds at full strength for the same span and the
+ * page removes the class, which is a state change, not motion. */
+@keyframes lo-team-bridge-target {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+.lo-team-bridge-target {
+	isolation: isolate;
+	/* On glass, target and hover are alternative states, never two ink veils.
+	 * Outside covered glass these fallbacks keep the original ground steps. */
+	--color-row-hover-surface: var(--lo-target-hover-surface, var(--lo-surface));
+	--color-row-hover-elevated: var(
+		--lo-target-hover-elevated,
+		var(--lo-elevated)
+	);
+}
+.lo-team-bridge-target::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	/* Below the row's own content, above its own background. */
+	z-index: -1;
+	/* A ground, never a target: the row's menu and badges keep their hit area. */
+	pointer-events: none;
+	/* The accent wash remains the solid-window fallback. Composed glass uses
+	 * the derived selected step: a fixed accent alpha has no contrast budget
+	 * on an arbitrary translucent ground, especially stacked with hover. */
+	background-color: var(
+		--lo-target-wash,
+		color-mix(in srgb, var(--color-accent) 12%, transparent)
+	);
+	animation: lo-team-bridge-target 1400ms var(--ease-out-quart) both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-target::after {
+		animation: none;
+	}
+}
+
+/*
+ * WHY THE WASHED ROW'S DIM INK LIFTS WHILE THE BAND IS UP (design review round
+ * 2, D6). The band paints under the row's content, so an 11-12 px `ink-dim`
+ * timestamp sits on it. Swept over the fifty-nine palettes, `ink-dim` on the
+ * 12 % mix is under 4.5:1 in ten of them - cyberpunk 4.05:1, from 5.59:1 on the
+ * plain pane - and no single mix fixes that: the mix that keeps the metadata at
+ * AA in every palette is 8.3 %, and at 8.3 % the arrival stops beating the
+ * selected row in 24 of 59 palettes. So the lever is the INK, not the mix:
+ * `ink-muted` on the same band clears 4.5:1 in all fifty-nine (floor 5.21:1,
+ * nightfox). Scoped to the band's lifetime and to the dim utilities inside it,
+ * so nothing else on the row changes and the lift ends with the class - the
+ * same shape as the covered-pane hover translation further down this file.
+ *
+ * AND IT FADES BACK OVER THE BAND'S OWN 1400 ms (design review round 3, D9).
+ * Removing the class alone returned the ink in ONE frame (7.855:1 -> 5.700:1), so
+ * the end of the arrival was a visible snap in the row's smallest type. The
+ * keyframe lands the ink on its resting role exactly when the band's own
+ * animation lands on `opacity: 0` and the class is removed, so there is nothing
+ * left to snap: same time, same easing, one cue. The faded path stays at or above
+ * 5.213:1 across all fifty-nine palettes (design's sweep), so no frame of the
+ * fade is less legible than the resting row. Reduced motion drops the fade and
+ * keeps the static lift for the class's lifetime, like the band itself.
+ */
+@keyframes lo-team-bridge-target-ink {
+	from {
+		color: var(--color-ink-muted);
+	}
+	to {
+		color: var(--color-ink-dim);
+	}
+}
+.lo-team-bridge-target [class~="text-ink-dim"] {
+	color: var(--color-ink-muted);
+	animation: lo-team-bridge-target-ink 1400ms var(--ease-out-quart) both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-target [class~="text-ink-dim"] {
+		animation: none;
+	}
+}
+
+/*
+ * THE PENDING INK REACHES MARKDOWN'S OWN EMPHASIS (design round 3, D7).
+ *
+ * `markdown.css` pins `strong`, `code` and the headings to `var(--lo-ink)` - full
+ * ink, on purpose, because a reasoning panel and a chat answer want emphasis to be
+ * emphasis. In a Team Bridge row that is sending, those elements were therefore the
+ * one part of the message that stayed confirmed-looking: an all-bold or all-code
+ * message had no pending cue at all, and bold stood out MORE while pending than
+ * after the hub took it.
+ *
+ * SCOPED ON PURPOSE. The rule reads `--md-ink`, which the pending row sets inline
+ * (`team-bridge-message-list.tsx`), so it follows that row's state and nothing else.
+ * Editing the rules in `markdown.css` instead would restyle every markdown surface
+ * in the app, the reasoning panel included - a decision well beyond a sending state.
+ * The attribute below is the row's own `data-delivery`, so the rule cannot reach an
+ * element outside a pending Team Bridge message.
+ */
+[data-delivery="pending"]
+	.team-bridge-message-body
+	:is(strong, b, em, code, pre, h1, h2, h3, h4, h5, h6) {
+	color: var(--md-ink, var(--lo-ink));
+}
+
 /* An avatar photo arriving over its initials (sidebar account row, design
  * review round 1, D5): the same opacity-only keyframe as the transcript, at
  * `--duration-fast` because the plate is 28px and the swap should read as
@@ -994,6 +1134,11 @@
 	   `accent` hue at two strengths; see the two roles' doc in the palette
 	   contract and § 2 of docs/branding.md. */
 	--color-row-hover: var(--lo-row-hover);
+	/* Inset states keep their opaque ground step outside covered glass regions. */
+	--color-row-hover-surface: var(--lo-surface);
+	--color-row-hover-elevated: var(--lo-elevated);
+	--color-placeholder: var(--lo-sunken);
+	--color-floating: var(--lo-elevated);
 	--color-row-selected: var(--lo-row-selected);
 	/* The user message block's own surface. Not a fifth ground and not a row
 	   state: one object's fill, and the fill IS its boundary (D10), so it
@@ -2080,12 +2225,53 @@ html[data-glass~="pane"] [data-glass-region="pane"] {
 		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
 		transparent
 	);
+	/* Pseudo-element states cannot use the ordinary hover:bg-* translation:
+	 * their paint belongs to ::before, not the row. Reuse the same derived ink
+	 * steps, without changing the inset box or multiplying text opacity. */
+	--color-row-hover-surface: var(--color-row-hover);
+	--color-row-hover-elevated: var(--color-row-hover);
+	--color-placeholder: var(--color-row-selected);
+	--lo-target-wash: var(--color-row-selected);
+	--lo-target-hover-surface: transparent;
+	--lo-target-hover-elevated: transparent;
+	/* A floating action strip owns ONE isolating ground, not another ink veil
+	 * over the hovered row. Keep the elevated readability floor and blur what
+	 * scrolls behind it; making only its buttons translucent exposes old text. */
+	--color-floating: color-mix(
+		in srgb,
+		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
+		transparent
+	);
+	--lo-floating-backdrop: blur(12px);
 	/* The structural edge, nudged toward `ink` so 3:1 holds on the translucent ground. */
 	--color-control: color-mix(
 		in srgb,
 		var(--lo-ink) calc(var(--lo-glass-control-mix) * 100%),
 		var(--lo-border-control)
 	);
+}
+/* Skeleton callers sometimes request a different SOLID ground (for example
+ * elevated bars in notifications). On covered glass they are still placeholder
+ * marks, not opaque content islands. Match the shared component's marker so
+ * those utility overrides cannot bypass its role; uncovered callers keep their
+ * original class-selected fills. Do not lower opacity on a loading container. */
+html[data-glass~="sidebar"]
+	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
+	[data-glass-placeholder],
+html[data-glass~="canvas"]
+	:is(
+		[data-glass-region="canvas"],
+		main[data-glass-region="canvas-backing"],
+		[data-glass-region="panel"]
+	)
+	[data-glass-placeholder],
+html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-placeholder] {
+	background-color: var(--color-placeholder);
+}
+/* No data-glass means no inherited blur: unsupported and reduced-transparency
+ * windows retain the original solid floating ground and the same hit geometry. */
+[data-glass-plane="floating"] {
+	backdrop-filter: var(--lo-floating-backdrop, none);
 }
 html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
@@ -2606,7 +2792,7 @@ html[data-glass~="pane"]
  * number in the model derived for a band over MOVING content: the smallest
  * alpha at which the band's own role still holds the count's ink over the
  * worst content colour that can pass beneath it, derived over every palette
- * by `scripts/derive-glass-floors.mjs` (0.91 dark, 0.78 light) and asserted
+ * by `scripts/derive-glass-floors.mjs` (0.88 dark, 0.78 light) and asserted
  * by `scripts/contrast-contract.mjs`. The ordinary bands do not need it -
  * they sit on the pane's own STATIC ground, where the published alpha is
  * right - but this band's ground is a thumbnail, so its alpha is a contract
@@ -2754,6 +2940,231 @@ html[data-glass~="canvas"] [data-glass-lane] {
 }
 
 /*
+ * WINDOW GLASS, ROUND 3: THE FLOATING LAYER (menus, tooltips, popovers, dialogs)
+ * ----------------------------------------------------------------------------
+ *
+ * THE OPERATOR'S REPORT. With window glass on, every panel that FLOATS was still an
+ * opaque plate: the sidebar's move-to menu, the Bridge conversation menu, a tooltip,
+ * the update card. The columns behind them were translucent and the thing that had
+ * left the flow was the one surface you could not see through - the exact inverse of
+ * what a material is supposed to say, because a panel that detaches from the window
+ * is the panel where the desktop is most visible.
+ *
+ * WHY THEY WERE SOLID, and why no existing rule reached them. Every glass rule in
+ * this file is keyed on `data-glass-region` (or a marker inside a region), because
+ * an alpha may only be painted once per region and the region is the thing that owns
+ * it. A PORTAL has no such ancestor: Radix paints the panel at the document body, so
+ * the only ancestor a menu, tooltip, popover, dialog, select or drawer shares with
+ * the app is `<html>` - which is exactly why `data-glass` (written there by
+ * `use-window-glass.ts`) is the gate this section uses, and why these panels stayed
+ * on their opaque `bg-elevated` class while everything around them moved.
+ *
+ * ONE MARKER, ONE RULE. The panels wear `data-glass-overlay` (a direct prop in each
+ * primitive, `shared/components/ui/{dropdown-menu,context-menu,tooltip,popover,
+ * dialog,select,sheet}.tsx`), and the rule below is the only place the floating
+ * layer's ground is defined - so a submenu, a select list and a dialog cannot drift
+ * into three different translucencies.
+ *
+ * THE MARKER IS NOT THE PRIMITIVE LAYER'S PROPERTY, though. The same attribute is on
+ * the update card and on the feature-level panels that float with their own ground -
+ * the settings search results, the thread search panel, the session switcher - because
+ * the defect was the CLASS, not the primitives: a panel that leaves the flow is a
+ * panel the desktop should show through, whatever component it lives in.
+ * `scripts/glass-overlay.test.mjs` derives the membership twice - from the primitives
+ * that render a Portal, and from the app's own "this leaves the flow" vocabulary
+ * (`shadow-overlay` paired with a ground role, out of flow) - and names the pre-existing
+ * panels that stay opaque for now, each with the reason it waits. That vocabulary is
+ * read off the code in both shapes this codebase writes it: a class string on the
+ * element, and a module-level class constant the element wears. So a new panel of that
+ * shape fails a test until marking it or naming it is a decision.
+ *
+ * WHERE THAT GUARANTEE ENDS is the derivation's edge, not the rule's, and it is worth
+ * knowing before trusting the sentence above: a ground or shadow that arrives through an
+ * inline style (`themed-toast-container.tsx` spends `--shadow-overlay` as `boxShadow`,
+ * and a toast may legitimately be a surface of its own), a class string composed at
+ * runtime or through a ternary alias, and a class constant imported from another module
+ * are all outside what the scan can see. Those are gaps in detection, not in the rule: a
+ * panel marked by hand is styled right whether or not the guard found it.
+ *
+ * THE ALPHA IS ITS OWN DERIVED FLOOR, NOT THE ELEVATED RUNG. `--lo-glass-a-overlay`
+ * (`glassOverlayAlpha` in `src/shared/window-glass.ts`) tracks the slider from the
+ * veil ceiling to `GLASS_FLOORS.overlayFloor` - 0.70 dark / 0.50 light (0.75 / 0.59 at
+ * the default 80, so the panel tracks the slider rather than sitting at its floor),
+ * derived by `scripts/derive-glass-floors.mjs` against the LEAST opaque column the
+ * app can present. Painting the `elevated` role's own alpha here was the tempting
+ * reuse and it is wrong: that floor is derived as if the column stood on the desktop
+ * alone, so a portal ON TOP of the column composites to near-opaque - the elevated
+ * rung's own floor, 0.68 dark, over the least opaque column's `canvas` 0.53 composes
+ * to 0.85 (0.45 over 0.61 is 0.79 on the light palettes) - and the panel would be
+ * the slab it is today. The overlay floor answers the question a portal actually
+ * asks: what does this panel need, given that the app has already painted something
+ * translucent under it? That is what makes it genuinely see-through AND readable
+ * rather than a re-paint.
+ *
+ * THE DIM REGISTER COLLAPSES INTO THE MUTED ONE, and only inside these panels. The
+ * palette's `ink-dim` is authored one step under `ink-muted` against the OPAQUE
+ * `elevated` plate, and it does not survive this composite: at the overlay's floor
+ * `ink-dim` measures 3.62:1 on the dark palettes and 3.59:1 on the light ones, under
+ * the 4.5 text floor on 57 of the 59 palettes, where the same ink on the opaque plate
+ * read 5.48-7.94:1. Those rows are not decoration - `DropdownMenuLabel`, an item's
+ * shortcut and `SelectPrimitive.Label` are navigation text, and the flat contract
+ * already counts `ink-dim` as an AA TEXT register. Nor can the fill be raised until
+ * it passes: `ink-dim` needs 0.86 dark / 0.71 light, denser than the `elevated` rung's
+ * own floor (0.68 / 0.45) and a step under the band's (0.88 / 0.78) - a panel more
+ * opaque than the plate it replaces, which is the slab this section exists to remove.
+ *
+ * So the trade is made at the ink instead: on glass, a floating panel rebinds
+ * `--color-ink-dim` to `--color-ink-muted`. One custom property on the panel subtree,
+ * so every label, shortcut and group heading lifts from a single declaration rather
+ * than three class overrides, and a panel born tomorrow inherits the fix by carrying
+ * the marker. The hierarchy deliberately flattens there - dim and muted read the same
+ * inside a menu - and that is the correct trade: on a translucent ground the step
+ * between the two registers is smaller than the legibility it costs, so the pair that
+ * survives is the one that still clears AA. `ink` and `ink-muted` keep the derived
+ * floor; only the third register moves, and only here.
+ *
+ * THE BLUR DOES THE ISOLATING, as it does for the sticky band: `backdrop-filter`
+ * samples what is painted behind the panel, so a saturated thumbnail or a line of
+ * prose passing under it is washed into a ground the panel's own inks can sit on.
+ * The 12px radius is the band's, for the same reason - it is larger than a text line,
+ * because the failure being prevented is TEXT colliding with TEXT, not fill with
+ * fill.
+ *
+ * NOT A COVERAGE. The rule is gated on `data-glass` alone, not on a kind. A portal
+ * has no route: the same menu primitive is used in the sidebar, on the canvas and in
+ * a dialog, and CSS cannot know which column the anchor sat in. One alpha for all of
+ * them is also the safe direction - the floor is derived against the CLEAREST column
+ * the app can draw, so a panel over a solid page (Sidebars only coverage) composites
+ * onto something more opaque and is easier to read, never harder.
+ *
+ * NO ELEMENT OPACITY, EVER. Only `background-color`, `backdrop-filter` and that one
+ * ink rebinding are set. The panel's text, icons, the close control, the highlighted
+ * row's opaque `accentWash`, `data-[disabled]` ink and the `outline` focus ring are
+ * all untouched, so they stay crisp at every alpha - and a tooltip's
+ * `pointer-events-none`, a menu's keyboard highlight and a dialog's trapped focus
+ * behave exactly as they do today.
+ * The column's `shadow-overlay` also stays: elevation here is still a lightness step
+ * plus the one shadow that exists for things which leave the flow.
+ *
+ * A NESTED PANEL COMPOUNDS, and should: a submenu or a select inside a dialog paints
+ * its floor over a panel that already has one, so the inner surface is denser than
+ * the outer - the same direction the elevation ladder asks for, arrived at by the
+ * same alpha rather than a second number.
+ *
+ * OFF GLASS NOTHING CHANGES: with no `data-glass` on the root no rule here matches,
+ * and every panel keeps the opaque `bg-elevated` its component declares.
+ */
+html[data-glass] [data-glass-overlay] {
+	/*
+	 * THE MEANING COLOURS ARE TEXT HERE TOO (design round 1, D1).
+	 *
+	 * The rebinding above fixes the third BODY ink. The palette's semantic registers
+	 * are the other half of the same problem and were left out of it: a destructive
+	 * menu item is `text-danger` (`dropdown-menu.tsx`, `context-menu.tsx`), a link in
+	 * a search result or a changelog entry is `text-accent` (`settings-search.tsx`,
+	 * `update-notification.tsx`), and the flat contract already holds every one of
+	 * them to the 4.5 ink floor. On this ground they lose it - measured from the
+	 * palettes at the slider's floor, the worst semantic register reads 3.03:1 dark /
+	 * 3.23:1 light against the panel over the extreme backdrop, and dialogs measured
+	 * 3.36-3.80:1 on real pixels before they were taken off this tier.
+	 *
+	 * WHY THE FILL IS NOT RAISED FOR THEM, the way `ink-dim`'s failure was answered
+	 * there: a meaning colour sits in the MIDDLE of the lightness range by necessity,
+	 * and the floating panel's ground does not - over the palette's own ground the
+	 * panel is dark, over the extreme backdrop it rises to mid-tone. A mid-tone ink on
+	 * a mid-tone ground is the one case opacity cannot fix from above: solving it
+	 * needs alpha 1.00 for the dark half of the table and 0.82 for the light one, i.e.
+	 * the panel stops being a material. `overlayInkMix` is the measured answer instead
+	 * - each register mixed toward `ink` by the smallest constant that holds 4.5:1 at
+	 * the floor over every palette of the scheme (0.65 dark / 0.60 light).
+	 *
+	 * THE COST, STATED: this is one constant for the whole subtree, so a destructive
+	 * item is quieter on glass than on the opaque plate even where the ground could
+	 * have carried the authored red. CSS cannot condition a rebind on what is painted
+	 * behind the panel, and quiet everywhere beats illegible somewhere.
+	 *
+	 * WHY `accent` IS NOT IN THIS SET, though it is text here too (a result link in
+	 * `settings-search.tsx`, a changelog link in the update card). The accent role is
+	 * the ONE dual-use token in the palette: it is an ink AND the primary action's
+	 * FILL (`button.tsx`: `primary: bg-accent text-on-accent`), and there are 165
+	 * `bg-accent` sites app-wide. A subtree rebind cannot tell the two apart, so
+	 * mixing accent toward ink would recolour every primary button face inside a
+	 * panel - 0.60 toward ink in the light scheme, i.e. `#644AC9` to near-black -
+	 * which is an identity regression the contrast fix has no right to buy. Closing
+	 * accent's text case needs it split into an ink token and a fill token, or the two
+	 * link sites moved to ink-with-accent-underline; both are their own change, and
+	 * the deferral is recorded on the PR rather than hidden here.
+	 */
+	--color-danger: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-danger)
+	);
+	--color-success: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-success)
+	);
+	--color-warning: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-warning)
+	);
+	--color-info: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-info)
+	);
+	/*
+	 * THE BOUNDARY IS ITS OWN ROLE (design round 1, D2).
+	 *
+	 * The fill step used to separate this panel from the column under it, and measured
+	 * over the model's under-window grey it does not: -2.2 L* in the dark scheme,
+	 * +1.4..+2.1 over white in the light one, i.e. at or under the threshold where a
+	 * fill step reads as a step - and it cannot be repaired by density, because the
+	 * `elevated` ROLE is darker than the column it floats over in the dark palettes
+	 * ((47,42,31) against (49,48,45)), so no alpha puts the panel above its own column.
+	 * What was left carrying the layer was the shadow alone, while the hairline landed
+	 * ON the panel's own fill: 1.03:1 dark / 1.18:1 light, a boundary of nothing.
+	 *
+	 * So the edge is stepped toward `ink` by the derived constant - enough to clear
+	 * 1.5:1 against the panel's own ground at both ends of the slider, which is the
+	 * band the system's strongest existing divider (`hairlineStrong` against
+	 * `elevated`, 1.34 dark / 1.87 light) occupies. Not the 3:1 structural floor: that
+	 * is a CONTROL's edge, and a panel is not a control.
+	 *
+	 * The update card is the one marked surface with no hairline to step (its class is
+	 * `bg-elevated shadow-overlay`, no border); its boundary remains the shadow, and
+	 * giving it a border is a layout decision for that surface rather than this rule.
+	 */
+	border-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-edge-mix, 0) * 100%),
+		var(--lo-hairline)
+	);
+	/* THE ONE INK REBINDING (see "THE DIM REGISTER COLLAPSES" above). It is here, in
+	 * the same rule as the fill, so the panel's ground and the ink that has to read on
+	 * it cannot be changed apart: a later edit that repaints this surface without the
+	 * remap is an edit that reopens the 3.6:1 failure. */
+	--color-ink-dim: var(--color-ink-muted);
+	/*
+	 * THE `1` IS A FALLBACK, and it is the OPAQUE end on purpose - the band's
+	 * argument. A missing custom property would make this declaration invalid at
+	 * computed-value time, and `background-color` would then resolve to its initial
+	 * `transparent` rather than falling back to the class: the utility class loses
+	 * the cascade to this unlayered rule. A transparent menu is a hole that hides
+	 * nothing and that nobody can read; an opaque one loses the material and keeps
+	 * the panel working. Choose the one that still works.
+	 */
+	background-color: color-mix(
+		in srgb,
+		var(--lo-elevated) calc(var(--lo-glass-a-overlay, 1) * 100%),
+		transparent
+	);
+	backdrop-filter: blur(12px);
+}
+
+/*
  * ENDED CONSOLE HISTORY: NO CARET, BUT A FOCUS RING (D1, D2).
  *
  * The cursor cell is made transparent and its ink inherited from the row, so the
@@ -2776,4 +3187,59 @@ html[data-glass~="canvas"] [data-glass-lane] {
 	) {
 	outline: 2px solid var(--lo-border-control);
 	outline-offset: -2px;
+}
+
+/* Native range tracks paint ABOVE the input background. Style the actual
+   track for the shared editor/accent picker, keeping the native keyboard/AT
+   value semantics and a 24px pointer target rather than replacing the input. */
+input[data-colour-hue] {
+	appearance: none;
+	background: transparent;
+	cursor: pointer;
+}
+input[data-colour-hue]::-webkit-slider-runnable-track {
+	height: 8px;
+	border-radius: 4px;
+	background: linear-gradient(
+		to right,
+		#ff0000,
+		#ffff00,
+		#00ff00,
+		#00ffff,
+		#0000ff,
+		#ff00ff,
+		#ff0000
+	);
+}
+input[data-colour-hue]::-webkit-slider-thumb {
+	appearance: none;
+	box-sizing: border-box;
+	width: 16px;
+	height: 16px;
+	margin-top: -4px;
+	border: 2px solid var(--lo-ink);
+	border-radius: 50%;
+	background: var(--lo-elevated);
+}
+input[data-colour-hue]::-moz-range-track {
+	height: 8px;
+	border-radius: 4px;
+	background: linear-gradient(
+		to right,
+		#ff0000,
+		#ffff00,
+		#00ff00,
+		#00ffff,
+		#0000ff,
+		#ff00ff,
+		#ff0000
+	);
+}
+input[data-colour-hue]::-moz-range-thumb {
+	box-sizing: border-box;
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--lo-ink);
+	border-radius: 50%;
+	background: var(--lo-elevated);
 }

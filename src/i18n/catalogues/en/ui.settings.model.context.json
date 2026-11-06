@@ -204,5 +204,35 @@
 		"placeholders": {
 			"reason": "The error message text, or the localized \"Unknown error\" fallback. Insert as given."
 		}
+	},
+	"ui.settings.model.system_prompt.rich_text": {
+		"role": "Editor mode button",
+		"tone": "Short sentence-case label.",
+		"length": "Wrapping mode row; allow natural label width.",
+		"note": "Editable rendered Markdown, not a read-only preview. Paired with Markdown source."
+	},
+	"ui.settings.model.system_prompt.source": {
+		"role": "Editor mode button",
+		"tone": "Short sentence-case label.",
+		"length": "Wrapping mode row; allow natural label width.",
+		"note": "Canonical raw Markdown instructions; no conversion occurs when toggled."
+	},
+	"ui.settings.model.system_prompt.source_required": {
+		"role": "Inline preservation notice",
+		"tone": "Plain explanation and actionable next step, no alarm.",
+		"length": "Multiline wrapping notice, including narrow views.",
+		"note": "Rich Markdown conversion would lose unsupported syntax such as unknown XML-like tags. The source remains unchanged and editable; this is not a failed save."
+	},
+	"ui.settings.model.system_prompt.source_edit": {
+		"role": "Accessible action and dialog title for editing the raw Markdown of one opaque instruction node",
+		"tone": "Short imperative, sentence case.",
+		"length": "Atom accessible name and wrapping dialog title; allow natural language width.",
+		"note": "Only the selected unknown tag, comment, image or unsupported node is edited; the rest of the document stays rich and readable. Applying updates the local draft, not storage."
+	},
+	"ui.settings.model.system_prompt.source_stale": {
+		"role": "Warning inside the node-local source dialog after a stale edit is refused",
+		"tone": "Clear and actionable, no blame or technical transport vocabulary.",
+		"length": "Multiline wrapping warning in a medium dialog, including narrow/RTL views.",
+		"note": "The selected node or surrounding draft changed while this dialog was open. Refuse Apply rather than overwrite newer instructions; Cancel and reopen provides the current source."
 	}
 }

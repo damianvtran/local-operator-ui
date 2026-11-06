@@ -65,7 +65,7 @@ const COUNTS_RIDE_THE_LABEL = "delegating";
  * hide it. `whole` below keeps the sentence from reading "0 subagents running"
  * about a mark that is on the screen.
  */
-const hasWork = (value: number | null | undefined): boolean =>
+export const hasWork = (value: number | null | undefined): boolean =>
 	typeof value === "number" && Number.isFinite(value) && value > 0;
 
 /** The counts as the sentence spells them, and never as a zero while a mark is drawn. */

@@ -59,6 +59,8 @@ const MAX_SEQ = Number.MAX_SAFE_INTEGER;
 /** An id safe to put on the channel, in a URL query, and in a file key. */
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 const AVATAR_HASH = /^[0-9a-f]{16}$/;
+/** Core's endpoint-relay id grammar (`_ENDPOINT_ID`); the hub mints `bep_<hex>`. */
+const ENDPOINT_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 /**
  * One unsafe-character policy for every banner line, at BOTH ends of IPC.
@@ -191,7 +193,14 @@ export function teamBridgeNotifyOwnerMatches(
 
 /** Identity is directory-derived, never an LLM notify argument. For an agent,
  * account_id/display_name name its HUMAN OWNER, not the recipient in owner.
- * Unknown versions/kinds degrade to today's title/icon without losing delivery. */
+ * Unknown versions/kinds degrade to today's title/icon without losing delivery.
+ * `avatar` is a PERSON's photo only: a `person_agent` never carries one, because
+ * the owner's face on an agent banner was the 2026-10-30 production defect
+ * (core draws the agent glyph instead; see `src/shared/identity-avatar.ts`).
+ * `endpoint_avatar` is the reverse: an AGENT's own published picture, keyed by
+ * its endpoint, accepted only on a `person_agent` and never on a person. Two
+ * fields rather than one tagged union so no older parser can read an
+ * endpoint picture as an account one. */
 export type TeamBridgeNotificationSender = {
 	v: 1;
 	kind: "person" | "person_agent";
@@ -199,6 +208,7 @@ export type TeamBridgeNotificationSender = {
 	display_name: string;
 	agent_name?: string;
 	avatar?: { account_id: string; hash: string };
+	endpoint_avatar?: { endpoint_id: string; hash: string };
 };
 
 export function parseTeamBridgeNotificationSender(
@@ -226,12 +236,28 @@ export function parseTeamBridgeNotificationSender(
 	const ref = input.avatar as Record<string, unknown> | undefined;
 	// Bad OPTIONAL photo metadata must not suppress the valid message or name.
 	const avatar =
+		// Dropped, not trusted, for an agent: the parser is the shared gate both
+		// the renderer and main pass through, so no producer can reintroduce it.
+		input.kind === "person" &&
 		ref &&
 		typeof ref === "object" &&
 		ref.account_id === accountId &&
 		typeof ref.hash === "string" &&
 		AVATAR_HASH.test(ref.hash)
 			? { account_id: accountId, hash: ref.hash }
+			: undefined;
+	const own = input.endpoint_avatar as Record<string, unknown> | undefined;
+	// The agent's OWN picture: endpoint shape only, person_agent only. Bad
+	// optional metadata drops the picture, never the banner.
+	const endpointAvatar =
+		input.kind === "person_agent" &&
+		own &&
+		typeof own === "object" &&
+		typeof own.endpoint_id === "string" &&
+		ENDPOINT_ID.test(own.endpoint_id) &&
+		typeof own.hash === "string" &&
+		AVATAR_HASH.test(own.hash)
+			? { endpoint_id: own.endpoint_id, hash: own.hash }
 			: undefined;
 	return {
 		v: 1,
@@ -242,6 +268,7 @@ export function parseTeamBridgeNotificationSender(
 			? { agent_name: agentName as string }
 			: {}),
 		...(avatar ? { avatar } : {}),
+		...(endpointAvatar ? { endpoint_avatar: endpointAvatar } : {}),
 	};
 }
 
@@ -268,6 +295,15 @@ export type TeamBridgeNotifyRequest = {
 	 */
 	threadId?: string;
 	/**
+	 * THE MESSAGE THE BANNER IS ABOUT. Sent only once the renderer has written
+	 * that message into the timeline's (or thread's) query cache, so a click can
+	 * land on it in the first frame instead of on a stale page that fills in
+	 * seconds later. Optional and additive: a banner that degraded to metadata
+	 * (the history read failed) carries none, and the click still opens the
+	 * conversation. Validated with the same id vocabulary as every other id.
+	 */
+	messageId?: string;
+	/**
 	 * The renderer is showing THIS conversation right now. Main still owns
 	 * quiet (only it knows real focus); this tells it that a focused window is
 	 * on this conversation, so quiet applies. A banner for a DIFFERENT
@@ -287,6 +323,8 @@ export type TeamBridgeOpenTarget = {
 	tenantId: string;
 	/** See `TeamBridgeNotifyRequest.threadId`. Absent unless one was sent. */
 	threadId?: string;
+	/** See `TeamBridgeNotifyRequest.messageId`. Absent unless one was sent. */
+	messageId?: string;
 };
 
 function cleanId(value: unknown): string | null {
@@ -339,10 +377,13 @@ export function parseTeamBridgeNotifyRequest(
 			: cleanText(input.subtitle, TEAM_BRIDGE_NOTIFY_MAX_SUBTITLE);
 	const threadId =
 		input.threadId === undefined ? undefined : cleanId(input.threadId);
+	const messageId =
+		input.messageId === undefined ? undefined : cleanId(input.messageId);
 	const viewing = input.viewing;
 	if (
 		subtitle === null ||
 		threadId === null ||
+		messageId === null ||
 		(viewing !== undefined && typeof viewing !== "boolean")
 	) {
 		return null;
@@ -370,45 +411,37 @@ export function parseTeamBridgeNotifyRequest(
 		...(sender ? { sender } : {}),
 		...(subtitle === undefined ? {} : { subtitle }),
 		...(threadId === undefined ? {} : { threadId }),
+		...(messageId === undefined ? {} : { messageId }),
 		...(viewing === undefined ? {} : { viewing }),
 	};
 }
 
 /**
- * THE HOLD: the thread surface does not ship in this build, whatever a runtime
- * advertises.
+ * Threads ship only with the owner-guarded runtime contract. local-operator
+ * PR #3149 publishes `team_bridge_threads` and requires the captured account
+ * and target tenant on every thread read and reply; the desktop contract now
+ * satisfies those guards, including the schema-level threaded-send refusal.
  *
- * HERE, IN THE SHARED MODULE, because the hold has to close BOTH sides of the
+ * THE CONSTANT STILL LIVES HERE because it guards BOTH sides of the
  * notification path: main parks a banner's click target (including a thread
- * root) and the renderer turns it back into a route. A constant the renderer
- * alone read would leave `?thread=` on the path and would leave the banner
- * preview reading thread replies, which are the cache/retry paths carrying the
- * reported cross-account isolation defects inherited from #1304. A runtime
- * advertising the route is not clearance: the backend cannot know which client
- * build is talking to it, and a client built before the fix would reactivate
- * those defects the moment the runtime that serves threads ships
- * (local-operator PR #2757).
- *
- * Returning the feature is flipping this to `true` and letting the capability
- * key (`team_bridge_threads`) decide the rest - not a cleanup.
+ * root) and the renderer turns it back into a route. The capability must still
+ * answer exactly `enabled`; unknown, below-version and unpaired states fail
+ * closed. The old receipt-less paths must not be reintroduced when this build
+ * constant is changed again.
  */
-export const TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false;
+export const TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = true;
 
 /**
- * THE REACTIONS HOLD: the reaction affordances do not ship in this build,
- * whatever a runtime advertises.
+ * Reactions ship with the same deliberate build-and-capability gate.
+ * local-operator PR #3149 publishes `team_bridge_reactions` and requires the
+ * captured account and target tenant in the PUT body or DELETE query; the
+ * desktop contract now supplies both before dispatch.
  *
- * The shipped runtime serves no reaction route at all (its OpenAPI schema
- * carries none; a reaction GET answers 404), and the old reaction path has NOT
- * been reviewed for account/retry safety. A backend advertising a
- * `team_bridge_reactions` capability must therefore never wake it up: enabling
- * reactions is a DELIBERATE flip of this constant in a release that carries the
- * verified fix, never an automatic consequence of a capability appearing.
- *
- * Kept beside the threads constant because the two holds share one shape: the
- * build constant dominates, and the capability only narrows further.
+ * The capability appearing alone is not clearance: `teamBridgeReactionsAvailable`
+ * still returns the surface only for an exact `enabled` answer, and every other
+ * capability state remains hidden.
  */
-export const TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD = false;
+export const TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD = true;
 
 /**
  * The in-app path a click lands on.
@@ -431,6 +464,8 @@ export function teamBridgeOpenPath(target: TeamBridgeOpenTarget): string {
 		...(TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD && target.threadId
 			? { thread: target.threadId }
 			: {}),
+		// The page scrolls to and briefly marks this row, then clears the param.
+		...(target.messageId ? { message: target.messageId } : {}),
 	});
 	return `/team-bridge?${query.toString()}`;
 }

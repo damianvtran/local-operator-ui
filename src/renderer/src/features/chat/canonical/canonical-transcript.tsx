@@ -48,10 +48,12 @@ import {
 	FlagLinesProvider,
 	useFlaggedItem,
 } from "@features/notifications/components/flag-line";
+import { useNotificationReveal } from "@features/notifications/drawer-tab-store";
 import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import type { AvatarMark } from "@shared/agent-avatar/avatar-presence";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -61,7 +63,7 @@ import { TextSelectionControls } from "@shared/components/common/text-selection-
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
-import { t } from "@shared/i18n";
+import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -110,6 +112,7 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import { parseAgentAvatarSize, turnMarkHeight } from "../agent-avatar-size";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { chatRegionLabel } from "../chat-regions";
@@ -119,10 +122,18 @@ import {
 	StreamingMarkdown,
 } from "../components/markdown-renderer";
 import type { ImagePathActions } from "../components/message-item/image-attachment";
+import { MessageAvatar } from "../components/message-item/message-avatar";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
+import { skillBlockNames } from "../components/skill-invocation";
 import { DiffBlock, TraceLine } from "../components/trace";
+import { bridgeReceiptOf } from "../components/trace/bridge-receipt-model";
+import {
+	type BridgeLabelResolver,
+	type BridgeRowView,
+	bridgeRowView as composeBridgeRowView,
+} from "../components/trace/bridge-row-model";
 import {
 	hubIdentity,
 	isInternalReceipt,
@@ -133,14 +144,15 @@ import {
 	wakeReceiptHeadline,
 } from "../components/trace/receipt-row-model";
 import {
+	BridgeDetail as BridgeDetailPane,
 	DETAIL_SECTION_MAX,
 	ToolDetail,
 } from "../components/trace/tool-detail";
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
-	SEND_DELIVERY_NOTE,
 	type SendDeliveryState,
+	deliveryNote,
 	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
@@ -226,6 +238,7 @@ import {
 	type EntryDescriptor,
 	candidateSlots,
 	deferAggregateFormation,
+	entrySlotSignature,
 	estimateEntryHeight,
 } from "./transcript-dom-window";
 import { type SlotExtent, TranscriptEntrySlot } from "./transcript-entry-slot";
@@ -256,10 +269,12 @@ import {
 import {
 	GAP,
 	type Row,
+	agentTurnHeads,
 	buildRows,
 	ledgerName,
 	paintsSomething,
 	runsOf,
+	slotCarriesTurnHead,
 	splitFirstLine,
 } from "./transcript-rows";
 import {
@@ -291,6 +306,7 @@ import {
 import { isFinalResponse, isQuietTurnCall } from "./turn-segments";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
+import { useBridgeConversationNames } from "./use-bridge-conversation-names";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
@@ -308,6 +324,10 @@ import {
 	canMaterialiseAttachment,
 	refusalVerdict,
 } from "./user-attachments";
+import {
+	observeUserTurnClamp,
+	overflowsUserTurnClamp,
+} from "./user-turn-clamp";
 import {
 	type WorkingLineState,
 	deriveWorkingLine,
@@ -376,6 +396,22 @@ export const dbgChatEntriesRebuilds = { count: 0 };
  * run unmounts its hidden rows in the same render that plans them.
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
+
+/*
+ * The height the agent's turn-head mark adds to the entry it opens is
+ * `turnMarkHeight(size)` (`agent-avatar-size.ts`): the box the setting picks
+ * plus `mb-1`, from the SAME table `message-avatar.tsx` draws its class from, so
+ * the DOM window's estimate cannot keep a 24px belief while the mark is 40. The
+ * estimate is needed because an entry the window has not mounted has no measured
+ * box, and the mark is only there when the turn has a head and the pane has a
+ * mark (review round 1, R-5).
+ */
+
+/**
+ * The head set for a pane with no picture: no mark is drawn, so there is nothing
+ * to elect, and the empty set is what keeps the D11 render byte-identical.
+ */
+const NO_TURN_HEADS: ReadonlySet<string> = new Set();
 
 /* (`ALIGN_WALK_MAX_PAGES`, the walk's bound, lives in `turn-collapse-model.ts`
  * beside the decision that spends it.) */
@@ -652,6 +688,30 @@ export type CanonicalTranscriptProps = {
 	openFrame?: OpenFrameFacts | null;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
+
+	/**
+	 * The agent's picture for THIS conversation, or null when it has none.
+	 *
+	 * WHY IT IS A PROP AND NOT A STORE READ. The picture is keyed by an agent id,
+	 * and a conversation carries its agent's NAME and nothing else
+	 * (`SessionBinding`); the page is the one place that can join the two, holds
+	 * the `useAgentAvatar` subscription, and hands the transcript the URL. The
+	 * pane's rows stay a pure function of their props, so their memo still
+	 * compares a string.
+	 *
+	 * Omitted/nulled is every existing caller and every story: nothing new
+	 * renders, and the transcript is byte-for-byte the one D11 left.
+	 */
+	agentMark?: AvatarMark | null;
+	/**
+	 * The speaking agent's NAME, beside the picture it belongs to.
+	 *
+	 * The image's accessible name is the agent's name, not the role word (review
+	 * round 1, R-3): the row already announces "Agent message", so a mark labelled
+	 * "Assistant" repeated the register and named nobody. Null means the page
+	 * could not resolve a name, and the mark is then decorative.
+	 */
+	agentName?: string | null;
 
 	status: CanonicalTranscriptStatus;
 	/** The published failure state: one product sentence and its action. */
@@ -1040,6 +1100,16 @@ const UserRow = memo(function UserRow({
 	 * reader of the record already share.
 	 */
 	const seal = record.skill;
+	/*
+	 * The skills this turn attached, read off the RECORD's text: `bodyText` above
+	 * has the `<operator-skills>` block stripped, so the painted string no longer
+	 * says which tokens fired. A legacy seal paints its own `seal.token` in the
+	 * same ink, so it passes none - one ink per token, never two.
+	 */
+	const attachedSkills = useMemo(
+		() => (seal ? [] : skillBlockNames(record.text)),
+		[seal, record.text],
+	);
 	const instructionsLabel = t("ui.chat.skill_invocation.instructions_label");
 	/*
 	 * U2: the transcript is BOTTOM-ANCHORED, so opening the last row's body grows
@@ -1092,16 +1162,29 @@ const UserRow = memo(function UserRow({
 		);
 	});
 	/*
-	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
-	 * rather than guessed from a character count: the box is clamped first and
-	 * then asked whether it is hiding anything, so a `Show more` can never appear
-	 * on a turn that is already fully visible. Skipped while expanded, where the
-	 * clamp is off and the box would always report itself as fitting.
+	 * D2's eight-line clamp. The CAP is a class applied whenever the turn is
+	 * collapsed, from the first paint, so a long turn's first painted height IS
+	 * its settled height; `user-turn-clamp.ts` records why the first build, which
+	 * capped only after measuring an uncapped box, never clamped anything.
+	 *
+	 * What is measured is only whether the `Show more` control EXISTS: a turn that
+	 * fits under the cap must not grow a control that reveals nothing. The answer
+	 * compares the content's height to the cap's constant, so it is the same
+	 * collapsed or expanded (a turn remounted expanded keeps its `Show less`).
 	 */
 	const [expanded, setExpanded] = useTranscriptViewBoolean(record.id);
-	const [clamped, setClamped] = useState(false);
+	const [overflows, setOverflows] = useState(false);
 	const bodyRef = useRef<HTMLDivElement>(null);
+	const intrinsicBodyRef = useRef<HTMLDivElement>(null);
 	/*
+	 * The open-path decision, in the LAYOUT effect so the control is in the first
+	 * painted frame (a later answer lands the 34px control one frame late, the
+	 * height change the cap exists to avoid). The read falls after the commit's
+	 * DOM is complete, so it is answered by the layout the transcript's open pays
+	 * anyway; every row's read is in the same commit, and their setStates batch
+	 * into one synchronous re-render. `user-turn-clamp.ts` records the observer-only
+	 * alternative that was measured and rejected.
+	 *
 	 * The suppression below is one line rather than a block because biome attaches
 	 * an ignore to the NEXT line: a multi-line one leaves the rule unreported and
 	 * active, which is how this arrived as a red lint run with the reason already
@@ -1115,10 +1198,20 @@ const UserRow = memo(function UserRow({
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `remainingContent` re-measures the clamp; see above
 	useLayoutEffect(() => {
-		if (expanded) return;
 		const el = bodyRef.current;
-		if (el) setClamped(el.scrollHeight > el.clientHeight + 1);
-	}, [expanded, remainingContent]);
+		if (el) setOverflows(overflowsUserTurnClamp(el.scrollHeight));
+	}, [remainingContent]);
+	/*
+	 * Observe intrinsic content, NOT the clipped viewport: at 174/175px the
+	 * control is absent, but later image/font growth leaves the viewport at
+	 * 174px and would deliver no resize. The uncapped flow-root includes child
+	 * margins in its height, so growth and shrink both invalidate the answer
+	 * without a text-prop change or polling on every streamed token.
+	 */
+	useEffect(() => {
+		const content = intrinsicBodyRef.current;
+		return content ? observeUserTurnClamp(content, setOverflows) : undefined;
+	}, []);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
 			{/*
@@ -1221,291 +1314,326 @@ const UserRow = memo(function UserRow({
 							className={cn(
 								"relative",
 								/*
-								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2).
+								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2);
+								 * `USER_TURN_CLAMP_PX` is the same number, pinned equal by
+								 * `scripts/user-turn-clamp.test.mjs` (Tailwind needs the literal).
 								 *
-								 * The clamp is on the BLOCK, because a pasted stack trace is
-								 * still one user turn and would otherwise own the pane - and
-								 * the affordance below is rendered only when the clamp is
-								 * actually hiding something, so a turn that fits never grows a
-								 * control that reveals nothing.
+								 * UNCONDITIONAL while collapsed, never gated on a measurement:
+								 * the box paints at its settled height from the first frame. A
+								 * turn that fits is shorter than the cap, so the class changes
+								 * nothing for it. The clamp is on the turn's PROSE block (quote,
+								 * seal, text): a pasted stack trace is one turn and would
+								 * otherwise own the pane. Attachments and the control sit
+								 * outside it - the control must never be what the cap clips,
+								 * and a one-line turn with a screenshot is not a long turn.
+								 * The hidden text stays in the DOM, so selection, copy and
+								 * quoting reach all of it.
 								 */
-								!expanded && clamped ? "max-h-[174px] overflow-hidden" : "",
+								!expanded && "max-h-[174px] overflow-hidden",
 							)}
+							/* Fade only genuinely hidden prose, never the disclosure or
+							 * attachments below. An alpha mask dissolves the actual ink
+							 * over any theme/window glass; an opaque ground overlay would
+							 * paint a false seam on translucent bubbles. The cap remains
+							 * unconditional on first commit; the mask changes no geometry. */
+							style={
+								!expanded && overflows
+									? {
+											maskImage:
+												"linear-gradient(to bottom, black calc(100% - 24px), transparent 100%)",
+										}
+									: undefined
+							}
 						>
-							{/* The quote a quoted turn was sent with, rendered as the same
+							<div
+								ref={intrinsicBodyRef}
+								className="flow-root"
+								data-lo-user-turn-intrinsic
+							>
+								{/* The quote a quoted turn was sent with, rendered as the same
 							    recessed block the composer stages it in - the reader sees one
 							    idiom for "this is quoted" whether it is pending or sent. */}
-							{replies.length > 0 && <ReplyPreview replies={replies} />}
-							{/*
-							 * THE `$skill` SEAL. Without it this bubble IS the payload: the
-							 * header sentence, the `<skill>` tag, the whole SKILL.md body and
-							 * the request, painted at reading weight as though the reader had
-							 * typed them -- the defect the harness repo's
-							 * `docs/design/history-fold-convergence.md` row D8 records.
-							 * The typed line is the row; the instructions the model received
-							 * are one press away.
-							 *
-							 * A `Disclosure` rather than a fold of its own, because branding
-							 * § 7 allows exactly one expand/collapse idiom app-wide. Its
-							 * chevron slot is repainted `text-ink-dim`: the primitive's
-							 * `ink-disabled` is the one role exempt from every contrast floor,
-							 * while this chevron is the surface's only affordance rather than
-							 * chrome beside a trace row.
-							 */}
-							{seal && (
-								/*
-								 * `contents` rather than a box: this wrapper carries the anchor U2
-								 * scrolls to and must not add a flex item beside the bubble the
-								 * disclosure already sits in.
-								 */
-								<div ref={sealAnchor} className={cn("contents")}>
-									<Disclosure
-										className={cn("mb-1.5")}
-										/*
-										 * A NAMED group, because the chevron cannot inherit the trigger's
-										 * own `hover:text-ink-muted` - it pins its own ink - so the hover
-										 * step has to be keyed to the button (design round 1, D3). Named
-										 * rather than bare: an unnamed `group` here would re-key every
-										 * `group-hover:` inside this trigger to it.
-										 */
-										triggerClassName="group/seal"
-										chevronClassName="text-ink-dim group-hover/seal:text-ink-muted"
-										/*
-										 * The trigger's ACCESSIBLE NAME (UX round 1, U3): the summary
-										 * is a token and a purpose sentence, so a screen reader read
-										 * ~150 characters per pass and never said what the control
-										 * opens. The purpose stays visible, and in the `title` behind
-										 * the ellipsis, for sighted readers.
-										 */
-										triggerLabel={t("ui.chat.skill_invocation.trigger_label", {
-											token: seal.token,
-										})}
-										onOpenChange={(open) => {
-											if (open) holdSealTrigger();
-										}}
-										summary={
-											<span className={cn("flex min-w-0 items-center gap-1.5")}>
-												{/*
-												 * The composer's RESOLVED-skill ink, name for name
-												 * (`slash-highlight.ts`'s `RUN_INK`): the token a reader
-												 * sees on the row is the same object they saw in the box
-												 * they typed it in, so the two surfaces cannot drift into
-												 * two opinions about what a `$skill` looks like.
-												 *
-												 * THE CAPTION KEEPS A FLOOR (design round 1, D2): skill
-												 * names reach 64 characters, and a `shrink-0` name at
-												 * the narrowest window left the purpose showing one
-												 * letter and an ellipsis. Both sides ellipsize now
-												 * and the purpose holds 8rem, so a long name cannot
-												 * eat it.
-												 *
-												 * A FLOOR ON THE PURPOSE rather than a cap on the
-												 * name, and expressed in the spacing scale: a cap of
-												 * 60% of the row was this row's first spelling, and it
-												 * trips `tool-row.test.mjs`'s arbitrary-width guard -
-												 * which exists because an arbitrary cap in THIS file
-												 * is what once re-constrained a message column, and
-												 * which is right to be the one place that is
-												 * enumerated rather than described. A floor binds
-												 * only where the defect was measured.
-												 */}
+								{replies.length > 0 && <ReplyPreview replies={replies} />}
+								{/*
+								 * THE `$skill` SEAL. Without it this bubble IS the payload: the
+								 * header sentence, the `<skill>` tag, the whole SKILL.md body and
+								 * the request, painted at reading weight as though the reader had
+								 * typed them -- the defect the harness repo's
+								 * `docs/design/history-fold-convergence.md` row D8 records.
+								 * The typed line is the row; the instructions the model received
+								 * are one press away.
+								 *
+								 * A `Disclosure` rather than a fold of its own, because branding
+								 * § 7 allows exactly one expand/collapse idiom app-wide. Its
+								 * chevron slot is repainted `text-ink-dim`: the primitive's
+								 * `ink-disabled` is the one role exempt from every contrast floor,
+								 * while this chevron is the surface's only affordance rather than
+								 * chrome beside a trace row.
+								 */}
+								{seal && (
+									/*
+									 * `contents` rather than a box: this wrapper carries the anchor U2
+									 * scrolls to and must not add a flex item beside the bubble the
+									 * disclosure already sits in.
+									 */
+									<div ref={sealAnchor} className={cn("contents")}>
+										<Disclosure
+											className={cn("mb-1.5")}
+											/*
+											 * A NAMED group, because the chevron cannot inherit the trigger's
+											 * own `hover:text-ink-muted` - it pins its own ink - so the hover
+											 * step has to be keyed to the button (design round 1, D3). Named
+											 * rather than bare: an unnamed `group` here would re-key every
+											 * `group-hover:` inside this trigger to it.
+											 */
+											triggerClassName="group/seal"
+											chevronClassName="text-ink-dim group-hover/seal:text-ink-muted"
+											/*
+											 * The trigger's ACCESSIBLE NAME (UX round 1, U3): the summary
+											 * is a token and a purpose sentence, so a screen reader read
+											 * ~150 characters per pass and never said what the control
+											 * opens. The purpose stays visible, and in the `title` behind
+											 * the ellipsis, for sighted readers.
+											 */
+											triggerLabel={t(
+												"ui.chat.skill_invocation.trigger_label",
+												{
+													token: seal.token,
+												},
+											)}
+											onOpenChange={(open) => {
+												if (open) holdSealTrigger();
+											}}
+											summary={
 												<span
-													className={cn(
-														"min-w-0 shrink truncate text-token-command slash-run-bold",
-													)}
+													className={cn("flex min-w-0 items-center gap-1.5")}
 												>
-													{seal.token}
+													{/*
+													 * The composer's RESOLVED-skill ink, name for name
+													 * (`slash-highlight.ts`'s `RUN_INK`): the token a reader
+													 * sees on the row is the same object they saw in the box
+													 * they typed it in, so the two surfaces cannot drift into
+													 * two opinions about what a `$skill` looks like.
+													 *
+													 * THE CAPTION KEEPS A FLOOR (design round 1, D2): skill
+													 * names reach 64 characters, and a `shrink-0` name at
+													 * the narrowest window left the purpose showing one
+													 * letter and an ellipsis. Both sides ellipsize now
+													 * and the purpose holds 8rem, so a long name cannot
+													 * eat it.
+													 *
+													 * A FLOOR ON THE PURPOSE rather than a cap on the
+													 * name, and expressed in the spacing scale: a cap of
+													 * 60% of the row was this row's first spelling, and it
+													 * trips `tool-row.test.mjs`'s arbitrary-width guard -
+													 * which exists because an arbitrary cap in THIS file
+													 * is what once re-constrained a message column, and
+													 * which is right to be the one place that is
+													 * enumerated rather than described. A floor binds
+													 * only where the defect was measured.
+													 */}
+													<span
+														className={cn(
+															"min-w-0 shrink truncate text-token-command slash-run-bold",
+														)}
+													>
+														{seal.token}
+													</span>
+													{seal.purpose !== null && (
+														<>
+															<span
+																className={cn("shrink-0 text-ink-dim")}
+																aria-hidden="true"
+															>
+																·
+															</span>
+															{/*
+															 * ONE LINE, ELLIPSIZED, the whole sentence in the
+															 * native `title` rather than in a popper: this sits
+															 * inside every invocation row of a windowed
+															 * transcript, which is the cost `reply-preview.tsx`
+															 * records for the same choice one block away.
+															 */}
+															<span
+																className={cn(
+																	"min-w-32 flex-1 truncate text-ink-muted text-meta",
+																)}
+																title={seal.purpose}
+															>
+																{seal.purpose}
+															</span>
+														</>
+													)}
 												</span>
-												{seal.purpose !== null && (
-													<>
-														<span
-															className={cn("shrink-0 text-ink-dim")}
-															aria-hidden="true"
-														>
-															·
-														</span>
-														{/*
-														 * ONE LINE, ELLIPSIZED, the whole sentence in the
-														 * native `title` rather than in a popper: this sits
-														 * inside every invocation row of a windowed
-														 * transcript, which is the cost `reply-preview.tsx`
-														 * records for the same choice one block away.
-														 */}
-														<span
-															className={cn(
-																"min-w-32 flex-1 truncate text-ink-muted text-meta",
-															)}
-															title={seal.purpose}
-														>
-															{seal.purpose}
-														</span>
-													</>
-												)}
-											</span>
-										}
-									>
-										{/*
-										 * The same recessed ground the quoted turn above takes, and
-										 * the same reason: this block is not the reader's words but
-										 * text the app sent on their behalf, and the ground says so
-										 * without a rule between the two. `role="group"` + the
-										 * trigger's own label ties the panel to the control that
-										 * opened it (UX round 1, U3).
-										 */}
-										<div
-											/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group` and the wrong one here - there is no form, and its default box and margin would land inside a message bubble that is measured to the pixel. What the role buys is a LABELLING SCOPE, so the panel a press opened announces itself as the instructions the trigger named (the same trade `session-status-strip.tsx` and `mesh-canvas.tsx` record). */
-											role="group"
-											aria-label={instructionsLabel}
-											className={cn("rounded-sm bg-sunken p-2")}
+											}
 										>
-											<div className={cn("mb-1 text-ink-dim text-meta")}>
-												{instructionsLabel}
-											</div>
 											{/*
-											 * § 7's DETAIL-BLOCK CAP (design round 1, D1): a real
-											 * SKILL.md is 20-160 lines, and an uncapped block grew
-											 * until the row pushed itself - and the reader's own
-											 * request under it - out of the scroller. The cap is the
-											 * trace's own exported number rather than a second one
-											 * free to drift from it, and the block scrolls inside
-											 * itself.
+											 * The same recessed ground the quoted turn above takes, and
+											 * the same reason: this block is not the reader's words but
+											 * text the app sent on their behalf, and the ground says so
+											 * without a rule between the two. `role="group"` + the
+											 * trigger's own label ties the panel to the control that
+											 * opened it (UX round 1, U3).
 											 */}
 											<div
-												/*
-												 * The evidence rig's hook: `renderer-driver.mjs`'s
-												 * `--scene skill-seal` measures THIS element against § 7's
-												 * cap and reads its `scrollHeight` against its
-												 * `clientHeight`, which nothing else in the row can
-												 * answer.
-												 */
-												data-lo-skill-body
-												className={cn(DETAIL_SECTION_MAX, "overflow-auto")}
+												/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group` and the wrong one here - there is no form, and its default box and margin would land inside a message bubble that is measured to the pixel. What the role buys is a LABELLING SCOPE, so the panel a press opened announces itself as the instructions the trigger named (the same trade `session-status-strip.tsx` and `mesh-canvas.tsx` record). */
+												role="group"
+												aria-label={instructionsLabel}
+												className={cn("rounded-sm bg-sunken p-2")}
 											>
-												<MarkdownRenderer content={seal.body} />
+												<div className={cn("mb-1 text-ink-dim text-meta")}>
+													{instructionsLabel}
+												</div>
+												{/*
+												 * § 7's DETAIL-BLOCK CAP (design round 1, D1): a real
+												 * SKILL.md is 20-160 lines, and an uncapped block grew
+												 * until the row pushed itself - and the reader's own
+												 * request under it - out of the scroller. The cap is the
+												 * trace's own exported number rather than a second one
+												 * free to drift from it, and the block scrolls inside
+												 * itself.
+												 */}
+												<div
+													/*
+													 * The evidence rig's hook: `renderer-driver.mjs`'s
+													 * `--scene skill-seal` measures THIS element against § 7's
+													 * cap and reads its `scrollHeight` against its
+													 * `clientHeight`, which nothing else in the row can
+													 * answer.
+													 */
+													data-lo-skill-body
+													className={cn(DETAIL_SECTION_MAX, "overflow-auto")}
+												>
+													<MarkdownRenderer content={seal.body} />
+												</div>
 											</div>
-										</div>
-									</Disclosure>
-								</div>
-							)}
-							{/*
-							 * `credentialCitations`, and only on the user's own turn: this is the only
-							 * place in the transcript where a citation is the app's own words rather than
-							 * the agent's prose about one. A message sent with a pasted secret reads in the
-							 * reader's own voice, so the chip the composer showed must survive the send
-							 * (operator report, 2026-09-17: the citation arrived as a wall of technical
-							 * text). What the MODEL receives is unchanged — the sentence is still the
-							 * message's own text; only how it is drawn changes.
-							 */}
-							<MarkdownRenderer
-								content={seal ? seal.request : remainingContent}
-								credentialCitations
-							/>
-							{clamped && (
-								/*
-								 * A 30px full-width row INSIDE the block, with no divider
-								 * (D2, the Raycast idiom): the clamp and its release are one
-								 * object, so the release sits on the block's own ground
-								 * rather than behind a rule between them.
-								 */
-								<button
-									type="button"
-									onClick={() => setExpanded((value) => !value)}
-									aria-expanded={expanded}
-									className={cn(
-										"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
-										"hover:text-ink",
-									)}
-								>
-									{expanded ? "Show less" : "Show more"}
-								</button>
-							)}
-							{(record.documents?.length ?? 0) > 0 && (
-								<div className={cn("mt-2 flex flex-col gap-1")}>
-									{record.documents?.map((document, index, documents) => {
-										/*
-										 * Judged by position and origin path as well as digest
-										 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
-										 * and its card offered Open on the real file.
-										 */
-										const verdict = refusalVerdict(refusedAttachments, {
-											messageId: record.id,
-											kind: "document",
-											position: index,
-											count: documents.length,
-											digest: document.attachment,
-											path: document.path,
-										});
-										return (
-											<SentFileCard
-												key={document.id}
-												document={document}
-												remote={remote}
-												placementKnown={placementKnown}
-												sessionId={
-													scope &&
-													!scope.childId &&
-													canMaterialiseAttachment(capable, verdict)
-														? scope.sessionId
-														: null
-												}
-												refused={verdict === false}
-												withheld={verdict === "pending"}
-											/>
-										);
-									})}
-								</div>
-							)}
-							{pictures.length > 0 && (
-								<div className={cn("mt-2 flex flex-col gap-2")}>
-									{pictures.map((image, index) => (
-										/*
-										 * The picture's own handle when the wire carried one (an artifact's
-										 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
-										 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
-										 * is not available to this render — rows mount and unmount with
-										 * the windowed transcript, so a number spanning it would RENUMBER
-										 * as the reader scrolls, and an unstable name is worse for a
-										 * screen reader than a repeated one. Within a message the
-										 * pictures are numbered; across messages the row grouping is the
-										 * context, and the picture's own handle discriminates wherever
-										 * one travelled with it.
-										 */
-										<CanonicalImage
-											key={image.id}
-											image={image}
-											scope={scope}
-											label={userImageLabel(image, index, pictures.length)}
-											/*
-											 * THIS MESSAGE is the group: the reader's own attachments are one
-											 * set, so a press walks the pictures of the turn it belongs
-											 * to and never the conversation's other screenshots.
-											 */
-											group={{
-												images: pictures,
-												index,
-												labelFor: userImageLabel,
-											}}
-											pathActions={userImagePathActions(
-												image,
-												scope,
-												conversationId,
-												remote || !placementKnown,
-												canMaterialiseAttachment(
-													capable,
-													refusalVerdict(refusedAttachments, {
-														messageId: record.id,
-														kind: "image",
-														position: index,
-														count: pictures.length,
-														digest: image.attachment,
-													}),
-												),
-											)}
-										/>
-									))}
-								</div>
-							)}
+										</Disclosure>
+									</div>
+								)}
+								{/*
+								 * `credentialCitations`, and only on the user's own turn: this is the only
+								 * place in the transcript where a citation is the app's own words rather than
+								 * the agent's prose about one. A message sent with a pasted secret reads in the
+								 * reader's own voice, so the chip the composer showed must survive the send
+								 * (operator report, 2026-09-17: the citation arrived as a wall of technical
+								 * text). What the MODEL receives is unchanged — the sentence is still the
+								 * message's own text; only how it is drawn changes.
+								 */}
+								<MarkdownRenderer
+									content={seal ? seal.request : remainingContent}
+									credentialCitations
+									skillNames={attachedSkills}
+								/>
+							</div>
 						</div>
+						{overflows && (
+							/*
+							 * A 30px full-width row INSIDE the bubble, with no divider
+							 * (D2, the Raycast idiom): the clamp and its release are one
+							 * object, so the release sits on the block's own ground
+							 * rather than behind a rule between them. It follows the capped
+							 * box rather than living in it, so the cap cannot clip it.
+							 */
+							<button
+								type="button"
+								onClick={() => setExpanded((value) => !value)}
+								aria-expanded={expanded}
+								className={cn(
+									"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
+									"hover:text-ink",
+								)}
+							>
+								{expanded
+									? t("ui.chat.user_turn.show_less")
+									: t("ui.chat.user_turn.show_more")}
+							</button>
+						)}
+						{(record.documents?.length ?? 0) > 0 && (
+							<div className={cn("mt-2 flex flex-col gap-1")}>
+								{record.documents?.map((document, index, documents) => {
+									/*
+									 * Judged by position and origin path as well as digest
+									 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
+									 * and its card offered Open on the real file.
+									 */
+									const verdict = refusalVerdict(refusedAttachments, {
+										messageId: record.id,
+										kind: "document",
+										position: index,
+										count: documents.length,
+										digest: document.attachment,
+										path: document.path,
+									});
+									return (
+										<SentFileCard
+											key={document.id}
+											document={document}
+											remote={remote}
+											placementKnown={placementKnown}
+											sessionId={
+												scope &&
+												!scope.childId &&
+												canMaterialiseAttachment(capable, verdict)
+													? scope.sessionId
+													: null
+											}
+											refused={verdict === false}
+											withheld={verdict === "pending"}
+										/>
+									);
+								})}
+							</div>
+						)}
+						{pictures.length > 0 && (
+							<div className={cn("mt-2 flex flex-col gap-2")}>
+								{pictures.map((image, index) => (
+									/*
+									 * The picture's own handle when the wire carried one (an artifact's
+									 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
+									 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
+									 * is not available to this render — rows mount and unmount with
+									 * the windowed transcript, so a number spanning it would RENUMBER
+									 * as the reader scrolls, and an unstable name is worse for a
+									 * screen reader than a repeated one. Within a message the
+									 * pictures are numbered; across messages the row grouping is the
+									 * context, and the picture's own handle discriminates wherever
+									 * one travelled with it.
+									 */
+									<CanonicalImage
+										key={image.id}
+										image={image}
+										scope={scope}
+										label={userImageLabel(image, index, pictures.length)}
+										/*
+										 * THIS MESSAGE is the group: the reader's own attachments are one
+										 * set, so a press walks the pictures of the turn it belongs
+										 * to and never the conversation's other screenshots.
+										 */
+										group={{
+											images: pictures,
+											index,
+											labelFor: userImageLabel,
+										}}
+										pathActions={userImagePathActions(
+											image,
+											scope,
+											conversationId,
+											remote || !placementKnown,
+											canMaterialiseAttachment(
+												capable,
+												refusalVerdict(refusedAttachments, {
+													messageId: record.id,
+													kind: "image",
+													position: index,
+													count: pictures.length,
+													digest: image.attachment,
+												}),
+											),
+										)}
+									/>
+								))}
+							</div>
+						)}
 					</div>
 					{/*
 					 * `!link.quoteAvailable` is the one-control rule: when the reader's
@@ -2191,8 +2319,14 @@ function toolRecordSummary(
  * `null` for `delivered` and for every row with no stated delivery, so a
  * successful send's expansion is exactly the one it always was.
  */
-function DeliveryNote({ state }: { state: SendDeliveryState }) {
-	const note = SEND_DELIVERY_NOTE[state];
+function DeliveryNote({
+	state,
+	toolName = "",
+}: {
+	state: SendDeliveryState;
+	toolName?: string;
+}) {
+	const note = deliveryNote(state, toolName);
 	if (!note) return null;
 	return <span data-delivery-note={state}>{note}</span>;
 }
@@ -2216,6 +2350,61 @@ function DeliveryNote({ state }: { state: SendDeliveryState }) {
  * shows both the arguments and the intent states two facts where the TUI states
  * one per surface, and the two immediately start restating each other.
  */
+/**
+ * The Team Bridge view of a `bridge` record, or `null` for every other tool.
+ *
+ * A composing or queued row keeps the generic status words (`composing · 1.2
+ * KB`), exactly as every other tool: there are no arguments to name yet.
+ */
+function bridgeRowView(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+	resolver: BridgeLabelResolver | null,
+): BridgeRowView | null {
+	if (record.toolName.trim().toLowerCase() !== "bridge") return null;
+	if (record.phase === "composing" || record.phase === "queued") return null;
+	if (record.neverSent === true || record.notRunReason) return null;
+	return composeBridgeRowView(
+		{
+			args: record.args,
+			details: record.bridge ?? null,
+			label: record.bridgeLabel ?? null,
+			output: record.output,
+			failed:
+				record.phase === "done" &&
+				isFailedResult(record.isError, record.delivery),
+		},
+		resolver,
+	);
+}
+
+/**
+ * A settled `bridge` row's expansion: the shared pane, with this row's
+ * delivery note (inbox-only, awaiting acceptance, unconfirmed) as its
+ * outcome sentence when the result stated one.
+ */
+function BridgeDetail({
+	record,
+	view,
+	isError,
+}: {
+	record: Extract<TranscriptRecord, { kind: "tool" }>;
+	view: BridgeRowView;
+	isError: boolean;
+}) {
+	const note = record.delivery
+		? deliveryNote(record.delivery, record.toolName)
+		: null;
+	return (
+		<BridgeDetailPane
+			view={view}
+			isError={isError}
+			note={
+				note ? <span data-delivery-note={record.delivery}>{note}</span> : null
+			}
+		/>
+	);
+}
+
 const ToolRow = memo(function ToolRow({
 	record,
 	isSmallView,
@@ -2251,6 +2440,13 @@ const ToolRow = memo(function ToolRow({
 	 * tool) means the ordinary row below, exactly as before.
 	 */
 	const flagged = useFlaggedItem(record.toolCallId);
+	/*
+	 * The Team Bridge cache's conversation names, for a `bridge` row whose call
+	 * addressed a conversation by id. Called for every row (hooks cannot be
+	 * conditional) and cheap when unused: one context read, and a resolver that
+	 * reads nothing until a bridge row asks.
+	 */
+	const resolveConversation = useBridgeConversationNames();
 	if (flagged !== null && record.toolName === "notify") {
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
@@ -2328,7 +2524,8 @@ const ToolRow = memo(function ToolRow({
 	 * time it reaches the record.
 	 */
 	const partial = deliveryRowOutcome(record.delivery) === "partial";
-	const summary = toolRecordSummary(record);
+	const bridge = bridgeRowView(record, resolveConversation);
+	const summary = bridge?.summary ?? toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
 	// A row that says nothing about its call is the scannability this port
@@ -2423,6 +2620,12 @@ const ToolRow = memo(function ToolRow({
 		</div>
 	) : isDiffBodyRow(record) ? (
 		<DiffBlock diff={record.diff} />
+	) : bridge && !running ? (
+		<BridgeDetail
+			record={record}
+			view={bridge}
+			isError={isFailedResult(record.isError, record.delivery)}
+		/>
 	) : hasDetail(record.args, record.output) ? (
 		<ToolDetail
 			args={record.args}
@@ -2449,7 +2652,9 @@ const ToolRow = memo(function ToolRow({
 			 * machine result stays below it (see `DeliveryNote`).
 			 */
 			note={
-				record.delivery ? <DeliveryNote state={record.delivery} /> : undefined
+				record.delivery ? (
+					<DeliveryNote state={record.delivery} toolName={record.toolName} />
+				) : undefined
 			}
 		/>
 	) : undefined;
@@ -2562,6 +2767,8 @@ const ToolRow = memo(function ToolRow({
 										: "success"
 				}
 				deliveryState={record.delivery}
+				settledVerb={bridge?.failedVerb ?? null}
+				failureWord={bridge?.failureWord ?? null}
 				durationS={record.durationS}
 				startedAt={record.startedAt}
 				added={record.added}
@@ -2796,6 +3003,84 @@ const NoticeRow = memo(function NoticeRow({
  * collapsed summary verbatim, at the cost of a click (design D5, UX U2).
  */
 /** A structured receipt stays agent-to-agent, including historical reply intent. */
+/** Incoming and outgoing Bridge use the same ledger glyph and detail pane.
+ * A legacy envelope is retained under Details, never reinterpreted as its body.
+ */
+const BridgeIncomingRow = memo(function BridgeIncomingRow({
+	record,
+	isSmallView,
+	scope,
+}: {
+	record: Extract<TranscriptRecord, { kind: "custom" }>;
+	isSmallView: boolean;
+	scope: AttachmentScope | null;
+}) {
+	useI18nLocale();
+	const receipt = record.bridgeReceipt ?? bridgeReceiptOf({});
+	const sender = receipt.sender.name || t("ui.teamBridge.page.title");
+	const received = t("ui.chat.bridgeReceipt.received", { sender });
+	const target =
+		receipt.conversation.label ||
+		(receipt.conversation.kind === "dm" ? t("ui.teamBridge.kind.dm") : "");
+	const attachments = receipt.attachmentCount
+		? t("ui.teamBridge.attachments.in_message", {
+				count: receipt.attachmentCount,
+			})
+		: "";
+	const summary = [received, target, attachments].filter(Boolean).join(" · ");
+	return (
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
+			<ToolLedgerRow
+				toolName="bridge"
+				verbless
+				summary={summary}
+				outcome="receipt"
+				durationS={null}
+				details={
+					<BridgeDetailPane
+						isError={false}
+						view={{
+							headline: [received, target].filter(Boolean).join(" · "),
+							body: null,
+							outcome: t("ui.chat.bridgeReceipt.unavailable"),
+							internals: [],
+							raw: record.text,
+						}}
+					>
+						<div className="flex flex-wrap items-center justify-between gap-2 text-ink-dim text-meta">
+							<p data-bridge-provenance="">
+								{t("ui.chat.bridgeReceipt.provenance")}
+							</p>
+							{Number.isFinite(record.ts) ? (
+								<time dateTime={new Date(record.ts).toISOString()}>
+									{formatDateTime(record.ts, {
+										year: "numeric",
+										month: "short",
+										day: "numeric",
+										hour: "numeric",
+										minute: "2-digit",
+									})}
+								</time>
+							) : null}
+						</div>
+					</BridgeDetailPane>
+				}
+			/>
+			{(record.images ?? []).filter(isPictureRef).map((image) => (
+				<CanonicalImage
+					key={image.id}
+					image={image}
+					scope={scope}
+					label={
+						image.name ??
+						t("ui.teamBridge.attachments.in_message", { count: 1 })
+					}
+				/>
+			))}
+		</MessageContainer>
+	);
+});
+
 const HubRow = memo(function HubRow({
 	record,
 	isSmallView,
@@ -2805,6 +3090,7 @@ const HubRow = memo(function HubRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 }) {
+	useI18nLocale();
 	const receipt = record.receipt;
 	if (!receipt) return <NoticeRow record={record} isSmallView={isSmallView} />;
 	return (
@@ -2812,7 +3098,9 @@ const HubRow = memo(function HubRow({
 			<ToolLedgerRow
 				toolName="hub"
 				verbless
-				summary={`From ${hubIdentity(receipt)}`}
+				summary={t("ui.chat.canonical.transcript.hub_from", {
+					name: hubIdentity(receipt),
+				})}
 				outcome="receipt"
 				durationS={null}
 				details={
@@ -2842,7 +3130,7 @@ const HubRow = memo(function HubRow({
 					key={image.id}
 					image={image}
 					scope={scope}
-					label={image.name ?? "Image"}
+					label={image.name ?? t("ui.chat.canonical.image_label")}
 				/>
 			))}
 		</MessageContainer>
@@ -3270,6 +3558,9 @@ const TranscriptRow = memo(function TranscriptRow({
 	stopping = false,
 	settledSound = false,
 	supplementCondensed = false,
+	opensTurn = false,
+	agentMark = null,
+	agentName = null,
 	onInterruptTurn,
 }: {
 	row: Row;
@@ -3329,6 +3620,18 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * for the one-line form (memo §2.8/§2.11, design D1).
 	 */
 	supplementCondensed?: boolean;
+	/**
+	 * This row is the one that opens an agent turn (`agentTurnHeads`), so the
+	 * agent's picture is drawn above it - once per turn, above the first line,
+	 * never beside it. Deliberately not a property of the row type: the head is
+	 * a fact of the turn the row sits in, and `agentTurnHeads` is its one
+	 * spelling (see `message-avatar.tsx` for why the mark is back at all).
+	 */
+	opensTurn?: boolean;
+	/** The picture to draw when `opensTurn`; null draws nothing (D11). */
+	agentMark?: AvatarMark | null;
+	/** The speaker's name, for the picture's accessible name (R-3). */
+	agentName?: string | null;
 	/**
 	 * The pane's interrupt press (`CanonicalTranscriptProps.onInterruptTurn`),
 	 * for the card's Cancel. Undefined means no control, by rule.
@@ -3467,11 +3770,18 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		case "custom":
-			body = record.receipt ? (
-				<HubRow record={record} isSmallView={isSmallView} scope={scope} />
-			) : (
-				<NoticeRow record={record} isSmallView={isSmallView} />
-			);
+			body =
+				record.customType === "team_bridge_message" ? (
+					<BridgeIncomingRow
+						record={record}
+						isSmallView={isSmallView}
+						scope={scope}
+					/>
+				) : record.receipt ? (
+					<HubRow record={record} isSmallView={isSmallView} scope={scope} />
+				) : (
+					<NoticeRow record={record} isSmallView={isSmallView} />
+				);
 			break;
 		case "peer":
 			body = <PeerRow record={record} isSmallView={isSmallView} />;
@@ -3576,6 +3886,17 @@ const TranscriptRow = memo(function TranscriptRow({
 					entered.current && "lo-transcript-arrival",
 				)}
 			>
+				{/*
+				 * THE AGENT'S PICTURE, ONCE PER TURN AND ABOVE THE FIRST LINE (see
+				 * `message-avatar.tsx` for the operator request and the D11 constraints
+				 * it keeps). It is a SIBLING of `body` inside this gapped wrapper, not a
+				 * prefix inside it: a mark in the line's flow would narrow the measure of
+				 * every line in the row, which is the gutter D11 measured and deleted.
+				 * Same wrapper, so the 32px turn gap still sits above the mark.
+				 */}
+				{opensTurn && agentMark ? (
+					<MessageAvatar mark={agentMark} name={agentName} />
+				) : null}
 				{body}
 			</div>
 		</TranscriptCopyMenu>
@@ -3675,6 +3996,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	openFrame,
 	containerRef,
 	isSmallView,
+	agentMark = null,
+	agentName = null,
 	status,
 	failure,
 	awaitingHydration,
@@ -3850,6 +4173,33 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		previousRows.current = next;
 		return next;
 	}, [shownRecords]);
+	/*
+	 * WHICH ROWS OPEN AN AGENT TURN, derived from the same list the render walk
+	 * consumes (`agentTurnHeads`, whose header carries the operator request and
+	 * the D11 constraints the mark keeps). Its own memo because it is a fact
+	 * about the LIST: `buildRows`' contract is one record's own frames, and a
+	 * per-record flag would be a second spelling of the partition `runsOf` owns.
+	 *
+	 * GATED ON THE PICTURE (review round 1, R-5). With no picture to draw, the set
+	 * is only ever asked `has` and always answers false - but computing it is a
+	 * full `walkTurns` pass over every row, and `rows` changes on every streamed
+	 * token. A picture-less agent is the common case and the one D11 left
+	 * untouched, so it pays nothing: the empty set is the same render.
+	 */
+	/*
+	 * A picture or the plate of a claimed picture holds a box on every head; with
+	 * no mark (every pictureless agent) the set is empty and no head draws
+	 * anything (see `message-avatar.tsx`).
+	 */
+	const hasMark = agentMark !== null;
+	const turnHeads = useMemo(
+		() => (hasMark ? agentTurnHeads(rows) : NO_TURN_HEADS),
+		[rows, hasMark],
+	);
+	const avatarSize = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
+	);
+	const markHeight = turnMarkHeight(avatarSize);
 	/*
 	 * WHICH STOPPED SOUND CALLS HAVE ALREADY SETTLED (design D7, UX U9).
 	 *
@@ -5009,6 +5359,24 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		[jumpTo],
 	);
 	/*
+	 * The notifications drawer's "Show in conversation": the same near path, for
+	 * the `notify` call's row (`tool:<call id>`), so a flag line inside a collapsed
+	 * turn or in history not yet loaded is reached instead of silently missed.
+	 */
+	const notificationReveal = useNotificationReveal((state) => state.request);
+	const settleNotificationReveal = useNotificationReveal(
+		(state) => state.settle,
+	);
+	useEffect(() => {
+		if (!notificationReveal || sessionId === null) return;
+		if (notificationReveal.sessionId !== sessionId) return;
+		settleNotificationReveal(notificationReveal.nonce);
+		void jumpTo(
+			`tool:${notificationReveal.anchorId}`,
+			THREAD_SEARCH_JUMP_MISS_COPY,
+		);
+	}, [notificationReveal, sessionId, jumpTo, settleNotificationReveal]);
+	/*
 	 * The rail's naming warm (D2): `onHover` already fires on the CARD's own
 	 * intent-delayed open, not on a fly-over, so each call here is one the
 	 * reader looked at — one id per gesture.
@@ -6096,18 +6464,25 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		)
 			deferredFolds.add(group.id);
 	}
+	/*
+	 * THE ROWS A SLOT RENDERS, for the one rule that decides the mark. A bar
+	 * stands for the groups it hides, a run group for its rows, and a single-row
+	 * group for that row - the same partition `entryFacts` measures and the
+	 * render pass draws. Defined once here so the height estimate, the signature
+	 * and both draw sites read one answer.
+	 */
+	type ChatEntryOf = (typeof chatEntries)[number];
+	const entrySlotRows = (entry: ChatEntryOf): Row[] =>
+		entry.kind === "bar"
+			? entry.children.flatMap((child) =>
+					child.kind === "run" ? child.rows : [child.row],
+				)
+			: entry.group.kind === "run"
+				? entry.group.rows
+				: [entry.group.row];
 	const entryFacts = chatEntries.map((entry) => {
 		const group = entry.kind === "group" ? entry.group : null;
-		const entryRows =
-			entry.kind === "bar"
-				? entry.children.flatMap((child) =>
-						child.kind === "run" ? child.rows : [child.row],
-					)
-				: group?.kind === "run"
-					? group.rows
-					: group
-						? [group.row]
-						: [];
+		const entryRows = entrySlotRows(entry);
 		const first = entryRows[0];
 		const key =
 			entry.kind === "bar"
@@ -6178,11 +6553,24 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							)
 							.join("\n");
 		const bucket = domWindowRequested ? estimateBucket(first.record, text) : 0;
+		/*
+		 * WHETHER THIS ENTRY DRAWS THE MARK (review round 1, R-5). The DOM window's
+		 * estimate has no measured box for an entry it has not mounted, and the mark
+		 * is 24px the estimate did not know about: without this bit, setting or
+		 * removing a picture (or the profiles query resolving after first paint)
+		 * changed the height under an unchanged signature, and the cached estimate
+		 * kept the old number. Read from the same `turnHeads` the render consumes,
+		 * so the signature cannot claim a mark the row does not draw.
+		 */
+		const marksHead =
+			Boolean(agentMark) && slotCarriesTurnHead(entryRows, turnHeads);
 		const userExpanded =
 			first.record.kind === "user" &&
 			viewState.current.store.read(first.record.id);
 		return {
 			key,
+			marksHead,
+			markHeight,
 			renderSignature: entryRows
 				.map((row) => entryRecordRevision(row.record))
 				.join(","),
@@ -6223,7 +6611,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		return {
 			key: slot.key,
 			recordIds: facts.flatMap((fact) => fact.ids),
-			signature: `${facts.map((fact) => `${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.renderSignature}`).join("|")}:${isSmallView}`,
+			signature: entrySlotSignature(facts, isSmallView),
 			// Estimates are fixed for each entry regime; actual mounted boxes replace
 			// them before paint. They are not an asserted native measurement.
 			estimate: facts.reduce(
@@ -6236,7 +6624,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								fact.text,
 								{ first: 0, trace: 2, item: 12, turn: 32 }[fact.gap],
 								containerRef.current?.clientWidth || 810,
-							)),
+							) + (fact.marksHead ? fact.markHeight : 0)),
 				0,
 			),
 			estimateKind: `${facts[0].type}:${facts[0].bucket}:${facts[0].open}:${facts[0].userExpanded}`,
@@ -6327,6 +6715,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		 * opens restores the block in the same commit. False for every other row.
 		 */
 		supplementCondensed = false,
+		/**
+		 * Whether this group's SLOT is the first line of an agent turn, and so
+		 * carries the agent's picture. The caller decides it from `turnHeads`, the
+		 * turn partition's own answer; a group nested under a bar or a fold passes
+		 * false, because those already draw the mark at the turn's head and a
+		 * second copy inside them would be the per-message repetition D11 deleted.
+		 */
+		opensTurn = false,
 	) => {
 		if (group.kind === "run" && deferredFolds.has(group.id))
 			return group.rows.map((row, index) => (
@@ -6355,6 +6751,9 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					answerRail={answerRail}
 					stopping={stopping === true}
 					settledSound={settledSoundRowIds.has(row.record.id)}
+					opensTurn={opensTurn && index === 0}
+					agentMark={agentMark}
+					agentName={agentName}
 					onInterruptTurn={onInterruptTurn}
 				/>
 			));
@@ -6377,6 +6776,17 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				markdown={copyMarkdownForGroup(group.summary)}
 			>
 				<div className={GAP[group.gap][isSmallView ? 1 : 0]}>
+					{/*
+					 * THE TURN'S HEAD, WHEN THE HEAD IS INSIDE THIS RUN. A folded run
+					 * unmounts the rows it holds, so the head row cannot draw the
+					 * agent's picture itself while the fold is closed - and this bar
+					 * is then the turn's first line. The rows inside never draw it
+					 * (`opensTurn` is not passed to them), so opening the fold does
+					 * not produce a second copy.
+					 */}
+					{opensTurn && agentMark ? (
+						<MessageAvatar mark={agentMark} name={agentName} />
+					) : null}
 					<TraceFold
 						/*
 						 * The fold carries its first row's gap (a turn's 32px when
@@ -6518,6 +6928,9 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				stopping={stopping === true}
 				settledSound={settledSoundRowIds.has(group.row.record.id)}
 				supplementCondensed={supplementCondensed}
+				opensTurn={opensTurn}
+				agentMark={agentMark}
+				agentName={agentName}
 				onInterruptTurn={onInterruptTurn}
 			/>
 		);
@@ -6543,6 +6956,16 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				markdown={condenseSentence(entry.segment)}
 			>
 				<div className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}>
+					{/*
+					 * THE TURN'S HEAD, WHEN THE TURN IS COLLAPSED TO THIS BAR. The bar
+					 * stands in the slot of the first row it hides (`anchorRecordId`), so
+					 * when that row is the turn's head the picture belongs here - and the
+					 * groups rendered inside the bar never draw it, so opening the bar
+					 * does not add a second copy.
+					 */}
+					{slotCarriesTurnHead(entrySlotRows(entry), turnHeads) && agentMark ? (
+						<MessageAvatar mark={agentMark} name={agentName} />
+					) : null}
 					<TurnSummary
 						/*
 						 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
@@ -6676,6 +7099,12 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					runIsCondensed(entry.supplementRun, openRuns, {
 						artifactOwner: entry.group.row.record.anchor,
 					}),
+				/*
+				 * The group's SLOT is the turn's head when the record its slot
+				 * stands at is a head; a row group's content is that row, and a
+				 * run's is its first row (the one the fold unmounts).
+				 */
+				slotCarriesTurnHead(entrySlotRows(entry), turnHeads),
 			)
 		);
 

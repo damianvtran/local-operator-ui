@@ -1,0 +1,14 @@
+{
+	"ui.notifications.bulk.dismiss_all": "Скрыть все",
+	"ui.notifications.bulk.read_hint": "Прочитанные обновления остаются во вкладке «Все».",
+	"ui.notifications.bulk.dismiss_hint": "Скрытие убирает обновления. Отмена возвращает их.",
+	"ui.notifications.bulk.frozen_hint": "Выбор зафиксирован. Новые элементы в него не входят.",
+	"ui.notifications.bulk.confirm_title": "{count, plural, one {Скрыть # обновление?} few {Скрыть # обновления?} many {Скрыть # обновлений?} other {Скрыть # обновления?}}",
+	"ui.notifications.bulk.beyond_page": "Действие затронет и обновления за пределами загруженной страницы.",
+	"ui.notifications.bulk.asks_hint": "Вопросы без ответа останутся. Рассмотрите их отдельно: закрытие вопроса нельзя отменить.",
+	"ui.notifications.bulk.review_asks": "Просмотреть вопросы без ответа",
+	"ui.notifications.bulk.select_error": "Не удалось выбрать элементы в этом представлении. Попробуйте ещё раз.",
+	"ui.notifications.bulk.update_required": "Обновите Local Operator, чтобы выбрать все подходящие результаты.",
+	"ui.notifications.bulk.partial": "Изменено: {changed} · Пропущено: {skipped}",
+	"ui.notifications.bulk.exclusion_limit": "Можно исключить не более 500 элементов. Снимите выделение, чтобы выбрать элементы по отдельности."
+}

@@ -8,6 +8,18 @@ import type {
 	TeamBridgeNotify,
 	TeamBridgeTenantId,
 } from "../../../../shared/team-bridge-contract";
+import {
+	type ChiefLabels,
+	composeChiefLabel,
+	nameKey,
+} from "../../../../shared/team-bridge-labels";
+
+/*
+ * Re-exported so every renderer caller keeps one import site; the definitions
+ * live in `src/shared` because the main-process banner composes the same label
+ * (`team-bridge-notifier.ts`) and main cannot import renderer modules.
+ */
+export { type ChiefLabels, composeChiefLabel, nameKey };
 
 /**
  * The Team Bridge list's scope: one organization's tenant id, or every
@@ -53,8 +65,15 @@ export type TeamBridgeOrganization = {
  * header come to disagree about what a conversation is called.
  */
 
-/** A member's stored name; an agent's never repeats its owner ("X (X)"). */
-function memberStoredName(member: {
+/**
+ * A member's stored name; an agent's never repeats its owner ("X (X)").
+ *
+ * For surfaces holding a conversation's member rows but no directory (the
+ * owner-audit title, the mention fallback for unlisted members): with no owner
+ * to compare against, a self-composed "X (X)" is no name and the legacy
+ * "Member" placeholder is nobody, exactly as `conversationTitle` reads them.
+ */
+export function memberStoredName(member: {
 	kind: "human" | "agent";
 	display_label: string;
 }): string | null {
@@ -142,6 +161,27 @@ export function showsMutedGlyph(
 }
 
 /**
+ * The register a conversation's unread count wears on its rail row.
+ *
+ * ONE SOURCE FOR A CLASSIFICATION, NOT A PROP (design review round 1, D1). The
+ * badge splits counts in two: an ACCENT mark for attention, the quiet numeral
+ * for a total. A muted conversation's count is a total - it stays on its row so
+ * the reader can see it, and it is deliberately kept out of the sidebar badge,
+ * because a mute is the reader saying "do not interrupt me" - so drawing it in
+ * the accent pill made the loudest mark on the rail the one the badge had been
+ * told not to count (two accent "1"s beside a nav 0). Muted therefore wears the
+ * quiet register; the mute glyph beside it says why.
+ *
+ * It lives here, beside the predicate the badge itself excludes muted rows
+ * with, so the row's mark and the badge's arithmetic cannot drift apart again.
+ */
+export function unreadRegister(
+	conversation: Pick<TeamBridgeConversation, "notify" | "muted">,
+): "attention" | "quiet" {
+	return showsMutedGlyph(conversation) ? "quiet" : "attention";
+}
+
+/**
  * The immediate Mute/Unmute item's next value.
  *
  * Unmute returns to `all`, Slack's behaviour: the item is a toggle, not a
@@ -151,6 +191,198 @@ export function showsMutedGlyph(
  */
 export function toggledMuteNotify(notify: TeamBridgeNotify): TeamBridgeNotify {
 	return notify === "mute" ? "all" : "mute";
+}
+
+/*
+ * THE READER'S OWN AGENT'S WAKE LEVEL (wake-on-every-message).
+ *
+ * The hub now wakes an active agent member on every message by default
+ * (`notify: all`) and lets the agent judge relevance; an @-mention still means
+ * a reply is expected. `mention` narrows it to @-mentions of the agent plus
+ * replies in threads it follows, and `mute` stops every wake, @-mentions
+ * included (agent-server wake contract, decided in review round 1). That is
+ * the AGENT member's row, not the reader's own banner register, so it has its
+ * own helpers: the two must never be read through each other.
+ */
+
+/** The three agent wake levels, in the menu's order (loudest first). */
+export const TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS: ReadonlyArray<{
+	value: TeamBridgeNotify;
+	labelKey:
+		| "ui.teamBridge.agentNotify.all"
+		| "ui.teamBridge.agentNotify.mention"
+		| "ui.teamBridge.agentNotify.mute";
+}> = [
+	{ value: "all", labelKey: "ui.teamBridge.agentNotify.all" },
+	{ value: "mention", labelKey: "ui.teamBridge.agentNotify.mention" },
+	{ value: "mute", labelKey: "ui.teamBridge.agentNotify.mute" },
+];
+
+/**
+ * The reader's own agent's ACTIVE member row in this conversation, or null.
+ *
+ * Only an active agent is woken at all: an invited one is answered on the
+ * Invitations screen, and a left/removed one is not there to wake, so neither
+ * gets the control.
+ */
+export function ownActiveAgent(
+	conversation: Pick<TeamBridgeConversation, "members">,
+	selfAccountId: string | undefined,
+): TeamBridgeConversation["members"][number] | null {
+	if (!selfAccountId) return null;
+	return (
+		conversation.members.find(
+			(member) =>
+				member.kind === "agent" &&
+				member.account_id === selfAccountId &&
+				member.state === "active",
+		) ?? null
+	);
+}
+
+/**
+ * The level the server reports for that agent row, or null when it reports none.
+ *
+ * Null, not a guessed `all`: a hub from before this change STORED `mute` for
+ * agents and may not serialize the field, so guessing would check a row that
+ * is false. The menu then checks nothing.
+ *
+ * Where the value comes from: the hub projects the effective level onto the
+ * caller's OWN agent rows in every conversation view (list and get), and the
+ * agent-notify write's answer carries it too (`withServedOwnAgentNotify`).
+ */
+export function agentNotifyLevel(
+	agent: TeamBridgeConversation["members"][number],
+): TeamBridgeNotify | null {
+	const served = (agent as { notify?: unknown }).notify;
+	return served === "all" || served === "mention" || served === "mute"
+		? served
+		: null;
+}
+
+/**
+ * What the conversation menu needs to draw the "Wake your agent for" group: present
+ * only for an active own agent, carrying its served level (or null).
+ */
+export function ownAgentMenuState(
+	conversation: Pick<TeamBridgeConversation, "members">,
+	selfAccountId: string | undefined,
+): { notify: TeamBridgeNotify | null } | undefined {
+	const agent = ownActiveAgent(conversation, selfAccountId);
+	return agent ? { notify: agentNotifyLevel(agent) } : undefined;
+}
+
+/**
+ * Fold the agent-notify route's answer into a cached page.
+ *
+ * WHY: the hub's answer to the endpoint-addressed notify write is the
+ * conversation as seen by the AGENT's member key, which is the one view sure
+ * to carry the level just stored. A list refetch alone is only as good as the
+ * hub's list projection: if it ever omits the field again (an older hub, a
+ * rollback), the checked row would vanish the moment the write settles
+ * (review round 1, R1-1). So the served level from the answer is written into
+ * the cache, and the later refetch can only replace it with another served
+ * value, never with the optimistic guess.
+ *
+ * Only the agent's `notify` is taken from the answer. The rest of that view is
+ * rendered from the agent's perspective (its own `notify`/`muted`/unread are
+ * not the reader's), so replacing the whole row would overwrite the reader's
+ * banner register with the agent's. An answer without a recognised level
+ * changes nothing.
+ */
+export function withServedOwnAgentNotify(
+	page: TeamBridgeConversationList,
+	answer: Pick<TeamBridgeConversation, "id" | "tenant_id" | "members">,
+	selfAccountId: string,
+): TeamBridgeConversationList {
+	const agent = ownActiveAgent(answer, selfAccountId);
+	const served = agent ? agentNotifyLevel(agent) : null;
+	if (served === null) return page;
+	return withOwnAgentNotify(
+		page,
+		{ conversationId: answer.id, tenantId: answer.tenant_id },
+		selfAccountId,
+		served,
+	);
+}
+
+/**
+ * The optimistic patch for the reader's own agent's level: only that agent's
+ * active row in that one conversation moves; the reader's own `notify` and
+ * every other row are untouched.
+ */
+export function withOwnAgentNotify(
+	page: TeamBridgeConversationList,
+	target: { conversationId: string; tenantId: string },
+	selfAccountId: string,
+	notify: TeamBridgeNotify,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			row.id === target.conversationId && row.tenant_id === target.tenantId
+				? {
+						...row,
+						members: row.members.map((member) =>
+							member.kind === "agent" &&
+							member.account_id === selfAccountId &&
+							member.state === "active"
+								? { ...member, notify }
+								: member,
+						),
+					}
+				: row,
+		),
+	};
+}
+
+/**
+ * Undo ONE agent-level write without undoing a later one (review round 2, R2-1).
+ *
+ * WHY NOT A PAGE SNAPSHOT: TanStack's mutation scope orders `mutationFn` on the
+ * wire but runs every `onMutate` immediately, so a second pick B patches the
+ * cache while an earlier pick A is still in flight. Restoring A's whole-page
+ * snapshot on A's failure would put the pre-A level back over B's optimistic
+ * one. So the rollback is per row and conditional: the agent row returns to
+ * `previous` only while it still holds the value this write applied. A later
+ * pick, or a served value folded in since, has moved it, and that is left alone.
+ *
+ * `previous` null means the row carried no served level; the field is removed
+ * rather than replaced with a guess. Two picks of the SAME value are
+ * indistinguishable here; then the rollback applies and the later pick's own
+ * answer, or the settle-time refetch, restores the served level.
+ */
+export function withOwnAgentNotifyRolledBack(
+	page: TeamBridgeConversationList,
+	target: { conversationId: string; tenantId: string },
+	selfAccountId: string,
+	applied: TeamBridgeNotify,
+	previous: TeamBridgeNotify | null,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			row.id === target.conversationId && row.tenant_id === target.tenantId
+				? {
+						...row,
+						members: row.members.map((member) => {
+							if (
+								member.kind !== "agent" ||
+								member.account_id !== selfAccountId ||
+								member.state !== "active" ||
+								agentNotifyLevel(member) !== applied
+							)
+								return member;
+							if (previous !== null) return { ...member, notify: previous };
+							const { notify: _dropped, ...rest } = member as typeof member & {
+								notify?: unknown;
+							};
+							return rest;
+						}),
+					}
+				: row,
+		),
+	};
 }
 
 /** The three notification values, in the menu's order (loudest first). */
@@ -351,8 +583,8 @@ export function isNotAMemberRefusal(error: unknown): boolean {
  * Archiving or deleting removes the row the page was showing; leaving the target
  * on it painted "Untitled conversation" with a dead composer. The landing is the
  * NEXT channel in the order the rail draws (the one now under the cursor), else
- * the one before it, else the default the page lands on at first load (#humans,
- * then the first remaining row), else nothing (the empty state).
+ * the one before it, else the default the page lands on at first load
+ * (`defaultLandingConversation`), else nothing (the empty state).
  *
  * `rows` are the sidebar rows (open conversations only) and may still contain the
  * removed one: the optimistic cache write and this call are not ordered, so the
@@ -361,18 +593,19 @@ export function isNotAMemberRefusal(error: unknown): boolean {
 export function landingAfterRemoval(
 	rows: readonly TeamBridgeConversation[],
 	removedId: string,
+	organizationOrder: readonly string[] = [],
 ): TeamBridgeTarget | null {
-	const channels = railSections(rows).channels;
+	const channels = railSections(rows, organizationOrder).channels;
 	const at = channels.findIndex((row) => row.id === removedId);
 	const neighbour =
 		at >= 0
 			? (channels[at + 1] ?? channels[at - 1])
-			: (channels.find((row) => row.builtin === "humans") ?? channels[0]);
+			: defaultLandingConversation(channels, organizationOrder);
 	const remaining = rows.filter((row) => row.id !== removedId);
 	const next =
 		neighbour && neighbour.id !== removedId
 			? neighbour
-			: (remaining.find((row) => row.builtin === "humans") ?? remaining[0]);
+			: defaultLandingConversation(remaining, organizationOrder);
 	return next ? { type: "conversation", id: next.id } : null;
 }
 
@@ -460,15 +693,24 @@ export function conversationMembershipCounts(
 }
 
 /**
- * The badge'able total: unmuted unread, exactly the server's `total`.
+ * TEST-ONLY LEGACY: the pre-one-source badge number. DO NOT FEED A BADGE.
+ *
+ * This is the arithmetic the nav badge used before the shared unread view
+ * existed: the raw aggregate `total`, else a sum of whichever reads happened to
+ * answer. It is exactly the split that let a badge and a conversation row
+ * disagree about the same unread message (see `team-bridge-unread-sync.ts`), so
+ * every production caller moved to the merged view and the live badge reads
+ * that.
+ *
+ * It survives only because two suites still pin the OLD arithmetic against
+ * their fixtures (`team-bridge-model.test.mjs`, `team-bridge-scope.test.mjs`).
+ * `scripts/team-bridge-scope.test.mjs` also fails if ANY other production
+ * module mentions it, which is what stops this formula from sneaking back into
+ * a badge; deleting it is a follow-up once those fixtures move to the view.
  *
  * A muted conversation still shows its count on its own row (the user may want
  * to look), but it does not raise the sidebar badge — that is the one place a
  * mute has to be honoured, because the badge is what interrupts.
- *
- * The account aggregate carries no `conversations` rows (see the contract);
- * `total` is authoritative there. The row sum is only the race-safe fallback
- * for the tenant-scoped read.
  */
 export function badgeTotal(unread: {
 	total: number;
@@ -601,14 +843,30 @@ export function organizationOptions(
  * create until the reader picked the one org they belong to. `chosen` is true
  * once the reader has used the switcher, so their explicit All is never
  * overridden by a later refresh.
+ *
+ * `snapshotRows` is the one statement available BEFORE the organization list: the
+ * rows the shell's notification watcher already holds for this account
+ * (tb-instant-open). When they name exactly one organization, that is the
+ * organization this page opens in, which is what lets the rail paint before the
+ * eligibility gate answers instead of holding a full-screen spinner. It is a
+ * weaker statement than the list and never outranks it: as soon as the list
+ * answers - one organization, or several - it decides, and a multi-organization
+ * account goes to the merged view the snapshot could not have known about. A
+ * scope the reader chose still wins over everything.
  */
 export function preferredScope(
 	organizations: readonly TeamBridgeOrganization[],
 	current: TeamBridgeScope,
 	chosen: boolean,
+	snapshotRows?: readonly TeamBridgeConversation[],
 ): TeamBridgeScope {
-	if (chosen || organizations.length !== 1) return current;
-	return organizations[0].tenantId;
+	if (chosen) return current;
+	if (organizations.length === 1) return organizations[0].tenantId;
+	if (organizations.length > 1) return TEAM_BRIDGE_ALL_SCOPE;
+	const tenants = new Set((snapshotRows ?? []).map((row) => row.tenant_id));
+	return current === TEAM_BRIDGE_ALL_SCOPE && tenants.size === 1
+		? asTeamBridgeTenantId([...tenants][0])
+		: current;
 }
 
 /** The organization a scope names, or null for the account-wide scope. */
@@ -942,16 +1200,16 @@ export function personInitial(displayLabel: string): string {
  * - the hub's create-time admission skips a creator's own agent
  *   (`admitDirectAgent`: `agent.AccountID == creatorID`), so it stays
  *   `invited`;
- * - the owner's consent route would activate it, but leaves the agent's
- *   default `notify: mute`, and the hub's delivery rule
- *   (`BridgeConversationFeedRecipients`) wakes a muted agent only on a
- *   structured mention, which this composer never sends;
- * - lifting the mute is the endpoint-addressed notify route, which the runtime
- *   does not proxy, and auto-unmuting would break the default-mute rule.
+ * - the owner's consent route activates it, and since the wake-on-every-message
+ *   change the hub defaults an agent member to `notify: all`, so an active
+ *   agent is woken on every message (an @-mention means a reply is expected);
+ *   the owner can narrow that per conversation through the runtime's
+ *   `agent-notify` route (`team_bridge.conversations.agent_notify`);
+ * - but nothing on this create path consents for the creator, so the DM
+ *   would still open with the agent `invited` and its messages undelivered.
  * Offering the row would therefore create a conversation whose messages post
- * and are silently never delivered. Restore it only once the hub admits the
- * creator's own agent active with `notify: all` (or the UI can consent AND opt
- * it in through a supported route).
+ * and are silently never delivered. Restore it once the hub admits the
+ * creator's own agent active at create time (or this path consents for it).
  */
 export type TeamBridgeChiefOfStaff = {
 	person: TeamBridgeDirectoryMember;
@@ -1022,22 +1280,124 @@ export function dmWithAgent(
 	return mergedConversationOrder(candidates)[0] ?? null;
 }
 
-/** Built-in channels first, in this order; everything else after. */
-const BUILTIN_ORDER = ["humans", "agents"];
+/**
+ * Built-in channels first, in this order; everything else after.
+ *
+ * #general LEADS (agent-server feat/bridge-builtin-general). It is the whole
+ * organization - every person with Team Bridge enabled plus every consent-bound
+ * chief of staff - so it is the broadest room and the natural landing. An older
+ * server never returns a `general` row, and the order of the other two is then
+ * exactly what it was.
+ *
+ * Kept as a list of known names, not a type: the contract's `builtin` is a plain
+ * string on purpose (a built-in this client does not know yet must still parse),
+ * and such a row sorts with the ordinary channels.
+ */
+const BUILTIN_ORDER: readonly string[] = ["general", "humans", "agents"];
+
+/**
+ * Orders two built-in rows: by built-in name, then by organization.
+ *
+ * WHY AN ORGANIZATION KEY (design review round 1, D1). In All organizations each
+ * org has its own #general, #humans and #agents. Sorting by name alone left the
+ * org order inside each group to the incoming activity order, so "general ·
+ * Minerva" and "general · Northwind" swapped places whenever the other org got
+ * newer traffic, and the rail's top row moved under the reader. The org key is
+ * its position in the switcher (`organizationOrder`, the same list the scope
+ * menu draws), so the rail reads in the order the reader already sees there. An
+ * org the switcher does not list yet (its memberships still loading) falls back
+ * to tenant id, so the order is still total and never depends on activity.
+ */
+function compareBuiltins(
+	a: Pick<TeamBridgeConversation, "builtin" | "tenant_id">,
+	b: Pick<TeamBridgeConversation, "builtin" | "tenant_id">,
+	organizationOrder: readonly string[],
+): number {
+	const byName =
+		BUILTIN_ORDER.indexOf(a.builtin as string) -
+		BUILTIN_ORDER.indexOf(b.builtin as string);
+	if (byName !== 0) return byName;
+	const rank = (tenant: string) => {
+		const at = organizationOrder.indexOf(tenant);
+		return at < 0 ? Number.POSITIVE_INFINITY : at;
+	};
+	const byOrg = rank(a.tenant_id) - rank(b.tenant_id);
+	// Infinity - Infinity is NaN: two unlisted orgs fall through to tenant id.
+	if (byOrg !== 0 && !Number.isNaN(byOrg)) return byOrg;
+	return a.tenant_id.localeCompare(b.tenant_id);
+}
+
+/**
+ * The conversation the page lands on when nothing is selected: #general, else
+ * #humans (a server that predates #general), else the first row, else nothing.
+ *
+ * One function for the first load and for the landing after a channel leaves the
+ * rail, so the two can never disagree about what "the default" is. In All
+ * organizations there is one #general per org; the landing takes the one the
+ * rail draws on top (`compareBuiltins`, the switcher order), so the selected row
+ * is the first row rather than whichever org happened to be busiest.
+ */
+export function defaultLandingConversation<
+	Row extends Pick<TeamBridgeConversation, "builtin" | "tenant_id">,
+>(
+	rows: readonly Row[],
+	organizationOrder: readonly string[] = [],
+): Row | undefined {
+	const first = (builtin: string) =>
+		rows
+			.filter((row) => row.builtin === builtin)
+			.sort((a, b) => compareBuiltins(a, b, organizationOrder))[0];
+	return first("general") ?? first("humans") ?? rows[0];
+}
+
+/**
+ * The header line that explains a built-in channel, or null for a row that is
+ * not one this client knows. An unknown built-in renders as an ordinary channel
+ * (see the contract), so it gets no explanation rather than a borrowed one.
+ */
+export function builtinTopicKey(
+	builtin: string | undefined,
+):
+	| "ui.teamBridge.builtin.general_topic"
+	| "ui.teamBridge.builtin.humans_topic"
+	| "ui.teamBridge.builtin.agents_topic"
+	| null {
+	switch (builtin) {
+		case "general":
+			return "ui.teamBridge.builtin.general_topic";
+		case "humans":
+			return "ui.teamBridge.builtin.humans_topic";
+		case "agents":
+			return "ui.teamBridge.builtin.agents_topic";
+		default:
+			return null;
+	}
+}
 
 /**
  * The rail's sections, Slack-style: channels, groups and direct messages.
  *
- * BUILT-INS LEAD THE CHANNELS. #humans and #agents exist in every organization
- * and are the rail's fixed landmarks, so they sit above user channels in a
- * stable order rather than moving with activity. Every other row keeps the
- * order the caller passed in (the server's / merged activity order).
+ * BUILT-INS LEAD THE CHANNELS. #general, #humans and #agents exist in every
+ * organization and are the rail's fixed landmarks, so they sit above user
+ * channels in a stable order rather than moving with activity. Every other row
+ * keeps the order the caller passed in (the server's / merged activity order).
+ *
+ * IN THE MERGED (all organizations) VIEW each organization has its own three
+ * built-ins. They sort by built-in name, then by the org's position in
+ * `organizationOrder` (the switcher's order), then by tenant id: every org's
+ * #general, then every #humans, then every #agents, each group in the same org
+ * order whatever the activity (`compareBuiltins`). Each row keeps its own
+ * `tenant_id`, which is what the rail's per-row organization caption is drawn
+ * from. A single-org rail has one row per built-in, so the org key never acts.
  *
  * DMs are returned separately: a single-org rail folds them into the People
  * and Chiefs of staff rows (the person IS the DM), while the merged view, which
  * has no directory, lists them under their own header.
  */
-export function railSections(rows: readonly TeamBridgeConversation[]): {
+export function railSections(
+	rows: readonly TeamBridgeConversation[],
+	organizationOrder: readonly string[] = [],
+): {
 	channels: TeamBridgeConversation[];
 	groups: TeamBridgeConversation[];
 	directs: TeamBridgeConversation[];
@@ -1054,11 +1414,7 @@ export function railSections(rows: readonly TeamBridgeConversation[]): {
 		} else if (row.kind === "group") groups.push(row);
 		else directs.push(row);
 	}
-	builtins.sort(
-		(a, b) =>
-			BUILTIN_ORDER.indexOf(a.builtin as string) -
-			BUILTIN_ORDER.indexOf(b.builtin as string),
-	);
+	builtins.sort((a, b) => compareBuiltins(a, b, organizationOrder));
 	return { channels: [...builtins, ...channels], groups, directs };
 }
 
@@ -1171,10 +1527,7 @@ export function targetConversation(
 
 /** "X (X)" collapses to "X"; any other label is returned unchanged. */
 function dedupedAgentLabel(label: string): string {
-	const twice = COMPOSED_LABEL.exec(label.trim());
-	return twice && nameKey(twice[1]) === nameKey(twice[2])
-		? twice[1].trim()
-		: label;
+	return selfComposedName(label.trim()) ?? label;
 }
 
 /**
@@ -1313,23 +1666,112 @@ export function storedLabel(label: string): string | null {
 }
 
 /**
- * The two catalogue strings a chief-of-staff label is composed from. Injected
- * because both are translatable ("{agent} ({person})" and "{person}'s chief of
- * staff" reorder and re-punctuate per locale).
- */
-export type ChiefLabels = {
-	/** "Aida (Ben Tran)": the agent's own name, the person as context. */
-	named: (agent: string, person: string) => string;
-	/** "Ben Tran's chief of staff": used when the agent has no name of its own. */
-	unnamed: (person: string) => string;
-};
-
-/**
  * "Agent (Owner)": the composed display form. Older clients stored it as the
  * agent member's `display_label`, so the read path must recognise it (and "X
  * (X)") in existing rows; this client now stores a bare name (`storedAgentLabel`).
+ *
+ * WHY NOT A REGEX (review M1-r3 on #1643, the second regression on this
+ * function). A single pattern has to guess where the owner's bracket opens,
+ * and any guess is wrong for some real label: a lazy head mis-split "Aida (v2)
+ * (Ben Tran)", and a bracket-free tail refused an owner "Ana (she/her)" or
+ * "Damian Tran (Minerva)", so the owner was composed a second time. The two
+ * questions the read path asks are answered directly instead:
+ * - owner KNOWN (`stripOwnerSuffix`): does the label END with that owner in
+ *   brackets? A comparison, so whatever the owner's name contains is matched;
+ * - owner UNKNOWN (`selfComposedName`): is the label "X (X)"? Every split
+ *   whose trailing group is one balanced bracket pair is tried, so a bracket
+ *   inside a name ("(she/her)") never splits it.
+ * Both bracket forms are recognised because the zh-CN `chief.label` is
+ * "{agent}（{person}）".
  */
-const COMPOSED_LABEL = /^(.+?)\s*\((.+)\)$/;
+const BRACKET_PAIRS: Readonly<Record<string, string>> = {
+	"(": ")",
+	"（": "）",
+};
+
+/**
+ * The longest label either scanner below will split (review m1-r4 on #1643).
+ *
+ * Both scans try every opening bracket and normalise a slice per try, so they
+ * are quadratic in the label: about 1 ms at the hub's 64-byte member label,
+ * but about 0.6 s per rendered row at 10,000 characters. Delivery labels and
+ * conversation member labels are schema-capped at 64, yet owner-audit member
+ * labels and directory names are not, so the bound is the scanners' own
+ * rather than the caller's. 256 is four times anything the hub stores; a
+ * longer label cannot be a composition this client or an older one wrote, so
+ * it is read verbatim (no split) instead of scanned.
+ */
+const OWNER_SCAN_MAX_LENGTH = 256;
+
+/**
+ * The head of `label` when it ends with `(owner)` / `（owner）` (optional
+ * whitespace before the bracket), or null. The owner is compared by `nameKey`,
+ * so case, spacing and NFKC width do not matter.
+ *
+ * UNBALANCED BRACKETS (QA O1 on #1643). The owner is KNOWN here, so the tail
+ * is recognised by comparison alone, whatever brackets the owner's own name
+ * holds: an owner "Ben (Sales" strips from "Aida (Ben (Sales)" exactly as a
+ * balanced owner does. A label whose trailing group is not that owner in one
+ * closing bracket ("Aida (Ben", "Aida (Ben) (x", "Aida (Ben Tran))") is never
+ * split: malformed text is not guessed at, it is the agent's name verbatim and
+ * the caller composes the owner after it. When the label DOES end with the
+ * owner's group, whatever precedes it is the head verbatim, unbalanced or not
+ * ("Aida ((Ben Tran)" -> "Aida ("). The owner is never dropped, because it is
+ * the only part of the line that says whose agent this is.
+ */
+function stripOwnerSuffix(label: string, owner: string): string | null {
+	if (label.length > OWNER_SCAN_MAX_LENGTH) return null;
+	const ownerKey = nameKey(owner);
+	if (ownerKey === "") return null;
+	for (let open = 0; open < label.length; open += 1) {
+		const close = BRACKET_PAIRS[label[open]];
+		if (close === undefined || !label.endsWith(close)) continue;
+		const inner = label.slice(open + 1, label.length - close.length);
+		const head = label.slice(0, open).trim();
+		if (head !== "" && nameKey(inner) === ownerKey) return head;
+	}
+	return null;
+}
+
+/** True when `text` opens and closes its brackets (either form) in order. */
+function bracketsBalance(text: string): boolean {
+	const closers = new Set(Object.values(BRACKET_PAIRS));
+	const stack: string[] = [];
+	for (const char of text) {
+		const close = BRACKET_PAIRS[char];
+		if (close !== undefined) stack.push(close);
+		else if (closers.has(char) && stack.pop() !== char) return false;
+	}
+	return stack.length === 0;
+}
+
+/**
+ * X when `label` is "X (X)" / "X（X）" (the self-composition older clients
+ * stored for an unnamed agent), else null. Only a trailing group that is ONE
+ * balanced pair counts as the tail, so "Ana (she/her) (Ana (she/her))" is
+ * "Ana (she/her)" twice and "Ana (she/her)" alone is not a composition.
+ *
+ * With no owner to compare against, an unbalanced group is never a tail
+ * (QA O1 on #1643): "Ben (Ben" and "Ben ((Ben)" are not "X (X)" and read
+ * verbatim, rather than being guessed into somebody's chief of staff.
+ */
+function selfComposedName(label: string): string | null {
+	if (label.length > OWNER_SCAN_MAX_LENGTH) return null;
+	for (let open = 0; open < label.length; open += 1) {
+		const close = BRACKET_PAIRS[label[open]];
+		if (close === undefined || !label.endsWith(close)) continue;
+		const inner = label.slice(open + 1, label.length - close.length);
+		const head = label.slice(0, open).trim();
+		if (
+			head !== "" &&
+			bracketsBalance(inner) &&
+			nameKey(head) === nameKey(inner)
+		) {
+			return head;
+		}
+	}
+	return null;
+}
 
 /**
  * The stored tails of an unnamed agent's label. The ASCII form is the only
@@ -1367,36 +1809,6 @@ function hubTruncatedPerson(personName: string): string {
 	if (bytes.length <= cut) return person;
 	while (cut > 0 && (bytes[cut] & 0xc0) === 0x80) cut -= 1;
 	return new TextDecoder().decode(bytes.subarray(0, cut)).trim();
-}
-
-/** Case-, space- and accent-insensitive form for "is this the same name". */
-function nameKey(name: string): string {
-	return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
-}
-
-/**
- * THE ONE PLACE a chief-of-staff label is composed (operator report,
- * 2026-10-22: "Ben Tran (Ben Tran)" on the rail, the thread header and the
- * composer placeholder, and persisted by the server verbatim as the agent
- * member's `display_label`).
- *
- * WHY IT HAPPENED. The directory's `agent.name` is the endpoint's agent name,
- * else its label, and an endpoint enrolled without an agent name was labelled
- * with its OWNER's name. Composing "{agent} ({person})" from that repeated the
- * person. So an agent name that is empty, or the same as the person's
- * (normalised), is no name at all: the label is then "{person}'s chief of
- * staff", and the person's name never appears twice.
- */
-export function composeChiefLabel(
-	agentName: string,
-	personName: string,
-	labels: ChiefLabels,
-): string {
-	const agent = agentName.trim();
-	const person = personName.trim();
-	return agent === "" || nameKey(agent) === nameKey(person)
-		? labels.unnamed(person)
-		: labels.named(agent, person);
 }
 
 /**
@@ -1441,15 +1853,81 @@ export function storedAgentName(
 	) {
 		return null;
 	}
-	const composed = COMPOSED_LABEL.exec(stored);
-	if (composed) {
-		const [, agent, owner] = composed;
-		if (nameKey(agent) === nameKey(owner)) return null;
-		if (personName !== null && nameKey(owner) === nameKey(personName)) {
-			return agent.trim();
+	if (personName !== null) {
+		const agent = stripOwnerSuffix(stored, personName);
+		if (agent !== null) {
+			return nameKey(agent) === nameKey(personName) ? null : agent;
 		}
 	}
+	if (selfComposedName(stored) !== null) return null;
 	return stored;
+}
+
+/**
+ * The label for a conversation member the directory does not list (a guest, or
+ * a roster that has not answered yet), or null when the stored label names
+ * nobody.
+ *
+ * Like `memberStoredName`, except that a self-composed agent "X (X)" is NOT
+ * nobody here (review m2-r2 on #1643): with no directory row it is still X's
+ * unnamed agent, a real mention target, so it reads "X's chief of staff"
+ * through the same `chiefLabels.unnamed` form every other surface uses.
+ */
+export function unlistedMemberLabel(
+	member: { kind: "human" | "agent"; display_label: string },
+	chiefLabels: ChiefLabels,
+): string | null {
+	const stored = memberStoredName(member);
+	if (stored !== null || member.kind !== "agent") return stored;
+	const label = storedLabel(member.display_label);
+	const owner = label === null ? null : selfComposedName(label);
+	return owner === null ? null : chiefLabels.unnamed(owner);
+}
+
+/**
+ * The display label for a recipient known only by its wire labels (no account
+ * id to look up in the directory), or null when the labels name nobody.
+ *
+ * WHY (operator report, 2026-11-03: "Not delivered to Aida (Ben Tran) (Ben
+ * Tran). Refused by moderation."). The hub's delivery-state entries carry the
+ * agent MEMBER's stored label and its owner's name as two strings, and the
+ * annotation used to splice them into "{agent} ({owner})". A member row written
+ * by an older client already holds the composed "Aida (Ben Tran)", so the owner
+ * appeared twice. Routing the pair through `storedAgentName` and
+ * `composeChiefLabel` gives these lines exactly the label the message rows and
+ * the rail paint: "Aida (Ben Tran)", or "Ben Tran's chief of staff" for an
+ * agent with no name of its own, and the owner never twice.
+ *
+ * - A human is named by their own label alone; no owner applies.
+ * - An agent whose owner label is blank is read as an unlisted member
+ *   (`unlistedMemberLabel`): its stored label as-is (which may already carry
+ *   its owner), or "X's chief of staff" for a self-composed "X (X)", whose X is
+ *   the owner (review M1-r3 matrix on #1643). A parenthetical with nothing in
+ *   it would say less.
+ *
+ * NULL IS THE CALLER'S TO PAINT, as with `participantLabel`: the shared
+ * "Unknown agent" / "Unknown person" copy, never an invented name.
+ */
+export function recipientLabel(
+	recipient: {
+		kind: "human" | "agent";
+		label: string;
+		ownerLabel: string;
+	},
+	chiefLabels: ChiefLabels,
+): string | null {
+	if (recipient.kind === "human") return storedLabel(recipient.label);
+	const owner = recipient.ownerLabel.trim();
+	if (owner === "")
+		return unlistedMemberLabel(
+			{ kind: "agent", display_label: recipient.label },
+			chiefLabels,
+		);
+	return composeChiefLabel(
+		storedAgentName(recipient.label, owner) ?? "",
+		owner,
+		chiefLabels,
+	);
 }
 
 /** The signed-in reader, when the account read has answered with a name. */
@@ -1507,7 +1985,16 @@ export function participantLabel(
 			: storedAgentName(participant.display_label, personName);
 	if (personName)
 		return composeChiefLabel(agentName ?? "", personName, chiefLabels);
-	return agentName;
+	// An owner the directory does not list: read as an unlisted member, so a
+	// self-composed "X (X)" is X's chief of staff on the rows exactly as on the
+	// delivery line and in mentions (review M1-r3 matrix on #1643).
+	return (
+		agentName ??
+		unlistedMemberLabel(
+			{ kind: "agent", display_label: participant.display_label },
+			chiefLabels,
+		)
+	);
 }
 
 export type ThreadItem =
@@ -1573,6 +2060,15 @@ export function threadItems(
 	return items;
 }
 
+const FOREIGN_TENANT_REFUSAL = "Team Bridge create answered for another tenant";
+/*
+ * Drafts whose create was answered for another organization, keyed by the
+ * caller's `remembered` map so the marker shares its owner scope (the page keeps
+ * one map per account) and is collected with it. A WeakMap keeps the function's
+ * signature unchanged for every caller.
+ */
+const refusedForeignDrafts = new WeakMap<object, Set<string>>();
+
 /**
  * A draft's FIRST SEND: create the conversation, then post into it.
  *
@@ -1605,17 +2101,50 @@ export async function sendFirstMessage(args: {
 		conversationId: string,
 		message: { clientRef: string; body: string; tenantId: string | undefined },
 	) => Promise<unknown>;
+	/*
+	 * The conversation exists, before the post goes out. An optimistic first
+	 * message moves its view onto the real conversation HERE rather than after the
+	 * post, so the rail row and the thread do not wait on a second round trip.
+	 */
+	onCreated?: (created: { id: string; tenantId: string | undefined }) => void;
 }): Promise<{ id: string; tenantId: string | undefined }> {
+	if (refusedForeignDrafts.get(args.remembered)?.has(args.draftKey))
+		throw new Error(FOREIGN_TENANT_REFUSAL);
 	let created = args.remembered.get(args.draftKey);
 	if (created === undefined) {
 		const response = await args.create(args.input);
 		if (!response.id) throw new Error("create returned no conversation id");
+		/*
+		 * A RECEIPT FROM ANOTHER ORGANIZATION IS REFUSED (#1511, review round 7
+		 * M1). The draft was written in `tenantId` and the create asked for that
+		 * one; a receipt naming a different tenant would otherwise move the view
+		 * into that organization's conversation and post - or SCHEDULE, which runs
+		 * through here too - the author's words there. Refused before `onCreated`
+		 * and `post`, so nothing moves and nothing is written. All organizations
+		 * passes no `tenantId`, so it has nothing to compare against.
+		 *
+		 * The refusal is remembered per draft (m2) so Retry fails again without
+		 * creating another group. The foreign id is deliberately NOT put in
+		 * `remembered`: a remembered id skips `create`, so Retry would never reach
+		 * this check and would post into the other organization.
+		 */
+		if (
+			args.tenantId !== undefined &&
+			typeof response.tenant_id === "string" &&
+			response.tenant_id !== args.tenantId
+		) {
+			const refused = refusedForeignDrafts.get(args.remembered) ?? new Set();
+			refused.add(args.draftKey);
+			refusedForeignDrafts.set(args.remembered, refused);
+			throw new Error(FOREIGN_TENANT_REFUSAL);
+		}
 		created = {
 			id: response.id,
 			tenantId: response.tenant_id ?? args.tenantId,
 		};
 		args.remembered.set(args.draftKey, created);
 	}
+	args.onCreated?.(created);
 	await args.post(created.id, {
 		clientRef: args.clientRef,
 		body: args.body,

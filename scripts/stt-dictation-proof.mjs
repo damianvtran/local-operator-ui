@@ -742,7 +742,7 @@ try {
 	/* ------------------------------------------------------------ helpers */
 
 	const MIC = '[aria-label="Start recording"]';
-	const CONFIRM = '[aria-label="Confirm recording"]';
+	const CONFIRM = '[aria-label="Insert transcript"]';
 	const CANCEL = '[aria-label="Cancel recording"]';
 	const TEXTAREA = 'textarea[aria-label="Message"]';
 	const RECORDING_ANY = `${CONFIRM}, ${CANCEL}, [data-recording-indicator]`;

@@ -1,0 +1,240 @@
+{
+  "audit_id": "teambridge-pr1522-agent-wake-reaudit-1a445021d694-rebase-ru",
+  "date": "2026-10-31",
+  "locale": "ru",
+  "namespace": "ui.teamBridge",
+  "pr": 1522,
+  "branch": "feat/team-bridge-agent-wake-copy (PR #1522 head branch)",
+  "source_commit": "112c03a8b20f672ec67c6bc37bf1fa464fe7dc2f",
+  "prior_audit_commit": "358a16642f1cde902df562c4e0db5a815e3bd0f8",
+  "prior_audit_receipt": "i18n/receipts/915611ebaee8-ru.json",
+  "audit_kind": "re-audit / ledger re-bind after the rebase reset i18n/ledger.json to main's rows; no translated string reworded",
+  "translator": {
+    "agent": "translator",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-21",
+    "session": "485b723247d7",
+    "job": "764e8ee192fe",
+    "remediation_job": "78daa414c10d",
+    "added_key_source": {
+      "key": "ui.teamBridge.notify.unavailable",
+      "job": "job8d4e6d78c133",
+      "model": "not supplied"
+    }
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "radient/auto",
+      "date": "2026-10-31",
+      "result": "clean",
+      "instance": "1a445021d694-rebase-ru",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/1a445021d694-rebase-ru.json",
+      "receipt_sha256": "c9a937a1bb8764a352574a5bc2ed1d03b6af85a2c34edf009d76b8da7e040f19",
+      "scope": "PR #1522 re-audit after the rebase reset the ledger: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English 67226ecc; those nine values are byte-identical to round 3's audited bytes, the other 297 keys byte-identical to main 7492ec26bb8 (whose audits are kept under superseded). No string reworded.",
+      "note": "Re-binds the ledger evidence to the rebased bytes; copy unchanged (nine values byte-identical to the round-3 audit). Receipt i18n/receipts/1a445021d694-rebase-ru.json."
+    }
+  ],
+  "independence": "Independent auditor: Local Operator session 1a445021d694 (team lopdev, task role, dispatched by its manager as the translation auditor for this re-bind). It authored none of the audited strings: the PR copy was drafted by the authoring session, round 1 was 3b03d764a645, round 2 5028da4cca62, round 3 915611ebaee8. This session edited no catalogue byte and no English value; it wrote this receipt, its evidence record and the ledger row (via ledger-assemble.mjs). No MT service or translation API.",
+  "reaudit_premises": {
+    "nine_values_byte_identical_to_round_3": true,
+    "delta_vs_main_is_exactly_the_nine_keys": true,
+    "target_key_set_equals_english": true,
+    "english_sha256": "67226ecc79b2f50e4a176195d60b8c4ad097344846c41babc0734d0a1e3f7709",
+    "english_sha256_at_round_3": "d42a0de4eb468f06e63255512b0f06cf4f5d574b3b301aad1a195cb23bb9bc43",
+    "origin_main_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+    "measurements": {
+      "english_sha256": "67226ecc79b2f50e4a176195d60b8c4ad097344846c41babc0734d0a1e3f7709",
+      "origin_main_english_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+      "english_keys": 306,
+      "english_added_vs_main": [
+        "ui.teamBridge.agentNotify.all",
+        "ui.teamBridge.agentNotify.error",
+        "ui.teamBridge.agentNotify.label",
+        "ui.teamBridge.agentNotify.mention",
+        "ui.teamBridge.agentNotify.mute",
+        "ui.teamBridge.invitations.consent.bridge_agent_participation_v2"
+      ],
+      "english_changed_vs_main": [
+        "ui.teamBridge.builtin.agents_topic",
+        "ui.teamBridge.invitations.accepted",
+        "ui.teamBridge.invitations.accepted_unnamed"
+      ],
+      "english_removed_vs_main": [],
+      "target_key_set_equals_english": true,
+      "target_line_diff_vs_main": "12 changed lines in ru/ui.teamBridge.json against 7492ec26bb8; every one names one of the nine audited keys; 0 stray lines; 0 removed keys",
+      "nine_values_identical_to_round3_bytes": true,
+      "prior_receipt_reference": "i18n/receipts/915611ebaee8-ru.json"
+    }
+  },
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "67226ecc79b2f50e4a176195d60b8c4ad097344846c41babc0734d0a1e3f7709"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "a03d02d280a2fdb1fd7da9f706d20ab2d5931710fb24e61a9def4ddddaf76798"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+      "sha256": "2425c8ad460207c73814514e8b44bea0c06987bf9c4d2e3c63bd618408fdc1ce"
+    }
+  },
+  "scope": {
+    "delta_kind": "Ledger re-bind, not a re-translation. The rebase onto main resolved i18n/ledger.json to main's rows again, so the ui.teamBridge rows named main's English bytes while the tree carried the PR's. Measured here: this PR's English moves exactly the nine keys against origin/main and nothing else, and the nine values are byte-identical to the bytes round 3 audited — so the ledger evidence is re-issued for the merged bytes, and no translated string is reworded.",
+    "measurements": {
+      "english_sha256": "67226ecc79b2f50e4a176195d60b8c4ad097344846c41babc0734d0a1e3f7709",
+      "origin_main_english_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+      "english_keys": 306,
+      "english_added_vs_main": [
+        "ui.teamBridge.agentNotify.all",
+        "ui.teamBridge.agentNotify.error",
+        "ui.teamBridge.agentNotify.label",
+        "ui.teamBridge.agentNotify.mention",
+        "ui.teamBridge.agentNotify.mute",
+        "ui.teamBridge.invitations.consent.bridge_agent_participation_v2"
+      ],
+      "english_changed_vs_main": [
+        "ui.teamBridge.builtin.agents_topic",
+        "ui.teamBridge.invitations.accepted",
+        "ui.teamBridge.invitations.accepted_unnamed"
+      ],
+      "english_removed_vs_main": [],
+      "target_key_set_equals_english": true,
+      "target_line_diff_vs_main": "12 changed lines in ru/ui.teamBridge.json against 7492ec26bb8; every one names one of the nine audited keys; 0 stray lines; 0 removed keys",
+      "nine_values_identical_to_round3_bytes": true,
+      "prior_receipt_reference": "i18n/receipts/915611ebaee8-ru.json"
+    },
+    "main_side_moves_covered_by_existing_rows": "Since round 3 the English also gained main's own keys — #1534's builtin.general_topic/humans_topic and #1539's eleven events.* keys plus members.invitation_note_v3. Those are main's bytes, audited by main's own ui.teamBridge row (64e850ffd480-rebase-*, the union descendant of the 95c4798301e2-union-a-* / 2810e9866efc-union-b-* audits); this audit does not re-litigate them, and they are byte-identical on disk to origin/main's file.",
+    "keys_audited_linguistically": [
+      "ui.teamBridge.agentNotify.label",
+      "ui.teamBridge.agentNotify.all",
+      "ui.teamBridge.agentNotify.mention",
+      "ui.teamBridge.agentNotify.mute",
+      "ui.teamBridge.agentNotify.error",
+      "ui.teamBridge.invitations.consent.bridge_agent_participation_v2",
+      "ui.teamBridge.invitations.accepted",
+      "ui.teamBridge.invitations.accepted_unnamed",
+      "ui.teamBridge.builtin.agents_topic"
+    ],
+    "keys_read_for_consistency": [
+      "ui.teamBridge.notify.all",
+      "ui.teamBridge.notify.mention",
+      "ui.teamBridge.notify.mute",
+      "ui.teamBridge.notify.muted",
+      "ui.teamBridge.notify.error",
+      "ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+      "ui.teamBridge.chief.fallback",
+      "ui.teamBridge.chief.unnamed",
+      "ui.teamBridge.thread.intro_chief"
+    ],
+    "not_audited": "The other 297 keys: byte-identical on disk to origin/main 7492ec26bb8, whose audited row this one replaces (kept under `superseded`)."
+  },
+  "audited_values": {
+    "ui.teamBridge.agentNotify.label": {
+      "en": "Wake your agent for",
+      "translation": "Будить вашего агента",
+      "main_translation": null
+    },
+    "ui.teamBridge.agentNotify.all": {
+      "en": "Every message",
+      "translation": "На каждое сообщение",
+      "main_translation": null
+    },
+    "ui.teamBridge.agentNotify.mention": {
+      "en": "@-mentions and its threads",
+      "translation": "На упоминания @ и его ветки",
+      "main_translation": null
+    },
+    "ui.teamBridge.agentNotify.mute": {
+      "en": "Never (muted)",
+      "translation": "Никогда (без звука)",
+      "main_translation": null
+    },
+    "ui.teamBridge.agentNotify.error": {
+      "en": "Couldn’t save your agent’s wake setting. Try again.",
+      "translation": "Не удалось сохранить настройку пробуждения агента. Повторите попытку.",
+      "main_translation": null
+    },
+    "ui.teamBridge.invitations.consent.bridge_agent_participation_v2": {
+      "en": "Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can change how often it wakes, or mute it.",
+      "translation": "Если вы примете приглашение, ваш агент с этого момента сможет читать этот разговор и публиковать в нём сообщения. Он видит все сообщения и сам решает, отвечать ли; упоминание через @ означает, что ответ нужен. Вы можете изменить частоту пробуждений или полностью отключить их.",
+      "main_translation": null
+    },
+    "ui.teamBridge.invitations.accepted": {
+      "en": "Accepted. {agent} now sees every message here and replies when it’s relevant or @-mentioned. Change this from the conversation’s ⋯ menu.",
+      "translation": "Принято. Теперь {agent} видит здесь все сообщения и отвечает, когда это уместно или при упоминании через @. Изменить это можно в меню ⋯ разговора.",
+      "main_translation": "Accepted. {agent} is woken only when someone @-mentions it."
+    },
+    "ui.teamBridge.invitations.accepted_unnamed": {
+      "en": "Accepted. Your agent now sees every message here and replies when it’s relevant or @-mentioned. Change this from the conversation’s ⋯ menu.",
+      "translation": "Принято. Теперь ваш агент видит здесь все сообщения и отвечает, когда это уместно или при упоминании через @. Изменить это можно в меню ⋯ разговора.",
+      "main_translation": "Accepted. Your agent is woken only when someone @-mentions it."
+    },
+    "ui.teamBridge.builtin.agents_topic": {
+      "en": "Every teammate's chief of staff. Agents see every message and reply when relevant or @-mentioned.",
+      "translation": "Координаторы всех участников команды. Агенты видят все сообщения и отвечают, когда это уместно или когда их упоминают через @.",
+      "main_translation": "Every teammate's chief of staff. Agents are woken only when mentioned."
+    }
+  },
+  "checks": {
+    "placeholders": "{agent} is present in English and target for invitations.accepted only; no other audited key carries arguments; none added, dropped or renamed (mechanical).",
+    "key_sets": "Target key set equals English (306 keys).",
+    "unicode": "All audited values NFC; no RTL/LTR/FSI/PDI control characters in any value, including ur (mechanical).",
+    "glyph": "⋯ present exactly where English has it — accepted and accepted_unnamed — and absent from consent v2, as the D6 context note requires; '@' parity holds on every audited key (mechanical).",
+    "consent_v2_D6": "The shortened v2 keeps every fact its context note lists (read+post from now on; woken for every message and judges itself; @-mention = reply expected; the owner can change the frequency or mute) and names no menu.",
+    "method": "Each value read against English, its context note, main's previous value, the sibling notify.* group, consent v1 and the chief-of-staff keys in the same locale, the core glossary and this locale's style guide; mechanical properties computed from the files on disk in this session.",
+    "meaning": "'Будить вашего агента' heads the group and the rows carry 'На …'. consent v2 keeps all four facts; 'mute it' becomes 'полностью отключить их' ('switch the wake-ups off entirely'), which is faithful to the v1 note's instruction to avoid calling it 'muted', and 'их' agrees with 'пробуждений' — the object stays the wake-ups, never the agent. In accepted, 'Изменить это можно в меню ⋯ разговора' uses the neutral demonstrative 'это', so no ES-I1-class antecedent ambiguity arises.",
+    "terminology": "wake = пробуждение (noun, agentNotify.error) / просыпается (consent v1); mute = без звука (notify.mute, reused in agentNotify.mute); mention = 'упоминание через @'; thread = 'ветки'; agent = агент; chief of staff = Координатор (chief.fallback, thread.intro_chief).",
+    "register_typography": "вы lowercase mid-sentence; impersonal constructions ('Не удалось сохранить…', 'Принято'); no typographic space before ';' (unlike fr); Latin digits.",
+    "observations": "No open findings from rounds 1–3; ru was clean in round 3 and is clean here."
+  },
+  "findings": [],
+  "result": "clean",
+  "status": "passed",
+  "supersedes": {
+    "note": "The row this record backs replaces main's audited row for the same namespace; ledger-assemble.mjs moved it to `superseded`, where its receipts stay immutable history.",
+    "main_row_auditors": [
+      "64e850ffd480-rebase-ru"
+    ]
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    },
+    "docs_I18N": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    },
+    "ledger_rules": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    },
+    "ledger_assemble": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/1a445021d694-rebase-ru.json",
+      "sha256": "c9a937a1bb8764a352574a5bc2ed1d03b6af85a2c34edf009d76b8da7e040f19"
+    },
+    "ledger_row": "i18n/ledger.json#entries[locale=ru,namespace=ui.teamBridge]",
+    "record": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1522-agent-wake-reaudit-1a445021d694-rebase-ru/record.json"
+  },
+  "limitations": "Auditor competence: meaning, terminology, register, grammar and mechanical properties; not native idiom. Not claimed here: rendered fit, screenshots, native-speaker sign-off (still owed for vi/hi/ur before any release claim), or any change to the shipped bytes — this audit re-binds evidence, it does not reword.",
+  "audit_notes_not_execution_log": "Notes and findings are this auditor's linguistic judgement, not command output. Mechanical checks (NFC, bidi, placeholders, ⋯ and @ parity, key sets, the nine-key delta against main and against round 3, the 12-line target diff) were computed from the catalogue files on disk in this session; the ledger rows are written by ledger-assemble.mjs, never by hand."
+}

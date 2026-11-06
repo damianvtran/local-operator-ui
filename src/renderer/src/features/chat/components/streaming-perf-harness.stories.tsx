@@ -637,7 +637,6 @@ const ComposerFlushBench = ({
 					recordingProbe={recordingProbe}
 					onCredentialsStored={onCredentialsStored}
 					canonicalStop={canonicalStop}
-					canonicalStopAvailable={true}
 					asideStreaming={true}
 					isFarFromBottom={false}
 					hasNewActivity={false}

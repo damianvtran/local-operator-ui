@@ -112,5 +112,17 @@
 	"ui.chat.header.session_model_switch": {
 		"role": "action",
 		"tone": "plain"
+	},
+	"ui.chat.header.starting_session": {
+		"role": "Header description while a new session is being created",
+		"tone": "Progressive phrase",
+		"length_hint": "Three words",
+		"note": "Progressive phrase, no ellipsis."
+	},
+	"ui.chat.header.canonical_chat": {
+		"role": "Header description fallback for a session with no known directory",
+		"tone": "Noun phrase",
+		"length_hint": "Two words",
+		"note": "Fallback noun phrase; 'canonical' means the native chat view."
 	}
 }

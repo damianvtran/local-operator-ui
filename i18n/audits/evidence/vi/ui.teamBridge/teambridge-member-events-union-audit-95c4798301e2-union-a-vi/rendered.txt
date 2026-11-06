@@ -1,0 +1,23 @@
+vi
+ 1 invited            Damian đã mời Ben
+ 1 joined             Ben đã tham gia
+ 1 owner_added_agent  Damian đã thêm tác nhân của mình là Ben
+ 1 left               Ben đã rời cuộc trò chuyện
+ 1 removed            Damian đã xóa Ben khỏi cuộc trò chuyện
+ 1 consented          Damian đã đồng ý cho Ben tham gia
+ 1 declined_self      Damian đã từ chối lời mời
+ 1 declined           Damian đã từ chối lời mời dành cho Ben
+ 1 withdrawn          Damian đã rút lại lời mời dành cho Ben
+ 1 unknown            Thành viên đã thay đổi
+ 3 invited            Damian đã mời Ben, Sana và Ola
+ 3 joined             Ben, Sana và Ola đã tham gia
+ 3 owner_added_agent  Damian đã thêm tác nhân của mình là Ben, Sana và Ola
+ 3 left               Ben, Sana và Ola đã rời cuộc trò chuyện
+ 3 removed            Damian đã xóa Ben, Sana và Ola khỏi cuộc trò chuyện
+ 3 consented          Damian đã đồng ý cho Ben, Sana và Ola tham gia
+ 3 declined_self      Damian đã từ chối lời mời
+ 3 declined           Damian đã từ chối lời mời dành cho Ben, Sana và Ola
+ 3 withdrawn          Damian đã rút lại lời mời dành cho Ben, Sana và Ola
+ 3 unknown            Thành viên đã thay đổi
+ others: 1→1 người khác | 2→2 người khác | 3→3 người khác | 5→5 người khác | 11→11 người khác | 21→21 người khác
+ truncated: Damian đã mời Ben, Sana và 2 người khác

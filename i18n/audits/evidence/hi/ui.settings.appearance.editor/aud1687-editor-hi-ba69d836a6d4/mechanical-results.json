@@ -1,0 +1,22 @@
+{
+  "keys": 160,
+  "format_calls": 160,
+  "errors": [],
+  "unexempted_identical": [
+    "ui.settings.appearance.editor.copy_name",
+    "ui.settings.appearance.editor.ratio",
+    "ui.settings.appearance.editor.picker.rgb",
+    "ui.settings.appearance.editor.picker.oklch",
+    "ui.settings.appearance.editor.preview.bridge"
+  ],
+  "plural_outputs": {
+    "0": "कंट्रास्ट की 0 समस्या",
+    "1": "कंट्रास्ट की 1 समस्या",
+    "2": "कंट्रास्ट की 2 समस्याएँ",
+    "5": "कंट्रास्ट की 5 समस्याएँ",
+    "11": "कंट्रास्ट की 11 समस्याएँ",
+    "21": "कंट्रास्ट की 21 समस्याएँ",
+    "22": "कंट्रास्ट की 22 समस्याएँ",
+    "1.5": "कंट्रास्ट की 1.5 समस्याएँ"
+  }
+}

@@ -169,10 +169,27 @@ test("the sidebar draws the reserved cell, the split lines, and no separate sect
 		/row\.locality === "remote" && \(\s*<ChatRemoteMark\s+unreachable=\{row\.link_down === true \|\| row\.reachable === false\}\s*\/>/,
 		"a remote row is unreachable when its link is down, even if the last reachable read said true",
 	);
-	const clause = SIDEBAR.slice(
-		SIDEBAR.indexOf("const remoteHost = remote"),
-		SIDEBAR.indexOf("const marks = subagentMarks(row)"),
+	/*
+	 * THE SECOND ANCHOR IS PART OF THE ASSERTION, not decoration: `slice(start, -1)`
+	 * does not fail when the end index is missing - it silently covers everything to
+	 * the end of the file, so both asserts below would pass against 300k characters
+	 * of unrelated source (agent review round 1, R1-3, after this lane deleted
+	 * `const marks = subagentMarks(row)` and left the guard measuring the whole file).
+	 * A deleted anchor is now a FAILURE UP FRONT rather than a wider window.
+	 */
+	const remoteClauseStart = SIDEBAR.indexOf("const remoteHost = remote");
+	const remoteClauseEnd = SIDEBAR.indexOf(
+		"const subagentSentence = subagentClause(row)",
 	);
+	assert.ok(
+		remoteClauseStart >= 0,
+		"the remote clause block moved: re-anchor its start",
+	);
+	assert.ok(
+		remoteClauseEnd > remoteClauseStart,
+		"the remote clause block moved: re-anchor its end",
+	);
+	const clause = SIDEBAR.slice(remoteClauseStart, remoteClauseEnd);
 	assert.match(clause, /remoteClause\(/);
 	assert.match(clause, /remoteUnreachableClause\(/);
 	assert.match(

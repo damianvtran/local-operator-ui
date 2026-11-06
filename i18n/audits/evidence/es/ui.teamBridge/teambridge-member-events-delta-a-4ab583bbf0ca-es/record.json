@@ -1,0 +1,204 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, independent delta round (round 2) audit A (docs/I18N.md): the 14 applied Team Bridge membership-event values and the whole 12-key event/consent block for es",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session 4ab583bbf0ca was started on anthropic/claude-opus-5-5 and switched by the harness on provider-quota failures to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto. The delta verification, the value reads, the renders and every verdict here were produced under radient/auto; the earlier model only gathered the repository context.",
+	"session": "4ab583bbf0ca",
+	"instance": "4ab583bbf0ca-es",
+	"audit_id": "teambridge-member-events-delta-a-4ab583bbf0ca-es",
+	"round": {
+		"kind": "delta / round 2",
+		"prev_round_head": "1eeb46187ce",
+		"head_at_audit": "1eeb46187ce",
+		"prev_round_audits": [
+			"i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-a-955e54c57ace-es",
+			"i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-audit-b-502568f2aefe-es"
+		],
+		"scope_rule": "Round 2+ covers the remediation delta and its direct neighbours: the 14 applied values re-read, the full 12-key event/consent block re-rendered, and the 285 inherited values taken as byte-unchanged because the reverse-apply proof reproduces the round-1 sha256 exactly."
+	},
+	"status": "passed",
+	"result": "clean",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"independence": "Auditor A of the delta round, session 4ab583bbf0ca (team lopdev, role translation-auditor). Independent of the translator and of auditor B: the 14 values, the composition renders and every verdict here were formed from the catalogues, the English source and its context sidecar, the core glossary and the locale style guides before any receipt for this round was read. No catalogue was edited, and no round-1 finding was re-raised without new bytes to judge.",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"head_at_audit": "1eeb46187ce",
+		"worktree": "~/local-operator-ui/.worktrees/member-events",
+		"catalogue_state": "the seven locale catalogues are uncommitted working-tree modifications on top of 1eeb46187ce; the delta was applied at 21:08:20 local time and the hashes below name the bytes on disk at audit time"
+	},
+	"scope": {
+		"primary": [
+			"none — bytes unchanged since round 1"
+		],
+		"re_read_block": [
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.joined",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.unknown",
+			"ui.teamBridge.events.others",
+			"ui.teamBridge.members.invitation_note_v3"
+		],
+		"inherited_unchanged": 285,
+		"removed_confirmed": [
+			"ui.teamBridge.members.invitation_note_v2"
+		],
+		"call_site": "src/renderer/src/features/team-bridge/team-bridge-member-events.tsx:69-108 (sentence(), joinNames(), teamBridgeEventSentences()) with TEAM_BRIDGE_EVENT_NAMES_SHOWN = 2; the truncated line is joined with Intl.ListFormat conjunction, so events.others is the list's last element",
+		"recorded_rejected_context_acknowledged": [
+			"events.owner_added_agent keeps a singular agent noun in every locale: the server proves an implicit owner_invite event carries exactly one target (unique {tenant_id, account_id} on bridge endpoints; auto-consent fires only when the caller owns the invited endpoint). Not re-raised.",
+			"FR-A2's passé composé proposal («A rejoint») is rejected because the auxiliary must agree with a multi-name subject. Not re-raised."
+		],
+		"references": [
+			"~/local-operator/i18n/glossary.md (agent, member, owner rows; §3 placeholders, plurals, punctuation, RTL)",
+			"~/local-operator/i18n/style-guides/<locale>.md for zh-CN, ru, vi, ur, hi, fr, es",
+			"the shipped 297-key ui.teamBridge namespace as the in-repo convention (no style guides ship in this repository)"
+		]
+	},
+	"sha256": {
+		"es": "1b9218794ef1f2acf9a509e19bc8d23fdd3ecbb746fdee3076329870c759d10a",
+		"en": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+			"sha256": "1b9218794ef1f2acf9a509e19bc8d23fdd3ecbb746fdee3076329870c759d10a"
+		}
+	},
+	"delta_verification": {
+		"method": "reverse-applied the applied list to the bytes on disk with a byte-level line substitution (never a JSON round-trip) and re-hashed",
+		"prev_round_sha256": "1b9218794ef1f2acf9a509e19bc8d23fdd3ecbb746fdee3076329870c759d10a",
+		"reverse_applied_sha256": "1b9218794ef1f2acf9a509e19bc8d23fdd3ecbb746fdee3076329870c759d10a",
+		"matches": "unchanged since round 1 — current bytes equal the recorded sha256, no reverse-apply needed",
+		"conclusion": "the file is byte-identical to the audited round-1 bytes; nothing moved in either direction",
+		"english_unchanged": true
+	},
+	"keys_read": 12,
+	"findings": [],
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"checks": [
+		"Reverse-apply proof: for zh-CN, ru, vi, ur and hi the 14 applied values were undone one line at a time and the resulting file hashed to the sha256 recorded by the round-1 audit (07b867bd…, 64c7edfef…, ca0a9c774…, 60e3a2aaa…, c51c89590…). The line-level diff of each reverse-applied file against the file on disk is exactly the applied edits (3/3/3/4/1 lines). fr and es are byte-identical to their round-1 hashes. Nothing else moved.",
+		"Placeholders and ICU structure: every audited value was parsed with the project's own parser (@formatjs/icu-messageformat-parser). {actor}, {targets} and {count} survive exactly as in English; no renamed, added or dropped argument, and no plural argument other than {count}.",
+		"Plural arms: ru one/few/many/other, fr/es one/many/other, ur/hi one/other, zh-CN/vi other-only — each locale uses exactly the categories its guide records, and every arm uses # where the English uses it. No locale encodes a category it does not have.",
+		"Renders: every audited value rendered with intl-messageformat at 1 and 3 targets (targets joined by Intl.ListFormat conjunction, the app's joinNames()) and events.others at counts 1/2/3/5/11/21; the truncated real path (5 names, 3 hidden, others as the list's last element) was rendered for all seven locales. Output in truncation-render.txt.",
+		"Encoding hygiene: NFC throughout, no combining-mark sequences (vi's NFC rule), and zero bidi control characters, zero-width characters or ZWNJ/ZWJ in the ur values (the render layer applies FSI/PDI; manual controls would double-apply). Per-key scan in bidi-nfc-scan.txt.",
+		"Quote style: none of the 14 changed values contains a quotation mark, so no locale's shipped quote convention can be violated by this delta; the namespace census (zh-CN/vi/ur/hi “ ”, ru « », fr « » with ’, es “ ”) is recorded for the next round that introduces quotes.",
+		"Glossary consistency: ur's term alignment مسترد → انکار now matches invitations.decline/declining/declined and leaves no مسترد in the namespace; ur's اراکین → ارکان matches the 8 other ارکان uses in the namespace and zero اراکین anywhere in the ur catalogues; zh-CN keeps 智能体/成员/静音/讨论串; hi keeps अन्य + लोग; vi keeps tác nhân/thành viên; ru keeps агент/приглашение.",
+		"Register: zh-CN 你, ru вы, vi bạn, ur آپ, hi आप — no address form appears in a changed value except zh-CN's 你自己的智能体 in the unchanged clauses of invitation_note_v3, which matches the rest of the locale.",
+		"This round audited catalogue text only: no rendered-frame, font-fallback, geometry or activation evidence is claimed, and no release approval. The ru events.joined / events.owner_added_agent and vi events.owner_added_agent overflow flags need a rendered width check on the one-line row."
+	],
+	"verdict": "ui.teamBridge (es): CLEAN — 0 blocker, 0 major, 0 minor, 0 nit across 12 keys read (unchanged by this delta; regression read only).",
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/record.json"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/findings.json"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/delta-checks.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/truncation-render.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/reverse-apply-proof.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/bidi-nfc-scan.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/hashes.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/check-i18n-before-assembly.log"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/check-i18n-after-assembly.log"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-es/check-i18n-handoff.log"
+		}
+	],
+	"gate_output": [
+		"ledger-check: hi/ui.teamBridge: stale target_sha256 (ledger c51c89590c7f…, file 57b7bc7207eb…) — the translated file changed since it was audited",
+		"ledger-check: hi/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: hi/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: hi/ui.teamBridge: auditor 1: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: hi/ui.teamBridge: auditor 2: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: ru/ui.teamBridge: stale target_sha256 (ledger 64c7edfef83d…, file 5fd9ee8f8e16…) — the translated file changed since it was audited",
+		"ledger-check: ru/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: ru/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: ru/ui.teamBridge: auditor 1: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: ru/ui.teamBridge: auditor 2: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: ur/ui.teamBridge: stale target_sha256 (ledger 60e3a2aaa4b0…, file a2e6c102ee41…) — the translated file changed since it was audited",
+		"ledger-check: ur/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: ur/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: ur/ui.teamBridge: auditor 1: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: ur/ui.teamBridge: auditor 2: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: vi/ui.teamBridge: stale target_sha256 (ledger ca0a9c774c0b…, file 29af5592799b…) — the translated file changed since it was audited",
+		"ledger-check: vi/ui.teamBridge: auditor 1: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: vi/ui.teamBridge: auditor 2: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: zh-CN/ui.teamBridge: stale target_sha256 (ledger 07b867bd4bc1…, file 41bcf8f7cf9e…) — the translated file changed since it was audited",
+		"ledger-check: zh-CN/ui.teamBridge: auditor 1: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: zh-CN/ui.teamBridge: auditor 2: the receipt does not name the target bytes on disk - it audited a different file",
+		"ledger-check: FAILED — 25 finding(s) across 770 ledger entr(ies)",
+		"[ELIFECYCLE] Command failed with exit code 1.",
+		"[ELIFECYCLE] Command failed with exit code 1."
+	],
+	"gate_note": "The gate run recorded above is the unedited `pnpm check-i18n` on the pre-assembly ledger: it fails on the stale round-1 rows this round rebinds. The post-assembly run is retained beside this record as check-i18n-after-assembly.log.",
+	"gate_output_after_assembly": [
+		"check-strings.mjs: ok — 1445 file(s) scanned, 0 literal(s) at or below the baseline",
+		"ledger-check: es/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: es/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: fr/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: fr/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: hi/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: hi/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: ur/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: ur/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: FAILED — 8 finding(s) across 770 ledger entr(ies)",
+		"[ELIFECYCLE] Command failed with exit code 1.",
+		"[ELIFECYCLE] Command failed with exit code 1."
+	],
+	"gate_result_after_assembly": "FAILED",
+	"gate_note_after_assembly": "This is the unedited `pnpm check-i18n` AFTER the ledger assembly for this round. The staleness and receipt-binding findings of the pre-assembly run are gone; what remains is the honest row state: es/fr keep the round-1 changes_requested entry (their bytes did not change, so ledger-assemble can only append), and ur/hi carry this round's majors.",
+	"gate_output_at_handoff": [
+		"ledger-check: fr/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: fr/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: hi/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: hi/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: ur/ui.teamBridge: status is \"changes_requested\", not \"audited\" — an unaudited locale must not ship",
+		"ledger-check: ur/ui.teamBridge: auditor 1 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: ur/ui.teamBridge: auditor 2 result is \"changes_requested\", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an \"audited\" entry",
+		"ledger-check: FAILED — 9 finding(s) across 770 ledger entr(ies)",
+		"[ELIFECYCLE] Command failed with exit code 1.",
+		"[ELIFECYCLE] Command failed with exit code 1."
+	],
+	"gate_note_at_handoff": "Unedited `pnpm check-i18n` at hand-off, after auditor B's delta receipts were also assembled. Rows: zh-CN/ru/vi audited; ur changes_requested (auditor A 2 major, auditor B 1 major); hi changes_requested (auditor A 1 major; auditor B clean); fr/es still carry the round-1 changes_requested entry because their bytes did not change, so the writer could only append."
+}

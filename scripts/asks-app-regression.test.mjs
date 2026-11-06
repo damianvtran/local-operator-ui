@@ -328,6 +328,14 @@ test("every case declares what it drives and the frames it promises", () => {
 		`the table carries the asks case plus new ones, got ${cases.length}`,
 	);
 	for (const [name, scenario] of cases) {
+		const legs = scenario.legs ?? ["control", "candidate"];
+		if (scenario.legs) {
+			// A real-core opt-in has no claimed historical binary compatibility.
+			// Existing default cases continue to owe BOTH historical legs.
+			assert.equal(scenario.backendMode, "real-core");
+			assert.equal(scenario.optInOnly, true);
+			assert.deepEqual(legs, ["candidate"]);
+		}
 		assert.equal(
 			typeof scenario.drive,
 			"function",
@@ -344,7 +352,7 @@ test("every case declares what it drives and the frames it promises", () => {
 		 * candidate-only steps photograph closers that revision predates would be
 		 * promising the control frames it cannot take - a red run for a correct case.
 		 */
-		for (const leg of ["control", "candidate"]) {
+		for (const leg of legs) {
 			const promised = scenario.frames[leg];
 			assert(
 				Array.isArray(promised) && promised.length > 0,
@@ -361,7 +369,7 @@ test("every case declares what it drives and the frames it promises", () => {
 				`${name} must not promise the acceptance row: the runner pushes it, so promising it would make the runner's own check circular`,
 			);
 		}
-		for (const label of scenario.frames.control)
+		for (const label of scenario.frames.control ?? [])
 			assert(
 				scenario.frames.candidate.includes(label),
 				`${name} promises the control leg a frame (${label}) the candidate does not take, so the two legs are not the same drive`,
@@ -400,7 +408,7 @@ test("every case declares what it drives and the frames it promises", () => {
 		 * legs keeps the direction enforced without an arm that is dead by construction.
 		 */
 		for (const label of captured(shared)) {
-			const missing = ["control", "candidate"].filter(
+			const missing = legs.filter(
 				(leg) => !scenario.frames[leg].includes(label),
 			);
 			assert.equal(

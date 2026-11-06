@@ -27,6 +27,7 @@ import { Calendar, Cpu, GitBranch, IdCard, Info } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { t } from "../../../../../i18n/messages";
+import { AgentAvatarField } from "./agent-avatar-field";
 
 type GeneralSettingsProps = {
 	/**
@@ -106,6 +107,15 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 		 * components no longer carry a bottom margin of their own.
 		 */
 		<div className="flex flex-col gap-4">
+			{/* The mark first: it is the one field here that is not the agent's
+			    definition, and it is what the sidebar shows beside this agent's name. */}
+			{/*
+			 * KEYED BY THE AGENT (review round 1, R1-4). The pane is reused when the
+			 * selection changes, so an unkeyed field carried the previous agent's
+			 * pending refusal - announced to the new agent - and its busy state kept the
+			 * new agent's buttons inactive for as long as the old decode ran.
+			 */}
+			<AgentAvatarField key={selectedAgent.id} agentId={selectedAgent.id} />
 			{/*
 			 * No glyph. A glyph on this surface names a kind of thing, and no two
 			 * labels may name the same kind — `Bot` means "an agent" everywhere

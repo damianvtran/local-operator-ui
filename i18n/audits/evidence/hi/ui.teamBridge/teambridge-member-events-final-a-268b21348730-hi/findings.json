@@ -1,0 +1,15 @@
+[
+	{
+		"id": "FA-HI1",
+		"severity": "minor",
+		"key": "ui.teamBridge.thread.intro_chief",
+		"current": "… और यह किस पर अमल करेगा, यह इसका मालिक तय करता है।",
+		"proposed": "… और यह किस पर अमल करेगा, यह इसका स्वामी तय करता है।",
+		"related_keys": [
+			"ui.teamBridge.members.role.owner",
+			"ui.teamBridge.members.invitation_note_v3"
+		],
+		"reason": "One term, two spellings: this namespace renders the owner relationship as «स्वामी» in members.role.owner («स्वामी») and twice in the v3 consent note («अपने स्वामी की सहमति», «उसका स्वामी»), then as «मालिक» in the chief-of-staff intro. The role chip and the consent note are what the reader meets first; hi.md's «prefer common Hindi words» does not separate them, so the drift is the defect regardless of which form is chosen — this proposal moves one key instead of three.",
+		"evidence": "struct-audit.txt: term-consistency section"
+	}
+]

@@ -617,7 +617,15 @@ test("the drawer wears the canvas family's width in either scope", () => {
 		rightSlotRoute: drawable,
 	});
 	assert.equal(fleet, session);
-	assert.equal(fleet, 560);
+	/*
+	 * 640, the slot's ONE opening width - not the 560 this used to assert. The drawer
+	 * is a member of the canvas family and the family had no ceiling of its own until
+	 * #1525 gave every right-slot pane `RIGHT_SLOT_MAX_PX`: at a 1400 row the dock
+	 * arithmetic leaves 920, so what bounds the drawer is the default, not the row
+	 * (found on remediation round 1 - the stale expectation was left behind by the
+	 * width change, and this is the pane it silently covered).
+	 */
+	assert.equal(fleet, 640);
 });
 
 test("the query key is one document, so the badge and the list cannot diverge", () => {
@@ -918,13 +926,25 @@ test("the drawer's entry move is a bounded one-shot", () => {
 	/* 3. The flag is spent before the user's signal is required, and focus can move
 	 * only after both checks - so a mount with nothing focused resolves, and the
 	 * bounded wait cannot move anything either. */
-	const resolved = block.indexOf("if (door === null && !requested) return;");
+	const pressedGate = block.indexOf(
+		"if (pressedDoor === null && !requested) return;",
+	);
+	/*
+	 * THE PRESS SURVIVES OUR OWN INERT (agent review round 1, m1): the covered column
+	 * is made inert on the same commit, which blurs the chip to `<body>`; the door is
+	 * latched BEFORE the wait so a later commit still knows what was pressed.
+	 */
+	const latch = block.indexOf("pressedDoorRef.current = door;");
 	assert.ok(
-		consume !== -1 && resolved !== -1 && consume < resolved,
+		latch >= 0 && latch < block.indexOf("&& frameUnread) return;"),
+		"the pressed door is not latched before the unread wait: inert can blur it to <body> and the door (and its return target) would be lost",
+	);
+	assert.ok(
+		consume !== -1 && pressedGate !== -1 && consume < pressedGate,
 		"the one-shot is spent only after the door-or-request check; a mounted pane with no user press under focus never resolves and a later Tab onto the rail row can steal focus.",
 	);
 	assert.ok(
-		block.indexOf("landing.focus();") > resolved,
+		block.indexOf("landing.focus();") > pressedGate,
 		"focus can move before the door-or-request check has resolved.",
 	);
 });

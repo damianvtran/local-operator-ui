@@ -1,0 +1,333 @@
+{
+	"audit_id": "teambridge-owner-audit-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"locale": "ru",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean-with-findings",
+			"instance": "b393dc8cd01c-owneraudit-ru",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			},
+			"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-ru.json",
+			"receipt_sha256": "9dec2e6069593f4489787bd8a9791544744ace645b85427d2ddd8abceacbbbf6"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.ownerAudit.json",
+			"sha256": "24dd4e793a22eb93651a041d926d63d60e664e44739c2c9a558ff49fd2cd1cd2"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "ad77dcc43ee06d1f43ef6c2a6422c33ee458534b805d888cb413a4f9ebf8226c"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.title": {
+			"en": "Your chief of staff’s messages",
+			"target": "Сообщения вашего координатора"
+		},
+		"ui.ownerAudit.read_only": {
+			"en": "Read-only history. Sending, reactions and editing are unavailable.",
+			"target": "История только для чтения. Отправка, реакции и редактирование недоступны."
+		},
+		"ui.ownerAudit.loading": {
+			"en": "Loading audited messages",
+			"target": "Загрузка проверяемых сообщений"
+		},
+		"ui.ownerAudit.error": {
+			"en": "Audited messages could not be loaded.",
+			"target": "Не удалось загрузить проверяемые сообщения."
+		},
+		"ui.ownerAudit.retry": {
+			"en": "Try again",
+			"target": "Повторить"
+		},
+		"ui.ownerAudit.refresh": {
+			"en": "Refresh",
+			"target": "Обновить"
+		},
+		"ui.ownerAudit.empty_list": {
+			"en": "No audited conversations in this organization.",
+			"target": "В этой организации нет проверяемых разговоров."
+		},
+		"ui.ownerAudit.empty_history": {
+			"en": "No messages in the audit window for this conversation.",
+			"target": "В периоде проверки этого разговора нет сообщений."
+		},
+		"ui.ownerAudit.unnamed": {
+			"en": "Unnamed conversation",
+			"target": "Разговор без названия"
+		},
+		"ui.ownerAudit.agent": {
+			"en": "Chief of staff",
+			"target": "Координатор"
+		},
+		"ui.ownerAudit.more": {
+			"en": "Load more",
+			"target": "Загрузить ещё"
+		},
+		"ui.ownerAudit.older": {
+			"en": "Load older messages",
+			"target": "Загрузить предыдущие сообщения"
+		},
+		"ui.ownerAudit.admitted": {
+			"en": "Admitted to your chief of staff",
+			"target": "Принято вашим координатором"
+		},
+		"ui.ownerAudit.rejected": {
+			"en": "Rejected by your chief of staff’s screening",
+			"target": "Отклонено фильтрацией вашего координатора"
+		},
+		"ui.ownerAudit.not_screened": {
+			"en": "Not screened by your chief of staff",
+			"target": "Фильтрация вашего координатора не применялась"
+		},
+		"ui.ownerAudit.unknown_status": {
+			"en": "Status unknown",
+			"target": "Статус неизвестен"
+		},
+		"ui.ownerAudit.own": {
+			"en": "Sent by your chief of staff",
+			"target": "Отправлено вашим координатором"
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"en": "Message text unavailable.",
+			"target": "Текст сообщения недоступен."
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"en": "Attachment expired; bytes are unavailable.",
+			"target": "Срок действия вложения истёк; его содержимое недоступно."
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"en": "Attachment present; downloading is unavailable in this view.",
+			"target": "Есть вложение; скачивание в этом представлении недоступно."
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"en": "Unknown sender",
+			"target": "Неизвестный отправитель"
+		},
+		"ui.ownerAudit.reveal": {
+			"en": "Show message text",
+			"target": "Показать текст сообщения"
+		},
+		"ui.ownerAudit.active": {
+			"en": "Your chief of staff is still a member.",
+			"target": "Ваш координатор всё ещё участник."
+		},
+		"ui.ownerAudit.left": {
+			"en": "Your chief of staff left this conversation; later messages are outside the audit window.",
+			"target": "Ваш координатор покинул этот разговор; последующие сообщения не входят в период проверки."
+		},
+		"ui.ownerAudit.removed": {
+			"en": "Your chief of staff was removed; later messages are outside the audit window.",
+			"target": "Ваш координатор был удалён; последующие сообщения не входят в период проверки."
+		},
+		"ui.ownerAudit.disclosure": {
+			"en": "Visible only to you as this agent’s owner; other members see that owner auditing is enabled.",
+			"target": "Видно только вам как владельцу этого агента; другие участники видят, что проверка владельцем включена."
+		},
+		"ui.ownerAudit.viewer": {
+			"en": "Also visible to {name}, an agent owner.",
+			"target": "Также видно пользователю {name}, владельцу агента."
+		},
+		"ui.ownerAudit.replies": {
+			"en": "Read thread replies",
+			"target": "Читать ответы в ветке"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.ownerAudit.title",
+			"ui.ownerAudit.read_only",
+			"ui.ownerAudit.loading",
+			"ui.ownerAudit.error",
+			"ui.ownerAudit.retry",
+			"ui.ownerAudit.refresh",
+			"ui.ownerAudit.empty_list",
+			"ui.ownerAudit.empty_history",
+			"ui.ownerAudit.unnamed",
+			"ui.ownerAudit.agent",
+			"ui.ownerAudit.more",
+			"ui.ownerAudit.older",
+			"ui.ownerAudit.admitted",
+			"ui.ownerAudit.rejected",
+			"ui.ownerAudit.not_screened",
+			"ui.ownerAudit.unknown_status",
+			"ui.ownerAudit.own",
+			"ui.ownerAudit.body_unavailable",
+			"ui.ownerAudit.attachment_expired",
+			"ui.ownerAudit.attachment_unavailable",
+			"ui.ownerAudit.unknown_sender",
+			"ui.ownerAudit.reveal",
+			"ui.ownerAudit.active",
+			"ui.ownerAudit.left",
+			"ui.ownerAudit.removed",
+			"ui.ownerAudit.disclosure",
+			"ui.ownerAudit.viewer",
+			"ui.ownerAudit.replies"
+		],
+		"new_namespace": true,
+		"note": "first audit of this namespace; all 28 keys"
+	},
+	"notes": "Namespace-wide audit against en + context (owner vs agent, screening vs authorship, audit window). Open findings: 1; resolved by this run: 3.",
+	"findings": [
+		{
+			"id": "I18N-ru-4",
+			"severity": "nit",
+			"keys": [
+				"ui.ownerAudit.loading",
+				"ui.ownerAudit.error",
+				"ui.ownerAudit.empty_list"
+			],
+			"status": "open",
+			"reason": "'проверяемых' (being audited) for 'audited' is defensible (the audit is ongoing while the agent is a member); 'проверенных' would be the literal past form."
+		}
+	],
+	"resolved_findings": [
+		{
+			"id": "I18N-ru-1",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.title",
+				"ui.ownerAudit.agent",
+				"ui.ownerAudit.admitted",
+				"ui.ownerAudit.rejected",
+				"ui.ownerAudit.not_screened",
+				"ui.ownerAudit.own",
+				"ui.ownerAudit.active",
+				"ui.ownerAudit.left",
+				"ui.ownerAudit.removed"
+			],
+			"reason": "Terminology consistency: 'главный помощник' broke the shipped ru rendering 'координатор' (ui.teamBridge.chief.fallback, section.chiefs, agentMessages, onboarding).",
+			"change": {
+				"ui.ownerAudit.title": {
+					"before": "Сообщения вашего главного помощника",
+					"after": "Сообщения вашего координатора"
+				},
+				"ui.ownerAudit.agent": {
+					"before": "Главный помощник",
+					"after": "Координатор"
+				},
+				"ui.ownerAudit.admitted": {
+					"before": "Принято вашим главным помощником",
+					"after": "Принято вашим координатором"
+				},
+				"ui.ownerAudit.rejected": {
+					"before": "Отклонено фильтрацией вашего главного помощника",
+					"after": "Отклонено фильтрацией вашего координатора"
+				},
+				"ui.ownerAudit.not_screened": {
+					"before": "Не проверено вашим главным помощником",
+					"after": "Фильтрация вашего координатора не применялась"
+				},
+				"ui.ownerAudit.own": {
+					"before": "Отправлено вашим главным помощником",
+					"after": "Отправлено вашим координатором"
+				},
+				"ui.ownerAudit.active": {
+					"before": "Ваш главный помощник всё ещё участник.",
+					"after": "Ваш координатор всё ещё участник."
+				},
+				"ui.ownerAudit.left": {
+					"before": "Ваш главный помощник покинул эту беседу; последующие сообщения не входят в период проверки.",
+					"after": "Ваш координатор покинул этот разговор; последующие сообщения не входят в период проверки."
+				},
+				"ui.ownerAudit.removed": {
+					"before": "Ваш главный помощник был удалён; последующие сообщения не входят в период проверки.",
+					"after": "Ваш координатор был удалён; последующие сообщения не входят в период проверки."
+				}
+			}
+		},
+		{
+			"id": "I18N-ru-2",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.empty_list",
+				"ui.ownerAudit.empty_history",
+				"ui.ownerAudit.unnamed",
+				"ui.ownerAudit.left"
+			],
+			"reason": "Terminology consistency: 'беседа' for conversation; shipped ru uses 'разговор' (~317 occurrences incl. ui.teamBridge.composer.placeholder, invitations.failed.gone, and the new thread.not_available).",
+			"change": {
+				"ui.ownerAudit.empty_list": {
+					"before": "В этой организации нет проверяемых бесед.",
+					"after": "В этой организации нет проверяемых разговоров."
+				},
+				"ui.ownerAudit.empty_history": {
+					"before": "В периоде проверки этой беседы нет сообщений.",
+					"after": "В периоде проверки этого разговора нет сообщений."
+				},
+				"ui.ownerAudit.unnamed": {
+					"before": "Беседа без названия",
+					"after": "Разговор без названия"
+				},
+				"ui.ownerAudit.left": {
+					"before": "Ваш главный помощник покинул эту беседу; последующие сообщения не входят в период проверки.",
+					"after": "Ваш координатор покинул этот разговор; последующие сообщения не входят в период проверки."
+				}
+			}
+		},
+		{
+			"id": "I18N-ru-3",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.not_screened"
+			],
+			"reason": "Meaning: 'Не проверено' used the audit word 'проверка' (period проверки = audit window) for screening, collapsing the screening/audit distinction the context requires; sibling 'rejected' already uses 'фильтрация' for screening.",
+			"change": {
+				"ui.ownerAudit.not_screened": {
+					"before": "Не проверено вашим главным помощником",
+					"after": "Фильтрация вашего координатора не применялась"
+				}
+			}
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b393dc8cd01c-owneraudit-ru.json",
+			"sha256": "9dec2e6069593f4489787bd8a9791544744ace645b85427d2ddd8abceacbbbf6"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117)."
+}

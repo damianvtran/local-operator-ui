@@ -1,0 +1,17 @@
+{
+	"ui.nativeBadge.attention": {
+		"description": "Windows taskbar overlay accessibility description. Count is the exact uncapped aggregate of canonical unread notifications/asks, acknowledgeable session completions, and authorized Bridge unread messages; not just messages. Compact overlay glyph is separately capped. Keep the product name unchanged.",
+		"params": {
+			"count": "Exact nonnegative attention count; ICU locale plural/number formatting."
+		}
+	},
+	"ui.nativeBadge.attentionPending": {
+		"description": "Windows taskbar accessibility description when unread attention and unresolved actionable requests coexist. A read-but-open ask is pending but contributes zero extra unread units. Preserve both facts and exact count; never say requests are resolved merely because they were viewed.",
+		"params": {
+			"count": "Exact uncapped attention count; pending adds no numeric unit."
+		}
+	},
+	"ui.nativeBadge.pending": {
+		"description": "Windows taskbar pending-only nonnumeric marker accessibility description. No unread attention remains, but unresolved actionable requests still exist. Do not imply a count or a notification body. No parameters."
+	}
+}

@@ -1,0 +1,253 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (PR #1522 nine-key re-bind after the rebase onto main f455cec6 (#1532 mentions.*) reset i18n/ledger.json to main's rows)",
+	"date": "2026-10-31",
+	"auditor": "task",
+	"agent": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Session 28d10489945e ran on anthropic/claude-opus-5-5 (the model named in its own system prompt); no provider fallback was announced or observed during this audit.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false,
+		"requested": "anthropic/claude-opus-5-5",
+		"ladder": [],
+		"reason": "none"
+	},
+	"status": "passed",
+	"namespace": "ui.teamBridge",
+	"locale": "zh-CN",
+	"audit_id": "teambridge-pr1522-agent-wake-rebind-28d10489945e-rebind-zh-cn",
+	"instance": "28d10489945e-rebind-zh-cn",
+	"session": "28d10489945e",
+	"integration": {
+		"pr": 1522,
+		"branch": "feat/team-bridge-agent-wake-copy (PR #1522 head branch)",
+		"pre_rebase_head": "2a6cd4d77d94a29cc0eaf28cabed2ea53a69ec98",
+		"prior_audit_commit": "2a6cd4d77d94a29cc0eaf28cabed2ea53a69ec98",
+		"prior_audit_receipts": [
+			"i18n/receipts/1a445021d694-rebase-zh-cn.json"
+		],
+		"origin_main_at_audit": "f455cec6f694a54b6b88eadeb92f6609334c204a",
+		"main_change_since_prior_audit": "#1532 (merge f455cec6) added 14 ui.teamBridge.mentions.* keys to English and every locale; audited on main by its own rows (d2ccd70111ca-rebase4-*).",
+		"worktree": "~/local-operator-ui/.worktrees/agent-wake-copy"
+	},
+	"independence": "Independent auditor: Local Operator session 28d10489945e (team lopdev, task role, dispatched by its manager as the independent translation auditor for this re-bind). It authored none of the audited strings: translator session 87a8efad496d; audit rounds 1/2/3/4 were 3b03d764a645, 5028da4cca62, 915611ebaee8, 1a445021d694. This session edited no catalogue byte and no English value; it wrote this receipt, its evidence record and the ledger row (via ledger-assemble.mjs). No MT service or translation API.",
+	"scope": {
+		"delta_kind": "Ledger re-bind, not a re-translation. Rebasing onto main f455cec6 resolved i18n/ledger.json to main's rows (git's own resolution of the PR commit's conflicting hunks was taken as main's side; no row hand-edited), so the ui.teamBridge rows named main's English bytes while the tree carries the PR's. This PR's English still moves exactly the nine keys against origin/main, and the nine values are byte-identical to what round 4 audited; the evidence is re-issued for the merged bytes, nothing reworded.",
+		"measurements": {
+			"english_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+			"origin_main_english_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+			"english_keys": 320,
+			"english_added_vs_main": [
+				"ui.teamBridge.agentNotify.all",
+				"ui.teamBridge.agentNotify.error",
+				"ui.teamBridge.agentNotify.label",
+				"ui.teamBridge.agentNotify.mention",
+				"ui.teamBridge.agentNotify.mute",
+				"ui.teamBridge.invitations.consent.bridge_agent_participation_v2"
+			],
+			"english_changed_vs_main": [
+				"ui.teamBridge.builtin.agents_topic",
+				"ui.teamBridge.invitations.accepted",
+				"ui.teamBridge.invitations.accepted_unnamed"
+			],
+			"english_removed_vs_main": [],
+			"target_key_set_equals_english": true,
+			"target_delta_vs_main": "zh-CN/ui.teamBridge.json differs from origin/main f455cec6f69 in exactly the nine audited keys; 0 other keys; 0 removed keys (computed by key comparison in this session)",
+			"nine_values_identical_to_round4_bytes": true,
+			"nine_values_identity_method": "The nine values in all eight catalogues were serialised before the rebase (head 2a6cd4d77d9) and after it; the two dumps are byte-identical (cmp).",
+			"context_notes_for_nine_identical_to_round4": true,
+			"prior_receipt_reference": "i18n/receipts/1a445021d694-rebase-zh-cn.json"
+		},
+		"main_side_moves_covered_by_existing_rows": "Since round 4 main added 14 ui.teamBridge.mentions.* keys (#1532). Those are main's bytes, audited by main's own row (d2ccd70111ca-rebase4-*, moved to superseded by ledger-assemble); byte-identical on disk to origin/main. They were read here only for terminology consistency with the nine (mention/notify terms): no conflict found.",
+		"keys_audited_linguistically": [
+			"ui.teamBridge.agentNotify.label",
+			"ui.teamBridge.agentNotify.all",
+			"ui.teamBridge.agentNotify.mention",
+			"ui.teamBridge.agentNotify.mute",
+			"ui.teamBridge.agentNotify.error",
+			"ui.teamBridge.invitations.consent.bridge_agent_participation_v2",
+			"ui.teamBridge.invitations.accepted",
+			"ui.teamBridge.invitations.accepted_unnamed",
+			"ui.teamBridge.builtin.agents_topic"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.notify.all",
+			"ui.teamBridge.notify.mention",
+			"ui.teamBridge.notify.mute",
+			"ui.teamBridge.notify.muted",
+			"ui.teamBridge.notify.error",
+			"ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+			"ui.teamBridge.chief.fallback",
+			"ui.teamBridge.chief.unnamed",
+			"ui.teamBridge.thread.intro_chief",
+			"ui.teamBridge.mentions.listbox_label",
+			"ui.teamBridge.mentions.empty",
+			"ui.teamBridge.mentions.section.member_human",
+			"ui.teamBridge.mentions.section.member_agent",
+			"ui.teamBridge.mentions.section.org_human",
+			"ui.teamBridge.mentions.section.org_agent",
+			"ui.teamBridge.mentions.tag.not_member",
+			"ui.teamBridge.mentions.tag.bridge_off",
+			"ui.teamBridge.mentions.notice.not_member",
+			"ui.teamBridge.mentions.notice.invite_failed",
+			"ui.teamBridge.mentions.notice.invite",
+			"ui.teamBridge.mentions.notice.silent",
+			"ui.teamBridge.mentions.notice.pending",
+			"ui.teamBridge.mentions.notice.invited"
+		],
+		"not_audited": "The other 311 keys: byte-identical on disk to origin/main f455cec6f69, whose audited row this one replaces (kept under `superseded`)."
+	},
+	"context_sha256": "22f7ded25b291594d3799b9ccd931229b97b7f5403acb26e40f1cdfba00faab0",
+	"english": {
+		"ui.teamBridge.agentNotify.label": {
+			"value": "Wake your agent for",
+			"main_value": null,
+			"context_note": "Conversation menu. Heads the three-level choice of how often the READER'S OWN AI agent (chief of staff) is woken in this conversation; the rows below it complete the phrase (\"Wake your agent for: every message\"). Distinct from the reader's own notification preferences above it, which are about the reader's banners, not the agent. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention.",
+			"context_role": "menu section heading / radio group label",
+			"context_length": "3-4 words; the radio rows complete it as a sentence.",
+			"placeholders": []
+		},
+		"ui.teamBridge.agentNotify.all": {
+			"value": "Every message",
+			"main_value": null,
+			"context_note": "Completes 'Wake your agent for'. The agent is woken for every message here and decides for itself whether to reply. Do not add '(default)'. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention.",
+			"context_role": "agent wake level (radio row)",
+			"context_length": "1-3 words; one line in a ~190px label.",
+			"placeholders": []
+		},
+		"ui.teamBridge.agentNotify.mention": {
+			"value": "@-mentions and its threads",
+			"main_value": null,
+			"context_note": "Completes 'Wake your agent for'. The agent is woken when someone @-mentions it AND for replies in threads it follows ('its threads' = threads the agent follows). Keep '@-mentions' as the product's mention term. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention.",
+			"context_role": "agent wake level (radio row)",
+			"context_length": "Up to 5 words; one line in a ~190px label.",
+			"placeholders": []
+		},
+		"ui.teamBridge.agentNotify.mute": {
+			"value": "Never (muted)",
+			"main_value": null,
+			"context_note": "The agent is never woken in this conversation, not even by an @-mention. 'Never' answers 'Wake your agent for'; the parenthetical names the state with the app's Mute term. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention.",
+			"context_role": "agent wake level (radio row)",
+			"context_length": "1-3 words; one line in a ~190px label.",
+			"placeholders": []
+		},
+		"ui.teamBridge.agentNotify.error": {
+			"value": "Couldn’t save your agent’s wake setting. Try again.",
+			"main_value": null,
+			"context_note": "A refused write of the reader's own agent's wake level. The menu has closed and the previous level is restored; this line explains why and names WHICH setting (how often the agent wakes). Mirrors ui.teamBridge.notify.error.",
+			"context_role": "inline error under the thread header",
+			"context_length": "One short sentence.",
+			"placeholders": []
+		},
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": {
+			"value": "Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can change how often it wakes, or mute it.",
+			"main_value": null,
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. The consent statement the owner agrees to by pressing Accept; the key names the participation version it is consent to (bridge_agent_participation_v2), so ANY change to this English text before it ships needs review, and after it ships needs a new version and a new key. Keep every fact: from now on the agent can read the conversation's messages AND post there; it is woken for EVERY message and judges for itself whether to reply; an @-mention means a reply is expected; the owner can change how often it is woken or mute it. Do NOT name where (the ⋯ menu): the accepted line carries that pointer, and keeping it out of this paragraph holds it to about three lines in long locales (design round 2, D6). 'Mute it' here means the agent is never woken, not even by an @-mention.",
+			"context_role": "invitations consent",
+			"context_length": "Two or three sentences; permit wrapping.",
+			"placeholders": []
+		},
+		"ui.teamBridge.invitations.accepted": {
+			"value": "Accepted. {agent} now sees every message here and replies when it’s relevant or @-mentioned. Change this from the conversation’s ⋯ menu.",
+			"main_value": "Accepted. {agent} is woken only when someone @-mentions it.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned. The last sentence points to where the owner changes this: the conversation's ⋯ (more options) menu; keep the ⋯ glyph as is.",
+			"context_role": "invitations accepted",
+			"context_length": "One or two sentences; permit wrapping.",
+			"placeholders": [
+				"agent"
+			]
+		},
+		"ui.teamBridge.invitations.accepted_unnamed": {
+			"value": "Accepted. Your agent now sees every message here and replies when it’s relevant or @-mentioned. Change this from the conversation’s ⋯ menu.",
+			"main_value": "Accepted. Your agent is woken only when someone @-mentions it.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence. The last sentence points to where the owner changes this: the conversation's ⋯ (more options) menu; keep the ⋯ glyph as is.",
+			"context_role": "invitations accepted unnamed",
+			"context_length": "One or two sentences; permit wrapping.",
+			"placeholders": []
+		},
+		"ui.teamBridge.builtin.agents_topic": {
+			"value": "Every teammate's chief of staff. Agents see every message and reply when relevant or @-mentioned.",
+			"main_value": "Every teammate's chief of staff. Agents are woken only when mentioned.",
+			"context_note": "Describes the built-in #agents channel: every enrolled agent is a member and sees every message; each agent replies when the message is relevant to it or when it is @-mentioned.",
+			"context_role": "channel header topic",
+			"context_length": "One sentence; may truncate.",
+			"placeholders": []
+		}
+	},
+	"checks": {
+		"placeholders": "{agent} is present in English and target for invitations.accepted only; no other audited key carries arguments; none added, dropped or renamed (mechanical).",
+		"key_sets": "Target key set equals English (320 keys).",
+		"unicode": "All audited values NFC; no RTL/LTR/FSI/PDI control characters in any value, including ur (mechanical).",
+		"glyph": "⋯ present exactly where English has it — accepted and accepted_unnamed — and absent from consent v2, as the D6 context note requires; '@' parity holds on every audited key (mechanical).",
+		"consent_v2_D6": "The shortened v2 keeps every fact its context note lists (read+post from now on; woken for every message and judges itself; @-mention = reply expected; the owner can change the frequency or mute) and names no menu.",
+		"method": "Each value read against English, its context note, main's previous value, the sibling notify.* group, consent v1 and the chief-of-staff keys in the same locale, the core glossary and this locale's style guide; mechanical properties computed from the files on disk in this session.",
+		"meaning": "'唤醒你的智能体的时机' reads as 'the occasion for waking your agent' and the rows answer it. consent v2 keeps all four facts; accepted keeps the ⋯ pointer as '可在对话的 ⋯ 菜单中更改'; '讨论串' names the threads the agent follows, as in agentNotify.mention.",
+		"terminology": "agent = 智能体; wake = 唤醒; mute = 静音 / 已静音 (notify.mute/muted, reused in agentNotify.mute and consent v2); mention = @提及; thread = 讨论串; chief of staff = 首席助理 (chief.fallback, thread.intro_chief).",
+		"register_typography": "你 register with no pronoun repetition; full sentences keep 。and the label carries none; full-width punctuation in prose; the ⋯ glyph is kept byte-identical to English (U+22EF) and spaced ' ⋯ ' as the en string is — the zh guide's no-space rule is written for Chinese/Latin/digit runs and does not cover this symbol, while the only other zh-CN use of the glyph (ui.canvas) carries no spaces; recorded as ZH-N3, not changed.",
+		"observations": "One nit carried unchanged (ZH-N2) and one new nit (ZH-N3, ⋯ spacing); meaning is exact in both, so neither is a defect and neither gates.",
+		"rebind_method": "Mechanical properties (key set, NFC, bidi controls, placeholders, ⋯ and @ parity) recomputed on the rebased files in this session; nine-key byte identity by cmp of pre/post dumps; each value re-read against English, its context note, the glossary and the locale style guide (hashes unchanged since round 4)."
+	},
+	"sha256": {
+		"en": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+		"zh-CN": "12f53488c3f64a75ba8050a3367557dda244946979745279dda5c3c053a2cb26"
+	},
+	"main_sha256": {
+		"en": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+		"zh-CN": "c9f150b173d21c021e5232b929341d8a18b5dc5f1919a2c1092c8c5cf78f9e8c"
+	},
+	"translation": {
+		"ui.teamBridge.agentNotify.label": "唤醒你的智能体的时机",
+		"ui.teamBridge.agentNotify.all": "每条消息",
+		"ui.teamBridge.agentNotify.mention": "@提及及其关注的讨论串",
+		"ui.teamBridge.agentNotify.mute": "从不（已静音）",
+		"ui.teamBridge.agentNotify.error": "无法保存你的智能体的唤醒设置。请重试。",
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "接受后，你的智能体从现在起可以读取此对话并在其中发言。它会看到每条消息，并自行决定是否回复；被@提及时它应当回复。你可以更改它被唤醒的频率，或将它静音。",
+		"ui.teamBridge.invitations.accepted": "已接受。{agent}现在会看到这里的每条消息，并在相关或被@提及时回复。可在对话的 ⋯ 菜单中更改。",
+		"ui.teamBridge.invitations.accepted_unnamed": "已接受。你的智能体现在会看到这里的每条消息，并在相关或被@提及时回复。可在对话的 ⋯ 菜单中更改。",
+		"ui.teamBridge.builtin.agents_topic": "每位团队成员的首席助理。智能体会看到每条消息，并在相关或被@提及时回复。"
+	},
+	"findings": [
+		{
+			"severity": "nit",
+			"id": "ZH-N2",
+			"key": "ui.teamBridge.agentNotify.label",
+			"detail": "Carried from round 2 and round 3: '唤醒你的智能体的时机' stacks two 的; '何时唤醒你的智能体' is lighter. Meaning exact; accepted unchanged.",
+			"disposition": "accepted - no change (bytes untouched; re-read this round against main f455cec6)"
+		},
+		{
+			"severity": "nit",
+			"id": "ZH-N3",
+			"key": "ui.teamBridge.invitations.accepted (and accepted_unnamed)",
+			"detail": "New this round, typographic only: the ⋯ glyph carries spaces ('可在对话的 ⋯ 菜单中更改'), while the only other zh-CN value that uses the glyph — ui.canvas '从该行的⋯菜单复制路径以查找文件…' — runs it without spaces. The zh guide's spacing rule names Chinese/Latin/digit runs, not this symbol, and the English string does space it, so the value is faithful and accepted; flagged for the wave that next touches zh-CN typography.",
+			"disposition": "accepted - no change (bytes untouched; re-read this round against main f455cec6)"
+		}
+	],
+	"prior_findings_rechecked": "All prior findings carried verbatim from round 4; the nine values are byte-identical to the bytes it audited, so nothing was reworded and no new finding arose.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_rules": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"evidence_record": "i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1522-agent-wake-rebind-28d10489945e-rebind-zh-cn/record.json",
+	"limitations": "Auditor competence: meaning, terminology, register, grammar and mechanical properties; not native idiom. Not claimed here: rendered fit, screenshots, native-speaker sign-off (still owed for vi/hi/ur before any release claim), or any change to the shipped bytes — this audit re-binds evidence, it does not reword.",
+	"audit_notes_not_execution_log": "Notes and findings are this auditor's linguistic judgement, not command output. Mechanical checks were computed from the catalogue files on disk in this session; the ledger rows are written by ledger-assemble.mjs, never by hand.",
+	"result": "clean-with-findings"
+}

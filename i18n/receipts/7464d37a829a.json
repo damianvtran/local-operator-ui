@@ -1,0 +1,247 @@
+{
+	"auditor": "translation-auditor",
+	"instance": "7464d37a829a",
+	"session": "7464d37a829a",
+	"model": "radient/auto",
+	"model_provenance": "Requested route: radient/auto, as launched by the team manager. The harness session header for this run reports 'Model: radient/auto'. No fallback was reported to this session, and no concrete provider backend is exposed to it: the served backend is unknown, not inferred. No model claim beyond the requested/served selector is made.",
+	"date": "2026-10-25",
+	"locale": "es",
+	"namespace": "ui.onboarding.tour",
+	"audit_round": 2,
+	"status": "passed",
+	"result": "clean-with-findings",
+	"keys_read": 123,
+	"keys_audited": 123,
+	"source_ref": "405e69c012654900f454fa4ca023100290369555",
+	"source_ref_provenance": "Worktree /Users/damian/local-operator-ui/.worktrees/i18n-onboarding at the manager-verified remote-equal HEAD 405e69c012654900f454fa4ca023100290369555 ('feat(i18n): integrate the audited tour translations for seven locales'). Verified here with git rev-parse HEAD; git status --porcelain was empty before this receipt was written. All three hashes below were computed from the files on disk at that commit, not taken from any summary.",
+	"target_state": "COMMITTED. src/i18n/catalogues/es/ui.onboarding.tour.json at HEAD 405e69c012654900f454fa4ca023100290369555, 21524 bytes; UTF-8, no BOM, LF only, tab-indented, trailing newline present.",
+	"translator": {
+		"job": "27f96e2bff5f",
+		"session": "f94bee7a94de",
+		"identity_note": "Same actor the round-1 receipt recorded. That legacy receipt labels the session id as the job and is superseded on that field only by the manager's correction: job 27f96e2bff5f, session f94bee7a94de. The translator's model route is not re-derived here."
+	},
+	"first_auditor": {
+		"receipt": "i18n/receipts/699cfe87308b-es-onboarding-tour.json",
+		"instance": "699cfe87308b",
+		"model": "claude-sonnet-5-5 audit identity, per the round-1 receipt, after a quota fallback from the requested radient/auto; that receipt's own provenance note reports a later metadata-only finalization under openai/gpt-6.1-sol with no semantic re-audit. The provider prefix of the sonnet string is masked in this session's view of that file and is deliberately not reconstructed here: read the round-1 receipt for the exact string.",
+		"consulted_after_own_findings": true
+	},
+	"independence": "Separate session (7464d37a829a) from the translator (f94bee7a94de) and from the first auditor (699cfe87308b). Every es value was read from the committed catalogue against its English value and its context sidecar before the round-1 receipt was opened; the round-1 receipt was consulted only after this auditor's own findings were formed, and is compared finding by finding below rather than adopted as a verdict.",
+	"sha256": {
+		"en": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+		"es": "01be2019914eac6288075ee34f988e6b4b04f6f20678c390305931255706b2af"
+	},
+	"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+	"target_sha256": "01be2019914eac6288075ee34f988e6b4b04f6f20678c390305931255706b2af",
+	"context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+	"bytes": {
+		"en": 20065,
+		"context": 61441,
+		"es": 21524
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md (read in full: §1 surface names, §2 core terminology incl. device→dispositivo, team→equipo, schedule→programación, cost→coste, §3 formatting/plurals/RTL/punctuation)",
+		"style_guide": "~/local-operator/i18n/style-guides/es.md (read in full: tú, neutral Spanish, infinitive action labels, sentence case, “ ” quotes, spaced em dash, no space before : ; ? !, es widths 15-25% longer)",
+		"docs": "docs/I18N.md (read in full); src/renderer/src/features/onboarding/tour/tour-copy.ts (runs/blocks/figures renderer); tour-steps.ts (step ids and attachTo targets); scripts/i18n/ledger-rules.mjs (canonical deriveReceiptAudit)"
+	},
+	"scope": "Second independent, complete pass over ui.onboarding.tour for es: all 123 English, 123 context-sidecar and 123 target values read side by side, namespace key by key; joined shortcut paragraphs rebuilt in caller order with the real paletteDoorLabel chords (⌘P/Ctrl+P, ⌘K/Ctrl+K, ⌘⇧P/Ctrl+Shift+P) and read as continuous Spanish; quoted control names compared with the keyed es siblings AND with the controls the tour actually anchors to (schedules-page.tsx, agent-card.tsx); wordless-figure alt text checked against the sidecar descriptions; terminology, register, quotes, punctuation and width risk checked against the es guide and sibling es catalogues.",
+	"mechanical_checks": {
+		"keys_en_es_context_equal": true,
+		"key_order_identical_en_es": true,
+		"duplicate_keys": 0,
+		"nfc_normalised_es": true,
+		"bom": false,
+		"line_endings": "LF only (0 CR bytes)",
+		"trailing_newline": true,
+		"straight_quotes_as_delimiters_in_es": 0,
+		"guillemets": 0,
+		"curly_quote_pairs_balanced": true,
+		"icu_braces_plural_select_in_en_or_es": 0,
+		"placeholders_in_en_or_es": "none — the source is parameterless (verified by scanning every en and es value for {…}/%s/$var; the empty set is a finding of the bytes, not an assumption)",
+		"cldr_plural_categories": "N/A — no plural/select message exists in this namespace; verified rather than assumed. No es one/many/other branch is required or missing.",
+		"markup_tokens_in_es": 0,
+		"edge_whitespace_matches_en_for_all_joined_fragments": true,
+		"keycap_literals_byte_identical": "Cmd/Ctrl+K present verbatim in canvas_documents_view.body.3; connector ' on Mac and ' → ' en Mac y ' carries the spaces the renderer relies on",
+		"rtl": "N/A — es is LTR; no direction-sensitive token, bidi isolation or mirroring applies",
+		"width_ratios": "measured as character counts only; see ES2-N4 and ES2-N7 — no pixel, font or geometry claim is made"
+	},
+	"verified_clean": [
+		"accuracy: each of the 123 values says what its English says, including the facts the sidecar requires to survive (multi-step tool use, device/streaming behaviour, variable inspection, schedule prompt/timezone fields, upload payload exclusions)",
+		"register: tú throughout, no usted/vosotros; no exclamation marks; sentence case in prose; infinitive action labels (Volver, Finalizar)",
+		"glossary: agente, herramienta, sesión, programación, coste, modelo, proveedor de alojamiento, espacio de trabajo, habilidad-adjacent terms all consistent with the glossary and with sibling es catalogues",
+		"quoted control names that do exist as keyed es labels match them byte for byte: “Ver los ajustes del agente” (ui.agents.dialogs.menu.settings), “Recomendado” (ui.common.models.model_select.recommended), “Hub de agentes” (ui.shell.sidebar_navigation.agent_hub), “Buscar” (…search), “Programaciones” (…schedules), “Ajustes” (…settings), “Crear programación” (ui.schedules.schedule_form_dialog.create_schedule — real label, but of a different control; see source_defects_carried S2), “+” (literal)",
+		"punctuation/typography: “ ” with RAE-correct placement (the sentence period outside the closing quote in the three example requests), spaced em dash in the palette paragraph, ¿…? only on the one whole-question fragment, no space before ? or :",
+		"joined shortcut paragraphs: all five fragments plus the three connectors render as grammatical Spanish with no glued Latin key names ('pulsando ⌘P en Mac y Ctrl+P en Windows o Linux'), and ' y ' is correct before the '>' keycap",
+		"figure alts: both describe the wordless figures as the sidecar asks, name no screenshot, and do not open with 'Imagen de'",
+		"no unapproved English: the only Latin tokens are product/technical names or model tokens (Local Operator, Radient, Radient Pass, Radient Automatic, 'Automatic', Canvas, Hub de agentes, Cmd/Ctrl+K, prompt, chatbots, PDF/PNG/JPG/Excel/Word/CSV/HTML/Markdown/Mermaid/iframe, Gmail/Calendar/Drive/Google, GitHub Issues, macOS/Windows/Linux)"
+	],
+	"findings": [
+		{
+			"id": "ES2-M1",
+			"severity": "minor",
+			"keys": [
+				"ui.onboarding.tour.canvas_documents_view.body.1"
+			],
+			"current": "La vista Documentos muestra en pestañas todas tus notas, artículos de blog, código y visualizaciones abiertas.",
+			"proposed": "La vista Documentos muestra en pestañas todas tus notas, artículos de blog, código y visualizaciones abiertos.",
+			"reason": "The postponed adjective modifies a mixed-gender coordination, which Spanish requires in the masculine plural; as written 'abiertas' attaches only to 'visualizaciones', narrowing English 'all your open notes, blog articles, code, and visualizations' to just the open visualizations."
+		},
+		{
+			"id": "ES2-M2",
+			"severity": "minor",
+			"keys": [
+				"ui.onboarding.tour.attachments.body.3",
+				"ui.onboarding.tour.canvas_feature.body.1"
+			],
+			"current": "…se incluyen como rutas de archivo de tu equipo… / …Todos los archivos que creen tus agentes en tu equipo…",
+			"proposed": "…rutas de archivo de tu dispositivo… / …en tu dispositivo…",
+			"reason": "The English source says 'device' in both keys and glossary §2 fixes device→dispositivo (the es guide repeats 'dispositivo' as settled), while 'equipo' is the glossary's rendering of team — and welcome.body.1 uses 'un equipo de agentes' for exactly that, so these two keys read as 'your team' beside a team sentence."
+		},
+		{
+			"id": "ES2-M3",
+			"severity": "minor",
+			"keys": [
+				"ui.onboarding.tour.canvas_feature.body.2"
+			],
+			"current": "Cualquier archivo HTML que abras se renderiza dinámicamente en un iframe. Cualquier archivo Markdown que abras se muestra en un visor Markdown completo…",
+			"proposed": "Cualquier archivo HTML que abras se muestra dinámicamente en un iframe.",
+			"reason": "Two renderings of the same English verb 'rendered' sit in adjacent sentences ('se renderiza' / 'se muestra'); 'renderizar' is an untracked dev calque (not on the es kept-English list) and no sibling product-copy string uses it, so the first sentence should follow the second."
+		},
+		{
+			"id": "ES2-M4",
+			"severity": "minor",
+			"keys": [
+				"ui.onboarding.tour.welcome.image.1.alt",
+				"ui.onboarding.tour.attachments.body.4"
+			],
+			"current": "…burbujas de mensaje y un cuadro de redacción / …pegar imágenes en el campo de chat…",
+			"proposed": "…burbujas de mensaje y un cuadro de mensaje / …pegar imágenes en el cuadro de mensaje…",
+			"reason": "The message box carries three different names in es: 'cuadro de redacción' and 'campo de chat' here, versus the settled 'cuadro de mensaje' in ui.canvas.create_file_dialog… ('desde el cuadro de mensaje') and ui.chat.pickers.destination_pickers…; one object, one term."
+		},
+		{
+			"id": "ES2-N1",
+			"severity": "nit",
+			"keys": [
+				"ui.onboarding.tour.upload_agent_hub_dialog.title"
+			],
+			"current": "Sube el agente al hub",
+			"proposed": "Sube el agente al Hub de agentes",
+			"reason": "The locale's settled surface name is capitalised 'Hub de agentes' (six keys here plus ui.shell.sidebar_navigation.agent_hub); the lowercase 'hub' is mirrored from a lowercase English source, which should be fixed at source too."
+		},
+		{
+			"id": "ES2-N2",
+			"severity": "nit",
+			"keys": [
+				"ui.onboarding.tour.select_model.body.1"
+			],
+			"current": "Los modelos marcados como “Recomendado” funcionan bien con Local Operator.",
+			"proposed": "Se sabe que los modelos marcados como “Recomendado” funcionan bien con Local Operator.",
+			"reason": "English hedges with 'are known to work well'; the Spanish states it as a guarantee, which is a different claim about third-party models."
+		},
+		{
+			"id": "ES2-N3",
+			"severity": "nit",
+			"keys": [
+				"ui.onboarding.tour.canvas_feature.body.1"
+			],
+			"current": "…donde puedes organizarte, planificar e interactuar con tus agentes…",
+			"proposed": "…donde puedes organizar, planificar e interactuar con tus agentes…",
+			"reason": "The reflexive turns 'organize your files' into 'organize yourself'; the other two verbs in the same list are transitive, so the shift is audible."
+		},
+		{
+			"id": "ES2-N4",
+			"severity": "nit",
+			"keys": [
+				"ui.onboarding.tour.action.close"
+			],
+			"current": "Cerrar el recorrido (19 characters against English 10, 1.9x)",
+			"proposed": "Cerrar recorrido (16 characters)",
+			"reason": "The sidecar budgets this label at about 1.5x; it is the screen-reader-only name of the X button, so there is no visible overflow and no rendered check is needed — the shorter form still names the tour rather than the application."
+		},
+		{
+			"id": "ES2-N5",
+			"severity": "nit",
+			"keys": [
+				"ui.onboarding.tour.canvas_documents_view.body.4"
+			],
+			"current": "…usando sus memorias y el contexto…",
+			"proposed": "…usando lo que recuerda y el contexto…",
+			"reason": "'sus memorias' is a word-for-word plural that reads as written memoirs in Spanish; the same namespace names agent memory correctly in agent_capabilities.body.1 ('tienen memoria'), so the plural here is the odd one out."
+		},
+		{
+			"id": "ES2-N6",
+			"severity": "nit",
+			"keys": [
+				"ui.onboarding.tour.agent_naming_guidelines.body.1"
+			],
+			"current": "…para saber cómo pedirse ayuda entre ellos en determinadas tareas.",
+			"proposed": "…para saber cómo sumar a otros agentes a determinadas tareas.",
+			"reason": "English 'how to tag each other in for certain tasks' describes bringing another agent into a task, not asking it for help; 'pedirse ayuda' narrows the described mechanism."
+		},
+		{
+			"id": "ES2-N7",
+			"severity": "nit",
+			"keys": [
+				"ui.onboarding.tour.welcome.title"
+			],
+			"current": "Te damos la bienvenida a Local Operator (39 characters against English 25, 1.56x)",
+			"proposed": "no text change required; rendered check of the one-line heading, with 'Bienvenido a Local Operator' (27) as the shorter fallback if it wraps",
+			"reason": "The sidecar budgets a one-line heading at about 1.5x; this is the only visible title over budget, and the shorter form trades the gender-neutral greeting for fit — a decision for a rendered frame, not for this text-only audit."
+		}
+	],
+	"findings_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 4,
+		"nit": 7
+	},
+	"source_defects_carried": [
+		{
+			"id": "S1",
+			"locus": "root UI component, not this namespace",
+			"evidence": "src/renderer/src/features/agent-hub/components/agent-card.tsx lines 410-414 render the literal text 'Get' inside Button (no t(), no catalogue key).",
+			"carried": "download_agent.body.1 quotes the 'Get' button; the es value says “Obtener”, which is the correct Spanish rendering, but no localized control carries that label, so an es user reads 'Get' on screen. UNRESOLVED SOURCE/UI DEFECT — the fix is to key the agent-card label, not to change the es tour copy.",
+			"translator_charged": false
+		},
+		{
+			"id": "S2",
+			"locus": "namespace source wording (English), not the application component",
+			"evidence": "tour-steps.ts step 'create-schedule' attachTo is button[data-tour-tag=\"create-schedule-button\"], rendered at schedules-page.tsx:372-379 with label ui.schedules.schedules_page.new_scheduled_task ('New scheduled task' / es 'Nueva tarea programada'). create_schedule.body.1 quotes 'Create schedule' (es 'Crear programación'), which is only the dialog submit label, ui.schedules.schedule_form_dialog.create_schedule.",
+			"carried": "The quote names a control the tour does not point at, in English and in every locale alike. The es string is a faithful translation of the stale English and matches a real es label; changing es alone would make Spanish describe a different control than English does and would hide the defect. UNRESOLVED SOURCE DEFECT — fix the English quote (and then all locales) to the anchored control's label; do not charge the translator.",
+			"translator_charged": false
+		},
+		{
+			"id": "S3",
+			"locus": "namespace body structure (tour-copy.ts), identical in every locale",
+			"evidence": "The command-palette paragraph is composed as runs whose literal <code> spans are '#', '@', ',', '>'; body.1.5 ends with a comma and the renderer then inserts the literal ',' keycap before body.1.6, so the rendered sentence reads '… para agentes y equipos, , para ajustes, y > …' in English and Spanish alike.",
+			"carried": "The doubled comma is produced by the join, not by the translation: the es fragments and the ' y ' before the '>' keycap are correct and cannot remove a comma that lives in the code span. UNRESOLVED STRUCTURAL SOURCE OBSERVATION for the owner.",
+			"translator_charged": false
+		}
+	],
+	"first_audit_comparison": {
+		"rule": "Round 2 audits independently, then reconciles. Agreement is recorded as agreement, not as a source of findings; disagreement is stated with its reason.",
+		"agreed": [
+			"ES-T2 (device→dispositivo in two keys) — independently re-derived as ES2-M2 from the glossary row and the English 'device'.",
+			"ES-T3 ('sus memorias') — re-derived as ES2-N5 but graded nit rather than minor: the meaning survives and only the register is odd.",
+			"ES-N3 (two nouns for the message box) — re-derived and strengthened as ES2-M4 using the settled sibling term 'cuadro de mensaje'; graded minor because it is cross-catalogue drift, not just an in-namespace variant.",
+			"ES-N4 (width risks) — re-derived in part: welcome.title is carried as ES2-N7 (rendered-check flag)."
+		],
+		"not_adopted": [
+			"ES-T1 proposed changing the es quote to 'Nueva tarea programada'. Rejected as a translator fix: the English source quotes the same stale label, so a Spanish-only edit would diverge from English. Carried as source defect S2 instead.",
+			"ES-N1 ('la Paleta de comandos' → lowercase). Not adopted as a finding: the sibling evidence is genuinely mixed — the surface label is capitalised in ui.command_palette.command_palette ('Paleta de comandos') and lowercase mid-sentence in ui.settings.shortcuts ('abre la paleta de comandos'). That is a product-wide style inconsistency to settle once, not a defect introduced here.",
+			"ES-N2 ('solicitudes potentes' → 'peticiones eficaces'). Not adopted: 'potente' is an ordinary Spanish adjective and the rendering is not a calque; the objection is preference, not correctness.",
+			"ES-N4's proposed fallbacks for action.next and welcome.title ('Seguir', 'Bienvenida a Local Operator'). Not adopted as text changes: 'Siguiente' is the canonical Spanish 'Next' and 'Seguir' would change the control's meaning; the welcome heading is flagged for a rendered frame instead."
+		],
+		"first_round_grades_preserved": "Round-1 findings remain in the immutable round-1 receipt; this audit neither deletes nor re-grades them. Its own counts are the four minors and seven nits above."
+	},
+	"verdict_by_namespace": {
+		"ui.onboarding.tour": "clean-with-findings (0 blocker, 0 major, 4 minor, 7 nit across 123 keys)"
+	},
+	"verdict": "clean-with-findings: 0 blocker, 0 major, 4 minor, 7 nit; 123 keys read (123 English, 123 context, 123 target). No placeholder, ICU, markup, quote, NFC or join defect. Three unresolved source-side defects carried separately, none charged to the translator.",
+	"limitations": [
+		"Catalogue-text audit only: no browser host was available, no OS launch, no build, no full suite, no dependency install. Width/overflow statements are character counts against the sidecar budgets, not pixels or geometry.",
+		"No native-speaker sign-off: this is an audited read, which is not proof of native naturalness.",
+		"Ledger, context-parity and key-generation checks were not run (they are out of this task's write scope); only narrow structural checks over the three files were run here.",
+		"Real-control comparisons read source files and catalogues, not a running application; S1 and S2 are code-level readings of agent-card.tsx, schedules-page.tsx and tour-steps.ts at HEAD 405e69c0."
+	]
+}
