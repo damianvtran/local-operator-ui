@@ -203,6 +203,25 @@ const DEFERRED_PANELS = {
 		"the canvas inline-edit popover over the CodeMirror surface: the same unverified-pixels reason",
 	"src/renderer/src/features/team-bridge/attachments/inline-image-tile.tsx":
 		"the tile's action cluster floats over the picture itself - arbitrary image content, not a column the app painted - so overlayFloor was never derived against its backdrop",
+	/*
+	 * THE FOUR PICKERS JOINED THIS CLASS ON 2026-11-06, and they are deferred for the
+	 * one reason this list is for rather than for a backdrop problem. They floated
+	 * with `border border-control` + Tailwind's `shadow-lg`; the operator's report
+	 * retired the stroke on every floating surface, so they took `shadow-overlay` -
+	 * which is what makes them visible to this derivation for the first time. Their
+	 * backdrop IS an app-painted surface (the composer input, a Bridge row), so the
+	 * floor's premise holds; what is missing is the other half of this file's own bar
+	 * for marking: someone has to LOOK at the translucent ground, and the change that
+	 * removed the stroke has no browser run on glass in its cycle. Naming them is the
+	 * decision this list exists to force; marking them blind is the failure mode it
+	 * exists to prevent.
+	 */
+	"src/renderer/src/features/chat/components/at-picker.tsx":
+		"the `@` suggestions over the composer's own ground: joined the floating vocabulary when its border became the shadow (2026-11-06), waiting on a rendered look at the translucent ground",
+	"src/renderer/src/features/chat/components/message-item/message-controls.tsx":
+		"the hover toolbar over a transcript row: it separated with a hairline until 2026-11-06 and now carries the one shadow, so it is new to this class and waiting on the same rendered look",
+	"src/renderer/src/features/console/components/console-pane.tsx":
+		"the console's cleanup notice over the terminal: it carried `shadow-md` and a `border-control` until 2026-11-06, and its backdrop is terminal output rather than a column the app painted, so the floor's premise would need checking as well as looking",
 };
 
 /** A class constant's opening: a class-combining call or a string literal. */
@@ -478,16 +497,20 @@ test("O-3 one rule paints the layer, gated on the root, with no element opacity"
 			`the panel must step --color-${role} toward ink by the derived overlayInkMix: unrebound it is a mid-tone meaning colour on a mid-tone ground and drops under 4.5:1 at the slider's floor`,
 		);
 	/*
-	 * THE BOUNDARY IS A ROLE, not the fill's own colour (design round 1, D2). The
-	 * hairline sat on the panel's fill at 1.03:1 dark / 1.18:1 light, so the edge did
-	 * no separating and the shadow carried the layer alone; the fill step could not do
-	 * it either (-2.2 L* dark over the model's under-window grey, and `elevated` is the
-	 * darker role in the dark palettes, so no alpha lifts the panel above its column).
+	 * THE BOUNDARY IS A ROLE, not the fill's own colour (design round 1, D2) - and
+	 * since 2026-11-06 it is spent on the SHADOW, not on a stroke. The hairline sat on
+	 * the panel's fill at 1.03:1 dark / 1.18:1 light, so the edge did no separating;
+	 * the derived step repaired that as a 1px `border-color`, and the operator's
+	 * four-screenshot report retired the border on every floating surface. The same
+	 * derived colour now feeds the contact layer of the one shadow, so the panel keeps
+	 * the boundary's darkness while compositing over an already-translucent column and
+	 * gains blur instead of a line. `--lo-hairline` is deliberately no longer a term
+	 * here: there is no stroke left to tint.
 	 */
 	assert.match(
 		rule[2],
-		/border-color:\s*color-mix\(\s*in srgb,\s*var\(--lo-ink\)\s*calc\(\s*var\(--lo-glass-overlay-edge-mix,\s*0\)\s*\*\s*100%\s*\)\s*,\s*var\(--lo-hairline\)\s*\);/,
-		"the panel's boundary must be its own derived role stepped off the hairline: the hairline alone measures 1.03:1 dark / 1.18:1 light against the panel's own fill and does not separate it",
+		/--lo-shadow-contact:\s*color-mix\(\s*in srgb,\s*var\(--lo-ink\)\s*calc\(\s*var\(--lo-glass-overlay-edge-mix,\s*0\)\s*\*\s*100%\s*\)\s*,\s*var\(--lo-scrim\)\s*\);/,
+		"the panel's boundary must be its own derived role, spent on the shadow's contact layer: the hairline alone measures 1.03:1 dark / 1.18:1 light against the panel's own fill and does not separate it",
 	);
 	/* The scrim is a deliberate non-member: it covers the whole window and is a role
 	 * (`bg-scrim`), not a ground that floats over the app. */
