@@ -1480,7 +1480,7 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 									)}
 						</p>
 						<Button
-							variant="secondary"
+							variant="tonal"
 							size="sm"
 							onClick={() => void detail.refetch()}
 						>

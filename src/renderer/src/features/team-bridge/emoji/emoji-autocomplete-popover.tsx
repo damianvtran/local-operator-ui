@@ -84,8 +84,11 @@ export function EmojiAutocompletePopover({
 	return createPortal(
 		<div
 			data-emoji-popover=""
+			/* The system's one floating shadow, not Tailwind's `shadow-lg`: this portal
+			 * floats like a menu, so it separates the way every floating surface does
+			 * (branding § 2 - ground plus `shadow-overlay`'s contact layer, no stroke). */
 			className={cn(
-				"fixed z-50 overflow-hidden rounded-md bg-elevated shadow-lg",
+				"fixed z-50 overflow-hidden rounded-md bg-elevated shadow-overlay",
 			)}
 			style={{
 				left: position.left,

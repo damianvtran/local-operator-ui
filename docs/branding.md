@@ -405,26 +405,56 @@ bare.) The rule that follows, and it applies to every leave-flow surface:
   declare `border`, `border-hairline` or `border-control`. A hairline on one of
   these is a regression by construction, not a question of taste. Each shared
   primitive's panel wears `data-lo-floating`, and
-  `scripts/floating-surface-no-border.test.mjs` fails on a border utility, a
-  `border-color` rule, or a contact-less `--shadow-overlay`.
+  `scripts/floating-surface-no-border.test.mjs` fails on a border utility (on the
+  tag or in a class constant it names), a stylesheet border outside the
+  forced-colors rule, a focus reset that reaches the panel, a second `shadow-*`
+  that would make tailwind-merge drop `shadow-overlay`, or a contact-less
+  `--shadow-overlay`. It is a static check; a computed border is a browser
+  run's evidence.
 - **The boundary is the shadow's contact layer.** `--shadow-overlay` composes a
   tight contact layer (`--lo-shadow-contact`, derived from the palette's `scrim`
   role) with the palette ambient, so there is real darkening AT the edge and the
   panel reads on every theme. A `0 0 0 1px` ring is not a substitute: zero blur
   makes it a border drawn with a shadow.
-- **On window glass it is restrengthened, not dropped.** A panel compositing
-  over an already translucent column takes the derived ink step
-  (`--lo-glass-overlay-edge-mix`) on that same contact layer — the constant and
-  its floor are unchanged, only the property it feeds is. This is the case where
-  an ambient shadow alone disappears.
+- **On window glass it is restrengthened, never lightened.** A menu, popover,
+  tooltip or select list stays translucent on glass (the operator's request,
+  #1706; see § Window glass) with a 12px backdrop blur, and its contact layer is
+  the same `scrim` contact pulled 50% toward black - darker and a little stronger,
+  never stepped toward `ink`. On a dark palette ink is near-white, and an
+  ink-mixed "shadow" is a light rim: the lighter-than-surface outline the operator
+  reported, drawn with a shadow instead of a border. `contrast-contract.mjs`
+  measures the contact as painted (blurred coverage at the edge, both desktop
+  extremes) and fails if it is ever lighter than the column beneath it or worse
+  than the edge this composition shipped with.
+- **Elevation must survive focus.** No box-shadow reset may reach a floating
+  panel: Radix focuses a menu's content on a pointer open, and the global focus
+  rule's `box-shadow: none !important` used to strip the panel's only
+  separation. Focus is an `outline`, never a box-shadow, so the reset excludes
+  `[data-lo-floating]` and the guard holds it there.
+- **On dark palettes the ground step separates and the shadow supports.** A dark
+  shadow on a dark ground adds a few levels at the edge; the `elevated` step is
+  what the eye reads. Do not "fix" a dark panel with a ring - a nested panel
+  (submenu over menu, select inside a dialog) is a case to look at in a rendered
+  frame, not a reason for a stroke.
+- **The one sanctioned stroke is forced-colors mode.** `@media (forced-colors:
+  active)` drops every box-shadow, so there a floating panel draws a 1px
+  `CanvasText` border; without it it would have no edge at all. It is
+  implemented once in `styles/index.css`, and the guard allows exactly that rule.
 - **Group dividers are insets, not rules that touch the panel's edge.** An
   internal separator sits inside the panel's padding, aligned with the item
   labels (`mx-2` against `p-1` + `px-2` in the menu and select primitives), and
-  uses the low-contrast `hairline` role. A full-bleed rule that reaches the
-  panel's rounded corner rebuilds the box the border used to draw.
-- **Nested elements may not reintroduce it.** The single action a floating panel
-  offers is `primary` (borderless by construction) and quieter ones are `ghost`;
-  a bordered `secondary` on an `elevated` panel is a box inside a box.
+  is `divider-inset` - the hairline mixed halfway toward the panel's `elevated`
+  ground - so the rule inside never out-draws the panel's own edge. A full-bleed
+  rule that reaches the panel's rounded corner rebuilds the box the border used
+  to draw.
+- **Nested elements may not reintroduce it.** A floating panel's action is the
+  `tonal` button - a borderless neutral fill one ground step off the panel
+  (`sunken`, hover `surface`, pressed `hairline`, `ink` label) - and quieter
+  ones are `ghost`. `primary` only where the panel's action is the screen's
+  commit; a bordered `secondary` on an `elevated` panel is a box inside a box.
+  Dialog footers take `tonal` through the shared `SecondaryButton`. Chips,
+  badges and avatars inside a floating panel are in-flow content and keep their
+  own treatment (a badge's hairline is the badge's, not the panel's).
 
 ### The four inks
 
@@ -1216,9 +1246,15 @@ error and empty states. Under *Sidebars only* the whole route stays flat.
 **What stays solid under *Full app*, by design** (the Settings copy says so in one
 sentence): web pages in the browser view (the page paints itself), document and
 media viewers' own grounds (PDF, image, video, audio), code and diff grounds, a
-message's reply quote and attachment tiles, leave-flow surfaces (menus, dialogs,
-popovers, the palette, toasts, drag previews), theme preview tiles, and small
-deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub category
+message's reply quote and attachment tiles, the leave-flow surfaces that sit over
+a scrim or carry their own motion (dialogs, sheets, the palette, toasts, drag
+previews), theme preview tiles, and small deliberate marks. The OTHER leave-flow
+surfaces - menus, context menus and submenus, tooltips, popovers, select lists and
+the update card - are not solid: the operator reported them as opaque plates over a
+translucent column (#1706), so they take the floating layer's derived translucency
+(`--lo-glass-a-overlay`) behind a 12px backdrop blur, which is what keeps the
+column under them from reading through. Their edge on glass is § 2's contact
+shadow, darkened, never a stroke. A panel's own *frame* (the Schedules list, the Agent hub category
 rail) is a surface and goes glass; the cards inside it are blocks (tints). The
 canvas, ask, run-detail, console and code-review panes are text-bearing panes: on
 glass their ROOT is the pane ground and every plane inside them is clear or a

@@ -290,7 +290,7 @@ function NativeProfileEditButton({
 			 * makes a bordered `secondary` a box drawn inside a box - the nested stroke
 			 * the operator photographed on this popover. The edit action is the quieter
 			 * of the card's two, so it takes the system's borderless secondary, `ghost`,
-			 * and leaves the one accent button to the message action below.
+			 * and leaves the one filled (`tonal`) button to the message action.
 			 */
 			variant="ghost"
 			size="sm"
@@ -682,7 +682,7 @@ export function TeamBridgeProfileCard({
 								 * makes a bordered `secondary` a box drawn inside a box - the nested stroke
 								 * the operator photographed on this popover. The edit action is the quieter
 								 * of the card's two, so it takes the system's borderless secondary, `ghost`,
-								 * and leaves the one accent button to the message action below.
+								 * and leaves the one filled (`tonal`) button to the message action.
 								 */
 								variant="ghost"
 								size="sm"
@@ -699,13 +699,15 @@ export function TeamBridgeProfileCard({
 					{canMessage && (
 						<Button
 							/*
-							 * THE CARD'S ONE PRIMARY ACTION, and the border the operator photographed.
+							 * THE CARD'S ONE ACTION, and the border the operator photographed.
 							 * This rendered the default `secondary` - `border border-control
 							 * bg-surface` - i.e. a bordered control drawn on an `elevated` panel.
-							 * `primary` is this system's borderless filled action and the idiomatic
-							 * shape for the single thing the surface exists to offer.
+							 * `tonal` is the borderless action of a floating surface. Not
+							 * `primary`: a full-width accent bar outweighed the person's name on a
+							 * transient hovercard and spent an accent the screen's send control
+							 * already spends (design round 1, D4).
 							 */
-							variant="primary"
+							variant="tonal"
 							className="w-full"
 							onClick={() => {
 								changeOpen(false);

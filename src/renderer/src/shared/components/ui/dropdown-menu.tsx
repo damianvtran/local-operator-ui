@@ -52,9 +52,12 @@ export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
  *
  * `data-lo-floating` is the machine-readable half of the rule. Every shared
  * primitive's panel wears it; `scripts/floating-surface-no-border.test.mjs` fails
- * if any rule touching the attribute declares a border, and asserts each marked
- * panel computes a border width of 0. Adding a hairline back here does not just
- * look wrong, it turns the suite red.
+ * if a border utility comes back on a marked panel's tag or on a class constant it
+ * names (this array included), if a stylesheet rule touching the attribute
+ * declares a border outside the one forced-colors rule, or if the focus rule's
+ * box-shadow reset stops excluding it. The check is static - there is no DOM in
+ * that suite - so a computed border is a browser run's evidence, not its claim.
+ * Adding a hairline back here does not just look wrong, it turns the suite red.
  *
  * The internal divider is the other half: `DropdownMenuSeparator` below insets
  * its rule so it reads as a line BETWEEN groups rather than a box the group sits
@@ -131,6 +134,10 @@ export const DropdownMenuSubContent = forwardRef<
 			 */
 			data-titlebar-no-drag=""
 			data-glass-overlay=""
+			/* A submenu is a floating panel like its parent: without the marker the
+			 * focus rule's box-shadow reset (`styles/index.css`) still reaches it and
+			 * a focused submenu loses its elevation (QA round 1, Q1). */
+			data-lo-floating=""
 			className={cn(panelClasses, className)}
 			{...props}
 		/>
@@ -269,10 +276,12 @@ export const DropdownMenuSeparator = forwardRef<
 		 * full-bleed hairlines the operator photographed in the sidebar overflow menu.
 		 * `mx-2` puts it 12px in, which is exactly where the item labels start
 		 * (panel `p-1` + item `px-2`), so it reads as a rule between groups rather than
-		 * as a wall the group is standing behind. `bg-hairline` stays: it is already the
-		 * system's lowest-contrast rule role and the point is a quiet divider.
+		 * as a wall the group is standing behind. The colour is `divider-inset`, the
+		 * hairline mixed halfway toward the panel's ground: with the stroke gone, a full
+		 * hairline out-drew the panel's own edge on light and high-contrast palettes
+		 * (design round 1, D3; the measurement is on the utility in `styles/index.css`).
 		 */
-		className={cn("mx-2 my-1 h-px bg-hairline", className)}
+		className={cn("mx-2 my-1 h-px divider-inset", className)}
 		{...props}
 	/>
 ));

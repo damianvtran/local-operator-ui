@@ -25,6 +25,14 @@
  *       a hairline to it fails here without anyone remembering to add a row.
  *       O-1b is the walk's own negative control.
  *
+ *  O-2  CLASS CONSTANTS. A panel's chrome often lives in a constant rather than
+ *       on the tag - `panelClasses` in the menu primitives, the sheet's `cva`,
+ *       `FLOATING_TOOLBAR_CHROME`, inline-edit's `POPOVER` - and O-1 only reads
+ *       tags, so before this assertion a border restored in `panelClasses`
+ *       passed the whole suite (agent review round 1, R1; QA round 1, 7b/7d).
+ *       Every `const` whose body wears `shadow-overlay`, and every same-file
+ *       constant a marked primitive panel names, may carry no border utility.
+ *
  *  O-3  THE PRIMITIVES, BY ELEMENT. Each portalled primitive's panel element
  *       carries `data-lo-floating`. That marker is what names the set for
  *       stylesheets and for a reader; it is asserted per ELEMENT, not per file, so
@@ -34,16 +42,32 @@
  *  O-4  THE STYLESHEET. No rule whose selector names `[data-lo-floating]` may
  *       declare a border property - the marker exists to make the rule reachable
  *       from CSS, and a stylesheet that re-adds a stroke is the one place a class
- *       scan cannot see. O-5 holds the token's SHAPE: `--shadow-overlay` must
+ *       scan cannot see. The ONE sanctioned exception is
+ *       `@media (forced-colors: active)`: forced-colors mode drops box-shadows, so
+ *       there a panel would have no edge at all, and it draws a 1px `CanvasText`
+ *       border. O-4b holds that rule to exactly that shape. O-5 holds the token's
+ *       SHAPE: `--shadow-overlay` must
  *       compose a contact layer (`--lo-shadow-contact`) with the palette ambient.
  *       Removing the contact layer is the regression that would silently undo this
  *       whole change: every panel would keep its ground and lose its edge, and no
  *       ratio in `contrast-contract.mjs` would move.
  *
- * WHAT "COMPUTED BORDER-WIDTH IS 0" RESTS ON. There is no DOM here, so the
- * computed value is argued rather than measured, and the argument is the two
- * assertions above: a panel's border-width can only come from a class utility
- * (O-1) or from a stylesheet rule (O-4), and this file fails on both. That covers
+ *  O-6  ELEVATION SURVIVES FOCUS. The global focus rule resets `box-shadow` with
+ *       `!important`; Radix focuses a menu's content on a pointer open, and that
+ *       reset stripped every pointer-opened menu of its only separation (QA round
+ *       1, Q1). Each bare focus selector carrying the reset must exclude
+ *       `[data-lo-floating]`.
+ *
+ *  O-7  ONE SHADOW. A call site that passes another `shadow-*` utility to a
+ *       floating primitive, or wears one beside `shadow-overlay`, makes
+ *       tailwind-merge DROP `shadow-overlay` (its class group, `utils.ts`) - and
+ *       with it the contact layer and the glass contact (agent review round 1,
+ *       R3). The image lightbox is the one named exception: it is not a panel.
+ *
+ * WHAT "NO BORDER" RESTS ON. There is no DOM here, so a computed border-width is
+ * argued rather than measured - this file asserts no computed value - and the
+ * argument is the assertions above: a panel's border can only come from a class
+ * utility (O-1, O-2) or from a stylesheet rule (O-4), and this file fails on each. That covers
  * exactly what this codebase writes. The residue is the same one
  * `glass-overlay.test.mjs` names for its own derivation, plus one this change
  * measured: the walk delimits an opening tag by brace depth and quotes and cannot
@@ -63,6 +87,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import { moduleLevelClassConstants } from "./jsx-class-constants.mjs";
 import { openingTags } from "./jsx-opening-tags.mjs";
 
 const ROOT = process.cwd();
@@ -168,6 +193,51 @@ test("O-1b the derivation reaches the app's floating panels", () => {
 	);
 });
 
+/**
+ * A class value for this guard: the shared resolver's strings and `cn(...)` calls,
+ * plus the two shapes the primitives write their panel chrome in - an array
+ * (`panelClasses`) and a `cva(...)` call (the sheet's variants).
+ */
+const PANEL_CLASS_VALUE = /^(cn|clsx|twMerge|cva)\(|^["`[]/;
+
+test("O-2 no class constant a floating panel wears carries a border", () => {
+	const offenders = [];
+	let marked = 0;
+	for (const path of rendererFiles()) {
+		const source = read(path);
+		const constants = moduleLevelClassConstants(source, {
+			opening: PANEL_CLASS_VALUE,
+		});
+		/* Every constant that wears the one shadow is floating chrome wherever it is used. */
+		const named = new Set(
+			[...constants].filter(([, value]) => /\bshadow-overlay\b/.test(value)),
+		);
+		/* And every constant a MARKED panel names, whatever it carries: a border could
+		 * be split into its own constant beside the one holding the shadow. */
+		for (const tag of openingTags(source)) {
+			if (!tag.text.includes("data-lo-floating")) continue;
+			marked++;
+			for (const [name, value] of constants)
+				if (new RegExp(`\\b${name}\\b`).test(tag.text))
+					named.add([name, value]);
+		}
+		for (const [name, value] of named) {
+			const borders = borderUtilities(value);
+			if (borders.length > 0)
+				offenders.push(`${path}: const ${name} ${borders.join(", ")}`);
+		}
+	}
+	assert.ok(
+		marked >= FLOATING_PRIMITIVES.length,
+		`the walk found ${marked} marked panel tags; a scan that finds none passes vacuously`,
+	);
+	assert.deepEqual(
+		offenders,
+		[],
+		`a floating panel's chrome came back with a stroke through a class constant (branding § 2). Remove the border utility; the ground and \`shadow-overlay\` are the boundary:\n${offenders.join("\n")}`,
+	);
+});
+
 test("O-3 every portalled primitive marks its panel element", () => {
 	const missing = [];
 	for (const file of FLOATING_PRIMITIVES) {
@@ -184,8 +254,18 @@ test("O-3 every portalled primitive marks its panel element", () => {
 	);
 });
 
+/**
+ * The ONE sanctioned stroke: forced-colors mode drops every box-shadow, so a floating
+ * panel there has no edge at all unless it draws one, and the system colour
+ * `CanvasText` is what the user's own scheme says an edge is.
+ */
+const FORCED_COLORS_BLOCK =
+	/@media\s*\(\s*forced-colors:\s*active\s*\)\s*\{((?:[^{}]*\{[^{}]*\})*[^{}]*)\}/g;
+
 test("O-4 no stylesheet rule paints a border on a marked panel", () => {
-	const css = read(CSS_PATH).replace(/\/\*[\s\S]*?\*\//g, "");
+	const css = read(CSS_PATH)
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(FORCED_COLORS_BLOCK, "");
 	const offenders = [];
 	for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 		const [, selector, body] = match;
@@ -197,6 +277,25 @@ test("O-4 no stylesheet rule paints a border on a marked panel", () => {
 		offenders,
 		[],
 		`a rule on [data-lo-floating] re-added a border property. The boundary is the elevation's contact layer, not a stroke:\n${offenders.join("\n")}`,
+	);
+});
+
+test("O-4b forced-colors mode gives a marked panel exactly one CanvasText edge", () => {
+	const css = read(CSS_PATH).replace(/\/\*[\s\S]*?\*\//g, "");
+	const rules = [];
+	for (const block of css.matchAll(FORCED_COLORS_BLOCK))
+		for (const rule of block[1].matchAll(/([^{}]+)\{([^{}]*)\}/g))
+			if (rule[1].includes("[data-lo-floating]"))
+				rules.push({ selector: rule[1].trim(), body: rule[2].trim() });
+	assert.equal(
+		rules.length,
+		1,
+		"exactly one forced-colors rule may give [data-lo-floating] a border: forced-colors drops the shadow, so without it a panel has no edge, and with more than one the exception stops being one",
+	);
+	assert.match(
+		rules[0].body,
+		/^border:\s*1px\s+solid\s+CanvasText;?$/,
+		"the forced-colors edge is 1px `CanvasText` and nothing else - the user's scheme's own edge colour, not a palette role the mode would override anyway",
 	);
 });
 
@@ -239,4 +338,68 @@ test("O-5 the one shadow composes a contact layer with the palette ambient", () 
 		assert.fail(
 			`\`${layer}\` is a zero-blur spread ring, i.e. a border drawn with a shadow; use a blurred, negatively-spread contact instead`,
 		);
+});
+
+test("O-6 the focus rule's box-shadow reset never reaches a floating panel", () => {
+	const css = read(CSS_PATH).replace(/\/\*[\s\S]*?\*\//g, "");
+	/* A selector whose SUBJECT is focus itself, with nothing narrowing it to a kind of
+	 * element - the shape that can land on a focused panel. */
+	const bare =
+		/^(?:html\s+|\*\s*)?(?::focus-visible|\.Mui-focusVisible|:where\(:focus-visible\))(?::not\(\[data-lo-floating\]\))?$/;
+	const offenders = [];
+	let resets = 0;
+	for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+		const [, selector, body] = match;
+		if (!/box-shadow\s*:\s*none/.test(body)) continue;
+		for (const part of selector.split(",").map((p) => p.trim())) {
+			if (!bare.test(part)) continue;
+			resets++;
+			if (!part.endsWith(":not([data-lo-floating])")) offenders.push(part);
+		}
+	}
+	assert.ok(
+		resets >= 2,
+		`expected the global focus rule's box-shadow reset (\`html :focus-visible\`, \`html .Mui-focusVisible\`), found ${resets} - a scan that sees none proves nothing`,
+	);
+	assert.deepEqual(
+		offenders,
+		[],
+		`a focus selector resets box-shadow without excluding [data-lo-floating]. Radix focuses a menu's content on a pointer open, so this strips the panel's only separation (QA round 1, Q1):\n${offenders.join("\n")}`,
+	);
+});
+
+/** The components whose panel is a shared floating primitive's panel. */
+const FLOATING_CALL_SITES =
+	/^(DropdownMenu(Sub)?Content|ContextMenu(Sub)?Content|PopoverContent|TooltipContent|SelectContent|DialogContent|SheetContent)$/;
+/** Tailwind's own shadow scale - anything in the `shadow` group but the one shadow. */
+const OTHER_SHADOW =
+	/(?<![\w-])shadow-(?:2xs|xs|sm|md|lg|xl|2xl|none|inner)(?![\w-])/g;
+/**
+ * The one call site that may take a primitive's shadow off, with why: the lightbox
+ * renders the picture on the scrim through `DialogContent` and is not a panel at all,
+ * so there is nothing to lift. A new entry here needs the same kind of reason.
+ */
+const SHADOW_OVERRIDE_ALLOWED = new Set([
+	"src/renderer/src/shared/components/common/image-lightbox.tsx",
+]);
+
+test("O-7 no floating call site trades the one shadow for another", () => {
+	const offenders = [];
+	for (const path of rendererFiles()) {
+		if (path.startsWith(UI_DIR)) continue;
+		for (const tag of openingTags(read(path))) {
+			const text = stripLineComments(tag.text);
+			const floating =
+				FLOATING_CALL_SITES.test(tag.name) || /\bshadow-overlay\b/.test(text);
+			if (!floating) continue;
+			const others = [...text.matchAll(OTHER_SHADOW)].map((m) => m[0]);
+			if (others.length > 0 && !SHADOW_OVERRIDE_ALLOWED.has(path))
+				offenders.push(`${path}: <${tag.name}> ${others.join(", ")}`);
+		}
+	}
+	assert.deepEqual(
+		offenders,
+		[],
+		`tailwind-merge puts \`shadow-overlay\` in Tailwind's shadow group (\`utils.ts\`), so a second \`shadow-*\` on a floating panel DROPS it - the contact layer and the glass contact go with it (agent review round 1, R3). Remove the override:\n${offenders.join("\n")}`,
+	);
 });

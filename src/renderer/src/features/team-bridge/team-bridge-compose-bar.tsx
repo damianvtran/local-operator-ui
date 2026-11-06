@@ -204,7 +204,8 @@ export const TeamBridgeComposeBar: FC<{
 					// biome-ignore lint/a11y/useSemanticElements: an ARIA combobox popup (input + aria-activedescendant + arrows/Enter); a native <select> cannot hold the person/agent glyph rows or stay open under a typing field. Same shape as `mini-view/mini-sheet.tsx`.
 					role="listbox"
 					aria-label={t("ui.teamBridge.compose.label")}
-					className="absolute top-full right-5 left-5 z-20 mt-1 max-h-64 overflow-y-auto rounded-lg bg-elevated p-1 shadow-lg"
+					// A floating list, so the one floating shadow (branding § 2), not `shadow-lg`.
+					className="absolute top-full right-5 left-5 z-20 mt-1 max-h-64 overflow-y-auto rounded-lg bg-elevated p-1 shadow-overlay"
 				>
 					{options.map((option, index) => {
 						const member = profileFor?.(option);

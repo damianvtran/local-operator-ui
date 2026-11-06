@@ -550,6 +550,27 @@
 }
 
 /*
+ * THE DIVIDER INSIDE A FLOATING PANEL: the hairline mixed halfway toward the
+ * panel's own `elevated` ground.
+ *
+ * Once a floating panel lost its stroke (branding § 2), the full `hairline` rule
+ * between its groups became the strongest line on the panel - 1.44:1 light and
+ * 1.74:1 high-contrast against the panel, while the panel's own boundary to the
+ * ground under it is 1.15 / 1.25:1 (design round 1, D3). An internal rule louder
+ * than the object's edge redraws the box from the inside. Halfway toward the
+ * ground keeps the rule visible as a group break and below the edge it sits
+ * within. One utility so the menu and select separators cannot drift apart; a
+ * divider in an in-flow surface keeps plain `bg-hairline`.
+ */
+@utility divider-inset {
+	background-color: color-mix(
+		in oklab,
+		var(--color-hairline) 50%,
+		var(--color-elevated)
+	);
+}
+
+/*
  * THE TRAILING RESERVATION, AS ONE UTILITY.
  *
  * It is a SPACER at the end of a 40px row's first line rather than padding on the
@@ -1147,10 +1168,12 @@
 	 * every branch, including `main`.
 	 *
 	 * Routing through the themed token removes the alias without changing a single
-	 * resolved value: `[data-theme]:not(:root)` re-declares `--color-surface` and its
-	 * siblings, so a scoped subtree gets its own value through the same chain, and on
-	 * `:root` the token is still the palette role. Custom properties resolve lazily,
-	 * so nothing here is evaluated earlier than it was.
+	 * resolved value. This `@theme` block is not `inline`, so these four are computed
+	 * once on `:root` - where `--color-surface` and its siblings are the palette roles
+	 * - and inherited from there. A `[data-theme]` subtree therefore does NOT
+	 * re-resolve them, before this change or after it (agent review round 1, R7);
+	 * a subtree that needs its own row-hover ground has to re-declare the token
+	 * itself.
 	 */
 	--color-row-hover-surface: var(--color-surface);
 	--color-row-hover-elevated: var(--color-elevated);
@@ -1878,6 +1901,17 @@
  *    `outline-none` keeps meaning what it says, and everything that has not
  *    asked for silence still gets a ring. The `solid` fallback covers elements
  *    with no Tailwind outline utility at all, such as the MUI date-picker.
+ *
+ * 5. THE BOX-SHADOW RESET SKIPS A FLOATING PANEL, and only that half: the
+ *    outline above still reaches it, so "focus is an outline" holds everywhere.
+ *    A panel's box-shadow is not a focus indicator, it is the panel's
+ *    elevation - its only separation now that it carries no stroke (branding
+ *    § 2). Radix focuses a menu's CONTENT element on a pointer open, and on the
+ *    sidebar row menus that focus matches `:focus-visible`, so one rule with
+ *    the `!important` reset stripped `shadow-overlay` off every pointer-opened
+ *    menu and left it with neither border nor shadow (QA round 1, Q1; design
+ *    round 1, D1). `floating-surface-no-border.test.mjs` holds both selectors
+ *    of the reset to the `:not([data-lo-floating])` exclusion.
  */
 html :focus-visible,
 html .Mui-focusVisible {
@@ -1885,7 +1919,26 @@ html .Mui-focusVisible {
 	outline-style: var(--tw-outline-style, solid);
 	outline-color: var(--color-accent);
 	outline-offset: 2px;
+}
+html :focus-visible:not([data-lo-floating]),
+html .Mui-focusVisible:not([data-lo-floating]) {
 	box-shadow: none !important;
+}
+
+/*
+ * THE ONE STROKE A FLOATING PANEL MAY DRAW: forced-colors mode (Windows High
+ * Contrast and its kin). That mode drops every box-shadow and repaints grounds in
+ * the user's own scheme, so a panel that separates by ground step plus elevation
+ * (branding § 2) has neither there - it would sit edgeless on whatever it covers.
+ * `CanvasText` is the user's scheme's own edge colour, not a palette role the mode
+ * would override anyway. Unlayered so no utility can out-rank it; elsewhere a
+ * border on `[data-lo-floating]` stays a regression, and
+ * `floating-surface-no-border.test.mjs` (O-4/O-4b) allows exactly this rule.
+ */
+@media (forced-colors: active) {
+	[data-lo-floating] {
+		border: 1px solid CanvasText;
+	}
 }
 
 /*
@@ -3292,34 +3345,39 @@ html[data-glass] [data-glass-overlay] {
 	 * What was left carrying the layer was the shadow alone, while the hairline landed
 	 * ON the panel's own fill: 1.03:1 dark / 1.18:1 light, a boundary of nothing.
 	 *
-	 * So the edge is stepped toward `ink` by the derived constant - enough to clear
-	 * 1.5:1 against the panel's own ground at both ends of the slider, which is the
-	 * band the system's strongest existing divider (`hairlineStrong` against
-	 * `elevated`, 1.34 dark / 1.87 light) occupies. Not the 3:1 structural floor: that
-	 * is a CONTROL's edge, and a panel is not a control.
+	 * So the edge WAS stepped toward `ink` by a derived constant (`overlayEdgeMix`),
+	 * painted as a 1px stroke, enough to clear 1.5:1 against the panel's own ground -
+	 * the history the next paragraph closes.
 	 *
-	 * THE CONSTANT IS NOW SPENT ON THE SHADOW, NOT ON A STROKE (2026-11-06). The
-	 * step is still exactly what the measurement asked for - the panel's boundary
-	 * has to be this much darker than the panel's own fill before it reads over
-	 * glass - but it used to be painted as a 1px `border-color`, and a stroke around
-	 * a floating surface is now a regression by construction (branding § 2; operator
-	 * report 2026-11-06). The same derived colour therefore feeds the contact layer
-	 * of the ONE shadow instead: the boundary keeps its darkness and gains blur,
-	 * which is what makes it read as elevation rather than as a box. `--lo-hairline`
-	 * is deliberately no longer a term here - there is no stroke left to tint.
+	 * THE STROKE IS GONE, AND THE STEP TOWARD INK WENT WITH IT (2026-11-06). The
+	 * derived edge used to be painted as a 1px `border-color`; a stroke around a
+	 * floating surface is now a regression by construction (branding § 2; operator
+	 * report 2026-11-06). Spending the same ink step on the shadow's contact layer
+	 * instead was tried in this change's first head and measured wrong twice: on a
+	 * dark palette ink is near-white, so the "shadow" painted a blurred rim LIGHTER
+	 * than the column beneath - 1.31:1 over a black desktop, the very
+	 * lighter-than-surface outline the operator reported (design round 1, D2) - and,
+	 * modelled as it is painted (each layer's Gaussian coverage, sigma = blur / 2, at
+	 * the pixel 0.5px outside the edge), its worst corner was 1.00:1 against the
+	 * panel: the glow cancelled the panel's own step (agent review round 1, R2).
 	 *
-	 * This is also the answer to "a shadow disappears on glass". Off glass the
-	 * contact layer is `--lo-scrim` at 45%; here it is the measured ink step,
-	 * because this panel composites over an ALREADY translucent column and an
-	 * ambient blur alone would leave it edgeless - the case where the palette's
-	 * ordinary contact strength is not enough. `overlayEdgeMix` is held against the
-	 * worst end of the slider by `derive-glass-floors.mjs`; nothing about the floor
-	 * moved, only which property spends it.
+	 * So on glass the contact is the off-glass contact pulled 50% toward black: the
+	 * same `scrim` role and the same 45% share, darker in colour and (because a
+	 * colour-mix with opaque black adds alpha) a little stronger, which is the
+	 * restrengthening a panel over an already-translucent column needs. It can never
+	 * be lighter than the column beneath it, and `contrast-contract.mjs` holds both
+	 * facts - the direction, and a ratchet at the measured worst of this composition
+	 * - as the glass overlay's boundary row. `--lo-glass-overlay-edge-mix` is still
+	 * published by the runtime but read by nothing here any more.
+	 *
+	 * The panel's fill stays translucent: that is the operator's own request
+	 * (#1706, "every panel that leaves the flow is still an opaque plate"), and the
+	 * `backdrop-filter` below is what keeps the column beneath from reading through.
 	 */
 	--lo-shadow-contact: color-mix(
 		in srgb,
-		var(--lo-ink) calc(var(--lo-glass-overlay-edge-mix, 0) * 100%),
-		var(--lo-scrim)
+		color-mix(in srgb, black 50%, var(--lo-scrim)) 45%,
+		transparent
 	);
 	/* THE ONE INK REBINDING (see "THE DIM REGISTER COLLAPSES" above). It is here, in
 	 * the same rule as the fill, so the panel's ground and the ink that has to read on

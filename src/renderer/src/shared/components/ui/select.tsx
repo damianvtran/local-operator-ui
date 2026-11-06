@@ -224,9 +224,10 @@ export const SelectSeparator = forwardRef<
 		 * INSET, NOT FULL-BLEED (2026-11-06). Same change, same reason as
 		 * `DropdownMenuSeparator`: `-mx-1` overshot the panel's `p-1` content box and ran
 		 * the rule to the panel's edge, which built a box with the stroke the panel no
-		 * longer has. `mx-2` lands it 12px in, aligned with the item labels.
+		 * longer has. `mx-2` lands it 12px in, aligned with the item labels, and the
+		 * colour is the same `divider-inset` so the two rules cannot drift apart.
 		 */
-		className={cn("mx-2 my-1 h-px bg-hairline", className)}
+		className={cn("mx-2 my-1 h-px divider-inset", className)}
 		{...props}
 	/>
 ));

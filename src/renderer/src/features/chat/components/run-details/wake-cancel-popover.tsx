@@ -223,7 +223,9 @@ export const WakeCancelPopover = ({
 				 */}
 				<Button
 					ref={keepRef}
-					variant="secondary"
+					// `tonal`, not `secondary`: this card floats, and a bordered button
+					// inside a borderless floating panel rebuilds the box (branding § 2).
+					variant="tonal"
 					size="sm"
 					data-wake-confirm-keep=""
 					disabled={busy}

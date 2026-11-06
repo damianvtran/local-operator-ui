@@ -116,8 +116,9 @@ export const TooltipContent = forwardRef<
 		 * shadow, never by a line (branding § 2; operator report 2026-11-06).
 		 * `data-lo-floating` is the machine-readable half of that rule - every shared
 		 * primitive's panel wears it, and `scripts/floating-surface-no-border.test.mjs`
-		 * fails if a rule touching the attribute declares a border or if any marked
-		 * panel computes a non-zero border width. The full argument is on
+		 * fails if a border utility or a stylesheet border comes back on a marked
+		 * panel (a static check; the computed width is a browser run's evidence).
+		 * The full argument is on
 		 * `panelClasses` in `dropdown-menu.tsx` and on `--shadow-overlay`'s contact
 		 * layer in `styles/index.css`.
 		 */

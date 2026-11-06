@@ -53,10 +53,16 @@ output. The short version of the parts most often got wrong:
   It separates by its ground plus the one shadow, whose contact layer darkens the
   panel's own edge; a hairline on a leave-flow panel is a regression by
   construction, and so is a bordered control nested inside one — the panel's
-  action is `primary`, quieter ones are `ghost`. Group dividers are inset and
-  aligned with the item labels, never a rule that reaches the panel's edge.
-  Primitives wear `data-lo-floating`; `scripts/floating-surface-no-border.test.mjs`
-  enforces it. Full rule: `docs/branding.md` § 2.
+  action is the `tonal` Button variant (not `primary` by default), quieter ones
+  are `ghost`; chips and badges inside keep their own treatment. Elevation must
+  survive focus (no box-shadow reset may reach `[data-lo-floating]`), and no call
+  site passes another `shadow-*` (tailwind-merge drops `shadow-overlay`). On dark
+  palettes the ground step separates and the shadow supports. On window glass,
+  menus/popovers/tooltips stay translucent behind a blur (#1706) and the contact
+  is darkened, never ink-mixed. Dividers are inset `divider-inset`. The only
+  stroke is `@media (forced-colors: active)`'s 1px `CanvasText`. Primitives wear
+  `data-lo-floating`; `scripts/floating-surface-no-border.test.mjs` enforces it.
+  Full rule: `docs/branding.md` § 2.
 - **Disabled changes colour, never opacity. Focus is `outline`, never
   `box-shadow`** — this app is mostly scroll containers, and box-shadow rings
   get clipped by `overflow: hidden`.

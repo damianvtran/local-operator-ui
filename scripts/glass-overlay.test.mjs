@@ -36,6 +36,7 @@ import {
 	LANE_ALPHA_CEILING,
 	deriveOverlayFloor,
 } from "./derive-glass-floors.mjs";
+import { moduleLevelClassConstants } from "./jsx-class-constants.mjs";
 import { openingTags } from "./jsx-opening-tags.mjs";
 
 const ROOT = process.cwd();
@@ -204,10 +205,14 @@ const DEFERRED_PANELS = {
 	"src/renderer/src/features/team-bridge/attachments/inline-image-tile.tsx":
 		"the tile's action cluster floats over the picture itself - arbitrary image content, not a column the app painted - so overlayFloor was never derived against its backdrop",
 	/*
-	 * THE FOUR PICKERS JOINED THIS CLASS ON 2026-11-06, and they are deferred for the
-	 * one reason this list is for rather than for a backdrop problem. They floated
-	 * with `border border-control` + Tailwind's `shadow-lg`; the operator's report
-	 * retired the stroke on every floating surface, so they took `shadow-overlay` -
+	 * FOUR PANELS JOINED THIS CLASS ON 2026-11-06 (the `@` picker, the message hover
+	 * toolbar, the emoji suggestions, the console notice), and they are deferred for the one reason this list
+	 * is for rather than for a backdrop problem. The skill picker and the `/`-commands
+	 * list took `shadow-overlay` in the same change but are not listed: the signature
+	 * walk does not reach them (the no-border guard's header records the same probe),
+	 * and an entry for a file the walk cannot see fails this suite as stale. They floated
+	 * with a stroke and/or Tailwind's `shadow-lg`; the operator's report retired the
+	 * stroke on every floating surface and its one shadow, so they took `shadow-overlay` -
 	 * which is what makes them visible to this derivation for the first time. Their
 	 * backdrop IS an app-painted surface (the composer input, a Bridge row), so the
 	 * floor's premise holds; what is missing is the other half of this file's own bar
@@ -220,77 +225,15 @@ const DEFERRED_PANELS = {
 		"the `@` suggestions over the composer's own ground: joined the floating vocabulary when its border became the shadow (2026-11-06), waiting on a rendered look at the translucent ground",
 	"src/renderer/src/features/chat/components/message-item/message-controls.tsx":
 		"the hover toolbar over a transcript row: it separated with a hairline until 2026-11-06 and now carries the one shadow, so it is new to this class and waiting on the same rendered look",
+	"src/renderer/src/features/team-bridge/emoji/emoji-autocomplete-popover.tsx":
+		"the `:` emoji suggestions over the Bridge composer: they floated on Tailwind's `shadow-lg` until 2026-11-06 (agent review round 1, R3) and took the one shadow, which is what makes them visible here - waiting on the same rendered look at the translucent ground",
 	"src/renderer/src/features/console/components/console-pane.tsx":
 		"the console's cleanup notice over the terminal: it carried `shadow-md` and a `border-control` until 2026-11-06, and its backdrop is terminal output rather than a column the app painted, so the floor's premise would need checking as well as looking",
 };
 
-/** A class constant's opening: a class-combining call or a string literal. */
-const CLASS_STRING_VALUE = /^(cn|clsx|twMerge)\(|^["`]/;
-/** A module-level `const NAME =` (top level, `export` allowed). No `g`: per-call copy. */
-const CLASS_CONSTANT_DECLARATION =
-	/(?:^|\n)(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?=/;
-
-/**
- * MODULE-LEVEL CLASS CONSTANTS: the other half of the class derivation above.
- *
- * `const LARGE_PREVIEW = cn("invisible absolute ... bg-elevated shadow-overlay ...")`
- * reaches its element as `className={LARGE_PREVIEW}`, and `openingTags` reads class
- * text INSIDE an opening tag only - so a panel whose classes were factored out is
- * invisible to the tag-level scan no matter how exactly it matches the signature.
- * That is the wrong way round: factoring the string out is the tidier code and so the
- * likelier shape for the next overlay too. Round 2 of review named two panels missing
- * for this reason (`attachments-preview.tsx`, `inline-image-tile.tsx`); running this
- * resolver on the tree also surfaced a third nobody had named (`inline-edit.tsx`),
- * which is the evidence that the gap was structural rather than those two files.
- *
- * WHAT IT READS, and therefore what it cannot: a `const NAME = <value>` at column 0
- * (an `export` in front is fine) whose value starts with a `cn(`/`clsx(`/`twMerge(`
- * call or a string literal, ending at the first `;` outside brackets and strings. A
- * value that is an object or an inline-style map is NOT a class string and is not
- * read - which is what keeps `themed-toast-container.tsx`'s
- * `boxShadow: "var(--shadow-overlay)"` out of the class (toasts may legitimately be a
- * surface of their own; that is a naming decision, not this row's). Still out of
- * reach, and stated rather than implied: a constant declared inside a component, an
- * alias assigned through a ternary, a string concatenated at runtime, and a constant
- * imported from another module.
- */
-const moduleLevelClassConstants = (source) => {
-	const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "");
-	const constants = new Map();
-	/* A fresh lastIndex per call: the shared literal carries no `g` on purpose. */
-	const declaration = new RegExp(CLASS_CONSTANT_DECLARATION, "g");
-	let match = declaration.exec(stripped);
-	while (match !== null) {
-		const start = match.index + match[0].length;
-		let depth = 0;
-		let quote = null;
-		let end = -1;
-		for (let i = start; i < stripped.length; i++) {
-			const ch = stripped[i];
-			if (quote !== null) {
-				if (ch === quote && stripped[i - 1] !== "\\") quote = null;
-				continue;
-			}
-			if (ch === '"' || ch === "`") {
-				quote = ch;
-				continue;
-			}
-			if (ch === "(" || ch === "{" || ch === "[") depth += 1;
-			else if (ch === ")" || ch === "}" || ch === "]") depth -= 1;
-			else if (ch === ";" && depth === 0) {
-				end = i;
-				break;
-			}
-		}
-		if (end !== -1) {
-			declaration.lastIndex = end;
-			const value = stripped.slice(start, end).trim();
-			if (CLASS_STRING_VALUE.test(value)) constants.set(match[1], value);
-		}
-		match = declaration.exec(stripped);
-	}
-	return constants;
-};
+/* The module-level class-constant resolver lives in `jsx-class-constants.mjs`, shared
+ * with `floating-surface-no-border.test.mjs` so the two contracts read a factored-out
+ * class string the same way (the reasoning is on the function there). */
 
 /**
  * Every floating panel in one file, marked or not: a tag whose own class text carries
@@ -497,20 +440,24 @@ test("O-3 one rule paints the layer, gated on the root, with no element opacity"
 			`the panel must step --color-${role} toward ink by the derived overlayInkMix: unrebound it is a mid-tone meaning colour on a mid-tone ground and drops under 4.5:1 at the slider's floor`,
 		);
 	/*
-	 * THE BOUNDARY IS A ROLE, not the fill's own colour (design round 1, D2) - and
-	 * since 2026-11-06 it is spent on the SHADOW, not on a stroke. The hairline sat on
-	 * the panel's fill at 1.03:1 dark / 1.18:1 light, so the edge did no separating;
-	 * the derived step repaired that as a 1px `border-color`, and the operator's
-	 * four-screenshot report retired the border on every floating surface. The same
-	 * derived colour now feeds the contact layer of the one shadow, so the panel keeps
-	 * the boundary's darkness while compositing over an already-translucent column and
-	 * gains blur instead of a line. `--lo-hairline` is deliberately no longer a term
-	 * here: there is no stroke left to tint.
+	 * THE BOUNDARY IS THE SHADOW'S CONTACT, DARKENED - NEVER STEPPED TOWARD INK
+	 * (2026-11-06). The panel lost its stroke (operator report: floating surfaces
+	 * separate by ground and elevation), and the first head spent the old derived
+	 * ink step on the shadow instead: on a dark palette ink is near-white, so the
+	 * "shadow" painted a rim lighter than the column beneath (design round 1, D2;
+	 * agent review round 1, R2). On glass the contact is the off-glass `scrim`
+	 * contact pulled 50% toward black, at the same 45% share - the two numbers
+	 * `contrast-contract.mjs` (CONTACT_BLACK, CONTACT_SHARE) measures as painted.
 	 */
 	assert.match(
 		rule[2],
-		/--lo-shadow-contact:\s*color-mix\(\s*in srgb,\s*var\(--lo-ink\)\s*calc\(\s*var\(--lo-glass-overlay-edge-mix,\s*0\)\s*\*\s*100%\s*\)\s*,\s*var\(--lo-scrim\)\s*\);/,
-		"the panel's boundary must be its own derived role, spent on the shadow's contact layer: the hairline alone measures 1.03:1 dark / 1.18:1 light against the panel's own fill and does not separate it",
+		/--lo-shadow-contact:\s*color-mix\(\s*in srgb,\s*color-mix\(\s*in srgb,\s*black 50%,\s*var\(--lo-scrim\)\s*\)\s*45%,\s*transparent\s*\);/,
+		"the glass contact must be the scrim contact darkened toward black at the numbers contrast-contract.mjs measures; mixing toward ink paints a light rim on dark palettes",
+	);
+	assert.doesNotMatch(
+		rule[2],
+		/--lo-shadow-contact:[^;]*--lo-ink/,
+		"the glass contact may never mix toward ink: on a dark palette that is a glow ring, the stroke the operator reported drawn with a shadow",
 	);
 	/* The scrim is a deliberate non-member: it covers the whole window and is a role
 	 * (`bg-scrim`), not a ground that floats over the app. */
