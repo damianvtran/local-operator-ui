@@ -235,6 +235,32 @@ async def cells(url: str, phase: str) -> list[dict]:
     )
     rows.append(
         {
+            "cell": "setvalue #agree (checkbox) -> typed refusal naming click",
+            "actual": await wire("setvalue", tab=tab, selector="#agree", text="true"),
+            "page_after": {"agree_echo": await page_read("#agree-echo")},
+        }
+    )
+    rows.append(
+        {
+            "cell": "setvalue #pick-b (radio) -> typed refusal",
+            "actual": await wire("setvalue", tab=tab, selector="#pick-b", text="b"),
+        }
+    )
+    rows.append(
+        {
+            "cell": "setvalue #secret (password) -> verified, no value returned",
+            "actual": await wire("setvalue", tab=tab, selector="#secret", text="hunter2"),
+            "page_after": {"secret_echo": await page_read("#secret-echo")},
+        }
+    )
+    rows.append(
+        {
+            "cell": "setvalue #when with a value the date sanitizer drops -> typed refusal",
+            "actual": await wire("setvalue", tab=tab, selector="#when", text="01/03/2027"),
+        }
+    )
+    rows.append(
+        {
             "cell": "setvalue #locked (disabled) -> typed refusal",
             "actual": await wire("setvalue", tab=tab, selector="#locked", text="nope"),
         }

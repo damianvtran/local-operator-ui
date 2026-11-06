@@ -170,6 +170,64 @@ describe("setvalue: native <select>", () => {
 		f.close();
 	});
 
+	test("the match ladder is select's own: exact label, case-insensitive label, then value", () => {
+		// A value that collides with ANOTHER option's label is the case where a
+		// ladder differs by one tier silently lands on a different option. Both
+		// verbs must pick the same one — this is the reviewer's repro.
+		const f = fixture(
+			'<select id="s"><option value="blue">Red</option><option value="green">Blue</option></select>',
+		);
+		const viaSetvalue = f.run("#s", "blue");
+		const viaSelect = selectPage.call(f.doc.querySelector("#s"), "apply", [
+			"blue",
+		]);
+		assert.equal(
+			viaSetvalue.matched.index,
+			1,
+			"case-insensitive LABEL wins here",
+		);
+		assert.equal(viaSelect.selected[0].index, 1);
+		assert.equal(
+			viaSetvalue.matched.index,
+			viaSelect.selected[0].index,
+			"the two verbs cannot disagree about which option a name means",
+		);
+		f.close();
+	});
+
+	test("a disabled option is refused, exactly as select refuses it", () => {
+		const markup =
+			'<select id="s"><option value="a">Alpha</option><option value="b" disabled>Beta</option></select>';
+		const f = fixture(markup);
+		const before = f.doc.querySelector("#s").value;
+		const viaSetvalue = f.run("#s", "Beta");
+		assert.equal(viaSetvalue.status, "disabled");
+		assert.equal(viaSetvalue.kind, "select");
+		assert.deepEqual(viaSetvalue.matched, {
+			index: 1,
+			label: "Beta",
+			value: "b",
+		});
+		assert.equal(
+			f.doc.querySelector("#s").value,
+			before,
+			"a refused write changes nothing",
+		);
+		const viaSelect = selectPage.call(f.doc.querySelector("#s"), "apply", [
+			"Beta",
+		]);
+		assert.equal(viaSelect.status, "disabled");
+		f.close();
+	});
+
+	test("an option inside a disabled optgroup is refused too", () => {
+		const f = fixture(
+			'<select id="s"><optgroup label="g" disabled><option value="a">Alpha</option></optgroup><option value="b">Beta</option></select>',
+		);
+		assert.equal(f.run("#s", "Alpha").status, "disabled");
+		f.close();
+	});
+
 	test("the select program itself still works from the generated source", () => {
 		const f = fixture(`<select id="s">${options}</select>`);
 		const r = selectPage.call(f.doc.querySelector("#s"), "apply", ["Beta"]);
@@ -210,18 +268,115 @@ describe("setvalue: text fields", () => {
 		f.close();
 	});
 
-	test("a date input takes the ISO string, and an unparsable one is reported not sticky", () => {
+	test("a date input takes the ISO string", () => {
 		const f = fixture('<input id="d" type="date">');
 		const good = f.run("#d", "2026-11-06");
+		assert.equal(good.status, "ready");
 		assert.equal(good.value, "2026-11-06");
 		assert.equal(good.verified, true);
-		// Chromium keeps "" for a string it cannot parse; the read-back is the
-		// only honest report, and `verified:false` says so instead of implying a
-		// write that did not happen.
-		const bad = f.run("#d", "06/11/2026");
-		assert.equal(bad.status, "ready");
-		assert.equal(bad.value, "");
-		assert.equal(bad.verified, false);
+		f.close();
+	});
+
+	test("a value the input's own sanitizer drops or coerces is REFUSED, never a success", () => {
+		// Each of these is a write the browser does not store as asked: the date
+		// family and `number` keep "", `range` clamps, `color` falls back. Reporting
+		// any of them as `verified: true` is how a form is submitted with an empty
+		// or wrong field.
+		const cases = [
+			['<input id="x" type="date">', "01/03/2027", "YYYY-MM-DD"],
+			['<input id="x" type="time">', "not-a-time", "HH:MM or HH:MM:SS"],
+			['<input id="x" type="datetime-local">', "nope", "YYYY-MM-DDTHH:MM"],
+			['<input id="x" type="month">', "nope", "YYYY-MM"],
+			['<input id="x" type="week">', "nope", "YYYY-Www"],
+			['<input id="x" type="number">', "abc", "a number"],
+			[
+				'<input id="x" type="range">',
+				"abc",
+				"a number between the control's min and max",
+			],
+			['<input id="x" type="color">', "purple", "#rrggbb"],
+		];
+		for (const [markup, requested, expected] of cases) {
+			const f = fixture(markup);
+			const r = f.run("#x", requested);
+			assert.equal(r.status, "value_rejected", `${markup} / ${requested}`);
+			assert.equal(r.expected, expected, `${markup} names the format`);
+			assert.equal(r.input_type, f.doc.querySelector("#x").type);
+			f.close();
+		}
+		// The same types accept a value they understand, so the refusal is not just
+		// "this verb never writes these".
+		for (const [markup, good] of [
+			['<input id="x" type="date">', "2027-03-01"],
+			['<input id="x" type="time">', "13:45"],
+			['<input id="x" type="number">', "42"],
+			['<input id="x" type="color">', "#ff0000"],
+		]) {
+			const f = fixture(markup);
+			const r = f.run("#x", good);
+			assert.equal(r.status, "ready", `${markup} accepts ${good}`);
+			assert.equal(r.verified, true);
+			f.close();
+		}
+	});
+
+	test("a password field is verified but its value is never returned", () => {
+		const f = fixture('<input id="p" type="password">');
+		const r = f.run("#p", "hunter2");
+		assert.equal(r.status, "ready");
+		assert.equal(r.type, "password");
+		assert.equal(r.redacted, true);
+		assert.equal(r.verified, true);
+		assert.equal(
+			"value" in r,
+			false,
+			"a credential must not ride back in the answer",
+		);
+		assert.equal(
+			f.doc.querySelector("#p").value,
+			"hunter2",
+			"the write itself still happened",
+		);
+		f.close();
+	});
+
+	test("input and change are composed, so a control inside a shadow root notifies its host", () => {
+		const dom = new JSDOM("<!doctype html><body><div id='host'></div></body>");
+		const hostEl = dom.window.document.getElementById("host");
+		const root = hostEl.attachShadow({ mode: "open" });
+		root.innerHTML = '<input id="in" type="text">';
+		const input = root.querySelector("#in");
+		const seen = [];
+		input.addEventListener("input", (event) =>
+			seen.push(["inner-input", event.composed]),
+		);
+		hostEl.addEventListener("input", () => seen.push(["host-input"]));
+		hostEl.addEventListener("change", () => seen.push(["host-change"]));
+		const r = setvaluePage.call(input, "x");
+		assert.equal(r.status, "ready");
+		assert.equal(r.verified, true);
+		assert.deepEqual(
+			seen,
+			[["inner-input", true], ["host-input"], ["host-change"]],
+			"a bubbling-only event stops at the shadow root; a composed one notifies the host",
+		);
+		dom.window.close();
+	});
+
+	test("checkbox and radio refuse, naming the verb that toggles them", () => {
+		const f = fixture(
+			'<input id="c" type="checkbox"><input id="r" type="radio" value="b">',
+		);
+		assert.deepEqual(f.run("#c", "true"), {
+			status: "not_a_value_control",
+			tag: "input",
+			input_type: "checkbox",
+		});
+		assert.equal(f.run("#r", "true").input_type, "radio");
+		// The state a caller asked for is NOT the state these controls hold: they
+		// are unchanged, and `click` is the verb that moves them.
+		assert.equal(f.doc.querySelector("#c").checked, false);
+		assert.equal(f.doc.querySelector("#r").checked, false);
 		f.close();
 	});
 

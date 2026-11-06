@@ -9,6 +9,15 @@
  * it by reading the value back, so the caller never needs a screenshot to
  * confirm the write.
  *
+ * WHAT IT REFUSES, and why each refusal is here rather than in the host: every
+ * one of them is a case where a write would "succeed" without meaning anything.
+ * A checkbox/radio has no value to write — its state is `checked`, and `value`
+ * is only what it would submit — so toggling belongs to `click`. A password
+ * field's value is a credential and this answer travels into a transcript, so
+ * it is read back internally and never returned. A value-sanitizing input
+ * (date, time, number, colour, …) REFUSES a string it cannot parse by keeping
+ * "", which must never be reported as a successful write.
+ *
  * WHY THE PROTOTYPE SETTER RATHER THAN `.value = x`: React (and every
  * framework shaped like it) installs an OWN `value` accessor on the node as its
  * input tracker. A write through that instance property updates the tracker, so
@@ -46,6 +55,20 @@ export function setvaluePage(this: Element, requested: string): unknown {
 	const isSelect = this instanceof win.HTMLSelectElement;
 	const isTextarea = this instanceof win.HTMLTextAreaElement;
 	const isInput = this instanceof win.HTMLInputElement;
+	/** One real user edit: `input` then `change`, both BUBBLING and COMPOSED. A
+	 * real edit is composed, so it crosses a shadow boundary and a custom
+	 * element whose state lives on the host still learns about the write; a
+	 * bubbling-only event stops at the shadow root, which is the same "looks
+	 * filled, the app never moved" failure on a narrower surface. `select` uses
+	 * the identical pair for the identical reason. */
+	const dispatch = (target: Element) => {
+		target.dispatchEvent(
+			new win.Event("input", { bubbles: true, composed: true }),
+		);
+		target.dispatchEvent(
+			new win.Event("change", { bubbles: true, composed: true }),
+		);
+	};
 	// contenteditable and ARIA widgets are NOT this program's business: a
 	// contenteditable has no value property to set, and an ARIA combobox owns
 	// its own state through real clicks (`select`) or typing (`type`). Forging
@@ -57,6 +80,22 @@ export function setvaluePage(this: Element, requested: string): unknown {
 		// Only the browser may fill a file input, and only from a path the
 		// harness chose: `upload` owns that, with its own approval.
 		return { status: "file_input" };
+	}
+	if (
+		isInput &&
+		["checkbox", "radio"].includes((this as HTMLInputElement).type)
+	) {
+		// A checkbox/radio has NO value to write: `value` is what the control
+		// would SUBMIT, and its state is `checked`. Writing the value and reading
+		// it back would answer verified:true while the box stayed unticked — the
+		// exact "looks filled, the app never moved" failure this verb exists to
+		// remove. Toggling is `click`, which fires real activation behaviour and
+		// the page's own handler with it.
+		return {
+			status: "not_a_value_control",
+			tag: tag.toLowerCase(),
+			input_type: (this as HTMLInputElement).type,
+		};
 	}
 	if (
 		this.matches(":disabled, [aria-disabled=true]") ||
@@ -82,30 +121,47 @@ export function setvaluePage(this: Element, requested: string): unknown {
 			value: clip(fact.value),
 		}));
 		const needle = value.trim();
-		// Visible label OR value, exact before case-insensitive: what a person
-		// reading the form would say, then what the form's source says. This is
-		// the same order `select` matches options in, so the two verbs agree
-		// about which option a name means.
-		const exact = facts.filter(
-			(fact) => fact.label === needle || fact.value === needle,
-		);
-		const loose = exact.length
-			? exact
-			: facts.filter(
-					(fact) =>
-						fact.label.toLowerCase() === needle.toLowerCase() ||
-						fact.value.toLowerCase() === needle.toLowerCase(),
-				);
-		if (!loose.length) return { status: "option_not_found", available };
+		// THE SAME LADDER `select` USES (select-page.ts), so the two verbs cannot
+		// disagree about which option a name means: exact label, case-insensitive
+		// label, exact value. There is deliberately NO case-insensitive VALUE tier
+		// — `select` has none, and a ladder that differs by one tier is exactly
+		// how the pair silently lands on different options.
+		const tiers = [
+			(fact: { label: string; value: string }) => fact.label === needle,
+			(fact: { label: string; value: string }) =>
+				fact.label.toLowerCase() === needle.toLowerCase(),
+			(fact: { label: string; value: string }) => fact.value === needle,
+		];
+		let matches: Array<{ index: number; label: string; value: string }> = [];
+		for (const tier of tiers) {
+			matches = facts.filter(tier);
+			if (matches.length) break;
+		}
+		if (!matches.length) return { status: "option_not_found", available };
 		// A single select can only hold one option, so a repeated label is
 		// harmless there (the first match is the one the value setter would
 		// pick anyway). On a MULTIPLE select the same request is ambiguous: two
 		// options both named "Beta" and no way to say which. Refuse rather than
 		// pick one on the caller's behalf.
-		if (select.multiple && loose.length !== 1) {
-			return { status: "option_ambiguous", available, matches: loose.length };
+		if (select.multiple && matches.length !== 1) {
+			return { status: "option_ambiguous", available, matches: matches.length };
 		}
-		const chosen = loose[0];
+		const chosen = matches[0];
+		const matched = {
+			index: chosen.index,
+			label: clip(chosen.label),
+			value: clip(chosen.value),
+		};
+		// PARITY WITH `select`: a disabled option — or one inside a disabled
+		// optgroup, or an inert subtree — is refused BEFORE any mutation, with the
+		// same `disabled` reason token. A state a person cannot produce must not be
+		// reported as success, and the sibling verb already refuses it.
+		if (
+			options[chosen.index].matches(":disabled, [aria-disabled=true]") ||
+			options[chosen.index].closest("optgroup[disabled], [inert]")
+		) {
+			return { status: "disabled", kind: "select", available, matched };
+		}
 		const selectProto = win.HTMLSelectElement.prototype;
 		(
 			Object.getOwnPropertyDescriptor(selectProto, "value") as {
@@ -120,19 +176,14 @@ export function setvaluePage(this: Element, requested: string): unknown {
 				set: (input: unknown) => void;
 			}
 		).set.call(select, chosen.index);
-		select.dispatchEvent(new win.Event("input", { bubbles: true }));
-		select.dispatchEvent(new win.Event("change", { bubbles: true }));
+		dispatch(select);
 		const readBack = select.value;
 		return {
 			status: "ready",
 			kind: "select",
 			value: readBack,
 			verified: readBack === chosen.value,
-			matched: {
-				index: chosen.index,
-				label: clip(chosen.label),
-				value: clip(chosen.value),
-			},
+			matched,
 			available,
 		};
 	}
@@ -145,16 +196,49 @@ export function setvaluePage(this: Element, requested: string): unknown {
 			set: (input: unknown) => void;
 		}
 	).set.call(this, value);
-	this.dispatchEvent(new win.Event("input", { bubbles: true }));
-	this.dispatchEvent(new win.Event("change", { bubbles: true }));
+	dispatch(this);
+	const inputType = isInput ? (this as HTMLInputElement).type : "";
 	const readBack = (this as HTMLInputElement).value;
-	// `type` travels back because a date-like field REFUSES a value it cannot
-	// parse by silently keeping "": the read-back is then the only evidence the
-	// caller gets, and `verified: false` says the write did not stick.
+	// A password field's value is a CREDENTIAL and this answer travels into a
+	// transcript. Read it back for honesty, then report only whether the write
+	// stuck — never the value itself. The host omits `value` when `redacted`.
+	if (inputType === "password") {
+		return {
+			status: "ready",
+			kind: "input",
+			type: "password",
+			redacted: true,
+			verified: readBack === value,
+		};
+	}
+	// A value-sanitizing input does not store what it was given: it either DROPS
+	// the value (date/time/month/week/number keep "") or COERCES it (range clamps
+	// to min/max, colour falls back to #000000). Both are a write that did not
+	// happen, and reporting either as success is how a form is submitted with an
+	// empty or wrong field. Each entry names the format that type accepts, because
+	// "it silently kept something else" is not an instruction.
+	const sanitized: Record<string, string> = {
+		date: "YYYY-MM-DD",
+		time: "HH:MM or HH:MM:SS",
+		"datetime-local": "YYYY-MM-DDTHH:MM",
+		month: "YYYY-MM",
+		week: "YYYY-Www",
+		number: "a number",
+		range: "a number between the control's min and max",
+		color: "#rrggbb",
+	};
+	if (value !== "" && readBack !== value && sanitized[inputType]) {
+		return {
+			status: "value_rejected",
+			tag: tag.toLowerCase(),
+			input_type: inputType,
+			expected: sanitized[inputType],
+		};
+	}
 	return {
 		status: "ready",
 		kind: isTextarea ? "textarea" : "input",
-		type: isInput ? (this as HTMLInputElement).type : "",
+		type: inputType,
 		value: readBack,
 		verified: readBack === value,
 	};

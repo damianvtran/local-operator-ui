@@ -42,6 +42,19 @@
   <div id="when-echo" class="echo">when: (unset)</div>
 </section>
 
+<!-- The shapes a value write must REFUSE, and the one it must redact: a
+     checkbox/radio (state is `checked`, the verb is `click`), a password field
+     (a credential may not ride back in the answer). -->
+<section id="toggles">
+  <label for="agree">Acknowledge</label>
+  <input id="agree" name="agree" type="checkbox">
+  <div id="agree-echo" class="echo">agree: (unchecked)</div>
+  <label for="pick-b"><input id="pick-b" name="radio" type="radio" value="b"> Choice B</label>
+  <label for="secret">API token</label>
+  <input id="secret" name="secret" type="password">
+  <div id="secret-echo" class="echo">secret: (empty)</div>
+</section>
+
 <section id="refusals">
   <label for="locked">Locked field</label>
   <input id="locked" name="locked" type="text" value="cannot change" disabled>
@@ -114,6 +127,19 @@
     // The setters stay reachable from the page for the negative control.
     window.__setViaInstance = function (v) { input.value = v; };
   })();
+
+  var agree = document.getElementById('agree');
+  agree.addEventListener('change', function () {
+    document.getElementById('agree-echo').textContent = 'agree: ' + (agree.checked ? 'checked' : 'unchecked');
+    note('agree:change=' + agree.checked);
+  });
+  // The page never echoes the secret itself: only how many characters arrived,
+  // which is all a person's screen would show.
+  var secret = document.getElementById('secret');
+  secret.addEventListener('input', function () {
+    document.getElementById('secret-echo').textContent = 'secret: received ' + secret.value.length + ' chars';
+    note('secret:input len=' + secret.value.length);
+  });
 
   var when = document.getElementById('when');
   when.addEventListener('input', function () { note('when:input=' + when.value); });

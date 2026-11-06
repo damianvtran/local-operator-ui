@@ -149,8 +149,14 @@ export function selectPage(
 					"selectedIndex",
 				) as { set: (value: unknown) => void }
 			).set.call(this, indexes[0] ?? -1);
-		this.dispatchEvent(new win.Event("input", { bubbles: true }));
-		this.dispatchEvent(new win.Event("change", { bubbles: true }));
+		// COMPOSED as well as bubbling: a real edit crosses a shadow boundary, so
+		// a select inside a custom element still notifies its host.
+		this.dispatchEvent(
+			new win.Event("input", { bubbles: true, composed: true }),
+		);
+		this.dispatchEvent(
+			new win.Event("change", { bubbles: true, composed: true }),
+		);
 	}
 	// aria-activedescendant is keyboard focus, NOT a committed choice. Menus
 	// routinely focus Beta while Alpha remains selected until Enter/click.

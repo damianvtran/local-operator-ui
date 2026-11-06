@@ -316,6 +316,26 @@ export interface UploadResult {
 	accepted: FileFact[];
 }
 
+/** `setvalue` -> the value the control actually holds after the write, read back
+ * from the page rather than assumed.
+ *
+ * `value` is ABSENT for `<input type=password>`: the program reads it back to
+ * answer `verified` honestly and then drops it, because this result rides into a
+ * transcript and a credential must not. `input_type` and `matched` are additive
+ * desktop-only extensions of the shared `{value, kind?, verified?, url, title}`
+ * shape (the wire table in the sibling `local-operator` PR owns that base): the
+ * DOM type the write went through, and the option a `<select>` resolved to —
+ * the same `{index, label, value}` triple `select` returns. */
+export interface SetvalueResult {
+	value?: string;
+	kind?: "input" | "textarea" | "select";
+	verified: boolean;
+	input_type?: string;
+	matched?: { index: number; label: string; value: string };
+	url: string;
+	title: string;
+}
+
 /**
  * Capability TOKENS that are not wire methods: a flag on a method the host already
  * serves. `press_chord` says this build's `press` understands the extended

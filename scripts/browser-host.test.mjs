@@ -96,6 +96,11 @@ const bundle = await build({
 			// below can pin the dispatched code to them; the gate that keeps them equal
 			// to the vendored driver's functions is scripts/check-geometry-sources.test.mjs.
 			'export * from "./src/main/browser/actions/geometry-sources.gen";',
+			// The two page PROGRAMS the host injects (`select`, `setvalue`), for the
+			// same reason: the lane tests below assert the `functionDeclaration` that
+			// actually reached CDP is this constant, which is the invariant the
+			// bytecode transport breaks when it is fed a computed `.toString()`.
+			'export * from "./src/main/browser/actions/page-programs.gen";',
 			// The main-process locale store, reached through the SAME module graph the host
 			// resolves `t()` from, so a test can drive the language the host speaks.
 			'export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "./src/i18n";',
@@ -184,6 +189,8 @@ const {
 	READ_STYLES_SOURCE,
 	HIT_TEST_SOURCE,
 	ANCESTORS_SOURCE,
+	SELECT_PAGE_SOURCE,
+	SETVALUE_PAGE_SOURCE,
 	navigateView,
 	settle,
 	// The popup policy's pure decision function and its cap constant: the matrix
@@ -12610,9 +12617,14 @@ test("select is advertised, owned/document scoped, and restores forbidden change
 	const { owner, tab } = await openApprovedTab(host);
 	const contents = registry.requireSurface(tab).view.webContents;
 	const original = cdp.send;
+	// Every program this action injects. The assertion after the dispatch is the
+	// one a computed `.toString()` cannot survive: in a bytecode bundle it sends
+	// the loader's dummy string, not the program.
+	const declarations = [];
 	cdp.send = async (target, method, params) => {
 		if (method === "DOM.resolveNode") return { object: { objectId: "select" } };
 		if (method === "Runtime.callFunctionOn") {
+			declarations.push(params.functionDeclaration);
 			if (params.functionDeclaration.includes("tagName === 'SELECT'"))
 				return { result: { value: true } };
 			if (params.arguments?.[0]?.value === "apply") {
@@ -12636,6 +12648,10 @@ test("select is advertised, owned/document scoped, and restores forbidden change
 	);
 	assert.equal(contents.url, "https://approved.example/");
 	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	assert.ok(
+		declarations.includes(SELECT_PAGE_SOURCE),
+		"the program that reached CDP is the generated constant, never a computed .toString()",
+	);
 	await assert.rejects(
 		host.dispatch(
 			"select",
@@ -12655,28 +12671,28 @@ test("select is advertised, owned/document scoped, and restores forbidden change
 test("setvalue is advertised, document/owner scoped, and restores forbidden change-handler landings without Fetch", async () => {
 	assert.ok(METHODS.includes("setvalue"));
 	assert.ok(isMethod("setvalue"));
+	// MEMBERSHIP, not adjacency: order inside the capability list carries no
+	// semantics, and the literal `/health` snapshot above already fails loudly
+	// when the list changes (review R1-6).
 	assert.ok(HOST_CAPABILITIES.includes("setvalue"));
-	assert.equal(
-		HOST_CAPABILITIES.indexOf("setvalue"),
-		HOST_CAPABILITIES.indexOf("select") + 1,
-	);
-	assert.equal(
-		METHODS.at(-1),
-		"setvalue",
-		"appended: no existing method's index moved",
-	);
 	assert.equal(COMMAND_TIMEOUTS_S.setvalue, 25);
 	const { host, cdp, registry } = makeHost();
 	const { owner, tab } = await openApprovedTab(host);
 	const contents = registry.requireSurface(tab).view.webContents;
 	const original = cdp.send;
+	// Every program this action injects, asserted against the generated constant
+	// below. That is the invariant a computed `.toString()` cannot survive: in a
+	// bytecode bundle it sends the loader's dummy string, not the program
+	// (review R1-4).
+	const declarations = [];
 	// A plain write: the program's own read-back is the whole answer, and no
 	// per-hop gate is armed (that is click/type/press only — a write fetches
 	// nothing itself).
 	cdp.send = async (target, method, params) => {
 		if (method === "DOM.resolveNode")
 			return { object: { objectId: "setvalue" } };
-		if (method === "Runtime.callFunctionOn")
+		if (method === "Runtime.callFunctionOn") {
+			declarations.push(params.functionDeclaration);
 			return {
 				result: {
 					value: {
@@ -12688,6 +12704,7 @@ test("setvalue is advertised, document/owner scoped, and restores forbidden chan
 					},
 				},
 			};
+		}
 		return original(target, method, params);
 	};
 	cdp.calls.length = 0;
@@ -12699,15 +12716,23 @@ test("setvalue is advertised, document/owner scoped, and restores forbidden chan
 	assert.equal(written.value, "Damian");
 	assert.equal(written.verified, true);
 	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	assert.ok(
+		declarations.includes(SETVALUE_PAGE_SOURCE),
+		"the program that reached CDP is the generated constant, never a computed .toString()",
+	);
+	// A page answer is answered by the host in kind: the harness routes on these
+	// three shapes, so each is driven here through the real dispatcher.
+	const answers = async (value) => {
+		cdp.send = async (target, method, params) => {
+			if (method === "DOM.resolveNode")
+				return { object: { objectId: "setvalue" } };
+			if (method === "Runtime.callFunctionOn") return { result: { value } };
+			return original(target, method, params);
+		};
+	};
 	// A typed refusal rides `data.reason`, not prose: that is the field a caller
 	// branches on, and the wire's ErrorCode vocabulary is closed.
-	cdp.send = async (target, method, params) => {
-		if (method === "DOM.resolveNode")
-			return { object: { objectId: "setvalue" } };
-		if (method === "Runtime.callFunctionOn")
-			return { result: { value: { status: "disabled", tag: "input" } } };
-		return original(target, method, params);
-	};
+	await answers({ status: "disabled", tag: "input" });
 	await assert.rejects(
 		host.dispatch(
 			"setvalue",
@@ -12716,9 +12741,64 @@ test("setvalue is advertised, document/owner scoped, and restores forbidden chan
 		),
 		(e) => e.code === "element_not_found" && e.data.reason === "disabled",
 	);
+	// A checkbox is not a value control, and the refusal must name the verb that
+	// DOES work: a caller told only "refused" retries the same call.
+	await answers({
+		status: "not_a_value_control",
+		tag: "input",
+		input_type: "checkbox",
+	});
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#c", text: "true" },
+			"setvalue",
+		),
+		(e) =>
+			e.code === "element_not_found" &&
+			e.data.reason === "not_a_value_control" &&
+			e.message.includes("click"),
+	);
+	// A value-sanitizing field reports the format that WOULD work, and the type.
+	await answers({
+		status: "value_rejected",
+		tag: "input",
+		input_type: "date",
+		expected: "YYYY-MM-DD",
+	});
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#d", text: "01/03/2027" },
+			"setvalue",
+		),
+		(e) =>
+			e.code === "element_not_found" &&
+			e.data.reason === "value_rejected" &&
+			e.data.expected === "YYYY-MM-DD" &&
+			e.data.input_type === "date",
+	);
+	// A password answer carries `verified` and NO value: nothing on this path may
+	// put a credential into a transcript (review, credential safety).
+	await answers({
+		status: "ready",
+		kind: "input",
+		type: "password",
+		redacted: true,
+		verified: true,
+	});
+	const secret = await host.dispatch(
+		"setvalue",
+		{ ...owner, tab, selector: "#p", text: "hunter2" },
+		"setvalue",
+	);
+	assert.equal(secret.verified, true);
+	assert.equal(secret.input_type, "password");
+	assert.equal("value" in secret, false, "the credential is not in the answer");
 	// The change handler navigates to an unapproved origin and the program throws
 	// on the context teardown: the THROW path is judged and the tab restored,
 	// exactly as `select`'s is.
+	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
 	cdp.send = async (target, method, params) => {
 		if (method === "DOM.resolveNode")
 			return { object: { objectId: "setvalue" } };

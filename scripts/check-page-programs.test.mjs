@@ -74,23 +74,89 @@ test("a changed program changes the derived text (the check has bite)", async ()
 	}
 });
 
-/** Every TypeScript module under the host's browser directory. */
+/** A name bound to a `.toString()` call, with slack for the call wrapping onto the
+ * following line: a program can be laundered through a const in another module. */
+const BOUND_FROM_TO_STRING =
+	/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[\s\S]{0,200}?\.toString\s*\(/g;
+
+/** A `functionDeclaration:` value, read across newlines up to the `,`/`;`/`}`
+ * that ends it — the call expression, never a single line. */
+const DECLARATION_EXPRESSION =
+	/functionDeclaration\s*:\s*([\s\S]{0,240}?)(?=[,;}\n]\s*(?:[A-Za-z_$"']|}|$))/g;
+
+/** Every TypeScript module under the host's browser directory, minus the two
+ * places a `functionDeclaration:` is not a page program: the PROVENANCE-pinned
+ * vendored driver (its own gate) and the generated constants themselves (they
+ * ARE the sanctioned transport, and their text is a page program's body, which
+ * may legitimately call `.toString()` on a value). */
 function hostSources(dir) {
 	const out = [];
 	for (const entry of readdirSync(dir, { withFileTypes: true })) {
 		const path = join(dir, entry.name);
 		if (entry.isDirectory()) {
-			// The vendored driver is PROVENANCE-pinned and has its own gate.
 			if (entry.name === "vendor") continue;
 			out.push(...hostSources(path));
 			continue;
 		}
-		if (entry.name.endsWith(".ts")) out.push(path);
+		if (entry.name.endsWith(".ts") && !entry.name.endsWith(".gen.ts"))
+			out.push(path);
 	}
 	return out;
 }
 
-test("no page program travels as a computed .toString()", async () => {
+/**
+ * The programs that reached a `functionDeclaration:` through a computed
+ * `.toString()`, which is the ONE shape a shipped build cannot carry: the main
+ * bundle is V8 bytecode and its loader runs against a dummy source string, so
+ * the computed text is that dummy rather than the program (measured — see
+ * `page-programs/select-page.ts`).
+ *
+ * WHY THIS IS A PARSER-ISH SCAN AND NOT A LINE GREP: the defect's two realistic
+ * reintroductions are a call that WRAPS (`functionDeclaration:\n\t\t&&\n\t\tfn
+ * .toString()`) and a program LAUNDERED through a const that another module
+ * defines. A same-line scan sees neither, so the scan reads the whole call
+ * expression with slack, and resolves identifiers against a tree-wide set of
+ * names assigned from a `.toString()` — including across files, because the
+ * const and its use need not share a module.
+ *
+ * Pure over `[{ path, text }]`, so the test below can prove it has bite on
+ * synthetic offenders instead of trusting that it would catch one.
+ */
+function transportOffenders(files) {
+	const offenders = [];
+	/** Names bound to a `.toString()` anywhere in the tree, with slack for the
+	 * call wrapping onto the next line. */
+	const fromToString = new Set();
+	const binding = BOUND_FROM_TO_STRING;
+	for (const { text } of files)
+		for (const match of text.matchAll(binding)) fromToString.add(match[1]);
+	for (const { path, text } of files) {
+		// The call expression, not the line: up to the first `,`/`;`/`}` that ends
+		// the value, across newlines.
+		const declaration = DECLARATION_EXPRESSION;
+		for (const match of text.matchAll(declaration)) {
+			const expression = match[1];
+			const line = text.slice(0, match.index).split("\n").length;
+			const computed = /\.toString\s*\(/.test(expression);
+			const named = expression
+				.trim()
+				.match(/^(?:as\s+\w+\s*)?([A-Za-z_$][\w$]*)$/);
+			if (computed) {
+				offenders.push(
+					`${path}:${line}: a computed .toString() as a page program`,
+				);
+				continue;
+			}
+			if (named && fromToString.has(named[1]))
+				offenders.push(
+					`${path}:${line}: ${named[1]} is assigned from a .toString() elsewhere`,
+				);
+		}
+	}
+	return offenders;
+}
+
+test("no page program travels as a computed .toString()", () => {
 	const root = join(
 		dirname(fileURLToPath(import.meta.url)),
 		"..",
@@ -98,17 +164,13 @@ test("no page program travels as a computed .toString()", async () => {
 		"main",
 		"browser",
 	);
-	const offenders = [];
-	for (const file of hostSources(root)) {
-		const lines = readFileSync(file, "utf8").split("\n");
-		lines.forEach((line, index) => {
-			if (!line.includes("functionDeclaration:")) return;
-			if (!line.includes(".toString(")) return;
-			offenders.push(`${file}:${index + 1}: ${line.trim()}`);
-		});
-	}
+	const files = hostSources(root).map((path) => ({
+		path,
+		text: readFileSync(path, "utf8"),
+	}));
+	assert.ok(files.length > 50, "the scan sees the host's source tree");
 	assert.deepEqual(
-		offenders,
+		transportOffenders(files),
 		[],
 		"a page program must ship as generated source (scripts/generate-page-programs.mjs): " +
 			"the packaged main bundle is V8 bytecode, so `.toString()` returns the loader's dummy string in a built app",
@@ -117,4 +179,33 @@ test("no page program travels as a computed .toString()", async () => {
 		readdirSync(PROGRAMS_DIR).length >= 2,
 		"the readable programs the generated sources come from are present",
 	);
+});
+
+test("the transport scan has bite on every shape a revert takes", () => {
+	const offenders = transportOffenders([
+		{
+			path: "a/one.ts",
+			text: "functionDeclaration: selectPage.toString(),\n",
+		},
+		{
+			path: "a/wrapped.ts",
+			text: "const params = {\n\tobjectId,\n\tfunctionDeclaration:\n\t\tprogram\n\t\t\t.toString(),\n\treturnByValue: true,\n};\n",
+		},
+		{
+			// The const in one module, the call site in another: a same-line scan
+			// of the call site sees only an identifier.
+			path: "a/declare.ts",
+			text: "const PROGRAM_SOURCE = buildProgram().toString();\n",
+		},
+		{ path: "a/use.ts", text: "functionDeclaration: PROGRAM_SOURCE,\n" },
+		{
+			// The control: the sanctioned transport, and an inline literal.
+			path: "a/clean.ts",
+			text: 'functionDeclaration: SETVALUE_PAGE_SOURCE,\nfunctionDeclaration: "function () { return 1; }",\n',
+		},
+	]);
+	assert.equal(offenders.length, 3, offenders.join("\n"));
+	assert.ok(offenders.some((line) => line.includes("a/one.ts:1")));
+	assert.ok(offenders.some((line) => line.includes("a/wrapped.ts:3")));
+	assert.ok(offenders.some((line) => line.includes("a/use.ts:1")));
 });
