@@ -2,7 +2,7 @@
 	"ui.chat.radient_session.action.open_console": {
 		"role": "action",
 		"tone": "plain",
-		"note": "Opens the Radient web console in the browser. Keep Radient in Latin; 'console' is the locale's ordinary word for a web dashboard."
+		"note": "Opens the Radient web console in the browser. Use the locale's established name for the Radient console (vi: 'Radient Console'); Radient stays in Latin."
 	},
 	"ui.chat.radient_session.action.sign_in": {
 		"role": "action",
@@ -28,8 +28,8 @@
 	},
 	"ui.chat.radient_session.prose.not_cleared": {
 		"role": "alert body",
-		"tone": "plain, calm",
-		"note": "Shown when a sign-in the user just finished did not fix the problem. Must NOT tell the user to use a terminal or any command. Name the Settings page and its Providers section with the locale's OWN shipped navigation terms (as in pointer.sign_in_active), never the English labels; only product names (Radient) stay in Latin."
+		"tone": "plain, calm, non-technical",
+		"note": "Shown when a sign-in the user just finished did not fix the problem. Three short sentences: what happened, one more sign-in, then the Radient console to check the account. Must NOT mention a terminal, a command or Settings. Use the locale's established name for the Radient console (vi already uses 'Radient Console'); Radient stays in Latin."
 	},
 	"ui.chat.radient_session.prose.signing_in": {
 		"role": "alert body",
@@ -46,7 +46,7 @@
 	"ui.chat.radient_session.title.not_cleared": {
 		"role": "alert title",
 		"tone": "plain",
-		"note": "States that signing in did not resolve the issue. Keep Radient in Latin."
+		"note": "Says that signing in did not fix Radient; it must stand alone (no pronoun pointing at text that follows). Keep Radient in Latin."
 	},
 	"ui.chat.radient_session.title.signing_in": {
 		"role": "alert title",

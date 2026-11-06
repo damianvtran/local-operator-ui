@@ -14,3 +14,12 @@ sits top-left in its story frame (720 px, or 440 px for the narrow story).
   (Settings, under Providers; Open Radient console) plus the retry.
 - `after-signing-in.png`, `after-failed.png` - unchanged neighbours, for
   regression comparison.
+
+## Remediation round 1 (design D1/D2/D3/D5)
+
+- `r1-after-not-cleared.png`, `r1-after-not-cleared-narrow.png` - the
+  not-cleared state with the D1 copy ("Signing in didn't fix Radient"; no
+  Settings pointer), "Sign in again" first (D2) and the console link with its
+  leaves-the-app glyph second (D5). `role="status"` (D3) is asserted in
+  `scripts/radient-session-issue.test.mjs`, not visible in a frame.
+  `needs-sign-in` is unchanged from `after-needs-sign-in.png`.

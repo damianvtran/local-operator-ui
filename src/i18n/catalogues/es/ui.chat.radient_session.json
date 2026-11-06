@@ -4,10 +4,10 @@
 	"ui.chat.radient_session.pointer.sign_in_active": "Ajustes, dentro de Proveedores de modelos, es donde se puede borrar.",
 	"ui.chat.radient_session.prose.input_required": "{message} Esta pantalla no acepta el código pegado, así que termina de iniciar sesión en Ajustes, dentro de Proveedores de modelos.",
 	"ui.chat.radient_session.prose.needs_sign_in": "Radient ya no acepta el inicio de sesión guardado en este equipo. Al iniciar sesión de nuevo, se restauran los modelos de Radient y se abre el navegador para que des tu consentimiento.",
-	"ui.chat.radient_session.prose.not_cleared": "Se completó el inicio de sesión, pero Radient sigue sin aceptar el que usa este equipo. Revisa la cuenta de Radient en Ajustes, dentro de Proveedores de modelos, o abre la consola de Radient.",
+	"ui.chat.radient_session.prose.not_cleared": "Iniciaste sesión, pero Radient sigue sin funcionar en este equipo. Intenta iniciar sesión una vez más. Si no funciona, abre la consola de Radient para revisar tu cuenta.",
 	"ui.chat.radient_session.prose.signing_in": "Completa el inicio de sesión en tu navegador. El conector se reinicia solo cuando se completa el inicio de sesión; los intentos sin terminar caducan a los pocos minutos.",
 	"ui.chat.radient_session.title.input_required": "Radient necesita un código pegado para iniciar sesión",
 	"ui.chat.radient_session.title.needs_sign_in": "Radient necesita que vuelvas a autenticarte",
-	"ui.chat.radient_session.title.not_cleared": "Iniciar sesión en Radient no lo resolvió",
+	"ui.chat.radient_session.title.not_cleared": "Iniciar sesión no resolvió el problema de Radient",
 	"ui.chat.radient_session.title.signing_in": "Iniciando sesión en Radient"
 }

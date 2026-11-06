@@ -4,10 +4,10 @@
 	"ui.chat.radient_session.pointer.sign_in_active": "Очистить его можно в «Настройках», в разделе «Провайдеры».",
 	"ui.chat.radient_session.prose.input_required": "{message} Здесь нельзя вставить код, поэтому завершите вход в «Настройках», в разделе «Провайдеры».",
 	"ui.chat.radient_session.prose.needs_sign_in": "Radient больше не принимает сохранённые на этом устройстве данные входа. Войдите снова, чтобы восстановить доступ к моделям Radient; браузер откроется для подтверждения доступа.",
-	"ui.chat.radient_session.prose.not_cleared": "Вход выполнен, но Radient по-прежнему не принимает данные входа, которые использует это устройство. Проверьте аккаунт Radient в «Настройках», в разделе «Провайдеры», или откройте консоль Radient.",
+	"ui.chat.radient_session.prose.not_cleared": "Вы вошли, но Radient на этом компьютере всё ещё не работает. Попробуйте войти ещё раз. Если это не поможет, откройте консоль Radient и проверьте свой аккаунт.",
 	"ui.chat.radient_session.prose.signing_in": "Завершите вход в браузере. После завершения входа коннектор перезапустится автоматически; незавершённая попытка будет прекращена через несколько минут.",
 	"ui.chat.radient_session.title.input_required": "Для входа в Radient нужно вставить код",
 	"ui.chat.radient_session.title.needs_sign_in": "Требуется повторный вход в Radient",
-	"ui.chat.radient_session.title.not_cleared": "Вход в Radient не устранил проблему",
+	"ui.chat.radient_session.title.not_cleared": "Вход не восстановил работу Radient",
 	"ui.chat.radient_session.title.signing_in": "Вход в Radient"
 }
