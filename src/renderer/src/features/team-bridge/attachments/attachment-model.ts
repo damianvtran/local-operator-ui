@@ -156,11 +156,16 @@ export function isAvailableFile(file: BridgeFileDescriptor): boolean {
  * A file name shortened IN THE MIDDLE to at most `max` code points, keeping the
  * extension end readable (`Quarterly board…summary.pdf`), because the two ends
  * are what a person recognises a file by. CSS can only ellipsise one end, so
- * this is a character budget; the card then splits it with `splitFileNameTail`
- * so the width backstop can only ellipsise the head. Code-point based (`Array.from`), not UTF-16 `slice` like
- * `middleTruncate` in `sent-file-card.tsx`: a name is arbitrary user text and
- * cutting through a surrogate pair would print a broken glyph. Server names are
- * already cleaned of bidi/format controls and bounded to 120 scalars.
+ * this is a character budget. Code-point based (`Array.from`), not UTF-16 `slice`
+ * like `middleTruncate` in `sent-file-card.tsx`: a name is arbitrary user text
+ * and cutting through a surrogate pair would print a broken glyph. Server names
+ * are already cleaned of bidi/format controls and bounded to 120 scalars.
+ *
+ * NOT USED BY THE TEAM BRIDGE FILE CARD (design D2). That card needs the tail
+ * protected AND the head ellipsised to its real width; a code-point budget does
+ * the first while guessing at the second, and passed through `truncate` it
+ * produced two ellipses (`Customer onboa…list….docx`). The card now hands
+ * `splitFileNameTail` the whole name and lets CSS own the single truncation.
  */
 export function middleTruncateFileName(name: string, max: number): string {
 	const chars = Array.from(name);
@@ -172,12 +177,16 @@ export function middleTruncateFileName(name: string, max: number): string {
 }
 
 /**
- * Split an already-bounded display label into a shrinkable HEAD and a protected
- * TAIL, so the card can let CSS ellipsise only the head while the part a
- * person identifies a file by stays visible (QA Q1 / design D1 / UX U2: an
- * end-ellipsis on the whole name clipped `.docx`, and CJK or emoji tails, that
- * `middleTruncateFileName` had kept). The character budget alone cannot do it:
- * glyph widths vary, so a 34-code-point label still overflows a 182px slot.
+ * Split a display label into a shrinkable HEAD and a protected TAIL, so the card
+ * can let CSS ellipsise only the head while the part a person identifies a file
+ * by stays visible (QA Q1 / design D1 / UX U2: an end-ellipsis on the whole name
+ * clipped `.docx`, and CJK or emoji tails). A character budget cannot do it:
+ * glyph widths vary, so a 34-code-point label still overflows a 182px slot — so
+ * since design D2 the card passes the WHOLE name here and lets CSS measure.
+ *
+ * Direction is not decided here. The card paints the parts in the name's own
+ * order and pins the TAIL to `ltr`, because a `.` inside an RTL run reorders to
+ * `csv.` (design D3).
  *
  * The tail is the extension (dot included) when it is short enough to be one,
  * otherwise the last few code points of a long name, so an extension-less name

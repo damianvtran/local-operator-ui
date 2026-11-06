@@ -3431,6 +3431,9 @@ test("S3b files: member thread renders one noninteractive card per descriptor", 
 	assert.ok(rtl, "RTL name rendered inside dir=auto");
 	assert.match(view.element.textContent, PDF_META);
 	assert.match(view.element.textContent, CSV_META);
+	/* The noun on an unavailable file card is still the attachment one: a
+	 * file-flavoured phrase is new copy, and new English copy cannot land without
+	 * the translator/delta-audit round (see the card's D4 note). */
 	assert.ok(
 		view.element.textContent.includes(
 			m.t("ui.teamBridge.attachmentCard.unavailable"),
@@ -3537,8 +3540,11 @@ test("S3b files: mixed 4 images + 6 files at compact density stays bounded and w
 		assert.match(tail.className, NO_SHRINK);
 		assert.doesNotMatch(tail.className, TRUNCATES);
 		assert.match(tail.textContent, EXTENSION_TAIL);
-		assert.ok(Array.from(name.textContent).length <= 28, name.textContent);
-		assert.ok(head.textContent.includes("…"));
+		/* No character budget any more (design D2): the head holds the whole stem
+		   and CSS is the only truncator, so the only ellipsis on the card is the
+		   one the browser draws at the width the card actually gets. */
+		assert.doesNotMatch(head.textContent, /…/);
+		assert.equal(name.textContent, `${head.textContent}${tail.textContent}`);
 	}
 	assert.equal(view.element.querySelectorAll("button,a").length, 0);
 	await view.close();
@@ -3671,6 +3677,8 @@ test("S3b files: the tail is a protected element; only the head ellipsises (Q1/D
 		"Customer onboarding checklist v12.docx",
 		"تقرير الربع الرابع.csv",
 		"四半期の取締役会報告書と議事録の最終版.pdf",
+		// No extension: the protected tail is the name's own ending, not a format.
+		"ملف بدون امتداد طويل",
 	];
 	const view = await renderAttachmentGroup({
 		attachments: [],
@@ -3685,7 +3693,7 @@ test("S3b files: the tail is a protected element; only the head ellipsises (Q1/D
 		),
 	});
 	const rows = view.element.querySelectorAll("[data-bridge-file-card]");
-	assert.equal(rows.length, 3);
+	assert.equal(rows.length, names.length);
 	for (const [index, card] of [...rows].entries()) {
 		const label = card.querySelector('[dir="auto"]');
 		const head = label.querySelector('[data-file-name-part="head"]');
@@ -3696,15 +3704,35 @@ test("S3b files: the tail is a protected element; only the head ellipsises (Q1/D
 		assert.match(tail.className, NO_SHRINK);
 		assert.equal(head.style.unicodeBidi, "isolate");
 		assert.equal(tail.style.unicodeBidi, "isolate");
-		assert.equal(tail.textContent, `.${names[index].split(".").pop()}`);
+		assert.equal(tail.textContent, m.splitFileNameTail(names[index]).tail);
+		/* D3: an EXTENSION is Latin-ordered data and must not inherit an RTL run's
+		   direction, or `.csv` paints as `csv.`. A tail that is a fragment of the
+		   name's own script must keep the row's direction instead. */
+		assert.equal(
+			tail.getAttribute("dir"),
+			tail.textContent.startsWith(".") ? "ltr" : null,
+			names[index],
+		);
 	}
 	// D9 holds for the split label: no name fragment in any attribute.
 	const attrs = attributeText(view.element);
 	for (const name of names)
 		for (const part of [name, name.slice(0, 8), name.split(".").shift()])
 			assert.ok(!attrs.includes(part), part);
+	/* A card states its own limit (design D1) with the metadata image chip's own
+	   sentence, as its title. That sentence is FIXED COPY, never a name, so it is
+	   the only title a file card may carry; nothing else may hold one. */
+	const limit = m.t("ui.teamBridge.attachmentCard.metadata_only");
+	const titled = [...view.element.querySelectorAll("[title]")];
+	assert.equal(titled.length, names.length);
+	for (const card of titled) assert.equal(card.getAttribute("title"), limit);
 	assert.equal(
-		view.element.querySelectorAll("[title],[aria-label] [aria-label]").length,
+		view.element.querySelectorAll("[aria-label] [aria-label]").length,
+		0,
+	);
+	assert.equal(
+		view.element.querySelectorAll("[title]:not([data-bridge-file-card])")
+			.length,
 		0,
 	);
 	await view.close();

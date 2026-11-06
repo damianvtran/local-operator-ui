@@ -28,7 +28,6 @@ import {
 	isAttachmentImage,
 	isAvailableAttachment,
 	isAvailableFile,
-	middleTruncateFileName,
 	splitFileNameTail,
 } from "./attachment-model";
 import {
@@ -226,9 +225,18 @@ const IMAGE_TYPE = new Map([
  * NO HOVER STEP and NO CONTROL: a descriptor chip offers nothing to do (no
  * byte route; owner decision after #1634), and a hover colour step is this
  * app's promise that something is pressable.
+ *
+ * THE BORDER IS THE BOUNDARY, NOT THE FILL STEP. The fill step alone is
+ * 1.10–1.12:1 against the pane, so on a dim or low-quality panel the chip stops
+ * reading as a card and becomes text with a tint (design D6). `control` is the
+ * composer chip's own edge token (3.43:1 light / 4.15:1 dark), the nearest
+ * card boundary this app already draws, so no new token enters the palette. It
+ * is one class on BOTH chip kinds: the image chip and the file chip stay the
+ * same object (§4), and an image's metadata chip has the same 1.1:1 fill step
+ * on the same ground.
  */
 const CHIP_CLASS =
-	"flex h-12 min-w-0 max-w-full items-center gap-2.5 rounded-md bg-media-surface px-2.5";
+	"flex h-12 min-w-0 max-w-full items-center gap-2.5 rounded-md border border-control bg-media-surface px-2.5";
 const CHIP_TILE_CLASS =
 	"flex size-8 shrink-0 items-center justify-center rounded-sm bg-elevated";
 
@@ -309,20 +317,29 @@ const CLASS_MIME = new Map<string, string>([
 	["text", "text/plain"],
 	["container", "application/zip"],
 ]);
-/* Server names are <= 120 scalars; ~32 fit a regular card on one line, and the
- * `truncate` class remains the width backstop for wide glyphs. */
-const NAME_BUDGET = { regular: 34, compact: 28 } as const;
-
 /**
- * One file name as a flex row: the head shrinks and carries the ellipsis, the
- * tail (extension or ending, see `splitFileNameTail`) never shrinks, so the
- * width backstop can no longer clip what middle truncation preserved.
+ * One file name as a flex row: the head shrinks and carries the single ellipsis,
+ * the tail (its extension or ending, see `splitFileNameTail`) never shrinks, so
+ * the extension stays whole at any card width.
  *
- * BIDI: the row takes its direction from the whole name (`dir="auto"` reads
- * the first strong character of its descendants), so an Arabic name lays its
- * parts out right to left. Each part is `unicode-bidi: isolate`, so a Latin
- * `.csv` tail cannot reorder into the head. D9: text only, never an
- * aria-label, title or id.
+ * WHY NO CHARACTER BUDGET (design D2): pre-truncating with
+ * `middleTruncateFileName` and then letting `text-overflow` clip the head put
+ * TWO ellipses on one 240px card (`Customer onboa…list….docx`) and detached the
+ * extension from the name it belonged to. The head holds the whole name now and
+ * CSS is the only truncator: one ellipsis, measured against the width the card
+ * actually gets instead of an estimated code-point count.
+ *
+ * BIDI: the row takes its direction from the whole name (`dir="auto"` reads the
+ * first strong character of its descendants), so an Arabic name lays its parts
+ * out right to left. Isolation alone does NOT hold a `.` in place: the full stop
+ * is a neutral, and inside an RTL run it takes that run's direction, so `.csv`
+ * painted as `csv.` (design D3). A tail that IS an extension therefore declares
+ * `dir="ltr"` — an extension is Latin-ordered data, not a word — which pins the
+ * dot to the left of the letters, while the isolate keeps the tail whole and out
+ * of its neighbours' ordering. A tail that is instead the last few characters of
+ * an extension-less name keeps the row's direction: those are letters of the
+ * name's own script, and pinning them LTR would print the fragment reversed.
+ * D9: text only, never an aria-label, title or id.
  */
 function FileNameLabel({
 	label,
@@ -350,6 +367,8 @@ function FileNameLabel({
 			{tail && (
 				<span
 					data-file-name-part="tail"
+					/* Only an extension is direction-free data; see the note above. */
+					dir={tail.startsWith(".") ? "ltr" : undefined}
 					className="shrink-0 whitespace-pre"
 					style={{ unicodeBidi: "isolate" }}
 				>
@@ -364,7 +383,11 @@ function FileNameLabel({
  * Generic files (S3b) as noninteractive metadata cards: a class glyph, the
  * cleaned name, and `TYPE · size`. There is deliberately NO control on a card:
  * no download, open or Save As (removed in #1634 until a download contract is
- * decided), so a card is a plain list item a reader cannot act on.
+ * decided), so a card is a plain list item a reader cannot act on. Because it is
+ * inert by DECISION and not by omission, the available card states that limit on
+ * the same registers the metadata image chip already uses (design D1) — see
+ * `limit` below. A card that silently does nothing reads as broken next to an
+ * image tile that offers Open and Save.
  *
  * D9: the name is visible text inside `dir="auto"` (an Arabic or Hebrew name
  * lays out by its own direction inside any UI locale). It never appears in an
@@ -398,18 +421,44 @@ export function BridgeFileGroup({
 				const name = file?.displayName ?? null;
 				const extension = name ? extensionOf(name) : null;
 				const fileClass = file?.fileClass ?? "";
+				const kind = CLASS_MIME.has(fileClass) ? fileClass : "other";
 				/* The chat card's own `PDF · 2.4 MB` vocabulary when the name has an
 				 * extension; otherwise the server class, in words. */
 				const type =
 					name && extension
 						? attachmentTypeLabel(name)
-						: t("ui.teamBridge.fileCard.kind", {
-								kind: CLASS_MIME.has(fileClass) ? fileClass : "other",
-							});
+						: t("ui.teamBridge.fileCard.kind", { kind });
+				/* A nameless card titles itself `File`, and the `other` class words read
+				 * back as that same sentence, so a nameless class-less file printed
+				 * `File` above `File · 25.0 MB` (design D4). Suppress the repeated half;
+				 * the size is the only fact that card holds. */
+				const typeRepeatsTitle = !name && kind === "other";
 				const size =
 					available && file && Number.isSafeInteger(file.size) && file.size > 0
 						? attachmentSizeLabel(file.size)
 						: null;
+				/* D4 would have this say a FILE is unavailable rather than an
+				 * "attachment". That phrase is new English copy, which cannot land alone:
+				 * ledger-check fails every locale whose English source moved, and
+				 * check-i18n:coverage fails a key a shipped locale lacks. It waits for the
+				 * translator + delta-audit round rather than half-landing here. */
+				const meta = !available
+					? t("ui.teamBridge.attachmentCard.unavailable")
+					: typeRepeatsTitle
+						? size
+						: size
+							? t("ui.chat.attachments.file_meta", { type, size })
+							: type;
+				/* D1: the card is inert by decision (#1634), not by omission, so it says so
+				 * on the same register the metadata image chip already uses — the
+				 * `metadata_only` sentence, as a pointer tooltip (no control, no download
+				 * route, nothing to press). `aria-description` would be the richer
+				 * channel but this tree's biome config rejects that attribute, and a
+				 * second copy of the sentence in an `sr-only` span would have to be
+				 * translated twice. */
+				const limit = available
+					? t("ui.teamBridge.attachmentCard.metadata_only")
+					: undefined;
 				return (
 					<li
 						key={file?.id ?? "count-only"}
@@ -421,8 +470,10 @@ export function BridgeFileGroup({
 									? "metadata"
 									: "unavailable"
 						}
-						/* The shared chip look (see `CHIP_CLASS`): borderless, the fill
-						   is the extent, no hover step because nothing here is a control. */
+						/* The shared chip look (see `CHIP_CLASS`): the `control` border is
+						   the boundary, the fill only tints it; no hover step, because
+						   nothing here is a control. */
+						title={limit}
 						className={cn(CHIP_CLASS, "gap-2.5")}
 					>
 						<span className={cn(CHIP_TILE_CLASS, "text-ink-muted")}>
@@ -440,13 +491,7 @@ export function BridgeFileGroup({
 						</span>
 						<span className="min-w-0 flex-1 text-[13px]">
 							{file !== null && name ? (
-								<FileNameLabel
-									label={middleTruncateFileName(
-										name,
-										NAME_BUDGET[compact ? "compact" : "regular"],
-									)}
-									available={available}
-								/>
+								<FileNameLabel label={name} available={available} />
 							) : (
 								<span
 									dir="auto"
@@ -460,13 +505,9 @@ export function BridgeFileGroup({
 										: t("ui.teamBridge.attachmentCard.file")}
 								</span>
 							)}
-							{file !== null && (
+							{file !== null && meta && (
 								<span className="block truncate text-ink-dim text-meta-sm">
-									{available
-										? size
-											? t("ui.chat.attachments.file_meta", { type, size })
-											: type
-										: t("ui.teamBridge.attachmentCard.unavailable")}
+									{meta}
 								</span>
 							)}
 						</span>
