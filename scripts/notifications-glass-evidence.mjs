@@ -36,10 +36,10 @@
  * the seeding recipe rather than photographing an empty page.
  *
  * NOTHING TOUCHES THE OPERATOR'S SCREEN. Electron runs `--window-mode=headless`
- * with a per-run `--user-data-dir`, `--use-mock-keychain` (a scratch profile must
- * never reach Keychain Services), the notification and telemetry switches, and
- * `HOME` redirected; `CMUX_*` and `XPC_FLAGS` are stripped. The process group is
- * reaped by exact pid through `app-tree-teardown.mjs` in a `finally`, on every
+ * with a per-run `--user-data-dir`, the mock-keychain switch (a scratch profile
+ * must never reach Keychain Services), the notification and telemetry switches,
+ * and `HOME` redirected; `CMUX_*` and `XPC_FLAGS` are stripped. The process group
+ * is reaped by exact pid through `app-tree-teardown.mjs` in a `finally`, on every
  * exit path.
  */
 
@@ -77,8 +77,6 @@ const label = argOf("label", "frame");
 const only = (argOf("case") ?? argOf("only"))?.split(",").filter(Boolean);
 const configDir = argOf("config", null);
 const keepBefore = process.argv.includes("--before-attributes");
-/** Write the extra `-alpha` frame (page canvas omitted) the composite step reads. */
-const omitBackgroundWanted = process.argv.includes("--omit-background");
 /** The operator's own viewport, so a frame lines up with the reported screenshot. */
 const VIEW = { width: 1024, height: 657 };
 const ROUTE = "#/notifications";
@@ -511,7 +509,15 @@ async function main() {
 			);
 			await wait(1200);
 			if (cell.scroll) {
-				await cdp.ev(`(async () => {
+				/*
+				 * THE RETURNED `scrollTop` IS THE PROOF THE FRAME IS SCROLLED, so it is
+				 * checked rather than dropped (agent review round 2, C10). Assigning it
+				 * can clamp to the scroller's own maximum, or do nothing at all when no
+				 * ancestor is scrollable, and a cell labelled "scrolled" would then commit
+				 * an unscrolled frame - the one thing the cell exists to show. The value
+				 * is read back out of the page rather than assumed from the assignment.
+				 */
+				const scrolled = await cdp.ev(`(async () => {
           const header = document.querySelector('[data-notification-group] [role="row"]');
           let sc = header?.parentElement;
           while (sc && sc.scrollHeight <= sc.clientHeight + 2) sc = sc.parentElement;
@@ -519,6 +525,10 @@ async function main() {
           await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
           return sc ? sc.scrollTop : null;
         })()`);
+				if (scrolled !== cell.scroll)
+					throw new Error(
+						`${cell.name}: the list did not scroll to ${cell.scroll} - the page reads back ${scrolled} (${scrolled === null ? "no scrollable ancestor was found" : "the assignment was clamped"}). This cell exists to show a row passing under the pinned header, so a frame it cannot scroll is refused rather than committed under a "scrolled" name.`,
+					);
 				await wait(400);
 			}
 
@@ -541,18 +551,21 @@ async function main() {
 				);
 
 			/*
-			 * `omitBackground` drops the browser's own page canvas, which is the only
-			 * way to ask whether the COMPOSITION carries alpha at all: with it off, the
-			 * PNG is opaque by construction and every "what does it look like over a
-			 * wallpaper" claim below would be a painted fiction. The frames are written
-			 * as `<label>-alpha.png` and the composite step refuses them if they come
-			 * back opaque.
+			 * EVERY FRAME CARRIES THE COMPOSITION'S ALPHA, and there is no second capture
+			 * (design review round 2, D8): a headless Electron window has no opaque page
+			 * canvas behind the document, so `Page.captureScreenshot` returns the composed
+			 * alpha on the ordinary capture. The rig used to take an extra `-alpha` frame
+			 * with `omitBackground: true`; the two came back BYTE-IDENTICAL (md5
+			 * `7477f76b33b2b7c1628bbc777cf57153` on the dark-80 pair), so the flag added a
+			 * capability the rig already had while the README presented it as something
+			 * new. What is worth stating is what the pixels show - 97.5 % of the frame's
+			 * pixels are translucent, mean alpha 168/255 - and the composite step builds
+			 * its arithmetic on these frames themselves.
 			 */
-			const shot = async (suffix, clip, omitBackground = false) => {
+			const shot = async (suffix, clip) => {
 				const shotResult = await cdp.send("Page.captureScreenshot", {
 					format: "png",
 					captureBeyondViewport: false,
-					...(omitBackground ? { omitBackground: true } : {}),
 					...(clip ? { clip: { ...clip, scale: 1 } } : {}),
 				});
 				const file = join(outDir, `${label}${suffix}.png`);
@@ -560,9 +573,6 @@ async function main() {
 				return file;
 			};
 			const after = await shot("");
-			const alphaFrame = omitBackgroundWanted
-				? await shot("-alpha", undefined, true)
-				: null;
 			const afterRead = await cdp.ev(READBACK);
 			/*
 			 * THE NEGATIVE CONTROL (`--negative-control`): take the page's own
@@ -622,7 +632,7 @@ async function main() {
 				cell: cell.name,
 				app: appRepo,
 				groups,
-				frames: { after, crop, before, alphaFrame },
+				frames: { after, crop, before },
 				after: afterRead,
 				before: beforeRead,
 				negativeControl,

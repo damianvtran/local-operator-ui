@@ -14,7 +14,7 @@
         "after": "/Users/damian/local-operator-ui/.worktrees/notif-glass/docs/pr-evidence/notifications-glass/head-dark-80.png",
         "crop": null,
         "before": null,
-        "alphaFrame": "/Users/damian/local-operator-ui/.worktrees/notif-glass/docs/pr-evidence/notifications-glass/head-dark-80-alpha.png"
+        "alphaFrame": null
       },
       "after": {
         "dpr": 2,

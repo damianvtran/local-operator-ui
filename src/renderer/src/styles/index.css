@@ -2821,14 +2821,21 @@ html[data-glass~="pane"]
  * the translucency the user chose is the translucency of the ground the band
  * is made of, so it tracks the slider exactly as the pane around it does.
  *
- * THE CEILING THIS BUYS, MEASURED (design review round 1, D2), so nobody reads the
- * floor as "the band is opaque and the glass is a gesture": at the shipped 80% the
- * wallpaper reaches the eye at 4.6% THROUGH THE BAND (3.0% at 50%) against 38%
- * through the page (25%), and the band's step against the page it sits in runs
- * 1.07:1 to 2.62:1 across the two schemes over a black-to-white wallpaper - a band
- * you can see through and still read a count on. Read off the built app at
- * 1024x657 in `docs/pr-evidence/notifications-glass/` (band 0.88 over a 0.62 page,
- * 0.78 over 0.68).
+ * THE CEILING THIS BUYS, MEASURED (design review round 2, D5), so nobody reads the
+ * floor as "the band is opaque and the glass is a gesture": the header is an
+ * ISOLATING BAND of the panel's material, not a see-through one. Read off the
+ * committed frames' own alpha at 1024x657 in `docs/pr-evidence/notifications-glass/`,
+ * the band's rect carries alpha 0.980 at dark 80 and 0.976 at light 80 - so 1.96%
+ * and 2.35% of the desktop reaches the eye through it (0.78% and 1.18% at 50%),
+ * against 38% and 32% through the page beside it. The band's step over the page it
+ * sits in, over the fixed wallpaper, is 3.17:1 at base and 2.56:1 here in the dark
+ * scheme; in light it is 1.07:1, from the declared alphas rather than a composite
+ * (none is committed for light).
+ *
+ * WHY NOT THE TWO-ALPHA MODEL, which an earlier draft of this note quoted: (1-0.88)
+ * x (1-0.62) gives 4.6% and treats the band as sitting directly on the page. The
+ * capture says the composition is about 2.3x more isolating than that, so the
+ * model understated the very property the note exists to describe. Quote the frame.
  */
 html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]
@@ -2863,13 +2870,14 @@ html[data-glass~="canvas"]
 	 * role at this same floor holds `ink`/`inkMuted`/`inkDim` on the dark palettes but
 	 * misses the floors on 17 OF THE 18 light palettes - all but `highContrastLight`
 	 * - (inkDim 3.11-3.46 against 3.5 on rosePineDawn, localOperatorLight, githubLight,
-	 * catppuccinLatte and others; inkMuted 3.77-4.37 against 4.5 on kanagawaLotus,
-	 * rosePineDawn, tokyoNightDay). Both counts re-derived over the 59 palettes by the
+	 * catppuccinLatte and others; inkMuted 3.77-4.41 against 4.5 on kanagawaLotus,
+	 * rosePineDawn, tokyoNightDay, ayuLight). Both counts re-derived over the 59 palettes by the
 	 * review's own probe (`minAlpha`-shape solve at the band floor over the scheme
 	 * extreme); the dark fleet is clean, 0 of 41.
 	 * The floor is derived for `elevated`, and re-deriving one for the canvas role
-	 * would buy a number that is opaque on both schemes - so the band is one role step
-	 * up from the page, which is what makes it read as a band at all.
+	 * changes almost nothing because the floor, not the role, sets the density (the
+	 * canvas role solves to 0.82 dark / 0.86 light over the fleet) - so the band is one
+	 * role step up from the page, which is what makes it read as a band at all.
 	 *
 	 * Under *Sidebars only* neither gate matches: the canvas is not covered, so the
 	 * header keeps its flat opaque `bg-canvas` and nothing here applies.

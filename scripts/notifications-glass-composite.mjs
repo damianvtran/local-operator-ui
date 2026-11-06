@@ -8,14 +8,16 @@
  * compositor material behind it, so every other frame in this directory shows the
  * app's own alphas over black — the one condition the operator never saw, because
  * they photographed a bright desktop. This step recovers that condition honestly:
- * `Page.captureScreenshot` with `omitBackground: true` keeps the composition's own
- * alpha (measured on this set: 97.5 % of the frame's pixels are translucent, mean
- * alpha 168/255), and compositing that over a fixed wallpaper is arithmetic on
- * evidence, not a painted backdrop.
+ * the app's captures carry the composition's own alpha (measured on this set: 97.5 %
+ * of the frame's pixels are translucent, mean alpha 168/255 - a transparent window
+ * returns that alpha on every capture, so no special flag is involved), and
+ * compositing that over a fixed wallpaper is arithmetic on evidence, not a painted
+ * backdrop.
  *
  * IT IS STILL NOT AN OS CAPTURE, and the filenames and the README say so. There is
  * no window material, no wallpaper the OS chose, no focus state: two images - the
- * app's alpha frame and a synthetic wallpaper - multiplied together.
+ * app's own frame, whose alpha is the composite's alpha, and a synthetic wallpaper -
+ * multiplied together.
  *
  * IT REFUSES RATHER THAN FABRICATES. If an input frame has no translucent pixel (a
  * capture that lost its alpha channel), this exits non-zero and writes nothing: a
@@ -68,7 +70,7 @@ writeFileSync(join(outDir, "wallpaper-fixed.png"), wallpaper);
 
 let refused = 0;
 for (const label of labels) {
-	const alphaPath = join(outDir, `${label}-alpha.png`);
+	const alphaPath = join(outDir, `${label}.png`);
 	const { data, info } = await sharp(alphaPath)
 		.ensureAlpha()
 		.raw()
@@ -87,7 +89,7 @@ for (const label of labels) {
 	);
 	if (translucent === 0) {
 		console.error(
-			`[composite] REFUSED: ${label}-alpha.png is fully opaque, so compositing it over a wallpaper would produce an image identical to the frame while claiming to show something else. No composite written.`,
+			`[composite] REFUSED: ${label}.png is fully opaque, so compositing it over a wallpaper would produce an image identical to the frame while claiming to show something else. No composite written.`,
 		);
 		refused++;
 		continue;

@@ -1213,6 +1213,40 @@ test(
 				present,
 				`${label}: the notifications page renders (a lazy route that never appears must not read as "nothing to measure")`,
 			);
+			/*
+			 * THE ROWS, BEFORE THE HEADER (agent review round 2, C8). The page root
+			 * appears when the lazy route mounts; the groups appear when the store
+			 * hands over the rows, which is later and is not signalled by anything the
+			 * root's own appearance implies. Reading the header off the root's first
+			 * paint made this leg flaky exactly where it must not be: 4 of 15 runs on a
+			 * correctly seeded lane failed with `{"missing":"header","groups":0}`, and
+			 * the message then sent the reader to fix a lane that was fine.
+			 *
+			 * The budget is the evidence rig's own (`notifications-glass-evidence.mjs`,
+			 * 45 s): both read the same seeded lane, so whatever is enough for the
+			 * frames is what the guard needs, and a shorter wait here would make the
+			 * guard the first thing to give up on a slow but correct app. A timeout is
+			 * caught rather than thrown so the failure names which of the two
+			 * conditions actually failed - no rows, or rows without the header - and
+			 * neither can read as the other.
+			 */
+			let groups = 0;
+			try {
+				groups = await until(
+					() =>
+						cdp.ev(
+							'document.querySelectorAll("[data-notification-group]").length',
+						),
+					45_000,
+					"notification groups",
+				);
+			} catch {
+				groups = 0;
+			}
+			assert.ok(
+				groups > 0,
+				`${label}: NO ROWS EVER APPEARED - not one [data-notification-group] mounted within 45 s, so there is no header to measure and nothing here is a finding about the band. This leg needs a backend holding at least one notification; pass LOCAL_OPERATOR_CONFIG_DIR for a seeded lane.`,
+			);
 			const read = await cdp.ev(`(() => {
         const alpha = (c) => {
           if (!c || c === "transparent") return 0;
@@ -1301,7 +1335,7 @@ test(
 			assert.equal(
 				band.missing,
 				undefined,
-				`${label}: the page's REAL group header was found (${JSON.stringify(band)}). It only exists when notifications do, so this leg needs a backend holding at least one row - pass LOCAL_OPERATOR_CONFIG_DIR for a seeded lane. A header that cannot be found is a test that measures nothing, and it fails here rather than passing on a clone.`,
+				`${label}: ROWS ARE ON THE PAGE (${groups} groups) BUT THE GROUP'S OWN [role="row"] HEADER IS NOT THERE (${JSON.stringify(band)}). That is a finding about the markup, not about a slow or empty lane - the rows this header must sit on are mounted, so the lane's seeding is NOT what to check. It fails here rather than passing on a clone.`,
 			);
 			assert.ok(
 				Math.abs(band.alpha - Math.max(read.elevated, read.bandBand)) <= 0.006,

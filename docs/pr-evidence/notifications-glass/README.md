@@ -110,17 +110,25 @@ evidence, not a painted backdrop**:
 | `base-dark-80-on-wallpaper.png`, `head-dark-80-on-wallpaper.png` | **composite: the app's own frame over a fixed wallpaper, not an OS capture** |
 | `wallpaper-fixed.png` | the fixed wallpaper those two use (a synthetic bright desktop, committed so the composite is inspectable) |
 
-How they are made, and why they are allowed to be made: the rig captures an extra
-`<label>-alpha.png` with CDP `Page.captureScreenshot` `{ omitBackground: true }`,
-which drops the browser's own page canvas and keeps the composition's alpha.
-Measured on this set: **97.5 % of `head-dark-80-alpha.png`'s pixels are translucent,
-mean alpha 168/255** — the alpha is real, so the composite is a real composite.
-`scripts/notifications-glass-composite.mjs` then overlays that frame on the fixed
-wallpaper and **refuses** (no output, non-zero exit) if an input comes back fully
-opaque, because compositing an opaque frame would produce an image identical to the
-frame while claiming to show something else.
+How they are made, and why they are allowed to be made: **the app's captures carry
+alpha on their own.** A headless Electron window has no opaque page canvas behind
+the document, so `Page.captureScreenshot` returns the composition's alpha on every
+capture — no special flag, no second frame. Measured on this set: **97.5 % of
+`head-dark-80.png`'s pixels are translucent, mean alpha 168/255**, and the two
+`-on-wallpaper.png` frames are built from those frames themselves.
+`scripts/notifications-glass-composite.mjs` overlays a frame on the fixed wallpaper
+and **refuses** (no output, non-zero exit) if an input comes back fully opaque,
+because compositing an opaque frame would produce an image identical to the frame
+while claiming to show something else. Rebuilding the pair from the frames the rig
+now writes reproduces the committed composites byte for byte.
 
-Checked in the arithmetic: at a content pixel the alpha frame is `(29,27,23) α 0.62`
+(An earlier draft also wrote `head-dark-80-alpha.png` and `base-dark-80-alpha.png`
+with `{ omitBackground: true }` and presented them as the capture that revealed the
+alpha. They were byte-identical to the ordinary frames —
+`7477f76b33b2b7c1628bbc777cf57153` and `d7c038ffabaffc8c2d6cc062613a33bd` — so
+presenting them as an extra capability was wrong, and they are gone.)
+
+Checked in the arithmetic: at a content pixel the frame is `(29,27,23) α 0.62`
 over wallpaper `(236,224,217)`, which composites to `(108,102,97)` — measured
 `(107,101,96)` in the PNG. Over that wallpaper the band's own rect averages
 `(31.0, 28.8, 24.7)` in the base composite and `(49.7, 45.5, 36.3)` in the head one:
@@ -165,10 +173,19 @@ and `position: sticky`, `top: 0`, `z-index: 1`, 32 px tall — geometry unchange
 from the base, which measures the same rect. The base paints the same element at
 alpha 1.0 with no blur: that is the seam the operator reported.
 
-**What the floor buys.** At 80 % the wallpaper reaches the eye at 4.6 % through
-the band (3.0 % at 50 %) against 38 % through the page (25 %); the band's step
-against the page runs 1.07:1 (light scheme over a bright wallpaper) to 2.62:1
-(dark scheme over one). Read off these frames' own colours and alphas.
+**What the floor buys.** The header is an **isolating band of the panel's material,
+not a see-through one**: at the shipped 80 % the band's own rect carries alpha
+**0.980** dark and **0.976** light in the frames, so **1.96 %** and **2.35 %** of the
+desktop reaches the eye through it (**0.78 %** and **1.18 %** at 50 %), against
+**38 %** and **32 %** through the page beside it. Over the fixed wallpaper the
+band's step over the page is **3.17:1 at base** and **2.56:1 at head** (dark); in
+light the same arithmetic from the declared alphas gives **1.07:1** and there is no
+light composite, so that one figure is a calculation rather than a frame.
+
+Those percentages are the *pixels*. The earlier `4.6 % / 3.0 %` figures were the
+product `(1 - alpha)` of two declared tokens over the page's own alpha, which
+assumes the header sits directly on the page; the frames say it does not, and that
+the shipped header is roughly twice as isolating as that arithmetic suggested.
 
 ## Not in this set
 
@@ -183,7 +200,7 @@ against the page runs 1.07:1 (light scheme over a bright wallpaper) to 2.62:1
 - The real app window with macOS vibrancy behind it (native lane). A headless
   window has no compositor backdrop, so the desktop behind the app frames is the
   app's own black — and the two `-on-wallpaper.png` frames are a declared composite
-  (the app's alpha frame over a fixed synthetic wallpaper), not an OS capture. No
+  (the app's own frame, alpha included, over a fixed synthetic wallpaper), not an OS capture. No
   frame here shows real vibrancy.
 - The chat rail's updates drawer switch (`data-glass-well` added there too): the
   pane arm composes it and its track reads the pane's field overlay, but it only
