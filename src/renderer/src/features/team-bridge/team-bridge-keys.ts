@@ -40,6 +40,13 @@ export const teamBridgeKeys = {
 			conversationId,
 			...readOwner(accountId),
 		] as const,
+	/*
+	 * Invalidation and EVICTION prefix. The per-conversation entries are the only
+	 * thing under it, and the retention policy walks exactly this subtree to find
+	 * what it may drop (`sweepTeamBridgeChannelCache`), so it must stay narrower
+	 * than `ROOT`.
+	 */
+	messagesPrefix: [...ROOT, "messages"] as const,
 	unread: (scope: TeamBridgeScope, accountId?: string) =>
 		[...ROOT, "unread", scope, ...readOwner(accountId)] as const,
 	unreadPrefix: [...ROOT, "unread"] as const,

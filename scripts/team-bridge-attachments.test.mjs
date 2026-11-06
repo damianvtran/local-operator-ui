@@ -168,6 +168,7 @@ const bundle = await build({
  export {t} from "./src/renderer/src/shared/i18n";
  export {browserDraftStorage} from "./src/renderer/src/shared/store/team-bridge-draft-account";
  export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
+ export {resetPendingSendsForTest, usePendingSends} from "./src/renderer/src/features/team-bridge/team-bridge-pending-sends";
  export {TeamBridgeFilesStrip} from "./src/renderer/src/features/team-bridge/team-bridge-files-strip";
  export {useTeamBridgeFiles, filesCapability, splitBridgeFiles} from "./src/renderer/src/features/team-bridge/use-team-bridge-files";
  export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";`,
@@ -228,6 +229,17 @@ m.setLocale("en");
 beforeEach(() => {
 	droppedSeq = 0;
 	m.useConversationInputStore.setState({ inputByConversation: {} });
+	/*
+	 * THE SAME REASON AS THE INPUT STORE, ONE LAYER DOWN: optimistic sends live in
+	 * a module singleton (`team-bridge-pending-sends`), so a send one case leaves
+	 * unconfirmed is still there when the next case mounts the same conversation -
+	 * and a second mount for a conversation carrying an extra row is a different
+	 * page from the one the next case meant to build (QA round 1, r8 m1: the
+	 * reader opened a row short of the end because F9's "mine" was still pending).
+	 * The store is reset, never emptied at unmount: in the app a pending send must
+	 * survive a remount, which `Q-2: a channel remounted...` now pins.
+	 */
+	m.resetPendingSendsForTest();
 });
 
 /* A 1x1 PNG and a 1x1 JPEG header: real magic numbers, no fixture files. */
@@ -2317,13 +2329,27 @@ test("QA Q3: a 401 upload marks the chip signed_out and says so with the sign-in
  */
 const ROW = 120;
 const CLIENT = 400;
+/*
+ * THE DESCRIPTORS AS THE PROCESS STARTED WITH THEM, captured once, before any
+ * test can install an override. Every run restores THESE, never "whatever was
+ * installed when I started": a run that leaked (a throw outside a `finally`, two
+ * runs overlapping on the shared prototype) used to hand its getter to the next
+ * run's `saved`, and the next restore re-installed it - a ratchet that made a
+ * viewport report `clientHeight` 520 against this file's own `CLIENT = 400` and
+ * turned r8 m1 red only when it ran after another geometry test.
+ */
+const SCROLL_PROTO = window.HTMLElement.prototype;
+const SCROLL_DESCRIPTORS = {
+	scrollHeight: Object.getOwnPropertyDescriptor(SCROLL_PROTO, "scrollHeight"),
+	clientHeight: Object.getOwnPropertyDescriptor(SCROLL_PROTO, "clientHeight"),
+	scrollTop: Object.getOwnPropertyDescriptor(SCROLL_PROTO, "scrollTop"),
+};
 function withScrollGeometry(run) {
-	const proto = window.HTMLElement.prototype;
-	const saved = {
-		scrollHeight: Object.getOwnPropertyDescriptor(proto, "scrollHeight"),
-		clientHeight: Object.getOwnPropertyDescriptor(proto, "clientHeight"),
-		scrollTop: Object.getOwnPropertyDescriptor(proto, "scrollTop"),
-	};
+	const proto = SCROLL_PROTO;
+	/* Drop anything a previous run left behind before installing ours, so no
+	   stale own descriptor can shadow the model this run is about to measure. */
+	for (const name of Object.keys(SCROLL_DESCRIPTORS))
+		Reflect.deleteProperty(proto, name);
 	const tops = new WeakMap();
 	const isViewport = (el) => el.hasAttribute("data-radix-scroll-area-viewport");
 	// `data-test-extra-height` models growth that is NOT a message row (a
@@ -2360,7 +2386,7 @@ function withScrollGeometry(run) {
 		},
 	});
 	const restore = () => {
-		for (const [name, descriptor] of Object.entries(saved))
+		for (const [name, descriptor] of Object.entries(SCROLL_DESCRIPTORS))
 			if (descriptor) Object.defineProperty(proto, name, descriptor);
 			else Reflect.deleteProperty(proto, name);
 	};
@@ -2546,6 +2572,92 @@ test(
 				assert.ok(atBottom(viewport), "the sent message lands in view");
 			} finally {
 				await app.close();
+			}
+		}),
+);
+
+/*
+ * OPENING A CONVERSATION THAT WAS OPENED BEFORE (QA round 1, Q-2 / r8 m1).
+ *
+ * The regression only ever reproduced as a SIDE EFFECT of another test: mount
+ * `bcv_dm`, send, unmount, mount `bcv_dm` again - and the second mount opened a
+ * row short of the bottom. Which test ran first decided whether it showed up at
+ * all, which is not a reproduction. This is the same sequence inside ONE test
+ * body: mount, send with a stub that never settles (the optimistic row stays
+ * pending, which is the state the pending-sends store persists per
+ * conversation), unmount, remount, and ask the only question that matters:
+ * is the reader at the bottom?
+ */
+test(
+	"Q-2: a channel remounted with a still-pending send opens at the bottom",
+	{ timeout: 30_000 },
+	() =>
+		withScrollGeometry(async () => {
+			localStorage.clear();
+			m.resetPendingSendsForTest();
+			const rows = Array.from({ length: 10 }, (_, i) =>
+				message({
+					id: `bmsg_h${i + 1}`,
+					seq: i + 1,
+					conversation_id: "bcv_dm",
+					body: `h ${i + 1}`,
+				}),
+			);
+			const sends = [];
+			// A send nobody ever confirms (see the note above): the row stays pending.
+			const neverSettles = new Promise(() => {});
+			const base = {
+				target: { type: "conversation", id: "bcv_dm" },
+				onSend: (body) => {
+					sends.push(body);
+					return neverSettles;
+				},
+			};
+			/* The TIMELINE's viewport, not the first scroll area on the page: an
+			   empty shell has a sidebar viewport too, and measuring that one made the
+			   assertions below vacuous (agent review round 2, m6). */
+			const timelineOf = (element) => {
+				const found = [
+					...element.querySelectorAll("[data-radix-scroll-area-viewport]"),
+				].filter((node) => node.querySelector("[data-message-id]"));
+				assert.equal(found.length, 1, "one timeline viewport");
+				return found[0];
+			};
+			const first = await mountPage(pageProps({ ...base, messages: rows }));
+			assert.ok(
+				atBottom(timelineOf(first.element)),
+				"the first mount opens at the bottom",
+			);
+			await typeBody(first.element, "still pending");
+			await act(async () => sendButton(first.element).click());
+			await settle();
+			await first.close();
+
+			const second = await mountPage(pageProps({ ...base, messages: rows }));
+			try {
+				const viewport = timelineOf(second.element);
+				const rowsMounted =
+					viewport.querySelectorAll("[data-message-id]").length;
+				assert.ok(
+					atBottom(viewport),
+					`the remount opens at the bottom (rows=${rowsMounted}, scrollTop=${viewport.scrollTop}, scrollHeight=${viewport.scrollHeight}, client=${viewport.clientHeight})`,
+				);
+				/*
+				 * AND THE PENDING SEND IS STILL DRAWN (agent review round 2, m6). Opening
+				 * at the bottom says nothing about retention: dropping pending sends at
+				 * unmount would keep the assertion above green while losing the row the
+				 * reader typed, which is the whole point of the store outliving a mount.
+				 * The body is asserted by its own text, not by a row count, so a
+				 * placeholder or an empty local row cannot satisfy it.
+				 */
+				assert.match(
+					viewport.textContent ?? "",
+					/still pending/,
+					"the unconfirmed send survived the remount",
+				);
+			} finally {
+				await second.close();
+				m.resetPendingSendsForTest();
 			}
 		}),
 );

@@ -142,8 +142,20 @@ test("U1/D1: an archived channel opened from the Archived view loads its HISTORY
 			() => app.host.textContent.includes("UNIQUE-ARCHIVED-HISTORY-LINE"),
 			"archived history rendered",
 		);
+		/*
+		 * THE READ THE PAGE ACTUALLY MAKES (agent review round 4, R4-2). The fixture
+		 * used to record an invented `{ historyFor }` tag while answering every read
+		 * with the same first page, so this line was that tag's only consumer and no
+		 * cursor could be asserted against it. It now records the request the page
+		 * sends - `op`, `conversation_id`, `before_seq`, `limit` - and honours the
+		 * cursor, so assert that request rather than the tag it replaced.
+		 */
 		assert.ok(
-			app.fixture.calls.some((c) => c.historyFor === "bcv_old"),
+			app.fixture.calls.some(
+				(c) =>
+					c.op === "team_bridge.messages.list" &&
+					c.conversation_id === "bcv_old",
+			),
 			"the container requested the archived channel's history",
 		);
 		const text = app.host.textContent;

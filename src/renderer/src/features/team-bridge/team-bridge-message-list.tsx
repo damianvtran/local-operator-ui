@@ -1,3 +1,4 @@
+import { Spinner } from "@shared/components/common/spinner";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -9,9 +10,10 @@ import {
 	useEffect,
 	useLayoutEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
-import type { FC, ReactNode } from "react";
+import type { FC, ReactNode, RefObject } from "react";
 import type {
 	TeamBridgeDirectoryMember,
 	TeamBridgeEvent,
@@ -27,6 +29,7 @@ import {
 	teamBridgeObserveArrivals,
 	teamBridgeSuspendArrivals,
 } from "./team-bridge-arrival-model";
+import { TEAM_BRIDGE_PAGE_SIZE } from "./team-bridge-channel-cache";
 import { TeamBridgeDeliveryAnnotation } from "./team-bridge-delivery-annotation";
 import { EMOJI_ENTRIES } from "./team-bridge-emoji-model";
 import { warmEmojiProbeCache } from "./team-bridge-emoji-support";
@@ -57,6 +60,8 @@ import {
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { TeamBridgeThreadRow } from "./team-bridge-thread-row";
 import { threadSummary } from "./team-bridge-threads-model";
+import { windowEntryKey } from "./team-bridge-window";
+import { useTimelineWindow } from "./use-team-bridge-timeline-window";
 
 /**
  * The thread, drawn the way Slack and Discord draw a channel, not a messenger.
@@ -299,6 +304,24 @@ export const TeamBridgeMessageList: FC<{
 	 * someone else sent. Absent = no divider (the thread pane, the audit).
 	 */
 	unreadAfterSeq?: number;
+	/*
+	 * WINDOWING, OPT-IN, and off wherever this list is not the page's timeline.
+	 *
+	 * `scrollRootRef` is the ScrollArea root the timeline lives in; passing it
+	 * turns on the strip (`use-team-bridge-timeline-window.ts`) so only the
+	 * visible rows plus overscan are mounted. The thread pane, the owner audit
+	 * and every story leave it out and keep the full render they have today -
+	 * their histories are already bounded (`use-thread-reply-window.ts`), and a
+	 * second virtualization lane there would be a change nobody asked for.
+	 *
+	 * `hasOlder` / `loadingOlder` / `onLoadOlder` are the paging half: the strip
+	 * decides WHEN from scroll position, so the page never has to listen to a
+	 * scroll event itself.
+	 */
+	scrollRootRef?: RefObject<HTMLElement | null>;
+	hasOlder?: boolean;
+	loadingOlder?: boolean;
+	onLoadOlder?: () => void;
 }> = ({
 	messages,
 	labelFor,
@@ -321,10 +344,20 @@ export const TeamBridgeMessageList: FC<{
 	highlightId = null,
 	presentationOf,
 	unreadAfterSeq,
+	scrollRootRef,
+	hasOlder = false,
+	loadingOlder = false,
+	onLoadOlder,
 }) => {
 	const locale = useI18nLocale();
-	const present = (message: TeamBridgeMessage): TeamBridgeRowPresentation =>
-		presentationOf?.(message) ?? { key: message.id, local: false };
+	/* A stable identity: the window's item keys are built from this row identity, so
+	   a new closure per render would rebuild the strip's key list on every render
+	   and re-run the layout it is memoized against. */
+	const present = useCallback(
+		(message: TeamBridgeMessage): TeamBridgeRowPresentation =>
+			presentationOf?.(message) ?? { key: message.id, local: false },
+		[presentationOf],
+	);
 	/* The journal sees ROW identity. A local row offers no seq: its display order
 	   is not the hub's numbering and must not hide a peer's message at that seq. */
 	const identities = useMemo(
@@ -339,6 +372,36 @@ export const TeamBridgeMessageList: FC<{
 	);
 	const arriving = useArrivingRows(arrivalKey, identities, arrivalsEnabled);
 	const items = threadItems(messages, new Date());
+	const listRef = useRef<HTMLOListElement>(null);
+	/* WINDOWING IS OFF unless the caller names the scroll root (see the prop's
+	   note). When it is on, only `range` is mounted and two spacers stand in for
+	   the rest; when it is off, `range` covers every item and both spacers are
+	   zero, so the markup below stays one shape. */
+	const windowed = scrollRootRef !== undefined;
+	const entries = useMemo(
+		() =>
+			items.map((item) => ({
+				item,
+				key: windowEntryKey(
+					item,
+					item.type === "message" ? present(item.message).key : undefined,
+				),
+			})),
+		// Keys follow the ROW identity (`present`), never the message id: an
+		// optimistic row keeps its key through the server replacement, and a strip
+		// keyed on the stored id would remount it at the moment it settles.
+		[items, present],
+	);
+	const { range, spacers, stickyDay } = useTimelineWindow({
+		entries,
+		listRef,
+		scrollRootRef,
+		resetKey: arrivalKey,
+		hasOlder,
+		loadingOlder,
+		onLoadOlder,
+		enabled: windowed,
+	});
 	/*
 	 * THE UNREAD DIVIDER (visual refresh D10) - Slack's and Discord's strongest
 	 * orientation cue. Only the hub's rows count (a local row's seq is a display
@@ -400,81 +463,146 @@ export const TeamBridgeMessageList: FC<{
 		if (!TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD) return;
 		return warmEmojiProbeCache(EMOJI_ENTRIES.map((entry) => entry.emoji));
 	}, []);
+	/*
+	 * ONE ROW, BUILT ONCE FOR BOTH PATHS.
+	 *
+	 * ROW IDENTITY, NOT MESSAGE IDENTITY (the optimistic row). `present` answers
+	 * the row this message is drawn as: the server row's own id until an
+	 * optimistic sibling exists, then the local key that SURVIVES the replacement,
+	 * so reconciliation is a prop change on one mounted subtree rather than an
+	 * unmount. The event lines stay keyed by the STORED message id, because an
+	 * event belongs to the hub's history and never to a draft.
+	 *
+	 * `windowItem` is set only by the windowed path: it tags the item's FIRST
+	 * element (the unread divider when there is one) so the measure pass knows
+	 * where the item starts. Both elements of an item carry it - the divider and
+	 * the row are one item's worth of height.
+	 */
+	const rowFor = (
+		item: Extract<ThreadItem, { type: "message" }>,
+		windowItem?: string,
+	) => {
+		const row = present(item.message);
+		const divider =
+			item.message.id === firstUnreadId ? (
+				<UnreadDivider count={unseen.length} windowItem={windowItem} />
+			) : null;
+		return (
+			<Fragment key={row.key}>
+				{divider}
+				<MessageRow
+					key={row.key}
+					rowKey={row.key}
+					local={row.local}
+					delivery={row.delivery}
+					message={item.message}
+					/* The divider restarts the run: the first message under "N new
+							 messages" always shows its author, as Slack and Discord do
+						  (agent review round 1, m1). */
+					continuation={item.continuation && item.message.id !== firstUnreadId}
+					label={labelFor(item.message.sender)}
+					member={profileFor?.(item.message.sender)}
+					profileFor={profileFor}
+					onMessagePerson={onMessagePerson}
+					canMessagePerson={canMessagePerson}
+					locale={locale}
+					reactionContext={reactionContext}
+					onReply={onReply}
+					forceToolbar={forceToolbar}
+					tenantId={tenantId}
+					accountId={accountId}
+					density={density}
+					/* TWO IDENTITIES, TWO QUESTIONS. `arriving` follows the ROW key, which
+								survives an optimistic row's replacement; `highlighted` follows the
+								STORED message id, because a notification names a hub message and a
+								local row can never be one - so a pending row never wears the wash. */
+					arriving={arriving.has(row.key)}
+					highlighted={highlightId === item.message.id}
+					onArrivalEnd={arriving.end}
+					decoration={decorate?.(item.message)}
+					windowItem={windowItem}
+				/>
+			</Fragment>
+		);
+	};
+	/* The grouped path's row map. `rows[i]` is `items[i]`'s element by
+							   construction (a day item's slot is null), which is what `groupedByDay`
+							   indexes by. */
+	const rows = items.map((item) => (item.type === "day" ? null : rowFor(item)));
 	return (
 		/* THE SHARED WIDTH CONSTRAINT (operator report 2026-10-27: the hover
-		   band and the action row ran past the visible column). The list is
-		   exactly the scroll viewport's width, never its content's: `w-full
-		   min-w-0` here and on every row means a long unbroken token, a code
-		   block or a table can only wrap or scroll inside the row's content
+						band and the action row ran past the visible column). The list is
+					exactly the scroll viewport's width, never its content's: `w-full
+				 min-w-0` here and on every row means a long unbroken token, a code
+			  block or a table can only wrap or scroll inside the row's content
 		   column (`lo-markdown` breaks words; `pre` and tables scroll in their
 		   own box), so the row-hover ground and the toolbar float, which is the
 		   last thing at the column's end edge, stay inside what the reader sees.
 		   Both scroll hosts (the page timeline and the thread pane) also lay
 		   Radix's content wrapper out as a block, not its default shrink-to-fit
 		   `display: table`; see their ScrollArea class names. */
-		<ol className="mt-auto flex w-full min-w-0 flex-col pt-4 pb-2">
+		<ol
+			ref={listRef}
+			/* NO `relative` HERE (QA round 1, Q-3): the floating day pill is
+			   `sticky`, positioned by the browser against the scroll viewport, so the
+			   list root needs no containing block - and the owner-audit render pin
+			   keeps the list byte-identical to the surface it has always drawn. */
+			className="mt-auto flex w-full min-w-0 flex-col pt-4 pb-2"
+		>
 			{eventSlot(TEAM_BRIDGE_EVENTS_LEADING)}
-			{groupedByDay(
-				items,
-				eventSlot,
-				locale,
-				/*
-				 * ROW IDENTITY, NOT MESSAGE IDENTITY (the optimistic row). `present`
-				 * answers the row this message is drawn as: the server row's own id
-				 * until an optimistic sibling exists, then the local key that SURVIVES
-				 * the replacement, so reconciliation is a prop change on one mounted
-				 * subtree rather than an unmount. The event lines stay keyed by the
-				 * STORED message id (`groupedByDay` reads `items`), because an
-				 * event belongs to the hub's history and never to a draft.
-				 */
-				items.map((item) => {
-					/* The day's pill is drawn by `groupedByDay`, which owns the day's
-					   containing block; this slot stays so `rows[i]` is `items[i]`. */
-					if (item.type === "day") return null;
-					const row = present(item.message);
-					const divider =
-						item.message.id === firstUnreadId ? (
-							<UnreadDivider count={unseen.length} />
-						) : null;
-					return (
-						<Fragment key={row.key}>
-							{divider}
-							<MessageRow
-								key={row.key}
-								rowKey={row.key}
-								local={row.local}
-								delivery={row.delivery}
-								message={item.message}
-								/* The divider restarts the run: the first message under "N new
-								   messages" always shows its author, as Slack and Discord do
-								   (agent review round 1, m1). */
-								continuation={
-									item.continuation && item.message.id !== firstUnreadId
-								}
-								label={labelFor(item.message.sender)}
-								member={profileFor?.(item.message.sender)}
-								profileFor={profileFor}
-								onMessagePerson={onMessagePerson}
-								canMessagePerson={canMessagePerson}
-								locale={locale}
-								reactionContext={reactionContext}
-								onReply={onReply}
-								forceToolbar={forceToolbar}
-								tenantId={tenantId}
-								accountId={accountId}
-								density={density}
-								/* TWO IDENTITIES, TWO QUESTIONS. `arriving` follows the ROW key, which
-							   survives an optimistic row's replacement; `highlighted` follows the
-							   STORED message id, because a notification names a hub message and a
-							   local row can never be one - so a pending row never wears the wash. */
-								arriving={arriving.has(row.key)}
-								highlighted={highlightId === item.message.id}
-								onArrivalEnd={arriving.end}
-								decoration={decorate?.(item.message)}
-							/>
-						</Fragment>
-					);
-				}),
+			{windowed && stickyDay !== null && !stickyDay.hidden && (
+				<DayPillOverlay day={stickyDay.day} locale={locale} />
+			)}
+			{/* ABOVE THE LEADING SPACER on purpose: the edge of history belongs to
+			    the top of the conversation, not to whichever row is mounted first. */}
+			{windowed && (
+				<HistoryEdge
+					loading={loadingOlder}
+					hasOlder={hasOlder}
+					/* A conversation shorter than one page has no history to have
+					   reached: the line would be a headstone over the first message. */
+					showStart={messages.length >= TEAM_BRIDGE_PAGE_SIZE}
+				/>
+			)}
+			{windowed && spacers.before > 0 && (
+				<li
+					aria-hidden="true"
+					data-window-spacer="before"
+					className="shrink-0"
+					style={{ height: spacers.before }}
+				/>
+			)}
+			{windowed
+				? entries.slice(range.start, range.end).map(({ key, item }) => {
+						/* The day's pill is an ITEM in the strip (see `DayHeading`), keyed on
+						   its calendar day like every other entry. */
+						if (item.type === "day")
+							return (
+								<DayHeading
+									key={key}
+									item={item}
+									locale={locale}
+									windowItem={key}
+								/>
+							);
+						/* One item, then its membership lines: the event slot is a SIBLING
+						   slot (it keys itself in the `events:` namespace), exactly as the
+						   grouped path places it. */
+						return (
+							<Fragment key={key}>
+								{rowFor(item, key)}
+								{eventSlot(item.message.id)}
+							</Fragment>
+						);
+					})
+				: groupedByDay(items, eventSlot, locale, rows)}
+			{windowed && (
+				<li
+					aria-hidden="true"
+					data-window-spacer="after"
+					className="shrink-0"
+					style={{ height: spacers.after }}
+				/>
 			)}
 		</ol>
 	);
@@ -548,23 +676,42 @@ function groupedByDay(
  * off (see `groupedByDay`). It is `elevated` (ΔE00 >= 4.17 off the `canvas`
  * pane on every palette), so it occludes the text it floats over.
  */
+/** A day's label: "Today", "Yesterday", or the calendar date. */
+function dayLabel(
+	item: Extract<ThreadItem, { type: "day" }> | null,
+	locale: string,
+): string | null {
+	if (item === null) return null;
+	if (item.relative === "today") return t("ui.teamBridge.thread.today");
+	if (item.relative === "yesterday") return t("ui.teamBridge.thread.yesterday");
+	return formatDate(
+		item.date,
+		{ weekday: "long", month: "long", day: "numeric" },
+		locale,
+	);
+}
+
+/**
+ * THE DAY PILL ITSELF - one markup, three places.
+ *
+ * The grouped list's sticky pill, the windowed strip's day row and the floating
+ * overlay (`DayPillOverlay`) are the same object drawn by the same component, so
+ * "which day is this" cannot look different depending on which one a reader is
+ * looking at. `elevated` is the design contract: ΔE00 >= 4.17 off the `canvas`
+ * pane on every palette, so the pill occludes the text it floats over.
+ */
+const DayPill: FC<{ label: string }> = ({ label }) => (
+	<span className="flex h-6 items-center rounded-full bg-elevated px-2.5 font-medium text-[12px] text-ink-muted">
+		{label}
+	</span>
+);
+
 const DayGroup: FC<{
 	item: Extract<ThreadItem, { type: "day" }> | null;
 	locale: string;
 	children: ReactNode;
 }> = ({ item, locale, children }) => {
-	const label =
-		item === null
-			? null
-			: item.relative === "today"
-				? t("ui.teamBridge.thread.today")
-				: item.relative === "yesterday"
-					? t("ui.teamBridge.thread.yesterday")
-					: formatDate(
-							item.date,
-							{ weekday: "long", month: "long", day: "numeric" },
-							locale,
-						);
+	const label = dayLabel(item, locale);
 	return (
 		/* The group is the day's labelled list item (the label used to sit on the
 		   pill's own `<li>`); the pill and the rule are drawing, hidden from AT. */
@@ -581,13 +728,143 @@ const DayGroup: FC<{
 						data-day-divider=""
 						className="pointer-events-none sticky top-2 z-[5] flex justify-center py-2"
 					>
-						<span className="flex h-6 items-center rounded-full bg-elevated px-2.5 font-medium text-[12px] text-ink-muted">
-							{label}
-						</span>
+						<DayPill label={label} />
 					</div>
 				</>
 			)}
 			<ol className="flex w-full min-w-0 flex-col">{children}</ol>
+		</li>
+	);
+};
+
+/*
+ * THE EDGE OF HISTORY.
+ *
+ * Two states, one line, at the very top of the timeline: an older page is in
+ * flight (``loadingOlder``), or there is nothing older to load (``hasOlder``)
+ * and the conversation is long enough that "the beginning" is information
+ * (``showStart``). A conversation shorter than one page gets neither: a
+ * headstone over the first message would read as a state the reader has to
+ * care about, when all it means is "this channel is new".
+ *
+ * NOT "Load earlier messages": paging here is PROXIMITY-driven (the list asks
+ * when the reader nears the top), so a button would be a second, hand-cranked
+ * path to the same read - and one more control to keep disabled, focused and
+ * keyboard-reachable for no benefit.
+ */
+const HistoryEdge: FC<{
+	loading: boolean;
+	hasOlder: boolean;
+	showStart: boolean;
+}> = ({ loading, hasOlder, showStart }) => {
+	if (loading)
+		return (
+			<li
+				data-history-edge="loading"
+				/* `polite` and not `alert`: a page arriving is progress, not a demand. The
+				 * list item cannot be an `<output>` (it is a child of an `<ol>`), so the
+				 * live region is the text span itself. */
+				className="flex h-8 shrink-0 items-center justify-center gap-2 px-5 text-ink-dim text-meta"
+			>
+				<Spinner size="sm" />
+				<span aria-live="polite">{t("ui.teamBridge.thread.loading")}</span>
+			</li>
+		);
+	if (hasOlder || !showStart) return null;
+	/*
+	 * NO COPY AT THE START OF HISTORY. The boundary is a hairline and nothing
+	 * else - Slack draws the same rule and says nothing. A sentence here would be
+	 * new user-facing copy, which this change cannot ship: the translation ledger
+	 * pins the English catalogue's hash, so a new key invalidates the audited
+	 * translations for all seven locales and needs a translator re-audit
+	 * (agent review round 1, merge gate).
+	 */
+	return (
+		<li
+			aria-hidden="true"
+			data-history-edge="start"
+			className="mx-5 mt-2 h-px shrink-0 bg-hairline"
+		/>
+	);
+};
+
+/*
+ * ONE DAY, AS A WINDOWED ITEM.
+ *
+ * The grouped list wraps a day in a containing block so its pill can stick
+ * while that day scrolls past (`groupedByDay`). A WINDOWED strip cannot: a
+ * group whose earlier rows are unmounted is only PART of its day, so a sticky
+ * pill would surface mid-day under the wrong rows and then vanish. The divider
+ * therefore becomes an ordinary item - same rule, same pill, same label, same
+ * place in the flow - and scrolls with the rows it introduces.
+ *
+ * The date still FLOATS while a long day scrolls past; it is drawn once by
+ * `DayPillOverlay`, which follows the viewport instead of a day group. Nothing
+ * is lost from the grouped list's behaviour - only the mechanism changes.
+ */
+const DayHeading: FC<{
+	item: Extract<ThreadItem, { type: "day" }>;
+	locale: string;
+	windowItem: string;
+}> = ({ item, locale, windowItem }) => {
+	const label = dayLabel(item, locale);
+	return (
+		<li
+			data-window-item={windowItem}
+			data-day-group=""
+			aria-label={label ?? undefined}
+			className="relative"
+		>
+			<span
+				aria-hidden="true"
+				data-day-rule=""
+				className="absolute inset-x-5 top-5 h-px bg-hairline"
+			/>
+			<div
+				aria-hidden="true"
+				data-day-divider=""
+				className="flex justify-center py-2"
+			>
+				{/* `dayLabel` answers a string for a day item; the null case is the
+				    grouped list's pill-less group, which cannot reach this component. */}
+				<DayPill label={label ?? ""} />
+			</div>
+		</li>
+	);
+};
+
+/*
+ * THE FLOATING DAY PILL, FOR THE WINDOWED STRIP.
+ *
+ * WHY NOT `sticky` PER DAY: a sticky element sticks inside its containing block,
+ * and in a windowed list the only containing block available is the whole strip
+ * (a day group would exist only around the rows that happen to be mounted). A
+ * pill sticking to the strip would never hand over to the next day's divider - it
+ * would sit there naming the wrong day.
+ *
+ * So the pill is ONE element, stuck to the viewport's top edge by the BROWSER -
+ * `sticky top-2` on a zero-height row, which is the resting place the grouped
+ * list's pill had. The browser positions it per frame, so it cannot trail the
+ * content the way a React-positioned overlay does (agent review round 1, m2); the
+ * only thing React decides is WHICH day it names (`stickyDayAt`), and a label one
+ * frame late is a label nobody can see move.
+ *
+ * `h-0` means it takes no space in the flow; the pill overflows the empty box
+ * downward, exactly where the sticky pill used to rest.
+ */
+const DayPillOverlay: FC<{
+	day: Extract<ThreadItem, { type: "day" }>;
+	locale: string;
+}> = ({ day, locale }) => {
+	const label = dayLabel(day, locale);
+	if (label === null) return null;
+	return (
+		<li
+			aria-hidden="true"
+			data-day-pill-overlay=""
+			className="pointer-events-none sticky top-2 z-[5] flex h-0 shrink-0 justify-center"
+		>
+			<DayPill label={label} />
 		</li>
 	);
 };
@@ -600,9 +877,13 @@ const DayGroup: FC<{
  * is a `CONTROLS` row. The label reuses the thread pane's translated count
  * ("3 new messages") rather than a new bare "New", so no new copy ships.
  */
-const UnreadDivider: FC<{ count: number }> = ({ count }) => (
+const UnreadDivider: FC<{ count: number; windowItem?: string }> = ({
+	count,
+	windowItem,
+}) => (
 	<li
 		data-unread-divider=""
+		data-window-item={windowItem}
 		className="relative mx-5 mt-3 mb-1 flex h-4 items-center"
 	>
 		<span aria-hidden="true" className="h-px flex-1 bg-accent" />
@@ -678,6 +959,7 @@ const MessageRow: FC<{
 	rowKey?: string;
 	local?: boolean;
 	delivery?: TeamBridgeRowPresentation["delivery"];
+	windowItem?: string;
 }> = ({ reactionContext, rowKey, local = false, ...props }) => {
 	const reactable = Boolean(reactionContext) && props.message.body !== null;
 	/* ONE COMPONENT TYPE AND ONE KEY FOR EVERY STATE OF A ROW (#1511). Keyed on the
@@ -750,6 +1032,8 @@ type MessageRowProps = {
 	delivery?: TeamBridgeRowPresentation["delivery"];
 	/** The row's stable identity, which survives an optimistic row's replacement. */
 	rowKey?: string;
+	/** Windowed strip only: tags the row so the measure pass can find its top. */
+	windowItem?: string;
 };
 
 const MessageRowView: FC<MessageRowProps> = ({
@@ -773,6 +1057,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	highlighted = false,
 	delivery,
 	rowKey,
+	windowItem,
 }) => {
 	const summary = threadSummary(message);
 	// @-mentions in the body: `message.mentions` when the hub sends it, else
@@ -846,6 +1131,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	return (
 		<li
 			data-message-id={message.id}
+			data-window-item={windowItem}
 			data-message-target={highlighted || undefined}
 			data-row-key={rowKey ?? message.id}
 			data-delivery={delivery?.status}

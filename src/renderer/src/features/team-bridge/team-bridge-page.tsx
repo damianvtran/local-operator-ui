@@ -98,6 +98,10 @@ import {
 	isClientRefConflict,
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
+import {
+	TEAM_BRIDGE_MAX_RETAINED_MESSAGES,
+	TEAM_BRIDGE_PAGE_SIZE,
+} from "./team-bridge-channel-cache";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import {
 	TeamBridgeComposer,
@@ -629,6 +633,15 @@ export type TeamBridgePageViewProps = {
 	 */
 	target: TeamBridgeTarget | null;
 	messages: TeamBridgeMessage[];
+	/**
+	 * Older-history paging, for the timeline's windowed strip. The strip asks when
+	 * the reader nears the top; the page owns neither the trigger nor the read.
+	 */
+	olderPaging?: {
+		hasOlder: boolean;
+		loadingOlder: boolean;
+		onLoadOlder: () => void;
+	};
 	/** Membership events for the timeline only; see `TeamBridgeMessageList`. */
 	events?: readonly TeamBridgeEvent[];
 	/**
@@ -932,6 +945,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	conversations,
 	target,
 	messages,
+	olderPaging,
 	events,
 	highlightMessageId = null,
 	organizations,
@@ -3902,7 +3916,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 
 						<ScrollArea
 							ref={timeline.rootRef}
-							className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full"
+							/* `[overflow-anchor:none]` IS LOAD-BEARING ONCE THE TIMELINE IS WINDOWED. Chrome's
+							   own scroll anchoring decides what to hold steady from the DOM it can see; with
+							   rows being mounted and unmounted as the window moves, it picks a different
+							   anchor than the reader's row and fights `use-bridge-timeline-window`'s
+							   correction - the reader ends up a few dozen pixels off after each page. One
+							   anchor owner, the same call this app's other hand-anchored scrollers make
+							   (`chat-sidebar.tsx`, `notifications-page.tsx`, `team-bridge-owner-audit.tsx`). */
+							className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full [&_[data-radix-scroll-area-viewport]]:[overflow-anchor:none]"
 						>
 							{/* Intrinsic transcript height must remain scrollable when localized recovery controls claim more composer space. */}
 							<div className="flex min-h-full flex-col">
@@ -4126,6 +4147,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										}
 										arrivalKey={timelineArrivalKey}
 										highlightId={highlightMessageId}
+										/* THE WINDOWED STRIP. Passing the timeline's own scroll root is what
+										   turns on the virtualized path (see `TeamBridgeMessageList`): only
+										   the visible rows plus overscan mount, and the list asks for an
+										   older page when the reader nears the top. */
+										scrollRootRef={timeline.rootRef}
+										hasOlder={olderPaging?.hasOlder ?? false}
+										loadingOlder={olderPaging?.loadingOlder ?? false}
+										onLoadOlder={olderPaging?.onLoadOlder}
 										tenantId={shown?.tenant_id}
 										accountId={selfAccountId}
 										labelFor={(sender) =>
@@ -4862,6 +4891,12 @@ type TeamBridgeMessageLink = {
 	conversationId: string;
 	messageId: string;
 	fetched: boolean;
+	/*
+	 * Whether this link has spent its ONE newest-page read (agent review round 4,
+	 * R4-1). Link state, not a ref: the effect below re-decides on it, and a ref
+	 * flip would not re-run the effect - which is how the walk stalled in round 2.
+	 */
+	newestRead: boolean;
 };
 
 /**
@@ -4878,6 +4913,22 @@ type TeamBridgeMessageLink = {
  * from is worse than none.
  */
 const MESSAGE_LINK_TIMEOUT_MS = 8_000;
+/*
+ * How far a `?message=` link may page back to find its row before it is treated
+ * as unreachable.
+ *
+ * DERIVED, NEVER TYPED (agent review round 3, m9). The walk starts from the
+ * newest page and asks for one older page at a time, so `n` reads retain
+ * `(n + 1) * TEAM_BRIDGE_PAGE_SIZE` rows: at the retention cap an older read
+ * trims the NEWEST rows, and the walk would be paging through a window it is
+ * itself shortening - the row it wants can be dropped the moment it arrives, and
+ * the next poll resets the window away from it. `floor(800/60) - 1 = 12` reads
+ * keep `13 * 60 = 780` rows, strictly inside the cap. If either constant moves,
+ * this expression moves with it; the over-cap case is handled by the cache's
+ * `hasNewer` reset instead (a replacement, never a splice).
+ */
+const MESSAGE_LINK_MAX_PAGES =
+	Math.floor(TEAM_BRIDGE_MAX_RETAINED_MESSAGES / TEAM_BRIDGE_PAGE_SIZE) - 1;
 
 /** The page view's identity: one mounted view per account, tenant and target. */
 const viewKeyFor = (
@@ -4943,6 +4994,7 @@ const TeamBridgeOwnedPage: FC<{
 							conversationId: requestedConversation,
 							messageId: requestedMessage,
 							fetched: false,
+							newestRead: false,
 						}
 					: requestedAny
 						? null
@@ -5428,6 +5480,7 @@ const TeamBridgeOwnedPage: FC<{
 						conversationId: requestedConversation,
 						messageId: requestedMessage,
 						fetched: false,
+						newestRead: false,
 					}
 				: null,
 		);
@@ -6099,7 +6152,7 @@ const TeamBridgeOwnedPage: FC<{
 		setFirstSendFailed(false);
 	}, [selected?.id, target]);
 
-	const newest = messages.data?.messages.reduce<number | undefined>(
+	const newest = messages.messages.reduce<number | undefined>(
 		(max, message) =>
 			max === undefined || message.seq > max ? message.seq : max,
 		undefined,
@@ -6117,55 +6170,154 @@ const TeamBridgeOwnedPage: FC<{
 	/*
 	 * LAND ON THE CLICKED MESSAGE, NEVER ON A STALE PAGE. The watcher wrote the
 	 * message into this exact cache entry before raising the banner, so the
-	 * normal case paints it in the first frame with no request. If the entry
-	 * still lacks it (evicted, or a click from a banner older than this
-	 * document), the timeline shows its loading state rather than the stale
-	 * page, re-reads that one key once, and then shows whatever the server has:
-	 * a message deleted in between must not hold a spinner forever.
+	 * normal case paints it in the first frame with no request. A link can point
+	 * either way, and the two directions need different reads: a message NEWER
+	 * than the cached page is found by ONE re-read of that one key (the common
+	 * case - a click on a recent notification), and a message OLDER than it is
+	 * found by paging back (the walk below). Until one of them finds it the
+	 * timeline shows its loading state rather than the stale page, and it shows
+	 * whatever the server has when both are done: a message deleted in between
+	 * must not hold a spinner forever.
 	 */
 	const linkedConversation =
 		messageLink !== null && selected?.id === messageLink.conversationId;
 	const linkedPresent =
 		linkedConversation &&
-		(messages.data?.messages.some(
-			(message) => message.id === messageLink.messageId,
-		) ??
-			false);
+		messages.messages.some((message) => message.id === messageLink.messageId);
 	const awaitingLinkedMessage =
 		linkedConversation && !linkedPresent && !messageLink.fetched;
+	/*
+	 * A LINK TO OLD HISTORY IS FOUND BY PAGEING BACK TO IT (agent review round 1,
+	 * M3). The fallback used to re-read the NEWEST page, which cannot carry a
+	 * message older than one page: `linkedPresent` stayed false, the link was
+	 * dropped as "fetched", and the reader landed on the timeline with no scroll
+	 * and no highlight - silently, within the 8 s bound. The window's own cursor
+	 * is the right tool: ask for the page before the oldest retained row, repeat
+	 * while the walk is making progress, and stop when the row appears, the
+	 * history ends, or the walk has covered `MESSAGE_LINK_MAX_PAGES` pages
+	 * (780 rows at the shipped page size - kept inside the retained window, see
+	 * the constant).
+	 */
+	const linkedPages = useRef(0);
+	const linkedReadFor = useRef<string | null>(null);
+	/* The link id whose newest-page re-read is in flight (below). */
+	const linkedNewestInFlight = useRef<string | null>(null);
+	/*
+	 * A POST-UNMOUNT WRITE IS THE ONLY ONE WORTH SUPPRESSING (agent review round 4,
+	 * R4-1). `main` scoped this flag to the effect run, which held there because
+	 * that effect's dependencies did not move mid-read; this one depends on the
+	 * hook's own loading and older-page state, so a re-run while the newest read
+	 * was in flight would have cleared the flag and left the completion unwritten -
+	 * the walk would then never start. The flag follows the COMPONENT instead, and
+	 * `linkedNewestInFlight` is what keeps the read to one per link.
+	 */
+	const linkedReadLive = useRef(true);
+	useEffect(() => {
+		linkedReadLive.current = true;
+		return () => {
+			linkedReadLive.current = false;
+		};
+	}, []);
 	useEffect(() => {
 		if (!messageLink || messageLink.fetched || !selected || !selfAccountId)
 			return;
 		if (selected.id !== messageLink.conversationId) return;
-		if (messages.isPending || linkedPresent) return;
-		let current = true;
-		void client
-			.fetchQuery({
-				...teamBridgeMessagesQueryOptions(
-					client,
-					selected.id,
-					selected.tenant_id,
-					selfAccountId,
-				),
-				staleTime: 0,
-			})
-			.catch(() => undefined)
-			.finally(() => {
-				if (current)
+		if (messages.isPending || linkedPresent) {
+			linkedReadFor.current = messageLink.messageId;
+			linkedPages.current = 0;
+			return;
+		}
+		if (linkedReadFor.current !== messageLink.messageId) {
+			linkedReadFor.current = messageLink.messageId;
+			linkedPages.current = 0;
+		}
+		/*
+		 * A LINK POINTS EITHER WAY (agent review round 4, R4-1). This effect used to
+		 * hold only the walk below, so a message NEWER than the cached page was never
+		 * read: with `hasOlder: false` nothing was read at all, and with it the walk
+		 * only pages backwards - the row arrived with the 8 s poll, which is exactly
+		 * the "clicked the notification and it appeared seconds later" report of
+		 * 2026-10-30. One newest-page read answers that direction, and the walk keeps
+		 * the other.
+		 *
+		 * IT IS SEQUENCED ON ITS OWN PROMISE, not on a re-render it may never cause
+		 * (agent review round 2, m5): a newest read that changes nothing - or fails -
+		 * must still hand over to the walk, and must never leave the link pending.
+		 * `newestRead` is link state, so flipping it re-runs this effect; a bare ref
+		 * would not.
+		 */
+		if (!messageLink.newestRead) {
+			if (linkedNewestInFlight.current === messageLink.messageId) return;
+			linkedNewestInFlight.current = messageLink.messageId;
+			void client
+				.fetchQuery({
+					...teamBridgeMessagesQueryOptions(
+						client,
+						selected.id,
+						selected.tenant_id,
+						selfAccountId,
+					),
+					staleTime: 0,
+				})
+				.catch(() => undefined)
+				.finally(() => {
+					if (linkedNewestInFlight.current === messageLink.messageId)
+						linkedNewestInFlight.current = null;
+					if (!linkedReadLive.current) return;
 					setMessageLink((link: TeamBridgeMessageLink | null) =>
-						link ? { ...link, fetched: true } : link,
+						link && link.messageId === messageLink.messageId
+							? { ...link, newestRead: true }
+							: link,
 					);
-			});
-		return () => {
-			current = false;
-		};
+				});
+			return;
+		}
+		/*
+		 * IN FLIGHT IS NOT "THE WALK IS SPENT" (agent review round 3, M3-a). The
+		 * terminal branch below used to be shared with the pending state - the
+		 * effect re-runs when `isLoadingOlder` flips true, the guard failed, and the
+		 * link was marked `fetched` after ONE page, so a `?message=` link only
+		 * resolved when the row was already inside the newest page. Waiting is the
+		 * whole point of the walk: the mutation's re-render is what decides next.
+		 */
+		if (messages.isLoadingOlder) return;
+		if (messages.hasOlder && linkedPages.current < MESSAGE_LINK_MAX_PAGES) {
+			linkedPages.current += 1;
+			/*
+			 * A READ THAT WRITES NOTHING MUST STILL FINISH THE WALK (agent review
+			 * round 2, m5). `loadOlder()` is a no-op when the conversation's entry was
+			 * evicted between this render and the call: the mutation resolves without a
+			 * write, no re-render follows, and a walk that waited for one kept the
+			 * timeline in its "landing on the linked message" state for the life of the
+			 * mount. The old `.finally()` always resolved; this restores that, without
+			 * ending the walk when the page DID arrive (the merge re-renders and the
+			 * effect decides again).
+			 */
+			void Promise.resolve(messages.loadOlder())
+				.then((page) => {
+					if (page === null)
+						setMessageLink((link: TeamBridgeMessageLink | null) =>
+							link ? { ...link, fetched: true } : link,
+						);
+				})
+				.catch(() => undefined);
+			return;
+		}
+		/* Nothing older to read, or the walk is spent: the link is finished. A
+		   message deleted in between must not hold a spinner forever. */
+		setMessageLink((link: TeamBridgeMessageLink | null) =>
+			link ? { ...link, fetched: true } : link,
+		);
 	}, [
 		messageLink,
 		selected,
 		selfAccountId,
-		messages.isPending,
-		linkedPresent,
 		client,
+		messages.isPending,
+		messages.hasOlder,
+		messages.isLoadingOlder,
+		messages.loadOlder,
+		linkedPresent,
 		setMessageLink,
 	]);
 	// The highlight is a moment, not a state: drop it once the fade has run.
@@ -6285,8 +6437,15 @@ const TeamBridgeOwnedPage: FC<{
 				}
 				conversations={conversations}
 				target={target}
-				messages={messages.data?.messages ?? []}
-				events={messages.data?.events}
+				messages={messages.messages}
+				events={messages.events}
+				/* PROXIMITY PAGING: the list decides WHEN from scroll position, so the
+				   page hands it the state and the read rather than listening itself. */
+				olderPaging={{
+					hasOlder: messages.hasOlder,
+					loadingOlder: messages.isLoadingOlder,
+					onLoadOlder: messages.loadOlder,
+				}}
 				highlightMessageId={linkedPresent ? messageLink?.messageId : null}
 				organizations={organizations}
 				scope={scope}
