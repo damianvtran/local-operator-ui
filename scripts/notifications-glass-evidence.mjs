@@ -323,9 +323,14 @@ async function main() {
 				90_000,
 				"the appearance to apply",
 			);
-			await cdp.send("Page.removeScriptToEvaluateOnNewDocument", {
-				identifier,
-			});
+			/* The identifier belongs to the session that registered it, and the reload
+			 * above re-attached on a new one - so this removal answers "Script not
+			 * found" there. It is worth attempting (it keeps the seed off documents this
+			 * page opens later) and worth not failing on: the seed only rewrites the
+			 * cell's own two fields, so a second application changes nothing. */
+			await cdp
+				.send("Page.removeScriptToEvaluateOnNewDocument", { identifier })
+				.catch(() => {});
 			/*
 			 * A COMPOSED APPEARANCE RENAMES THE DOCUMENT. At Standard (and with no
 			 * accent) the built-in palette is the identity, so `data-theme` is its own
@@ -392,6 +397,39 @@ async function main() {
 			};
 			const after = await shot("");
 			const afterRead = await cdp.ev(READBACK);
+			/*
+			 * THE NEGATIVE CONTROL (`--negative-control`): take the page's own
+			 * `data-glass-region` marker away and read the band again. It is the check
+			 * that the arm painting the band is LIVE rather than a rule nothing matches -
+			 * a stylesheet read cannot tell those apart, and a rule that has quietly
+			 * stopped matching is exactly how a "fixed" surface regresses. With no
+			 * marker the band must fall back to its flat `bg-canvas` (alpha 1.0) and
+			 * return to the floor when the marker goes back.
+			 */
+			let negativeControl = null;
+			if (process.argv.includes("--negative-control")) {
+				negativeControl = await cdp.ev(`(() => {
+          const alpha = (c) => {
+            if (!c || c === "transparent") return 0;
+            let m = c.match(/^rgba?\\(([^)]+)\\)$/);
+            if (m) { const p = m[1].split(/[,\\/]\\s*|\\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; }
+            m = c.match(/^color\\(srgb ([^)]+)\\)$/);
+            if (m) { const p = m[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; }
+            return 1;
+          };
+          const page = document.querySelector("[data-notifications-page]");
+          const header = document.querySelector('[data-notification-group] [role="row"]');
+          if (!page || !header) return { error: "no page or header" };
+          const band = () => alpha(getComputedStyle(header).backgroundColor);
+          const withMarker = band();
+          const was = page.getAttribute("data-glass-region");
+          page.removeAttribute("data-glass-region");
+          const withoutMarker = band();
+          if (was) page.setAttribute("data-glass-region", was);
+          const restored = band();
+          return { withMarker, withoutMarker, restored };
+        })()`);
+			}
 			/* The 1:1 crop of the band's own edge: the strip the operator reported,
 			 * at native pixels, so the step between the band and the row passing
 			 * under it is visible without a thumbnail's interpolation. */
@@ -420,9 +458,10 @@ async function main() {
 				frames: { after, crop, before },
 				after: afterRead,
 				before: beforeRead,
+				negativeControl,
 			});
 			console.log(
-				`[notif-glass] ${label}/${cell.name}: band ${afterRead.header?.alpha ?? "absent"} (floor ${afterRead.vars.bandFloor}, elevated ${afterRead.vars.elevated}) ${afterRead.header?.backdrop ?? "none"} pinned ${afterRead.header?.position ?? "n/a"}; page ${afterRead.backing?.alpha ?? "n/a"}; track ${afterRead.track?.alpha ?? "absent"} checked ${afterRead.track?.checked?.alpha ?? "n/a"}; ${groups} groups${beforeRead ? `; BEFORE band ${beforeRead.header?.alpha} track ${beforeRead.track?.alpha}` : ""}`,
+				`[notif-glass] ${label}/${cell.name}: band ${afterRead.header?.alpha ?? "absent"} (floor ${afterRead.vars.bandFloor}, elevated ${afterRead.vars.elevated}) ${afterRead.header?.backdrop ?? "none"} pinned ${afterRead.header?.position ?? "n/a"}; page ${afterRead.backing?.alpha ?? "n/a"}; track ${afterRead.track?.alpha ?? "absent"} checked ${afterRead.track?.checked?.alpha ?? "n/a"}; ${groups} groups${beforeRead ? `; BEFORE band ${beforeRead.header?.alpha} track ${beforeRead.track?.alpha}` : ""}${negativeControl ? `; NEGATIVE CONTROL band ${negativeControl.withMarker} -> ${negativeControl.withoutMarker} (restored ${negativeControl.restored})` : ""}`,
 			);
 			if (!afterRead.header)
 				throw new Error(
