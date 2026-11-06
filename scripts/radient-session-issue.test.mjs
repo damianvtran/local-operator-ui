@@ -607,12 +607,127 @@ test("a failing verdict route costs one read per mount of the callout, and none 
 	await surface.close();
 });
 
-test("a dead sign-in raises the issue with exactly one action and the backend's remedy", async () => {
+test("a dead sign-in raises the issue with exactly one action and no terminal advice", async () => {
 	const surface = await mount();
 	await surface.expectKind("needs-sign-in");
 	assert.match(surface.text(), /Radient needs re-authentication/);
-	assert.match(surface.text(), /lop login radient/);
+	/*
+	 * The backend's `tunnel_remedy.command` is still in the payload (REMEDY), and
+	 * the callout must not show it: a desktop user is never sent to a terminal
+	 * (operator report, 2026-11-06). This used to assert the opposite.
+	 */
+	assert.doesNotMatch(surface.text(), /lop login radient/);
+	assert.doesNotMatch(surface.text(), /terminal/i);
 	assert.equal(surface.controls("Sign in to Radient").length, 1);
+	await surface.close();
+});
+
+/** Drive a sign-in from the callout to `succeeded`, with `verdictAfter` served from then on. */
+async function completeSignIn(surface, verdictAfter) {
+	await surface.press("Sign in to Radient");
+	await surface.expectKind("signing-in");
+	surface.state.verdict = verdictAfter;
+	surface.state.operation = operation({
+		state: "succeeded",
+		message: "Sign-in complete.",
+	});
+}
+
+test("a completed sign-in the backend could not heal says so, after ONE bounded re-read, with in-app next steps", async () => {
+	const surface = await mount();
+	await surface.expectKind("needs-sign-in");
+	const opened = [];
+	globalThis.window.api.openExternal = async (url) => {
+		opened.push(url);
+	};
+	const before = surface.reads("accounts.list");
+	await completeSignIn(surface, DEAD);
+	/*
+	 * The first read after `succeeded` still says `login_required`, and the
+	 * callout must NOT jump to "did not clear" on it: the backend heals the
+	 * tunnel off-thread, so the surface keeps saying "signing in" through one
+	 * bounded second look (VERDICT_HEAL_REREAD_MS) before it gives up.
+	 */
+	await surface.waitFor(
+		() => surface.reads("accounts.list") >= before + 1,
+		"the first verdict read after the sign-in",
+	);
+	await act(async () => sleep(50));
+	assert.equal(surface.latest().issue.kind, "signing-in");
+	await surface.waitFor(
+		() => surface.latest().issue.kind === "not-cleared",
+		"the not-cleared state after the bounded re-read",
+		8000,
+	);
+	assert.equal(
+		surface.reads("accounts.list") - before,
+		2,
+		"exactly two verdict reads: the refetch and ONE bounded re-read, no loop",
+	);
+	assert.match(surface.text(), /Radient sign-in did not clear this/);
+	assert.match(surface.text(), /Settings, under Providers/);
+	assert.doesNotMatch(surface.text(), /lop login radient|terminal/i);
+	// The retry stays (a slower heal is cleared by trying again) and the console is one press away.
+	assert.equal(surface.controls("Sign in to Radient").length, 1);
+	await surface.press("Open Radient console");
+	assert.deepEqual(opened, [REMEDY.url]);
+
+	// Fixed outside the app (the CLI): the next read clears the callout and the phase.
+	surface.state.verdict = HEALTHY;
+	await act(async () => {
+		await surface.client.invalidateQueries({
+			queryKey: radientSessionIssueKey,
+		});
+	});
+	await surface.expectKind("hidden");
+	// ...and a later death is a plain "needs sign-in", not a stale "did not clear".
+	surface.state.verdict = DEAD;
+	await act(async () => {
+		await surface.client.invalidateQueries({
+			queryKey: radientSessionIssueKey,
+		});
+	});
+	await surface.expectKind("needs-sign-in");
+	await surface.close();
+});
+
+test("a heal that lands during the bounded re-read ends hidden, never 'did not clear'", async () => {
+	const surface = await mount();
+	await surface.expectKind("needs-sign-in");
+	const before = surface.reads("accounts.list");
+	await completeSignIn(surface, DEAD);
+	await surface.waitFor(
+		() => surface.reads("accounts.list") >= before + 1,
+		"the first verdict read after the sign-in",
+	);
+	// The backend's off-thread heal completes between the two reads.
+	surface.state.verdict = HEALTHY;
+	await surface.waitFor(
+		() => surface.latest().issue.kind === "hidden",
+		"the callout to clear on the re-read",
+		8000,
+	);
+	assert.equal(surface.reads("accounts.list") - before, 2);
+	await surface.close();
+});
+
+test("a console URL that is not a web page falls back to the console root", async () => {
+	const surface = await mount({
+		remedy: { command: "lop login radient", url: "file:///etc/passwd" },
+	});
+	await surface.expectKind("needs-sign-in");
+	const opened = [];
+	globalThis.window.api.openExternal = async (url) => {
+		opened.push(url);
+	};
+	await completeSignIn(surface, DEAD);
+	await surface.waitFor(
+		() => surface.latest().issue.kind === "not-cleared",
+		"the not-cleared state",
+		8000,
+	);
+	await surface.press("Open Radient console");
+	assert.deepEqual(opened, ["https://console.radienthq.com"]);
 	await surface.close();
 });
 

@@ -2773,6 +2773,11 @@ test("the yielded-to callout must OWN the sign-in (design round 2, D7)", () => {
 		"settled with a retry offers the same entrance",
 	);
 	assert.equal(
+		owns({ kind: "not-cleared", remedy: null }),
+		true,
+		"a sign-in that did not heal the login keeps Sign in beside its console link",
+	);
+	assert.equal(
 		owns({
 			kind: "settled",
 			message: "",
