@@ -1,6 +1,7 @@
 import { stopNetworkCapture } from "./actions/network";
 import { abortRecording } from "./actions/recording";
 import { BrowserHostError } from "./errors";
+import { installClipboardShim } from "./actions/clipboard-shim";
 import {
 	hasLogCapture,
 	routeDebuggerEvent,
@@ -357,6 +358,30 @@ export class CdpPool {
 				},
 				CDP_DEADLINE_MS,
 			);
+			/*
+			 * The page's OWN clipboard write, served by a host-authored program in the
+			 * page's main world (see `actions/clipboard-shim.ts` for the measurement
+			 * that made a permission grant impossible: this runtime gates
+			 * `navigator.clipboard.writeText` on `clipboard-read`, which would also let
+			 * every page READ the user's clipboard). Installed on EVERY attach, not
+			 * once per tab: a re-attach is a fresh debugger session whose
+			 * `Page.addScriptToEvaluateOnNewDocument` registrations are gone, and the
+			 * shim's own `runImmediately` covers the document already loaded.
+			 *
+			 * A view that cannot take it is NOT an attach failure: a page whose write
+			 * keeps the native refusal is the state this host shipped before, and
+			 * failing the attach would take `read`, `click` and every other action down
+			 * with it. The reason is logged WITHOUT the payload.
+			 */
+			try {
+				await installClipboardShim(this, contents, contents.id, {
+					log: this.options.log,
+				});
+			} catch (error) {
+				this.options.log?.(
+					`[browser] could not install the page clipboard write on view ${contents.id}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
 		} catch (error) {
 			// A view that closed between attach and enable is not an attach failure
 			// worth keeping the attachment for.

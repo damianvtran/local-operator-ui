@@ -698,10 +698,15 @@ async function initializeBrowserHost(
 			browserSession,
 			{
 				onPermissionRequested: (details) => {
-					// The handler denies; this log is what makes a page that needs a
-					// permission produce a visible trace rather than a silent failure.
+					// The session DENIES every permission (see `installBrowserSessionHandlers`);
+					// this log is what makes a page that needs one produce a visible trace
+					// anyway. The line names the permission, WHICH of Electron's two handlers
+					// asked, and the answer: "denied" without those three facts is the
+					// unhelpful version, and `clipboard-read` arriving for a page's Copy
+					// button is exactly the reading that explained why a permission grant
+					// could not fix it (the write is served by `actions/clipboard-shim.ts`).
 					log(
-						`[browser] denied a ${details.permission} permission request from ${details.origin || "(unknown origin)"}`,
+						`[browser] ${details.granted ? "granted" : "denied"} ${details.permission} (${details.source}) from ${details.origin || "(unknown origin)"}`,
 					);
 				},
 				onDownload: (item, webContentsId) =>

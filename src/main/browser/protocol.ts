@@ -133,6 +133,16 @@ export const METHODS = [
 	"hover",
 	// DOM/native and page-owned ARIA selection; never an OS popup.
 	"select",
+	// Clipboard write through the HOST rather than through a page permission:
+	// the element's bytes are read in an isolated world and written from the main
+	// process, and the answer is a receipt (chars, a 16-hex sha256, the element's
+	// tag/id/name, verified) that carries no text at all. APPENDED so no existing
+	// method's index moves on this host, the same rule `hover` follows above: the
+	// Python mirror places it in its own group and the wire is by NAME, so
+	// `isMethod` admits it either way, and HOST_CAPABILITIES is what refuses it on
+	// a host that predates it instead of a version bump (an additive method must
+	// not close an already-released peer with `proto_mismatch`).
+	"copy",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -165,6 +175,9 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	// A pointer move plus a short settle: no navigation, no wait on the page.
 	hover: 20.0,
 	select: 25.0,
+	// One selector resolution, one isolated-world read and one synchronous
+	// clipboard write: the cheapest shape in this table, and it waits on nothing.
+	copy: 20.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -401,6 +414,16 @@ export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	// High-quality recording (quality on record_start) is not a method either; the
 	// harness capability-gates the one param on this name.
 	"record_quality",
+	// Clipboard write, served by the DESKTOP app's browser host only: the copy is
+	// a Node-side `clipboard.writeText` in the host's main process, which a
+	// browser extension has no equivalent of (an extension's clipboard API is
+	// user-gesture-bound and cannot be driven from a service worker), and the
+	// cmux host drives a panel it does not own the process of. Advertising it here
+	// is what lets the harness refuse `copy` by CAPABILITY on the extension, the
+	// cmux host and any desktop build that predates this one — the `download`
+	// precedent — instead of sending a method the peer answers `internal` for or,
+	// worse, never answers at all.
+	"copy",
 ];
 
 export interface Request {
