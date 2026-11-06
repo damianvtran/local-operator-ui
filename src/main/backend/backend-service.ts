@@ -722,6 +722,29 @@ export interface BackendServiceManagerOptions {
 }
 
 /**
+ * The port an origin names, defaulted by its protocol when it names none.
+ *
+ * WHY IT EXISTS. `new URL("http://host").port` is the empty string, and two sites
+ * in this file translate an origin's port into `this.port` - the launch's attach
+ * target and the attach itself. `if (port) this.port = port` silently kept the
+ * PREVIOUS value there, so a backend on the protocol's default port was reported
+ * on whatever port the build-time URL happened to configure (review round 1,
+ * NIT-2). Null is "this is not a URL this app can name a port for", which keeps
+ * the caller's existing value rather than inventing one.
+ */
+function originPort(origin: string): number | null {
+	try {
+		const parsed = new URL(origin);
+		if (parsed.port) return Number(parsed.port);
+		if (parsed.protocol === "https:") return 443;
+		if (parsed.protocol === "http:") return 80;
+		return null;
+	} catch {
+		return null;
+	}
+}
+
+/**
  * Backend Service Manager class
  * Manages the Local Operator backend service
  */
@@ -1512,8 +1535,7 @@ export class BackendServiceManager {
 			this.attachTarget = attachTarget;
 			this.backendUrl = attachTarget;
 			this.configuredUrl = attachTarget;
-			const port = Number(new URL(attachTarget).port);
-			if (port) this.port = port;
+			this.port = originPort(attachTarget) ?? this.port;
 		}
 
 		// The app-managed venv for THIS instance - a packaged install and an
@@ -2649,8 +2671,13 @@ export class BackendServiceManager {
 		}
 		const previousUrl = this.backendUrl;
 		this.backendUrl = address;
-		const port = Number(new URL(address).port);
-		if (port) this.port = port;
+		/*
+		 * The origin's OWN port, defaulted rather than skipped (review round 1, NIT-2).
+		 * `URL.port` is empty for an origin that names no port, and the old
+		 * `if (port) …` left whatever the build-time URL had configured - so the
+		 * status surface would have named a port this backend is not on.
+		 */
+		this.port = originPort(address) ?? this.port;
 		// A named backend has no serve record in THIS app's account: the record the
 		// rig published lives in the rig's config dir, and pretending otherwise would
 		// make the reaper and the identity checks read a file this process wrote.
@@ -2658,6 +2685,11 @@ export class BackendServiceManager {
 		this.isExternalBackend = true;
 		this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
 		this.desktopToken = token;
+		/*
+		 * NO `setPairing` HERE (review round 1, NIT-1): `attachDaemon` →
+		 * `DaemonStateMachine.attach` already publishes `DAEMON_PAIRED` as part of
+		 * the attach, and a second call could only disagree with it one day.
+		 */
 		this.attachDaemon(
 			{
 				url: address,
@@ -2669,7 +2701,6 @@ export class BackendServiceManager {
 			},
 			{ owned: false },
 		);
-		this.daemonState.setPairing(DAEMON_PAIRED);
 		/*
 		 * The line a rig's log is read for. The TOKEN is absent by construction: this
 		 * is the one sentence that proves the attach happened, and it is written to

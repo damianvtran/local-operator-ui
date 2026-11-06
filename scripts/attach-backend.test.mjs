@@ -140,3 +140,29 @@ test("an empty URL is absent, not invalid", () => {
 		{ kind: "managed" },
 	);
 });
+
+/*
+ * The two-map split (review round 1, MINOR-1). The URL is judged on the launch
+ * environment and the credential on the environment the manager will read it
+ * from, so presence and value cannot come from different files. Both directions
+ * are asserted: a credential that only a folded `.env` supplies is NOT a false
+ * refusal, and a credential the app will not actually read is not a false pass.
+ */
+
+const LAUNCH = { [URL_VAR]: "http://127.0.0.1:4711" };
+
+test("the credential is judged against the environment the app reads it from", () => {
+	const decision = resolveBackendAttach(LAUNCH, { [TOKEN_VAR]: TOKEN });
+	assert.deepEqual(decision, {
+		kind: "attach",
+		baseUrl: "http://127.0.0.1:4711",
+	});
+});
+
+test("a token in the launch environment alone is not a credential the app can use", () => {
+	// The manager takes the value from the credential map; a presence check that
+	// read the launch map would start an attach it cannot authenticate.
+	const decision = resolveBackendAttach(LAUNCH, {});
+	assert.equal(decision.kind, "incomplete");
+	assert.equal(decision.reason, "token-missing");
+});

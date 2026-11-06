@@ -88,13 +88,35 @@ export type BackendAttach =
  * The result carries NO token value - only whether one is present - so a caller
  * that logs the decision, or a test that asserts on it, cannot leak the
  * credential into a log, a renderer, or an evidence fixture.
+ *
+ * WHY TWO MAPS AND NOT ONE (review round 1, MINOR-1). The URL and the credential
+ * are read from DIFFERENT views of the environment on purpose, and this signature
+ * is where that is made explicit rather than implied:
+ *
+ *   - the URL is a LAUNCH FACT and comes from `launchEnv`. `backend/config.ts`
+ *     folds a `cwd/.env` into `process.env` with `override: true`, so reading the
+ *     URL there would let a developer's `.env` steer where the operator's real
+ *     app connects.
+ *   - the credential is PRODUCT CONFIGURATION and comes from `process.env` AFTER
+ *     that fold - which is what `BackendServiceManager` reads it from
+ *     (`desktopToken`). That is `./launch-env`'s own doctrine, and it is why this
+ *     function must judge PRESENCE against the same map the VALUE is taken from.
+ *     Judging it on `launchEnv` while the manager reads `process.env` gave two
+ *     failures the reviewer named: a spurious `token-missing` when a `.env`
+ *     supplies the credential, and - worse - an attach attempted with a
+ *     credential the check never saw, whose 401 would send the operator to the
+ *     wrong value.
+ *
+ * The default keeps the pure, one-map call for a test that has nothing to say
+ * about the split; production always passes both.
  */
 export function resolveBackendAttach(
-	env: Record<string, string | undefined>,
+	launch: Record<string, string | undefined>,
+	credentials: Record<string, string | undefined> = launch,
 ): BackendAttach {
-	const rawUrl = env[ATTACH_BACKEND_URL_VARIABLE]?.trim();
+	const rawUrl = launch[ATTACH_BACKEND_URL_VARIABLE]?.trim();
 	if (!rawUrl) return { kind: "managed" };
-	const token = env[ATTACH_BACKEND_TOKEN_VARIABLE]?.trim();
+	const token = credentials[ATTACH_BACKEND_TOKEN_VARIABLE]?.trim();
 	if (!token) {
 		return {
 			kind: "incomplete",
@@ -136,7 +158,11 @@ export function resolveBackendAttach(
 	return { kind: "attach", baseUrl: parsed.origin };
 }
 
-/** This launch's decision, from the environment it was LAUNCHED with. */
+/**
+ * This launch's decision: the URL from the environment it was LAUNCHED with, the
+ * credential from the one `BackendServiceManager` will read (`process.env`, post
+ * dotenv-fold). The two-map split and its reason are on `resolveBackendAttach`.
+ */
 export function resolveBackendAttachForThisProcess(): BackendAttach {
-	return resolveBackendAttach(launchEnv);
+	return resolveBackendAttach(launchEnv, process.env);
 }
