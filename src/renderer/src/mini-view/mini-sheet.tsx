@@ -175,7 +175,7 @@ export function MiniSheet({
 			aria-label={title}
 			data-tour-tag="mini-sheet"
 			onKeyDown={onKeyDown}
-			className="flex max-h-[320px] min-h-0 shrink-0 flex-col overflow-hidden rounded-md border border-control bg-elevated text-ink shadow-overlay outline-none"
+			className="flex max-h-[320px] min-h-0 shrink-0 flex-col overflow-hidden rounded-md bg-elevated text-ink shadow-overlay outline-none"
 		>
 			<div className="flex h-6 shrink-0 items-center justify-between gap-2 border-b border-hairline px-3">
 				<span className="text-meta text-ink-muted">{title}</span>

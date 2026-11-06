@@ -51,9 +51,20 @@ import type { HTMLAttributes, ReactNode } from "react";
  * The chrome, as one string. Exported so a caller that cannot render the
  * component (the row's in-flow cluster, which is not absolutely positioned)
  * still wears the identical tokens.
+ *
+ * NO HAIRLINE (2026-11-06). The shell used to carry `border border-hairline`,
+ * which was the same box the operator reported on tooltips, menus, popovers and
+ * dialogs - and the floating surface had a second one of its own: the
+ * team-bridge message toolbar already separated with `bg-floating` +
+ * `shadow-overlay` and no stroke. A panel that leaves the flow separates by its
+ * ground plus the ONE shadow, so the stroke goes and the shadow (whose contact
+ * layer darkens the panel's own edge - see "-- elevation --" in
+ * `styles/index.css`) takes over the boundary. The class list must not regain a
+ * `border`: `scripts/floating-surface-no-border.test.mjs` derives every floating
+ * panel from this vocabulary and fails on one.
  */
 export const FLOATING_TOOLBAR_CHROME =
-	"flex h-8 items-center gap-1 rounded-md border border-hairline bg-elevated px-1";
+	"flex h-8 items-center gap-1 rounded-md bg-elevated px-1 shadow-overlay";
 
 export type FloatingToolbarProps = HTMLAttributes<HTMLDivElement> & {
 	/** The accessible name of the group. Required: see the header. */

@@ -285,7 +285,14 @@ function NativeProfileEditButton({
 	const navigate = useNavigate();
 	return (
 		<Button
-			variant="secondary"
+			/*
+			 * BORDERLESS ON A FLOATING PANEL (2026-11-06). The card's `elevated` ground
+			 * makes a bordered `secondary` a box drawn inside a box - the nested stroke
+			 * the operator photographed on this popover. The edit action is the quieter
+			 * of the card's two, so it takes the system's borderless secondary, `ghost`,
+			 * and leaves the one accent button to the message action below.
+			 */
+			variant="ghost"
 			size="sm"
 			className="w-full"
 			onClick={() => {
@@ -670,7 +677,14 @@ export function TeamBridgeProfileCard({
 					{canEditOwnProfile &&
 						(onEditOwnProfile ? (
 							<Button
-								variant="secondary"
+								/*
+								 * BORDERLESS ON A FLOATING PANEL (2026-11-06). The card's `elevated` ground
+								 * makes a bordered `secondary` a box drawn inside a box - the nested stroke
+								 * the operator photographed on this popover. The edit action is the quieter
+								 * of the card's two, so it takes the system's borderless secondary, `ghost`,
+								 * and leaves the one accent button to the message action below.
+								 */
+								variant="ghost"
 								size="sm"
 								className="w-full"
 								onClick={() => {
@@ -684,6 +698,14 @@ export function TeamBridgeProfileCard({
 						))}
 					{canMessage && (
 						<Button
+							/*
+							 * THE CARD'S ONE PRIMARY ACTION, and the border the operator photographed.
+							 * This rendered the default `secondary` - `border border-control
+							 * bg-surface` - i.e. a bordered control drawn on an `elevated` panel.
+							 * `primary` is this system's borderless filled action and the idiomatic
+							 * shape for the single thing the surface exists to offer.
+							 */
+							variant="primary"
 							className="w-full"
 							onClick={() => {
 								changeOpen(false);

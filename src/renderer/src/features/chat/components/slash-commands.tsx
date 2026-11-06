@@ -2133,8 +2133,8 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the
 				// row region below, so the label and the footer stay put and the
 				// region's height can be a whole multiple of the row pitch.
-				"overflow-hidden rounded-md border border-control bg-elevated",
-				"shadow-lg",
+				"overflow-hidden rounded-md bg-elevated",
+				"shadow-overlay",
 			)}
 		>
 			{/*

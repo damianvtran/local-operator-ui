@@ -15,7 +15,7 @@
  * (`message-input.tsx` mounts both inside one `relative` wrapper), so a second
  * shell would be a second way of doing one thing. Copied deliberately and
  * exactly, from `slash-commands.tsx`: the anchor, the shell's
- * `overflow-hidden rounded-md border border-control bg-elevated shadow-lg`, the
+ * `overflow-hidden rounded-md bg-elevated shadow-overlay`, the
  * scroller split, the 36px row pitch, the `border-hairline` strips, the row inks,
  * the `bg-accent-wash` + 2px accent bar for the active row, the
  * `role="listbox"`/`role="option"` + `aria-activedescendant` contract with the
@@ -755,8 +755,8 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 				ref={shellRef}
 				className={cn(
 					"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
-					"overflow-hidden rounded-md border border-control bg-elevated",
-					"shadow-lg",
+					"overflow-hidden rounded-md bg-elevated",
+					"shadow-overlay",
 				)}
 			>
 				<span
@@ -830,8 +830,8 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the row
 				// region below, so the header and footer stay put and the region's height
 				// can be a whole multiple of the row pitch.
-				"overflow-hidden rounded-md border border-control bg-elevated",
-				"shadow-lg",
+				"overflow-hidden rounded-md bg-elevated",
+				"shadow-overlay",
 			)}
 		>
 			{/*

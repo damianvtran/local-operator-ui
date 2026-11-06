@@ -902,13 +902,24 @@ const STRUCTURAL_CALL_SITES = [
 		 * operator's "they seem to be slightly different styles" report moved
 		 * it here so the quote strip, the link strip, the shared selection
 		 * strip and the row's own clusters cannot drift apart again. The
-		 * boundary this row protects is the `border border-hairline
-		 * bg-elevated` ground, and it is unchanged - only its address is. A
-		 * future edit that repaints the shell on the transcript's canvas now
-		 * fails here even though it would leave every palette row green.
+		 * boundary this row protects is the `bg-elevated` ground, and it is
+		 * unchanged - only its address is, and (2026-11-06) the stroke that sat
+		 * on top of it. A future edit that repaints the shell on the
+		 * transcript's canvas now fails here even though it would leave every
+		 * palette row green.
+		 *
+		 * THE HAIRLINE IS GONE ON PURPOSE, not by drift. The operator reported
+		 * bordered floating surfaces (tooltip, menus, popovers, dialogs), and
+		 * this shell was one of them - wearing the same 1px stroke as the
+		 * team-bridge message toolbar, which already separated with
+		 * `bg-floating` + `shadow-overlay` and no border at all. So
+		 * `shadow-overlay` is now part of the class list this row pins:
+		 * elevation, not a line, is what keeps the shell an object over prose.
+		 * Dropping the shadow while keeping the ground would leave it edgeless,
+		 * and this row is where that fails.
 		 */
-		must: "flex h-8 items-center gap-1 rounded-md border border-hairline bg-elevated px-1",
-		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
+		must: "flex h-8 items-center gap-1 rounded-md bg-elevated px-1 shadow-overlay",
+		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus the one shadow is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column, and dropping `shadow-overlay` leaves it without the contact layer that darkens its own edge, with every palette row still green",
 	},
 	{
 		/*

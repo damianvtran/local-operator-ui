@@ -126,10 +126,11 @@ export const DialogContent = forwardRef<
 					 * translucency buys nothing and costs legibility: this surface keeps the
 					 * opaque `elevated` role and its shadow.
 					 */
+					data-lo-floating=""
 					className={cn(
 						"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
 						"flex w-full max-w-lg flex-col gap-4",
-						"rounded-lg border border-hairline bg-elevated p-6 shadow-overlay",
+						"rounded-lg bg-elevated p-6 shadow-overlay",
 						// No entrance animation; see the note at the top of `tooltip.tsx`.
 						className,
 					)}

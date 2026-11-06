@@ -192,7 +192,7 @@ export const WakeCancelPopover = ({
 				width: CARD_WIDTH,
 			}}
 			className={cn(
-				"z-50 max-w-[calc(100vw-2rem)] rounded-md border border-hairline bg-elevated p-4",
+				"z-50 max-w-[calc(100vw-2rem)] rounded-md bg-elevated p-4",
 				"text-body-sm text-ink shadow-overlay",
 			)}
 		>

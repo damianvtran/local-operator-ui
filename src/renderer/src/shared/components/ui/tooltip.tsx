@@ -111,9 +111,20 @@ export const TooltipContent = forwardRef<
 		// the selector needing something stable to look for.
 		data-lo-tooltip-panel=""
 		data-glass-overlay=""
+		/*
+		 * NO STROKE: a floating panel separates by its `elevated` ground plus the one
+		 * shadow, never by a line (branding § 2; operator report 2026-11-06).
+		 * `data-lo-floating` is the machine-readable half of that rule - every shared
+		 * primitive's panel wears it, and `scripts/floating-surface-no-border.test.mjs`
+		 * fails if a rule touching the attribute declares a border or if any marked
+		 * panel computes a non-zero border width. The full argument is on
+		 * `panelClasses` in `dropdown-menu.tsx` and on `--shadow-overlay`'s contact
+		 * layer in `styles/index.css`.
+		 */
+		data-lo-floating=""
 		sideOffset={sideOffset}
 		className={cn(
-			"z-50 max-w-64 rounded-sm border border-hairline bg-elevated px-2 py-1",
+			"z-50 max-w-64 rounded-sm bg-elevated px-2 py-1",
 			"text-meta text-ink shadow-overlay",
 			/*
 			 * NEVER a pointer target.

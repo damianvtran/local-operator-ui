@@ -488,8 +488,8 @@ export function SkillSuggestionsPopup({
 			aria-label={t("ui.chat.pickers.skills.title")}
 			className={cn(
 				"absolute bottom-full left-0 right-0 z-20 mb-1",
-				"overflow-hidden rounded-md border border-control bg-elevated",
-				"shadow-lg",
+				"overflow-hidden rounded-md bg-elevated",
+				"shadow-overlay",
 			)}
 		>
 			<div className="border-b border-hairline px-3 py-1 text-meta text-ink-dim">
