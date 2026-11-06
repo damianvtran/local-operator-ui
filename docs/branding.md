@@ -1209,7 +1209,7 @@ opaque root behind opaque descendants.
 | Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
 | Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
 | Sticky headers (scroll-under) | `data-glass-plane="band"`: the field overlay | a solid plate in a translucent column is the seam the operator reported; the band's own inks are contract rows |
-| Sticky headers over MOVING content (a section header that rows scroll under) | `data-glass-plane="band-backdrop"`: the pane's own `elevated` role, floored at the elevated alpha, plus a `backdrop-filter` blur | a 5% ink wash over moving content hides nothing, and the band's ground is whatever is scrolling under it, so the band needs an alpha FLOOR of its own - the label beside the count must clear 4.5:1 against it and the count 3.5:1 in its own `inkDim` register (design round 1's D1) |
+| Sticky headers over MOVING content (a section header that rows scroll under) | `data-glass-plane="band-backdrop"`: the pane's own `elevated` role, floored at the elevated alpha, plus a `backdrop-filter` blur | a 5% ink wash over moving content hides nothing, and the band's ground is whatever is scrolling under it, so the band needs an alpha FLOOR of its own - and that floor holds EVERY ink the band carries at its own register: `ink` and `inkMuted` at 4.5, `inkDim` at 3.5 (`GLASS_STATE_DIM_FLOOR`, the register a count wears). Deriving it against the label's ink alone was the bug: a CONTRAST PRESET took the count to 3.28:1 on a band that floor had fixed at 0.81 (QA round 1's Q-1; the floor's existence is design round 1's D1, and the term landed in #1714). What the term cost, fleet-wide: 50 of the 59 palettes' floors rose, 9 were unmoved, none fell, and the fleet floor stayed 0.88 dark / 0.78 light because the palette that bound it already sat there. That spread is a one-off result, not a guarded invariant: `scripts/derive-glass-floors.mjs --check` asserts the committed floor is not BELOW the derived one (one-directional) and `scripts/contrast-contract.mjs` asserts the band's per-ink rows |
 | Popout (quick send) | card ground `surface` at its floor raw; input a field; picker sheet solid | a single floating HUD on the window's material |
 
 **Planes, bands and lanes (round 3).** The operator's report: the left sidebar
@@ -1227,7 +1227,45 @@ be on glass:
 | Block (a text-bearing card whose fill is its boundary) | `data-glass-block` | the derived veil (unchanged) |
 | Lane (a well that must read under veiled cards) | `data-glass-lane` | the derived scheme role at `pageAlpha * scale` (tracks the slider) |
 
-**An isolating band on a PAGE, not in a pane.** The rows above describe the band from inside a pane, where its role IS the pane's ground. A page that owns its ground (Notifications, Projects, Library, Settings) has no `pane` region at all: its material is the `canvas` the `<main>` backing paints, so the same band rule gates on the page's own `data-glass-region="canvas"` marker and the band takes the `elevated` role there too - one role step UP from the page, which is what makes it read as a band rather than as a thicker page. It is not the page's own canvas role, and the reason is measured rather than stylistic: at the band floor over the scheme's extreme, that role misses the ink floors on 17 of the theme set's 18 light palettes (all but `highContrastLight`), while `elevated` clears them on the whole fleet. The floor itself is derived against every ink the band carries - the label's `inkMuted` and the row's `ink` at 4.5, the count's `inkDim` at 3.5 - so the count survives a CONTRAST PRESET as well as the authored palettes (`scripts/derive-glass-floors.mjs`, `scripts/contrast-contract.mjs`).
+**An isolating band on a PAGE, not in a pane.** The rows above describe the band from inside a pane, where its role IS the pane's ground. A page that owns its ground (Notifications, Projects, Library, Settings) has no `pane` region at all: its material is the `canvas` the `<main>` backing paints, so the same band rule gates on the page's own `data-glass-region="canvas"` marker and the band takes the `elevated` role there too - one role step UP from the page, which is what makes it read as a band rather than as a thicker page. It is not the page's own canvas role, and the reason is measured rather than stylistic: at the band floor over the scheme's extreme, that role misses the ink floors on 17 of the theme set's 18 light palettes (all but `highContrastLight`), while `elevated` clears them on the whole fleet. The floor it takes is the one the band row derives, against every ink the band carries, so the count survives a CONTRAST PRESET here as well as on the authored palettes.
+
+**The isolating band is not see-through, and that is a decision, not an unfinished
+job.** At the shipped 80 % the desktop's share through the Notifications band is
+1.96 % dark / 2.35 % light against 38 % / 32 % through the page beside it (the
+band's own rect carries alpha 0.980 dark / 0.976 light in the frames), and over the
+one wallpaper the evidence set composites - a synthetic bright desktop, not an OS
+capture - the band's step off that page reads 3.17:1 at base and 2.56:1 at head,
+dark (`docs/pr-evidence/notifications-glass/`). The 1.11:1 dark-desktop end is not a
+read from that set and cannot be: it is arithmetic from PR #1714 round 1's design
+review, its dark-wallpaper x dark-theme cell, computed from the two-alpha model that
+#1714's own body retires once the frames show the band does not stack the way that
+model assumes. The step is the point: a header that let the desktop through as
+freely as the page beside it would stop reading as a header.
+The floor above is derived against the MEDIA hazard - a bare white or black under
+the band, the worst a material can put there. A notification row is the TEXT-ROW
+hazard instead: what passes under the band is text, not a photograph of a desktop,
+and measured under the band's own blur it puts the same three inks at 0.63 dark /
+0.32 light - the same round-2 design review blurred a real row at the band's own
+radius, took the brightest pixel (`#7b7a73` dark / `#aba69e` light) and solved the
+floor against it. That measurement holds only for a surface whose rows are text all
+the way under the band, and round 2 makes the class opt-in per surface and forbidden
+wherever media can pass under the band - an image preview or an avatar travelling
+under it puts the media hazard straight back. That restriction is why it is a class
+and not the global floor. Those are the numbers a see-through header would buy, and
+they are why it is not shipped. At 0.63 dark the projected desktop share rises to
+about 14 % - the band's own 37 % over the ~38 % the page already leaves open - so
+the header stops covering the thing it exists to cover. At 0.32 light the band's
+step against the page collapses toward 1.0 and the header stops reading as a header
+at all - a worse defect than the isolation it was trying to avoid. Anyone who wants
+a see-through header has to beat that measurement first, and then add a surface-class
+opt-in to the derivation plus a `CONTROLS`/contract row rather than hand-picking a
+number.
+
+**What this surface has not measured.** The updates drawer's Unread/Read switch and
+the Finder file-list band wear the same well and band rules but have not been driven
+in an isolated lane (both need a live conversation), and the wallpaper worst case
+here is a declared composite of the app's own alpha frames rather than a capture
+over a real desktop.
 
 **The selected tab is an overlay, not a pill.** A tab's opaque `bg-surface` /
 `bg-elevated` fill is a hole in a translucent strip; inside a covered pane the
