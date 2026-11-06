@@ -1453,11 +1453,13 @@ export function setCachedThreadUnread(
  * 3. otherwise nothing: the messages invalidation brings the hub's number.
  */
 export function threadUnreadAfterRead(
-	answer: { thread_unread_count?: number; unread_count?: number } | undefined,
+	answer: { thread_unread_count?: number } | undefined,
 	seq: number,
 	newestReplySeq: number | undefined,
 ): number | undefined {
-	const echoed = answer?.thread_unread_count ?? answer?.unread_count;
+	// TR1 names the thread remainder explicitly; `unread_count` belongs to the
+	// conversation and must never replace this thread's badge (F7).
+	const echoed = answer?.thread_unread_count;
 	if (echoed !== undefined) return echoed;
 	if (newestReplySeq !== undefined && seq >= newestReplySeq) return 0;
 	return undefined;
