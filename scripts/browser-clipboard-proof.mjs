@@ -42,12 +42,12 @@
  */
 
 import { execFileSync, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
 import electronPath from "electron";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
@@ -98,6 +98,14 @@ const sha16 = (text) =>
  * `pbcopy`/`pbpaste` are the system's, not a re-implementation, and comparing
  * their bytes with the receipt's fingerprint is the proof that what the host
  * reports is what the machine now holds. */
+/**
+ * The app log's permission line: the permission, WHICH Electron handler asked and
+ * the decision. Module scope because a per-call literal is the linter's
+ * top-level-regex case (and there is no reason to compile it per reading).
+ */
+const PERMISSION_LINE =
+	/\[browser\] (granted|denied) clipboard-(read|sanitized-write) \((request|check)\) from http/;
+
 const isDarwin = process.platform === "darwin";
 
 const pbcopy = (text) =>
@@ -460,7 +468,7 @@ async function waitForRenderer(timeoutMs = 90_000) {
 		).catch(() => ({ value: "error" }));
 		if (ready.value === "ready") return;
 		if (Date.now() - started > timeoutMs)
-			throw new Error(`the renderer never exposed window.api.browser`);
+			throw new Error("the renderer never exposed window.api.browser");
 		await new Promise((resolve) => setTimeout(resolve, 250));
 	}
 }
@@ -574,7 +582,13 @@ async function main() {
 	);
 
 	// --- (c) a same-process child frame ------------------------------------
-	const frameAttempt = await pollRead(state, firstTab, "#frame-result", "idle", 40);
+	const frameAttempt = await pollRead(
+		state,
+		firstTab,
+		"#frame-result",
+		"idle",
+		40,
+	);
 	info(
 		"(c) a same-process child frame's writeText (reported, not gated; OOPIFs are not covered)",
 		`read #frame-result -> ${JSON.stringify(frameAttempt.text)}`,
@@ -677,7 +691,7 @@ async function main() {
 	check(
 		"(e) the page's write survives a NAVIGATION (the shim is installed on the new document)",
 		afterNavigation.text === "click:ok" && pbpaste() === TOKEN,
-		`after navigation on ${firstTab}: url ${JSON.stringify(afterNavigation.url)} · read #shim -> ${JSON.stringify(navigatedShim.text)} · read #result -> ${JSON.stringify(afterNavigation.text)} · pbpaste sha256[0..16] = ${sha16(pbpaste())}`, 
+		`after navigation on ${firstTab}: url ${JSON.stringify(afterNavigation.url)} · read #shim -> ${JSON.stringify(navigatedShim.text)} · read #result -> ${JSON.stringify(afterNavigation.text)} · pbpaste sha256[0..16] = ${sha16(pbpaste())}`,
 	);
 
 	// --- (e) a freshly opened view (a new attach) -------------------------
@@ -709,11 +723,7 @@ async function main() {
 	);
 	check(
 		"the app log names the permission, the asking handler and the decision",
-		permissionLines.some((line) =>
-			/\[browser\] (granted|denied) clipboard-(read|sanitized-write) \((request|check)\) from http/.test(
-				line,
-			),
-		),
+		permissionLines.some((line) => PERMISSION_LINE.test(line)),
 		permissionLines.slice(0, 8).join("\n      ") || "(no permission lines)",
 	);
 	check(

@@ -294,7 +294,9 @@ test("an oversized write rejects rather than truncating silently", async () => {
 	);
 	assert.deepEqual(f.sent, []);
 	// And the boundary itself is allowed, or the cap would be off by one.
-	const atLimit = f.win.navigator.clipboard.writeText("x".repeat(CLIPBOARD_SHIM_MAX_BYTES));
+	const atLimit = f.win.navigator.clipboard.writeText(
+		"x".repeat(CLIPBOARD_SHIM_MAX_BYTES),
+	);
 	assert.equal(f.sent.length, 1);
 	const [payload] = f.payloads();
 	f.ack(payload.id, true);
@@ -326,15 +328,23 @@ test("write() serves a text/plain ClipboardItem and falls through for anything e
 
 test("permissions.query reports the host's write capability and never the read one", async () => {
 	const f = shimWindow();
-	const write = await f.win.navigator.permissions.query({ name: "clipboard-write" });
+	const write = await f.win.navigator.permissions.query({
+		name: "clipboard-write",
+	});
 	assert.equal(
 		write.state,
 		"granted",
 		"a page that feature-detects before copying must not skip the copy",
 	);
 	assert.equal(typeof write.addEventListener, "function");
-	const read = await f.win.navigator.permissions.query({ name: "clipboard-read" });
-	assert.equal(read.state, "denied", "the READ question keeps Chromium's answer");
+	const read = await f.win.navigator.permissions.query({
+		name: "clipboard-read",
+	});
+	assert.equal(
+		read.state,
+		"denied",
+		"the READ question keeps Chromium's answer",
+	);
 	f.dom.window.close();
 });
 

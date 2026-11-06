@@ -44,7 +44,6 @@ export const session = {
 	},
 };
 
-
 /**
  * A stand-in for Electron's `electron` module, for the desktop suite's
  * in-memory bundles.
