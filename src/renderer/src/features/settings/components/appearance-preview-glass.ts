@@ -9,7 +9,19 @@ import {
 	glassPaintFor,
 } from "../../../../../shared/window-glass";
 
-/** The eight roles the floor table measures; all are painted `--lo-*` values. */
+/**
+ * The roles the sample's floor table measures, read as the `--lo-*` values the
+ * sample's own block paints.
+ *
+ * The list is NOT "the eight neutral roles": the table also measures the panel
+ * hairline (the overlay edge is stepped off it) and the four semantic inks (glass
+ * quiets them toward `ink` so a destructive or error label still clears the ink
+ * floor on the panel). Feeding the sample fewer roles than the table reads made
+ * it derive a different table at best and throw through React at worst, so this
+ * list tracks `FLOOR_ROLES` in `shared/glass-derivation.mjs` - the sample then
+ * publishes the same floor numbers the window paints with, which is the whole
+ * point of showing it.
+ */
 export type PreviewPaletteRoles = Pick<
 	ThemePalette,
 	| "canvas"
@@ -20,9 +32,22 @@ export type PreviewPaletteRoles = Pick<
 	| "inkMuted"
 	| "inkDim"
 	| "borderControl"
+	| "hairline"
+	| "danger"
+	| "success"
+	| "warning"
+	| "info"
 >;
 
-const ROLES: ReadonlyArray<readonly [keyof PreviewPaletteRoles, string]> = [
+/**
+ * The roles the sample's floor table measures, as `role -> --lo-* suffix`. EXPORTED
+ * because it is one half of a hand-kept pair: `FLOOR_ROLES` in
+ * `shared/glass-derivation.mjs` is the other, and the contract test drives its
+ * expectation from THIS list so the table cannot grow past the reader.
+ */
+export const ROLES: ReadonlyArray<
+	readonly [keyof PreviewPaletteRoles, string]
+> = [
 	["canvas", "canvas"],
 	["surface", "surface"],
 	["elevated", "elevated"],
@@ -31,6 +56,11 @@ const ROLES: ReadonlyArray<readonly [keyof PreviewPaletteRoles, string]> = [
 	["inkMuted", "ink-muted"],
 	["inkDim", "ink-dim"],
 	["borderControl", "border-control"],
+	["hairline", "hairline"],
+	["danger", "danger"],
+	["success", "success"],
+	["warning", "warning"],
+	["info", "info"],
 ];
 
 export type GlassScheme = "dark" | "light";

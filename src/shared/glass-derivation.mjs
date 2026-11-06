@@ -860,7 +860,51 @@ function composedBlockFloors(palette, floors) {
 	}
 }
 
+/** The palette roles a floor table MEASURES, in one place because the table has a
+ * second caller besides the window: the Appearance preview reads the roles off a
+ * DOM element and derives the sample's floors from them. That reader is only as
+ * good as this list - it supplied eight roles while the table had grown to want
+ * the panel hairline (`deriveOverlayEdgeMix`) and the four semantic inks
+ * (`deriveOverlayInkMix`), so `undefined` reached `composite` and the sample threw
+ * a TypeError out of its `useLayoutEffect` instead of painting. Naming the role
+ * here turns a reader that falls behind into one legible error at the boundary.
+ *
+ * EXPORTED because `ROLES` in `appearance-preview-glass.ts` is the other half of
+ * this hand-kept pair; the contract asserts the two lists are equal, so neither
+ * can drift from the other unnoticed. */
+export const FLOOR_ROLES = [
+	"canvas",
+	"surface",
+	"elevated",
+	"sunken",
+	"ink",
+	"inkMuted",
+	"inkDim",
+	"borderControl",
+	"hairline",
+	...GLASS_OVERLAY_INKS,
+];
+
+/** Fail at the boundary, not inside `composite`: an absent role is a contract
+ * break in the caller, and `undefined` reaching `.slice` reports the symptom
+ * (`Cannot read properties of undefined`) with no clue which role is missing.
+ * A present-but-blank value is the same break - `""` is not a colour, and letting
+ * it through solved the edge mix against a blank hairline and published a
+ * degenerate table instead of reporting the bad read (R2). Cheap enough to sit on
+ * every table request: thirteen property reads against a derivation that solves
+ * alphas. */
+function assertFloorRoles(palette) {
+	for (const role of FLOOR_ROLES) {
+		const value = palette[role];
+		if (typeof value !== "string" || value.trim() === "")
+			throw new Error(
+				`palette is missing the "${role}" role required by the glass floor table`,
+			);
+	}
+}
+
 export function glassFloorsForPalette(palette) {
+	assertFloorRoles(palette);
 	const key = JSON.stringify(palette);
 	const hit = paletteTables.get(key);
 	if (hit) return hit;
