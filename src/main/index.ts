@@ -78,6 +78,7 @@ import {
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
 } from "./backend";
+import { resolveBackendAttachForThisProcess } from "./backend/attach-backend";
 import { backendConfig, launchEnv } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
@@ -1345,7 +1346,21 @@ function createWindow(
 const userShellPath = createUserShellPath({
 	log: (message) => logger.info(message, LogFileType.BACKEND),
 });
-const backendService = new BackendServiceManager({ userShellPath });
+/*
+ * WHAT THIS LAUNCH WAS TOLD ABOUT ITS BACKEND, resolved ONCE here and acted on by
+ * both consumers: the manager attaches to it, and this file refuses to run the
+ * setup installer when the named backend cannot be attached to
+ * (`./backend/attach-backend` holds what the switch is for, why the URL is the
+ * opt-in, and why the token half is not a second credential). Resolving it in one
+ * place is the point - a second read of the environment could disagree with this
+ * one, and the installer would then run against a backend the manager was
+ * already attached to.
+ */
+const backendAttach = resolveBackendAttachForThisProcess();
+const backendService = new BackendServiceManager({
+	userShellPath,
+	attach: backendAttach,
+});
 /*
  * WHETHER THIS PROCESS HAS BEGUN QUITTING, and has not been cancelled since.
  *
@@ -1414,6 +1429,34 @@ const reportBackendFailure = (message: string, fileType: LogFileType): void => {
 		return;
 	}
 	dialog.showErrorBox("Backend Error", message);
+};
+
+/**
+ * A launch that NAMED its backend, and cannot have it, says so and stops - it
+ * never installs a runtime instead.
+ *
+ * WHY THERE IS NO FALLBACK HERE. The installer exists to produce a backend, so
+ * using it to answer "the backend you named is not usable" would replace a
+ * specific, diagnosable failure (wrong token, nothing listening, wrong port) with
+ * several minutes of downloading and a different daemon at the end of it. For the
+ * rig this switch exists for, that is worse than useless: the run would report
+ * success while measuring a backend it never chose.
+ *
+ * WHY IT DOES NOT RAISE A DIALOG, unlike every other backend failure here. Two
+ * reasons, and the first is a standing invariant:
+ *   - `reportBackendFailure` above is this file's ONE native modal, and it is
+ *     asserted to be the only one (`owned-serve-lifecycle.test.mjs`): a second
+ *     `dialog.showErrorBox` is a modal that can park a quit again. This path has
+ *     no business becoming the second.
+ *   - The launches this switch exists for are headless, and a native error box has
+ *     nobody to dismiss it there - it parks the main thread and leaves a process
+ *     with no window and no exit, which is the state a rig reads as a hang rather
+ *     than as a failure. A named line on stderr plus exit code 1 is the honest
+ *     face of it for the person at a terminal and for the rig alike.
+ */
+const reportAttachFailure = (detail: string): void => {
+	logger.error(`[attach] ${detail}`, LogFileType.BACKEND);
+	console.error(`[attach] ${detail}`);
 };
 
 /*
@@ -2391,6 +2434,24 @@ app
 				`LOCAL_OPERATOR_UI_READY electron=${process.versions.electron}`,
 			);
 			app.exit(0);
+			return;
+		}
+
+		/*
+		 * A launch whose attach pair is broken stops HERE, before discovery, before
+		 * any window and long before the installer.
+		 *
+		 * WHY SO EARLY. Half an attach pair is not a degraded attach and it is not an
+		 * absent one: nothing downstream can tell the difference between "this rig
+		 * forgot the token" and "this machine has no backend", so discovery would
+		 * find nothing, `start()` would find it may not spawn, and the next branch is
+		 * the installer - which is exactly the silent substitution the switch
+		 * forbids. Naming the missing half at the top of the launch is the only place
+		 * the two are still distinguishable.
+		 */
+		if (backendAttach.kind === "incomplete") {
+			reportAttachFailure(backendAttach.detail);
+			app.exit(1);
 			return;
 		}
 
@@ -4160,6 +4221,26 @@ app
 		 * (design §3.7).
 		 */
 		const hasExternalBackend = await backendService.checkExistingBackend();
+
+		/*
+		 * A NAMED BACKEND THAT COULD NOT BE ATTACHED TO ENDS HERE.
+		 *
+		 * Everything below answers `hasExternalBackend === false` by finding or
+		 * making a backend: discovery is skipped, `start()` is reached, and on the
+		 * managed-path conditions the installer runs. All of those are the wrong
+		 * answer to "the daemon you named is not serving, or does not accept this
+		 * token" - they turn a diagnosable misconfiguration into a DIFFERENT daemon,
+		 * minutes later, inside the same process. The manager recorded why the
+		 * attach failed at the point it failed, so this reports that and stops.
+		 */
+		if (backendAttach.kind === "attach" && !hasExternalBackend) {
+			reportAttachFailure(
+				backendService.lastAttachFailure() ??
+					`This launch named ${backendAttach.baseUrl} as its backend, but nothing was attached to it.`,
+			);
+			app.exit(1);
+			return;
+		}
 
 		/*
 		 * Only an app permitted to manage a daemon may install or start one. A
