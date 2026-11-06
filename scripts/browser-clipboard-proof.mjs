@@ -136,6 +136,8 @@ function page() {
 <button id="copy-again">Copy key</button>
 <button id="paste-again">Paste</button>
 <button id="copy-without-gesture">Copy later</button>
+<button id="copy-after-window">Copy in 3s</button>
+<button id="frame-probe">Ask the frame to copy</button>
 <a id="navigate" href="/next">next page</a>
 <iframe id="same-site-frame" src="/frame"></iframe>
 <p id="shim">unknown</p>
@@ -146,6 +148,9 @@ function page() {
 <script>
   const key = document.getElementById("app-key").textContent.trim();
   const report = (id, text) => { document.getElementById(id).textContent = text; };
+  // Every attempt is NUMBERED: a paragraph read after the fact must never let a
+  // previous phase's success pass for this phase's answer.
+  var attempts = 0;
   report("shim", window.__localOperatorClipboardShim ? "shimmed" : "native");
   // Kept LIVE: the host arms a document when its execution context appears, which is
   // after the page's own first script ran — so the reading that matters is the one at
@@ -154,9 +159,10 @@ function page() {
     report("shim", window.__localOperatorClipboardShim ? "shimmed" : "native");
   }, 200);
   function attempt(label) {
+    var n = ++attempts;
     return navigator.clipboard.writeText(key).then(
-      function () { report("result", label + ":ok"); },
-      function (error) { report("result", label + ":refused:" + (error && error.name) + ":" + (error && error.message)); }
+      function () { report("result", label + ":ok#" + n); },
+      function (error) { report("result", label + ":refused#" + n + ":" + (error && error.name) + ":" + (error && error.message)); }
     );
   }
   document.getElementById("copy-again").addEventListener("click", function () { attempt("click"); });
@@ -173,14 +179,25 @@ function page() {
   document.getElementById("copy-without-gesture").addEventListener("click", function () {
     setTimeout(function () { attempt("nogesture"); }, 0);
   });
+  // A copy scheduled PAST the host arm's window, from a click that has already
+  // returned: the shape a page would use to ride a permission it should not have.
+  document.getElementById("copy-after-window").addEventListener("click", function () {
+    setTimeout(function () { attempt("later"); }, 3000);
+  });
+  // The child frame writes only when ASKED. An automatic write here landed inside
+  // another row's clipboard measurement (measured: it overwrote the fingerprint
+  // that row was reading, which read as that row failing), so the probe is explicit.
   if (window.parent !== window) {
-    window.addEventListener("load", function () {
-      setTimeout(function () {
-        navigator.clipboard.writeText("frame-text").then(
-          function () { window.parent.postMessage("frame:ok", "*"); },
-          function (error) { window.parent.postMessage("frame:refused:" + (error && error.name) + ":" + (error && error.message), "*"); }
-        );
-      }, 2500);
+    window.addEventListener("message", function (event) {
+      if (event.data !== "write") return;
+      navigator.clipboard.writeText("frame-text").then(
+        function () { window.parent.postMessage("frame:ok", "*"); },
+        function (error) { window.parent.postMessage("frame:refused:" + (error && error.name) + ":" + (error && error.message), "*"); }
+      );
+    });
+  } else {
+    document.getElementById("frame-probe").addEventListener("click", function () {
+      document.getElementById("same-site-frame").contentWindow.postMessage("write", "*");
     });
   }
   window.addEventListener("message", function (event) {
@@ -541,7 +558,7 @@ async function main() {
 	const loaded = await pollRead(state, firstTab, "#result", "idle");
 	check(
 		"(c2) a page write with NO user gesture rejects instead of writing silently",
-		String(loaded.text ?? "").startsWith("load:refused:NotAllowedError:"),
+		String(loaded.text ?? "").startsWith("load:refused#"),
 		`read #result -> ${JSON.stringify(loaded.text)}`,
 	);
 	info(
@@ -560,8 +577,61 @@ async function main() {
 	const landedByPage = pbpaste();
 	check(
 		"(a) a page's own writeText resolves from a TRUSTED click, and the OS clipboard holds its bytes",
-		clicked.text === "click:ok" && landedByPage === TOKEN,
+		String(clicked.text ?? "").startsWith("click:ok") && landedByPage === TOKEN,
 		`read #result -> ${JSON.stringify(clicked.text)} · pbpaste sha256[0..16] = ${sha16(landedByPage)} · expected ${sha16(TOKEN)}`,
+	);
+
+	// --- (a2) the AGENT path: the host's own click ------------------------
+	// The host's `click` dispatches in-page, so it carries no user activation. It
+	// mints a single-use arm before the dispatch (see `armHostClipboardWrite`), which
+	// is what makes an agent clicking a page's Copy button behave like a person's
+	// click instead of showing the page's failure toast.
+	await pbcopy("clipboard-proof-cleared");
+	await rpcOk(state, "click", { tab: firstTab, selector: "#copy-again" });
+	// Polled on the CLIPBOARD rather than on `#result`: the paragraph still holds the
+	// previous phase's "click:ok", so reading it first would report a stale success.
+	let agentFingerprint = pbpaste();
+	for (let attempt = 0; attempt < 24 && agentFingerprint !== TOKEN; attempt++) {
+		await new Promise((resolve) => setTimeout(resolve, 250));
+		agentFingerprint = pbpaste();
+	}
+	const agentResult = (
+		await rpcOk(state, "read", { tab: firstTab, selector: "#result" })
+	).text;
+	check(
+		"(a) a host-driven click on the page's copy button writes: the page reports success and the clipboard holds it",
+		String(agentResult ?? "").startsWith("click:ok") &&
+			agentFingerprint === TOKEN,
+		`host click -> page says ${JSON.stringify(agentResult)} · pbpaste sha256[0..16] = ${sha16(agentFingerprint)} · expected ${sha16(TOKEN)}`,
+	);
+
+	// --- (a3) the arm does not outlive the click --------------------------
+	// A copy the page schedules THREE seconds after a click whose action has returned:
+	// past the arm window and past the click's own clear.
+	await pbcopy("clipboard-proof-cleared");
+	await rpcOk(state, "click", {
+		tab: firstTab,
+		selector: "#copy-after-window",
+	});
+	// Polled to the page's own "later:" reading rather than sampled after a fixed
+	// wait: the phase before this one left "click:ok" in the same paragraph, so a
+	// fixed sleep either reads a stale success or races the timer.
+	let afterArm = { text: "click:ok" };
+	for (let attempt = 0; attempt < 32; attempt += 1) {
+		await new Promise((resolve) => setTimeout(resolve, 250));
+		afterArm = await rpcOk(state, "read", {
+			tab: firstTab,
+			selector: "#result",
+		});
+		if (String(afterArm.text ?? "").startsWith("later:")) break;
+	}
+	const lateRefused =
+		String(afterArm.text ?? "").startsWith("later:refused#") &&
+		pbpaste() === "clipboard-proof-cleared";
+	check(
+		"(a) the arm is single-use and short-lived: a copy the page schedules past the click is refused",
+		lateRefused,
+		`read #result -> ${JSON.stringify(afterArm.text)} · pbpaste -> ${pbpaste() === "clipboard-proof-cleared" ? "unchanged" : "CHANGED"}`,
 	);
 
 	// --- (b) the READ stays impossible ------------------------------------
@@ -585,12 +655,13 @@ async function main() {
 	);
 
 	// --- (c) a same-process child frame ------------------------------------
+	await rpcOk(state, "click", { tab: firstTab, selector: "#frame-probe" });
 	const frameAttempt = await pollRead(
 		state,
 		firstTab,
 		"#frame-result",
 		"idle",
-		40,
+		24,
 	);
 	info(
 		"(c) a same-process child frame's writeText (reported, not gated; OOPIFs are not covered)",
@@ -628,9 +699,8 @@ async function main() {
 		selector: "#empty",
 	});
 	check(
-		"(d) an empty element is a typed refusal",
-		emptyError.code === "element_not_found" &&
-			emptyError.data?.reason === "empty_text",
+		"(d) an element with no text is its own typed refusal",
+		emptyError.code === "empty_element_text",
 		`copy #empty -> ${JSON.stringify(emptyError)}`,
 	);
 	const ambiguousError = await rpcError(state, "copy", {
@@ -673,7 +743,8 @@ async function main() {
 	});
 	check(
 		`(a) the same press on the INACTIVE tab resolves too (host active tab count ${JSON.stringify(chrome.tabs)}; pressed ${firstTab}, active view is ${secondTab})`,
-		inactiveWrite.text === "click:ok" && pbpaste() === TOKEN,
+		String(inactiveWrite.text ?? "").startsWith("click:ok") &&
+			pbpaste() === TOKEN,
 		`read #result -> ${JSON.stringify(inactiveWrite.text)} · pbpaste sha256[0..16] = ${sha16(pbpaste())}`,
 	);
 
@@ -693,7 +764,8 @@ async function main() {
 	});
 	check(
 		"(e) the page's write survives a NAVIGATION (the shim is installed on the new document)",
-		afterNavigation.text === "click:ok" && pbpaste() === TOKEN,
+		String(afterNavigation.text ?? "").startsWith("click:ok") &&
+			pbpaste() === TOKEN,
 		`after navigation on ${firstTab}: url ${JSON.stringify(afterNavigation.url)} · read #shim -> ${JSON.stringify(navigatedShim.text)} · read #result -> ${JSON.stringify(afterNavigation.text)} · pbpaste sha256[0..16] = ${sha16(pbpaste())}`,
 	);
 
@@ -712,7 +784,8 @@ async function main() {
 	});
 	check(
 		"(e) a freshly opened view's write works (a new WebContents, a new install)",
-		afterReattach.text === "click:ok" && pbpaste() === TOKEN,
+		String(afterReattach.text ?? "").startsWith("click:ok") &&
+			pbpaste() === TOKEN,
 		`read #result -> ${JSON.stringify(afterReattach.text)} · pbpaste sha256[0..16] = ${sha16(pbpaste())}`,
 	);
 

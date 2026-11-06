@@ -224,13 +224,15 @@ export interface CopyResult {
  * compared and dropped, and only the boolean survives. A `verified: false` is an
  * honest "something else owns the clipboard now" — the write still happened.
  *
- * ERRORS reuse the wire's existing codes rather than inventing one:
- * `ERROR_CODES` mirrors `protocol.py`'s `ErrorCode`, and an unknown code is
- * SILENTLY DROPPED by the session's model validation (the caller then waits out
- * its whole budget). So a missing/ambiguous/invalid selector and an element with
- * no text are all `element_not_found` — the code the session already branches
- * on, with `data.reason` naming which — and a clipboard the OS refused is
- * `internal`, the same shape `select` uses for its own `invalid_arguments`.
+ * ERRORS travel as codes from the ONE vocabulary (`protocol.py`'s `ErrorCode`,
+ * mirrored in `protocol.ts`): an unknown code is SILENTLY DROPPED by the
+ * session's model validation, and the caller then waits out its whole budget. A
+ * missing, ambiguous or invalid selector is `element_not_found` with
+ * `data.reason` naming which (the code every caller already branches on), an
+ * element that exists with no text is `empty_element_text`, and a clipboard the
+ * OS refused is `clipboard_write_failed` — the two codes added with this action,
+ * because collapsing either into the older ones would give the model advice for
+ * the wrong problem.
  */
 export async function copy(
 	ctx: BrowserActionContext,
@@ -303,7 +305,7 @@ export async function copy(
 		// list has no `empty`; `reason` is what says which case it was, so the
 		// model's correction is "there is nothing to copy", not "wrong selector".
 		throw new BrowserHostError(
-			"element_not_found",
+			"empty_element_text",
 			`selector ${selector} matched an element with no text to copy`,
 			{ reason: "empty_text" },
 		);
@@ -332,7 +334,7 @@ export async function copy(
 		// without one). Never interpolate the text into this message: the caller
 		// gets the reason, not the bytes.
 		throw new BrowserHostError(
-			"internal",
+			"clipboard_write_failed",
 			`the clipboard refused the text of ${selector}: ${error instanceof Error ? error.message : String(error)}`,
 			{ reason: "clipboard_write_failed" },
 		);

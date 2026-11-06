@@ -262,6 +262,15 @@ export const ERROR_CODES = [
 	// code against, and an unknown code is silently dropped by the session's model —
 	// a command that hangs rather than one that fails.
 	...CONSOLE_ERROR_CODES,
+	// `copy`'s two refusals, in `protocol.py`'s order (the `ErrorCode` enum the
+	// generated `protocol.gen.ts` carries). They arrived with the action: an element
+	// that exists but has no text is not a missing element, and a clipboard the OS
+	// refused is not a host fault, and collapsing either into a code that means
+	// something else is how a caller's correction advice goes wrong. Additive in the
+	// safe direction — this host emits them, and only a session that knows the
+	// vocabulary reads them.
+	"empty_element_text",
+	"clipboard_write_failed",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

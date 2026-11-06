@@ -59,6 +59,11 @@ const mod = await import(
 const {
 	installBrowserSessionHandlers,
 	clipboardShimSource,
+	CLIPBOARD_ARM,
+	installClipboardShim,
+	armHostClipboardWrite,
+	clearHostClipboardArm,
+	CLIPBOARD_ARM_WINDOW_MS,
 	CLIPBOARD_BINDING,
 	CLIPBOARD_ACK,
 	CLIPBOARD_SHIM_MAX_BYTES,
@@ -219,6 +224,8 @@ function shimWindow({ gesture = true, clipboardApi = true } = {}) {
 		native,
 		/** Answer the write the way the host does, from the binding event. */
 		ack: (id, ok) => win[CLIPBOARD_ACK](NONCE, id, ok),
+		/** Mint an arm the way the HOST does, through the same global. */
+		arm: (ms = CLIPBOARD_ARM_WINDOW_MS) => win[CLIPBOARD_ARM](NONCE, ms),
 		payloads: () => sent.map((raw) => JSON.parse(payloadText(raw))),
 	};
 }
@@ -283,6 +290,94 @@ test("no user gesture rejects and never reaches the host", async () => {
 	);
 	assert.deepEqual(f.sent, [], "a drive-by write does not reach the binding");
 	f.dom.window.close();
+});
+
+test("a host arm lets ONE write through, and is consumed by it", async () => {
+	const f = shimWindow({ gesture: false });
+	assert.equal(f.arm(), true, "the host's arm is accepted");
+	const first = f.win.navigator.clipboard.writeText(TOKEN);
+	assert.equal(f.sent.length, 1, "the armed write reaches the host binding");
+	const [payload] = f.payloads();
+	f.ack(payload.id, true);
+	await first;
+	// Consumed: the same page, a moment later, with no fresh click and no gesture.
+	await assert.rejects(
+		f.win.navigator.clipboard.writeText(TOKEN),
+		(error) => error.name === "NotAllowedError",
+		"an arm is single-use, so one click cannot authorize a second copy",
+	);
+	assert.equal(f.sent.length, 1);
+	f.dom.window.close();
+});
+
+test("an arm expires, and a wrong nonce mints nothing", async () => {
+	const f = shimWindow({ gesture: false });
+	assert.equal(
+		f.win[CLIPBOARD_ARM]("not-the-nonce", 5_000),
+		false,
+		"a page cannot mint an arm for itself",
+	);
+	assert.equal(f.arm(0), false, "clearing is not arming");
+	assert.equal(f.arm(40), true);
+	await new Promise((resolve) => setTimeout(resolve, 80));
+	await assert.rejects(
+		f.win.navigator.clipboard.writeText(TOKEN),
+		(error) => error.name === "NotAllowedError",
+		"an expired arm authorizes nothing",
+	);
+	assert.deepEqual(f.sent, []);
+	f.dom.window.close();
+});
+
+test("the host mints the arm through the page global, nonce as an argument", async () => {
+	// A fake pool: the point is the CALL the host makes, not a browser. The install
+	// runs first because the arm has to name the nonce of the shim actually
+	// installed — a stale or absent nonce answers false, which is the safe failure.
+	const calls = [];
+	const cdp = {
+		send: async (contents, method, params) => {
+			calls.push({ method, params });
+			return { result: { value: true } };
+		},
+		subscribe: () => () => undefined,
+	};
+	const contents = { id: 1, isDestroyed: () => false };
+	await installClipboardShim(cdp, contents, 77);
+	calls.length = 0;
+	const armed = await armHostClipboardWrite(cdp, contents, 77, {
+		objectId: "object-1",
+	});
+	assert.equal(armed, true);
+	const [call] = calls;
+	assert.equal(call.method, "Runtime.callFunctionOn");
+	assert.equal(call.params.objectId, "object-1");
+	assert.deepEqual(
+		call.params.arguments.map((entry) => entry.value).slice(0, 1),
+		[CLIPBOARD_ARM],
+	);
+	// The nonce and the window ride as ARGUMENTS, so no page can read them out of
+	// any injected source text.
+	assert.equal(
+		call.params.arguments.length,
+		3,
+		"name, nonce and window are all arguments",
+	);
+	assert.equal(
+		JSON.stringify(call.params.functionDeclaration).includes("nonce-fixture"),
+		false,
+	);
+	await clearHostClipboardArm(cdp, contents, 77, { objectId: "object-1" });
+	assert.equal(
+		calls[1].params.arguments[2].value,
+		0,
+		"clearing is the same call with a zero window",
+	);
+	// An unknown view has no shim, so nothing is armed and the click keeps the
+	// behaviour it had before this feature.
+	assert.equal(
+		await armHostClipboardWrite(cdp, contents, 999, { objectId: "object-1" }),
+		false,
+	);
 });
 
 test("an oversized write rejects rather than truncating silently", async () => {
@@ -477,7 +572,9 @@ test("missing, ambiguous and empty elements are typed refusals", async () => {
 	);
 	await assert.rejects(
 		copy(ctx, { tab: "tab-1", selector: "#blank" }),
-		(e) => e.code === "element_not_found" && e.data.reason === "empty_text",
+		// Its own code, not `element_not_found`: the element is there and has nothing
+		// in it, and the correction that follows is different.
+		(e) => e.code === "empty_element_text" && e.data.reason === "empty_text",
 	);
 	assert.equal(
 		clipboard.text,
@@ -495,7 +592,7 @@ test("a refused clipboard write is typed and names no text", async () => {
 		await assert.rejects(
 			copy(ctx, { tab: "tab-1", selector: "#app-key" }),
 			(e) =>
-				e.code === "internal" &&
+				e.code === "clipboard_write_failed" &&
 				e.data.reason === "clipboard_write_failed" &&
 				/The clipboard is not available/.test(e.message) &&
 				!e.message.includes(TOKEN) &&

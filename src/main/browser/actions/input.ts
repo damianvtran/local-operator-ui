@@ -8,6 +8,7 @@ import {
 	parseLocator,
 	resolveLocator,
 } from "../vendor/driver/ax-locator";
+import { armHostClipboardWrite, clearHostClipboardArm } from "./clipboard-shim";
 import { type BrowserActionContext, numberParam, stringParam } from "./context";
 import {
 	CONTENTEDITABLE_SELECTOR,
@@ -630,6 +631,28 @@ export async function click(
 		navigationSeen = true;
 	};
 	contents.on("did-start-navigation", onStart);
+	/*
+	 * ARM THE PAGE'S CLIPBOARD WRITE FOR THIS CLICK, before the dispatch.
+	 *
+	 * The dispatch below happens IN THE PAGE, which carries no user activation, so a
+	 * page's Copy button clicked by an agent took the native refusal path and showed
+	 * "Unable to copy to clipboard" — the operator's own symptom, on the agent's
+	 * route. The arm is host-minted, nonce-carrying, single-use and cleared in this
+	 * call's own `finally`; what it grants is one clipboard WRITE inside the same
+	 * window a real click gives a page, never a read (`actions/clipboard-shim.ts`
+	 * states it at the mechanism). A view with no shim answers false and the click
+	 * behaves exactly as it did before.
+	 */
+	// The node lives in the PAGE's own session (the top document, or a same-site frame
+	// whose document is in-process). A node in a child SESSION is an OOPIF, whose
+	// clipboard write the shim does not reach — so it is not armed, and the click
+	// behaves as it always did.
+	const armableTarget = node.sessionId === undefined;
+	if (armableTarget) {
+		await armHostClipboardWrite(ctx.cdp, contents, contents.id, {
+			objectId: node.objectId,
+		});
+	}
 	try {
 		// In a frame the click runs in the frame's own session: the function reads
 		// `getBoundingClientRect` and dispatches in-page, so its coordinates are
@@ -641,6 +664,13 @@ export async function click(
 		});
 		await sleep(1200);
 	} finally {
+		// Cleared on the click's OWN completion path, so nothing the page scheduled
+		// for later rides a window this call justified.
+		if (armableTarget) {
+			void clearHostClipboardArm(ctx.cdp, contents, contents.id, {
+				objectId: node.objectId,
+			});
+		}
 		contents.removeListener("did-start-navigation", onStart);
 	}
 	if (navigationSeen) {

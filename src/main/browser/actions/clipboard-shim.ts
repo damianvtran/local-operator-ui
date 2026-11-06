@@ -74,6 +74,20 @@ export const CLIPBOARD_SHIM_MAX_BYTES = 1_048_576;
  * Long enough for a slow clipboard, short enough that a page's spinner ends. */
 export const CLIPBOARD_ACK_TIMEOUT_MS = 5_000;
 
+/** The global the HOST calls to arm one write (see `armHostClipboardWrite`). */
+export const CLIPBOARD_ARM = "__localOperatorClipboardArm";
+
+/**
+ * How long a host-minted arm survives, in milliseconds.
+ *
+ * SHORTER THAN A BROWSER'S OWN transient-activation window (5 s) on purpose: the
+ * arm exists to carry ONE host-dispatched click into the page's own handler, and
+ * two seconds is already longer than any handler that copies synchronously — or
+ * even after one `await`. A wider window would turn a click into a blanket
+ * permission for anything the page schedules afterwards.
+ */
+export const CLIPBOARD_ARM_WINDOW_MS = 2_000;
+
 /**
  * The program, as one committed string.
  *
@@ -87,6 +101,7 @@ export function clipboardShimSource(nonce: string): string {
 	const config = JSON.stringify({
 		binding: CLIPBOARD_BINDING,
 		ack: CLIPBOARD_ACK,
+		arm: CLIPBOARD_ARM,
 		nonce,
 		maxBytes: CLIPBOARD_SHIM_MAX_BYTES,
 		timeoutMs: CLIPBOARD_ACK_TIMEOUT_MS,
@@ -114,7 +129,9 @@ export function clipboardShimSource(nonce: string): string {
     return Promise.reject(new DOMException(message, name || "NotAllowedError"));
   }
 
-  function hasGesture() {
+  var armUntil = 0;
+
+  function userGestureActive() {
     try {
       var activation = userActivationGetter ? userActivationGetter.call(navigator) : navigator.userActivation;
       return !!(activation && activation.isActive);
@@ -122,6 +139,31 @@ export function clipboardShimSource(nonce: string): string {
       return false;
     }
   }
+
+  // "arm" is a HOST-dispatched click (see the host's 'armHostClipboardWrite'): the
+  // host's own 'click' dispatches in-page rather than through Chromium's input
+  // pipeline, so it carries no user activation. Everything this grants is what a
+  // REAL click in the same place would have granted the page — one clipboard WRITE
+  // inside the window, never a read (the read path is Chromium's, untouched) —
+  // which is why the arm is a nonce-carrying, single-use, short-lived flag rather
+  // than a mode.
+  function activationState() {
+    if (Date.now() < armUntil) return "arm";
+    return userGestureActive() ? "gesture" : "none";
+  }
+
+  // Host-only. A page cannot mint this: the nonce never leaves this closure, and a
+  // page calling it with a guessed value returns false without arming anything.
+  window[config.arm] = function (nonce, windowMs) {
+    if (nonce !== windowsNonce) return false;
+    var span = Number(windowMs);
+    if (!isFinite(span) || span <= 0) {
+      armUntil = 0;
+      return false;
+    }
+    armUntil = Date.now() + span;
+    return true;
+  };
 
   // UTF-8 length WITHOUT TextEncoder: the shim has to be dependency-free (it runs
   // in whatever the page's world provides) and the host re-measures with
@@ -155,9 +197,13 @@ export function clipboardShimSource(nonce: string): string {
   };
 
   function writeThroughHost(text) {
-    if (!hasGesture()) {
+    var activation = activationState();
+    if (activation === "none") {
       return refuses("The clipboard write requires a user gesture");
     }
+    // Consumed by the FIRST write, so one click can never authorize a second copy
+    // the page schedules for later.
+    if (activation === "arm") armUntil = 0;
     const size = sizeOf(text);
     if (size > config.maxBytes) {
       return refuses("the text is too large to copy (" + size + " bytes)", "QuotaExceededError");
@@ -289,6 +335,14 @@ export interface ClipboardShimCdp {
 const clipboardShimDisposers = new Map<number, () => void>();
 
 /**
+ * The credential in force in each armed view: the host's half of the nonce the
+ * shim holds. Kept because the ARM a `click` mints has to name the shim instance
+ * that is actually installed — a stale nonce would arm nothing, which is the right
+ * failure but a silent one.
+ */
+const clipboardShimNonces = new Map<number, string>();
+
+/**
  * Install the page-side write into one view, and wire the binding it calls back
  * into the main process.
  *
@@ -396,6 +450,7 @@ export async function installClipboardShim(
 			});
 	});
 	clipboardShimDisposers.set(webContentsId, unsubscribe);
+	clipboardShimNonces.set(webContentsId, nonce);
 	try {
 		await apply();
 	} catch (error) {
@@ -404,6 +459,104 @@ export async function installClipboardShim(
 		throw error;
 	}
 }
+
+/**
+ * ARM ONE WRITE for a click the HOST is about to dispatch, in the same execution
+ * context that click will run in.
+ *
+ * WHY THIS EXISTS: the host's `click` action dispatches IN THE PAGE
+ * (`Runtime.callFunctionOn` + `CLICK_FUNCTION`), not through Chromium's input
+ * pipeline, so it carries no user activation — and a page's Copy button therefore
+ * took the refusal path and showed the operator exactly the symptom this work
+ * exists to remove ("Unable to copy to clipboard"), just triggered by an agent
+ * rather than by their own mouse. A trusted pointer press cannot be synthesized
+ * into the same call without changing what `click` means for every other page
+ * (scroll-into-view, frames, the navigation race), so the click instead MINTS an
+ * arm the shim consumes.
+ *
+ * WHAT THE ARM GRANTS, stated so nobody has to infer it: one clipboard WRITE,
+ * inside a `CLIPBOARD_ARM_WINDOW_MS` window, consumed by the first write and
+ * cleared by the caller when the click completes — the same capability a real
+ * click at that spot would have given the page, and nothing else. The READ path is
+ * Chromium's and is untouched (the session grants no permission), so a page cannot
+ * turn this into a read.
+ *
+ * `target` is the resolved node's `objectId` (the click's own context, which is the
+ * frame's world the click runs in) or a `contextId` when the caller has one.
+ * Returns whether the page accepted the arm: a document that was never armed (no
+ * shim, an OOPIF, an old host) simply answers false and the click behaves as it
+ * did before.
+ */
+export async function armHostClipboardWrite(
+	cdp: ClipboardShimCdp,
+	contents: { id: number; isDestroyed(): boolean },
+	webContentsId: number,
+	target: { objectId?: string; contextId?: number },
+	windowMs: number = CLIPBOARD_ARM_WINDOW_MS,
+): Promise<boolean> {
+	const nonce = clipboardShimNonces.get(webContentsId);
+	if (!nonce || contents.isDestroyed()) return false;
+	const params: Record<string, unknown> = {
+		functionDeclaration: ARM_FUNCTION,
+		arguments: [
+			{ value: CLIPBOARD_ARM },
+			{ value: nonce },
+			{ value: windowMs },
+		],
+		returnByValue: true,
+	};
+	try {
+		if (target.objectId !== undefined) {
+			const reply = await cdp.send<{ result?: { value?: unknown } }>(
+				contents,
+				"Runtime.callFunctionOn",
+				{ ...params, objectId: target.objectId },
+			);
+			return reply?.result?.value === true;
+		}
+		if (target.contextId === undefined) return false;
+		const reply = await cdp.send<{ result?: { value?: unknown } }>(
+			contents,
+			"Runtime.evaluate",
+			{
+				expression: `(${ARM_FUNCTION})(${JSON.stringify(CLIPBOARD_ARM)}, ${JSON.stringify(nonce)}, ${windowMs})`,
+				contextId: target.contextId,
+				returnByValue: true,
+			},
+		);
+		return reply?.result?.value === true;
+	} catch {
+		// An arm that cannot be minted is not a failed click: the page keeps the
+		// behaviour it had, which is a copy button that refuses.
+		return false;
+	}
+}
+
+/**
+ * CLEAR the arm, on the click's own completion.
+ *
+ * Called whether the click worked, threw or navigated: the shim also expires it by
+ * time and consumes it on first use, and this is the third lock — a page cannot
+ * hoard a window past the call that justified it.
+ */
+export async function clearHostClipboardArm(
+	cdp: ClipboardShimCdp,
+	contents: { id: number; isDestroyed(): boolean },
+	webContentsId: number,
+	target: { objectId?: string; contextId?: number },
+): Promise<void> {
+	await armHostClipboardWrite(cdp, contents, webContentsId, target, 0).catch(
+		() => undefined,
+	);
+}
+
+/** The call the host evaluates to arm (or, with a zero window, to clear); the
+ * nonce and the window ride as ARGUMENTS, never inside the source text. */
+const ARM_FUNCTION = `function (name, nonce, windowMs) {
+  const arm = window[name];
+  if (typeof arm !== "function") return false;
+  try { return arm(nonce, windowMs) === true; } catch (error) { return false; }
+}`;
 
 /**
  * One page write, from the binding event to the ack.
