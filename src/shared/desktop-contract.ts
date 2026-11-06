@@ -22,7 +22,13 @@ import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
-import { LINK_PREVIEW_MAX_URL_CHARS } from "./link-preview";
+import {
+	LINK_PREVIEW_MAX_URL_CHARS,
+	type LinkPreviewArtifactRequest,
+	type LinkPreviewArtifactResult,
+	type LinkPreviewResolveRequest,
+	type LinkPreviewResolveResult,
+} from "./link-preview";
 import type {
 	TeamBridgeNotificationSender,
 	TeamBridgeNotifyAuthority,
@@ -7607,6 +7613,38 @@ export type DesktopAPI = {
 		}) => Promise<void>;
 		onOpen: (callback: () => void) => () => void;
 		pendingOpen: () => Promise<TeamBridgeOpenResult | null>;
+	};
+	/**
+	 * Link previews: a proxy to core's routes, and nothing else.
+	 *
+	 * Lives HERE, beside the other desktop-side surfaces, because that is where the
+	 * preload actually exposes it (`api.desktop.linkPreview`, next to
+	 * `api.desktop.teamBridge`) — the ambient `src/preload/index.d.ts` declares
+	 * exactly this shape and nothing more. A first cut put the type at
+	 * `api.linkPreview` while the implementation sat under `desktop`, so the
+	 * published types described a path that did not exist at runtime (QA round 1,
+	 * Q-1); one declaration in one place is the fix, and
+	 * `scripts/link-preview-preload-shape.test.mjs` compiles a probe that names the
+	 * path, so the two cannot drift apart again.
+	 *
+	 * Optional like every Electron-only member: browser development and Storybook
+	 * mount the renderer with no preload, and a card must simply not exist there.
+	 *
+	 * Both calls carry `expectedAccountId` because core gates these routes on the
+	 * account the caller claims, exactly as `teamBridge.*` does; main holds no
+	 * identity of its own to substitute.
+	 */
+	linkPreview?: {
+		/** Resolve ONE link at `index` in its message. Always resolves — a refusal is
+		 * an `absent`/`error` state, never a rejected promise. */
+		resolve: (
+			request: LinkPreviewResolveRequest,
+		) => Promise<LinkPreviewResolveResult>;
+		/** The bytes of one artifact id from a resolved card, served from main's disk
+		 * cache when it holds them for this receipt and from core otherwise. */
+		artifact: (
+			request: LinkPreviewArtifactRequest,
+		) => Promise<LinkPreviewArtifactResult>;
 	};
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**
