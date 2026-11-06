@@ -35,9 +35,13 @@ import { t } from "../../../../i18n/messages";
  *
  * ## The remedy is the action, not a command
  *
- * The backend's route is read-only by design: its `remedy` is the terminal
- * command that clears the condition (`lop login radient`), which the UI SHOWS
- * rather than runs. The action this surface offers is the desktop's own
+ * The backend's route is read-only by design: its `remedy` carries the terminal
+ * command that clears the condition (`lop login radient`) and the console URL.
+ * The desktop app shows NEITHER command nor any other terminal advice: a UI
+ * user must never be sent to a terminal (operator report, 2026-11-06 - the
+ * callout's "run `lop login radient` in a terminal" line pointed at a command
+ * that could not clear the state either). Only `url` is used, and only by the
+ * `not-cleared` state below. The action this surface offers is the desktop's own
  * sign-in route, `POST /v1/auth/login {provider: "radient"}`, which the backend
  * already serves and which re-arms a parked connector once it completes
  * (`AuthStore.upsert_credential` calls `tunnels.install.rearm_if_parked`).
@@ -66,7 +70,7 @@ import {
  */
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { commissionAccountRead } from "@shared/hooks/use-radient-user-query";
-import { useQuery } from "@tanstack/react-query";
+import { type QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -132,6 +136,53 @@ export const radientSessionIssueKey = [
 ] as const;
 
 /**
+ * How long to wait before the ONE extra verdict read after a sign-in that
+ * completed while the verdict still said `login_required`.
+ *
+ * WHY THERE IS A SECOND READ AT ALL. A completed sign-in writes the credential
+ * and the backend then heals the tunnel's pinned login - re-pointing it at the
+ * fresh credential and restarting the connector - OFF the request thread
+ * (`AuthStore` -> `tunnels.install.rearm_if_parked`). The first read after the
+ * operation reports `succeeded` can therefore land before that heal and still
+ * answer `login_required` for a login that is about to be fine. Reporting
+ * "signing in did not clear this" on that read would be the false alarm this
+ * surface exists to end, so it gets one short second look.
+ *
+ * WHY ONLY ONE, AND THIS SHORT. Past a few seconds the heal either happened or
+ * did not happen at all (the reproduced case, 2026-11-06: the pin stayed on a
+ * dead credential row that the new sign-in never replaced), and the 60 s poll
+ * plus the window-focus refetch keep watching after this anyway. A loop here
+ * would hold the callout's spinner open over a state no wait will change.
+ */
+export const VERDICT_HEAL_REREAD_MS = 3_000;
+
+/**
+ * Re-read the verdict after an in-app sign-in completed, with the one bounded
+ * second look `VERDICT_HEAL_REREAD_MS` explains, and answer the state the
+ * cache ends on.
+ *
+ * Shared by both places a sign-in can complete in this app - the composer
+ * callout (below) and the providers panel (`provider-detail.tsx`) - so the two
+ * cannot settle on different readings of the same event. `invalidateQueries`
+ * resolves after the ACTIVE observers' refetch, so the cache is current when it
+ * is read; with no observer (the mini document's inert client) nothing is
+ * cached and the answer is `undefined`, which no caller treats as dead.
+ */
+export async function rereadVerdictAfterSignIn(
+	client: QueryClient,
+	delayMs: number = VERDICT_HEAL_REREAD_MS,
+): Promise<RadientLoginState | undefined> {
+	const read = () =>
+		client.getQueryData<AuthStatusResult>(radientSessionIssueKey)?.radient_login
+			?.state;
+	await client.invalidateQueries({ queryKey: radientSessionIssueKey });
+	if (read() !== "login_required") return read();
+	await new Promise((resolve) => setTimeout(resolve, delayMs));
+	await client.invalidateQueries({ queryKey: radientSessionIssueKey });
+	return read();
+}
+
+/**
  * The two refusals that name their own remedy, and therefore keep no retry.
  *
  * Carried as a discriminant rather than re-read from the sentence, on the same
@@ -153,6 +204,15 @@ export type RadientRefusal = "sign-in-active" | "no-browser-flow";
 export type RadientSessionIssue =
 	| { kind: "hidden" }
 	| { kind: "needs-sign-in"; remedy: TunnelRemedy }
+	/**
+	 * A sign-in from this app COMPLETED and the verdict still reads
+	 * `login_required` after the bounded re-read: the backend could not heal the
+	 * login with the credential it just stored. Its own state because the copy
+	 * owes the user something different - "sign in" again is what they just did,
+	 * so the callout points at an in-app next step (Settings, under Providers,
+	 * and the console from `remedy.url`), never at a terminal.
+	 */
+	| { kind: "not-cleared"; remedy: TunnelRemedy }
 	| { kind: "signing-in" }
 	| { kind: "input-required"; message: string }
 	| {
@@ -192,6 +252,12 @@ type Phase =
 	| { kind: "input-required"; message: string }
 	/** The login completed; the verdict has not caught up yet. */
 	| { kind: "settling" }
+	/**
+	 * The login completed and the verdict did not clear even after the bounded
+	 * re-read. Kept only while the verdict still says `login_required` - see the
+	 * reset effect in `useRadientSessionIssue`.
+	 */
+	| { kind: "not-cleared" }
 	/**
 	 * What the operation ended as, and - for the refusals - which one it was.
 	 * See `RadientSessionIssue`'s `settled` member: the two carry the same
@@ -421,9 +487,10 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 		[],
 	);
 
-	const refreshVerdict = useCallback(async () => {
-		await queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
-	}, [queryClient]);
+	const refreshVerdict = useCallback(
+		() => rereadVerdictAfterSignIn(queryClient),
+		[queryClient],
+	);
 
 	const onOperation = useCallback(
 		async (update: AuthOperation) => {
@@ -523,8 +590,18 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 				 * on their own.
 				 */
 				void commissionAccountRead(queryClient);
-				await refreshVerdict();
-				setPhase({ kind: "idle" });
+				const after = await refreshVerdict();
+				/*
+				 * A completed sign-in the backend could not turn into a working login
+				 * is NOT "needs sign-in" again: offering the same action as the only
+				 * next step is the loop the operator was stuck in (2026-11-06). The
+				 * `not-cleared` phase says so and points somewhere in the app instead.
+				 */
+				setPhase(
+					after === "login_required"
+						? { kind: "not-cleared" }
+						: { kind: "idle" },
+				);
 				return;
 			}
 			// `failed`, `expired` and `cancelled` each carry the backend's own
@@ -617,6 +694,22 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 	}, []);
 
 	const verdict = status.data?.radient_login ?? null;
+	/*
+	 * `not-cleared` is a statement about the verdict AT THE END of this app's
+	 * sign-in, so it must not outlive that verdict: once a later read (the 60 s
+	 * poll, a window focus, a fix made from the CLI) no longer says
+	 * `login_required`, the phase returns to idle. Without this a login that
+	 * healed and then died AGAIN would come back as "signing in did not clear
+	 * this" about a sign-in nobody just made.
+	 */
+	const verdictState = verdict?.state;
+	useEffect(() => {
+		if (verdictState !== "login_required") {
+			setPhase((current) =>
+				current.kind === "not-cleared" ? { kind: "idle" } : current,
+			);
+		}
+	}, [verdictState]);
 	const issue: RadientSessionIssue = (() => {
 		/*
 		 * THE PHASES THAT DESCRIBE THIS APP'S OWN FLOW COME FIRST, and they are
@@ -662,6 +755,12 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 				message: phase.message,
 				canRetry: phase.canRetry,
 				refusal: phase.refusal,
+			};
+		}
+		if (phase.kind === "not-cleared") {
+			return {
+				kind: "not-cleared",
+				remedy: status.data?.tunnel_remedy ?? null,
 			};
 		}
 		return {

@@ -5327,13 +5327,16 @@ export type MessageParams = {
 		destination: string;
 	};
 	"ui.chat.pickers.use_picker_backend.the_backend_refused_it": undefined;
+	"ui.chat.radient_session.action.open_console": undefined;
 	"ui.chat.radient_session.action.sign_in": undefined;
 	"ui.chat.radient_session.pointer.sign_in_active": undefined;
 	"ui.chat.radient_session.prose.input_required": { message: string };
 	"ui.chat.radient_session.prose.needs_sign_in": undefined;
+	"ui.chat.radient_session.prose.not_cleared": undefined;
 	"ui.chat.radient_session.prose.signing_in": undefined;
 	"ui.chat.radient_session.title.input_required": undefined;
 	"ui.chat.radient_session.title.needs_sign_in": undefined;
+	"ui.chat.radient_session.title.not_cleared": undefined;
 	"ui.chat.radient_session.title.signing_in": undefined;
 	"ui.chat.response_actions.answer_label": undefined;
 	"ui.chat.response_actions.copied": undefined;

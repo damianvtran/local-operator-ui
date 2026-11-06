@@ -1064,7 +1064,8 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 /**
  * The states where the Radient callout IS the sign-in: it offers it
  * (`needs-sign-in`), is running it (`signing-in`), or offers its retry
- * (`settled` with `canRetry`).
+ * (`settled` with `canRetry`, and `not-cleared`, which keeps `Sign in to
+ * Radient` beside its console link after a sign-in that did not heal the login).
  *
  * WHY THE SET IS THIS NARROW (design round 2, D7). The band yields to the
  * callout (R1-6) so one missing sign-in reads as one block — and yielding takes
@@ -1082,6 +1083,7 @@ export function radientCalloutOwnsTheSignIn(
 	return (
 		issue.kind === "needs-sign-in" ||
 		issue.kind === "signing-in" ||
+		issue.kind === "not-cleared" ||
 		(issue.kind === "settled" && issue.canRetry)
 	);
 }
