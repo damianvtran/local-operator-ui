@@ -7,7 +7,15 @@ export function composite(
 	backdrop: string,
 ): string;
 export function ratio(first: string, second: string): number;
-/** Derive from actual composed colours, using the authored-theme material model. */
+/**
+ * Derive from actual composed colours, using the authored-theme material model.
+ *
+ * The role list is the table's real input contract (the same one the runtime
+ * enforces): the neutral ramp and inks, `borderControl`, the panel `hairline`
+ * that the overlay edge is measured against, and the four semantic inks the
+ * overlay role imports for the sample's floor table. Typing it short let a
+ * caller that reads only some roles compile clean and fail at runtime.
+ */
 export function glassFloorsForPalette(palette: {
 	canvas: string;
 	surface: string;
@@ -17,4 +25,9 @@ export function glassFloorsForPalette(palette: {
 	inkMuted: string;
 	inkDim: string;
 	borderControl: string;
+	hairline: string;
+	danger: string;
+	success: string;
+	warning: string;
+	info: string;
 }): GlassFloorTable;

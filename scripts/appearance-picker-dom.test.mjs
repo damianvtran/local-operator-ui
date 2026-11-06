@@ -124,6 +124,7 @@ const {
 	ratio,
 	applyGlassState,
 	contrastCandidate,
+	glassFloorsForPalette,
 } = module.exports;
 const frame = async () => {
 	const pending = frames;
@@ -199,7 +200,23 @@ const rolesOf = (palette) => ({
 	inkMuted: palette.inkMuted,
 	inkDim: palette.inkDim,
 	borderControl: palette.borderControl,
+	// The floor table's other five: the panel hairline and the semantic inks.
+	hairline: palette.hairline,
+	danger: palette.danger,
+	success: palette.success,
+	warning: palette.warning,
+	info: palette.info,
 });
+
+/** The boundary check's wording: the ROLE, never a `TypeError` from deep in the
+ * compositor. */
+const MISSING_ROLE =
+	/palette is missing the "info" role required by the glass floor table/;
+
+/** The same palette with one role dropped: a reader that fell behind the floor
+ * table's role contract, which is what #1706's second caller did. */
+const withoutRole = (palette, role) =>
+	Object.fromEntries(Object.entries(palette).filter(([name]) => name !== role));
 
 /** A named built-in's composed palette, independent of whatever the store holds. */
 const paletteOf = (themeName) =>
@@ -233,6 +250,11 @@ const withPaintedRoles = async (currentPalette, body) => {
 			"--lo-ink-muted": palette.inkMuted,
 			"--lo-ink-dim": palette.inkDim,
 			"--lo-border-control": palette.borderControl,
+			"--lo-hairline": palette.hairline,
+			"--lo-danger": palette.danger,
+			"--lo-success": palette.success,
+			"--lo-warning": palette.warning,
+			"--lo-info": palette.info,
 			"color-scheme": palette.mode,
 		};
 		return new Proxy(style, {
@@ -419,6 +441,42 @@ test("the sample paints solid when no palette role resolves in this host", async
 			);
 		}
 	}
+});
+
+test("the sample paints solid when the palette read is missing a semantic role", async () => {
+	// The floor table measures the four semantic inks, so a read that loses one is
+	// a palette the sample cannot measure. It must fall back to the same solid
+	// sample an unsupported host shows - the strip paints `undefined` into the
+	// overlay vars otherwise, which is a thrown layout effect in production.
+	const palette = paletteOf("localOperatorDark");
+	const partial = withoutRole(palette, "info");
+	await withPaintedRoles(
+		() => partial,
+		async () => {
+			await mount("localOperatorDark", 0, activeGlass);
+			const preview = document.querySelector("[data-appearance-preview]");
+			assert.equal(preview.dataset.previewGlass, "");
+			assert.equal(preview.getAttribute("style"), null);
+			assert.equal(preview.querySelector("[data-preview-caption]"), null);
+		},
+	);
+});
+
+test("a floor table request names the palette role it is missing", () => {
+	// The boundary check exists so a reader that falls behind the table reports
+	// the ROLE, not `Cannot read properties of undefined (reading 'slice')` from
+	// deep inside `composite` - that TypeError named nothing a maintainer can act
+	// on, and it reached the user as a broken Appearance preview.
+	const palette = paletteOf("localOperatorDark");
+	assert.throws(
+		() => glassFloorsForPalette(withoutRole(rolesOf(palette), "info")),
+		{
+			name: "Error",
+			message: MISSING_ROLE,
+		},
+	);
+	// The read palette the fixture builds is the full contract: nothing missing.
+	assert.doesNotThrow(() => glassFloorsForPalette(rolesOf(palette)));
 });
 
 test("preview and its separator remain in flow with intrinsic compact samples", async () => {
