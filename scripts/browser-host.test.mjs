@@ -10583,11 +10583,20 @@ test("frames 7c: a control's value rides on the snapshot line", async () => {
 		/- combobox "Environment" \[e1\] \[collapsed\] = "Production"/,
 	);
 	assert.match(snap.snapshot, /- textbox "App name" \[e2\] = "release-bot"/);
-	assert.match(snap.snapshot, /- textbox "Password" \[e3\] = "••••••"/);
-	assert.ok(
-		!/hunter2|secret/i.test(snap.snapshot),
-		"a password's TEXT never reaches the snapshot line",
-	);
+	// The password line carries NO value segment at all — not the text, and not
+	// the bullet run Chromium masks it with either. The vendored projection
+	// refuses a masked value outright, because a bullet run publishes the
+	// secret's LENGTH. The fixture's bullets are what a real page's AX tree
+	// carries (measured), and the assertion is written so that ANY value segment
+	// fails it; the two lines above are the positive control that this rule did
+	// not mute the fields around it.
+	const passwordLine = snap.snapshot
+		.split("\n")
+		.find((line) => line.includes('textbox "Password"'));
+	assert.ok(passwordLine, snap.snapshot);
+	assert.equal(passwordLine.includes(' = "'), false, passwordLine);
+	assert.ok(!passwordLine.includes("\u2022"), passwordLine);
+	assert.ok(!/hunter2|secret/i.test(snap.snapshot), "no password text");
 	// The value is a suffix: every earlier token keeps its position, which the
 	// locator grammar and the ref vocabulary depend on.
 	assert.match(snap.snapshot, /\[e1\] \[collapsed\] = /);

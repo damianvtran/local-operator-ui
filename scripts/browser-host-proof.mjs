@@ -56,6 +56,7 @@ import { join } from "node:path";
 // five in their own harness). Imported from `electron` in plain Node it resolves
 // to the binary itself, so the pid we hold is the app's.
 import electronPath from "electron";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -318,6 +319,8 @@ const VALUES_PAGE = `<!doctype html>
 <input id="app" type="text" value="release-bot" />
 <label for="vol">Volume</label>
 <input id="vol" type="range" min="0" max="10" value="7" />
+<label for="pw">Password</label>
+<input id="pw" type="password" value="seeded-secret-9182" />
 <div id="quality" role="slider" tabindex="0" aria-label="Quality" aria-valuemin="0" aria-valuemax="10" aria-valuenow="3" aria-valuetext="Medium"></div>
 </body></html>`;
 
@@ -1006,11 +1009,22 @@ async function launchApp() {
 	DEVTOOLS_PORT = await freeDevtoolsPort();
 	const child = spawn(
 		electronPath,
-		[
+		// THE KEYCHAIN SWITCH, and this app launch is the shape the repo's own keychain
+		// scan cannot see: `chrome-keychain.test.mjs` classifies a launch by whether the
+		// command names "chrome", and this rig boots Electron, so its argv is invisible
+		// to the scan that exists to keep the switch on every launch (the same note
+		// `browser-file-transfer-proof.mjs` carries). It matters here twice: `HOME` is
+		// redirected to a scratch tree with no login keychain, so Chromium asks macOS to
+		// CREATE one — the `Keychain Not Found` dialog on the operator's screen, once per
+		// launch, from a rig they did not start — and with OSCrypt unable to encrypt, this
+		// harness's own persistent-cookie lane would measure nothing. `--password-store=basic`
+		// is the Linux half of the same switch, named so the argv is honest wherever it runs.
+		withMockKeychain([
 			".",
 			`--user-data-dir=${USER_DATA}`,
 			`--remote-debugging-port=${DEVTOOLS_PORT}`,
-		],
+			"--password-store=basic",
+		]),
 		{
 			env,
 			cwd: ROOT,
@@ -2012,15 +2026,17 @@ async function main() {
 		requester: "session:proof",
 	});
 	const valuesSnap = await rpcOk(state, "snapshot", { tab: valuesTab.tab });
-	const valueLine = (pattern) =>
-		valuesSnap.snapshot.split("\n").find((entry) => pattern.test(entry)) ??
-		"(absent)";
-	const comboLine = valueLine(/- combobox /);
-	const fieldLine = valueLine(/- textbox "App name"/);
-	const rangeLine = valueLine(/- slider "Volume"/);
-	const ariaLine = valueLine(/- slider "Quality"/);
+	const valueLine = (snapshot, pattern) =>
+		snapshot.split("\n").find((entry) => pattern.test(entry)) ?? "(absent)";
+	// Anchored on the LABEL, not just the role: a page that gains a second
+	// combobox would otherwise silently move these checks onto it.
+	const comboLine = valueLine(valuesSnap.snapshot, /- combobox "Environment"/);
+	const fieldLine = valueLine(valuesSnap.snapshot, /- textbox "App name"/);
+	const rangeLine = valueLine(valuesSnap.snapshot, /- slider "Volume"/);
+	const ariaLine = valueLine(valuesSnap.snapshot, /- slider "Quality"/);
+	const passwordLine = valueLine(valuesSnap.snapshot, /- textbox "Password"/);
 	say(
-		`values snapshot lines:\n  ${comboLine}\n  ${fieldLine}\n  ${rangeLine}\n  ${ariaLine}`,
+		`values snapshot lines:\n  ${comboLine}\n  ${fieldLine}\n  ${rangeLine}\n  ${ariaLine}\n  ${passwordLine}`,
 	);
 	check(
 		"a combobox's selected option rides on the snapshot line",
@@ -2032,17 +2048,55 @@ async function main() {
 		/= "release-bot"$/.test(fieldLine),
 		fieldLine,
 	);
+	// What this run can discriminate, and no more: the value is on the line. The
+	// design's `valuetext`-PREFERRED rule is not observable here on any surface —
+	// measured on this Chromium, a native range carries `value:"7"` and
+	// `valuetext:"7"` alike, and `aria-valuetext` never reaches the property — so
+	// the preference is pinned by the driver's unit lane in lop, not by this check.
 	check(
-		"a native range's value (through its valuetext property) is on the line",
+		"a native range's value is on the snapshot line",
 		/= "7"$/.test(rangeLine),
 		rangeLine,
 	);
 	check(
-		"an ARIA slider shows its numeric value (Chromium surfaces no aria-valuetext)",
+		"an ARIA slider with aria-valuetext prints its numeric value (the property stays empty)",
 		/= "3"$/.test(ariaLine),
 		ariaLine,
 	);
 	await rpcOk(state, "close", { tab: valuesTab.tab });
+	// --- 2c. a password field, typed into on the real path ----------------
+	// The operator's constraint is that a password's value never reaches a
+	// snapshot. Masking is Chromium's, so the previous assertion on a
+	// hand-written bullet fixture could not fail; this lane types a real secret
+	// into a real `<input type=password>` and reads the line the agent would.
+	// The projection refuses a masked value outright upstream, so the expected
+	// line carries NO value at all — no bullets, and nothing that leaks the
+	// length of what was typed.
+	const secret = "typed-secret-QA-1727-pw";
+	const pwTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/values`,
+		requester: "session:proof",
+	});
+	const pwFirst = await rpcOk(state, "snapshot", { tab: pwTab.tab });
+	const pwRef = /- textbox "Password" \[(e\d+)\]/.exec(pwFirst.snapshot)?.[1];
+	check(
+		"the password field is reachable by ref",
+		Boolean(pwRef),
+		`ref=${pwRef} first line: ${valueLine(pwFirst.snapshot, /- textbox "Password"/)}`,
+	);
+	await rpcOk(state, "type", { tab: pwTab.tab, ref: pwRef, text: secret });
+	const pwSnap = await rpcOk(state, "snapshot", { tab: pwTab.tab });
+	const pwLine = valueLine(pwSnap.snapshot, /- textbox "Password"/);
+	say(`password snapshot line: ${pwLine}`);
+	check(
+		"a typed password prints no value segment, no bullets and no secret",
+		!pwLine.includes(' = "') &&
+			!pwLine.includes("\u2022") &&
+			!pwSnap.snapshot.includes(secret) &&
+			!pwSnap.snapshot.includes("seeded-secret-9182"),
+		`${pwLine}\n  typed secret in snapshot: ${pwSnap.snapshot.includes(secret)}\n  seeded value in snapshot: ${pwSnap.snapshot.includes("seeded-secret-9182")}`,
+	);
+	await rpcOk(state, "close", { tab: pwTab.tab });
 	const typed = await rpcOk(state, "type", {
 		tab: handle,
 		ref: nameRef,
