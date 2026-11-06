@@ -3732,6 +3732,7 @@ export type MessageParams = {
 	"ui.chat.canonical.supplement.frame.source": { name: string };
 	"ui.chat.canonical.supplement.preview_unavailable": undefined;
 	"ui.chat.canonical.supplement.send": undefined;
+	"ui.chat.canonical.supplement.show_fewer": undefined;
 	"ui.chat.canonical.supplement.withheld.line": {
 		count: number;
 		reason: string;
@@ -5446,6 +5447,8 @@ export type MessageParams = {
 	};
 	"ui.chat.sidebar.agents.loading": undefined;
 	"ui.chat.sidebar.agents.no_match": undefined;
+	"ui.chat.sidebar.catalogue.show_more": { hidden: number };
+	"ui.chat.sidebar.catalogue.show_more_chats": { add: number };
 	"ui.chat.sidebar.catalogue.total": { shown: number; total: number };
 	"ui.chat.sidebar.catalogue.total_search": { shown: number; total: number };
 	"ui.chat.sidebar.catalogue.total_search_clipped": {
@@ -5482,10 +5485,17 @@ export type MessageParams = {
 	"ui.chat.sidebar.row.in_conversation": undefined;
 	"ui.chat.sidebar.row.matched_in_conversation": undefined;
 	"ui.chat.sidebar.row.not_sent": undefined;
+	"ui.chat.sidebar.row.not_sent_suffix": undefined;
 	"ui.chat.sidebar.row.open_draft": { label: string };
+	"ui.chat.sidebar.row.recent": undefined;
+	"ui.chat.sidebar.row.search_beyond": undefined;
+	"ui.chat.sidebar.row.silent_remedy": undefined;
+	"ui.chat.sidebar.row.unread_suffix": undefined;
 	"ui.chat.sidebar.row_menu.archive": undefined;
 	"ui.chat.sidebar.row_menu.copy_id": undefined;
 	"ui.chat.sidebar.row_menu.fork": undefined;
+	"ui.chat.sidebar.row_menu.hint": undefined;
+	"ui.chat.sidebar.row_menu.hint_mac": undefined;
 	"ui.chat.sidebar.row_menu.move_down": undefined;
 	"ui.chat.sidebar.row_menu.move_up": undefined;
 	"ui.chat.sidebar.row_menu.pin": undefined;
@@ -9364,6 +9374,7 @@ export type MessageParams = {
 	"ui.settings.appearance.layers.preview.row_inbox": undefined;
 	"ui.settings.appearance.layers.preview.row_release": undefined;
 	"ui.settings.appearance.layers.preview.row_research": undefined;
+	"ui.settings.appearance.layers.preview.sample_backdrop": undefined;
 	"ui.settings.appearance.layers.preview.secondary": undefined;
 	"ui.settings.appearance.layers.preview.success": undefined;
 	"ui.settings.appearance.layers.preview.user_message": undefined;

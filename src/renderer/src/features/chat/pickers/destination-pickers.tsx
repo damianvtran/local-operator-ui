@@ -50,6 +50,7 @@ import {
 	type ModelAuthorityReceipt,
 	observeModelAuthority,
 } from "../../../dev-driver/model-authority-observer";
+import { statusLabelText } from "../components/chat-session-status";
 
 /**
  * The model this session is RUNNING, for a dialog whose job is not to offer the
@@ -3636,9 +3637,12 @@ function sessionLabel(row: SessionRow) {
  * Stop picker is where a not-answering row SENDS a person — so the one surface
  * that acts on the state was the one naming it in a word no other surface uses
  * (every other one says "not answering"). The row already carries the backend's
- * sentence (`status.label`, the same value the sidebar's tooltip and its
- * accessible name carry), and the contract is explicit that a client must not
- * re-derive status, so the label is READ and never rebuilt here.
+ * sentence (`status.label`), and the contract is explicit that a client must not
+ * re-derive status, so the label is READ and never rebuilt here. The one
+ * translated exception is shared with the sidebar rather than copied: the
+ * stable `recent` code goes through `statusLabelText`, so the picker and the
+ * sidebar name the same state in the same language; every other code keeps the
+ * backend's own label.
  *
  * AN ABSENT LABEL RENDERS NO LINE, deliberately. The alternative — falling back
  * to the raw `live_state` — is the defect, and inventing words for a state this
@@ -3652,7 +3656,7 @@ function sessionLabel(row: SessionRow) {
  * own label ("Recent") would say less than they do.
  */
 const sessionActivity = (row: SessionRow, cold: string): string | undefined =>
-	row.live_state ? row.status?.label : cold;
+	row.live_state ? statusLabelText(row) : cold;
 
 export const StopPicker: FC<PickerContext> = ({
 	sessionId,

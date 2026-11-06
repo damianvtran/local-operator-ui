@@ -845,7 +845,9 @@ export const SupplementRow = memo(function SupplementRow({
 						rowClassName="min-h-0 py-0"
 						summary={
 							<span data-supplement-more="">
-								{expandedMore ? "Show fewer" : moreText(moreCount)}
+								{expandedMore
+									? t("ui.chat.canonical.supplement.show_fewer")
+									: moreText(moreCount)}
 							</span>
 						}
 					>
@@ -974,7 +976,9 @@ export const SupplementRow = memo(function SupplementRow({
 					rowClassName="min-h-0 py-0"
 					summary={
 						<span data-supplement-show-all="">
-							{showAll ? "Show fewer" : showAllText(tail.length)}
+							{showAll
+								? t("ui.chat.canonical.supplement.show_fewer")
+								: showAllText(tail.length)}
 						</span>
 					}
 				>

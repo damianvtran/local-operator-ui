@@ -46,6 +46,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import { openingTags } from "./jsx-opening-tags.mjs";
 
 const ROOT = process.cwd();
 const UI_DIR = "src/renderer/src/shared/components/ui";
@@ -72,56 +73,6 @@ const NOT_INTERACTIVE = {
 };
 
 const MARKED = PORTAL_RENDERERS.filter((name) => !(name in NOT_INTERACTIVE));
-
-/**
- * Every opening tag in a source file, as `{ name, text }` pairs, in order.
- *
- * A parser this is not; it is the smallest walk that can say WHICH element an
- * attribute is on, which the round-1 regex could not. Block comments are
- * stripped first so a marker named in prose does not count as a marker on an
- * element. From a `<`, the tag ends at the first `>` at brace depth zero - so
- * `[&>div]` inside a className does not end it - and quotes are honoured so a
- * `>` inside a string does not either. TypeScript generics like
- * `forwardRef<HTMLDivElement, ...>` are taken as tags too; their names never end
- * in `Content` or `Overlay`, so they are inert here, and the walk resumes after
- * them.
- */
-const openingTags = (source) => {
-	const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "");
-	const tags = [];
-	for (let i = 0; i < stripped.length; i++) {
-		if (stripped[i] !== "<") continue;
-		const next = stripped[i + 1];
-		if (!(next !== undefined && /[A-Za-z]/.test(next))) continue;
-		let depth = 0;
-		let quote = null;
-		let end = -1;
-		for (let j = i + 1; j < stripped.length; j++) {
-			const ch = stripped[j];
-			if (quote !== null) {
-				if (ch === quote && stripped[j - 1] !== "\\") quote = null;
-				continue;
-			}
-			if (ch === '"' || ch === "'" || ch === "`") {
-				quote = ch;
-				continue;
-			}
-			if (ch === "{") depth += 1;
-			else if (ch === "}") depth -= 1;
-			else if (ch === ">" && depth === 0) {
-				end = j;
-				break;
-			}
-		}
-		if (end === -1) continue;
-		const text = stripped.slice(i, end + 1);
-		const name = /^<([A-Za-z][\w.]*)/.exec(text)?.[1];
-		if (name === undefined) continue;
-		tags.push({ name, text });
-		i = end - 1;
-	}
-	return tags;
-};
 
 test("F-1 the opt-out stands on its own, not only inside a drag row", () => {
 	const css = read("src/renderer/src/styles/index.css").replace(

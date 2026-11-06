@@ -227,8 +227,13 @@ test("the archived row carries a marker that is not in the contested trailing sl
 	assert.match(marker, /aria-hidden="true"/);
 	// The word reaches a screen reader through the `sr-only` span, and the tooltip
 	// states the same fact - the two channels agree because there is one string.
+	// That string is now the translated `archived_suffix`; the explicit key is the
+	// assertion, so the old English literal cannot creep back into the row.
 	assert.match(marker, /sr-only/);
-	assert.match(rows, /\{archived \? ", archived" : ""\}/);
+	assert.match(
+		rows,
+		/\{archived \? t\("ui\.chat\.sidebar\.row\.archived_suffix"\) : ""\}/,
+	);
 	/*
 	 * AND IT SITS BEFORE THE TITLE, not in the trailing slot. That slot admits
 	 * exactly one statement (`rowTrailingStatement` records the three layouts that

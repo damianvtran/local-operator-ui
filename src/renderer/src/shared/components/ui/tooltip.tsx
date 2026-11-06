@@ -110,6 +110,7 @@ export const TooltipContent = forwardRef<
 		// wrapper's CHILD, and a utility class on this element would still leave
 		// the selector needing something stable to look for.
 		data-lo-tooltip-panel=""
+		data-glass-overlay=""
 		sideOffset={sideOffset}
 		className={cn(
 			"z-50 max-w-64 rounded-sm border border-hairline bg-elevated px-2 py-1",

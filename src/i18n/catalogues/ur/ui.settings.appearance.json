@@ -160,5 +160,6 @@
 	"ui.settings.appearance.layers.palette_meta_both": "کنٹراسٹ: {contrast}، آپ کا نمایاں رنگ",
 	"ui.settings.appearance.contrast.background_ceiling": "اس تھیم کا پس منظر پہلے ہی زیادہ سے زیادہ روشن ہے، اس لیے کنٹراسٹ مزید بڑھانے سے متن گہرا ہو جاتا ہے۔",
 	"ui.settings.appearance.contrast.capped_hint": "یہ تھیم اس کنٹراسٹ کی حد تک پہنچ گئی ہے جس پر متن پڑھنے کے قابل رہتا ہے، اس لیے قریب ترین ایسی ترتیب دکھائی گئی ہے جس پر متن پڑھا جا سکے۔",
-	"ui.settings.appearance.accent.palette_override_notice": "نمایاں رنگ: {theme}"
+	"ui.settings.appearance.accent.palette_override_notice": "نمایاں رنگ: {theme}",
+	"ui.settings.appearance.layers.preview.sample_backdrop": "نمونہ پس منظر"
 }

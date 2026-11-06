@@ -1,0 +1,76 @@
+{
+	"instance": "1ce9e63d4bb9-ru-canonical",
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session primary anthropic/claude-opus-5-5 failed on provider quota and fell back openai/gpt-6.1-sol -> kimi/k3.1-pro -> radient/auto; every read, check and receipt byte in this audit was produced on that final radient/auto resolution. No model performed any translation or back-translation.",
+	"locale": "ru",
+	"namespace": "ui.chat.canonical",
+	"audit_date": "2026-11-05",
+	"task": "Independent audit of the final bytes of this contribution: ten new keys across seven locales, three of them corrected since the previous audit.",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-sidebar-literals",
+	"head_reviewed": "257ad02237a1ea7b8676efea55d76f89bb145ee4",
+	"head_at_write": "2cdbf215d7bea01aff156e8dbd5bddb5343684bd",
+	"base": "65116989dc9",
+	"heads_equivalence": {
+		"all_audited_files_identical": true,
+		"files_compared": 16,
+		"note": "The branch was rebuilt while this audit ran. Every audited catalogue file is byte-identical at both heads, so these hashes describe the bytes on disk; see the manifest for the per-file comparison."
+	},
+	"independence": "This run translated none of these values and implemented none of this change. It read the English source, the en context sidecars, sibling keys in the same catalogue and the runtime's own ICU library, then judged every value itself.",
+	"keys_audited": 1,
+	"keys": [
+		"ui.chat.canonical.supplement.show_fewer"
+	],
+	"en_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+	"target_path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+	"sha256": {
+		"en": "83dc8ad73bafcb311e1c68d93d12cb206d7b41259c5487e3bba4cbb941dd213e",
+		"ru": "7a316818b0ed8c69e149071786e683182fe564f8981c832bb64fc76e3ee6583e"
+	},
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [],
+	"checks": {
+		"values": {
+			"ui.chat.canonical.supplement.show_fewer": "Показать меньше"
+		},
+		"icu": {
+			"show_fewer": {
+				"compiled": true,
+				"compileError": null,
+				"formatted": "Показать меньше",
+				"hasArguments": false,
+				"bracesBalanced": true
+			}
+		},
+		"composition": {
+			"note": "Standalone disclosure toggle; it never joins another fragment, so the only composition check is that it carries no count and no trailing punctuation.",
+			"hasCount": false,
+			"finalCodepoint": "U+0435"
+		},
+		"literals": {},
+		"terminology": {
+			"ui.chat.canonical.supplement.show_fewer": [
+				{
+					"comparedWith": "ui.schedules.wake_conversation_row.show_fewer",
+					"why": "the corpus already translates this exact English string",
+					"value": "Показать меньше",
+					"byteIdentical": true
+				},
+				{
+					"comparedWith": "ui.settings.appearance.accent.show_fewer",
+					"why": "the second existing 'show fewer' toggle",
+					"value": "Показать меньше акцентов",
+					"byteIdentical": false
+				}
+			]
+		}
+	}
+}

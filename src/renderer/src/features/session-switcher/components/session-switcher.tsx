@@ -79,6 +79,10 @@ export function SessionSwitcher() {
 								   distinguishable here exactly as they are there. `max-w-[90vw]` is
 								   the same guard the palette keeps for a narrow window. */
 								className="pointer-events-auto w-160 max-w-[90vw] rounded-lg border border-hairline bg-elevated p-2 shadow-overlay"
+								/* The floating layer's marker (`index.css`, "WINDOW GLASS, ROUND 3"):
+								   portalled like the palette, so on glass it takes the panel's
+								   fill and the dim-ink rebind instead of staying opaque. */
+								data-glass-overlay=""
 							>
 								{rows.map((row, index) => (
 									<SwitcherRowButton

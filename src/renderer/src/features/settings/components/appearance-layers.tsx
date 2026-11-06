@@ -25,6 +25,7 @@ import {
 	curatedAccents,
 	previewCss,
 } from "../../../../../shared/theme-engine/picker.mjs";
+import type { WindowGlassState } from "../../../../../shared/window-glass";
 import { AccentRow } from "./accent-row";
 import { AppearancePreviewStrip } from "./appearance-preview-strip";
 import { ContrastControl } from "./contrast-control";
@@ -157,21 +158,20 @@ const usePreviewStyle = (resolved: ResolvedAppearance) => {
 	return draft;
 };
 
-/** [A] The preview strip, sticky at the top of Appearance. */
-export const AppearancePreviewSection: FC = () => {
+/** [A] In-flow preview: gallery tiles must never scroll beneath the sample. */
+export const AppearancePreviewSection: FC<{
+	glass?: WindowGlassState | null;
+}> = ({ glass }) => {
 	const resolved = useResolvedAppearance();
 	const draft = usePreviewStyle(resolved);
 	return (
 		<div
-			/*
-			 * Sticky inside the settings scroll column on the panel's own opaque
-			 * ground, so tiles scrolling under it are hidden, not dimmed (AGENTS.md
-			 * "a translucent panel must still occlude"). `bg-canvas` is the column's
-			 * ground, so the sticky band adds no new tone step.
-			 */
-			className="sticky top-0 z-10 -mx-1 border-hairline border-b bg-canvas px-1 pb-3"
+			/* The section owns its divider in normal flow. Pinning this sample
+			   occludes the first gallery row and steals narrow-window space. */
+			className="border-hairline border-b pb-3"
 		>
 			<AppearancePreviewStrip
+				glass={glass}
 				previewTheme={draft === null ? undefined : PREVIEW_IDS.strip}
 			/>
 		</div>
@@ -222,8 +222,37 @@ const useContrastCommit = () => {
 	return { commit, pending };
 };
 
+/**
+ * The companion sample, scoped to the drag candidate exactly like the strip at the
+ * top of the section (UX U4). Both variants read the SAME `PREVIEW_IDS.strip`
+ * block, so there is one preview and one source of truth.
+ *
+ * The draft subscription lives here rather than in `AppearanceLayerControls`:
+ * during a drag the slider publishes per pointer move, and re-rendering the
+ * contrast row - let alone the accent row under it - to repaint a sample beside
+ * it is work the pointer does not need. This way a move re-renders the sample.
+ */
+const CompanionPreview: FC<{ glass?: WindowGlassState | null }> = ({
+	glass,
+}) => {
+	const draft = useDraft();
+	return (
+		<AppearancePreviewStrip
+			glass={glass}
+			variant="compact"
+			/* Without this the sample beside the control keeps the COMMITTED palette
+			   for the whole drag while the strip ~1000px above previews the
+			   candidate: the one sample the user is looking at was the stale one. */
+			previewTheme={draft === null ? undefined : PREVIEW_IDS.strip}
+			className="lg:order-2"
+		/>
+	);
+};
+
 /** [C] Contrast and [D] Accent, under the gallery. */
-export const AppearanceLayerControls: FC = () => {
+export const AppearanceLayerControls: FC<{
+	glass?: WindowGlassState | null;
+}> = ({ glass }) => {
 	useI18nLocale();
 	const resolved = useResolvedAppearance();
 	const themeName = useUiPreferencesStore((s) => s.themeName);
@@ -269,59 +298,82 @@ export const AppearanceLayerControls: FC = () => {
 	if (!base) return null;
 	const themeLabel = authored.name;
 	return (
-		<div className="flex flex-col gap-6">
-			<section data-appearance-layer="contrast">
-				<ContrastControl
-					committed={committed}
-					effective={resolved.effectiveContrast}
-					backgroundAtCeiling={
-						mode === "light" &&
-						committed > 0 &&
-						resolved.palette.canvas.toUpperCase() === base.canvas.toUpperCase()
-					}
-					mode={mode}
-					pending={pending}
-					onDraft={publishDraft}
-					onCommit={(value) => commit(mode, value)}
-				/>
-			</section>
-			<section data-appearance-layer="accent">
-				<LayerHeading
-					title={t("ui.settings.appearance.accent.title")}
-					action={
-						selected.kind !== "theme" ? (
-							<Button
-								type="button"
-								variant="link"
-								size="sm"
-								className="min-h-6 min-w-6"
-								onClick={() => setAccent(mode, { kind: "theme" })}
-							>
-								{t("ui.settings.appearance.accent.reset")}
-							</Button>
-						) : null
-					}
-				/>
-				<AccentRow
-					themeName={themeLabel}
-					themeAccent={base.accent}
-					themeAccentAlt={base.accentAlt}
-					curated={curated}
-					all={all}
-					paletteName={(id) => themes[id as keyof typeof themes]?.name ?? id}
-					custom={customAccents}
-					customNames={customAccentNames}
-					selected={selected}
-					paintedAccent={resolved.palette.accent}
-					adjusted={resolved.accentAdjusted}
-					applied={resolved.accentApplied}
-					onSelect={(ref) => setAccent(mode, ref)}
-					onAdd={(hex) => addCustomAccent(hex, mode)}
-					onReplace={replaceCustomAccent}
-					onRename={renameCustomAccent}
-					onRemove={removeCustomAccent}
-				/>
-			</section>
+		/*
+		 * THE SAMPLE TRAVELS WITH THE TWO CONTROLS IT EXPLAINS (UX U1).
+		 *
+		 * Removing the pin from the top strip left contrast and accent changes with
+		 * no visible sample: at the shipped max-w-4xl column the full strip ends
+		 * 1262px above the Contrast heading and 1457px above the Accent row (round 1,
+		 * 1440×873, head 7b5103e3), so no scroll position showed the sample and either
+		 * control together. Reordering the section would break the designer's
+		 * Theme -> Contrast -> Accent reading order, so the answer is a compact copy of
+		 * the SAME sample as the controls' companion: beside them from `lg`, above them
+		 * (in flow) below it.
+		 *
+		 * NORMAL FLOW, NOT STICKY, on purpose: a static grid child cannot cover its
+		 * siblings at any width, so the occlusion the pin was removed for cannot come
+		 * back, and the three blocks fit one settings viewport without being pinned
+		 * (measured: the whole cluster is shorter than the 873px settings viewport at
+		 * 1440, and 414 renders as a single column with the sample in flow above the
+		 * controls).
+		 */
+		<div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_15rem]">
+			<CompanionPreview glass={glass} />
+			<div className="flex min-w-0 flex-col gap-6 lg:order-1">
+				<section data-appearance-layer="contrast">
+					<ContrastControl
+						committed={committed}
+						effective={resolved.effectiveContrast}
+						backgroundAtCeiling={
+							mode === "light" &&
+							committed > 0 &&
+							resolved.palette.canvas.toUpperCase() ===
+								base.canvas.toUpperCase()
+						}
+						mode={mode}
+						pending={pending}
+						onDraft={publishDraft}
+						onCommit={(value) => commit(mode, value)}
+					/>
+				</section>
+				<section data-appearance-layer="accent">
+					<LayerHeading
+						title={t("ui.settings.appearance.accent.title")}
+						action={
+							selected.kind !== "theme" ? (
+								<Button
+									type="button"
+									variant="link"
+									size="sm"
+									className="min-h-6 min-w-6"
+									onClick={() => setAccent(mode, { kind: "theme" })}
+								>
+									{t("ui.settings.appearance.accent.reset")}
+								</Button>
+							) : null
+						}
+					/>
+					<AccentRow
+						themeName={themeLabel}
+						themeAccent={base.accent}
+						themeAccentAlt={base.accentAlt}
+						curated={curated}
+						all={all}
+						paletteName={(id) => themes[id as keyof typeof themes]?.name ?? id}
+						custom={customAccents}
+						customNames={customAccentNames}
+						selected={selected}
+						paintedAccent={resolved.palette.accent}
+						adjusted={resolved.accentAdjusted}
+						applied={resolved.accentApplied}
+						onSelect={(ref) => setAccent(mode, ref)}
+						onAdd={(hex) => addCustomAccent(hex, mode)}
+						onReplace={replaceCustomAccent}
+						onRename={renameCustomAccent}
+						onRemove={removeCustomAccent}
+					/>
+				</section>
+			</div>
 		</div>
 	);
 };
@@ -391,13 +443,16 @@ export const ThemeLayerHeading: FC = () => {
  * (gallery), Contrast, Accent. The settings page and the stories both render
  * this, so a frame is a picture of the shipped subtree.
  */
-export const AppearanceLayers: FC<{ gallery: ReactNode }> = ({ gallery }) => (
+export const AppearanceLayers: FC<{
+	gallery: ReactNode;
+	glass?: WindowGlassState | null;
+}> = ({ gallery, glass }) => (
 	<div className="flex flex-col gap-6">
-		<AppearancePreviewSection />
+		<AppearancePreviewSection glass={glass} />
 		<div className="flex flex-col gap-2">
 			<ThemeLayerHeading />
 			{gallery}
 		</div>
-		<AppearanceLayerControls />
+		<AppearanceLayerControls glass={glass} />
 	</div>
 );

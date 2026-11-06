@@ -160,5 +160,6 @@
 	"ui.settings.appearance.layers.palette_meta_both": "Contraste: {contrast}, tu acento",
 	"ui.settings.appearance.contrast.background_ceiling": "El fondo de este tema ya tiene el máximo brillo posible, así que aumentar el contraste oscurece el texto.",
 	"ui.settings.appearance.contrast.capped_hint": "Este tema ha alcanzado su límite de contraste sin perder legibilidad en el texto, así que se muestra el ajuste legible más cercano.",
-	"ui.settings.appearance.accent.palette_override_notice": "Acento: {theme}"
+	"ui.settings.appearance.accent.palette_override_notice": "Acento: {theme}",
+	"ui.settings.appearance.layers.preview.sample_backdrop": "Fondo de ejemplo"
 }

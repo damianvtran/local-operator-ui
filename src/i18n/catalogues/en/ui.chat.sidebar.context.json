@@ -494,5 +494,72 @@
 			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
 			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
 		}
+	},
+	"ui.chat.sidebar.row_menu.hint": {
+		"role": "screen-reader sentence explaining how to open a conversation row's actions menu",
+		"tone": "instruction, sentence case, trailing period",
+		"length": "Seven words.",
+		"note": "Rendered in an sr-only span referenced by the row's aria-describedby. The menu opens by right-click or Shift+F10; keep both shortcuts literal.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.hint_mac": {
+		"role": "Mac-specific screen-reader sentence explaining how to open a conversation row's actions menu",
+		"tone": "instruction, sentence case, trailing period",
+		"length": "Eleven words plus a parenthetical.",
+		"note": "Mac variant of row_menu.hint. It adds the Fn guidance for keyboards whose F10 key needs Fn; keep both shortcuts and the parenthetical literal.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.search_beyond": {
+		"role": "lower-case status fragment on a row synthesized by search",
+		"tone": "explanatory fragment, lower case, no trailing punctuation",
+		"length": "Nine words.",
+		"note": "Follows the conversation title or status in the row tooltip. It explains that this result came from search and is not one of the chats listed in the current list.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.recent": {
+		"role": "status word for a conversation row whose activity is recent",
+		"tone": "single status word, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Fills the status slot of a row that has no more specific status label. It is the default when the row is recent and is not a time bucket heading.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.not_sent_suffix": {
+		"role": "tooltip suffix marking a draft that was never sent",
+		"tone": "qualifier, lower case, no trailing punctuation",
+		"length": "Three words plus the punctuation that joins it to the preceding phrase.",
+		"note": "English uses a comma because list punctuation differs by locale. Translate the joining punctuation and spacing into the locale's normal form; it follows the status line in the row's hover tooltip and is not a standalone sentence.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.unread_suffix": {
+		"role": "tooltip suffix marking a row with unread activity",
+		"tone": "qualifier, lower case, no trailing punctuation",
+		"length": "One word plus the punctuation that joins it to the preceding phrase.",
+		"note": "English uses a comma because list punctuation differs by locale. Translate the joining punctuation and spacing into the locale's normal form; it follows the status line in the row's hover tooltip and is not a standalone sentence.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.silent_remedy": {
+		"role": "remedy clause for a row whose backend has gone silent",
+		"tone": "imperative clause, sentence case, trailing period",
+		"length": "Six words.",
+		"note": "Rendered after a separator in the row tooltip and standalone in the row's sr-only description. Keep the /stop command literal and the trailing period; the sentence must read naturally after a separator.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.catalogue.show_more": {
+		"role": "section footer control that reveals more rows in that section",
+		"tone": "imperative fragment, sentence case, no trailing punctuation",
+		"length": "Three words plus the count.",
+		"note": "The count is the number of rows the press adds. Translate the whole sentence, including the plural form of 'more'; do not leave a separate English noun. The same control is shown for agents and teams, so do not name a section here.",
+		"placeholders": {
+			"hidden": "Number of rows the press adds; select the locale's CLDR category and keep ::group-off."
+		}
+	},
+	"ui.chat.sidebar.catalogue.show_more_chats": {
+		"role": "list footer control that reveals the next page of conversations",
+		"tone": "imperative fragment, sentence case, no trailing punctuation",
+		"length": "Four words plus the count.",
+		"note": "The count is the number of chats the press adds. Translate the whole sentence, including the plural form of 'chat'; do not leave a separate English noun. Keep the count's CLDR category and ::group-off.",
+		"placeholders": {
+			"add": "Number of chats the press adds; select the locale's CLDR category and keep ::group-off."
+		}
 	}
 }

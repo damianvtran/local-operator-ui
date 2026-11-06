@@ -1090,6 +1090,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				 */}
 				<div
 					className={cn("relative flex min-h-0 grow flex-col px-2 bg-sunken")}
+					// The pane owns the capability-gated glass ground. Clear the
+					// terminal's padding/run-off too, not just xterm's cell viewport;
+					// without effective pane coverage the solid sunken fill remains.
+					data-glass-region="pane-leaf"
 					data-console-box=""
 					onKeyDownCapture={announceEndedInput}
 				>

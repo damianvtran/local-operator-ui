@@ -2331,30 +2331,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
-			"target_sha256": "2b4094c1e7a0b3186fc86646894913d0c975b2a2985fb056605aebd483cdb0bd",
+			"source_sha256": "83dc8ad73bafcb311e1c68d93d12cb206d7b41259c5487e3bba4cbb941dd213e",
+			"target_sha256": "cb9ec818f0079db132f023c0015f75bc0806faea410363ff9f01276227d59bad",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "3b93a13f3f5b-1652r2-es",
+					"instance": "1ce9e63d4bb9-es-canonical",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-es.json",
-					"receipt_sha256": "230c69213dde963a866ff638abdc22f7bab3546335e3b5239dc97a478d573d10",
-					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-es-canonical.json",
+					"receipt_sha256": "1b49990327d80d4b7ba1d35868021117db6a491518f1e9c230956329f2c7739e",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -2585,6 +2586,29 @@
 							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-es.json",
 							"receipt_sha256": "b77ae10d76f05420a1e023d62fe64316bc7159022ec2c9a5933fa27c2036cf30",
 							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+					"target_sha256": "2b4094c1e7a0b3186fc86646894913d0c975b2a2985fb056605aebd483cdb0bd",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3b93a13f3f5b-1652r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-es.json",
+							"receipt_sha256": "230c69213dde963a866ff638abdc22f7bab3546335e3b5239dc97a478d573d10",
+							"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -3627,31 +3651,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
-			"target_sha256": "637a31d7eb0a1eb068c775bb6a9a6ec21da49ef32f5e82ddda5669f769d285a5",
+			"source_sha256": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+			"target_sha256": "d17b3a6b71e9a40bff139f353fa886182357cc22e5d2545a51be01847678c192",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "62bb649752be-1603r1-es",
+					"instance": "1ce9e63d4bb9-es-sidebar",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/62bb649752be-1603r1-es.json",
-					"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
-					"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-es-sidebar.json",
+					"receipt_sha256": "c511c3c0650206c722f6b19b51a3dc98f65851e34a4c46f7cef38653bac53408",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -3833,6 +3857,30 @@
 							"receipt_sha256": "574d938591c74b06eb617255d43c6db7620a41349aa01f8fbc2e737fcaa8b72d",
 							"scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
 							"note": "One-key delta ONLY: list_join; not a whole-namespace re-audit. Evidence: i18n/audits/evidence/es/ui.chat.sidebar/listjoin-2026-10-31/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
+					"target_sha256": "637a31d7eb0a1eb068c775bb6a9a6ec21da49ef32f5e82ddda5669f769d285a5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "62bb649752be-1603r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/62bb649752be-1603r1-es.json",
+							"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
+							"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
 						}
 					],
 					"status": "audited"
@@ -7618,30 +7666,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
-			"target_sha256": "0a63aaec1b334200c8ad378d064cfb7e530d1af56e1dd6d493fa2e3e6677935e",
+			"source_sha256": "bbf7c83bd749d1153596fcc8dda33bbc667c8a74f58be2ba05856c0a8506ff00",
+			"target_sha256": "2c419f27bab67a529c669f03467c5649332f823dce47f80c681bdfcb6bf19495",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-05",
+				"instance": "7843483f08e6"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1682-ci-es-ba69d836a6d4",
+					"instance": "53718fab2aa2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1682-ci-es-ba69d836a6d4.json",
-					"receipt_sha256": "8d0b8bcaaced32e94edfb4ca6250055bdb49f45a061e9f9518dcfeb01eeca154",
-					"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
-					"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/es/ui.settings.appearance/aud1682-ci-es-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/settings-preview-caption-audit-53718fab2aa2.json",
+					"receipt_sha256": "f4d12d6d0023aefb0f45ab1916ff40e7c91923414b6f71a57014def7bd1f48a9",
+					"scope": "One new key only: ui.settings.appearance.layers.preview.sample_backdrop. All 162 prior key/value pairs per locale equal base 87295a6a2c562aabfe4001013ba8fabc5aeec1bc; retain prior audited namespace evidence by verified value identity. No unchanged-key language re-audit."
 				}
 			],
 			"status": "audited",
@@ -7786,6 +7834,35 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+					"target_sha256": "0a63aaec1b334200c8ad378d064cfb7e530d1af56e1dd6d493fa2e3e6677935e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1682-ci-es-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1682-ci-es-ba69d836a6d4.json",
+							"receipt_sha256": "8d0b8bcaaced32e94edfb4ca6250055bdb49f45a061e9f9518dcfeb01eeca154",
+							"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
+							"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/es/ui.settings.appearance/aud1682-ci-es-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "deepseek/deepseek-flash",
+						"date": "2026-10-18"
+					}
 				}
 			]
 		},
@@ -12627,30 +12704,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
-			"target_sha256": "39ee59fc80c2d03f9ae1db59a6a983316b8c64fb9815605a7b09596c0a52ce41",
+			"source_sha256": "83dc8ad73bafcb311e1c68d93d12cb206d7b41259c5487e3bba4cbb941dd213e",
+			"target_sha256": "c7d8eb96df49c54ae7c0e98cb230a3de3572a40f6d751070dc3de964b63c008b",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "3b93a13f3f5b-1652r2-fr",
+					"instance": "1ce9e63d4bb9-fr-canonical",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-fr.json",
-					"receipt_sha256": "f360cf766c60e759cbac2a772668b0862b50bfe25064557ee5d65a59286cb1cf",
-					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-fr-canonical.json",
+					"receipt_sha256": "cc5a57646a049fd1d19b9b0aa0ebbe11f7f534f4558c6d25651c063933ae0171",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -12879,6 +12957,29 @@
 							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-fr.json",
 							"receipt_sha256": "e842ea2c7745cbf7d9a2c37f53343bc21587e280f4fb5099df263d4f3b936d00",
 							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+					"target_sha256": "39ee59fc80c2d03f9ae1db59a6a983316b8c64fb9815605a7b09596c0a52ce41",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3b93a13f3f5b-1652r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-fr.json",
+							"receipt_sha256": "f360cf766c60e759cbac2a772668b0862b50bfe25064557ee5d65a59286cb1cf",
+							"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -14010,31 +14111,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
-			"target_sha256": "b156939a065876457466ac7024bb85c5fde2650093cd816c55fb97f1b81e2de7",
+			"source_sha256": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+			"target_sha256": "beec493e1a58484b5a4909ff082292bc76b8df33e3af9938e5955e85071e3ca0",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "c09dbedc5d8a-1603r1-fr",
+					"instance": "1ce9e63d4bb9-fr-sidebar",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c09dbedc5d8a-1603r1-fr.json",
-					"receipt_sha256": "9f3c0a52d34a38716106cd30627a4b2c35227dce02be2725da37ef3d56033e88",
-					"scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/c09dbedc5d8a-1603r1-fr.json"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-fr-sidebar.json",
+					"receipt_sha256": "5d546c02237368192d14256dd9e8919c50d902e404de6b9005e3f7fb02c5bcdc",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -14216,6 +14317,30 @@
 							"receipt_sha256": "983cc632f5a2aa6bcd4fa425761ccac06fbb614996102812b6bd6c8bbc486fbd",
 							"scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
 							"note": "One-key delta ONLY: list_join; not a whole-namespace re-audit. Evidence: i18n/audits/evidence/fr/ui.chat.sidebar/listjoin-2026-10-31/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
+					"target_sha256": "b156939a065876457466ac7024bb85c5fde2650093cd816c55fb97f1b81e2de7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "c09dbedc5d8a-1603r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c09dbedc5d8a-1603r1-fr.json",
+							"receipt_sha256": "9f3c0a52d34a38716106cd30627a4b2c35227dce02be2725da37ef3d56033e88",
+							"scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/c09dbedc5d8a-1603r1-fr.json"
 						}
 					],
 					"status": "audited"
@@ -18080,31 +18205,30 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
-			"target_sha256": "2cbe3c47ec1cf180bf7d9771415a54877c9cb5023e121c7506bf80e7178dbfd5",
+			"source_sha256": "bbf7c83bd749d1153596fcc8dda33bbc667c8a74f58be2ba05856c0a8506ff00",
+			"target_sha256": "085ccfd282eddd07cee6ce1c28f12c80d1c0199617f6647f0ce7f9c82c245260",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-14",
-				"note": "10 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+				"date": "2026-11-05",
+				"instance": "7843483f08e6"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1682-ci-fr-ba69d836a6d4",
+					"instance": "53718fab2aa2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1682-ci-fr-ba69d836a6d4.json",
-					"receipt_sha256": "c53c770cec081caf87926c88dc84dc5c7f1c38f2118104b3fb39e5282b8e6d08",
-					"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
-					"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/fr/ui.settings.appearance/aud1682-ci-fr-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/settings-preview-caption-audit-53718fab2aa2.json",
+					"receipt_sha256": "f4d12d6d0023aefb0f45ab1916ff40e7c91923414b6f71a57014def7bd1f48a9",
+					"scope": "One new key only: ui.settings.appearance.layers.preview.sample_backdrop. All 162 prior key/value pairs per locale equal base 87295a6a2c562aabfe4001013ba8fabc5aeec1bc; retain prior audited namespace evidence by verified value identity. No unchanged-key language re-audit."
 				}
 			],
 			"status": "audited",
@@ -18273,6 +18397,36 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+					"target_sha256": "2cbe3c47ec1cf180bf7d9771415a54877c9cb5023e121c7506bf80e7178dbfd5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1682-ci-fr-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1682-ci-fr-ba69d836a6d4.json",
+							"receipt_sha256": "c53c770cec081caf87926c88dc84dc5c7f1c38f2118104b3fb39e5282b8e6d08",
+							"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
+							"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/fr/ui.settings.appearance/aud1682-ci-fr-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-14",
+						"note": "10 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+					}
 				}
 			]
 		},
@@ -23324,30 +23478,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
-			"target_sha256": "e8250124193edb17d48e0add658e6b04b02affda351a6a3dea3de6701e4015ae",
+			"source_sha256": "83dc8ad73bafcb311e1c68d93d12cb206d7b41259c5487e3bba4cbb941dd213e",
+			"target_sha256": "744da302dac703cb612625b46afc568d7ae22c934de60adbfcf7d0dff94eff42",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "3b93a13f3f5b-1652r2-hi",
+					"instance": "1ce9e63d4bb9-hi-canonical",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-hi.json",
-					"receipt_sha256": "ed1f94f05d18a62d317322e6c44cd777d8c1a7735933d25ba68e5f239a83b6a5",
-					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-hi-canonical.json",
+					"receipt_sha256": "80f0a6d7037f0704878e65964097bb4d67080c509b1a59fc5df8484acfb0f12d",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -23576,6 +23731,29 @@
 							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-hi.json",
 							"receipt_sha256": "af2b4c77b0abc9631c47d736876fb9ee0f217e96fbd7c711488172d649098140",
 							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+					"target_sha256": "e8250124193edb17d48e0add658e6b04b02affda351a6a3dea3de6701e4015ae",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3b93a13f3f5b-1652r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-hi.json",
+							"receipt_sha256": "ed1f94f05d18a62d317322e6c44cd777d8c1a7735933d25ba68e5f239a83b6a5",
+							"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -24684,31 +24862,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
-			"target_sha256": "4617915bb12caaa477de0c655c0ae961fc8dc0ded26401886be24b2944e679f5",
+			"source_sha256": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+			"target_sha256": "9572ba44f1f28b1340e2ef7507580e98612f0b01a6a320ea2118dd1f5810a833",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "a8b33d269fce-1603r1-hi",
+					"instance": "1ce9e63d4bb9-hi-sidebar",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a8b33d269fce-1603r1-hi.json",
-					"receipt_sha256": "6e6c16a177d9b7428b0404309161ad873e0065f54d676237fed2b404400f4437",
-					"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout), A-1p (ui.chat.pickers), A-1c (ui.chat), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta 553e1ccbd7b1. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/a8b33d269fce-1603r1-hi.json"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-hi-sidebar.json",
+					"receipt_sha256": "ce94d4cfa511d8d460658b742e05dd2f8025b5ddfbeefe22d3fd0d5b21b9075d",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -24889,6 +25067,30 @@
 							"receipt_sha256": "1facda95c194bd808315640d5bf49ca59b0151441fdef76e2c261c52f23a805a",
 							"scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
 							"note": "One-key delta ONLY: list_join; not a whole-namespace re-audit. Evidence: i18n/audits/evidence/hi/ui.chat.sidebar/listjoin-2026-10-31/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
+					"target_sha256": "4617915bb12caaa477de0c655c0ae961fc8dc0ded26401886be24b2944e679f5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "a8b33d269fce-1603r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a8b33d269fce-1603r1-hi.json",
+							"receipt_sha256": "6e6c16a177d9b7428b0404309161ad873e0065f54d676237fed2b404400f4437",
+							"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout), A-1p (ui.chat.pickers), A-1c (ui.chat), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta 553e1ccbd7b1. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/a8b33d269fce-1603r1-hi.json"
 						}
 					],
 					"status": "audited"
@@ -28755,30 +28957,30 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
-			"target_sha256": "0824e8580441b5d563213136ab843916f668dc24777f1cc0d03b4c5360215e01",
+			"source_sha256": "bbf7c83bd749d1153596fcc8dda33bbc667c8a74f58be2ba05856c0a8506ff00",
+			"target_sha256": "23c6ee5ad9ccae6c7f8540ee68dd18c0aad7d7996798f165326fba7d03596d09",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"date": "2026-11-05",
+				"instance": "7843483f08e6"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1682-ci-hi-ba69d836a6d4",
+					"instance": "53718fab2aa2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1682-ci-hi-ba69d836a6d4.json",
-					"receipt_sha256": "751ddfcc24e728bfb59cee2efbe6ca089d0d9543a230acff25a29a67fe5244e9",
-					"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
-					"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/hi/ui.settings.appearance/aud1682-ci-hi-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/settings-preview-caption-audit-53718fab2aa2.json",
+					"receipt_sha256": "f4d12d6d0023aefb0f45ab1916ff40e7c91923414b6f71a57014def7bd1f48a9",
+					"scope": "One new key only: ui.settings.appearance.layers.preview.sample_backdrop. All 162 prior key/value pairs per locale equal base 87295a6a2c562aabfe4001013ba8fabc5aeec1bc; retain prior audited namespace evidence by verified value identity. No unchanged-key language re-audit."
 				}
 			],
 			"status": "audited",
@@ -28948,6 +29150,35 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+					"target_sha256": "0824e8580441b5d563213136ab843916f668dc24777f1cc0d03b4c5360215e01",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1682-ci-hi-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1682-ci-hi-ba69d836a6d4.json",
+							"receipt_sha256": "751ddfcc24e728bfb59cee2efbe6ca089d0d9543a230acff25a29a67fe5244e9",
+							"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
+							"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/hi/ui.settings.appearance/aud1682-ci-hi-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-19"
+					}
 				}
 			]
 		},
@@ -33668,30 +33899,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
-			"target_sha256": "f2e1b1aec0b4c1bc0a4a4751a35e0ebebb46b0263b8ccb5b0076f982de555674",
+			"source_sha256": "83dc8ad73bafcb311e1c68d93d12cb206d7b41259c5487e3bba4cbb941dd213e",
+			"target_sha256": "7a316818b0ed8c69e149071786e683182fe564f8981c832bb64fc76e3ee6583e",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "3b93a13f3f5b-1652r2-ru",
+					"instance": "1ce9e63d4bb9-ru-canonical",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ru.json",
-					"receipt_sha256": "0ec062b9aced1557821a09f2fd6ab1d081f0a9d5404cf62d838b1a933d1baec8",
-					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-ru-canonical.json",
+					"receipt_sha256": "9fe63fffeadbab9e5276044e22e30e82e0b33719bca147636003ed245caca924",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -33920,6 +34152,29 @@
 							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-ru.json",
 							"receipt_sha256": "8499336ef3022594b163d97cbd668275876def2c43f7f3ef229e9e6910f2cc0f",
 							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+					"target_sha256": "f2e1b1aec0b4c1bc0a4a4751a35e0ebebb46b0263b8ccb5b0076f982de555674",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3b93a13f3f5b-1652r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ru.json",
+							"receipt_sha256": "0ec062b9aced1557821a09f2fd6ab1d081f0a9d5404cf62d838b1a933d1baec8",
+							"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -35032,31 +35287,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
-			"target_sha256": "22d4f6d83efe06afbb2f8d982a6ff982fe93079cf8525ffb8587d017fc934845",
+			"source_sha256": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+			"target_sha256": "ae955cf52177e931299129527a0bb160674103621c1223fb0b63a3a7e5b2a53f",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "e74efd41e786-1603r1-ru",
+					"instance": "1ce9e63d4bb9-ru-sidebar",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e74efd41e786-1603r1-ru.json",
-					"receipt_sha256": "aa70bf0097fab7022a5e3e47fcd8c5d53127bdc0da10d0fb9cf627e555cd055d",
-					"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout)), fixed at 011c0f4f4ca and passed by round-2 delta ed052586f8fb. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/e74efd41e786-1603r1-ru.json"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-ru-sidebar.json",
+					"receipt_sha256": "67f96e0fe776de80b563dd2da6067b034890fe5388b502b2f1d384f473a0617f",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -35238,6 +35493,30 @@
 							"receipt_sha256": "4c094bf2d221e369ec69d01a38aefe4e955f13343b788b1e9391cbecf79788ef",
 							"scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
 							"note": "One-key delta ONLY: list_join; not a whole-namespace re-audit. Evidence: i18n/audits/evidence/ru/ui.chat.sidebar/listjoin-2026-10-31/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
+					"target_sha256": "22d4f6d83efe06afbb2f8d982a6ff982fe93079cf8525ffb8587d017fc934845",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "e74efd41e786-1603r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e74efd41e786-1603r1-ru.json",
+							"receipt_sha256": "aa70bf0097fab7022a5e3e47fcd8c5d53127bdc0da10d0fb9cf627e555cd055d",
+							"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout)), fixed at 011c0f4f4ca and passed by round-2 delta ed052586f8fb. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/e74efd41e786-1603r1-ru.json"
 						}
 					],
 					"status": "audited"
@@ -39018,31 +39297,30 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
-			"target_sha256": "80bd724ab2456fa71a4f103b1003329ae7c65eb086a2b7ff25d142d8852689f6",
+			"source_sha256": "bbf7c83bd749d1153596fcc8dda33bbc667c8a74f58be2ba05856c0a8506ff00",
+			"target_sha256": "a47d1ab20e090fa70d19acc36a35061fb37821ea06259fca95ba3bb0fb749d8c",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18",
-				"note": "Committed translator receipt i18n/receipts/ui-ru-batch-2.json; SHA256 f1f87e85aef2c2414d7c54e0aee8a56dd0c2ce95f9405e1a83334de2b62c4845."
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-05",
+				"instance": "7843483f08e6"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1682-ci-ru-ba69d836a6d4",
+					"instance": "53718fab2aa2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1682-ci-ru-ba69d836a6d4.json",
-					"receipt_sha256": "f7ae3e1f249ead208601738fbad2276478c3a92b9c27dbd0aa5f05daf58e4598",
-					"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
-					"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/ru/ui.settings.appearance/aud1682-ci-ru-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/settings-preview-caption-audit-53718fab2aa2.json",
+					"receipt_sha256": "f4d12d6d0023aefb0f45ab1916ff40e7c91923414b6f71a57014def7bd1f48a9",
+					"scope": "One new key only: ui.settings.appearance.layers.preview.sample_backdrop. All 162 prior key/value pairs per locale equal base 87295a6a2c562aabfe4001013ba8fabc5aeec1bc; retain prior audited namespace evidence by verified value identity. No unchanged-key language re-audit."
 				}
 			],
 			"status": "audited",
@@ -39189,6 +39467,36 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+					"target_sha256": "80bd724ab2456fa71a4f103b1003329ae7c65eb086a2b7ff25d142d8852689f6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1682-ci-ru-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1682-ci-ru-ba69d836a6d4.json",
+							"receipt_sha256": "f7ae3e1f249ead208601738fbad2276478c3a92b9c27dbd0aa5f05daf58e4598",
+							"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
+							"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/ru/ui.settings.appearance/aud1682-ci-ru-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "deepseek/deepseek-flash",
+						"date": "2026-10-18",
+						"note": "Committed translator receipt i18n/receipts/ui-ru-batch-2.json; SHA256 f1f87e85aef2c2414d7c54e0aee8a56dd0c2ce95f9405e1a83334de2b62c4845."
+					}
 				}
 			]
 		},
@@ -44008,30 +44316,31 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
-			"target_sha256": "1dcb87f486c45b64b8a4ab3e6819769929163577b2b375a0dd2e3a0f4f367459",
+			"source_sha256": "83dc8ad73bafcb311e1c68d93d12cb206d7b41259c5487e3bba4cbb941dd213e",
+			"target_sha256": "9e65b465cdf6db24af8ca6f1cf012129e756a34ffbbee705c391769857aff1fb",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb; remediation of the audited keys at 011c0f4f4ca, session 634c73fee13a job 70c2d5eecc5d)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb; remediation of the audited keys at 011c0f4f4ca, session 634c73fee13a job 70c2d5eecc5d)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "3b93a13f3f5b-1652r2-ur",
+					"instance": "1ce9e63d4bb9-ur-canonical",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ur.json",
-					"receipt_sha256": "87834b761e7ac5b4fa90af9000b811b788f5f6a10f8e828f4e646abd624bf377",
-					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-ur-canonical.json",
+					"receipt_sha256": "e9d17a2fc75b5990a571c9dbd22c0f2444d69c6a58e5caadb40eac24f2fb6950",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -44261,6 +44570,29 @@
 							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-ur.json",
 							"receipt_sha256": "e7f5043e645bbf8b4e19ebb58444a430929a9ee9c603bba64361e3d09faa400e",
 							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+					"target_sha256": "1dcb87f486c45b64b8a4ab3e6819769929163577b2b375a0dd2e3a0f4f367459",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3b93a13f3f5b-1652r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ur.json",
+							"receipt_sha256": "87834b761e7ac5b4fa90af9000b811b788f5f6a10f8e828f4e646abd624bf377",
+							"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -45371,31 +45703,31 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
-			"target_sha256": "3f983b067d30c9218dda43c583d60268209db87ac66894503f4d31bda2170d05",
+			"source_sha256": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+			"target_sha256": "b0ced3e2760b16448196abbe16473d528d5865936cc40eb5116d586bcaf01a11",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "7dde05a06499-1603r1-ur",
+					"instance": "1ce9e63d4bb9-ur-sidebar",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7dde05a06499-1603r1-ur.json",
-					"receipt_sha256": "5ebbed48b2be756b106b78c3fc2b9fd94524653d46c913169224b61950baf0ea",
-					"scope": "Round-1 full review (7dde05a06499) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat), A-2 (ui.chat.attachments)), fixed at 011c0f4f4ca and passed by round-2 delta d83d475c68e1. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/7dde05a06499-1603r1-ur.json"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-ur-sidebar.json",
+					"receipt_sha256": "5675d9bf5a3394c3dd1a5dbddedb39ca4446680749940079e2f44e5fa0cb5c60",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -45576,6 +45908,30 @@
 							"receipt_sha256": "6d05afe4c0d6221322244d0a32e021f9898184d454067f87613d398d9bf0d2d5",
 							"scope": "ONE-KEY delta only: ui.chat.sidebar.agents.list_join at 1e28ba901ab; not a whole-namespace re-audit",
 							"note": "Independent Urdu joiner delta PASS; 0 findings. Record: i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
+					"target_sha256": "3f983b067d30c9218dda43c583d60268209db87ac66894503f4d31bda2170d05",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "7dde05a06499-1603r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7dde05a06499-1603r1-ur.json",
+							"receipt_sha256": "5ebbed48b2be756b106b78c3fc2b9fd94524653d46c913169224b61950baf0ea",
+							"scope": "Round-1 full review (7dde05a06499) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat), A-2 (ui.chat.attachments)), fixed at 011c0f4f4ca and passed by round-2 delta d83d475c68e1. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/7dde05a06499-1603r1-ur.json"
 						}
 					],
 					"status": "audited"
@@ -49367,30 +49723,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
-			"target_sha256": "0d629f9d32cefb975b56961216bf88b742d344040ad8f242aa79a566f2dce6cf",
+			"source_sha256": "bbf7c83bd749d1153596fcc8dda33bbc667c8a74f58be2ba05856c0a8506ff00",
+			"target_sha256": "296e7c3f0da99b8660c082ff96bd2b4ac67618faabcf7011511240e072e88454",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"date": "2026-11-05",
+				"instance": "7843483f08e6"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1682-ci-ur-ba69d836a6d4",
+					"instance": "53718fab2aa2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1682-ci-ur-ba69d836a6d4.json",
-					"receipt_sha256": "bbe4041ee7dda607016f064f12f69b7421e62cec10aac432904a297c3d1db380",
-					"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
-					"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/ur/ui.settings.appearance/aud1682-ci-ur-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/settings-preview-caption-audit-53718fab2aa2.json",
+					"receipt_sha256": "f4d12d6d0023aefb0f45ab1916ff40e7c91923414b6f71a57014def7bd1f48a9",
+					"scope": "One new key only: ui.settings.appearance.layers.preview.sample_backdrop. All 162 prior key/value pairs per locale equal base 87295a6a2c562aabfe4001013ba8fabc5aeec1bc; retain prior audited namespace evidence by verified value identity. No unchanged-key language re-audit."
 				}
 			],
 			"status": "audited",
@@ -49537,6 +49893,35 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+					"target_sha256": "0d629f9d32cefb975b56961216bf88b742d344040ad8f242aa79a566f2dce6cf",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1682-ci-ur-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1682-ci-ur-ba69d836a6d4.json",
+							"receipt_sha256": "bbe4041ee7dda607016f064f12f69b7421e62cec10aac432904a297c3d1db380",
+							"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
+							"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/ur/ui.settings.appearance/aud1682-ci-ur-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-19"
+					}
 				}
 			]
 		},
@@ -54238,30 +54623,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
-			"target_sha256": "84a6d3916178a18e337e28878b32093d5510ff3b5943bda4e3cb63bf31dd7c79",
+			"source_sha256": "83dc8ad73bafcb311e1c68d93d12cb206d7b41259c5487e3bba4cbb941dd213e",
+			"target_sha256": "1d9724fc03df6794d305681899322559e37764c45be7711f7c4379a7cceab7bd",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "3b93a13f3f5b-1652r2-vi",
+					"instance": "1ce9e63d4bb9-vi-canonical",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-vi.json",
-					"receipt_sha256": "2e8896773c24936dfbf478da073f0e9821958f80e3f413eefce3358981b68df5",
-					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-vi-canonical.json",
+					"receipt_sha256": "7024e281805b75686e0dade9a23abf09f638d5e837e65f6af5f1b30318c5dec8",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -54490,6 +54876,29 @@
 							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-vi.json",
 							"receipt_sha256": "c81a722e331f833a77708f7bd8497a91128380d3ac9ac2666d388be038675e17",
 							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+					"target_sha256": "84a6d3916178a18e337e28878b32093d5510ff3b5943bda4e3cb63bf31dd7c79",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3b93a13f3f5b-1652r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-vi.json",
+							"receipt_sha256": "2e8896773c24936dfbf478da073f0e9821958f80e3f413eefce3358981b68df5",
+							"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -55669,31 +56078,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
-			"target_sha256": "533e73eeca408626de5555d114579f7e06b3f132df197b9ce81512b8ea6bca51",
+			"source_sha256": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+			"target_sha256": "f837787abfa5f5e8aeb5f64d19fb010271e0a2b004423935d80eacaa8bbd0171",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "ff1dde7af5b2-1603r1-vi",
+					"model": "radient/auto",
+					"date": "2026-11-05",
+					"result": "clean-with-findings",
+					"instance": "1ce9e63d4bb9-vi-sidebar",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/ff1dde7af5b2-1603r1-vi.json",
-					"receipt_sha256": "09710c169ff9bdd0d658318f05e99cbb3f4cc21545fc727a15079f0d053c7ea2",
-					"scope": "Round-1 full review (ff1dde7af5b2) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta b8016304b62d. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/ff1dde7af5b2-1603r1-vi.json"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-vi-sidebar.json",
+					"receipt_sha256": "a58cac6676082ea8e6f328ced0c0558f45ee83c01b8f7e41ed0afdc96776cf41",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -55875,6 +56284,30 @@
 							"receipt_sha256": "16505999a8348c133c34e2c1d02d89a6c8068ab9b25fc03def6cf9114c28314f",
 							"scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
 							"note": "One-key delta ONLY: list_join; not a whole-namespace re-audit. Evidence: i18n/audits/evidence/vi/ui.chat.sidebar/listjoin-2026-10-31/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
+					"target_sha256": "533e73eeca408626de5555d114579f7e06b3f132df197b9ce81512b8ea6bca51",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "ff1dde7af5b2-1603r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ff1dde7af5b2-1603r1-vi.json",
+							"receipt_sha256": "09710c169ff9bdd0d658318f05e99cbb3f4cc21545fc727a15079f0d053c7ea2",
+							"scope": "Round-1 full review (ff1dde7af5b2) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta b8016304b62d. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/ff1dde7af5b2-1603r1-vi.json"
 						}
 					],
 					"status": "audited"
@@ -59977,30 +60410,30 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
-			"target_sha256": "9defd31cd2b1f03ff5b34277f70d6c355c7603be47db33ed34a483e8df4e270f",
+			"source_sha256": "bbf7c83bd749d1153596fcc8dda33bbc667c8a74f58be2ba05856c0a8506ff00",
+			"target_sha256": "f8fa1b620a61241f9fd530cc4d2f822e4d4342b55f145b3b4c0603afa9418fb8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"date": "2026-11-05",
+				"instance": "7843483f08e6"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1682-ci-vi-ba69d836a6d4",
+					"instance": "53718fab2aa2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1682-ci-vi-ba69d836a6d4.json",
-					"receipt_sha256": "edaab07b22dbb298e4543ecf578f729f3a7f0eb2f7023680fa3babd9e3c8e949",
-					"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
-					"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/vi/ui.settings.appearance/aud1682-ci-vi-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/settings-preview-caption-audit-53718fab2aa2.json",
+					"receipt_sha256": "f4d12d6d0023aefb0f45ab1916ff40e7c91923414b6f71a57014def7bd1f48a9",
+					"scope": "One new key only: ui.settings.appearance.layers.preview.sample_backdrop. All 162 prior key/value pairs per locale equal base 87295a6a2c562aabfe4001013ba8fabc5aeec1bc; retain prior audited namespace evidence by verified value identity. No unchanged-key language re-audit."
 				}
 			],
 			"status": "audited",
@@ -60146,6 +60579,35 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+					"target_sha256": "9defd31cd2b1f03ff5b34277f70d6c355c7603be47db33ed34a483e8df4e270f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1682-ci-vi-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1682-ci-vi-ba69d836a6d4.json",
+							"receipt_sha256": "edaab07b22dbb298e4543ecf578f729f3a7f0eb2f7023680fa3babd9e3c8e949",
+							"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
+							"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/vi/ui.settings.appearance/aud1682-ci-vi-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-18"
+					}
 				}
 			]
 		},
@@ -65243,30 +65705,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
-			"target_sha256": "3daa14a2de3be7106589e53108bbc15c758f1eba26bd663b19e181a474f43b76",
+			"source_sha256": "83dc8ad73bafcb311e1c68d93d12cb206d7b41259c5487e3bba4cbb941dd213e",
+			"target_sha256": "e178ba1809d47d0b7bbe0a1af4970b1295f82cb2bdcefef13d73bd51df9e30ae",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc; remediation of the audited keys at 011c0f4f4ca, session 969fd4e90925 job bdffc4284eb8)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc; remediation of the audited keys at 011c0f4f4ca, session 969fd4e90925 job bdffc4284eb8)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "3b93a13f3f5b-1652r2-zh-cn",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-11-05",
+					"result": "clean",
+					"instance": "1ce9e63d4bb9-zh-cn-canonical",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-zh-cn.json",
-					"receipt_sha256": "17d43fc75842f180eefaf322978bf7ff46c8ef0f3ed1bf6fe8c23acc77420b22",
-					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-zh-cn-canonical.json",
+					"receipt_sha256": "8d84cdf9ae246fd82ce95b91fa23668dda1d509f9bd0d9f3429a284b26c768dc",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -65495,6 +65958,29 @@
 							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-zh-cn.json",
 							"receipt_sha256": "7b6b5b35831d7e256ca4f9bfc3c1b6425c40f34e1b242c0724230825c80651a2",
 							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+					"target_sha256": "3daa14a2de3be7106589e53108bbc15c758f1eba26bd663b19e181a474f43b76",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "3b93a13f3f5b-1652r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-zh-cn.json",
+							"receipt_sha256": "17d43fc75842f180eefaf322978bf7ff46c8ef0f3ed1bf6fe8c23acc77420b22",
+							"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -66657,31 +67143,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
-			"target_sha256": "8f571c7d60727d2c8365f41ea8618a9b2ea19222d01c74dc140c0033e5b705ac",
+			"source_sha256": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+			"target_sha256": "fa339b46561ae8519510c23ad4a188bb5c01c649ec07407a883490dc246b623c",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "task",
+				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
+				"date": "2026-11-05",
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
-					"result": "clean-with-findings",
-					"instance": "0bb8123f20fc-1603r1-zh-cn",
+					"model": "radient/auto",
+					"date": "2026-11-05",
+					"result": "clean",
+					"instance": "1ce9e63d4bb9-zh-cn-sidebar",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json",
-					"receipt_sha256": "5ce56c39bc182a3ee0551c3363050165b4512407a7193cfbb77cf3aa66c0cf53",
-					"scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail)), fixed at 011c0f4f4ca and passed by round-2 delta e98e27ec97a4. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json"
+					"receipt": "i18n/receipts/1ce9e63d4bb9-zh-cn-sidebar.json",
+					"receipt_sha256": "13b8a9dd4877f69fbb4cc81f67fb961fc7253acc3f319cbebcc8888c2b491c5a",
+					"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
+					"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
 				}
 			],
 			"status": "audited",
@@ -66863,6 +67349,30 @@
 							"receipt_sha256": "7b244d71f2e746294c668387a76570edf69e71fa578c086d937605893c4c8e62",
 							"scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
 							"note": "One-key delta ONLY: list_join; not a whole-namespace re-audit. Evidence: i18n/audits/evidence/zh-CN/ui.chat.sidebar/listjoin-2026-10-31/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
+					"target_sha256": "8f571c7d60727d2c8365f41ea8618a9b2ea19222d01c74dc140c0033e5b705ac",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "0bb8123f20fc-1603r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json",
+							"receipt_sha256": "5ce56c39bc182a3ee0551c3363050165b4512407a7193cfbb77cf3aa66c0cf53",
+							"scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail)), fixed at 011c0f4f4ca and passed by round-2 delta e98e27ec97a4. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json"
 						}
 					],
 					"status": "audited"
@@ -71208,30 +71718,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
-			"target_sha256": "8ce4129fa074eb7cf642b12aa6c2ddb737dae6d34f65a2abce8323c8577d1ef9",
+			"source_sha256": "bbf7c83bd749d1153596fcc8dda33bbc667c8a74f58be2ba05856c0a8506ff00",
+			"target_sha256": "43e8495cf4682910fd483a40a76efad4c4fa11853d15485be6a3090e7470e414",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"date": "2026-11-05",
+				"instance": "7843483f08e6"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1682-ci-zh-cn-ba69d836a6d4",
+					"instance": "53718fab2aa2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1682-ci-zh-cn-ba69d836a6d4.json",
-					"receipt_sha256": "37886937f4e09615009615b4266b9cce57dd59f2a48f72c1195a6f19c3f30bdc",
-					"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
-					"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/zh-CN/ui.settings.appearance/aud1682-ci-zh-cn-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/settings-preview-caption-audit-53718fab2aa2.json",
+					"receipt_sha256": "f4d12d6d0023aefb0f45ab1916ff40e7c91923414b6f71a57014def7bd1f48a9",
+					"scope": "One new key only: ui.settings.appearance.layers.preview.sample_backdrop. All 162 prior key/value pairs per locale equal base 87295a6a2c562aabfe4001013ba8fabc5aeec1bc; retain prior audited namespace evidence by verified value identity. No unchanged-key language re-audit."
 				}
 			],
 			"status": "audited",
@@ -71377,6 +71887,35 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+					"target_sha256": "8ce4129fa074eb7cf642b12aa6c2ddb737dae6d34f65a2abce8323c8577d1ef9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1682-ci-zh-cn-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1682-ci-zh-cn-ba69d836a6d4.json",
+							"receipt_sha256": "37886937f4e09615009615b4266b9cce57dd59f2a48f72c1195a6f19c3f30bdc",
+							"scope": "B CI delta at f9297edd67a: changed picker.hex per locale; fr preset/accent/hue names; vi cyan. Unchanged keys retain prior audits 63837f8/bcf0760, verified value-identical.",
+							"note": "Auditor ba69d836a6d4 actual openai/gpt-6.1-sol (quota fallback); translator fd3ba80e8c8f radient/auto per manager. Evidence: i18n/audits/evidence/zh-CN/ui.settings.appearance/aud1682-ci-zh-cn-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-18"
+					}
 				}
 			]
 		},

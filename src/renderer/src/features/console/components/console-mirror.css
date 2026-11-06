@@ -1,0 +1,12 @@
+/*
+ * xterm's DOM renderer paints its parsed theme on .xterm-scrollable-element.
+ * Its legacy sibling .xterm-viewport still ships with a literal black CSS fill;
+ * making the active layer transparent would otherwise expose that black slab.
+ * Clear only this redundant underlay, in console mirrors, in every mode: the
+ * active renderer keeps the solid sunken theme when pane glass is unavailable.
+ * Never use container opacity: ANSI glyphs, explicit cell backgrounds, cursor
+ * and selection must retain their own colours and contrast.
+ */
+[data-console-mirror] .xterm .xterm-viewport {
+	background-color: transparent;
+}

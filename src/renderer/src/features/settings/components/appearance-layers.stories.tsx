@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { Contrast } from "lucide-react";
 import { type FC, useLayoutEffect, useState } from "react";
 import type { AccentRef } from "../../../../../shared/theme-engine/accent.mjs";
+import type { WindowGlassState } from "../../../../../shared/window-glass";
 import { AccentRow } from "./accent-row";
 import { AppearanceLayers } from "./appearance-layers";
 import { AppearancePreviewStrip } from "./appearance-preview-strip";
@@ -42,8 +43,13 @@ const LAYERS_IDENTITY = {
 	customAccentNames: {} as Record<string, string>,
 };
 
+/** The layers the stories seed. The SCHEME is not seeded here: the preview-level
+ * `theme` arg owns `themeName`, and a store seed loses to it (see
+ * `LayersGlassLight`). */
+type LayerSeed = Partial<typeof LAYERS_IDENTITY>;
+
 const Seed: FC<{
-	layers: Partial<typeof LAYERS_IDENTITY>;
+	layers: LayerSeed;
 	children: React.ReactNode;
 }> = ({ layers, children }) => {
 	const [ready, setReady] = useState(false);
@@ -54,7 +60,10 @@ const Seed: FC<{
 	return ready ? children : null;
 };
 
-const Frame: FC<{ layers: Partial<typeof LAYERS_IDENTITY> }> = ({ layers }) => (
+const Frame: FC<{
+	layers: LayerSeed;
+	glass?: WindowGlassState | null;
+}> = ({ layers, glass }) => (
 	<Seed layers={layers}>
 		{/* The app shell owns scrolling; standalone stories need the same bounded
 		    viewport or its global overflow:hidden clips every lower control. */}
@@ -66,7 +75,7 @@ const Frame: FC<{ layers: Partial<typeof LAYERS_IDENTITY> }> = ({ layers }) => (
 					description="Customize the look and feel of Local Operator"
 					dataTourTag="settings-appearance-section"
 				>
-					<AppearanceLayers gallery={<ThemeSelector />} />
+					<AppearanceLayers gallery={<ThemeSelector />} glass={glass} />
 				</SettingsSection>
 			</div>
 		</div>
@@ -77,7 +86,7 @@ const meta = {
 	title: "Settings/Appearance layers",
 	component: AppearanceLayers,
 	parameters: { layout: "fullscreen" },
-	args: { gallery: null },
+	args: { gallery: null, glass: null },
 } satisfies Meta<typeof AppearanceLayers>;
 
 export default meta;
@@ -85,7 +94,90 @@ type Story = StoryObj<typeof meta>;
 
 /** Standard contrast, the theme's accent, no custom accents: today's look. */
 export const LayersStandard: Story = {
-	render: () => <Frame layers={{}} />,
+	render: ({ glass }) => <Frame layers={{}} glass={glass} />,
+};
+
+/** Synthetic native facts, not a claim that Storybook owns a native material. */
+const SAMPLE_GLASS: WindowGlassState = {
+	active: true,
+	restartRequired: false,
+	capability: {
+		supported: true,
+		mechanism: "vibrancy",
+		reason: "ok",
+		materials: ["window", "menu", "popover"],
+		defaultMaterial: "window",
+		liquid: false,
+		defaultEnabled: true,
+		liveToggle: true,
+	},
+	settings: {
+		enabled: true,
+		coverage: "full",
+		intensity: 80,
+		material: "window",
+	},
+};
+
+export const LayersGlass: Story = {
+	args: { glass: SAMPLE_GLASS },
+	render: ({ glass }) => <Frame layers={{}} glass={glass} />,
+};
+
+export const LayersGlassHigh: Story = {
+	args: { glass: SAMPLE_GLASS },
+	render: ({ glass }) => (
+		<Frame layers={{ contrast: { dark: 100, light: 100 } }} glass={glass} />
+	),
+};
+
+/** Harness args the global decorators read; not a story, so not exported. */
+const LIGHT_THEME = { theme: "localOperatorLight" } as Story["args"];
+
+/** The light scheme: the alphas are re-derived for light floors, not reused, and
+ * the neutral backdrop travels the other way. It is also the frame that would
+ * show a sample still painting the previous palette (code R1).
+ *
+ * THE SCHEME COMES FROM THE `theme` ARG, NOT FROM A STORE SEED. `.storybook/
+ * preview.tsx`'s `ThemeFrame` writes `themeName` from that arg in its OWN layout
+ * effect, and React runs layout effects child-first, so a seed inside the story
+ * is repainted before the frame is ever shown - the story then rendered the
+ * dark palette and every "light" claim made from it was a dark measurement
+ * (design D6, QA Q-1). */
+export const LayersGlassLight: Story = {
+	...LayersGlass,
+	args: { ...LayersGlass.args, ...LIGHT_THEME },
+};
+
+export const LayersGlassSidebars: Story = {
+	...LayersGlass,
+	args: {
+		glass: {
+			...SAMPLE_GLASS,
+			settings: { ...SAMPLE_GLASS.settings, coverage: "sidebars" },
+		},
+	},
+};
+
+export const LayersGlassUnsupported: Story = {
+	...LayersGlass,
+	args: {
+		glass: {
+			...SAMPLE_GLASS,
+			active: false,
+			capability: {
+				...SAMPLE_GLASS.capability,
+				supported: false,
+				mechanism: "none",
+				reason: "reduced-transparency",
+			},
+		},
+	},
+};
+
+export const LayersGlassRestartPending: Story = {
+	...LayersGlass,
+	args: { glass: { ...SAMPLE_GLASS, restartRequired: true } },
 };
 
 /**
@@ -158,6 +250,21 @@ export const AddAccentCommits: Story = {
 			expect(useUiPreferencesStore.getState().customAccents[0]).toBe("#2563EB"),
 		);
 	},
+};
+
+/** A real nested viewport at the narrow end the samples must survive: the QA and
+ * design rounds could not render one (no viewport addon on this rig), which left
+ * the narrow contract reported BLOCKED rather than seen. */
+export const LayersNarrow: Story = {
+	render: () => (
+		<iframe
+			title="Appearance layers at 414 CSS pixels"
+			src="/iframe.html?id=settings-appearance-layers--layers-standard&viewMode=story"
+			width={414}
+			height={817}
+			className="h-screen max-w-full border-0"
+		/>
+	),
 };
 
 /* ---------------------------------------------------- control-only states */
