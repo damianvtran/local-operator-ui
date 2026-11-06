@@ -1,0 +1,335 @@
+{
+	"approval_rows": [
+		{
+			"approval_id": "ap_dy6bx2fnhykhp",
+			"can_approve_here": false,
+			"expires_at": 1793938142.643954,
+			"machine": {
+				"key_id": "416fe8fb9e6afc296e145ca77d7449e3",
+				"spki_fp": "416F-E8FB-9E6A-FC29"
+			},
+			"requested_by": {
+				"session_id": "session",
+				"surface": "profile-tool",
+				"tool_call_id": "queued-call"
+			},
+			"state": "requested",
+			"typed_approval": {
+				"action": "approve-credential",
+				"assurance": "presence",
+				"disclosure": {
+					"after": {
+						"categories": ["role"],
+						"description": "Reviews code",
+						"id": "60e69907-8b43-447f-8268-52c6318ec3d4",
+						"instructions": "Public queued fixture guidance.",
+						"label": "Reviewer",
+						"model": "anthropic/claude-opus-5",
+						"name": "reviewer",
+						"tags": ["role", "effort:hi", "tools:read,grep", "class:reactive"]
+					},
+					"after_commitment": "sha256:6687045b50e76fc9b8d8e5e707e097b93a3a575edd0893d80c62d4b5db08c895",
+					"approval_id": "ap_dy6bx2fnhykhp",
+					"base_commitment": "sha256:958098a217f260cdc0f328985a41f3941f50babb15ba37cfd36d9ba9f3bd09b4",
+					"before": {
+						"categories": ["role"],
+						"description": "Reviews code",
+						"id": "60e69907-8b43-447f-8268-52c6318ec3d4",
+						"instructions": "Review the diff.\nBe terse.\nCite file:line.\nRank by severity.\nNo nits.\nRule 1.\nRule 2.\nRule 3.\nRule 4.\nRule 5.\nRule 6.\nRule 7.\nRule 8.",
+						"label": "Reviewer",
+						"model": "anthropic/claude-opus-5",
+						"name": "reviewer",
+						"tags": ["role", "effort:hi", "tools:read,grep", "class:reactive"]
+					},
+					"changed_fields": ["instructions"],
+					"expires_at": 1793938142.643954,
+					"operation": "profile_save",
+					"profile_kind": "agent",
+					"profile_name": "reviewer",
+					"profile_operation": "update",
+					"receipt_id": "ea39684351312bd4fcc07383128652fb29c8f33265b3746e9dbde81d6deea76d",
+					"scope": "global",
+					"session_id": "session",
+					"signing_principal": "416fe8fb9e6afc296e145ca77d7449e3",
+					"target_id": "60e69907-8b43-447f-8268-52c6318ec3d4",
+					"tool_call_id": "queued-call",
+					"version": 1
+				},
+				"disclosure_digest": "sha256:e463e5de0d0ec26fe934a7dcdf1244221b45afc5bf9fbd5b3e1f19477810eb77",
+				"operation": "profile_save",
+				"request_digest": "sha256:3bff9d20c03fb6d5760ce4ea9b92ad67a6a2aa8296baad866d287d3569899b64",
+				"signable_here": true,
+				"unproven_human": false
+			},
+			"what": {
+				"anchor": {
+					"key_id": "416fe8fb9e6afc296e145ca77d7449e3",
+					"spki_fp": "416F-E8FB-9E6A-FC29",
+					"statement_digest": "sha256:663702c6ea2c98550eb7fc201f6cfe7bc785050691c4c51856070611928e568e"
+				},
+				"profile_save": {
+					"after": {
+						"categories": ["role"],
+						"description": "Reviews code",
+						"id": "60e69907-8b43-447f-8268-52c6318ec3d4",
+						"instructions": "Public queued fixture guidance.",
+						"label": "Reviewer",
+						"model": "anthropic/claude-opus-5",
+						"name": "reviewer",
+						"tags": ["role", "effort:hi", "tools:read,grep", "class:reactive"]
+					},
+					"after_commitment": "sha256:6687045b50e76fc9b8d8e5e707e097b93a3a575edd0893d80c62d4b5db08c895",
+					"anchor": {
+						"key_id": "416fe8fb9e6afc296e145ca77d7449e3",
+						"spki_fp": "416F-E8FB-9E6A-FC29",
+						"statement_digest": "sha256:663702c6ea2c98550eb7fc201f6cfe7bc785050691c4c51856070611928e568e"
+					},
+					"base_commitment": "sha256:958098a217f260cdc0f328985a41f3941f50babb15ba37cfd36d9ba9f3bd09b4",
+					"before": {
+						"categories": ["role"],
+						"description": "Reviews code",
+						"id": "60e69907-8b43-447f-8268-52c6318ec3d4",
+						"instructions": "Review the diff.\nBe terse.\nCite file:line.\nRank by severity.\nNo nits.\nRule 1.\nRule 2.\nRule 3.\nRule 4.\nRule 5.\nRule 6.\nRule 7.\nRule 8.",
+						"label": "Reviewer",
+						"model": "anthropic/claude-opus-5",
+						"name": "reviewer",
+						"tags": ["role", "effort:hi", "tools:read,grep", "class:reactive"]
+					},
+					"created_at": 1793851742.643954,
+					"expires_at": 1793938142.643954,
+					"name": "reviewer",
+					"operation": "update",
+					"profile_kind": "agent",
+					"receipt_id": "ea39684351312bd4fcc07383128652fb29c8f33265b3746e9dbde81d6deea76d",
+					"scope": "global",
+					"session_id": "session",
+					"target_id": "60e69907-8b43-447f-8268-52c6318ec3d4",
+					"tool_call_id": "queued-call",
+					"version": 1
+				}
+			},
+			"withdrawn_by": null
+		}
+	],
+	"live_action_ack": {
+		"agent": {
+			"applied": {
+				"detail": {
+					"action_id": "prv_pwZv3cu-siPFNmFYUTAtZGx5Jv09q1uT",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"available": {
+				"detail": {
+					"action_id": "prv_pwZv3cu-siPFNmFYUTAtZGx5Jv09q1uT",
+					"state": "available"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"duplicate": {
+				"detail": {
+					"action_id": "prv_pwZv3cu-siPFNmFYUTAtZGx5Jv09q1uT",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"reconciled": {
+				"detail": {
+					"action_id": "prv_pwZv3cu-siPFNmFYUTAtZGx5Jv09q1uT",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"refused": {
+				"error_code": "operator_authority_unconfigured",
+				"error_trigger": "approval_answer",
+				"message": "this approval is still waiting: only the operator can allow it, but operator authority is not installed on the machine running the session yet, so nothing there can check a signature \u2014 ask Local Operator to set up operator authority on that machine (one approval and one admin password prompt). Denying it works from here.",
+				"op": "error",
+				"req": 1
+			}
+		},
+		"team": {
+			"applied": {
+				"detail": {
+					"action_id": "prv_ge_pfwvx-ejty9DpUfA6qtws8PlKRa-A",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"available": {
+				"detail": {
+					"action_id": "prv_ge_pfwvx-ejty9DpUfA6qtws8PlKRa-A",
+					"state": "available"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"duplicate": {
+				"detail": {
+					"action_id": "prv_ge_pfwvx-ejty9DpUfA6qtws8PlKRa-A",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"reconciled": {
+				"detail": {
+					"action_id": "prv_ge_pfwvx-ejty9DpUfA6qtws8PlKRa-A",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"refused": {
+				"error_code": "operator_authority_unconfigured",
+				"error_trigger": "approval_answer",
+				"message": "this approval is still waiting: only the operator can allow it, but operator authority is not installed on the machine running the session yet, so nothing there can check a signature \u2014 ask Local Operator to set up operator authority on that machine (one approval and one admin password prompt). Denying it works from here.",
+				"op": "error",
+				"req": 1
+			}
+		}
+	},
+	"meta": {
+		"agent_source_session_id": "session",
+		"assurance": "synthetic ES256 signatures; test-only presence stand-in; no OS signing",
+		"generator_command": "PYTHONPATH=. <primary-python> -m pytest -n0 -q tests/unit/session/test_profile_actions.py -k export_golden_profile_wires",
+		"list_row_proof": "actual approval_rows(root), function serialization only; not HTTP",
+		"source_sha": "b4f879399b577764de1939e955457d71aecbe1b9",
+		"team_source_session_id": "session",
+		"uncommitted_source": true
+	},
+	"queued_tool_result": {
+		"content": [
+			{
+				"text": "Queued agent 'reviewer' for durable approval (ap_dy6bx2fnhykhp). No profile or backup was changed. The signed approval continuation applies it; do not retry this tool call.\ninstructions (replaced; new text):\nPublic queued fixture guidance.",
+				"type": "text"
+			}
+		],
+		"details": {
+			"approval_id": "ap_dy6bx2fnhykhp",
+			"diff": [
+				"instructions (replaced; new text):",
+				"Public queued fixture guidance."
+			],
+			"expires_at": 1793938142.643954,
+			"fields": ["instructions"],
+			"profile_kind": "agent",
+			"profile_name": "reviewer",
+			"receipt_id": "ea39684351312bd4fcc07383128652fb29c8f33265b3746e9dbde81d6deea76d",
+			"request_digest": "sha256:3bff9d20c03fb6d5760ce4ea9b92ad67a6a2aa8296baad866d287d3569899b64",
+			"scope": "global",
+			"status": "queued"
+		},
+		"duration_s": null,
+		"is_error": false,
+		"tool_call_id": "queued-call",
+		"tool_name": "agent",
+		"useless": false
+	},
+	"saved_agent_tool_result": {
+		"content": [
+			{
+				"text": "updated agent 'reviewer' in your account; launch with task(agent='reviewer').\ninstructions: updated\nRevert with agent(op='revert', backup_id='20261104230903-fded8b8c').",
+				"type": "text"
+			}
+		],
+		"details": {
+			"authorized_by": "owner-prompt:session@0",
+			"backup_id": "20261104230903-fded8b8c",
+			"class": "reactive",
+			"diff": ["instructions (replaced; new text):", "Demand tests."],
+			"fields": ["instructions"],
+			"kind": "role",
+			"name": "reviewer",
+			"profile_action": {
+				"action_id": "prv_pwZv3cu-siPFNmFYUTAtZGx5Jv09q1uT",
+				"kind": "profile_revert",
+				"label": "Revert",
+				"profile_kind": "agent",
+				"profile_name": "reviewer",
+				"receipt_id": "20261104230903-fded8b8c",
+				"schema": 1
+			},
+			"revert": {
+				"backup_id": "20261104230903-fded8b8c",
+				"op": "revert"
+			},
+			"revision": "definition-revision:v1:6e358469008196842886bedf9553e407a420ce2bdad5e17ca9599cc72ebcf456",
+			"scope": "global"
+		},
+		"duration_s": null,
+		"is_error": false,
+		"tool_call_id": "trusted-call",
+		"tool_name": "agent",
+		"useless": false
+	},
+	"saved_team_tool_result": {
+		"content": [
+			{
+				"text": "updated team 'lopdev' in your account. manager leads it; 0 member slot(s). Launch with /team lopdev <request>.\ninstructions: updated\nRevert with team(op='revert', backup_id='20261104230903-75bdecc6').",
+				"type": "text"
+			}
+		],
+		"details": {
+			"authorized_by": "owner-prompt:session@0",
+			"backup_id": "20261104230903-75bdecc6",
+			"diff": ["instructions (replaced; new text):", "Demand tests."],
+			"fields": ["instructions"],
+			"name": "lopdev",
+			"profile_action": {
+				"action_id": "prv_ge_pfwvx-ejty9DpUfA6qtws8PlKRa-A",
+				"kind": "profile_revert",
+				"label": "Revert",
+				"profile_kind": "team",
+				"profile_name": "lopdev",
+				"receipt_id": "20261104230903-75bdecc6",
+				"schema": 1
+			},
+			"revert": {
+				"backup_id": "20261104230903-75bdecc6",
+				"op": "revert"
+			},
+			"revision": "definition-revision:v1:ae93bbb3dfd81f1f4ead06ef67001808d9766734dbd54e9b3e7eed15b154e4a3",
+			"scope": "global"
+		},
+		"duration_s": null,
+		"is_error": false,
+		"tool_call_id": "trusted-call",
+		"tool_name": "team",
+		"useless": false
+	},
+	"signed_applied_receipt": {
+		"after_commitment": "sha256:6687045b50e76fc9b8d8e5e707e097b93a3a575edd0893d80c62d4b5db08c895",
+		"approval_id": "ap_dy6bx2fnhykhp",
+		"backup_id": "ea39684351312bd4fcc07383128652fb29c8f33265b3746e9dbde81d6deea76d",
+		"profile_action": {
+			"action_id": "prv_ac76a9486abf6c8b6980705b236d173a",
+			"kind": "profile_revert",
+			"label": "Revert",
+			"profile_kind": "agent",
+			"profile_name": "reviewer",
+			"receipt_id": "ea39684351312bd4fcc07383128652fb29c8f33265b3746e9dbde81d6deea76d",
+			"schema": 1
+		},
+		"profile_kind": "agent",
+		"profile_name": "reviewer",
+		"receipt_id": "ea39684351312bd4fcc07383128652fb29c8f33265b3746e9dbde81d6deea76d",
+		"reconciled": false,
+		"state": "complete",
+		"target_id": "60e69907-8b43-447f-8268-52c6318ec3d4"
+	}
+}

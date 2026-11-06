@@ -6527,8 +6527,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.mesh",
-			"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
-			"target_sha256": "7658a8e0b1fba0edf2308e3869df9c69a700c424c09d6f6beadbe6147ceeb0dd",
+			"source_sha256": "92b27eb8c083beafafa8b404447d2048c7a63042a606e2b5a523007c98fb438a",
+			"target_sha256": "e3043d737f096479cd1d2f7ed4776fef87baf8f1e9150b86034ed8850d72206b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6536,21 +6536,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "[redacted]/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "51423a065e9f-es",
+					"instance": "i18n-audit-uimesh-es-59a1adac0231",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/51423a065e9f-es.json",
-					"receipt_sha256": "7ecb29d6f17e36ae0def24a40da0aed90beab6252534f0c591e66d178c33c761",
-					"scope": "PR #1604 translation audit round 8 at f3a758d; delta f93c4be..f3a758d (es expires_window, typed_review_unavailable)",
-					"note": "Round 8 (session 51423a065e9f) at f3a758d5: clean, 0 findings; R7A-ES-01/R7B-1 (tarjeta) and R7A-ES-02/R7B-2 (Deniégala) resolved. Source-only; rendered fit unverified."
+					"receipt": "i18n/receipts/i18n-audit-uimesh-es-59a1adac0231.json",
+					"receipt_sha256": "e85ef08bdf7d155b98ea8ae75d60027e5bb3a91da1e5bdd605fc3f9c5c6847a7"
 				}
 			],
 			"status": "audited",
@@ -6868,6 +6866,30 @@
 							"receipt_sha256": "9b39b1415896e76249756f81034a6e90b3a1a148028f42033ca1fc59e17b9d49",
 							"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
 							"note": "Round 7A (session 0ab504098e2b) at 3705c557: 2 MINOR open (R7A-ES-01 expires_window names solicitud not card; R7A-ES-02 Recházala vs Denegar). Source-only; rendered fit unverified."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+					"target_sha256": "7658a8e0b1fba0edf2308e3869df9c69a700c424c09d6f6beadbe6147ceeb0dd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "[redacted]/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "51423a065e9f-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/51423a065e9f-es.json",
+							"receipt_sha256": "7ecb29d6f17e36ae0def24a40da0aed90beab6252534f0c591e66d178c33c761",
+							"scope": "PR #1604 translation audit round 8 at f3a758d; delta f93c4be..f3a758d (es expires_window, typed_review_unavailable)",
+							"note": "Round 8 (session 51423a065e9f) at f3a758d5: clean, 0 findings; R7A-ES-01/R7B-1 (tarjeta) and R7A-ES-02/R7B-2 (Deniégala) resolved. Source-only; rendered fit unverified."
 						}
 					],
 					"status": "audited"
@@ -17022,8 +17044,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.mesh",
-			"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
-			"target_sha256": "7590e3522db56ec8309d5ff08573bcc87429c9e2e6ffe84fad8fee87b3519357",
+			"source_sha256": "92b27eb8c083beafafa8b404447d2048c7a63042a606e2b5a523007c98fb438a",
+			"target_sha256": "bb9f5887b555e08769883460edfb5a7efc41a6948fd1d366690b1038175cacf1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -17031,21 +17053,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "[redacted]/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "0ab504098e2b-fr",
+					"instance": "i18n-audit-uimesh-fr-59a1adac0231",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ab504098e2b-fr.json",
-					"receipt_sha256": "89faa90f21497d48f68b26664807d3f2bf3cd97cfda2a1d8739ece47d3968368",
-					"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
-					"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
+					"receipt": "i18n/receipts/i18n-audit-uimesh-fr-59a1adac0231.json",
+					"receipt_sha256": "ada100ab66c17904b94f0d29c993aaa9bd624ede182308004151fc2de9581321"
 				}
 			],
 			"status": "audited",
@@ -17339,6 +17359,30 @@
 							"receipt_sha256": "3219d926fd1c3b6693b7d0b0907219c37431440c3f3ce603edb752ec1e4c05a8",
 							"scope": "PR #1604 translation audit round 6 at 318ce5c; final ui.mesh bytes; round-5 delta 7a583b6..318ce5c",
 							"note": "Round 6 audit (session e72be69493d5) at 318ce5c: clean, 0 findings; ui.mesh bytes = round-5-clean 5405030 except ru expires_window fix (R5 MAJOR verified fixed). Source-only; rendered fit unverified."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+					"target_sha256": "7590e3522db56ec8309d5ff08573bcc87429c9e2e6ffe84fad8fee87b3519357",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "[redacted]/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "0ab504098e2b-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ab504098e2b-fr.json",
+							"receipt_sha256": "89faa90f21497d48f68b26664807d3f2bf3cd97cfda2a1d8739ece47d3968368",
+							"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
+							"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
 						}
 					],
 					"status": "audited"
@@ -27798,8 +27842,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.mesh",
-			"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
-			"target_sha256": "19b5ab05bd3b1ffae119dfe5e3955d822fe7cbe28e8f4f93ea3c2ee07a245d51",
+			"source_sha256": "92b27eb8c083beafafa8b404447d2048c7a63042a606e2b5a523007c98fb438a",
+			"target_sha256": "65cc9601bae95beaf93f5a56964c4c7d2caff46bbcb7cdf86d1c2de43a2234c2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -27807,21 +27851,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "[redacted]/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "0ab504098e2b-hi",
+					"instance": "i18n-audit-uimesh-hi-59a1adac0231",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ab504098e2b-hi.json",
-					"receipt_sha256": "79e07c87e6ec574f3bcc8a077f93f78c670522f39954a8ee32125fb12667977d",
-					"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
-					"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
+					"receipt": "i18n/receipts/i18n-audit-uimesh-hi-59a1adac0231.json",
+					"receipt_sha256": "63a9c85d876b90e52f8b2f2067177857d631b07514764e9242976635e613b4b5"
 				}
 			],
 			"status": "audited",
@@ -28140,6 +28182,30 @@
 							"receipt_sha256": "ffd967aed23ff2d29a9e767e780cd2e762fac9983957a15f1b55255e33d5a617",
 							"scope": "PR #1604 translation audit round 6 at 318ce5c; final ui.mesh bytes; round-5 delta 7a583b6..318ce5c",
 							"note": "Round 6 audit (session e72be69493d5) at 318ce5c: clean, 0 findings; ui.mesh bytes = round-5-clean 5405030 except ru expires_window fix (R5 MAJOR verified fixed). Source-only; rendered fit unverified."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+					"target_sha256": "19b5ab05bd3b1ffae119dfe5e3955d822fe7cbe28e8f4f93ea3c2ee07a245d51",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "[redacted]/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "0ab504098e2b-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ab504098e2b-hi.json",
+							"receipt_sha256": "79e07c87e6ec574f3bcc8a077f93f78c670522f39954a8ee32125fb12667977d",
+							"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
+							"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
 						}
 					],
 					"status": "audited"
@@ -38183,8 +38249,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.mesh",
-			"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
-			"target_sha256": "a6872d6c1909368a033d6348eb04dcdd482fd77c8969275c70d39d15dc4a768b",
+			"source_sha256": "92b27eb8c083beafafa8b404447d2048c7a63042a606e2b5a523007c98fb438a",
+			"target_sha256": "d9da63d96accec18f3fba4d65ab2ad20d1835c37f2861df289432acfad1e7263",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -38192,21 +38258,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "[redacted]/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "0ab504098e2b-ru",
+					"instance": "i18n-audit-uimesh-ru-59a1adac0231",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ab504098e2b-ru.json",
-					"receipt_sha256": "cb1b55fbb60de7e3ef4c8414f47ab1e871cb8a9a0a5fe61391f9b434967ee443",
-					"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
-					"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
+					"receipt": "i18n/receipts/i18n-audit-uimesh-ru-59a1adac0231.json",
+					"receipt_sha256": "9ff8ca6cb60affb9f48912191b4fd8050bf078099ca2c5aa9683187019296676"
 				}
 			],
 			"status": "audited",
@@ -38500,6 +38564,30 @@
 							"receipt_sha256": "eeb30be1e84cabfc79e1e8bdcb2c22ce02350195358675f70491bda127a36539",
 							"scope": "PR #1604 translation audit round 6 at 318ce5c; final ui.mesh bytes; round-5 delta 7a583b6..318ce5c",
 							"note": "Round 6 audit (session e72be69493d5) at 318ce5c: clean, 0 findings; ui.mesh bytes = round-5-clean 5405030 except ru expires_window fix (R5 MAJOR verified fixed). Source-only; rendered fit unverified."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+					"target_sha256": "a6872d6c1909368a033d6348eb04dcdd482fd77c8969275c70d39d15dc4a768b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "[redacted]/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "0ab504098e2b-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ab504098e2b-ru.json",
+							"receipt_sha256": "cb1b55fbb60de7e3ef4c8414f47ab1e871cb8a9a0a5fe61391f9b434967ee443",
+							"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
+							"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
 						}
 					],
 					"status": "audited"
@@ -48681,8 +48769,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.mesh",
-			"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
-			"target_sha256": "f7daa7e36d3ad7edcac839918ed6d444d3a751e9714cbf3008fbc0885adbd210",
+			"source_sha256": "92b27eb8c083beafafa8b404447d2048c7a63042a606e2b5a523007c98fb438a",
+			"target_sha256": "200ce575f3e0e3f04e6e8ec62fb40cb8eae031186268156ccb987fff2070c15a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -48690,21 +48778,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "[redacted]/claude-opus-5-5",
-					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "0ab504098e2b-ur",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-uimesh-ur-59a1adac0231",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ab504098e2b-ur.json",
-					"receipt_sha256": "4bccb733ff238f3b85c412179dc0de2f09b5aa2b4c704ec6051cf1d050abec8e",
-					"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
-					"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
+					"receipt": "i18n/receipts/i18n-audit-uimesh-ur-59a1adac0231.json",
+					"receipt_sha256": "06d005a67e2bff3bbae5beb51da7d0566e8918f6ed057da0f389d0f9032a8c9c"
 				}
 			],
 			"status": "audited",
@@ -48975,6 +49061,30 @@
 							"receipt_sha256": "be65b68d59e9ac41d95d7c88169417bddd180ef01bc451e7fa813ef4e1f74b51",
 							"scope": "PR #1604 translation audit round 6 at 318ce5c; final ui.mesh bytes; round-5 delta 7a583b6..318ce5c",
 							"note": "Round 6 audit (session e72be69493d5) at 318ce5c: clean, 0 findings; ui.mesh bytes = round-5-clean 5405030 except ru expires_window fix (R5 MAJOR verified fixed). Source-only; rendered fit unverified."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+					"target_sha256": "f7daa7e36d3ad7edcac839918ed6d444d3a751e9714cbf3008fbc0885adbd210",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "[redacted]/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "0ab504098e2b-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ab504098e2b-ur.json",
+							"receipt_sha256": "4bccb733ff238f3b85c412179dc0de2f09b5aa2b4c704ec6051cf1d050abec8e",
+							"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
+							"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
 						}
 					],
 					"status": "audited"
@@ -59144,8 +59254,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.mesh",
-			"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
-			"target_sha256": "146a9a6e1d5f3004434858960e4c3c89ca11de6d289f027045cac174e9e5c39b",
+			"source_sha256": "92b27eb8c083beafafa8b404447d2048c7a63042a606e2b5a523007c98fb438a",
+			"target_sha256": "1b86fe1a9a6ea07b9fb29fa0fbee822803940175909a221403a2dac7b46a0af2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -59153,21 +59263,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "[redacted]/claude-opus-5-5",
-					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "0ab504098e2b-vi",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-uimesh-vi-59a1adac0231",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ab504098e2b-vi.json",
-					"receipt_sha256": "86cc8816aa936ddb74e28d4abc2405e596ec8e64a6ee74f9022eeebfebdde07b",
-					"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
-					"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
+					"receipt": "i18n/receipts/i18n-audit-uimesh-vi-59a1adac0231.json",
+					"receipt_sha256": "e8b62b6f41615fe90087c00e32e16eefec9e4ce3cd55293f60201cc073d074d1"
 				}
 			],
 			"status": "audited",
@@ -59486,6 +59594,30 @@
 							"receipt_sha256": "baafd5d381256d93d448ccc7ce4a8a90aa96fe75195087456ad0e71e75ad466a",
 							"scope": "PR #1604 translation audit round 6 at 318ce5c; final ui.mesh bytes; round-5 delta 7a583b6..318ce5c",
 							"note": "Round 6 audit (session e72be69493d5) at 318ce5c: clean, 0 findings; ui.mesh bytes = round-5-clean 5405030 except ru expires_window fix (R5 MAJOR verified fixed). Source-only; rendered fit unverified."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+					"target_sha256": "146a9a6e1d5f3004434858960e4c3c89ca11de6d289f027045cac174e9e5c39b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "[redacted]/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "0ab504098e2b-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ab504098e2b-vi.json",
+							"receipt_sha256": "86cc8816aa936ddb74e28d4abc2405e596ec8e64a6ee74f9022eeebfebdde07b",
+							"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
+							"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
 						}
 					],
 					"status": "audited"
@@ -70417,8 +70549,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.mesh",
-			"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
-			"target_sha256": "e37469d764a6812dd4fd27e968b66c7bf37f21343a7740e1e70b9d1a712104a0",
+			"source_sha256": "92b27eb8c083beafafa8b404447d2048c7a63042a606e2b5a523007c98fb438a",
+			"target_sha256": "ff9281806827fc751f503f56487437c69f044b1acce832043b2ecdb6f2d9f283",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -70427,21 +70559,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "[redacted]/claude-opus-5-5",
-					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "0ab504098e2b-zh-cn",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-uimesh-zh-cn-59a1adac0231",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ab504098e2b-zh-cn.json",
-					"receipt_sha256": "1841c4aa483f1b2ed0f6a685c63bc603597712f94a407445fff735f3de45b3d2",
-					"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
-					"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
+					"receipt": "i18n/receipts/i18n-audit-uimesh-zh-cn-59a1adac0231.json",
+					"receipt_sha256": "8b1b98f4c20fbdccaba909a9f3a1d140cc798fcbb1bc83f6ccba844330bb8633"
 				}
 			],
 			"status": "audited",
@@ -70736,6 +70866,30 @@
 							"receipt_sha256": "84c540ef57fc56acd63ad3d865346ad94a3680b6495c05741c3d0fa4c37f3c0f",
 							"scope": "PR #1604 translation audit round 6 at 318ce5c; final ui.mesh bytes; round-5 delta 7a583b6..318ce5c",
 							"note": "Round 6 audit (session e72be69493d5) at 318ce5c: clean, 0 findings; ui.mesh bytes = round-5-clean 5405030 except ru expires_window fix (R5 MAJOR verified fixed). Source-only; rendered fit unverified."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+					"target_sha256": "e37469d764a6812dd4fd27e968b66c7bf37f21343a7740e1e70b9d1a712104a0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "[redacted]/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "0ab504098e2b-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ab504098e2b-zh-cn.json",
+							"receipt_sha256": "1841c4aa483f1b2ed0f6a685c63bc603597712f94a407445fff735f3de45b3d2",
+							"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
+							"note": "Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified."
 						}
 					],
 					"status": "audited"

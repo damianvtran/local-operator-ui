@@ -59,6 +59,11 @@ import {
 	CREDENTIAL_APPROVAL_OPERATIONS,
 	type DesktopRequest,
 } from "../../../../shared/desktop-contract";
+import {
+	PROFILE_SAVE_OPERATION,
+	type ProfileTypedApproval,
+	profileTypedApproval,
+} from "../../../../shared/profile-consent";
 import { meshKeys } from "./mesh-store";
 import { deviceLabel, flag, strings, text, time } from "./mesh-types";
 
@@ -174,7 +179,7 @@ export type MeshApprovalRow = {
 	/** Verbatim from the store: `requested`/`approved`/`connecting`/`connected`/`denied`/`expired`/`failed`. */
 	state: string;
 	/** Which where-block this row carries — the record's own kind is the difference. */
-	kind: "device" | "machine" | "credential" | "unknown";
+	kind: "device" | "machine" | "credential" | "profile" | "unknown";
 	/** Authored by the backend from the signed request, never reconstructed here. */
 	summary?: string;
 	details?: string[];
@@ -188,6 +193,14 @@ export type MeshApprovalRow = {
 	expiresAt: number | null;
 	/** The typed credential approval block, when the backend served one. */
 	typed?: MeshTypedApproval;
+	/**
+	 * The typed PROFILE-SAVE block (`profile_save`), when the backend served one.
+	 *
+	 * Separate from `typed` rather than folded into it: the two carry different
+	 * frozen disclosures, and a profile card that inherited the credential
+	 * gate's arms would offer a signature the profile route cannot carry.
+	 */
+	profile?: ProfileTypedApproval;
 };
 
 /* ------------------------------------------------------------ the states */
@@ -245,7 +258,16 @@ export function waitingApprovalCount(rows: readonly MeshApprovalRow[]): number {
  * exist: `features.credential_approvals >= 1`. Passed in rather than read here so
  * the gate stays a pure function of the row and the negotiated feature.
  */
-export type ApprovalCapabilities = { credentialApprovals?: boolean };
+export type ApprovalCapabilities = {
+	credentialApprovals?: boolean;
+	/**
+	 * `features.profile_approvals >= 1`: the backend serves the typed
+	 * `profile_save` card and its `profile_revert` descriptor. Absent or false, a
+	 * profile row keeps its opaque shape and offers no signature — the
+	 * kill-switch the backend's removal from production registration relies on.
+	 */
+	profileApprovals?: boolean;
+};
 
 function wellFormedDigests(typed: MeshTypedApproval): boolean {
 	return (
@@ -274,9 +296,28 @@ function echoable(
 /** `approve` is offered on `requested` alone: every other open state is past the decision. */
 export function canApproveApproval(
 	row: MeshApprovalRow,
-	{ credentialApprovals = false }: ApprovalCapabilities = {},
+	{
+		credentialApprovals = false,
+		profileApprovals = false,
+	}: ApprovalCapabilities = {},
 ): boolean {
 	if (row.state !== "requested") return false;
+	/*
+	 * A PROFILE CARD IS APPROVED ONLY THROUGH ITS ALLOWLISTED ROUTE, and only when
+	 * the backend says it accepts it: the capability is advertised, the row's
+	 * typed payload parses as the frozen v1 disclosure, the server says THIS host
+	 * may sign it, and the disclosure is for the operation the route carries.
+	 * There is no generic path: the removal of `profile_save` from production
+	 * registration means an unadvertised backend must show the card as opaque.
+	 */
+	if (row.kind === "profile")
+		return (
+			profileApprovals &&
+			row.profile !== undefined &&
+			row.profile.signable_here === true &&
+			row.profile.disclosure != null &&
+			row.profile.disclosure.operation === PROFILE_SAVE_OPERATION
+		);
 	/*
 	 * A CREDENTIAL CARD IS APPROVED ONLY THROUGH ITS TYPED ROUTE, and only when
 	 * every one of these holds:
@@ -315,6 +356,27 @@ export function canApproveApproval(
  * here) - the backend's rule that `retryable` is the only signal for "Try again",
  * because a permanent refusal retried is a loop a person cannot get out of.
  */
+/**
+ * Whether a SIGNED profile card's apply may be sent again (`apply-operation`).
+ *
+ * The same rule as the credential retry — a decision exists, and an outcome said
+ * this card can still succeed — because the backend's `retryable` is the only
+ * signal for "Try again" across both typed kinds.
+ */
+export function canRetryProfileApply(
+	row: MeshApprovalRow,
+	{ profileApprovals = false }: ApprovalCapabilities = {},
+	retryable?: boolean,
+): boolean {
+	return (
+		profileApprovals &&
+		row.kind === "profile" &&
+		row.profile !== undefined &&
+		(row.state === "approved" || row.state === "failed") &&
+		(retryable ?? row.profile.apply_outcome?.retryable === true)
+	);
+}
+
 export function canRetryCredentialApply(
 	row: MeshApprovalRow,
 	{ credentialApprovals = false }: ApprovalCapabilities = {},
@@ -348,6 +410,35 @@ export function approvalDecisionRequest(
 ): DesktopRequest | null {
 	const approvalId = row.approvalId;
 	if (decision === "deny") return { op: "approvals.deny", approvalId };
+	if (row.kind === "profile") {
+		const allowed =
+			decision === "approve"
+				? canApproveApproval(row, capabilities)
+				: canRetryProfileApply(row, capabilities, retryable);
+		if (!allowed || !row.profile) return null;
+		/*
+		 * THE TWO DIGESTS ARE ECHOED FROM THE ROW, never rebuilt: the server
+		 * recomputes both from the record on disk and refuses a mismatch before any
+		 * signer runs, so a value computed here would bind bytes the server never
+		 * served. `operation` is the frozen op name, not the row's own spelling.
+		 */
+		return {
+			op:
+				decision === "approve"
+					? "approvals.approveOperation"
+					: "approvals.applyOperation",
+			approvalId,
+			operation: PROFILE_SAVE_OPERATION,
+			requestDigest: row.profile.request_digest,
+			/*
+			 * An ABSENT disclosure digest cannot be echoed: the op's body must carry a
+			 * `sha256:` value, and inventing one would bind bytes nobody served. The
+			 * empty string fails the request schema, so the press is refused by name
+			 * rather than by a guessed digest.
+			 */
+			disclosureDigest: row.profile.disclosure_digest ?? "",
+		};
+	}
 	if (row.kind === "device" || row.kind === "machine")
 		return decision === "approve" && canApproveApproval(row, capabilities)
 			? { op: "approvals.approve", approvalId }
@@ -561,6 +652,15 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 		// "Onboard <device>" and offered the generic signing route. Either key, or
 		// a typed block naming the credential action, makes it a credential row.
 		const typed = typedApproval(raw.typed_approval);
+		/*
+		 * A PROFILE ROW IS RECOGNISED BY ITS OWN TYPED BLOCK OR ITS RECORD KIND, and
+		 * both are checked because the block alone is optional on the wire (a kind
+		 * that is registered but served without a disclosure must still never fall
+		 * through to the generic signing path). A row whose typed payload does not
+		 * parse keeps the kind and loses the block, so the card states the record as
+		 * opaque rather than pretending it is an onboarding.
+		 */
+		const profile = profileTypedApproval(raw.typed_approval);
 		const credential =
 			(isRecord(raw.what) &&
 				(Object.prototype.hasOwnProperty.call(
@@ -576,14 +676,16 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 			? text(raw.kind)
 			: undefined;
 		const kind: MeshApprovalRow["kind"] =
-			credential || explicitKind === "credential_inheritance"
-				? "credential"
-				: explicitKind !== undefined &&
-						!["device_onboard", "local_authority"].includes(explicitKind)
-					? "unknown"
-					: !isRecord(raw.device) && isRecord(raw.machine)
-						? "machine"
-						: "device";
+			profile !== null || explicitKind === PROFILE_SAVE_OPERATION
+				? "profile"
+				: credential || explicitKind === "credential_inheritance"
+					? "credential"
+					: explicitKind !== undefined &&
+							!["device_onboard", "local_authority"].includes(explicitKind)
+						? "unknown"
+						: !isRecord(raw.device) && isRecord(raw.machine)
+							? "machine"
+							: "device";
 		const requestedBy = isRecord(raw.requested_by) ? raw.requested_by : {};
 		rows.push({
 			approvalId,
@@ -613,6 +715,7 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 			},
 			expiresAt: time(raw.expires_at),
 			...(typed && kind === "credential" ? { typed } : {}),
+			...(profile && kind === "profile" ? { profile } : {}),
 		});
 	}
 	return rows;
@@ -1119,8 +1222,20 @@ const grantClauses = (): Record<string, string> => ({
 	),
 });
 
-/** A signed credential still needing a decision is live, not settled history. */
+/**
+ * A signed record still needing a decision is live, not settled history.
+ *
+ * The profile arm is the same fact one kind over: a signed `profile_save` whose
+ * apply has not finished is a change that is NOT saved, so it belongs beside the
+ * waiting cards rather than in the settled list, and it must survive a restart
+ * there (the store is the authority; this read is device-local).
+ */
 export function isAttentionApproval(row: MeshApprovalRow): boolean {
+	if (row.kind === "profile")
+		return (
+			row.profile !== undefined &&
+			(row.state === "approved" || row.state === "failed")
+		);
 	return (
 		row.kind === "credential" &&
 		row.typed !== undefined &&

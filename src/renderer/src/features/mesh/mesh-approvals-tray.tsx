@@ -102,6 +102,7 @@ import {
 	canApproveApproval,
 	canDenyApproval,
 	canRetryCredentialApply,
+	canRetryProfileApply,
 	credentialConsequences,
 	credentialRecipientLabel,
 	credentialVisibleConsequences,
@@ -111,6 +112,8 @@ import {
 	isWaitingApproval,
 	namedApprovalRefusalParts,
 } from "./mesh-approvals";
+import { profileCardView } from "./mesh-profile-approval";
+import { ProfileConsentCard } from "./profile-consent-card";
 
 /**
  * The INK a row's state line wears, in the app's own status register.
@@ -242,6 +245,14 @@ export interface MeshApprovalsTrayProps {
 	 * shape - there is no route here that could carry its Approve.
 	 */
 	credentialApprovals?: boolean;
+	/**
+	 * `features.profile_approvals >= 1`: the backend serves the typed
+	 * `profile_save` card and its allowlisted decision routes. Absent or false, a
+	 * profile row STILL renders - the store is the authority for what was proposed,
+	 * so its disclosure is not withheld - but offers no signature, which is the
+	 * kill-switch the unregistered kind depends on.
+	 */
+	profileApprovals?: boolean;
 	/** The read's own stamp, for the expiry lines (the page owns the clock reading). */
 	nowSeconds: number;
 	/**
@@ -263,6 +274,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	nowSeconds,
 	networkNames,
 	credentialApprovals = false,
+	profileApprovals = false,
 }) => {
 	useI18nLocale();
 	/*
@@ -530,6 +542,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 							nowSeconds={nowSeconds}
 							networkNames={networkNames}
 							credentialApprovals={credentialApprovals}
+							profileApprovals={profileApprovals}
 						/>
 					))}
 				</ul>
@@ -638,6 +651,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 									nowSeconds={nowSeconds}
 									networkNames={networkNames}
 									credentialApprovals={credentialApprovals}
+									profileApprovals={profileApprovals}
 								/>
 							))}
 						</ul>
@@ -663,6 +677,8 @@ const MeshApprovalCard: FC<{
 	networkNames?: ReadonlyMap<string, string>;
 	/** `features.credential_approvals`: see the tray's own prop. */
 	credentialApprovals: boolean;
+	/** `features.profile_approvals`: see the tray's own prop. */
+	profileApprovals: boolean;
 }> = ({
 	row,
 	pending,
@@ -672,6 +688,7 @@ const MeshApprovalCard: FC<{
 	nowSeconds,
 	networkNames,
 	credentialApprovals,
+	profileApprovals,
 }) => {
 	useI18nLocale();
 	const waiting = isWaitingApproval(row.state);
@@ -692,12 +709,15 @@ const MeshApprovalCard: FC<{
 		nowSeconds,
 		isAttentionApproval(row),
 	);
-	const opaque = row.kind === "credential" || row.kind === "unknown";
+	const opaque =
+		row.kind === "credential" ||
+		row.kind === "unknown" ||
+		row.kind === "profile";
 	const restricted = opaque || row.canApproveHere === false;
 	// Generic signing/install hints are false for opaque typed intent. The
 	// server's full disclosure is the only description of what would be signed.
 	const hints = restricted ? [] : stateHints(row.state);
-	const capabilities = { credentialApprovals };
+	const capabilities = { credentialApprovals, profileApprovals };
 	const canApprove = canApproveApproval(row, capabilities);
 	const canDeny = canDenyApproval(row.state);
 	const canRetryApply = canRetryCredentialApply(
@@ -705,6 +725,25 @@ const MeshApprovalCard: FC<{
 		capabilities,
 		refusal?.retryable,
 	);
+	/*
+	 * THE PROFILE CARD states the proposal itself, so this card hands it the view
+	 * derived from the row and prints nothing of its own summary: a profile record
+	 * has no device to onboard and no scope chips, and the generic sentences would
+	 * be claims about a decision that is not this one.
+	 */
+	const profile =
+		row.kind === "profile"
+			? profileCardView(row, {
+					profileApprovals,
+					canApprove: canApproveApproval(row, capabilities),
+					canDeny: canDenyApproval(row.state),
+					canRetryApply: canRetryProfileApply(
+						row,
+						capabilities,
+						refusal?.retryable,
+					),
+				})
+			: null;
 	/*
 	 * A TYPED CARD speaks from the structured disclosure: the head line names the
 	 * credential and the device, and Details lists the consequences in words. The
@@ -797,14 +836,24 @@ const MeshApprovalCard: FC<{
 			 * U2): the decision-time sentence belongs to the moment of decision, and
 			 * repeating it per settled row is the wall the operator reported.
 			 */}
-			<p
-				className="text-body-sm text-ink [overflow-wrap:anywhere]"
-				data-tour-tag="mesh-approval-summary"
-				tabIndex={-1}
-				id={summaryId}
-			>
-				{waiting ? summary : head}
-			</p>
+			{profile ? (
+				/*
+				 * A PROFILE RECORD'S OWN CARD: the family, the operation, the authored
+				 * fields that change (BEFORE/AFTER), the state, and the one place a
+				 * revert could be offered. The tray's Approve/Deny row below stays the
+				 * one set of verbs, so a profile card cannot grow a second answer path.
+				 */
+				<ProfileConsentCard view={profile} />
+			) : (
+				<p
+					className="text-body-sm text-ink [overflow-wrap:anywhere]"
+					data-tour-tag="mesh-approval-summary"
+					tabIndex={-1}
+					id={summaryId}
+				>
+					{waiting ? summary : head}
+				</p>
+			)}
 			{visibleConsequences && (
 				<p
 					id={criticalId}
