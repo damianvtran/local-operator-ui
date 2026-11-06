@@ -70,6 +70,10 @@ import {
 	resolveGlobalConsoleScript,
 } from "../update-install";
 import { withoutAgentShellMarker } from "./agent-shell-spawn-env";
+import {
+	ATTACH_BACKEND_TOKEN_VARIABLE,
+	type BackendAttach,
+} from "./attach-backend";
 import { backendConfig } from "./config";
 import {
 	DETACHED_AFTER_MS,
@@ -703,6 +707,18 @@ export interface BackendServiceManagerOptions {
 	 * shipped budget: the second and last origin the renderer's policy trusts.
 	 */
 	fallbackSpawnUrls?: string[];
+	/**
+	 * What this LAUNCH decided about its backend (`./attach-backend`). Absent - a
+	 * test, a rig, or any ordinary launch - is the managed path exactly as before;
+	 * `{ kind: "attach" }` names a backend this app did not start and must not
+	 * spawn over.
+	 *
+	 * Passed in rather than re-derived from the environment: `src/main/index.ts`
+	 * resolves it once and acts on the same answer (it refuses to install a runtime
+	 * when the launch named one), and a second read is a second opinion about which
+	 * backend this process is for.
+	 */
+	attach?: BackendAttach;
 }
 
 /**
@@ -800,6 +816,29 @@ export class BackendServiceManager {
 	 * this field is that this class of failure is not a reason to take the app down.
 	 */
 	private spawnRefusals: OriginOccupancy[] | null = null;
+	/**
+	 * The backend this LAUNCH named, when it named one (`./attach-backend`). Null on
+	 * every ordinary launch, and that null is what keeps this class's behaviour
+	 * byte-for-byte what it was.
+	 *
+	 * It is a second fact beside `remoteConfigured` rather than a use of it. The
+	 * remote flag answers "was the configured URL deliberately not local", and it
+	 * drives prose ("the configured remote server") and the no-spawn branch; an
+	 * attach target is typically LOCAL - a daemon a rig or the operator started on
+	 * 127.0.0.1 - and calling that remote would be a false sentence in the log, the
+	 * banner and the update plan.
+	 */
+	private readonly attachTarget: string | null = null;
+	/**
+	 * Why this launch's named backend could not be attached to, in words a person
+	 * can act on. Null when it could, or when nothing was named.
+	 *
+	 * Kept because the caller must NOT fall back to installing a runtime when an
+	 * attach fails: `src/main/index.ts` reads this to say what happened, and a
+	 * silent "no backend" is the state that would otherwise walk into the
+	 * installer. Never holds a token.
+	 */
+	private attachFailure: string | null = null;
 	private remoteConfigured = false;
 	/**
 	 * The last address this app served on that was NOT the one it is configured for,
@@ -1450,6 +1489,32 @@ export class BackendServiceManager {
 		// parsed one where there is one, and the default the fallback arm just
 		// established where there is not - one assignment, two ways in.
 		this.configuredUrl = this.backendUrl;
+
+		/*
+		 * THE BACKEND THIS LAUNCH NAMED OUTRANKS THE BUILD-TIME URL.
+		 *
+		 * `VITE_LOCAL_OPERATOR_API_URL` is compiled into the build and describes the
+		 * address this app would SERVE on; a launch that names a backend means that
+		 * address and no other, so it takes effect here rather than competing with the
+		 * compiled default at every later call site. `configuredUrl` follows it for
+		 * the reason it follows the parse above: the substitution check in
+		 * `attachDaemon` compares the address we landed on with the one we meant, and
+		 * those two must agree from the first frame.
+		 *
+		 * `remoteConfigured` is deliberately NOT set: it means "configured away from
+		 * this machine", and a named backend is usually local - the daemon a rig or
+		 * the operator started on 127.0.0.1. Saying "remote" about one would put a
+		 * false sentence in the log, the banner and the update plan.
+		 */
+		const attachTarget =
+			options.attach?.kind === "attach" ? options.attach.baseUrl : null;
+		if (attachTarget) {
+			this.attachTarget = attachTarget;
+			this.backendUrl = attachTarget;
+			this.configuredUrl = attachTarget;
+			const port = Number(new URL(attachTarget).port);
+			if (port) this.port = port;
+		}
 
 		// The app-managed venv for THIS instance - a packaged install and an
 		// unpackaged one must not share it, or the dev instance's backend imports its
@@ -2159,7 +2224,18 @@ export class BackendServiceManager {
 	 * forbidden from spawning is still allowed to discover).
 	 */
 	private async discoverAndAttach(): Promise<boolean> {
-		const adopted = await this.adoptFirstUsableDaemon();
+		/*
+		 * A NAMED BACKEND IS NOT DISCOVERED, IT IS ATTACHED, and it is attached
+		 * through the ONE function every caller already goes through - startup, the
+		 * watchdog's recovery, the banner's Retry. Routing here rather than adding an
+		 * entry point beside it is what keeps "what backend is this app on" a single
+		 * answer: a second path would let a named backend be replaced by a discovered
+		 * one mid-session, which is the one thing a launch that named a backend must
+		 * never do.
+		 */
+		const adopted = this.attachTarget
+			? await this.attachToConfiguredBackend(this.attachTarget)
+			: await this.adoptFirstUsableDaemon();
 		/*
 		 * WHY the probe loop is armed HERE and not only in `startOwned()`.
 		 *
@@ -2516,6 +2592,111 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * Attach to the backend this LAUNCH named, or say exactly why it cannot.
+	 *
+	 * WHY THIS IS NOT `adoptFirstUsableDaemon()`. Discovery answers "which daemon on
+	 * this machine is mine, and which of these may I drive" by ranking serve
+	 * records. A launch that names an address has already answered both questions,
+	 * and it has answered them about a daemon that need not have a record at all - a
+	 * rig starts `lop serve` with its own config dir - so running discovery would
+	 * either find nothing (and invite the installer) or find some OTHER daemon and
+	 * quietly become about that one. What is worth keeping from discovery is its
+	 * evidence discipline, and that is what this uses: an identity from the process
+	 * itself (`probeUnidentified`) and a credential actually accepted
+	 * (`probeCandidate`), both against the named address.
+	 *
+	 * NO FALLBACK BY DESIGN. Every failure returns false with `attachFailure` set;
+	 * nothing here spawns, installs, or adopts a neighbour, because a caller that
+	 * asked for one specific backend and silently got another is measuring the
+	 * wrong thing - and the caller that matters is a QA rig whose evidence would
+	 * then be about a daemon it never chose.
+	 */
+	private async attachToConfiguredBackend(address: string): Promise<boolean> {
+		this.attachFailure = null;
+		const token = this.desktopToken;
+		if (!token) {
+			this.attachFailure = `This launch named ${address} as its backend, but this app holds no desktop credential for it (${ATTACH_BACKEND_TOKEN_VARIABLE} is unset), so it cannot authenticate.`;
+			logger.error(this.attachFailure, LogFileType.BACKEND);
+			return false;
+		}
+		/*
+		 * WHO, THEN WHETHER. The identity probe runs first because the credential
+		 * probe's answer is meaningless against something that is not a daemon - a
+		 * 401 from a proxy and a 401 from a daemon this app is not paired with send a
+		 * reader to two different places, and only the daemon's own identity turns
+		 * the second one into a fact.
+		 */
+		const occupant = await probeUnidentified(address);
+		if (!occupant.identity) {
+			this.attachFailure = `${address} was named as this launch's backend, but ${HEALTH_PATH} did not identify a Local Operator daemon there (${occupant.detail}).`;
+			logger.error(this.attachFailure, LogFileType.BACKEND);
+			return false;
+		}
+		const identity = occupant.identity;
+		const probe = await this.probeCandidate(address, token);
+		if (probe.verdict === "refused") {
+			this.attachFailure = `The Local Operator daemon at ${address} (v${identity.version || "unknown"}) refused this app's desktop credential (HTTP ${probe.status}). Start it with the same ${ATTACH_BACKEND_TOKEN_VARIABLE} this app holds.`;
+			logger.error(this.attachFailure, LogFileType.BACKEND);
+			return false;
+		}
+		if (probe.verdict !== "accepted") {
+			this.attachFailure =
+				probe.verdict === "unusable"
+					? `The Local Operator daemon at ${address} answered the desktop request with HTTP ${probe.status}, so it cannot be driven from here.`
+					: `The Local Operator daemon at ${address} identified itself but stopped answering the desktop request.`;
+			logger.error(this.attachFailure, LogFileType.BACKEND);
+			return false;
+		}
+		const previousUrl = this.backendUrl;
+		this.backendUrl = address;
+		const port = Number(new URL(address).port);
+		if (port) this.port = port;
+		// A named backend has no serve record in THIS app's account: the record the
+		// rig published lives in the rig's config dir, and pretending otherwise would
+		// make the reaper and the identity checks read a file this process wrote.
+		this.attachedRecord = null;
+		this.isExternalBackend = true;
+		this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
+		this.desktopToken = token;
+		this.attachDaemon(
+			{
+				url: address,
+				instanceId: identity.instanceId,
+				pid: identity.pid,
+				version: identity.version,
+				prefix: identity.prefix,
+				installKind: identity.installKind,
+			},
+			{ owned: false },
+		);
+		this.daemonState.setPairing(DAEMON_PAIRED);
+		/*
+		 * The line a rig's log is read for. The TOKEN is absent by construction: this
+		 * is the one sentence that proves the attach happened, and it is written to
+		 * the operator's own log files.
+		 */
+		logger.info(
+			`Attached to the backend this launch named: ${address} (pid ${identity.pid}, v${identity.version || "unknown"}, ${identity.installKind || "kind unknown"})${previousUrl !== address ? ` - backend URL moved from ${previousUrl}` : ""}`,
+			LogFileType.BACKEND,
+		);
+		this.notifyStatus();
+		this.notifyBackendReady();
+		return true;
+	}
+
+	/**
+	 * Why this launch's named backend could not be attached to, in words; null when
+	 * it was attached or when nothing was named.
+	 *
+	 * The caller must use this instead of falling through to the installer: a named
+	 * backend that cannot be reached is an error to report, never a reason to
+	 * download a runtime.
+	 */
+	lastAttachFailure(): string | null {
+		return this.attachFailure;
+	}
+
+	/**
 	 * Adopt a validated, usable daemon: rotate onto it and publish the state.
 	 *
 	 * The rotation must happen before `notifyBackendReady()`: everything that
@@ -2801,7 +2982,7 @@ export class BackendServiceManager {
 		}
 		if (epoch !== this.startEpoch || this.isAppClosing) return false;
 
-		if (!this.managerMaySpawn || this.remoteConfigured) {
+		if (!this.managerMaySpawn || this.remoteConfigured || this.attachTarget) {
 			/*
 			 * `VITE_DISABLE_BACKEND_MANAGER=true` means "do not spawn or kill a
 			 * daemon", NOT "assume one exists". Discovery found nothing, so there
@@ -2817,9 +2998,11 @@ export class BackendServiceManager {
 			 * place - a remote target reported as "VITE_DISABLE_BACKEND_MANAGER=true"
 			 * is a config file that is not the one in play.
 			 */
-			const noSpawnReason = this.managerMaySpawn
-				? `the configured target (${this.backendUrl}) is remote`
-				: "VITE_DISABLE_BACKEND_MANAGER=true";
+			const noSpawnReason = this.attachTarget
+				? `this launch named the backend to attach to (${this.attachTarget})`
+				: this.managerMaySpawn
+					? `the configured target (${this.backendUrl}) is remote`
+					: "VITE_DISABLE_BACKEND_MANAGER=true";
 			logger.info(
 				`No daemon discovered, and this app is configured not to spawn one (${noSpawnReason}).`,
 				LogFileType.BACKEND,
