@@ -248,7 +248,7 @@ test("a valid picture over the hub's ceiling is a FORMAT refusal, not damage", a
 		accountId: "acc_1",
 		tenantId: "tnt_1",
 		conversationId: "bcv_1",
-		// Smaller than any real PNG: the prepare step refuses it as `too_large`.
+		// Smaller than the fixture: the prepare step refuses it as `too_large`.
 		capability: { ...CAP, max_bytes: 10 },
 	});
 	assert.equal(result.ids.length, 0);

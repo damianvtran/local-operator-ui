@@ -281,12 +281,16 @@ export async function uploadStagedImages(params: {
 			 * as damaged, which is a sentence about the picture's integrity and therefore
 			 * the one thing that must not be guessed (review round 2, R2-1 / QA Q-2).
 			 *
-			 * WHAT `read` IS AND IS NOT. It is reached by a source that cannot be read at
-			 * all, by a payload whose DECLARED base64 will not decode, and by a png/jpeg
-			 * the platform's decoder refuses here. It is NOT reached by every damaged
-			 * image: a truncated-but-still-decodable PNG passes through `bound-image.ts`
-			 * untouched (pre-existing behaviour, out of this change's scope), so this arm
-			 * cannot claim to catch corruption in general.
+			 * WHAT `READ` IS, AND THE ARM THAT IS ONLY DEFENSIVE. It is reached by a source
+			 * that cannot be read at all and by a payload whose DECLARED base64 will not
+			 * decode. The png/jpeg-whose-decoder-refuses arm below is defensive rather than
+			 * reachable today: it behaves correctly if it ever fires, but `bound-image.ts`
+			 * swallows a decoder refusal, so that image does not arrive here at all. And
+			 * `read` is NOT reached by every damaged image: a REFUSED image passes through
+			 * `bound-image.ts` untouched, while a decodable one is re-encoded and only
+			 * reverts to the original bytes when re-encoding did not shrink it - so a
+			 * truncated-but-decodable PNG can still be uploaded, and this arm cannot claim
+			 * to catch corruption in general (pre-existing, out of this change's scope).
 			 */
 			const decodable = sniffed === "image/png" || sniffed === "image/jpeg";
 			const prepareRefusal =

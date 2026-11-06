@@ -49,8 +49,10 @@ carries **no base64 run and no `data:` prefix**; the picker control is unchanged
 Captured by the **designer** (design lane) from the **Storybook harness**; nothing
 in this PR was re-captured to produce them. The composer, chips and failure rows are
 the shipped components with fixture data, which is the surface design review judges
-copy and layout from. Round 1 and round 2 sets are both here, and the round-2 names
-carry the `r2-` prefix.
+copy and layout from. The set carries all three design rounds: round 1 and
+round 2 were judged in round 2's review, and the `r3-` frames with the `cmp-`
+pairs are round 3's — the ones that show the SHIPPED text, after the position
+suffix became conditional, beside the round-2 frame they are compared against.
 
 ### Round 1 (design round 1)
 
@@ -60,21 +62,33 @@ carry the `r2-` prefix.
 | `after-one-chip-light.png` | one staged picture, real preview, no refusal |
 | `after-three-chips-light.png` / `-dark.png` | three staged pictures, each a real preview |
 | `after-corrupt-refused-light.png` | a genuinely corrupt image: neutral name, format sentence, no payload |
-| `after-three-one-refused-light.png` | two staged, one refused |
+| `after-three-one-refused-light.png` | a single refusal row; the frame shows no staged count, so it does NOT demonstrate a two-image state — see `r2-refuse-2of2-light.png` and `r3-refuse-three-*` for counted rows |
 
 ### Round 2 (design round 2, after the position-copy change)
 
 | frame | state |
 | --- | --- |
-| `r2-chip-one-light.png` | ONE staged image: the row reads `Pasted image` — no position suffix, which is the NIT-1 / D1 fix |
+| `r2-chip-one-light.png` | chip-only pre-send state: the composer reads "Not sent yet" and no `Pasted image` failure row is present. This frame does NOT show the position copy; the round-3 frames below do |
 | `r2-payload-tail-light.png` | the base tree's payload tail, re-staged as the control for the pair above |
-| `r2-refuse-1of1-light.png` / `-dark.png` | one staged, one refused: `Pasted image`, no numbering |
+| `r2-refuse-1of1-light.png` / `-dark.png` | one staged, one refused, with the **round-2** text `Pasted image · Image 1 of 1` — the suffix was still unconditional at this head, so this is the "before" for the fix, not the fixed state |
 | `r2-refuse-2of2-light.png` | two staged, the second refused: `Pasted image · Image 2 of 2` |
 | `r2-refuse-2of3-light.png` / `-dark.png` | three staged, the middle one refused: `Pasted image · Image 2 of 3` |
 | `r2-staged-three-broken-second-light.png` | three staged pictures, one tile not rendering, before any send |
 | `r2-refuse-damaged-light.png` / `-dark.png` | the "couldn't be read, it may be damaged" sentence — the arm a payload that declares base64 and will not decode reaches |
 | `r2-refuse-narrow800-light.png` / `-dark.png` | the same refusal at an 800 px window: the position label wraps, accepted as the window floor (D2's other half), not fixed |
 | `r2-truncated-no-refusal-light.png` | a truncated-but-decodable PNG stages with NO refusal — the pin for R2-3/D4: damaged-but-decodable bytes pass through `bound-image.ts` (pre-existing), so no frame claims that arm is caught |
+
+### Round 3 (design round 3 — the shipped text)
+
+These four show what the current head renders, which is why they, and not the
+`r2-` rows above, are the evidence for the single-image and three-image copy.
+
+| frame | state |
+| --- | --- |
+| `r3-refuse-single-light.png` / `-dark.png` | ONE staged image refused: `Pasted image` + the format sentence, **no position suffix** — the shipped single-image row, and the pair to `r2-refuse-1of1-*` |
+| `r3-refuse-three-light.png` / `-dark.png` | three staged, the second refused: `Pasted image · Image 2 of 3` + the sentence — the shipped numbered row, and the pair to `r2-refuse-2of3-*` |
+| `cmp-single-light.png` | round-2 frame above round-3 frame, cropped to the composer band: the suffix removal as one image |
+| `cmp-three-light.png` | the same before/after crop for the three-image numbered row |
 
 **App-real, separately:** QA's built-app pass mounted the **chat composer** and
 pasted into it for real (the same `MessageInput` paste handler the bridge mounts).
