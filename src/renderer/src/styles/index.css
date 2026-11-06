@@ -2829,8 +2829,9 @@ html[data-glass~="pane"]
  * and 2.35% of the desktop reaches the eye through it (0.78% and 1.18% at 50%),
  * against 38% and 32% through the page beside it. The band's step over the page it
  * sits in, over the fixed wallpaper, is 3.17:1 at base and 2.56:1 here in the dark
- * scheme; in light it is 1.07:1, from the declared alphas rather than a composite
- * (none is committed for light).
+ * scheme; in light it is 1.10:1 from the declared alphas (1.09:1 over white, 1.13:1
+ * over the fixed wallpaper) rather than from a composite, since none is committed for
+ * light.
  *
  * WHY NOT THE TWO-ALPHA MODEL, which an earlier draft of this note quoted: (1-0.88)
  * x (1-0.62) gives 4.6% and treats the band as sitting directly on the page. The
@@ -2875,9 +2876,14 @@ html[data-glass~="canvas"]
 	 * review's own probe (`minAlpha`-shape solve at the band floor over the scheme
 	 * extreme); the dark fleet is clean, 0 of 41.
 	 * The floor is derived for `elevated`, and re-deriving one for the canvas role
-	 * changes almost nothing because the floor, not the role, sets the density (the
-	 * canvas role solves to 0.82 dark / 0.86 light over the fleet) - so the band is one
-	 * role step up from the page, which is what makes it read as a band at all.
+	 * changes the number by a few points either way, because the ink floors rather than
+	 * the role's own colour set the density: swapping ONLY the role inside
+	 * `deriveBandFloor` solves to 0.82 dark / 0.86 light over the 59 palettes - 6 points
+	 * MORE TRANSPARENT than the shipped 0.88 on dark, 8 points more opaque than 0.78 on
+	 * light, not a different regime. (Those are not the `alphaFloor` entries in
+	 * `window-glass-floors.json`, canvas 0.53 dark / 0.61 light: that table solves the
+	 * role's own alpha against the window material, a different question.) So the band
+	 * is one role step up from the page, which is what makes it read as a band at all.
 	 *
 	 * Under *Sidebars only* neither gate matches: the canvas is not covered, so the
 	 * header keeps its flat opaque `bg-canvas` and nothing here applies.

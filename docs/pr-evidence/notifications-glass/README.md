@@ -179,7 +179,8 @@ not a see-through one**: at the shipped 80 % the band's own rect carries alpha
 desktop reaches the eye through it (**0.78 %** and **1.18 %** at 50 %), against
 **38 %** and **32 %** through the page beside it. Over the fixed wallpaper the
 band's step over the page is **3.17:1 at base** and **2.56:1 at head** (dark); in
-light the same arithmetic from the declared alphas gives **1.07:1** and there is no
+light the same arithmetic from the declared alphas gives **1.10:1** (1.09:1 over white,
+1.13:1 over the fixed wallpaper) and there is no
 light composite, so that one figure is a calculation rather than a frame.
 
 Those percentages are the *pixels*. The earlier `4.6 % / 3.0 %` figures were the
