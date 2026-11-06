@@ -42,8 +42,10 @@
  * dead credential row, which neither the in-app sign-in nor that command
  * replaced, so the line was a dead end dressed as a fallback. When a sign-in
  * started here completes and the verdict still says `login_required`, the
- * callout says that in its own `not-cleared` state and points at places IN THE
- * APP's reach - Settings, under Providers, and the Radient console - instead.
+ * callout says that in its own `not-cleared` state: one ordered next step (sign
+ * in once more), then the Radient console to check the account. Settings is
+ * deliberately NOT named (design round 1, D1): its Radient panel offers the very
+ * sign-in that just failed, so pointing there was a loop on another screen.
  *
  * ## One action, and where the other one goes
  *
@@ -74,6 +76,7 @@ import {
 	consoleUrl,
 	openConsolePage,
 } from "@shared/utils/radient-account-copy";
+import { ArrowUpRight } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
 import { CHAT_MEASURE } from "../chat-measure";
 import { shouldRestoreComposerFocus } from "./composer-status-row";
@@ -309,8 +312,9 @@ export const RadientSessionIssueCallout: FC<
 	 * state that offers no control at all - a refusal this surface cannot clear,
 	 * before it had a dismissal - reserved 24px under the sentence for nothing.
 	 */
-	const hasActions =
-		actionable || cancellable || refusing || consoleTarget !== null;
+	// `consoleTarget` is set only in `not-cleared`, which `actionable` already
+	// covers - there is no console-only state (agent review round 1, n-1).
+	const hasActions = actionable || cancellable || refusing;
 
 	return (
 		<Alert
@@ -331,6 +335,14 @@ export const RadientSessionIssueCallout: FC<
 			 * contract a scene should key on.
 			 */
 			data-lo-radient-issue={issue.kind}
+			/*
+			 * `not-cleared` is the one state this block enters AS THE RESULT of the
+			 * user's own action (their sign-in finished), so it is announced - `Alert`
+			 * sets no role by design and asks such callers to pass one (design round
+			 * 1, D3). `status`, polite, not `alert`: it reports an outcome, it is not
+			 * an interruption. Every other kind stays silent, as before.
+			 */
+			role={notCleared ? "status" : undefined}
 			className={frame}
 			icon={signingIn ? <Spinner size="sm" /> : undefined}
 		>
@@ -371,7 +383,15 @@ export const RadientSessionIssueCallout: FC<
 							className={cn("cursor-pointer text-body-sm underline")}
 							onClick={onSignIn}
 						>
-							{t("ui.chat.radient_session.action.sign_in")}
+							{/*
+							 * "Sign in again" after a sign-in that did not take (design round 1,
+							 * D2): the first attempt's label, repeated, reads as "do the same
+							 * thing and expect a different result". The providers panel's key
+							 * is reused - the same action, the same words, already translated.
+							 */}
+							{notCleared
+								? t("ui.providers.provider_detail.sign_in_again")
+								: t("ui.chat.radient_session.action.sign_in")}
 						</Button>
 					)}
 					{consoleTarget !== null && (
@@ -383,6 +403,13 @@ export const RadientSessionIssueCallout: FC<
 							onClick={() => openConsolePage(consoleTarget)}
 						>
 							{t("ui.chat.radient_session.action.open_console")}
+							{/*
+							 * The "leaves the app" glyph in a compact register, as
+							 * `wake-conversation-row.tsx` uses it (design round 1, D5): this
+							 * opens the system browser. Hidden from assistive tech - the
+							 * label already names the destination.
+							 */}
+							<ArrowUpRight aria-hidden={true} />
 						</Button>
 					)}
 					{cancellable && (

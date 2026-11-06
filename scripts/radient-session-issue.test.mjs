@@ -223,6 +223,7 @@ async function mount(world = {}) {
 		start: null,
 		requests: [],
 		opens: [],
+		rereadDelayMs: 150,
 		...world,
 	};
 
@@ -325,7 +326,14 @@ async function mount(world = {}) {
 	let composer = null;
 
 	function Probe() {
-		const probe = useRadientSessionIssue();
+		/*
+		 * A short re-read delay, injected (agent review round 1, m-3): the bounded
+		 * second look is 3 s in production, and the cases below exercise it - and
+		 * the races around it - in a fraction of that.
+		 */
+		const probe = useRadientSessionIssue({
+			rereadDelayMs: state.rereadDelayMs,
+		});
 		latest = probe;
 		// `useSyncExternalStore` is what makes this honest rather than a guess:
 		// the hook's snapshot and the client's state agree within one render.
@@ -499,6 +507,7 @@ async function mount(world = {}) {
 		press,
 		remount,
 		close,
+		container,
 	};
 }
 
@@ -657,18 +666,32 @@ test("a completed sign-in the backend could not heal says so, after ONE bounded 
 	await surface.waitFor(
 		() => surface.latest().issue.kind === "not-cleared",
 		"the not-cleared state after the bounded re-read",
-		8000,
+		4000,
 	);
 	assert.equal(
 		surface.reads("accounts.list") - before,
 		2,
 		"exactly two verdict reads: the refetch and ONE bounded re-read, no loop",
 	);
-	assert.match(surface.text(), /Radient sign-in did not clear this/);
-	assert.match(surface.text(), /Settings, under Providers/);
-	assert.doesNotMatch(surface.text(), /lop login radient|terminal/i);
-	// The retry stays (a slower heal is cleared by trying again) and the console is one press away.
-	assert.equal(surface.controls("Sign in to Radient").length, 1);
+	assert.match(surface.text(), /Signing in didn't fix Radient/);
+	assert.match(surface.text(), /Try signing in once more/);
+	/*
+	 * No terminal, and no Settings (design round 1, D1): the Radient panel there
+	 * offers only the sign-in that just failed.
+	 */
+	assert.doesNotMatch(surface.text(), /lop login radient|terminal|Settings/i);
+	// Announced, because it is the outcome of the user's own action (D3).
+	assert.equal(
+		surface.container
+			.querySelector("[data-lo-radient-issue]")
+			?.getAttribute("role"),
+		"status",
+	);
+	// The retry is "Sign in again" (D2), first; the console second.
+	const labels = [...surface.container.querySelectorAll("button")].map(
+		(button) => button.textContent?.trim(),
+	);
+	assert.deepEqual(labels, ["Sign in again", "Open Radient console"]);
 	await surface.press("Open Radient console");
 	assert.deepEqual(opened, [REMEDY.url]);
 
@@ -688,6 +711,86 @@ test("a completed sign-in the backend could not heal says so, after ONE bounded 
 		});
 	});
 	await surface.expectKind("needs-sign-in");
+	assert.equal(
+		surface.container
+			.querySelector("[data-lo-radient-issue]")
+			?.getAttribute("role"),
+		null,
+		"only not-cleared is announced; the standing states stay silent",
+	);
+	await surface.close();
+});
+
+/*
+ * AGENT REVIEW ROUND 1, M-1: the re-read takes a while, the callout offers
+ * Cancel throughout it, and a late answer must not overwrite what the user did
+ * meanwhile. The delay is widened here so the presses land inside it.
+ */
+test("Cancel during the bounded re-read is final: no late 'did not fix', no second read", async () => {
+	const surface = await mount({ rereadDelayMs: 600 });
+	await surface.expectKind("needs-sign-in");
+	const before = surface.reads("accounts.list");
+	await completeSignIn(surface, DEAD);
+	await surface.waitFor(
+		() => surface.reads("accounts.list") >= before + 1,
+		"the first verdict read after the sign-in",
+	);
+	await act(async () => sleep(20));
+	assert.equal(surface.latest().issue.kind, "signing-in");
+	await surface.press("Cancel");
+	await act(async () => sleep(900));
+	assert.equal(surface.latest().issue.kind, "needs-sign-in");
+	assert.equal(
+		surface.reads("accounts.list") - before,
+		1,
+		"the cancelled re-read's timer was cleared, so it never asked again",
+	);
+	await surface.close();
+});
+
+test("a NEW sign-in started during the re-read is not overwritten by the old one's answer", async () => {
+	const surface = await mount({ rereadDelayMs: 600 });
+	await surface.expectKind("needs-sign-in");
+	const before = surface.reads("accounts.list");
+	await completeSignIn(surface, DEAD);
+	await surface.waitFor(
+		() => surface.reads("accounts.list") >= before + 1,
+		"the first verdict read after the sign-in",
+	);
+	await surface.press("Cancel");
+	// The second flow stays in the browser step for the rest of the case.
+	surface.state.operation = operation({
+		state: "waiting",
+		message: "Complete sign-in in your browser.",
+	});
+	await surface.press("Sign in to Radient");
+	await surface.expectKind("signing-in");
+	await act(async () => sleep(900));
+	assert.equal(
+		surface.latest().issue.kind,
+		"signing-in",
+		"the first flow's late re-read must not claim the second flow failed",
+	);
+	await surface.close();
+});
+
+/*
+ * AGENT REVIEW ROUND 1, m-1: a read that FAILED leaves the pre-sign-in
+ * `login_required` in the cache, and that is no evidence the sign-in did not
+ * help. No fresh read, no claim - and no second read either.
+ */
+test("a failed post-sign-in read is not evidence: no 'did not fix' claim", async () => {
+	const surface = await mount();
+	await surface.expectKind("needs-sign-in");
+	const before = surface.reads("accounts.list");
+	await completeSignIn(surface, "failed");
+	await surface.waitFor(
+		() => surface.latest().issue.kind !== "signing-in",
+		"the sign-in to settle",
+	);
+	await act(async () => sleep(400));
+	assert.notEqual(surface.latest().issue.kind, "not-cleared");
+	assert.equal(surface.reads("accounts.list") - before, 1);
 	await surface.close();
 });
 
@@ -705,7 +808,7 @@ test("a heal that lands during the bounded re-read ends hidden, never 'did not c
 	await surface.waitFor(
 		() => surface.latest().issue.kind === "hidden",
 		"the callout to clear on the re-read",
-		8000,
+		4000,
 	);
 	assert.equal(surface.reads("accounts.list") - before, 2);
 	await surface.close();
@@ -724,7 +827,7 @@ test("a console URL that is not a web page falls back to the console root", asyn
 	await surface.waitFor(
 		() => surface.latest().issue.kind === "not-cleared",
 		"the not-cleared state",
-		8000,
+		4000,
 	);
 	await surface.press("Open Radient console");
 	assert.deepEqual(opened, ["https://console.radienthq.com"]);
