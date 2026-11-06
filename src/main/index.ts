@@ -166,6 +166,7 @@ import {
 	installSupplementProtocol,
 	registerSupplementScheme,
 } from "./supplement-protocol";
+import { TeamBridgeImageCache } from "./team-bridge-image-cache";
 import { TeamBridgeNotificationImages } from "./team-bridge-notification-images";
 import { TeamBridgeNotifier } from "./team-bridge-notifier";
 import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
@@ -2797,12 +2798,13 @@ app
 				nativeBadge.reset();
 			},
 			// Fire-and-forget: the sign-out must not wait on a directory sweep, and a
-			// clear that fails is retried by the next transition's orphan pass. The
-			// cache is constructed just below this statement — see why there, beside
-			// that construction — and this closure only reaches it when a transition
+			// clear that fails is retried by the next transition's orphan pass. Both
+			// caches are constructed just below this statement — see why there, beside
+			// those constructions — and this closure only reaches them when a transition
 			// actually fires, which is after this synchronous block has finished.
 			principalChanged: () => {
 				void linkPreviewArtifacts.clear();
+				void teamBridgeImages.clear();
 			},
 		});
 		/*
@@ -2842,6 +2844,42 @@ app
 			dir: join(app.getPath("userData"), "cache", "link-previews"),
 		});
 		void linkPreviewArtifacts.open().catch(() => {});
+		/*
+		 * TEAM BRIDGE MESSAGE IMAGES' BYTE CACHE — built here, for the same two reasons
+		 * the link-preview cache is: this region is outside the slice
+		 * `scripts/app-icon-badge.test.mjs` evaluates (see the note above), and a cache
+		 * needs `app.getPath("userData")`, which only exists once the app is ready.
+		 *
+		 * WHAT IT IS FOR. Entering a channel re-downloaded every visible image and
+		 * nothing survived a restart. This holds the bytes behind one
+		 * `team_bridge.attachment` receipt for seven days, bounded, and is consulted by
+		 * the media relay before it fetches — same request, same bearer, same route, no
+		 * new IPC op and no renderer contract change. It does NOT park blob URLs: the
+		 * network cost goes, the IPC cost stays (`team-bridge-image-cache.ts` states
+		 * that decision where the next reader will look for it).
+		 *
+		 * AND A SIGN-OUT MUST NOT LEAVE THEM BEHIND, which is the `principalChanged`
+		 * port above: the same fence that drops the link-preview bytes drops these. A
+		 * per-entry account fingerprint already stops a replayed key being served under
+		 * another receipt; the clear is the other half, where the bytes stop existing.
+		 *
+		 * ATTACHED, NOT PASSED, to the media relay: `backendService` is constructed at
+		 * module load, long before this block, so the cache reaches it through
+		 * `attachTeamBridgeImageCache` — one owner for "does this process cache
+		 * message images", and a `null` there means every read is a fetch.
+		 *
+		 * OPENED IN THE BACKGROUND, like its link-preview neighbour: until `open()`
+		 * settles every lookup is a miss and every store is a no-op. A cold cache is
+		 * not an error, and blocking the first paint on a directory scan to save one
+		 * image download would be the wrong trade.
+		 */
+		const teamBridgeImages = new TeamBridgeImageCache({
+			// The documented home: <userData>/cache/team-bridge-images, one hashed file
+			// per receipt with an `index.json` beside them.
+			dir: join(app.getPath("userData"), "cache", "team-bridge-images"),
+		});
+		void teamBridgeImages.open().catch(() => {});
+		backendService.attachTeamBridgeImageCache(teamBridgeImages);
 		refreshAppIconBadge = () => {
 			if (process.platform === "win32") nativeBadge.invalidateOverlayTarget();
 			appAttention.projection.refresh();
