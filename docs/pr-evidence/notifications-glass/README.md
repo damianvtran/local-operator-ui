@@ -94,10 +94,40 @@ nothing else — move the numbers.
 | `head-dark-50.png` / `base-dark-50.png` | dark, 50 % | the other end of the shipped slider |
 | `head-light-80.png` / `base-light-80.png` | light, 80 % | the light scheme, same floors |
 | `head-light-50.png` / `base-light-50.png` | light, 50 % | the light scheme at that end |
+| `head-dark-80-contrast-high.png` / `base-dark-80-contrast-high.png` | dark, 80 %, contrast **High (+80)** | the non-standard contrast setting the operator asked for: the composed palette (`data-theme` `lo-19ynkwb` on BOTH halves), glass on, and the band's floor re-derived for it |
 | `head-dark-80-glass-off.png` | dark, translucency OFF | the opaque fallback: same classes, no glass, nothing half-applied |
 | `head-dark-80-scrolled.png` | dark, 80 %, list scrolled | a row passing UNDER the pinned header, with the 1:1 band crop `head-dark-80-scrolled-band.png` |
 
-Each PNG has a sibling `.readback.json`: the header's computed colour and alpha
+### The declared composites
+
+A headless window has no OS compositor material, so every frame above is the app's
+own alphas over black — the one condition the operator never saw, because they
+photographed a bright desktop. Two frames recover that condition as **arithmetic on
+evidence, not a painted backdrop**:
+
+| frame | what it is |
+| --- | --- |
+| `base-dark-80-on-wallpaper.png`, `head-dark-80-on-wallpaper.png` | **composite: the app's own frame over a fixed wallpaper, not an OS capture** |
+| `wallpaper-fixed.png` | the fixed wallpaper those two use (a synthetic bright desktop, committed so the composite is inspectable) |
+
+How they are made, and why they are allowed to be made: the rig captures an extra
+`<label>-alpha.png` with CDP `Page.captureScreenshot` `{ omitBackground: true }`,
+which drops the browser's own page canvas and keeps the composition's alpha.
+Measured on this set: **97.5 % of `head-dark-80-alpha.png`'s pixels are translucent,
+mean alpha 168/255** — the alpha is real, so the composite is a real composite.
+`scripts/notifications-glass-composite.mjs` then overlays that frame on the fixed
+wallpaper and **refuses** (no output, non-zero exit) if an input comes back fully
+opaque, because compositing an opaque frame would produce an image identical to the
+frame while claiming to show something else.
+
+Checked in the arithmetic: at a content pixel the alpha frame is `(29,27,23) α 0.62`
+over wallpaper `(236,224,217)`, which composites to `(108,102,97)` — measured
+`(107,101,96)` in the PNG. Over that wallpaper the band's own rect averages
+`(31.0, 28.8, 24.7)` in the base composite and `(49.7, 45.5, 36.3)` in the head one:
+the base band does not let the desktop through, the head band does.
+
+Each app frame has a sibling `.readback.json` (the composites and the wallpaper do
+not — they carry no DOM): the header's computed colour and alpha
 against `--lo-glass-a-band-floor` and `--lo-glass-a-elevated`, its
 `backdrop-filter` and `position`, the page's `<main>` backing alpha, the switch
 track's alpha against `--lo-glass-a-field`, the checked and unchecked segments'
@@ -117,6 +147,8 @@ The numbers, not the pixels, are the claim.
 | head light 80 | **0.78** | 0.78 (0.55) | 0.68 | 0.05 / **0.08** |
 | base light 50 | **1.0** | 0.78 (0.71) | 0.78 | none / none |
 | head light 50 | **0.78** | 0.78 (0.71) | 0.78 | 0.05 / **0.08** |
+| base dark 80, contrast High | **1.0** | 0.81 (0.65) | 0.54 | none / none |
+| head dark 80, contrast High | **0.84** | **0.84** (0.65) | 0.54 | 0.05 / 0.08 |
 | head dark 80, glass off | 1.0 | — (no glass vars) | — | 1.0 / 1.0 |
 | head dark 80, scrolled | 0.88 | 0.88 (0.74) | 0.62 | 0.05 / 0.08 |
 
@@ -140,18 +172,19 @@ against the page runs 1.07:1 (light scheme over a bright wallpaper) to 2.62:1
 
 ## Not in this set
 
-- **A contrast preset.** The shipped app has no writer for the v5 contrast field
-  yet (`src/renderer/src/shared/themes/appearance.ts` records the same status), so
-  a preset can only be reached by seeding the store. The seed does compose
-  (`data-theme` becomes `lo-<hash>`), but it did not survive reliably in this
-  headless lane, and a cell that sometimes photographs Standard under a preset's
-  name is worse than no cell. The preset's numbers are carried by the derivation
-  instead (`src/shared/glass-derivation.mjs`, `deriveBandFloor`), which is the
-  same function the renderer's live path calls.
+- **Any preset other than High.** The shipped app still has no UI that writes the v5
+  contrast field (`src/renderer/src/shared/themes/appearance.ts` records that
+  status), so the one preset cell writes `contrast.dark` into
+  `ui-preferences-storage` before boot and lets the product's own composition engine
+  paint it — and asserts the composition happened (`data-theme` `lo-19ynkwb`, not
+  the palette's own id) so a frame can never be committed under a preset's name
+  while showing Standard. Soft, Gentle and Strong would be the same rig with a
+  different number; one was asked for.
 - The real app window with macOS vibrancy behind it (native lane). A headless
-  window has no compositor backdrop, so the desktop behind these frames is the
-  app's own black: they are evidence about the composition the app paints, never
-  about a wallpaper.
+  window has no compositor backdrop, so the desktop behind the app frames is the
+  app's own black — and the two `-on-wallpaper.png` frames are a declared composite
+  (the app's alpha frame over a fixed synthetic wallpaper), not an OS capture. No
+  frame here shows real vibrancy.
 - The chat rail's updates drawer switch (`data-glass-well` added there too): the
   pane arm composes it and its track reads the pane's field overlay, but it only
   renders over a live conversation and this isolated lane has none.

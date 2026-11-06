@@ -77,6 +77,8 @@ const label = argOf("label", "frame");
 const only = (argOf("case") ?? argOf("only"))?.split(",").filter(Boolean);
 const configDir = argOf("config", null);
 const keepBefore = process.argv.includes("--before-attributes");
+/** Write the extra `-alpha` frame (page canvas omitted) the composite step reads. */
+const omitBackgroundWanted = process.argv.includes("--omit-background");
 /** The operator's own viewport, so a frame lines up with the reported screenshot. */
 const VIEW = { width: 1024, height: 657 };
 const ROUTE = "#/notifications";
@@ -101,6 +103,23 @@ const CELLS = [
 	{ name: "light-80", theme: "localOperatorLight", intensity: 80 },
 	{ name: "light-50", theme: "localOperatorLight", intensity: 50 },
 	{ name: "dark-80-glass-off", theme: "localOperatorDark", glass: false },
+	/*
+	 * THE NON-STANDARD CONTRAST SETTING THE OPERATOR ASKED FOR BY NAME, at one
+	 * preset (High, +80) and no more. This is the counter-example to "the app has no
+	 * writer for the v5 contrast field": it has no UI that writes it yet, but the
+	 * field is part of `ui-preferences-storage` and the store composes from it, so
+	 * the cell writes `contrast.dark` before boot exactly as the appearance layers
+	 * do and lets the product's own composition engine paint. The cell asserts that
+	 * composition actually happened (a composed palette renames the document to
+	 * `lo-<hash>`), so a frame can never be committed under a preset's name while
+	 * showing Standard.
+	 */
+	{
+		name: "dark-80-contrast-high",
+		theme: "localOperatorDark",
+		intensity: 80,
+		contrast: 80,
+	},
 	{
 		name: "dark-80-scrolled",
 		theme: "localOperatorDark",
@@ -521,10 +540,19 @@ async function main() {
 					`${cell.name}: REFUSED TO SHOOT - the page is not the topmost surface at its own coordinates (heading ${JSON.stringify(shutter.heading)} topmost=${shutter.headingTopmost}, group header topmost=${shutter.headerTopmost}).`,
 				);
 
-			const shot = async (suffix, clip) => {
+			/*
+			 * `omitBackground` drops the browser's own page canvas, which is the only
+			 * way to ask whether the COMPOSITION carries alpha at all: with it off, the
+			 * PNG is opaque by construction and every "what does it look like over a
+			 * wallpaper" claim below would be a painted fiction. The frames are written
+			 * as `<label>-alpha.png` and the composite step refuses them if they come
+			 * back opaque.
+			 */
+			const shot = async (suffix, clip, omitBackground = false) => {
 				const shotResult = await cdp.send("Page.captureScreenshot", {
 					format: "png",
 					captureBeyondViewport: false,
+					...(omitBackground ? { omitBackground: true } : {}),
 					...(clip ? { clip: { ...clip, scale: 1 } } : {}),
 				});
 				const file = join(outDir, `${label}${suffix}.png`);
@@ -532,6 +560,9 @@ async function main() {
 				return file;
 			};
 			const after = await shot("");
+			const alphaFrame = omitBackgroundWanted
+				? await shot("-alpha", undefined, true)
+				: null;
 			const afterRead = await cdp.ev(READBACK);
 			/*
 			 * THE NEGATIVE CONTROL (`--negative-control`): take the page's own
@@ -591,7 +622,7 @@ async function main() {
 				cell: cell.name,
 				app: appRepo,
 				groups,
-				frames: { after, crop, before },
+				frames: { after, crop, before, alphaFrame },
 				after: afterRead,
 				before: beforeRead,
 				negativeControl,

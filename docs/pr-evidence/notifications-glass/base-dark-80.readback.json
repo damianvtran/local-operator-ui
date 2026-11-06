@@ -13,7 +13,8 @@
       "frames": {
         "after": "/Users/damian/local-operator-ui/.worktrees/notif-glass/docs/pr-evidence/notifications-glass/base-dark-80.png",
         "crop": null,
-        "before": null
+        "before": null,
+        "alphaFrame": "/Users/damian/local-operator-ui/.worktrees/notif-glass/docs/pr-evidence/notifications-glass/base-dark-80-alpha.png"
       },
       "after": {
         "dpr": 2,
