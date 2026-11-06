@@ -661,9 +661,33 @@ async function initializeBrowserHost(
 		 * handlers exist for (the user agent must be set before any view exists).
 		 */
 		let registryForDownloads: TabRegistry | null = null;
+		/**
+		 * The webContents id of the tab that opened each popup WINDOW this host created.
+		 *
+		 * WHY THIS IS RECORDED RATHER THAN READ OFF THE CHILD (operator report,
+		 * 2026-11-06). The download decision needs to know which TAB a popup's download
+		 * belongs to (`downloads.ts`'s `ownerTab`), and Electron's
+		 * `webContents.opener` cannot answer it: it is a `WebFrameMain` — a frame
+		 * routing id, not a webContents id — and it is null for the `noopener` and
+		 * form-`target=_blank` children this host still creates as windows. The spawner
+		 * is not a mystery either way: the child is created in `did-create-window`,
+		 * inside the closure of the tab that opened it, so the relationship is recorded
+		 * there as a fact instead of inferred afterwards.
+		 *
+		 * ONE HOP BY CONSTRUCTION: `wirePopup` gives every popup window a deny-all open
+		 * handler, so a popup cannot open a popup. Entries are removed when the child
+		 * closes, so what lives here is at most one id per LIVE popup window.
+		 */
+		const popupOpener = new Map<number, number>();
 		const downloads = new DownloadArmer({
 			tabForWebContents: (webContentsId) =>
 				registryForDownloads?.byWebContents(webContentsId)?.tabId ?? null,
+			// The one-hop attribution for a download a popup started: the popup is not a
+			// registry tab, so the direct lookup above misses and this answers with the
+			// tab whose arm decides. See `popupOpener` for why the relationship is
+			// recorded by this host rather than read from Electron's `opener`.
+			openerWebContentsId: (webContentsId) =>
+				popupOpener.get(webContentsId) ?? null,
 			// WHO OWNED THE TAB, recorded on the decision (review round 2, U10). Read from
 			// the registry at the moment the note is written, because the row may render it
 			// after the tab is closed — and "· on another tab" about a tab that no longer
@@ -2006,6 +2030,10 @@ async function initializeBrowserHost(
 					log(
 						`[browser] refused a popup from a driven page: ${details.url} (${decision.reason})`,
 					);
+					// A DENIED POPUP IS AN ANSWER TO AN ARMED CALL, not silence: a page that
+					// downloads through `window.open` never reaches `will-download`, so
+					// without this the call waits out its budget and claims nothing started.
+					downloads.noteRefusedPopup(tabId, decision.reason);
 					return { action: "deny" };
 				}
 				pendingOpens.push({
@@ -2116,6 +2144,12 @@ async function initializeBrowserHost(
 					log(
 						`[browser] tab ${tabId} opened a popup: ${seen}, route=window, presentation=${routed.presentation})`,
 					);
+					// Recorded BEFORE the window is wired: a popup that posts its form during
+					// its first load must be attributable from its first byte, and the arm that
+					// owns it is the tab that opened it.
+					const childId = child.webContents.id;
+					popupOpener.set(childId, contents.id);
+					child.on("closed", () => popupOpener.delete(childId));
 					wirePopup(child, popupChildren, routed.presentation);
 					return;
 				}
@@ -2123,6 +2157,13 @@ async function initializeBrowserHost(
 				// handler and now): the child exists and nothing owns it.
 				log(
 					`[browser] refused a popup from a driven page: ${details.url} (${routed.route === "deny" ? routed.reason : "opener_gone"})`,
+				);
+				// The same answer as the open handler's denial: the child existed and the
+				// ROUTE refused it, so an armed call on this tab is told rather than left to
+				// report that nothing started.
+				downloads.noteRefusedPopup(
+					tabId,
+					routed.route === "deny" ? routed.reason : "opener_gone",
 				);
 				child.destroy();
 			});
