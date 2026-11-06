@@ -1,3 +1,4 @@
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { FC } from "react";
 import type {
@@ -126,12 +127,26 @@ const message = (id: string, body: string): TeamBridgeMessage => ({
 	created_at: new Date().toISOString(),
 });
 
-const Thread: FC<{ bodies: string[]; width?: number }> = ({
-	bodies,
-	width = 760,
-}) => (
-	<div className="flex flex-col bg-surface py-4 text-ink" style={{ width }}>
+/*
+ * THE GROUND IS THE PANE'S, because a card's boundary is its ground step: the
+ * conversation timeline paints `canvas` (`team-bridge-page.tsx`) and the thread
+ * pane paints `surface` with compact rows (`team-bridge-thread-pane.tsx`). A
+ * story on any other ground would show a step the product does not have.
+ */
+const Thread: FC<{
+	bodies: string[];
+	width?: number;
+	pane?: "timeline" | "thread";
+}> = ({ bodies, width = 760, pane = "timeline" }) => (
+	<div
+		className={cn(
+			"flex flex-col py-4 text-ink",
+			pane === "thread" ? "bg-surface" : "bg-canvas",
+		)}
+		style={{ width }}
+	>
 		<TeamBridgeMessageList
+			density={pane === "thread" ? "compact" : "regular"}
 			messages={bodies.map((body, index) => ({
 				...message(`bcmsg_lp_${index}`, body),
 				seq: index + 1,
@@ -234,8 +249,16 @@ export const Conversation: Story = {
 	},
 };
 
-/** The thread pane's narrow column: the card shrinks with the body. */
-export const NarrowColumn: Story = {
-	name: "One link, narrow column",
-	args: { ...OneLink.args, width: 320 },
+/** The thread pane: its `surface` ground, compact rows and narrow column. The
+ * card shrinks with the body. */
+export const ThreadPane: Story = {
+	name: "In the thread pane",
+	args: {
+		bodies: [
+			OneLink.args?.bodies?.[0] ?? "",
+			"And the status page: https://status.example.com/incidents/42",
+		],
+		width: 360,
+		pane: "thread",
+	},
 };
