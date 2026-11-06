@@ -671,9 +671,14 @@ test("the windowed day divider breaks its rule at the pill, and the grouped one 
 		const divider = item.querySelector("[data-day-divider]");
 		assert.ok(divider, "the day item draws a divider row");
 		for (const rule of rules) {
-			assert.equal(
-				rule.parentElement,
-				divider,
+			/* `assert.ok(… === …)`, never `assert.equal(node, node)`: on failure
+			   `assert.equal` DIFFS its arguments, and these are React-mounted DOM
+			   nodes whose fiber/owner props serialise into the gigabyte range - the
+			   guard then dies by allocation instead of reporting, which is the one
+			   shape it exists to report. Measured on the two-rules-one-sibling
+			   shape: node diffing ~4.2 GB with no message vs 250 ms with this. */
+			assert.ok(
+				rule.parentElement === divider,
 				"both rules live inside the divider row, not beside it",
 			);
 			assert.equal(
