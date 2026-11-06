@@ -21,6 +21,19 @@ interface ServicePorts {
 	 * This class decides nothing about that cache; it only says when.
 	 */
 	principalChanged?: () => void;
+	/**
+	 * The principal this app can see RIGHT NOW, or `null` for a verified sign-out.
+	 *
+	 * WHY A SECOND PORT AND NOT THE ONE ABOVE. `principalChanged` is an EVENT whose
+	 * only witness is `observeResponse`, so it fires on `null -> <account>` at the
+	 * first renderer status of every launch and never fires at all for a principal
+	 * that changed while this process was not running. A disk cache that must drop
+	 * one account's images cannot be built on that: it needs the STATE, from both
+	 * sources that can establish one — a renderer status and the reconcile poll
+	 * (`reconcile`, which assigns `account` without ever passing through the fence).
+	 * `team-bridge-image-cache.ts` consumes this; `fence()` remains the transition.
+	 */
+	principalResolved?: (accountId: string | null) => void;
 }
 
 /** One app-owned observer, not a renderer hook or a notification counter.
@@ -194,6 +207,18 @@ export class AppAttentionService {
 			if (op.startsWith("team_bridge.")) this.invalidateBridge();
 			else this.invalidate();
 		}
+		/*
+		 * THE STATE, AFTER THE TRANSITION — and the order is load-bearing. At launch
+		 * this service reports `null -> <account>` for the first status of every run,
+		 * which is a transition by the test above. Announcing the principal BEFORE it
+		 * would let a subscriber bind the bytes and then immediately fence them away:
+		 * the cache would be deleted at every start, which is precisely the failure this
+		 * port exists to fix. Fired on every status that names a principal, not only on
+		 * a change — that repetition is what makes a subscriber's check a state check.
+		 */
+		if (returnedPrincipal !== undefined) {
+			this.ports.principalResolved?.(returnedPrincipal);
+		}
 	}
 
 	private invalidateBridge(): void {
@@ -321,6 +346,17 @@ export class AppAttentionService {
 						this.cursor = undefined;
 						this.projection.setBridgeUnread(0, projectionGeneration);
 					}
+					/*
+					 * ANNOUNCED ON EVERY VERIFIED ANSWER, changed or not — and OUTSIDE the block
+					 * above, which is the hole review round 2 found (R2-1). At launch `this.account`
+					 * is already null, so a poll that reads `signed_out` failed the `!==` test,
+					 * announced nothing, and `bind(null)` never ran; `fence()` could not stand in,
+					 * because it is a no-op until a principal is confirmed, which is exactly the
+					 * launch state. A signed-out launch sends no renderer status at all, so this poll
+					 * is the only witness to a departure this process never saw — and it skipped.
+					 * Announcing a repeat costs one early return in `bind`.
+					 */
+					this.ports.principalResolved?.(account);
 					if (!account) continue;
 					const unread = this.body(
 						await this.ports.request({

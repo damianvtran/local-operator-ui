@@ -773,6 +773,14 @@ export async function requestDesktopMediaOutcome(
 	 * miss - it can never become a document this relay hands the renderer.
 	 */
 	const imageAddress = imageCache ? imageCacheAddress(request) : null;
+	/*
+	 * THE FENCE VALUE IS TAKEN HERE, BEFORE THE ROUND TRIP, and handed back to
+	 * `store` below. A principal clear that lands while this response is in flight
+	 * moves the cache's epoch; the store then refuses to write, because the bytes in
+	 * hand belong to the account that just left (review round 1, F-2a). Capturing it
+	 * at store time instead would always match and close nothing.
+	 */
+	const imageEpoch = imageCache && imageAddress ? imageCache.currentEpoch() : 0;
 	if (imageCache && imageAddress) {
 		const cached = await imageCache.read(
 			imageAddress.key,
@@ -786,9 +794,18 @@ export async function requestDesktopMediaOutcome(
 					mimeType: cached.mime,
 					data: cached.bytes,
 				},
-				// The daemon was never asked, but the answer stands on the same receipt the
-				// daemon once gave it, so it is an answer rather than a machine failure.
-				answered: true,
+				/*
+				 * `answered: false`, and that is not a detail: `answered` is "fetch
+				 * resolved" (`desktop-transport.ts`), and `backend-service.ts` feeds it
+				 * straight into `recordTransportAnswer()`, which resets the probe-miss
+				 * counter and stamps fresh transport evidence for 30 s. A hit contacted
+				 * no daemon, so claiming it did would keep a DEAD daemon looking alive for
+				 * as long as images keep being read, and none of this app's detach and
+				 * re-discovery would ever fire (review round 1, F-1). The bytes are still
+				 * a valid answer to the caller - they stand on the receipt the daemon once
+				 * gave - but they are not evidence that anything is listening.
+				 */
+				answered: false,
 			};
 		}
 	}
@@ -1199,13 +1216,25 @@ export async function requestDesktopMediaOutcome(
 					.toLowerCase(),
 				buffer,
 				imageAddress.fingerprint,
+				imageEpoch,
 			);
 		}
 		return {
 			response: {
 				status: response.status,
 				kind: "bytes",
-				mimeType: responseType || "application/octet-stream",
+				/*
+				 * THIS OP REPORTS ONE SPELLING, hit or miss. A hit carries the index's
+				 * normalised mime, so the miss normalises the header too - otherwise the
+				 * same image is described as `image/png; charset=binary` uncached and
+				 * `image/png` cached, which is an observable difference between two
+				 * answers for one receipt. Every other op keeps the header verbatim
+				 * (review round 1, NIT-2).
+				 */
+				mimeType:
+					request.op === "team_bridge.attachment"
+						? (responseType.split(";")[0] ?? "").trim().toLowerCase()
+						: responseType || "application/octet-stream",
 				data: buffer,
 			},
 			answered: true,

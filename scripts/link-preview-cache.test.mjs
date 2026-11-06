@@ -389,3 +389,171 @@ test("before open, every call is a quiet no-op", async () => {
 	await cache.sweep();
 	assert.deepEqual(cache.ids(), []);
 });
+
+/*
+ * THE PRINCIPAL LIFECYCLE (#1721's fence, ported). Before `bind`/`fence` this cache
+ * was wired to the transition event alone, so the first status of every launch
+ * (`null -> <account>`, which the attention service counts as a change) wiped it and
+ * it never kept anything across a restart. These rows are the two launch orderings
+ * and the fence's own edges.
+ */
+
+/** A directory holding one stored blob, as a previous run would have left it. */
+async function seededDir(id = ID_A) {
+	const dir = await tempDir();
+	const seed = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await seed.open();
+	await seed.store(id, "image/png", bytesOf(6, 9), FP_A);
+	return dir;
+}
+
+test("a launch is not a transition: renderer-first keeps a returning account", async () => {
+	const dir = await seededDir();
+	// The shipped order (index.ts): the attention service fires the transition fence
+	// - its `account` was null - and THEN announces the principal.
+	const cache = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await cache.open();
+	await cache.fence();
+	assert.equal(cache.ids().length, 1, "a launch must not delete the cache");
+	await cache.bind(ACCOUNT_A);
+	assert.equal(cache.ids().length, 1, "the same account keeps its bytes");
+	assert.ok(await cache.read(ID_A, FP_A));
+
+	// Once a principal IS confirmed, a genuine transition drops everything.
+	await cache.fence();
+	assert.deepEqual(cache.ids(), []);
+});
+
+test("the two launch orderings end in the same state", async () => {
+	// Renderer status first: fence (no-op), then bind.
+	const a = new LinkPreviewArtifactCache({
+		dir: await seededDir(),
+		now: () => 0,
+	});
+	await a.open();
+	await a.fence();
+	await a.bind(ACCOUNT_A);
+
+	// Reconcile poll first: bind, and no fence at all - a same-account reconcile is
+	// not a transition, so the service never fences for it.
+	const b = new LinkPreviewArtifactCache({
+		dir: await seededDir(),
+		now: () => 0,
+	});
+	await b.open();
+	await b.bind(ACCOUNT_A);
+
+	assert.deepEqual(a.ids(), b.ids(), "both orderings keep the same bytes");
+	assert.equal(a.ids().length, 1);
+
+	// The state check is what makes either ordering safe: another account, or a
+	// verified sign-out, drops them whichever source reported it.
+	const other = new LinkPreviewArtifactCache({
+		dir: await seededDir(),
+		now: () => 0,
+	});
+	await other.open();
+	await other.bind(ACCOUNT_B);
+	assert.deepEqual(
+		other.ids(),
+		[],
+		"a different account never inherits the bytes",
+	);
+
+	const out = new LinkPreviewArtifactCache({
+		dir: await seededDir(),
+		now: () => 0,
+	});
+	await out.open();
+	await out.bind(null);
+	assert.deepEqual(out.ids(), [], "a verified sign-out drops them");
+});
+
+test("open() applies the binding it is given", async () => {
+	const dir = await seededDir();
+	const other = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await other.open(ACCOUNT_B);
+	assert.deepEqual(other.ids(), [], "another account's bytes are not loaded");
+	assert.equal(await other.read(ID_A, FP_A), null);
+
+	const same = new LinkPreviewArtifactCache({
+		dir: await seededDir(),
+		now: () => 0,
+	});
+	await same.open(ACCOUNT_A);
+	assert.equal(same.ids().length, 1, "the right account keeps its cache");
+});
+
+test("a store whose answer was in flight when the fence fired is refused", async () => {
+	const { cache } = await openCache();
+	const stale = cache.currentEpoch();
+	await cache.clear();
+	await cache.store(ID_A, "image/png", bytesOf(4), FP_A, stale);
+	assert.deepEqual(cache.ids(), [], "a stale epoch cannot write");
+	assert.equal((await readdir(cache.directory)).includes(ID_A), false);
+});
+
+test("a clear that lands before open() is honoured", async () => {
+	const dir = await seededDir();
+	const cache = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await cache.clear();
+	await cache.open();
+	assert.deepEqual(cache.ids(), []);
+	assert.equal(await cache.read(ID_A, FP_A), null);
+	assert.equal(
+		(await readdir(dir)).includes(ID_A),
+		false,
+		"the blob is gone too",
+	);
+});
+
+test("a read that began before a clear is a miss", async () => {
+	const { cache } = await openCache();
+	await cache.store(ID_A, "image/png", bytesOf(4), FP_A);
+	const reading = cache.read(ID_A, FP_A);
+	const clearing = cache.clear();
+	assert.equal(await reading, null, "a read queued across the fence is a miss");
+	await clearing;
+	assert.equal(await cache.read(ID_A, FP_A), null);
+});
+
+test("an index row over the blob bound is a miss and is dropped", async () => {
+	// The same rule the Team Bridge image cache applies (its SEC-4/F-3): `store`
+	// refuses a blob over the ceiling, so a document claiming one is not an artifact
+	// this app produced, and `read` must not load it into main's memory just because a
+	// row says so.
+	const dir = await tempDir();
+	const oversize = ARTIFACT_MAX_BLOB_BYTES + 1024;
+	await writeFile(
+		join(dir, "index.json"),
+		JSON.stringify({
+			version: 3,
+			principal: FP_A,
+			entries: {
+				[ID_A]: {
+					mime: "image/png",
+					size: oversize,
+					storedAt: 0,
+					lastUsedAt: 0,
+					account: FP_A,
+				},
+			},
+		}),
+	);
+	await writeFile(join(dir, ID_A), new Uint8Array(oversize));
+
+	const cache = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await cache.open();
+	assert.deepEqual(cache.ids(), [], "the row is refused at load");
+	assert.equal(
+		cache.stats().residentBytes,
+		0,
+		"and cannot move the byte total",
+	);
+	assert.equal(await cache.read(ID_A, FP_A), null);
+	assert.equal(
+		(await readdir(dir)).includes(ID_A),
+		false,
+		"its file is an orphan",
+	);
+});

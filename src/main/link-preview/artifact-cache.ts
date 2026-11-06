@@ -28,13 +28,30 @@
  * served into another account's session, because the only receipts it will answer
  * are the ones that produced it.
  *
- * AND THE WHOLE DIRECTORY IS DROPPED ON A PRINCIPAL TRANSITION. A fingerprint
- * closes the replay hole; it does not stop a 24 h copy of the previous account's
- * images from sitting on the disk after a sign-out. This repo already has that
- * rule for exactly this class of bytes (`team-bridge-notification-images.ts` keeps
- * private images memory-only for it), so `clear()` exists and is wired to the same
- * principal fence the app's attention service already applies. Nothing here
- * decides WHEN that is; see `index.ts`.
+ * AND THE WHOLE DIRECTORY IS DROPPED WHEN THE PRINCIPAL MOVES — as a STATE, not
+ * only as an event. A fingerprint closes the replay hole; it does not stop a 24 h
+ * copy of the previous account's images sitting on the disk after a sign-out. This
+ * repo already has that rule for exactly this class of bytes
+ * (`team-bridge-notification-images.ts` keeps private images memory-only for it).
+ * Three mechanisms, because each covers an ordering the others cannot, and they are
+ * deliberately the SAME three the Team Bridge image cache uses:
+ *
+ *   1. `bind(accountId)` is the state check, fed from the attention service's two
+ *      principal sources (a renderer status and the reconcile poll). A different
+ *      principal drops the bytes, a verified sign-out (`null`) drops them, and the
+ *      SAME principal keeps them — which is what makes this cache survive a restart.
+ *      Before that port existed this cache was wired to the transition event alone,
+ *      so it was wiped by the first status of every launch and missed a principal
+ *      that changed while the app was closed.
+ *   2. `fence()` is the transition event, and it only fires once this process has
+ *      CONFIRMED a principal. Before that it is a no-op, because "no principal yet"
+ *      is a launch, not a sign-out.
+ *   3. `clear()` is a FENCE, not a pass over whatever is indexed when its turn
+ *      comes: it bumps an epoch first, so an answer already in flight cannot
+ *      re-create a file afterwards, and reads are serialised through the same queue
+ *      so none can be answered from an entry the clear has condemned.
+ *
+ * Nothing here decides WHEN any of that happens; `index.ts` wires it.
  *
  * FILE MODES ARE THE REPO'S PRIVATE-BYTES RULE: directory `0o700`, files `0o600`
  * (`team-bridge-notify-store.ts`, `viewer-record.ts`). On a Linux `~/.config` a
@@ -122,8 +139,17 @@ export const ARTIFACT_ALLOWED_MIMES: ReadonlySet<string> = new Set([
 	"image/vnd.microsoft.icon",
 ]);
 
+/** `artifactOwnerFingerprint`'s output shape, enforced when an index is read so a
+ * hand-edited document cannot bind this cache to something that is not a fingerprint. */
+const PRINCIPAL_FINGERPRINT = /^[0-9a-f]{32}$/;
+
 const INDEX_FILE = "index.json";
-const INDEX_VERSION = 2;
+/** Bumped when the entry shape or the binding rule changes. A version 2 document has
+ * no `principal` field, i.e. bytes nobody is bound to, so it is DISCARDED rather than
+ * migrated: the files it names become orphans and are reclaimed, which costs one cold
+ * cache and nothing else. An index this build does not understand must never be
+ * trusted field by field — that is the whole point of versioning it. */
+const INDEX_VERSION = 3;
 const DIRECTORY_MODE = 0o700;
 const FILE_MODE = 0o600;
 
@@ -169,6 +195,11 @@ export interface LinkPreviewArtifactCacheOptions {
 
 interface IndexDocument {
 	version: number;
+	/** `artifactOwnerFingerprint` of the principal every entry belongs to, or `null`
+	 * for an empty cache. See the class header: this is the STATE half of the
+	 * principal rule, and `entries[].account` repeats it per row so a spliced
+	 * document cannot mix two principals. */
+	principal: string | null;
 	entries: Record<string, ArtifactIndexEntry>;
 }
 
@@ -212,10 +243,38 @@ export class LinkPreviewArtifactCache {
 	private foreignHits = 0;
 	private lastSweep = Number.NEGATIVE_INFINITY;
 	private opened = false;
+	/**
+	 * The fence. Bumped by EVERY `clear()`, synchronously, before its work is queued —
+	 * that is what makes a clear a point in time rather than a pass over whatever is
+	 * indexed when its turn comes. A caller that begins a network round trip takes
+	 * `currentEpoch()` first and hands it to `store`, which refuses to write when it no
+	 * longer matches: a fetch that was in flight when the principal changed cannot
+	 * re-create the departing account's artifact afterwards.
+	 *
+	 * WHY THIS CACHE GREW A FENCE TOO, rather than only the Team Bridge image cache it
+	 * was the model for: two caches with two different answers to "what happens to the
+	 * bytes when the principal moves" is how a repository ends up with one private-byte
+	 * rule that holds and one that mostly holds. The shapes are the same on purpose.
+	 */
+	private epoch = 0;
+	/** The fingerprint these bytes are bound to, or `null` when nothing is bound. */
+	private boundPrincipal: string | null = null;
+	/** The fingerprint THIS PROCESS has confirmed, or `null` until the app first names
+	 * a principal. `boundPrincipal` is loaded from disc and says what the bytes belong
+	 * to; this says what this process has verified. A fence that fired while this is
+	 * still `null` would wipe the cache on the first status of every launch, so the
+	 * fence defers to `bind` until a principal has actually been confirmed. */
+	private confirmedPrincipal: string | null = null;
+	/** A `clear()` that arrived before `open()` finished. Honoured by `open`, and kept
+	 * if `open` fails: a later successful `open` still drops the bytes. */
+	private clearRequested = false;
+	/** Read recency (`lastUsedAt`) has moved in memory and the index has not been
+	 * rewritten since; flushed by the throttled sweep, not per read. */
+	private indexDirty = false;
 	/** Serializes every mutating pass, so two concurrent writers cannot interleave
 	 * a sweep with a store and leave the index accounting for a file that is gone.
-	 * `read` is deliberately NOT queued (it is the hot path); it only mutates
-	 * through `forgetEntry`, which is atomic within one synchronous step. */
+	 * `read` is queued too: a read that could be answered while a `clear` is in
+	 * flight would hand out the departing account's bytes. */
 	private queue: Promise<unknown> = Promise.resolve();
 
 	constructor(options: LinkPreviewArtifactCacheOptions) {
@@ -234,9 +293,23 @@ export class LinkPreviewArtifactCache {
 		return this.dir;
 	}
 
+	/** The fence value a store must carry back; see `epoch` and `store`. */
+	currentEpoch(): number {
+		return this.epoch;
+	}
+
 	/**
-	 * Create the directory, load the index, delete files no entry describes, and
-	 * apply the bounds once.
+	 * Create the directory, load the index, apply the principal state check, delete
+	 * files no entry describes, and apply the bounds once.
+	 *
+	 * `principal` is the account this app currently holds, when it already knows one.
+	 * `null` — the shipped launch, where the window is created long before any status
+	 * response arrives — means "not known yet", NOT "signed out": the entries are kept
+	 * and `bind` decides as soon as the app names a principal. Treating that `null` as
+	 * a sign-out would delete the cache at every start, which is the whole restart
+	 * benefit, and it would buy nothing: a read can only be answered for the fingerprint
+	 * that stored the entry, and the transition fence drops the bytes the moment an
+	 * identity actually moves.
 	 *
 	 * STARTUP IS THE ONE UNCONDITIONAL SWEEP. The interval below bounds how often a
 	 * read or write may sweep, which would otherwise let a cold cache keep expired
@@ -244,18 +317,93 @@ export class LinkPreviewArtifactCache {
 	 * and a stale index should not wait for a card to be drawn before it recovers
 	 * the space.
 	 */
-	async open(): Promise<void> {
+	async open(principal: string | null = null): Promise<void> {
 		await mkdir(this.dir, { recursive: true, mode: DIRECTORY_MODE });
 		// `mkdir`'s mode is subject to the umask, and an existing directory keeps
 		// whatever it was created with, so it is set explicitly as well.
 		await chmod(this.dir, DIRECTORY_MODE).catch(() => {});
 		await this.loadIndex();
+		const loadedPrincipal = this.boundPrincipal;
+		// Set before the initial pass, so any read or store that arrives while it runs
+		// is queued behind it rather than served from a half-checked index.
+		this.opened = true;
 		await this.serialize(async () => {
+			if (this.clearRequested) {
+				// A clear that landed while this directory was being read is the authority;
+				// whatever `loadIndex` produced belongs to the departing principal.
+				this.clearRequested = false;
+				await this.clearLocked();
+				return;
+			}
+			if (principal !== null) {
+				const fingerprint = artifactOwnerFingerprint(principal);
+				let changed = loadedPrincipal !== fingerprint;
+				// A row bound to another account is not this principal's, whatever the
+				// document said: drop it rather than carrying bytes across the binding. Its
+				// file is reaped below.
+				for (const [id, entry] of [...this.entries]) {
+					if (entry.account === fingerprint) continue;
+					this.forgetEntry(id);
+					changed = true;
+				}
+				this.boundPrincipal = fingerprint;
+				this.confirmedPrincipal = fingerprint;
+				if (changed) await this.persistIndex();
+				await this.removeOrphans();
+				await this.sweepNow();
+				return;
+			}
 			await this.removeOrphans();
 			await this.sweepNow();
 		});
-		this.opened = true;
 		this.lastSweep = this.now();
+	}
+
+	/**
+	 * THE STATE CHECK: bind these bytes to the principal the app has just confirmed.
+	 *
+	 * Wired to the attention service's own two principal sources (`principalResolved`
+	 * in `index.ts`), so it runs on a renderer status AND on the reconcile poll —
+	 * which is what makes the invariant independent of which of the two answers first.
+	 * The three outcomes, all deliberate:
+	 *
+	 *   - same fingerprint: nothing happens. This is what keeps a cache across a
+	 *     restart, and it is what #1721's `principalChanged`-only wiring could not do.
+	 *   - a different fingerprint: the previous account's bytes are dropped.
+	 *   - `null` (a VERIFIED sign-out, which is the only way `null` reaches here): the
+	 *     bytes are dropped, because no identity means no identity's images.
+	 */
+	async bind(accountId: string | null): Promise<void> {
+		if (accountId === null) {
+			// A verified sign-out. Only a cache that actually HOLDS something takes the
+			// destructive path: this runs on every 30-second poll, and rewriting the index
+			// each tick for a cache that is already empty is write amplification with no
+			// privacy gain. The guard is what keeps "announce every answer" cheap (round 2,
+			// R2-1).
+			if (this.boundPrincipal !== null) await this.clear();
+			return;
+		}
+		const fingerprint = artifactOwnerFingerprint(accountId);
+		if (this.boundPrincipal === fingerprint) {
+			this.confirmedPrincipal = fingerprint;
+			return;
+		}
+		if (this.boundPrincipal !== null) await this.clear();
+		this.boundPrincipal = fingerprint;
+		this.confirmedPrincipal = fingerprint;
+		await this.serialize(() => this.persistIndex());
+	}
+
+	/**
+	 * THE TRANSITION FENCE: an identity move this process has observed.
+	 *
+	 * A no-op until a principal has been CONFIRMED here, because the same signal fires
+	 * for `null -> <account>` at every launch, and a fence that wipes its own cache at
+	 * boot is not a fence — that was the #1721 wiring this replaces.
+	 */
+	async fence(): Promise<void> {
+		if (this.confirmedPrincipal === null) return;
+		await this.clear();
 	}
 
 	/** Every cached id currently indexed, oldest use first. Diagnostics and tests
@@ -296,44 +444,74 @@ export class LinkPreviewArtifactCache {
 		accountFingerprint: string,
 	): Promise<CachedArtifactBytes | null> {
 		if (!this.opened) return null;
-		const entry = this.entries.get(id);
-		if (entry === undefined) {
-			this.misses += 1;
-			return null;
-		}
-		if (entry.account !== accountFingerprint) {
-			// A replayed id from another session. Not a hit, and not a delete: ask
-			// core, which answers 404 for a scope that does not name the id.
-			this.foreignHits += 1;
-			return null;
-		}
-		if (!ARTIFACT_ALLOWED_MIMES.has(entry.mime)) {
-			// A hand-edited index claiming `text/html` is not an artifact this app
-			// serves: the same allowlist `store` applies on the way in, applied again
-			// on the way out (review round 1, security nit 2).
-			this.misses += 1;
-			return null;
-		}
-		if (this.now() - entry.storedAt >= this.ttlMs) {
-			this.misses += 1;
-			return null;
-		}
-		let bytes: Uint8Array;
-		try {
-			bytes = new Uint8Array(await readFile(join(this.dir, id)));
-		} catch {
-			// The index outlived its file: a torn write, an interrupted sweep, or an
-			// operator who cleared the directory by hand. Drop the claim rather than
-			// answering with bytes that do not exist — and only if this call still
-			// owns it, which `forgetEntry` decides (see the header).
-			this.forgetEntry(id);
-			this.misses += 1;
-			return null;
-		}
-		entry.lastUsedAt = this.now();
-		this.hits += 1;
-		void this.maybeSweep();
-		return { mime: entry.mime, bytes };
+		const epoch = this.epoch;
+		return this.serialize(async () => {
+			if (epoch !== this.epoch) {
+				// A clear happened while this read was queued: the entry it would have found
+				// is the departing account's, so it is a miss and the caller asks core, which
+				// is the authority.
+				this.misses += 1;
+				return null;
+			}
+			const entry = this.entries.get(id);
+			if (entry === undefined) {
+				this.misses += 1;
+				return null;
+			}
+			if (entry.account !== accountFingerprint) {
+				// A replayed id from another session. Not a hit, and not a delete: ask
+				// core, which answers 404 for a scope that does not name the id.
+				this.foreignHits += 1;
+				return null;
+			}
+			if (!ARTIFACT_ALLOWED_MIMES.has(entry.mime)) {
+				// A hand-edited index claiming `text/html` is not an artifact this app
+				// serves: the same allowlist `store` applies on the way in, applied again
+				// on the way out (review round 1, security nit 2).
+				this.misses += 1;
+				return null;
+			}
+			if (entry.size > ARTIFACT_MAX_BLOB_BYTES) {
+				// The same ceiling `store` applies, applied again here so this cache's memory
+				// bound rests on its own constant rather than on what a hand-edited row claims:
+				// an 8 MB row must not become 8 MB read into main. The Team Bridge image cache
+				// enforces the identical rule (its SEC-4/F-3); the two must not diverge.
+				this.forgetEntry(id);
+				this.misses += 1;
+				return null;
+			}
+			if (this.now() - entry.storedAt >= this.ttlMs) {
+				this.misses += 1;
+				return null;
+			}
+			let bytes: Uint8Array;
+			try {
+				bytes = new Uint8Array(await readFile(join(this.dir, id)));
+			} catch {
+				// The index outlived its file: a torn write, an interrupted sweep, or an
+				// operator who cleared the directory by hand. Drop the claim rather than
+				// answering with bytes that do not exist — and only if this call still
+				// owns it, which `forgetEntry` decides (see the header).
+				this.forgetEntry(id);
+				this.misses += 1;
+				return null;
+			}
+			// A file that is not the size the index recorded is a partial write that got
+			// renamed into place: serve nothing, and let the entry go so the next read asks
+			// core again. The Team Bridge image cache applies the same guard.
+			if (bytes.byteLength !== entry.size) {
+				this.forgetEntry(id);
+				this.misses += 1;
+				return null;
+			}
+			entry.lastUsedAt = this.now();
+			// Recency is what LRU evicts by, so it is worth persisting — but not per drawn
+			// favicon. The throttled sweep flushes it, so the order survives a restart.
+			this.indexDirty = true;
+			this.hits += 1;
+			void this.maybeSweep();
+			return { mime: entry.mime, bytes };
+		});
 	}
 
 	/**
@@ -350,6 +528,7 @@ export class LinkPreviewArtifactCache {
 		mime: string,
 		bytes: Uint8Array,
 		accountFingerprint: string,
+		epoch: number = this.epoch,
 	): Promise<void> {
 		if (!this.opened) return;
 		if (bytes.byteLength === 0 || bytes.byteLength > ARTIFACT_MAX_BLOB_BYTES)
@@ -359,6 +538,12 @@ export class LinkPreviewArtifactCache {
 		// `service.ts`'s check must not be able to spell a path here.
 		if (!LINK_PREVIEW_ARTIFACT_ID.test(id)) return;
 		await this.serialize(async () => {
+			if (epoch !== this.epoch) {
+				// A fence ran while this answer was in flight; the bytes belong to the
+				// principal that just left. `service.ts` passes the value it took before its
+				// round trip, which is what makes this check mean anything.
+				return;
+			}
 			const path = join(this.dir, id);
 			const temp = `${path}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
 			try {
@@ -380,6 +565,7 @@ export class LinkPreviewArtifactCache {
 				lastUsedAt: at,
 				account: accountFingerprint,
 			});
+			this.boundPrincipal = accountFingerprint;
 			await this.persistIndex();
 			await this.sweepNow();
 		});
@@ -424,21 +610,37 @@ export class LinkPreviewArtifactCache {
 	 * worth less than the guarantee that none of them are the departing account's.
 	 */
 	async clear(): Promise<void> {
-		if (!this.opened) return;
-		await this.serialize(async () => {
-			const ids = [...this.entries.keys()];
-			for (const id of ids) this.forgetEntry(id);
-			await this.persistIndex();
-			// Unlink AFTER the index is clean: an interrupted clear then leaves
-			// orphans (which startup collects) rather than live entries with no files.
-			for (const id of ids) {
-				try {
-					await rm(join(this.dir, id), { force: true });
-				} catch {
-					// The orphan pass on the next startup collects it.
-				}
-			}
-		});
+		// The epoch bumps FIRST, in the caller's tick, before anything is queued: that is
+		// what makes this a fence rather than a pass over whatever is indexed when its
+		// turn comes. A store already in flight sees the new value and refuses; a read
+		// already queued sees it and misses.
+		this.epoch += 1;
+		if (!this.opened) {
+			// `open()` has not finished, or failed. Keep the request for it, and wipe what
+			// can be wiped now — a clear that only sets a flag would leave the bytes on
+			// disk if `open()` never succeeds.
+			this.clearRequested = true;
+		}
+		await this.serialize(() => this.clearLocked());
+	}
+
+	/**
+	 * The wipe itself, always inside the queue: forget every entry, write the empty
+	 * index, then delete every file the (now empty) index does not describe.
+	 *
+	 * Unlink AFTER the index is clean: an interrupted clear then leaves orphans (which
+	 * startup collects) rather than live entries with no files. `removeOrphans` also
+	 * collects files `loadIndex` never admitted, which is what lets a pre-open clear
+	 * empty a directory whose index has not been read yet.
+	 */
+	private async clearLocked(): Promise<void> {
+		const ids = [...this.entries.keys()];
+		for (const id of ids) this.forgetEntry(id);
+		this.boundPrincipal = null;
+		this.confirmedPrincipal = null;
+		this.indexDirty = false;
+		await this.persistIndex();
+		await this.removeOrphans();
 	}
 
 	/** Apply the bounds now, whatever the interval says. */
@@ -481,7 +683,11 @@ export class LinkPreviewArtifactCache {
 		// An eviction pass that fails must not fail the read that triggered it: the
 		// bytes are already in hand and the worst case is that the bounds stay tight
 		// until the next pass.
-		await this.serialize(() => this.sweepNow()).catch(() => {});
+		await this.serialize(async () => {
+			await this.sweepNow();
+			// Read recency is flushed here rather than per read: this is the throttle.
+			if (this.indexDirty) await this.persistIndex();
+		}).catch(() => {});
 	}
 
 	private async sweepNow(): Promise<void> {
@@ -508,7 +714,12 @@ export class LinkPreviewArtifactCache {
 			await this.unlink(oldest);
 			changed = true;
 		}
-		if (changed) await this.persistIndex();
+		// `indexDirty` as well as `changed`: a read moves recency without changing the
+		// entry set, so this pass has to flush it. Recency also reaches the index through
+		// `store`, a binding change at `open`, and an explicit `sweep()` — but none of
+		// those is guaranteed to run after a read, and this is. The Team Bridge image
+		// cache flushes on the same condition (round 2, R2-2).
+		if (changed || this.indexDirty) await this.persistIndex();
 	}
 
 	private async unlink(id: string): Promise<void> {
@@ -542,16 +753,30 @@ export class LinkPreviewArtifactCache {
 			(document as IndexDocument).entries === null
 		)
 			return;
+		const principal = (document as IndexDocument).principal;
+		if (
+			principal !== null &&
+			(typeof principal !== "string" || !PRINCIPAL_FINGERPRINT.test(principal))
+		)
+			// An unbound or malformed binding is not something to guess at: the document is
+			// discarded whole, and its files become orphans. That is also how a version 2
+			// document (no binding at all) is refused: `undefined` is neither null nor a
+			// fingerprint.
+			return;
 		for (const [id, entry] of Object.entries(
 			(document as IndexDocument).entries,
 		)) {
 			if (!isIndexEntry(entry)) continue;
+			// A row bound to a different account than the document's binding is a
+			// contradiction the writer never produced: drop the row, not the document.
+			if (principal !== null && entry.account !== principal) continue;
 			// An id is a file name here, so a hostile or corrupt index must not be able
 			// to introduce a path (or a second spelling of an id) into this cache.
 			if (!LINK_PREVIEW_ARTIFACT_ID.test(id)) continue;
 			this.entries.set(id, { ...entry });
 			this.residentBytes += entry.size;
 		}
+		this.boundPrincipal = principal;
 	}
 
 	/**
@@ -565,6 +790,7 @@ export class LinkPreviewArtifactCache {
 	private async persistIndex(): Promise<void> {
 		const document: IndexDocument = {
 			version: INDEX_VERSION,
+			principal: this.boundPrincipal,
 			entries: Object.fromEntries(this.entries),
 		};
 		const path = join(this.dir, INDEX_FILE);
@@ -572,6 +798,7 @@ export class LinkPreviewArtifactCache {
 		try {
 			await writeFile(temp, JSON.stringify(document), { mode: FILE_MODE });
 			await rename(temp, path);
+			this.indexDirty = false;
 		} catch {
 			await rm(temp, { force: true }).catch(() => {});
 		}
@@ -640,7 +867,11 @@ function isIndexEntry(value: unknown): value is ArtifactIndexEntry {
 		entry.mime.length <= 128 &&
 		typeof entry.size === "number" &&
 		Number.isInteger(entry.size) &&
-		entry.size >= 0 &&
+		entry.size > 0 &&
+		// The same ceiling `store` applies. Without it a hand-edited row claiming 2^53
+		// would evict the cache on every store and make `read` load a file of that size;
+		// the memory bound must rest on this cache's own constant, not on a row.
+		entry.size <= ARTIFACT_MAX_BLOB_BYTES &&
 		typeof entry.storedAt === "number" &&
 		Number.isFinite(entry.storedAt) &&
 		typeof entry.lastUsedAt === "number" &&

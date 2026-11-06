@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
+	mkdir,
 	mkdtemp,
 	readFile,
 	readdir,
@@ -46,6 +47,8 @@ const bundle = await build({
   teamBridgeImageAccountFingerprint,
  } from './src/main/team-bridge-image-cache';
  export { requestDesktopMediaOutcome } from './src/main/desktop-media';
+ export { AppAttentionService } from './src/main/app-attention-service';
+ export { LinkPreviewArtifactCache } from './src/main/link-preview/artifact-cache';
  `,
 		resolveDir: process.cwd(),
 	},
@@ -66,6 +69,8 @@ const {
 	teamBridgeImageKey,
 	teamBridgeImageAccountFingerprint,
 	requestDesktopMediaOutcome,
+	AppAttentionService,
+	LinkPreviewArtifactCache,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -147,12 +152,15 @@ async function settle() {
  * behaviour must not.
  */
 async function startHub(initial) {
-	const state = { requests: [], mode: initial };
-	const server = createServer((request, response) => {
+	const state = { requests: [], mode: initial, gate: null };
+	const server = createServer(async (request, response) => {
 		state.requests.push({
 			url: request.url,
 			authorization: request.headers.authorization,
 		});
+		// A test that needs a response to be IN FLIGHT (F-2a) parks it here until it
+		// releases the gate, so a clear can land in the middle of a real round trip.
+		if (state.gate) await state.gate;
 		const mode = state.mode;
 		if (mode.status !== 200) {
 			response.writeHead(mode.status, { "content-type": "application/json" });
@@ -169,6 +177,16 @@ async function startHub(initial) {
 	SERVERS.push(server);
 	const { port } = server.address();
 	return { state, backendUrl: `http://127.0.0.1:${port}` };
+}
+
+/** Wait until `predicate` holds, bounded: the alternative is a sleep long enough for
+ * the slowest machine, and a test that silently does nothing on the fastest. */
+async function until(predicate, what) {
+	for (let i = 0; i < 400; i++) {
+		if (predicate()) return;
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	}
+	throw new Error(`timed out waiting for ${what}`);
 }
 
 /** Drive the shipped relay for one attachment receipt. The relay's own schema is
@@ -408,6 +426,7 @@ test("a wrong-version index is discarded, and a path-shaped row is dropped", asy
 		join(dir, "index.json"),
 		JSON.stringify({
 			version: 1,
+			principal: null,
 			entries: {
 				[`../${"a".repeat(61)}`]: entry,
 				"../../etc/passwd": entry,
@@ -479,6 +498,7 @@ test("a non-image mime is never stored, and cannot be read back", async () => {
 		join(cache.directory, "index.json"),
 		JSON.stringify({
 			version: 1,
+			principal: FP_A,
 			entries: {
 				[key]: {
 					mime: "image/svg+xml",
@@ -702,7 +722,483 @@ test("stats() bytes equal the sum on disk after a randomized run", async () => {
  * the media relay, and the clear on the principal fence - because a later edit that
  * drops one of them would otherwise be invisible to every other test here.
  */
-test("index.ts builds the cache, attaches it, and clears it on a principal change", async () => {
+/*
+ * ROUND 1 REMEDIATION REGRESSIONS. One test per reproduced hole, each written
+ * against the hole's own reproduction rather than against the fix: the fence tests
+ * drive a real fetch in flight and a real pre-open clear, and the binding tests
+ * drive both launch orderings.
+ */
+
+test("a cache hit is not transport evidence (F-1)", async () => {
+	const hub = await startHub({
+		status: 200,
+		contentType: PNG,
+		bytes: bytesOf(32, 2),
+	});
+	const { cache } = await openCache();
+	const receipt = receiptOf("answered");
+
+	const miss = await fetchThroughRelay(hub.backendUrl, receipt, cache);
+	assert.equal(miss.response.kind, "bytes");
+	assert.equal(
+		miss.answered,
+		true,
+		"a fetch that resolved is transport evidence",
+	);
+
+	const hit = await fetchThroughRelay(hub.backendUrl, receipt, cache);
+	assert.equal(hit.response.kind, "bytes");
+	assert.equal(
+		hit.answered,
+		false,
+		"a hit contacted no daemon, so it must not reset the probe-miss counter",
+	);
+	assert.equal(hub.state.requests.length, 1);
+});
+
+test("a store whose fetch was in flight when the fence fired is refused (F-2a)", async () => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const hub = await startHub({
+		status: 200,
+		contentType: PNG,
+		bytes: bytesOf(16, 6),
+	});
+	hub.state.gate = gate;
+	const { cache } = await openCache();
+
+	const pending = fetchThroughRelay(hub.backendUrl, receiptOf("flight"), cache);
+	// The request is at the hub and its response has not been written yet.
+	await until(
+		() => hub.state.requests.length === 1,
+		"the fetch to reach the hub",
+	);
+	await cache.clear();
+	release();
+
+	const outcome = await pending;
+	assert.equal(
+		outcome.response.kind,
+		"bytes",
+		"the caller still gets the bytes it asked for",
+	);
+	assert.deepEqual(
+		await readdir(cache.directory),
+		["index.json"],
+		"nothing was written after the fence emptied the directory",
+	);
+	assert.equal(cache.stats().entries, 0);
+});
+
+test("a store carrying a stale epoch is refused (F-2a, unit form)", async () => {
+	const { cache } = await openCache();
+	const key = teamBridgeImageKey(receiptOf("stale-epoch"));
+	const stale = cache.currentEpoch();
+	await cache.clear();
+	await cache.store(key, PNG, bytesOf(4), FP_A, stale);
+	assert.equal(cache.stats().entries, 0);
+	assert.deepEqual(
+		await readdir(cache.directory),
+		["index.json"],
+		"a refused write leaves no blob behind",
+	);
+});
+
+test("a clear that lands before open() is honoured (F-2b / SEC-1)", async () => {
+	const dir = await tempDir();
+	const key = teamBridgeImageKey(receiptOf("preopen"));
+	const seed = new TeamBridgeImageCache({ dir: dir, now: () => 0 });
+	await seed.open();
+	await seed.store(key, PNG, bytesOf(8, 3), FP_A);
+	assert.equal((await diskEntries(dir)).size, 1);
+
+	// A fresh instance that has never opened: the fence lands while `open()` has not
+	// even started.
+	const cache = new TeamBridgeImageCache({ dir: dir, now: () => 0 });
+	await cache.clear();
+	await cache.open();
+	assert.equal(cache.stats().entries, 0);
+	assert.equal(
+		await cache.read(key, FP_A),
+		null,
+		"the old receipt no longer hits",
+	);
+	assert.deepEqual(await readdir(dir), ["index.json"]);
+});
+
+test("a clear kept through a FAILED open still wipes on the next open (SEC-1)", async () => {
+	const parent = await tempDir();
+	const dir = join(parent, "cache");
+	// A file where the directory should be: `open()` refuses, and stays unopened.
+	await writeFile(dir, "not a directory");
+	const cache = new TeamBridgeImageCache({ dir: dir, now: () => 0 });
+	await assert.rejects(cache.open());
+	await cache.clear();
+
+	// The obstacle goes, and a previous run's bytes are there.
+	await rm(dir);
+	await mkdir(dir, { recursive: true });
+	const key = teamBridgeImageKey(receiptOf("failedopen"));
+	const seed = new TeamBridgeImageCache({ dir: dir, now: () => 0 });
+	await seed.open();
+	await seed.store(key, PNG, bytesOf(8, 4), FP_A);
+
+	await cache.open();
+	assert.equal(
+		cache.stats().entries,
+		0,
+		"the remembered clear is honoured, not swallowed by the failed open",
+	);
+	assert.equal(await cache.read(key, FP_A), null);
+});
+
+test("a read that began before a clear is a miss (SEC-2)", async () => {
+	const { cache } = await openCache();
+	const key = teamBridgeImageKey(receiptOf("read-race"));
+	await cache.store(key, PNG, bytesOf(6, 1), FP_A);
+
+	// The read captures its epoch in this tick; the clear bumps it in the same tick,
+	// before the read's queued turn. The old code served the entry here.
+	const reading = cache.read(key, FP_A);
+	const clearing = cache.clear();
+	assert.equal(
+		await reading,
+		null,
+		"a read that began before the fence must not be answered from it",
+	);
+	await clearing;
+	assert.equal(await cache.read(key, FP_A), null);
+});
+
+test("the index is bound to a principal: same keeps, different drops, sign-out drops (SEC-3)", async () => {
+	const dir = await cacheWithOneEntry("bind");
+	const key = teamBridgeImageKey(receiptOf("bind"));
+	const index = await readIndex(dir);
+	assert.equal(
+		index.principal,
+		FP_A,
+		"the document names a fingerprint, never an id",
+	);
+
+	// The app names the SAME account (either source, any ordering): the bytes stay,
+	// which is the whole point of surviving a restart.
+	const same = new TeamBridgeImageCache({ dir: dir, now: () => 0 });
+	await same.open();
+	await same.bind(ACCOUNT_A);
+	assert.equal(same.stats().entries, 1);
+	assert.ok(await same.read(key, FP_A));
+
+	// A DIFFERENT account: dropped.
+	const other = new TeamBridgeImageCache({ dir: dir, now: () => 0 });
+	await other.open();
+	await other.bind(ACCOUNT_B);
+	assert.equal(other.stats().entries, 0);
+	assert.equal(await other.read(key, FP_A), null);
+	assert.deepEqual(await readdir(dir), ["index.json"]);
+
+	// A VERIFIED sign-out: also dropped.
+	const dir2 = await cacheWithOneEntry("signout");
+	const out = new TeamBridgeImageCache({ dir: dir2, now: () => 0 });
+	await out.open();
+	await out.bind(null);
+	assert.equal(out.stats().entries, 0);
+	assert.deepEqual(await readdir(dir2), ["index.json"]);
+});
+
+test("open() applies the state check when it is given a principal (SEC-3)", async () => {
+	// The shipped launch passes none (nothing has answered a status yet), but the check
+	// is part of `open`'s contract for any caller that DOES know: bytes bound to one
+	// account are never loaded under another, and a returned index with no binding is
+	// discarded rather than trusted.
+	const dir = await cacheWithOneEntry("open-check");
+	const key = teamBridgeImageKey(receiptOf("open-check"));
+
+	const other = new TeamBridgeImageCache({ dir: dir, now: () => 0 });
+	await other.open(ACCOUNT_B);
+	assert.equal(
+		other.stats().entries,
+		0,
+		"another account's bytes are not loaded",
+	);
+	assert.equal(await other.read(key, FP_A), null);
+	assert.deepEqual(
+		await readdir(dir),
+		["index.json"],
+		"and they are gone from disk",
+	);
+
+	const same = new TeamBridgeImageCache({
+		dir: await cacheWithOneEntry("open-keep"),
+		now: () => 0,
+	});
+	await same.open(ACCOUNT_A);
+	assert.equal(same.stats().entries, 1, "the right account keeps its cache");
+});
+
+test("the fence is a no-op before a principal is confirmed, and a wipe after (SEC-3)", async () => {
+	const dir = await cacheWithOneEntry("fence");
+	const key = teamBridgeImageKey(receiptOf("fence"));
+
+	// Renderer-status-first launch, in the order index.ts wires it: the attention
+	// service fires the transition fence (its `account` was null) and THEN announces
+	// the principal. The fence must be a no-op here, or the cache cannot survive a
+	// restart at all.
+	const cache = new TeamBridgeImageCache({ dir: dir, now: () => 0 });
+	await cache.open();
+	await cache.fence();
+	assert.equal(cache.stats().entries, 1, "a launch is not a transition");
+	await cache.bind(ACCOUNT_A);
+	assert.equal(cache.stats().entries, 1, "and the same account keeps them");
+	assert.ok(await cache.read(key, FP_A));
+
+	// A genuine transition: once a principal IS confirmed, the fence drops everything
+	// - at that moment nobody knows which entries belonged to the departing account.
+	await cache.fence();
+	assert.equal(cache.stats().entries, 0, "a transition drops the bytes");
+	assert.deepEqual(await readdir(cache.directory), ["index.json"]);
+});
+
+test("two orderings of the same launch end in the same state (SEC-3)", async () => {
+	// Ordering A: the renderer status is first - fence (nothing confirmed, so a no-op)
+	// then bind.
+	const dirA = await cacheWithOneEntry("ordering");
+	const a = new TeamBridgeImageCache({ dir: dirA, now: () => 0 });
+	await a.open();
+	await a.fence();
+	await a.bind(ACCOUNT_A);
+	assert.equal(
+		a.stats().entries,
+		1,
+		"renderer-first keeps a returning account's cache",
+	);
+
+	// Ordering B: the reconcile poll is first - bind, and no fence at all, because the
+	// service only fences on a real transition and a same-account reconcile is not one.
+	const dirB = await cacheWithOneEntry("ordering");
+	const b = new TeamBridgeImageCache({ dir: dirB, now: () => 0 });
+	await b.open();
+	await b.bind(ACCOUNT_A);
+	assert.equal(b.stats().entries, 1, "reconcile-first keeps it too");
+	assert.deepEqual(
+		a.ids(),
+		b.ids(),
+		"both orderings end with the same entries",
+	);
+
+	// The state check is what makes either ordering safe: a principal that is NOT the
+	// bound one drops the bytes, whichever source reported it first.
+	const dirC = await cacheWithOneEntry("ordering");
+	const c = new TeamBridgeImageCache({ dir: dirC, now: () => 0 });
+	await c.open();
+	await c.bind(ACCOUNT_B);
+	assert.equal(c.stats().entries, 0, "a different account never inherits them");
+});
+
+test("an index row over the blob bound is dropped and never served (SEC-4 / F-3)", async () => {
+	const dir = await tempDir();
+	const key = teamBridgeImageKey(receiptOf("oversize"));
+	const oversize = TEAM_BRIDGE_IMAGE_MAX_BLOB_BYTES + 1024;
+	await writeFile(
+		join(dir, "index.json"),
+		JSON.stringify({
+			version: 1,
+			principal: FP_A,
+			entries: {
+				[key]: {
+					mime: PNG,
+					size: oversize,
+					storedAt: 0,
+					lastUsedAt: 0,
+					account: FP_A,
+				},
+			},
+		}),
+	);
+	await writeFile(join(dir, key), new Uint8Array(oversize));
+
+	const cache = new TeamBridgeImageCache({ dir: dir, now: () => 0 });
+	await cache.open();
+	assert.equal(cache.stats().entries, 0, "the row is refused at load");
+	assert.equal(
+		cache.stats().residentBytes,
+		0,
+		"and cannot move the byte total",
+	);
+	assert.equal(await cache.read(key, FP_A), null);
+	assert.deepEqual(await readdir(dir), ["index.json"], "its file is an orphan");
+});
+
+test("a hit and a miss report the same mime spelling (NIT-2)", async () => {
+	const hub = await startHub({
+		status: 200,
+		contentType: "image/png; charset=binary",
+		bytes: bytesOf(8, 1),
+	});
+	const { cache } = await openCache();
+	const receipt = receiptOf("spelling");
+	const miss = await fetchThroughRelay(hub.backendUrl, receipt, cache);
+	const hit = await fetchThroughRelay(hub.backendUrl, receipt, cache);
+	assert.equal(miss.response.mimeType, "image/png");
+	assert.equal(hit.response.mimeType, "image/png");
+});
+
+test("read recency reaches the index, so the LRU order survives a restart (F-5)", async () => {
+	const clock = { now: 0 };
+	const { cache } = await openCache({ clock, sweepIntervalMs: 1000 });
+	const older = teamBridgeImageKey(receiptOf("recency-old"));
+	const newer = teamBridgeImageKey(receiptOf("recency-new"));
+	await cache.store(older, PNG, bytesOf(2), FP_A);
+	clock.now = 1;
+	await cache.store(newer, PNG, bytesOf(2), FP_A);
+
+	// Past the sweep interval, a read marks recency and the throttle flushes it.
+	clock.now = 5000;
+	assert.ok(await cache.read(older, FP_A));
+	await settle();
+
+	// A fresh instance over the same directory: `lastUsedAt` has to have reached the
+	// index, or the eviction order after a restart is whatever it was at the last
+	// store rather than the last read.
+	const reread = new TeamBridgeImageCache({
+		dir: cache.directory,
+		now: () => clock.now,
+	});
+	await reread.open();
+	assert.deepEqual(
+		reread.ids(),
+		[newer, older],
+		"the image read last is the last thing an LRU pass would take",
+	);
+});
+
+/**
+ * A directory that already holds one stored image, for the tests whose subject is
+ * what happens to EXISTING bytes when a principal arrives.
+ */
+async function cacheWithOneEntry(suffix) {
+	const dir = await tempDir();
+	const seed = new TeamBridgeImageCache({ dir, now: () => 0 });
+	await seed.open();
+	await seed.store(
+		teamBridgeImageKey(receiptOf(suffix)),
+		PNG,
+		bytesOf(8, 5),
+		FP_A,
+	);
+	return dir;
+}
+
+/*
+ * R2-1 — THE ORDERING THE WHOLE PORT EXISTS FOR, and the one round 2 found broken.
+ * A signed-out launch sends no renderer status at all (`useAgentMessages` gates its
+ * check on a non-null account, and the surface's reads are `boundary: "surface_open"`),
+ * so the reconcile poll is the ONLY witness to a principal that left while the app was
+ * closed. Both caches are driven through the real service here, on the real fence and
+ * resolver ports, because the bug lived in how the service reported the state, not in
+ * either cache.
+ */
+test("a principal already gone at launch is dropped by the poll (R2-1)", async () => {
+	const imageDir = await tempDir();
+	const previewDir = await tempDir();
+	const previewId = "a".repeat(32);
+
+	// A previous run, signed in as A, left bytes in both caches.
+	const imageSeed = new TeamBridgeImageCache({ dir: imageDir, now: () => 0 });
+	await imageSeed.open();
+	await imageSeed.store(
+		teamBridgeImageKey(receiptOf("signout-launch")),
+		PNG,
+		bytesOf(8, 2),
+		FP_A,
+	);
+	const previewSeed = new LinkPreviewArtifactCache({
+		dir: previewDir,
+		now: () => 0,
+	});
+	await previewSeed.open();
+	await previewSeed.store(previewId, PNG, bytesOf(8, 3), FP_A);
+
+	// The shipped launch: both caches opened with no principal, nothing answered yet.
+	const imageCache = new TeamBridgeImageCache({ dir: imageDir, now: () => 0 });
+	await imageCache.open();
+	const previewCache = new LinkPreviewArtifactCache({
+		dir: previewDir,
+		now: () => 0,
+	});
+	await previewCache.open();
+	assert.equal(imageCache.stats().entries, 1);
+	assert.equal(previewCache.ids().length, 1);
+
+	let statusReads = 0;
+	const service = new AppAttentionService({
+		request: async (input) => {
+			const op = input && typeof input === "object" ? input.op : undefined;
+			if (op !== "team_bridge.status")
+				throw new Error(`unexpected op in this rig: ${op}`);
+			statusReads += 1;
+			return {
+				status: 200,
+				body: { result: { state: "signed_out", account_id: null } },
+			};
+		},
+		publish: () => {},
+		clear: () => {},
+		principalChanged: () => {
+			void imageCache.fence();
+			void previewCache.fence();
+		},
+		principalResolved: (accountId) => {
+			void imageCache.bind(accountId);
+			void previewCache.bind(accountId);
+		},
+	});
+	try {
+		// Any bridge write asks for a bridge-only reconcile, which is the poll.
+		service.observeResponse(
+			{ op: "team_bridge.messages.send" },
+			{ status: 200, body: { result: {} } },
+		);
+		await until(() => statusReads === 1, "the poll to read the bridge status");
+		await settle();
+		assert.equal(
+			imageCache.stats().entries,
+			0,
+			"the signed-out poll empties the image cache",
+		);
+		assert.deepEqual(previewCache.ids(), [], "and the link-preview cache");
+
+		// A second poll with nothing changed must not rewrite either index: the state is
+		// announced every time, and `bind(null)` is guarded on something being bound.
+		const before = [
+			await stat(join(imageDir, "index.json")),
+			await stat(join(previewDir, "index.json")),
+		];
+		service.observeResponse(
+			{ op: "team_bridge.messages.send" },
+			{ status: 200, body: { result: {} } },
+		);
+		await until(
+			() => statusReads === 2,
+			"the second poll to read the bridge status",
+		);
+		await settle();
+		const after = [
+			await stat(join(imageDir, "index.json")),
+			await stat(join(previewDir, "index.json")),
+		];
+		assert.deepEqual(
+			after.map((each) => [each.ino, each.mtimeMs]),
+			before.map((each) => [each.ino, each.mtimeMs]),
+			"a repeat sign-out does not rewrite the index",
+		);
+	} finally {
+		service.stop();
+	}
+});
+
+test("index.ts builds the cache, attaches it, and fences on a principal change", async () => {
 	const main = await readFile(join(process.cwd(), "src/main/index.ts"), "utf8");
 	assert.match(
 		main,
@@ -714,14 +1210,20 @@ test("index.ts builds the cache, attaches it, and clears it on a principal chang
 		main,
 		/backendService\.attachTeamBridgeImageCache\(teamBridgeImages\)/,
 	);
-	// The clear lives in the attention service's own principal port, beside the
-	// link-preview clear - the same fence, not a second one.
-	const fence = main.slice(
+	// Both principal ports are wired, and neither is a bare `clear()`: the transition
+	// goes through `fence()` (a no-op until a principal is confirmed) and the state
+	// through `bind()`, which owns the drop/no-drop decision inside the cache.
+	const ports = main.slice(
 		main.indexOf("principalChanged: () => {"),
-		main.indexOf("const linkPreviewArtifacts = new LinkPreviewArtifactCache"),
+		main.indexOf("const teamBridgeImages = new TeamBridgeImageCache("),
 	);
-	assert.match(fence, /void linkPreviewArtifacts\.clear\(\);/);
-	assert.match(fence, /void teamBridgeImages\.clear\(\);/);
+	// Both caches take the same two ports, or the repository ends up with two
+	// different principal rules for private bytes (#1721's fence, fixed here).
+	assert.match(ports, /void linkPreviewArtifacts\.fence\(\);/);
+	assert.match(ports, /void teamBridgeImages\.fence\(\);/);
+	assert.match(ports, /void linkPreviewArtifacts\.bind\(accountId\);/);
+	assert.match(ports, /principalResolved: \(accountId\) => \{/);
+	assert.match(ports, /void teamBridgeImages\.bind\(accountId\);/);
 });
 
 /** A source-shape guard on the relay: the read comes before the fetch, and the

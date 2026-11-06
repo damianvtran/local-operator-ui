@@ -442,6 +442,14 @@ export function createLinkPreviewService(
 		const cached = await cache?.read(id, accountFingerprint);
 		if (cached !== undefined && cached !== null)
 			return { kind: "bytes", data: cached.bytes, mimeType: cached.mime };
+		/*
+		 * THE FENCE VALUE IS TAKEN BEFORE THE ROUND TRIP, and handed back to `store`.
+		 * A principal clear that lands while this answer is in flight moves the cache's
+		 * epoch, and the store is then refused rather than re-creating the departing
+		 * account's blob after the directory was emptied. Taking it at store time would
+		 * always match and close nothing.
+		 */
+		const epoch = cache?.currentEpoch() ?? 0;
 		let answer: DesktopMediaResponse;
 		try {
 			answer = await transport.media({
@@ -455,7 +463,13 @@ export function createLinkPreviewService(
 		if (answer.kind === "bytes") {
 			// Stored BEFORE it is returned, but a store failure is not a read failure:
 			// the bytes are in hand and the card can draw them either way.
-			await cache?.store(id, answer.mimeType, answer.data, accountFingerprint);
+			await cache?.store(
+				id,
+				answer.mimeType,
+				answer.data,
+				accountFingerprint,
+				epoch,
+			);
 			return { kind: "bytes", data: answer.data, mimeType: answer.mimeType };
 		}
 		/*
