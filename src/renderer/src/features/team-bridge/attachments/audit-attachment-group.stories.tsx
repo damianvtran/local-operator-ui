@@ -5,14 +5,19 @@ import {
 	ownerAuditMessageSchema,
 } from "../../../../../shared/team-bridge-owner-audit-contract";
 import {
+	FILE_SAVE_FILES,
 	SHOT_GREEN_B64,
 	SHOT_WIDE_B64,
+	fileSaveAnswer,
+	pressFileSaves,
 } from "../team-bridge-attachments.fixtures";
 import { OwnerAuditPanelView } from "../team-bridge-owner-audit";
 
 /** Real owner-audit panel and image consumers, SYNTHETIC preload boundary.
- * No hub authority or rendered approval is claimed. Generic files remain
- * noninteractive metadata; no native save API is registered or advertised. */
+ * No hub authority or rendered approval is claimed. A generic file offers one
+ * action, Save (decision a-fdf0), answered here by the synthetic file lane
+ * only for this panel's own owner receipt; no native save API is registered
+ * or advertised, and nothing is previewed. */
 const OWNER = "acct_synthetic_owner";
 const OTHER = "acct_synthetic_other";
 const TENANT = "org_synthetic_audit";
@@ -80,6 +85,13 @@ const messages = [
 		attachments: [],
 		attachment_count: 3,
 	},
+	{
+		id: "bmsg_synthetic_files",
+		seq: 5,
+		body: "Generic files: Save through the owner-audit relay, never a preview.",
+		attachments: [],
+		files: FILE_SAVE_FILES,
+	},
 ].map((item) =>
 	ownerAuditMessageSchema.parse({
 		conversation_id: conversation.id,
@@ -102,7 +114,14 @@ function AuditResourceFixture({
 	mode = "ready",
 	narrow = false,
 	metadataOnly = false,
-}: { mode?: Mode; narrow?: boolean; metadataOnly?: boolean }) {
+	files = false,
+}: {
+	mode?: Mode;
+	narrow?: boolean;
+	metadataOnly?: boolean;
+	/** Show only the generic-file message, for the Save states. */
+	files?: boolean;
+}) {
 	const [owner, setOwner] = useState(OWNER);
 	const releaseImage = useRef<(() => void) | null>(null);
 	const switchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -118,6 +137,17 @@ function AuditResourceFixture({
 			desktop: {
 				...desktop,
 				media: async (request) => {
+					/* A file's Save answers only this panel's own receipt and row. */
+					if (
+						request.op === "team_bridge.owner_audit.attachment" &&
+						request.mode === "file"
+					)
+						return request.tenantId === TENANT &&
+							request.conversationId === conversation.id &&
+							request.messageId === "bmsg_synthetic_files" &&
+							request.expectedAccountId === owner
+							? fileSaveAnswer(request.attachmentId)
+							: { status: 403, kind: "error", detail: "Synthetic refusal" };
 					if (
 						request.op !== "team_bridge.owner_audit.attachment" ||
 						request.tenantId !== TENANT ||
@@ -185,7 +215,13 @@ function AuditResourceFixture({
 			>
 				<OwnerAuditPanelView
 					conversation={conversation}
-					messages={metadataOnly ? messages.slice(2) : messages.slice(0, 2)}
+					messages={
+						files
+							? messages.slice(4)
+							: metadataOnly
+								? messages.slice(2, 4)
+								: messages.slice(0, 2)
+					}
 					state="ready"
 					retry={() => {}}
 					readerAccountId={owner}
@@ -200,7 +236,7 @@ const meta = {
 	title: "Team Bridge/Owner audit attachment access",
 	component: AuditResourceFixture,
 	parameters: { layout: "fullscreen" },
-	args: { mode: "ready", narrow: false, metadataOnly: false },
+	args: { mode: "ready", narrow: false, metadataOnly: false, files: false },
 } satisfies Meta<typeof AuditResourceFixture>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -217,3 +253,19 @@ export const Dark: Story = {
 	args: { ...{ theme: "localOperatorDark" }, mode: "ready" },
 };
 export const NonfetchableMetadata: Story = { args: { metadataOnly: true } };
+
+/*
+ * Generic-file Save in the audit panel (decision a-fdf0): the owner-audit relay
+ * in file mode, one card per state. `FileSaveAvailable` is the untouched card
+ * set; `FileSaveStates` presses Save on the saving, refused, too-large and
+ * failed cards, scoped to the files message.
+ */
+export const FileSaveAvailable: Story = { args: { files: true } };
+export const FileSaveStates: Story = {
+	args: { files: true },
+	play: async ({ canvasElement }) => pressFileSaves(canvasElement),
+};
+export const FileSaveStatesNarrow: Story = {
+	args: { files: true, narrow: true },
+	play: async ({ canvasElement }) => pressFileSaves(canvasElement),
+};

@@ -1,5 +1,8 @@
 import { readLinkPreviewArtifact } from "./link-preview/artifact-reader";
-import { readOwnerAuditAttachment } from "./team-bridge-audit-media";
+import {
+	readMemberFileAttachment,
+	readOwnerAuditAttachment,
+} from "./team-bridge-audit-media";
 /**
  * Authenticated binary/multipart relay for the legacy media routes.
  *
@@ -76,9 +79,22 @@ const ownerAuditAttachmentTupleSchema = z
 	})
 	.strict();
 
+/*
+ * The byte lane a Team Bridge read asks for (decision a-fdf0). Absent means the
+ * image lane, so every existing caller is unchanged; `file` is the generic-file
+ * Save. Closed: anything else is refused before a request is built.
+ */
+const attachmentMode = z.enum(["image", "file"]).optional();
+
 const mediaRequestSchema = z.discriminatedUnion("op", [
 	ownerAuditAttachmentTupleSchema
-		.extend({ op: z.literal("team_bridge.owner_audit.attachment") })
+		.extend({
+			op: z.literal("team_bridge.owner_audit.attachment"),
+			/* Main-side only: core's audit route serves whatever the hub bound and
+			   refuses unknown query names, so the mode picks main's reader (type
+			   and ceiling) and never travels on the wire. */
+			mode: attachmentMode,
+		})
 		.strict(),
 	z
 		.object({ op: z.literal("account.profile"), expectedAccountId: id })
@@ -257,6 +273,8 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.attachment"),
+			/* `file` asks core #3521 for the bound generic file (`?mode=file`). */
+			mode: attachmentMode,
 			tenantId: id,
 			conversationId: id,
 			messageId: id,
@@ -558,9 +576,14 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/team-bridge/owner-audit/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
 				method: "GET",
 			};
+		/*
+		 * `mode=file` only when asked for, never `mode=image`: an older core refuses
+		 * any query name it does not know, so spelling out the default would break
+		 * every picture against it. The image lane's URL is byte-for-byte unchanged.
+		 */
 		case "team_bridge.attachment":
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId, ...(request.mode === "file" ? { mode: "file" } : {}) })}`,
 				method: "GET",
 			};
 		case "team_bridge.notification_avatar": {
@@ -725,6 +748,11 @@ export async function requestDesktopMediaOutcome(
 		};
 	}
 	const target = endpoint(request);
+	/* The generic-file Save lane (a-fdf0), under either authority. */
+	const fileLane =
+		(request.op === "team_bridge.attachment" ||
+			request.op === "team_bridge.owner_audit.attachment") &&
+		request.mode === "file";
 
 	let body: BodyInit | undefined;
 	let contentType: string | undefined;
@@ -813,8 +841,9 @@ export async function requestDesktopMediaOutcome(
 		const response = await fetch(new URL(target.path, backendUrl), {
 			method: target.method,
 			headers: {
-				Accept:
-					request.op === "team_bridge.owner_audit.attachment"
+				Accept: fileLane
+					? "application/octet-stream, application/json"
+					: request.op === "team_bridge.owner_audit.attachment"
 						? "image/png, image/jpeg"
 						: "application/json, audio/*, image/*, application/octet-stream",
 				...(contentType ? { "Content-Type": contentType } : {}),
@@ -840,7 +869,9 @@ export async function requestDesktopMediaOutcome(
 			body,
 			// Private avatars are cached only as authority-scoped renderer blobs.
 			// Neither Electron nor an intermediary may persist them across login.
+			// A teammate's file is never kept by Electron's HTTP cache either.
 			...(request.op === "team_bridge.owner_audit.attachment" ||
+			fileLane ||
 			request.op === "team_bridge.avatar" ||
 			request.op === "team_bridge.endpoint_avatar" ||
 			request.op === "team_bridge.notification_avatar"
@@ -863,7 +894,14 @@ export async function requestDesktopMediaOutcome(
 		}
 		if (request.op === "team_bridge.owner_audit.attachment") {
 			return {
-				response: await readOwnerAuditAttachment(response),
+				response: await readOwnerAuditAttachment(response, request.mode),
+				answered: true,
+			};
+		}
+		if (request.op === "team_bridge.attachment" && request.mode === "file") {
+			// Bounded and header-checked BEFORE anything is buffered (25 MiB lane).
+			return {
+				response: await readMemberFileAttachment(response),
 				answered: true,
 			};
 		}

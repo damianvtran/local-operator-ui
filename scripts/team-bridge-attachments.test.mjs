@@ -149,7 +149,8 @@ const bundle = await build({
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
  export {OwnerAuditPanelView} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit";
  export {BridgeAttachmentGroup, BridgeFileGroup} from "./src/renderer/src/features/team-bridge/attachments/bridge-attachment-group";
- export {middleTruncateFileName, splitFileNameTail, toBridgeFileDescriptor} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
+ export {AuditAttachmentGroup} from "./src/renderer/src/features/team-bridge/attachments/audit-attachment-group";
+ export {fileSaveFailure, fileSaveName, fileView, middleTruncateFileName, splitFileNameTail, toBridgeFileDescriptor} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {ownerAuditMessageSchema} from "./src/shared/team-bridge-owner-audit-contract";
  export {attachmentBox, attachmentFit} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
@@ -3384,7 +3385,7 @@ function attributeText(element) {
 		.join("\n");
 }
 
-test("S3b files: member thread renders one noninteractive card per descriptor", async () => {
+test("S3b files: member thread renders one card per descriptor; Save is the only control and moves no bytes until pressed", async () => {
 	mediaCalls = [];
 	const logged = [];
 	const original = {
@@ -3411,17 +3412,42 @@ test("S3b files: member thread renders one noninteractive card per descriptor", 
 	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
 	assert.equal(cards.length, 3);
 	assert.equal(
-		view.element.querySelectorAll('[data-bridge-file-card="metadata"]').length,
+		view.element.querySelectorAll('[data-bridge-file-card="available"]').length,
 		2,
 	);
-	assert.equal(
-		view.element.querySelectorAll('[data-bridge-file-card="unavailable"]')
-			.length,
-		1,
+	// The sweeper's `expired` state says so, in the file's own words.
+	const expired = view.element.querySelector(
+		'[data-bridge-file-card="expired"]',
 	);
-	// No download/open/Save As control exists on a file card, and no bytes move.
-	for (const card of cards)
-		assert.equal(card.querySelectorAll("button,a,img,input").length, 0);
+	assert.ok(expired);
+	assert.ok(
+		expired.textContent.includes(m.t("ui.teamBridge.fileCard.expired")),
+	);
+	/* Decision a-fdf0: an available card offers exactly ONE control, Save, named
+	   by position (never by the file's name) with the image tile's tooltip; a
+	   terminal card offers none. Nothing opens, previews or links. */
+	for (const [index, card] of [...cards].entries()) {
+		const buttons = card.querySelectorAll("button");
+		assert.equal(card.querySelectorAll("a,img,input").length, 0);
+		if (card.dataset.bridgeFileCard !== "available") {
+			assert.equal(buttons.length, 0);
+			continue;
+		}
+		assert.equal(buttons.length, 1);
+		assert.equal(
+			buttons[0].getAttribute("aria-label"),
+			m.t("ui.teamBridge.fileCard.save", {
+				index: String(index + 1),
+				count: "3",
+			}),
+		);
+		assert.equal(
+			buttons[0].getAttribute("title"),
+			m.t("ui.chat.image_actions.save_as"),
+		);
+		assert.equal(card.dataset.fileSave, "idle");
+	}
+	// Rendering a card moves no bytes: the file lane runs only on a press.
 	assert.equal(mediaCalls.length, 0);
 	// The name is visible text, bidi-isolated by its own direction ...
 	assert.ok(view.element.textContent.includes(S3B_NAME));
@@ -3431,14 +3457,6 @@ test("S3b files: member thread renders one noninteractive card per descriptor", 
 	assert.ok(rtl, "RTL name rendered inside dir=auto");
 	assert.match(view.element.textContent, PDF_META);
 	assert.match(view.element.textContent, CSV_META);
-	/* The noun on an unavailable file card is still the attachment one: a
-	 * file-flavoured phrase is new copy, and new English copy cannot land without
-	 * the translator/delta-audit round (see the card's D4 note). */
-	assert.ok(
-		view.element.textContent.includes(
-			m.t("ui.teamBridge.attachmentCard.unavailable"),
-		),
-	);
 	// ... and never an aria-label, id, key, data attribute or log line (D9).
 	assert.doesNotMatch(attributeText(view.element), NAME_LEAK);
 	assert.doesNotMatch(attributeText(view.element), FILE_ID_PREFIX);
@@ -3559,7 +3577,7 @@ test("S3b files: middle truncation keeps both ends and never splits a code point
 	assert.ok(!LONE_SURROGATE.test(emoji));
 });
 
-test("S3b files: owner audit renders file cards with no audit media read", async () => {
+test("S3b files: owner audit without a captured scope renders file cards with no Save and no media read", async () => {
 	mediaCalls = [];
 	const element = document.createElement("div");
 	document.body.append(element);
@@ -3635,11 +3653,13 @@ test("S3b files: owner audit renders file cards with no audit media read", async
 		3,
 	);
 	assert.equal(
-		byId("audit_files").querySelectorAll(
-			'[data-bridge-file-card="unavailable"]',
-		).length,
+		byId("audit_files").querySelectorAll('[data-bridge-file-card="expired"]')
+			.length,
 		1,
 	);
+	/* No captured owner scope on this panel (`attachmentScope` absent), so the
+	   cards have no byte authority: no Save, and nothing is read. The scoped
+	   case is the next test. */
 	assert.equal(
 		byId("audit_files").querySelectorAll(
 			"[data-bridge-file-card] button, [data-bridge-file-card] a",
@@ -3719,23 +3739,584 @@ test("S3b files: the tail is a protected element; only the head ellipsises (Q1/D
 	for (const name of names)
 		for (const part of [name, name.slice(0, 8), name.split(".").shift()])
 			assert.ok(!attrs.includes(part), part);
-	/* A card states its own limit (design D1) with the metadata image chip's own
-	   sentence, as its title. That sentence is FIXED COPY, never a name, so it is
-	   the only title a file card may carry; nothing else may hold one. */
-	const limit = m.t("ui.teamBridge.attachmentCard.metadata_only");
-	const titled = [...view.element.querySelectorAll("[title]")];
-	assert.equal(titled.length, names.length);
-	for (const card of titled) assert.equal(card.getAttribute("title"), limit);
+	/* The D1 limit sentence ("Preview unavailable in this view") became false
+	   when Save landed (decision a-fdf0), so no card carries a title any more;
+	   with no `readFile` there is no control and nothing titled at all. */
+	assert.equal(view.element.querySelectorAll("[title]").length, 0);
+	assert.equal(view.element.querySelectorAll("button").length, 0);
 	assert.equal(
 		view.element.querySelectorAll("[aria-label] [aria-label]").length,
 		0,
 	);
-	assert.equal(
-		view.element.querySelectorAll("[title]:not([data-bridge-file-card])")
-			.length,
-		0,
-	);
 	await view.close();
+	/* With a Save, the ONLY titles are the buttons' fixed "Save as…" - never a
+	   name - and the only labels are positions. */
+	const saving = await renderAttachmentGroup({
+		attachments: [],
+		files: names.map((displayName, index) =>
+			m.toBridgeFileDescriptor({
+				id: `bfile_tail${index}`,
+				class: "pdf",
+				size: 2048,
+				display_name: displayName,
+				state: "bound",
+			}),
+		),
+		readFile: async () => {
+			throw new Error("not pressed in this test");
+		},
+	});
+	const titled = [...saving.element.querySelectorAll("[title]")];
+	assert.equal(titled.length, names.length);
+	for (const node of titled) {
+		assert.equal(node.tagName, "BUTTON");
+		assert.equal(
+			node.getAttribute("title"),
+			m.t("ui.chat.image_actions.save_as"),
+		);
+	}
+	const savingAttrs = attributeText(saving.element);
+	for (const name of names)
+		for (const part of [name, name.slice(0, 8), name.split(".").shift()])
+			assert.ok(!savingAttrs.includes(part), part);
+	await saving.close();
+});
+
+/* ------------------------------------------------------------------ *\
+   Generic-file Save (decision a-fdf0): authority, states, naming, focus.
+   Component + synthetic preload relay only: no hub, no core, no native
+   dialog. The anchor click is captured; its 60 s URL revoke is run here.
+\* ------------------------------------------------------------------ */
+
+const FILE_BYTES = new TextEncoder().encode("synthetic file bytes");
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+function captureSaves() {
+	const saved = [];
+	const timers = [];
+	const click = window.HTMLAnchorElement.prototype.click;
+	const setTimer = window.setTimeout;
+	window.HTMLAnchorElement.prototype.click = function () {
+		saved.push({ download: this.download, href: this.href });
+	};
+	// `downloadBlob` revokes its URL a minute later; run that here instead.
+	window.setTimeout = (fn, ms, ...args) => {
+		if (ms < 60_000) return setTimer(fn, ms, ...args);
+		timers.push(fn);
+		return 0;
+	};
+	return {
+		saved,
+		restore: () => {
+			window.HTMLAnchorElement.prototype.click = click;
+			window.setTimeout = setTimer;
+			for (const fn of timers) fn();
+		},
+	};
+}
+const saveButton = (card) => card.querySelector("button");
+const press = async (button) => {
+	await act(async () => {
+		button.click();
+		await tick();
+	});
+	await act(async () => {
+		await tick();
+	});
+};
+
+test("file Save: one press reads the member FILE lane once, saves under the descriptor's name, and never double-fires", async () => {
+	mediaCalls = [];
+	let release;
+	mediaAnswer = (request) =>
+		request.mode === "file"
+			? new Promise((resolve) => {
+					release = () =>
+						resolve({
+							status: 200,
+							kind: "bytes",
+							mimeType: "application/octet-stream",
+							data: FILE_BYTES,
+						});
+				})
+			: { status: 404, kind: "error", detail: "no" };
+	const capture = captureSaves();
+	try {
+		const view = await renderList([
+			m.teamBridgeMessageSchema.parse(s3bMessage()),
+		]);
+		const card = view.element.querySelector(
+			'[data-bridge-file-card="available"]',
+		);
+		const button = saveButton(card);
+		// Two presses inside one frame: the second is refused, not queued.
+		await act(async () => {
+			button.click();
+			button.click();
+			await tick();
+		});
+		const fileCalls = mediaCalls.filter((call) => call.request.mode === "file");
+		assert.equal(fileCalls.length, 1);
+		assert.deepEqual(fileCalls[0].request, {
+			op: "team_bridge.attachment",
+			mode: "file",
+			tenantId: "tnt_1",
+			conversationId: "bcv_1",
+			messageId: "bmsg_s3b",
+			attachmentId: "bfile_0f8a",
+			expectedAccountId: "acct_a",
+		});
+		// Saving: busy, still focusable, and the line says so.
+		assert.equal(card.dataset.fileSave, "saving");
+		assert.equal(button.getAttribute("aria-busy"), "true");
+		assert.equal(button.getAttribute("aria-disabled"), "true");
+		assert.equal(button.disabled, false);
+		assert.ok(card.textContent.includes(m.t("ui.teamBridge.fileCard.saving")));
+		await act(async () => {
+			button.click();
+			await tick();
+		});
+		assert.equal(
+			mediaCalls.filter((call) => call.request.mode === "file").length,
+			1,
+			"a press while saving is refused",
+		);
+		await act(async () => {
+			release();
+			await tick();
+		});
+		await act(async () => {
+			await tick();
+		});
+		// Handed to the platform's save path, named from the descriptor.
+		assert.equal(capture.saved.length, 1);
+		assert.equal(capture.saved[0].download, S3B_NAME);
+		assert.notEqual(capture.saved[0].download, "attachment.bin");
+		// A cancelled dialog never reports back: the card simply returns to idle.
+		assert.equal(card.dataset.fileSave, "idle");
+		assert.match(card.textContent, PDF_META);
+		await view.close();
+	} finally {
+		capture.restore();
+		mediaAnswer = () => ({ status: 404, kind: "error", detail: "no" });
+	}
+});
+
+test("file Save: each relay answer has its own state, register and focus", async () => {
+	const cases = [
+		// The hub's uniform refusal, an account change, a bad query.
+		{
+			status: 404,
+			state: "unavailable",
+			key: "ui.teamBridge.fileCard.unavailable",
+			control: false,
+			danger: false,
+		},
+		{
+			status: 409,
+			state: "unavailable",
+			key: "ui.teamBridge.fileCard.unavailable",
+			control: false,
+			danger: false,
+		},
+		{
+			status: 401,
+			state: "unavailable",
+			key: "ui.teamBridge.fileCard.unavailable",
+			control: false,
+			danger: false,
+		},
+		// Main's over-ceiling answer.
+		{
+			status: 413,
+			state: "too_large",
+			key: "ui.teamBridge.fileCard.too_large",
+			control: false,
+			danger: true,
+		},
+		// Transport, upstream and rate failures: the reader may press again.
+		{
+			status: 503,
+			state: "failed",
+			key: "ui.teamBridge.fileCard.save_failed",
+			control: true,
+			danger: true,
+		},
+		{
+			status: 502,
+			state: "failed",
+			key: "ui.teamBridge.fileCard.save_failed",
+			control: true,
+			danger: true,
+		},
+		{
+			status: 429,
+			state: "failed",
+			key: "ui.teamBridge.fileCard.save_failed",
+			control: true,
+			danger: true,
+		},
+	];
+	const capture = captureSaves();
+	try {
+		for (const expected of cases) {
+			mediaCalls = [];
+			mediaAnswer = (request) =>
+				request.mode === "file"
+					? { status: expected.status, kind: "error", detail: "private reason" }
+					: { status: 404, kind: "error", detail: "no" };
+			const view = await renderList([
+				m.teamBridgeMessageSchema.parse(s3bMessage()),
+			]);
+			const card = view.element.querySelector(
+				'[data-bridge-file-card="available"]',
+			);
+			const button = saveButton(card);
+			button.focus();
+			await press(button);
+			const label = String(expected.status);
+			assert.equal(
+				card.dataset.bridgeFileCard,
+				expected.state === "unavailable" ? "unavailable" : "available",
+				label,
+			);
+			assert.ok(card.textContent.includes(m.t(expected.key)), label);
+			assert.ok(!card.textContent.includes("private reason"), label);
+			assert.equal(Boolean(saveButton(card)), expected.control, label);
+			const status = card.querySelector("[aria-live]");
+			assert.equal(
+				status.classList.contains("text-danger"),
+				expected.danger,
+				label,
+			);
+			// Focus never falls to the document: the control keeps it, or the card takes it.
+			assert.equal(
+				document.activeElement,
+				expected.control ? saveButton(card) : card,
+				label,
+			);
+			assert.equal(capture.saved.length, 0, label);
+			await view.close();
+		}
+	} finally {
+		capture.restore();
+		mediaAnswer = () => ({ status: 404, kind: "error", detail: "no" });
+	}
+});
+
+test("file Save: expired by state or by a passed deadline offers nothing and reads nothing", async () => {
+	mediaCalls = [];
+	const view = await renderAttachmentGroup({
+		attachments: [],
+		files: [
+			{
+				id: "bfile_state",
+				class: "pdf",
+				size: 10,
+				display_name: "a.pdf",
+				state: "expired",
+			},
+			{
+				id: "bfile_lapsed",
+				class: "pdf",
+				size: 10,
+				display_name: "b.pdf",
+				state: "bound",
+				expires_at: "2020-01-01T00:00:00Z",
+			},
+			{
+				id: "bfile_live",
+				class: "pdf",
+				size: 10,
+				display_name: "c.pdf",
+				state: "bound",
+				expires_at: "2999-01-01T00:00:00Z",
+			},
+			{
+				id: "bfile_garbled",
+				class: "pdf",
+				size: 10,
+				display_name: "d.pdf",
+				state: "bound",
+				expires_at: "not a time",
+			},
+			// The hub's unset deadline (a non-pointer Go time) is no deadline.
+			{
+				id: "bfile_zero",
+				class: "pdf",
+				size: 10,
+				display_name: "z.pdf",
+				state: "bound",
+				expires_at: "0001-01-01T00:00:00Z",
+			},
+			{
+				id: "bfile_withheld",
+				class: "pdf",
+				size: 10,
+				display_name: "e.pdf",
+				state: "withheld",
+			},
+		].map(m.toBridgeFileDescriptor),
+		readFile: async () => {
+			mediaCalls.push("read");
+			return FILE_BYTES;
+		},
+	});
+	const states = [
+		...view.element.querySelectorAll("[data-bridge-file-card]"),
+	].map((card) => [card.dataset.bridgeFileCard, Boolean(saveButton(card))]);
+	assert.deepEqual(states, [
+		["expired", false],
+		["expired", false],
+		["available", true],
+		// An unparseable deadline is ignored: never a grant, never "expired".
+		["available", true],
+		["available", true],
+		["unavailable", false],
+	]);
+	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.ok(
+		cards[1].textContent.includes(m.t("ui.teamBridge.fileCard.expired")),
+	);
+	assert.ok(
+		cards[5].textContent.includes(m.t("ui.teamBridge.fileCard.unavailable")),
+	);
+	assert.equal(mediaCalls.length, 0);
+	await view.close();
+	assert.equal(
+		m.fileView(
+			m.toBridgeFileDescriptor({
+				id: "x",
+				size: 1,
+				state: "bound",
+				expires_at: "2026-11-06T12:00:00Z",
+			}),
+			Date.parse("2026-11-06T12:00:01Z"),
+		),
+		"expired",
+	);
+});
+
+test("file Save: the proposed name is the descriptor's, made safe, with a class fallback", () => {
+	const name = (display_name, cls = "pdf", index = 0) =>
+		m.fileSaveName(
+			m.toBridgeFileDescriptor({
+				id: "x",
+				class: cls,
+				size: 1,
+				state: "bound",
+				display_name,
+			}),
+			index,
+		);
+	assert.equal(
+		name("Q4 board report (signed).pdf"),
+		"Q4 board report (signed).pdf",
+	);
+	assert.equal(
+		name("تقرير الربع الرابع.csv", "text"),
+		"تقرير الربع الرابع.csv",
+	);
+	assert.equal(name("../../etc/passwd", "other"), "_.._etc_passwd");
+	assert.equal(
+		name('a:b*c?"d<e>f|g\\h/i.txt', "text"),
+		"a_b_c__d_e_f_g_h_i.txt",
+	);
+	assert.equal(name("line\u0007break\u0085.txt", "text"), "line_break_.txt");
+	assert.equal(name("  .hidden.  ", "text"), "hidden");
+	assert.equal(name(undefined, "pdf", 1), "file-2.pdf");
+	assert.equal(name(undefined, "text", 0), "file-1.txt");
+	assert.equal(name(undefined, "container", 2), "file-3.zip");
+	assert.equal(name(undefined, "other", 0), "file-1");
+	assert.equal(name("///", "pdf", 0), "file-1.pdf");
+	for (const status of [404, 401, 403, 409, 410, 422])
+		assert.equal(m.fileSaveFailure(status), "unavailable", String(status));
+	assert.equal(m.fileSaveFailure(413), "too_large");
+	for (const status of [null, 408, 429, 500, 502, 503])
+		assert.equal(m.fileSaveFailure(status), "failed", String(status));
+});
+
+test("file Save: an owner-audit card saves through the OWNER relay in file mode, never the member one", async () => {
+	mediaCalls = [];
+	mediaAnswer = (request) =>
+		request.op === "team_bridge.owner_audit.attachment" &&
+		request.mode === "file"
+			? {
+					status: 200,
+					kind: "bytes",
+					mimeType: "application/octet-stream",
+					data: FILE_BYTES,
+				}
+			: { status: 404, kind: "error", detail: "no" };
+	const capture = captureSaves();
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(m.AuditAttachmentGroup, {
+					attachments: [],
+					count: 0,
+					files: s3bMessage().files.map(m.toBridgeFileDescriptor),
+					fileCount: 3,
+					scope: {
+						accountId: "acct_owner",
+						tenantId: "tnt_audit",
+						conversationId: "bcv_audit",
+						messageId: "bmsg_audit",
+					},
+				}),
+			),
+		);
+		assert.equal(mediaCalls.length, 0, "nothing is read before a press");
+		const card = element.querySelector('[data-bridge-file-card="available"]');
+		await press(saveButton(card));
+		assert.deepEqual(
+			mediaCalls.map((call) => call.request),
+			[
+				{
+					op: "team_bridge.owner_audit.attachment",
+					mode: "file",
+					tenantId: "tnt_audit",
+					expectedAccountId: "acct_owner",
+					conversationId: "bcv_audit",
+					messageId: "bmsg_audit",
+					attachmentId: "bfile_0f8a",
+				},
+			],
+		);
+		assert.deepEqual(
+			capture.saved.map((row) => row.download),
+			[S3B_NAME],
+		);
+	} finally {
+		capture.restore();
+		mediaAnswer = () => ({ status: 404, kind: "error", detail: "no" });
+		await act(async () => root.unmount());
+		element.remove();
+	}
+});
+
+test("composer routing: the BYTES pick the lane, so every file type travels", async () => {
+	const png = Uint8Array.from(atob(PNG_BASE64), (c) => c.charCodeAt(0));
+	const heicHeader = new Uint8Array([
+		0,
+		0,
+		0,
+		24,
+		...new TextEncoder().encode("ftypheic"),
+		0,
+		0,
+		0,
+		0,
+	]);
+	const files = [
+		new File([png], "shot.png", { type: "image/png" }),
+		new File([png], "untyped-shot", { type: "" }),
+		// Declared pictures the image lane cannot prepare used to strand here.
+		new File(["<svg xmlns='http://www.w3.org/2000/svg'/>"], "logo.svg", {
+			type: "image/svg+xml",
+		}),
+		new File(
+			[new Uint8Array([0x49, 0x49, 0x2a, 0x00, 1, 2, 3, 4])],
+			"scan.tiff",
+			{ type: "image/tiff" },
+		),
+		new File([new Uint8Array([0x42, 0x4d, 1, 2, 3, 4])], "icon.bmp", {
+			type: "image/bmp",
+		}),
+		new File(["%PDF-1.7"], "lying.png", { type: "image/png" }),
+		new File(["plain"], "notes.txt", { type: "text/plain" }),
+		new File(["PK\u0003\u0004"], "deck.pptx", { type: "" }),
+		new File([heicHeader], "IMG_0001.HEIC", { type: "image/heic" }),
+	];
+	const saved = globalThis.createImageBitmap;
+	try {
+		globalThis.createImageBitmap = undefined;
+		let parts = await m.splitBridgeFiles(files);
+		assert.deepEqual(
+			parts.images.map((f) => f.name),
+			["shot.png", "untyped-shot"],
+		);
+		assert.deepEqual(
+			parts.generic.map((f) => f.name),
+			[
+				"logo.svg",
+				"scan.tiff",
+				"icon.bmp",
+				"lying.png",
+				"notes.txt",
+				"deck.pptx",
+				"IMG_0001.HEIC",
+			],
+		);
+		// A build that can decode HEIC keeps it inline, as before.
+		globalThis.createImageBitmap = async () => ({ close() {} });
+		parts = await m.splitBridgeFiles([files[8]]);
+		assert.deepEqual(
+			parts.images.map((f) => f.name),
+			["IMG_0001.HEIC"],
+		);
+		globalThis.createImageBitmap = async () => {
+			throw new Error("no HEIC decoder");
+		};
+		parts = await m.splitBridgeFiles([files[8]]);
+		assert.deepEqual(
+			parts.generic.map((f) => f.name),
+			["IMG_0001.HEIC"],
+		);
+	} finally {
+		globalThis.createImageBitmap = saved;
+	}
+});
+
+test("composer chips say their own state: Attached, Upload failed, Not uploaded", async () => {
+	const render = async (state) => {
+		const element = document.createElement("div");
+		document.body.append(element);
+		const root = createRoot(element);
+		await act(async () =>
+			root.render(React.createElement(m.TeamBridgeFilesStrip, { state })),
+		);
+		const lines = [...element.querySelectorAll("[data-file-chip]")].map(
+			(chip) => [
+				chip.dataset.fileChip,
+				chip.querySelector("span.text-xs").textContent,
+			],
+		);
+		await act(async () => root.unmount());
+		element.remove();
+		return lines;
+	};
+	const chip = (key, status) => ({
+		key,
+		status,
+		file: new File(["x"], `${key}.txt`),
+	});
+	const base = { retry() {}, remove() {} };
+	assert.deepEqual(
+		await render({
+			...base,
+			enabled: true,
+			chips: [
+				chip("a", "held"),
+				chip("b", "ready"),
+				chip("c", "uploading"),
+				chip("d", "error"),
+			],
+		}),
+		[
+			["held", m.t("ui.teamBridge.files.attached")],
+			["ready", m.t("ui.teamBridge.files.attached")],
+			["uploading", m.t("ui.teamBridge.files.uploading")],
+			["error", m.t("ui.teamBridge.files.failed")],
+		],
+	);
+	// Capability off: nothing was attempted, so the chip does not claim a failure.
+	assert.deepEqual(
+		await render({ ...base, enabled: false, chips: [chip("e", "error")] }),
+		[["error", m.t("ui.teamBridge.files.not_uploaded")]],
+	);
 });
 
 /* ------------------------------------------------------------------ *\

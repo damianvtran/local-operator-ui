@@ -341,6 +341,12 @@
 	"ui.teamBridge.attachmentCard.unavailable": "Attachment unavailable",
 	"ui.teamBridge.fileCard.list": "{count, plural, one {# file} other {# files}}",
 	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Text file} container {ZIP} other {File}}",
+	"ui.teamBridge.fileCard.save": "Save file {index} of {count}",
+	"ui.teamBridge.fileCard.saving": "Saving…",
+	"ui.teamBridge.fileCard.save_failed": "Couldn’t save. Try again.",
+	"ui.teamBridge.fileCard.too_large": "Too large to save",
+	"ui.teamBridge.fileCard.expired": "File expired",
+	"ui.teamBridge.fileCard.unavailable": "File unavailable",
 	"ui.teamBridge.members_panel.title": "Members",
 	"ui.teamBridge.members_panel.close": "Close members",
 	"ui.teamBridge.members_panel.open_label": "{count, plural, one {View # member} other {View # members}}",
@@ -397,5 +403,7 @@
 	"ui.teamBridge.files.unavailable": "Files are unavailable for this account. Remove the file to send text or images.",
 	"ui.teamBridge.files.add": "Attach files",
 	"ui.teamBridge.files.no_schedule": "Files can be sent now, but cannot be scheduled.",
-	"ui.teamBridge.files.uploading": "Uploading file…"
+	"ui.teamBridge.files.uploading": "Uploading file…",
+	"ui.teamBridge.files.attached": "Attached",
+	"ui.teamBridge.files.not_uploaded": "Not uploaded"
 }

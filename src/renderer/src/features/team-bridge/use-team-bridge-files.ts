@@ -212,17 +212,42 @@ export function transferredFiles(data: DataTransfer): File[] {
 			})
 		: Array.from(data.files ?? []);
 }
+/*
+ * ANY FILE TYPE TRAVELS. The image lane takes only what it can actually turn
+ * into a png/jpeg (`prepareImageForUpload`) and refuses the rest as
+ * "unsupported" - so routing by the DECLARED type used to strand an SVG, TIFF,
+ * BMP, ICO, PSD or AVIF (all `image/*`) on an error chip instead of sending it
+ * as the file it is. The bytes decide instead: a picture this platform can
+ * draw goes inline; everything else, whatever its type or extension, goes to
+ * the generic file lane.
+ *
+ * HEIC is the one picture Chromium usually cannot decode. It goes inline only
+ * when this build proves it can (`createImageBitmap` on the file itself, the
+ * call the image lane would make next); otherwise the iPhone photo travels as
+ * the original file rather than failing as an "unsupported" image.
+ */
+async function decodesHere(file: File): Promise<boolean> {
+	if (typeof createImageBitmap !== "function") return false;
+	try {
+		(await createImageBitmap(file)).close();
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 /** Empty MIME is common on Finder documents AND HEIC. Sniff a small header so
  * a PDF without a declared MIME does not accidentally enter image conversion. */
 export async function splitBridgeFiles(files: readonly File[]) {
 	const images: File[] = [];
 	const generic: File[] = [];
 	for (const file of files) {
+		const sniffed = sniffImage(
+			new Uint8Array(await file.slice(0, 32).arrayBuffer()),
+		);
 		const image =
-			file.type.startsWith("image/") ||
-			(!file.type &&
-				sniffImage(new Uint8Array(await file.slice(0, 32).arrayBuffer())) !==
-					null);
+			sniffed !== null &&
+			(sniffed !== "image/heic" || (await decodesHere(file)));
 		(image ? images : generic).push(file);
 	}
 	return { images, generic };

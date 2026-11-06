@@ -63,7 +63,7 @@ const bundle = await build({
 		resolveDir: process.cwd(),
 		contents: `
  export { registerDesktopIPC } from './src/main/desktop-ipc';
- export { readOwnerAuditAttachment } from './src/main/team-bridge-audit-media';
+ export { readMemberFileAttachment, readOwnerAuditAttachment, TEAM_BRIDGE_FILE_MAX_BYTES } from './src/main/team-bridge-audit-media';
  export { requestDesktopMediaOutcome } from './src/main/desktop-media';
  export { AuditAttachmentGroup } from './src/renderer/src/features/team-bridge/attachments/audit-attachment-group';
  export { auditAttachmentKey, auditAttachmentAction, auditMessageScope } from './src/renderer/src/features/team-bridge/attachments/audit-attachment-scope';
@@ -645,4 +645,271 @@ test("ready audit image offers Open only: no Save control and no download anchor
 	assert.equal(cluster.querySelectorAll("button").length, 1, "Open only");
 	assert.equal(view.node.querySelectorAll("a[download]").length, 0);
 	await view.close();
+});
+
+/*
+ * THE FILE LANE (decision a-fdf0). Main buffers a generic file for the reader's
+ * Save under the SAME guard as an audit picture - exact type, `nosniff`, a
+ * sandboxing CSP, `no-store`, a streamed ceiling - with octet-stream as the one
+ * type and 25 MiB as the ceiling. Only the exact mode string selects it.
+ */
+const fileHeaders = () => headers("application/octet-stream");
+const readers = () => [
+	["owner audit", (response) => m.readOwnerAuditAttachment(response, "file")],
+	["member", (response) => m.readMemberFileAttachment(response)],
+];
+
+test("file lane: exactly octet-stream under core's headers; pictures, HTML and SVG are refused", async () => {
+	assert.equal(m.TEAM_BRIDGE_FILE_MAX_BYTES, 25 * 1024 * 1024);
+	for (const [label, read] of readers()) {
+		const ok = await read(new Response(bytes, { headers: fileHeaders() }));
+		assert.equal(ok.kind, "bytes", label);
+		assert.equal(ok.mimeType, "application/octet-stream", label);
+		assert.deepEqual([...ok.data], [...bytes], label);
+		for (const mime of [
+			"image/png",
+			"image/svg+xml",
+			"text/html",
+			"application/pdf",
+		]) {
+			const refused = await read(
+				new Response(bytes, { headers: headers(mime) }),
+			);
+			assert.equal(refused.kind, "error", `${label} ${mime}`);
+		}
+		for (const missing of [
+			"cache-control",
+			"content-security-policy",
+			"x-content-type-options",
+		]) {
+			const h = fileHeaders();
+			delete h[missing];
+			assert.equal(
+				(await read(new Response(bytes, { headers: h }))).kind,
+				"error",
+				`${label} ${missing}`,
+			);
+		}
+		assert.equal(
+			(await read(new Response(new Uint8Array(0), { headers: fileHeaders() })))
+				.status,
+			422,
+			label,
+		);
+	}
+	// Anything but the exact string keeps the picture lane: no drift into opaque bytes.
+	for (const stale of [true, "FILE", "files", 1, undefined])
+		assert.equal(
+			(
+				await m.readOwnerAuditAttachment(
+					new Response(bytes, { headers: fileHeaders() }),
+					stale,
+				)
+			).kind,
+			"error",
+			String(stale),
+		);
+});
+
+test("file lane: the 25 MiB ceiling is enforced on the stream and the declared length, as 413", async () => {
+	for (const [label, read] of readers()) {
+		let cancelled = false;
+		const body = new ReadableStream({
+			start(controller) {
+				controller.enqueue(new Uint8Array(25 * 1024 * 1024));
+				controller.enqueue(bytes);
+			},
+			cancel() {
+				cancelled = true;
+			},
+		});
+		const over = await read(new Response(body, { headers: fileHeaders() }));
+		assert.equal(over.kind, "error", label);
+		assert.equal(over.status, 413, label);
+		assert.equal(cancelled, true, label);
+		const h = {
+			...fileHeaders(),
+			"content-length": String(25 * 1024 * 1024 + 1),
+		};
+		assert.equal(
+			(await read(new Response(bytes, { headers: h }))).status,
+			413,
+			label,
+		);
+		// Exactly at the ceiling is a file, not a refusal.
+		const at = await read(
+			new Response(new Uint8Array(25 * 1024 * 1024), {
+				headers: fileHeaders(),
+			}),
+		);
+		assert.equal(at.kind, "bytes", label);
+	}
+});
+
+test("file lane: core's declared attachment_too_large becomes 413; every other refusal keeps its status and leaks nothing", async () => {
+	const json = (status, detail) =>
+		new Response(JSON.stringify({ detail }), {
+			status,
+			headers: { "content-type": "application/json" },
+		});
+	for (const [label, read] of readers()) {
+		const large = await read(
+			json(502, {
+				code: "attachment_too_large",
+				message: "The file is too large.",
+			}),
+		);
+		assert.equal(large.status, 413, label);
+		// The same 502 without that code is an unreachable hub: retryable, not "too large".
+		assert.equal(
+			(await read(json(502, { code: "bridge_unreachable", message: "x" })))
+				.status,
+			502,
+			label,
+		);
+		for (const [status, code] of [
+			[404, "attachment_not_found"],
+			[409, "account_mismatch"],
+			[422, "invalid_request"],
+			[401, "bridge_signin_required"],
+		]) {
+			const refused = await read(
+				json(status, { code, message: "private refusal reason" }),
+			);
+			assert.equal(refused.status, status, `${label} ${code}`);
+			assert.equal(
+				refused.detail.includes("private refusal reason"),
+				false,
+				label,
+			);
+		}
+		// A body too big to be an error envelope is never parsed, only cancelled.
+		let cancelled = false;
+		const huge = new ReadableStream({
+			start(controller) {
+				controller.enqueue(
+					new TextEncoder().encode(
+						`{"detail":{"code":"attachment_too_large","pad":"${"x".repeat(8192)}"}}`,
+					),
+				);
+			},
+			cancel() {
+				cancelled = true;
+			},
+		});
+		const padded = await read(
+			new Response(huge, {
+				status: 502,
+				headers: { "content-type": "application/json" },
+			}),
+		);
+		assert.equal(padded.status, 502, label);
+		assert.equal(cancelled, true, label);
+		assert.equal(
+			(
+				await read(
+					new Response("not json", {
+						status: 502,
+						headers: { "content-type": "application/json" },
+					}),
+				)
+			).status,
+			502,
+			label,
+		);
+	}
+});
+
+test("file lane relay: member asks core for mode=file; the audit keeps mode in main; the picture URL is unchanged", async () => {
+	const original = globalThis.fetch;
+	const calls = [];
+	globalThis.fetch = async (url, options) => {
+		calls.push({ url: new URL(url), options });
+		return new Response(bytes, { headers: fileHeaders() });
+	};
+	const member = {
+		tenantId: scope.tenantId,
+		conversationId: scope.conversationId,
+		messageId: scope.messageId,
+		attachmentId: scope.attachmentId,
+		expectedAccountId: scope.accountId,
+	};
+	const relay = (input) =>
+		m.requestDesktopMediaOutcome(
+			input,
+			null,
+			"http://127.0.0.1:1",
+			"synthetic-token",
+		);
+	try {
+		const file = await relay({
+			op: "team_bridge.attachment",
+			mode: "file",
+			...member,
+		});
+		assert.equal(file.response.kind, "bytes");
+		assert.equal(file.response.mimeType, "application/octet-stream");
+		assert.equal(
+			calls[0].url.pathname,
+			"/v1/desktop/team-bridge/conversations/bcv_test/messages/bmsg_test/attachments/batt_test",
+		);
+		assert.deepEqual([...calls[0].url.searchParams.keys()].sort(), [
+			"expected_account_id",
+			"mode",
+			"tenant_id",
+		]);
+		assert.equal(calls[0].url.searchParams.get("mode"), "file");
+		assert.equal(
+			calls[0].options.headers.Accept,
+			"application/octet-stream, application/json",
+		);
+		assert.equal(calls[0].options.cache, "no-store");
+		assert.equal(calls[0].options.redirect, "error");
+		// The picture lane: absent or explicit `image` never puts a mode on the wire
+		// (an older core refuses unknown query names), and still refuses octet-stream.
+		for (const mode of [undefined, "image"]) {
+			const before = calls.length;
+			const picture = await relay({
+				op: "team_bridge.attachment",
+				...(mode ? { mode } : {}),
+				...member,
+			});
+			assert.equal(
+				calls[before].url.searchParams.has("mode"),
+				false,
+				String(mode),
+			);
+			assert.equal(
+				picture.response.kind,
+				"error",
+				"a picture read never yields opaque bytes",
+			);
+		}
+		// The audit's file mode selects main's reader only; core's audit route takes no mode.
+		const before = calls.length;
+		const audit = await relay({
+			op: "team_bridge.owner_audit.attachment",
+			mode: "file",
+			...tuple,
+		});
+		assert.equal(audit.response.kind, "bytes");
+		assert.equal(calls[before].url.searchParams.has("mode"), false);
+		assert.equal(
+			calls[before].options.headers.Accept,
+			"application/octet-stream, application/json",
+		);
+		assert.equal(calls[before].options.cache, "no-store");
+		// A mode outside the closed set is refused before any request is built.
+		for (const op of [
+			"team_bridge.attachment",
+			"team_bridge.owner_audit.attachment",
+		]) {
+			const count = calls.length;
+			const refused = await relay({ op, mode: "preview", ...member });
+			assert.equal(refused.response.kind, "error", op);
+			assert.equal(calls.length, count, op);
+		}
+	} finally {
+		globalThis.fetch = original;
+	}
 });

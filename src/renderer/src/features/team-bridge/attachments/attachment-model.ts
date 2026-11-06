@@ -109,9 +109,12 @@ export function attachmentBox(
 /**
  * A generic FILE on a message (agent-server S3b `files[]`), kept apart from
  * `BridgeAttachmentDescriptor` because the server keeps the two apart: images
- * may be previewed through the byte relay, files never are in this client (no
- * preview, no download, no Save As - owner decision after #1634). A file card
- * is metadata only, so nothing here grants or implies byte access.
+ * may be previewed through the byte relay, files never are (the hub marks them
+ * `download_only`). Files were metadata only after #1634; the operator's
+ * decision a-fdf0 added ONE action, Save, which the CALLER commissions through
+ * its own authority (member relay in a thread, owner-audit relay in the audit).
+ * Nothing here grants or implies byte access: a descriptor is still only what
+ * the card draws and which Save it may offer.
  *
  * `displayName` is message content shown to the authorized human as visible
  * text. It must never reach an aria-label, a DOM id, a data attribute or a log
@@ -124,6 +127,8 @@ export type BridgeFileDescriptor = {
 	size: number;
 	displayName: string | null;
 	state: string;
+	/** The retention sweeper's deadline, when the server sends one (ISO time). */
+	expiresAt: string | null;
 };
 
 /** The two wire shapes (member `files[]`, owner-audit `files[]`) normalized into
@@ -137,6 +142,7 @@ export function toBridgeFileDescriptor(file: {
 	size?: number | null;
 	display_name?: string | null;
 	state?: string | null;
+	expires_at?: string | null;
 }): BridgeFileDescriptor {
 	const name = file.display_name?.trim();
 	return {
@@ -145,11 +151,93 @@ export function toBridgeFileDescriptor(file: {
 		size: typeof file.size === "number" ? file.size : 0,
 		displayName: name ? name : null,
 		state: file.state ?? "",
+		expiresAt: file.expires_at ?? null,
 	};
 }
 
 export function isAvailableFile(file: BridgeFileDescriptor): boolean {
 	return file.state === "bound";
+}
+
+/**
+ * What a file card IS before anyone presses anything. `expired` is the sweeper's
+ * terminal state OR a bound file whose stated deadline has passed: the hub
+ * answers a late read with the same uniform 404 as a refusal, so the deadline is
+ * the only way the card can say "expired" rather than "unavailable" - and it is
+ * read fail-safe: an unparseable deadline is ignored, never treated as expired
+ * or as a grant. Every other non-bound state is `unavailable` (fail closed).
+ */
+export type BridgeFileView = "available" | "expired" | "unavailable";
+export function fileView(
+	file: BridgeFileDescriptor,
+	now: number = Date.now(),
+): BridgeFileView {
+	if (file.state === "expired") return "expired";
+	if (!isAvailableFile(file)) return "unavailable";
+	const deadline = file.expiresAt ? Date.parse(file.expiresAt) : Number.NaN;
+	/* The hub's `expires_at` is a non-pointer Go time (agent-server
+	 * `responses.BridgeFile`), so an unset deadline arrives as the zero time
+	 * `0001-01-01T00:00:00Z`: no deadline, not "expired two millennia ago". A
+	 * bound file's real one is bind time + 400 days (S3b "Retention"), so only a
+	 * deadline after the Unix epoch is read as one. */
+	if (!(deadline > 0)) return "available";
+	return deadline <= now ? "expired" : "available";
+}
+
+/*
+ * WHY A SAVE FAILED, as the card words it. The relay's statuses are closed:
+ * main restates an over-ceiling file as 413 (its own stream cap, or core's
+ * declared `attachment_too_large`), so `too_large` is exact. A transport
+ * failure (no status), a timeout, a rate limit or a 5xx is `failed`: the
+ * reader may try again. Everything else - 401/403, the hub's uniform 404
+ * (gone, expired, not a member, other tenant), 409 account change, 410, 422 -
+ * is `unavailable`: an authenticated refusal is never offered as a retry and
+ * never explained beyond "unavailable" (the D7 rule images already follow).
+ */
+export type BridgeFileSaveFailure = "unavailable" | "too_large" | "failed";
+export function fileSaveFailure(status: number | null): BridgeFileSaveFailure {
+	if (status === 413) return "too_large";
+	if (status === null || status === 408 || status === 429 || status >= 500)
+		return "failed";
+	return "unavailable";
+}
+
+/* Characters no desktop file system takes in a name (controls handled apart). */
+const UNSAFE_NAME = /[\\/:*?"<>|]/g;
+/* Leading/trailing spaces and dots: a hidden file, or a name Windows refuses. */
+const NAME_EDGES = /^[\s.]+|[\s.]+$/g;
+const HAS_MEANING = /[^_]/;
+const CLASS_EXTENSION = new Map([
+	["pdf", ".pdf"],
+	["text", ".txt"],
+	["container", ".zip"],
+]);
+
+/**
+ * The name a save dialog proposes. The uploader's `display_name` when there is
+ * one - the name the reader sees on the card - reduced to one path segment
+ * with nothing a file system refuses; otherwise `file-N` plus the extension the
+ * server's class implies (`other` gets none rather than a guessed one).
+ *
+ * NEVER the server's `Content-Disposition` name (`attachment.bin`): that is a
+ * fixed placeholder for a direct navigation, and main never forwards it. The
+ * result is handed to the platform dialog only; it is message content and is
+ * never logged or put in an attribute (D9).
+ */
+export function fileSaveName(
+	file: BridgeFileDescriptor,
+	index: number,
+): string {
+	// C0/C1 controls by code point: a regex range over them is unreadable.
+	const cleaned = Array.from(file.displayName ?? "", (character) => {
+		const code = character.codePointAt(0) ?? 0;
+		return code < 0x20 || (code >= 0x7f && code <= 0x9f) ? "_" : character;
+	})
+		.join("")
+		.replace(UNSAFE_NAME, "_")
+		.replace(NAME_EDGES, "");
+	if (cleaned && HAS_MEANING.test(cleaned)) return cleaned;
+	return `file-${index + 1}${CLASS_EXTENSION.get(file.fileClass) ?? ""}`;
 }
 
 /**

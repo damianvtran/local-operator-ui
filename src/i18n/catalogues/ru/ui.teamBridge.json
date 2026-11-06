@@ -341,6 +341,12 @@
 	"ui.teamBridge.attachmentCard.unavailable": "Вложение недоступно",
 	"ui.teamBridge.fileCard.list": "{count, plural, one {# файл} few {# файла} many {# файлов} other {# файла}}",
 	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Текстовый файл} container {ZIP} other {Файл}}",
+	"ui.teamBridge.fileCard.save": "Сохранить файл {index} из {count}",
+	"ui.teamBridge.fileCard.saving": "Сохранение…",
+	"ui.teamBridge.fileCard.save_failed": "Не удалось сохранить. Повторите попытку.",
+	"ui.teamBridge.fileCard.too_large": "Файл слишком большой для сохранения",
+	"ui.teamBridge.fileCard.expired": "Срок хранения файла истёк",
+	"ui.teamBridge.fileCard.unavailable": "Файл недоступен",
 	"ui.teamBridge.members_panel.title": "Участники",
 	"ui.teamBridge.members_panel.close": "Закрыть список участников",
 	"ui.teamBridge.members_panel.open_label": "{count, plural, one {Показать # участника} few {Показать # участников} many {Показать # участников} other {Показать # участника}}",
@@ -397,5 +403,7 @@
 	"ui.teamBridge.files.unavailable": "Файлы недоступны для этой учётной записи. Удалите файл, чтобы отправить текст или изображения.",
 	"ui.teamBridge.files.add": "Прикрепить файлы",
 	"ui.teamBridge.files.no_schedule": "Файлы можно отправить сейчас, но нельзя запланировать.",
-	"ui.teamBridge.files.uploading": "Загрузка файла…"
+	"ui.teamBridge.files.uploading": "Загрузка файла…",
+	"ui.teamBridge.files.attached": "Прикреплён",
+	"ui.teamBridge.files.not_uploaded": "Не загружен"
 }

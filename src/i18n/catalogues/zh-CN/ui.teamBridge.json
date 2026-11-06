@@ -341,6 +341,12 @@
 	"ui.teamBridge.attachmentCard.unavailable": "附件不可用",
 	"ui.teamBridge.fileCard.list": "{count, number}个文件",
 	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {文本文件} container {ZIP} other {文件}}",
+	"ui.teamBridge.fileCard.save": "保存第{index}个文件（共{count}个）",
+	"ui.teamBridge.fileCard.saving": "正在保存……",
+	"ui.teamBridge.fileCard.save_failed": "无法保存，请重试。",
+	"ui.teamBridge.fileCard.too_large": "文件过大，无法保存",
+	"ui.teamBridge.fileCard.expired": "文件已过期",
+	"ui.teamBridge.fileCard.unavailable": "文件不可用",
 	"ui.teamBridge.members_panel.title": "成员",
 	"ui.teamBridge.members_panel.close": "关闭成员列表",
 	"ui.teamBridge.members_panel.open_label": "{count, plural, other {查看#名成员}}",
@@ -397,5 +403,7 @@
 	"ui.teamBridge.files.unavailable": "此账户暂不支持文件。请移除文件后发送文字或图片。",
 	"ui.teamBridge.files.add": "附加文件",
 	"ui.teamBridge.files.no_schedule": "文件可以立即发送，但不支持定时发送。",
-	"ui.teamBridge.files.uploading": "正在上传文件…"
+	"ui.teamBridge.files.uploading": "正在上传文件…",
+	"ui.teamBridge.files.attached": "已附加",
+	"ui.teamBridge.files.not_uploaded": "未上传"
 }
