@@ -10,10 +10,15 @@ import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	SUBSCRIPTION_ID_PATTERN,
 } from "../shared/desktop-contract";
+import {
+	LINK_PREVIEW_ARTIFACT_CHANNEL,
+	LINK_PREVIEW_RESOLVE_CHANNEL,
+} from "../shared/link-preview";
 import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
+import type { LinkPreviewService } from "./link-preview/service";
 import type { SupplementFrameMounts } from "./supplement-mounts";
 import type { TeamBridgeNotifier } from "./team-bridge-notifier";
 
@@ -318,6 +323,15 @@ export function registerDesktopIPC(
 	onLanguageSettingEdited?: () => void,
 	/** Refuse selected writes synchronously, before they reach the daemon. */
 	admitDesktopRequest?: (input: unknown) => DesktopResponse | null,
+	/**
+	 * The link-preview proxy (`./link-preview/service`), when the backend is paired
+	 * with a daemon new enough to serve core's preview routes.
+	 *
+	 * APPENDED LAST for the reason `teamBridgeNotifier` gives: every existing caller
+	 * passes the earlier parameters positionally, and inserting one above any of
+	 * them would silently reinterpret a callback in the harnesses.
+	 */
+	linkPreview?: LinkPreviewService,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -528,6 +542,28 @@ export function registerDesktopIPC(
 			authorize(event);
 			const payload = relayedBytes(bytes);
 			return media(input, payload);
+		});
+	}
+	/*
+	 * LINK PREVIEWS: two channels, and neither of them fetches anything. Main
+	 * proxies core's resolve/artifact routes through this app's own desktop
+	 * transports and caches artifact BYTES on disk (`./link-preview/`). A
+	 * third-party URL never reaches this process, and the renderer never names one
+	 * in a fetchable position either.
+	 *
+	 * The SAME `authorize` gate as every other channel here: a frame that somehow
+	 * acquired the preload is refused rather than trusted because it reached an IPC
+	 * name. The handlers always resolve - a refusal is one of the contract's states -
+	 * so a broken link is a card that draws nothing, never an unhandled rejection.
+	 */
+	if (linkPreview) {
+		ipcMain.handle(LINK_PREVIEW_RESOLVE_CHANNEL, (event, input: unknown) => {
+			authorize(event);
+			return linkPreview.resolve(input);
+		});
+		ipcMain.handle(LINK_PREVIEW_ARTIFACT_CHANNEL, (event, input: unknown) => {
+			authorize(event);
+			return linkPreview.artifact(input);
 		});
 	}
 	ipcMain.handle(

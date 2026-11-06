@@ -46,6 +46,14 @@ import {
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import {
+	LINK_PREVIEW_ARTIFACT_CHANNEL,
+	LINK_PREVIEW_RESOLVE_CHANNEL,
+	type LinkPreviewArtifactRequest,
+	type LinkPreviewArtifactResult,
+	type LinkPreviewResolveRequest,
+	type LinkPreviewResolveResult,
+} from "../shared/link-preview";
+import {
 	MINI_VIEW_DIALOG,
 	MINI_VIEW_DISMISS,
 	MINI_VIEW_PAINTED,
@@ -173,6 +181,32 @@ const api = {
 			},
 			pendingOpen: (): Promise<TeamBridgeOpenResult | null> =>
 				ipcRenderer.invoke("team-bridge:pending-open"),
+		},
+		/**
+		 * Link previews, as a PROXY and nothing else.
+		 *
+		 * Core resolves a message's links (it fetches, guards addresses, sniffs the
+		 * images and stores them under scope-derived ids); this app asks it for one
+		 * card, then asks it for an artifact's BYTES, which main keeps on disk so a
+		 * re-render does not re-download them. The renderer never learns a third-party
+		 * origin it could fetch from, and neither does main: the only identifier that
+		 * crosses this bridge is core's artifact id.
+		 *
+		 * `expectedAccountId` is on BOTH calls because core gates the preview routes on
+		 * the account the caller claims (a receipt it compares against the identity the
+		 * install holds) exactly as it does for `teamBridge.*`. Main holds no identity
+		 * of its own to substitute, so the renderer passes the one it already sends on
+		 * every Team Bridge request.
+		 */
+		linkPreview: {
+			resolve: (
+				request: LinkPreviewResolveRequest,
+			): Promise<LinkPreviewResolveResult> =>
+				ipcRenderer.invoke(LINK_PREVIEW_RESOLVE_CHANNEL, request),
+			artifact: (
+				request: LinkPreviewArtifactRequest,
+			): Promise<LinkPreviewArtifactResult> =>
+				ipcRenderer.invoke(LINK_PREVIEW_ARTIFACT_CHANNEL, request),
 		},
 		/**
 		 * The conversation main launched this window to show, read from THIS

@@ -10,6 +10,17 @@ interface ServicePorts {
 	clear: () => void;
 	/** Production verifies the op against the current UI request schema. */
 	supportsUnreadEvents?: boolean;
+	/**
+	 * A different principal is (or may be) signed in from the one this service last
+	 * saw — fired by the same fence that stops an old aggregate landing after a
+	 * sign-out, so there is one definition of "the account changed" in the app.
+	 *
+	 * The link-preview artifact cache subscribes here: it holds third-party image
+	 * BYTES on disk for 24 h, and those must not outlive the account that fetched
+	 * them, any more than the banner images this app already keeps in memory only.
+	 * This class decides nothing about that cache; it only says when.
+	 */
+	principalChanged?: () => void;
 }
 
 /** One app-owned observer, not a renderer hook or a notification counter.
@@ -175,6 +186,9 @@ export class AppAttentionService {
 			this.account = null;
 			this.cursor = undefined;
 			this.projection.setBridgeUnread(0, this.projection.currentGeneration);
+			// Told rather than asked: whoever holds bytes derived from an identity
+			// drops them here, before the next read can race the sign-out.
+			this.ports.principalChanged?.();
 			this.invalidate();
 		} else if (writes.has(op)) {
 			if (op.startsWith("team_bridge.")) this.invalidateBridge();

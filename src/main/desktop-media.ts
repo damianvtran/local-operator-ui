@@ -1,3 +1,4 @@
+import { readLinkPreviewArtifact } from "./link-preview/artifact-reader";
 import { readOwnerAuditAttachment } from "./team-bridge-audit-media";
 /**
  * Authenticated binary/multipart relay for the legacy media routes.
@@ -21,6 +22,7 @@ import {
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
 } from "../shared/desktop-contract";
+import { LINK_PREVIEW_ARTIFACT_ID } from "../shared/link-preview";
 
 const NOTIFICATION_INITIALS = /^[\p{L}\p{N}]{0,2}$/u;
 
@@ -389,6 +391,27 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			name: z.string().min(1).max(200).optional(),
 		})
 		.strict(),
+	/*
+	 * ONE CACHED LINK-PREVIEW ARTIFACT, by the id core derived for it.
+	 *
+	 * THE ID IS SHAPED HERE, not merely passed through: it is a PATH SEGMENT on this
+	 * request and a FILE NAME in main's artifact cache, so one check in front of both
+	 * is cheaper than a path bug. `[0-9a-f]{32}` mirrors core's own
+	 * `ARTIFACT_ID_PATTERN`, which the artifact route and the store both re-check.
+	 *
+	 * `expectedAccountId` travels as the `X-Link-Preview-Account` HEADER below, never
+	 * as a query parameter: this is a GET, and a GET's URL is the one thing every
+	 * intermediary writes down. Core answers 404 when the caller's scope does not
+	 * name the id - indistinguishable from "gone" by design — and 422 for a
+	 * malformed one.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.link_preview.artifact"),
+			id: z.string().regex(LINK_PREVIEW_ARTIFACT_ID),
+			expectedAccountId: z.string().min(1).max(128),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -571,6 +594,22 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
 				method: "GET",
 			};
+		/*
+		 * One cached link-preview artifact id (core's scope-derived hash).
+		 *
+		 * The path segment is the id and nothing else: no query string at all, because
+		 * the account receipt this route needs travels as the `X-Link-Preview-Account`
+		 * HEADER (see the header block in `requestDesktopMediaOutcome`) - a GET's URL is
+		 * written down by every intermediary, and an account id does not belong there.
+		 * `encodeURIComponent` is belt over the schema's `[0-9a-f]{32}`: the schema is
+		 * this client's check, and a hand-built request must not be able to turn an id
+		 * into a path fragment either.
+		 */
+		case "team_bridge.link_preview.artifact":
+			return {
+				path: `/v1/desktop/team-bridge/link-preview/artifact/${encodeURIComponent(request.id)}`,
+				method: "GET",
+			};
 	}
 }
 
@@ -707,6 +746,7 @@ export async function requestDesktopMediaOutcome(
 		request.op === "team_bridge.owner_audit.attachment" ||
 		request.op === "team_bridge.avatar" ||
 		request.op === "team_bridge.endpoint_avatar" ||
+		request.op === "team_bridge.link_preview.artifact" ||
 		request.op === "team_bridge.notification_avatar"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
@@ -785,6 +825,16 @@ export async function requestDesktopMediaOutcome(
 				request.fileName
 					? { "X-Bridge-File-Name": encodeURIComponent(request.fileName) }
 					: {}),
+				/*
+				 * The artifact route's account RECEIPT, as a header and only as a header
+				 * (core's `ACCOUNT_RECEIPT_HEADER`). The preview endpoints take the account
+				 * this session claims so core can refuse a mismatch; on this GET there is no
+				 * body to carry it and a query string would put it in every log between here
+				 * and the daemon, which is precisely what core's route refuses to do.
+				 */
+				...(request.op === "team_bridge.link_preview.artifact"
+					? { "X-Link-Preview-Account": request.expectedAccountId }
+					: {}),
 				Authorization: `Bearer ${token}`,
 			},
 			body,
@@ -803,6 +853,14 @@ export async function requestDesktopMediaOutcome(
 		});
 		answered = true;
 		const responseType = response.headers.get("content-type") ?? "";
+		if (request.op === "team_bridge.link_preview.artifact") {
+			// The one byte op whose result main KEEPS ON DISK, so its ceiling is
+			// enforced before anything is buffered (`artifact-reader.ts`).
+			return {
+				response: await readLinkPreviewArtifact(response),
+				answered: true,
+			};
+		}
 		if (request.op === "team_bridge.owner_audit.attachment") {
 			return {
 				response: await readOwnerAuditAttachment(response),

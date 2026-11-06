@@ -129,6 +129,8 @@ import {
 import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
+import { LinkPreviewArtifactCache } from "./link-preview/artifact-cache";
+import { createLinkPreviewService } from "./link-preview/service";
 import {
 	type QuickSendWatcher,
 	readQuickSendValue,
@@ -2794,7 +2796,52 @@ app
 				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
 				nativeBadge.reset();
 			},
+			// Fire-and-forget: the sign-out must not wait on a directory sweep, and a
+			// clear that fails is retried by the next transition's orphan pass. The
+			// cache is constructed just below this statement — see why there, beside
+			// that construction — and this closure only reaches it when a transition
+			// actually fires, which is after this synchronous block has finished.
+			principalChanged: () => {
+				void linkPreviewArtifacts.clear();
+			},
 		});
+		/*
+		 * LINK PREVIEWS' BYTE CACHE — built BELOW the attention service, deliberately.
+		 *
+		 * WHY NOT ABOVE IT, where it reads more naturally: `scripts/app-icon-badge.test.mjs`
+		 * slices this file from `const publishBadge =` to `const appAttention =` and
+		 * evaluates that region through `new Function` with an explicit name list.
+		 * A construction inside that region fails there with `ReferenceError:
+		 * LinkPreviewArtifactCache is not defined` — a real regression in a test this
+		 * change does not own (QA round 2, Q-2), so the cache is built here instead.
+		 * The port above is outside that region and only reaches this binding when a
+		 * principal transition actually fires, which cannot happen before this
+		 * synchronous block finishes.
+		 *
+		 * WHAT IT IS FOR. It holds third-party image BYTES for 24 h, and a sign-out or
+		 * account switch must not leave the departing account's images on disk — so
+		 * `principalChanged` clears it, on the same fence that stops a stale unread
+		 * aggregate landing after a sign-out. A per-entry account fingerprint already
+		 * stops a replayed id being served under another receipt (see
+		 * `link-preview/artifact-cache.ts`); this is the other half: the bytes stop
+		 * existing.
+		 *
+		 * WHAT MAIN DOES NOT DO HERE, because the next reader will be tempted: it does
+		 * not fetch, parse, or validate any remote document. Issues with a preview
+		 * (dial-tone page, private host, disabled feature) belong to core's routes; main
+		 * only forwards and keeps the bytes.
+		 *
+		 * OPENED IN THE BACKGROUND: `open()` ensures the directory, reads the index and
+		 * sweeps once, and until it settles every lookup is a miss and every store is a
+		 * no-op — a cold cache, not an error. Blocking the window on a directory scan to
+		 * save one image download would trade the first paint for it.
+		 */
+		const linkPreviewArtifacts = new LinkPreviewArtifactCache({
+			// The documented home: <userData>/cache/link-previews, one file per
+			// artifact id with an `index.json` beside them.
+			dir: join(app.getPath("userData"), "cache", "link-previews"),
+		});
+		void linkPreviewArtifacts.open().catch(() => {});
 		refreshAppIconBadge = () => {
 			if (process.platform === "win32") nativeBadge.invalidateOverlayTarget();
 			appAttention.projection.refresh();
@@ -3435,6 +3482,14 @@ app
 			(m) => logger.warn(m, LogFileType.BACKEND),
 		);
 
+		const linkPreview = createLinkPreviewService({
+			transport: {
+				request: (input) => sendDesktop(input),
+				media: (input) => backendService.requestDesktopMedia(input, null),
+			},
+			cache: linkPreviewArtifacts,
+		});
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -3492,6 +3547,12 @@ app
 				void mainLocale.refresh();
 			},
 			(input) => recordingShortcut.admit(input),
+			/*
+			 * The link-preview proxy, LAST for the reason the signature's own note gives:
+			 * every earlier caller passes these positionally. It rides the same sender
+			 * gate as every other channel above it.
+			 */
+			linkPreview,
 		);
 
 		// Both app documents may read recording state; only the main window's

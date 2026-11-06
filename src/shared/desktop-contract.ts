@@ -22,6 +22,10 @@ import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
+import {
+	LINK_PREVIEW_MAX_URL_CHARS,
+	type LinkPreviewBridge,
+} from "./link-preview";
 import type {
 	TeamBridgeNotificationSender,
 	TeamBridgeNotifyAuthority,
@@ -4151,6 +4155,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			boundary: agentMessagesBoundarySchema.optional(),
 		})
 		.strict(),
+	/*
+	 * THE LINK-PREVIEW RESOLVE PROXY (`features`-free: core owns the capability, and
+	 * a resolve that is refused answers a STATE, never an error of this plane).
+	 *
+	 * The URL is length-bounded at core's own ceiling (`MAX_URL_CHARS` in
+	 * `server/routes/desktop_link_preview.py`), so a renderer value can never make
+	 * main serialize a body core refuses on size alone. `index` has a lower bound
+	 * and no upper one, deliberately mirroring the route: a position past the
+	 * per-message cap is the `cap` answer, not a shape error.
+	 *
+	 * `expectedAccountId` is the RECEIPT every Team Bridge op already carries. Main
+	 * holds no signed-in identity of its own to substitute, and core compares the
+	 * string against the identity the install actually holds and refuses a mismatch
+	 * (409), so forwarding it grants nothing.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.link_preview.resolve"),
+			url: z.string().min(1).max(LINK_PREVIEW_MAX_URL_CHARS),
+			index: z.number().int().nonnegative(),
+			expectedAccountId: id,
+		})
+		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
 	z
 		.object({
@@ -7584,6 +7611,27 @@ export type DesktopAPI = {
 		onOpen: (callback: () => void) => () => void;
 		pendingOpen: () => Promise<TeamBridgeOpenResult | null>;
 	};
+	/**
+	 * Link previews: a proxy to core's routes, and nothing else.
+	 *
+	 * Lives HERE, beside the other desktop-side surfaces, because that is where the
+	 * preload actually exposes it (`api.desktop.linkPreview`, next to
+	 * `api.desktop.teamBridge`) — the ambient `src/preload/index.d.ts` declares
+	 * exactly this shape and nothing more. A first cut put the type at
+	 * `api.linkPreview` while the implementation sat under `desktop`, so the
+	 * published types described a path that did not exist at runtime (QA round 1,
+	 * Q-1); one declaration in one place is the fix, and
+	 * `scripts/link-preview-preload-shape.test.mjs` compiles a probe that names the
+	 * path, so the two cannot drift apart again.
+	 *
+	 * Optional like every Electron-only member: browser development and Storybook
+	 * mount the renderer with no preload, and a card must simply not exist there.
+	 *
+	 * Both calls carry `expectedAccountId` because core gates these routes on the
+	 * account the caller claims, exactly as `teamBridge.*` does; main holds no
+	 * identity of its own to substitute.
+	 */
+	linkPreview?: LinkPreviewBridge;
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**
 	 * A notification click, with the conversation it names and - when the banner was
@@ -10218,6 +10266,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		/*
+		 * THE LINK-PREVIEW RESOLVE PROXY. A POST because the receipt travels in the
+		 * body: core takes `expected_account_id` from the body here and from a HEADER
+		 * on the artifact route, and never from a query string, so no intermediary's
+		 * log or crash report records whose preview was asked for.
+		 *
+		 * The receipt is forwarded, never derived: `expected_account_id` is what the
+		 * caller says it is, core compares it against the identity the install holds,
+		 * and a mismatch is a 409 the renderer draws as "sign in as that account".
+		 */
+		case "team_bridge.link_preview.resolve":
+			return {
+				path: "/v1/desktop/team-bridge/link-preview/resolve",
+				method: "POST",
+				body: {
+					url: request.url,
+					index: request.index,
+					expected_account_id: request.expectedAccountId,
+				},
+			};
 		case "settings.list":
 			return { path: "/v1/settings", method: "GET" };
 		case "settings.edit":
