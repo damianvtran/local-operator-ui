@@ -394,6 +394,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-clipboard-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure the page clipboard gate against a real driven view and the real system clipboard; it builds that child's environment through the notification kill switch, so a page that copies cannot banner the operator",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-host-proof.mjs",
 		"spawn",
 		1,
