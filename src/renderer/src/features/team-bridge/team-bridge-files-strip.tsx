@@ -1,6 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
+import { cn } from "@shared/lib/utils";
 import { ChevronRight, FileIcon, RotateCw, X } from "lucide-react";
 import type { TeamBridgeFilesState } from "./use-team-bridge-files";
 
@@ -29,7 +30,17 @@ export function TeamBridgeFilesStrip({
 						) : (
 							<FileIcon
 								size={18}
-								className="shrink-0 text-ink-muted"
+								className={cn(
+									"shrink-0",
+									/* A failed upload is a state a reader must be able to see, not
+									 * only read: both status registers below say the same thing, so a
+									 * visual mark keeps them distinguishable (design D5). A chip whose
+									 * capability is off is NOT failed — nothing was attempted, and the
+									 * explanation sits under the list — so it stays muted. */
+									chip.status === "error" && state.enabled
+										? "text-danger"
+										: "text-ink-muted",
+								)}
 								aria-hidden="true"
 							/>
 						)}
@@ -48,7 +59,14 @@ export function TeamBridgeFilesStrip({
 									</bdi>
 								</summary>
 							</details>
-							<span className="text-xs text-ink-muted">
+							<span
+								className={cn(
+									"text-xs",
+									chip.status === "error" && state.enabled
+										? "text-danger"
+										: "text-ink-muted",
+								)}
+							>
 								{t(
 									chip.status === "error"
 										? "ui.teamBridge.files.failed"
