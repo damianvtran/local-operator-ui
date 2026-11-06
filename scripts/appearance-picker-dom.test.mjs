@@ -70,7 +70,7 @@ globalThis.cancelAnimationFrame = window.cancelAnimationFrame = () => {};
 const bundle = await build({
 	stdin: {
 		contents: `
- export { previewGlassState, previewBackdropVars, readPreviewPalette } from './src/renderer/src/features/settings/components/appearance-preview-glass';
+ export { previewGlassState, previewBackdropVars, readPreviewPalette, ROLES } from './src/renderer/src/features/settings/components/appearance-preview-glass';
  export { applyGlassState } from './src/renderer/src/shared/hooks/use-window-glass';
  export { contrastCandidate } from './src/shared/theme-engine/contrast.mjs';
  export { createElement, act } from 'react';
@@ -81,7 +81,7 @@ const bundle = await build({
  export { captureTheme, applyCaptureTheme } from './src/renderer/src/shared/themes/terminal-theme';
  export { resolveAppearance } from './src/renderer/src/shared/themes/appearance';
  export { themes } from './src/renderer/src/shared/themes';
- export { glassFloorsForPalette, composite, ratio } from './src/shared/glass-derivation.mjs';`,
+ export { glassFloorsForPalette, composite, ratio, FLOOR_ROLES } from './src/shared/glass-derivation.mjs';`,
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -125,6 +125,8 @@ const {
 	applyGlassState,
 	contrastCandidate,
 	glassFloorsForPalette,
+	ROLES,
+	FLOOR_ROLES,
 } = module.exports;
 const frame = async () => {
 	const pending = frames;
@@ -212,6 +214,9 @@ const rolesOf = (palette) => ({
  * compositor. */
 const MISSING_ROLE =
 	/palette is missing the "info" role required by the glass floor table/;
+/** The same wording for the role the blank-value case drops. */
+const MISSING_ROLE_HAIRLINE =
+	/palette is missing the "hairline" role required by the glass floor table/;
 
 /** The same palette with one role dropped: a reader that fell behind the floor
  * table's role contract, which is what #1706's second caller did. */
@@ -477,6 +482,46 @@ test("a floor table request names the palette role it is missing", () => {
 	);
 	// The read palette the fixture builds is the full contract: nothing missing.
 	assert.doesNotThrow(() => glassFloorsForPalette(rolesOf(palette)));
+});
+
+test("every role the sample reads is one the floor table requires", () => {
+	// R1: the reader's `ROLES` and the table's `FLOOR_ROLES` are hand-kept, and
+	// deleting `"hairline"` from the table's list stayed 16/16 green while
+	// restoring the exact TypeError this fix exists to close. So the expectation is
+	// driven by the READER's own list: drop each role it reads and the table must
+	// name that role, never fall through to `composite`.
+	const palette = rolesOf(paletteOf("localOperatorDark"));
+	for (const [role] of ROLES) {
+		assert.throws(
+			() => glassFloorsForPalette(withoutRole(palette, role)),
+			{
+				name: "Error",
+				message: new RegExp(`palette is missing the "${role}" role`),
+			},
+			`${role} is read by the sample but not required by the floor table`,
+		);
+	}
+});
+
+test("the reader and the floor table name the same roles", () => {
+	// The other direction of R1, which the loop above cannot see: a role the table
+	// gains but the reader does not read would make the sample throw the named
+	// error on every glass paint. Equality is the only shape that pins both.
+	assert.deepEqual(ROLES.map(([role]) => role).sort(), [...FLOOR_ROLES].sort());
+});
+
+test("a blank palette role is rejected as missing, not solved", () => {
+	// R2: `typeof value === "string"` admitted `""`, which is not a colour: the
+	// edge mix solved against a blank hairline and published a degenerate table
+	// (`overlayEdgeMix {dark: 0, light: 1}`) instead of reporting the bad read.
+	const palette = rolesOf(paletteOf("localOperatorDark"));
+	for (const blank of ["", "   "]) {
+		assert.throws(
+			() => glassFloorsForPalette({ ...palette, hairline: blank }),
+			{ name: "Error", message: MISSING_ROLE_HAIRLINE },
+			`a ${JSON.stringify(blank)} role must be treated as missing`,
+		);
+	}
 });
 
 test("preview and its separator remain in flow with intrinsic compact samples", async () => {

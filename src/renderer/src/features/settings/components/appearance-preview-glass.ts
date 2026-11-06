@@ -39,7 +39,15 @@ export type PreviewPaletteRoles = Pick<
 	| "info"
 >;
 
-const ROLES: ReadonlyArray<readonly [keyof PreviewPaletteRoles, string]> = [
+/**
+ * The roles the sample's floor table measures, as `role -> --lo-* suffix`. EXPORTED
+ * because it is one half of a hand-kept pair: `FLOOR_ROLES` in
+ * `shared/glass-derivation.mjs` is the other, and the contract test drives its
+ * expectation from THIS list so the table cannot grow past the reader.
+ */
+export const ROLES: ReadonlyArray<
+	readonly [keyof PreviewPaletteRoles, string]
+> = [
 	["canvas", "canvas"],
 	["surface", "surface"],
 	["elevated", "elevated"],
