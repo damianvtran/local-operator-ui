@@ -27,7 +27,13 @@ import { remarkTeamBridgeMentions } from "./mentions/remark-mentions";
  * react-markdown does not render it without `rehype-raw`, which is not used.
  * Attachments, when Team Bridge has them, will be a separate, explicit surface.
  */
-const EXTERNAL_HREF = /^(https?:|mailto:)/i;
+/**
+ * The addresses this app is willing to hand to the browser. Exported because the
+ * link-preview card draws the same link and must not answer the question twice:
+ * one rule for "is this a destination" is what keeps a card and its own link
+ * text from disagreeing about where a message points.
+ */
+export const EXTERNAL_HREF = /^(https?:|mailto:)/i;
 
 const COMPONENTS: Components = {
 	a: ({ href, children }) =>
