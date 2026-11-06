@@ -51,12 +51,34 @@ import {
  * A card's boundary is its ground, not an edge (branding §5), so this is the
  * `plain` card on `surface` with no border at rest; the anchor inside it is the
  * affordance, and its hover is a colour step, never a lift.
+ *
+ * THE CARD DRAWS THE FOCUS RING, INSET, and every part of that is load-bearing.
+ * The anchor's box IS the card's box, and `styles/index.css` pins
+ * `html :focus-visible { outline-offset: 2px }` at a specificity no utility can
+ * outrank (that rule's own comment explains why the `html` prefix is there), so
+ * the anchor's ring lands outside the card — where this `overflow-hidden` clips
+ * it to nothing, since an outline is ink overflow and an ancestor's clip takes
+ * it. The card therefore draws the ring inside its own box, which is also the
+ * honest a11y model: the whole card is one target, so the whole card is what
+ * shows focus. `thread-search-overlay.tsx` established this shape for a
+ * composite whose inner field must not paint its own ring, and the same note in
+ * `styles/index.css` makes suppressing that inner ring legal only because a
+ * wrapper draws the replacement.
+ *
+ * The offset is negative for the ring to paint over the picture instead of
+ * outside it; `outline-accent` is the token the global rule itself uses (there
+ * is no `--color-focus`, so `outline-focus` would be a silent no-op).
  */
-const CARD_CLASS = "overflow-hidden rounded-lg";
+const CARD_CLASS = cn(
+	"overflow-hidden rounded-lg",
+	"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
+	"has-[:focus-visible]:outline-accent has-[:focus-visible]:-outline-offset-2",
+);
 
 const LINK_CLASS = cn(
 	"flex min-w-0 flex-col text-inherit hover:bg-row-hover",
-	"focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
+	// The card above paints the ring — see CARD_CLASS.
+	"focus-visible:outline-none",
 );
 
 const PLATE_CLASS = "flex min-w-0 flex-col gap-1 p-3";
@@ -76,6 +98,13 @@ const IMAGE_CLASS = "w-full bg-media-surface object-cover";
  * bytes still serve 200, so the box is reserved at a fixed height instead — the
  * absence means UNKNOWN, and a card that rendered `0x0` would be inventing a
  * measurement it was never given.
+ *
+ * THE RATIO IS HONOURED ONLY UP TO THE CAP. `maxHeight: 176` wins once the
+ * container is wider than `176 * width/height` — 312.9px for a 16:9 image — so
+ * at a 380px container the box measures 2.159:1, not 1.778:1, and `object-cover`
+ * centre-crops the difference rather than stretching it. That cap is deliberate
+ * (a card in a chat column must not grow without bound), so it is stated here:
+ * the ratio is the shape up to 176px, not an unconditional promise.
  */
 function imageStyle(card: LinkPreviewCardContent): CSSProperties {
 	const box = card.imageBox;

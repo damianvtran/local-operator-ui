@@ -233,10 +233,14 @@ export function linkPreviewCard(preview: LinkPreview): LinkPreviewCard {
 }
 
 /** The one line that names the destination: the page's own site name, else the
- * host. Never empty, so a card always has an accessible name. */
+ * host, else the title. Never empty for a card that draws, so every card has an
+ * accessible name. */
 export function linkPreviewSiteLabel(card: LinkPreviewCard): string {
+	// `||`, not `??`. `linkPreviewCard` normalizes an absent URL to `""` rather
+	// than `null`, and `??` accepts `""` as a finished answer — a globe and a
+	// blank span, against the promise above.
 	return (
-		card.siteName ?? linkPreviewHost(card.url) ?? card.url ?? card.title ?? ""
+		card.siteName || linkPreviewHost(card.url) || card.url || card.title || ""
 	);
 }
 

@@ -158,6 +158,11 @@ export function useTeamBridgeLinkPreview({
 	}, [plan, delayedRetries, nonce, bridge]);
 
 	const retry = useCallback(() => {
+		// A manual retry starts a FRESH delayed-retry spell, deliberately: the
+		// ceiling below exists to stop an automatic timer holding a row forever,
+		// and a person who asked again is not that timer. So each click buys
+		// `LINK_PREVIEW_MAX_DELAYED_RETRIES` more automatic hops — per spell, not
+		// per mount.
 		setDelayedRetries(0);
 		setView({ kind: "silent" });
 		setNonce((n) => n + 1);
@@ -198,7 +203,14 @@ export function useLinkPreviewArtifact(
 	});
 
 	useEffect(() => {
-		if (!id || !receipt) return;
+		if (!id || !receipt) {
+			// A reused instance — a row whose link changed — must not keep
+			// reporting the PREVIOUS link's URL: the cleanup below already revoked
+			// that blob, so a leftover `url` here would paint an `<img>` at a
+			// revoked address and only `onError` would take it back down.
+			setState({ url: null, refusal: null });
+			return;
+		}
 		const api = bridge ?? linkPreviewBridge();
 		if (!api) return;
 

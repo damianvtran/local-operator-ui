@@ -111,6 +111,24 @@ export const ReadyUnknownImageSize: Story = {
 	args: { view: unknownSize, imageUrl: image },
 };
 
+/**
+ * The chat column's 172px floor (design round 1 asked for this as a frame rather
+ * than arithmetic). The meta decorator pins 380px, the width the ratio cap is
+ * measured at; this story overrides it so the wrap, the truncation and the
+ * two-line clamp are looked at instead of derived.
+ */
+export const ReadyAtChatColumnFloor: Story = {
+	name: "Ready, at the 172px chat column floor",
+	args: { view: full, imageUrl: image, faviconUrl: favicon },
+	decorators: [
+		(Story) => (
+			<div className="max-w-[172px]">
+				<Story />
+			</div>
+		),
+	],
+};
+
 export const ReadyTextOnly: Story = {
 	name: "Ready, text only",
 	args: { view: textOnly },

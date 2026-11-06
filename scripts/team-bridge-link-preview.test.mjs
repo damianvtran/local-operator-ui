@@ -271,6 +271,13 @@ test("the site line falls back to the host, so a card always has a name", () => 
 		"example.com",
 		"no site name means the host stands in, never an empty label",
 	);
+	// A blank URL is normalized to `""`, not `null` (R1-m1): nullish fallbacks
+	// stop on it and leave the card with a globe and no name.
+	assert.equal(
+		m.linkPreviewSiteLabel(m.linkPreviewCard(ready({ url: "" }).preview)),
+		"What changed this week",
+		"a blank canonical URL falls through to the title",
+	);
 });
 
 test("the picture is decoration beside a title and the whole card when there is none", () => {
@@ -553,6 +560,16 @@ async function mountConnected(props) {
 	await settle();
 	return {
 		html: () => element.innerHTML,
+		/* Rerender the SAME root so hook state survives the props change — the only
+		 * way to reach a reused instance's reset paths (R1-m2). A fresh mount would
+		 * reset every hook by construction and prove nothing. */
+		rerender: async (next) => {
+			await act(async () =>
+				root.render(React.createElement(m.TeamBridgeLinkPreview, next)),
+			);
+			await settle();
+			await settle();
+		},
 		close: async () => {
 			await act(async () => root.unmount());
 			element.remove();
@@ -643,6 +660,38 @@ test("the picture's bytes are asked for with the SAME receipt, by id", async () 
 	assert.ok(revokedUrls >= 1, "the picture URL is revoked when the card goes");
 });
 
+test("a reused card drops the previous link's picture, never a revoked blob", async () => {
+	// R1-m2 reproduction. One instance, two links: the cleanup revokes link A's
+	// blob URL, so a hook that keeps its state across the props change hands the
+	// card a dead `url` and the plate paints an <img> at a revoked address until
+	// `onError` hides it.
+	const second = "https://second.example/page";
+	const record = recordingBridge([
+		ready({ image: picture() }),
+		ready({ url: second, title: "Second page", description: null }),
+	]);
+	const mounted = await mountConnected({
+		url: URL_TEXT,
+		index: 0,
+		expectedAccountId: "acct_self",
+		bridge: record.bridge,
+	});
+	assert.match(mounted.html(), /<img src="blob:/, "link A's picture is drawn");
+	await mounted.rerender({
+		url: second,
+		index: 0,
+		expectedAccountId: "acct_self",
+		bridge: record.bridge,
+	});
+	assert.match(mounted.html(), /Second page/, "the second link is drawn");
+	assert.doesNotMatch(
+		mounted.html(),
+		/src="blob:/,
+		"a pictureless link paints no picture, revoked URL included",
+	);
+	await mounted.close();
+});
+
 test("a delayed retry WAITS and then asks again, drawing no error card", async () => {
 	const record = recordingBridge([
 		{ kind: "error", retryable: true, retryAfterMs: 20 },
@@ -710,10 +759,17 @@ test("the card module carries no fetch path of its own", () => {
 		"use-link-preview.ts",
 	]) {
 		const source = readFileSync(join(cardDir, file), "utf8");
-		// The renderer's only ways out are IPC: a `fetch`, an XHR or a
-		// `new Image()` here would be this app telling the linked site who read
-		// the message.
+		// The renderer's only ways out are IPC: a `fetch`, an XHR, a
+		// `new Image()` or a beacon/stream here would be this app telling the
+		// linked site who read the message. The comment names the class, so the
+		// assertion covers the class (R1-m4).
 		assert.doesNotMatch(source, /\bfetch\s*\(/, `${file} fetches`);
 		assert.doesNotMatch(source, /XMLHttpRequest/, `${file} opens an XHR`);
+		assert.doesNotMatch(source, /new Image\s*\(/, `${file} decodes an image`);
+		assert.doesNotMatch(
+			source,
+			/sendBeacon|EventSource/,
+			`${file} opens a side channel`,
+		);
 	}
 });
