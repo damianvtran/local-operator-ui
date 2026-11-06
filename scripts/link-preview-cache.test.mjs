@@ -1,0 +1,268 @@
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+/*
+ * The artifact cache's BOUNDS, driven on a real directory.
+ *
+ * Why a real temp directory rather than a mocked `fs`: every property here is a
+ * property of files and an index that outlives the process — a stale entry, an
+ * orphan, a torn write — and a mock would assert the code I wrote instead of what
+ * a disk does. The clock and the limits are injected so TTL and eviction are
+ * deterministic without sleeping.
+ */
+const bundle = await build({
+	stdin: {
+		contents: "export * from './src/main/link-preview/artifact-cache';",
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	LinkPreviewArtifactCache,
+	ARTIFACT_MAX_BLOB_BYTES,
+	ARTIFACT_MAX_BYTES,
+	ARTIFACT_MAX_COUNT,
+	previewKeyFor,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		bundle.outputFiles[0].text,
+	).toString("base64")}`
+);
+
+const DIRS = [];
+async function tempDir() {
+	const dir = await mkdtemp(join(tmpdir(), "lp-cache-"));
+	DIRS.push(dir);
+	return dir;
+}
+test.after(async () => {
+	for (const dir of DIRS) await rm(dir, { recursive: true, force: true });
+});
+
+const ID_A = "a".repeat(32);
+const ID_B = "b".repeat(32);
+const ID_C = "c".repeat(32);
+const bytesOf = (n, fill = 7) => new Uint8Array(n).fill(fill);
+
+async function openCache(overrides = {}) {
+	const clock = overrides.clock ?? { now: 0 };
+	const cache = new LinkPreviewArtifactCache({
+		dir: overrides.dir ?? (await tempDir()),
+		now: () => clock.now,
+		ttlMs: overrides.ttlMs,
+		maxBytes: overrides.maxBytes,
+		maxArtifacts: overrides.maxArtifacts,
+		sweepIntervalMs: overrides.sweepIntervalMs,
+	});
+	await cache.open();
+	return { cache, clock };
+}
+
+test("the documented bounds are the ones the product chose", () => {
+	assert.equal(ARTIFACT_MAX_BYTES, 64 * 1024 * 1024);
+	assert.equal(ARTIFACT_MAX_COUNT, 400);
+	// Bigger than any artifact core produces (a 2 MiB og:image is its ceiling).
+	assert.equal(ARTIFACT_MAX_BLOB_BYTES, 4 * 1024 * 1024);
+});
+
+test("a stored blob is served, and one past its TTL is not", async () => {
+	const { cache, clock } = await openCache({ ttlMs: 1000 });
+	await cache.store(ID_A, "image/png", bytesOf(4));
+	const hit = await cache.read(ID_A);
+	assert.equal(hit.mime, "image/png");
+	assert.equal(hit.bytes.byteLength, 4);
+
+	clock.now = 1001;
+	assert.equal(await cache.read(ID_A), null, "an expired blob is a miss");
+
+	// The sweep is what reclaims the space; a read alone only refuses to serve.
+	clock.now = 1001;
+	await cache.sweep();
+	const names = await readdir(cache.directory);
+	assert.ok(!names.includes(ID_A), "the expired file is gone");
+});
+
+test("a stale index entry cannot resurrect bytes that are gone", async () => {
+	const dir = await tempDir();
+	const { cache } = await openCache({ dir, ttlMs: 60_000 });
+	await cache.store(ID_A, "image/png", bytesOf(8));
+	await rm(join(dir, ID_A));
+
+	assert.equal(await cache.read(ID_A), null);
+	// The index entry was dropped in memory; a fresh process reading the same
+	// directory must also answer a miss rather than a phantom hit.
+	const reopened = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await reopened.open();
+	assert.equal(await reopened.read(ID_A), null);
+	assert.deepEqual(reopened.ids(), []);
+});
+
+test("an interrupted write's temp file and any stray are removed at open", async () => {
+	const dir = await tempDir();
+	const first = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await first.open();
+	await first.store(ID_A, "image/png", bytesOf(4));
+
+	await writeFile(join(dir, `${ID_B}.123.deadbeef.tmp`), "half a blob");
+	await writeFile(join(dir, "not-an-id"), "stray");
+
+	const reopened = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await reopened.open();
+	const names = await readdir(dir);
+	assert.deepEqual(names.sort(), ["index.json", ID_A].sort());
+	assert.equal((await reopened.read(ID_A)).bytes.byteLength, 4);
+});
+
+test("bytes survive a restart through the index", async () => {
+	const dir = await tempDir();
+	const first = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await first.open();
+	await first.store(ID_A, "image/webp", bytesOf(3));
+
+	const reopened = new LinkPreviewArtifactCache({ dir, now: () => 0 });
+	await reopened.open();
+	const hit = await reopened.read(ID_A);
+	assert.equal(hit.mime, "image/webp");
+	assert.equal(hit.bytes.byteLength, 3);
+});
+
+test("the count cap evicts by last use, not by store order", async () => {
+	const { cache, clock } = await openCache({
+		maxArtifacts: 2,
+		maxBytes: 1024 * 1024,
+		ttlMs: 60_000,
+		sweepIntervalMs: 60_000,
+	});
+	await cache.store(ID_A, "image/png", bytesOf(1));
+	clock.now = 10;
+	await cache.store(ID_B, "image/png", bytesOf(1));
+	// A is newest by USE even though it is oldest by store time.
+	clock.now = 20;
+	assert.equal((await cache.read(ID_A)).bytes.byteLength, 1);
+	clock.now = 30;
+	await cache.store(ID_C, "image/png", bytesOf(1));
+
+	assert.deepEqual(cache.ids().sort(), [ID_A, ID_C].sort());
+	assert.equal(await cache.read(ID_B), null);
+	const names = await readdir(cache.directory);
+	assert.ok(!names.includes(ID_B));
+});
+
+test("the byte cap evicts until the directory fits", async () => {
+	const { cache } = await openCache({
+		maxArtifacts: 400,
+		maxBytes: 10,
+		ttlMs: 60_000,
+	});
+	await cache.store(ID_A, "image/png", bytesOf(6));
+	await cache.store(ID_B, "image/png", bytesOf(6));
+	assert.ok(cache.stats().residentBytes <= 10);
+	assert.deepEqual(cache.ids(), [ID_B]);
+	assert.equal(await cache.read(ID_A), null);
+	assert.equal(cache.stats().evictions, 1);
+});
+
+test("a blob larger than any artifact core produces is refused outright", async () => {
+	const { cache } = await openCache({ ttlMs: 60_000 });
+	await cache.store(ID_A, "image/png", bytesOf(ARTIFACT_MAX_BLOB_BYTES + 1));
+	assert.deepEqual(cache.ids(), []);
+	assert.equal(await cache.read(ID_A), null);
+	// Nor is an empty body something to keep.
+	await cache.store(ID_B, "image/png", new Uint8Array(0));
+	assert.deepEqual(cache.ids(), []);
+});
+
+test("drop forgets specific ids and nothing else", async () => {
+	const { cache } = await openCache({ ttlMs: 60_000 });
+	await cache.store(ID_A, "image/png", bytesOf(2));
+	await cache.store(ID_B, "image/png", bytesOf(2));
+	await cache.drop([ID_A]);
+	assert.deepEqual(cache.ids(), [ID_B]);
+	const names = await readdir(cache.directory);
+	assert.ok(!names.includes(ID_A));
+	assert.equal(await cache.read(ID_A), null);
+	// Dropping an id it never held is a no-op, not a failure: the "disabled" rule
+	// fires on answers that may have no artifacts of their own.
+	await cache.drop([ID_C]);
+	assert.deepEqual(cache.ids(), [ID_B]);
+});
+
+test("the index on disk names artifacts, never a page", async () => {
+	const dir = await tempDir();
+	const { cache } = await openCache({ dir, ttlMs: 60_000 });
+	await cache.store(ID_A, "image/png", bytesOf(2));
+	const raw = await readFile(join(dir, "index.json"), "utf8");
+	assert.ok(raw.includes(ID_A));
+	for (const entry of Object.values(JSON.parse(raw).entries)) {
+		assert.deepEqual(Object.keys(entry).sort(), [
+			"lastUsedAt",
+			"mime",
+			"size",
+			"storedAt",
+		]);
+	}
+	// The whole point of keying by an opaque id: a directory listing, or the index,
+	// reveals no link. A url/host/query in either would be a browsing record.
+	assert.ok(!/https?|www\.|\?|#/.test(raw), `index must name no page: ${raw}`);
+	for (const name of await readdir(dir)) {
+		assert.match(
+			name,
+			/^(index\.json|[0-9a-f]{32})$/,
+			`unexpected name ${name}`,
+		);
+	}
+});
+
+test("the preview key is opaque and stable, and is not a URL", () => {
+	const url = ["ht", "tps", "://", "example", ".test", "/a?b=c"].join("");
+	const key = previewKeyFor(url);
+	assert.match(key, /^[0-9a-f]{64}$/);
+	assert.equal(previewKeyFor(url), key);
+	assert.notEqual(previewKeyFor(`${url}&d=e`), key);
+	assert.ok(!key.includes("example"));
+});
+
+test("a read still answers when the eviction pass behind it fails", async () => {
+	const dir = await tempDir();
+	const { cache, clock } = await openCache({
+		dir,
+		ttlMs: 1000,
+		sweepIntervalMs: 0,
+	});
+	await cache.store(ID_A, "image/png", bytesOf(4));
+	clock.now = 900;
+	await cache.store(ID_B, "image/webp", bytesOf(2));
+
+	// The directory goes read-only, so the sweep this read triggers cannot delete
+	// the expired blob A or rewrite the index. The READ of a live blob must still
+	// answer: an eviction that fails is a storage problem, never a broken card.
+	const { chmod } = await import("node:fs/promises");
+	await chmod(dir, 0o555);
+	try {
+		clock.now = 1000;
+		const hit = await cache.read(ID_B);
+		assert.equal(hit.mime, "image/webp");
+		assert.equal(hit.bytes.byteLength, 2);
+	} finally {
+		await chmod(dir, 0o755);
+	}
+});
+
+test("before open, every call is a quiet no-op", async () => {
+	const cache = new LinkPreviewArtifactCache({
+		dir: await tempDir(),
+		now: () => 0,
+	});
+	assert.equal(await cache.read(ID_A), null);
+	await cache.store(ID_A, "image/png", bytesOf(1));
+	await cache.drop([ID_A]);
+	await cache.sweep();
+	assert.deepEqual(cache.ids(), []);
+});

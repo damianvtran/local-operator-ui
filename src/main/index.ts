@@ -129,6 +129,8 @@ import {
 import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
+import { LinkPreviewArtifactCache } from "./link-preview/artifact-cache";
+import { createLinkPreviewService } from "./link-preview/service";
 import {
 	type QuickSendWatcher,
 	readQuickSendValue,
@@ -3435,6 +3437,34 @@ app
 			(m) => logger.warn(m, LogFileType.BACKEND),
 		);
 
+		/*
+		 * LINK PREVIEWS: a proxy to core's routes, plus the artifact-byte cache.
+		 *
+		 * WHAT MAIN DOES NOT DO HERE, because the next reader will be tempted: it does
+		 * not fetch, parse, or validate any remote document. Issues with a preview
+		 * (dial-tone page, private host, disabled feature) belong to core's routes; main
+		 * only forwards and, for images, keeps the bytes. See
+		 * `main/link-preview/service`.
+		 *
+		 * THE CACHE IS OPENED IN THE BACKGROUND. `open()` ensures the directory, reads the
+		 * index and sweeps once, and until it settles every lookup is a miss and every
+		 * store is a no-op — a cold cache, not an error. Blocking the window on a
+		 * directory scan to save one image download would trade the first paint for it.
+		 */
+		const linkPreviewArtifacts = new LinkPreviewArtifactCache({
+			// The documented home: <userData>/cache/link-previews, one file per
+			// artifact id with an `index.json` beside them.
+			dir: join(app.getPath("userData"), "cache", "link-previews"),
+		});
+		void linkPreviewArtifacts.open().catch(() => {});
+		const linkPreview = createLinkPreviewService({
+			transport: {
+				request: (input) => sendDesktop(input),
+				media: (input) => backendService.requestDesktopMedia(input, null),
+			},
+			cache: linkPreviewArtifacts,
+		});
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -3492,6 +3522,12 @@ app
 				void mainLocale.refresh();
 			},
 			(input) => recordingShortcut.admit(input),
+			/*
+			 * The link-preview proxy, LAST for the reason the signature's own note gives:
+			 * every earlier caller passes these positionally. It rides the same sender
+			 * gate as every other channel above it.
+			 */
+			linkPreview,
 		);
 
 		// Both app documents may read recording state; only the main window's

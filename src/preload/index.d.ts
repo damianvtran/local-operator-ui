@@ -30,6 +30,12 @@ import type {
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
 import type {
+	LinkPreviewArtifactRequest,
+	LinkPreviewArtifactResult,
+	LinkPreviewResolveRequest,
+	LinkPreviewResolveResult,
+} from "../shared/link-preview";
+import type {
 	MiniViewDialogPayload,
 	MiniViewDismissReason,
 	MiniViewRegistrationState,
@@ -113,6 +119,31 @@ declare global {
 				onState: (callback: (state: WindowGlassState) => void) => () => void;
 			};
 			desktop: DesktopAPI;
+			/**
+			 * Link previews: a PROXY to core's routes and nothing else.
+			 *
+			 * Core decides whether a link gets a card (it fetches, guards addresses,
+			 * sniffs the images and stores them under scope-derived ids); this app asks it
+			 * for one card, then for an artifact's bytes, which main caches on disk. The
+			 * renderer never sees a third-party origin it could fetch from, and the only
+			 * identifier that crosses this bridge is core's artifact id.
+			 *
+			 * Both calls carry `expectedAccountId` because core gates these routes on the
+			 * account the caller claims, exactly as `teamBridge.*` does; main holds no
+			 * identity of its own to substitute.
+			 */
+			linkPreview: {
+				/** Resolve ONE link at `index` in its message. Always resolves: a refusal
+				 * is a `{kind:"absent"|"error"}` state, never a rejected promise. */
+				resolve: (
+					request: LinkPreviewResolveRequest,
+				) => Promise<LinkPreviewResolveResult>;
+				/** The bytes of one artifact id from a resolved card, served from main's
+				 * disk cache when it has them and from core otherwise. */
+				artifact: (
+					request: LinkPreviewArtifactRequest,
+				) => Promise<LinkPreviewArtifactResult>;
+			};
 			/**
 			 * The mini view's bridge (design §D.3): the summon/dismiss pair and the
 			 * global-shortcut registration state the settings row and the mini
