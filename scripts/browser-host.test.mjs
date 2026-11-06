@@ -7139,13 +7139,22 @@ class FakeDownloadItem {
 /** An armer over one tab, with the quiet window shortened so the suite is not
  * slowed by real waiting. `log` is collected so a test can assert the operator's
  * trace exists without reading stdout. */
-function makeArmer({ tabId = 7, webContentsId = 101, lines = [] } = {}) {
+function makeArmer({
+	tabId = 7,
+	webContentsId = 101,
+	lines = [],
+	popupOpener = new Map(),
+} = {}) {
 	const armer = new DownloadArmer({
 		tabForWebContents: (id) => (id === webContentsId ? tabId : null),
+		// The one-hop attribution seam: popup webContents id → the webContents id that
+		// opened it. Empty by default, so every other test in this file exercises the
+		// direct lookup exactly as it did before the hop existed.
+		openerWebContentsId: (id) => popupOpener.get(id) ?? null,
 		log: (message) => lines.push(message),
 		quietMs: 5,
 	});
-	return { armer, tabId, webContentsId, lines };
+	return { armer, tabId, webContentsId, lines, popupOpener };
 }
 
 function tempDir(name) {
@@ -7729,6 +7738,204 @@ test("the armer creates the harness directory 0700", () => {
 	}).arm(1, dir, 5_000);
 	assert.equal(statSync(dir).mode & 0o777, 0o700);
 	rmSync(parent, { recursive: true, force: true });
+});
+
+// ---- a download the PAGE starts, and the three outcomes the agent can see ------
+
+// THE POPUP ATTRIBUTION (operator report, 2026-11-06). `will-download` names the
+// webContents that started the item, and a popup window is not a registry tab — so
+// before the hop a download a page started through `window.open` was cancelled with
+// "no download call is armed on this tab" while the tab that opened the popup sat
+// armed and waiting. The hop is ONE step, and only when the direct lookup misses.
+test("a download a POPUP starts lands through the arm on the tab that opened it", async () => {
+	const dir = tempDir("popup");
+	// The popup's webContents is 9_001; the DRIVEN tab's is 700 and it owns tab 3.
+	const popupOpener = new Map([[9_001, 700]]);
+	const { armer } = makeArmer({ webContentsId: 700, tabId: 3, popupOpener });
+	const arm = armer.arm(3, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "key.json", total: 12 });
+	assert.deepEqual(armer.decide(item, 9_001), { cancel: false, reason: "" });
+	assert.equal(
+		item.savePath,
+		join(dir, "key.json"),
+		"the popup's download lands in the directory the armed call composed",
+	);
+	writeFileSync(item.savePath, '{"k":1}');
+	item.finish("completed");
+	const result = await arm.done();
+	assert.equal(result.files.length, 1);
+	assert.equal(result.files[0].name, "key.json");
+	assert.equal(
+		result.reason,
+		"",
+		"a landed file is neither a refusal nor a no-op",
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a webContents with NO known opener is refused, with the reason it always had", () => {
+	const dir = tempDir("popup-orphan");
+	const { armer, tabId } = makeArmer({ webContentsId: 700, tabId: 3 });
+	armer.arm(tabId, dir, 5_000);
+	const decision = armer.decide(
+		new FakeDownloadItem({ filename: "key.json" }),
+		9_255,
+	);
+	assert.deepEqual(decision, {
+		cancel: true,
+		reason: "no download call is armed on this tab",
+	});
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("the direct lookup WINS over the hop, so a tab's own download is never re-attributed", () => {
+	const dir = tempDir("direct-first");
+	// A map that would send the driven tab's OWN webContents to a tab nobody armed:
+	// if the hop ran first this download would be cancelled instead of captured.
+	const popupOpener = new Map([[700, 900]]);
+	const { armer } = makeArmer({ webContentsId: 700, tabId: 3, popupOpener });
+	armer.arm(3, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "receipt.pdf", total: 8 });
+	assert.deepEqual(armer.decide(item, 700), { cancel: false, reason: "" });
+	assert.equal(item.savePath, join(dir, "receipt.pdf"));
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// THE THREE OUTCOMES, asserted head-first because the HARNESS keys on the head: a
+// `reason` whose head is `refused:` is recorded as `armed_refused`; any other
+// non-empty one is relayed as the host's own account (`armed_reason`); an empty one
+// with no files is the `no_download` row. One shape, three distinguishable answers.
+test("nothing started, refused and landed are three distinguishable answers", async () => {
+	const dir = tempDir("outcomes");
+	const { armer, tabId, webContentsId } = makeArmer();
+	// (1) NOTHING STARTED: the page began no transfer at all.
+	const idle = armer.arm(tabId, dir, 5_000);
+	armer.forget(tabId);
+	const idleResult = await idle.done();
+	assert.deepEqual(idleResult.files, []);
+	assert.match(idleResult.reason, /^no download started within /);
+	assert.doesNotMatch(idleResult.reason, /^refused: /);
+	// (2) STARTED AND REFUSED: the page's attempt reached the host, and the host said
+	// no — the refusal, not an account of a call that saw nothing.
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.decide(
+		new FakeDownloadItem({ filename: "payload.command" }),
+		webContentsId,
+	);
+	armer.forget(tabId);
+	const refusedResult = await armed.done();
+	assert.deepEqual(refusedResult.files, []);
+	assert.match(refusedResult.reason, /^refused: /);
+	assert.doesNotMatch(refusedResult.reason, /no download started/);
+	// (3) STARTED AND LANDED: a file, and no sentence at all.
+	const landing = armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "receipt.pdf", total: 8 });
+	armer.decide(item, webContentsId);
+	writeFileSync(item.savePath, "%PDF-1.4");
+	item.finish("completed");
+	armer.forget(tabId);
+	const landed = await landing.done();
+	assert.equal(landed.files.length, 1);
+	assert.equal(landed.reason, "");
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// A PAGE THAT DOWNLOADS THROUGH A POPUP the host denied never reaches
+// `will-download`, so the only honest answer to the armed call is the refusal the
+// host made — otherwise it waits out its budget and claims nothing started.
+test("a denied popup is named in the armed answer, not reported as nothing started", async () => {
+	const dir = tempDir("popup-denied");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "scheme");
+	armer.forget(tabId);
+	const result = await armed.done();
+	assert.deepEqual(result.files, []);
+	assert.match(result.reason, /^refused: /);
+	assert.match(
+		result.reason,
+		/opened a popup and the host denied it \(scheme\)/,
+	);
+	assert.doesNotMatch(result.reason, /no download started/);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// THE GRANDCHILD DENY-ALL, asserted as a SOURCE shape for the same reason the
+// restore-failure marks are: `wirePopup` needs a real `BrowserWindow` this suite
+// must never boot (agent review round 1, R1-1).
+const WIRE_POPUP_TELLS_THE_ARM =
+	/setWindowOpenHandler\([\s\S]{0,1200}?noteRefusedPopup\(tabId, "popup_from_popup"\)[\s\S]{0,200}?action: "deny"/;
+const WIRE_POPUP_RECEIVES_THE_TAB =
+	/wirePopup\(\s*child,\s*popupChildren,\s*routed\.presentation,\s*tabId\s*\)/;
+
+// EVERY DENIAL POINT TELLS THE ARMED CALL (agent review round 1, R1-1). The two
+// wired sites left this one out, so a page whose download path opens a popup from
+// INSIDE its popup reproduced the reported silence exactly: the call waited out its
+// budget and answered "no download started within Ns".
+test("a popup opened from inside a popup is named in the armed answer, not silence", async () => {
+	const source = readFileSync(
+		new URL("../src/main/browser/index.ts", import.meta.url),
+		"utf8",
+	);
+	const wirePopup = functionBody(
+		source,
+		"function wirePopup(",
+		"src/main/browser/index.ts",
+	);
+	assert.match(
+		wirePopup,
+		WIRE_POPUP_TELLS_THE_ARM,
+		"the grandchild deny-all says nothing to the armed call: a page that downloads through a popup opened from its popup is back to 'no download started'",
+	);
+	// The tab whose arm owns the denied popup is the OPENER's, and it has to arrive:
+	// `wirePopup` is a sibling of `wireView`, so it cannot read `tabId` from scope.
+	assert.match(
+		functionBody(source, "function wireView(", "src/main/browser/index.ts"),
+		WIRE_POPUP_RECEIVES_THE_TAB,
+		"the popup is wired without its opener's tab id, so the denial cannot be attributed",
+	);
+	assert.equal(
+		(source.match(/downloads\.noteRefusedPopup\(/g) || []).length,
+		3,
+		"there are three popup denial points (the open handler, the refused route, the grandchild deny-all) and each one must tell the armed call",
+	);
+	// AND THE TOKEN THAT WIRING PASSES becomes the refusal the model reads, not the
+	// no-op sentence — the other half of the loop, driven through the real armer.
+	const dir = tempDir("popup-nested");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "popup_from_popup");
+	armer.forget(tabId);
+	const result = await armed.done();
+	assert.deepEqual(result.files, []);
+	assert.match(result.reason, /^refused: /);
+	assert.match(result.reason, /denied it \(popup_from_popup\)/);
+	assert.doesNotMatch(result.reason, /no download started/);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// WHAT THIS PROVES IS THE OBSERVABLE PROPERTY, NOT THE `capture.settled` GUARD
+// (agent review round 1, R1-4). The mechanism under test is the map entry going
+// away — `forget` here, and `settle` in the deadline path — and the guard itself is
+// cheap defence that both of those paths currently make unreachable.
+test("a popup denied after the call answered changes nothing, and an unarmed tab is a no-op", async () => {
+	const dir = tempDir("popup-late");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "cap");
+	// The call ends the way a real one does — the arm is dropped when the action's
+	// `finally` runs — so the suite is not slowed by the deadline budget.
+	armer.forget(tabId);
+	const answered = await armed.done();
+	// The answer is out; a popup denied afterwards must not change a result a caller
+	// already holds.
+	armer.noteRefusedPopup(tabId, "link_depth");
+	assert.match(answered.reason, /denied it \(cap\)/);
+	assert.doesNotMatch(answered.reason, /link_depth/);
+	// A tab nobody armed has no capture to tell, which is not an error: the button
+	// that opens a popup exists on every page.
+	armer.noteRefusedPopup(424_242, "scheme");
+	rmSync(dir, { recursive: true, force: true });
 });
 
 /** A `FileFact`-shaped input for the upload-note test, which needs names and no

@@ -331,6 +331,17 @@ export interface DownloadArm {
 export interface DownloadArmerOptions {
 	/** The tab a webContents belongs to, or null when it is not one of ours. */
 	tabForWebContents: (webContentsId: number) => number | null;
+	/** The webContents that OPENED one which is not a registry tab, or null when
+	 * this host does not know of one. ONE HOP, and only ever consulted when the
+	 * direct lookup misses — see `ownerTab` for why the hop exists and why it is
+	 * not allowed to become a walk.
+	 *
+	 * WHY IT IS A CALLER-SUPPLIED LOOKUP rather than an Electron import here.
+	 * "Which tab does this webContents belong to" and "what created it" are the
+	 * same kind of fact: a relationship the Chromium process knows and this module
+	 * cannot see. `tabForWebContents` already abstracts the first, so the second
+	 * arrives through the same seam, and a test can answer both without a browser. */
+	openerWebContentsId?: (webContentsId: number) => number | null;
 	/** Who owns one tab, recorded on the note a decision writes (review round 2,
 	 * U10). Optional because a test armer has no registry: absent means "cannot
 	 * say", which the row renders as it did before rather than inventing a kind. */
@@ -532,6 +543,61 @@ export class DownloadArmer {
 	}
 
 	/**
+	 * Decide a page action the session refused before any download could start.
+	 *
+	 * The page-opened popup is the case that exists (operator report, 2026-11-06): a
+	 * page that downloads THROUGH a popup can be stopped long before
+	 * `will-download` fires — `decidePopup` denies the scheme, the live-window cap
+	 * or a dead opener, and `routePopup` denies a link tab's depth — and the armed
+	 * call then waited out its whole budget and answered "no download started
+	 * within 120s". That sentence describes a call that saw nothing; this one
+	 * describes a page the host said no to, and nothing was saved either way. The
+	 * difference is that the model is now told which.
+	 *
+	 * `reason` is the policy's own short token (`scheme`, `cap`, `link_depth`, …),
+	 * never the url: this sentence reaches the model and the audit row, and a popup
+	 * url is routinely a signed link whose query string is the credential.
+	 */
+	noteRefusedPopup(tabId: number, reason: string): void {
+		const capture = this.captures.get(tabId);
+		// AN ARM THAT HAS ALREADY SETTLED IS NOT TOLD. Its answer is out, and pushing
+		// a sentence into it would change a result a caller already holds.
+		if (!capture || capture.settled) return;
+		capture.refusals.push(
+			`refused: the page opened a popup and the host denied it (${reason}); any download it would have started was not saved`,
+		);
+		this.options.log(
+			`[browser] noted a denied popup on tab ${tabId} for the armed download call (${reason})`,
+		);
+	}
+
+	/**
+	 * The tab a download BELONGS to: the direct lookup, else one hop up.
+	 *
+	 * WHY THE HOP EXISTS (operator report, 2026-11-06). `will-download` reports the
+	 * webContents that started the item, and a popup WINDOW — the shape a page's
+	 * `window.open` produces, and the shape a signed-in "generate a key file" flow
+	 * uses — is not a registry tab, so the direct lookup answered null and the
+	 * download was cancelled with "no download call is armed on this tab" while the
+	 * tab that opened it sat armed and waiting. The relationship the popup was
+	 * created under (`routePopup` reads the same opener) is what decides which arm
+	 * owns it, so one hop up is the honest attribution.
+	 *
+	 * WHY ONE HOP AND NOT A WALK. `wirePopup` gives a popup WINDOW a deny-all open
+	 * handler, so a window cannot open a window, and the only other child shape — a
+	 * link — is a registry tab, which the direct lookup answers first. Walking
+	 * further would let a download be decided by a tab two generations away from the
+	 * page that started it: reported against a call that never touched that page,
+	 * and captured under a directory composed for a different session.
+	 */
+	private ownerTab(webContentsId: number): number | null {
+		const direct = this.options.tabForWebContents(webContentsId);
+		if (direct !== null) return direct;
+		const opener = this.options.openerWebContentsId?.(webContentsId) ?? null;
+		return opener === null ? null : this.options.tabForWebContents(opener);
+	}
+
+	/**
 	 * Decide one download attempt. THE ONLY ENTRY POINT `profile.ts` calls.
 	 *
 	 * The order is deliberate and is the design's: the NAME first (cheapest, and
@@ -539,7 +605,7 @@ export class DownloadArmer {
 	 * plain text), then the CAP before the write, then the save path.
 	 */
 	decide(item: DownloadItemLike, webContentsId: number): DownloadDecision {
-		const tabId = this.options.tabForWebContents(webContentsId);
+		const tabId = this.ownerTab(webContentsId);
 		let capture = tabId === null ? undefined : this.captures.get(tabId);
 		if (!capture || capture.settled) {
 			// THE HUMAN PATH (LOH-13 slice C). `will-download` cannot tell a
