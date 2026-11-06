@@ -2604,10 +2604,13 @@ test(
 				}),
 			);
 			const sends = [];
+			// A send nobody ever confirms (see the note above): the row stays pending.
+			const neverSettles = new Promise(() => {});
 			const base = {
 				target: { type: "conversation", id: "bcv_dm" },
-				onSend: async (body) => {
+				onSend: (body) => {
 					sends.push(body);
+					return neverSettles;
 				},
 			};
 			/* The TIMELINE's viewport, not the first scroll area on the page: an

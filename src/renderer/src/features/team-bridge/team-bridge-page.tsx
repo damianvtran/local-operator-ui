@@ -281,6 +281,7 @@ import { useStickToBottom } from "./use-stick-to-bottom";
 import {
 	refreshAfterSend,
 	teamBridgeKeys,
+	teamBridgeMessagesQueryOptions,
 	useAddTeamBridgeMembers,
 	useAnswerTeamBridgeInvitation,
 	useArchiveTeamBridgeConversation,
@@ -4890,6 +4891,12 @@ type TeamBridgeMessageLink = {
 	conversationId: string;
 	messageId: string;
 	fetched: boolean;
+	/*
+	 * Whether this link has spent its ONE newest-page read (agent review round 4,
+	 * R4-1). Link state, not a ref: the effect below re-decides on it, and a ref
+	 * flip would not re-run the effect - which is how the walk stalled in round 2.
+	 */
+	newestRead: boolean;
 };
 
 /**
@@ -4987,6 +4994,7 @@ const TeamBridgeOwnedPage: FC<{
 							conversationId: requestedConversation,
 							messageId: requestedMessage,
 							fetched: false,
+							newestRead: false,
 						}
 					: requestedAny
 						? null
@@ -5472,6 +5480,7 @@ const TeamBridgeOwnedPage: FC<{
 						conversationId: requestedConversation,
 						messageId: requestedMessage,
 						fetched: false,
+						newestRead: false,
 					}
 				: null,
 		);
@@ -6161,11 +6170,14 @@ const TeamBridgeOwnedPage: FC<{
 	/*
 	 * LAND ON THE CLICKED MESSAGE, NEVER ON A STALE PAGE. The watcher wrote the
 	 * message into this exact cache entry before raising the banner, so the
-	 * normal case paints it in the first frame with no request. If the entry
-	 * still lacks it (evicted, or a click from a banner older than this
-	 * document), the timeline shows its loading state rather than the stale
-	 * page, re-reads that one key once, and then shows whatever the server has:
-	 * a message deleted in between must not hold a spinner forever.
+	 * normal case paints it in the first frame with no request. A link can point
+	 * either way, and the two directions need different reads: a message NEWER
+	 * than the cached page is found by ONE re-read of that one key (the common
+	 * case - a click on a recent notification), and a message OLDER than it is
+	 * found by paging back (the walk below). Until one of them finds it the
+	 * timeline shows its loading state rather than the stale page, and it shows
+	 * whatever the server has when both are done: a message deleted in between
+	 * must not hold a spinner forever.
 	 */
 	const linkedConversation =
 		messageLink !== null && selected?.id === messageLink.conversationId;
@@ -6188,6 +6200,24 @@ const TeamBridgeOwnedPage: FC<{
 	 */
 	const linkedPages = useRef(0);
 	const linkedReadFor = useRef<string | null>(null);
+	/* The link id whose newest-page re-read is in flight (below). */
+	const linkedNewestInFlight = useRef<string | null>(null);
+	/*
+	 * A POST-UNMOUNT WRITE IS THE ONLY ONE WORTH SUPPRESSING (agent review round 4,
+	 * R4-1). `main` scoped this flag to the effect run, which held there because
+	 * that effect's dependencies did not move mid-read; this one depends on the
+	 * hook's own loading and older-page state, so a re-run while the newest read
+	 * was in flight would have cleared the flag and left the completion unwritten -
+	 * the walk would then never start. The flag follows the COMPONENT instead, and
+	 * `linkedNewestInFlight` is what keeps the read to one per link.
+	 */
+	const linkedReadLive = useRef(true);
+	useEffect(() => {
+		linkedReadLive.current = true;
+		return () => {
+			linkedReadLive.current = false;
+		};
+	}, []);
 	useEffect(() => {
 		if (!messageLink || messageLink.fetched || !selected || !selfAccountId)
 			return;
@@ -6200,6 +6230,47 @@ const TeamBridgeOwnedPage: FC<{
 		if (linkedReadFor.current !== messageLink.messageId) {
 			linkedReadFor.current = messageLink.messageId;
 			linkedPages.current = 0;
+		}
+		/*
+		 * A LINK POINTS EITHER WAY (agent review round 4, R4-1). This effect used to
+		 * hold only the walk below, so a message NEWER than the cached page was never
+		 * read: with `hasOlder: false` nothing was read at all, and with it the walk
+		 * only pages backwards - the row arrived with the 8 s poll, which is exactly
+		 * the "clicked the notification and it appeared seconds later" report of
+		 * 2026-10-30. One newest-page read answers that direction, and the walk keeps
+		 * the other.
+		 *
+		 * IT IS SEQUENCED ON ITS OWN PROMISE, not on a re-render it may never cause
+		 * (agent review round 2, m5): a newest read that changes nothing - or fails -
+		 * must still hand over to the walk, and must never leave the link pending.
+		 * `newestRead` is link state, so flipping it re-runs this effect; a bare ref
+		 * would not.
+		 */
+		if (!messageLink.newestRead) {
+			if (linkedNewestInFlight.current === messageLink.messageId) return;
+			linkedNewestInFlight.current = messageLink.messageId;
+			void client
+				.fetchQuery({
+					...teamBridgeMessagesQueryOptions(
+						client,
+						selected.id,
+						selected.tenant_id,
+						selfAccountId,
+					),
+					staleTime: 0,
+				})
+				.catch(() => undefined)
+				.finally(() => {
+					if (linkedNewestInFlight.current === messageLink.messageId)
+						linkedNewestInFlight.current = null;
+					if (!linkedReadLive.current) return;
+					setMessageLink((link: TeamBridgeMessageLink | null) =>
+						link && link.messageId === messageLink.messageId
+							? { ...link, newestRead: true }
+							: link,
+					);
+				});
+			return;
 		}
 		/*
 		 * IN FLIGHT IS NOT "THE WALK IS SPENT" (agent review round 3, M3-a). The
@@ -6241,6 +6312,7 @@ const TeamBridgeOwnedPage: FC<{
 		messageLink,
 		selected,
 		selfAccountId,
+		client,
 		messages.isPending,
 		messages.hasOlder,
 		messages.isLoadingOlder,
