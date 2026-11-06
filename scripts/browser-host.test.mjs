@@ -8042,6 +8042,10 @@ test("/health carries the capabilities this build serves", async () => {
 		"record_stop",
 		"record_size",
 		"record_quality",
+		// Clipboard write through the host. Literal like the rest, for the same
+		// reason: the harness refuses `copy` on the extension, the cmux host and any
+		// desktop build that does not advertise it.
+		"copy",
 	]);
 });
 
@@ -12516,10 +12520,23 @@ test("press with a selector focuses the element first, refuses one that will not
 test("hover is in the wire vocabulary, advertised beside press, lane-scoped, and not a navigating action", async () => {
 	assert.ok(METHODS.includes("hover"));
 	assert.ok(isMethod("hover"));
+	// `hover` was APPENDED when it landed, then main appended `setvalue`, then this
+	// branch appended `copy`, so the pin is that no append moved an existing index:
+	// the tail is hover, select, setvalue, copy in that order.
+	assert.deepEqual(
+		METHODS.slice(-4),
+		["hover", "select", "setvalue", "copy"],
+		"appends only: no existing method's index moved",
+	);
 	assert.equal(
-		METHODS.at(-3),
+		METHODS.at(-4),
 		"hover",
-		"appended: no existing method's index moved; `select` and then `setvalue` follow it",
+		"copy was appended last: no existing method's index moved",
+	);
+	assert.equal(
+		METHODS.at(-1),
+		"copy",
+		"copy was appended after setvalue: no existing method's index moved",
 	);
 	assert.ok(HOST_CAPABILITIES.includes("hover"));
 	// The harness gates extended press on this exact token; `press` alone is true of
