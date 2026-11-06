@@ -49,6 +49,14 @@ output. The short version of the parts most often got wrong:
   shipped inputs bounded at 1.25:1.
 - **Elevation is a lightness step, not a shadow.** One shadow exists, only for
   things that leave the flow (menu, dialog, drawer, popover, tooltip, select).
+- **A floating surface never carries a border.** (Operator report, 2026-11-06.)
+  It separates by its ground plus the one shadow, whose contact layer darkens the
+  panel's own edge; a hairline on a leave-flow panel is a regression by
+  construction, and so is a bordered control nested inside one — the panel's
+  action is `primary`, quieter ones are `ghost`. Group dividers are inset and
+  aligned with the item labels, never a rule that reaches the panel's edge.
+  Primitives wear `data-lo-floating`; `scripts/floating-surface-no-border.test.mjs`
+  enforces it. Full rule: `docs/branding.md` § 2.
 - **Disabled changes colour, never opacity. Focus is `outline`, never
   `box-shadow`** — this app is mostly scroll containers, and box-shadow rings
   get clipped by `overflow: hidden`.

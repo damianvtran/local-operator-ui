@@ -390,6 +390,42 @@ drawer, popover, tooltip, select. An in-flow card that needs to feel raised
 takes the next ground, not a shadow. This is why the four grounds must be
 mutually distinguishable, and why `check-themes` asserts it.
 
+**A floating surface separates by surface contrast AND elevation — never by a
+stroke.** (Operator report, 2026-11-06: a session-list tooltip, the canvas rail's
+tooltip, the agent-profile popover and the sidebar overflow menu were each
+carrying a rounded 1px lighter-than-surface border, which fights the
+borderless-chrome system; the popover added a bordered button inside the bordered
+panel. The line was also doing work it could not do well — a hairline measures
+1.03–1.18:1 against the panel's own fill, i.e. a boundary of nothing — while the
+ambient half of `--shadow-overlay` starts 12px out and left the panel's own edge
+bare.) The rule that follows, and it applies to every leave-flow surface:
+
+- **No border on a floating panel.** Menu, context menu, overflow menu, dialog,
+  drawer/sheet, popover, tooltip, hovercard, select list — none of them may
+  declare `border`, `border-hairline` or `border-control`. A hairline on one of
+  these is a regression by construction, not a question of taste. Each shared
+  primitive's panel wears `data-lo-floating`, and
+  `scripts/floating-surface-no-border.test.mjs` fails on a border utility, a
+  `border-color` rule, or a contact-less `--shadow-overlay`.
+- **The boundary is the shadow's contact layer.** `--shadow-overlay` composes a
+  tight contact layer (`--lo-shadow-contact`, derived from the palette's `scrim`
+  role) with the palette ambient, so there is real darkening AT the edge and the
+  panel reads on every theme. A `0 0 0 1px` ring is not a substitute: zero blur
+  makes it a border drawn with a shadow.
+- **On window glass it is restrengthened, not dropped.** A panel compositing
+  over an already translucent column takes the derived ink step
+  (`--lo-glass-overlay-edge-mix`) on that same contact layer — the constant and
+  its floor are unchanged, only the property it feeds is. This is the case where
+  an ambient shadow alone disappears.
+- **Group dividers are insets, not rules that touch the panel's edge.** An
+  internal separator sits inside the panel's padding, aligned with the item
+  labels (`mx-2` against `p-1` + `px-2` in the menu and select primitives), and
+  uses the low-contrast `hairline` role. A full-bleed rule that reaches the
+  panel's rounded corner rebuilds the box the border used to draw.
+- **Nested elements may not reintroduce it.** The single action a floating panel
+  offers is `primary` (borderless by construction) and quieter ones are `ghost`;
+  a bordered `secondary` on an `elevated` panel is a box inside a box.
+
 ### The four inks
 
 `ink` (primary) → `ink-muted` (secondary) → `ink-dim` (captions, metadata,
