@@ -7853,7 +7853,65 @@ test("a denied popup is named in the armed answer, not reported as nothing start
 	rmSync(dir, { recursive: true, force: true });
 });
 
-test("a popup denied after the answer is out cannot rewrite it, and an unarmed tab is a no-op", async () => {
+// THE GRANDCHILD DENY-ALL, asserted as a SOURCE shape for the same reason the
+// restore-failure marks are: `wirePopup` needs a real `BrowserWindow` this suite
+// must never boot (agent review round 1, R1-1).
+const WIRE_POPUP_TELLS_THE_ARM =
+	/setWindowOpenHandler\([\s\S]{0,1200}?noteRefusedPopup\(tabId, "popup_from_popup"\)[\s\S]{0,200}?action: "deny"/;
+const WIRE_POPUP_RECEIVES_THE_TAB =
+	/wirePopup\(\s*child,\s*popupChildren,\s*routed\.presentation,\s*tabId\s*\)/;
+
+// EVERY DENIAL POINT TELLS THE ARMED CALL (agent review round 1, R1-1). The two
+// wired sites left this one out, so a page whose download path opens a popup from
+// INSIDE its popup reproduced the reported silence exactly: the call waited out its
+// budget and answered "no download started within Ns".
+test("a popup opened from inside a popup is named in the armed answer, not silence", async () => {
+	const source = readFileSync(
+		new URL("../src/main/browser/index.ts", import.meta.url),
+		"utf8",
+	);
+	const wirePopup = functionBody(
+		source,
+		"function wirePopup(",
+		"src/main/browser/index.ts",
+	);
+	assert.match(
+		wirePopup,
+		WIRE_POPUP_TELLS_THE_ARM,
+		"the grandchild deny-all says nothing to the armed call: a page that downloads through a popup opened from its popup is back to 'no download started'",
+	);
+	// The tab whose arm owns the denied popup is the OPENER's, and it has to arrive:
+	// `wirePopup` is a sibling of `wireView`, so it cannot read `tabId` from scope.
+	assert.match(
+		functionBody(source, "function wireView(", "src/main/browser/index.ts"),
+		WIRE_POPUP_RECEIVES_THE_TAB,
+		"the popup is wired without its opener's tab id, so the denial cannot be attributed",
+	);
+	assert.equal(
+		(source.match(/downloads\.noteRefusedPopup\(/g) || []).length,
+		3,
+		"there are three popup denial points (the open handler, the refused route, the grandchild deny-all) and each one must tell the armed call",
+	);
+	// AND THE TOKEN THAT WIRING PASSES becomes the refusal the model reads, not the
+	// no-op sentence — the other half of the loop, driven through the real armer.
+	const dir = tempDir("popup-nested");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "popup_from_popup");
+	armer.forget(tabId);
+	const result = await armed.done();
+	assert.deepEqual(result.files, []);
+	assert.match(result.reason, /^refused: /);
+	assert.match(result.reason, /denied it \(popup_from_popup\)/);
+	assert.doesNotMatch(result.reason, /no download started/);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// WHAT THIS PROVES IS THE OBSERVABLE PROPERTY, NOT THE `capture.settled` GUARD
+// (agent review round 1, R1-4). The mechanism under test is the map entry going
+// away — `forget` here, and `settle` in the deadline path — and the guard itself is
+// cheap defence that both of those paths currently make unreachable.
+test("a popup denied after the call answered changes nothing, and an unarmed tab is a no-op", async () => {
 	const dir = tempDir("popup-late");
 	const { armer, tabId } = makeArmer();
 	const armed = armer.arm(tabId, dir, 5_000);

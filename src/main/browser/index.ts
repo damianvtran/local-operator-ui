@@ -2150,7 +2150,7 @@ async function initializeBrowserHost(
 					const childId = child.webContents.id;
 					popupOpener.set(childId, contents.id);
 					child.on("closed", () => popupOpener.delete(childId));
-					wirePopup(child, popupChildren, routed.presentation);
+					wirePopup(child, popupChildren, routed.presentation, tabId);
 					return;
 				}
 				// A refused route (the per-opener bound, an opener that died between the
@@ -2396,13 +2396,18 @@ async function initializeBrowserHost(
 		 * known auth flow nests popups and unbounded nesting is what the per-view cap
 		 * would otherwise have to chase.
 		 *
-		 * NO registry, tab id, state file, CDP driver attachment or change
-		 * notification: an OPENER-BEARING popup is not a tab and must not become one
-		 * — the proof asserts the tab count does not move. It appears nowhere in
-		 * `session.json` either; closing the app ends it. (An opener-LESS popup — an
+		 * NO registry OR STATE FILE: an OPENER-BEARING popup is not a tab and must not
+		 * become one — the proof asserts the tab count does not move. It appears nowhere
+		 * in `session.json` either; closing the app ends it. (An opener-LESS popup — an
 		 * ordinary link — never reaches this function: `did-create-window` routes it
 		 * to `openPopupAsTab`, because nothing about it needs a window and a window
 		 * `tabs` never lists was the operator-visible bug, design 1.1.)
+		 *
+		 * THE `tabId` IS THE OPENER'S, AND IT IS NOT A REGISTRY ENTRY (agent review round
+		 * 1, R1-1). It names the armed `download` call a denied grandchild popup belongs
+		 * to, so the model is told which refusal stopped its download instead of
+		 * waiting out the budget to be told nothing started — the same sentence the two
+		 * other denial points already send.
 		 *
 		 * The child closes when its opener does (Electron's documented default —
 		 * `outlivesOpener` is deliberately absent), which is what covers the tab-close
@@ -2413,12 +2418,19 @@ async function initializeBrowserHost(
 			child: BrowserWindow,
 			popupChildren: Set<BrowserWindow>,
 			presentation: WindowShow,
+			tabId: number,
 		): void {
 			popupChildren.add(child);
 			child.on("closed", () => popupChildren.delete(child));
 			const childContents = child.webContents;
 			childContents.setWindowOpenHandler((childDetails) => {
 				log(`[browser] refused a popup from a popup: ${childDetails.url}`);
+				// A GRANDCHILD POPUP IS A DENIAL LIKE THE OTHER TWO (agent review round 1,
+				// R1-1): a page that downloads through a popup opened from inside its popup
+				// never reaches `will-download`, so without this it got the exact silence
+				// the operator reported. The token is this host's own label, and the url
+				// stays out of the sentence for the reason `noteRefusedPopup` states.
+				downloads.noteRefusedPopup(tabId, "popup_from_popup");
 				return { action: "deny" };
 			});
 			const onWillNavigate = (event: Event, rawUrl: string): void => {
