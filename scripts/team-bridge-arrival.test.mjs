@@ -607,3 +607,199 @@ test("each day's sticky pill is scoped to its own day group", async () => {
 		await teardown();
 	}
 });
+
+/*
+ * THE DAY DIVIDER'S RULE STOPS AT THE PILL (operator report, 2026-11-06).
+ *
+ * The windowed strip's divider used to be ONE full-width `absolute` hairline
+ * drawn behind a non-positioned, centred pill row. A positioned element paints
+ * above a non-positioned sibling's background and its inline text (CSS 2.1
+ * Appendix E, steps 3/5/6), so the line crossed the pill's fill AND overwrote the
+ * label's glyph rows - the operator photographed exactly that, and the fix is two
+ * flush rules either side of the pill rather than one rule behind it. Nothing is
+ * painted behind the pill under a broken rule, so the break cannot depend on the
+ * pill's fill being opaque (window glass, or any translucent `elevated` later).
+ *
+ * jsdom cannot see paint order, so this pins the STRUCTURE that decides it, and
+ * it fails if the single full-width rule behind the pill comes back: that shape
+ * is one `[data-day-rule]` carrying `absolute`, not two flush segments. The
+ * grouped list keeps its own mechanism on purpose (its rule must not travel with
+ * a sticky pill), and the second half pins that it still has it.
+ */
+test("the windowed day divider breaks its rule at the pill, and the grouped one does not", async () => {
+	const { dom, container, renderElement, teardown } = domList();
+	const messages = [
+		message("w1", 1, { created_at: "2026-10-24T10:00:00Z" }),
+		message("w2", 2, { created_at: "2026-10-24T10:01:00Z" }),
+	];
+	try {
+		/* The scroll root the page hands the list; the strip looks for the Radix
+		   viewport inside it. jsdom reports a zero-height viewport, which mounts the
+		   strip's tail - all three items of this fixture, day heading included. */
+		const scrollRoot = dom.window.document.createElement("div");
+		const viewport = dom.window.document.createElement("div");
+		viewport.setAttribute("data-radix-scroll-area-viewport", "");
+		scrollRoot.appendChild(viewport);
+		container.appendChild(scrollRoot);
+
+		await renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages,
+				labelFor: (sender) => sender.display_label,
+				arrivalKey: key,
+				scrollRootRef: { current: scrollRoot },
+			}),
+		);
+
+		const divider = container.querySelector("[data-day-divider]");
+		assert.ok(divider, "the windowed strip draws a day divider");
+		const rules = [...divider.querySelectorAll("[data-day-rule]")];
+		assert.equal(rules.length, 2, "two rules, not one rule behind the pill");
+		const [leading, pill, trailing] = [...divider.children];
+		assert.ok(leading.hasAttribute("data-day-rule"), "a rule leads the pill");
+		assert.ok(trailing.hasAttribute("data-day-rule"), "a rule trails the pill");
+		assert.ok(
+			!pill.hasAttribute("data-day-rule"),
+			"the pill sits between them",
+		);
+		assert.ok(
+			pill.textContent.length > 0,
+			"the middle child is the labelled pill",
+		);
+		for (const rule of rules)
+			assert.equal(
+				rule.className.includes("absolute"),
+				false,
+				`the windowed rule is flush, not positioned over the pill (${rule.className})`,
+			);
+		assert.equal(
+			divider.className.includes("absolute"),
+			false,
+			"the divider row is in the flow, so no positioned sibling paints over it",
+		);
+
+		/* The same list without a scroll root is the grouped list: its single rule
+		   is absolute and its pill row is sticky above it. */
+		await renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages,
+				labelFor: (sender) => sender.display_label,
+				arrivalKey: key,
+			}),
+		);
+		const group = container.querySelector("[data-day-group]");
+		assert.ok(group, "the grouped list draws a day group");
+		const groupedRules = [...group.querySelectorAll("[data-day-rule]")];
+		assert.equal(groupedRules.length, 1, "the grouped rule is one line");
+		assert.ok(
+			groupedRules[0].className.includes("absolute"),
+			"the grouped rule stays in the group's own flow, behind the pill",
+		);
+		const stickyRow = group.querySelector("[data-day-divider]");
+		assert.ok(
+			stickyRow.className.includes("sticky") &&
+				stickyRow.className.includes("z-[5]"),
+			`the grouped pill sticks above an opaque elevated occluder (${stickyRow.className})`,
+		);
+	} finally {
+		await teardown();
+	}
+});
+
+/*
+ * THE DAY DIVIDER'S RULE STOPS AT THE PILL (operator report, 2026-11-06).
+ *
+ * The windowed strip's divider used to be ONE full-width `absolute` hairline
+ * drawn behind a non-positioned, centred pill row. A positioned element paints
+ * above a non-positioned sibling's background and its inline text (CSS 2.1
+ * Appendix E, steps 3/5/6), so the line crossed the pill's fill AND overwrote the
+ * label's glyph rows - the operator photographed exactly that, and the fix is two
+ * flush rules either side of the pill rather than one rule behind it. Nothing is
+ * painted behind the pill under a broken rule, so the break cannot depend on the
+ * pill's fill being opaque (window glass, or any translucent `elevated` later).
+ *
+ * jsdom cannot see paint order, so this pins the STRUCTURE that decides it, and
+ * it fails if the single full-width rule behind the pill comes back: that shape
+ * is one `[data-day-rule]` carrying `absolute`, not two flush segments. The
+ * grouped list keeps its own mechanism on purpose (its rule must not travel with
+ * a sticky pill), and the second half pins that it still has it.
+ */
+test("the windowed day divider breaks its rule at the pill, and the grouped one does not", async () => {
+	const { dom, container, renderElement, teardown } = domList();
+	const messages = [
+		message("w1", 1, { created_at: "2026-10-24T10:00:00Z" }),
+		message("w2", 2, { created_at: "2026-10-24T10:01:00Z" }),
+	];
+	try {
+		/* The scroll root the page hands the list; the strip looks for the Radix
+		   viewport inside it. jsdom reports a zero-height viewport, which mounts the
+		   strip's tail - all three items of this fixture, day heading included. */
+		const scrollRoot = dom.window.document.createElement("div");
+		const viewport = dom.window.document.createElement("div");
+		viewport.setAttribute("data-radix-scroll-area-viewport", "");
+		scrollRoot.appendChild(viewport);
+		container.appendChild(scrollRoot);
+
+		await renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages,
+				labelFor: (sender) => sender.display_label,
+				arrivalKey: key,
+				scrollRootRef: { current: scrollRoot },
+			}),
+		);
+
+		const divider = container.querySelector("[data-day-divider]");
+		assert.ok(divider, "the windowed strip draws a day divider");
+		const rules = [...divider.querySelectorAll("[data-day-rule]")];
+		assert.equal(rules.length, 2, "two rules, not one rule behind the pill");
+		const [leading, pill, trailing] = [...divider.children];
+		assert.ok(leading.hasAttribute("data-day-rule"), "a rule leads the pill");
+		assert.ok(trailing.hasAttribute("data-day-rule"), "a rule trails the pill");
+		assert.ok(
+			!pill.hasAttribute("data-day-rule"),
+			"the pill sits between them",
+		);
+		assert.ok(
+			pill.textContent.length > 0,
+			"the middle child is the labelled pill",
+		);
+		for (const rule of rules)
+			assert.equal(
+				rule.className.includes("absolute"),
+				false,
+				`the windowed rule is flush, not positioned over the pill (${rule.className})`,
+			);
+		assert.equal(
+			divider.className.includes("absolute"),
+			false,
+			"the divider row is in the flow, so no positioned sibling paints over it",
+		);
+
+		/* The same list without a scroll root is the grouped list: its single rule
+		   is absolute and its pill row is sticky above it. */
+		await renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages,
+				labelFor: (sender) => sender.display_label,
+				arrivalKey: key,
+			}),
+		);
+		const group = container.querySelector("[data-day-group]");
+		assert.ok(group, "the grouped list draws a day group");
+		const groupedRules = [...group.querySelectorAll("[data-day-rule]")];
+		assert.equal(groupedRules.length, 1, "the grouped rule is one line");
+		assert.ok(
+			groupedRules[0].className.includes("absolute"),
+			"the grouped rule stays in the group's own flow, behind the pill",
+		);
+		const stickyRow = group.querySelector("[data-day-divider]");
+		assert.ok(
+			stickyRow.className.includes("sticky") &&
+				stickyRow.className.includes("z-[5]"),
+			`the grouped pill sticks above an opaque elevated occluder (${stickyRow.className})`,
+		);
+	} finally {
+		await teardown();
+	}
+});
