@@ -513,6 +513,14 @@ const APP_SPAWN_SITES = [
 		"boots a SECOND headless app with --disable-gpu-compositing on its own scratch profile to reproduce a capability drop before the renderer subscribes - the same real app and renderer as #1, so the same banner risk",
 		/withNotificationsOff\(\{/,
 	),
+	guarded(
+		"scripts/notifications-glass-evidence.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app headless on a scratch profile to photograph the notifications group headers and read-state switch at the user's glass setting - a real app with a real backend, so the notification it raises for its own seeding is exactly the banner the kill switch exists to suppress",
+		/withNotificationsOff\(\{/,
+	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",
 		"spawn",

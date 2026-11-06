@@ -228,13 +228,19 @@ export const composite = (fg, a, bg) =>
 export const schemeOf = (palette) =>
 	lum(palette.canvas) < 0.18 ? "dark" : "light";
 
-/** The smallest alpha, in 0.01 steps, at which `ink` clears the floor on `role` over `backdrop`. */
-export const minAlpha = (palette, role, ink, backdrop) => {
+/** The smallest alpha, in 0.01 steps, at which `ink` clears its floor on `role` over
+ * `backdrop`. `floor` defaults to the AA text floor; a caller measuring the dim
+ * register passes `GLASS_STATE_DIM_FLOOR`, because `inkDim` is the one ink the
+ * app holds at 3.5 rather than 4.5. */
+export const minAlpha = (
+	palette,
+	role,
+	ink,
+	backdrop,
+	floor = GLASS_INK_FLOOR,
+) => {
 	for (let a = 0.2; a <= 1.0001; a += 0.01) {
-		if (
-			ratio(palette[ink], composite(palette[role], a, backdrop)) >=
-			GLASS_INK_FLOOR
-		)
+		if (ratio(palette[ink], composite(palette[role], a, backdrop)) >= floor)
 			return Math.round(a * 100) / 100;
 	}
 	return 1;
@@ -456,10 +462,21 @@ export function derive(palettes, stateAlpha = GLASS_STATE_ALPHA) {
  * extremes bound it.
  *
  * The floor is per SCHEME and not per tier because the band is a pane's strip
- * and the pane is under the window; and it is derived against the count's ink
- * (`inkMuted`, the register the app's own section headers use beside a label)
- * rather than the strongest ink, because the count is the band's own text and
- * a band whose count cannot be read is a band that has failed at being one.
+ * and the pane is under the window; and it is derived against EVERY ink the
+ * band carries, each at its own floor: the label's `inkMuted` and the row's
+ * `ink` at 4.5, and the COUNT's `inkDim` at 3.5 (`GLASS_STATE_DIM_FLOOR`, the
+ * register the count is actually painted in).
+ *
+ * WHY THE COUNT'S OWN INK IS A TERM, MEASURED (agent QA round 1, Q-1). The
+ * floor was derived for `inkMuted` alone, which is the label's register and not
+ * the count's, and the difference only shows once a CONTRAST PRESET moves the
+ * inks: over this scheme's white extreme at `contrast High` the count measured
+ * 3.28:1 on a band the derivation had floored at 0.81, and 3.24:1 at
+ * `contrast Soft` on 0.85 - both under the count's own 3.5 floor. Adding the
+ * term takes those two presets to 0.84 and 0.88 on the palette the app ships,
+ * which is what makes "the count never vanishes" true at every setting rather
+ * than only at the authored ones. The AUTHORED fleet is unchanged (0.88 dark /
+ * 0.78 light), so this costs nothing where the contract already measured it.
  */
 export function deriveBandFloor(palettes) {
 	const out = {};
@@ -469,8 +486,17 @@ export function deriveBandFloor(palettes) {
 			if (schemeOf(palette) !== scheme) continue;
 			/* The worst content colour: the extreme the ink contrasts against. */
 			const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
-			const a = minAlpha(palette, "elevated", "inkMuted", backdrop);
-			need = Math.max(need, a);
+			for (const ink of GLASS_INKS)
+				need = Math.max(
+					need,
+					minAlpha(
+						palette,
+						"elevated",
+						ink,
+						backdrop,
+						ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR,
+					),
+				);
 		}
 		out[scheme] = Math.round(need * 100) / 100;
 	}
