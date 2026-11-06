@@ -5,11 +5,12 @@ import { cn } from "@shared/lib/utils";
 import { Globe, RotateCw } from "lucide-react";
 import type { CSSProperties, FC } from "react";
 import type { LinkPreviewBridge } from "../../../../../shared/link-preview";
-import { EXTERNAL_HREF } from "../team-bridge-markdown";
+import { EXTERNAL_HREF } from "../team-bridge-external-href";
 import {
 	LINK_PREVIEW_IMAGE_UNKNOWN_HEIGHT_PX,
 	type LinkPreviewCard as LinkPreviewCardContent,
 	type LinkPreviewCardView,
+	linkPreviewDrawsCard,
 	linkPreviewImageAlt,
 	linkPreviewSiteLabel,
 } from "./link-preview-model";
@@ -54,25 +55,54 @@ import {
  *
  * THE CARD DRAWS THE FOCUS RING, INSET, and every part of that is load-bearing.
  * The anchor's box IS the card's box, and `styles/index.css` pins
- * `html :focus-visible { outline-offset: 2px }` at a specificity no utility can
- * outrank (that rule's own comment explains why the `html` prefix is there), so
- * the anchor's ring lands outside the card — where this `overflow-hidden` clips
+ * `html :focus-visible { outline-offset: 2px }` in an UNLAYERED rule. That is
+ * why no utility can move it, and it is not specificity:
+ * `focus-visible:-outline-offset-2` is (0,2,0) and would beat the rule's (0,1,1),
+ * but every utility lives in `@layer utilities` and an unlayered declaration
+ * outranks a layered one whatever its specificity (#1722 review round 2, R2-n1).
+ * So the anchor's ring lands outside the card — where this `overflow-hidden` clips
  * it to nothing, since an outline is ink overflow and an ancestor's clip takes
  * it. The card therefore draws the ring inside its own box, which is also the
  * honest a11y model: the whole card is one target, so the whole card is what
  * shows focus. `thread-search-overlay.tsx` established this shape for a
  * composite whose inner field must not paint its own ring, and the same note in
  * `styles/index.css` makes suppressing that inner ring legal only because a
- * wrapper draws the replacement.
+ * wrapper draws the replacement. The anchor's `focus-visible:outline-none` works
+ * at all only because the global rule reads its style from `--tw-outline-style`
+ * rather than hardcoding `solid`; the same unlayered rule would otherwise win
+ * that one too.
  *
  * The offset is negative for the ring to paint over the picture instead of
  * outside it; `outline-accent` is the token the global rule itself uses (there
  * is no `--color-focus`, so `outline-focus` would be a silent no-op).
+ *
+ * THE RING IS TWO-TONE because the inset half of it crosses the picture, and a
+ * picture is arbitrary page content: over the fixture image the accent alone
+ * measured 2.57:1 in `localOperatorLight` and 1.82:1 in `highContrastLight`,
+ * under the 3:1 change-of-state contrast (#1722 design round 2, D3). A 1px line
+ * in the card's own `surface` ground just inside the accent gives the ring an
+ * edge it controls whatever is beneath it, the same way a two-tone ring holds
+ * over a photo anywhere else.
+ *
+ * That line is a positioned `::after`, NOT an inset `box-shadow` on the card.
+ * A shadow paints with the card's own background, BELOW its children, so the
+ * picture would cover exactly the segment it exists for; a positioned
+ * pseudo-element paints after the in-flow content, and the outline paints after
+ * both, so the stack reads accent, surface line, picture. It is inset by the
+ * ring's 2px so the two abut rather than overlap, its radius follows the card's
+ * minus that inset, and it ignores the pointer so the whole card stays one
+ * target. It exists only while the card holds focus. This is still a focus
+ * OUTLINE in the sense `docs/branding.md` means: the ring is the outline, and
+ * the line is a 1px border on a box drawn inside the card's own clip, which
+ * `overflow-hidden` therefore cannot take.
  */
 const CARD_CLASS = cn(
-	"overflow-hidden rounded-lg",
+	"relative overflow-hidden rounded-lg",
 	"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
 	"has-[:focus-visible]:outline-accent has-[:focus-visible]:-outline-offset-2",
+	"has-[:focus-visible]:after:pointer-events-none has-[:focus-visible]:after:absolute",
+	"has-[:focus-visible]:after:inset-0.5 has-[:focus-visible]:after:rounded-[calc(var(--radius-lg)-2px)]",
+	"has-[:focus-visible]:after:border has-[:focus-visible]:after:border-surface",
 );
 
 const LINK_CLASS = cn(
@@ -267,6 +297,14 @@ export const TeamBridgeLinkPreview: FC<TeamBridgeLinkPreviewProps> = ({
 		bridge,
 	);
 
+	// THE CARD-OR-PLAIN-TEXT DECISION. The message's own link text is always in
+	// the body above (the markdown renders it); this decides whether a card joins
+	// it. `absent`, `disabled`, `waiting` and `silent` answer no, so the reader
+	// sees the plain link and nothing else - in particular `disabled` never paints
+	// a card main may still hold bytes for (rule 1 in `link-preview-model.ts`).
+	// Returning nothing here, rather than an empty view, is also what lets the
+	// message's preview list collapse when no link drew (`empty:hidden`).
+	if (!linkPreviewDrawsCard(view)) return null;
 	return (
 		<TeamBridgeLinkPreviewView
 			view={view}
