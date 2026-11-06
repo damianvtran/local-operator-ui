@@ -2194,8 +2194,8 @@ const GroupBlock: FC<{
 			 * `data-glass-plane="band-backdrop"` is the isolating band: the
 			 * elevated role at `max(--lo-glass-a-elevated, --lo-glass-a-band-floor)`
 			 * plus `blur(12px)` (styles/index.css, where the role choice is argued
-			 * and measured - the page's own canvas role misses the ink floors on
-			 * nineteen light palettes). The floor rather than the field overlay
+			 * and measured - the page's own canvas role misses the ink floors on 17 of
+			 * the theme set's 18 light palettes, all but `highContrastLight`). The floor rather than the field overlay
 			 * because a row's TITLE passes under this label at the same x, which is
 			 * the collision the Finder band was given its floor for. Sticky geometry
 			 * is untouched: same `sticky top-0`, same `z-[1]`, same 32px band, so
@@ -2571,9 +2571,12 @@ const Toolbar: FC<ToolbarProps> = ({
 					 * see-through column and the pill is a second one. The
 					 * `data-glass-well` opt-in gives the track the field overlay and
 					 * makes the checked segment the selected-row overlay
-					 * (styles/index.css, "A WELL'S SELECTED SEGMENT"), the same
-					 * treatment the Settings and Agents segmented controls wear, while
-					 * every class here still paints the unchanged flat pair off glass.
+					 * (styles/index.css, "A WELL'S SELECTED SEGMENT ON A PANE'S OWN TRACK"
+					 * and the canvas well rule it defers to) - the tab controls' own selected
+					 * step on this ground. The Settings filter bar wears the same field track
+					 * but keeps an opaque `bg-surface` on its pressed segment, and its segments
+					 * are `aria-pressed` buttons rather than a checked segment, so that rule
+					 * deliberately does not reach them. Every class here still paints the unchanged flat pair off glass.
 					 */}
 					<div
 						role="radiogroup"

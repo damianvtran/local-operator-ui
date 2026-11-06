@@ -1,44 +1,64 @@
 #!/usr/bin/env node
 /**
- * The Notifications surface's glass composition, as frames and as numbers.
+ * The Notifications surface's glass composition, as frames and as numbers, taken
+ * from the BUILT APP.
  *
- *     node scripts/with-storybook.mjs -- \
- *       node scripts/notifications-glass-evidence.mjs --out <dir>
+ *     node scripts/notifications-glass-evidence.mjs \
+ *       --repo <built checkout> --out <dir> --label <name> --case <cell> \
+ *       --config <isolated core config dir>
  *
- * WHY THIS EXISTS, AND WHY IT IS NOT `capture-evidence.mjs`. The swept library
- * photographs a story once per theme from a fixed list of args. This run needs
- * three things that rig does not model: a matrix of glass-intensity x theme x
- * contrast ARGS per frame; the SAME frame twice - once as the tree paints it and
- * once with the two glass attributes removed, which is what the base tree
- * rendered, because those attributes are the whole diff on this surface; and one
- * frame scrolled so a row is passing under a pinned header. It writes PNGs plus a
- * readback JSON to the caller's directory and nothing else.
+ * WHY THE APP AND NOT A STORY. The first version of this rig drove the
+ * `Notifications/Page` story through Storybook, and the frames it produced could
+ * not show the defect the operator reported (design review round 1, D1): the
+ * harness page paints its own opaque canvas, so a band at alpha 1.0 over it and a
+ * band at the glass floor over it came out as the same picture - the pair was
+ * byte-identical in three of nine cells. The claim under test is about
+ * COMPOSITION over a translucent column, so the evidence has to be the real
+ * window: the app's own shell, its own `<main>` backing at the user's alpha, its
+ * own rows. That is what this drives.
  *
- * WHAT IT MEASURES, and why a frame alone is not enough. "The header is a layer,
- * not a slab" is a claim about an alpha and a `backdrop-filter`; "the rows scroll
- * under it" is a claim about one rect that moves while another does not. Both
- * are read here from the same live DOM as the pixels.
+ * WHAT A FRAME HERE MAY STILL NOT CLAIM. A headless window has no compositor
+ * backdrop, so the desktop behind it is the app's own black - these frames are
+ * evidence about the composition the app paints (alphas, blur, geometry, the
+ * step between the band and the page), never about macOS vibrancy behind a real
+ * wallpaper. The native lane is QA's.
  *
- * THE GLASS IS THE APP'S OWN PAINT PATH, not a rig invention: Storybook's `glass`
- * arg calls `applyGlassFacts` - the function main's launch fact reaches in the
- * shipped app - and the harness paints the measured under-window backdrop tone
- * behind it (`.storybook/preview.tsx`, "DOM proof, not native"). A browser
- * document has no OS material, so these frames are evidence about the
- * COMPOSITION (what the app paints over whatever it is given), never about macOS
- * vibrancy; the real window is QA's native lane.
+ * THE BASE HALF IS A REAL BASE BUILD, not a guess: pass `--repo` a checkout of
+ * the base commit and the same cells are captured from it. `--before-attributes`
+ * additionally captures the same frame twice in ONE build with the two glass
+ * attributes removed (`data-glass-plane` on the header, `data-glass-well` on the
+ * switch track), which is what the base tree rendered for this surface - useful
+ * as a control that the attributes, not some other difference, are the change.
  *
- * NOTHING TOUCHES THE OPERATOR'S SCREEN. Chrome runs `--headless=new` with its
- * own `--user-data-dir` and `--use-mock-keychain` (a scratch profile must never
- * reach Keychain Services), and the process group is reaped by exact pid through
- * `app-tree-teardown.mjs` in a `finally`, on every exit path.
+ * THE LANE NEEDS ROWS. A group header only exists when notifications do, so the
+ * app must be pointed at a core config directory holding at least one
+ * notification (`--config`; `LOCAL_OPERATOR_CONFIG_DIR`). This script fails with
+ * the seeding recipe rather than photographing an empty page.
+ *
+ * NOTHING TOUCHES THE OPERATOR'S SCREEN. Electron runs `--window-mode=headless`
+ * with a per-run `--user-data-dir`, `--use-mock-keychain` (a scratch profile must
+ * never reach Keychain Services), the notification and telemetry switches, and
+ * `HOME` redirected; `CMUX_*` and `XPC_FLAGS` are stripped. The process group is
+ * reaped by exact pid through `app-tree-teardown.mjs` in a `finally`, on every
+ * exit path.
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer } from "node:net";
-import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { stopAppTree } from "./app-tree-teardown.mjs";
+import { reapOnExit, stopAppTree } from "./app-tree-teardown.mjs";
+import { withMockKeychain } from "./chrome-keychain.mjs";
+import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
@@ -46,168 +66,413 @@ const argOf = (name, fallback) => {
 	const i = process.argv.indexOf(`--${name}`);
 	return i >= 0 ? process.argv[i + 1] : fallback;
 };
-const outDir = argOf(
-	"out",
-	join(repoRoot, "docs", "pr-evidence", "notifications-glass"),
+const appRepo = resolve(argOf("repo", repoRoot));
+const outDir = resolve(
+	argOf("out", join(repoRoot, "docs", "pr-evidence", "notifications-glass")),
 );
-/** Narrow the matrix while iterating: `--only dark-80,dark-80-scrolled`. */
-const only = argOf("only")?.split(",").filter(Boolean);
-const origin = process.env.STORYBOOK_ORIGIN ?? "http://localhost:6017";
-/** The reported frame's own size, so the pair lines up with the operator's
- * screenshot rather than only with itself. */
+const label = argOf("label", "frame");
+/* One cell per invocation (`--case`, the matrix runner's flag) or a subset
+ * (`--only`). Both narrow the SAME list; a run that names no cell photographs the
+ * whole matrix, which is what a bare invocation is for. */
+const only = (argOf("case") ?? argOf("only"))?.split(",").filter(Boolean);
+const configDir = argOf("config", null);
+const keepBefore = process.argv.includes("--before-attributes");
+/** The operator's own viewport, so a frame lines up with the reported screenshot. */
 const VIEW = { width: 1024, height: 657 };
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const STORY = "notifications-page--populated";
+const ROUTE = "#/notifications";
 
-/** A free loopback port, asked of the OS rather than picked by hand. */
-const freePort = () =>
-	new Promise((resolve) => {
-		const server = createServer();
-		server.listen(0, "127.0.0.1", () => {
-			const { port } = server.address();
-			server.close(() => resolve(port));
-		});
-	});
-
-/*
- * THE MATRIX. `glass` is Storybook's own arg, which calls `applyGlassFacts`;
- * `glassContrast` composes a NON-STANDARD contrast preset through the same
- * appearance store the Settings page writes (`AppearanceLayerFrame`), so the
- * "every contrast setting" half of the report is driven by the product's own
- * path rather than by a hand-set palette.
+/**
+ * THE MATRIX: the two schemes at both ends of the shipped intensity slider, the
+ * opaque fallback, and the scroll-under state with its 1:1 band crop.
+ *
+ * NO CONTRAST-PRESET CELL, and the reason is the product's, not the rig's: the v5
+ * contrast field has no writer in the shipped app yet
+ * (`src/renderer/src/shared/themes/appearance.ts` records the same status - "no
+ * setting writes the v5 contrast/accent fields yet"), so a preset can only be
+ * reached by seeding the store. That seed does compose (`data-theme` becomes
+ * `lo-<hash>`), but it did not survive reliably in this headless lane, and a cell
+ * that sometimes photographs Standard under a preset's name is worse than no
+ * cell. The preset's numbers are carried by the derivation instead
+ * (`src/shared/glass-derivation.mjs`, `deriveBandFloor`), which the README quotes.
  */
 const CELLS = [
 	{ name: "dark-80", theme: "localOperatorDark", intensity: 80 },
 	{ name: "dark-50", theme: "localOperatorDark", intensity: 50 },
 	{ name: "light-80", theme: "localOperatorLight", intensity: 80 },
 	{ name: "light-50", theme: "localOperatorLight", intensity: 50 },
-	{
-		name: "dark-80-contrast-high",
-		theme: "localOperatorDark",
-		intensity: 80,
-		contrast: 80,
-	},
-	{
-		name: "dark-80-contrast-soft",
-		theme: "localOperatorDark",
-		intensity: 80,
-		contrast: -80,
-	},
-	{ name: "dark-80-glass-off", theme: "localOperatorDark", glass: "off" },
-	{ name: "light-80-glass-off", theme: "localOperatorLight", glass: "off" },
+	{ name: "dark-80-glass-off", theme: "localOperatorDark", glass: false },
 	{
 		name: "dark-80-scrolled",
 		theme: "localOperatorDark",
 		intensity: 80,
-		scroll: 160,
+		scroll: 48,
+		crop: true,
 	},
 ];
 
-const urlFor = (cell) => {
-	const args = [
-		`theme:${cell.theme}`,
-		`glass:${cell.glass ?? "on"}`,
-		`glassIntensity:${cell.intensity ?? 80}`,
-		/* ALWAYS, including the standard case: the appearance store PERSISTS the
-		 * last composed contrast, so a cell that omitted the arg inherited the
-		 * previous cell's preset and its re-derived floors (measured: `dark-80` read
-		 * the 0.86 floor of a `-80` composition that had run two cells earlier). */
-		`glassContrast:${cell.contrast ?? 0}`,
-	].join(";");
-	return `${origin}/?path=/story/${STORY}&viewMode=story&full=1&args=${args}`;
-};
-
-/** Everything the frames cannot show: the alphas, the blur, the geometry. */
-const READBACK = `((frame) => {
-	const alpha = (c) => {
-		if (!c || c === "transparent") return 0;
-		let m = c.match(/^rgba?\\(([^)]+)\\)$/);
-		if (m) { const p = m[1].split(/[,\\/]\\s*|\\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; }
-		m = c.match(/^color\\(srgb ([^)]+)\\)$/);
-		if (m) { const p = m[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; }
-		return 1;
-	};
-	const document = frame.document;
-	const root = frame.getComputedStyle(document.documentElement);
-	const sheetVar = (n) => Number(root.getPropertyValue(n).trim() || "NaN");
-	const band = document.querySelector('[data-glass-plane="band-backdrop"]');
-	const port = document.querySelector("[data-notifications-list]");
-	const track = document.querySelector('[role="radiogroup"][data-glass-well]');
-	const selected = track?.querySelector('[role="radio"][aria-checked="true"]') ?? null;
-	const rows = [...document.querySelectorAll("[data-notification-row]")];
-	const bandRect = band?.getBoundingClientRect();
-	const under = band && rows.find((r) => {
-		const rb = r.getBoundingClientRect();
-		const bb = band.getBoundingClientRect();
-		return rb.top < bb.bottom - 1 && rb.bottom > bb.bottom + 1;
-	});
-	return {
-		glass: document.documentElement.dataset.glass ?? null,
-		theme: document.documentElement.dataset.theme ?? null,
-		vars: {
-			canvas: sheetVar("--lo-glass-a-canvas"),
-			elevated: sheetVar("--lo-glass-a-elevated"),
-			bandFloor: sheetVar("--lo-glass-a-band-floor"),
-			field: sheetVar("--lo-glass-a-field"),
-			selected: sheetVar("--lo-glass-a-row-selected"),
-		},
-		band: band ? {
-			alpha: alpha(frame.getComputedStyle(band).backgroundColor),
-			bg: frame.getComputedStyle(band).backgroundColor,
-			backdropFilter: frame.getComputedStyle(band).backdropFilter,
-			position: frame.getComputedStyle(band).position,
-			height: Math.round(bandRect.height),
-			top: Math.round(bandRect.top),
-		} : null,
-		port: port ? { top: Math.round(port.getBoundingClientRect().top), scrollTop: Math.round(port.scrollTop) } : null,
-		track: track ? { alpha: alpha(frame.getComputedStyle(track).backgroundColor), bg: frame.getComputedStyle(track).backgroundColor } : null,
-		selected: selected ? { alpha: alpha(frame.getComputedStyle(selected).backgroundColor), bg: frame.getComputedStyle(selected).backgroundColor } : null,
-		rows: rows.length,
-		underBand: under ? Math.round(under.getBoundingClientRect().top) : null,
-		headerText: band ? (band.textContent || "").trim().slice(0, 40) : null,
-	};
-})(document.getElementById("storybook-preview-iframe").contentWindow)`;
-
-/** Inside the preview iframe, like every other probe. */
-const inFrame = (body) =>
-	`((frame) => { const document = frame.document; ${body} })(document.getElementById("storybook-preview-iframe").contentWindow)`;
-const dropGlassMarks = inFrame(
-	`[...document.querySelectorAll('[data-glass-plane="band-backdrop"]')].forEach((n) => n.removeAttribute("data-glass-plane"));
-	[...document.querySelectorAll('[data-glass-well]')].forEach((n) => n.removeAttribute("data-glass-well")); return true;`,
-);
-
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const freePort = () =>
+	new Promise((res) => {
+		const srv = createServer();
+		srv.listen(0, "127.0.0.1", () => {
+			const { port } = srv.address();
+			srv.close(() => res(port));
+		});
+	});
+async function until(fn, ms, what) {
+	const t = Date.now();
+	for (;;) {
+		let v;
+		try {
+			v = await fn();
+		} catch {
+			v = null;
+		}
+		if (v) return v;
+		if (Date.now() - t > ms) throw new Error(`timeout: ${what}`);
+		await wait(200);
+	}
+}
+
+/** The page-side readback: every number a PNG cannot carry. */
+const READBACK = `(() => {
+  const alpha = (c) => {
+    if (!c || c === "transparent") return 0;
+    let m = c.match(/^rgba?\\(([^)]+)\\)$/);
+    if (m) { const p = m[1].split(/[,\\/]\\s*|\\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; }
+    m = c.match(/^color\\(srgb ([^)]+)\\)$/);
+    if (m) { const p = m[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; }
+    return 1;
+  };
+  const root = getComputedStyle(document.documentElement);
+  const v = (n) => { const raw = root.getPropertyValue(n).trim(); return raw === "" ? null : raw; };
+  const page = document.querySelector("[data-notifications-page]");
+  const header = document.querySelector('[data-notification-group] [role="row"]');
+  const h = header ? getComputedStyle(header) : null;
+  const label = header?.querySelector('[role="rowheader"]');
+  const count = label?.querySelector("span.tabular-nums") ?? null;
+  const track = page?.querySelector('[class~="bg-sunken"][data-glass-well]');
+  const checked = track?.querySelector('[role="radio"][aria-checked="true"]');
+  const t = track ? getComputedStyle(track) : null;
+  const backing = document.querySelector('main[data-glass-region="canvas-backing"]');
+  const b = backing ? getComputedStyle(backing) : null;
+  const r = (el) => { if (!el) return null; const x = el.getBoundingClientRect(); return { x: Math.round(x.x), y: Math.round(x.y), w: Math.round(x.width), h: Math.round(x.height) }; };
+  return {
+    dpr: devicePixelRatio,
+    viewport: { w: innerWidth, h: innerHeight },
+    theme: document.documentElement.dataset.theme,
+    /* What the profile ACTUALLY holds, so a cell that silently booted another
+     * appearance is visible in the readback instead of only in its pixels. */
+    prefs: (() => {
+      try {
+        const blob = JSON.parse(localStorage.getItem("ui-preferences-storage") || "null");
+        return blob ? { version: blob.version, themeName: blob.state?.themeName ?? null, contrast: blob.state?.contrast ?? null } : null;
+      } catch { return "unreadable"; }
+    })(),
+    glass: document.documentElement.dataset.glass ?? null,
+    groups: document.querySelectorAll("[data-notification-group]").length,
+    vars: {
+      canvas: v("--lo-glass-a-canvas"),
+      surface: v("--lo-glass-a-surface"),
+      elevated: v("--lo-glass-a-elevated"),
+      bandFloor: v("--lo-glass-a-band-floor"),
+      field: v("--lo-glass-a-field"),
+      selected: v("--lo-glass-a-row-selected"),
+    },
+    page: page ? { region: page.dataset.glassRegion ?? null, alpha: alpha(getComputedStyle(page).backgroundColor) } : null,
+    backing: b ? { bg: b.backgroundColor, alpha: alpha(b.backgroundColor) } : null,
+    header: header ? {
+      bg: h.backgroundColor, alpha: alpha(h.backgroundColor),
+      backdrop: h.backdropFilter || h.webkitBackdropFilter || "none",
+      position: h.position, top: h.top, zIndex: h.zIndex, height: h.height,
+      rect: r(header), text: (header.textContent || "").trim().slice(0, 60),
+      countText: (count?.textContent || "").trim(),
+      color: h.color,
+      labelColor: label ? getComputedStyle(label).color : null,
+      countColor: count ? getComputedStyle(count).color : null,
+    } : null,
+    track: t ? {
+      bg: t.backgroundColor, alpha: alpha(t.backgroundColor), rect: r(track),
+      checked: checked ? { alpha: alpha(getComputedStyle(checked).backgroundColor), bg: getComputedStyle(checked).backgroundColor, text: (checked.textContent || "").trim() } : null,
+      unchecked: (() => { const u = track?.querySelector('[role="radio"][aria-checked="false"]'); return u ? { alpha: alpha(getComputedStyle(u).backgroundColor), text: (u.textContent || "").trim() } : null; })(),
+    } : null,
+  };
+})()`;
+
+/** What the base tree rendered for this surface: the two attributes removed. */
+const DROP_MARKS = `(() => {
+  document.querySelector('[data-notification-group] [role="row"]')?.removeAttribute("data-glass-plane");
+  document.querySelector("[data-notifications-page] [data-glass-well]")?.removeAttribute("data-glass-well");
+  return true;
+})()`;
+
+async function main() {
+	const cells = CELLS.filter((c) => !only || only.includes(c.name));
+	if (!cells.length) throw new Error(`no cell matched ${only?.join(",")}`);
+	if (!configDir)
+		throw new Error(
+			"--config is required: point it at an ISOLATED core config directory holding at least one seeded notification (see the README's seeding snippet). A lane with no rows has no group header and photographs an empty page.",
+		);
+	mkdirSync(outDir, { recursive: true });
+	/* Electron comes from the checkout being driven when it has its own modules (a
+	 * base worktree shares the primary checkout's tree by symlink, so this is the
+	 * same binary either way); the script's own repo is the fallback. */
+	const electronRoot = existsSync(join(appRepo, "node_modules/electron"))
+		? appRepo
+		: repoRoot;
+	const electronPath = (
+		await import(join(electronRoot, "node_modules/electron/index.js"))
+	).default;
+	const shots = [];
+
+	for (const cell of cells) {
+		/* The scratch profile lives in the OS temp dir, not in the evidence
+		 * directory: a crashed run would otherwise leave `--user-data-dir` trees
+		 * inside the frames other people read. */
+		const root = mkdtempSync(join(tmpdir(), "notif-glass-"));
+		const userData = join(root, "ud");
+		const home = join(root, "home");
+		mkdirSync(userData, { recursive: true });
+		mkdirSync(home, { recursive: true });
+
+		const env = withNotificationsOff({
+			...Object.fromEntries(
+				Object.entries(process.env).filter(
+					([k]) =>
+						!k.startsWith("CMUX_") &&
+						k !== "ELECTRON_RUN_AS_NODE" &&
+						k !== "XPC_FLAGS",
+				),
+			),
+			HOME: home,
+			LOCAL_OPERATOR_CONFIG_DIR: configDir,
+			LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+		});
+		withTelemetryOff(env);
+
+		const port = await freePort();
+		const child = spawn(
+			electronPath,
+			[
+				appRepo,
+				"--window-mode=headless",
+				`--window-size=${VIEW.width}x${VIEW.height}`,
+				`--user-data-dir=${userData}`,
+				`--remote-debugging-port=${port}`,
+				...withMockKeychain([]),
+			],
+			{ env, detached: true, stdio: ["ignore", "pipe", "pipe"] },
+		);
+		reapOnExit({ pid: child.pid, userData });
+		child.stdout.on("data", () => {});
+		child.stderr.on("data", () => {});
+		try {
+			let cdp = await connect(port);
+			/*
+			 * THE PALETTE AND THE CONTRAST AMOUNT, seeded the way the app itself keeps
+			 * them: this document's OWN persisted blob is read back, the two fields the
+			 * cell names are overwritten in it, and the document reloads onto that.
+			 *
+			 * NOT A HAND-WRITTEN BLOB, and that is a measured lesson rather than a
+			 * preference: the first version of this rig wrote a `{state:{...},version:4}`
+			 * object from scratch, the store's own schema had moved on to v5 (the
+			 * appearance layers), the persisted value was therefore not the shape the
+			 * migrator expected, and EVERY cell silently booted the DEFAULT dark palette -
+			 * the light and contrast frames were byte-identical to the dark one. Patching
+			 * the blob the app just wrote cannot drift that way, and the theme is then
+			 * ASSERTED below instead of assumed.
+			 */
+			await until(
+				() =>
+					cdp.evSoft(
+						"document.documentElement && document.documentElement.dataset.theme",
+					),
+				90_000,
+				"first paint",
+			);
+			/*
+			 * THE SEED RUNS ON EVERY NEW DOCUMENT, not once before a reload. The store
+			 * writes its blob back on boot, so a patch applied from the live document
+			 * races that write and is sometimes lost - measured: the same contrast cell
+			 * came out Standard-composed on one run and composed on the next. A
+			 * pre-document script merges the cell's fields in BEFORE the store
+			 * rehydrates, which is the only ordering that cannot be overwritten.
+			 */
+			const seed = `try {
+        const k = "ui-preferences-storage";
+        const cur = JSON.parse(localStorage.getItem(k) || "null") || { state: {}, version: 0 };
+        if (!cur.state) cur.state = {};
+        cur.state.themeName = ${JSON.stringify(cell.theme)};
+        cur.state.contrast = { dark: ${cell.contrast ?? 0}, light: ${cell.contrast ?? 0} };
+        localStorage.setItem(k, JSON.stringify(cur));
+      } catch {}`;
+			const { identifier } = await cdp.send(
+				"Page.addScriptToEvaluateOnNewDocument",
+				{ source: seed },
+			);
+			await cdp.send("Page.reload", { ignoreCache: true });
+			/*
+			 * RE-ATTACH AFTER THE RELOAD, and never reuse the pre-reload socket: a
+			 * reload tears the renderer's execution context down, and the old socket then
+			 * answers every `Runtime.evaluate` with an error - which `evSoft` reads as
+			 * "not ready yet", so a dead channel looks exactly like a slow boot.
+			 */
+			cdp = await connect(port);
+			const appliedTheme = await until(
+				() => cdp.evSoft("document.documentElement?.dataset?.theme ?? null"),
+				90_000,
+				"the appearance to apply",
+			);
+			await cdp.send("Page.removeScriptToEvaluateOnNewDocument", {
+				identifier,
+			});
+			/*
+			 * A COMPOSED APPEARANCE RENAMES THE DOCUMENT. At Standard (and with no
+			 * accent) the built-in palette is the identity, so `data-theme` is its own
+			 * id; any other contrast composes a palette and the id becomes `lo-<hash>`
+			 * (`src/renderer/src/shared/themes/appearance.ts`, `resolveAppearance`).
+			 * Asserting the palette name for a preset cell asserts the OPPOSITE of what
+			 * the cell is for.
+			 */
+			const composed = appliedTheme !== cell.theme;
+			if (cell.contrast && !composed)
+				throw new Error(
+					`${cell.name}: the contrast ${cell.contrast} did not compose - the document kept data-theme="${appliedTheme}", so this frame is Standard and cannot speak for the preset`,
+				);
+			if (!cell.contrast && composed)
+				throw new Error(
+					`${cell.name}: expected the built-in identity, got the composed id "${appliedTheme}"`,
+				);
+			await wait(2000);
+			await cdp.ev(
+				`window.api.windowGlass.set(${JSON.stringify({
+					enabled: cell.glass !== false,
+					coverage: "full",
+					intensity: cell.intensity ?? 80,
+					material: "window",
+				})}).then(() => true)`,
+			);
+			await wait(1500);
+			await cdp.ev(`location.hash = ${JSON.stringify(ROUTE)}`);
+			await until(
+				() => cdp.ev('!!document.querySelector("[data-notifications-page]")'),
+				60_000,
+				"notifications page",
+			);
+			const groups = await until(
+				() =>
+					cdp.ev(
+						'document.querySelectorAll("[data-notification-group]").length',
+					),
+				45_000,
+				"notification groups",
+			);
+			await wait(1200);
+			if (cell.scroll) {
+				await cdp.ev(`(async () => {
+          const header = document.querySelector('[data-notification-group] [role="row"]');
+          let sc = header?.parentElement;
+          while (sc && sc.scrollHeight <= sc.clientHeight + 2) sc = sc.parentElement;
+          if (sc) { sc.scrollTop = ${cell.scroll}; sc.dispatchEvent(new Event("scroll", { bubbles: true })); }
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          return sc ? sc.scrollTop : null;
+        })()`);
+				await wait(400);
+			}
+
+			const shot = async (suffix, clip) => {
+				const shotResult = await cdp.send("Page.captureScreenshot", {
+					format: "png",
+					captureBeyondViewport: false,
+					...(clip ? { clip: { ...clip, scale: 1 } } : {}),
+				});
+				const file = join(outDir, `${label}${suffix}.png`);
+				writeFileSync(file, Buffer.from(shotResult.data, "base64"));
+				return file;
+			};
+			const after = await shot("");
+			const afterRead = await cdp.ev(READBACK);
+			/* The 1:1 crop of the band's own edge: the strip the operator reported,
+			 * at native pixels, so the step between the band and the row passing
+			 * under it is visible without a thumbnail's interpolation. */
+			let crop = null;
+			if (cell.crop && afterRead.header) {
+				const h = afterRead.header.rect;
+				crop = await shot("-band", {
+					x: h.x,
+					y: Math.max(0, h.y),
+					width: Math.min(h.w, VIEW.width - h.x),
+					height: Math.min(h.h * 3, VIEW.height - h.y),
+				});
+			}
+			let beforeRead = null;
+			let before = null;
+			if (keepBefore) {
+				await cdp.ev(DROP_MARKS);
+				await wait(300);
+				before = await shot("-before");
+				beforeRead = await cdp.ev(READBACK);
+			}
+			shots.push({
+				cell: cell.name,
+				app: appRepo,
+				groups,
+				frames: { after, crop, before },
+				after: afterRead,
+				before: beforeRead,
+			});
+			console.log(
+				`[notif-glass] ${label}/${cell.name}: band ${afterRead.header?.alpha ?? "absent"} (floor ${afterRead.vars.bandFloor}, elevated ${afterRead.vars.elevated}) ${afterRead.header?.backdrop ?? "none"} pinned ${afterRead.header?.position ?? "n/a"}; page ${afterRead.backing?.alpha ?? "n/a"}; track ${afterRead.track?.alpha ?? "absent"} checked ${afterRead.track?.checked?.alpha ?? "n/a"}; ${groups} groups${beforeRead ? `; BEFORE band ${beforeRead.header?.alpha} track ${beforeRead.track?.alpha}` : ""}`,
+			);
+			if (!afterRead.header)
+				throw new Error(
+					`${cell.name}: the page rendered but has no group header (0 notifications in ${configDir}). Seed rows first - the README carries the snippet.`,
+				);
+		} finally {
+			await stopAppTree({
+				pid: child.pid,
+				userData,
+				isExited: () => child.exitCode !== null,
+			});
+		}
+		rmSync(root, { recursive: true, force: true });
+	}
+
+	writeFileSync(
+		join(outDir, `${label}.readback.json`),
+		`${JSON.stringify({ view: VIEW, route: ROUTE, app: appRepo, shots }, null, 2)}\n`,
+	);
+}
 
 async function connect(port) {
-	let target = null;
-	for (let i = 0; i < 200 && !target; i++) {
-		try {
-			const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-			target = list.find((t) => t.type === "page");
-		} catch {
-			/* not up yet */
-		}
-		if (!target) await wait(100);
-	}
-	if (!target) throw new Error("Chrome never exposed a page target");
+	const target = await until(
+		async () =>
+			(await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find(
+				(t) => t.type === "page" && /index\.html|localhost/.test(t.url),
+			),
+		/* The boot is slow on this host: the page target appeared at ~44 s against
+		 * a 40 s budget once, which read as "the app publishes none". */
+		90_000,
+		"cdp page target",
+	);
 	const ws = new WebSocket(target.webSocketDebuggerUrl);
-	await new Promise((r) => ws.addEventListener("open", r, { once: true }));
+	await new Promise((r) => ws.addEventListener("open", r));
 	let id = 0;
 	const pending = new Map();
 	ws.addEventListener("message", (m) => {
-		const data = JSON.parse(m.data);
-		const resolve = pending.get(data.id);
-		if (!resolve) return;
-		pending.delete(data.id);
-		resolve(data);
+		const d = JSON.parse(m.data);
+		if (d.id && pending.has(d.id)) {
+			pending.get(d.id)(d);
+			pending.delete(d.id);
+		}
 	});
 	const send = (method, params = {}) =>
-		new Promise((resolve) => {
-			const n = ++id;
-			pending.set(n, (data) =>
-				data.error ? resolve({ __error: data.error }) : resolve(data.result),
+		new Promise((res, rej) => {
+			const i = ++id;
+			pending.set(i, (d) =>
+				d.error ? rej(new Error(JSON.stringify(d.error))) : res(d.result),
 			);
-			ws.send(JSON.stringify({ id: n, method, params }));
+			ws.send(JSON.stringify({ id: i, method, params }));
 		});
 	const ev = async (expression) => {
 		const r = await send("Runtime.evaluate", {
@@ -215,151 +480,18 @@ async function connect(port) {
 			awaitPromise: true,
 			returnByValue: true,
 		});
-		if (r.__error) throw new Error(JSON.stringify(r.__error).slice(0, 300));
 		if (r.exceptionDetails)
-			throw new Error(JSON.stringify(r.exceptionDetails).slice(0, 300));
-		return r.result?.value;
+			throw new Error(JSON.stringify(r.exceptionDetails).slice(0, 400));
+		return r.result.value;
 	};
-	return { send, ev };
-}
-
-async function main() {
-	mkdirSync(outDir, { recursive: true });
-	const port = await freePort();
-	const userDataDir = join(
-		process.env.TMPDIR ?? "/tmp",
-		`notif-glass-evidence-${process.pid}`,
-	);
-	const chrome = spawn(
-		CHROME,
-		[
-			"--headless=new",
-			"--no-sandbox",
-			"--disable-gpu",
-			"--hide-scrollbars",
-			"--use-mock-keychain",
-			`--window-size=${VIEW.width},${VIEW.height}`,
-			`--user-data-dir=${userDataDir}`,
-			`--remote-debugging-port=${port}`,
-			"about:blank",
-		],
-		{ detached: true, stdio: ["ignore", "ignore", "pipe"] },
-	);
-	let reaped = null;
-	try {
-		const cdp = await connect(port);
-		await cdp.send("Page.enable");
-		await cdp.send("Emulation.setDeviceMetricsOverride", {
-			...VIEW,
-			deviceScaleFactor: 1,
-			mobile: false,
-		});
-		const shots = [];
-		for (const cell of CELLS.filter((c) => !only || only.includes(c.name))) {
-			console.log(`[notif-glass] ${cell.name}: driving ${urlFor(cell)}`);
-			await cdp.send("Page.navigate", { url: urlFor(cell) });
-			/* The story paints its glass in a layout effect; `data-glass` on the
-			 * document element is that commit's own witness, so readiness is read
-			 * from the surface rather than waited out. */
-			let ready = false;
-			for (let i = 0; i < 400 && !ready; i++) {
-				/* The dev server rebuilds the manager after a stylesheet edit and the first
-				 * visit can sit on Storybook's own loader; one hard reload at the halfway
-				 * mark turns a slow rebuild into a frame instead of a run that fails. */
-				if (i === 200) await cdp.send("Page.reload", { ignoreCache: true });
-				/* THE STORY LIVES IN THE MANAGER'S PREVIEW IFRAME, and it is same-origin,
-				 * so the preview's own document is reachable from this page: evaluate
-				 * through it. (A bare `iframe.html` load waits for the manager's
-				 * `setCurrentStory` forever - measured - so the manager URL is the only
-				 * way a story mounts headless here.) The early probes land on the
-				 * OUTGOING document, so readiness is asked defensively. */
-				ready = await cdp
-					.ev(
-						`(() => {
-							const f = document.getElementById("storybook-preview-iframe");
-							const d = f && f.contentDocument;
-							const framed = d && d.querySelector("[data-notifications-list]");
-							/* The OFF cell is the OPAQUE look: data-glass is absent
-							 * there by design, so its readiness is the page itself. */
-							const painted = ${JSON.stringify(cell.glass)} === "off"
-								? !!framed
-								: !!framed && d.documentElement.dataset.glass !== undefined;
-							return painted && f.getBoundingClientRect().height > 200;
-						})()`,
-					)
-					.catch(() => false);
-				if (!ready) await wait(150);
-			}
-			if (!ready) {
-				const diag = await cdp
-					.ev(
-						`JSON.stringify({
-							href: location.href,
-							state: document.readyState,
-							glass: document.documentElement?.dataset.glass ?? "<unset>",
-							text: (document.body?.innerText ?? "").slice(0, 200),
-							hasPage: !!document.querySelector("[data-notifications-page]"),
-							hasList: !!document.querySelector("[data-notifications-list]"),
-						})`,
-					)
-					.catch((error) => `probe failed: ${error.message}`);
-				throw new Error(`${cell.name}: the story never painted :: ${diag}`);
-			}
-			await wait(400);
-			if (cell.scroll)
-				await cdp.ev(
-					inFrame(
-						`document.querySelector("[data-notifications-list]").scrollTo({ top: ${cell.scroll} }); return true;`,
-					),
-				);
-			await wait(400);
-			/* THE FRAME IS THE STORY, not the manager: the preview iframe's own box is the
-			 * clip, so no Storybook chrome appears in a committed frame. */
-			const clip = await cdp.ev(
-				`(() => { const r = document.getElementById("storybook-preview-iframe").getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height), scale: 1 }; })()`,
-			);
-			const shot = async (suffix) => {
-				const r = await cdp.send("Page.captureScreenshot", {
-					format: "png",
-					captureBeyondViewport: false,
-					clip,
-				});
-				const file = join(outDir, `${cell.name}${suffix}.png`);
-				writeFileSync(file, Buffer.from(r.data, "base64"));
-				return file;
-			};
-			const after = await shot("");
-			const afterRead = await cdp.ev(READBACK);
-			/* The before half: the two glass attributes are the whole of the
-			 * surface's diff, so removing them renders exactly what the base tree
-			 * rendered at the same args - same build, same story, same frame. */
-			await cdp.ev(dropGlassMarks);
-			await wait(250);
-			const before = await shot("-before");
-			const beforeRead = await cdp.ev(READBACK);
-			shots.push({
-				cell: cell.name,
-				url: urlFor(cell),
-				frames: { after, before },
-				after: afterRead,
-				before: beforeRead,
-			});
-			console.log(
-				`[notif-glass] ${cell.name}: band alpha ${afterRead.band?.alpha ?? "none"} (floor ${afterRead.vars.bandFloor}, elevated ${afterRead.vars.elevated}) blur ${afterRead.band?.backdropFilter ?? "none"} · track ${afterRead.track?.alpha ?? "none"} (field ${afterRead.vars.field}) · selected ${afterRead.selected?.alpha ?? "none"} (row-selected ${afterRead.vars.selected}) · before band ${beforeRead.band?.alpha ?? "none"} track ${beforeRead.track?.alpha ?? "none"}`,
-			);
+	const evSoft = async (expression) => {
+		try {
+			return await ev(expression);
+		} catch {
+			return null;
 		}
-		writeFileSync(
-			join(outDir, "readback.json"),
-			`${JSON.stringify({ view: VIEW, origin, shots }, null, 2)}\n`,
-		);
-	} finally {
-		reaped = stopAppTree({
-			pid: chrome.pid,
-			userData: userDataDir,
-			isExited: () => chrome.exitCode !== null,
-		});
-		await reaped;
-	}
+	};
+	return { send, ev, evSoft };
 }
 
 main().catch((error) => {

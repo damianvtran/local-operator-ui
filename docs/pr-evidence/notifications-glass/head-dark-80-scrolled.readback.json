@@ -1,0 +1,86 @@
+{
+  "view": {
+    "width": 1024,
+    "height": 657
+  },
+  "route": "#/notifications",
+  "app": "/Users/damian/local-operator-ui/.worktrees/notif-glass",
+  "shots": [
+    {
+      "cell": "dark-80-scrolled",
+      "app": "/Users/damian/local-operator-ui/.worktrees/notif-glass",
+      "groups": 3,
+      "frames": {
+        "after": "/Users/damian/local-operator-ui/.worktrees/notif-glass/docs/pr-evidence/notifications-glass/head-dark-80-scrolled.png",
+        "crop": "/Users/damian/local-operator-ui/.worktrees/notif-glass/docs/pr-evidence/notifications-glass/head-dark-80-scrolled-band.png",
+        "before": null
+      },
+      "after": {
+        "dpr": 2,
+        "viewport": {
+          "w": 1024,
+          "h": 657
+        },
+        "theme": "localOperatorDark",
+        "glass": "sidebar canvas pane",
+        "groups": 3,
+        "vars": {
+          "canvas": "0.62",
+          "surface": "0.66",
+          "elevated": "0.74",
+          "bandFloor": "0.88",
+          "field": "0.05",
+          "selected": "0.08"
+        },
+        "page": {
+          "region": "canvas",
+          "alpha": 0
+        },
+        "backing": {
+          "bg": "color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+          "alpha": 0.62
+        },
+        "header": {
+          "bg": "color(srgb 0.184314 0.164706 0.121569 / 0.88)",
+          "alpha": 0.88,
+          "backdrop": "blur(12px)",
+          "position": "sticky",
+          "top": "0px",
+          "zIndex": "1",
+          "height": "32px",
+          "rect": {
+            "x": 260,
+            "y": 228,
+            "w": 756,
+            "h": 32
+          },
+          "text": "Today8",
+          "countText": "8",
+          "color": "rgb(194, 188, 175)",
+          "labelColor": "rgb(194, 188, 175)",
+          "countColor": "rgb(166, 160, 145)"
+        },
+        "track": {
+          "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.05)",
+          "alpha": 0.05,
+          "rect": {
+            "x": 316,
+            "y": 139,
+            "w": 137,
+            "h": 32
+          },
+          "checked": {
+            "alpha": 0.08,
+            "bg": "color(srgb 0.945098 0.933333 0.901961 / 0.08)",
+            "text": "Unread15"
+          },
+          "unchecked": {
+            "alpha": 0,
+            "text": "All"
+          }
+        }
+      },
+      "before": null
+    }
+  ]
+}

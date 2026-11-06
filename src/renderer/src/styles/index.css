@@ -2820,6 +2820,15 @@ html[data-glass~="pane"]
  * That is the "part of that glass, not a hole in it" the operator asked for:
  * the translucency the user chose is the translucency of the ground the band
  * is made of, so it tracks the slider exactly as the pane around it does.
+ *
+ * THE CEILING THIS BUYS, MEASURED (design review round 1, D2), so nobody reads the
+ * floor as "the band is opaque and the glass is a gesture": at the shipped 80% the
+ * wallpaper reaches the eye at 4.6% THROUGH THE BAND (3.0% at 50%) against 38%
+ * through the page (25%), and the band's step against the page it sits in runs
+ * 1.07:1 to 2.62:1 across the two schemes over a black-to-white wallpaper - a band
+ * you can see through and still read a count on. Read off the built app at
+ * 1024x657 in `docs/pr-evidence/notifications-glass/` (band 0.88 over a 0.62 page,
+ * 0.78 over 0.68).
  */
 html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]
@@ -2852,9 +2861,12 @@ html[data-glass~="canvas"]
 	 *
 	 * WHY NOT THE PAGE'S OWN CANVAS ROLE. Measured before writing this: the canvas
 	 * role at this same floor holds `ink`/`inkMuted`/`inkDim` on the dark palettes but
-	 * misses the floors on NINETEEN light ones (inkDim 3.11-3.46 against 3.5 on
-	 * rosePineDawn, localOperatorLight, githubLight, catppuccinLatte and others;
-	 * inkMuted 3.77-4.37 against 4.5 on kanagawaLotus, rosePineDawn, tokyoNightDay).
+	 * misses the floors on 17 OF THE 18 light palettes - all but `highContrastLight`
+	 * - (inkDim 3.11-3.46 against 3.5 on rosePineDawn, localOperatorLight, githubLight,
+	 * catppuccinLatte and others; inkMuted 3.77-4.37 against 4.5 on kanagawaLotus,
+	 * rosePineDawn, tokyoNightDay). Both counts re-derived over the 59 palettes by the
+	 * review's own probe (`minAlpha`-shape solve at the band floor over the scheme
+	 * extreme); the dark fleet is clean, 0 of 41.
 	 * The floor is derived for `elevated`, and re-deriving one for the canvas role
 	 * would buy a number that is opaque on both schemes - so the band is one role step
 	 * up from the page, which is what makes it read as a band at all.
@@ -2900,26 +2912,27 @@ html[data-glass~="pane"]
 	);
 }
 /*
- * A WELL'S SELECTED SEGMENT, ON THE SAME RULE, for the idiom that is not a
- * `tablist` (the notifications Unread/All switch is a `radiogroup` of buttons with
- * `aria-checked`, so the tablist translation above can never reach it). The track
- * is the field overlay; the selected segment's own `bg-elevated` is an opaque pill
- * in a see-through column, so it takes the SAME selected-row overlay every other
- * selected thing wears - one step OVER the track, relative to whatever the ground
- * already is, so it reads on every page material instead of being a hole.
+ * A WELL'S SELECTED SEGMENT ON A PANE'S OWN TRACK (the chat rail's updates
+ * drawer). The track's field overlay comes from the pane rule above, so only the
+ * checked segment's selected step is stated here: the selected segment's own
+ * `bg-elevated` is an opaque pill in a see-through column, so it takes the SAME
+ * selected-row overlay every other selected thing wears - one step OVER the
+ * track, relative to whatever the ground already is, so it reads on every page
+ * material instead of being a hole.
+ *
+ * WHY NO CANVAS HALF. This rule had one, for the notifications page's switch, and
+ * it was DEAD (agent review round 1, C3): the canvas translation above already
+ * matches `[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])` with the
+ * same two segment selectors and the same declaration, so the narrower arm could
+ * never win a cascade it was not already covered by - and the note that "the
+ * tablist translation can never reach it" was the opposite of the truth. A second
+ * selector spelling the same rule is a maintenance trap, not a fallback.
  *
  * Scoped to a marked well: the track that opts in with `data-glass-well` is the
  * only ancestor this may fire under, which is what keeps an arbitrary
  * `bg-elevated` control outside a segmented track at its authored role.
  */
-html[data-glass~="canvas"]
-	[data-glass-region="canvas"]
-	[class~="bg-sunken"][data-glass-well]
-	:is([role="radio"][aria-checked="true"], [role="tab"][data-state="active"]),
-/* The same pair mounted in a PANE (the chat rail's updates drawer): the track's
- * field overlay comes from the pane rule above, so only the checked segment's
- * selected step is stated here. */
-	html[data-glass~="pane"]
+html[data-glass~="pane"]
 	[data-glass-region="pane"]
 	[class~="bg-sunken"][data-glass-well]
 	[role="radio"][aria-checked="true"] {

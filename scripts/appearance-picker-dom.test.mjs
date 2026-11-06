@@ -294,7 +294,14 @@ test("preview glass takes the production floors for the palette on screen", () =
 	assert.equal(glass.paint.vars["--lo-glass-a-canvas"], "0.59");
 	assert.equal(glass.paint.vars["--lo-glass-a-surface"], "0.65");
 	assert.equal(glass.paint.vars["--lo-glass-a-elevated"], "0.74");
-	assert.equal(glass.paint.vars["--lo-glass-a-band-floor"], "0.84");
+	/* 0.87, not the 0.84 this pinned before the band floor was derived against
+	 * EVERY ink the band carries (agent QA round 1, Q-1): the count wears
+	 * `inkDim` at its own 3.5 floor, and holding it costs three points of alpha on
+	 * this palette at Standard. The fleet's committed floor is unchanged
+	 * (`src/shared/window-glass-floors.json` 0.88/0.78), because the fleet maximum
+	 * was already set by another palette - this row is the PER-PALETTE number, and
+	 * it is the one a composed contrast preset reads. */
+	assert.equal(glass.paint.vars["--lo-glass-a-band-floor"], "0.87");
 	assert.equal(glass.paint.vars["--lo-glass-control-mix"], "0.1");
 	// The tier comes off the palette that was READ, never the caller's fallback.
 	assert.equal(glass.scheme, "dark");

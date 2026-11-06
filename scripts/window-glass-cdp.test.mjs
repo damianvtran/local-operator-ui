@@ -224,14 +224,25 @@ function childEnv() {
 	return env;
 }
 
-/** Attach to a launched app's page over CDP; the command channel is one ws. */
+/**
+ * Attach to a launched app's page over CDP; the command channel is one ws.
+ *
+ * THE BOOT WAIT IS 90 s, NOT 40 s. The page target really does appear, but not
+ * quickly: measured on this host against a build of this head, `/json` answered
+ * with a page target at ~44 s while the renderer's bundle, the backend dial and
+ * the first glass paint all landed - so a 40 s budget reported "no target", and
+ * the guard that read it concluded the app publishes none. That conclusion is
+ * recorded in this PR's evidence README as a correction: the app publishes a
+ * page target, the budget was too short. 90 s is the same budget the QA lane's
+ * own CDP harness settled on for the same launch.
+ */
 async function connect(port) {
 	const target = await until(
 		async () =>
 			(await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find(
 				(t) => t.type === "page" && /index\.html|localhost/.test(t.url),
 			),
-		40_000,
+		90_000,
 		"cdp page",
 	);
 	const ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -1160,13 +1171,20 @@ for (const [themeName, label] of [
  * nothing here read it; and the surface's defect was exactly the class a route
  * grid cannot see - a header and a switch that keep their FLAT fills on a page
  * whose own ground is glass. The switch is measured as it really renders (it is
- * on the page in every state, including the empty one). The group header is NOT:
- * it only exists when notifications do, and a headless rig has no daemon to
- * produce them, so its rule is measured through an element carrying the
- * component's OWN class and attribute inside the page's own region - a rule read,
- * said so here rather than passed off as a frame of the surface. The frame that
- * shows the header over real rows is the PR's evidence set
- * (`docs/pr-evidence/notifications-glass/`), which reads the same alphas.
+ * on the page in every state, including the empty one). The group header is
+ * measured on the REAL element too, and that is a change from the first version
+ * of this test (agent review round 1, C2): it used to prepend a `div` carrying
+ * the component's class string into the page and measure that, which meant a
+ * header that LOST its `data-glass-plane` attribute would still pass - the
+ * assertion could never fail for the defect it names.
+ *
+ * WHAT THE REAL-HEADER HALF NEEDS, and why it fails instead of skipping: a group
+ * header exists only when notifications do, so this leg needs a backend with at
+ * least one row (the launch is given `LOCAL_OPERATOR_CONFIG_DIR` by the caller).
+ * Without one there is no header and NOTHING is measured, so the assertion fails
+ * and says why rather than passing on a synthetic stand-in. The frame that shows
+ * the header over real rows is the PR's evidence set
+ * (`docs/pr-evidence/notifications-glass/`, real app, same alphas).
  */
 test(
 	"the notifications page composes its sticky group header and read-state switch through the window glass",
@@ -1251,9 +1269,12 @@ test(
 				`${label}: the checked segment paints ${read.selected}, expected the selected-row overlay ${read.selectedAlpha} (an opaque pill is a hole in glass)`,
 			);
 			/*
-			 * THE BAND, through the component's own template. It is inserted inside
-			 * the page region, measured, and removed - so the numbers below are the
-			 * cascade the shipped header gets, read where the shipped header lives.
+			 * THE BAND, ON THE REAL HEADER. Found by the group's own marker and the row
+			 * role the component gives it - never by the `data-glass-plane` attribute
+			 * under test, which would make this assertion circular. If the real header
+			 * is absent (no notifications in the backend) the numbers below would be
+			 * `undefined` and the assertion fails saying so; there is deliberately no
+			 * clone to fall back to.
 			 */
 			const band = await cdp.ev(`(() => {
         const alpha = (c) => {
@@ -1265,18 +1286,23 @@ test(
           return 1;
         };
         const page = document.querySelector("[data-notifications-page]");
-        if (!page) return null;
-        /* The shipped header's own class string and attribute, verbatim. */
-        const probe = document.createElement("div");
-        probe.setAttribute("data-glass-plane", "band-backdrop");
-        probe.className = "sticky top-0 z-[1] flex h-8 items-center gap-2 bg-canvas px-3 text-ink-muted text-meta";
-        page.prepend(probe);
-        const style = getComputedStyle(probe);
-        const out = { alpha: alpha(style.backgroundColor), bg: style.backgroundColor, backdrop: style.backdropFilter || style.webkitBackdropFilter, position: style.position };
-        probe.remove();
-        return out;
+        if (!page) return { missing: "page" };
+        const header = page.querySelector('[data-notification-group] [role="row"]');
+        if (!header) return { missing: "header", groups: page.querySelectorAll("[data-notification-group]").length };
+        const style = getComputedStyle(header);
+        return {
+          alpha: alpha(style.backgroundColor),
+          bg: style.backgroundColor,
+          backdrop: style.backdropFilter || style.webkitBackdropFilter,
+          position: style.position,
+          groups: page.querySelectorAll("[data-notification-group]").length,
+        };
       })()`);
-			assert.ok(band, `${label}: the page region accepted the band probe`);
+			assert.equal(
+				band.missing,
+				undefined,
+				`${label}: the page's REAL group header was found (${JSON.stringify(band)}). It only exists when notifications do, so this leg needs a backend holding at least one row - pass LOCAL_OPERATOR_CONFIG_DIR for a seeded lane. A header that cannot be found is a test that measures nothing, and it fails here rather than passing on a clone.`,
+			);
 			assert.ok(
 				Math.abs(band.alpha - Math.max(read.elevated, read.bandBand)) <= 0.006,
 				`${label}: the group header paints ${band.alpha}, expected max(elevated ${read.elevated}, band floor ${read.bandBand}) - an opaque bar is the seam the operator reported`,
@@ -1291,7 +1317,7 @@ test(
 				`${label}: the header must stay pinned (position ${band.position})`,
 			);
 			console.log(
-				`[glass-cdp] ${label}/#/notifications: band ${band.alpha} (floor ${read.bandBand}, elevated ${read.elevated}) blur ${band.backdrop}; switch track ${read.track}; field overlay ${read.field}`,
+				`[glass-cdp] ${label}/#/notifications: band ${band.alpha} (floor ${read.bandBand}, elevated ${read.elevated}) blur ${band.backdrop}; ${band.groups} groups; switch track ${read.track}; field overlay ${read.field}`,
 			);
 		}
 	},
