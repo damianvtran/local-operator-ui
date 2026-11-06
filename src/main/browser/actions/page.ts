@@ -265,7 +265,9 @@ export async function copy(
 		}
 		throw error;
 	}
-	const read = (answer && typeof answer === "object" ? answer : {}) as CopyAnswer;
+	const read = (
+		answer && typeof answer === "object" ? answer : {}
+	) as CopyAnswer;
 	if (read.status === "missing") {
 		throw new BrowserHostError(
 			"element_not_found",
@@ -352,7 +354,10 @@ export async function copy(
 		// bytes landed on the clipboard without ever holding them, and it is what
 		// makes `lop secret set` verifiable later — re-copy the same element, compare
 		// the hash, and know the value is the one already stored.
-		sha256: createHash("sha256").update(text, "utf8").digest("hex").slice(0, 16),
+		sha256: createHash("sha256")
+			.update(text, "utf8")
+			.digest("hex")
+			.slice(0, 16),
 		element: {
 			tag: typeof read.tag === "string" ? read.tag : "",
 			id: typeof read.id === "string" ? read.id : "",

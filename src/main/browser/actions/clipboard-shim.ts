@@ -335,7 +335,9 @@ export async function installClipboardShim(
 		// receives none.
 		if (contextId === undefined) {
 			await cdp.send(contents, "Page.enable", {});
-			await cdp.send(contents, "Runtime.addBinding", { name: CLIPBOARD_BINDING });
+			await cdp.send(contents, "Runtime.addBinding", {
+				name: CLIPBOARD_BINDING,
+			});
 			await cdp.send(contents, "Page.addScriptToEvaluateOnNewDocument", {
 				source,
 			});

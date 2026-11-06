@@ -1,7 +1,7 @@
+import { installClipboardShim } from "./actions/clipboard-shim";
 import { stopNetworkCapture } from "./actions/network";
 import { abortRecording } from "./actions/recording";
 import { BrowserHostError } from "./errors";
-import { installClipboardShim } from "./actions/clipboard-shim";
 import {
 	hasLogCapture,
 	routeDebuggerEvent,
