@@ -1,3 +1,4 @@
+import os from "node:os";
 import {
 	type DownloadItem,
 	type Event,
@@ -5,6 +6,7 @@ import {
 	type WebContents,
 	session,
 } from "electron";
+import { installClientHints } from "./client-hints";
 import type { DownloadDecision } from "./downloads";
 import type { DownloadItemLike } from "./electron-types";
 
@@ -235,6 +237,27 @@ export function installBrowserSessionHandlers(
 	// affect existing WebContents", so a later call would silently leave the
 	// first tab presenting the default Electron UA.
 	browserSession.setUserAgent(browserUserAgent());
+	// The string alone is not the identity: without this the tab's document
+	// requests carry NO `Sec-CH-UA*` at all (measured; Electron has no browser-side
+	// client-hints delegate), which is the inconsistency Google's sign-in check
+	// can see. See `client-hints.ts` for the measurement and why the brand list is
+	// the engine's own.
+	const detachClientHints = installClientHints(
+		browserSession,
+		{
+			chromeVersion: process.versions.chrome ?? "0",
+			platform: process.platform,
+			arch: process.arch,
+			// macOS: the product version Chromium reports (`27.2.0` measured in both
+			// this runtime and Chrome); Linux: the kernel release, as Chromium sends.
+			// `getSystemVersion` is Electron's; a plain-Node test host has none.
+			platformVersion:
+				process.platform === "darwin" && process.getSystemVersion
+					? process.getSystemVersion()
+					: os.release(),
+		},
+		hooks.log,
+	);
 
 	// ONE REPORT, both handlers. The answer is a constant refusal; what the handlers
 	// differ on is what Electron hands each of them, and the report says which one
@@ -327,6 +350,7 @@ export function installBrowserSessionHandlers(
 	// Remove only our listener; the permission-denying session policy stays set.
 	return () => {
 		browserSession.removeListener("will-download", onDownload);
+		detachClientHints();
 	};
 }
 
