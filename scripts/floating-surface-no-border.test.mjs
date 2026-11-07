@@ -491,3 +491,99 @@ test("O-8 every element that wears the floating shadow carries the marker", () =
 		`an element wears \`shadow-overlay\` without \`data-lo-floating\`, so the focus reset strips its elevation when it takes focus and forced-colors mode leaves it edgeless (agent review round 2, N1). Add \`data-lo-floating=""\` to the element that wears the shadow (conditionally, if it only floats in one mode):\n${offenders.join("\n")}`,
 	);
 });
+
+/*
+ * O-9  NESTED CONTROLS DO NOT BRING THE STROKE BACK. The operator's requirement
+ *      named the case: "Nested elements must not reintroduce the border: the
+ *      'Message' button inside the profile popover is the example." O-1/O-2 read
+ *      class utilities, and a `<Button variant="secondary">` carries its
+ *      `border border-control` inside `button.tsx`'s `cva`, so a bordered control
+ *      inside (or AS) a floating panel passed every assertion above: QA round 2
+ *      (Q3) reverted the profile card's Message and the dialogs' `SecondaryButton`
+ *      to `secondary` and the suite stayed 32/32, and found the scroll-to-bottom
+ *      disc, the update card's `outline` buttons and the inline-edit Reject
+ *      still stroked.
+ *
+ *      O-9a pins the two named controls by their own source, because neither file
+ *      carries the marker (the popover and the dialog panel live in the
+ *      primitives) and O-9b could not see them. O-9b is the derived half: in any
+ *      file that marks a floating element, no `variant` resolves to a bordered
+ *      neutral (`secondary`, `outline`). It reads per LINE rather than per tag
+ *      because the files that need it most (the 4,700-line update card) are ones
+ *      `openingTags` cannot fully delimit, and Biome puts each prop on its own
+ *      line, conditionals included.
+ *
+ *      `danger` IS DELIBERATELY NOT IN THE SET (deferred, QA round 2, Q3 item 4):
+ *      the job/wake cancel cards and inline-edit's stop control keep the bordered
+ *      `danger`. A borderless danger is not a one-line variant - it needs its own
+ *      `contract-tables.mjs` rows (rest/hover/pressed, red ink on `elevated`
+ *      without a `dangerBorder` boundary) - and on a destructive action that red
+ *      boundary is the semantic cue, not chrome.
+ *
+ *      Beyond reach, like O-1: a variant chosen through a variable or a prop
+ *      default (`variant={variant}` in `floating-alert.tsx` forwards the caller's
+ *      choice), and a bordered control in a file that does not mark - a child
+ *      component rendered into another file's panel. The latter is why O-9a pins
+ *      by name.
+ */
+const BORDERED_NEUTRAL_VARIANT = /"(secondary|outline)"/;
+const VARIANT_PROP = /\bvariant=/;
+
+/*
+ * Lines in a marking file whose bordered variant is genuinely OUTSIDE the panel,
+ * keyed `path: trimmed line`. Empty today: every hit the sweep found was inside
+ * the panel and was moved to `tonal`. An entry needs the reason beside it.
+ */
+const NESTED_VARIANT_ALLOWED = new Set([]);
+
+test("O-9a the operator's named nested controls stay borderless", () => {
+	const card = read(
+		"src/renderer/src/features/team-bridge/team-bridge-profile-card.tsx",
+	);
+	const send = card.indexOf("onMessage();");
+	assert.ok(send > 0, "the profile card's Message action was not found");
+	const tag = card.slice(card.lastIndexOf("<Button", send), send);
+	assert.match(
+		stripComments(tag),
+		/\bvariant="tonal"/,
+		"the profile popover's Message button must be `tonal`: a bordered variant redraws the stroke the operator photographed",
+	);
+	const dialog = read(
+		"src/renderer/src/shared/components/common/base-dialog.tsx",
+	);
+	assert.match(
+		dialog,
+		/export const SecondaryButton = forwardRef[^;]*?variant="tonal"/,
+		"the dialogs' `SecondaryButton` must render `tonal`: every dialog footer sits on a floating panel",
+	);
+});
+
+test("O-9b no bordered neutral button inside a file that marks a floating element", () => {
+	const offenders = [];
+	let files = 0;
+	let variants = 0;
+	for (const path of rendererFiles()) {
+		const code = stripComments(read(path));
+		if (!HAS_MARKER.test(code)) continue;
+		files++;
+		for (const line of code.split(LINE_BREAK)) {
+			if (!VARIANT_PROP.test(line)) continue;
+			variants++;
+			const key = `${path}: ${line.trim()}`;
+			if (
+				BORDERED_NEUTRAL_VARIANT.test(line) &&
+				!NESTED_VARIANT_ALLOWED.has(key)
+			)
+				offenders.push(key);
+		}
+	}
+	assert.ok(
+		files >= 25 && variants >= 50,
+		`the sweep reached ${files} marking files and ${variants} variant props; a scan that sees none passes vacuously`,
+	);
+	assert.deepEqual(
+		offenders,
+		[],
+		`a bordered button (\`secondary\`/\`outline\`) sits in a file that marks a floating surface, so it redraws the stroke the panel gave up (QA round 2, Q3). Use \`tonal\` for the panel's secondary actions (\`ghost\` for icon-only/tertiary), or, if it is genuinely outside the panel, add it to NESTED_VARIANT_ALLOWED with the reason:\n${offenders.join("\n")}`,
+	);
+});

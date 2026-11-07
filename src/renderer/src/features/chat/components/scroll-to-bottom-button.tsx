@@ -79,8 +79,20 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 			)}
 			aria-hidden={!visible}
 		>
+			{/*
+			 * `tonal`, not `secondary` (QA round 2, Q3). This control is itself a
+			 * floating surface - it leaves the flow over moving text, wears the one
+			 * shadow and carries the marker - so it separates by ground and shadow
+			 * like every other floating panel, never by a stroke; `secondary` drew a
+			 * 1px `border-control` ring. The ground stays the variant's own: a
+			 * `bg-*` override on this tag would make it a panel with its own ground
+			 * under glass (`glass-overlay.test.mjs` O-7), a different decision than
+			 * this one. Under forced colors, where the shadow is dropped, the
+			 * `[data-lo-floating]` rule in `styles/index.css` gives it its CanvasText
+			 * edge.
+			 */}
 			<Button
-				variant="secondary"
+				variant="tonal"
 				size={hasNewActivity ? "sm" : "icon"}
 				data-lo-floating=""
 				className={cn(

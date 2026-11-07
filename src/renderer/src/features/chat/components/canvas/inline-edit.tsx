@@ -871,8 +871,10 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							{/* Neutral, not danger: rejecting a suggestion keeps the user's own
 							    text, so nothing is destroyed and nothing is irreversible. Red
 							    here would be the loudest thing on the surface for the safer of
-							    the two choices. */}
-							<Button variant="secondary" size="sm" onClick={onRejectDiff}>
+							    the two choices. And `tonal` rather than `secondary`: this row
+							    sits inside the floating `POPOVER` panel, which has no stroke,
+							    so a bordered button would draw one back (QA round 2, Q3). */}
+							<Button variant="tonal" size="sm" onClick={onRejectDiff}>
 								<X aria-hidden="true" />
 								{t("ui.canvas.inline_edit.reject")}
 							</Button>
