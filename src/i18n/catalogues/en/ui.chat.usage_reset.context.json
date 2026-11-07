@@ -7,7 +7,7 @@
 	"ui.chat.usage_reset.chip_label": {
 		"role": "accessible name for the same chip",
 		"tone": "Plain, complete sentence; this is spoken, not drawn.",
-		"note": "A screen reader hears this instead of the short chip. {account} is a provider name plus, when known, a middle dot and the account's label (an email or an account id)."
+		"note": "A screen reader hears this instead of the short chip. {account} is a provider name plus, when known, a middle dot and the account's label (an email or an account id). {count} is the number of reset credits still available (always 1 or more), and it is REQUIRED in the label: the visible chip draws the same number, and a spoken name that omits it fails WCAG 2.5.3 (label in name). One ICU plural on {count}; do not promise the spend here (the click opens a confirmation)."
 	},
 	"ui.chat.usage_reset.confirm_title": {
 		"role": "heading of an inline confirmation",

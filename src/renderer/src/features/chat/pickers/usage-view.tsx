@@ -31,16 +31,15 @@ import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import {
-	type Query,
-	useMutation,
-	useQuery,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { type Query, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
-import { usageResetResultSchema } from "../../../../../shared/desktop-contract";
+import {
+	type UsageResetResult,
+	usageResetResultSchema,
+} from "../../../../../shared/desktop-contract";
 import { PickerHost } from "./picker-host";
 import type { MachinePanelContext } from "./picker-registry";
+import { setResetState, useResetStates } from "./reset-attempts";
 import {
 	type LimitRow,
 	type ProviderBlock,
@@ -60,6 +59,7 @@ import {
 	describeSource,
 	dismissReset,
 	hasMuseAllowanceNote,
+	mergeResetUsage,
 	newestConfirmedMs,
 	providerBlocks,
 	resetAccountLabel,
@@ -70,7 +70,6 @@ import {
 	settleReset,
 	statsTerms,
 	statusTone,
-	withResetState,
 } from "./usage-view-model";
 import { errorText } from "./use-picker-backend";
 
@@ -369,32 +368,82 @@ export const ProviderBlockView: FC<{
 	const resetState = resetStateFor(reset?.states ?? {}, resetAccount);
 	const resetLabel = resetAccountLabel(block.report);
 	/*
-	 * The confirmation focuses CANCEL, not Confirm: this is the one action in the
-	 * panel that spends something the app cannot refund, so a stray Return must
-	 * decline rather than spend. Focus moves only when the phase BECOMES confirm,
-	 * so a re-render of an open confirmation cannot pull focus back off whichever
-	 * control the user has since reached.
+	 * EVERY PHASE CHANGE BELOW UNMOUNTS THE CONTROL THAT HAD FOCUS, so each one
+	 * names where focus goes instead: Cancel on the open confirmation (not
+	 * Confirm — this is the one action in the panel that spends something the app
+	 * cannot refund, so a stray Return must decline), the busy region when the
+	 * clicked buttons disable, the result line when the busy region goes, and the
+	 * chip (or the block heading, once a spend has left no chip) after Cancel or
+	 * Dismiss. Left alone, focus fell to `<body>` after every outcome and a
+	 * keyboard user's next Tab restarted from the top of the dialog (review round
+	 * 1, M3).
+	 *
+	 * The guard is "focus was DROPPED", not "this block changed": a second
+	 * account's settle can arrive while the user is reading the first one, and a
+	 * result that grabbed focus would move them off the sentence they were on.
 	 */
+	const sectionRef = useRef<HTMLElement>(null);
 	const cancelRef = useRef<HTMLButtonElement>(null);
 	const busyRef = useRef<HTMLDivElement>(null);
+	const chipRef = useRef<HTMLButtonElement>(null);
+	const resultRef = useRef<HTMLOutputElement>(null);
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	const previousPhase = useRef(resetState.phase);
 	useEffect(() => {
+		const previous = previousPhase.current;
+		previousPhase.current = resetState.phase;
+		if (previous === resetState.phase) return;
+		const active = document.activeElement;
 		/*
-		 * Confirm -> busy DISABLES the button that was clicked, and a disabled
-		 * element cannot hold focus: the press would drop the keyboard user back
-		 * to the document body with the in-flight explanation unread. The busy
-		 * region therefore takes the focus the button handed it.
+		 * Focus is this block's to move when it was DROPPED (the control unmounted
+		 * and the document fell back to `<body>`) or when it still sits on a
+		 * control this transition just retired — the result line, Dismiss, Retry,
+		 * Cancel. It is NOT this block's to move when the user is somewhere else in
+		 * the dialog: another account's settle arrives while they are reading, and a
+		 * result that grabbed focus would pull them off the sentence they were on.
 		 */
-		if (resetState.phase === "confirm") cancelRef.current?.focus();
-		else if (resetState.phase === "busy") busyRef.current?.focus();
+		const insideBlock =
+			active !== null && (sectionRef.current?.contains(active) ?? false);
+		const moveToBlock =
+			active === null ||
+			active === document.body ||
+			(Boolean(insideBlock) &&
+				active !== chipRef.current &&
+				active !== headingRef.current);
+		if (resetState.phase === "confirm") {
+			cancelRef.current?.focus();
+			return;
+		}
+		if (resetState.phase === "busy") {
+			busyRef.current?.focus();
+			return;
+		}
+		if (resetState.phase === "result") {
+			if (moveToBlock) resultRef.current?.focus();
+			return;
+		}
+		// idle: Cancel and Dismiss both land here from a control that retired.
+		if (moveToBlock) (chipRef.current ?? headingRef.current)?.focus();
 	}, [resetState.phase]);
 	const confirming =
 		resetState.phase === "confirm" || resetState.phase === "busy";
 	const busy = resetState.phase === "busy";
 	const credits = block.report.resets_available ?? 0;
 	return (
-		<section className="rounded-md border border-hairline bg-surface px-3 py-2.5">
+		<section
+			ref={sectionRef}
+			className="rounded-md border border-hairline bg-surface px-3 py-2.5"
+		>
 			<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-				<h3 className="font-medium text-body-sm text-ink">
+				{/* A focus FALLBACK, not a tab stop: when a definitive outcome takes the
+				    chip away there is no reset control left in this block, and the user
+				    who dismissed the result line has to land somewhere in the block they
+				    were reading rather than back at the top of the dialog. */}
+				<h3
+					ref={headingRef}
+					tabIndex={-1}
+					className="font-medium text-body-sm text-ink"
+				>
 					{block.report.provider}
 				</h3>
 				{block.report.identity && (
@@ -416,12 +465,22 @@ export const ProviderBlockView: FC<{
 					!confirming &&
 					reset.canReset(block.report) && (
 						<Button
+							ref={chipRef}
 							variant="ghost"
 							size="sm"
 							type="button"
 							className={cn("h-5 px-1.5 text-meta")}
+							/*
+							 * The spoken name carries the COUNT the chip draws: the visible
+							 * label is "Reset · 3", so an accessible name without the number
+							 * leaves a screen-reader user without the one fact the chip exists
+							 * to show, and voice control cannot target the label they can see
+							 * (WCAG 2.5.3, review round 1 m2). It also no longer promises a
+							 * spend — the click opens a confirmation.
+							 */
 							aria-label={t("ui.chat.usage_reset.chip_label", {
 								account: resetLabel,
+								count: credits,
 							})}
 							onClick={() => reset.onAsk(block.report)}
 						>
@@ -555,7 +614,12 @@ export const ProviderBlockView: FC<{
 			 */}
 			{reset && resetAccount && (
 				<div className={cn("flex flex-wrap items-baseline gap-x-2 pt-1")}>
+					{/* A programmatic landing spot, never a tab stop: focus arrives here
+					    when the busy region unmounts, and the node is in the tab order only
+					    through `tabIndex={-1}`'s absence from it. */}
 					<output
+						ref={resultRef}
+						tabIndex={-1}
 						className={cn(
 							"min-w-0 text-meta",
 							resetState.phase === "result"
@@ -1256,6 +1320,45 @@ export const usageQueryOptions = (
 const mintRedeemRequestId = (): string => crypto.randomUUID();
 
 /**
+ * How many times one attempt is sent at the vendor.
+ *
+ * TWO, and the second one is safe only because it carries the SAME
+ * `redeem_request_id`: the vendor joins on that key, so a transient transport
+ * blip heals without the user's involvement and without a second spend — which
+ * is strictly better than the unknown line for a request that never reached the
+ * vendor. This replaces the app's inherited `retry: 1` mutation default, which
+ * bought the same behaviour by accident of a policy nobody checked on an op
+ * that spends something.
+ */
+const RESET_SEND_ATTEMPTS = 2;
+
+/** One reset attempt, retried with the same id; the answer, or the last throw. */
+const sendReset = async (variables: {
+	account: ResetAccount;
+	identity: string | null;
+	redeemRequestId: string;
+}): Promise<UsageResetResult> => {
+	let failure: unknown;
+	for (let attempt = 1; attempt <= RESET_SEND_ATTEMPTS; attempt += 1) {
+		try {
+			const answer = await desktopResult<unknown>({
+				op: "usage.reset",
+				provider: variables.account.provider,
+				credentialRef: variables.account.credentialRef,
+				// Only when the report carried one: an empty label is not an
+				// identifier, and the route's own field bound refuses it.
+				...(variables.identity ? { identity: variables.identity } : {}),
+				redeemRequestId: variables.redeemRequestId,
+			});
+			return usageResetResultSchema.parse(answer);
+		} catch (error) {
+			failure = error;
+		}
+	}
+	throw failure;
+};
+
+/**
  * `/usage` as the registry mounts it.
  *
  * The cached report paints first, then a distinct cache-aware live check runs
@@ -1264,7 +1367,6 @@ const mintRedeemRequestId = (): string => crypto.randomUUID();
  * provider on open would spend rate-limited requests. Provider scope comes from
  * the slash line's argument.
  */
-
 export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	/*
 	 * The view ENTERS on `auto`, and that is load-bearing rather than tidy.
@@ -1304,51 +1406,37 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	 * account to zero credits drops the chip on the next payload, and the result
 	 * line has to stay on screen anyway.
 	 *
+	 * THE MAP LIVES OUTSIDE THIS COMPONENT (`reset-attempts.ts`), and that is
+	 * load-bearing rather than tidy: closing `/usage` unmounts this view
+	 * (`panel-outlet.tsx` clears the panel), and the pending id kept in view state
+	 * died with it — so `failed` -> close -> reopen -> Confirm minted a FRESH id,
+	 * and the vendor, which only joins on an identical
+	 * `(provider, target, redeem_request_id)`, saw a second attempt on the same
+	 * login: a second spend on the one action this app cannot refund (review
+	 * round 1, B2). The store outlives the mount, so the id a retry carries is the
+	 * one the vendor already saw.
+	 *
 	 * The map is per ACCOUNT (`provider` + `credential_ref`), which is the
 	 * backend's own unit: one provider can hold several stored logins, and "one
 	 * attempt at a time" is a property of the login being charged, not of the
 	 * panel.
 	 */
 	const queryClient = useQueryClient();
-	const [resetStates, setResetStates] = useState<ResetStates>({});
+	const resetStates = useResetStates();
 	/*
-	 * The app's default `retry: 1` is LEFT IN PLACE here, and it is only safe
-	 * because of the machine above: a React Query retry re-sends the SAME
-	 * variables, so it carries the same `redeem_request_id` and the backend joins
-	 * the attempt instead of spending a second credit. A transient transport blip
-	 * therefore heals without the user's involvement and without a second spend --
-	 * which is strictly better than the unknown line for a request that never
-	 * reached the vendor. Stated rather than assumed, because an op that spends
-	 * something must not inherit a retry policy nobody checked.
+	 * The cache key the panel is reading RIGHT NOW, held as a ref because a reset's
+	 * answer arrives later than the press that sent it: by then the user's own ask
+	 * may have given the view a new query identity, and the answer belongs to
+	 * whichever key is on screen rather than to the one held at Confirm. Assigned
+	 * during render, the same "latest closure" pattern `sign-in-sessions.ts` uses
+	 * for its deps.
 	 */
-	const resetUsage = useMutation({
-		mutationFn: async (variables: {
-			account: ResetAccount;
-			identity: string | null;
-			redeemRequestId: string;
-		}) => {
-			const answer = await desktopResult<unknown>({
-				op: "usage.reset",
-				provider: variables.account.provider,
-				credentialRef: variables.account.credentialRef,
-				// Only when the report carried one: an empty label is not an
-				// identifier, and the route's own field bound refuses it.
-				...(variables.identity ? { identity: variables.identity } : {}),
-				redeemRequestId: variables.redeemRequestId,
-			});
-			return usageResetResultSchema.parse(answer);
-		},
-	});
+	const liveKeyRef = useRef(usageQueryOptions(provider, mode, askId).queryKey);
+	liveKeyRef.current = usageQueryOptions(provider, mode, askId).queryKey;
 
 	const settleAccount = useCallback(
 		(account: ResetAccount, result: UsageResetResultView) => {
-			setResetStates((previous) =>
-				withResetState(
-					previous,
-					account,
-					settleReset(resetStateFor(previous, account), result),
-				),
-			);
+			setResetState(account, (current) => settleReset(current, result));
 		},
 		[],
 	);
@@ -1356,114 +1444,135 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	const askResetFor = useCallback((report: UsageReport) => {
 		const account = resetAccountOf(report);
 		if (!account) return;
-		setResetStates((previous) =>
-			withResetState(
-				previous,
-				account,
-				askReset(resetStateFor(previous, account), mintRedeemRequestId),
-			),
-		);
+		setResetState(account, (current) => askReset(current, mintRedeemRequestId));
 	}, []);
 
 	const cancelResetFor = useCallback((report: UsageReport) => {
 		const account = resetAccountOf(report);
 		if (!account) return;
-		setResetStates((previous) =>
-			withResetState(
-				previous,
-				account,
-				cancelReset(resetStateFor(previous, account)),
-			),
-		);
+		setResetState(account, cancelReset);
 	}, []);
 
 	const dismissResetFor = useCallback((report: UsageReport) => {
 		const account = resetAccountOf(report);
 		if (!account) return;
-		setResetStates((previous) =>
-			withResetState(
-				previous,
-				account,
-				dismissReset(resetStateFor(previous, account)),
-			),
-		);
+		setResetState(account, dismissReset);
 	}, []);
 
 	/*
 	 * Confirm, then send. The id comes from the machine, never from this handler:
 	 * a second spend of the SAME attempt is only prevented by carrying the id the
-	 * first one used (`pendingRedeemRequestId`).
+	 * first one used.
+	 *
+	 * THE TRANSITION IS APPLIED FROM THE STORE'S CURRENT STATE, not from this
+	 * render's `resetStates`: a settle from another attempt may have landed
+	 * between the render and the click (review round 1, m4), and `confirmReset`
+	 * answers with the SAME object when there is nothing to confirm — so a
+	 * Cancel that won that race cannot be overridden by a stale snapshot, and the
+	 * `busy` phase doubles as the "already sending" latch.
+	 *
+	 * EACH ATTEMPT SETTLES ITS OWN ACCOUNT. This used to be one shared
+	 * `useMutation` with per-call callbacks, and query-core keeps only the LATEST
+	 * call's `#mutateOptions`: confirming a second account left the first in
+	 * `busy` with disabled buttons and its answer unrecorded (review round 1,
+	 * M2). There is no shared observer now — the send is a plain promise whose
+	 * handlers close over the ONE account it spends for.
 	 */
 	const confirmResetFor = useCallback(
 		(report: UsageReport) => {
 			const account = resetAccountOf(report);
 			if (!account) return;
-			const current = resetStateFor(resetStates, account);
-			const next = confirmReset(current);
+			const next = setResetState(account, confirmReset);
+			if (next.phase !== "busy") return;
 			/*
-			 * Identity, not a phase comparison: `confirmReset` returns the SAME object
-			 * when there is nothing to confirm, so this cannot send a request for a
-			 * confirmation that was cancelled between the click and this call.
+			 * When this attempt started, for the "did a newer read land" question
+			 * below. Taken BEFORE the request, so any answer the cache received
+			 * while the spend was out counts as newer than the payload we are about
+			 * to write.
 			 */
-			if (next === current || next.phase !== "busy") return;
-			setResetStates(withResetState(resetStates, account, next));
-			resetUsage.mutate(
-				{
-					account,
-					identity: report.identity,
-					redeemRequestId: next.redeemRequestId,
+			const startedAt = Date.now();
+			void sendReset({
+				account,
+				identity: report.identity,
+				redeemRequestId: next.redeemRequestId,
+			}).then(
+				(answer) => {
+					settleAccount(account, {
+						outcome: answer.reset.outcome,
+						windowsReset: answer.reset.windows_reset,
+						detail: answer.reset.detail,
+						refused: answer.reset.refused,
+					});
+					/*
+					 * The route refreshes the provider on a DEFINITIVE outcome and hands
+					 * the post-spend report back in the same answer, so the rows behind
+					 * the result line are the ones the spend produced — no second, slower
+					 * read is bought here. `usage` is null after `failed`/`refused`
+					 * (nothing was refreshed there), and a null must NOT be written: the
+					 * rows already on screen are still the truth, and replacing them with
+					 * an invented refresh is exactly what this branch avoids.
+					 */
+					if (!answer.usage) return;
+					/*
+					 * THE KEY THE VIEW IS SUBSCRIBED TO NOW, not the one it held when
+					 * Confirm was pressed: an ask issued while the spend was out gives the
+					 * view a new identity, and writing to the captured key would leave the
+					 * rows on screen pre-spend (review round 1, m3, first half).
+					 */
+					const key = liveKeyRef.current;
+					/*
+					 * And a read that landed AFTER this attempt started owns the cache: its
+					 * rows are newer than the answer's, and writing the answer over them
+					 * would rewind the table to a state the user already replaced by asking
+					 * (m3, second half).
+					 */
+					const settledAt = queryClient.getQueryState(key)?.dataUpdatedAt ?? 0;
+					/*
+					 * `>=`, not `>`: the two stamps are millisecond clocks, so a read
+					 * that settles in the same millisecond as the press is
+					 * indistinguishable from one that beat it — and the tie belongs to
+					 * the read, because overwriting it is the only direction that
+					 * REWINDS a table the user is looking at.
+					 */
+					if (settledAt >= startedAt) return;
+					const refreshed: UsagePayload = {
+						reports: answer.usage.reports as unknown as UsageReport[],
+						source: answer.usage.source,
+						fetched_at: answer.usage.fetched_at,
+					};
+					/*
+					 * MERGE, do not replace, when the panel is unscoped. The backend
+					 * refreshed ONLY the provider that was spent
+					 * (`fetch_usage([body.provider], force_refresh=True)`), so its
+					 * `usage` is a PARTIAL answer: writing it over the whole cache set
+					 * dropped every other provider's block until the next read (review
+					 * round 1, M1). A panel scoped to that provider shows nothing else, so
+					 * there the answer IS the complete payload.
+					 */
+					queryClient.setQueryData(
+						key,
+						provider === undefined
+							? mergeResetUsage(
+									queryClient.getQueryData<UsagePayload>(key),
+									refreshed,
+								)
+							: refreshed,
+					);
 				},
-				{
-					onSuccess: (answer) => {
-						settleAccount(account, {
-							outcome: answer.reset.outcome,
-							windowsReset: answer.reset.windows_reset,
-							detail: answer.reset.detail,
-							refused: answer.reset.refused,
-						});
-						/*
-						 * The route refreshes the provider on a DEFINITIVE outcome and hands
-						 * the post-spend report back in the same answer, so the rows behind
-						 * the result line are the ones the spend produced -- no second, slower
-						 * read is bought here. `usage` is null after `failed`/`refused`
-						 * (nothing was refreshed there), and a null must NOT be written: the
-						 * rows already on screen are still the truth, and replacing them with
-						 * an invented refresh is exactly what this branch avoids.
-						 */
-						if (!answer.usage) return;
-						const refreshed: UsagePayload = {
-							reports: answer.usage.reports as unknown as UsageReport[],
-							source: answer.usage.source,
-							fetched_at: answer.usage.fetched_at,
-						};
-						queryClient.setQueryData(
-							usageQueryOptions(provider, mode, askId).queryKey,
-							refreshed,
-						);
-					},
-					onError: (error) => {
-						// A transport or protocol failure establishes nothing about the
-						// credit, so it settles as the unknown outcome -- the one line that
-						// says so and promises a retry cannot spend twice.
-						settleAccount(account, {
-							outcome: "failed",
-							windowsReset: 0,
-							detail: errorText(error),
-							refused: false,
-						});
-					},
+				(error: unknown) => {
+					// A transport or protocol failure establishes nothing about the
+					// credit, so it settles as the unknown outcome — the one line that
+					// says so and promises a retry cannot spend twice.
+					settleAccount(account, {
+						outcome: "failed",
+						windowsReset: 0,
+						detail: errorText(error),
+						refused: false,
+					});
 				},
 			);
 		},
-		[
-			resetStates,
-			resetUsage,
-			settleAccount,
-			queryClient,
-			provider,
-			mode,
-			askId,
-		],
+		[settleAccount, queryClient, provider],
 	);
 
 	const resetControls: UsageResetControls = {

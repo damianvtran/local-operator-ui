@@ -55,6 +55,7 @@ const {
 	fractionOf,
 	isStale,
 	limitRow,
+	mergeResetUsage,
 	newestConfirmedMs,
 	pendingRedeemRequestId,
 	providerBlocks,
@@ -1685,4 +1686,76 @@ test("one attempt at a time per account, and the map keeps accounts apart", () =
 		resetAccountKey({ provider: "a:b", credentialRef: "c" }),
 		resetAccountKey({ provider: "a", credentialRef: "b:c" }),
 	);
+});
+
+test("a reset's partial answer merges into the cached set by provider", () => {
+	/*
+	 * The redeem route refreshes ONLY the provider it spent, so its `usage` is a
+	 * partial answer. Replacing the cached payload with it deleted every other
+	 * provider's block from an unscoped `/usage` until the next read (review round
+	 * 1, M1). The merge replaces the providers the ANSWER carries, in place, and
+	 * leaves the rest alone.
+	 */
+	const cached = {
+		reports: [
+			report({ provider: "openai", identity: "spent@example.com" }),
+			report({ provider: "anthropic" }),
+			report({ provider: "google" }),
+		],
+		source: "cached",
+		fetched_at: NOW - 60_000,
+	};
+	const refreshed = {
+		reports: [report({ provider: "anthropic", identity: "refreshed" })],
+		source: "live",
+		fetched_at: NOW + 1_000,
+	};
+	const merged = mergeResetUsage(cached, refreshed);
+	assert.deepEqual(
+		merged.reports.map((entry) => entry.provider),
+		["openai", "anthropic", "google"],
+		"the spent provider takes its own slot; the others keep theirs",
+	);
+	assert.equal(merged.reports[1].identity, "refreshed");
+	assert.equal(merged.reports[0].identity, "spent@example.com");
+	assert.equal(merged.source, "live");
+	assert.equal(merged.fetched_at, NOW + 1_000);
+
+	/*
+	 * A provider the answer names twice must not appear twice: the whole
+	 * refreshed block takes the slot its first cached row held.
+	 */
+	const twoAccounts = mergeResetUsage(cached, {
+		reports: [
+			report({ provider: "openai", identity: "one@example.com" }),
+			report({ provider: "openai", identity: "two@example.com" }),
+		],
+		source: "live",
+		fetched_at: NOW,
+	});
+	assert.deepEqual(
+		twoAccounts.reports.map((entry) => entry.provider),
+		["openai", "openai", "anthropic", "google"],
+	);
+
+	// A provider the cache never held is appended rather than dropped.
+	const appended = mergeResetUsage(
+		{
+			reports: [report({ provider: "anthropic" })],
+			source: "cached",
+			fetched_at: NOW,
+		},
+		{
+			reports: [report({ provider: "openai" })],
+			source: "live",
+			fetched_at: NOW,
+		},
+	);
+	assert.deepEqual(
+		appended.reports.map((entry) => entry.provider),
+		["anthropic", "openai"],
+	);
+
+	// Nothing cached: the answer IS the payload, not an invented empty set.
+	assert.deepEqual(mergeResetUsage(undefined, refreshed), refreshed);
 });

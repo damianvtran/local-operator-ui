@@ -1,6 +1,6 @@
 {
 	"ui.chat.usage_reset.chip": "重置 · {count}",
-	"ui.chat.usage_reset.chip_label": "重置 {account} 的速率限制。这会消耗 1 个重置额度。",
+	"ui.chat.usage_reset.chip_label": "重置 {account} 的速率限制。{count, plural, other {剩余 # 个重置额度。}}",
 	"ui.chat.usage_reset.confirm_title": "重置 {account}？",
 	"ui.chat.usage_reset.confirm_cost": "{count, plural, other {消耗 # 个重置额度中的 1 个；清除此账户的速率限制窗口。}}",
 	"ui.chat.usage_reset.busy": "正在等待 {account} 回应。这可能需要一点时间。",

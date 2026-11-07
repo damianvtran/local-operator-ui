@@ -5682,7 +5682,7 @@ export type MessageParams = {
 	"ui.chat.usage_reset.busy": { account: string };
 	"ui.chat.usage_reset.busy_action": undefined;
 	"ui.chat.usage_reset.chip": { count: string };
-	"ui.chat.usage_reset.chip_label": { account: string };
+	"ui.chat.usage_reset.chip_label": { account: string; count: number };
 	"ui.chat.usage_reset.confirm_cost": { count: number };
 	"ui.chat.usage_reset.confirm_title": { account: string };
 	"ui.chat.usage_reset.outcome_already_redeemed": { account: string };

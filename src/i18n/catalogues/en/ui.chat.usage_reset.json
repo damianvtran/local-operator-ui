@@ -1,6 +1,6 @@
 {
 	"ui.chat.usage_reset.chip": "Reset · {count}",
-	"ui.chat.usage_reset.chip_label": "Reset the rate limits for {account}. This uses one reset credit.",
+	"ui.chat.usage_reset.chip_label": "Reset the rate limits for {account}. {count, plural, one {# reset credit left} other {# reset credits left}}.",
 	"ui.chat.usage_reset.confirm_title": "Reset {account}?",
 	"ui.chat.usage_reset.confirm_cost": "{count, plural, one {Uses 1 of # reset credit; clears this account's rate-limit windows.} other {Uses 1 of # reset credits; clears this account's rate-limit windows.}}",
 	"ui.chat.usage_reset.busy": "Waiting for {account} to answer. This can take a moment.",

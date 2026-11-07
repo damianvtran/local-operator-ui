@@ -1257,6 +1257,49 @@ export const resetAccountKey = (account: ResetAccount): string =>
 	`${account.provider}\u0000${account.credentialRef}`;
 
 /**
+ * Fold a reset answer's rows into the payload already on screen.
+ *
+ * WHY NOT REPLACE. The redeem route refreshes ONLY the provider it spent
+ * (`fetch_usage([body.provider], force_refresh=True)`), so its `usage` is a
+ * PARTIAL answer: writing it over the cached set deleted every other provider's
+ * block from an unscoped `/usage` until the next read (review round 1, M1).
+ *
+ * The merge is by PROVIDER, not by appended list: every provider the answer
+ * carries replaces that provider's cached rows IN PLACE, so a block does not
+ * jump down the panel when it is refreshed, and a provider the answer does not
+ * mention keeps the rows it had. The payload's `source`/`fetched_at` come from
+ * the answer — its confirmation is the newest in the set, which is what the
+ * dialog's age line reads (`newestConfirmedMs`) — while each block's own rows
+ * still carry their own `fetched_at`.
+ */
+export const mergeResetUsage = (
+	cached: UsagePayload | undefined,
+	refreshed: UsagePayload,
+): UsagePayload => {
+	if (!cached) return refreshed;
+	const replaced = new Set(refreshed.reports.map((report) => report.provider));
+	const reports: UsageReport[] = [];
+	let inserted = false;
+	for (const report of cached.reports) {
+		if (!replaced.has(report.provider)) {
+			reports.push(report);
+			continue;
+		}
+		// First row of a replaced provider: its whole refreshed block takes this
+		// slot. Later rows of the same provider are the stale ones being dropped.
+		if (inserted) continue;
+		reports.push(...refreshed.reports);
+		inserted = true;
+	}
+	if (!inserted) reports.push(...refreshed.reports);
+	return {
+		reports,
+		source: refreshed.source,
+		fetched_at: refreshed.fetched_at,
+	};
+};
+
+/**
  * Whether the chip is offered at all.
  *
  * BOTH halves are required, and each is a separate fact the report states:

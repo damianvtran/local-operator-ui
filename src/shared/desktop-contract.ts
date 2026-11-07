@@ -42,6 +42,21 @@ const id = z
 	.min(1)
 	.max(128)
 	.regex(/^[a-zA-Z0-9_-]+$/);
+/**
+ * A stored login's reference, as a provider block publishes it.
+ *
+ * NOT `id`, and the difference is the whole point: the backend's
+ * `_credential_ref` sends the row's `identity_key` when it has one — an email,
+ * an `org_...`/account/project id, or `radient-account:[...]` — and
+ * `cred:<row id>` when it does not. `id`'s character class refuses both the
+ * colon and the `@`, so every REAL ref failed validation in the renderer, the
+ * request never left the app, and the panel then reported an unknown fate for a
+ * credit that was never offered (review round 1, B1).
+ *
+ * The bound is the route's own `max_length=128`; a narrower client-side rule
+ * would be re-deciding a wire rule this app does not own.
+ */
+const storedCredentialRef = z.string().min(1).max(128);
 const settingKey = z
 	.string()
 	.min(1)
@@ -2981,7 +2996,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("usage.reset"),
 			provider: id,
-			credentialRef: id.optional(),
+			credentialRef: storedCredentialRef.optional(),
 			identity: z.string().min(1).max(256).optional(),
 			redeemRequestId: z.string().uuid(),
 		})

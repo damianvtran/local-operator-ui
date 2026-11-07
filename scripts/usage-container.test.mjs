@@ -59,6 +59,12 @@ const bundle = await build({
 				nextUsageAskId,
 			} from "./src/renderer/src/features/chat/pickers/usage-view";
 			/*
+			 * The reset attempts live in a MODULE-LEVEL store now, which is what makes
+			 * an id survive a close/reopen (review round 1, B2). Shared across mounts
+			 * is the point, so a test that wants a clean slate has to say so.
+			 */
+			export { resetResetAttempts } from "./src/renderer/src/features/chat/pickers/reset-attempts";
+			/*
 			 * The APP's own query defaults, so the client below is the shipped
 			 * policy rather than a convenient one. See newClient.
 			 */
@@ -234,6 +240,7 @@ const {
 	renderDialog,
 	renderUsage,
 	nextUsageAskId,
+	resetResetAttempts,
 	usageQueryOptions,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -339,6 +346,25 @@ const newClient = () =>
 const settle = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * One button inside a mounted container, by the label the user reads.
+ *
+ * Found by LABEL rather than by position: a block carries a chip, a Confirm and a
+ * Cancel at different moments, and the dialog's footer carries a `Close`.
+ */
+const buttonIn = (host, pattern) =>
+	[...host.querySelectorAll("button")].find((node) =>
+		pattern.test(node.textContent?.trim() ?? ""),
+	);
+
+/** A real click on a real control, so the shipped handler runs. */
+const press = async (node, what = "the control under test") => {
+	assert.ok(node, `${what} must render`);
+	await act(async () => {
+		node.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+	});
+};
+
+/**
  * The dialog's action button, found by its LABEL rather than by position: the
  * footer's `Close` is a button too, and the toolbar's is the one under
  * assertion. Shared by the mount harness and the announcement test, so both
@@ -383,6 +409,8 @@ async function mountUsage(client, args = "") {
 		);
 	});
 	return {
+		/** The mounted container's element, for control lookups. */
+		host: () => host,
 		/** The text a user reads, with markup and layout whitespace removed. */
 		text: () => text(host.innerHTML),
 		html: () => host.innerHTML,
@@ -1734,101 +1762,129 @@ test("a balance row is spoken as missing a limit, not as missing a report", asyn
  * confirmation, the bridge, and the cache write the answer produces.
  *
  * Every claim below is about a path a unit test over the state machine cannot
- * reach: that the chip only renders when the report is spendable, that Confirm
- * posts exactly once with the id the confirmation minted, that the returned
- * report is written into the `usage.get` cache (so the rows behind the result
- * line are the post-spend ones), and that the RESULT survives the chip
- * disappearing when the spend takes the account to zero credits.
+ * reach. The first test pins the spend path as it shipped; the rest pin the
+ * review round 1 findings against the real transition that produced them:
+ *   B2  the pending id survives a close and reopen (the store is module-level);
+ *   M1  an unscoped reset merges its ONE provider into the cached set;
+ *   M2  two accounts' attempts settle independently;
+ *   M3  focus follows every control an outcome unmounts;
+ *   m2  the chip's spoken name carries the count;
+ *   m3  a read that landed after the attempt started is not overwritten.
  */
-const resetPayload = (credits) => ({
-	reports: [
+
+/** One stored login on openai, as the route shapes a spendable block. */
+const accountReport = ({
+	ref = "cred:1",
+	identity = "me@example.com",
+	credits = 3,
+} = {}) => ({
+	provider: "openai",
+	fetched_at: NOW,
+	identity,
+	notes: null,
+	consecutive_failures: 0,
+	usage_unavailable: false,
+	next_probe_at_ms: null,
+	credential_invalid: false,
+	age_ms: 0,
+	state: "available",
+	resets_available: credits,
+	// The backend publishes `cred:<row id>` here when the row has no identity
+	// key, and an email/org id when it does: a fixture the schema refuses is a
+	// fixture that hides a blocker (review round 1, B1).
+	credential_ref: ref,
+	limits: [
 		{
-			provider: "openai",
-			fetched_at: NOW,
-			identity: "me@example.com",
-			notes: null,
-			consecutive_failures: 0,
-			usage_unavailable: false,
-			next_probe_at_ms: null,
-			credential_invalid: false,
-			age_ms: 0,
-			state: "available",
-			resets_available: credits,
-			credential_ref: "cred-openai-1",
-			limits: [
-				{
-					id: "five_hour",
-					label: "5-hour",
-					window: "five_hour",
-					status: "exhausted",
-					resets_at: null,
-					resets_at_ms: NOW + 3_600_000,
-					tier: "",
-					shared: true,
-					amount: {
-						used: 100,
-						limit: 100,
-						remaining: 0,
-						used_fraction: 1,
-						unit: "percent",
-					},
-				},
-			],
+			id: "five_hour",
+			label: "5-hour",
+			window: "five_hour",
+			status: "exhausted",
+			resets_at: null,
+			resets_at_ms: NOW + 3_600_000,
+			tier: "",
+			shared: true,
+			amount: {
+				used: 100,
+				limit: 100,
+				remaining: 0,
+				used_fraction: 1,
+				unit: "percent",
+			},
 		},
 	],
-	source: "cached",
+});
+
+const resetPayload = (credits, over = {}, source = "cached") => ({
+	reports: [accountReport({ ...over, credits })],
+	source,
 	fetched_at: NOW,
 });
 
+/** Two stored logins on ONE provider: the case the per-account map exists for. */
+const twoAccountPayload = (creditsA, creditsB, source = "cached") => ({
+	reports: [
+		accountReport({
+			ref: "cred:a",
+			identity: "a@example.com",
+			credits: creditsA,
+		}),
+		accountReport({
+			ref: "cred:b",
+			identity: "b@example.com",
+			credits: creditsB,
+		}),
+	],
+	source,
+	fetched_at: NOW,
+});
+
+/** A provider the reset never touched, so "the reset erased it" is observable. */
+const anthropicRow = () => payload().reports[0];
+
+/** The redeem route's answer: one outcome plus, on a definitive one, the rows. */
+const resetAnswer = (outcome, usage) => ({
+	status: 200,
+	body: {
+		result: {
+			reset: {
+				outcome,
+				windows_reset: outcome === "reset" ? 2 : 0,
+				detail: "",
+				refused: outcome === "refused",
+			},
+			usage,
+		},
+	},
+});
+
 test("a confirmed reset posts once, writes the returned report, and the result outlives the chip", async () => {
+	resetResetAttempts();
 	const client = newClient();
 	const posted = [];
 	respond = async (request) => {
 		if (request.op === "usage.reset") {
 			posted.push(request);
-			return {
-				status: 200,
-				body: {
-					result: {
-						reset: {
-							outcome: "reset",
-							windows_reset: 2,
-							detail: "",
-							refused: false,
-						},
-						// The post-spend report: the same account, credits at zero.
-						usage: {
-							...resetPayload(0),
-							source: "live",
-						},
-					},
-				},
-			};
+			// The post-spend report: the same account, credits at zero.
+			return resetAnswer("reset", resetPayload(0, {}, "live"));
 		}
 		return { status: 200, body: { result: resetPayload(3) } };
 	};
 	const view = await mountUsage(client);
 	await view.settle(60);
-	const host = document.body.lastElementChild;
-	const button = (pattern) =>
-		[...host.querySelectorAll("button")].find((node) =>
-			pattern.test(node.textContent?.trim() ?? ""),
-		);
+	const host = view.host();
 	try {
 		// The chip names the count and is reachable by its accessible name.
-		const chip = button(/^Reset · 3$/);
+		const chip = buttonIn(host, /^Reset · 3$/);
 		assert.ok(
 			chip,
 			`the chip must render on a spendable account: ${view.text()}`,
 		);
-		assert.match(
-			chip.getAttribute("aria-label") ?? "",
-			/Reset the rate limits/,
-		);
+		const name = chip.getAttribute("aria-label") ?? "";
+		assert.match(name, /Reset the rate limits for openai · me@example\.com/);
+		// m2: the spoken name carries the number the chip draws.
+		assert.match(name, /3 reset credits left/);
 
-		await act(async () => {
-			chip.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
-		});
+		await press(chip, "the reset chip");
 		// The confirmation states the cost and the account, and Cancel holds focus.
 		assert.match(view.text(), /Reset openai · me@example\.com\?/);
 		assert.match(view.text(), /Uses 1 of 3 reset credits/);
@@ -1838,17 +1894,13 @@ test("a confirmed reset posts once, writes the returned report, and the result o
 			"the spending confirmation must open with Cancel focused",
 		);
 
-		await act(async () => {
-			button(/^Confirm$/)?.dispatchEvent(
-				new dom.window.MouseEvent("click", { bubbles: true }),
-			);
-		});
+		await press(buttonIn(host, /^Confirm$/), "the confirmation's Confirm");
 		await view.settle(80);
 
 		assert.equal(posted.length, 1, "one confirm is one request");
 		assert.equal(posted[0].op, "usage.reset");
 		assert.equal(posted[0].provider, "openai");
-		assert.equal(posted[0].credentialRef, "cred-openai-1");
+		assert.equal(posted[0].credentialRef, "cred:1");
 		assert.match(
 			posted[0].redeemRequestId,
 			/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
@@ -1859,9 +1911,20 @@ test("a confirmed reset posts once, writes the returned report, and the result o
 		// longer spendable and `canReset` now says so.
 		assert.match(view.text(), /Cleared 2 rate-limit windows for openai/);
 		assert.equal(
-			button(/^Reset · /),
+			buttonIn(host, /^Reset · /),
 			undefined,
 			"no chip once no credits are left",
+		);
+		// M3: the busy region unmounted while it held focus, and the result line
+		// took the focus it handed back rather than dropping it to `<body>`.
+		assert.equal(
+			document.activeElement?.tagName,
+			"OUTPUT",
+			"the result line must receive the focus",
+		);
+		assert.match(
+			document.activeElement?.textContent?.trim() ?? "",
+			/Cleared 2 rate-limit windows/,
 		);
 		// And the rows behind it are the POST-SPEND ones the answer carried, not
 		// a fabricated refresh: the cache write is what makes that true.
@@ -1876,72 +1939,327 @@ test("a confirmed reset posts once, writes the returned report, and the result o
 	}
 });
 
-test("a failed reset keeps its request id, so the retry cannot spend a second credit", async () => {
+test("a failed reset keeps its request id across a close and reopen, so the retry cannot spend a second credit", async () => {
+	resetResetAttempts();
 	const client = newClient();
 	const posted = [];
 	respond = async (request) => {
 		if (request.op === "usage.reset") {
 			posted.push(request);
 			/*
-			 * BOTH the first attempt AND React Query's automatic retry fail, so the
-			 * app ends in the unknown arm with the id still owed. The retry re-sends
-			 * the same variables, which is exactly why that automatic retry is safe
-			 * on a spend: one id, one attempt at the vendor.
+			 * BOTH the first attempt AND its one automatic retry fail, so the app
+			 * ends in the unknown arm with the id still owed. The retry re-sends the
+			 * same variables, which is exactly why that retry is safe on a spend:
+			 * one id, one attempt at the vendor.
 			 */
 			if (posted.length <= 2) throw new Error("transport refused");
-			return {
-				status: 200,
-				body: {
-					result: {
-						reset: {
-							outcome: "already_redeemed",
-							windows_reset: 0,
-							detail: "",
-							refused: false,
-						},
-						usage: { ...resetPayload(1), source: "live" },
-					},
-				},
-			};
+			return resetAnswer("already_redeemed", resetPayload(1, {}, "live"));
 		}
 		return { status: 200, body: { result: resetPayload(2) } };
 	};
-	const view = await mountUsage(client);
+	let view = await mountUsage(client);
 	await view.settle(60);
-	const host = document.body.lastElementChild;
-	const button = (pattern) =>
-		[...host.querySelectorAll("button")].find((node) =>
-			pattern.test(node.textContent?.trim() ?? ""),
-		);
-	const press = async (node) => {
-		assert.ok(node, "the control under test must render");
-		await act(async () => {
-			node.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
-		});
-	};
 	try {
-		await press(button(/^Reset · 2$/));
-		await press(button(/^Confirm$/));
-		// Past the app's own mutation retry, so the unknown arm is the settled one.
-		await view.settle(1500);
+		await press(buttonIn(view.host(), /^Reset · 2$/), "the reset chip");
+		await press(
+			buttonIn(view.host(), /^Confirm$/),
+			"the confirmation's Confirm",
+		);
+		// Past the app's own one-retry policy, so the unknown arm is the settled one.
+		await view.settle(300);
 
 		// The unknown arm: the line says so, and it offers the retry.
 		assert.match(view.text(), /did not report a result/);
 		assert.match(view.text(), /will not spend a second credit/);
-		assert.ok(button(/^Retry$/), "the unknown outcome must offer a retry");
+		assert.ok(
+			buttonIn(view.host(), /^Retry$/),
+			"the unknown outcome must offer a retry",
+		);
 		assert.equal(posted.length, 2, "the app retried once, with the same id");
+		const firstId = posted[0].redeemRequestId;
 
-		// The retry re-opens the CONFIRMATION rather than firing straight away,
-		// and the id it posts is the one the earlier attempts already used.
-		await press(button(/^Retry$/));
-		await press(button(/^Confirm$/));
+		/*
+		 * CLOSING THE PANEL UNMOUNTS THIS VIEW, and that is the transition that used
+		 * to lose the id: it lived in view state, so a reopen found `idle`, minted a
+		 * fresh UUID, and the vendor — which only joins on an identical id — saw a
+		 * second attempt on the same login (review round 1, B2).
+		 */
+		await view.unmount();
+		view = await mountUsage(client);
+		await view.settle(60);
+		assert.match(
+			view.text(),
+			/did not report a result/,
+			"the unknown outcome must survive the reopen",
+		);
+		await press(buttonIn(view.host(), /^Retry$/), "the retry");
+		await press(
+			buttonIn(view.host(), /^Confirm$/),
+			"the reopened confirmation",
+		);
 		await view.settle(200);
 
 		assert.equal(posted.length, 3);
-		const ids = new Set(posted.map((request) => request.redeemRequestId));
-		assert.equal(ids.size, 1, "every attempt of one reset carries ONE id");
+		assert.equal(
+			posted[2].redeemRequestId,
+			firstId,
+			"the retry after a reopen must carry the SAME id",
+		);
 		// The third answer is definitive, and says no second credit was spent.
 		assert.match(view.text(), /had already been redeemed/);
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("an unscoped reset merges its provider into the cached set and keeps every other block", async () => {
+	resetResetAttempts();
+	const client = newClient();
+	respond = async (request) => {
+		if (request.op === "usage.reset") {
+			/*
+			 * The backend refreshed ONLY the provider it spent
+			 * (`fetch_usage([body.provider], force_refresh=True)`), so this answer is
+			 * a PARTIAL set. Writing it over the cache used to delete every other
+			 * provider's block until the next read (review round 1, M1).
+			 */
+			return resetAnswer("reset", resetPayload(0, {}, "live"));
+		}
+		return {
+			status: 200,
+			body: {
+				result: {
+					reports: [accountReport({ credits: 3 }), anthropicRow()],
+					source: "cached",
+					fetched_at: NOW,
+				},
+			},
+		};
+	};
+	const view = await mountUsage(client);
+	await view.settle(60);
+	try {
+		assert.match(view.text(), /anthropic/);
+		await press(buttonIn(view.host(), /^Reset · 3$/), "the reset chip");
+		await press(
+			buttonIn(view.host(), /^Confirm$/),
+			"the confirmation's Confirm",
+		);
+		await view.settle(80);
+
+		const cached = client.getQueryData(
+			usageQueryOptions(undefined, "auto", 0).queryKey,
+		);
+		assert.deepEqual(
+			(cached?.reports ?? []).map((report) => report.provider),
+			["openai", "anthropic"],
+			"the spent provider is replaced IN PLACE and the other one survives",
+		);
+		assert.equal(cached.reports[0].resets_available, 0);
+		assert.equal(cached.reports[1].resets_available, undefined);
+		assert.equal(cached.source, "live");
+		assert.match(
+			view.text(),
+			/anthropic/,
+			"its block must still be on screen after the spend",
+		);
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("two accounts confirmed back-to-back both settle, and neither stays busy", async () => {
+	resetResetAttempts();
+	const client = newClient();
+	const posted = [];
+	let releaseFirst;
+	const firstIsOut = new Promise((resolve) => {
+		releaseFirst = resolve;
+	});
+	respond = async (request) => {
+		if (request.op === "usage.reset") {
+			posted.push(request);
+			// Account A's answer is held until the test says so, so B is confirmed
+			// while A is genuinely in flight.
+			if (request.credentialRef === "cred:a") await firstIsOut;
+			return resetAnswer(
+				"reset",
+				twoAccountPayload(
+					request.credentialRef === "cred:a" ? 0 : 2,
+					request.credentialRef === "cred:a" ? 2 : 0,
+					"live",
+				),
+			);
+		}
+		return { status: 200, body: { result: twoAccountPayload(2, 2) } };
+	};
+	const view = await mountUsage(client);
+	await view.settle(60);
+	const host = view.host();
+	const chipFor = (identity) =>
+		[...host.querySelectorAll("button")].find((node) =>
+			(node.getAttribute("aria-label") ?? "").includes(identity),
+		);
+	try {
+		await press(chipFor("a@example.com"), "account A's reset chip");
+		await press(buttonIn(host, /^Confirm$/), "A's Confirm");
+		assert.equal(posted.length, 1, "A's spend is out");
+		/*
+		 * B is confirmed while A is still out. One shared `useMutation` with
+		 * per-call callbacks kept only the LATEST call's handlers, so A's answer was
+		 * never recorded: it sat in `busy` with disabled buttons and its rows were
+		 * never written (review round 1, M2).
+		 */
+		await press(chipFor("b@example.com"), "account B's reset chip");
+		await press(buttonIn(host, /^Confirm$/), "B's Confirm");
+		assert.equal(posted.length, 2, "both accounts' spends are out");
+		assert.equal(
+			new Set(posted.map((request) => request.redeemRequestId)).size,
+			2,
+			"each account mints its own id",
+		);
+
+		releaseFirst();
+		await view.settle(120);
+
+		assert.match(
+			view.text(),
+			/Cleared 2 rate-limit windows for openai · a@example\.com/,
+		);
+		assert.match(
+			view.text(),
+			/Cleared 2 rate-limit windows for openai · b@example\.com/,
+		);
+		assert.doesNotMatch(
+			view.text(),
+			/Waiting for openai/,
+			"neither account may be left in flight",
+		);
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("focus follows the control every outcome unmounts", async () => {
+	resetResetAttempts();
+	const client = newClient();
+	let spends = 0;
+	respond = async (request) => {
+		if (request.op === "usage.reset") {
+			spends += 1;
+			// The first spend leaves a credit (the chip comes back); the second
+			// takes the account to zero (the chip cannot).
+			return resetAnswer(
+				"reset",
+				resetPayload(spends === 1 ? 1 : 0, {}, "live"),
+			);
+		}
+		return { status: 200, body: { result: resetPayload(3) } };
+	};
+	const view = await mountUsage(client);
+	await view.settle(60);
+	const host = view.host();
+	try {
+		// Cancel unmounts the confirmation that held the focus.
+		await press(buttonIn(host, /^Reset · 3$/), "the reset chip");
+		await press(buttonIn(host, /^Cancel$/), "the confirmation's Cancel");
+		assert.equal(
+			document.activeElement?.textContent?.trim(),
+			"Reset · 3",
+			"Cancel must hand the focus back to the chip",
+		);
+
+		// A definitive outcome unmounts the busy region.
+		await press(buttonIn(host, /^Reset · 3$/), "the reset chip");
+		await press(buttonIn(host, /^Confirm$/), "the confirmation's Confirm");
+		await view.settle(80);
+		assert.equal(
+			document.activeElement?.tagName,
+			"OUTPUT",
+			"the result line must take the focus the busy region handed on",
+		);
+
+		// Dismiss unmounts the result line, and the chip is back: return to it.
+		await press(buttonIn(host, /^Dismiss$/), "the result's Dismiss");
+		assert.equal(
+			document.activeElement?.textContent?.trim(),
+			"Reset · 1",
+			"Dismiss must return the focus to the chip",
+		);
+
+		// The second spend leaves no chip at all, so the block heading is the
+		// only place left inside the block the user was reading.
+		await press(buttonIn(host, /^Reset · 1$/), "the reset chip");
+		await press(buttonIn(host, /^Confirm$/), "the confirmation's Confirm");
+		await view.settle(80);
+		await press(buttonIn(host, /^Dismiss$/), "the result's Dismiss");
+		assert.equal(
+			document.activeElement?.tagName,
+			"H3",
+			"with no chip left, the focus must land on the block heading",
+		);
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("a read that lands after the attempt started is not overwritten by the reset's answer", async () => {
+	resetResetAttempts();
+	const client = newClient();
+	const posted = [];
+	let liveReads = 0;
+	let releaseReset;
+	const resetIsOut = new Promise((resolve) => {
+		releaseReset = resolve;
+	});
+	respond = async (request) => {
+		if (request.op === "usage.reset") {
+			posted.push(request);
+			await resetIsOut;
+			return resetAnswer("reset", resetPayload(0, {}, "live"));
+		}
+		if (request.live && !request.refresh) {
+			liveReads += 1;
+			// The open's own check answers 3 credits; the refetch below answers 5.
+			return {
+				status: 200,
+				body: { result: resetPayload(liveReads === 1 ? 3 : 5, {}, "live") },
+			};
+		}
+		return { status: 200, body: { result: resetPayload(3) } };
+	};
+	const view = await mountUsage(client);
+	await view.settle(60);
+	const host = view.host();
+	try {
+		await press(buttonIn(host, /^Reset · 3$/), "the reset chip");
+		await press(buttonIn(host, /^Confirm$/), "the confirmation's Confirm");
+		assert.equal(posted.length, 1, "the spend is out");
+		/*
+		 * A read lands on the SAME key while the spend is still out, so its rows are
+		 * newer than the attempt. Writing the reset's answer over them rewound the
+		 * table to a state the read had already replaced (review round 1, m3).
+		 */
+		await act(async () => {
+			await client.refetchQueries({
+				queryKey: usageQueryOptions(undefined, "auto", 0).queryKey,
+			});
+		});
+		releaseReset();
+		await view.settle(120);
+
+		assert.ok(
+			buttonIn(host, /^Reset · 5$/),
+			`the newer read's credits must survive: ${view.text()}`,
+		);
+		const cached = client.getQueryData(
+			usageQueryOptions(undefined, "auto", 0).queryKey,
+		);
+		assert.equal(cached?.reports?.[0]?.resets_available, 5);
 	} finally {
 		await view.unmount();
 		client.clear();

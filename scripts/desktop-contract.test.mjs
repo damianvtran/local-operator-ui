@@ -1081,7 +1081,7 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			{
 				op: "usage.reset",
 				provider: "openai",
-				credentialRef: "cred-7",
+				credentialRef: "cred:7",
 				identity: "me@example.com",
 				redeemRequestId: requestId,
 			},
@@ -1089,7 +1089,7 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			"POST",
 			{
 				provider: "openai",
-				credential_ref: "cred-7",
+				credential_ref: "cred:7",
 				identity: "me@example.com",
 				redeem_request_id: requestId,
 			},
@@ -1104,14 +1104,14 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			{
 				op: "usage.reset",
 				provider: "openai",
-				credentialRef: "cred-7",
+				credentialRef: "org_01J8Z3K4",
 				redeemRequestId: requestId,
 			},
 			"/v1/desktop/usage/reset",
 			"POST",
 			{
 				provider: "openai",
-				credential_ref: "cred-7",
+				credential_ref: "org_01J8Z3K4",
 				redeem_request_id: requestId,
 			},
 		],
@@ -4145,13 +4145,45 @@ test("a failing contract assertion renders a bounded diagnostic, never the data:
 
 test("a usage reset names an account and carries a client-minted UUID", () => {
 	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-	const ok = desktopRequestSchema.safeParse({
-		op: "usage.reset",
-		provider: "openai",
-		credentialRef: "cred-7",
-		redeemRequestId: requestId,
-	});
-	assert.equal(ok.success, true);
+	const parses = (credentialRef) =>
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			credentialRef,
+			redeemRequestId: requestId,
+		}).success;
+	/*
+	 * EVERY SHAPE THE BACKEND PUBLISHES, because this fixture used to be the one
+	 * string the tests invented ("cred-7") rather than the two forms the backend
+	 * sends: `_credential_ref` answers the row's `identity_key` when it has one
+	 * (an email, an org/account/project id, or `radient-account:[...]`) and
+	 * `cred:<row id>` when it does not. A character class narrow enough to refuse
+	 * the colon or the `@` rejected every REAL ref, so the request never left the
+	 * renderer and the panel reported an unknown fate for a credit that was never
+	 * offered (review round 1, B1). The bound is the route's own
+	 * `max_length=128`, and nothing shorter.
+	 */
+	for (const ref of [
+		"cred:7",
+		"me@example.com",
+		"org_01J8Z3K4",
+		"radient-account:[sub=a1b2]",
+	]) {
+		assert.equal(parses(ref), true, `${ref} is a real credential ref`);
+	}
+	assert.equal(parses("x".repeat(128)), true, "the route's own bound is 128");
+	assert.equal(parses("x".repeat(129)), false, "129 is past the route's bound");
+	assert.equal(parses(""), false, "an empty ref is not an identifier");
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			identity: "me@example.com",
+			redeemRequestId: requestId,
+		}).success,
+		true,
+		"the backend's compatibility arm: identity alone names the account",
+	);
 	/*
 	 * Neither identifier: refused HERE as well as in the backend's body model, so
 	 * the app never sends the one request shape whose only possible answer is a
@@ -4174,7 +4206,7 @@ test("a usage reset names an account and carries a client-minted UUID", () => {
 		desktopRequestSchema.safeParse({
 			op: "usage.reset",
 			provider: "openai",
-			credentialRef: "cred-7",
+			credentialRef: "cred:7",
 			redeemRequestId: "retry-1",
 		}).success,
 		false,
