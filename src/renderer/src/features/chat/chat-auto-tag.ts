@@ -29,7 +29,7 @@
 
 import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
-import type { SidebarView } from "./chat-sidebar-view";
+import { type SidebarView, tagSurfaceOn } from "./chat-sidebar-view";
 
 /**
  * The `session_tags_auto_tag` version that introduced the fork field.
@@ -67,11 +67,16 @@ export function autoTagSupported(
  * the first half would auto-tag futures while the reader has tags switched
  * off - which the design forbids in as many words (§5.4: "turning tags off
  * never runs auto-tagging").
+ *
+ * "TAGS ON" IS THE TAG SURFACE, not the switch (issue #1733): `Group by › Tag`
+ * is tags-on by definition and leaves `tagsEnabled` untouched, so the first
+ * half of the conjunction is `tagSurfaceOn` - otherwise the mode that is most
+ * about tags would be the one mode that never auto-tags.
  */
 export function forkAutoTag(
-	view: Pick<SidebarView, "tagsEnabled" | "autoTagForks">,
+	view: Pick<SidebarView, "tagsEnabled" | "autoTagForks" | "groupBy">,
 	supported: boolean,
 ): boolean | undefined {
 	if (!supported) return undefined;
-	return view.tagsEnabled && view.autoTagForks;
+	return tagSurfaceOn(view) && view.autoTagForks;
 }

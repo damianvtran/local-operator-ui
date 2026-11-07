@@ -4,6 +4,7 @@
 	"ui.chat.sidebar_view.order_by": "排序方式",
 	"ui.chat.sidebar_view.sections": "分区",
 	"ui.chat.sidebar_view.time_section": "时间分区",
+	"ui.chat.sidebar_view.tag": "标签",
 	"ui.chat.sidebar_view.agent_team": "智能体和团队",
 	"ui.chat.sidebar_view.one_list": "统一列表",
 	"ui.chat.sidebar_view.last_active": "最近活跃时间",

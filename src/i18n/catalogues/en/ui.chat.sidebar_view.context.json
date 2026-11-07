@@ -29,6 +29,12 @@
 		"maxCells": 24,
 		"note": "Radio-style choice; changes grouping, date basis or ordering, not a conversation action. maxCells is advisory, not measured fit."
 	},
+	"ui.chat.sidebar_view.tag": {
+		"role": "single-choice view option label",
+		"tone": "short factual choice",
+		"maxCells": 24,
+		"note": "Group by option: the conversation list is grouped by each conversation's primary tag, across all dates. A noun naming the grouping axis, parallel to 'Time section' and 'Agent and team'; use the same word for tag as the other tag strings. maxCells is advisory, not measured fit."
+	},
 	"ui.chat.sidebar_view.agent_team": {
 		"role": "single-choice view option label",
 		"tone": "short factual choice",

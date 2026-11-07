@@ -223,6 +223,7 @@ export function ChatTagHeader({
 	announce,
 	unused = false,
 	disclosure,
+	headingId,
 }: {
 	id: string;
 	name: string;
@@ -239,6 +240,16 @@ export function ChatTagHeader({
 	 * names a missing element.
 	 */
 	disclosure?: { collapsed: boolean; bodyId: string; onToggle: () => void };
+	/**
+	 * Set when the header is a TOP-LEVEL group (`Group by › Tag`, issue #1733):
+	 * the name is then an `<h3>` with this id, the level of the time-section
+	 * labels it replaces, so heading navigation (VoiceOver rotor, NVDA `H`) still
+	 * jumps group to group and the enclosing `<section>` can be labelled by it.
+	 * Only the name is the heading - the chevron and actions stay outside it, so
+	 * their own names are unchanged. Absent inside a Time section, where the
+	 * section label is already the heading and a nested one would be noise.
+	 */
+	headingId?: string;
 }) {
 	useI18nLocale();
 	const registry = useChatTagRegistry();
@@ -381,6 +392,7 @@ export function ChatTagHeader({
 				{ name: label },
 			)
 		: "";
+	const NameTag = headingId ? "h3" : "span";
 	const conversations =
 		useSessionTagsStore(
 			(state) => state.categories.find((tag) => tag.id === id)?.conversations,
@@ -468,13 +480,14 @@ export function ChatTagHeader({
 						}}
 					/>
 				) : (
-					<span
+					<NameTag
+						id={headingId}
 						className="min-w-0 flex-1 truncate"
 						title={label}
 						onDoubleClick={() => managed && setRenaming(true)}
 					>
 						{label}
-					</span>
+					</NameTag>
 				)}
 				<span className="shrink-0">{count}</span>
 				{managed && !renaming && (

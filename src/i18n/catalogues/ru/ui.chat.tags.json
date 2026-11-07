@@ -1,7 +1,7 @@
 {
 	"ui.chat.tags.label": "Теги",
 	"ui.chat.tags.menu": "Теги…",
-	"ui.chat.tags.group": "Группировать чаты по тегам",
+	"ui.chat.tags.group": "Делить временные разделы по тегам",
 	"ui.chat.tags.mode_hint": "Группы тегов используют группировку по времени.",
 	"ui.chat.tags.use_time": "Перейти к разделам по времени",
 	"ui.chat.tags.auto_tag": "Автоматически помечать тегами форки разговоров",

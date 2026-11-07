@@ -1,7 +1,7 @@
 {
 	"ui.chat.tags.label": "टैग",
 	"ui.chat.tags.menu": "टैग…",
-	"ui.chat.tags.group": "चैट को टैग के हिसाब से समूहों में रखें",
+	"ui.chat.tags.group": "समय के खंडों को टैग के हिसाब से बाँटें",
 	"ui.chat.tags.mode_hint": "टैग के समूह समय के खंड वाले समूह इस्तेमाल करते हैं।",
 	"ui.chat.tags.use_time": "समय के खंड चुनें",
 	"ui.chat.tags.auto_tag": "फ़ोर्क की गई बातचीत को स्वतः टैग करें",

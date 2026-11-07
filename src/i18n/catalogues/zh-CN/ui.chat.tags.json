@@ -1,7 +1,7 @@
 {
 	"ui.chat.tags.label": "标签",
 	"ui.chat.tags.menu": "标签……",
-	"ui.chat.tags.group": "按标签分组对话",
+	"ui.chat.tags.group": "按标签拆分时间分区",
 	"ui.chat.tags.mode_hint": "标签分组需使用“时间分区”分组方式。",
 	"ui.chat.tags.use_time": "使用时间分区",
 	"ui.chat.tags.auto_tag": "自动为分叉的对话添加标签",

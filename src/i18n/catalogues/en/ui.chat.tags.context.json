@@ -37,7 +37,7 @@
 	"ui.chat.tags.discovery": {
 		"role": "accessible description for the Tags switch",
 		"tone": "concise, neutral sentence case",
-		"note": "Screen-reader-only hint for the Group chats by tag switch. Command+Shift+L and Ctrl+Shift+L are literal key names; keep both. Tags… is the row menu item name."
+		"note": "Screen-reader-only hint for the Split time sections by tag switch. Command+Shift+L and Ctrl+Shift+L are literal key names; keep both. Tags… is the row menu item name."
 	},
 	"ui.chat.tags.search": {
 		"role": "tag popover or sidebar control",

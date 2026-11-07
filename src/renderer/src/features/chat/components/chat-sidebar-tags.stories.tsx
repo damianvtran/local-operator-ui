@@ -47,7 +47,20 @@ type Scenario =
 	| "fold-all"
 	| "fold-mixed"
 	| "fold-many"
-	| "fold-drop";
+	| "fold-drop"
+	| "tag-mode"
+	| "tag-mode-unused"
+	| "tag-mode-untagged"
+	| "tag-mode-none"
+	| "tag-mode-many"
+	| "tag-mode-loading"
+	| "tag-mode-old-backend";
+/*
+ * `Group by › Tag` (issue #1733, docs/design/sidebar-tag-first-grouping.md §5).
+ * Every tag-mode scenario stores `tagsEnabled: false`, so each frame also shows
+ * the mode does not depend on - or write - the Time-section switch.
+ */
+const tagMode = (scenario: Scenario) => scenario.startsWith("tag-mode");
 /*
  * THE FOLDS EACH SCENARIO STARTS WITH (issue #1639), written into the SAME
  * `chat-sidebar-disclosures` blob the sidebar reads at mount. Only `tag:` keys
@@ -60,6 +73,7 @@ const FOLD_SEEDS: Partial<Record<Scenario, string[]>> = {
 	"fold-mixed": ["review"],
 	"fold-many": ["extra-1", "extra-3", "extra-5", "untagged"],
 	"fold-drop": ["review"],
+	"tag-mode-many": ["extra-1", "extra-3", "untagged"],
 };
 function seedFolds(scenario: Scenario) {
 	let stored: Record<string, boolean> = {};
@@ -87,9 +101,11 @@ function installBridge(scenario: Scenario) {
 	document.body.dataset.tagsProof = "";
 	document.body.dataset.tagsOpened = "";
 	seedFolds(scenario);
-	let categories: TagCategory[] = ["no-categories", "picker-empty"].includes(
-		scenario,
-	)
+	let categories: TagCategory[] = [
+		"no-categories",
+		"picker-empty",
+		"tag-mode-none",
+	].includes(scenario)
 		? []
 		: [
 				{ id: "review", name: "Review", order: 0, conversations: 2 },
@@ -124,14 +140,14 @@ function installBridge(scenario: Scenario) {
 				}),
 			),
 		];
-	if (scenario === "unused")
+	if (scenario === "unused" || scenario === "tag-mode-unused")
 		categories.push({
 			id: "unused",
 			name: "Next project",
 			order: 3,
 			conversations: 0,
 		});
-	if (scenario === "fold-many")
+	if (scenario === "fold-many" || scenario === "tag-mode-many")
 		categories = [
 			...categories,
 			...Array.from({ length: 8 }, (_, index) => ({
@@ -218,6 +234,38 @@ function installBridge(scenario: Scenario) {
 		status_epoch: "tag-fixture-epoch",
 		tags_revision: "0",
 	}));
+	/*
+	 * S4's density: 220 loaded rows over the eight workstreams plus the three base
+	 * tags and Untagged, so the 50-row head cuts every group short and the one foot
+	 * (`Show 50 more chats`) is reachable at the bottom of the scroll.
+	 */
+	if (scenario === "tag-mode-many")
+		for (let index = 0; index < 215; index++) {
+			const id = index % 12 === 11 ? null : `extra-${index % 8}`;
+			rows.push({
+				...rows[1],
+				id: `m${String(index).padStart(11, "0")}`,
+				name:
+					index === 0
+						? "A deliberately long conversation title that must truncate before the count"
+						: `${id ? `Workstream ${(index % 8) + 1}` : "Loose"} · thread ${Math.floor(index / 8) + 1}`,
+				tags: id ? tags(id) : [],
+				primary: id,
+				mtime: now - (rows.length + index) * 3600,
+				created_at: now - (rows.length + index) * 3600,
+			});
+		}
+	if (scenario === "tag-mode-many")
+		categories[3].name =
+			"Workstream 1 with a long tag name that has to truncate";
+	/* S1: one live row, in Project, so Active first lifts it inside its group. */
+	if (tagMode(scenario)) rows[1].status = { code: "busy", label: "Running" };
+	/* S3: categories exist, but no loaded row carries one. */
+	if (scenario === "tag-mode-untagged")
+		for (const row of rows) {
+			row.tags = [];
+			row.primary = null;
+		}
 	if (scenario === "fold-many")
 		for (let index = 0; index < 16; index++) {
 			const id = `extra-${index % 8}`;
@@ -259,10 +307,14 @@ function installBridge(scenario: Scenario) {
 						session_pins: 1,
 						...(scenario === "menu-wide" ? { session_archive: 1 } : {}),
 						session_search: 1,
-						...(scenario === "old-backend" ? {} : { session_tags: 1 }),
+						...(["old-backend", "tag-mode-old-backend"].includes(scenario)
+							? {}
+							: { session_tags: 1 }),
 					},
 				});
 			case "sessions.list":
+				// S10: the catalogue head never settles, so the pending state holds.
+				if (scenario === "tag-mode-loading") return new Promise(() => {});
 				return ok({
 					sessions:
 						scenario === "held-pin" && !revealHeld
@@ -428,7 +480,9 @@ function installBridge(scenario: Scenario) {
 		chatSidebarView: {
 			...DEFAULT_SIDEBAR_VIEW,
 			hidden: ["agents", "teams"],
-			tagsEnabled: !["tags-off", "old-backend"].includes(scenario),
+			tagsEnabled:
+				!["tags-off", "old-backend"].includes(scenario) && !tagMode(scenario),
+			...(tagMode(scenario) ? { groupBy: "tag" as const } : {}),
 		},
 	});
 }
@@ -943,7 +997,7 @@ export const ViewOptions220: Story = {
 		);
 		const body = within(document.body);
 		expect(
-			await body.findByRole("switch", { name: "Group chats by tag" }),
+			await body.findByRole("switch", { name: "Split time sections by tag" }),
 		).toBeVisible();
 		expect(body.queryByText("Manage tags…")).toBeNull();
 	},
@@ -1739,4 +1793,222 @@ export const DragPreviewLight: Story = {
 export const PinnedHeaderPreviewLight: Story = {
 	...story("pinned-tags", 260, "localOperatorLight"),
 	play: PinnedHeaderPreview.play,
+};
+
+/*
+ * `GROUP BY › TAG` (issue #1733; docs/design/sidebar-tag-first-grouping.md §5).
+ * The static states are S1-S4 and S10; dark/light and RTL (`ur`) are the same
+ * stories pinned with `?args=theme:…` / `?args=locale:ur`. The play stories
+ * drive the real component through the popover, search, the shared fold and
+ * the stored-value fallback.
+ */
+const tagGroup = (id: string) =>
+	document.querySelector<HTMLElement>(`[data-chat-section="tag:${id}"]`);
+const tagChevron = (id: string) => {
+	const control = tagGroup(id)?.querySelector<HTMLButtonElement>(
+		`[data-chat-tag-toggle="${id}"]`,
+	);
+	if (!control) throw new Error(`Missing tag-mode ${id} chevron`);
+	return control;
+};
+const openViewOptions = async () => {
+	await userEvent.click(
+		document.querySelector<HTMLElement>(
+			"[data-sidebar-view-options]",
+		) as HTMLElement,
+	);
+	return within(document.body);
+};
+/** S1: top-level groups in registry order, Untagged last, pin then live lead. */
+export const TagModePopulated: Story = {
+	...story("tag-mode"),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(tagGroup("review")).not.toBeNull());
+		const order = [
+			...document.querySelectorAll<HTMLElement>('[data-chat-section^="tag:"]'),
+		].map((node) => node.dataset.chatSection);
+		expect(order).toEqual([
+			"tag:review",
+			"tag:project",
+			"tag:concept",
+			"tag:untagged",
+		]);
+		for (const key of ["pinned", "running", "today", "week", "older"])
+			expect(document.querySelector(`[data-chat-section="${key}"]`)).toBeNull();
+		const first = (id: string) =>
+			tagGroup(id)?.querySelector<HTMLElement>("[data-session-row]")?.dataset
+				.sessionRow;
+		expect(first("review")).toBe("111111111111");
+		expect(first("project")).toBe("222222222222");
+		// The name is the group's heading, and labels its section.
+		const heading = within(tagGroup("review") as HTMLElement).getByRole(
+			"heading",
+			{ level: 3, name: "Review" },
+		);
+		expect(tagGroup("review")).toHaveAttribute("aria-labelledby", heading.id);
+		expect(useUiPreferencesStore.getState().chatSidebarView.tagsEnabled).toBe(
+			false,
+		);
+		document.body.dataset.tagsProof =
+			"PASS: registry order, Untagged last, no time sections, pinned leads Review, live leads Project";
+	},
+};
+/** S2: a tag with no loaded rows has no header; the footer lists it. */
+export const TagModeUnusedTag: Story = {
+	...story("tag-mode-unused"),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(tagGroup("review")).not.toBeNull());
+		expect(tagGroup("unused")).toBeNull();
+		expect(
+			document.querySelector('[data-chat-tag-toggle="unused"]'),
+		).toBeNull();
+	},
+};
+/** S3: categories exist, nothing loaded carries one - one Untagged group. */
+export const TagModeUntaggedOnly: Story = {
+	...story("tag-mode-untagged"),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(tagGroup("untagged")).not.toBeNull());
+		expect(
+			document.querySelectorAll('[data-chat-section^="tag:"]'),
+		).toHaveLength(1);
+	},
+};
+/** S3b: no registry at all - flat rows and the existing first-use footer. */
+export const TagModeNoCategories = story("tag-mode-none");
+/** S4: 220 rows, twelve groups, mixed folds, at the narrowest width. */
+export const TagModeMany220: Story = {
+	...story("tag-mode-many", 220),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(tagGroup("extra-0")).not.toBeNull());
+		expect(tagChevron("extra-1")).toHaveAttribute("aria-expanded", "false");
+		// The held head: 50 unpinned rows drawn, not the 10 of an unpaged column.
+		await waitFor(() =>
+			expect(
+				document.querySelectorAll("[data-session-row]").length,
+			).toBeGreaterThan(10),
+		);
+		expect(
+			await within(document.body).findByText("Show 50 more chats"),
+		).toBeVisible();
+	},
+};
+/** S6: the popover in Tag mode - Tag ticked second, the switch absent. */
+export const TagModeViewOptions: Story = {
+	...story("tag-mode"),
+	play: async () => {
+		await ready();
+		const body = await openViewOptions();
+		const radios = await body.findAllByRole("menuitemradio");
+		expect(
+			radios.slice(0, 4).map((radio) => radio.textContent?.trim()),
+		).toEqual(["Time section", "Tag", "Agent and team", "In one list"]);
+		expect(body.getByRole("menuitemradio", { name: "Tag" })).toHaveAttribute(
+			"aria-checked",
+			"true",
+		);
+		expect(
+			body.queryByRole("switch", { name: "Split time sections by tag" }),
+		).toBeNull();
+	},
+};
+/** S6: the popover in Time section - the switch, with its new label. */
+export const TimeSectionViewOptions: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		const body = await openViewOptions();
+		expect(
+			await body.findByRole("switch", { name: "Split time sections by tag" }),
+		).toBeVisible();
+		expect(
+			body.getByRole("menuitemradio", { name: "Time section" }),
+		).toHaveAttribute("aria-checked", "true");
+	},
+};
+/** S7: search suspends the groups; clearing restores them and their folds. */
+export const TagModeSearch: Story = {
+	...story("tag-mode"),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(tagGroup("review")).not.toBeNull());
+		await userEvent.click(tagChevron("review"));
+		// The band's search button opens the field; the field is the textbox.
+		await userEvent.click(
+			document.querySelector<HTMLElement>(
+				"[data-sidebar-search]",
+			) as HTMLElement,
+		);
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Search chats and agents",
+		});
+		await userEvent.type(field, "the");
+		await waitFor(() =>
+			expect(document.querySelector('[data-chat-section^="tag:"]')).toBeNull(),
+		);
+		await userEvent.clear(field);
+		await waitFor(() => expect(tagGroup("review")).not.toBeNull());
+		expect(tagChevron("review")).toHaveAttribute("aria-expanded", "false");
+		document.body.dataset.tagsProof =
+			"PASS: search drew flat results; clearing restored the groups with Review still folded";
+	},
+};
+/** S8: a fold made in Tag mode is the fold Time section draws. */
+export const TagModeFoldParity: Story = {
+	...story("tag-mode"),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(tagGroup("review")).not.toBeNull());
+		await userEvent.click(tagChevron("review"));
+		expect(storedFolds()["tag:review"]).toBe(false);
+		const body = await openViewOptions();
+		await userEvent.click(
+			body.getByRole("menuitemradio", { name: "Time section" }),
+		);
+		await userEvent.keyboard("{Escape}");
+		// Time section with its own switch on, to draw the subheaders.
+		useUiPreferencesStore.setState({
+			chatSidebarView: {
+				...useUiPreferencesStore.getState().chatSidebarView,
+				tagsEnabled: true,
+			},
+		});
+		await waitFor(() =>
+			expect(chevron("review", "pinned")).toHaveAttribute(
+				"aria-expanded",
+				"false",
+			),
+		);
+		expect(chevron("review", "today")).toHaveAttribute(
+			"aria-expanded",
+			"false",
+		);
+		document.body.dataset.tagsProof =
+			"PASS: Review folded in Tag mode is folded in Pinned and Today";
+	},
+};
+/** S10: the catalogue head pending, in Tag mode. */
+export const TagModeLoading = story("tag-mode-loading");
+/** AC8: a stored Tag on a backend without tags draws Time section, kept stored. */
+export const TagModeOldBackend: Story = {
+	...story("tag-mode-old-backend"),
+	play: async () => {
+		await ready();
+		expect(document.querySelector('[data-chat-section^="tag:"]')).toBeNull();
+		expect(
+			document.querySelector('[data-chat-section="today"]'),
+		).not.toBeNull();
+		expect(useUiPreferencesStore.getState().chatSidebarView.groupBy).toBe(
+			"tag",
+		);
+		const body = await openViewOptions();
+		expect(body.queryByRole("menuitemradio", { name: "Tag" })).toBeNull();
+		expect(
+			body.getByRole("menuitemradio", { name: "Time section" }),
+		).toHaveAttribute("aria-checked", "true");
+	},
 };
