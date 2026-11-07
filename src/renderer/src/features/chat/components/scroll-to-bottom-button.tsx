@@ -84,10 +84,17 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 			 * floating surface - it leaves the flow over moving text, wears the one
 			 * shadow and carries the marker - so it separates by ground and shadow
 			 * like every other floating panel, never by a stroke; `secondary` drew a
-			 * 1px `border-control` ring. The ground stays the variant's own: a
-			 * `bg-*` override on this tag would make it a panel with its own ground
-			 * under glass (`glass-overlay.test.mjs` O-7), a different decision than
-			 * this one. Under forced colors, where the shadow is dropped, the
+			 * 1px `border-control` ring. The ground is `bg-elevated`, overriding
+			 * `tonal`'s `bg-sunken` (twMerge keeps the last `bg-*`; the variant's
+			 * hover `surface` / pressed `hairline` ramp is untouched). `tonal`'s
+			 * sunken face was designed for a button on an `elevated` panel; this
+			 * disc floats over `canvas`, where sunken sits darker than the ground at
+			 * 1.06:1 and read as a hole, not a control (design round 3, D10).
+			 * `elevated` lifts it lighter than the ground, like its sibling floating
+			 * surfaces. It deliberately carries no `data-glass-overlay`: that rule is
+			 * unlayered and sets `background-color`, so on glass it would erase the
+			 * hover/press ramp. It stays opaque `elevated` on glass and is named in
+			 * `DEFERRED_PANELS` (`glass-overlay.test.mjs` O-7) instead. Under forced colors, where the shadow is dropped, the
 			 * `[data-lo-floating]` rule in `styles/index.css` gives it its CanvasText
 			 * edge.
 			 */}
@@ -96,7 +103,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 				size={hasNewActivity ? "sm" : "icon"}
 				data-lo-floating=""
 				className={cn(
-					"rounded-full shadow-overlay",
+					"rounded-full bg-elevated shadow-overlay",
 					/*
 					 * Pointer events follow VISIBILITY here, not the wrapper.
 					 *

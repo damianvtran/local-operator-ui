@@ -225,6 +225,8 @@ const DEFERRED_PANELS = {
 		"the `@` suggestions over the composer's own ground: joined the floating vocabulary when its border became the shadow (2026-11-06), waiting on a rendered look at the translucent ground",
 	"src/renderer/src/features/chat/components/message-item/message-controls.tsx":
 		"the hover toolbar over a transcript row: it separated with a hairline until 2026-11-06 and now carries the one shadow, so it is new to this class and waiting on the same rendered look",
+	"src/renderer/src/features/chat/components/scroll-to-bottom-button.tsx":
+		"interactive control: the glass rule's unlayered ground would erase its hover/press ramp; stays opaque `elevated` on glass",
 	"src/renderer/src/features/team-bridge/emoji/emoji-autocomplete-popover.tsx":
 		"the `:` emoji suggestions over the Bridge composer: they floated on Tailwind's `shadow-lg` until 2026-11-06 (agent review round 1, R3) and took the one shadow, which is what makes them visible here - waiting on the same rendered look at the translucent ground",
 	"src/renderer/src/features/console/components/console-pane.tsx":
