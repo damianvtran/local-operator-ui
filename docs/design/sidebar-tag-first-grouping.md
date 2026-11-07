@@ -217,8 +217,11 @@ Decision for this PR, minimal and honest:
    one row and defeat the mode; folds (#1745) are the vertical-space answer.
    Implement as a pure `effectiveLoads(view)` beside `pageLimit`, used by the
    page cut, the foot label (`pageMoreLabel`/`pageReveal`) and `pressPageMore`
-   (`next = effectiveLoads(view) + 1`). **`view.loads` itself is never
-   rewritten**, so returning to Time section restores the reader's own rung.
+   (`next = effectiveLoads(view) + 1`). **A mode switch never rewrites
+   `view.loads`**, so switching to Tag and back without pressing restores the
+   reader's own rung. (As built: a foot press in Tag mode writes the next rung
+   from the drawn one, 50 → 100, and Time section then keeps that larger page;
+   PR #1747 round 1, R2.)
 2. **One foot, the existing one.** `Show N more chats` stays at the list's foot
    and follows the catalogue cursor. Newly loaded rows land in whatever groups
    they belong to. **No per-group "Show more"** while no per-tag source exists:

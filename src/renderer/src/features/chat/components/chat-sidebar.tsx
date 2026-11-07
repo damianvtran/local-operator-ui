@@ -9,9 +9,11 @@ import {
 	chatTagBucket,
 } from "@features/chat/chat-tag-drag";
 import {
+	type TagModeGroup,
 	groupChatsByTag,
 	tagBucketRowIds,
 	unusedTags,
+	withUnloadedTags,
 } from "@features/chat/chat-tag-groups";
 import { moveChatToTag } from "@features/chat/chat-tag-move";
 import { tagHeaderAt, useChatTagDrag } from "@features/chat/use-chat-tag-drag";
@@ -136,6 +138,7 @@ import {
 	type KeyboardEvent,
 	type MutableRefObject,
 	type FocusEvent as ReactFocusEvent,
+	type MouseEvent as ReactMouseEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	type Ref,
@@ -253,6 +256,7 @@ import {
 	entityQueryAdmits,
 	entityRows,
 	entitySectionGap,
+	foldedLiveCue,
 	groupRows,
 	isEntitySection,
 	isSectionShown,
@@ -763,6 +767,7 @@ import {
 	firstVisibleRow,
 	holdFocusedRow,
 	holdPageAnchor,
+	holdPageFoot,
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
@@ -1762,8 +1767,32 @@ export function ChatSidebar({
 	 * none of this: its new rows land at the foot, below what the reader sees.
 	 */
 	const pageAnchorRef = useRef<PageAnchor | null>(null);
+	/*
+	 * THE ARRANGEMENT THE ANCHOR BELONGS TO (PR #1747 R4). A mode switch from the
+	 * popover or a query typed in the header search happens OUTSIDE the scroller,
+	 * so the gesture release below never sees it - and a later commit would pin an
+	 * unrelated list to the old row. The hold compares this key and lets go.
+	 */
+	const pageAnchorKeyRef = useRef("");
+	/*
+	 * A KEYBOARD PRESS FOLLOWS THE FOOT instead (PR #1747 U5): the anchor keeps
+	 * the rows still, which pushes the focused foot below the clip, and a keyboard
+	 * or screen-reader reader who presses Enter again loads rows they cannot see.
+	 * So a press with no pointer behind it keeps the foot in view; a pointer
+	 * press keeps the rows the eye is on. `footPressedRef` also lets focus fall back
+	 * to the last row when the press exhausts the catalogue and the foot unmounts
+	 * under focus (Q2), rather than to `<body>`.
+	 */
+	const footFollowRef = useRef(false);
+	const footPressedRef = useRef<HTMLElement | null>(null);
+	const footPointerRef = useRef<EventTarget | null>(null);
+	const notePagePointer = (event: ReactPointerEvent<HTMLButtonElement>) => {
+		footPointerRef.current = event.currentTarget;
+	};
 	const releasePageAnchor = () => {
 		pageAnchorRef.current = null;
+		footFollowRef.current = false;
+		footPressedRef.current = null;
 	};
 	const movedRef = useRef<{
 		id: string;
@@ -3949,6 +3978,18 @@ export function ChatSidebar({
 	const ladderStep = pageLimit(loads + 1) - pageLimit(loads);
 	const tailMore = groupPaging && catalogueHead.tailCursor !== null;
 	/*
+	 * Whether the page foot is drawn, and what it says - one value each, because
+	 * Tag mode's unloaded-tag placeholders (PR #1747 U2) offer the SAME press and
+	 * must never name a different page or appear when the foot does not.
+	 */
+	const footShown = !query.trim() && (page.remaining > 0 || tailMore);
+	const footLabel = pageMoreLabel(
+		loads,
+		page.remaining > 0
+			? pageReveal(arranged, loads, page.remaining)
+			: ladderStep,
+	);
+	/*
 	 * THE FOOT'S PRESS: SPEND THE RUNG, AND FOLLOW THE CURSOR WHEN THE RUNG IS
 	 * BEYOND WHAT IS HELD. The two are one gesture because the reader asked for one
 	 * thing - more chats - and which of them happens is a fact about the daemon
@@ -3956,11 +3997,28 @@ export function ChatSidebar({
 	 * should have to make. `rest` rather than `pagedRows`, because the rung counts
 	 * the rows the page is taken over and a lifted row is drawn outside it.
 	 */
-	const pressPageMore = () => {
-		if (groupBy === "tag")
-			pageAnchorRef.current = firstVisibleRow(listPanelRef.current);
-		// From the DRAWN rung: in Tag mode the first press goes 50 -> 100, not
-		// 10 -> 25 (which would draw nothing new over the held head).
+	const pressPageMore = (event: ReactMouseEvent<HTMLButtonElement>) => {
+		/*
+		 * A pointer press is one a `pointerdown` on this very control led into;
+		 * Enter/Space (and assistive-tech activation) arrive with none. Read from a
+		 * ref rather than `event.detail`, which is 0 for every synthetic `click()`
+		 * whatever started it.
+		 */
+		const keyboard = footPointerRef.current !== event.currentTarget;
+		footPointerRef.current = null;
+		pageAnchorKeyRef.current = `${groupBy}\u0000${query}`;
+		footPressedRef.current = event.currentTarget;
+		footFollowRef.current = keyboard && groupBy === "tag";
+		pageAnchorRef.current =
+			groupBy === "tag" && !keyboard
+				? firstVisibleRow(listPanelRef.current)
+				: null;
+		/*
+		 * From the DRAWN rung: in Tag mode the first press goes 50 -> 100, not
+		 * 10 -> 25 (which would draw nothing new over the held head). So a press IS
+		 * written back as the stored rung (`effectiveLoads` says what that means
+		 * for Time section); only a mode SWITCH leaves `view.loads` alone.
+		 */
 		const next = loads + 1;
 		setChatSidebarView({ ...view, loads: next });
 		if (!groupPaging) return;
@@ -4419,8 +4477,17 @@ export function ChatSidebar({
 		scope: string,
 		topLevel = false,
 	) => {
-		const groups = groupChatsByTag(rows, tagCategories, tagRowsGrouped);
-		if (!groups) return rows.map((row) => sessionRow(row));
+		const loaded = groupChatsByTag(rows, tagCategories, tagRowsGrouped);
+		if (!loaded) return rows.map((row) => sessionRow(row));
+		/*
+		 * Tag mode also draws the tags whose chats are all past the loaded page
+		 * (PR #1747 U2, `withUnloadedTags`), but only while the foot can load more:
+		 * their placeholder offers that same press, and a promise with nothing
+		 * behind it would be a dead end.
+		 */
+		const groups: TagModeGroup<CanonicalSessionRow>[] = topLevel
+			? withUnloadedTags(loaded, tagCategories, footShown)
+			: loaded;
 		/*
 		 * THE HEADER IS THE TAG'S MANAGEMENT SURFACE (v3 spec D2). `above`/`below`
 		 * are the tags drawn next to it IN THIS SECTION (Untagged excluded, it is
@@ -4443,7 +4510,48 @@ export function ChatSidebar({
 			const collapsed = tagGroupCollapsed(expanded, bucket.id);
 			const bodyId = tagGroupBodyId(scope, bucket.id);
 			const headingId = topLevel ? `${bodyId}-heading` : undefined;
-			const group = (
+			/*
+			 * AN UNLOADED TAG (U2): a header with no count and no chevron - nothing is
+			 * drawn to fold - over a body that is still its drop target, so the tag can
+			 * be found and dropped onto, and that says so and offers the page foot's own
+			 * press. Same muted row as the foot; no second paging contract.
+			 */
+			const group = bucket.unloaded ? (
+				<div
+					key={bucket.id}
+					data-chat-tag-group={bucket.id}
+					data-chat-tag-unloaded=""
+				>
+					<ChatTagHeader
+						id={bucket.id}
+						name={bucket.name}
+						count={null}
+						above={visibleTags[visibleTags.indexOf(bucket.id) - 1] ?? null}
+						below={visibleTags[visibleTags.indexOf(bucket.id) + 1] ?? null}
+						announce={announcePinMove}
+						headingId={headingId}
+					/>
+					<div
+						id={bodyId}
+						data-tag-drop-target={bucket.id}
+						data-tag-drop-body
+						className="ps-4 pb-1"
+					>
+						<p className="px-2 py-1 text-meta text-ink-muted">
+							{t("ui.chat.tag_mode.not_loaded")}
+						</p>
+						<button
+							type="button"
+							data-sidebar-page-more-tag={bucket.id}
+							onPointerDown={notePagePointer}
+							onClick={pressPageMore}
+							className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+						>
+							{footLabel}
+						</button>
+					</div>
+				</div>
+			) : (
 				<div
 					key={bucket.id}
 					data-chat-tag-group={bucket.id}
@@ -4458,6 +4566,7 @@ export function ChatSidebar({
 						below={visibleTags[visibleTags.indexOf(bucket.id) + 1] ?? null}
 						announce={announcePinMove}
 						headingId={headingId}
+						live={topLevel ? foldedLiveCue(bucket.rows, collapsed) : null}
 						disclosure={{
 							collapsed,
 							bodyId,
@@ -5202,6 +5311,15 @@ export function ChatSidebar({
 				{remote && <span className="sr-only">, {remoteHost}</span>}
 				{remoteUnreachable && (
 					<span className="sr-only">, {remoteUnreachable}</span>
+				)}
+				{/* PINNED IS SPOKEN IN TAG MODE (PR #1747 U6). In Time section a pinned row
+				    sits under the PINNED heading, which is what tells a screen reader; in
+				    Tag mode pins lead their tag group with only the glyph to show it, so
+				    the row's name carries the same word the section label uses. */}
+				{pinned && groupBy === "tag" && !nested && (
+					<span className="sr-only">
+						, {t("ui.chat.sidebar_view.section.pinned")}
+					</span>
 				)}
 				{/* THE ATTRIBUTION'S `sr-only` SENTENCE, on the rows whose visible slot is the
 				    agent-opened claim's: the team slot above, and the silent team-less
@@ -8626,7 +8744,18 @@ export function ChatSidebar({
 	useLayoutEffect(() => {
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);
 		holdFocusedRow(listPanelRef.current, listSlotRef);
+		if (pageAnchorKeyRef.current !== `${groupBy}\u0000${query}`)
+			releasePageAnchor();
 		holdPageAnchor(listPanelRef.current, pageAnchorRef.current);
+		const fallback = holdPageFoot(
+			listPanelRef.current,
+			footFollowRef.current,
+			footPressedRef.current,
+		);
+		if (fallback) {
+			footPressedRef.current = null;
+			applyRowStop(fallback);
+		}
 	});
 
 	/*
@@ -10013,19 +10142,15 @@ export function ChatSidebar({
 			 * prints `Show N more sessions` as quiet text at the group's foot, and the
 			 * column's ink budget is spent on the rows themselves.
 			 */}
-			{!query.trim() && (page.remaining > 0 || tailMore) && (
+			{footShown && (
 				<button
 					type="button"
 					data-sidebar-page-more
+					onPointerDown={notePagePointer}
 					onClick={pressPageMore}
 					className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 				>
-					{pageMoreLabel(
-						loads,
-						page.remaining > 0
-							? pageReveal(arranged, loads, page.remaining)
-							: ladderStep,
-					)}
+					{footLabel}
 				</button>
 			)}
 			{/*

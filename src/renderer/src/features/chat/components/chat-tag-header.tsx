@@ -19,6 +19,7 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import {
 	ArrowDown,
@@ -37,6 +38,7 @@ import {
 	useState,
 } from "react";
 import type { TagCategory } from "../../../../../shared/desktop-contract";
+import { ChatSessionStatus } from "./chat-session-status";
 
 /**
  * The attribute a group header's `⋯` control carries. It is a stop in the
@@ -224,10 +226,17 @@ export function ChatTagHeader({
 	unused = false,
 	disclosure,
 	headingId,
+	live = null,
 }: {
 	id: string;
 	name: string;
-	count: number;
+	/**
+	 * The loaded bucket's size, or null for a Tag-mode tag whose chats are all
+	 * beyond the loaded page (PR #1747 U2): the registry's number counts archived
+	 * and non-primary assignments, so no honest count exists - the header draws
+	 * none rather than an invented one.
+	 */
+	count: number | null;
 	above: string | null;
 	below: string | null;
 	announce: (sentence: string) => void;
@@ -250,6 +259,13 @@ export function ChatTagHeader({
 	 * section label is already the heading and a nested one would be noise.
 	 */
 	headingId?: string;
+	/**
+	 * A FOLDED Tag-mode group hiding live chats (PR #1747 U1/D2, `foldedLiveCue`):
+	 * the header shows that row's own status glyph - the list's existing mark,
+	 * never a new token - and the chevron's name gains the live count, because Tag
+	 * mode has no Running section to keep a folded live chat in sight.
+	 */
+	live?: { row: CanonicalSessionRow; count: number } | null;
 }) {
 	useI18nLocale();
 	const registry = useChatTagRegistry();
@@ -406,10 +422,15 @@ export function ChatTagHeader({
 			)
 		: "";
 	const NameTag = headingId ? "h3" : "span";
+	const liveLabel = live
+		? `${foldLabel}, ${t("ui.chat.tag_mode.live", { count: live.count })}`
+		: foldLabel;
 	const conversations =
 		useSessionTagsStore(
 			(state) => state.categories.find((tag) => tag.id === id)?.conversations,
-		) ?? count;
+		) ??
+		count ??
+		0;
 	return (
 		<div ref={box} aria-busy={registry.pending}>
 			<div
@@ -458,8 +479,8 @@ export function ChatTagHeader({
 						{...{ [TAG_TOGGLE_STOP_ATTR]: id }}
 						aria-expanded={!disclosure.collapsed}
 						aria-controls={disclosure.bodyId}
-						aria-label={foldLabel}
-						title={foldLabel}
+						aria-label={liveLabel}
+						title={liveLabel}
 						className="-ms-1 -me-1.5 relative flex size-5 shrink-0 items-center justify-center rounded-sm text-ink-dim after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-row-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2!"
 						onClick={disclosure.onToggle}
 						onKeyDown={onKeyDown}
@@ -505,7 +526,16 @@ export function ChatTagHeader({
 						{label}
 					</NameTag>
 				)}
-				<span className="shrink-0">{count}</span>
+				{live && (
+					<span
+						aria-hidden="true"
+						data-chat-tag-live={live.count}
+						className="flex shrink-0"
+					>
+						<ChatSessionStatus row={live.row} />
+					</span>
+				)}
+				{count !== null && <span className="shrink-0">{count}</span>}
 				{managed && !renaming && (
 					<DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
 						<Popover open={confirming} onOpenChange={setConfirming}>

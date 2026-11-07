@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_mode.live": "{count, plural, other {{count, number, ::group-off}个运行中}}",
+	"ui.chat.tag_mode.not_loaded": "此标签中较早的对话尚未加载。",
+	"ui.chat.tag_mode.mode_hint": "标签分组需使用“时间分区”或“标签”分组方式。",
+	"ui.chat.tag_mode.use_tag": "使用标签"
+}

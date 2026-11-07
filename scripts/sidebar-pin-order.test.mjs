@@ -728,7 +728,7 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 	);
 	assert.ok(
 		grouping.includes(
-			"if (!groups) return rows.map((row) => sessionRow(row));",
+			"if (!loaded) return rows.map((row) => sessionRow(row));",
 		),
 	);
 	// Grouped rows are non-nested and opt into the tag-drag cursor; ungrouped

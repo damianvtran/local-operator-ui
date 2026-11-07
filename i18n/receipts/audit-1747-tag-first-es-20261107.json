@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1747-tag-first-es-20261107",
+  "session": "0b69810a7f2b",
+  "locale": "es",
+  "date": "2026-11-07",
+  "status": "passed",
+  "independence": "lopdev translation-auditor, session 0b69810a7f2b, separate from the PR #1747 coder that translated (coder agent, anthropic/claude-opus-5-5); same served model family disclosed. Verdict rebuilt from the English source and context, renderer call sites, sibling keys, the core glossary and the locale style guide. Edited no catalogue.",
+  "pr": "damianvtran/local-operator-ui#1747",
+  "base": "b0328d6",
+  "head": "2b2371db5f62d29076abc7f4102200d951929388",
+  "references": {
+    "glossary": "local-operator origin/main 2d1ff161cdcb i18n/glossary.md sha256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "i18n/style-guides/es.md sha256 4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+  },
+  "namespaces": {
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "aa1dd890cfa70b9c0196738e69c57fd45c3bd57f2a2ce36f0e109235d6cd77f2",
+        "es": "72e8a08304e5fdd0e19212718355f00d3a21ae0aeb0b306daa07b0e78964cebb",
+        "context": "36b48de2824d7596e30f41df947b665c949e6074a16d074fd134e61ddaec8f61"
+      },
+      "keys_read": 26,
+      "delta": {
+        "added": [
+          "ui.chat.sidebar_view.tag"
+        ],
+        "changed": []
+      },
+      "findings": [],
+      "checks": "key set == en; 26/26 ICU argument names/types equal en; plural arms use the locale's CLDR categories; zero Unicode Cf; Tag radio rendered in the 220px View options (fr/hi/ur)",
+      "verdict": "'Etiqueta' parallels 'Sección temporal'/'Agente y equipo' (bare noun naming the axis) and matches ui.chat.tags.label 'Etiquetas'."
+    },
+    "ui.chat.tags": {
+      "status": "passed",
+      "sha256": {
+        "en": "989917b1430ca0e21bf94a62295df8223c7cd2661582047d5156fa565fb06151",
+        "es": "290b122ea8ca6479b34fbe2c1e0a989dcbdfaed6cfae2b167705e7d7326b0533",
+        "context": "3e3ce8561ccc69f4f8c3524dc6f0081399243d589668afb841fcb4e10ffc8a1a"
+      },
+      "head_sha256": {
+        "en": "bfad4c06c0adac80c4456458890f5dc0cb16d6de0fe9cfbe937de084804cef8a",
+        "es": "cd6ee7281cb1c5fe8667ac28b618299293ba0db8d18b3754fbe9de7f2d8ab24f",
+        "result": "changes_requested",
+        "finding": "M1"
+      },
+      "keys_read": 67,
+      "delta": {
+        "added": [],
+        "changed": [
+          "ui.chat.tags.group",
+          "ui.chat.tags.empty_title"
+        ],
+        "context_changed": [
+          "ui.chat.tags.discovery"
+        ]
+      },
+      "findings": [],
+      "resolved_before_pin": [
+        {
+          "id": "M1",
+          "severity": "MAJOR",
+          "key": "ui.chat.tags.empty_title",
+          "locales": [
+            "en",
+            "es"
+          ],
+          "head_text": {
+            "en": "Split time sections by tag.",
+            "es": "Divide las secciones temporales por etiqueta."
+          },
+          "fixed_text": {
+            "en": "Group chats by tag.",
+            "es": "Agrupa las conversaciones por etiqueta."
+          },
+          "issue": "The first-use empty state renders in Tag mode too (chat-sidebar.tsx tagsGrouped includes groupBy==='tag' -> ChatTagFooter total===0 -> empty_title; frame after-s3b-no-categories-dark.png, story tag-mode-no-categories). There it tells the reader to split time sections, which Tag mode does not do and whose switch is hidden in that mode (chat-sidebar-view-menu.tsx drawn !== 'tag').",
+          "fix": "Restore the mode-neutral pre-PR title, byte-identical to b0328d6 in every catalogue (previously audited copy).",
+          "disposition": "resolved in the bytes this receipt binds (sha256 below); the PR head bytes are recorded under head_sha256 as changes_requested"
+        }
+      ],
+      "checks": "key set == en; 67/67 ICU argument parity checked (3 pre-existing unchanged locale adaptations outside the delta, not gating); zero Unicode Cf; discovery target re-read against the new en context (it never named the switch; no change needed)",
+      "verdict": "group 'Dividir las secciones temporales por etiqueta': accurate, infinitive label per es style, 'secciones temporales' matches 'Sección temporal'; 2 lines at 220px, fits (rendered fr/hi/ur same budget)."
+    }
+  },
+  "verdict": "es: ui.chat.sidebar_view clean; ui.chat.tags changes_requested at PR head (M1), passed on the M1-reverted bytes bound here."
+}

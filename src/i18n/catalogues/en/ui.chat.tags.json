@@ -64,6 +64,6 @@
 	"ui.chat.tags.new_tag": "New tag",
 	"ui.chat.tags.name_placeholder": "Tag name",
 	"ui.chat.tags.unused": "Unused tags ({count})",
-	"ui.chat.tags.empty_title": "Split time sections by tag.",
+	"ui.chat.tags.empty_title": "Group chats by tag.",
 	"ui.chat.tags.empty_hint": "Press {chord} on a chat, or create one here."
 }

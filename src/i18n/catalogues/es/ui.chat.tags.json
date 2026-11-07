@@ -64,6 +64,6 @@
 	"ui.chat.tags.new_tag": "Nueva etiqueta",
 	"ui.chat.tags.name_placeholder": "Nombre de la etiqueta",
 	"ui.chat.tags.unused": "Etiquetas sin usar ({count})",
-	"ui.chat.tags.empty_title": "Divide las secciones temporales por etiqueta.",
+	"ui.chat.tags.empty_title": "Agrupa las conversaciones por etiqueta.",
 	"ui.chat.tags.empty_hint": "Pulsa {chord} en una conversación o crea una etiqueta aquí."
 }

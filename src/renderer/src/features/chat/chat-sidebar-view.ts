@@ -670,9 +670,12 @@ export const PINNED_AGENTS_MAX = 64;
  * (`CATALOGUE_HEAD_PAGE`), so starting there costs no fetch. Folds (#1639) are
  * the vertical-space answer, not a short page.
  *
- * `view.loads` ITSELF IS NEVER REWRITTEN: the page cut, the foot label and the
- * foot press all read this instead, so returning to Time section restores the
- * reader's own rung. Pass the DRAWN grouping (`drawnGroupBy`), so a stored `tag`
+ * A MODE SWITCH NEVER REWRITES `view.loads`: the page cut, the foot label and
+ * the foot press all read this instead, so switching to Tag and back without
+ * pressing restores the reader's own rung. A foot PRESS in Tag mode does write
+ * it - from the drawn rung, so the first press is 50 -> 100 - and Time section
+ * then honours that larger page: the reader asked for more chats, and quietly
+ * dropping them on a mode switch would be the surprise (PR #1747 round 1, R2). Pass the DRAWN grouping (`drawnGroupBy`), so a stored `tag`
  * that draws as `section` also pages as `section`.
  */
 export const TAG_MODE_MIN_LOADS = 2;
@@ -746,6 +749,30 @@ export function pageReveal(
 	const add = Math.max(0, to - from - live);
 	if (add > 0) return add;
 	return Math.max(0, Math.min(step, remaining));
+}
+
+/**
+ * The live cue a FOLDED Tag-mode group owes its header (PR #1747 round 1, U1/D2).
+ *
+ * WHY: Tag mode has no Running section (design §2.4), so a fold is the one place
+ * a running chat - or one stopped waiting on the reader - can vanish with no
+ * trace; in Time section the RUNNING label stays above any fold. The cue is the
+ * row the header should show the existing status glyph of, plus the live count
+ * for its accessible suffix. A row stopped on the reader wins over a merely busy
+ * one, because it is the one the reader must act on (the lift's own first lane).
+ * Null when the group is open (its rows already say it) or holds nothing live.
+ */
+export function foldedLiveCue<T extends CanonicalSessionRow>(
+	rows: readonly T[],
+	collapsed: boolean,
+): { row: T; count: number } | null {
+	if (!collapsed) return null;
+	const live = rows.filter((row) => isActiveRow(row));
+	if (live.length === 0) return null;
+	return {
+		row: live.find((row) => isStoppedOnReader(row)) ?? (live[0] as T),
+		count: live.length,
+	};
 }
 
 /**

@@ -1008,7 +1008,11 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// seventeen and this feature's one literal are additive, and the arrow
 				// pair's deletion (FIFTEEN above) takes two of them away again -
 				// 17 - 2 + 1 = SIXTEEN.
-				"hover:bg-row-hover": 16,
+				// SEVENTEEN (PR #1747 U2): an unloaded tag's placeholder is a second
+				// copy of the page foot's own control (`data-sidebar-page-more-tag`),
+				// spelled with the foot's classes so it is the same muted row - the
+				// foot's row ground, not a menu's.
+				"hover:bg-row-hover": 17,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own

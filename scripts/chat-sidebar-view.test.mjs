@@ -2072,7 +2072,7 @@ test("tag mode: the page starts on the held 50-row head without rewriting loads"
 	 */
 	assert.match(
 		source,
-		/if \(groupBy === "tag"\)\s*pageAnchorRef\.current = firstVisibleRow\(listPanelRef\.current\);/,
+		/groupBy === "tag" && !keyboard\s*\?\s*firstVisibleRow\(listPanelRef\.current\)/,
 	);
 	assert.match(
 		source,

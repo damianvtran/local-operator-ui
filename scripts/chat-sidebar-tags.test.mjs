@@ -24,6 +24,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
+export {foldedLiveCue} from "./src/renderer/src/features/chat/chat-sidebar-view";
 export {moveChatToTag} from "./src/renderer/src/features/chat/chat-tag-move";
 export {parseSidebarView, DEFAULT_SIDEBAR_VIEW, toggleTagDisclosure, tagGroupBodyRows, tagGroupCollapsed} from "./src/renderer/src/features/chat/chat-sidebar-view";
 export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -96,6 +97,8 @@ const {
 	toggleTagDisclosure,
 	tagGroupBodyRows,
 	tagGroupCollapsed,
+	withUnloadedTags,
+	foldedLiveCue,
 	desktopEndpoint,
 	desktopRequestSchema,
 	useUiPreferencesStore: preferences,
@@ -249,7 +252,7 @@ test("a stored fold has no effect while a search query suspends grouping", () =>
 	);
 	assert.match(
 		source,
-		/if \(!groups\) return rows\.map\(\(row\) => sessionRow\(row\)\);/,
+		/if \(!loaded\) return rows\.map\(\(row\) => sessionRow\(row\)\);/,
 		"the ungrouped path must draw every row, untouched by any fold",
 	);
 });
@@ -874,9 +877,103 @@ test("#1745 follow-ups: a chord's action returns focus to the stop it was presse
 	);
 	// D4: the inset ring must win over the shared outline utility's offset.
 	assert.match(header, /focus-visible:-outline-offset-2!/);
-	// The first-use title follows the relabelled switch.
+	// The first-use title stays the mode-neutral pre-PR copy: it also draws in Tag
+	// mode, which has no time sections to split (PR #1747 round 1, D1/U3/R5/M1).
 	const en = JSON.parse(
 		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
 	);
-	assert.equal(en["ui.chat.tags.empty_title"], "Split time sections by tag.");
+	assert.equal(en["ui.chat.tags.empty_title"], "Group chats by tag.");
+});
+
+/*
+ * PR #1747 round 1, U2: a tag whose chats are all past the loaded page keeps a
+ * (countless) header in Tag mode while more can load - and only then.
+ */
+test("tag mode: a tag with only unloaded chats keeps its header while more can load", () => {
+	const registry = [
+		{ id: "b", name: "Project", order: 1, conversations: 1 },
+		{ id: "a", name: "Review", order: 0, conversations: 2 },
+		{ id: "taxes", name: "Taxes", order: 2, conversations: 4 },
+		{ id: "empty", name: "Empty", order: 3, conversations: 0 },
+	];
+	const loaded = groupChatsByTag(
+		[row("1", "a"), row("2", null)],
+		registry,
+		true,
+	);
+	const groups = withUnloadedTags(loaded, registry, true);
+	assert.deepEqual(
+		groups.map((group) => [
+			group.id,
+			group.rows.length,
+			group.unloaded ?? false,
+		]),
+		[
+			["a", 1, false],
+			["b", 0, true],
+			["taxes", 0, true],
+			["untagged", 1, false],
+		],
+		"registry order, unloaded tags with no rows, zero-conversation tags left to the footer, Untagged last",
+	);
+	assert.deepEqual(
+		withUnloadedTags(loaded, registry, false).map((group) => group.id),
+		["a", "untagged"],
+		"with nothing more to load, no placeholder promises a press with nothing behind it",
+	);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(source, /withUnloadedTags\(loaded, tagCategories, footShown\)/);
+	assert.match(source, /count=\{null\}/);
+	assert.match(
+		source,
+		/data-sidebar-page-more-tag=\{bucket\.id\}\s*onPointerDown=\{notePagePointer\}\s*onClick=\{pressPageMore\}/,
+	);
+});
+/* PR #1747 round 1, U1/D2: a folded group's live cue. */
+test("tag mode: a folded group hiding live chats owes its header a live cue", () => {
+	const live = (id, code) => ({ session_id: id, status: { code } });
+	const rows = [live("a", "idle"), live("b", "busy"), live("c", "approval")];
+	assert.equal(foldedLiveCue(rows, false), null, "open: the rows say it");
+	assert.equal(foldedLiveCue([live("a", "idle")], true), null);
+	const cue = foldedLiveCue(rows, true);
+	assert.equal(cue.count, 2);
+	assert.equal(cue.row.session_id, "c", "the row stopped on the reader wins");
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/live=\{topLevel \? foldedLiveCue\(bucket\.rows, collapsed\) : null\}/,
+	);
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
+	);
+	// The list's own status glyph, never a new token.
+	assert.match(header, /<ChatSessionStatus row=\{live\.row\} \/>/);
+	assert.match(
+		header,
+		/t\("ui\.chat\.tag_mode\.live", \{ count: live\.count \}\)/,
+	);
+});
+/* PR #1747 round 1, U4/U6. */
+test("tag mode: the Agent/flat hint offers Tag, and Tag mode speaks a pin", () => {
+	const menu = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar-view-menu.tsx",
+		"utf8",
+	);
+	assert.match(menu, /t\("ui\.chat\.tag_mode\.mode_hint"\)/);
+	assert.match(menu, /onView\(\{ \.\.\.view, groupBy: "tag" \}\)/);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/pinned && groupBy === "tag" && !nested && \(\s*<span className="sr-only">\s*, \{t\("ui\.chat\.sidebar_view\.section\.pinned"\)\}/,
+	);
 });

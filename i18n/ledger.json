@@ -3969,8 +3969,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
-			"target_sha256": "6c7af96563ea50b54ea4c82d07751b45f431baeb26b37b3a9913d4927b049d87",
+			"source_sha256": "aa1dd890cfa70b9c0196738e69c57fd45c3bd57f2a2ce36f0e109235d6cd77f2",
+			"target_sha256": "72e8a08304e5fdd0e19212718355f00d3a21ae0aeb0b306daa07b0e78964cebb",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3978,21 +3978,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor-es",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
 					"result": "clean",
-					"instance": "afac94e81fb9",
+					"instance": "audit-1747-tag-first-es-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/afac94e81fb9.json",
-					"receipt_sha256": "8d67ddde3ebb35d17d8ef1a3694bec675a11cac41723d249a76733f1cc042f4e",
-					"scope": "35 added renderer blind-spot keys",
-					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
+					"receipt": "i18n/receipts/audit-1747-tag-first-es-20261107.json",
+					"receipt_sha256": "7181e869a463024f5704bd7130cc7e6c697071dc241a687f4fd6d6a574daa389",
+					"scope": "PR #1747: added ui.chat.sidebar_view.tag; full 26-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -4017,6 +4016,30 @@
 								"minor": 0,
 								"nit": 0
 							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+					"target_sha256": "6c7af96563ea50b54ea4c82d07751b45f431baeb26b37b3a9913d4927b049d87",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-es",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "afac94e81fb9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/afac94e81fb9.json",
+							"receipt_sha256": "8d67ddde3ebb35d17d8ef1a3694bec675a11cac41723d249a76733f1cc042f4e",
+							"scope": "35 added renderer blind-spot keys",
+							"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 						}
 					],
 					"status": "audited"
@@ -4133,8 +4156,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
-			"target_sha256": "4b571f2e7a178ac92be6245c9ea303445c7317c7e6f5e54508d6b32cedb3d974",
+			"source_sha256": "989917b1430ca0e21bf94a62295df8223c7cd2661582047d5156fa565fb06151",
+			"target_sha256": "290b122ea8ca6479b34fbe2c1e0a989dcbdfaed6cfae2b167705e7d7326b0533",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -4142,38 +4165,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "ux-reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
 					"result": "clean",
-					"instance": "0ae714016b24",
+					"instance": "audit-1747-tag-first-es-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ae714016b24.json",
-					"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
-					"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
-					"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
-				},
-				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean-with-findings",
-					"instance": "ce76a99d4b27",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/ce76a99d4b27.json",
-					"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
-					"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
-					"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
+					"receipt": "i18n/receipts/audit-1747-tag-first-es-20261107.json",
+					"receipt_sha256": "7181e869a463024f5704bd7130cc7e6c697071dc241a687f4fd6d6a574daa389",
+					"scope": "PR #1747: changed group + empty_title (M1 reverted), discovery context; full 67-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -4292,6 +4297,47 @@
 							"receipt_sha256": "c778c40091cece536d202e3bf64281dcc7026bf0b14de8f08c4f733601d33bb8",
 							"scope": "PR #1272 V2-3: two new ui.chat.tags keys in es; unchanged keys retained from the prior audit",
 							"note": "V2-3 delta (2 keys) translated by coder/deepseek/deepseek-flash; baseline translator retained; independent audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
+					"target_sha256": "4b571f2e7a178ac92be6245c9ea303445c7317c7e6f5e54508d6b32cedb3d974",
+					"auditors": [
+						{
+							"agent": "ux-reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "0ae714016b24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ae714016b24.json",
+							"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
+							"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
+							"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
+						},
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "ce76a99d4b27",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ce76a99d4b27.json",
+							"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
+							"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
+							"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -14562,8 +14608,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
-			"target_sha256": "e8663cc922b4d6dd953f378c43a3224e8bd7ac83c54c88b34809ee8981f847ab",
+			"source_sha256": "aa1dd890cfa70b9c0196738e69c57fd45c3bd57f2a2ce36f0e109235d6cd77f2",
+			"target_sha256": "92338fc1c804087bb72dac846c3671f6a8ff656bc7d2b5edd3d0594a1a548115",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -14571,21 +14617,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor-fr",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
 					"result": "clean",
-					"instance": "cbd8252fdd97",
+					"instance": "audit-1747-tag-first-fr-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cbd8252fdd97.json",
-					"receipt_sha256": "61c8f928f80341cf459a63e9476d30b39a7a7f4ce8e7a1ae9463e90eca60cd83",
-					"scope": "Scoped post-fix re-audit of three changed keys",
-					"note": "FR-01/02/03 fixed; independent scoped post-fix re-audit of relative_short, relative_created, relative_active passed. Other French additions passed initial audit unchanged. Not a new full-namespace audit; no rendered sign-off for new labels."
+					"receipt": "i18n/receipts/audit-1747-tag-first-fr-20261107.json",
+					"receipt_sha256": "c5eb1e535eba9cd033699330db30baf0c9ecc79f2970d7edb99dd1349a7724b5",
+					"scope": "PR #1747: added ui.chat.sidebar_view.tag; full 26-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -14610,6 +14655,30 @@
 							"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
 							"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
 							"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+					"target_sha256": "e8663cc922b4d6dd953f378c43a3224e8bd7ac83c54c88b34809ee8981f847ab",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-fr",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "cbd8252fdd97",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cbd8252fdd97.json",
+							"receipt_sha256": "61c8f928f80341cf459a63e9476d30b39a7a7f4ce8e7a1ae9463e90eca60cd83",
+							"scope": "Scoped post-fix re-audit of three changed keys",
+							"note": "FR-01/02/03 fixed; independent scoped post-fix re-audit of relative_short, relative_created, relative_active passed. Other French additions passed initial audit unchanged. Not a new full-namespace audit; no rendered sign-off for new labels."
 						}
 					],
 					"status": "audited"
@@ -14726,8 +14795,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
-			"target_sha256": "6344e81de0599bdf58d3364bc23262ddbcd1420b6a8b345d04996062903e8f52",
+			"source_sha256": "989917b1430ca0e21bf94a62295df8223c7cd2661582047d5156fa565fb06151",
+			"target_sha256": "88c67b16c709439c7cc2fd674424264d63307800edc36cca87a280621944efbb",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -14735,38 +14804,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "ux-reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
 					"result": "clean",
-					"instance": "0ae714016b24",
+					"instance": "audit-1747-tag-first-fr-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ae714016b24.json",
-					"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
-					"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
-					"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
-				},
-				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean-with-findings",
-					"instance": "ce76a99d4b27",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/ce76a99d4b27.json",
-					"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
-					"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
-					"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
+					"receipt": "i18n/receipts/audit-1747-tag-first-fr-20261107.json",
+					"receipt_sha256": "c5eb1e535eba9cd033699330db30baf0c9ecc79f2970d7edb99dd1349a7724b5",
+					"scope": "PR #1747: changed group + empty_title (M1 reverted), discovery context; full 67-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -14885,6 +14936,47 @@
 							"receipt_sha256": "516e76909c52d8cf1db129dad4a0a33f373ab03d60c5574feda3ee0477adca72",
 							"scope": "PR #1272 V2-3: two new ui.chat.tags keys in fr; unchanged keys retained from the prior audit",
 							"note": "V2-3 delta (2 keys) translated by coder/deepseek/deepseek-flash; baseline translator retained; independent audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
+					"target_sha256": "6344e81de0599bdf58d3364bc23262ddbcd1420b6a8b345d04996062903e8f52",
+					"auditors": [
+						{
+							"agent": "ux-reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "0ae714016b24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ae714016b24.json",
+							"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
+							"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
+							"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
+						},
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "ce76a99d4b27",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ce76a99d4b27.json",
+							"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
+							"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
+							"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -25445,8 +25537,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
-			"target_sha256": "7cc183f109dca3c916040ba544c1268eae4af42ec928abbe34eaa50ef37277aa",
+			"source_sha256": "aa1dd890cfa70b9c0196738e69c57fd45c3bd57f2a2ce36f0e109235d6cd77f2",
+			"target_sha256": "2cc155dd8ffe74db8d0121c847591da6beace00c8a8d42724c590782a0154922",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -25454,21 +25546,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor-hi",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
-					"result": "clean-with-findings",
-					"instance": "98feeac58b5b",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-first-hi-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/98feeac58b5b.json",
-					"receipt_sha256": "d760ed331118302b9789c5ca51aed37023b36f27e116f9c1a78c4cbf6d6bf52d",
-					"scope": "35 added renderer blind-spot keys",
-					"note": "HI-01 accepted unchanged: 6-cell compact-time budget is advisory, not desktop clipping threshold. Designer rendered fr/ur sidebar at 260 CSS px: complete single-line times, titles ellipsize first, no collision. New labels not rendered: build predates branch."
+					"receipt": "i18n/receipts/audit-1747-tag-first-hi-20261107.json",
+					"receipt_sha256": "2bd9cc0551532486d5b6cf918e8b938cf55600e04255b6a3c1c4c30b31b715a0",
+					"scope": "PR #1747: added ui.chat.sidebar_view.tag; full 26-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -25493,6 +25584,30 @@
 							"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
 							"scope": "hi ui.chat.sidebar_view vs en source — round 1 independent full pass, 22 keys",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+					"target_sha256": "7cc183f109dca3c916040ba544c1268eae4af42ec928abbe34eaa50ef37277aa",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-hi",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-31",
+							"result": "clean-with-findings",
+							"instance": "98feeac58b5b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/98feeac58b5b.json",
+							"receipt_sha256": "d760ed331118302b9789c5ca51aed37023b36f27e116f9c1a78c4cbf6d6bf52d",
+							"scope": "35 added renderer blind-spot keys",
+							"note": "HI-01 accepted unchanged: 6-cell compact-time budget is advisory, not desktop clipping threshold. Designer rendered fr/ur sidebar at 260 CSS px: complete single-line times, titles ellipsize first, no collision. New labels not rendered: build predates branch."
 						}
 					],
 					"status": "audited"
@@ -25609,8 +25724,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
-			"target_sha256": "952896d0472d6ad0cced66e43e31d27c3cbe6b5976b74470ff499449e0a09a13",
+			"source_sha256": "989917b1430ca0e21bf94a62295df8223c7cd2661582047d5156fa565fb06151",
+			"target_sha256": "c068fd54d02e330d0fcda527a12bf949686d0fe8c723bcef3f0df37a6dded92d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -25618,38 +25733,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "ux-reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
 					"result": "clean",
-					"instance": "0ae714016b24",
+					"instance": "audit-1747-tag-first-hi-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ae714016b24.json",
-					"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
-					"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
-					"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
-				},
-				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean-with-findings",
-					"instance": "ce76a99d4b27",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/ce76a99d4b27.json",
-					"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
-					"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
-					"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
+					"receipt": "i18n/receipts/audit-1747-tag-first-hi-20261107.json",
+					"receipt_sha256": "2bd9cc0551532486d5b6cf918e8b938cf55600e04255b6a3c1c4c30b31b715a0",
+					"scope": "PR #1747: changed group + empty_title (M1 reverted), discovery context; full 67-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -25769,6 +25866,47 @@
 							"receipt_sha256": "55dab23d97e97c88b07769d10aa3aa8b4ba06e5c2dd611654c96ff00ac277b3b",
 							"scope": "PR #1272 V2-3: two new ui.chat.tags keys in hi; unchanged keys retained from the prior audit",
 							"note": "V2-3 delta (2 keys) translated by coder/deepseek/deepseek-flash; baseline translator retained; independent audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
+					"target_sha256": "952896d0472d6ad0cced66e43e31d27c3cbe6b5976b74470ff499449e0a09a13",
+					"auditors": [
+						{
+							"agent": "ux-reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "0ae714016b24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ae714016b24.json",
+							"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
+							"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
+							"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
+						},
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "ce76a99d4b27",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ce76a99d4b27.json",
+							"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
+							"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
+							"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -36005,8 +36143,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
-			"target_sha256": "47ec799105b4e51f181a9862bed6ad3f8ecfb5f030e49135930618980da470ae",
+			"source_sha256": "aa1dd890cfa70b9c0196738e69c57fd45c3bd57f2a2ce36f0e109235d6cd77f2",
+			"target_sha256": "40774d87ec3dfdb55f22ddb7d31d03c0c48be2e246eedccc08dfdd20242d1fad",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -36015,21 +36153,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor-ru",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
 					"result": "clean",
-					"instance": "7f5f82909017",
+					"instance": "audit-1747-tag-first-ru-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7f5f82909017.json",
-					"receipt_sha256": "d75c23d399fbad57d4421ed3f2ea9c501deb5c7ccdd8db18cd31672da09e3e3d",
-					"scope": "35 added renderer blind-spot keys",
-					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
+					"receipt": "i18n/receipts/audit-1747-tag-first-ru-20261107.json",
+					"receipt_sha256": "31620498501daf807c0a5fd7d8f175d281451c3f85bbb26e41f83683b1abcf05",
+					"scope": "PR #1747: added ui.chat.sidebar_view.tag; full 26-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -36054,6 +36191,30 @@
 								"nit": 0
 							},
 							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 due to quota. Copy audit only; rendered and second high-visibility audit gates remain separate."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+					"target_sha256": "47ec799105b4e51f181a9862bed6ad3f8ecfb5f030e49135930618980da470ae",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-ru",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "7f5f82909017",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7f5f82909017.json",
+							"receipt_sha256": "d75c23d399fbad57d4421ed3f2ea9c501deb5c7ccdd8db18cd31672da09e3e3d",
+							"scope": "35 added renderer blind-spot keys",
+							"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 						}
 					],
 					"status": "audited"
@@ -36170,8 +36331,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
-			"target_sha256": "700d1386afcd07441c1820ca6534e1f03eb35bd1b7f9b45f50bd58f9162a9071",
+			"source_sha256": "989917b1430ca0e21bf94a62295df8223c7cd2661582047d5156fa565fb06151",
+			"target_sha256": "aac943238df99e382e1c148514dc88096222061dd9e8f482c9c06128cc671439",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -36179,38 +36340,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "ux-reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "0ae714016b24",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean-with-findings",
+					"instance": "audit-1747-tag-first-ru-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/0ae714016b24.json",
-					"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
-					"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
-					"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
-				},
-				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean-with-findings",
-					"instance": "ce76a99d4b27",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/ce76a99d4b27.json",
-					"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
-					"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
-					"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
+					"receipt": "i18n/receipts/audit-1747-tag-first-ru-20261107.json",
+					"receipt_sha256": "31620498501daf807c0a5fd7d8f175d281451c3f85bbb26e41f83683b1abcf05",
+					"scope": "PR #1747: changed group + empty_title (M1 reverted), discovery context; full 67-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -36352,6 +36495,47 @@
 							"receipt_sha256": "efe65c6d460f396ae39341867044545e4cd7fc61674ce97a354ef10b411564af",
 							"scope": "PR #1272 V2-3: two new ui.chat.tags keys in ru; unchanged keys retained from the prior audit",
 							"note": "V2-3 delta (2 keys) translated by coder/deepseek/deepseek-flash; baseline translator retained; independent audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
+					"target_sha256": "700d1386afcd07441c1820ca6534e1f03eb35bd1b7f9b45f50bd58f9162a9071",
+					"auditors": [
+						{
+							"agent": "ux-reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "0ae714016b24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ae714016b24.json",
+							"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
+							"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
+							"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
+						},
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "ce76a99d4b27",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ce76a99d4b27.json",
+							"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
+							"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
+							"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -46553,8 +46737,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
-			"target_sha256": "7e828649004b711f4eb19b9291c4cfe9ea2887fd8d1a2a0aa1ffd95254c7ca43",
+			"source_sha256": "aa1dd890cfa70b9c0196738e69c57fd45c3bd57f2a2ce36f0e109235d6cd77f2",
+			"target_sha256": "849106b4868ab1ce05bb53d95707d5e359e8ff6dc54b088da2cbf1484f463ae5",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -46562,21 +46746,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor-ur",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
-					"result": "clean-with-findings",
-					"instance": "bb046f370680",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-first-ur-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bb046f370680.json",
-					"receipt_sha256": "6355c39f3f8e76d82c5e2c4ec727db90a5e1079d5fd97169fabbff1ac4597bb4",
-					"scope": "35 added renderer blind-spot keys",
-					"note": "UR-M1 accepted unchanged: 6-cell budget advisory, not clipping threshold. Designer rendered fr/ur sidebar at 260 CSS px: complete single-line times, titles ellipsize first, no collision. New labels unverified: app build predates branch."
+					"receipt": "i18n/receipts/audit-1747-tag-first-ur-20261107.json",
+					"receipt_sha256": "6bd8261bf0ae99fc2de6c484b173b8e082e974a27b15bcf2b300f67df75f8aa4",
+					"scope": "PR #1747: added ui.chat.sidebar_view.tag; full 26-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -46601,6 +46784,30 @@
 							"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+					"target_sha256": "7e828649004b711f4eb19b9291c4cfe9ea2887fd8d1a2a0aa1ffd95254c7ca43",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-ur",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-31",
+							"result": "clean-with-findings",
+							"instance": "bb046f370680",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bb046f370680.json",
+							"receipt_sha256": "6355c39f3f8e76d82c5e2c4ec727db90a5e1079d5fd97169fabbff1ac4597bb4",
+							"scope": "35 added renderer blind-spot keys",
+							"note": "UR-M1 accepted unchanged: 6-cell budget advisory, not clipping threshold. Designer rendered fr/ur sidebar at 260 CSS px: complete single-line times, titles ellipsize first, no collision. New labels unverified: app build predates branch."
 						}
 					],
 					"status": "audited"
@@ -46717,8 +46924,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
-			"target_sha256": "3e541bf0e6fcf1f5245f6cf12478e563ce9da395eeda472028435ac9c9ac9a51",
+			"source_sha256": "989917b1430ca0e21bf94a62295df8223c7cd2661582047d5156fa565fb06151",
+			"target_sha256": "c817b3b80babeb20832ea066f12ed09620c662dbdd19301a6f337884317d8566",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -46726,38 +46933,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "ux-reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
 					"result": "clean",
-					"instance": "0ae714016b24",
+					"instance": "audit-1747-tag-first-ur-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ae714016b24.json",
-					"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
-					"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
-					"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
-				},
-				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean-with-findings",
-					"instance": "ce76a99d4b27",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/ce76a99d4b27.json",
-					"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
-					"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
-					"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
+					"receipt": "i18n/receipts/audit-1747-tag-first-ur-20261107.json",
+					"receipt_sha256": "6bd8261bf0ae99fc2de6c484b173b8e082e974a27b15bcf2b300f67df75f8aa4",
+					"scope": "PR #1747: changed group + empty_title (M1 reverted), discovery context; full 67-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -46877,6 +47066,47 @@
 							"receipt_sha256": "baf1cb3e4dc085300c02c238007da635e7480516081af78380650fdafbb0ab84",
 							"scope": "PR #1272 V2-3: two new ui.chat.tags keys in ur; unchanged keys retained from the prior audit",
 							"note": "V2-3 delta (2 keys) translated by coder/deepseek/deepseek-flash; baseline translator retained; round 1 independent audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
+					"target_sha256": "3e541bf0e6fcf1f5245f6cf12478e563ce9da395eeda472028435ac9c9ac9a51",
+					"auditors": [
+						{
+							"agent": "ux-reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "0ae714016b24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ae714016b24.json",
+							"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
+							"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
+							"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
+						},
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "ce76a99d4b27",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ce76a99d4b27.json",
+							"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
+							"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
+							"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -57062,8 +57292,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
-			"target_sha256": "83acd2f23baf017f81cda4ece6c45a2d6933c3593f3990c233d9f83292ead7d6",
+			"source_sha256": "aa1dd890cfa70b9c0196738e69c57fd45c3bd57f2a2ce36f0e109235d6cd77f2",
+			"target_sha256": "e9864dc79881200b6fce2533be19fb57a355c9c17f032d00b6997e400e3495cd",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -57071,21 +57301,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor-vi",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
-					"result": "clean-with-findings",
-					"instance": "69748efb2ac9",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-first-vi-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/69748efb2ac9.json",
-					"receipt_sha256": "5b542192de8e2923bb903f4d6d9df2d74990c356933d707358dc2bf676201adb",
-					"scope": "35 added renderer blind-spot keys",
-					"note": "VI-01 accepted unchanged: 6-cell budget advisory, not clipping threshold. Designer rendered fr/ur sidebar at 260 CSS px: complete single-line times, titles ellipsize first, no collision. New labels unverified: app build predates branch."
+					"receipt": "i18n/receipts/audit-1747-tag-first-vi-20261107.json",
+					"receipt_sha256": "62db871eef6c78c6b9b3f44e88f6a7100f34aa11b561d70c2126ca84d36d7c76",
+					"scope": "PR #1747: added ui.chat.sidebar_view.tag; full 26-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -57110,6 +57339,30 @@
 							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
 							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
 							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+					"target_sha256": "83acd2f23baf017f81cda4ece6c45a2d6933c3593f3990c233d9f83292ead7d6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-vi",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-31",
+							"result": "clean-with-findings",
+							"instance": "69748efb2ac9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/69748efb2ac9.json",
+							"receipt_sha256": "5b542192de8e2923bb903f4d6d9df2d74990c356933d707358dc2bf676201adb",
+							"scope": "35 added renderer blind-spot keys",
+							"note": "VI-01 accepted unchanged: 6-cell budget advisory, not clipping threshold. Designer rendered fr/ur sidebar at 260 CSS px: complete single-line times, titles ellipsize first, no collision. New labels unverified: app build predates branch."
 						}
 					],
 					"status": "audited"
@@ -57226,8 +57479,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
-			"target_sha256": "e394931d20dd6772b135057b75784986aebe096397451f7cd5c049df3a994e73",
+			"source_sha256": "989917b1430ca0e21bf94a62295df8223c7cd2661582047d5156fa565fb06151",
+			"target_sha256": "b54aa348b80ac4c5130bb8b20da5b8c8591223297c0ce235e5db373dbd2974a0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -57235,38 +57488,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "ux-reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
 					"result": "clean",
-					"instance": "0ae714016b24",
+					"instance": "audit-1747-tag-first-vi-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ae714016b24.json",
-					"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
-					"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
-					"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
-				},
-				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean-with-findings",
-					"instance": "ce76a99d4b27",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/ce76a99d4b27.json",
-					"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
-					"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
-					"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
+					"receipt": "i18n/receipts/audit-1747-tag-first-vi-20261107.json",
+					"receipt_sha256": "62db871eef6c78c6b9b3f44e88f6a7100f34aa11b561d70c2126ca84d36d7c76",
+					"scope": "PR #1747: changed group + empty_title (M1 reverted), discovery context; full 67-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -57386,6 +57621,47 @@
 							"receipt_sha256": "81b51e7d30ad7c6d1249c5cb434027e264cc54ce0586615cb4fb5e5ef7a32fb7",
 							"scope": "PR #1272 V2-3: two new ui.chat.tags keys in vi; unchanged keys retained from the prior audit",
 							"note": "V2-3 delta (2 keys) translated by coder/deepseek/deepseek-flash; baseline translator retained; round 1 independent audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
+					"target_sha256": "e394931d20dd6772b135057b75784986aebe096397451f7cd5c049df3a994e73",
+					"auditors": [
+						{
+							"agent": "ux-reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "0ae714016b24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ae714016b24.json",
+							"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
+							"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
+							"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
+						},
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "ce76a99d4b27",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ce76a99d4b27.json",
+							"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
+							"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
+							"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -68285,8 +68561,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
-			"target_sha256": "9ee1c2423c20d335e38211cfdaa23c02c57a0670541de4991cf3c563aeecd6f4",
+			"source_sha256": "aa1dd890cfa70b9c0196738e69c57fd45c3bd57f2a2ce36f0e109235d6cd77f2",
+			"target_sha256": "75ebb777c9c252a16121ae534f8b94d117397adba9fb6a3c4dbe267969e2a4f8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -68294,21 +68570,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor-zh-CN",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
 					"result": "clean",
-					"instance": "8ad4f86282d7",
+					"instance": "audit-1747-tag-first-zhcn-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/8ad4f86282d7.json",
-					"receipt_sha256": "8d00e8381261601e1ff06c5afa72a98a89431ac58787f3462f31616e9cb79a49",
-					"scope": "35 added renderer blind-spot keys",
-					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
+					"receipt": "i18n/receipts/audit-1747-tag-first-zhcn-20261107.json",
+					"receipt_sha256": "dc1a1ed47d3c841221f3a2fcff9ff14eb96680fe0ff2acf26d340efb7062b677",
+					"scope": "PR #1747: added ui.chat.sidebar_view.tag; full 26-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -68333,6 +68608,30 @@
 							"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
 							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
 							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+					"target_sha256": "9ee1c2423c20d335e38211cfdaa23c02c57a0670541de4991cf3c563aeecd6f4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-zh-CN",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "8ad4f86282d7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8ad4f86282d7.json",
+							"receipt_sha256": "8d00e8381261601e1ff06c5afa72a98a89431ac58787f3462f31616e9cb79a49",
+							"scope": "35 added renderer blind-spot keys",
+							"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 						}
 					],
 					"status": "audited"
@@ -68449,8 +68748,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
-			"target_sha256": "8eb7048d122c06ed45705612c7a5d4d25cc3986a4b2f3d3c3b3d32841f2f91d5",
+			"source_sha256": "989917b1430ca0e21bf94a62295df8223c7cd2661582047d5156fa565fb06151",
+			"target_sha256": "740a06c71d14fe915ac9bd362b7b57e32ec5aeaa26794d9691c717e71257f7a2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -68458,38 +68757,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "ux-reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "0ae714016b24",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean-with-findings",
+					"instance": "audit-1747-tag-first-zhcn-20261107",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/0ae714016b24.json",
-					"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
-					"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
-					"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
-				},
-				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean-with-findings",
-					"instance": "ce76a99d4b27",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/ce76a99d4b27.json",
-					"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
-					"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
-					"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
+					"receipt": "i18n/receipts/audit-1747-tag-first-zhcn-20261107.json",
+					"receipt_sha256": "dc1a1ed47d3c841221f3a2fcff9ff14eb96680fe0ff2acf26d340efb7062b677",
+					"scope": "PR #1747: changed group + empty_title (M1 reverted), discovery context; full 67-key ICU/parity"
 				}
 			],
 			"status": "audited",
@@ -68609,6 +68890,47 @@
 							"receipt_sha256": "ba7ad64f43bbd3736a7df52c2277745a7874749f341424f108102cb6923bdd3d",
 							"scope": "PR #1272 V2-3: two new ui.chat.tags keys in zh-CN; unchanged keys retained from the prior audit",
 							"note": "V2-3 delta (2 keys) translated by coder/deepseek/deepseek-flash; baseline translator retained; round 1 independent audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
+					"target_sha256": "8eb7048d122c06ed45705612c7a5d4d25cc3986a4b2f3d3c3b3d32841f2f91d5",
+					"auditors": [
+						{
+							"agent": "ux-reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "0ae714016b24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ae714016b24.json",
+							"receipt_sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03",
+							"scope": "Independent tags-v3 semantic/context audit; 67 keys, 19 new/changed; ICU parity.",
+							"note": "V3 delta: coder/anthropic/claude-opus-5-5 (coder reported via manager). Auditor actual openai/gpt-6.1-sol fallback; T1–T4 fixed in receipt. Semantic/source audit only; no rendered-fit/RTL claim."
+						},
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "ce76a99d4b27",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ce76a99d4b27.json",
+							"receipt_sha256": "7742fe3145bbe73ea71bde6944bf0979bd3c647b126a52ca04bee1f6f25b28b5",
+							"scope": "Second independent semantic/context audit: 19-message delta; 67-key ICU/parity checks. Source MINOR I2-1 retained.",
+							"note": "V3 translator coder/anthropic/claude-opus-5-5 (manager supplied); reviewer actual openai/gpt-6.1-sol fallback. I2-1 EN tag/chat referent pending unified remediation. Semantic-only; no rendered/RTL claim."
 						}
 					],
 					"status": "audited"

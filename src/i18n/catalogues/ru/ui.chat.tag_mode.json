@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_mode.live": "{count, plural, one {{count, number, ::group-off} в работе} few {{count, number, ::group-off} в работе} many {{count, number, ::group-off} в работе} other {{count, number, ::group-off} в работе}}",
+	"ui.chat.tag_mode.not_loaded": "Более старые чаты с этим тегом ещё не загружены.",
+	"ui.chat.tag_mode.mode_hint": "Группы тегов используют группировку по времени или по тегу.",
+	"ui.chat.tag_mode.use_tag": "Перейти к группировке по тегу"
+}

@@ -64,6 +64,6 @@
 	"ui.chat.tags.new_tag": "Новый тег",
 	"ui.chat.tags.name_placeholder": "Название тега",
 	"ui.chat.tags.unused": "Неиспользуемые теги ({count})",
-	"ui.chat.tags.empty_title": "Делите временные разделы по тегам.",
+	"ui.chat.tags.empty_title": "Группируйте разговоры по тегам.",
 	"ui.chat.tags.empty_hint": "Нажмите {chord} на разговоре или создайте тег здесь."
 }

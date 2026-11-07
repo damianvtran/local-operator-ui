@@ -440,16 +440,31 @@ export function ChatSidebarViewMenu({
 					<span id="sidebar-tags-help" className="sr-only">
 						{t("ui.chat.tags.discovery")}
 					</span>
+					{/*
+					 * BOTH TAG ARRANGEMENTS ARE OFFERED (PR #1747 U4): since `Group by › Tag`
+					 * exists, a hint that only offered Time section sent the reader to the
+					 * less direct mode. Each press is the reader's own explicit mode change.
+					 */}
 					{(drawn === "agent" || drawn === "flat") && (
 						<div className="px-1 text-meta text-ink-muted">
-							<p>{t("ui.chat.tags.mode_hint")}</p>
-							<Button
-								variant="ghost"
-								className="h-7 px-1 text-meta"
-								onClick={() => onView({ ...view, groupBy: "section" })}
-							>
-								{t("ui.chat.tags.use_time")}
-							</Button>
+							<p>{t("ui.chat.tag_mode.mode_hint")}</p>
+							<div className="flex flex-wrap gap-x-2">
+								<Button
+									variant="ghost"
+									className="h-7 px-1 text-meta"
+									onClick={() => onView({ ...view, groupBy: "section" })}
+								>
+									{t("ui.chat.tags.use_time")}
+								</Button>
+								<Button
+									variant="ghost"
+									data-sidebar-use-tag
+									className="h-7 px-1 text-meta"
+									onClick={() => onView({ ...view, groupBy: "tag" })}
+								>
+									{t("ui.chat.tag_mode.use_tag")}
+								</Button>
+							</div>
 						</div>
 					)}
 				</div>

@@ -337,6 +337,15 @@ export const refreshFocusedInside = (
  */
 export type PageAnchor = { id: string; offset: number };
 
+/*
+ * ONE SCROLLER, TWO COPIES OF A ROW (PR #1747 R3): the entity panel shares the
+ * list's scroller, and an expanded agent/team draws its child chats with the same
+ * `data-session-row`. The anchor is a CHAT-LIST row, so both helpers skip copies
+ * inside `[data-entity]` - matching the first copy in document order would scroll
+ * to the one under an agent above the viewport, the very jump this prevents.
+ */
+const inEntity = (node: HTMLElement) => node.closest("[data-entity]") !== null;
+
 /** The first row at least partly inside `container`'s clip box, or null. */
 export const firstVisibleRow = (
 	container: HTMLElement | null,
@@ -346,6 +355,7 @@ export const firstVisibleRow = (
 	for (const node of container.querySelectorAll<HTMLElement>(
 		"[data-session-row]",
 	)) {
+		if (inEntity(node)) continue;
 		const box = node.getBoundingClientRect();
 		if (box.height > 0 && box.bottom > top)
 			return { id: node.dataset.sessionRow ?? "", offset: box.top - top };
@@ -366,11 +376,48 @@ export const holdPageAnchor = (
 	anchor: PageAnchor | null,
 ) => {
 	if (!container || !anchor) return;
-	const node = container.querySelector<HTMLElement>(
-		`[data-session-row="${CSS.escape(anchor.id)}"]`,
-	);
+	const node = [
+		...container.querySelectorAll<HTMLElement>(
+			`[data-session-row="${CSS.escape(anchor.id)}"]`,
+		),
+	].find((candidate) => !inEntity(candidate));
 	if (!node) return;
 	const drift =
 		node.getBoundingClientRect().top - clipBox(container).top - anchor.offset;
 	if (Math.abs(drift) >= 1) container.scrollTop += drift;
+};
+
+/**
+ * The page foot's half of the press (PR #1747 U5/Q2), run after the anchor hold.
+ *
+ * `follow` (a keyboard press in Tag mode): keep the focused foot inside the clip
+ * box, so the reader's next Enter is on a control they can see. `pressed`: if the
+ * control that was pressed unmounted under focus - the foot once the catalogue is
+ * exhausted, or an unloaded tag's placeholder once its chats arrived - hand focus
+ * to the foot if it is still drawn, else to the last chat row, never `<body>`. The
+ * element focused is returned so the caller can move the ring's stop to it.
+ */
+export const holdPageFoot = (
+	container: HTMLElement | null,
+	follow: boolean,
+	pressed: HTMLElement | null,
+): HTMLElement | null => {
+	if (!container) return null;
+	const foot = container.querySelector<HTMLElement>("[data-sidebar-page-more]");
+	const active = document.activeElement;
+	if (foot && follow && active === foot) {
+		if (rowVisibility(foot, container) !== "inside")
+			foot.scrollIntoView({ block: "nearest" });
+		return null;
+	}
+	// Only the control that was pressed, and only once it has left the DOM: a
+	// reader who clicked elsewhere afterwards is never pulled back here.
+	if (!pressed || pressed.isConnected) return null;
+	if (active && active !== document.body && active.isConnected) return null;
+	const rows = [
+		...container.querySelectorAll<HTMLElement>("[data-chat-row]"),
+	].filter((row) => !inEntity(row));
+	const target = foot ?? rows[rows.length - 1] ?? null;
+	target?.focus({ preventScroll: true });
+	return target;
 };

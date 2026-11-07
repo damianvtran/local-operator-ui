@@ -54,7 +54,9 @@ type Scenario =
 	| "tag-mode-none"
 	| "tag-mode-many"
 	| "tag-mode-loading"
-	| "tag-mode-old-backend";
+	| "tag-mode-old-backend"
+	| "tag-mode-folded-live"
+	| "tag-mode-unloaded";
 /*
  * `Group by › Tag` (issue #1733, docs/design/sidebar-tag-first-grouping.md §5).
  * Every tag-mode scenario stores `tagsEnabled: false`, so each frame also shows
@@ -74,6 +76,9 @@ const FOLD_SEEDS: Partial<Record<Scenario, string[]>> = {
 	"fold-many": ["extra-1", "extra-3", "extra-5", "untagged"],
 	"fold-drop": ["review"],
 	"tag-mode-many": ["extra-1", "extra-3", "untagged"],
+	"tag-mode-folded-live": ["project"],
+	// Review folded so the frame shows the unloaded Taxes header on screen.
+	"tag-mode-unloaded": ["review"],
 };
 function seedFolds(scenario: Scenario) {
 	let stored: Record<string, boolean> = {};
@@ -255,6 +260,33 @@ function installBridge(scenario: Scenario) {
 				created_at: now - (rows.length + index) * 3600,
 			});
 		}
+	/*
+	 * PR #1747 U2: sixty recent Review chats fill (and overflow) the 50-row head, and
+	 * the only Taxes chat is older than all of them - so Taxes has conversations
+	 * but no loaded row, the state that used to make the tag vanish.
+	 */
+	if (scenario === "tag-mode-unloaded") {
+		categories.push({ id: "taxes", name: "Taxes", order: 3, conversations: 0 });
+		for (let index = 0; index < 60; index++)
+			rows.push({
+				...rows[2],
+				id: `u${String(index).padStart(11, "0")}`,
+				name: `Review thread ${index + 1}`,
+				tags: tags("review"),
+				primary: "review",
+				mtime: now - (rows.length + index) * 60,
+				created_at: now - (rows.length + index) * 60,
+			});
+		rows.push({
+			...rows[2],
+			id: "taxes0000001",
+			name: "Last quarter's taxes",
+			tags: [{ id: "taxes", name: "Taxes" }],
+			primary: "taxes",
+			mtime: now - 90 * 86400,
+			created_at: now - 90 * 86400,
+		});
+	}
 	if (scenario === "tag-mode-many")
 		categories[3].name =
 			"Workstream 1 with a long tag name that has to truncate";
@@ -327,7 +359,14 @@ function installBridge(scenario: Scenario) {
 			case "teams.list":
 				return ok({ teams: [] });
 			case "sessions.search":
+				/*
+				 * The echoed `query` and `limit` are part of `SessionSearchResult`; without
+				 * them the stale-answer memo read `undefined.trim()` and crashed any story
+				 * whose search answer landed (PR #1747 QA round 1, Q1).
+				 */
 				return ok({
+					query: request.q,
+					limit: request.limit ?? 50,
 					sessions: rows.filter((row) =>
 						row.name.toLowerCase().includes(request.q.toLowerCase()),
 					),
@@ -2115,3 +2154,96 @@ export const TagGroupKeyboardFollowUps: Story = {
 			"PASS: Alt+Left no fold; Right→row holds tabIndex 0; Left→chevron; Shift+F10/Escape and F2/Escape return to the chevron";
 	},
 };
+
+/*
+ * PR #1747 round 1. U1/D2: a folded Tag-mode group hiding a live chat keeps the
+ * list's own status glyph on its header, and the chevron's name says so. U2: a
+ * tag whose chats are all past the loaded page keeps a header (no count) with a
+ * placeholder that presses the page foot, and the press brings its chat in.
+ */
+export const TagModeFoldedLive: Story = {
+	...story("tag-mode-folded-live"),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(tagGroup("project")).not.toBeNull());
+		const project = tagGroup("project") as HTMLElement;
+		expect(project.querySelector("[data-session-row]")).toBeNull();
+		expect(project.querySelector("[data-chat-tag-live]")).toHaveAttribute(
+			"data-chat-tag-live",
+			"1",
+		);
+		expect(tagChevron("project")).toHaveAccessibleName(
+			"Expand Project, 1 running",
+		);
+		// Open groups carry no cue: their rows already say it.
+		expect(
+			tagGroup("review")?.querySelector("[data-chat-tag-live]"),
+		).toBeNull();
+		await userEvent.click(tagChevron("project"));
+		expect(project.querySelector("[data-chat-tag-live]")).toBeNull();
+		document.body.dataset.tagsProof =
+			"PASS: folded Project shows the running glyph and 'Expand Project, 1 running'; unfolding drops the cue";
+	},
+};
+export const TagModeUnloadedTag: Story = {
+	...story("tag-mode-unloaded"),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(tagGroup("taxes")).not.toBeNull());
+		const taxes = tagGroup("taxes") as HTMLElement;
+		expect(taxes.querySelector("[data-chat-tag-unloaded]")).not.toBeNull();
+		expect(taxes.querySelector("[data-session-row]")).toBeNull();
+		expect(taxes.querySelector("[data-chat-tag-toggle]")).toBeNull();
+		expect(
+			within(taxes).getByText("Older chats in this tag aren't loaded yet."),
+		).toBeVisible();
+		// Registry order: Taxes after Concept, Untagged still last.
+		const order = [
+			...document.querySelectorAll<HTMLElement>("[data-chat-tag-section]"),
+		].map((node) => node.dataset.chatTagSection);
+		expect(order.slice(-2)).toEqual(["taxes", "untagged"]);
+		await userEvent.click(
+			taxes.querySelector<HTMLElement>(
+				"[data-sidebar-page-more-tag]",
+			) as HTMLElement,
+		);
+		await waitFor(() =>
+			expect(
+				tagGroup("taxes")?.querySelector('[data-session-row="taxes0000001"]'),
+			).not.toBeNull(),
+		);
+		expect(
+			tagGroup("taxes")?.querySelector("[data-chat-tag-unloaded]"),
+		).toBeNull();
+		document.body.dataset.tagsProof =
+			"PASS: unloaded Taxes drawn with no count and a load-more placeholder; one press brought its chat into the group";
+	},
+};
+/** U4: Agent and team offers both tag arrangements. */
+export const AgentModeOffersTag: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		useUiPreferencesStore.setState({
+			chatSidebarView: {
+				...useUiPreferencesStore.getState().chatSidebarView,
+				groupBy: "agent",
+			},
+		});
+		const body = await openViewOptions();
+		expect(
+			await body.findByText("Tag groups use Time section or Tag grouping."),
+		).toBeVisible();
+		await userEvent.click(body.getByRole("button", { name: "Use Tag" }));
+		await waitFor(() =>
+			expect(useUiPreferencesStore.getState().chatSidebarView.groupBy).toBe(
+				"tag",
+			),
+		);
+		document.body.dataset.tagsProof =
+			"PASS: Agent and team hint names both modes; Use Tag switched to Tag";
+	},
+};
+/** Static frames of the two round-1 states, before any play press. */
+export const TagModeFoldedLiveStatic = story("tag-mode-folded-live");
+export const TagModeUnloadedTagStatic = story("tag-mode-unloaded");
