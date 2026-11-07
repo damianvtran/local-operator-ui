@@ -260,6 +260,15 @@ export function ChatTagHeader({
 	const [retry, setRetry] = useState<(() => void) | null>(null);
 	const errorId = useId();
 	const stop = useRef<HTMLButtonElement>(null);
+	/*
+	 * WHICH OF THE HEADER'S TWO STOPS AN ACTION STARTED ON (#1745 round 2, M1/U8).
+	 * The chevron answers the header's chords too, so an F2 / Alt+Arrow / Shift+F10
+	 * pressed there must hand focus back THERE when the action settles - returning
+	 * it to `⋯` moved the reader one stop along the ring without their asking. A
+	 * pointer press on `⋯` resets it, because that action started on `⋯`.
+	 */
+	const toggle = useRef<HTMLButtonElement>(null);
+	const origin = useRef<"toggle" | "stop">("stop");
 	const cancelDelete = useRef<HTMLButtonElement>(null);
 	const box = useRef<HTMLDivElement>(null);
 	const managed = id !== "untagged";
@@ -277,11 +286,14 @@ export function ChatTagHeader({
 			// Prefer THIS section's control: one tag may have several headers.
 			// After deletion it no longer exists, so hand focus to a real survivor
 			// (or the footer's New tag row), never a detached node or the body.
-			const target = stop.current?.isConnected
-				? stop.current
-				: document.querySelector<HTMLElement>(
-						`[${TAG_HEADER_STOP_ATTR}="${CSS.escape(below ?? above ?? id)}"], [data-tag-new]`,
-					);
+			const target =
+				origin.current === "toggle" && toggle.current?.isConnected
+					? toggle.current
+					: stop.current?.isConnected
+						? stop.current
+						: document.querySelector<HTMLElement>(
+								`[${TAG_HEADER_STOP_ATTR}="${CSS.escape(below ?? above ?? id)}"], [data-tag-new]`,
+							);
 			focusFrame.current = null;
 			target?.focus({ preventScroll: true });
 		});
@@ -380,6 +392,7 @@ export function ChatTagHeader({
 		}
 		event.preventDefault();
 		event.stopPropagation();
+		origin.current = event.currentTarget === toggle.current ? "toggle" : "stop";
 		if (chord === "rename") setRenaming(true);
 		else if (chord === "menu") setMenuOpen(true);
 		else void move(chord);
@@ -432,11 +445,14 @@ export function ChatTagHeader({
 					 * extent stay chevron-only. `rtl:-scale-x-100` mirrors the folded
 					 * glyph to point inline-end, the repo's disclosure-chevron rule
 					 * (`finder-files-view.tsx`). The focus ring is inset
-					 * (`-outline-offset-2`) and the 2px gap kept, because with the name
+					 * (`-outline-offset-2!`, important: without it the shared
+					 * `focus-visible` outline utility's own offset wins and the ring is
+					 * drawn outside - #1745 design round 2, D4) and the 2px gap kept, because with the name
 					 * that close an outside ring (or a 0px gap) paints over its first
 					 * letter (measured on the focus-visible frame).
 					 */
 					<button
+						ref={toggle}
 						type="button"
 						tabIndex={-1}
 						{...{ [TAG_TOGGLE_STOP_ATTR]: id }}
@@ -444,7 +460,7 @@ export function ChatTagHeader({
 						aria-controls={disclosure.bodyId}
 						aria-label={foldLabel}
 						title={foldLabel}
-						className="-ms-1 -me-1.5 relative flex size-5 shrink-0 items-center justify-center rounded-sm text-ink-dim after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-row-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2"
+						className="-ms-1 -me-1.5 relative flex size-5 shrink-0 items-center justify-center rounded-sm text-ink-dim after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-row-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2!"
 						onClick={disclosure.onToggle}
 						onKeyDown={onKeyDown}
 					>
@@ -500,6 +516,9 @@ export function ChatTagHeader({
 										type="button"
 										tabIndex={-1}
 										{...{ [TAG_HEADER_STOP_ATTR]: id }}
+										onPointerDown={() => {
+											origin.current = "stop";
+										}}
 										aria-label={t("ui.chat.tags.header_actions", {
 											name: label,
 										})}
@@ -526,6 +545,15 @@ export function ChatTagHeader({
 								onCloseAutoFocus={(event) => {
 									// Rename and the delete confirm take focus themselves.
 									if (renaming || confirming) event.preventDefault();
+									// A menu opened by Shift+F10 on the chevron closes back to
+									// the chevron, not to Radix's trigger (`origin`, M1/U8).
+									else if (
+										origin.current === "toggle" &&
+										toggle.current?.isConnected
+									) {
+										event.preventDefault();
+										toggle.current.focus({ preventScroll: true });
+									}
 								}}
 							>
 								<DropdownMenuItem onSelect={() => setRenaming(true)}>

@@ -8498,16 +8498,50 @@ export function ChatSidebar({
 					.closest("[data-chat-tag-group]")
 					?.querySelector<HTMLButtonElement>(`[${TAG_TOGGLE_STOP_ATTR}]`)
 			: null;
-		if (tagFold && (event.key === "ArrowRight" || event.key === "ArrowLeft")) {
+		/*
+		 * Bare arrows only (#1745 round 2, N1): Alt+Arrow is the header's own move
+		 * chord and Meta+Arrow belongs to the platform, so neither may also fold.
+		 */
+		const bareArrow =
+			!event.altKey &&
+			!event.metaKey &&
+			(event.key === "ArrowRight" || event.key === "ArrowLeft");
+		if (tagFold && bareArrow) {
 			event.preventDefault();
 			const open = tagFold.getAttribute("aria-expanded") === "true";
 			if (event.key === "ArrowRight" && !open) tagFold.click();
-			else if (event.key === "ArrowRight")
-				document
-					.getElementById(tagFold.getAttribute("aria-controls") ?? "")
-					?.querySelector<HTMLElement>("[data-chat-row]")
-					?.focus();
-			else if (open) tagFold.click();
+			else if (event.key === "ArrowRight") {
+				const first =
+					document
+						.getElementById(tagFold.getAttribute("aria-controls") ?? "")
+						?.querySelector<HTMLElement>("[data-chat-row]") ?? null;
+				// The ring's stop moves with the walk, as Up/Down do above (M2).
+				if (first) {
+					first.focus();
+					applyRowStop(first);
+				}
+			} else if (open) tagFold.click();
+			return;
+		}
+		/*
+		 * ArrowLeft FROM A ROW INSIDE A TAG GROUP climbs to that group's header
+		 * (#1745 round 2, U7), the step the agent/team child rows below take to their
+		 * entity: the chevron, the stop Right came down from.
+		 */
+		const rowGroupHeader =
+			event.key === "ArrowLeft" &&
+			bareArrow &&
+			target.hasAttribute("data-chat-row")
+				? target
+						.closest("[data-chat-tag-group]")
+						?.querySelector<HTMLElement>(
+							`[${TAG_TOGGLE_STOP_ATTR}], [${TAG_HEADER_STOP_ATTR}]`,
+						)
+				: null;
+		if (rowGroupHeader) {
+			event.preventDefault();
+			rowGroupHeader.focus();
+			applyRowStop(rowGroupHeader);
 			return;
 		}
 		const group = target.closest("[data-entity]");
@@ -10646,6 +10680,12 @@ export function ChatSidebar({
 					data-tag-drag-list=""
 					/* The edge cues (issue #845): `index.css` masks on this hook. */
 					data-lo-sidebar-edge-cues
+					onScroll={() => {
+						refreshFocusedInside(entityPanelRef.current, entitySlotRef);
+						refreshFocusedInside(listPanelRef.current, listSlotRef);
+						extendCatalogueTail();
+					}}
+					className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]"
 					/*
 					 * The reader's own gesture ends the Tag-mode foot's anchor hold
 					 * (`holdPageAnchor`): from here the scroll is theirs.
@@ -10653,12 +10693,6 @@ export function ChatSidebar({
 					onWheel={releasePageAnchor}
 					onPointerDown={releasePageAnchor}
 					onKeyDown={releasePageAnchor}
-					onScroll={() => {
-						refreshFocusedInside(entityPanelRef.current, entitySlotRef);
-						refreshFocusedInside(listPanelRef.current, listSlotRef);
-						extendCatalogueTail();
-					}}
-					className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]"
 				>
 					{entityRegion}
 					{pinFailureLine}

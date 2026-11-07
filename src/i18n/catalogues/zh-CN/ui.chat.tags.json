@@ -64,6 +64,6 @@
 	"ui.chat.tags.new_tag": "新建标签",
 	"ui.chat.tags.name_placeholder": "标签名称",
 	"ui.chat.tags.unused": "未使用的标签（{count}）",
-	"ui.chat.tags.empty_title": "按标签对对话分组。",
+	"ui.chat.tags.empty_title": "按标签拆分时间分区。",
 	"ui.chat.tags.empty_hint": "在对话上按 {chord}，或在此创建标签。"
 }

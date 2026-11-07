@@ -2078,3 +2078,40 @@ export const TagModeDragRetag: Story = {
 			"PASS: pinned Review row dropped on Project header: 1 write, primary project, row now leads Project, pin order untouched (synthetic pointers)";
 	},
 };
+/*
+ * #1745 round-2 follow-ups (M1/U8, M2, N1, U7), driven with the real keys on
+ * the Time-section subheaders the round measured them on.
+ */
+export const TagGroupKeyboardFollowUps: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		const fold = () => chevron("review", "today");
+		await waitFor(() => expect(fold()).toBeInTheDocument());
+		fold().focus();
+		// N1: Alt+ArrowLeft is not a fold.
+		await userEvent.keyboard("{Alt>}{ArrowLeft}{/Alt}");
+		expect(fold()).toHaveAttribute("aria-expanded", "true");
+		// M2: Right into the first row carries the ring's stop with it.
+		await userEvent.keyboard("{ArrowRight}");
+		const row = document.activeElement as HTMLElement;
+		expect(row).toHaveAttribute("data-chat-row");
+		expect(row.tabIndex).toBe(0);
+		// U7: Left from that row climbs to its group's header (the chevron).
+		await userEvent.keyboard("{ArrowLeft}");
+		expect(document.activeElement).toBe(fold());
+		expect(fold()).toHaveAttribute("aria-expanded", "true");
+		// M1/U8: a menu opened from the chevron closes back to the chevron.
+		await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+		await within(document.body).findByRole("menuitem", { name: "Rename" });
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() => expect(document.activeElement).toBe(fold()));
+		// ...and so does a rename started there and cancelled.
+		await userEvent.keyboard("{F2}");
+		await within(document.body).findByRole("textbox");
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() => expect(document.activeElement).toBe(fold()));
+		document.body.dataset.tagsProof =
+			"PASS: Alt+Left no fold; Right→row holds tabIndex 0; Left→chevron; Shift+F10/Escape and F2/Escape return to the chevron";
+	},
+};

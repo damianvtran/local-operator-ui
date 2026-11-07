@@ -825,3 +825,58 @@ test("the popover offers Tag second, only with tags, and hides the switch under 
 	);
 	assert.equal(view["ui.chat.sidebar_view.tag"], "Tag");
 });
+/*
+ * #1745 round-2 follow-ups, carried by the #1733 PR. Source pins, because the
+ * sidebar's ring cannot be rendered under node:test; `TagGroupKeyboardFollowUps`
+ * in `chat-sidebar-tags.stories.tsx` drives the same keys on the real component.
+ */
+test("#1745 follow-ups: bare arrows fold, Right moves the stop, Left climbs to the header", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	// N1: Alt/Meta+Arrow never fold.
+	assert.match(
+		source,
+		/const bareArrow =\s*!event\.altKey &&\s*!event\.metaKey &&/,
+	);
+	assert.match(source, /if \(tagFold && bareArrow\) \{/);
+	// M2: ArrowRight into the first row moves the ring's stop with it.
+	assert.match(source, /first\.focus\(\);\s*applyRowStop\(first\);/);
+	// U7: ArrowLeft from a row in a tag group climbs to that group's header.
+	assert.match(
+		source,
+		/event\.key === "ArrowLeft" &&\s*bareArrow &&\s*target\.hasAttribute\("data-chat-row"\)/,
+	);
+	assert.match(
+		source,
+		/rowGroupHeader\.focus\(\);\s*applyRowStop\(rowGroupHeader\);/,
+	);
+});
+test("#1745 follow-ups: a chord's action returns focus to the stop it was pressed on", () => {
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
+	);
+	// M1/U8: the origin is recorded on the chord and preferred on restore.
+	assert.match(
+		header,
+		/origin\.current = event\.currentTarget === toggle\.current \? "toggle" : "stop";/,
+	);
+	assert.match(
+		header,
+		/origin\.current === "toggle" && toggle\.current\?\.isConnected\s*\?\s*toggle\.current/,
+	);
+	// A pointer press on `⋯` is an action that started on `⋯`.
+	assert.match(
+		header,
+		/onPointerDown=\{\(\) => \{\s*origin\.current = "stop";/,
+	);
+	// D4: the inset ring must win over the shared outline utility's offset.
+	assert.match(header, /focus-visible:-outline-offset-2!/);
+	// The first-use title follows the relabelled switch.
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
+	);
+	assert.equal(en["ui.chat.tags.empty_title"], "Split time sections by tag.");
+});

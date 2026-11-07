@@ -64,6 +64,6 @@
 	"ui.chat.tags.new_tag": "نیا ٹیگ",
 	"ui.chat.tags.name_placeholder": "ٹیگ کا نام",
 	"ui.chat.tags.unused": "غیر استعمال شدہ ٹیگز ({count})",
-	"ui.chat.tags.empty_title": "گفتگوؤں کو ٹیگ کے لحاظ سے گروہ بند کریں۔",
+	"ui.chat.tags.empty_title": "وقت کے حصوں کو ٹیگ کے لحاظ سے تقسیم کریں۔",
 	"ui.chat.tags.empty_hint": "کسی گفتگو پر {chord} دبائیں، یا یہاں ٹیگ بنائیں۔"
 }

@@ -64,6 +64,6 @@
 	"ui.chat.tags.new_tag": "नया टैग",
 	"ui.chat.tags.name_placeholder": "टैग का नाम",
 	"ui.chat.tags.unused": "अप्रयुक्त टैग ({count})",
-	"ui.chat.tags.empty_title": "बातचीतों को टैग के अनुसार समूहों में रखें।",
+	"ui.chat.tags.empty_title": "समय के खंडों को टैग के हिसाब से बाँटें।",
 	"ui.chat.tags.empty_hint": "किसी बातचीत पर {chord} दबाएँ, या यहाँ टैग बनाएँ।"
 }

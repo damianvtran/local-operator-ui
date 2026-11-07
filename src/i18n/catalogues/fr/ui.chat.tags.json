@@ -64,6 +64,6 @@
 	"ui.chat.tags.new_tag": "Nouvelle étiquette",
 	"ui.chat.tags.name_placeholder": "Nom de l’étiquette",
 	"ui.chat.tags.unused": "Étiquettes inutilisées ({count})",
-	"ui.chat.tags.empty_title": "Regroupez les conversations par étiquette.",
+	"ui.chat.tags.empty_title": "Divisez les sections temporelles par étiquette.",
 	"ui.chat.tags.empty_hint": "Appuyez sur {chord} sur une conversation, ou créez une étiquette ici."
 }

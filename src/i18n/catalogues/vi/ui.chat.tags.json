@@ -64,6 +64,6 @@
 	"ui.chat.tags.new_tag": "Nhãn mới",
 	"ui.chat.tags.name_placeholder": "Tên nhãn",
 	"ui.chat.tags.unused": "Nhãn chưa dùng ({count})",
-	"ui.chat.tags.empty_title": "Nhóm cuộc trò chuyện theo nhãn.",
+	"ui.chat.tags.empty_title": "Chia các mục thời gian theo nhãn.",
 	"ui.chat.tags.empty_hint": "Nhấn {chord} trên một cuộc trò chuyện, hoặc tạo nhãn tại đây."
 }
