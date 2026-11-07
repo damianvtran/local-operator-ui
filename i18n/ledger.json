@@ -82628,6 +82628,216 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.tag_mode",
+			"source_sha256": "d0e9e21a0e5c47df740867084d58baeec3ca026cc857fa66c3be6734c3255ac6",
+			"target_sha256": "985b7b97929ce0f7edfb5b943a69321cd32215b05e38104f2a1e592978198376",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-mode-es-r2fix-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1747-tag-mode-es-r2fix-20261107.json",
+					"receipt_sha256": "194d5f319070b02ab45606c1670e13b95f01056b09dd60e595e564eea4a5fc59",
+					"scope": "PR #1747 r2: new namespace ui.chat.tag_mode (live, not_loaded, mode_hint, use_tag); ICU/CLDR/Cf mechanical + in-context review"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.tag_mode",
+			"source_sha256": "d0e9e21a0e5c47df740867084d58baeec3ca026cc857fa66c3be6734c3255ac6",
+			"target_sha256": "a34a82ca3fbfe2689d539746017b666421f07a2992323c693d08daba0bbe0c3d",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-mode-fr-r2fix-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1747-tag-mode-fr-r2fix-20261107.json",
+					"receipt_sha256": "3ac804b2457fa13f089b79fdf4e01e065e7cfa1eb42f55826aea71219e1a0e53",
+					"scope": "PR #1747 r2: new namespace ui.chat.tag_mode (live, not_loaded, mode_hint, use_tag); ICU/CLDR/Cf mechanical + in-context review"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.tag_mode",
+			"source_sha256": "d0e9e21a0e5c47df740867084d58baeec3ca026cc857fa66c3be6734c3255ac6",
+			"target_sha256": "9a0afe16ba493b9efe5f7debeb11edf01953d2a603ef02bb884bb390b10511ae",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-mode-hi-r2-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1747-tag-mode-hi-r2-20261107.json",
+					"receipt_sha256": "b99f83b81fa10292791acc31d59914f732aa51b1f9ccc3422f7fabd79e8f53a3",
+					"scope": "PR #1747 r2: new namespace ui.chat.tag_mode (live, not_loaded, mode_hint, use_tag); ICU/CLDR/Cf mechanical + in-context review"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.tag_mode",
+			"source_sha256": "d0e9e21a0e5c47df740867084d58baeec3ca026cc857fa66c3be6734c3255ac6",
+			"target_sha256": "af4ceb188f920e8ca66150258a75fa4093176daacac479a2e9c7ac43f3a2b14b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-mode-ru-r2-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1747-tag-mode-ru-r2-20261107.json",
+					"receipt_sha256": "5c667b2c6c3aa6e38e8e8f9f418fa27238aadf7985f1c4398f698f1cf1571b76",
+					"scope": "PR #1747 r2: new namespace ui.chat.tag_mode (live, not_loaded, mode_hint, use_tag); ICU/CLDR/Cf mechanical + in-context review"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.tag_mode",
+			"source_sha256": "d0e9e21a0e5c47df740867084d58baeec3ca026cc857fa66c3be6734c3255ac6",
+			"target_sha256": "c7e85421a8ca2c698c1673796329ffd01a7fd686eccd1e48c074835be13fb25e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-mode-ur-r2-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1747-tag-mode-ur-r2-20261107.json",
+					"receipt_sha256": "3afd84031c507fa33ed84b087f359046bf005467657d42fce7edd84b72723b04",
+					"scope": "PR #1747 r2: new namespace ui.chat.tag_mode (live, not_loaded, mode_hint, use_tag); ICU/CLDR/Cf mechanical + in-context review"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.tag_mode",
+			"source_sha256": "d0e9e21a0e5c47df740867084d58baeec3ca026cc857fa66c3be6734c3255ac6",
+			"target_sha256": "dcde115668802eda76cfd664735dd450655067dd4c652645844477c03e1306a2",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-mode-vi-r2-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1747-tag-mode-vi-r2-20261107.json",
+					"receipt_sha256": "e31deaff3b5b7a68b3fcd094b2c4d93aba6f1478d44831bb87128029450be252",
+					"scope": "PR #1747 r2: new namespace ui.chat.tag_mode (live, not_loaded, mode_hint, use_tag); ICU/CLDR/Cf mechanical + in-context review"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.tag_mode",
+			"source_sha256": "d0e9e21a0e5c47df740867084d58baeec3ca026cc857fa66c3be6734c3255ac6",
+			"target_sha256": "e0d57031d7c5ea50b4e9f1fea94c5a0b81dd0ba3074b3e2251957dfaa9e55abb",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1747-tag-mode-zhcn-r2-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1747-tag-mode-zhcn-r2-20261107.json",
+					"receipt_sha256": "73f49f4123f6ac84bb890427bab85a24f5fb5810e69f1b25c0d0235cbfcc4b21",
+					"scope": "PR #1747 r2: new namespace ui.chat.tag_mode (live, not_loaded, mode_hint, use_tag); ICU/CLDR/Cf mechanical + in-context review"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
