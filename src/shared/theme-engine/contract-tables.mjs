@@ -411,6 +411,41 @@ export const CONTROLS = [
 		border: "accentActive",
 		ink: "onAccent",
 	},
+	/*
+	 * THE TONAL BUTTON: the action inside a floating surface (`button.tsx`,
+	 * variant `tonal`). It lives on `elevated` - menus, popovers, dialogs, sheets
+	 * are all that ground - and its three states are a ground ramp with `ink` on
+	 * top. It draws no border and its fill is a ground STEP off the panel, never a
+	 * 3:1 boundary (no ground pair in any palette is), so the rows declare
+	 * `edge: false` like the library card and the reaction pills; the step itself
+	 * (ΔE00 >= 6.07 `sunken` off `elevated`) is the ground ladder's own assertion.
+	 * `STRUCTURAL_CALL_SITES` pins the variant's classes, so a row cannot stay
+	 * green about a button that stopped wearing these fills.
+	 */
+	{
+		name: "tonal button",
+		on: ["elevated"],
+		fill: "sunken",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "tonal button (hover)",
+		on: ["elevated"],
+		fill: "surface",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "tonal button (pressed)",
+		on: ["elevated"],
+		fill: "hairline",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
 	{
 		name: "outline control",
 		on: GROUNDS,
@@ -510,6 +545,40 @@ export const CONTROLS = [
 	 * count are the content and the target - which these rows assert at 4.5:1 on
 	 * every palette, at rest and in the hover step.
 	 */
+	/*
+	 * THE NOTIFICATION-SOUND RADIO (`shared/components/ui/radio-group.tsx`;
+	 * notification-sound settings spec §3.4, §9). The ring is the radio's whole
+	 * boundary, so it is a control edge with the 3:1 floor, on each ground the
+	 * row paints: `canvas` at rest and `rowHover` under the pointer. The row's
+	 * label (`ink`) sits on the same ground, which is what the ink half asserts.
+	 * There is no selected-row ground by design: `accent` and `borderControl`
+	 * both fall under 3:1 on `rowSelected` in several palettes (spec §9).
+	 *
+	 * The hover row is why the ring steps to `inkMuted` while hovered:
+	 * `borderControl` on `rowHover` is under 3:1 in five palettes, so the
+	 * component swaps the role rather than this file pinning five exceptions.
+	 */
+	{
+		name: "notification sound radio ring",
+		on: ["canvas"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		name: "notification sound radio ring (hover)",
+		on: ["rowHover"],
+		fill: null,
+		border: "inkMuted",
+		ink: "ink",
+	},
+	{
+		name: "notification sound radio ring (checked)",
+		on: ["canvas", "rowHover"],
+		fill: null,
+		border: "accent",
+		ink: "ink",
+	},
 	{
 		name: "team bridge reaction pill",
 		on: ["surface", "canvas", "rowHover"],
@@ -618,6 +687,22 @@ export const CONTROLS = [
 		fill: "elevated",
 		border: null,
 		ink: "inkMuted",
+		edge: false,
+	},
+	/*
+	 * THE FILE CARD'S RETRYABLE-FAILURE GLYPH (decision a-fdf0; design round 1,
+	 * D3). The tile's kind glyph becomes a `danger` alert glyph while a Save
+	 * can be retried. `danger` as the card's 11px status TEXT on `mediaSurface`
+	 * measured 4.17-4.44:1 in ten light palettes, so the colour moved to the
+	 * glyph and onto the tile's own `elevated` fill, held here at the text
+	 * floor - stricter than the 3:1 a non-text glyph needs (WCAG 1.4.11).
+	 */
+	{
+		name: "team bridge file card failure glyph",
+		on: ["mediaSurface"],
+		fill: "elevated",
+		border: null,
+		ink: "danger",
 		edge: false,
 	},
 	/*

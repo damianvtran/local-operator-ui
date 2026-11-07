@@ -1090,6 +1090,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				 */}
 				<div
 					className={cn("relative flex min-h-0 grow flex-col px-2 bg-sunken")}
+					// The pane owns the capability-gated glass ground. Clear the
+					// terminal's padding/run-off too, not just xterm's cell viewport;
+					// without effective pane coverage the solid sunken fill remains.
+					data-glass-region="pane-leaf"
 					data-console-box=""
 					onKeyDownCapture={announceEndedInput}
 				>
@@ -1512,6 +1516,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 */}
 			{session.cleanupNotice !== null ? (
 				<output
+					data-lo-floating=""
 					className={cn(
 						/*
 						 * POINTER-TRANSPARENT (design round 3, D15): the notice is status text, not a
@@ -1524,7 +1529,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 						 * grow to a second line; `title` carries the whole sentence for the one
 						 * narrow case that still clips.
 						 */
-						"pointer-events-none absolute top-10 right-2 left-2 z-10 rounded-sm border border-control bg-elevated px-2 py-1 text-meta text-ink-muted shadow-md",
+						"pointer-events-none absolute top-10 right-2 left-2 z-10 rounded-sm bg-elevated px-2 py-1 text-meta text-ink-muted shadow-overlay",
 					)}
 					data-tour-tag="console-cleanup-result"
 					title={session.cleanupNotice}

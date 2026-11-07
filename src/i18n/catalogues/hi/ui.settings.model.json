@@ -33,5 +33,7 @@
 	"ui.settings.model.system_prompt.load_failed": "सिस्टम प्रॉम्प्ट लोड नहीं हो सका: {reason}",
 	"ui.settings.model.system_prompt.rich_text": "फ़ॉर्मैट किया हुआ पाठ",
 	"ui.settings.model.system_prompt.source": "Markdown स्रोत",
-	"ui.settings.model.system_prompt.source_required": "इस दस्तावेज़ में Markdown का ऐसा सिंटैक्स है जिसे विज़ुअल एडिटर सुरक्षित नहीं रख सकता। सभी निर्देश जस के तस रखने के लिए स्रोत में बदलाव करें।"
+	"ui.settings.model.system_prompt.source_required": "इस दस्तावेज़ में Markdown का ऐसा सिंटैक्स है जिसे विज़ुअल एडिटर सुरक्षित नहीं रख सकता। सभी निर्देश जस के तस रखने के लिए स्रोत में बदलाव करें।",
+	"ui.settings.model.system_prompt.source_edit": "स्रोत में बदलाव करें",
+	"ui.settings.model.system_prompt.source_stale": "आपके बदलाव करते समय यह हिस्सा बदल गया है। नवीनतम निर्देश सुरक्षित रखने के लिए रद्द करें और इसे फिर से खोलें।"
 }

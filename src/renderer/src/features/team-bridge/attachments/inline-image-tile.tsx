@@ -71,8 +71,13 @@ const CLUSTER_CLASS = cn(
 	"group-hover/tile:pointer-events-auto group-hover/tile:opacity-100",
 	"group-focus-within/tile:pointer-events-auto group-focus-within/tile:opacity-100",
 );
-/* Hover is a colour step, focus an outline (AGENTS.md, Design and branding). */
-const CLUSTER_BUTTON_CLASS =
+/*
+ * Hover is a colour step, focus an outline (AGENTS.md, Design and branding).
+ * Exported because the file card's Save is the SAME action through the same
+ * dialog, so it is the same control (design round 1, D2): one radius, glyph
+ * size, hover step and inset ring for both, instead of two families.
+ */
+export const CLUSTER_BUTTON_CLASS =
 	"flex size-7 items-center justify-center rounded-xs text-ink-muted hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus";
 
 export function InlineImageTile({
@@ -195,7 +200,11 @@ export function InlineImageTile({
 				)}
 			</button>
 			{url && !more && (
-				<div className={CLUSTER_CLASS} data-attachment-actions="">
+				<div
+					data-lo-floating=""
+					className={CLUSTER_CLASS}
+					data-attachment-actions=""
+				>
 					{/* Out of the tab order AND the accessibility tree: the tile itself
 					    is the open control, and a second node with its name would be
 					    read twice by a virtual cursor (agent review round 1, nit 2). */}

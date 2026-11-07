@@ -149,10 +149,10 @@ const {
 `,
 );
 
-const { modelSelector } = await bundleInto(
+const { modelSelector, frontendNamesModel } = await bundleInto(
 	"session-model",
 	`
-	export { modelSelector } from "./src/renderer/src/features/chat/session-status/session-model";
+	export { frontendNamesModel, modelSelector } from "./src/renderer/src/features/chat/session-status/session-model";
 `,
 );
 
@@ -2054,7 +2054,14 @@ test("the pick is painted before the owner is awaited, and rolled back on refusa
 	const picker = source("features/chat/pickers/destination-pickers.tsx");
 	const onPick = picker.slice(picker.indexOf("const onPick = useCallback("));
 	const paint = onPick.indexOf("canonical.paintPendingModel(model)");
-	const await_ = onPick.indexOf('await command.run("model", value)');
+	/*
+	 * The anchor is the call's HEAD, not the whole statement. The dispatch now
+	 * carries an options object (the busy repeat's opt-in, `resendWhileBusy`), so a
+	 * literal `command.run("model", value)` no longer appears — and pinning the
+	 * argument list is not what this test is about: the claim is that the paint
+	 * happens BEFORE the call, whatever the call grows.
+	 */
+	const await_ = onPick.indexOf('await command.run("model", value');
 	const rollback = onPick.indexOf("canonical.clearPendingModel()");
 	assert.ok(
 		paint > -1 && await_ > paint,
@@ -2097,13 +2104,59 @@ test("the pick is painted before the owner is awaited, and rolled back on refusa
 
 test("the handle reconciles the paint against the owner's own frames", () => {
 	const hook = source("shared/hooks/use-canonical-session.ts");
-	// The reconciliation is the other half of an optimistic value: without it the
-	// pending mark would be permanent, and with a looser comparison it would be
-	// dropped by the next unrelated frame instead.
-	assert.match(hook, /modelSelector\(frontend\?\.selected_model\) === painted/);
+	/*
+	 * THE RULE MOVED, THE INVARIANT DID NOT. Both halves of the comparison now live
+	 * in `frontendNamesModel` — shared with the picker's own "has this press landed"
+	 * reading, so the two cannot disagree about what the session is running — and
+	 * the hook calls it. A text scan of the hook would therefore pin a call shape
+	 * instead of the rule. What is asserted instead:
+	 *
+	 *  1. BEHAVIOUR, on the shipped function: a frame naming EITHER the selected or
+	 *     the effective model retires the paint, and an unrelated frame does not.
+	 *     Dropping either half fails here — the bug this test exists to prevent is
+	 *     the paint being retired by the wrong frame, or never retired at all.
+	 *  2. WIRING: the reconciliation calls that rule, so the hook cannot grow its
+	 *     own copy beside it.
+	 *
+	 * Behaviour is the stronger half: the old scan passed on a comparison that
+	 * happened to mention both fields, while this fails if either branch stops
+	 * being consulted.
+	 */
+	const SELECTED = { provider: "anthropic", model_id: "claude-opus-5" };
+	const EFFECTIVE = { provider: "openai", model_id: "gpt-5.6-sol" };
+	const frontendUnderTest = {
+		selected_model: SELECTED,
+		effective_model: EFFECTIVE,
+	};
+	assert.equal(
+		frontendNamesModel(frontendUnderTest, "anthropic/claude-opus-5"),
+		true,
+		"the owner's selected model retires the paint",
+	);
+	assert.equal(
+		frontendNamesModel(frontendUnderTest, "openai/gpt-5.6-sol"),
+		true,
+		"and so does the effective one: a fallback's frame is the owner's frame",
+	);
+	assert.equal(
+		frontendNamesModel(frontendUnderTest, "anthropic/claude-haiku-4-5"),
+		false,
+		"an unrelated frame must not retire it",
+	);
+	assert.equal(
+		frontendNamesModel(frontendUnderTest, null),
+		false,
+		"no selector, no confirmation",
+	);
+	assert.equal(
+		frontendNamesModel(null, "anthropic/claude-opus-5"),
+		false,
+		"and no frame, no confirmation",
+	);
 	assert.match(
 		hook,
-		/modelSelector\(frontend\?\.effective_model\) === painted/,
+		/frontendNamesModel\(frontend, painted\)/,
+		"the reconciliation reads the shared rule rather than its own copy",
 	);
 	assert.match(hook, /const PENDING_MODEL_TIMEOUT_MS/);
 	assert.match(hook, /pendingModel: null,/);

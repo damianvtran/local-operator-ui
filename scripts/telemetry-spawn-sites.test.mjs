@@ -412,6 +412,14 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/browser-clipboard-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure the page clipboard gate; the build carries the live analytics key, which no scratch profile can switch off, so the child's environment carries the telemetry kill switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-host-proof.mjs",
 		"spawn",
 		1,
@@ -529,6 +537,14 @@ const APP_SPAWN_SITES = [
 		2,
 		/env:\s*childEnv\(\),/,
 		"boots a SECOND headless app with --disable-gpu-compositing on its own scratch profile to reproduce a capability drop before the renderer subscribes - the same real app and renderer as #1, so the same reporting risk",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/notifications-glass-evidence.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app headless on a scratch profile to photograph the notifications group headers and read-state switch at the user's glass setting, so the renderer's provider is live in it and would report an evidence run as a product session",
 		/withTelemetryOff\(env\);/,
 	),
 	exempt(

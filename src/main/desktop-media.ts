@@ -1,4 +1,13 @@
-import { readOwnerAuditAttachment } from "./team-bridge-audit-media";
+import { readLinkPreviewArtifact } from "./link-preview/artifact-reader";
+import {
+	readMemberFileAttachment,
+	readOwnerAuditAttachment,
+} from "./team-bridge-audit-media";
+import {
+	type TeamBridgeImageCache,
+	teamBridgeImageAccountFingerprint,
+	teamBridgeImageKey,
+} from "./team-bridge-image-cache";
 /**
  * Authenticated binary/multipart relay for the legacy media routes.
  *
@@ -21,6 +30,7 @@ import {
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
 } from "../shared/desktop-contract";
+import { LINK_PREVIEW_ARTIFACT_ID } from "../shared/link-preview";
 
 const NOTIFICATION_INITIALS = /^[\p{L}\p{N}]{0,2}$/u;
 
@@ -74,9 +84,22 @@ const ownerAuditAttachmentTupleSchema = z
 	})
 	.strict();
 
+/*
+ * The byte lane a Team Bridge read asks for (decision a-fdf0). Absent means the
+ * image lane, so every existing caller is unchanged; `file` is the generic-file
+ * Save. Closed: anything else is refused before a request is built.
+ */
+const attachmentMode = z.enum(["image", "file"]).optional();
+
 const mediaRequestSchema = z.discriminatedUnion("op", [
 	ownerAuditAttachmentTupleSchema
-		.extend({ op: z.literal("team_bridge.owner_audit.attachment") })
+		.extend({
+			op: z.literal("team_bridge.owner_audit.attachment"),
+			/* Main-side only: core's audit route serves whatever the hub bound and
+			   refuses unknown query names, so the mode picks main's reader (type
+			   and ceiling) and never travels on the wire. */
+			mode: attachmentMode,
+		})
 		.strict(),
 	z
 		.object({ op: z.literal("account.profile"), expectedAccountId: id })
@@ -231,6 +254,18 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.attachment.upload"),
+			mode: z.enum(["image", "file"]).optional(),
+			fileName: z
+				.string()
+				.max(512)
+				.refine((value) => {
+					try {
+						return encodeURIComponent(value).length <= 1024;
+					} catch {
+						return false;
+					}
+				})
+				.optional(),
 			tenantId: id,
 			conversationId: id,
 			/* REQUIRED: the runtime route answers 422 without a captured-owner
@@ -243,6 +278,8 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.attachment"),
+			/* `file` asks core #3521 for the bound generic file (`?mode=file`). */
+			mode: attachmentMode,
 			tenantId: id,
 			conversationId: id,
 			messageId: id,
@@ -349,6 +386,55 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			assetId: z.string().regex(/^la_[0-9a-f]{16}$/),
 		})
 		.strict(),
+	/*
+	 * One notification sound as `audio/wav` with the volume baked in (core
+	 * `/v1/notification-sounds/{id}/audio?volume=`, `features.notification_sounds`).
+	 * Main stages it in ~/Library/Sounds or hands it to the renderer's player
+	 * (`notification-sound.ts`). The id is the catalog's slug or core's
+	 * `custom-[a-z0-9-]{1,40}`, checked here because it becomes a path segment.
+	 */
+	z
+		.object({
+			op: z.literal("notification_sounds.audio"),
+			soundId: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+			volume: z.number().int().min(0).max(100),
+		})
+		.strict(),
+	/*
+	 * Add one custom notification sound: multipart `file` + optional `name`
+	 * (core `POST /v1/notification-sounds`). The daemon sniffs the bytes and
+	 * refuses by content, so the declared type below is never trusted;
+	 * `fileName` is the user's own name for the file, used by the daemon only in
+	 * refusal copy and as the default display name.
+	 */
+	z
+		.object({
+			op: z.literal("notification_sounds.upload"),
+			fileName: z.string().min(1).max(255),
+			name: z.string().min(1).max(200).optional(),
+		})
+		.strict(),
+	/*
+	 * ONE CACHED LINK-PREVIEW ARTIFACT, by the id core derived for it.
+	 *
+	 * THE ID IS SHAPED HERE, not merely passed through: it is a PATH SEGMENT on this
+	 * request and a FILE NAME in main's artifact cache, so one check in front of both
+	 * is cheaper than a path bug. `[0-9a-f]{32}` mirrors core's own
+	 * `ARTIFACT_ID_PATTERN`, which the artifact route and the store both re-check.
+	 *
+	 * `expectedAccountId` travels as the `X-Link-Preview-Account` HEADER below, never
+	 * as a query parameter: this is a GET, and a GET's URL is the one thing every
+	 * intermediary writes down. Core answers 404 when the caller's scope does not
+	 * name the id - indistinguishable from "gone" by design — and 422 for a
+	 * malformed one.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.link_preview.artifact"),
+			id: z.string().regex(LINK_PREVIEW_ARTIFACT_ID),
+			expectedAccountId: z.string().min(1).max(128),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -388,6 +474,12 @@ export type DesktopMediaResponse =
 			 * become a sentence the renderer shows or a code other routes may claim.
 			 */
 			code?: DesktopRefusalCode | "renderer_busy";
+			/**
+			 * The daemon's own refusal code and params, forwarded ONLY for
+			 * `notification_sounds.upload`, whose row copy switches on them (see
+			 * the relay's error branch).
+			 */
+			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
 
 function endpoint(request: DesktopMediaRequest): {
@@ -472,9 +564,16 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/library/assets/${request.assetId}/waveform`,
 				method: "GET",
 			};
+		case "notification_sounds.audio":
+			return {
+				path: `/v1/notification-sounds/${request.soundId}/audio?volume=${request.volume}`,
+				method: "GET",
+			};
+		case "notification_sounds.upload":
+			return { path: "/v1/notification-sounds", method: "POST" };
 		case "team_bridge.attachment.upload":
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId, ...(request.mode ? { mode: request.mode } : {}) })}`,
 				method: "POST",
 			};
 		case "team_bridge.owner_audit.attachment":
@@ -482,9 +581,14 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/team-bridge/owner-audit/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
 				method: "GET",
 			};
+		/*
+		 * `mode=file` only when asked for, never `mode=image`: an older core refuses
+		 * any query name it does not know, so spelling out the default would break
+		 * every picture against it. The image lane's URL is byte-for-byte unchanged.
+		 */
 		case "team_bridge.attachment":
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId, ...(request.mode === "file" ? { mode: "file" } : {}) })}`,
 				method: "GET",
 			};
 		case "team_bridge.notification_avatar": {
@@ -518,6 +622,22 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
 				method: "GET",
 			};
+		/*
+		 * One cached link-preview artifact id (core's scope-derived hash).
+		 *
+		 * The path segment is the id and nothing else: no query string at all, because
+		 * the account receipt this route needs travels as the `X-Link-Preview-Account`
+		 * HEADER (see the header block in `requestDesktopMediaOutcome`) - a GET's URL is
+		 * written down by every intermediary, and an account id does not belong there.
+		 * `encodeURIComponent` is belt over the schema's `[0-9a-f]{32}`: the schema is
+		 * this client's check, and a hand-built request must not be able to turn an id
+		 * into a path fragment either.
+		 */
+		case "team_bridge.link_preview.artifact":
+			return {
+				path: `/v1/desktop/team-bridge/link-preview/artifact/${encodeURIComponent(request.id)}`,
+				method: "GET",
+			};
 	}
 }
 
@@ -533,6 +653,57 @@ export type DesktopMediaOutcome = {
 	answered: boolean;
 };
 
+/**
+ * A refusal's `params`, kept only as SHORT SCALARS (review round 1, n2): the
+ * renderer interpolates them into copy (`{seconds}`, `format`), so nothing
+ * else is needed, and the daemon being trusted is no reason to pass an
+ * arbitrarily large or nested object across IPC. At most 8 keys of at most 64
+ * characters; strings are cut to 128; objects, arrays and non-finite numbers
+ * are dropped.
+ */
+export function scalarParams(
+	params: Record<string, unknown>,
+): Record<string, string | number | boolean> | undefined {
+	const out: Record<string, string | number | boolean> = {};
+	for (const [key, value] of Object.entries(params).slice(0, 8)) {
+		if (key.length > 64) continue;
+		if (typeof value === "string") out[key] = value.slice(0, 128);
+		else if (typeof value === "number" && Number.isFinite(value))
+			out[key] = value;
+		else if (typeof value === "boolean") out[key] = value;
+	}
+	return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Where one `team_bridge.attachment` request's bytes live in the disk cache, or
+ * `null` for every other op.
+ *
+ * WHY THE ADDRESS IS DERIVED HERE, ONCE. A hit and a store have to name the same
+ * key, and the only way they can disagree is if each derives it. The tuple is the
+ * one the schema already shape-checked (`TEAM_BRIDGE_ATTACHMENT`'s five ids), so
+ * nothing in the caller reaches the file name: `teamBridgeImageKey` hashes the
+ * tuple and `teamBridgeImageAccountFingerprint` hashes the account, which is what
+ * keeps a directory listing from naming a tenant, a conversation or an identity.
+ */
+function imageCacheAddress(
+	request: DesktopMediaRequest,
+): { key: string; fingerprint: string } | null {
+	if (request.op !== "team_bridge.attachment") return null;
+	/*
+	 * THE FILE LANE NEVER TOUCHES THE IMAGE CACHE. The key hashes the five ids and
+	 * not `mode`, so a `mode=file` Save would otherwise be answered from a cached
+	 * picture of the same receipt instead of the bound generic file (a-fdf0). The
+	 * file lane's early return below already keeps it out of `store`; this keeps it
+	 * out of `read`, and Electron's HTTP cache is refused for it separately.
+	 */
+	if (request.mode === "file") return null;
+	return {
+		key: teamBridgeImageKey(request),
+		fingerprint: teamBridgeImageAccountFingerprint(request.expectedAccountId),
+	};
+}
+
 export async function requestDesktopMediaOutcome(
 	input: unknown,
 	// ArrayBuffer-backed by contract: `Blob`, which this relay builds the
@@ -542,6 +713,14 @@ export async function requestDesktopMediaOutcome(
 	bytes: Uint8Array<ArrayBuffer> | null,
 	backendUrl: string,
 	token: string | null,
+	/*
+	 * The Team Bridge image cache (`./team-bridge-image-cache`), or absent for every
+	 * caller without one - a test, a rig, or the one shipped path before main has
+	 * opened it. It answers `team_bridge.attachment` and nothing else; see the two
+	 * comments at those sites for why the read sits where it does and why the store
+	 * is awaited.
+	 */
+	imageCache?: TeamBridgeImageCache | null,
 ): Promise<DesktopMediaOutcome> {
 	const parsed = mediaRequestSchema.safeParse(input);
 	if (
@@ -596,7 +775,9 @@ export async function requestDesktopMediaOutcome(
 		bytes.byteLength >
 			(request.op === "account.avatar.put"
 				? 1024 * 1024
-				: TEAM_BRIDGE_ATTACHMENT_MAX_BYTES)
+				: request.mode === "file"
+					? 25 * 1024 * 1024
+					: TEAM_BRIDGE_ATTACHMENT_MAX_BYTES)
 	) {
 		// Never sent: the hub would answer 413 for the same bytes.
 		return {
@@ -609,6 +790,61 @@ export async function requestDesktopMediaOutcome(
 		};
 	}
 	const target = endpoint(request);
+	/* The generic-file Save lane (a-fdf0), under either authority. */
+	const fileLane =
+		(request.op === "team_bridge.attachment" ||
+			request.op === "team_bridge.owner_audit.attachment") &&
+		request.mode === "file";
+	/*
+	 * THE IMAGE CACHE READS HERE, IN FRONT OF THE FETCH AND AFTER EVERY REFUSAL
+	 * THIS RELAY OWNS. It comes after the schema, the pairing and the size checks
+	 * for one reason: an unpaired app must keep saying "pair me" rather than
+	 * serving pictures out of a directory an earlier session wrote - the cache
+	 * removes a NETWORK call, so it may not turn a refusal into an answer. It comes
+	 * before the request is built for the mirror reason: a hit spends no bearer, no
+	 * body and no timeout.
+	 *
+	 * A HIT IS STILL SUBJECT TO THE SAME MIME RULE. `read` applies the allowlist on
+	 * the way out, so an entry a hand-edited index types as `image/svg+xml` is a
+	 * miss - it can never become a document this relay hands the renderer.
+	 */
+	const imageAddress = imageCache ? imageCacheAddress(request) : null;
+	/*
+	 * THE FENCE VALUE IS TAKEN HERE, BEFORE THE ROUND TRIP, and handed back to
+	 * `store` below. A principal clear that lands while this response is in flight
+	 * moves the cache's epoch; the store then refuses to write, because the bytes in
+	 * hand belong to the account that just left (review round 1, F-2a). Capturing it
+	 * at store time instead would always match and close nothing.
+	 */
+	const imageEpoch = imageCache && imageAddress ? imageCache.currentEpoch() : 0;
+	if (imageCache && imageAddress) {
+		const cached = await imageCache.read(
+			imageAddress.key,
+			imageAddress.fingerprint,
+		);
+		if (cached) {
+			return {
+				response: {
+					status: 200,
+					kind: "bytes",
+					mimeType: cached.mime,
+					data: cached.bytes,
+				},
+				/*
+				 * `answered: false`, and that is not a detail: `answered` is "fetch
+				 * resolved" (`desktop-transport.ts`), and `backend-service.ts` feeds it
+				 * straight into `recordTransportAnswer()`, which resets the probe-miss
+				 * counter and stamps fresh transport evidence for 30 s. A hit contacted
+				 * no daemon, so claiming it did would keep a DEAD daemon looking alive for
+				 * as long as images keep being read, and none of this app's detach and
+				 * re-discovery would ever fire (review round 1, F-1). The bytes are still
+				 * a valid answer to the caller - they stand on the receipt the daemon once
+				 * gave - but they are not evidence that anything is listening.
+				 */
+				answered: false,
+			};
+		}
+	}
 
 	let body: BodyInit | undefined;
 	let contentType: string | undefined;
@@ -625,10 +861,12 @@ export async function requestDesktopMediaOutcome(
 		request.op === "library.content" ||
 		request.op === "library.thumbnail" ||
 		request.op === "library.waveform" ||
+		request.op === "notification_sounds.audio" ||
 		request.op === "team_bridge.attachment" ||
 		request.op === "team_bridge.owner_audit.attachment" ||
 		request.op === "team_bridge.avatar" ||
 		request.op === "team_bridge.endpoint_avatar" ||
+		request.op === "team_bridge.link_preview.artifact" ||
 		request.op === "team_bridge.notification_avatar"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
@@ -673,9 +911,14 @@ export async function requestDesktopMediaOutcome(
 			type:
 				request.op === "transcription.create"
 					? request.mimeType
-					: "application/zip",
+					: request.op === "notification_sounds.upload"
+						? "application/octet-stream"
+						: "application/zip",
 		});
 		form.append("file", blob, request.fileName);
+		if (request.op === "notification_sounds.upload" && request.name) {
+			form.append("name", request.name);
+		}
 		if (request.op === "transcription.create") {
 			for (const [key, value] of Object.entries(request.fields)) {
 				form.append(key, value);
@@ -690,17 +933,37 @@ export async function requestDesktopMediaOutcome(
 		const response = await fetch(new URL(target.path, backendUrl), {
 			method: target.method,
 			headers: {
-				Accept:
-					request.op === "team_bridge.owner_audit.attachment"
+				Accept: fileLane
+					? "application/octet-stream, application/json"
+					: request.op === "team_bridge.owner_audit.attachment"
 						? "image/png, image/jpeg"
 						: "application/json, audio/*, image/*, application/octet-stream",
 				...(contentType ? { "Content-Type": contentType } : {}),
+				// #3363 forwards the name only in file mode; it is display content,
+				// never a filesystem path or a declared MIME/safety claim.
+				...(request.op === "team_bridge.attachment.upload" &&
+				request.mode === "file" &&
+				request.fileName
+					? { "X-Bridge-File-Name": encodeURIComponent(request.fileName) }
+					: {}),
+				/*
+				 * The artifact route's account RECEIPT, as a header and only as a header
+				 * (core's `ACCOUNT_RECEIPT_HEADER`). The preview endpoints take the account
+				 * this session claims so core can refuse a mismatch; on this GET there is no
+				 * body to carry it and a query string would put it in every log between here
+				 * and the daemon, which is precisely what core's route refuses to do.
+				 */
+				...(request.op === "team_bridge.link_preview.artifact"
+					? { "X-Link-Preview-Account": request.expectedAccountId }
+					: {}),
 				Authorization: `Bearer ${token}`,
 			},
 			body,
 			// Private avatars are cached only as authority-scoped renderer blobs.
 			// Neither Electron nor an intermediary may persist them across login.
+			// A teammate's file is never kept by Electron's HTTP cache either.
 			...(request.op === "team_bridge.owner_audit.attachment" ||
+			fileLane ||
 			request.op === "team_bridge.avatar" ||
 			request.op === "team_bridge.endpoint_avatar" ||
 			request.op === "team_bridge.notification_avatar"
@@ -713,9 +976,24 @@ export async function requestDesktopMediaOutcome(
 		});
 		answered = true;
 		const responseType = response.headers.get("content-type") ?? "";
+		if (request.op === "team_bridge.link_preview.artifact") {
+			// The one byte op whose result main KEEPS ON DISK, so its ceiling is
+			// enforced before anything is buffered (`artifact-reader.ts`).
+			return {
+				response: await readLinkPreviewArtifact(response),
+				answered: true,
+			};
+		}
 		if (request.op === "team_bridge.owner_audit.attachment") {
 			return {
-				response: await readOwnerAuditAttachment(response),
+				response: await readOwnerAuditAttachment(response, request.mode),
+				answered: true,
+			};
+		}
+		if (request.op === "team_bridge.attachment" && request.mode === "file") {
+			// Bounded and header-checked BEFORE anything is buffered (25 MiB lane).
+			return {
+				response: await readMemberFileAttachment(response),
 				answered: true,
 			};
 		}
@@ -836,6 +1114,7 @@ export async function requestDesktopMediaOutcome(
 			// still, only a short detail string is forwarded.
 			let detail = "The media request failed.";
 			let declaredCode: string | undefined;
+			let declaredParams: Record<string, unknown> | undefined;
 			if (responseType.includes("application/json")) {
 				try {
 					const parsedError = (await response.json()) as {
@@ -869,6 +1148,14 @@ export async function requestDesktopMediaOutcome(
 						if (typeof envelope.code === "string") {
 							declaredCode = envelope.code;
 						}
+						const params = (raw as { params?: unknown }).params;
+						if (
+							typeof params === "object" &&
+							params !== null &&
+							!Array.isArray(params)
+						) {
+							declaredParams = scalarParams(params as Record<string, unknown>);
+						}
 					}
 				} catch {
 					// Keep the generic detail.
@@ -887,6 +1174,22 @@ export async function requestDesktopMediaOutcome(
 						declaredCode !== undefined && isDesktopRefusalCode(declaredCode)
 							? declaredCode
 							: desktopRefusalCodeForStatus(target.path, response.status),
+					/*
+					 * A notification-sound upload's refusal is about the FILE (`too_long`,
+					 * `unsupported_format` with `params.format`, ...), and the settings
+					 * row's copy and remedy switch on that code, never on `detail`. The
+					 * pairing `code` above cannot carry it (that table is closed), so
+					 * this op alone forwards the daemon's own code and params.
+					 */
+					...(request.op === "notification_sounds.upload" &&
+					declaredCode !== undefined
+						? {
+								refusal: {
+									code: declaredCode.slice(0, 64),
+									...(declaredParams ? { params: declaredParams } : {}),
+								},
+							}
+						: {}),
 				},
 				answered: true,
 			};
@@ -937,11 +1240,47 @@ export async function requestDesktopMediaOutcome(
 				answered: true,
 			};
 		}
+		/*
+		 * THE STORE HAPPENS HERE, AFTER THE MIME AND SIZE RULES HAVE ALREADY PASSED,
+		 * and only for a 200. Nothing else may enter the cache: a refusal body, a
+		 * partial read and a non-picture are all decided above this line, so a cache
+		 * entry can only ever describe bytes this relay already agreed to hand over.
+		 *
+		 * AWAITED, unlike the link-preview service's store. The cost is one atomic
+		 * write of a bounded image on a MISS - paid once, where a fetch was already
+		 * paid - and the benefit is that the second read of the image is guaranteed to
+		 * hit rather than depending on whether an unawaited write has landed. A store
+		 * that fails still answers with the bytes it holds.
+		 */
+		if (imageCache && imageAddress && response.status === 200) {
+			await imageCache.store(
+				imageAddress.key,
+				// The NORMALISED header, which is the spelling the allowlist above
+				// compared: `image/png; charset=binary` is kept as `image/png`.
+				(responseType.split(";")[0] ?? "")
+					.trim()
+					.toLowerCase(),
+				buffer,
+				imageAddress.fingerprint,
+				imageEpoch,
+			);
+		}
 		return {
 			response: {
 				status: response.status,
 				kind: "bytes",
-				mimeType: responseType || "application/octet-stream",
+				/*
+				 * THIS OP REPORTS ONE SPELLING, hit or miss. A hit carries the index's
+				 * normalised mime, so the miss normalises the header too - otherwise the
+				 * same image is described as `image/png; charset=binary` uncached and
+				 * `image/png` cached, which is an observable difference between two
+				 * answers for one receipt. Every other op keeps the header verbatim
+				 * (review round 1, NIT-2).
+				 */
+				mimeType:
+					request.op === "team_bridge.attachment"
+						? (responseType.split(";")[0] ?? "").trim().toLowerCase()
+						: responseType || "application/octet-stream",
 				data: buffer,
 			},
 			answered: true,
@@ -971,7 +1310,15 @@ export async function requestDesktopMedia(
 	bytes: Uint8Array<ArrayBuffer> | null,
 	backendUrl: string,
 	token: string | null,
+	imageCache?: TeamBridgeImageCache | null,
 ): Promise<DesktopMediaResponse> {
-	return (await requestDesktopMediaOutcome(input, bytes, backendUrl, token))
-		.response;
+	return (
+		await requestDesktopMediaOutcome(
+			input,
+			bytes,
+			backendUrl,
+			token,
+			imageCache,
+		)
+	).response;
 }

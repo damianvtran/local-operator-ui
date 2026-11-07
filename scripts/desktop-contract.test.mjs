@@ -1070,6 +1070,51 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			"/v1/desktop/usage?live=true&refresh=false&provider=openai",
 			"GET",
 		],
+		/*
+		 * The redeem route, and the row pins BOTH halves of the hop that a spend
+		 * breaks on silently: the camelCase request fields the schema speaks and the
+		 * snake_case body the route reads, plus the path and method (a POST sent to
+		 * the GET path would answer with a report and never spend, which reads as a
+		 * successful reset until the credits do not move).
+		 */
+		[
+			{
+				op: "usage.reset",
+				provider: "openai",
+				credentialRef: "cred:7",
+				identity: "me@example.com",
+				redeemRequestId: requestId,
+			},
+			"/v1/desktop/usage/reset",
+			"POST",
+			{
+				provider: "openai",
+				credential_ref: "cred:7",
+				identity: "me@example.com",
+				redeem_request_id: requestId,
+			},
+		],
+		/*
+		 * A ref-only body, because it is the shape the desktop panel actually sends:
+		 * it has the ref a report carried and not necessarily the label. `identity`
+		 * is then ABSENT from the body rather than sent as `null`, which the route's
+		 * `min_length=1` would refuse.
+		 */
+		[
+			{
+				op: "usage.reset",
+				provider: "openai",
+				credentialRef: "org_01J8Z3K4",
+				redeemRequestId: requestId,
+			},
+			"/v1/desktop/usage/reset",
+			"POST",
+			{
+				provider: "openai",
+				credential_ref: "org_01J8Z3K4",
+				redeem_request_id: requestId,
+			},
+		],
 		[
 			{ op: "analytics.get", sessionId, days: 7 },
 			`/v1/desktop/analytics?days=7&session_id=${sessionId}`,
@@ -2779,6 +2824,11 @@ test("long-budget reads get a budget sized for what makes them slow, and control
 	// is the network's and the backend's per-account retries. What the two shapes
 	// have in common is only that neither is bounded by the request.
 	assert.equal(desktopRequestDeadlineMs("usage.get"), 90000);
+	// `usage.reset` is on the SAME budget for the same reason plus one more: its
+	// answer contains the forced live read, and the vendor redeem comes before
+	// it. On the control budget the app would abandon a request that was still
+	// spending a credit.
+	assert.equal(desktopRequestDeadlineMs("usage.reset"), 90000);
 	// Everything else answers from state already in memory, so twenty seconds of
 	// silence is a failure and must stay one. `info.get` and `sessions.failovers`
 	// are deliberately NOT on the long budget: one is a host snapshot whose slow
@@ -4090,5 +4140,75 @@ test("a failing contract assertion renders a bounded diagnostic, never the data:
 	assert.ok(
 		bytes < 64 * 1024,
 		`failure rendering is ${bytes} bytes; the raw control was ${Buffer.byteLength(rawOutput)}`,
+	);
+});
+
+test("a usage reset names an account and carries a client-minted UUID", () => {
+	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+	const parses = (credentialRef) =>
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			credentialRef,
+			redeemRequestId: requestId,
+		}).success;
+	/*
+	 * EVERY SHAPE THE BACKEND PUBLISHES, because this fixture used to be the one
+	 * string the tests invented ("cred-7") rather than the two forms the backend
+	 * sends: `_credential_ref` answers the row's `identity_key` when it has one
+	 * (an email, an org/account/project id, or `radient-account:[...]`) and
+	 * `cred:<row id>` when it does not. A character class narrow enough to refuse
+	 * the colon or the `@` rejected every REAL ref, so the request never left the
+	 * renderer and the panel reported an unknown fate for a credit that was never
+	 * offered (review round 1, B1). The bound is the route's own
+	 * `max_length=128`, and nothing shorter.
+	 */
+	for (const ref of [
+		"cred:7",
+		"me@example.com",
+		"org_01J8Z3K4",
+		"radient-account:[sub=a1b2]",
+	]) {
+		assert.equal(parses(ref), true, `${ref} is a real credential ref`);
+	}
+	assert.equal(parses("x".repeat(128)), true, "the route's own bound is 128");
+	assert.equal(parses("x".repeat(129)), false, "129 is past the route's bound");
+	assert.equal(parses(""), false, "an empty ref is not an identifier");
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			identity: "me@example.com",
+			redeemRequestId: requestId,
+		}).success,
+		true,
+		"the backend's compatibility arm: identity alone names the account",
+	);
+	/*
+	 * Neither identifier: refused HERE as well as in the backend's body model, so
+	 * the app never sends the one request shape whose only possible answer is a
+	 * `refused` verdict about a spend it never attempted.
+	 */
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			redeemRequestId: requestId,
+		}).success,
+		false,
+	);
+	/*
+	 * The id is the vendor's idempotency key, so it has to be a UUID rather than
+	 * any string a caller happened to hold: a free-form label would let a "retry"
+	 * carry a different key and spend a second credit.
+	 */
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			credentialRef: "cred:7",
+			redeemRequestId: "retry-1",
+		}).success,
+		false,
 	);
 });

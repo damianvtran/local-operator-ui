@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "date": "2026-11-04",
+  "agent": "i18n-auditor",
+  "instance": "ed833173e70f",
+  "model": "openai/gpt-6.1-sol",
+  "model_fallback": null,
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-04"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "locale": "hi",
+  "namespace": "ui.settings.notifications",
+  "status": "passed",
+  "source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+  "target_sha256": "c1711483144ce9709816e73da91f709f9f5fb2394ff232dae93337e920de6dec",
+  "context_sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554",
+  "scope": "All 69 keys; D2 only against base 8a0e688 at 9080108975ba9beb74bedeb91cb33a969fa24568.",
+  "findings": [
+    {
+      "id": "HI1",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.list.builtin",
+        "ui.settings.notifications.custom.hint"
+      ],
+      "reason": "Match the core namespace built-in term; avoid a more formal unrelated rendering."
+    }
+  ],
+  "corrections": [
+    {
+      "id": "HI1",
+      "locale": "hi",
+      "key": "ui.settings.notifications.list.builtin",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "अंतर्निहित",
+      "after": "बिल्ट-इन",
+      "reason": "Match the core namespace built-in term; avoid a more formal unrelated rendering."
+    },
+    {
+      "id": "HI1",
+      "locale": "hi",
+      "key": "ui.settings.notifications.custom.hint",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "WAV, FLAC, MP3 या OGG, अधिकतम {seconds, number} सेकंड और {megabytes, number} MB। लाउडनेस अंतर्निहित ध्वनियों के बराबर कर दी जाती है।",
+      "after": "WAV, FLAC, MP3 या OGG, अधिकतम {seconds, number} सेकंड और {megabytes, number} MB। लाउडनेस बिल्ट-इन ध्वनियों के बराबर कर दी जाती है।",
+      "reason": "Same built-in terminology as core and list label."
+    }
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "core_sound_names": {
+    "path": "/Users/damian/.local-operator/sessions/7c5c172b0e89/scratchpad/notif-sounds/c2-i18n-audit-r1/hi.wire.notification_sound.full.audited.json",
+    "sha256": "9d9a47776d12bf45874204d48ee75c8488bf60ac6191da56a0688cf11bbd1d4d"
+  },
+  "checks": {
+    "locales": [
+      {
+        "locale": "fr",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 sur 50"
+      },
+      {
+        "locale": "es",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 de 50"
+      },
+      {
+        "locale": "zh-CN",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ru",
+        "keys": 69,
+        "pluralMessages": 3,
+        "status": "PASS",
+        "count3of50": "3 из 50"
+      },
+      {
+        "locale": "vi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ur",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 میں سے 3"
+      },
+      {
+        "locale": "hi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 में से 3"
+      }
+    ],
+    "totalKeys": 483,
+    "formatEvaluations": 4830,
+    "checks": [
+      "exact key parity",
+      "ICU AST argument names and types",
+      "all locale CLDR categories",
+      "no manual bidi controls",
+      "Vietnamese NFC",
+      "sample formatting incl 0,1,2,3,5,21,50,100,0.5,1000000"
+    ],
+    "limitations": [
+      "Text/ICU checks only; no rendered layout or native RTL shaping proof"
+    ]
+  },
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ],
+  "evidence_record": "i18n/audits/evidence/hi/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+}

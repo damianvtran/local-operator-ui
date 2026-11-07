@@ -1,0 +1,345 @@
+{
+	"instance": "1ce9e63d4bb9-ur-sidebar",
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session primary anthropic/claude-opus-5-5 failed on provider quota and fell back openai/gpt-6.1-sol -> kimi/k3.1-pro -> radient/auto; every read, check and receipt byte in this audit was produced on that final radient/auto resolution. No model performed any translation or back-translation.",
+	"locale": "ur",
+	"namespace": "ui.chat.sidebar",
+	"audit_date": "2026-11-05",
+	"task": "Independent audit of the final bytes of this contribution: ten new keys across seven locales, three of them corrected since the previous audit.",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-sidebar-literals",
+	"head_reviewed": "257ad02237a1ea7b8676efea55d76f89bb145ee4",
+	"head_at_write": "2cdbf215d7bea01aff156e8dbd5bddb5343684bd",
+	"base": "65116989dc9",
+	"heads_equivalence": {
+		"all_audited_files_identical": true,
+		"files_compared": 16,
+		"note": "The branch was rebuilt while this audit ran. Every audited catalogue file is byte-identical at both heads, so these hashes describe the bytes on disk; see the manifest for the per-file comparison."
+	},
+	"independence": "This run translated none of these values and implemented none of this change. It read the English source, the en context sidecars, sibling keys in the same catalogue and the runtime's own ICU library, then judged every value itself.",
+	"keys_audited": 9,
+	"keys": [
+		"ui.chat.sidebar.row_menu.hint",
+		"ui.chat.sidebar.row_menu.hint_mac",
+		"ui.chat.sidebar.row.search_beyond",
+		"ui.chat.sidebar.row.recent",
+		"ui.chat.sidebar.row.not_sent_suffix",
+		"ui.chat.sidebar.row.unread_suffix",
+		"ui.chat.sidebar.row.silent_remedy",
+		"ui.chat.sidebar.catalogue.show_more",
+		"ui.chat.sidebar.catalogue.show_more_chats"
+	],
+	"en_path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+	"target_path": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+	"sha256": {
+		"en": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+		"ur": "b0ced3e2760b16448196abbe16473d528d5865936cc40eb5116d586bcaf01a11"
+	},
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [
+		{
+			"severity": "INFO",
+			"id": "ur-O1",
+			"point": "The corrected pair now agrees, and against that the wider Urdu corpus",
+			"detail": "`row.not_sent_suffix` = \"، ابھی نہیں بھیجا گیا\" (masc. sg.) and `row.unread_suffix` = \"، نہ پڑھا گیا\" (masc. sg.) now take the SAME agreement, which is the correction's stated goal, and both match `row.not_sent` = \"ابھی نہیں بھیجا گیا\" byte for byte after the separator. Composed: \"حالیہ، ابھی نہیں بھیجا گیا\" / \"حالیہ، نہ پڑھا گیا\" — grammatical. Elsewhere the corpus treats a chat as feminine: `ui.chat.sidebar.catalogue.total` = \"… دکھائی جا رہی ہیں\", `ui.notices.chat.mark_all_read_superseded` = \"… نہ پڑھی گئی رہے گی\". The masculine here is the impersonal default with no overt head noun in the composed line, and it is the form its direct neighbour uses; recorded as variation, not a defect."
+		},
+		{
+			"severity": "INFO",
+			"id": "ur-O2",
+			"point": "The /stop literal is byte-exact but not bidi-isolated at the render site",
+			"detail": "`row.silent_remedy` = \"/stop اگر یہ خاموش رہے۔\": /stop is ASCII U+002F,U+0073,U+0074,U+006F,U+0070 in every locale (required). In an RTL paragraph the leading '/' is a bidi neutral (CS) between RTL text and the Latin run, so UBA resolves it to the paragraph direction and paints the run as 'stop/' — measured here with fribidi and reproduced in a real browser frame of the composed line. PRE-EXISTING: the previous English constant '/stop if it stays silent.' sat in the same un-isolated slot and reversed the same way, and catalogues may not carry bidi controls (`scripts/i18n/ur-activation.test.mjs` bans them; `isolateLtr`/`ShortcutText` apply controls in code). Not attributable to these bytes; if it is worth fixing, it is a render-site change (isolate the remedy clause), not a catalogue change."
+		}
+	],
+	"checks": {
+		"values": {
+			"ui.chat.sidebar.row_menu.hint": "دایاں کلک کریں یا اس کے اعمال کے لیے Shift+F10 دبائیں۔",
+			"ui.chat.sidebar.row_menu.hint_mac": "دایاں کلک کریں یا اس کے اعمال کے لیے Shift+F10 (زیادہ تر Mac کی بورڈز پر Fn کے ساتھ) دبائیں۔",
+			"ui.chat.sidebar.row.search_beyond": "تلاش سے ملا، یہاں درج چیٹس سے آگے",
+			"ui.chat.sidebar.row.recent": "حالیہ",
+			"ui.chat.sidebar.row.not_sent_suffix": "، ابھی نہیں بھیجا گیا",
+			"ui.chat.sidebar.row.unread_suffix": "، نہ پڑھا گیا",
+			"ui.chat.sidebar.row.silent_remedy": "/stop اگر یہ خاموش رہے۔",
+			"ui.chat.sidebar.catalogue.show_more": "{hidden, plural, one {مزید {hidden, number, ::group-off} دکھائیں} other {مزید {hidden, number, ::group-off} دکھائیں}}",
+			"ui.chat.sidebar.catalogue.show_more_chats": "{add, plural, one {مزید {add, number, ::group-off} چیٹ دکھائیں} other {مزید {add, number, ::group-off} چیٹس دکھائیں}}"
+		},
+		"icu": {
+			"show_more": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "hidden",
+				"declaredCategories": [
+					"one",
+					"other"
+				],
+				"intlCategories": [
+					"one",
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 2,
+				"formatted": {
+					"0": "مزید 0 دکھائیں",
+					"1": "مزید 1 دکھائیں",
+					"2": "مزید 2 دکھائیں",
+					"3": "مزید 3 دکھائیں",
+					"5": "مزید 5 دکھائیں",
+					"11": "مزید 11 دکھائیں",
+					"21": "مزید 21 دکھائیں",
+					"22": "مزید 22 دکھائیں",
+					"25": "مزید 25 دکھائیں",
+					"101": "مزید 101 دکھائیں",
+					"1000": "مزید 1000 دکھائیں",
+					"12345": "مزید 12345 دکھائیں",
+					"1000000": "مزید 1000000 دکھائیں"
+				}
+			},
+			"show_more_chats": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "add",
+				"declaredCategories": [
+					"one",
+					"other"
+				],
+				"intlCategories": [
+					"one",
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 2,
+				"formatted": {
+					"0": "مزید 0 چیٹس دکھائیں",
+					"1": "مزید 1 چیٹ دکھائیں",
+					"2": "مزید 2 چیٹس دکھائیں",
+					"3": "مزید 3 چیٹس دکھائیں",
+					"5": "مزید 5 چیٹس دکھائیں",
+					"11": "مزید 11 چیٹس دکھائیں",
+					"21": "مزید 21 چیٹس دکھائیں",
+					"22": "مزید 22 چیٹس دکھائیں",
+					"25": "مزید 25 چیٹس دکھائیں",
+					"101": "مزید 101 چیٹس دکھائیں",
+					"1000": "مزید 1000 چیٹس دکھائیں",
+					"12345": "مزید 12345 چیٹس دکھائیں",
+					"1000000": "مزید 1000000 چیٹس دکھائیں"
+				}
+			}
+		},
+		"composition": {
+			"parts": {
+				"ui.chat.sidebar.row.not_sent_suffix": {
+					"value": "، ابھی نہیں بھیجا گیا",
+					"firstCodepoint": "U+060C",
+					"secondCodepoint": "U+0020",
+					"localeComma": true,
+					"oneSpaceAfter": true,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				},
+				"ui.chat.sidebar.row.unread_suffix": {
+					"value": "، نہ پڑھا گیا",
+					"firstCodepoint": "U+060C",
+					"secondCodepoint": "U+0020",
+					"localeComma": true,
+					"oneSpaceAfter": true,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				}
+			},
+			"composed": {
+				"statusOnly": "حالیہ",
+				"statusPlusNotSent": "حالیہ، ابھی نہیں بھیجا گیا",
+				"statusPlusUnread": "حالیہ، نہ پڑھا گیا",
+				"searchBeyondPlusUnread": "تلاش سے ملا، یہاں درج چیٹس سے آگے، نہ پڑھا گیا",
+				"statusPlusBothPlusArchived": "حالیہ، ابھی نہیں بھیجا گیا، نہ پڑھا گیا، آرکائیو شدہ",
+				"withSilentRemedy": "حالیہ · /stop اگر یہ خاموش رہے۔"
+			}
+		},
+		"literals": {
+			"hint": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				},
+				"Mac": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				}
+			},
+			"hint_mac": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						70,
+						110
+					]
+				},
+				"Mac": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						77,
+						97,
+						99
+					]
+				}
+			},
+			"slashStop": {
+				"atStart": true,
+				"codepoints": [
+					47,
+					115,
+					116,
+					111,
+					112
+				],
+				"finalCodepoint": "U+06D4"
+			}
+		},
+		"terminology": {
+			"ui.chat.sidebar.row_menu.hint": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens; names the menu's items, not the menu",
+					"value": "گفتگو آرکائیو کریں",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.pin",
+					"why": "second member of the same family",
+					"value": "گفتگو پن کریں",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row_menu.hint_mac": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens",
+					"value": "گفتگو آرکائیو کریں",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.search_beyond": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.matched_in_conversation",
+					"why": "the sibling why-this-row-is-here fragment for a filtered row",
+					"value": "، گفتگو میں ملا",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.recent": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.recents",
+					"why": "the corpus's existing word for recency",
+					"value": "حالیہ"
+				}
+			],
+			"ui.chat.sidebar.row.not_sent_suffix": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.not_sent",
+					"why": "the row's own visible badge for the same fact",
+					"value": "ابھی نہیں بھیجا گیا",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": "، آرکائیو شدہ",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.unread_suffix": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.unread",
+					"why": "the corpus's existing word for unread",
+					"value": "نہ پڑھی گئی"
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": "، آرکائیو شدہ",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.silent_remedy": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.search_beyond",
+					"why": "the neighbouring clause in the same status line (register)",
+					"value": "تلاش سے ملا، یہاں درج چیٹس سے آگے",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.in_conversation",
+					"why": "the row's other ' · '-slot clause (register)",
+					"value": "گفتگو میں",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same footer's count formatting and plural style",
+					"value": "{total, number, ::group-off} چیٹس میں سے {shown, number, ::group-off} دکھائی جا رہی ہیں",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more_chats": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same namespace's word for a chat and its plural arms",
+					"value": "{total, number, ::group-off} چیٹس میں سے {shown, number, ::group-off} دکھائی جا رہی ہیں",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total_search",
+					"why": "the same footer family's many-arm 'de …' form",
+					"value": "{total, number, ::group-off} چیٹس میں سے {shown, number, ::group-off} {shown, plural, one {نتیجہ دکھایا جا رہا ہے} other {نتائج دکھائے جا رہے ہیں}}",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.archived_suffix": []
+		}
+	}
+}

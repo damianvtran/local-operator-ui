@@ -33,6 +33,7 @@
  * colour, for the "adjusted for legibility" hint (the architect's bar is ΔE00 5).
  */
 
+import { ACCENT_FAMILIES } from "./accent-roles.mjs";
 import { deltaE, toLab } from "./color.mjs";
 import {
 	ALT_ACCENT_CHROMA_FLOOR,
@@ -111,7 +112,12 @@ export const resolveAccentRef = (ref, base, paletteAccent) => {
 export const applyAccent = (
 	palette,
 	ref,
-	{ authored = palette, id = "custom", paletteAccent } = {},
+	{
+		authored = palette,
+		id = "custom",
+		paletteAccent,
+		preserveSecondary = false,
+	} = {},
 ) => {
 	const requested = resolveAccentRef(ref, authored, paletteAccent);
 	if (!requested) return { palette, applied: false, adjusted: 0, requested };
@@ -147,7 +153,7 @@ export const applyAccent = (
 			if (c >= ROW_STATE_NEUTRAL_PANEL) out[role] = fromLch(l, c, h);
 		}
 	}
-	if (ref.kind === "theme-alt") {
+	if (!preserveSecondary && ref.kind === "theme-alt") {
 		/* A swap: the second hue becomes the accent and the accent the second hue
 		   - unless the authored accent has no hue to give (Obsidian's white), in
 		   which case the second accent keeps its own colour and the contract's
@@ -155,6 +161,7 @@ export const applyAccent = (
 		if (lch(authored.accent)[1] >= ALT_ACCENT_CHROMA_FLOOR)
 			out.accentAlt = normalizeHex(authored.accent);
 	} else if (
+		!preserveSecondary &&
 		deltaE(out.accent, out.accentAlt) < SEPARATION_FLOOR &&
 		lch(authored.accent)[1] >= ALT_ACCENT_CHROMA_FLOOR
 	) {
@@ -185,10 +192,19 @@ export const applyAccent = (
 		"#000000",
 	]);
 	const repaired = repairPalette(out, id, authored);
+	// A saved theme's secondary is intentional identity/category ink. The global
+	// preference edits primary, not that authored family. Contrast has already
+	// composed these values; refuse this layer if its repair would repaint them.
+	const secondaryChanged =
+		preserveSecondary &&
+		ACCENT_FAMILIES.filter((family) => family.storage === "overrides")
+			.flatMap((family) => [family.role, ...family.variants])
+			.some((role) => repaired.palette[role] !== palette[role]);
 	// ΔE00 3 is a clearly perceptible colour difference, not a luminance
 	// ratio (two distinct saturated hues can share luminance). Never trade the
 	// existing text floors for separation: refuse the layer honestly instead.
 	if (
+		secondaryChanged ||
 		repaired.findings.length > 0 ||
 		deltaE(repaired.palette.accent, repaired.palette.ink) < 3
 	)

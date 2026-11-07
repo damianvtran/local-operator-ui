@@ -9,11 +9,14 @@ import type {
 import { TeamBridgeAttachmentStrip } from "./team-bridge-attachments";
 import { rememberUploadPreview } from "./team-bridge-attachments-model";
 import {
+	FILE_SAVE_FILES,
 	SHOT_GREEN_B64,
 	SHOT_PANORAMA_B64,
 	SHOT_RED_B64,
 	SHOT_TALL_B64,
 	SHOT_WIDE_B64,
+	fileSaveAnswer,
+	pressFileSaves,
 } from "./team-bridge-attachments.fixtures";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import { TeamBridgeScheduledRow } from "./team-bridge-scheduled";
@@ -60,8 +63,15 @@ const installMedia = () => {
 	const api = (window as any).api ?? {};
 	api.desktop = {
 		...api.desktop,
-		media: async (request: { op?: string; attachmentId?: string }) => {
+		media: async (request: {
+			op?: string;
+			attachmentId?: string;
+			mode?: string;
+		}) => {
 			const id = request.attachmentId ?? "";
+			// A file's Save (decision a-fdf0): the synthetic file lane, by id.
+			if (request.op === "team_bridge.attachment" && request.mode === "file")
+				return fileSaveAnswer(id);
 			if (id.startsWith("batt_refused_"))
 				return {
 					status: Number(id.slice("batt_refused_".length)),
@@ -494,6 +504,46 @@ export const BubbleFileChips: StoryObj<typeof Thread> = {
 			]}
 		/>
 	),
+};
+
+/*
+ * Every Save state of a file card in a real member thread (decision a-fdf0):
+ * ready, saving (the relay never answers), refused (the hub's uniform 404),
+ * too large (413), failed (transport 503), expired by state and expired by a
+ * passed deadline. The play function presses the four that need a press.
+ */
+export const BubbleFileSaveStates: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: "Everything from the review:",
+					files: FILE_SAVE_FILES,
+				}),
+			]}
+		/>
+	),
+	play: async ({ canvasElement }) => pressFileSaves(canvasElement),
+};
+/** The same cards before any press: only the ready/expired facts. */
+export const BubbleFileSaveAvailable: StoryObj<typeof Thread> = {
+	render: BubbleFileSaveStates.render,
+};
+/** The compact thread pane's width, after the presses. */
+export const BubbleFileSaveStatesCompact: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			width={430}
+			density="compact"
+			messages={[
+				message({
+					body: "Everything from the review:",
+					files: FILE_SAVE_FILES,
+				}),
+			]}
+		/>
+	),
+	play: async ({ canvasElement }) => pressFileSaves(canvasElement),
 };
 
 export const BubbleImageOnly: StoryObj<typeof Thread> = {

@@ -1,0 +1,33 @@
+{
+  "auditor": "independent-translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "d9ff5be208f1-ui1549-ur-20261031-r1",
+  "status": "passed",
+  "namespace": "ui.chat.user_turn",
+  "sha256": {
+    "en": "7a40ae36b492576746124538551a2071010c5799795dfb303b8b99285b73ee3a",
+    "ur": "b068de97e36c4940955e717bd513b2b45e9e9c9d34626b7d3cd33cec56fb5686"
+  },
+  "findings": [],
+  "date": "2026-10-31",
+  "session": "d9ff5be208f1",
+  "independence": "Separate reviewer agent; did not author or edit catalogue translations.",
+  "provenance": {
+    "actual_model": "openai/gpt-6.1-sol",
+    "original_model": "anthropic/claude-opus-5-5",
+    "fallback_reason": "Provider quota failure; model switch occurred before substantive audit."
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.user_turn.context.json",
+    "sha256": "a006922ca6662dabc178992fb2975964e22f07ca788139891f1c8ca5bd0b7948"
+  },
+  "scope": {
+    "keys": [
+      "ui.chat.user_turn.show_more",
+      "ui.chat.user_turn.show_less"
+    ],
+    "placeholders": false,
+    "assessment": "مزید دکھائیں / کم دکھائیں politely request showing more/less of the message. Respectful imperative and natural Urdu comply. Logical-order Arabic-script text contains no manual bidi controls or Latin islands requiring translator intervention; rendered mirroring was not assessed.",
+    "limitations": "LLM linguistic audit, not native-human certification; no rendered UI, font, geometry, or runtime RTL validation."
+  }
+}

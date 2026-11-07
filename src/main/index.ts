@@ -78,6 +78,7 @@ import {
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
 } from "./backend";
+import { resolveBackendAttachForThisProcess } from "./backend/attach-backend";
 import { backendConfig, launchEnv } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
@@ -128,6 +129,8 @@ import {
 import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
+import { LinkPreviewArtifactCache } from "./link-preview/artifact-cache";
+import { createLinkPreviewService } from "./link-preview/service";
 import {
 	type QuickSendWatcher,
 	readQuickSendValue,
@@ -136,6 +139,14 @@ import {
 } from "./local-config";
 import { createMainLocale } from "./main-locale";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
+import {
+	NOTIFICATION_SOUND_PLAY_CHANNEL,
+	configureNotificationSound,
+} from "./notification-sound";
+import {
+	NOTIFICATION_TEST_CHANNEL,
+	sendTestNotification,
+} from "./notification-test";
 import { paletteDoorChannel } from "./palette-door";
 import { pdfViewerStatus } from "./pdf-viewer-status";
 import {
@@ -155,6 +166,7 @@ import {
 	installSupplementProtocol,
 	registerSupplementScheme,
 } from "./supplement-protocol";
+import { TeamBridgeImageCache } from "./team-bridge-image-cache";
 import { TeamBridgeNotificationImages } from "./team-bridge-notification-images";
 import { TeamBridgeNotifier } from "./team-bridge-notifier";
 import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
@@ -1337,7 +1349,21 @@ function createWindow(
 const userShellPath = createUserShellPath({
 	log: (message) => logger.info(message, LogFileType.BACKEND),
 });
-const backendService = new BackendServiceManager({ userShellPath });
+/*
+ * WHAT THIS LAUNCH WAS TOLD ABOUT ITS BACKEND, resolved ONCE here and acted on by
+ * both consumers: the manager attaches to it, and this file refuses to run the
+ * setup installer when the named backend cannot be attached to
+ * (`./backend/attach-backend` holds what the switch is for, why the URL is the
+ * opt-in, and why the token half is not a second credential). Resolving it in one
+ * place is the point - a second read of the environment could disagree with this
+ * one, and the installer would then run against a backend the manager was
+ * already attached to.
+ */
+const backendAttach = resolveBackendAttachForThisProcess();
+const backendService = new BackendServiceManager({
+	userShellPath,
+	attach: backendAttach,
+});
 /*
  * WHETHER THIS PROCESS HAS BEGUN QUITTING, and has not been cancelled since.
  *
@@ -1406,6 +1432,34 @@ const reportBackendFailure = (message: string, fileType: LogFileType): void => {
 		return;
 	}
 	dialog.showErrorBox("Backend Error", message);
+};
+
+/**
+ * A launch that NAMED its backend, and cannot have it, says so and stops - it
+ * never installs a runtime instead.
+ *
+ * WHY THERE IS NO FALLBACK HERE. The installer exists to produce a backend, so
+ * using it to answer "the backend you named is not usable" would replace a
+ * specific, diagnosable failure (wrong token, nothing listening, wrong port) with
+ * several minutes of downloading and a different daemon at the end of it. For the
+ * rig this switch exists for, that is worse than useless: the run would report
+ * success while measuring a backend it never chose.
+ *
+ * WHY IT DOES NOT RAISE A DIALOG, unlike every other backend failure here. Two
+ * reasons, and the first is a standing invariant:
+ *   - `reportBackendFailure` above is this file's ONE native modal, and it is
+ *     asserted to be the only one (`owned-serve-lifecycle.test.mjs`): a second
+ *     `dialog.showErrorBox` is a modal that can park a quit again. This path has
+ *     no business becoming the second.
+ *   - The launches this switch exists for are headless, and a native error box has
+ *     nobody to dismiss it there - it parks the main thread and leaves a process
+ *     with no window and no exit, which is the state a rig reads as a hang rather
+ *     than as a failure. A named line on stderr plus exit code 1 is the honest
+ *     face of it for the person at a terminal and for the rig alike.
+ */
+const reportAttachFailure = (detail: string): void => {
+	logger.error(`[attach] ${detail}`, LogFileType.BACKEND);
+	console.error(`[attach] ${detail}`);
 };
 
 /*
@@ -2387,6 +2441,24 @@ app
 		}
 
 		/*
+		 * A launch whose attach pair is broken stops HERE, before discovery, before
+		 * any window and long before the installer.
+		 *
+		 * WHY SO EARLY. Half an attach pair is not a degraded attach and it is not an
+		 * absent one: nothing downstream can tell the difference between "this rig
+		 * forgot the token" and "this machine has no backend", so discovery would
+		 * find nothing, `start()` would find it may not spawn, and the next branch is
+		 * the installer - which is exactly the silent substitution the switch
+		 * forbids. Naming the missing half at the top of the launch is the only place
+		 * the two are still distinguishable.
+		 */
+		if (backendAttach.kind === "incomplete") {
+			reportAttachFailure(backendAttach.detail);
+			app.exit(1);
+			return;
+		}
+
+		/*
 		 * A launch that finds its own install still running gets out of the way.
 		 *
 		 * WHY IT IS THIS EARLY, AND WHAT IT SAVES. An install four minutes into its
@@ -2725,7 +2797,119 @@ app
 				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
 				nativeBadge.reset();
 			},
+			// Fire-and-forget: the sign-out must not wait on a directory sweep. A delete that
+			// fails is retried by the next `clear()` and otherwise waits for the NEXT LAUNCH:
+			// this process reaps orphaned files in `open()` and in every `clearLocked()`, and
+			// nowhere else (review round 1, F-4; corrected in round 2). Both caches are
+			// constructed just below this statement — see why there, beside those
+			// constructions — and these closures only reach them when a transition actually
+			// fires, which is after this synchronous block has finished.
+			principalChanged: () => {
+				// `fence()`, not `clear()`, for both caches and for the same reason: the
+				// transition drops everything only once this process has confirmed a principal,
+				// so the `null -> <account>` report every launch produces does not delete a cache
+				// the feature exists to keep.
+				void linkPreviewArtifacts.fence();
+				void teamBridgeImages.fence();
+			},
+			/*
+			 * THE SAME PRINCIPAL, AS A STATE RATHER THAN ONLY AS AN EVENT.
+			 *
+			 * `principalChanged` above is fired from one witness (`observeResponse`), so it
+			 * never fires for a principal that changed while this process was closed, and
+			 * it fires spuriously at every launch. This port carries the answer instead:
+			 * fired from a renderer status AND from the reconcile poll, it lets the image
+			 * cache bind its bytes to the principal the app can actually see, and drop
+			 * them when that is a different account or a verified sign-out.
+			 */
+			principalResolved: (accountId) => {
+				void linkPreviewArtifacts.bind(accountId);
+				void teamBridgeImages.bind(accountId);
+			},
 		});
+		/*
+		 * LINK PREVIEWS' BYTE CACHE — built BELOW the attention service, deliberately.
+		 *
+		 * WHY NOT ABOVE IT, where it reads more naturally: `scripts/app-icon-badge.test.mjs`
+		 * slices this file from `const publishBadge =` to `const appAttention =` and
+		 * evaluates that region through `new Function` with an explicit name list.
+		 * A construction inside that region fails there with `ReferenceError:
+		 * LinkPreviewArtifactCache is not defined` — a real regression in a test this
+		 * change does not own (QA round 2, Q-2), so the cache is built here instead.
+		 * The port above is outside that region and only reaches this binding when a
+		 * principal transition actually fires, which cannot happen before this
+		 * synchronous block finishes.
+		 *
+		 * WHAT IT IS FOR. It holds third-party image BYTES for 24 h, and a sign-out or
+		 * account switch must not leave the departing account's images on disk — so it
+		 * consumes BOTH principal ports above, exactly as the Team Bridge image cache
+		 * does: `principalResolved` binds it to the account the app can see (same keeps,
+		 * different drops, a verified sign-out drops), `principalChanged` drops it at the
+		 * transition. A per-entry account fingerprint already stops a replayed id being
+		 * served under another receipt (see `link-preview/artifact-cache.ts`); this is
+		 * the other half: the bytes stop existing.
+		 *
+		 * WHAT MAIN DOES NOT DO HERE, because the next reader will be tempted: it does
+		 * not fetch, parse, or validate any remote document. Issues with a preview
+		 * (dial-tone page, private host, disabled feature) belong to core's routes; main
+		 * only forwards and keeps the bytes.
+		 *
+		 * OPENED IN THE BACKGROUND: `open()` ensures the directory, reads the index and
+		 * sweeps once, and until it settles every lookup is a miss and every store is a
+		 * no-op — a cold cache, not an error. Blocking the window on a directory scan to
+		 * save one image download would trade the first paint for it.
+		 */
+		const linkPreviewArtifacts = new LinkPreviewArtifactCache({
+			// The documented home: <userData>/cache/link-previews, one file per
+			// artifact id with an `index.json` beside them.
+			dir: join(app.getPath("userData"), "cache", "link-previews"),
+		});
+		void linkPreviewArtifacts.open().catch(() => {});
+		/*
+		 * TEAM BRIDGE MESSAGE IMAGES' BYTE CACHE — built here, for the same two reasons
+		 * the link-preview cache is: this region is outside the slice
+		 * `scripts/app-icon-badge.test.mjs` evaluates (see the note above), and a cache
+		 * needs `app.getPath("userData")`, which only exists once the app is ready.
+		 *
+		 * WHAT IT IS FOR. Entering a channel re-downloaded every visible image and
+		 * nothing survived a restart. This holds the bytes behind one
+		 * `team_bridge.attachment` receipt for seven days, bounded, and is consulted by
+		 * the media relay before it fetches — same request, same bearer, same route, no
+		 * new IPC op and no renderer contract change. It does NOT park blob URLs: the
+		 * network cost goes, the IPC cost stays (`team-bridge-image-cache.ts` states
+		 * that decision where the next reader will look for it).
+		 *
+		 * AND A SIGN-OUT MUST NOT LEAVE THEM BEHIND, which is why this cache consumes BOTH
+		 * of the attention service's principal ports above: `principalResolved` binds the
+		 * bytes to the account the app can see and drops them for a different one or a
+		 * verified sign-out (the state check, fed by a renderer status AND by the
+		 * reconcile poll), while `principalChanged` drops them at the transition itself,
+		 * before the next read can race the switch. A per-entry account fingerprint
+		 * already stops a replayed key being served under another receipt; the drop is
+		 * the other half, where the bytes stop existing.
+		 *
+		 * ATTACHED, NOT PASSED, to the media relay: `backendService` is constructed at
+		 * module load, long before this block, so the cache reaches it through
+		 * `attachTeamBridgeImageCache` — one owner for "does this process cache
+		 * message images", and a `null` there means every read is a fetch.
+		 *
+		 * OPENED IN THE BACKGROUND, like its link-preview neighbour: until `open()`
+		 * settles every lookup is a miss and every store is a no-op. A cold cache is
+		 * not an error, and blocking the first paint on a directory scan to save one
+		 * image download would be the wrong trade. No principal is passed here on
+		 * purpose: at this instant the app has not answered a status yet, so "unknown"
+		 * is the truth, and `bind` resolves it on the first answer. Passing `null` as
+		 * "signed out" would delete the cache at every launch — the thing it exists to
+		 * avoid — and buys nothing, because a read can only be answered for the account
+		 * whose fingerprint stored the entry.
+		 */
+		const teamBridgeImages = new TeamBridgeImageCache({
+			// The documented home: <userData>/cache/team-bridge-images, one hashed file
+			// per receipt with an `index.json` beside them.
+			dir: join(app.getPath("userData"), "cache", "team-bridge-images"),
+		});
+		void teamBridgeImages.open().catch(() => {});
+		backendService.attachTeamBridgeImageCache(teamBridgeImages);
 		refreshAppIconBadge = () => {
 			if (process.platform === "win32") nativeBadge.invalidateOverlayTarget();
 			appAttention.projection.refresh();
@@ -2744,6 +2928,24 @@ app
 				return response;
 			},
 		);
+		/*
+		 * The configured notification sound for all four banner owners
+		 * (`notification-sound.ts`). Configured BEFORE any of them can raise a
+		 * banner; until its first read settles every banner keeps today's OS
+		 * chime. The renderer fallback (Windows/Linux, or macOS when staging
+		 * failed) needs a window; with none the banner simply goes out silent.
+		 */
+		const notificationSound = configureNotificationSound({
+			request: (input) => backendService.requestDesktop(input),
+			media: (input) => backendService.requestDesktopMedia(input, null),
+			playInRenderer: (bytes) => {
+				const window = mainWindow;
+				if (!window || window.isDestroyed()) return false;
+				window.webContents.send(NOTIFICATION_SOUND_PLAY_CHANNEL, bytes);
+				return true;
+			},
+			log: (line) => logger.info(line, LogFileType.BACKEND),
+		});
 		const desktopNotifier = new DesktopNotifier(
 			() => mainWindow,
 			sendDesktop,
@@ -2897,6 +3099,9 @@ app
 			 * draw time.
 			 */
 			void mainLocale.refresh();
+			// Same transitions: a different backend can carry a different sound
+			// setting, or none (an older core drops back to today's chime).
+			void notificationSound?.refresh();
 			void desktopNotifier.refreshNotificationContract();
 			// The feed's own gate: it reads `features.desktop_feed` and opens
 			// nothing without it, so an older backend keeps the per-session path and
@@ -2991,6 +3196,10 @@ app
 				) {
 					void mainLocale.refresh();
 				}
+				// Same reasoning for the sound settings: main owns the banners, so
+				// the re-read must not depend on a window existing.
+				if (frame.type === "config")
+					notificationSound?.observeConfigChange(frame.payload.changed_keys);
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
 				window.webContents.send("desktop-feed-frame", frame);
@@ -3341,6 +3550,14 @@ app
 			(m) => logger.warn(m, LogFileType.BACKEND),
 		);
 
+		const linkPreview = createLinkPreviewService({
+			transport: {
+				request: (input) => sendDesktop(input),
+				media: (input) => backendService.requestDesktopMedia(input, null),
+			},
+			cache: linkPreviewArtifacts,
+		});
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -3398,6 +3615,12 @@ app
 				void mainLocale.refresh();
 			},
 			(input) => recordingShortcut.admit(input),
+			/*
+			 * The link-preview proxy, LAST for the reason the signature's own note gives:
+			 * every earlier caller passes these positionally. It rides the same sender
+			 * gate as every other channel above it.
+			 */
+			linkPreview,
 		);
 
 		// Both app documents may read recording state; only the main window's
@@ -3410,6 +3633,25 @@ app
 				? []
 				: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }]),
 		];
+		/*
+		 * Settings' "Send test notification" (`notification-test.ts`): one real
+		 * banner through the shared sound helper. Only the main window's main
+		 * frame may ask; a headless run answers `suppressed` and raises nothing.
+		 */
+		ipcMain.removeHandler(NOTIFICATION_TEST_CHANNEL);
+		ipcMain.handle(NOTIFICATION_TEST_CHANNEL, (event) => {
+			const owner = mainWindow;
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				!isAdmittedSender(event, [{ window: owner, url: rendererUrl }])
+			)
+				throw new Error("This window cannot send a test notification.");
+			return sendTestNotification({
+				windowRaise: windowLaunch.show,
+				sound: () => notificationSound,
+			});
+		});
 		ipcMain.removeHandler("recording-shortcut:get");
 		ipcMain.handle("recording-shortcut:get", (event) => {
 			if (!isAdmittedSender(event, recordingSenders()))
@@ -4108,6 +4350,26 @@ app
 		 * (design §3.7).
 		 */
 		const hasExternalBackend = await backendService.checkExistingBackend();
+
+		/*
+		 * A NAMED BACKEND THAT COULD NOT BE ATTACHED TO ENDS HERE.
+		 *
+		 * Everything below answers `hasExternalBackend === false` by finding or
+		 * making a backend: discovery is skipped, `start()` is reached, and on the
+		 * managed-path conditions the installer runs. All of those are the wrong
+		 * answer to "the daemon you named is not serving, or does not accept this
+		 * token" - they turn a diagnosable misconfiguration into a DIFFERENT daemon,
+		 * minutes later, inside the same process. The manager recorded why the
+		 * attach failed at the point it failed, so this reports that and stops.
+		 */
+		if (backendAttach.kind === "attach" && !hasExternalBackend) {
+			reportAttachFailure(
+				backendService.lastAttachFailure() ??
+					`This launch named ${backendAttach.baseUrl} as its backend, but nothing was attached to it.`,
+			);
+			app.exit(1);
+			return;
+		}
 
 		/*
 		 * Only an app permitted to manage a daemon may install or start one. A

@@ -41,10 +41,12 @@ export const PopoverContent = forwardRef<
 				 * paints over the chrome strip, and its controls have to stay clickable there.
 				 */
 				data-titlebar-no-drag=""
+				data-glass-overlay=""
+				data-lo-floating=""
 				align={align}
 				sideOffset={sideOffset}
 				className={cn(
-					"z-50 w-72 rounded-md border border-hairline bg-elevated p-4",
+					"z-50 w-72 rounded-md bg-elevated p-4",
 					// No entrance animation; see the note at the top of `tooltip.tsx`.
 					"text-body-sm text-ink shadow-overlay",
 					className,

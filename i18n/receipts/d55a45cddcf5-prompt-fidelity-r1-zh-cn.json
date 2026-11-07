@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "auditor": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "d55a45cddcf5-prompt-fidelity-r1-zh-cn",
+  "auditor_session": "d55a45cddcf5",
+  "instance_note": "Locale-scoped artifact identity derived from the actual auditor session, not a claim of additional independent reviewers.",
+  "date": "2026-11-05",
+  "recorded_at": "2026-11-05T13:55:59Z",
+  "status": "passed",
+  "locale": "zh-CN",
+  "namespace": "ui.settings.model",
+  "sha256": {
+    "en": "a87252a3da19af6caeb6536a75d0b8b2240ab953e76c52c97f2f032de84906f3",
+    "zh-CN": "963f84b2af6a1fb90e36c2829104ca3cdba433c66686d5cad5795384e0577f52"
+  },
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.settings.model.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.settings.model.json",
+    "context": "src/i18n/catalogues/en/ui.settings.model.context.json"
+  },
+  "context_sha256": "19f1955779c292dae563a47a7e7262c07159bfdfb5fb1d45886e16eb1f392c9a",
+  "base": "b1e04e0547080e2365439f41739cd0ee59514265",
+  "head": null,
+  "head_note": "Independent pre-commit translation audit of frozen uncommitted catalogue bytes; hashes, not an invented commit, identify audited targets. Product code review is separate.",
+  "scope": "Delta audit of source_edit and source_stale. All unchanged prior catalogue entries retained by verified key/value identity; prior findings retained.",
+  "audited_keys": [
+    "ui.settings.model.system_prompt.source_edit",
+    "ui.settings.model.system_prompt.source_stale"
+  ],
+  "new_findings": [],
+  "findings": [
+    {
+      "id": "C1",
+      "severity": "NIT",
+      "key": "ui.settings.model.system_prompt.source",
+      "related_keys": [
+        "ui.settings.model.system_prompt.source_required"
+      ],
+      "locale": "zh-CN",
+      "status": "open, non-gating; implementer may defer",
+      "description": "Chinese/Latin boundary spaces and added 请 depart from the binding zh-CN typography/tone guide. Semantic meaning remains correct. See independent PR round 1 comment.",
+      "suggested_fix": "Use Markdown源码 and 此文档使用了富文本编辑无法保留的Markdown语法。编辑源码，以完整保留所有指令。"
+    }
+  ],
+  "prior_finding_disposition": "Prior Chinese C1 remains a non-gating NIT, unchanged and not relabelled fixed; no findings against these two new keys.",
+  "translator": {
+    "agent": "coder",
+    "session": "51431ba116f5",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": false
+  },
+  "translation_manifest_sha256": "60f6c008cfc1fc02d3a37f64694edd9b6936e86195119cfde80d46c63aaae836",
+  "independence": {
+    "auditor_session": "d55a45cddcf5",
+    "translator_session": "51431ba116f5",
+    "independent": true,
+    "actual_model": "openai/gpt-6.1-sol",
+    "fallback_used": false
+  },
+  "prior_unchanged_evidence": {
+    "base_target_sha256": "9d65ee8ec4889437fa87c32f39ca5efc7fa18fdb08943bd4a7f6e50716f3e625",
+    "unchanged_entry_count": 35,
+    "unchanged_key_value_identity_verified": true,
+    "prior_namespace_auditors": [
+      {
+        "agent": "reviewer",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-05",
+        "result": "clean-with-findings",
+        "instance": "d55a45cddcf5-system-prompt-r1-zh-cn",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 1
+        },
+        "receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-zh-cn.json",
+        "receipt_sha256": "1e3827d0ae6919071e3da2270a0452d3715ace50f46e90ff3856d3b2df58a041",
+        "scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
+      }
+    ]
+  },
+  "glossary_and_style_provenance": {
+    "repository": "damianvtran/local-operator",
+    "commit": "b42471d3935cb7e95d64428af27c32626665f4c0",
+    "sha256": {
+      "i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "i18n/style-guides/en.md": "c967c91037be79a7b184b3288b8c0326a261e4adae95b7db06d83e96f8ea6ec7",
+      "i18n/style-guides/fr.md": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+      "i18n/style-guides/es.md": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+      "i18n/style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+      "i18n/style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+      "i18n/style-guides/vi.md": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+      "i18n/style-guides/ur.md": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+      "i18n/style-guides/hi.md": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "semantic_audit_notes": [
+    "All 16 new messages across English and seven target locales independently read against English context.",
+    "source_edit consistently means editing the selected node source; source_stale explains intervening changes and instructs Cancel/reopen to preserve the latest instructions.",
+    "No new copy findings; polite register, source terminology and instruction-preservation meaning are consistent.",
+    "Key/value-identity, full-catalogue hashes, no unexpected placeholders/plural arms/manual bidi controls verified.",
+    "This textual audit claims no rendered-fit, RTL geometry, product behavior or private-prompt evidence."
+  ],
+  "public_copy_cross_checks": [
+    {
+      "url": "https://www.mediawiki.org/wiki/Help:VisualEditor/User_guide/ur",
+      "method": "web_search then web_fetch and targeted passage read",
+      "observed": "ماخذ میں ترمیم کریں in the source-editor action sentence; page is otherwise largely untranslated and not treated as complete native audit authority."
+    },
+    {
+      "url": "https://www.ibm.com/docs/es/rational-soft-arch/10.0.0?topic=applications-editing-source-code",
+      "method": "web_search snippet only",
+      "observed": "Editar código fuente"
+    },
+    {
+      "url": "https://learn.microsoft.com/vi-vn/power-pages/configure/visual-studio-code-editor",
+      "method": "web_search snippet only",
+      "observed": "Chỉnh sửa mã"
+    },
+    {
+      "url": "https://www.mediawiki.org/wiki/Help:SourceEditor/User_guide/fr",
+      "method": "web_search snippet only",
+      "observed": "Modifier le wikicode; source action usage, not exact-source equivalence"
+    }
+  ]
+}

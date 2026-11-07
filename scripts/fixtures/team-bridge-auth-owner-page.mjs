@@ -670,8 +670,34 @@ async function mount({
 							organizations: [],
 							conversations: [],
 						});
-					case "team_bridge.messages.list":
+					case "team_bridge.messages.list": {
 						if (fixture.historyGate) await fixture.historyGate.promise;
+						/*
+						 * THE ROUTE THE PAGE ACTUALLY CALLS: `limit` and `before_seq` are
+						 * honoured over the conversation's rows, and every read is recorded
+						 * with its cursor. A deep-link walk asks for page after page, and
+						 * a stub that ignored the cursor would answer every one of them
+						 * with the same first page - which is how a walk bug stays
+						 * invisible (agent review round 3, M3-a).
+						 */
+						const rows =
+							fixture.historyByConversation.get(request.conversation_id) ??
+							fixture.messages.get(ownerKey) ??
+							[];
+						const limit = Number(request.limit ?? rows.length) || rows.length;
+						const ascending = [...rows].sort((a, b) => a.seq - b.seq);
+						const end =
+							request.before_seq === undefined
+								? ascending.length
+								: ascending.findIndex((row) => row.seq >= request.before_seq);
+						const upto = end === -1 ? ascending.length : end;
+						const start = Math.max(0, upto - limit);
+						fixture.calls.push({
+							op: "team_bridge.messages.list",
+							conversation_id: request.conversation_id,
+							before_seq: request.before_seq ?? null,
+							limit,
+						});
 						if (fixture.notAMember.has(request.conversation_id))
 							return {
 								status: 403,
@@ -679,24 +705,16 @@ async function mount({
 									detail: { code: "not_a_member", text: "Not a member" },
 								},
 							};
-						if (fixture.historyByConversation.has(request.conversation_id)) {
-							fixture.calls.push({ historyFor: request.conversation_id });
-							return reply({
-								messages: fixture.historyByConversation.get(
-									request.conversation_id,
-								),
-								has_more: false,
-							});
-						}
 						if (fixture.refuseHistory.has(owner))
 							return {
 								status: 404,
 								body: { detail: "Conversation unavailable to this account" },
 							};
 						return reply({
-							messages: fixture.messages.get(ownerKey) ?? [],
-							has_more: false,
+							messages: ascending.slice(start, upto),
+							has_more: start > 0,
 						});
+					}
 					case "team_bridge.conversations.create":
 						if (fixture.createGate) await fixture.createGate.promise;
 						if (fixture.created) {
@@ -987,4 +1005,4 @@ async function send(host) {
 	await act(async () => button.click());
 }
 
-export { mount, ui, type, send, until, delay, deferred };
+export { mount, ui, type, send, until, delay, deferred, PNG_BASE64 };

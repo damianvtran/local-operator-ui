@@ -1,0 +1,15 @@
+{
+	"ui.chat.usage_reset.chip": "Đặt lại · {count}",
+	"ui.chat.usage_reset.chip_label": "Đặt lại giới hạn tốc độ cho {account}. {count, plural, other {Còn # tín dụng đặt lại.}}",
+	"ui.chat.usage_reset.confirm_title": "Đặt lại {account}?",
+	"ui.chat.usage_reset.confirm_cost": "{count, plural, other {Dùng 1 trong # tín dụng đặt lại; xóa các khung thời gian giới hạn tốc độ của tài khoản này.}}",
+	"ui.chat.usage_reset.busy": "Đang chờ {account} trả lời. Việc này có thể mất một lúc.",
+	"ui.chat.usage_reset.busy_action": "Đang đặt lại…",
+	"ui.chat.usage_reset.outcome_reset": "{count, plural, other {Đã xóa # khung thời gian giới hạn tốc độ cho {account}.}}",
+	"ui.chat.usage_reset.outcome_already_redeemed": "Lần đặt lại cho {account} đã được dùng trước đó. Không có tín dụng thứ hai nào bị dùng.",
+	"ui.chat.usage_reset.outcome_no_credit": "{account} không còn tín dụng đặt lại. Không có gì bị dùng.",
+	"ui.chat.usage_reset.outcome_nothing_to_reset": "Không có khung thời gian giới hạn tốc độ nào của {account} cần xóa. Không có gì bị dùng.",
+	"ui.chat.usage_reset.outcome_failed": "Lần đặt lại cho {account} không trả về kết quả, nên chưa rõ số phận của tín dụng. Thử lại sẽ dùng lại cùng yêu cầu, nên không dùng tín dụng thứ hai.",
+	"ui.chat.usage_reset.outcome_refused": "Không có gì bị dùng: lần đặt lại cho {account} bị từ chối trước khi đến nhà cung cấp.",
+	"ui.chat.usage_reset.outcome_unknown": "Lần đặt lại cho {account} trả về kết quả mà ứng dụng này không nhận ra: {outcome}."
+}

@@ -17,6 +17,7 @@ import {
 	useState,
 } from "react";
 import type { MutableRefObject, RefObject } from "react";
+import type { TeamBridgeFilesCapability } from "../../../../shared/team-bridge-contract";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeMessage,
@@ -30,6 +31,7 @@ import {
 	attachmentPasteHandlers,
 } from "./team-bridge-attachments";
 import { isAttachmentNotFound } from "./team-bridge-attachments-model";
+import { TeamBridgeFilesStrip } from "./team-bridge-files-strip";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import { manageThreadFocus } from "./team-bridge-thread-focus";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
@@ -41,6 +43,7 @@ import {
 import { useStickToBottom } from "./use-stick-to-bottom";
 import { teamBridgeKeys, useMarkTeamBridgeThreadRead } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
+import { useTeamBridgeFiles } from "./use-team-bridge-files";
 import {
 	type ReplyWindowMode,
 	replyPageOutsideViewport,
@@ -67,6 +70,7 @@ export type ThreadPaneProps = {
 		body: string,
 		clientRef: string,
 		attachmentIds?: readonly string[],
+		files?: readonly string[],
 	) => Promise<unknown>;
 	readOnly?: boolean;
 	/*
@@ -78,6 +82,7 @@ export type ThreadPaneProps = {
 	conversationId?: string;
 	accountId?: string;
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
+	filesCapability?: TeamBridgeFilesCapability | null;
 	hasMore?: boolean;
 	loadingMore?: boolean;
 	onMore?: () => void;
@@ -158,6 +163,7 @@ function TeamBridgeThreadPaneBody({
 	conversationId,
 	accountId,
 	attachmentCapability = null,
+	filesCapability = null,
 	windowMode,
 	olderError = false,
 	latestPageAvailable = true,
@@ -222,6 +228,13 @@ function TeamBridgeThreadPaneBody({
 	const [sending, setSending] = useState(false);
 	const [failed, setFailed] = useState(false);
 	const [imagesBlocked, setImagesBlocked] = useState(false);
+	const files = useTeamBridgeFiles({
+		scopeKey: `${root?.id ?? ""}`,
+		accountId,
+		tenantId,
+		conversationId,
+		capability: filesCapability,
+	});
 	const images = useTeamBridgeAttachments({
 		scopeKey: `${tenantId ?? ""}|${conversationId ?? ""}|${root?.id ?? ""}`,
 		accountId,
@@ -259,7 +272,8 @@ function TeamBridgeThreadPaneBody({
 		() => composeRefs(scroll.rootRef, scrollHostRef),
 		[scroll.rootRef, scrollHostRef],
 	);
-	const hasContent = Boolean(draft.trim()) || images.count > 0;
+	const hasContent =
+		Boolean(draft.trim()) || images.count > 0 || files.chips.length > 0;
 	/* CAN THIS PANE ACTUALLY SEND? An empty state must not INVITE a reply that has
 	 * nowhere to go (design round 1, D3). Only `readOnly` can answer no here: the
 	 * render below dispatches `loading` and `error` before it ever reaches the
@@ -272,22 +286,30 @@ function TeamBridgeThreadPaneBody({
 	const canStartThread = !readOnly;
 	const submit = async () => {
 		const body = draft.trim();
-		if (images.blocked) {
+		if (images.blocked || files.blocked) {
 			setImagesBlocked(true);
 			return;
 		}
 		if (
 			!hasContent ||
 			images.busy ||
+			files.busy ||
 			lock.current ||
 			readOnly ||
 			state !== "ready"
 		)
 			return;
 		const ids = images.readyIds();
+		// A drop while this send awaits its response belongs to the NEXT draft.
+		// Retire the press-time keys only, like the channel composer; clearing
+		// the live queue would discard files that this request never bound.
+		const fileKeys = files.chips.map((chip) => chip.key);
 		// The idempotency key is reused only for the SAME text AND image set: the
 		// hub's replay check compares both hashes, so a changed set needs a new key.
-		const signature = ids.join(",");
+		const signature = JSON.stringify([
+			ids,
+			files.chips.map((chip) => chip.id ?? chip.key),
+		]);
 		const entry =
 			pending.current?.body === body && pending.current.images === signature
 				? pending.current
@@ -300,7 +322,13 @@ function TeamBridgeThreadPaneBody({
 		scroll.pin();
 		mentions.stage(body);
 		try {
-			await onSend(body, entry.clientRef, ids);
+			const fileIds = files.chips.length
+				? await files.stageInto(conversationId ?? "", tenantId)
+				: [];
+			if (ids.length + fileIds.length > 10)
+				throw new Error("Too many attachments");
+			await onSend(body, entry.clientRef, ids, fileIds);
+			for (const key of fileKeys) files.remove(key);
 			pending.current = null;
 			images.clearSent(ids);
 			setDraft((current) => (current.trim() === body ? "" : current));
@@ -510,9 +538,12 @@ function TeamBridgeThreadPaneBody({
 					<div
 						data-glass-region="composer"
 						className="rounded-md bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid"
-						{...(state === "ready" ? attachmentPasteHandlers(images) : {})}
+						{...(state === "ready"
+							? attachmentPasteHandlers(images, files)
+							: {})}
 					>
 						<TeamBridgeAttachmentStrip state={images} />
+						<TeamBridgeFilesStrip state={files} />
 						<MentionField
 							mentions={mentions}
 							fieldRef={replyField}
@@ -547,6 +578,7 @@ function TeamBridgeThreadPaneBody({
 							</span>
 							<TeamBridgeAttachButton
 								state={images}
+								files={files}
 								disabled={sending || state !== "ready"}
 							/>
 							<Button
@@ -556,7 +588,11 @@ function TeamBridgeThreadPaneBody({
 								variant={hasContent || sending ? "primary" : "ghost"}
 								className="rounded-sm"
 								disabled={
-									!hasContent || images.busy || sending || state !== "ready"
+									!hasContent ||
+									images.busy ||
+									files.busy ||
+									sending ||
+									state !== "ready"
 								}
 								aria-label={t("ui.teamBridge.composer.send")}
 								onClick={() => void submit()}
@@ -595,6 +631,7 @@ export type ThreadPaneMountProps = {
 	   to the same signed-in owner. A missing owner cannot dispatch either. */
 	accountId: string;
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
+	filesCapability?: TeamBridgeFilesCapability | null;
 };
 
 export function TeamBridgeThreadPane(props: ThreadPaneMountProps) {
@@ -614,6 +651,7 @@ function TeamBridgeThreadPaneMount({
 	reactionContext,
 	accountId,
 	attachmentCapability,
+	filesCapability,
 }: ThreadPaneMountProps) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
@@ -695,10 +733,12 @@ function TeamBridgeThreadPaneMount({
 			body,
 			clientRef,
 			attachmentIds,
+			files,
 		}: {
 			body: string;
 			clientRef: string;
 			attachmentIds?: readonly string[];
+			files?: readonly string[];
 		}) =>
 			TeamBridgeApi.send(conversationId, {
 				body,
@@ -707,6 +747,7 @@ function TeamBridgeThreadPaneMount({
 				expectedAccountId: accountId,
 				threadRootId: rootId,
 				attachmentIds,
+				files,
 				// The reply composer's @-mentions for exactly this text.
 				mentions: stagedMentions(conversationId, body),
 			}),
@@ -747,13 +788,14 @@ function TeamBridgeThreadPaneMount({
 			onClose={onClose}
 			onRead={acknowledge}
 			onRetry={() => void query.refetch()}
-			onSend={(body, clientRef, attachmentIds) =>
-				send.mutateAsync({ body, clientRef, attachmentIds })
+			onSend={(body, clientRef, attachmentIds, files) =>
+				send.mutateAsync({ body, clientRef, attachmentIds, files })
 			}
 			tenantId={tenantId}
 			conversationId={conversationId}
 			accountId={accountId}
 			attachmentCapability={attachmentCapability}
+			filesCapability={filesCapability}
 			readOnly={readOnly}
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}

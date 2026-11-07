@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "date": "2026-11-04",
+  "agent": "i18n-auditor",
+  "instance": "ed833173e70f",
+  "model": "openai/gpt-6.1-sol",
+  "model_fallback": null,
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-04"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "locale": "fr",
+  "namespace": "ui.settings.notifications",
+  "status": "passed",
+  "source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+  "target_sha256": "c8acd58cdfff1623184dde929b20334e012983b642b7af0dc564d6b416733971",
+  "context_sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554",
+  "scope": "All 69 keys; D2 only against base 8a0e688 at 9080108975ba9beb74bedeb91cb33a969fa24568.",
+  "findings": [
+    {
+      "id": "FR1",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.custom.remove_confirm_selected",
+        "ui.settings.notifications.custom.removed_reset"
+      ],
+      "reason": "Avoid masculine agreement against the feminine displayed sound name Pulsation douce."
+    }
+  ],
+  "corrections": [
+    {
+      "id": "FR1",
+      "locale": "fr",
+      "key": "ui.settings.notifications.custom.remove_confirm_selected",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "Supprimer {name} ? C’est votre son actuel, Pulsation douce sera donc joué à la place.",
+      "after": "Supprimer {name} ? C’est votre son actuel, le son Pulsation douce sera donc joué à la place.",
+      "reason": "Avoid masculine agreement against the feminine displayed sound name Pulsation douce."
+    },
+    {
+      "id": "FR1",
+      "locale": "fr",
+      "key": "ui.settings.notifications.custom.removed_reset",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "{name} supprimé. Pulsation douce est de nouveau sélectionné.",
+      "after": "{name} supprimé. Le son Pulsation douce est de nouveau sélectionné.",
+      "reason": "Masculine sélectionné now explicitly agrees with son, not Pulsation."
+    }
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    }
+  },
+  "core_sound_names": {
+    "path": "/Users/damian/.local-operator/sessions/7c5c172b0e89/scratchpad/notif-sounds/c2-i18n-audit-r1/fr.wire.notification_sound.full.audited.json",
+    "sha256": "79b8a6f559d4d77783ea699647fd8a34f7224f67cbccc390e099b56619be6002"
+  },
+  "checks": {
+    "locales": [
+      {
+        "locale": "fr",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 sur 50"
+      },
+      {
+        "locale": "es",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 de 50"
+      },
+      {
+        "locale": "zh-CN",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ru",
+        "keys": 69,
+        "pluralMessages": 3,
+        "status": "PASS",
+        "count3of50": "3 из 50"
+      },
+      {
+        "locale": "vi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ur",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 میں سے 3"
+      },
+      {
+        "locale": "hi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 में से 3"
+      }
+    ],
+    "totalKeys": 483,
+    "formatEvaluations": 4830,
+    "checks": [
+      "exact key parity",
+      "ICU AST argument names and types",
+      "all locale CLDR categories",
+      "no manual bidi controls",
+      "Vietnamese NFC",
+      "sample formatting incl 0,1,2,3,5,21,50,100,0.5,1000000"
+    ],
+    "limitations": [
+      "Text/ICU checks only; no rendered layout or native RTL shaping proof"
+    ]
+  },
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ],
+  "evidence_record": "i18n/audits/evidence/fr/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+}

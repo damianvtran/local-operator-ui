@@ -2566,6 +2566,51 @@
 		},
 		"note": "PDF and ZIP are format names and normally stay untranslated. The class is a label from byte sniffing, not a safety or scan claim; do not imply the file was checked."
 	},
+	"ui.teamBridge.fileCard.save": {
+		"role": "accessible label for the Save button on one generic file card in a message",
+		"tone": "imperative, plain",
+		"length": "short action phrase with two numbers",
+		"placeholders": {
+			"index": "1-based position of this file among the message's files",
+			"count": "total number of files on the message"
+		},
+		"note": "Downloads a copy of a file a teammate attached, through the computer's own save dialog. Named by position on purpose: the file name is message content and must never be put in this label. 'Save' as in save a copy to this computer, not save changes; use the locale's usual download/save-copy verb, matching the image tile's 'Save {label}'. Not open, preview or share."
+	},
+	"ui.teamBridge.fileCard.saving": {
+		"role": "status line on a file card while the file is being fetched for saving",
+		"tone": "factual",
+		"length": "one or two words with locale-appropriate ellipsis",
+		"placeholders": {},
+		"note": "Shown between pressing Save and the save dialog opening. Indeterminate: no percentage is available. Not uploading, sending or a message state."
+	},
+	"ui.teamBridge.fileCard.save_failed": {
+		"role": "error status line on a file card after a save could not reach the file",
+		"tone": "plain, no blame, actionable",
+		"length": "two very short sentences",
+		"placeholders": {},
+		"note": "A temporary failure (connection or service problem) while fetching the file to save it. The Save button stays next to it, so 'try again' means press Save again. Do not imply the file is gone, the message failed, or anything was deleted."
+	},
+	"ui.teamBridge.fileCard.too_large": {
+		"role": "error status line on a file card when the file exceeds what this app can save",
+		"tone": "factual, calm",
+		"length": "short phrase",
+		"placeholders": {},
+		"note": "The file is over the app's download size limit, so no Save is offered. A fact about the file's size, not a failure of the reader's connection; do not suggest retrying."
+	},
+	"ui.teamBridge.fileCard.expired": {
+		"role": "status line on a file card whose retention period has ended",
+		"tone": "neutral, factual",
+		"length": "one short status phrase",
+		"placeholders": {},
+		"note": "The shared file was removed after its retention period, so it can no longer be saved. Match the image card's 'Image expired' wording pattern. No blame, no retry implied."
+	},
+	"ui.teamBridge.fileCard.unavailable": {
+		"role": "status line on a file card the reader cannot get",
+		"tone": "neutral, no blame",
+		"length": "one short status phrase",
+		"placeholders": {},
+		"note": "Same wording for every reason (removed, withheld, no longer shared with this reader, unknown state); never reveal which. Match the image card's 'Image unavailable' pattern. No retry, preview or download implied."
+	},
 	"ui.teamBridge.members_panel.title": {
 		"role": "panel heading",
 		"tone": "plain noun",
@@ -2963,5 +3008,75 @@
 		"length": "one or two sentences",
 		"placeholders": {},
 		"note": "Button that retries removing only the agent; the person has already left."
+	},
+	"ui.teamBridge.files.staged": {
+		"role": "accessible name for the composer's list of staged files",
+		"tone": "neutral",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "Files the author selected for an unsent Team Bridge message. Does not assert that the message was sent, delivered or readable by an agent."
+	},
+	"ui.teamBridge.files.failed": {
+		"role": "file-chip upload failure status",
+		"tone": "factual",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "A failed stage/upload, not a failed message delivery. Send stays blocked until retry or removal; the current queue does not expose a typed permanent/transient reason."
+	},
+	"ui.teamBridge.files.retry": {
+		"role": "accessible label for the file-chip retry icon button",
+		"tone": "imperative",
+		"length": "2–4 words",
+		"placeholders": {},
+		"note": "Retry uploading this same staged file. This is not resend-message or download; the name remains separate visible message content."
+	},
+	"ui.teamBridge.files.remove": {
+		"role": "accessible label for removing a file chip from the draft",
+		"tone": "imperative",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "Remove the attachment from this unsent draft, not delete the original local file or a sent message. Keep the generic label; do not interpolate a filename."
+	},
+	"ui.teamBridge.files.unavailable": {
+		"role": "status notice when file capability is unavailable",
+		"tone": "plain, actionable",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Files are OFF, absent or unsupported for this composer. Remove the staged file to send only text/images deliberately; never imply that the app silently falls back to prose."
+	},
+	"ui.teamBridge.files.add": {
+		"role": "accessible label and tooltip for the arbitrary-file picker",
+		"tone": "imperative",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "Select files to attach to a human Team Bridge message. Only offered when the general-file capability is enabled; image-only deployments retain their separate Add images affordance."
+	},
+	"ui.teamBridge.files.no_schedule": {
+		"role": "composer hint explaining why scheduling is disabled with files",
+		"tone": "plain, factual",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Generic files can use immediate Send when upload is ready, but the existing server wire does not support them in scheduled messages. Preserve the established locale scheduling terminology."
+	},
+	"ui.teamBridge.files.uploading": {
+		"role": "in-progress file-chip status",
+		"tone": "factual",
+		"length": "short phrase with locale-appropriate ellipsis",
+		"placeholders": {},
+		"note": "Actual upload of a generic file is pending. Not image conversion, a download or a message send. Progress is indeterminate; no byte percentage is available."
+	},
+	"ui.teamBridge.files.attached": {
+		"role": "status line on one staged file chip in the composer",
+		"tone": "neutral",
+		"length": "one word",
+		"placeholders": {},
+		"note": "This one file is attached to the unsent draft and will go with the message. Describes a single file (singular), not the list. Does not claim the message was sent or read."
+	},
+	"ui.teamBridge.files.not_uploaded": {
+		"role": "status line on a staged file chip when files cannot be sent here",
+		"tone": "neutral, factual",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "Files are turned off for this account, so nothing was attempted; the note under the list explains it. Not a failure: do not use the wording of 'Upload failed'."
 	}
 }

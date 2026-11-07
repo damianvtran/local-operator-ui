@@ -39,10 +39,18 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
-import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import {
+	type CanonicalSessionHandle,
+	resyncCanonicalSession,
+} from "@shared/hooks/use-canonical-session";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import {
+	type ModelAuthorityReceipt,
+	observeModelAuthority,
+} from "../../../dev-driver/model-authority-observer";
+import { statusLabelText } from "../components/chat-session-status";
 
 /**
  * The model this session is RUNNING, for a dialog whose job is not to offer the
@@ -128,6 +136,7 @@ import {
 	effortLadder,
 	effortLevel,
 	fastModeState,
+	frontendNamesModel,
 	modelSelector,
 	specUnresolved,
 } from "../session-status/session-model";
@@ -875,6 +884,43 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const [live, setLive] = useState(false);
 	const [pickedCurrent, setPickedCurrent] = useState<string | null>(null);
+	// A lost ACK is not a refusal. Hold fresh model intents until a read-only
+	// authoritative snapshot answers; never replay the possibly accepted UUID.
+	const [unconfirmedModel, setUnconfirmedModel] = useState(false);
+	const unconfirmedModelRef = useRef(false);
+	// Feedback belongs to one mounted intent and one bridge receipt generation.
+	// Owner/frontend epochs are a different clock; never use them for this guard.
+	const modelFeedbackIntent = useRef(0);
+	const modelFeedbackContext = useRef({
+		sessionId,
+		receipt: canonical.receipt,
+	});
+	if (modelFeedbackContext.current.sessionId !== sessionId)
+		modelFeedbackIntent.current += 1;
+	modelFeedbackContext.current = { sessionId, receipt: canonical.receipt };
+	useEffect(
+		() => () => {
+			modelFeedbackIntent.current += 1;
+		},
+		[],
+	);
+	/*
+	 * THE OWNER'S FRONTEND AS THE IN-FLIGHT PRESS READS IT.
+	 *
+	 * `canonical` is a render-time snapshot, and `onPick` keeps the one it was
+	 * created with for the whole await — so the frames that arrive DURING a switch
+	 * are invisible to that closure. The busy repeat has to see them: a frame naming
+	 * the requested model says the switch already landed (the same reading
+	 * `use-canonical-session` uses to retire the pending paint), which is what stops
+	 * it repeating under a dialog that still reads `Switching the model…` (design
+	 * round 1, D3). A ref updated from each render is the smallest seam that can see
+	 * a frame the closure cannot; the comparison itself stays in `onPick`.
+	 */
+	const frontendLive = useRef(canonical.frontend);
+	useEffect(() => {
+		frontendLive.current = canonical.frontend;
+	}, [canonical.frontend]);
+
 	/*
 	 * WHICH VIEW OF THE CATALOGUE THIS DIALOG SHOWS.
 	 *
@@ -1410,6 +1456,13 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const saveModelDefault = useCallback(
 		(model: { provider: string; model_id: string }) => {
+			observeModelAuthority({
+				carrier: "default-save",
+				sessionId: "",
+				epoch: null,
+				seq: null,
+				disposition: "invoked",
+			});
 			/*
 			 * Chained, as the effort dialog's are: the last write asked for is the
 			 * last write config.yml sees, whatever order the answers come back in
@@ -1591,19 +1644,171 @@ export const ModelPicker: FC<PickerContext> = ({
 				model_id: modelId,
 				display_name: option.label,
 			};
+			const feedbackIntent = ++modelFeedbackIntent.current;
+			const feedbackReceipt = modelFeedbackContext.current.receipt;
 			canonical.paintPendingModel(model);
 			switching.current = true;
 			let run: Awaited<ReturnType<typeof command.run>>;
 			try {
-				run = await command.run("model", value);
+				/*
+				 * THE SWITCH IS REPEATED ON A BUSY OWNER, and only here.
+				 *
+				 * A `runtime_busy` on this route is INDETERMINATE rather than a refusal: the
+				 * daemon is telling us its owner did not answer the ack in time, having
+				 * already written the frame (`mobile/attach_client.py`). Reporting "could not
+				 * be confirmed" for a switch that landed is the defect this call closes, and
+				 * the old-style fix — resending under the SAME request id — cannot work on
+				 * this route: its receipt is claimed `retry_safe=False`, so a same-id retry
+				 * is answered 409 "Request outcome is indeterminate" and would read as a
+				 * definite failure. `resendWhileBusy` therefore repeats the DISPATCH, and
+				 * each dispatch mints a fresh id (see `runSessionCommand`), which is a fresh
+				 * journal claim. Re-running `set_model` with the SAME target is a no-op in
+				 * effect, so a press that lands twice is indistinguishable from one that
+				 * lands once; a general command (a `/goal` append) could not be repeated
+				 * this way, which is why the option is opt-in and lives at this call site.
+				 *
+				 * THE WAIT HAS THREE ENDINGS, and the third is the one the dialog has to be
+				 * honest about:
+				 *
+				 *  1. THE FRAME LANDS FIRST. The switch applied before the ack was lost, the
+				 *     authoritative frame names this model, reconciliation drops the paint
+				 *     while the repeat is still waiting — and `landed` below stops the repeat
+				 *     at its next attempt, because there is nothing left to ask for.
+				 *  2. THE REPEAT LANDS. A later attempt's receipt confirms it; the press ends
+				 *     as the switch it was.
+				 *  3. THE ATTEMPTS ARE SPENT. The press ends in the indeterminate register
+				 *     ("The request could not be confirmed."), never as "did not run": the
+				 *     switch may have applied on any attempt whose ack was lost. The 15 s
+				 *     backstop (`PENDING_MODEL_TIMEOUT_MS`, which counts from the paint and
+				 *     is not reset by the repeat) may have already taken the optimistic
+				 *     value down by then, in which case the band is showing the model in
+				 *     force — which is the truth, not a second failure.
+				 *
+				 * WHAT THE BOUND IS: `BUSY_RESENDS` (3) more attempts, each wait
+				 * `min(max(0, retry_after_ms ?? 2000), 5000)`. With the backend's 2 s hint
+				 * that is 6 s of waiting; capped, 15 s. The attempt itself is bounded by
+				 * `desktopRequestTimeoutMs` (25 s) and a deadline breach is NOT retryable, so
+				 * the deadline is a ceiling on one attempt rather than a term in a sum. How
+				 * long a refusal takes to ARRIVE is the arm's own property: an attach that
+				 * times out (`DESKTOP_CONTROL_ATTACH_S` 3 s) refuses in ~3.1 s, so the whole
+				 * repeat is ≈18 s; the lost-ack arm this defect is about waits out
+				 * `ACK_TIMEOUT_S` (15 s) per attempt, so the same four attempts span ≈66 s.
+				 * The dialog stays busy throughout (its footer reads `Switching the
+				 * model…`), so the wait is stated rather than silent.
+				 *
+				 * THE PAINT IS MADE ONCE, above, and never re-made: it is the press's
+				 * optimistic value, and the repeat changes nothing about it. Endings 1 and 2
+				 * retire it through the owner's own frame; ending 3 leaves it to the backstop
+				 * or clears it in the failure arm below.
+				 */
+				run = await command.run("model", value, undefined, {
+					resendWhileBusy: true,
+					/*
+					 * LIVE, not from this closure: the frame can land while an attempt is
+					 * failing, and once it names the requested spec this press has nothing left
+					 * to ask for. The predicate is a pure READING — "does the session name the
+					 * target now" — and `runSessionCommand` samples it once at press time as the
+					 * baseline, so it never suppresses the first send (D5) and an unchanged
+					 * reading is never taken for evidence (round 3: with a pinned fallback the
+					 * session already names the pressed model before the press). The comparison
+					 * is the SAME helper the canonical handle's reconciliation clears the paint
+					 * with (`frontendNamesModel`, selected OR effective), so the picker cannot
+					 * call the switch confirmed on evidence the band would not accept.
+					 */
+					landed: () => frontendNamesModel(frontendLive.current, value),
+				});
 			} finally {
 				switching.current = false;
 			}
 			const { outcome, result: failure } = run;
-			if (!outcome || isNativeAction(outcome) || outcome.kind === "error") {
+			if (
+				// A frame-confirmed press has no receipt by construction: the owner's own
+				// statement of the model in force IS the confirmation, so the failure arm's
+				// `!outcome` test must not read it as one.
+				!run.confirmedByFrame &&
+				(!outcome ||
+					isNativeAction(outcome) ||
+					outcome.kind === "error" ||
+					failure.tone === "error")
+			) {
 				// The owner refused (or the call itself failed): the band goes back to
 				// the authoritative model rather than keeping a paint that never landed.
 				canonical.clearPendingModel();
+				if (run.unconfirmed) {
+					unconfirmedModelRef.current = true;
+					setUnconfirmedModel(true);
+					note(failure.text);
+					if (persistDefaultRef.current) persist.setResult(failure);
+					// Armed evidence observes this REAL consumer after interpretation;
+					// ordinary launches retain no metadata and change no control flow.
+					let authorityReceipt: ModelAuthorityReceipt = {
+						carrier: "model-get",
+						sessionId,
+						epoch: null,
+						seq: null,
+						disposition: "failed",
+					};
+					try {
+						// Unlike the one-shot composer hook, this read must distinguish
+						// failure from success before enabling another mutation. A cold
+						// carried snapshot is not proof of the owner's current selection.
+						const snapshot = await desktopResult<{
+							session_id?: string;
+							epoch?: string;
+							seq?: number;
+							payload: { frontend: CanonicalFrontendSync; cold: boolean };
+						}>({ op: "sessions.get", sessionId });
+						const state = snapshot.payload.frontend.snapshot;
+						const selector = modelSelector(state.selected_model);
+						if (snapshot.payload.cold === false && selector) {
+							setPickedCurrent(selector);
+							unconfirmedModelRef.current = false;
+							setUnconfirmedModel(false);
+							// Retire only this uncertain intent's active feedback once its
+							// intended selection is independently confirmed. History's note
+							// remains; a newer command/save result must never be erased.
+							const current = modelFeedbackContext.current;
+							if (
+								modelFeedbackIntent.current === feedbackIntent &&
+								current.sessionId === sessionId &&
+								snapshot.session_id === sessionId &&
+								state.session_id === sessionId &&
+								selector === value &&
+								feedbackReceipt &&
+								current.receipt &&
+								snapshot.epoch === feedbackReceipt.epoch &&
+								current.receipt.epoch === feedbackReceipt.epoch &&
+								typeof snapshot.seq === "number" &&
+								snapshot.seq >= feedbackReceipt.seq &&
+								snapshot.seq >= current.receipt.seq
+							) {
+								command.setResult((current) =>
+									current === failure ? null : current,
+								);
+								persist.setResult((current) =>
+									current === failure ? null : current,
+								);
+							}
+						}
+						authorityReceipt = {
+							carrier: "model-get",
+							sessionId,
+							epoch: snapshot.epoch ?? null,
+							seq: snapshot.seq ?? null,
+							disposition:
+								snapshot.payload.cold === false && selector
+									? "live"
+									: "cold-or-invalid",
+						};
+					} catch {
+						// Keep the neutral uncertainty and disabled choices, not a
+						// fabricated unchanged model or a second command request.
+					} finally {
+						resyncCanonicalSession(sessionId);
+						observeModelAuthority(authorityReceipt);
+					}
+					return;
+				}
 				/*
 				 * And the failure is reported WHEREVER it lands (UX U2).
 				 *
@@ -1654,6 +1859,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			canonical,
 			command,
 			note,
+			sessionId,
 			rowAuth,
 			draft,
 			draftPick.pick,
@@ -1715,6 +1921,10 @@ export const ModelPicker: FC<PickerContext> = ({
 		),
 	] as const;
 	const onPersistDefaultChange = (checked: boolean) => {
+		// A missing receipt can follow an accepted switch. Until a LIVE read
+		// identifies the selection, even a queued/programmatic checkbox callback
+		// must not persist the last-known model or change the checkbox's intent.
+		if (unconfirmedModel || unconfirmedModelRef.current) return;
 		persistDefaultRef.current = checked;
 		setPersistDefault(checked);
 		if (!checked) {
@@ -1820,7 +2030,11 @@ export const ModelPicker: FC<PickerContext> = ({
 								"ui.chat.pickers.destination_pickers.choose_the_model_for_this_session",
 							)
 			}
-			options={options}
+			options={
+				unconfirmedModel
+					? options.map((option) => ({ ...option, disabled: true }))
+					: options
+			}
 			/*
 			 * The model picker's own search rule: the catalogue's ids are not strings
 			 * the user wrote, so the shared contiguous test is too narrow for them and
@@ -1972,6 +2186,13 @@ export const ModelPicker: FC<PickerContext> = ({
 						? t("ui.chat.pickers.destination_pickers.switching_the_model8e7138")
 						: t("ui.chat.pickers.destination_pickers.saving_the_default9573f2")
 			}
+			blockedHint={
+				unconfirmedModel
+					? t(
+							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+						)
+					: undefined
+			}
 			result={draft ? draftPick.result : pickResult}
 			toolbar={
 				/*
@@ -2017,6 +2238,7 @@ export const ModelPicker: FC<PickerContext> = ({
 						{!draft && (
 							<PickerCheck
 								checked={persistDefault}
+								disabled={unconfirmedModel}
 								onCheckedChange={onPersistDefaultChange}
 								tone="muted"
 							>
@@ -2045,7 +2267,12 @@ export const ModelPicker: FC<PickerContext> = ({
 								variant="ghost"
 								size="sm"
 								type="button"
-								disabled={!modelInForce || command.busy || persist.busy}
+								disabled={
+									!modelInForce ||
+									command.busy ||
+									persist.busy ||
+									unconfirmedModel
+								}
 								onClick={() => {
 									if (modelInForce) void saveModelDefault(modelInForce);
 								}}
@@ -3497,9 +3724,12 @@ function sessionLabel(row: SessionRow) {
  * Stop picker is where a not-answering row SENDS a person — so the one surface
  * that acts on the state was the one naming it in a word no other surface uses
  * (every other one says "not answering"). The row already carries the backend's
- * sentence (`status.label`, the same value the sidebar's tooltip and its
- * accessible name carry), and the contract is explicit that a client must not
- * re-derive status, so the label is READ and never rebuilt here.
+ * sentence (`status.label`), and the contract is explicit that a client must not
+ * re-derive status, so the label is READ and never rebuilt here. The one
+ * translated exception is shared with the sidebar rather than copied: the
+ * stable `recent` code goes through `statusLabelText`, so the picker and the
+ * sidebar name the same state in the same language; every other code keeps the
+ * backend's own label.
  *
  * AN ABSENT LABEL RENDERS NO LINE, deliberately. The alternative — falling back
  * to the raw `live_state` — is the defect, and inventing words for a state this
@@ -3513,7 +3743,7 @@ function sessionLabel(row: SessionRow) {
  * own label ("Recent") would say less than they do.
  */
 const sessionActivity = (row: SessionRow, cold: string): string | undefined =>
-	row.live_state ? row.status?.label : cold;
+	row.live_state ? statusLabelText(row) : cold;
 
 export const StopPicker: FC<PickerContext> = ({
 	sessionId,

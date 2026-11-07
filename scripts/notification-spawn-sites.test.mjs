@@ -394,6 +394,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-clipboard-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure the page clipboard gate against a real driven view and the real system clipboard; it builds that child's environment through the notification kill switch, so a page that copies cannot banner the operator",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-host-proof.mjs",
 		"spawn",
 		1,
@@ -511,6 +519,14 @@ const APP_SPAWN_SITES = [
 		2,
 		/env:\s*childEnv\(\),/,
 		"boots a SECOND headless app with --disable-gpu-compositing on its own scratch profile to reproduce a capability drop before the renderer subscribes - the same real app and renderer as #1, so the same banner risk",
+		/withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/notifications-glass-evidence.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app headless on a scratch profile to photograph the notifications group headers and read-state switch at the user's glass setting - a real app with a real backend, so the notification it raises for its own seeding is exactly the banner the kill switch exists to suppress",
 		/withNotificationsOff\(\{/,
 	),
 	exempt(

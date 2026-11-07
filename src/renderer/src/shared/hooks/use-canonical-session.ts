@@ -1,5 +1,9 @@
 import { subscribeLocale } from "../../../../i18n/locale";
 import { t } from "../../../../i18n/messages";
+import {
+	modelAuthorityObserverArmed,
+	observeModelAuthority,
+} from "../../dev-driver/model-authority-observer";
 /**
  * Canonical desktop session stream consumption.
  *
@@ -90,7 +94,10 @@ import {
 	seedWaitingComposes,
 } from "@features/chat/canonical/transcript-reducer";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
-import { modelSelector } from "@features/chat/session-status/session-model";
+import {
+	frontendNamesModel,
+	modelSelector,
+} from "@features/chat/session-status/session-model";
 import {
 	desktopResult,
 	subscribeDesktopStream,
@@ -5517,6 +5524,20 @@ export function useCanonicalSessionStream(
 					batchEdge,
 				);
 			}
+			// Witness the actual flush, not the wire callback that only enqueued
+			// frames. React/CSS settlement is a separate driver observation AFTER
+			// this completion; no payload or model value enters the witness.
+			if (modelAuthorityObserverArmed())
+				for (const frame of frames) {
+					if (!("epoch" in frame && "seq" in frame)) continue;
+					observeModelAuthority({
+						carrier: "canonical-sse",
+						sessionId,
+						epoch: frame.epoch,
+						seq: frame.seq,
+						disposition: "processed",
+					});
+				}
 		};
 
 		/**
@@ -7384,10 +7405,7 @@ export function useCanonicalSessionStream(
 		const painted = modelSelector(pending);
 		if (!painted) return;
 		const frontend = view.frontend;
-		if (
-			modelSelector(frontend?.selected_model) === painted ||
-			modelSelector(frontend?.effective_model) === painted
-		) {
+		if (frontendNamesModel(frontend, painted)) {
 			commitView((current) => ({ ...current, pendingModel: null }));
 		}
 	}, [commitView, view.frontend, view.pendingModel]);

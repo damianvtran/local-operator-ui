@@ -2700,6 +2700,44 @@ function harnessSources() {
  */
 const HARNESS_PYTHON_SPAWN_SITES = [
 	{
+		file: "scripts/model-uncertainty-native.mjs",
+		name: "execFileSync",
+		index: 2,
+		binding:
+			/export function modelBackendPythonEnv[\s\S]*?return pythonChildEnv\([\s\S]*?const env = modelBackendPythonEnv\(/,
+		why: "production catalogue seed; shared boundary strips ambient Python variables and adds only the owned guard path",
+	},
+	{
+		file: "scripts/model-uncertainty-native.mjs",
+		name: "execFileSync",
+		index: 3,
+		binding:
+			/export function modelBackendPythonEnv[\s\S]*?return pythonChildEnv\([\s\S]*?const env = modelBackendPythonEnv\(/,
+		why: "read-only YAML durability probe; shared boundary strips ambient Python variables and adds only the owned guard path",
+	},
+	{
+		file: "scripts/model-uncertainty-native.mjs",
+		name: "spawn",
+		index: 1,
+		binding:
+			/export function modelBackendPythonEnv[\s\S]*?return pythonChildEnv\([\s\S]*?const env = modelBackendPythonEnv\(/,
+		why: "owned real-core server; shared boundary strips ambient Python variables and adds only the owned guard path",
+	},
+	{
+		file: "scripts/model-uncertainty-native.test.mjs",
+		name: "execFileSync",
+		index: 4,
+		env: /env:\s*pythonChildEnv\(/,
+		why: "the pure Python delivery contracts use the canonical no-bytecode harness environment",
+	},
+	{
+		file: "scripts/model-uncertainty-native.test.mjs",
+		name: "execFileSync",
+		index: 5,
+		binding: /const guarded = modelBackendPythonEnv\(/,
+		why: "hostile-prefix control executes the actual model backend environment builder against only an owned fake app and import marker",
+	},
+	{
 		file: "scripts/browser-hover-press-proof.mjs",
 		name: "spawn",
 		index: 2,

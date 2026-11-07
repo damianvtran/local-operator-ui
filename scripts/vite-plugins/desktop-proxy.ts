@@ -319,7 +319,22 @@ export function desktopProxyPlugin(): Plugin {
 						res.end(JSON.stringify(result.body));
 					} else {
 						res.setHeader("Content-Type", "application/json");
-						res.end(JSON.stringify({ detail: result.detail }));
+						/*
+						 * A notification-sound upload's refusal travels as the daemon's
+						 * own envelope, so the browser reader below gets `too_long` and its
+						 * params exactly as main's IPC answer carries them (review n1).
+						 */
+						res.end(
+							JSON.stringify({
+								detail: result.refusal
+									? {
+											code: result.refusal.code,
+											params: result.refusal.params,
+											text: result.detail,
+										}
+									: result.detail,
+							}),
+						);
 					}
 					return;
 				}

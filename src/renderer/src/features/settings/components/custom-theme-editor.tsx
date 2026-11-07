@@ -26,6 +26,10 @@ import {
 } from "@shared/themes/custom-theme-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+	ACCENT_FAMILIES,
+	isAccentFamilyRole,
+} from "../../../../../shared/theme-engine/accent-roles.mjs";
 import type { CustomThemeV1 } from "../../../../../shared/theme-engine/appearance.mjs";
 import { composeTheme } from "../../../../../shared/theme-engine/compose.mjs";
 import { paletteBlock } from "../../../../../shared/theme-engine/css.mjs";
@@ -151,6 +155,7 @@ export const CustomThemeEditor = ({
 						contrast: contrast[base.mode],
 						accent: accent[base.mode],
 						id: draft.base,
+						preserveSecondary: true,
 						paletteAccent: (id) => definitionOf(id)?.palette.accent,
 					}),
 		[previewPalette, previewValid, contrast, accent, base.mode, draft.base],
@@ -179,9 +184,8 @@ export const CustomThemeEditor = ({
 	const setRole = (role: string, hex: string) => {
 		const field = Object.prototype.hasOwnProperty.call(draft.overrides, role)
 			? "overrides"
-			: ESSENTIALS.includes(role)
-				? "seeds"
-				: "overrides";
+			: (ACCENT_FAMILIES.find((family) => family.role === role)?.storage ??
+				(ESSENTIALS.includes(role) ? "seeds" : "overrides"));
 		update({ ...draft, [field]: { ...draft[field], [role]: hex } });
 		setTextValues((values) => {
 			const next = { ...values };
@@ -210,7 +214,7 @@ export const CustomThemeEditor = ({
 			setAnnouncement(t("ui.settings.appearance.editor.validation_pass"));
 		} else setAdjustError(true);
 	};
-	const renderRow = (role: string) => {
+	const renderRow = (role: string, label = themeRoleLabel(role)) => {
 		const reading = chipReadings.readings
 			.filter((pair) => pair.foreground === role || pair.background === role)
 			.sort((a, b) => a.value / a.floor - b.value / b.floor)[0];
@@ -230,7 +234,7 @@ export const CustomThemeEditor = ({
 					<button
 						type="button"
 						aria-label={t("ui.settings.appearance.editor.edit_role", {
-							role: themeRoleLabel(role),
+							role: label,
 						})}
 						aria-expanded={activeRole === role}
 						onClick={() => {
@@ -241,7 +245,7 @@ export const CustomThemeEditor = ({
 						style={{ background: palette[role as keyof typeof palette] }}
 					/>
 					<label htmlFor={inputId} className="min-w-0 flex-1 text-body-sm">
-						{themeRoleLabel(role)}
+						{label}
 						{pinned && (
 							<span className="ms-1 text-meta text-ink-muted">
 								{t("ui.settings.appearance.editor.edited")}
@@ -290,7 +294,7 @@ export const CustomThemeEditor = ({
 							size="sm"
 							variant="ghost"
 							aria-label={t("ui.settings.appearance.editor.reset_role", {
-								role: themeRoleLabel(role),
+								role: label,
 							})}
 							onClick={() => {
 								const seeds = { ...draft.seeds };
@@ -306,7 +310,7 @@ export const CustomThemeEditor = ({
 							}}
 						>
 							{t("ui.settings.appearance.editor.reset_role", {
-								role: themeRoleLabel(role),
+								role: label,
 							})}
 						</Button>
 					)}
@@ -323,9 +327,12 @@ export const CustomThemeEditor = ({
 							value={palette[role as keyof typeof palette]}
 							onChange={(hex) => setRole(role, hex)}
 							onValidityChange={setPickerValid}
-							swatches={ESSENTIALS.map(
-								(r) => palette[r as keyof typeof palette],
-							)}
+							swatches={[
+								...new Set([
+									...ESSENTIALS,
+									...ACCENT_FAMILIES.map((family) => family.role),
+								]),
+							].map((r) => palette[r as keyof typeof palette])}
 						/>
 					</div>
 				)}
@@ -447,7 +454,7 @@ export const CustomThemeEditor = ({
 									measured.findings.length > 0 && (
 										<Button
 											type="button"
-											variant="secondary"
+											variant="tonal"
 											size="sm"
 											onClick={adjust}
 										>
@@ -462,9 +469,27 @@ export const CustomThemeEditor = ({
 							)}
 							<section>
 								<h3 className="text-body-sm font-medium">
+									{t("ui.settings.appearance.editor.accents")}
+								</h3>
+								{ACCENT_FAMILIES.map((family) => (
+									<div key={family.id} data-accent-family={family.id}>
+										<p className="mt-2 text-meta text-ink-muted">
+											{t(family.usageKey)}
+										</p>
+										{renderRow(family.role, t(family.labelKey))}
+									</div>
+								))}
+								<p className="mt-2 text-meta text-ink-muted">
+									{t("ui.settings.appearance.editor.accent.effective")}
+								</p>
+							</section>
+							<section>
+								<h3 className="text-body-sm font-medium">
 									{t("ui.settings.appearance.editor.essentials")}
 								</h3>
-								{ESSENTIALS.map(renderRow)}
+								{ESSENTIALS.filter((role) => !isAccentFamilyRole(role)).map(
+									(role) => renderRow(role),
+								)}
 							</section>
 							<section>
 								<button
@@ -489,9 +514,29 @@ export const CustomThemeEditor = ({
 								</p>
 								{advanced && (
 									<>
-										{COLOUR_ROLES.filter((r) => !ESSENTIALS.includes(r)).map(
-											renderRow,
-										)}
+										{ACCENT_FAMILIES.map((family) => (
+											<section
+												key={family.id}
+												className="mt-3"
+												data-accent-variants={family.id}
+											>
+												<h4 className="text-body-sm font-medium">
+													{t(family.labelKey)} ·{" "}
+													{t("ui.settings.appearance.editor.accent.variants")}
+												</h4>
+												{family.preview === "identity" && (
+													<p className="mt-1 text-meta text-ink-muted">
+														{t(
+															"ui.settings.appearance.editor.accent.secondary_help",
+														)}
+													</p>
+												)}
+												{family.variants.map((role) => renderRow(role))}
+											</section>
+										))}
+										{COLOUR_ROLES.filter(
+											(r) => !ESSENTIALS.includes(r) && !isAccentFamilyRole(r),
+										).map((role) => renderRow(role))}
 										{["overlayShadow", "scrim"].map((role) => (
 											<label
 												key={role}
@@ -605,7 +650,7 @@ export const CustomThemeEditor = ({
 						{t("ui.settings.appearance.editor.discard_description")}
 					</DialogDescription>
 					<div className="flex flex-wrap justify-end gap-2">
-						<Button variant="secondary" onClick={() => setDiscard(false)}>
+						<Button variant="tonal" onClick={() => setDiscard(false)}>
 							{t("ui.settings.appearance.editor.keep_editing")}
 						</Button>
 						<Button

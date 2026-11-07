@@ -108,14 +108,60 @@ export function browserUserAgent(): string {
 	return `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
 }
 
+/**
+ * WHY THIS SESSION GRANTS NOTHING, and where the browser's copy goes instead.
+ *
+ * MEASURED 2026-11-06 on Electron 45.1.0 (built dev app, headless, a real driven
+ * tab on a loopback page):
+ *
+ * - A page's own Copy button calls `navigator.clipboard.writeText`, and Chromium
+ *   gates that write on ONE content setting (`CLIPBOARD_READ_WRITE`) which
+ *   Electron surfaces to `setPermissionRequestHandler` as **`clipboard-read`**. No
+ *   `clipboard-sanitized-write` ask is ever made, so granting that name fixes
+ *   nothing: measured still refused, with it granted.
+ * - Granting `clipboard-read` DOES make the write work — and it also lets the page
+ *   read the user's clipboard: measured, the same page read back the text it had
+ *   written after its own click. That is the capability the operator ruled out, so
+ *   the write cannot be bought with this permission system at any scope.
+ * - Focus is not a factor: with the permission granted, the write succeeded from a
+ *   tab that was NOT the active one, so a driven view needs no additional focus
+ *   emulation for this (`cdp.ts` already enables `Emulation.setFocusEmulationEnabled`
+ *   at attach for `type`, and that is not what this depends on).
+ *
+ * SO BOTH HANDLERS STAY DEFAULT-DENY, for every permission and every view:
+ * `clipboard-read` and `clipboard-sanitized-write` are both refused, so
+ * `navigator.permissions.query` answers "denied" and `readText()` rejects — a
+ * PERMISSION-level fact rather than a shim — and the page's own WRITE is served by
+ * the host-authored program in `actions/clipboard-shim.ts`, which adds exactly the
+ * write capability and none of the read half.
+ *
+ * The handlers still REPORT every ask (with which handler asked and what was
+ * answered), because a permission that silently stops being requested is the one
+ * thing this log exists to make visible.
+ */
 /** What the session handlers tell the rest of the app. */
 export interface BrowserSessionHooks {
 	/** A page asked for a permission (camera, geolocation, clipboard…). Reported
-	 * so a consent surface can show it; the ANSWER is always deny for now. */
+	 * for every ask, with the answer, because the trace somebody needs when a page's
+	 * feature stops working is "what was requested, by which handler, and what did
+	 * the host answer" — not silence. */
 	onPermissionRequested?: (details: {
+		/** The asking view's id, or -1 when Electron gave none (the startup
+		 * probes the check handler runs with no `WebContents`). */
 		webContentsId: number;
 		origin: string;
 		permission: string;
+		/** What the session answered. Always false today (see the policy comment
+		 * above the handlers); carried rather than assumed, so a future grant cannot
+		 * hide behind a log line that always says "denied". */
+		granted: boolean;
+		/**
+		 * Which of Electron's two handlers asked. They are not interchangeable, and a
+		 * page that fails "even though the grant says yes" is exactly the case this
+		 * disambiguates: the check handler runs FIRST and for probes, the request
+		 * handler runs for the ask the page actually made.
+		 */
+		source: "request" | "check";
 	}) => void;
 	/**
 	 * Decide one download attempt, for EVERY download on this session.
@@ -190,39 +236,55 @@ export function installBrowserSessionHandlers(
 	// first tab presenting the default Electron UA.
 	browserSession.setUserAgent(browserUserAgent());
 
-	// Default-deny, both handlers. Not optional and not redundant: Electron
-	// "automatically approve[s] all permission requests unless the developer has
-	// manually configured a custom handler", and "most web APIs do a permission
-	// check and then make a permission request if the check is denied" — so a
-	// request handler alone leaves the check path auto-approving. One handler
-	// without the other is a hole.
+	// ONE REPORT, both handlers. The answer is a constant refusal; what the handlers
+	// differ on is what Electron hands each of them, and the report says which one
+	// asked (`source`) so a page that fails "even though the log says granted" is
+	// diagnosable. Electron "automatically approve[s] all permission requests
+	// unless the developer has manually configured a custom handler", and "most web
+	// APIs do a permission check then make a request if the check is denied" — so
+	// BOTH handlers must be installed; one alone is a hole.
+	const report = (
+		source: "request" | "check",
+		webContentsId: number | null,
+		permission: string,
+		origin: string,
+	): false => {
+		hooks.onPermissionRequested?.({
+			webContentsId: webContentsId ?? -1,
+			origin,
+			permission,
+			granted: false,
+			source,
+		});
+		return false;
+	};
 	browserSession.setPermissionRequestHandler(
-		(_webContents, permission, callback, details) => {
-			hooks.onPermissionRequested?.({
-				webContentsId: -1,
-				origin:
+		(webContents, permission, callback, details) => {
+			callback(
+				report(
+					"request",
+					webContents?.id ?? null,
+					permission,
 					typeof details?.requestingUrl === "string"
 						? details.requestingUrl
 						: "",
-				permission,
-			});
-			callback(false);
+				),
+			);
 		},
 	);
 	browserSession.setPermissionCheckHandler(
-		(_webContents, permission, requestingOrigin, details) => {
-			hooks.onPermissionRequested?.({
-				webContentsId: -1,
+		(webContents, permission, requestingOrigin, details) =>
+			report(
+				"check",
+				webContents?.id ?? null,
+				permission,
 				// Electron calls this handler with an empty origin during the
 				// per-webContents startup probes (media, geolocation, app install), so the
 				// documented `requestingUrl` is preferred when it is there: an
 				// "(unknown origin)" line for a probe the PAGE caused is exactly the line
 				// somebody needs when a site's permission stops working.
-				origin: requestingOrigin || details?.requestingUrl || "",
-				permission,
-			});
-			return false;
-		},
+				requestingOrigin || details?.requestingUrl || "",
+			),
 	);
 
 	// Downloads. THE PRE-FEATURE RULE IS STILL THE DEFAULT — a download the app was

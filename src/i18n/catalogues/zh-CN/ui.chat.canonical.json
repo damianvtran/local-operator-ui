@@ -183,5 +183,6 @@
 	"ui.chat.canonical.supplement.withheld.reason_sensitive": "敏感文件",
 	"ui.chat.canonical.supplement.withheld.reason_missing": "文件已不存在",
 	"ui.chat.canonical.supplement.withheld.reason_too_large": "超出预览大小上限",
-	"ui.chat.canonical.supplement.withheld.reason_separator": "、"
+	"ui.chat.canonical.supplement.withheld.reason_separator": "、",
+	"ui.chat.canonical.supplement.show_fewer": "收起"
 }

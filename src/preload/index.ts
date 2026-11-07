@@ -46,6 +46,14 @@ import {
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import {
+	LINK_PREVIEW_ARTIFACT_CHANNEL,
+	LINK_PREVIEW_RESOLVE_CHANNEL,
+	type LinkPreviewArtifactRequest,
+	type LinkPreviewArtifactResult,
+	type LinkPreviewResolveRequest,
+	type LinkPreviewResolveResult,
+} from "../shared/link-preview";
+import {
 	MINI_VIEW_DIALOG,
 	MINI_VIEW_DISMISS,
 	MINI_VIEW_PAINTED,
@@ -61,6 +69,10 @@ import {
 	isMiniViewRegistrationState,
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
+import {
+	NOTIFICATION_SOUND_PLAY_CHANNEL,
+	NOTIFICATION_TEST_CHANNEL,
+} from "../shared/notification-sound";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import type {
 	TeamBridgeNotificationSender,
@@ -169,6 +181,32 @@ const api = {
 			},
 			pendingOpen: (): Promise<TeamBridgeOpenResult | null> =>
 				ipcRenderer.invoke("team-bridge:pending-open"),
+		},
+		/**
+		 * Link previews, as a PROXY and nothing else.
+		 *
+		 * Core resolves a message's links (it fetches, guards addresses, sniffs the
+		 * images and stores them under scope-derived ids); this app asks it for one
+		 * card, then asks it for an artifact's BYTES, which main keeps on disk so a
+		 * re-render does not re-download them. The renderer never learns a third-party
+		 * origin it could fetch from, and neither does main: the only identifier that
+		 * crosses this bridge is core's artifact id.
+		 *
+		 * `expectedAccountId` is on BOTH calls because core gates the preview routes on
+		 * the account the caller claims (a receipt it compares against the identity the
+		 * install holds) exactly as it does for `teamBridge.*`. Main holds no identity
+		 * of its own to substitute, so the renderer passes the one it already sends on
+		 * every Team Bridge request.
+		 */
+		linkPreview: {
+			resolve: (
+				request: LinkPreviewResolveRequest,
+			): Promise<LinkPreviewResolveResult> =>
+				ipcRenderer.invoke(LINK_PREVIEW_RESOLVE_CHANNEL, request),
+			artifact: (
+				request: LinkPreviewArtifactRequest,
+			): Promise<LinkPreviewArtifactResult> =>
+				ipcRenderer.invoke(LINK_PREVIEW_ARTIFACT_CHANNEL, request),
 		},
 		/**
 		 * The conversation main launched this window to show, read from THIS
@@ -518,6 +556,30 @@ const api = {
 			ipcRenderer.removeListener(EXTERNAL_OPEN_REFUSED_CHANNEL, handler);
 		};
 	},
+	/**
+	 * A notification sound main could not hand to the OS (Windows/Linux, or a
+	 * macOS staging failure): gain-baked WAV bytes for the renderer's own
+	 * player. Anything but bytes is dropped here, so the player never builds a
+	 * source out of whatever else might arrive on the channel.
+	 */
+	onNotificationSound: (
+		callback: (bytes: Uint8Array) => void,
+	): (() => void) => {
+		const handler = (_event: IpcRendererEvent, bytes: unknown) => {
+			if (bytes instanceof Uint8Array && bytes.byteLength > 0) callback(bytes);
+		};
+		ipcRenderer.on(NOTIFICATION_SOUND_PLAY_CHANNEL, handler);
+		return () => {
+			ipcRenderer.removeListener(NOTIFICATION_SOUND_PLAY_CHANNEL, handler);
+		};
+	},
+	/**
+	 * Raise one real banner with the configured notification sound (Settings'
+	 * "Send test notification"; `main/notification-test.ts`).
+	 */
+	sendTestNotification: (): Promise<
+		{ shown: true } | { shown: false; reason: "unsupported" | "suppressed" }
+	> => ipcRenderer.invoke(NOTIFICATION_TEST_CHANNEL),
 	showItemInFolder: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
 

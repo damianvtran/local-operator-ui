@@ -2571,14 +2571,31 @@ const BUSY_RESEND_MAX_WAIT_MS = 5_000;
 const BUSY_RESEND_DEFAULT_WAIT_MS = 2_000;
 
 /**
- * `run`, repeated on a `runtime_busy` refusal with the SAME request.
+ * `run`, repeated on a `runtime_busy` refusal.
  *
- * The caller's request object is reused whole - same `requestId`, same text,
- * images and `mode` - because the backend's receipt is keyed on a hash of the
- * whole body (`desktop_receipts.py`): a resend that differed in any field would
- * be a 409, and one with a fresh id could deliver twice. Every other failure is
- * thrown on the first attempt, untouched, so the classification at each call
- * site sees exactly what it saw before this existed.
+ * WHICH REQUEST GOES OUT IS THE CALLER'S, and for every caller but one it is the
+ * SAME request: same `requestId`, same text, images and `mode`. Why, on the routes
+ * shaped for it: both of their journals are keyed on the request, `/messages`
+ * claims `retry_safe=True` so an unfinished claim is resumed, and `/answers` has
+ * no receipt journal at all — so a resend under the same id is the SAME intent
+ * resumed, while one with a fresh id could admit the thing twice. Every other
+ * failure is thrown on the first attempt, untouched, so the classification at
+ * each call site sees exactly what it saw before this existed.
+ *
+ * THE ONE EXCEPTION, AND WHY IT IS NOT A LICENCE TO RESEND ANYTHING ELSE.
+ * `/v1/desktop/sessions/{id}/commands` claims its receipt WITHOUT `retry_safe`
+ * (`desktop_receipts.py`), so an unfinished claim is answered `409 "Request
+ * outcome is indeterminate"` to a same-id resend — a definite failure claimed
+ * over a switch that may have landed. The picker's model switch therefore does
+ * not resend a REQUEST; it repeats its DISPATCH (`runSessionCommand` in
+ * `use-picker-backend.ts`), minting a fresh request id per attempt so each one is
+ * a new claim. That is safe only because the operation's whole effect is "this
+ * session's model is X": re-running `set_model` with the same target is
+ * idempotent in effect, so two attempts that both land are indistinguishable
+ * from one. A command with an append in it (`/goal`, which admits a turn) has no
+ * such property, and repeating it under a fresh id would be the double delivery
+ * this note has always warned about — which is why the option is opt-in at ONE
+ * call site rather than a property of `sessions.command`.
  *
  * AND NOTHING IS PRODUCED WHILE IT REPEATS. The caller sees either the final
  * refusal or a success, which is what makes the design round's "say nothing

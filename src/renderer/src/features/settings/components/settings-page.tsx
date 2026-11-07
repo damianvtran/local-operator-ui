@@ -110,6 +110,7 @@ import { AgentAvatarSizeSetting } from "./agent-avatar-size-setting";
 import { AppearanceLayers } from "./appearance-layers";
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
+import { NotificationsSection } from "./notifications-section";
 import { RadientAccountSection } from "./radient-account-section";
 import {
 	SettingsSearch,
@@ -570,6 +571,7 @@ export const SettingsPage: FC = () => {
 		radient: useRef<HTMLDivElement>(null),
 		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
+		notifications: useRef<HTMLDivElement>(null),
 		speech: useRef<HTMLDivElement>(null),
 		keyboard: useRef<HTMLDivElement>(null),
 		providers: useRef<HTMLDivElement>(null),
@@ -1768,7 +1770,10 @@ export const SettingsPage: FC = () => {
 								<div className="flex flex-col gap-4">
 									{/* The gallery remains the Theme layer; preview, contrast and
 									    accent controls share the same composed appearance. */}
-									<AppearanceLayers gallery={<ThemeSelector />} />
+									<AppearanceLayers
+										gallery={<ThemeSelector />}
+										glass={glass.state}
+									/>
 									{/*
 									 * The reasoning preference's only control.
 									 *
@@ -1848,6 +1853,8 @@ export const SettingsPage: FC = () => {
 							 * this machine, and what to do when none can. See its module docstring for
 							 * why it carries no credential field.
 							 */}
+							{/* Notifications precedes Speech in the rail and document order. */}
+							<NotificationsSection sectionRef={sectionRefs.notifications} />
 							<SpeechSection sectionRef={sectionRefs.speech} />
 							<KeyboardShortcutsSection
 								sectionRef={sectionRefs.keyboard}
@@ -2061,6 +2068,7 @@ export const SettingsPage: FC = () => {
 									hideModelEffort
 									hideAgentMessages
 									hideSpeechShortcuts
+									hideNotifications
 									focusKey={
 										/*
 										 * A search jump outranks a URL deep link: it is the most recent

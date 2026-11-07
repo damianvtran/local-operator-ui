@@ -395,8 +395,12 @@ test("the viewed conversation is lifted when the bound withheld it", () => {
 test("the group's foot names the next page AND the position it is drawn from", () => {
 	const foot = entityMore({ add: 15, drawn: 10, total: 41 });
 	assert.equal(foot.label, "Show 15 more chats · 10 of 41");
-	/* The name contains the visible label whole (round 1, U4): same ` · `, not a comma. */
-	assert.equal(foot.aria, "Show 15 more chats · 10 of 41 shown");
+	/*
+	 * The name contains the visible label whole (round 1, U4): same ` · `, not a
+	 * comma. The old trailing " shown" word had no catalogue key, so the name ends
+	 * at the self-describing position rather than inventing untranslated copy.
+	 */
+	assert.equal(foot.aria, "Show 15 more chats · 10 of 41");
 	/* A press that adds one row counts it, for `pageMoreLabel`'s reason. */
 	assert.equal(
 		entityMore({ add: 1, drawn: 40, total: 41 }).label,

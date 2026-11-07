@@ -37,9 +37,14 @@ const {
 	paidUsable,
 	creditContinuation,
 	amountText,
+	askReset,
 	bindingLimit,
 	bindingSummary,
+	cancelReset,
+	canReset,
 	collectStats,
+	confirmReset,
+	dismissReset,
 	describeSource,
 	describeStats,
 	effectiveStatus,
@@ -50,9 +55,16 @@ const {
 	fractionOf,
 	isStale,
 	limitRow,
+	mergeResetUsage,
 	newestConfirmedMs,
+	pendingRedeemRequestId,
 	providerBlocks,
+	resetAccountKey,
+	resetAccountOf,
+	resetStateFor,
 	resetsInMs,
+	settleReset,
+	withResetState,
 	statsTerms,
 	statusOf,
 	statusTone,
@@ -1539,4 +1551,211 @@ test("a row's reported flag is the fact behind the not-reported sentence", () =>
 	const missing = limitRow(limit({ amount: amount() }), NOW);
 	assert.equal(missing.amount, "not reported");
 	assert.equal(missing.reported, false);
+});
+
+/* ---------------------------------------------------------------------------
+ * The reset-credit machine
+ *
+ * The rules asserted here are the ones a live reset cannot be re-run to check:
+ * an id that must survive an unknown outcome (a second spend is not refundable),
+ * one attempt per account, and the two independent facts that make a report
+ * spendable. They are driven through the same exported transitions the view
+ * calls, so a change that only edits the JSX cannot make them pass.
+ * ---------------------------------------------------------------------- */
+
+const spendable = (over = {}) =>
+	report({
+		provider: "openai",
+		identity: "me@example.com",
+		resets_available: 3,
+		credential_ref: "cred-openai-1",
+		...over,
+	});
+
+test("canReset requires a positive integer count AND a credential ref", () => {
+	assert.equal(canReset(spendable()), true);
+	// A provider with no reset product reports null; a spent one reports 0.
+	assert.equal(canReset(spendable({ resets_available: null })), false);
+	assert.equal(canReset(spendable({ resets_available: 0 })), false);
+	assert.equal(canReset(spendable({ resets_available: -1 })), false);
+	assert.equal(canReset(spendable({ resets_available: 2.5 })), false);
+	// Undefined is an older backend that never sent the field, not "unlimited".
+	assert.equal(canReset(spendable({ resets_available: undefined })), false);
+	// A report with credits and no ref cannot name the login to charge, and the
+	// backend would have to guess; it is not spendable.
+	assert.equal(canReset(spendable({ credential_ref: null })), false);
+	assert.equal(canReset(spendable({ credential_ref: "" })), false);
+	// Even a fully credited report with no provider-level ref is refused by the
+	// same rule, because `resetAccountOf` is the single place that decides it.
+	assert.equal(resetAccountOf(spendable({ credential_ref: null })), null);
+	assert.deepEqual(resetAccountOf(spendable()), {
+		provider: "openai",
+		credentialRef: "cred-openai-1",
+	});
+});
+
+test("the pending redeem id survives an unknown outcome and is dropped by a definitive one", () => {
+	const account = { provider: "openai", credentialRef: "cred-openai-1" };
+	let minted = 0;
+	const mint = () => {
+		minted += 1;
+		return `id-${minted}`;
+	};
+	let state = { phase: "idle", pendingRedeemRequestId: null };
+	state = askReset(state, mint);
+	assert.equal(state.phase, "confirm");
+	assert.equal(state.redeemRequestId, "id-1");
+	// Re-opening the confirmation does not mint a second id.
+	state = askReset(cancelReset(state), mint);
+	assert.equal(state.redeemRequestId, "id-1");
+	assert.equal(minted, 1);
+	state = confirmReset(state);
+	assert.equal(state.phase, "busy");
+	// An unknown outcome KEEPS the id: this is the whole point of the machine.
+	state = settleReset(state, {
+		outcome: "failed",
+		windowsReset: 0,
+		detail: "",
+		refused: false,
+	});
+	assert.equal(state.phase, "result");
+	assert.equal(state.redeemRequestId, "id-1");
+	assert.equal(pendingRedeemRequestId(state), "id-1");
+	// Dismissing the line keeps the debt too.
+	state = dismissReset(state);
+	assert.deepEqual(state, { phase: "idle", pendingRedeemRequestId: "id-1" });
+	// So the retry carries the SAME id, and cannot spend a second credit.
+	state = askReset(state, mint);
+	assert.equal(state.redeemRequestId, "id-1");
+	// A definitive outcome settles it and releases the id.
+	state = settleReset(confirmReset(state), {
+		outcome: "reset",
+		windowsReset: 2,
+		detail: "",
+		refused: false,
+	});
+	assert.equal(state.redeemRequestId, null);
+	// A fresh attempt after a definitive outcome gets a fresh id.
+	assert.equal(askReset(dismissReset(state), mint).redeemRequestId, "id-2");
+	// And a pre-send refusal is not definitive either: nothing reached the vendor.
+	const refused = settleReset(
+		{ phase: "busy", redeemRequestId: "id-3" },
+		{ outcome: "refused", windowsReset: 0, detail: "", refused: true },
+	);
+	assert.equal(pendingRedeemRequestId(refused), "id-3");
+});
+
+test("one attempt at a time per account, and the map keeps accounts apart", () => {
+	const one = { provider: "openai", credentialRef: "cred-1" };
+	const two = { provider: "openai", credentialRef: "cred-2" };
+	const busy = { phase: "busy", redeemRequestId: "id-1" };
+	// A second ask on a spending account is INERT: it returns the same state
+	// rather than minting an id for a request that would run concurrently.
+	assert.equal(
+		askReset(busy, () => "id-2"),
+		busy,
+	);
+	// Nothing but a confirmation becomes a request.
+	assert.equal(
+		confirmReset({ phase: "idle", pendingRedeemRequestId: null }).phase,
+		"idle",
+	);
+	assert.equal(confirmReset(busy), busy);
+
+	let states = {};
+	states = withResetState(states, one, busy);
+	states = withResetState(states, two, {
+		phase: "result",
+		redeemRequestId: null,
+		result: {
+			outcome: "no_credit",
+			windowsReset: 0,
+			detail: "",
+			refused: false,
+		},
+	});
+	assert.equal(resetStateFor(states, one).phase, "busy");
+	assert.equal(resetStateFor(states, two).phase, "result");
+	// An account nobody asked about is idle, not undefined.
+	assert.equal(
+		resetStateFor(states, { provider: "anthropic", credentialRef: "x" }).phase,
+		"idle",
+	);
+	// The key separator cannot be forged from either half of a legitimate pair.
+	assert.notEqual(
+		resetAccountKey({ provider: "a:b", credentialRef: "c" }),
+		resetAccountKey({ provider: "a", credentialRef: "b:c" }),
+	);
+});
+
+test("a reset's partial answer merges into the cached set by provider", () => {
+	/*
+	 * The redeem route refreshes ONLY the provider it spent, so its `usage` is a
+	 * partial answer. Replacing the cached payload with it deleted every other
+	 * provider's block from an unscoped `/usage` until the next read (review round
+	 * 1, M1). The merge replaces the providers the ANSWER carries, in place, and
+	 * leaves the rest alone.
+	 */
+	const cached = {
+		reports: [
+			report({ provider: "openai", identity: "spent@example.com" }),
+			report({ provider: "anthropic" }),
+			report({ provider: "google" }),
+		],
+		source: "cached",
+		fetched_at: NOW - 60_000,
+	};
+	const refreshed = {
+		reports: [report({ provider: "anthropic", identity: "refreshed" })],
+		source: "live",
+		fetched_at: NOW + 1_000,
+	};
+	const merged = mergeResetUsage(cached, refreshed);
+	assert.deepEqual(
+		merged.reports.map((entry) => entry.provider),
+		["openai", "anthropic", "google"],
+		"the spent provider takes its own slot; the others keep theirs",
+	);
+	assert.equal(merged.reports[1].identity, "refreshed");
+	assert.equal(merged.reports[0].identity, "spent@example.com");
+	assert.equal(merged.source, "live");
+	assert.equal(merged.fetched_at, NOW + 1_000);
+
+	/*
+	 * A provider the answer names twice must not appear twice: the whole
+	 * refreshed block takes the slot its first cached row held.
+	 */
+	const twoAccounts = mergeResetUsage(cached, {
+		reports: [
+			report({ provider: "openai", identity: "one@example.com" }),
+			report({ provider: "openai", identity: "two@example.com" }),
+		],
+		source: "live",
+		fetched_at: NOW,
+	});
+	assert.deepEqual(
+		twoAccounts.reports.map((entry) => entry.provider),
+		["openai", "openai", "anthropic", "google"],
+	);
+
+	// A provider the cache never held is appended rather than dropped.
+	const appended = mergeResetUsage(
+		{
+			reports: [report({ provider: "anthropic" })],
+			source: "cached",
+			fetched_at: NOW,
+		},
+		{
+			reports: [report({ provider: "openai" })],
+			source: "live",
+			fetched_at: NOW,
+		},
+	);
+	assert.deepEqual(
+		appended.reports.map((entry) => entry.provider),
+		["anthropic", "openai"],
+	);
+
+	// Nothing cached: the answer IS the payload, not an invented empty set.
+	assert.deepEqual(mergeResetUsage(undefined, refreshed), refreshed);
 });

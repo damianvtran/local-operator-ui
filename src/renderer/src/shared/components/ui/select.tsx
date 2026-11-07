@@ -145,11 +145,13 @@ export const SelectContent = forwardRef<
 				 * can flip its list over the chrome strip, and every row in it is a control.
 				 */
 				data-titlebar-no-drag=""
+				data-glass-overlay=""
+				data-lo-floating=""
 				position={position}
 				className={cn(
 					"relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md",
 					// No entrance animation; see the note at the top of `tooltip.tsx`.
-					"border border-hairline bg-elevated shadow-overlay",
+					"bg-elevated shadow-overlay",
 					position === "popper" &&
 						"data-[side=bottom]:mt-1.5 data-[side=top]:mb-1.5",
 					className,
@@ -218,7 +220,14 @@ export const SelectSeparator = forwardRef<
 >(({ className, ...props }, ref) => (
 	<SelectPrimitive.Separator
 		ref={ref}
-		className={cn("-mx-1 my-1 h-px bg-hairline", className)}
+		/*
+		 * INSET, NOT FULL-BLEED (2026-11-06). Same change, same reason as
+		 * `DropdownMenuSeparator`: `-mx-1` overshot the panel's `p-1` content box and ran
+		 * the rule to the panel's edge, which built a box with the stroke the panel no
+		 * longer has. `mx-2` lands it 12px in, aligned with the item labels, and the
+		 * colour is the same `divider-inset` so the two rules cannot drift apart.
+		 */
+		className={cn("mx-2 my-1 h-px divider-inset", className)}
 		{...props}
 	/>
 ));

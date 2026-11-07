@@ -38,8 +38,33 @@ export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
 /** Panel chrome, shared by the menu and its submenus. */
+/*
+ * NO STROKE: separation is the `elevated` ground plus the one shadow.
+ *
+ * Until 2026-11-06 this panel carried `border border-hairline`, and the operator
+ * reported it on four surfaces at once (tooltip, canvas rail, agent profile
+ * popover, sidebar overflow menu) as a border fighting the borderless-chrome
+ * system. The line was also doing work it could not do well: a hairline measures
+ * 1.03-1.18:1 against the panel's own fill, i.e. a boundary of nothing, while the
+ * ambient half of `shadow-overlay` starts 12px out and leaves the edge bare. So
+ * `--shadow-overlay` gained a contact layer that darkens the boundary itself
+ * (see "-- elevation --" in `styles/index.css`), and the stroke went.
+ *
+ * `data-lo-floating` is the machine-readable half of the rule. Every shared
+ * primitive's panel wears it; `scripts/floating-surface-no-border.test.mjs` fails
+ * if a border utility comes back on a marked panel's tag or on a class constant it
+ * names (this array included), if a stylesheet rule touching the attribute
+ * declares a border outside the one forced-colors rule, or if the focus rule's
+ * box-shadow reset stops excluding it. The check is static - there is no DOM in
+ * that suite - so a computed border is a browser run's evidence, not its claim.
+ * Adding a hairline back here does not just look wrong, it turns the suite red.
+ *
+ * The internal divider is the other half: `DropdownMenuSeparator` below insets
+ * its rule so it reads as a line BETWEEN groups rather than a box the group sits
+ * in.
+ */
 const panelClasses = [
-	"z-50 min-w-32 overflow-hidden rounded-md border border-hairline bg-elevated p-1",
+	"z-50 min-w-32 overflow-hidden rounded-md bg-elevated p-1",
 	// No entrance animation; see the note at the top of `tooltip.tsx`.
 	"shadow-overlay",
 ];
@@ -108,6 +133,11 @@ export const DropdownMenuSubContent = forwardRef<
 			 * region is a row that cannot be clicked.
 			 */
 			data-titlebar-no-drag=""
+			data-glass-overlay=""
+			/* A submenu is a floating panel like its parent: without the marker the
+			 * focus rule's box-shadow reset (`styles/index.css`) still reaches it and
+			 * a focused submenu loses its elevation (QA round 1, Q1). */
+			data-lo-floating=""
 			className={cn(panelClasses, className)}
 			{...props}
 		/>
@@ -142,6 +172,8 @@ export const DropdownMenuContent = forwardRef<
 			<DropdownMenuPrimitive.Content
 				ref={composedRef}
 				data-titlebar-no-drag=""
+				data-glass-overlay=""
+				data-lo-floating=""
 				sideOffset={sideOffset}
 				className={cn(panelClasses, className)}
 				{...props}
@@ -237,7 +269,19 @@ export const DropdownMenuSeparator = forwardRef<
 >(({ className, ...props }, ref) => (
 	<DropdownMenuPrimitive.Separator
 		ref={ref}
-		className={cn("-mx-1 my-1 h-px bg-hairline", className)}
+		/*
+		 * INSET, NOT FULL-BLEED (2026-11-06). This was `-mx-1`, i.e. 4px WIDER than the
+		 * panel's `p-1` content box, so the rule ran to the panel's rounded edge on both
+		 * sides and closed a box with the border the panel used to carry - the
+		 * full-bleed hairlines the operator photographed in the sidebar overflow menu.
+		 * `mx-2` puts it 12px in, which is exactly where the item labels start
+		 * (panel `p-1` + item `px-2`), so it reads as a rule between groups rather than
+		 * as a wall the group is standing behind. The colour is `divider-inset`, the
+		 * hairline mixed halfway toward the panel's ground: with the stroke gone, a full
+		 * hairline out-drew the panel's own edge on light and high-contrast palettes
+		 * (design round 1, D3; the measurement is on the utility in `styles/index.css`).
+		 */
+		className={cn("mx-2 my-1 h-px divider-inset", className)}
 		{...props}
 	/>
 ));

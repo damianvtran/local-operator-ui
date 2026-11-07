@@ -15,3 +15,113 @@ export const SHOT_RED_B64 =
    round 1, D3). */
 export const SHOT_PANORAMA_B64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAcIAAABkCAMAAAAi9MAwAAAAaVBMVEU7b9Y9cNRAcdFEcs5Jc8pMdMZQdcNVd79Xd71ZeLxeebdgerVnfK9ofK5xf6Zvfqd1gKN4gaB6gp6BhJiDhJaIhpKLh46PiIuRiIqUiYeZi4KdjH+gjXymjnepj3SrkHKukW+wkm7y8vJ078mHAAACdElEQVR42u2Ri5aaQBAFOytGcdVVMJrXyib//5GZ4SUSEIxr2CtVR2eaS9MMp8xAnU8gDgr1FT6BOE7hxHEKJjmueqrEWVca0f+x+m0C4qDwERQGDl8GQVHldbqd8iDNy3b6P0R/EFgA4uQKp9Psn1+VxfQ8OLvR0F9kffuZ/w7zbQrioFBf4WcQB4WPonCW/up1NforaKyv62f+e8y3GYhjs7knDNMldEl2WV7P5+6fNc3yq8pSfc7VRV7tZ/5d54ehhSAOCkegcFHbfbloaV009zP/nvNtAeLYM4iDQhTCB1G4fL6812iJW3Pm33G+LR2r5WrVvue1x0d5fVXO/LvNXy5tBeKgEIWAQrhV4fquvKzX0i9QOL+tQRzbuGXjadt9uSkrH66vqfvMvzijbGu9P/Lz2wbE6VS4Ff/Axz+/Rdtou40iv/it3Is8y4qyjPrXXfO3l2d0vnv057cIxEEhCmF4hXEUxRlR5R8XebbkdZSWRX+1jprytL9z/uV5Xe/j/LY7I479UrveNfTU7vm6qbfx2Zbn4o68z/vGeH7bgTgoRCEMrvALiJMr3O/9cor3TXUlK+rsuf3ZyKb+S/O75vW5P+bz2x7E6aHwcND+xEc/vx1AHPsK4qBQX+E3EAeF+gq/gzgoRCEMrvAHiINCfYU/QRwUohAGV/gK4tgxw5XH4/+uT/vrTftQ568HQ5zfKUwy3EWSDFCfBf+6j/n8x6MlIA4K9RW+JcmbNuIfcPPx7ReIg0IUwuAKf4M4KEQhoBBQiEJAIaAQUIhCQCGgEFCIQkAhoBBQiEJAIaAQUIhCQCGgEFCIQkAhoBBQiEIQ5A+Nf//aHljvpwAAAABJRU5ErkJggg==";
+
+/*
+ * GENERIC-FILE SAVE STATES (decision a-fdf0), shared by the thread, audit and
+ * shared-card stories so a designer captures one card through all three. The
+ * relay is SYNTHETIC: `fileSaveAnswer` stands in for main's file lane and keys
+ * every answer off the file id, never off a name. Names below are fixture text.
+ *
+ * `bfile_save_ready` answers real (tiny, synthetic) bytes, so pressing it by
+ * hand writes `notes.txt` through the browser's download path; no play
+ * function presses it.
+ */
+export const FILE_SAVE_FILES = [
+	{
+		id: "bfile_save_ready",
+		class: "text",
+		size: 18,
+		display_name: "notes.txt",
+		state: "bound",
+	},
+	{
+		id: "bfile_save_hold",
+		class: "pdf",
+		size: 2_400_000,
+		display_name: "Quarterly board summary.pdf",
+		state: "bound",
+	},
+	{
+		id: "bfile_save_refused",
+		class: "container",
+		size: 940_000,
+		display_name: "Customer onboarding checklist v12.docx",
+		state: "bound",
+	},
+	{
+		id: "bfile_save_large",
+		class: "other",
+		size: 24_900_000,
+		display_name: "capture-2026-11-05.pcap",
+		state: "bound",
+	},
+	{
+		id: "bfile_save_offline",
+		class: "text",
+		size: 18_200,
+		display_name: "run-2026-11-03.log",
+		state: "bound",
+	},
+	{
+		id: "bfile_save_expired",
+		class: "pdf",
+		size: 310_000,
+		display_name: "Signed NDA.pdf",
+		state: "expired",
+	},
+	{
+		id: "bfile_save_lapsed",
+		class: "container",
+		size: 1_200_000,
+		display_name: "design-assets.zip",
+		state: "bound",
+		expires_at: "2026-01-01T00:00:00Z",
+	},
+];
+
+/** The synthetic file lane: one closed answer per fixture id. */
+export async function fileSaveAnswer(attachmentId: string) {
+	switch (attachmentId) {
+		case "bfile_save_ready":
+			return {
+				status: 200,
+				kind: "bytes" as const,
+				mimeType: "application/octet-stream",
+				data: new TextEncoder().encode("synthetic fixture\n"),
+			};
+		case "bfile_save_hold":
+			// Never answers: the card stays in `saving` for as long as needed.
+			return new Promise<never>(() => {});
+		case "bfile_save_large":
+			return { status: 413, kind: "error" as const, detail: "Synthetic" };
+		case "bfile_save_offline":
+			return {
+				status: 503,
+				kind: "error" as const,
+				detail: "Synthetic",
+				code: "transport.failed",
+			};
+		default:
+			// The hub's uniform refusal: gone, expired, not a member, other tenant.
+			return { status: 404, kind: "error" as const, detail: "Synthetic" };
+	}
+}
+
+/*
+ * Press Save on every card whose state needs a press (saving, refused, too
+ * large, failed), in card order, so one frame shows the whole vocabulary.
+ * Positions match `FILE_SAVE_FILES`; the ready, expired and lapsed cards are
+ * left alone. Focus ends on the LAST pressed card's control.
+ */
+export async function pressFileSaves(root: HTMLElement) {
+	const deadline = Date.now() + 5000;
+	let cards: HTMLElement[] = [];
+	while (Date.now() < deadline) {
+		cards = [...root.querySelectorAll<HTMLElement>("[data-bridge-file-card]")];
+		if (cards.length >= FILE_SAVE_FILES.length) break;
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
+	for (const position of [1, 2, 3, 4])
+		cards[position]?.querySelector<HTMLButtonElement>("button")?.click();
+	await new Promise((resolve) => setTimeout(resolve, 50));
+}

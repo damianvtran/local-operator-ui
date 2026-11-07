@@ -25,6 +25,9 @@
  */
 
 import "./session-switch.css";
+import { resolveLanguage } from "../src/i18n/direction";
+import { setLocale } from "../src/i18n/locale";
+import { nestedUserFixture } from "./session-switch-neighbors";
 /* The app's real faces, imported by both renderer entries and by Storybook's
  * preview for the same reason: without them `font-mono` resolves to the
  * platform fallback, so a frame would be a picture of the reviewer's OS rather
@@ -35,10 +38,13 @@ import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { paintPendingSend } from "@shared/hooks/use-canonical-session";
+import { applyGlassFacts } from "@shared/hooks/use-window-glass";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
 	HashRouter,
@@ -47,6 +53,11 @@ import {
 	Routes,
 	useNavigate,
 } from "react-router-dom";
+import { DEFAULT_GLASS_INTENSITY } from "../src/shared/window-glass";
+import {
+	attachmentMode,
+	withCaptureAttachment,
+} from "./session-switch-attachments";
 import {
 	type BridgeHandle,
 	type BridgeLatency,
@@ -117,6 +128,63 @@ function inFlightSteps(): TranscriptStep[] {
 }
 
 const SESSION_COUNT = param("sessions", 24);
+const fixtureParams = new URLSearchParams(window.location.search);
+const fixtureLocale = fixtureParams.get("locale");
+if (fixtureLocale === "fr" || fixtureLocale === "ur") {
+	setLocale(fixtureLocale);
+	const language = resolveLanguage(fixtureLocale);
+	document.documentElement.lang = language.lang;
+	document.documentElement.dir = language.dir;
+}
+/**
+ * Paragraphs per user turn (`?userLines=N`); 0 keeps the one-line turn. A turn
+ * past eight lines is what D2's user-message clamp exists for, so this is the
+ * knob that puts the clamp on the open path being measured.
+ */
+const USER_LINES = param("userLines", 0);
+// Opt-in only: existing latency arms and the long-prose knob remain unchanged.
+const ATTACHMENT_MODE = attachmentMode(window.location.search);
+const LEADING_NON_WORD_RE = /^[^\p{L}\p{N}]+/u;
+/** A fixed-size pasted brief for the extreme-length clamp regression arm. */
+const USER_CHARS = Math.max(0, Math.floor(param("userChars", 0)));
+/** Explicit-break lines exercise the cap boundary without paragraph margins. */
+const USER_EXAMPLE = new URLSearchParams(window.location.search).get(
+	"userExample",
+);
+if (USER_EXAMPLE === "threshold") {
+	/*
+	 * A controlled boundary, not a claim about the current prose typography:
+	 * eight normal 22.4px lines are 179.2px, so cannot land exactly on 174px.
+	 * This arm's eight hard-break lines use 21.75px to exercise equality in the
+	 * real component, while the other arms keep the shipped stylesheet intact.
+	 */
+	const boundaryStyle = document.createElement("style");
+	boundaryStyle.textContent =
+		'[data-record-kind="user"] p { line-height:21.75px }';
+	document.head.append(boundaryStyle);
+}
+/* Theme is fixture-owned: the before/after capture must use the same palette. */
+const fixtureTheme = new URLSearchParams(window.location.search).get("theme");
+if (fixtureTheme === "light" || fixtureTheme === "dark") {
+	const themeName =
+		fixtureTheme === "light" ? "localOperatorLight" : "localOperatorDark";
+	useUiPreferencesStore.getState().setTheme(themeName);
+	// This fixture mounts ChatPage, not the outer app's theme-provider effect.
+	document.documentElement.dataset.theme = themeName;
+}
+// Renderer-style preview only: feed the SHIPPED glass painter explicit mock
+// native facts. This exercises real Full app/80% alpha variables and CSS, not
+// OS vibrancy/capability detection. No opaque overlay or fake backdrop is added.
+if (fixtureParams.get("glass") === "renderer") {
+	applyGlassFacts({
+		mechanism: "vibrancy",
+		coverage: "full",
+		intensity: DEFAULT_GLASS_INTENSITY,
+		material: "window",
+		scheme: fixtureTheme === "light" ? "light" : "dark",
+	});
+	document.documentElement.dataset.previewGlass = "mock-native-facts";
+}
 /** Steps in the INCOMING session's transcript: the one whose paint we time. */
 const INCOMING_STEPS = param("steps", 200);
 /** Steps in the outgoing session, so the view being replaced is real work too. */
@@ -157,7 +225,31 @@ function steps(count: number): TranscriptStep[] {
 		if (i % 3 === 0) {
 			out.push({
 				kind: "user",
-				text: `Turn ${turn}: check the workspace and report what changed since yesterday, briefly.`,
+				text:
+					USER_EXAMPLE === "threshold"
+						? Array.from(
+								{ length: 8 },
+								(_, line) => `Boundary line ${line + 1}`,
+							).join("  \n")
+						: USER_EXAMPLE === "links"
+							? Array.from(
+									{ length: Math.max(1, Math.min(USER_LINES || 24, 48)) },
+									(_, line) =>
+										`Synthetic paragraph ${line + 1}: inspect [capture guide](#synthetic-guide) with \`inline_code_${line + 1}\` before continuing.`,
+								).join("\n\n")
+							: USER_EXAMPLE === "code"
+								? `A pasted stack trace:\n\n\`\`\`text\n${Array.from({ length: 40 }, (_, line) => `trace line ${line + 1}: inspect workspace`).join("\n")}\n\`\`\``
+								: USER_CHARS > 0
+									? `Turn ${turn}: ${"a pasted brief with selectable hidden text. ".repeat(
+											Math.ceil(USER_CHARS / 43),
+										)}`.slice(0, USER_CHARS)
+									: USER_LINES > 0
+										? Array.from(
+												{ length: USER_LINES },
+												(_, line) =>
+													`Turn ${turn}, line ${line + 1}: a pasted line of the brief that makes this turn taller than the clamp.`,
+											).join("\n\n")
+										: `Turn ${turn}: check the workspace and report what changed since yesterday, briefly.`,
 			});
 		} else if (i % 3 === 1) {
 			out.push({
@@ -171,6 +263,20 @@ function steps(count: number): TranscriptStep[] {
 				output: `notes.md (${turn}): 214 lines, last modified 09:1${turn % 10}.`,
 			});
 		}
+	}
+	if (ATTACHMENT_MODE !== null) {
+		// Only the first user turn gets a card, even in a large latency fixture.
+		const first = out.findIndex((step) => step.kind === "user");
+		const step = out[first];
+		if (step?.kind === "user")
+			out[first] = withCaptureAttachment(step, ATTACHMENT_MODE);
+	}
+	// Nested boundaries use the same raw user payload that the shipped reducers
+	// and ReplyPreview parse, not rendered stand-ins or injected UI handlers.
+	for (let index = 0; index < out.length; index += 1) {
+		const step = out[index];
+		if (step.kind === "user")
+			out[index] = nestedUserFixture(step, USER_EXAMPLE);
 	}
 	return out;
 }
@@ -218,6 +324,11 @@ stepsBySession[OUTGOING] = steps(OUTGOING_STEPS);
  * both arms, so the view being left is the same work in each run.
  */
 stepsBySession[INCOMING] = LIVE ? inFlightSteps() : steps(INCOMING_STEPS);
+// Echo capture starts empty and advances only on explicit fixture controls: no
+// timer can race the screenshot or skip the optimistic stage on a slow host.
+if (ATTACHMENT_MODE === "echo") {
+	for (const id of SESSION_IDS) stepsBySession[id] = [];
+}
 
 // ------------------------------------------------------------------ probe
 
@@ -1369,7 +1480,7 @@ const api: Probe = {
 			 * `⣾` -> `⣽`. A change in what the line SAYS still gets a sample.
 			 */
 			const spinnerless = (text: string | null) =>
-				text === null ? null : text.replace(/^[^\p{L}\p{N}]+/u, "");
+				text === null ? null : text.replace(LEADING_NON_WORD_RE, "");
 			const cueSignature = (cues: PaneCues) =>
 				JSON.stringify([
 					cues.rows,
@@ -1854,6 +1965,57 @@ const HASH_PREFIX = /^#/;
 const probePath = () =>
 	window.location.hash.replace(HASH_PREFIX, "") || "/chat";
 
+/** Fixture controls, never a replacement for the shipped row or disclosure. */
+function AttachmentCaptureControls() {
+	const [stage, setStage] = useState<"ready" | "echo" | "persisted">("ready");
+	const active = useCanonicalSessionsStore((state) => state.activeSessionId);
+	if (ATTACHMENT_MODE !== "echo") return null;
+	const id = "synthetic-attachment-admission";
+	const step = steps(1)[0];
+	if (step?.kind !== "user") throw new Error("Missing synthetic user step");
+	return (
+		<aside
+			aria-label="Attachment capture controls"
+			className="fixed bottom-2 left-2 z-50 flex gap-2 bg-canvas p-2"
+		>
+			<button
+				type="button"
+				disabled={stage !== "ready" || active !== OUTGOING}
+				onClick={() => {
+					paintPendingSend(OUTGOING, {
+						id,
+						text: step.text,
+						images: [],
+						documents: (step.documents ?? []).map((document, index) => ({
+							id: `${id}:doc:${index}`,
+							attachment: document.attachment,
+							filename: document.filename,
+							mimeType: document.mime_type,
+							bytes: document.bytes,
+							injection: document.injection,
+							path: null,
+							storedPath: null,
+						})),
+					});
+					setStage("echo");
+				}}
+			>
+				Paint synthetic attachment echo
+			</button>
+			<button
+				type="button"
+				disabled={stage !== "echo" || active !== OUTGOING}
+				onClick={() => {
+					bridge.persistUser(OUTGOING, step, id);
+					setStage("persisted");
+				}}
+			>
+				Persist synthetic attachment row
+			</button>
+		</aside>
+	);
+}
+
 const ShellFrame = ({ children }: { children: React.ReactNode }) => (
 	<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
 		{/*
@@ -1870,6 +2032,7 @@ const ShellFrame = ({ children }: { children: React.ReactNode }) => (
 		 * produced. `ChatLayout` + `SidebarNavigation` is the app's own arrangement
 		 * (`app.tsx`), so the click this page drives is the click the app receives.
 		 */}
+		<AttachmentCaptureControls />
 		<ChatLayout
 			sidebar={<SidebarNavigation />}
 			content={
@@ -1972,10 +2135,16 @@ const revealFixtureRows = async (): Promise<boolean> => {
  * at this point - the sidebar's list arrives from `sessions.list` a moment
  * later, and the driver waits for `ready` before timing anything.
  */
-void useCanonicalSessionsStore
-	.getState()
-	.openSession(OUTGOING)
-	.then(() => api.settle(OUTGOING))
+// Cold-admission arms leave ChatPage empty until an ACTUAL sidebar press.
+// No timer/proxy click can skip the first-row transition under observation.
+const boot =
+	fixtureParams.get("boot") === "sidebar"
+		? Promise.resolve()
+		: useCanonicalSessionsStore
+				.getState()
+				.openSession(OUTGOING)
+				.then(() => api.settle(OUTGOING));
+void boot
 	.then(() => revealFixtureRows())
 	.then((revealed) => {
 		if (revealed) api.ready = true;

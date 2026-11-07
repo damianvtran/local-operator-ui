@@ -1226,5 +1226,12 @@
 		"length": "Two characters in English, comma followed by a space.",
 		"note": "Joins separate causes (for example 'too large to preview, sensitive file'). Must NOT be a word for 'and': the reasons are independent, and a conjunction made them read as one compound cause. Use the locale's ordinary list comma, as ui.agents.starters.summary.separator does.",
 		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.show_fewer": {
+		"role": "disclosure toggle that collapses an already expanded supplement list",
+		"tone": "imperative phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The counterpart of a count disclosure: the closed state names how many more files or graphics are hidden, and this open state says only that pressing collapses them. Do not add a count.",
+		"placeholders": {}
 	}
 }

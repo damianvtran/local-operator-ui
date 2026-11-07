@@ -1,3 +1,8 @@
+import {
+	type TeamBridgeFilesState,
+	splitBridgeFiles,
+	transferredFiles,
+} from "./use-team-bridge-files";
 /**
  * Team Bridge image attachments: the composer strip and the message's images.
  *
@@ -44,6 +49,7 @@ import {
 	ImageIcon,
 	ImageOff,
 	ImagePlus,
+	Paperclip,
 	RotateCw,
 	X,
 } from "lucide-react";
@@ -370,38 +376,63 @@ export const TeamBridgeAttachmentStrip: FC<{
  */
 export const TeamBridgeAttachButton: FC<{
 	state: TeamBridgeAttachmentsState;
+	files?: TeamBridgeFilesState;
 	disabled?: boolean;
-}> = ({ state, disabled = false }) => {
+}> = ({ state, files, disabled = false }) => {
 	useI18nLocale();
 	const input = useRef<HTMLInputElement>(null);
-	if (!state.enabled) return null;
-	const full = state.count >= state.max;
+	if (!state.enabled && !files?.enabled) return null;
+	const full = files?.enabled
+		? state.count + files.chips.length >= 10
+		: state.count >= state.max;
 	return (
 		<>
 			<Button
 				variant="ghost"
 				size="icon"
-				aria-label={t("ui.teamBridge.attachments.add")}
+				aria-label={t(
+					files?.enabled
+						? "ui.teamBridge.files.add"
+						: "ui.teamBridge.attachments.add",
+				)}
 				title={
 					full
 						? t("ui.teamBridge.attachments.limit", { max: state.max })
-						: t("ui.teamBridge.attachments.add")
+						: t(
+								files?.enabled
+									? "ui.teamBridge.files.add"
+									: "ui.teamBridge.attachments.add",
+							)
 				}
 				disabled={disabled || full}
 				onClick={() => input.current?.click()}
 			>
-				<ImagePlus size={16} aria-hidden="true" />
+				{files?.enabled ? (
+					<Paperclip size={16} aria-hidden="true" />
+				) : (
+					<ImagePlus size={16} aria-hidden="true" />
+				)}
 			</Button>
 			<input
 				ref={input}
 				type="file"
 				// A hint for the OS picker only; the bytes are sniffed regardless.
-				accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif"
+				accept={
+					files?.enabled
+						? undefined
+						: "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif"
+				}
 				multiple
 				hidden
 				tabIndex={-1}
 				onChange={(event) => {
-					state.add(Array.from(event.target.files ?? []));
+					const selected = Array.from(event.target.files ?? []);
+					if (files)
+						void splitBridgeFiles(selected).then((parts) => {
+							state.add(parts.images);
+							files.add(parts.generic);
+						});
+					else state.add(selected);
 					// Reset so picking the same file twice still fires a change.
 					event.target.value = "";
 				}}
@@ -671,9 +702,23 @@ export const TeamBridgeMessageAttachments: FC<{
 }> = ({ message, tenantId, density = "regular", accountId }) => {
 	useI18nLocale();
 	const attachments = message.attachments ?? [];
-	/* S3b generic files ride beside the images as metadata-only cards; they
-	 * never enter this component's byte relay, cache or lightbox. */
+	/* S3b generic files ride beside the images as cards. They never enter this
+	 * component's picture relay, blob cache or lightbox: a file is never drawn.
+	 * Its one action, Save (decision a-fdf0), reads the bound file through the
+	 * same member relay in file mode, only when pressed, and only with the
+	 * tenant and captured account this subtree was rendered under. */
 	const files = (message.files ?? []).map(toBridgeFileDescriptor);
+	const readFile =
+		tenantId !== null && accountId
+			? (file: { id: string }) =>
+					TeamBridgeApi.fileBytes({
+						tenantId,
+						conversationId: message.conversation_id,
+						messageId: message.id,
+						attachmentId: file.id,
+						expectedAccountId: accountId,
+					})
+			: undefined;
 	const fileCount = Math.max(files.length, message.file_count ?? 0);
 	const [open, setOpen] = useState<number | null>(null);
 	const [urls, setUrls] = useState<(string | null)[]>([]);
@@ -706,6 +751,7 @@ export const TeamBridgeMessageAttachments: FC<{
 				compact={density === "compact"}
 				files={files}
 				fileCount={fileCount}
+				readFile={readFile}
 				renderPreview={(attachment, index, slot) => (
 					<MessageImage
 						message={message}
@@ -845,23 +891,38 @@ export const TeamBridgeScheduledAttachments: FC<{
  * `pastedTextIsOnlyFileNames`). A paste of images on a hub without the
  * capability falls through to the hook's "unsupported" note.
  */
-export function attachmentPasteHandlers(state: TeamBridgeAttachmentsState) {
+export function attachmentPasteHandlers(
+	state: TeamBridgeAttachmentsState,
+	generic?: TeamBridgeFilesState,
+) {
+	const add = (data: DataTransfer) => {
+		if (generic)
+			void splitBridgeFiles(transferredFiles(data)).then((parts) => {
+				state.add(parts.images);
+				generic.add(parts.generic);
+			});
+		else state.add(imageFiles(data));
+	};
 	return {
 		onPaste: (event: ClipboardEvent<HTMLElement>) => {
-			const files = imageFiles(event.clipboardData);
+			const files = generic
+				? transferredFiles(event.clipboardData)
+				: imageFiles(event.clipboardData);
 			if (files.length === 0) return;
 			if (imagePasteCancelsText(event.clipboardData)) event.preventDefault();
-			state.add(files);
+			add(event.clipboardData);
 		},
 		onDragOver: (event: DragEvent<HTMLElement>) => {
 			if (Array.from(event.dataTransfer.types).includes("Files"))
 				event.preventDefault();
 		},
 		onDrop: (event: DragEvent<HTMLElement>) => {
-			const files = imageFiles(event.dataTransfer);
+			const files = generic
+				? transferredFiles(event.dataTransfer)
+				: imageFiles(event.dataTransfer);
 			if (files.length === 0) return;
 			event.preventDefault();
-			state.add(files);
+			add(event.dataTransfer);
 		},
 	};
 }

@@ -52,6 +52,7 @@
  * one quiet line instead of a dead control.
  */
 
+import { ICON_BUTTON_CLASS } from "@shared/components/common/icon-button-class";
 import { Spinner } from "@shared/components/common/spinner";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -112,9 +113,6 @@ const CLICK_SLOP_PX = 4;
 
 /** Arrow-key seek step: these sounds are 0.5–30 s, where 1 s is perceptible. */
 const NUDGE_SECONDS = 1;
-
-const ICON_BUTTON_CLASS =
-	"flex min-h-11 min-w-11 shrink-0 items-center justify-center text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:text-ink-disabled";
 
 export const SoundPlayer = ({
 	ownerId,

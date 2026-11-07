@@ -163,7 +163,7 @@ export function AgentMessagesDialog({
 								: "ui.agentMessages.dialog.enable",
 						)}
 					</Button>
-					<Button ref={notNow} variant="secondary" onClick={close}>
+					<Button ref={notNow} variant="tonal" onClick={close}>
 						{t("ui.agentMessages.dialog.not_now")}
 					</Button>
 				</div>

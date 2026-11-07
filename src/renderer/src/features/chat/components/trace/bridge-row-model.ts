@@ -138,6 +138,17 @@ const CONTROL = /[\x00-\x08\x0e-\x1f\x7f-\x9f]/g;
  */
 const FORMAT_CHARACTERS = /(?![\u200c\u200d])\p{Cf}/gu;
 
+/**
+ * `FORMAT_CHARACTERS` removed from `text`: the ONE rule for other people's text
+ * on a Team Bridge surface, shared so a second surface (the file Save's
+ * proposed name, `fileSaveName`) cannot drift to a narrower class. A function
+ * rather than the regex itself because a shared `/g` regex carries `lastIndex`
+ * state into any caller that uses `.test()`.
+ */
+export function stripFormatCharacters(text: string): string {
+	return text.replace(FORMAT_CHARACTERS, "");
+}
+
 /** Python's `str.split()` whitespace set, which the core flattens on. */
 const WHITESPACE_RUN = /[\t\n\r\v\f ]+/;
 /** `str.splitlines()`'s common breaks. */

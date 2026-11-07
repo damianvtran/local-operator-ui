@@ -3,6 +3,9 @@ import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 
+import { ACCENT_FAMILIES } from "../../../../../shared/theme-engine/accent-roles.mjs";
+import { kebab } from "../../../../../shared/theme-engine/css.mjs";
+
 // Keep the executable sample outside JSX so only this technical syntax is
 // exempt, never neighbouring user-facing preview labels (same rule as key examples).
 const PREVIEW_CODE_SAMPLE =
@@ -28,6 +31,46 @@ export const CustomThemePreview = ({ id }: { id: string }) => {
 				aria-hidden="true"
 				className="grid min-w-0 grid-cols-2 gap-2 rounded-md bg-canvas p-2 text-ink"
 			>
+				{ACCENT_FAMILIES.map((family) => (
+					<div
+						key={family.id}
+						data-accent-preview={family.id}
+						className="flex min-w-0 flex-wrap items-center gap-2 text-meta"
+					>
+						{family.preview === "interaction" ? (
+							<span
+								className="rounded-sm border border-control px-2 py-1"
+								style={{
+									color: `var(--lo-${kebab(family.ink)})`,
+									outline: `2px solid var(--lo-${kebab(family.role)})`,
+									outlineOffset: -2,
+								}}
+							>
+								{t(family.usageKey)}
+							</span>
+						) : (
+							<>
+								{/* Match Bridge identity chips and trace meta ink; never a secondary CTA. */}
+								<span
+									className="rounded-sm px-2 py-1"
+									style={{
+										color: `var(--lo-${kebab(family.ink)})`,
+										background: `var(--lo-${kebab(family.wash)})`,
+									}}
+								>
+									{t("ui.settings.appearance.editor.preview.identity")}
+								</span>
+								<span style={{ color: `var(--lo-${kebab(family.ink)})` }}>
+									<span aria-hidden="true">● </span>
+									{t("ui.settings.appearance.editor.preview.category")}
+								</span>
+								<span style={{ color: `var(--lo-${kebab(family.ink)})` }}>
+									{t("ui.settings.appearance.editor.preview.meta")}
+								</span>
+							</>
+						)}
+					</div>
+				))}
 				<div className="flex min-w-0 flex-col gap-1">
 					<p className="self-end rounded-sm bg-message-surface px-2 py-1 text-meta">
 						{t("ui.settings.appearance.editor.preview.user")}

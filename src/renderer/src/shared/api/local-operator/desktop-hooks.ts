@@ -1009,6 +1009,14 @@ export type DesktopFeature =
 	 * all, which is the pre-voicing behaviour rather than a degraded one.
 	 */
 	| "tts"
+	/**
+	 * NOTIFICATION SOUNDS (`features.notification_sounds`, core
+	 * `server/routes/notification_sounds.py`): the listing, preview audio and
+	 * custom-sound store Settings -> Notifications reads. Absent => the Sound
+	 * group states that the backend is too old and fires no read; the promoted
+	 * master switch still renders (it is a registry row on every backend).
+	 */
+	| "notification_sounds"
 	/*
 	 * THE PRE-EMPTIVE QUOTA NOTICE (`features.quota_notice`; the sibling core
 	 * PRs' `GET /v1/desktop/quota-notice`). ITS OWN KEY, on the rule every

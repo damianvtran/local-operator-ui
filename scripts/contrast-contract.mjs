@@ -161,10 +161,13 @@ import {
 	GLASS_INKS,
 	GLASS_INK_FLOOR,
 	GLASS_LANE_STEP,
+	GLASS_OVERLAY_INKS,
 	GLASS_ROLES,
 	GLASS_STATE_DIM_FLOOR,
 	LANE_ALPHA_CEILING,
 	derive as deriveGlassFloors,
+	deriveOverlayEdgeMix,
+	deriveOverlayInkMix,
 	composite as glassComposite,
 	glassEdge,
 	gray as glassGray,
@@ -225,6 +228,12 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
 		must: '? "bg-accent-wash font-semibold text-accent hover:text-accent-hover"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
 		why: "the pill rows assert `elevated`/`sunken` for the others' pill and `accent`/`accentHover` on `accentWash` for the reader's own; a pill moved to another role would leave those rows green about a component that no longer wears them",
+	},
+	{
+		what: "the tonal button wears its measured ramp",
+		file: "src/renderer/src/shared/components/ui/button.tsx",
+		must: '"bg-sunken text-ink",\n\t\t\t\t\t"hover:bg-surface active:bg-hairline",',
+		why: "the `tonal button` rows assert `ink` on `sunken`/`surface`/`hairline` on the `elevated` panel; a variant moved to other fills would leave those rows green about a button that no longer wears them",
 	},
 	{
 		what: "team bridge reaction pills stay borderless",
@@ -898,13 +907,24 @@ const STRUCTURAL_CALL_SITES = [
 		 * operator's "they seem to be slightly different styles" report moved
 		 * it here so the quote strip, the link strip, the shared selection
 		 * strip and the row's own clusters cannot drift apart again. The
-		 * boundary this row protects is the `border border-hairline
-		 * bg-elevated` ground, and it is unchanged - only its address is. A
-		 * future edit that repaints the shell on the transcript's canvas now
-		 * fails here even though it would leave every palette row green.
+		 * boundary this row protects is the `bg-elevated` ground, and it is
+		 * unchanged - only its address is, and (2026-11-06) the stroke that sat
+		 * on top of it. A future edit that repaints the shell on the
+		 * transcript's canvas now fails here even though it would leave every
+		 * palette row green.
+		 *
+		 * THE HAIRLINE IS GONE ON PURPOSE, not by drift. The operator reported
+		 * bordered floating surfaces (tooltip, menus, popovers, dialogs), and
+		 * this shell was one of them - wearing the same 1px stroke as the
+		 * team-bridge message toolbar, which already separated with
+		 * `bg-floating` + `shadow-overlay` and no border at all. So
+		 * `shadow-overlay` is now part of the class list this row pins:
+		 * elevation, not a line, is what keeps the shell an object over prose.
+		 * Dropping the shadow while keeping the ground would leave it edgeless,
+		 * and this row is where that fails.
 		 */
-		must: "flex h-8 items-center gap-1 rounded-md border border-hairline bg-elevated px-1",
-		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
+		must: "flex h-8 items-center gap-1 rounded-md bg-elevated px-1 shadow-overlay",
+		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus the one shadow is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column, and dropping `shadow-overlay` leaves it without the contact layer that darkens its own edge, with every palette row still green",
 	},
 	{
 		/*
@@ -2444,6 +2464,357 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 				);
 		}
 	}
+	/*
+	 * THE FLOATING OVERLAY (popups, menus, tooltips, dialogs, the update notice).
+	 *
+	 * A floating surface has no ground of its own to be measured against: it is
+	 * painted at the document root and floats over whatever the app happened to
+	 * render beneath it. That is the band's problem one layer further out, with one
+	 * important difference - a portalled panel is always over SOMETHING THE APP
+	 * PAINTED, never over the raw desktop, so the column beneath it already
+	 * contributes its alpha and the panel's own alpha can be materially lower than
+	 * the band's floor while still holding the text floor.
+	 *
+	 * The row therefore asserts what `overlayFloor` claims, over EVERY palette and at
+	 * BOTH ENDS OF THE SLIDER: at the default (80) and at MAX TRANSPARENCY (the floor
+	 * itself). The clearest end is the worst case for the fill, but the panel has to be
+	 * legible everywhere the user can put the slider, so both ends are measured rather
+	 * than the floor alone standing in for the travel.
+	 *
+	 * THE REGISTERS ARE THE ONES THAT RENDER, and the third one is measured where it
+	 * lands rather than where the palette authors it. The panel carries three text
+	 * registers - `ink` and `inkMuted`, which the derivation holds at the floor, and
+	 * `inkDim` for a menu label, an item's shortcut and a select's group heading. Inside
+	 * a marked panel `index.css` REBINDS `--color-ink-dim` to `--color-ink-muted`, so
+	 * the dim rows draw in the muted ink: measured as `inkDim` this register is 3.62:1
+	 * (dark) / 3.59:1 (light) at the floor, under the 4.5 text floor on 57 of the 59
+	 * palettes - the round-1 MAJOR. So the dim line is asserted as the muted role it
+	 * renders in, and the rebinding itself is held by `scripts/glass-overlay.test.mjs`,
+	 * which reads the declaration out of the rule: a row that measured the palette's
+	 * dim hex would be measuring a colour the panel never paints.
+	 *
+	 * The button face and the highlighted row are separately-covered pairs: a row's
+	 * `accentWash` is an OPAQUE role that replaces this ground, so it is measured as
+	 * its own fill and never as a stack on the alpha here.
+	 */
+	const OVERLAY_ENDS = [
+		{ label: "at the default 80", intensity: 80 },
+		{ label: "at max transparency", intensity: 100 },
+	];
+	const overlayMin = {};
+	let overlayPalettes = 0;
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		const floor = committed.overlayFloor?.[scheme];
+		if (floor === undefined) {
+			fail(
+				`${id}: the floating overlay's alpha floor is missing for ${scheme}`,
+			);
+			continue;
+		}
+		overlayPalettes++;
+		/* The least opaque column the app can present: the derivation's worst case. */
+		let backing = 1;
+		for (const tier of Object.keys(committed.alphaFloor))
+			backing = Math.min(
+				backing,
+				committed.alphaFloor[tier][scheme]?.canvas ?? 1,
+			);
+		const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
+		const beneath = glassComposite(palette.canvas, backing, backdrop);
+		const registers = [
+			["ink", palette.ink],
+			["inkMuted", palette.inkMuted],
+			/* The dim register, as the panel paints it (rebound to muted in the rule). */
+			["inkDim (rendered as inkMuted)", palette.inkMuted],
+		];
+		for (const end of OVERLAY_ENDS) {
+			/* `glassOverlayAlpha`'s own arithmetic, the shape § 5c already uses for the lane. */
+			const top = Math.max(LANE_ALPHA_CEILING, floor);
+			const alpha =
+				Math.round((top - (end.intensity / 100) * (top - floor)) * 100) / 100;
+			const panel = glassComposite(palette.elevated, alpha, beneath);
+			for (const [role, ink] of registers) {
+				authoredRun.assertions++;
+				const r = glassRatio(ink, panel);
+				const key = `${end.label.split(" ").pop()} ${scheme} ${role}`;
+				if (overlayMin[key] === undefined || r < overlayMin[key])
+					overlayMin[key] = r;
+				if (r < GLASS_INK_FLOOR) {
+					overlayMin.failures = (overlayMin.failures ?? 0) + 1;
+					authoredRun.fail(
+						`${id}: the floating overlay (${scheme}) ${role} on the panel ${end.label} is ${r2(r)}:1, floor ${GLASS_INK_FLOOR}`,
+					);
+				}
+			}
+		}
+	}
+	const overlayAlphaAt = (floor, intensity) =>
+		Math.round(
+			(Math.max(LANE_ALPHA_CEILING, floor) -
+				(intensity / 100) * (Math.max(LANE_ALPHA_CEILING, floor) - floor)) *
+				100,
+		) / 100;
+	/*
+	 * THE SEMANTIC INKS AND THE PANEL'S OWN BOUNDARY (design round 1, D1 and D2).
+	 *
+	 * The body inks above are only half of what a marked panel carries. A destructive
+	 * menu item is `text-danger`, a result link is `text-accent`: five meaning colours
+	 * the flat contract already floors at 4.5:1 as inks, and none of which the fill can
+	 * carry on this tier (the solve needs alpha 1.00 dark / 0.82 light - the opaque
+	 * plate). So each is measured AS THE RULE PAINTS IT: the palette's role mixed
+	 * toward `ink` by the committed `overlayInkMix`, held to the text floor at both
+	 * ends of the slider, over every palette.
+	 *
+	 * The boundary is NOT measured in this loop any more; it is the painted-contact row
+	 * just below, which says why the old stroke row was retired.
+	 *
+	 * BOTH MIXES MUST BE THE DERIVED ONES, not merely enough: a hand-picked mix is the
+	 * drift this table exists to make impossible, so the committed value is compared to
+	 * the solver's own answer for the same palettes.
+	 *
+	 * `accent` IS MEASURED NOWHERE HERE, and that is a recorded deferral rather than an
+	 * oversight: it is the palette's one dual-use role (an ink and the primary action's
+	 * fill), so a subtree rebind cannot lift its text case without recolouring every
+	 * primary button face inside a panel. The numbers and the two ways to close it are
+	 * on the PR; nothing in this gate should read as clearing it.
+	 */
+	const derivedInkMix = deriveOverlayInkMix(
+		committed.alphaFloor,
+		committed.overlayFloor,
+	);
+	const derivedEdgeMix = deriveOverlayEdgeMix(
+		committed.alphaFloor,
+		committed.overlayFloor,
+	);
+	for (const [key, derived] of [
+		["overlayInkMix", derivedInkMix],
+		["overlayEdgeMix", derivedEdgeMix],
+	])
+		for (const scheme of ["dark", "light"])
+			if (committed[key]?.[scheme] !== derived[scheme])
+				fail(
+					`the floating overlay's ${key} for ${scheme} is ${committed[key]?.[scheme]} but the palettes derive ${derived[scheme]} - re-derive, never hand-pick a mix`,
+				);
+	const semanticMin = {};
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		const inkMix = committed.overlayInkMix[scheme];
+		let backing = 1;
+		for (const tier of Object.keys(committed.alphaFloor))
+			backing = Math.min(
+				backing,
+				committed.alphaFloor[tier][scheme]?.canvas ?? 1,
+			);
+		const beneath = glassComposite(
+			palette.canvas,
+			backing,
+			scheme === "dark" ? "#ffffff" : "#000000",
+		);
+		for (const end of OVERLAY_ENDS) {
+			const panel = glassComposite(
+				palette.elevated,
+				overlayAlphaAt(committed.overlayFloor[scheme], end.intensity),
+				beneath,
+			);
+			for (const role of GLASS_OVERLAY_INKS) {
+				/* Counted like every other row in this run: a measurement the total
+				 * does not include is a measurement a reader cannot audit (agent
+				 * review round 4, N4-1). */
+				authoredRun.assertions++;
+				/* The rule's own `color-mix`: `ink` at `inkMix` over the palette's role. */
+				const painted = glassComposite(palette.ink, inkMix, palette[role]);
+				const r = glassRatio(painted, panel);
+				const key = `${role} ${scheme}`;
+				if (semanticMin[key] === undefined || r < semanticMin[key])
+					semanticMin[key] = r;
+				if (r < GLASS_INK_FLOOR)
+					authoredRun.fail(
+						`${id}: the floating overlay (${scheme}) ${role} on the panel ${end.label} is ${r2(r)}:1 after the derived ink mix, floor ${GLASS_INK_FLOOR}`,
+					);
+			}
+		}
+	}
+	console.log(
+		`Window glass round 3: the floating overlay's semantic inks after the derived mix (${committed.overlayInkMix.dark} dark / ${committed.overlayInkMix.light} light) - worst ${GLASS_OVERLAY_INKS.map((role) => `${role} ${r2(Math.min(semanticMin[`${role} dark`] ?? 0, semanticMin[`${role} light`] ?? 0))}`).join(", ")}.`,
+	);
+	/*
+	 * THE PANEL'S BOUNDARY ON GLASS, MEASURED AS IT IS PAINTED (2026-11-06).
+	 *
+	 * This row used to hold `overlayEdgeMix` - the hairline stepped toward ink - to
+	 * `GLASS_OVERLAY_EDGE_FLOOR` (1.5:1) as an opaque 1px line against the panel. That
+	 * line is gone: floating surfaces separate by ground and elevation, never by a
+	 * stroke (branding § 2; operator report 2026-11-06). Holding a colour nothing
+	 * paints to a floor is a gate that passes while the screen fails, so the stroke
+	 * row is RETIRED, not lowered (agent review round 1, R2). What reaches the screen
+	 * is the shadow's contact layer, and that is what this row measures.
+	 *
+	 * THE MODEL. Each contact layer of `--shadow-overlay` (`0 0 2px -1px` and
+	 * `0 2px 6px -3px`) is a Gaussian blur with sigma = blur / 2, so its coverage at a
+	 * pixel `d` outside the panel edge is Phi((offset + spread - d) / sigma). Measured
+	 * at d = 0.5px, on the bottom side (the drop's offset toward it) and the top (away
+	 * from it), over BOTH desktop extremes - the designer's glow (design round 1, D2)
+	 * was over a black desktop, the opposite extreme from the ink rows above - and at
+	 * both ends of the slider. Same arithmetic as the scratch model posted with the
+	 * round-1 remediation on PR #1736: the ink-step contact this change first shipped painted a
+	 * worst corner of 1.00:1 against the panel and was LIGHTER than the column beneath
+	 * in 164 palette x case corners. A blurred shadow of no colour clears 1.5:1 in
+	 * every corner, because the worst corners are the ground step itself.
+	 *
+	 * TWO ASSERTIONS, neither looser than what ships:
+	 *  - DIRECTION: the painted contact is never lighter than the column beneath it.
+	 *    A light rim is a stroke drawn with a shadow - the operator's complaint.
+	 *  - RATCHET: per scheme x desktop x side, the painted edge against the panel is at
+	 *    least the measured worst of this composition over the authored palettes,
+	 *    rounded down to 2 dp (like every `authoredRun` row, the contrast presets print
+	 *    it but do not gate it). It cannot get worse than this PR ships; raise a number
+	 *    when a change improves it, never lower one to pass.
+	 *
+	 * WHY 50% BLACK. At 30% the contact stayed darker than the column on the authored
+	 * palettes but painted a faint rim on the near-black canvases the +50/+100 contrast
+	 * presets produce (4 and 6 corners); 50% is the first step measured clean at both.
+	 *
+	 * `overlayEdgeMix` is still derived and solver-checked above because the runtime
+	 * still publishes it (`--lo-glass-overlay-edge-mix`); nothing paints it now.
+	 */
+	/*
+	 * [offset toward the bottom side, blur, spread] per contact layer, READ FROM
+	 * `--shadow-overlay` rather than copied (agent review round 2, m2): a hand copy
+	 * let a blur/spread change in CSS leave this row measuring a shadow nothing
+	 * paints - the R2 failure mode. Only the layers painted in
+	 * `--lo-shadow-contact` are contact; the ambient is the palette's far field.
+	 */
+	const shadowOverlay =
+		/--shadow-overlay:\s*([^;]+);/.exec(
+			readFileSync(join(ROOT, "src/renderer/src/styles/index.css"), "utf8"),
+		)?.[1] ?? "";
+	const CONTACT_LAYERS = [
+		...shadowOverlay.matchAll(
+			/(-?[\d.]+)(?:px)?\s+(-?[\d.]+)(?:px)?\s+(-?[\d.]+)(?:px)?\s+(-?[\d.]+)(?:px)?\s+var\(--lo-shadow-contact\)/g,
+		),
+	].map(([, x, y, blur, spread]) => {
+		/* The coverage model below is vertical-only; a sideways contact needs a new one. */
+		if (Number(x) !== 0)
+			authoredRun.fail(`--shadow-overlay contact layer has x-offset ${x}`);
+		return [Number(y), Number(blur), Number(spread)];
+	});
+	if (CONTACT_LAYERS.length === 0)
+		authoredRun.fail(
+			"--shadow-overlay has no `var(--lo-shadow-contact)` layer to measure",
+		);
+	/* Mirror the glass rule's `--lo-shadow-contact` in `styles/index.css`;
+	 * `glass-overlay.test.mjs` O-3 pins the CSS to the same two numbers. */
+	const CONTACT_SHARE = 0.45;
+	const CONTACT_BLACK = 0.5;
+	const OVERLAY_CONTACT_RATCHET = {
+		"dark #000000 bottom": 1.16,
+		"dark #000000 top": 1.15,
+		"dark #ffffff bottom": 1.9,
+		"dark #ffffff top": 2.25,
+		"light #000000 bottom": 2.24,
+		"light #000000 top": 1.95,
+		"light #ffffff bottom": 1.29,
+		"light #ffffff top": 1.09,
+	};
+	/* Abramowitz-Stegun 26.2.17: |error| < 7.5e-8, far under one 8-bit step. */
+	const phi = (x) => {
+		const t = 1 / (1 + 0.2316419 * Math.abs(x));
+		const d = 0.3989423 * Math.exp((-x * x) / 2);
+		const p =
+			d *
+			t *
+			(0.3193815 +
+				t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+		return x > 0 ? 1 - p : p;
+	};
+	/* `rgb(r g b / a)` (how the palettes author scrim) or a bare hex. */
+	const scrimOf = (value) => {
+		const m = /rgba?\(([^)]+)\)/.exec(value);
+		if (!m) return { rgb: value.slice(0, 7), alpha: 1 };
+		const [r, g, b, a = 1] = m[1]
+			.split(/[\s,/]+/)
+			.filter(Boolean)
+			.map(Number);
+		const hex = [r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("");
+		return { rgb: `#${hex}`, alpha: a };
+	};
+	const lighterThan = (a, b) =>
+		glassRatio(a, "#000000") > glassRatio(b, "#000000");
+	const contactMin = {};
+	let contactLight = 0;
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		const scrim = scrimOf(palette.scrim);
+		/* The rule's `color-mix(in srgb, black 50%, scrim)`, premultiplied as CSS
+		 * mixes alpha, then taken at the 45% share. */
+		const mixedAlpha = CONTACT_BLACK + (1 - CONTACT_BLACK) * scrim.alpha;
+		const contactRgb = glassComposite(
+			scrim.rgb,
+			((1 - CONTACT_BLACK) * scrim.alpha) / mixedAlpha,
+			"#000000",
+		);
+		const contactAlpha = mixedAlpha * CONTACT_SHARE;
+		let backing = 1;
+		for (const tier of Object.keys(committed.alphaFloor))
+			backing = Math.min(
+				backing,
+				committed.alphaFloor[tier][scheme]?.canvas ?? 1,
+			);
+		for (const desktop of ["#000000", "#ffffff"]) {
+			const beneath = glassComposite(palette.canvas, backing, desktop);
+			for (const end of OVERLAY_ENDS) {
+				const panel = glassComposite(
+					palette.elevated,
+					overlayAlphaAt(committed.overlayFloor[scheme], end.intensity),
+					beneath,
+				);
+				for (const side of ["bottom", "top"]) {
+					let edge = beneath;
+					for (const [offset, blur, spread] of CONTACT_LAYERS) {
+						const toward = side === "bottom" ? offset : -offset;
+						const coverage = phi((toward + spread - 0.5) / (blur / 2));
+						edge = glassComposite(contactRgb, contactAlpha * coverage, edge);
+					}
+					const key = `${scheme} ${desktop} ${side}`;
+					authoredRun.assertions += 2;
+					if (lighterThan(edge, beneath)) {
+						contactLight++;
+						authoredRun.fail(
+							`${id}: the floating overlay's contact (${key}) ${end.label} paints ${edge} over ${beneath} - lighter than the column beneath it, i.e. a glow ring, not elevation`,
+						);
+					}
+					const r = glassRatio(edge, panel);
+					if (contactMin[key] === undefined || r < contactMin[key])
+						contactMin[key] = r;
+					if (r < OVERLAY_CONTACT_RATCHET[key])
+						authoredRun.fail(
+							`${id}: the floating overlay's painted edge (${key}) ${end.label} is ${r2(r)}:1 against the panel, under the ratchet ${OVERLAY_CONTACT_RATCHET[key]} this composition shipped at`,
+						);
+				}
+			}
+		}
+	}
+	/*
+	 * THE RATCHET TIGHTENS, TOO (agent review round 2, m1): a floor that only fails
+	 * on drops goes stale after an improvement, and lowering it later is a silent
+	 * edit. Past 0.02 of headroom, the pinned value must be raised to the measurement.
+	 */
+	for (const [key, pinned] of Object.entries(OVERLAY_CONTACT_RATCHET))
+		if ((contactMin[key] ?? pinned) - pinned > 0.02)
+			authoredRun.fail(
+				`the floating overlay's painted edge (${key}) now measures ${contactMin[key].toFixed(3)}:1, over its ratchet ${pinned}; raise the ratchet to ${Math.floor(contactMin[key] * 100) / 100}`,
+			);
+	console.log(
+		`Window glass round 3: the floating overlay's painted contact edge - ${Object.entries(
+			contactMin,
+		)
+			.map(([key, r]) => `${key} ${r.toFixed(3)}`)
+			.join(", ")}; ${contactLight} corners lighter than the column beneath.`,
+	);
+	const ends = OVERLAY_ENDS.map((end) => end.label).join(" and ");
+	console.log(
+		`Window glass round 3: the floating overlay over ${overlayPalettes} palettes ${ends} - worst ink/muted dark ${r2(overlayMin["80 dark ink"] ?? 0)}/${r2(overlayMin["80 dark inkMuted"] ?? 0)} and ${r2(overlayMin["transparency dark ink"] ?? 0)}/${r2(overlayMin["transparency dark inkMuted"] ?? 0)}, light ${r2(overlayMin["80 light ink"] ?? 0)}/${r2(overlayMin["80 light inkMuted"] ?? 0)} and ${r2(overlayMin["transparency light ink"] ?? 0)}/${r2(overlayMin["transparency light inkMuted"] ?? 0)}; ${overlayMin.failures ?? 0} palette-end-register measurements under ${GLASS_INK_FLOOR}.`,
+	);
 	console.log(
 		`Window glass round 2: tightest block veil ΔE00 off canvas glass - dark ${r2(veilMin.dark)}, light ${r2(veilMin.light)}; work row step ${r2(workMin.step)}; chrome inks ${r2(chromeMin.ink)}/${r2(chromeMin.inkMuted)}/${r2(chromeMin.inkDim)}, tab step ${r2(chromeMin.tabStep)}.`,
 	);

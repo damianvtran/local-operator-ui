@@ -558,6 +558,14 @@ export const UpdateContainer = ({
 		<div
 			/* The drag-strip opt-out; see the note above. */
 			data-titlebar-no-drag=""
+			/*
+			 * THE FLOATING-LAYER MARKER. This card is `fixed`, not portalled, so the
+			 * derived scan in `scripts/glass-overlay.test.mjs` cannot see it - it is a
+			 * NAMED entry there, kept with this attribute. It belongs to the same class
+			 * as a menu or a dialog: pinned over the app rather than sitting in it, and
+			 * the operator reported it as an opaque plate over glass.
+			 */
+			data-glass-overlay=""
 			{...(onClose ? { "data-release-detail": "" } : {})}
 			ref={cardRef}
 			/*
@@ -587,6 +595,7 @@ export const UpdateContainer = ({
 						}
 					: undefined
 			}
+			data-lo-floating=""
 			className={cn(
 				"fixed top-4 end-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
 				"rounded-lg bg-elevated shadow-overlay",
@@ -953,7 +962,7 @@ export const CommandBlock = ({ command }: { command: string }) => {
 				{command}
 			</code>
 			<Button
-				variant="outline"
+				variant="tonal"
 				size="sm"
 				onClick={() => {
 					void navigator.clipboard
@@ -1297,6 +1306,14 @@ export const UpdateActions = ({
 	 * the reason for it. The by-hand panels (two 112px buttons) and the blocked
 	 * panel (two buttons, 240px) fit on one line and are unaffected: wrapping only
 	 * engages when something would have overflowed.
+	 *
+	 * EVERY NON-COMMIT BUTTON IN THESE ROWS IS `tonal`, NOT `outline` (QA round 2,
+	 * Q3). The card is a floating surface - `data-lo-floating`, `shadow-overlay`,
+	 * no stroke of its own - and an `outline` button drew the stroke back inside
+	 * it ("Update later" rendered as a boxed control in a borderless card). The
+	 * hierarchy is one `primary` (the commit) plus `tonal` for the rest, the same
+	 * pairing the dialogs' `SecondaryButton` uses; `ghost` stays for the icon-only
+	 * close, which is the quietest control on the card.
 	 */
 	<div
 		className={cn("mt-6 flex flex-wrap justify-end gap-3", className)}
@@ -3053,7 +3070,7 @@ export const UpdateNotification = ({
 				</p>
 				<UpdateActions>
 					<Button
-						variant="outline"
+						variant="tonal"
 						size="sm"
 						onClick={() => setInstallFailed(null)}
 					>
@@ -3063,7 +3080,7 @@ export const UpdateNotification = ({
 					    main process can tell apart from its own periodic one, or the
 					    suppression keeps the release away (reviews D3, R3). */}
 					<Button
-						variant="outline"
+						variant="tonal"
 						size="sm"
 						onClick={() => void checkForUpdates({ manual: true })}
 						disabled={checking}
@@ -3117,7 +3134,7 @@ export const UpdateNotification = ({
 					    label over a forfeited install is how the incident recurs
 					    (review D1). */}
 					<Button
-						variant="outline"
+						variant="tonal"
 						size="sm"
 						onClick={() => setInstallInFlight(null)}
 					>
@@ -3323,7 +3340,7 @@ export const UpdateNotification = ({
 				)}
 				<UpdateActions>
 					<Button
-						variant="outline"
+						variant="tonal"
 						size="sm"
 						onClick={() => {
 							setInstallBlocked(null);
@@ -3420,7 +3437,7 @@ export const UpdateNotification = ({
 				/>
 				<UpdateActions>
 					<Button
-						variant="outline"
+						variant="tonal"
 						size="sm"
 						onClick={() => {
 							setManualUpdateRequired(false);
@@ -3600,7 +3617,7 @@ export const UpdateNotification = ({
 								    hand learns. This component put the committing
 								    button first in all three of its footers. */}
 							<Button
-								variant="outline"
+								variant="tonal"
 								size="sm"
 								onClick={handleDeferUpdate}
 								disabled={downloading}
@@ -3679,7 +3696,7 @@ export const UpdateNotification = ({
 
 				<UpdateActions>
 					<Button
-						variant="outline"
+						variant="tonal"
 						size="sm"
 						onClick={handleDeferUpdate}
 						disabled={installing}
@@ -3858,7 +3875,7 @@ export const UpdateNotification = ({
 					 */}
 					<UpdateActions>
 						<Button
-							variant="outline"
+							variant="tonal"
 							size="sm"
 							onClick={() => void updateBackend()}
 						>
@@ -3973,7 +3990,7 @@ export const UpdateNotification = ({
 					)}
 					<UpdateActions>
 						<Button
-							variant="outline"
+							variant="tonal"
 							size="sm"
 							onClick={handleDismissBackendUpdateFailure}
 						>
@@ -4055,7 +4072,7 @@ export const UpdateNotification = ({
 				)}
 				<UpdateActions>
 					<Button
-						variant="outline"
+						variant="tonal"
 						size="sm"
 						onClick={handleDismissBackendUpdateFailure}
 					>
@@ -4231,7 +4248,7 @@ export const UpdateNotification = ({
 						</p>
 						<UpdateActions>
 							<Button
-								variant="outline"
+								variant="tonal"
 								size="sm"
 								onClick={handleDeferBackendUpdate}
 								disabled={checking}
@@ -4289,7 +4306,7 @@ export const UpdateNotification = ({
 						/>
 						<UpdateActions>
 							<Button
-								variant="outline"
+								variant="tonal"
 								size="sm"
 								onClick={handleDeferBackendUpdate}
 								disabled={checking}
@@ -4664,7 +4681,7 @@ export const UpdateNotification = ({
 				 */}
 				<UpdateActions>
 					<Button
-						variant={actionRestartsTheServer ? "outline" : "primary"}
+						variant={actionRestartsTheServer ? "tonal" : "primary"}
 						size="sm"
 						onClick={() => {
 							dismissedSkewRef.current = skewKey(backendSkewNotice);

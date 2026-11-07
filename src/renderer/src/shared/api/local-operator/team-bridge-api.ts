@@ -18,6 +18,10 @@ import {
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
 import {
+	type TeamBridgeFile,
+	teamBridgeFileSchema,
+} from "../../../../../shared/team-bridge-contract";
+import {
 	TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE,
 	type TeamBridgeAttachment,
 	type TeamBridgeConversation,
@@ -369,6 +373,7 @@ export const TeamBridgeApi = {
 			/* Staged uploads this message binds. Omitted (never `[]`) when text-only,
 			   so a text-only send stays byte-identical for an older hub. */
 			attachmentIds?: readonly string[];
+			files?: readonly string[];
 			/* Structured @-mentions (`team_bridge_send_mentions`). The caller
 			   gates on the capability; omitted when empty, like the images. */
 			mentions?: readonly TeamBridgeMentionRow[];
@@ -397,6 +402,7 @@ export const TeamBridgeApi = {
 			...(input.attachmentIds?.length
 				? { attachment_ids: [...input.attachmentIds] }
 				: {}),
+			...(input.files?.length ? { files: [...input.files] } : {}),
 			...(input.mentions?.length ? { mentions: [...input.mentions] } : {}),
 		});
 	},
@@ -433,6 +439,38 @@ export const TeamBridgeApi = {
 		return teamBridgeAttachmentUploadSchema.parse(
 			body && typeof body === "object" && "result" in body ? body.result : body,
 		).attachment;
+	},
+
+	/** Human generic-file upload, deliberately separate from image preparation.
+	 * The runtime negotiates S3a headers; bytes remain opaque and never use the
+	 * unregistered download scaffold. Only a subsequent `files` send binds it. */
+	async uploadFile(
+		tenantId: string,
+		conversationId: string,
+		bytes: Uint8Array,
+		expectedAccountId: string,
+		fileName: string,
+	): Promise<TeamBridgeFile> {
+		const answer = await desktopMedia(
+			{
+				op: "team_bridge.attachment.upload",
+				tenantId,
+				conversationId,
+				expectedAccountId,
+				mode: "file",
+				fileName,
+			},
+			bytes,
+		);
+		if (answer.kind !== "json")
+			throw new TeamBridgeAttachmentError(
+				answer.kind === "error" ? answer.status : null,
+				answer.kind === "error" ? answer.code : undefined,
+			);
+		const body = answer.body as { result?: unknown } | null;
+		const payload =
+			body && typeof body === "object" && "result" in body ? body.result : body;
+		return teamBridgeFileSchema.parse((payload as { file?: unknown })?.file);
 	},
 
 	/** Discard a staged upload the author removed. Idempotent on the hub. */
@@ -472,6 +510,37 @@ export const TeamBridgeApi = {
 				answer.kind === "error" ? answer.code : undefined,
 			);
 		return { data: answer.data, mimeType: answer.mimeType };
+	},
+
+	/**
+	 * One bound GENERIC FILE's bytes for the signed-in member's Save (decision
+	 * a-fdf0; core #3521's `?mode=file`). Same route and gates as the picture
+	 * read - tenant, membership, binding, the captured-owner receipt - only the
+	 * type class differs. Main accepts exactly `application/octet-stream` up to
+	 * 25 MiB and answers 413 when the file is over that ceiling, so a caller can
+	 * tell "too large" from a refusal by status alone. The bytes are for a save
+	 * dialog and nothing else: never a blob URL, cache entry, preview or log.
+	 */
+	async fileBytes(input: {
+		tenantId: string;
+		conversationId: string;
+		messageId: string;
+		attachmentId: string;
+		expectedAccountId: string;
+	}): Promise<Uint8Array> {
+		const answer = await desktopMedia(
+			{ op: "team_bridge.attachment", mode: "file", ...input },
+			null,
+		);
+		if (
+			answer.kind !== "bytes" ||
+			answer.mimeType !== "application/octet-stream"
+		)
+			throw new TeamBridgeAttachmentError(
+				answer.kind === "error" ? answer.status : 422,
+				answer.kind === "error" ? answer.code : undefined,
+			);
+		return answer.data;
 	},
 
 	/**

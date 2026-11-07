@@ -22,6 +22,10 @@ import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
+import {
+	LINK_PREVIEW_MAX_URL_CHARS,
+	type LinkPreviewBridge,
+} from "./link-preview";
 import type {
 	TeamBridgeNotificationSender,
 	TeamBridgeNotifyAuthority,
@@ -38,6 +42,21 @@ const id = z
 	.min(1)
 	.max(128)
 	.regex(/^[a-zA-Z0-9_-]+$/);
+/**
+ * A stored login's reference, as a provider block publishes it.
+ *
+ * NOT `id`, and the difference is the whole point: the backend's
+ * `_credential_ref` sends the row's `identity_key` when it has one — an email,
+ * an `org_...`/account/project id, or `radient-account:[...]` — and
+ * `cred:<row id>` when it does not. `id`'s character class refuses both the
+ * colon and the `@`, so every REAL ref failed validation in the renderer, the
+ * request never left the app, and the panel then reported an unknown fate for a
+ * credit that was never offered (review round 1, B1).
+ *
+ * The bound is the route's own `max_length=128`; a narrower client-side rule
+ * would be re-deciding a wire rule this app does not own.
+ */
+const storedCredentialRef = z.string().min(1).max(128);
 const settingKey = z
 	.string()
 	.min(1)
@@ -2951,6 +2970,37 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			refresh: z.boolean().optional(),
 		})
 		.strict(),
+	/*
+	 * REDEEMING ONE PROVIDER RESET CREDIT (`POST /v1/desktop/usage/reset`).
+	 *
+	 * A DIFFERENT CLASS OF REQUEST FROM EVERY READ ABOVE IT: it spends something
+	 * that cannot be refunded, so two properties are part of the wire rather than
+	 * of the caller's care.
+	 *
+	 * `redeemRequestId` is the vendor's idempotency key, MINTED BY THE RENDERER: a
+	 * retry of an attempt whose fate is unknown must reuse the id it already
+	 * spent, and only a fresh attempt gets a fresh one. The op therefore carries
+	 * the id rather than minting it below, where a retry would silently become a
+	 * second spend.
+	 *
+	 * AT LEAST ONE IDENTIFIER IS REQUIRED, and it is checked here as well as in
+	 * the backend's own body model. `credentialRef` names exactly one stored
+	 * login; `identity` is the display label, which is not unique in the store
+	 * (two legitimately stored logins can share an email), so it is accepted
+	 * alone only as the backend's compatibility arm. Refusing locally means the
+	 * app never sends the one request shape that would come back as a `refused`
+	 * verdict for a body-shaped mistake -- which the view would then have to paint
+	 * as a failure of a spend that was never attempted.
+	 */
+	z
+		.object({
+			op: z.literal("usage.reset"),
+			provider: id,
+			credentialRef: storedCredentialRef.optional(),
+			identity: z.string().min(1).max(256).optional(),
+			redeemRequestId: z.string().uuid(),
+		})
+		.strict(),
 	z
 		.object({
 			/*
@@ -4001,6 +4051,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* Reply in this root message's thread; the hub validates the root. */
 			thread_root_id: id.optional(),
 			attachment_ids: teamBridgeAttachmentIds.optional(),
+			files: z
+				.array(id)
+				.min(1)
+				.max(10)
+				.refine((ids) => new Set(ids).size === ids.length, "Duplicate file")
+				.optional(),
 			mentions: teamBridgeMentionsSchema.optional(),
 		})
 		.strict(),
@@ -4145,6 +4201,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			boundary: agentMessagesBoundarySchema.optional(),
 		})
 		.strict(),
+	/*
+	 * THE LINK-PREVIEW RESOLVE PROXY (`features`-free: core owns the capability, and
+	 * a resolve that is refused answers a STATE, never an error of this plane).
+	 *
+	 * The URL is length-bounded at core's own ceiling (`MAX_URL_CHARS` in
+	 * `server/routes/desktop_link_preview.py`), so a renderer value can never make
+	 * main serialize a body core refuses on size alone. `index` has a lower bound
+	 * and no upper one, deliberately mirroring the route: a position past the
+	 * per-message cap is the `cap` answer, not a shape error.
+	 *
+	 * `expectedAccountId` is the RECEIPT every Team Bridge op already carries. Main
+	 * holds no signed-in identity of its own to substitute, and core compares the
+	 * string against the identity the install actually holds and refuses a mismatch
+	 * (409), so forwarding it grants nothing.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.link_preview.resolve"),
+			url: z.string().min(1).max(LINK_PREVIEW_MAX_URL_CHARS),
+			index: z.number().int().nonnegative(),
+			expectedAccountId: id,
+		})
+		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
 	z
 		.object({
@@ -4172,6 +4251,33 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 */
 	z
 		.object({ op: z.literal("tts.paths") })
+		.strict(),
+	/*
+	 * THE NOTIFICATION-SOUND SURFACE (`features.notification_sounds`, core
+	 * `server/routes/notification_sounds.py`): the listing Settings renders, and
+	 * the two edits a custom sound takes. Selection, volume and on/off are NOT
+	 * here: they are `notifications.sound.*` registry keys and go through
+	 * `settings.edit` like every other row (one write funnel). Audio and upload
+	 * carry bytes, so they ride the media relay (`desktop-media.ts`).
+	 *
+	 * `id` is shape-checked because it becomes a path segment: the catalog's
+	 * slugs and core's `custom-<slug>-<hex>` ids are both lower-case kebab.
+	 */
+	z
+		.object({ op: z.literal("notification_sounds.list") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("notification_sounds.rename"),
+			id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+			name: z.string().min(1).max(200),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("notification_sounds.remove"),
+			id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+		})
 		.strict(),
 	z.object({ op: z.literal("config.get") }).strict(),
 	z.object({ op: z.literal("config.update"), value: configUpdate }).strict(),
@@ -4870,6 +4976,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/*
+		 * A USAGE RESET MUST NAME ITS ACCOUNT, and this is the cross-field rule
+		 * rather than a `.refine()` on the member: the union is DISCRIMINATED on
+		 * `op`, so every member has to stay a plain object schema or the
+		 * discriminator cannot read it.
+		 *
+		 * It duplicates the backend's body-layer refusal on purpose. A request with
+		 * neither identifier would come back as a `refused` verdict for a
+		 * body-shaped mistake, and the view would paint that as a failure of a spend
+		 * that was never attempted. Refusing here means it is never sent.
+		 */
+		if (
+			request.op === "usage.reset" &&
+			!request.credentialRef &&
+			!request.identity
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"A usage reset must name an account: send `credentialRef` or `identity`.", // i18n: ignore wire validation diagnostic
+				path: ["credentialRef"],
+			});
+		}
 		/* Consent: accept/decline carry the participation version, withdraw
 		   never does (core `ConversationConsentIn._version_per_decision`). */
 		if (
@@ -4913,6 +5042,20 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		 * A PATCH that omits `body` keeps the stored one, so only an explicit
 		 * empty body needs a non-empty set beside it.
 		 */
+		if (request.op === "team_bridge.messages.send" && request.files) {
+			const images = request.attachment_ids ?? [];
+			if (
+				images.length + request.files.length > 10 ||
+				request.files.some((file) => images.includes(file))
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Invalid combined attachment set", // i18n: ignore request-schema diagnostic, not rendered interface copy
+					path: ["files"],
+				});
+			}
+		}
+
 		if (
 			request.op === "team_bridge.messages.send" ||
 			request.op === "team_bridge.scheduled.create" ||
@@ -4921,7 +5064,8 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		) {
 			if (
 				request.body?.trim() === "" &&
-				(request.attachment_ids?.length ?? 0) === 0
+				(request.attachment_ids?.length ?? 0) === 0 &&
+				!(request.op === "team_bridge.messages.send" && request.files?.length)
 			) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -5588,6 +5732,64 @@ export const skillsListResultSchema = z
 	})
 	.passthrough();
 export type SkillsListResult = z.infer<typeof skillsListResultSchema>;
+
+/**
+ * The redeem route's answer: `POST /v1/desktop/usage/reset` -> `result`.
+ *
+ * Two halves, and the second one is the reason this is not a bare outcome
+ * string. `reset` says what happened to the credit; `usage` is the post-spend
+ * report set, refreshed by the backend on a DEFINITIVE outcome (`reset`,
+ * `already_redeemed`, `no_credit`, `nothing_to_reset`). It is `null` after
+ * `failed` and `refused`, where no refresh ran -- and a client must keep the
+ * rows it already holds rather than treating `null` as an empty answer. The
+ * desktop view does exactly that: it writes `usage` into the `usage.get` cache
+ * only when it is present.
+ *
+ * `outcome` is a plain-string fallback beside the six-word enum: the
+ * vocabulary is the backend's to extend, and a renderer that threw on an
+ * unheard-of outcome would report a failed request for a credit that may well
+ * have been spent. `windows_reset` counts the windows a `reset` cleared (0 for
+ * every other outcome), `detail` is the backend's own diagnostic sentence and
+ * is NEVER rendered as product copy, and `refused` is the one flag that
+ * separates "nothing was spent" from "the credit's fate is unknown".
+ *
+ * The report rows are passthrough rather than restated: the desktop view's own
+ * `UsageReport` is the reader's type, the route emits `dataclasses.asdict`
+ * plus `age_ms`/`state`, and a second field-by-field copy here is how the two
+ * would drift.
+ */
+export const usageResetResultSchema = z
+	.object({
+		reset: z
+			.object({
+				outcome: z.union([
+					z.enum([
+						"reset",
+						"already_redeemed",
+						"no_credit",
+						"nothing_to_reset",
+						"failed",
+						"refused",
+					]),
+					z.string(),
+				]),
+				windows_reset: z.number().int().nonnegative(),
+				detail: z.string().default(""),
+				refused: z.boolean(),
+			})
+			.passthrough(),
+		usage: z
+			.object({
+				reports: z.array(z.record(z.unknown())),
+				source: z.string(),
+				fetched_at: z.number(),
+			})
+			.passthrough()
+			.nullish(),
+	})
+	.passthrough();
+
+export type UsageResetResult = z.infer<typeof usageResetResultSchema>;
 
 /**
  * The owner's TYPED refusal of an adopt: `409 {"detail": {"code":
@@ -6573,11 +6775,35 @@ const MESH_READ_OPS: ReadonlySet<string> = new Set([
 	"peers.list",
 ]);
 
-/** Every op on the long budget, whichever of the two shapes put it there. */
-const LONG_READ_OPS: ReadonlySet<string> = new Set([
+/**
+ * Ops whose answer contains that same provider-side read, but which SPEND
+ * something first.
+ *
+ * A FOURTH SHAPE, and the reason it is not folded into `PROVIDER_READ_OPS`: the
+ * route behind `usage.reset` posts to the vendor's redeem endpoint and then, on
+ * a definitive outcome, runs the SAME forced live fetch `usage.get` waits for
+ * (`server/routes/desktop_catalogues.py`). Its answer therefore costs at least
+ * a live read, and on the control budget the app would abandon a request that
+ * was still spending a credit -- turning "a credit may have been spent" into
+ * the app's own deadline, which is the one report this surface must never
+ * invent. It is deliberately NOT in `READ_ONLY_OPS`, so a timeout keeps the
+ * write sentence ("may or may not have reached the server") rather than the
+ * read one ("nothing was read").
+ */
+const PROVIDER_WRITE_OPS: ReadonlySet<string> = new Set(["usage.reset"]);
+
+/**
+ * Every op on the long budget, whichever shape put it there.
+ *
+ * Named for the BUDGET rather than for a read direction: one member is a write
+ * (`PROVIDER_WRITE_OPS`), and a set called `LONG_READ_OPS` that contains a
+ * spend is the kind of name the next author trusts instead of reading.
+ */
+const LONG_CONTROL_OPS: ReadonlySet<string> = new Set([
 	...LEDGER_READ_OPS,
 	...PROVIDER_READ_OPS,
 	...MESH_READ_OPS,
+	...PROVIDER_WRITE_OPS,
 ]);
 
 /*
@@ -6771,7 +6997,7 @@ export function desktopRequestDeadlineMs(
 	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
 	if (hub !== null) return hub;
-	return LONG_READ_OPS.has(op)
+	return LONG_CONTROL_OPS.has(op)
 		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;
 }
@@ -6987,8 +7213,10 @@ const PANEL_READ_OPS: ReadonlySet<string> = new Set([
  *
  * THREE SENTENCES, because the app knows three different things:
  *
- * - a long read (`LONG_READ_OPS`): the wait is the app's own and the read has
- *   no side effect, so "nothing was read" is knowable;
+ * - a READ-ONLY op on the long budget (`READ_ONLY_OPS` and `LONG_CONTROL_OPS`):
+ *   the wait is the app's own and no side effect, so "nothing was read" is
+ *   knowable; a long-budget WRITE is not in `READ_ONLY_OPS` and keeps the write
+ *   sentence below;
  * - any other read (`READ_ONLY_OPS`): same claim, shorter patience;
  * - everything else, which may be a WRITE: the app stopped waiting, and it does
  *   not know whether the server applied the request. Saying "nothing was
@@ -7054,6 +7282,16 @@ export function desktopRequestDeadlineDetail(
 				"This is taking longer than expected. It may still finish; the mark will update.",
 		};
 	}
+	/*
+	 * A RESET THAT RAN OUT OF TIME KEEPS THE GENERIC WRITE SENTENCE, and the
+	 * idempotency reassurance does NOT belong here: `usage.reset` is not in
+	 * `READ_ONLY_OPS`, so the answer already says the request may have reached the
+	 * server and to check before repeating it. The promise a user needs on this
+	 * op ("asking again reuses the same reset") is the VIEW's sentence, drawn from
+	 * its own result line, which is the surface that actually holds the retained
+	 * `redeem_request_id` -- a transport sentence cannot know that and is not
+	 * rendered by this panel anyway.
+	 */
 	if (READ_ONLY_OPS.has(op)) {
 		return {
 			code,
@@ -7240,6 +7478,9 @@ export type DesktopOwnerAuditAttachmentScope = {
 export type DesktopMediaRequest =
 	| ({
 			op: "team_bridge.owner_audit.attachment";
+			/* `file`: the owner's Save of one generic file (octet-stream, 25 MiB).
+			   Absent is the image lane. Main-side only; never sent to core. */
+			mode?: "image" | "file";
 	  } & DesktopOwnerAuditAttachmentScope)
 	| { op: "speech.create"; request: Record<string, unknown> }
 	| { op: "speech.agent"; agentId: string; request: Record<string, unknown> }
@@ -7361,6 +7602,8 @@ export type DesktopMediaRequest =
 	 */
 	| {
 			op: "team_bridge.attachment.upload";
+			mode?: "image" | "file";
+			fileName?: string;
 			tenantId: string;
 			conversationId: string;
 			/* The captured-owner receipt the runtime now REQUIRES on these routes:
@@ -7370,6 +7613,9 @@ export type DesktopMediaRequest =
 	  }
 	| {
 			op: "team_bridge.attachment";
+			/* `file`: the member's Save of one bound generic file (core #3521,
+			   octet-stream up to 25 MiB). Absent is the unchanged png/jpeg lane. */
+			mode?: "image" | "file";
 			tenantId: string;
 			conversationId: string;
 			messageId: string;
@@ -7415,6 +7661,18 @@ export type DesktopMediaRequest =
 	 */
 	| { op: "library.waveform"; assetId: string }
 	/*
+	 * One notification sound as gain-baked `audio/wav` (core
+	 * `features.notification_sounds`). Main uses it to stage the banner sound;
+	 * `volume` is 0-100 and goes through the backend's own gain curve.
+	 */
+	| { op: "notification_sounds.audio"; soundId: string; volume: number }
+	/*
+	 * Add one custom notification sound (core `POST /v1/notification-sounds`,
+	 * multipart `file` + optional `name`). `fileName` is display text for the
+	 * daemon's refusal copy only; it never becomes a path on either side.
+	 */
+	| { op: "notification_sounds.upload"; fileName: string; name?: string }
+	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
 	 * `/v1/desktop/sessions/{id}/supplements/{digest}/document`.
@@ -7453,6 +7711,13 @@ export type DesktopMediaResponse =
 			 * exactly as the JSON transport's refusals are (design § 3.5, § 5.1).
 			 */
 			code?: DesktopRefusalCode;
+			/**
+			 * The daemon's own refusal code and params, forwarded only for
+			 * `notification_sounds.upload` (main `desktop-media.ts`): that row's copy
+			 * and remedy switch on the code (`too_long`, `unsupported_format` ...),
+			 * which the closed pairing table above cannot carry.
+			 */
+			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
 
 export type DesktopAPI = {
@@ -7515,6 +7780,27 @@ export type DesktopAPI = {
 		onOpen: (callback: () => void) => () => void;
 		pendingOpen: () => Promise<TeamBridgeOpenResult | null>;
 	};
+	/**
+	 * Link previews: a proxy to core's routes, and nothing else.
+	 *
+	 * Lives HERE, beside the other desktop-side surfaces, because that is where the
+	 * preload actually exposes it (`api.desktop.linkPreview`, next to
+	 * `api.desktop.teamBridge`) — the ambient `src/preload/index.d.ts` declares
+	 * exactly this shape and nothing more. A first cut put the type at
+	 * `api.linkPreview` while the implementation sat under `desktop`, so the
+	 * published types described a path that did not exist at runtime (QA round 1,
+	 * Q-1); one declaration in one place is the fix, and
+	 * `scripts/link-preview-preload-shape.test.mjs` compiles a probe that names the
+	 * path, so the two cannot drift apart again.
+	 *
+	 * Optional like every Electron-only member: browser development and Storybook
+	 * mount the renderer with no preload, and a card must simply not exist there.
+	 *
+	 * Both calls carry `expectedAccountId` because core gates these routes on the
+	 * account the caller claims, exactly as `teamBridge.*` does; main holds no
+	 * identity of its own to substitute.
+	 */
+	linkPreview?: LinkPreviewBridge;
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**
 	 * A notification click, with the conversation it names and - when the banner was
@@ -9425,6 +9711,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.provider) query.set("provider", request.provider);
 			return { path: `/v1/desktop/usage?${query}`, method: "GET" };
 		}
+		/*
+		 * The body is built from the PRESENT fields only, so a request that names
+		 * an account by ref and one that names it by label produce two distinct
+		 * bodies rather than one with a `null` the backend's `min_length=1` would
+		 * refuse. The snake_case hop is the same one every other POST here makes:
+		 * the schema speaks the renderer's camelCase and the route speaks the
+		 * backend's own spelling.
+		 */
+		case "usage.reset": {
+			const body: Record<string, unknown> = {
+				provider: request.provider,
+				redeem_request_id: request.redeemRequestId,
+			};
+			if (request.credentialRef) body.credential_ref = request.credentialRef;
+			if (request.identity) body.identity = request.identity;
+			return { path: "/v1/desktop/usage/reset", method: "POST", body };
+		}
 		case "quota.notice": {
 			const query = new URLSearchParams({
 				refresh: String(request.refresh ?? false),
@@ -10012,6 +10315,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.attachment_ids?.length
 						? { attachment_ids: request.attachment_ids }
 						: {}),
+					...(request.files?.length ? { files: request.files } : {}),
 					// Omitted (never `[]`) when empty: the pre-mention wire, byte for byte.
 					...(request.mentions?.length ? { mentions: request.mentions } : {}),
 				},
@@ -10148,6 +10452,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		/*
+		 * THE LINK-PREVIEW RESOLVE PROXY. A POST because the receipt travels in the
+		 * body: core takes `expected_account_id` from the body here and from a HEADER
+		 * on the artifact route, and never from a query string, so no intermediary's
+		 * log or crash report records whose preview was asked for.
+		 *
+		 * The receipt is forwarded, never derived: `expected_account_id` is what the
+		 * caller says it is, core compares it against the identity the install holds,
+		 * and a mismatch is a 409 the renderer draws as "sign in as that account".
+		 */
+		case "team_bridge.link_preview.resolve":
+			return {
+				path: "/v1/desktop/team-bridge/link-preview/resolve",
+				method: "POST",
+				body: {
+					url: request.url,
+					index: request.index,
+					expected_account_id: request.expectedAccountId,
+				},
+			};
 		case "settings.list":
 			return { path: "/v1/settings", method: "GET" };
 		case "settings.edit":
@@ -10167,6 +10491,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "tts.paths":
 			return { path: "/v1/tts/paths", method: "GET" };
+		case "notification_sounds.list":
+			return { path: "/v1/notification-sounds", method: "GET" };
+		case "notification_sounds.rename":
+			return {
+				path: `/v1/notification-sounds/${request.id}`,
+				method: "PATCH",
+				body: { name: request.name },
+			};
+		case "notification_sounds.remove":
+			return {
+				path: `/v1/notification-sounds/${request.id}`,
+				method: "DELETE",
+			};
 		case "config.get":
 			return { path: "/v1/config", method: "GET" };
 		case "config.update":

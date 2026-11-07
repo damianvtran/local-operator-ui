@@ -359,6 +359,26 @@ test("the output graph is installed at element creation and reported", async () 
 	assert.equal(audioOutputGraphInstalled(), false);
 });
 
+test("a fixed-output activation ignores the shared volume, rate and mute (notification-sound review m1)", async () => {
+	reset();
+	engine().setVolume(0);
+	engine().setPlaybackRate(2);
+	await engine().play("notification-sound-preview", "blob:preview", {
+		fixedOutput: { volume: 1, playbackRate: 1 },
+	});
+	const element = engine().element;
+	assert.equal(element.volume, 1, "the preview plays at its own baked level");
+	assert.equal(element.playbackRate, 1);
+	// A chat control moving the shared volume mid-preview must not reach it.
+	engine().setVolume(0.3);
+	assert.equal(element.volume, 1);
+	assert.equal(engine().volume, 0.3, "the shared value is still stored");
+	// The next ordinary activation picks the shared value up again.
+	await engine().play("sound:chat", "blob:chat");
+	assert.equal(element.volume, 0.3);
+	assert.equal(element.playbackRate, 2);
+});
+
 /* ----------------------------------------------------------- the guard */
 
 /**

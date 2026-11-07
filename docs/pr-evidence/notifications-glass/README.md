@@ -1,0 +1,208 @@
+# Notifications glass — group headers and the read-state switch
+
+Operator report, 2026-11-05: the group headers ("Waiting on you 1", "Today 1")
+painted as solid dark bars across a glass panel, and the Unread/All switch was
+equally opaque — "holes punched in the backdrop rather than layers on it".
+
+## How these frames were taken
+
+`scripts/notifications-glass-evidence.mjs`, driving the **built app** headless over
+CDP — not a Storybook story. The previous set used Storybook and was withdrawn
+(design review round 1, D1): that surface paints its own opaque canvas, so a
+header at full opacity and a header at the band's floor photographed the same,
+and several before/after pairs came out byte-identical. The claim under test is
+composition over a translucent column, so the evidence is the real window: the
+app's own shell, its own `<main>` backing at the user's alpha, its own rows.
+
+The app is launched by its Electron binary with `--window-mode=headless`,
+`--window-size=1024x657` (the operator's own viewport), a per-run
+`--user-data-dir`, `--use-mock-keychain`, the notification and telemetry
+switches, `HOME` redirected and `CMUX_*`/`XPC_FLAGS` stripped; the frame is the
+app's own CDP `Page.captureScreenshot`, never macOS `screencapture`. Every boot is
+reaped by exact pid through `scripts/app-tree-teardown.mjs`. Frames are 2× DPR of
+a 1024×657 viewport.
+
+Glass goes through the appearance row's own IPC (`window.api.windowGlass.set`), and
+the palette is seeded into the store the app reads at boot.
+
+### The first-run wizard, and the refusal that keeps it out of the frames
+
+A scratch profile has no onboarding record, so the app opens its **“Connect an AI
+account”** modal over the list. It did exactly that in the previous revision of
+this set: `head-dark-80.png` and `base-dark-80.png` were both dominated by the
+wizard, which covered the group headers, the switch and even the page's ground —
+the surface under review was not in the picture at all.
+
+Two things now stand between that and a committed frame:
+
+1. **The wizard is dismissed through its own exit.** The rig writes the completion
+   record before the document loads (the same `onboarding-storage` object
+   `scripts/renderer-driver.mjs` writes in `seedOnboardingComplete`), and when the
+   app re-opens the wizard anyway — on a lane with no provider connected it rewrites
+   that record to its defaults, measured — the rig presses **Escape**, which is the
+   dialog's documented exit (`onDismiss={finish}`, the same handler as “Skip for
+   now”), and the app writes the completion itself.
+2. **The shutter refuses.** Before any capture, `SHUTTER_GUARD` asserts that no
+   `data-onboarding-modal` (the app's own marker on that dialog) or large
+   `role="dialog"` surface is visible, and that the page's “Notifications” heading
+   and at least one group header are the **topmost hit-testable elements at their
+   own centres**. If either check fails the run writes **no frame** and exits
+   non-zero: a frame that cannot show the claimed state is worse than none
+   (`AGENTS.md`, “What a capture may claim”). Every committed readback carries the
+   audit's answer (`shutter: { overlays: [], heading: "Notifications",
+   headingTopmost: true, headerTopmost: true }`), and the drawer note at the end of
+   this file says which surfaces are still outside the set.
+
+### The lane: an isolated backend with real rows
+
+A group header only exists when notifications do. The run uses its own core config
+directory (`LOCAL_OPERATOR_CONFIG_DIR`) with a `lo serve` on it and rows written
+through the core's own `NotificationStore.notify(...)` — the API the `notify` tool
+writes through, not a fixture — spread over today / yesterday / four days ago so
+the reel has three groups and scrolls.
+
+### The commands
+
+```bash
+OUT=docs/pr-evidence/notifications-glass
+
+# the head half — the branch as shipped
+for c in dark-80 dark-50 light-80 light-50 dark-80-glass-off dark-80-scrolled; do
+  node scripts/notifications-glass-evidence.mjs --repo . --out $OUT \
+    --label head-$c --case $c --config "$LANE"
+done
+
+# the base half — a REAL build of the base commit, not an attribute trick
+git worktree add /tmp/notif-glass-base b51c802993b
+ln -s ../../node_modules /tmp/notif-glass-base/node_modules && cp .env /tmp/notif-glass-base/
+(cd /tmp/notif-glass-base && node_modules/.bin/electron-vite build)
+for c in dark-80 dark-50 light-80 light-50; do
+  node scripts/notifications-glass-evidence.mjs --repo /tmp/notif-glass-base --out $OUT \
+    --label base-$c --case $c --config "$LANE"
+done
+```
+
+`--before-attributes` additionally captures each cell twice inside one build with
+the two glass attributes removed, which is the control that the attributes — and
+nothing else — move the numbers.
+
+## The matrix
+
+| frame | case | what it shows |
+| --- | --- | --- |
+| `head-dark-80.png` / `base-dark-80.png` | dark, 80 % | the reported view: headers and switch at the default intensity |
+| `head-dark-50.png` / `base-dark-50.png` | dark, 50 % | the other end of the shipped slider |
+| `head-light-80.png` / `base-light-80.png` | light, 80 % | the light scheme, same floors |
+| `head-light-50.png` / `base-light-50.png` | light, 50 % | the light scheme at that end |
+| `head-dark-80-contrast-high.png` / `base-dark-80-contrast-high.png` | dark, 80 %, contrast **High (+80)** | the non-standard contrast setting the operator asked for: the composed palette (`data-theme` `lo-19ynkwb` on BOTH halves), glass on, and the band's floor re-derived for it |
+| `head-dark-80-glass-off.png` | dark, translucency OFF | the opaque fallback: same classes, no glass, nothing half-applied |
+| `head-dark-80-scrolled.png` | dark, 80 %, list scrolled | a row passing UNDER the pinned header, with the 1:1 band crop `head-dark-80-scrolled-band.png` |
+
+### The declared composites
+
+A headless window has no OS compositor material, so every frame above is the app's
+own alphas over black — the one condition the operator never saw, because they
+photographed a bright desktop. Two frames recover that condition as **arithmetic on
+evidence, not a painted backdrop**:
+
+| frame | what it is |
+| --- | --- |
+| `base-dark-80-on-wallpaper.png`, `head-dark-80-on-wallpaper.png` | **composite: the app's own frame over a fixed wallpaper, not an OS capture** |
+| `wallpaper-fixed.png` | the fixed wallpaper those two use (a synthetic bright desktop, committed so the composite is inspectable) |
+
+How they are made, and why they are allowed to be made: **the app's captures carry
+alpha on their own.** A headless Electron window has no opaque page canvas behind
+the document, so `Page.captureScreenshot` returns the composition's alpha on every
+capture — no special flag, no second frame. Measured on this set: **97.5 % of
+`head-dark-80.png`'s pixels are translucent, mean alpha 168/255**, and the two
+`-on-wallpaper.png` frames are built from those frames themselves.
+`scripts/notifications-glass-composite.mjs` overlays a frame on the fixed wallpaper
+and **refuses** (no output, non-zero exit) if an input comes back fully opaque,
+because compositing an opaque frame would produce an image identical to the frame
+while claiming to show something else. Rebuilding the pair from the frames the rig
+now writes reproduces the committed composites byte for byte.
+
+(An earlier draft also wrote `head-dark-80-alpha.png` and `base-dark-80-alpha.png`
+with `{ omitBackground: true }` and presented them as the capture that revealed the
+alpha. They were byte-identical to the ordinary frames —
+`7477f76b33b2b7c1628bbc777cf57153` and `d7c038ffabaffc8c2d6cc062613a33bd` — so
+presenting them as an extra capability was wrong, and they are gone.)
+
+Checked in the arithmetic: at a content pixel the frame is `(29,27,23) α 0.62`
+over wallpaper `(236,224,217)`, which composites to `(108,102,97)` — measured
+`(107,101,96)` in the PNG. Over that wallpaper the band's own rect averages
+`(31.0, 28.8, 24.7)` in the base composite and `(49.7, 45.5, 36.3)` in the head one:
+the base band does not let the desktop through, the head band does.
+
+Each app frame has a sibling `.readback.json` (the composites and the wallpaper do
+not — they carry no DOM): the header's computed colour and alpha
+against `--lo-glass-a-band-floor` and `--lo-glass-a-elevated`, its
+`backdrop-filter` and `position`, the page's `<main>` backing alpha, the switch
+track's alpha against `--lo-glass-a-field`, the checked and unchecked segments'
+alphas, and the label's and count's computed colours.
+
+## Measured
+
+The numbers, not the pixels, are the claim.
+
+| cell | header alpha | floor (elevated) | page backing | track / checked |
+| --- | --- | --- | --- | --- |
+| base dark 80 | **1.0** | 0.88 (0.74) | 0.62 | none / none — no marked well |
+| head dark 80 | **0.88** | 0.88 (0.74) | 0.62 | 0.05 / **0.08** |
+| base dark 50 | **1.0** | 0.88 (0.82) | 0.75 | none / none |
+| head dark 50 | **0.88** | 0.88 (0.82) | 0.75 | 0.05 / **0.08** |
+| base light 80 | **1.0** | 0.78 (0.55) | 0.68 | none / none |
+| head light 80 | **0.78** | 0.78 (0.55) | 0.68 | 0.05 / **0.08** |
+| base light 50 | **1.0** | 0.78 (0.71) | 0.78 | none / none |
+| head light 50 | **0.78** | 0.78 (0.71) | 0.78 | 0.05 / **0.08** |
+| base dark 80, contrast High | **1.0** | 0.81 (0.65) | 0.54 | none / none |
+| head dark 80, contrast High | **0.84** | **0.84** (0.65) | 0.54 | 0.05 / 0.08 |
+| head dark 80, glass off | 1.0 | — (no glass vars) | — | 1.0 / 1.0 |
+| head dark 80, scrolled | 0.88 | 0.88 (0.74) | 0.62 | 0.05 / 0.08 |
+
+**Two independent reads agree.** The numbers say the band moved from 1.0 to the
+floor; the pixels say the same thing without being asked to. Comparing the base
+and head frames over the band's own rect (`x 260, y 228, 756×32`, read from the
+readback, so the two halves are compared where the element is), **98 % of the band's
+pixels changed** in all four pairs, and **87 % of the switch's** — mean colour at
+the band, dark 80 %: base `(29.7, 27.7, 23.6)` → head `(45.4, 41.4, 32.5)`; light
+80 %: `(240.3, 236.3, 227.3)` → `(251.1, 249.0, 244.9)`.
+
+The head's header is `max(elevated, band floor)` with `backdrop-filter: blur(12px)`
+and `position: sticky`, `top: 0`, `z-index: 1`, 32 px tall — geometry unchanged
+from the base, which measures the same rect. The base paints the same element at
+alpha 1.0 with no blur: that is the seam the operator reported.
+
+**What the floor buys.** The header is an **isolating band of the panel's material,
+not a see-through one**: at the shipped 80 % the band's own rect carries alpha
+**0.980** dark and **0.976** light in the frames, so **1.96 %** and **2.35 %** of the
+desktop reaches the eye through it (**0.78 %** and **1.18 %** at 50 %), against
+**38 %** and **32 %** through the page beside it. Over the fixed wallpaper the
+band's step over the page is **3.17:1 at base** and **2.56:1 at head** (dark); in
+light the same arithmetic from the declared alphas gives **1.10:1** (1.09:1 over white,
+1.13:1 over the fixed wallpaper) and there is no
+light composite, so that one figure is a calculation rather than a frame.
+
+Those percentages are the *pixels*. The earlier `4.6 % / 3.0 %` figures were the
+product `(1 - alpha)` of two declared tokens over the page's own alpha, which
+assumes the header sits directly on the page; the frames say it does not, and that
+the shipped header is roughly twice as isolating as that arithmetic suggested.
+
+## Not in this set
+
+- **Any preset other than High.** The shipped app still has no UI that writes the v5
+  contrast field (`src/renderer/src/shared/themes/appearance.ts` records that
+  status), so the one preset cell writes `contrast.dark` into
+  `ui-preferences-storage` before boot and lets the product's own composition engine
+  paint it — and asserts the composition happened (`data-theme` `lo-19ynkwb`, not
+  the palette's own id) so a frame can never be committed under a preset's name
+  while showing Standard. Soft, Gentle and Strong would be the same rig with a
+  different number; one was asked for.
+- The real app window with macOS vibrancy behind it (native lane). A headless
+  window has no compositor backdrop, so the desktop behind the app frames is the
+  app's own black — and the two `-on-wallpaper.png` frames are a declared composite
+  (the app's own frame, alpha included, over a fixed synthetic wallpaper), not an OS capture. No
+  frame here shows real vibrancy.
+- The chat rail's updates drawer switch (`data-glass-well` added there too): the
+  pane arm composes it and its track reads the pane's field overlay, but it only
+  renders over a live conversation and this isolated lane has none.

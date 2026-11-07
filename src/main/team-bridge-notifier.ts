@@ -55,6 +55,7 @@ import {
 	type LifetimeNotification,
 	NotificationLifetime,
 } from "./notification-lifetime";
+import { notificationSoundOptions } from "./notification-sound";
 import type {
 	TeamBridgeNotificationDirectory,
 	TeamBridgeNotificationImageSource,
@@ -82,6 +83,8 @@ export type TeamBridgeBannerOptions = {
 	subtitle?: string;
 	body: string;
 	silent: boolean;
+	/** macOS: the staged notification sound's file name (`notification-sound.ts`). */
+	sound?: string;
 	/** Sender composite or app fallback. Electron 44.3.0 maps macOS icon to
 	 * UNNotificationAttachment (thumbnail); the bundle icon remains attribution.
 	 * Windows uses appLogoOverride/crop=none; Linux passes libnotify image-data. */
@@ -588,7 +591,9 @@ export class TeamBridgeNotifier {
 				{ ...request, title },
 				this.options.platform ?? process.platform,
 			),
-			silent: burst,
+			// A coalesced replacement stays silent ("no second sound"); otherwise
+			// the configured sound (or none), see `notification-sound.ts`.
+			...notificationSoundOptions(burst),
 			...(icon ? { icon } : {}),
 		});
 		/*

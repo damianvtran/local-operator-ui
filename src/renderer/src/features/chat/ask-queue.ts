@@ -61,7 +61,10 @@ import {
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import { t } from "@shared/i18n";
-import { DESKTOP_REFUSAL_CODE } from "../../../../shared/desktop-contract";
+import {
+	DESKTOP_REFUSAL_CODE,
+	RUNTIME_BUSY_CODE,
+} from "../../../../shared/desktop-contract";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
@@ -1220,6 +1223,22 @@ export type AskOutcome = {
 	 * sentence.
 	 */
 	refusedByOwner?: boolean;
+	/**
+	 * Whether the refusal above is the answers route's RETRYABLE-BUSY arm - the
+	 * owner is alive and did not confirm the press, so the answer may or may not
+	 * have landed (`answerOwnerIsBusy`).
+	 *
+	 * IT DECIDES THE INK, and only the ink (design round 1, D1). The sentence is
+	 * `ANSWER_BUSY_MESSAGE` either way; a busy press is a moment the app is still
+	 * absorbing, not a verdict on the act, and the GATE card has painted it in the
+	 * muted register since `answerReport` (its `muted` field, `question-dock.tsx`).
+	 * Before this field existed the queued card painted the same sentence in the
+	 * danger band, so one disposition read as a definite failure on one surface and
+	 * as a wait on the other. Classified where the error is still in hand, for the
+	 * reason `refusedByOwner` gives: a reader of this record only ever gets the
+	 * sentence.
+	 */
+	busy?: boolean;
 	/**
 	 * THE ACT THIS SURFACE SAW ACCEPTED, painted over a frame that has not caught up
 	 * (`askWithLocalSettle`). A surface whose rows come from a READ rather than the
@@ -2405,6 +2424,83 @@ export const ASK_EXPIRED_MESSAGE =
 	"This ask is too old to answer — ask the agent again.";
 
 /**
+ * The sentence for a press the owner was too BUSY to confirm, after the app's
+ * own repeats are spent.
+ *
+ * THE ONE SENTENCE BOTH ASK SURFACES CARRY — the blocking card (`answerReport`)
+ * and the queued ask (`askRefusalSentence`) — which is why it lives in this
+ * module rather than beside either of them: a disposition stated two ways is the
+ * defect this family of constants exists to end. It moved here from
+ * `ask-answer.ts` when the queued ask took the busy arm, because this module may
+ * not import that one (see `scripts/ask-queue.test.mjs`: this graph is bundled
+ * node-side with `@shared` as its only alias, and `ask-answer`'s reach into the
+ * store is not).
+ *
+ * The answers route answers `503 {"code": "runtime_busy", "retryable": true,
+ * "retry_after_ms": 2000}` when the session's owner is alive and not answering
+ * its attach socket. Two things about that arm decide this copy, and both were
+ * design round 1 on the backend change (D1/D2/D4/D5):
+ *
+ *  - IT MUST NOT CLAIM THE ANSWER WAS NOT SENT. The busy refusal is raised for
+ *    `RuntimeUnresponsiveError` AND for an ack timeout on a live owner
+ *    (`desktop_sessions.py`), and the second is the write-then-wait path this app
+ *    records on `DESKTOP_REFUSAL_CODE.transportFailed`: the frame was written and
+ *    only its acknowledgement was lost. So the answer may have been taken, and
+ *    this arm takes the unknowable register, exactly as the deadline and lost-hop
+ *    arms do. The app's own bounded repeat (`withBusyResends`, spent before this
+ *    sentence can paint) is what makes that acceptable to say in the first place.
+ *
+ *    THE SEND PATH HOLDS THE SAME EXPOSURE, and its copy is not changed here
+ *    (agent review round 1, MINOR-2, which corrected an earlier draft of this
+ *    note). That draft rested the argument on "nothing was admitted is true of
+ *    `runtime_busy` on `/messages`", and the merged ladder does not support it:
+ *    the busy refusal is raised from the SHARED `errors()` ladder, whose second
+ *    arm is the generic ack timeout on a live owner, and that ladder wraps
+ *    `/v1/desktop/sessions/{id}/messages` too - where admission is itself an
+ *    acked write (`AttachedSession.admit_prompt` ends in
+ *    `request_ack_with_duplicate`). So a send can meet this code over a
+ *    write-then-wait loss, where `SEND_FAILURE_COPY.busy`'s "your message wasn't
+ *    sent" is as unprovable as the sentence this arm replaced. Nothing about the
+ *    ANSWER path changes either way - that arm's classification and copy are right
+ *    on both raise arms - and the send half is deferred rather than fixed
+ *    silently, because it is a copy decision about a different surface.
+ *  - IT MUST NOT CARRY THE BACKEND'S PROSE. The route's sentence on this arm is
+ *    the unreachable one - "Reconnect and reconcile before retrying" - which
+ *    names a control this screen does not have and tells the user to retry what
+ *    the app has already retried. The app's own noun for this owner is "the
+ *    agent" (`SEND_FAILURE_COPY.busy`), not "the session owner".
+ *
+ * "isn't confirmed yet" rather than "wasn't sent" is the whole finding, and
+ * "yet" is load-bearing: the owner may still take it, and the app may still be
+ * told so.
+ *
+ * ITS LEAD IS DELIBERATELY ITS OWN, not `ANSWER_UNCONFIRMED_LEAD` (agent review
+ * round 1, NIT-1). The sibling arm composes its lead so the two "outcome is not
+ * knowable" sentences cannot drift apart, and composing this one too would put
+ * that longer register - "Whether your answer landed is not knowable." - in front
+ * of a sentence the design round chose short for a measured reason: the band
+ * wraps to two lines at the 172 px column and the shorter candidate is the one
+ * that fits it (`composer-notice-arms`, the busy arm's three widths). The factual
+ * claim is the same one the lead makes ("isn't confirmed YET"), stated in the
+ * first person of a press rather than the passive; the drift risk the sibling's
+ * composition guards against is one of wording between two sentences that say the
+ * same thing, and here the wording is the point.
+ */
+export const ANSWER_BUSY_MESSAGE =
+	"Your answer isn't confirmed yet. The agent is busy.";
+
+/**
+ * Whether this failure is the answers route's retryable-busy refusal.
+ *
+ * Keyed on the CODE and never the status: a `503` on a `/v1/desktop/` route is
+ * also how the desktop plane refuses this app (`pairing.plane-closed`), which IS
+ * an answer about the request rather than a lost sight of it. Re-exported through
+ * `ask-answer.ts`, which gates the blocking card's arms on it.
+ */
+export const answerOwnerIsBusy = (error: unknown): boolean =>
+	error instanceof DesktopControlError && error.code === RUNTIME_BUSY_CODE;
+
+/**
  * The app's own sentence for a refusal that arrived WITHOUT one.
  *
  * WHY IT IS A CHOICE, not one constant (agent review F5, QA round 1 Q-2). The
@@ -2475,6 +2571,23 @@ const askRefusalAuthored = (error: unknown): boolean => {
 /**
  * What to paint on a row whose answer the backend refused.
  *
+ * THE BUSY ARM SPEAKS FIRST, and it is the one place in this module where a
+ * sentence that crossed the wire is NOT the one to paint. The backend's
+ * `runtime_busy` body deliberately carries the UNREACHABLE sentence ("Session
+ * owner is unavailable. Reconnect and reconcile before retrying.") — its own
+ * note says the user-facing words belong to the UI, keyed on the code plus
+ * `retryable`. Painted here it names the wire's noun ("session owner"), offers a
+ * control this screen does not have ("reconnect and reconcile"), and tells the
+ * user to retry what the app has already retried `BUSY_RESENDS` times before
+ * this sentence can appear.
+ *
+ * AND ITS DISPOSITION IS THE INDETERMINATE ONE, never the not-sent one: on
+ * `/answers` a busy is raised both for a sync expiry and for an ack timeout on a
+ * live owner, so the frame may have been written with only its acknowledgement
+ * lost (`desktop_sessions.py`, both raise sites). "Your answer isn't confirmed
+ * yet" is exactly the fact; "your answer wasn't sent" is a claim nothing
+ * establishes — the false report `ANSWER_BUSY_MESSAGE` was written to end.
+ *
  * TWO FACTS, IN ORDER (agent review F5, QA round 1 Q-2, QA round 2 Q-2):
  *
  *  1. THE OWNER'S SENTENCE WINS WHENEVER IT CROSSED THE WIRE. That is
@@ -2495,6 +2608,7 @@ const askRefusalAuthored = (error: unknown): boolean => {
  * now names both.
  */
 export const askRefusalSentence = (error: unknown): string => {
+	if (answerOwnerIsBusy(error)) return ANSWER_BUSY_MESSAGE;
 	if (askRefusalAuthored(error))
 		return userFacingMessage(error, ASK_ALREADY_SETTLED_MESSAGE);
 	const classified = askRefusalFallback(error);

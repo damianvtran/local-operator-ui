@@ -15,6 +15,7 @@ import "@renderer/styles/index.css";
 import { config, telemetryEnabled } from "@shared/config";
 import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
+import { installNotificationSoundPlayer } from "@shared/lib/notification-sound-player";
 import { installScrollbarActivity } from "@shared/lib/scrollbar-activity";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
@@ -88,6 +89,8 @@ declare global {
 		__loSbUninstall?: () => void;
 		/** The same handle for the refused-link listener below. */
 		__loExtRefusalUninstall?: () => void;
+		/** The same handle for the notification-sound player below. */
+		__loNotificationSoundUninstall?: () => void;
 	}
 }
 window.__loSbUninstall?.();
@@ -111,6 +114,16 @@ installConversationInputSync();
  */
 window.__loExtRefusalUninstall?.();
 window.__loExtRefusalUninstall = installExternalOpenRefusalToasts();
+
+/*
+ * Main's notification-sound fallback (Windows/Linux, or a macOS staging
+ * failure): main raised the banner silent and sends the sound here. Module
+ * scope for the refused-link listener's reasons: it must work even if React
+ * fails to mount, and a hot reload must not stack a second listener (which
+ * would play every chime twice).
+ */
+window.__loNotificationSoundUninstall?.();
+window.__loNotificationSoundUninstall = installNotificationSoundPlayer();
 
 /*
  * THE RIGHT SLOT'S MEMORY IS PROJECTED BEFORE THE FIRST RENDER (issue #894).

@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (PR eight-key delta audit, round 1)",
+  "date": "2026-11-05",
+  "auditor": "reviewer-cb9d33604d15",
+  "agent": "reviewer-cb9d33604d15",
+  "instance": "cb9d33604d15-pr1693-r1-fr",
+  "session": "cb9d33604d15",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "Actual audit performed on openai/gpt-6.1-sol after harness-announced quota fallbacks anthropic/claude-sonnet-5-5 → anthropic/claude-opus-5-5 → openai/gpt-6.1-sol. Initial guide loading preceded fallbacks; semantic/code review and receipts were performed on the current GPT model. No model pins changed.",
+  "model_fallback": {
+    "announced": true,
+    "observed": true
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "namespace": "ui.teamBridge",
+  "locale": "fr",
+  "sha256": {
+    "en": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+    "fr": "702a96c3635db16bfe42484740db7a6679316a54a8b2399b3454a9a9896876ca"
+  },
+  "integration": {
+    "pr": 1693,
+    "repo": "damianvtran/local-operator-ui",
+    "round": 1,
+    "base": "cd8590faa35fd28a84ab858fde394af5b509f294",
+    "audited_head": "b80f96931d9ffd3dee1be22922d7de9e5c88e111",
+    "scope": "cd8590faa35fd28a84ab858fde394af5b509f294..b80f96931d9ffd3dee1be22922d7de9e5c88e111"
+  },
+  "independence": "Independent reviewer instance cb9d33604d15; did not author code, source copy, or translations. Translator was coder instance 985d5648cefb. Auditor and final translator model happen to match; instances are distinct. No product/ledger modifications by auditor.",
+  "scope": {
+    "keys_added": [
+      "ui.teamBridge.files.staged",
+      "ui.teamBridge.files.failed",
+      "ui.teamBridge.files.retry",
+      "ui.teamBridge.files.remove",
+      "ui.teamBridge.files.unavailable",
+      "ui.teamBridge.files.add",
+      "ui.teamBridge.files.no_schedule",
+      "ui.teamBridge.files.uploading"
+    ],
+    "retained_prior_keys_count": 391,
+    "retention_proof": "git show base catalogue compared to current HEAD: exactly eight additions, zero changed or removed pre-existing keys; every prior key/value equals base. The pre-existing ledger/evidence remains the source of approval for those unchanged keys; this receipt does not claim a new full-namespace semantic audit.",
+    "retained_prior_key_value_projection_sha256": "4a3fb79a1e3cf5d866341a767a7a7fda0318f6a946d41ee70b369c8587a6319a",
+    "ui_context": "TeamBridgeFilesStrip: list/ready/held label, upload error, retry/remove icon labels, unavailable recovery; TeamBridgeComposer attach picker and uploading status; page schedule refusal hint. Compared to English and existing attachments.*, schedule.title; English sidecar has no notes for these new keys.",
+    "style_sources": [
+      "~/local-operator/i18n/glossary.md",
+      "~/local-operator/i18n/style-guides/fr.md"
+    ],
+    "semantic_checks": "Read all eight target strings against English: attached/staged state, upload failure, upload retry (not send retry), remove from draft, account capability unavailable with remove-to-send recovery, add-file action, no scheduled file sends, upload in progress. All preserve core meaning and action. No interpolations or ICU branches in these eight keys.",
+    "keys_changed_by_auditor": []
+  },
+  "findings": [
+    {
+      "id": "I18N-FR1",
+      "severity": "minor",
+      "key": "ui.teamBridge.files.no_schedule",
+      "summary": "Use the established planifier family for scheduling rather than programmer. The canonical French guide/glossary says schedule → planification and this catalogue names the action Planifier un message. Meaning remains understandable.",
+      "current": "Les fichiers peuvent être envoyés maintenant, mais pas programmés.",
+      "proposed": "Les fichiers peuvent être envoyés maintenant, mais pas planifiés."
+    }
+  ],
+  "checks": {
+    "full_file_hash_recomputed": true,
+    "handoff_input_values_and_hash_match": true,
+    "delta_exactly_eight_additions": true,
+    "all_prior_values_identical": true,
+    "nfc": true,
+    "manual_bidi_controls_absent": true,
+    "icu_arguments_match_empty_source_set": true,
+    "command": "python3 scratchpad/u2-copy-audit.py; node deriveReceiptAudit validation (read-only)",
+    "execution_log": "u2-copy-audit-verification.json"
+  },
+  "terminal": true,
+  "verdict": "clean — TERMINAL for this locale delta; remaining minors/nits do not force a round"
+}

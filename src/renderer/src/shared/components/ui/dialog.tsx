@@ -111,10 +111,26 @@ export const DialogContent = forwardRef<
 					 * one marker covers everything inside the dialog.
 					 */
 					data-titlebar-no-drag=""
+					/*
+					 * NOT A GLASS PANEL, UNLIKE EVERY OTHER PORTAL (design round 1, D1).
+					 *
+					 * `data-glass-overlay` gives a panel the derived translucent ground, and
+					 * that floor was derived against what a floating panel actually sits
+					 * over: the app's own column. A dialog sits on the MODAL SCRIM, so the
+					 * panel composites the 50-59% ground over a darkening layer - the one
+					 * backdrop the overlay floor was never derived against. Measured on this
+					 * dialog in the light palette: the destructive label reads 5.83:1 on the
+					 * opaque plate, 3.73:1 at the default intensity and 3.36:1 at the slider
+					 * floor, and every semantic ink lands at or under 3.80:1 there. A modal
+					 * already occludes the desktop it would be showing through, so the
+					 * translucency buys nothing and costs legibility: this surface keeps the
+					 * opaque `elevated` role and its shadow.
+					 */
+					data-lo-floating=""
 					className={cn(
 						"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
 						"flex w-full max-w-lg flex-col gap-4",
-						"rounded-lg border border-hairline bg-elevated p-6 shadow-overlay",
+						"rounded-lg bg-elevated p-6 shadow-overlay",
 						// No entrance animation; see the note at the top of `tooltip.tsx`.
 						className,
 					)}

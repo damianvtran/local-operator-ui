@@ -1465,6 +1465,14 @@ const AskRow = ({
 			 * limit (design round 1, D1's aside). A refusal is what the owner said about
 			 * the act, so it wears the danger band here too - and no mark, because the
 			 * same refusal must not read differently on the two surfaces.
+			 *
+			 * EXCEPT THE BUSY ARM, which is not a refusal of the act at all (design round
+			 * 1, D1 on this change): the owner is alive and did not confirm the press, so
+			 * the answer may or may not have landed, and the SCREEN must not say worse
+			 * than the sentence does. The gate card has painted this arm muted since
+			 * `answerReport` (`question-dock.tsx`'s `answer.muted`); the queued card read
+			 * red, which is why the disposition travels on the record (`AskOutcome.busy`)
+			 * rather than being re-derived from the sentence here.
 			 */}
 			{/*
 			 * THE PRESS IS VISIBLY OUT (Notifications ask-pane fix). The controls disable
@@ -1484,7 +1492,10 @@ const AskRow = ({
 			{outcome?.refused ? (
 				<output
 					data-lo-ask-refused=""
-					className="flex flex-wrap items-center gap-2 text-body-sm text-danger"
+					className={cn(
+						"flex flex-wrap items-center gap-2 text-body-sm",
+						outcome.busy === true ? "text-ink-muted" : "text-danger",
+					)}
 				>
 					<span className="min-w-0 break-words">
 						{dismissalRefusal ?? outcome.refused}

@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (key-level re-audit of one landed value)",
+  "date": "2026-11-06",
+  "auditor": "copy-reviewer",
+  "agent": "copy-reviewer",
+  "session": "20ee46d7281d",
+  "instance": "20ee46d7281d-pr1666-vir1-vi",
+  "audit_id": "tb1666-vi-r1-20ee46d7281d",
+  "model": "radient/auto",
+  "model_provenance": "Harness-announced quota fallbacks during this run: anthropic/claude-opus-5-5 (primary, then re-announced) -> openai/gpt-6.1-sol -> kimi/k3.1-pro -> radient/auto. The copy judgement, the byte verification and these artefacts were produced on radient/auto. No model pin was changed by this audit.",
+  "model_fallback": {
+    "announced": true,
+    "observed": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "namespace": "ui.teamBridge",
+  "locale": "vi",
+  "sha256": {
+    "en": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+    "vi": "bf8089bab58648ac2463194754d025acf8a376fbd5c14ac00549a6ec5fae68e9"
+  },
+  "context_sha256": "a53286f062f4480c18963a6e4dfab55d3f528a9ac4c09e6642a920d00160030a",
+  "style_guide": {
+    "path": "~/local-operator i18n/style-guides/vi.md",
+    "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "glossary_path": "~/local-operator i18n/glossary.md",
+    "core_commit": "b42471d3935",
+    "note": "Both files re-hashed at audit time; both hashes equal those recorded by 828e525994e6-pr1666-vi (core commit 759aaa8bd16), so the binding guides did not change between rounds."
+  },
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "branch": "fix/tb-rtl-d2-vi",
+    "worktree": "local-operator-ui/.worktrees/d1-d2-vi-r1",
+    "head": "f19fe5145fc235c63529df6bed2c5f3d8d8fe533",
+    "pr": "no PR open for this branch at audit time (gh pr list --head fix/tb-rtl-d2-vi returned [])",
+    "originating_round": 1666,
+    "originating_finding": "VI-R1 (MINOR, raised by 828e525994e6-pr1666-vi)"
+  },
+  "independence": "Independent Local Operator instance, session 20ee46d7281d, dispatched by the radientdev team manager as the independent translation auditor for this one key. Did not author the VI-R1 change, did not translate or edit any catalogue value, wrote none of the branch, and did not push. The originating VI-R1 finding was raised by the distinct earlier instance 828e525994e6-pr1666-vi; that instance's own suggested value is what landed here, and this audit judges the value on its own merits rather than inheriting that verdict. No translation API or MT service used. Row written by ledger-assemble.mjs.",
+  "scope": {
+    "delta_kind": "Key-level re-audit of exactly one landed value. Versus the previously audited bytes (target 631d3a66320ea238dba36fdbaa7ada6b247dbdbe399281e0272f7512f38c12ce, row auditor cb9d33604d15-pr1693-r1-vi), exactly one value changed (ui.teamBridge.builtin.general_topic); the key set and key order are identical, the en catalogue and the en context are unchanged, and the other 398 values are byte-identical to that audited parent (unchanged-pair projection sha256 973eca251e62aa3829bb706eefc5fa2777495eaff3735405c3cc547d506f05b2).",
+    "previous_row_target_sha256": "631d3a66320ea238dba36fdbaa7ada6b247dbdbe399281e0272f7512f38c12ce",
+    "previous_row_audited_by": [
+      "cb9d33604d15-pr1693-r1-vi"
+    ],
+    "keys_changed": [
+      "ui.teamBridge.builtin.general_topic"
+    ],
+    "added": [],
+    "removed": [],
+    "key_count": 399,
+    "key_set_equals_english": true,
+    "unchanged_pair_projection_sha256": "973eca251e62aa3829bb706eefc5fa2777495eaff3735405c3cc547d506f05b2"
+  },
+  "audited": {
+    "ui.teamBridge.builtin.general_topic": {
+      "en": "The whole organization: people and their agents. Agents see every message and reply when @-mentioned or in threads they follow.",
+      "translation": "Toàn bộ tổ chức: mọi người và tác nhân của họ. Tác nhân xem mọi tin nhắn và trả lời khi được nhắc đến bằng @ hoặc trong các luồng mà tác nhân theo dõi.",
+      "previous_translation": "Toàn bộ tổ chức: mọi người và tác nhân của họ. Tác nhân xem mọi tin nhắn và trả lời khi được nhắc đến bằng @ hoặc trong các luồng họ theo dõi.",
+      "context_note": "Describes the built-in #general channel. 'Threads they follow' means the agent follows the thread, not the reader. No reply-time promise; never promise every agent answers. No em dash."
+    }
+  },
+  "linguistic_review": "Judged on the copy itself, not on the fact that the landed value is the #1666 auditor's own suggestion.\n\nCORRECT, and an improvement. The preceding clause, 'mọi người và tác nhân của họ', already binds 'họ' to mọi người (people), so the old '... trong các luồng họ theo dõi' invited the reading 'threads the people follow'. English says 'threads they follow' and the en context note resolves the referent explicitly ('the agent follows the thread, not the reader'). The new '... mà tác nhân theo dõi' names the agent as the follower, so the Vietnamese now matches both the source and the note.\n\nNATURAL for this namespace. 'luồng' is the namespace term for thread (settled in the #1666 receipt) and 'tác nhân' is the glossary rendering of agent (i18n/glossary.md, agent row). The '... mà tác nhân <verb>' construction is already the house pattern here: ui.teamBridge.members.invitation_note_v3 reads 'các luồng mà tác nhân tham gia', and seven values in this namespace repeat 'tác nhân' three to seven times. Register, sentence case, the colon after 'Toàn bộ tổ chức' and the absence of an em dash all match the context note and the vi style guide.\n\nCONSIDERED AND REJECTED as a finding: replacing the repeated noun with the plural pronoun 'chúng' ('... trong các luồng chúng theo dõi') is shorter and unambiguous, but it departs from the established '... mà tác nhân ...' pattern for no comprehension gain, and the vi style guide's pronoun-dropping rule is about the address pronoun 'bạn', not about naming the subject of a spec-like statement.\n\nNo promise shift: the string still makes no reply-time promise and does not claim every agent answers every message, per the context note.",
+  "findings": [],
+  "checks": {
+    "author_precomputed_hashes": "all three verified against the files on disk (en, vi, context); no value taken on trust",
+    "delta_exactly_one_value": true,
+    "keyset_parity_en": "399/399, identical order",
+    "nfc": true,
+    "bidi_controls_absent": true,
+    "placeholder_set": "empty in both en and vi for this key; no ICU branches",
+    "em_dash_absent": true,
+    "command": "python3 verification script (scratchpad/vi-r1-verify.py) | node scripts/i18n/ledger-assemble.mjs | node scripts/i18n/ledger-check.mjs",
+    "execution_log": "i18n/audits/evidence/vi/ui.teamBridge/tb1666-vi-r1-20ee46d7281d/audit.log"
+  },
+  "terminal": true,
+  "verdict": "clean: the landed VI-R1 wording is correct and the better reading of the English; zero findings, so this key-level round is TERMINAL and the row is audited."
+}

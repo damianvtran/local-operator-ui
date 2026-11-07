@@ -72,6 +72,7 @@ export const FloatingAlert: FC<FloatingAlertProps> = ({
 			<Alert
 				variant={variant}
 				role={liveRole}
+				data-lo-floating=""
 				className="relative pe-10 shadow-overlay"
 			>
 				{children}

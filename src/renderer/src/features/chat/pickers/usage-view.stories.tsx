@@ -31,12 +31,15 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import "../../../styles/index.css";
-import { UsageDialog } from "./usage-view";
-import type {
-	UsageAmount,
-	UsageLimit,
-	UsagePayload,
-	UsageReport,
+import { UsageDialog, type UsageResetControls } from "./usage-view";
+import {
+	type AccountResetState,
+	type UsageAmount,
+	type UsageLimit,
+	type UsagePayload,
+	type UsageReport,
+	canReset,
+	resetAccountKey,
 } from "./usage-view-model";
 
 /* A fixed clock, so a countdown cannot move between two captures of the same
@@ -937,5 +940,220 @@ export const PaidCreditsSpendUnavailable: Story = {
 				],
 			}),
 		]),
+	},
+};
+
+/* ---------------------------------------------------------------------------
+ * The reset-credit surface
+ *
+ * Six outcomes, a confirmation and an in-flight state, all driven by the REAL
+ * machine from `usage-view-model.ts` -- the fixtures below are states that
+ * machine can be in, not a story-shaped imitation of them. What to look for:
+ *
+ * - The chip rides the account's own heading line, so the block's rows do not
+ *   move when it appears, and the binding numbers on the right do not re-flow.
+ * - The confirmation sits inline in the block it spends on; Cancel carries the
+ *   focus and Confirm is the primary action.
+ * - The RESULT LINE OUTLIVES THE CHIP. The `ResetOutcome*` frames below all
+ *   carry zero credits -- which is exactly why the chip is gone and why a
+ *   result drawn beside it would disappear at the moment it matters.
+ * ---------------------------------------------------------------------- */
+
+/** The ref a real OpenAI report carries; the key a reset state is filed under. */
+const RESET_REF = "cred-openai-1";
+
+/** The OpenAI account, with credits on it (`credits: 0` after a spend). */
+const resettable = (credits = 3): UsageReport => ({
+	...openai,
+	resets_available: credits,
+	credential_ref: RESET_REF,
+});
+
+/** Story-only controls: real states, inert handlers. */
+const resetControls = (
+	state: AccountResetState,
+	report: UsageReport,
+): UsageResetControls => ({
+	states: {
+		[resetAccountKey({ provider: report.provider, credentialRef: RESET_REF })]:
+			state,
+	},
+	canReset,
+	onAsk: noop,
+	onConfirm: noop,
+	onCancel: noop,
+	onDismiss: noop,
+});
+
+/** Idle with credits: the chip is on the heading line, and nothing else moved. */
+export const ResetIdle: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(), anthropic]),
+		reset: resetControls(
+			{ phase: "idle", pendingRedeemRequestId: null },
+			resettable(),
+		),
+	},
+};
+
+/** The confirmation: the cost is stated, Cancel holds the focus. */
+export const ResetConfirm: Story = {
+	args: {
+		...base,
+		payload: payload([resettable()]),
+		reset: resetControls(
+			{
+				phase: "confirm",
+				redeemRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			},
+			resettable(),
+		),
+	},
+};
+
+/** In flight: both buttons are inert, and the wait names the account. */
+export const ResetBusy: Story = {
+	args: {
+		...base,
+		payload: payload([resettable()]),
+		reset: resetControls(
+			{
+				phase: "busy",
+				redeemRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			},
+			resettable(),
+		),
+	},
+};
+
+/** A spent credit: the chip is gone because there are none left, the result is not. */
+export const ResetOutcomeReset: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(0)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: null,
+				result: {
+					outcome: "reset",
+					windowsReset: 2,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(0),
+		),
+	},
+};
+
+/** Already applied by a retry: the credit count did not move. */
+export const ResetOutcomeAlreadyRedeemed: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(2)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: null,
+				result: {
+					outcome: "already_redeemed",
+					windowsReset: 0,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(2),
+		),
+	},
+};
+
+/** Nothing left to spend: neutral, and the line says nothing was spent. */
+export const ResetOutcomeNoCredit: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(0)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: null,
+				result: {
+					outcome: "no_credit",
+					windowsReset: 0,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(0),
+		),
+	},
+};
+
+/** No window needed clearing: the credit was still not spent. */
+export const ResetOutcomeNothingToReset: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(3)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: null,
+				result: {
+					outcome: "nothing_to_reset",
+					windowsReset: 0,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(3),
+		),
+	},
+};
+
+/** The unknown arm: the only line allowed to say the credit's fate is unknown. */
+export const ResetOutcomeFailed: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(2)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				/*
+				 * The id is KEPT here, and that is the point of the picture: the
+				 * retry affordance beside the line is only honest because this state
+				 * still owes the vendor the id it already spent.
+				 */
+				redeemRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				result: {
+					outcome: "failed",
+					windowsReset: 0,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(2),
+		),
+	},
+};
+
+/** Refused before anything was sent: nothing was spent, and the id is still owed. */
+export const ResetOutcomeRefused: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(3)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				result: {
+					outcome: "refused",
+					windowsReset: 0,
+					detail: "",
+					refused: true,
+				},
+			},
+			resettable(3),
+		),
 	},
 };

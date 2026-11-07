@@ -1,6 +1,8 @@
+import { Spinner } from "@shared/components/common/spinner";
 /**
- * Presentation only: resource authority stays with the caller. In particular,
- * owner-audit descriptors must never fall through to the member byte relay.
+ * Presentation, plus the generic file's Save: resource authority stays with the
+ * caller. In particular, owner-audit descriptors must never fall through to the
+ * member byte relay, so a file's bytes come only from the caller's `readFile`.
  * Image names are intentionally generic: the image contract carries no name.
  * Generic FILES (S3b `files[]`) do carry the cleaned uploader name, rendered as
  * visible text only (see `BridgeFileGroup`).
@@ -8,8 +10,15 @@
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { FileIcon, FileX, ImageIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+	CircleAlert,
+	Clock,
+	Download,
+	FileIcon,
+	FileX,
+	ImageIcon,
+} from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import {
 	AttachmentKindIcon,
@@ -17,6 +26,7 @@ import {
 	attachmentTypeLabel,
 } from "../../chat/components/attachment-file-card";
 import { extensionOf } from "../../chat/utils/file-kind";
+import { downloadBlob } from "../../chat/utils/image-actions";
 import {
 	ATTACHMENT_GRID_VISIBLE,
 	ATTACHMENT_GROUP_MAX,
@@ -25,13 +35,15 @@ import {
 	attachmentBox,
 	attachmentFit,
 	fileCardWidth,
+	fileSaveFailure,
+	fileSaveName,
+	fileView,
 	isAttachmentImage,
 	isAvailableAttachment,
-	isAvailableFile,
-	middleTruncateFileName,
 	splitFileNameTail,
 } from "./attachment-model";
 import {
+	CLUSTER_BUTTON_CLASS,
 	type InlineImageBox,
 	InlineImageFailure,
 	InlineImageOverflow,
@@ -72,6 +84,7 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 	compact = false,
 	files = [],
 	fileCount = files.length,
+	readFile,
 }: {
 	attachments: readonly T[];
 	count?: number;
@@ -81,13 +94,20 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 		index: number,
 		slot: BridgeImageSlot,
 	) => ReactNode;
-	/** S3b generic files, rendered after the images as noninteractive chips. */
+	/** S3b generic files, rendered after the images as cards. */
 	files?: readonly BridgeFileDescriptor[];
 	fileCount?: number;
+	/** The caller's byte authority for a file's Save; absent offers no Save. */
+	readFile?: (file: BridgeFileDescriptor) => Promise<Uint8Array>;
 }) {
 	useI18nLocale();
 	const fileGroup = (
-		<BridgeFileGroup files={files} count={fileCount} compact={compact} />
+		<BridgeFileGroup
+			files={files}
+			count={fileCount}
+			compact={compact}
+			readFile={readFile}
+		/>
 	);
 	// A count-only audit response confirms presence, not descriptor authority.
 	// One opaque receipt represents it; never manufacture ids or fetch targets.
@@ -223,12 +243,22 @@ const IMAGE_TYPE = new Map([
  * `elevated` (7.89 minimum off the chip). `scripts/contrast-contract.mjs`
  * carries the ink rows and the ground-step row.
  *
- * NO HOVER STEP and NO CONTROL: a descriptor chip offers nothing to do (no
- * byte route; owner decision after #1634), and a hover colour step is this
- * app's promise that something is pressable.
+ * NO HOVER STEP: a hover colour step is this app's promise that the thing under
+ * the pointer is pressable, and the chip itself never is. An image's metadata
+ * chip offers nothing to do; a file card's one action (Save, decision a-fdf0)
+ * is its own button with its own hover, so the card's ground stays still.
+ *
+ * THE BORDER IS THE BOUNDARY, NOT THE FILL STEP. The fill step alone is
+ * 1.10–1.12:1 against the pane, so on a dim or low-quality panel the chip stops
+ * reading as a card and becomes text with a tint (design D6). `control` is the
+ * composer chip's own edge token (3.43:1 light / 4.15:1 dark), the nearest
+ * card boundary this app already draws, so no new token enters the palette. It
+ * is one class on BOTH chip kinds: the image chip and the file chip stay the
+ * same object (§4), and an image's metadata chip has the same 1.1:1 fill step
+ * on the same ground.
  */
 const CHIP_CLASS =
-	"flex h-12 min-w-0 max-w-full items-center gap-2.5 rounded-md bg-media-surface px-2.5";
+	"flex h-12 min-w-0 max-w-full items-center gap-2.5 rounded-md border border-control bg-media-surface px-2.5";
 const CHIP_TILE_CLASS =
 	"flex size-8 shrink-0 items-center justify-center rounded-sm bg-elevated";
 
@@ -309,20 +339,29 @@ const CLASS_MIME = new Map<string, string>([
 	["text", "text/plain"],
 	["container", "application/zip"],
 ]);
-/* Server names are <= 120 scalars; ~32 fit a regular card on one line, and the
- * `truncate` class remains the width backstop for wide glyphs. */
-const NAME_BUDGET = { regular: 34, compact: 28 } as const;
-
 /**
- * One file name as a flex row: the head shrinks and carries the ellipsis, the
- * tail (extension or ending, see `splitFileNameTail`) never shrinks, so the
- * width backstop can no longer clip what middle truncation preserved.
+ * One file name as a flex row: the head shrinks and carries the single ellipsis,
+ * the tail (its extension or ending, see `splitFileNameTail`) never shrinks, so
+ * the extension stays whole at any card width.
  *
- * BIDI: the row takes its direction from the whole name (`dir="auto"` reads
- * the first strong character of its descendants), so an Arabic name lays its
- * parts out right to left. Each part is `unicode-bidi: isolate`, so a Latin
- * `.csv` tail cannot reorder into the head. D9: text only, never an
- * aria-label, title or id.
+ * WHY NO CHARACTER BUDGET (design D2): pre-truncating with
+ * `middleTruncateFileName` and then letting `text-overflow` clip the head put
+ * TWO ellipses on one 240px card (`Customer onboa…list….docx`) and detached the
+ * extension from the name it belonged to. The head holds the whole name now and
+ * CSS is the only truncator: one ellipsis, measured against the width the card
+ * actually gets instead of an estimated code-point count.
+ *
+ * BIDI: the row takes its direction from the whole name (`dir="auto"` reads the
+ * first strong character of its descendants), so an Arabic name lays its parts
+ * out right to left. Isolation alone does NOT hold a `.` in place: the full stop
+ * is a neutral, and inside an RTL run it takes that run's direction, so `.csv`
+ * painted as `csv.` (design D3). A tail that IS an extension therefore declares
+ * `dir="ltr"` — an extension is Latin-ordered data, not a word — which pins the
+ * dot to the left of the letters, while the isolate keeps the tail whole and out
+ * of its neighbours' ordering. A tail that is instead the last few characters of
+ * an extension-less name keeps the row's direction: those are letters of the
+ * name's own script, and pinning them LTR would print the fragment reversed.
+ * D9: text only, never an aria-label, title or id.
  */
 function FileNameLabel({
 	label,
@@ -350,6 +389,8 @@ function FileNameLabel({
 			{tail && (
 				<span
 					data-file-name-part="tail"
+					/* Only an extension is direction-free data; see the note above. */
+					dir={tail.startsWith(".") ? "ltr" : undefined}
 					className="shrink-0 whitespace-pre"
 					style={{ unicodeBidi: "isolate" }}
 				>
@@ -360,32 +401,281 @@ function FileNameLabel({
 	);
 }
 
+/*
+ * WHY A SAVE IS STATEFUL. The image tile's Save writes bytes the reader already
+ * holds; a file's bytes are fetched only when Save is pressed (up to 25 MiB),
+ * so the press has a life: `saving` while the relay answers, then the platform
+ * save dialog. The dialog's own outcome never comes back to the renderer - a
+ * cancelled dialog is the reader's choice, not a failure - so a handed-off save
+ * simply returns to `idle`. The four other outcomes are the relay's closed
+ * vocabulary (`fileSaveFailure`) plus the descriptor's own deadline.
+ */
+type SavePhase =
+	| "idle"
+	| "saving"
+	| "failed"
+	| "too_large"
+	| "unavailable"
+	| "expired";
+
+/** One file as a card, and its Save when the caller can commission one. */
+function BridgeFileCard({
+	file,
+	index,
+	count,
+	width,
+	readFile,
+}: {
+	file: BridgeFileDescriptor;
+	index: number;
+	count: number;
+	width: number;
+	readFile?: (file: BridgeFileDescriptor) => Promise<Uint8Array>;
+}) {
+	const [phase, setPhase] = useState<SavePhase>("idle");
+	/* A ref as well as state: two clicks inside one frame both see `idle` in
+	 * state, and a second fetch of up to 25 MiB is the double fire to refuse. */
+	const inFlight = useRef(false);
+	const live = useRef(true);
+	const card = useRef<HTMLLIElement>(null);
+	const button = useRef<HTMLButtonElement>(null);
+	const refocus = useRef(false);
+	useEffect(() => {
+		live.current = true;
+		return () => {
+			live.current = false;
+		};
+	}, []);
+	const view =
+		phase === "unavailable" || phase === "expired" ? phase : fileView(file);
+	const available = view === "available";
+	const offersSave = available && Boolean(readFile) && phase !== "too_large";
+	/*
+	 * FOCUS STAYS ON THE CARD. A refusal or a too-large answer removes the Save
+	 * button the reader just pressed; without a hand-off, focus would fall to the
+	 * document and a keyboard reader would lose their place in the transcript.
+	 * The card takes it (`tabIndex=-1`: reachable by script, never a tab stop)
+	 * and its status line, a polite live region, says what happened.
+	 */
+	useEffect(() => {
+		if (offersSave || !refocus.current) return;
+		refocus.current = false;
+		card.current?.focus({ preventScroll: true });
+	}, [offersSave]);
+	const save = async () => {
+		if (!readFile || inFlight.current) return;
+		// The deadline can pass while the card is on screen: say so, read nothing.
+		if (fileView(file) !== "available") {
+			refocus.current = document.activeElement === button.current;
+			setPhase(fileView(file) === "expired" ? "expired" : "unavailable");
+			return;
+		}
+		inFlight.current = true;
+		setPhase("saving");
+		try {
+			const bytes = await readFile(file);
+			if (!live.current) return;
+			/* The bytes go to the platform's save dialog and nowhere else: no blob
+			 * cache, no preview, no log. `downloadBlob` revokes its URL after the
+			 * hand-off; the name is the descriptor's, never the server's. */
+			downloadBlob(
+				new Blob([bytes as BlobPart], { type: "application/octet-stream" }),
+				fileSaveName(file, index),
+			);
+			setPhase("idle");
+		} catch (error) {
+			if (!live.current) return;
+			const status = (error as { status?: unknown } | null)?.status;
+			const outcome = fileSaveFailure(
+				typeof status === "number" ? status : null,
+			);
+			refocus.current =
+				outcome !== "failed" && document.activeElement === button.current;
+			setPhase(outcome);
+		} finally {
+			inFlight.current = false;
+		}
+	};
+	const name = file.displayName;
+	const extension = name ? extensionOf(name) : null;
+	const kind = CLASS_MIME.has(file.fileClass) ? file.fileClass : "other";
+	/* The chat card's own `PDF · 2.4 MB` vocabulary when the name has an
+	 * extension; otherwise the server class, in words. */
+	const type =
+		name && extension
+			? attachmentTypeLabel(name)
+			: t("ui.teamBridge.fileCard.kind", { kind });
+	/* A nameless card titles itself `File`, and the `other` class words read
+	 * back as that same sentence, so a nameless class-less file printed `File`
+	 * above `File · 25.0 MB` (design D4). Suppress the repeated half; the size is
+	 * the only fact that card holds. */
+	const typeRepeatsTitle = !name && kind === "other";
+	const size =
+		available && Number.isSafeInteger(file.size) && file.size > 0
+			? attachmentSizeLabel(file.size)
+			: null;
+	const facts = typeRepeatsTitle
+		? size
+		: size
+			? t("ui.chat.attachments.file_meta", { type, size })
+			: type;
+	/* The status line says the one thing that is true now, always in the card's
+	 * status ink. An expired, refused or over-ceiling file is a fact about the
+	 * file: `too_large` can never succeed and offers no control, so it takes no
+	 * alarm at all (design round 1, D4). */
+	const status =
+		view === "expired"
+			? t("ui.teamBridge.fileCard.expired")
+			: view === "unavailable"
+				? t("ui.teamBridge.fileCard.unavailable")
+				: phase === "saving"
+					? t("ui.teamBridge.fileCard.saving")
+					: phase === "failed"
+						? t("ui.teamBridge.fileCard.save_failed")
+						: phase === "too_large"
+							? t("ui.teamBridge.fileCard.too_large")
+							: facts;
+	/*
+	 * A RETRYABLE failure is marked by its GLYPH, not its words (design round 1,
+	 * D3). `danger` as 11px text on this card's `mediaSurface` fill measured
+	 * 4.17-4.44:1 in ten light palettes, under the 4.5:1 text floor, and
+	 * re-authoring `danger` would move every danger surface in the app. So the
+	 * words stay in the status ink and a `danger` alert glyph replaces the kind
+	 * glyph in the tile (the composer's dictation-failure pattern), on the
+	 * tile's `elevated` fill - a pairing the contract asserts at the text floor
+	 * ("team bridge file card failure glyph"). Without colour it still reads as
+	 * a failure: a distinct glyph and "Couldn't save. Try again."
+	 */
+	const failed = available && phase === "failed";
+	return (
+		<li
+			ref={card}
+			tabIndex={-1}
+			style={{ width }}
+			data-bridge-file-card={view}
+			data-file-save={available && readFile ? phase : undefined}
+			/*
+			 * GROWS, NEVER CLIPS (design round 1, D1). The shared chip is a fixed
+			 * 48px; a file card's status can need two lines (`ru`, and `ur` in the
+			 * compact 240px card, cut "try again" mid-word). So this card is a
+			 * 48px MINIMUM with the chip's own 6px vertical breathing room: one-line
+			 * cards measure exactly as before, and a long locale adds a line.
+			 */
+			className={cn(
+				CHIP_CLASS,
+				"h-auto min-h-12 gap-2.5 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus",
+			)}
+		>
+			<span className={cn(CHIP_TILE_CLASS, "text-ink-muted")}>
+				{failed ? (
+					<CircleAlert
+						size={16}
+						aria-hidden="true"
+						data-file-save-failed=""
+						className="text-danger"
+					/>
+				) : available ? (
+					<AttachmentKindIcon
+						name={name ?? ""}
+						mimeType={CLASS_MIME.get(file.fileClass)}
+						className="size-4"
+					/>
+				) : view === "expired" ? (
+					<Clock size={16} aria-hidden="true" />
+				) : (
+					<FileX size={16} aria-hidden="true" />
+				)}
+			</span>
+			<span className="min-w-0 flex-1 text-[13px]">
+				{name ? (
+					<FileNameLabel label={name} available={available} />
+				) : (
+					<span
+						dir="auto"
+						className={cn(
+							"block truncate font-medium",
+							available ? "text-ink" : "text-ink-muted",
+						)}
+					>
+						{t("ui.teamBridge.attachmentCard.file")}
+					</span>
+				)}
+				{status && (
+					<span
+						aria-live="polite"
+						/* Up to two lines, never one: the second half of the failure copy
+						   is the remedy ("Try again"), and a single-line truncate deleted
+						   it in two shipped locales (design round 1, D1). The copy is
+						   two short sentences by contract, so two lines hold it. */
+						className="line-clamp-2 break-words text-meta-sm text-ink-dim"
+					>
+						{status}
+					</span>
+				)}
+			</span>
+			{offersSave && (
+				<button
+					type="button"
+					ref={button}
+					/* The image tile's Save, exactly (design round 1, D2). */
+					className={cn(CLUSTER_BUTTON_CLASS, "shrink-0")}
+					/* D9: a position, never the name. The tooltip is the image tile's
+					   own plain "Save as…", the same action through the same dialog. */
+					aria-label={t("ui.teamBridge.fileCard.save", {
+						index: String(index + 1),
+						count: String(count),
+					})}
+					title={t("ui.chat.image_actions.save_as")}
+					/* Busy, not disabled: a disabled button drops the focus the reader
+					   pressed it with. The press is refused in `save` instead. */
+					aria-busy={phase === "saving" || undefined}
+					aria-disabled={phase === "saving" || undefined}
+					onClick={() => void save()}
+				>
+					{phase === "saving" ? (
+						<Spinner size="sm" />
+					) : (
+						<Download size={16} aria-hidden="true" />
+					)}
+				</button>
+			)}
+		</li>
+	);
+}
+
 /**
- * Generic files (S3b) as noninteractive metadata cards: a class glyph, the
- * cleaned name, and `TYPE · size`. There is deliberately NO control on a card:
- * no download, open or Save As (removed in #1634 until a download contract is
- * decided), so a card is a plain list item a reader cannot act on.
+ * Generic files (S3b) as cards: a class glyph, the cleaned name, `TYPE · size`,
+ * and - where the caller hands in `readFile` - ONE action, Save (decision a-fdf0,
+ * which replaced #1634's metadata-only rule for files). Preview stays refused
+ * for every class (`download_only`): nothing here renders, opens or caches a
+ * file's bytes; Save hands them straight to the platform save dialog.
+ *
+ * AUTHORITY STAYS WITH THE CALLER. `readFile` is the member relay in a thread
+ * and the owner-audit relay in the audit; this module never picks a route. With
+ * no `readFile` (an audit row without a captured owner, a thread whose tenant is
+ * unknown) a card offers nothing and says nothing it cannot do. Save appears
+ * only on a `bound` file whose deadline has not passed.
  *
  * D9: the name is visible text inside `dir="auto"` (an Arabic or Hebrew name
  * lays out by its own direction inside any UI locale). It never appears in an
- * aria-label, id, data attribute or log; the list's accessible name is a count.
- * A list with no descriptors but a positive `count` is one count-only receipt.
+ * aria-label, id, data attribute, title or log; Save is named by position and
+ * the list by a count. A list with no descriptors but a positive `count` is one
+ * count-only receipt.
  */
 export function BridgeFileGroup({
 	files,
 	count = files.length,
 	compact = false,
+	readFile,
 }: {
 	files: readonly BridgeFileDescriptor[];
 	count?: number;
 	compact?: boolean;
+	readFile?: (file: BridgeFileDescriptor) => Promise<Uint8Array>;
 }) {
 	useI18nLocale();
 	if (files.length === 0 && !(count > 0)) return null;
 	const width = fileCardWidth(compact);
-	const items: readonly (BridgeFileDescriptor | null)[] = files.length
-		? files
-		: [null];
 	return (
 		<ul
 			aria-label={t("ui.teamBridge.fileCard.list", {
@@ -393,86 +683,33 @@ export function BridgeFileGroup({
 			})}
 			className="mt-1.5 flex min-w-0 flex-wrap items-start gap-2"
 		>
-			{items.map((file) => {
-				const available = file !== null && isAvailableFile(file);
-				const name = file?.displayName ?? null;
-				const extension = name ? extensionOf(name) : null;
-				const fileClass = file?.fileClass ?? "";
-				/* The chat card's own `PDF · 2.4 MB` vocabulary when the name has an
-				 * extension; otherwise the server class, in words. */
-				const type =
-					name && extension
-						? attachmentTypeLabel(name)
-						: t("ui.teamBridge.fileCard.kind", {
-								kind: CLASS_MIME.has(fileClass) ? fileClass : "other",
-							});
-				const size =
-					available && file && Number.isSafeInteger(file.size) && file.size > 0
-						? attachmentSizeLabel(file.size)
-						: null;
-				return (
-					<li
-						key={file?.id ?? "count-only"}
-						style={{ width }}
-						data-bridge-file-card={
-							file === null
-								? "count-only"
-								: available
-									? "metadata"
-									: "unavailable"
-						}
-						/* The shared chip look (see `CHIP_CLASS`): borderless, the fill
-						   is the extent, no hover step because nothing here is a control. */
-						className={cn(CHIP_CLASS, "gap-2.5")}
-					>
-						<span className={cn(CHIP_TILE_CLASS, "text-ink-muted")}>
-							{file === null ? (
-								<FileIcon size={16} aria-hidden="true" />
-							) : available ? (
-								<AttachmentKindIcon
-									name={name ?? ""}
-									mimeType={CLASS_MIME.get(fileClass)}
-									className="size-4"
-								/>
-							) : (
-								<FileX size={16} aria-hidden="true" />
-							)}
+			{files.length ? (
+				files.map((file, index) => (
+					<BridgeFileCard
+						key={file.id}
+						file={file}
+						index={index}
+						count={files.length}
+						width={width}
+						readFile={readFile}
+					/>
+				))
+			) : (
+				<li
+					style={{ width }}
+					data-bridge-file-card="count-only"
+					className={cn(CHIP_CLASS, "gap-2.5")}
+				>
+					<span className={cn(CHIP_TILE_CLASS, "text-ink-muted")}>
+						<FileIcon size={16} aria-hidden="true" />
+					</span>
+					<span className="min-w-0 flex-1 text-[13px]">
+						<span dir="auto" className="block truncate font-medium text-ink">
+							{t("ui.teamBridge.fileCard.list", { count })}
 						</span>
-						<span className="min-w-0 flex-1 text-[13px]">
-							{file !== null && name ? (
-								<FileNameLabel
-									label={middleTruncateFileName(
-										name,
-										NAME_BUDGET[compact ? "compact" : "regular"],
-									)}
-									available={available}
-								/>
-							) : (
-								<span
-									dir="auto"
-									className={cn(
-										"block truncate font-medium",
-										available ? "text-ink" : "text-ink-muted",
-									)}
-								>
-									{file === null
-										? t("ui.teamBridge.fileCard.list", { count })
-										: t("ui.teamBridge.attachmentCard.file")}
-								</span>
-							)}
-							{file !== null && (
-								<span className="block truncate text-ink-dim text-meta-sm">
-									{available
-										? size
-											? t("ui.chat.attachments.file_meta", { type, size })
-											: type
-										: t("ui.teamBridge.attachmentCard.unavailable")}
-								</span>
-							)}
-						</span>
-					</li>
-				);
-			})}
+					</span>
+				</li>
+			)}
 		</ul>
 	);
 }

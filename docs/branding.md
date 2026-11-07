@@ -390,6 +390,72 @@ drawer, popover, tooltip, select. An in-flow card that needs to feel raised
 takes the next ground, not a shadow. This is why the four grounds must be
 mutually distinguishable, and why `check-themes` asserts it.
 
+**A floating surface separates by surface contrast AND elevation — never by a
+stroke.** (Operator report, 2026-11-06: a session-list tooltip, the canvas rail's
+tooltip, the agent-profile popover and the sidebar overflow menu were each
+carrying a rounded 1px lighter-than-surface border, which fights the
+borderless-chrome system; the popover added a bordered button inside the bordered
+panel. The line was also doing work it could not do well — a hairline measures
+1.03–1.18:1 against the panel's own fill, i.e. a boundary of nothing — while the
+ambient half of `--shadow-overlay` starts 12px out and left the panel's own edge
+bare.) The rule that follows, and it applies to every leave-flow surface:
+
+- **No border on a floating panel.** Menu, context menu, overflow menu, dialog,
+  drawer/sheet, popover, tooltip, hovercard, select list — none of them may
+  declare `border`, `border-hairline` or `border-control`. A hairline on one of
+  these is a regression by construction, not a question of taste. Each shared
+  primitive's panel wears `data-lo-floating`, and
+  `scripts/floating-surface-no-border.test.mjs` fails on a border utility (on the
+  tag or in a class constant it names), a stylesheet border outside the
+  forced-colors rule, a focus reset that reaches the panel, a second `shadow-*`
+  that would make tailwind-merge drop `shadow-overlay`, or a contact-less
+  `--shadow-overlay`. It is a static check; a computed border is a browser
+  run's evidence.
+- **The boundary is the shadow's contact layer.** `--shadow-overlay` composes a
+  tight contact layer (`--lo-shadow-contact`, derived from the palette's `scrim`
+  role) with the palette ambient, so there is real darkening AT the edge and the
+  panel reads on every theme. A `0 0 0 1px` ring is not a substitute: zero blur
+  makes it a border drawn with a shadow.
+- **On window glass it is restrengthened, never lightened.** A menu, popover,
+  tooltip or select list stays translucent on glass (the operator's request,
+  #1706; see § Window glass) with a 12px backdrop blur, and its contact layer is
+  the same `scrim` contact pulled 50% toward black - darker and a little stronger,
+  never stepped toward `ink`. On a dark palette ink is near-white, and an
+  ink-mixed "shadow" is a light rim: the lighter-than-surface outline the operator
+  reported, drawn with a shadow instead of a border. `contrast-contract.mjs`
+  measures the contact as painted (blurred coverage at the edge, both desktop
+  extremes) and fails if it is ever lighter than the column beneath it or worse
+  than the edge this composition shipped with.
+- **Elevation must survive focus.** No box-shadow reset may reach a floating
+  panel: Radix focuses a menu's content on a pointer open, and the global focus
+  rule's `box-shadow: none !important` used to strip the panel's only
+  separation. Focus is an `outline`, never a box-shadow, so the reset excludes
+  `[data-lo-floating]` and the guard holds it there.
+- **On dark palettes the ground step separates and the shadow supports.** A dark
+  shadow on a dark ground adds a few levels at the edge; the `elevated` step is
+  what the eye reads. Do not "fix" a dark panel with a ring - a nested panel
+  (submenu over menu, select inside a dialog) is a case to look at in a rendered
+  frame, not a reason for a stroke.
+- **The one sanctioned stroke is forced-colors mode.** `@media (forced-colors:
+  active)` drops every box-shadow, so there a floating panel draws a 1px
+  `CanvasText` border; without it it would have no edge at all. It is
+  implemented once in `styles/index.css`, and the guard allows exactly that rule.
+- **Group dividers are insets, not rules that touch the panel's edge.** An
+  internal separator sits inside the panel's padding, aligned with the item
+  labels (`mx-2` against `p-1` + `px-2` in the menu and select primitives), and
+  is `divider-inset` - the hairline mixed halfway toward the panel's `elevated`
+  ground - so the rule inside never out-draws the panel's own edge. A full-bleed
+  rule that reaches the panel's rounded corner rebuilds the box the border used
+  to draw.
+- **Nested elements may not reintroduce it.** A floating panel's action is the
+  `tonal` button - a borderless neutral fill one ground step off the panel
+  (`sunken`, hover `surface`, pressed `hairline`, `ink` label) - and quieter
+  ones are `ghost`. `primary` only where the panel's action is the screen's
+  commit; a bordered `secondary` on an `elevated` panel is a box inside a box.
+  Dialog footers take `tonal` through the shared `SecondaryButton`. Chips,
+  badges and avatars inside a floating panel are in-flow content and keep their
+  own treatment (a badge's hairline is the badge's, not the panel's).
+
 ### The four inks
 
 `ink` (primary) → `ink-muted` (secondary) → `ink-dim` (captions, metadata,
@@ -1180,9 +1246,15 @@ error and empty states. Under *Sidebars only* the whole route stays flat.
 **What stays solid under *Full app*, by design** (the Settings copy says so in one
 sentence): web pages in the browser view (the page paints itself), document and
 media viewers' own grounds (PDF, image, video, audio), code and diff grounds, a
-message's reply quote and attachment tiles, leave-flow surfaces (menus, dialogs,
-popovers, the palette, toasts, drag previews), theme preview tiles, and small
-deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub category
+message's reply quote and attachment tiles, the leave-flow surfaces that sit over
+a scrim or carry their own motion (dialogs, sheets, the palette, toasts, drag
+previews), theme preview tiles, and small deliberate marks. The OTHER leave-flow
+surfaces - menus, context menus and submenus, tooltips, popovers, select lists and
+the update card - are not solid: the operator reported them as opaque plates over a
+translucent column (#1706), so they take the floating layer's derived translucency
+(`--lo-glass-a-overlay`) behind a 12px backdrop blur, which is what keeps the
+column under them from reading through. Their edge on glass is § 2's contact
+shadow, darkened, never a stroke. A panel's own *frame* (the Schedules list, the Agent hub category
 rail) is a surface and goes glass; the cards inside it are blocks (tints). The
 canvas, ask, run-detail, console and code-review panes are text-bearing panes: on
 glass their ROOT is the pane ground and every plane inside them is clear or a
@@ -1209,7 +1281,7 @@ opaque root behind opaque descendants.
 | Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
 | Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
 | Sticky headers (scroll-under) | `data-glass-plane="band"`: the field overlay | a solid plate in a translucent column is the seam the operator reported; the band's own inks are contract rows |
-| Sticky headers over MOVING content (a section header that rows scroll under) | `data-glass-plane="band-backdrop"`: the pane's own `elevated` role, floored at the elevated alpha, plus a `backdrop-filter` blur | a 5% ink wash over moving content hides nothing, and the band's ground is whatever is scrolling under it, so the band needs an alpha FLOOR of its own - the count beside the label must clear 4.5:1 against it (design round 1's D1) |
+| Sticky headers over MOVING content (a section header that rows scroll under) | `data-glass-plane="band-backdrop"`: the pane's own `elevated` role, floored at the elevated alpha, plus a `backdrop-filter` blur | a 5% ink wash over moving content hides nothing, and the band's ground is whatever is scrolling under it, so the band needs an alpha FLOOR of its own - and that floor holds EVERY ink the band carries at its own register: `ink` and `inkMuted` at 4.5, `inkDim` at 3.5 (`GLASS_STATE_DIM_FLOOR`, the register a count wears). Deriving it against the label's ink alone was the bug: a CONTRAST PRESET took the count to 3.28:1 on a band that floor had fixed at 0.81 (QA round 1's Q-1; the floor's existence is design round 1's D1, and the term landed in #1714). What the term cost, fleet-wide: 50 of the 59 palettes' floors rose, 9 were unmoved, none fell, and the fleet floor stayed 0.88 dark / 0.78 light because the palette that bound it already sat there. That spread is a one-off result, not a guarded invariant: `scripts/derive-glass-floors.mjs --check` asserts the committed floor is not BELOW the derived one (one-directional) and `scripts/contrast-contract.mjs` asserts the band's per-ink rows |
 | Popout (quick send) | card ground `surface` at its floor raw; input a field; picker sheet solid | a single floating HUD on the window's material |
 
 **Planes, bands and lanes (round 3).** The operator's report: the left sidebar
@@ -1223,9 +1295,49 @@ be on glass:
 | Ground (a column: the pane root, the page canvas) | `data-glass-region` | the role alpha, one alpha-owning layer per region (unchanged) |
 | Plane (a scroll container, list body, viewer body, tab strip) | `data-glass-plane="clear"` | nothing: the region owns the alpha, and a second role fill is the opaque island the report is about |
 | Band (a sticky section header, a toolbar that masks what scrolls under it) | `data-glass-plane="band"` | the field overlay (ink 5%), the same step a track or a field wears |
-| Isolating band (a band whose content MOVES under it) | `data-glass-plane="band-backdrop"` | the pane's own ground role, floored at that role's alpha, with a `backdrop-filter` blur: the band's ground is the content passing under it, so a published alpha derived against a static ground is not enough for the ink on the band to clear its floor |
+| Isolating band (a band whose content MOVES under it) | `data-glass-plane="band-backdrop"` | the `elevated` role - a pane's own ground, and one step UP from the page's when the band sits in a PAGE rather than a pane - floored at the band's derived alpha, with a `backdrop-filter` blur: the band's ground is the content passing under it, so a published alpha derived against a static ground is not enough for the ink on the band to clear its floor |
 | Block (a text-bearing card whose fill is its boundary) | `data-glass-block` | the derived veil (unchanged) |
 | Lane (a well that must read under veiled cards) | `data-glass-lane` | the derived scheme role at `pageAlpha * scale` (tracks the slider) |
+
+**An isolating band on a PAGE, not in a pane.** The rows above describe the band from inside a pane, where its role IS the pane's ground. A page that owns its ground (Notifications, Projects, Library, Settings) has no `pane` region at all: its material is the `canvas` the `<main>` backing paints, so the same band rule gates on the page's own `data-glass-region="canvas"` marker and the band takes the `elevated` role there too - one role step UP from the page, which is what makes it read as a band rather than as a thicker page. It is not the page's own canvas role, and the reason is measured rather than stylistic: at the band floor over the scheme's extreme, that role misses the ink floors on 17 of the theme set's 18 light palettes (all but `highContrastLight`), while `elevated` clears them on the whole fleet. The floor it takes is the one the band row derives, against every ink the band carries, so the count survives a CONTRAST PRESET here as well as on the authored palettes.
+
+**The isolating band is not see-through, and that is a decision, not an unfinished
+job.** At the shipped 80 % the desktop's share through the Notifications band is
+1.96 % dark / 2.35 % light against 38 % / 32 % through the page beside it (the
+band's own rect carries alpha 0.980 dark / 0.976 light in the frames), and over the
+one wallpaper the evidence set composites - a synthetic bright desktop, not an OS
+capture - the band's step off that page reads 3.17:1 at base and 2.56:1 at head,
+dark (`docs/pr-evidence/notifications-glass/`). The 1.11:1 dark-desktop end is not a
+read from that set and cannot be: it is arithmetic from PR #1714 round 1's design
+review, its dark-wallpaper x dark-theme cell, computed from the two-alpha model that
+#1714's own body retires once the frames show the band does not stack the way that
+model assumes. The step is the point: a header that let the desktop through as
+freely as the page beside it would stop reading as a header.
+The floor above is derived against the MEDIA hazard - a bare white or black under
+the band, the worst a material can put there. A notification row is the TEXT-ROW
+hazard instead: what passes under the band is text, not a photograph of a desktop,
+and measured under the band's own blur it puts the same three inks at 0.63 dark /
+0.32 light - the same round-2 design review blurred a real row at the band's own
+radius, took the brightest pixel (`#7b7a73` dark / `#aba69e` light) and solved the
+floor against it. That measurement holds only for a surface whose rows are text all
+the way under the band, and round 2 makes the class opt-in per surface and forbidden
+wherever media can pass under the band - an image preview or an avatar travelling
+under it puts the media hazard straight back. That restriction is why it is a class
+and not the global floor. Those are the numbers a see-through header would buy, and
+they are why it is not shipped. At 0.63 dark the projected desktop share rises to
+about 14 % - the band's own 37 % over the ~38 % the page already leaves open - so
+the header stops covering the thing it exists to cover. At 0.32 light the band's
+step against the page collapses toward 1.0 and the header stops reading as a header
+at all - a worse defect than the isolation it was trying to avoid. Anyone who wants
+a see-through header has to beat that measurement first, and then add a surface-class
+opt-in to the derivation plus a `CONTROLS`/contract row rather than hand-picking a
+number.
+
+**What this surface has not measured.** The updates drawer's Unread/Read switch and
+the Finder file-list band wear the same well and band rules but have not been driven
+in an isolated lane (both need a live conversation), and the wallpaper worst case
+here is a declared composite of the app's own alpha frames rather than a capture
+over a real desktop.
 
 **The selected tab is an overlay, not a pill.** A tab's opaque `bg-surface` /
 `bg-elevated` fill is a hole in a translucent strip; inside a covered pane the

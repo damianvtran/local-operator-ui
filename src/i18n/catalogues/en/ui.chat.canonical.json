@@ -183,5 +183,6 @@
 	"ui.chat.canonical.supplement.withheld.reason_sensitive": "sensitive file",
 	"ui.chat.canonical.supplement.withheld.reason_missing": "file no longer exists",
 	"ui.chat.canonical.supplement.withheld.reason_too_large": "too large to preview",
-	"ui.chat.canonical.supplement.withheld.reason_separator": ", "
+	"ui.chat.canonical.supplement.withheld.reason_separator": ", ",
+	"ui.chat.canonical.supplement.show_fewer": "Show fewer"
 }

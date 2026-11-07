@@ -460,7 +460,40 @@ test("no optimistic zero on a partial read without an echo (F1)", async () => {
 	assert.equal(unknownTail.cached.thread_unread_count, 3);
 	assert.equal(mod.threadUnreadAfterRead(undefined, 9, 9), 0);
 	assert.equal(mod.threadUnreadAfterRead(undefined, 8, 9), undefined);
-	assert.equal(mod.threadUnreadAfterRead({ unread_count: 4 }, 8, 9), 4);
+	assert.equal(mod.threadUnreadAfterRead({ unread_count: 9 }, 8, 9), undefined);
+});
+
+test("thread reads accept only the authoritative thread count (F7)", async () => {
+	const conversationOnly = await readWith(true, {
+		answer: { unread_count: 9 },
+		newest: 9,
+		seq: 5,
+	});
+	assert.equal(
+		conversationOnly.cached.thread_unread_count,
+		3,
+		"left to the refetch",
+	);
+	const authoritative = await readWith(true, {
+		answer: {
+			conversation_id: root.conversation_id,
+			root_id: root.id,
+			thread_last_read_seq: 5,
+			thread_unread_count: 2,
+		},
+		newest: 9,
+		seq: 5,
+	});
+	assert.equal(authoritative.cached.thread_unread_count, 2);
+	assert.equal(mod.threadUnreadAfterRead({ unread_count: 9 }, 9, 9), 0);
+	assert.equal(
+		mod.threadUnreadAfterRead(
+			{ thread_unread_count: 2, unread_count: 9 },
+			9,
+			9,
+		),
+		2,
+	);
 });
 
 test("the cache write is owner-scoped and never invents a count (F2)", () => {

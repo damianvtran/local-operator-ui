@@ -247,6 +247,33 @@ export type TeamBridgeAttachmentCapability = z.infer<
 	typeof teamBridgeAttachmentCapabilitySchema
 >;
 
+/** #3363 human file wire: versioned, download-only, bounded per sniffed class.
+ * A missing/disabled block is normal rollout state, never permission to guess. */
+export const teamBridgeFilesCapabilitySchema = z
+	.object({
+		version: z.literal(1),
+		enabled: z.literal(true),
+		download_only: z.literal(true),
+		classes: z
+			.array(
+				z.object({
+					class: z.enum(["pdf", "text", "container", "other"]),
+					max_bytes: z
+						.number()
+						.int()
+						.positive()
+						.max(25 * 1024 * 1024),
+				}),
+			)
+			.min(1),
+		max_items: z.number().int().positive().optional(),
+		max_images: z.number().int().positive().optional(),
+	})
+	.passthrough();
+export type TeamBridgeFilesCapability = z.infer<
+	typeof teamBridgeFilesCapabilitySchema
+>;
+
 /*
  * PER-RECIPIENT DELIVERY STATE (Team Bridge delivery-state contract v1). The hub
  * attaches one entry per AGENT recipient to a human member's read of a message:

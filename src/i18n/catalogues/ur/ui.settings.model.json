@@ -33,5 +33,7 @@
 	"ui.settings.model.system_prompt.load_failed": "سسٹم پرامپٹ لوڈ نہیں ہو سکا؛ {reason}",
 	"ui.settings.model.system_prompt.rich_text": "فارمیٹ شدہ متن",
 	"ui.settings.model.system_prompt.source": "Markdown ماخذ",
-	"ui.settings.model.system_prompt.source_required": "اس دستاویز میں Markdown کی ایسی ساخت استعمال ہوئی ہے جسے بصری تدوین برقرار نہیں رکھ سکتی۔ تمام ہدایات محفوظ رکھنے کے لیے ماخذ میں ترمیم کریں۔"
+	"ui.settings.model.system_prompt.source_required": "اس دستاویز میں Markdown کی ایسی ساخت استعمال ہوئی ہے جسے بصری تدوین برقرار نہیں رکھ سکتی۔ تمام ہدایات محفوظ رکھنے کے لیے ماخذ میں ترمیم کریں۔",
+	"ui.settings.model.system_prompt.source_edit": "ماخذ میں ترمیم کریں",
+	"ui.settings.model.system_prompt.source_stale": "آپ کی ترمیم کے دوران یہ حصہ بدل گیا ہے۔ تازہ ترین ہدایات برقرار رکھنے کے لیے منسوخ کریں اور اسے دوبارہ کھولیں۔"
 }
