@@ -56,7 +56,7 @@ One harness-browser tab, real Storybook at localhost:6006, reused until host ins
 
 ### Existing Group by modes must not be silently overwritten
 
-Current View options offers Time section / Agent and team / In one list. Tag grouping is suspended whenever `groupBy !== "section"` or sidebar search is active. The Tags master switch stays enabled and its value preserved; it never forces a group-mode change. Automatic chips are a **row affordance** and remain readable in those states wherever the same full-label fit gate passes. Assignment remains available. Clearing search or returning to Time section restores grouping when the master is on.
+Current View options offers Time section / Tag / Agent and team / In one list. Tag *subheaders* are suspended whenever `groupBy !== "section"` or search is active. `Group by › Tag` draws tags as top-level groups instead (see [sidebar-tag-first-grouping.md](sidebar-tag-first-grouping.md)). The `Split time sections by tag` switch keeps its value in every mode and never forces a group-mode change. Automatic chips are a **row affordance** and remain readable in those states wherever the same full-label fit gate passes. Assignment remains available. Clearing search or returning to Time section restores grouping when the master is on.
 
 This does not invent nested Agent → Tag groups or subdivide flat/search results. Implementation must prove these transitions and preserve previous section settings; there is no forced restoration to Time section on restart.
 
@@ -68,7 +68,8 @@ The following steps are **specified, not observed tags interactions**.
 
 1. Open View options. A compact `Tags` row (master switch + `Manage tags…`) sits **above Sections**; Sections remains unchanged. Per the designer's measured correction supplied 2026-10-18, content is 678px against a 638px interior: 40px overflow, with a visible scroll affordance. Keep the existing popover scroll area; no internal tag scroller or chip setting.
 2. Enable grouping. If categories are absent, show a nonblocking `No tags yet` explanation and `Create tag…` / `Manage tags…`; ordinary chats remain drawn without empty subheaders. Do not seed suggested categories silently.
-3. With tagged rows, the existing section headers/counts remain; occupied primary-tag subheaders appear in category order, Untagged last. Preserve order within each group according to existing sorting. Keep current session selected and reveal it if regrouping moves it out of view.
+3. In Time section mode with the switch on, with tagged rows, the existing section headers/counts remain; occupied primary-tag subheaders appear in category order, Untagged last. Preserve order within each group according to existing sorting. Keep current session selected and reveal it if regrouping moves it out of view.
+3b. In Tag mode, occupied primary tags are the top-level groups in category order, Untagged last, each ordered by the chosen Order by and Time basis.
 4. Help below the setting says `Right-click a conversation and choose Tags…` and includes the keyboard route. This is the mouse-first discovery path missing from a context-menu-only model. Row's existing actions hint gains Tags only when supported; no new permanent row icon.
 5. Disable Tags explicitly. Tag groups and chips disappear, no tags are deleted, and list/geometry returns to the original view. Existing assignments survive a subsequent enable. This is distinct from temporarily suspended grouping during search or another group mode: there the master stays on and automatic chips remain eligible.
 
