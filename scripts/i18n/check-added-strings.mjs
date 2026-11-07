@@ -126,6 +126,54 @@ function propertyName(node) {
 }
 
 /**
+ * The nearest in-file declaration whose initializer holds static copy, if any.
+ *
+ * Walks OUT from the usage, so a name reused under the same spelling in two
+ * blocks reports against the binding actually in scope at the render site rather
+ * than whichever declaration the file mentions first. A declaration that binds
+ * the name but holds no literal (a computed value, a `t()` call) answers
+ * `undefined` and stops the walk: it shadows any outer copy const of that name,
+ * which is exactly what the render site sees.
+ *
+ * Only block-shaped scopes are searched (block, module, source file). A const
+ * hoisted into a `switch` clause or declared in a function's expression body is
+ * not resolved - both are copy shapes the scanner's own corpus does not produce,
+ * and accepting them here would mean claiming coverage this walker does not have.
+ */
+function nearestCopyDeclaration(identifier) {
+	let scope = identifier.parent;
+	while (scope) {
+		/*
+		 * Only REAL lexical scopes are searched, and the walk stops at the first
+		 * one that binds the name: a copy const reused under the same spelling in
+		 * two blocks is reported against the binding actually in scope at the
+		 * render site, not whichever declaration the file happened to mention
+		 * first.
+		 */
+		if (
+			scope.kind === SyntaxKind.Block ||
+			scope.kind === SyntaxKind.SourceFile ||
+			scope.kind === SyntaxKind.ModuleBlock
+		) {
+			for (const statement of scope.statements) {
+				if (statement.kind !== SyntaxKind.VariableStatement) continue;
+				for (const declaration of statement.declarationList.declarations) {
+					if (declaration.name.kind !== SyntaxKind.Identifier) continue;
+					if (declaration.name.text !== identifier.text) continue;
+					const initializer = declaration.initializer;
+					if (initializer === undefined) return undefined;
+					return staticTextNodes(initializer).length > 0
+						? initializer
+						: undefined;
+				}
+			}
+		}
+		scope = scope.parent;
+	}
+	return undefined;
+}
+
+/**
  * Find the additional copy shapes in one parsed file. `addedLines === null`
  * means a new/untracked file, for which every finding is new by construction.
  */
@@ -155,6 +203,45 @@ export function findAddedCopyViolations(sourceFile, addedLines) {
 			}
 		}
 	};
+	/**
+	 * A JSX sink whose expression is a bare identifier.
+	 *
+	 * THE BLIND SPOT THIS CLOSES: a sentence kept in a module `const` and
+	 * rendered as `{SECRET_CLOSURE_NOTICE}` reached neither sink this walker
+	 * knew. The JSX-expression sink is an Identifier and `staticTextNodes` only
+	 * reads literals, so a whole user-facing sentence could ship in English in
+	 * every locale while the catalogue guard still reported zero missing keys -
+	 * the string never was a key, so nothing counted it as missing.
+	 *
+	 * Resolved by SHAPE rather than by name: any identifier whose nearest
+	 * declaration in this file holds static copy is reported at the line that
+	 * renders it, which is the line a reviewer reads in the diff. There is no
+	 * name blacklist and no baseline here, because either would let the next
+	 * differently-spelled const through.
+	 *
+	 * BOUNDS, stated rather than implied: same file only. A copy const imported
+	 * from another module needs that exporting file's own diff line, and
+	 * widening this walker to cross-file symbols is its own measured change
+	 * rather than a silent expansion of this guard's scope.
+	 */
+	const takeReference = (expression, kind) => {
+		if (expression.kind !== SyntaxKind.Identifier) {
+			take(expression, kind);
+			return;
+		}
+		const declaration = nearestCopyDeclaration(expression);
+		if (declaration === undefined) return;
+		const line =
+			sourceFile.getLineAndCharacterOfPosition(expression.getStart(sourceFile))
+				.line + 1;
+		if (!isAdded(line) || exempt(expression)) return;
+		for (const literal of staticTextNodes(declaration)) {
+			const text = collapse(literal.text);
+			if (LETTER_RE.test(text)) {
+				findings.push({ line, kind: `${kind}:const`, text });
+			}
+		}
+	};
 	const visit = (node) => {
 		if (node.kind === SyntaxKind.PropertyAssignment) {
 			const name = propertyName(node.name);
@@ -169,13 +256,13 @@ export function findAddedCopyViolations(sourceFile, addedLines) {
 				initializer?.kind === SyntaxKind.JsxExpression &&
 				initializer.expression
 			) {
-				take(initializer.expression, `attribute:${name}`);
+				takeReference(initializer.expression, `attribute:${name}`);
 			}
 		} else if (node.kind === SyntaxKind.JsxExpression) {
 			// Attribute expressions are handled by their named copy sink above.
 			// Every other JSX expression container is rendered child text.
 			if (node.parent?.kind !== SyntaxKind.JsxAttribute && node.expression) {
-				take(node.expression, "jsx-expression");
+				takeReference(node.expression, "jsx-expression");
 			}
 		}
 		node.forEachChild(visit);

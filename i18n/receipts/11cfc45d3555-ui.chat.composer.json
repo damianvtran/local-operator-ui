@@ -1,0 +1,36 @@
+{
+  "locale": "zh-CN",
+  "namespace": "ui.chat.composer",
+  "agent": "i18n-auditor",
+  "instance": "11cfc45d3555",
+  "model": "radient/auto",
+  "requested_route": "radient/auto",
+  "served_underlying_model": "UNKNOWN",
+  "model_kind": "requested_route_only",
+  "status": "passed",
+  "source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+  "target_sha256": "609143031f3ff78bbc5f8070edc07f65a7c760fb23e039f9adc2146129111663",
+  "context_sha256": "77c879963392e2e3f202aa689ff5d372946995c76891cc0eabc293fe75097df7",
+  "base_target_sha256": "68cb70b7a354d4cbc622b0f69d4603d4fd58bcd512c8a574478ef10a46f8c0fd",
+  "reviewed_keys": [
+    "ui.chat.composer.secret_closure_notice"
+  ],
+  "findings": [
+    {
+      "id": "zh-cn-r2-composer-01",
+      "severity": "minor",
+      "key": "ui.chat.composer.secret_closure_notice",
+      "problem": "The temporal clause 『在它得到答复前』 calques 'until it is answered': 它 stands in for the request as the clause subject, where corpus notices about the same request name the request or open on the verb (ui.chat.composer.secret_fill_gone 『该请求已不再等待回复』; ui.chat.asks.status.withdrawn 『智能体不再需要回答』). It reads slightly translated rather than native notice copy.",
+      "suggestion": "『收到答复前，此输入框将暂停使用，草稿已保留。』",
+      "evidence": "EN source: 'this box is paused until it is answered'. Corpus comparison keys/values: ui.chat.composer.secret_fill_gone=『未填入敏感信息字段：该请求已不再等待回复。文本已保留。』; ui.chat.asks.status.withdrawn=『已撤回——智能体不再需要回答』. Style guide i18n/style-guides/zh-CN.md §Formality & tone: Chinese drops pronouns naturally."
+    },
+    {
+      "id": "zh-cn-r2-composer-02",
+      "severity": "nit",
+      "key": "ui.chat.composer.secret_closure_notice",
+      "problem": "『回复……请求』 uses 回复, which the corpus reserves for replying inside a conversation (ui.chat.reply.replying_to 『正在回复』; ui.teamBridge.replies.*), while the asks surface's own verb is 回答/答复 (ui.chat.asks.send_answer 『发送回答』; answer_aria 『你对此问题的回答：{question}』). Meaning survives; the flow's wording is not fully unified.",
+      "suggestion": "『请在请求面板中答复这条敏感信息请求——……』",
+      "evidence": "Corpus keys/values: ui.chat.asks.send_answer=『发送回答』; ui.chat.asks.answer_aria=『你对此问题的回答：{question}』; ui.chat.reply.replying_to=『正在回复』."
+    }
+  ]
+}

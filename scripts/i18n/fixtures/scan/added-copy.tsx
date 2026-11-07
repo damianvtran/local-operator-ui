@@ -1,4 +1,18 @@
 /* Fixture only: the real scanner excludes this directory. */
+
+/*
+ * The shape the scanner was blind to (i18n programme, C1): a sentence held in a
+ * module-level const and rendered through a JSX expression. The sink is an
+ * Identifier, and the literal lives in a declaration the walk never reached, so
+ * a whole user-facing sentence could ship in English in every locale while the
+ * catalogue guard still reported zero missing keys.
+ *
+ * Deliberately an ordinary sentence about nothing in particular: the guard must
+ * learn the SHAPE, not a blacklist of the sentences that happened to be found.
+ */
+const ADDED_CONST_COPY = "Added const copy";
+const ADDED_CONST_LABEL = "Added const label";
+
 export const AddedCopyFixture = ({ enabled, count, kind, serverText, t }) => {
 	const items = [
 		{ label: "Added object label" },
@@ -32,6 +46,9 @@ export const AddedCopyFixture = ({ enabled, count, kind, serverText, t }) => {
 			<div title={`Added ${kind} template title`} />
 			<div>{"Added JSX expression text"}</div>
 			<div>{enabled && "Added JSX logical text"}</div>
+			<p>{ADDED_CONST_COPY}</p>
+			<button type="button" aria-label={ADDED_CONST_LABEL} />
+			<div>{t("ui.fixture.keyed")}</div>
 			<button type="button" aria-label={t("ui.fixture.keyed")} />
 			<button
 				type="button"

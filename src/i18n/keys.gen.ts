@@ -3894,6 +3894,7 @@ export type MessageParams = {
 	"ui.chat.composer.processing_audio": undefined;
 	"ui.chat.composer.secret_ask_notice": undefined;
 	"ui.chat.composer.secret_ask_open": undefined;
+	"ui.chat.composer.secret_closure_notice": undefined;
 	"ui.chat.composer.secret_confirm_cancel": undefined;
 	"ui.chat.composer.secret_confirm_chars": { count: number };
 	"ui.chat.composer.secret_confirm_message": undefined;
@@ -5235,6 +5236,17 @@ export type MessageParams = {
 	"ui.chat.pickers.slash.enter_needs_a_pick": undefined;
 	"ui.chat.pickers.slash.phase.arguments": undefined;
 	"ui.chat.pickers.slash.region_label": undefined;
+	"ui.chat.pickers.slash.source.agent": undefined;
+	"ui.chat.pickers.slash.source.approvals": undefined;
+	"ui.chat.pickers.slash.source.effort": undefined;
+	"ui.chat.pickers.slash.source.mcp": undefined;
+	"ui.chat.pickers.slash.source.model": undefined;
+	"ui.chat.pickers.slash.source.provider_accounts": undefined;
+	"ui.chat.pickers.slash.source.providers": undefined;
+	"ui.chat.pickers.slash.source.session_tags": undefined;
+	"ui.chat.pickers.slash.source.team": undefined;
+	"ui.chat.pickers.slash.source.theme": undefined;
+	"ui.chat.pickers.slash.source.title_refresh": undefined;
 	"ui.chat.pickers.stop.all_sessions": { count: number };
 	"ui.chat.pickers.stop.confirm": { count: number };
 	"ui.chat.pickers.stop.title": undefined;

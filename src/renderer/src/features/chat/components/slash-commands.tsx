@@ -981,12 +981,24 @@ export function useSlashCompletion({
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "commands");
 	/*
+	 * THE REGISTRY IS FETCHED PER LANGUAGE (i18n programme, C5). Its descriptions
+	 * are rendered by the BACKEND in the language it resolved for the request, so
+	 * the locale belongs in the query's identity: without it a switch to `fr` read
+	 * the rows cached under `en` and the popup printed 46 English descriptions
+	 * inside otherwise-French chrome until the five-minute stale window expired.
+	 * Reading the store here (rather than a persisted preference of our own) keeps
+	 * ONE owner of "which language is the app showing": the same value `t()` and the
+	 * capabilities negotiation already use.
+	 */
+	const locale = useI18nLocale();
+	/*
 	 * The tag surface's own capability. The command description reuses the
-	 * audited `ui.chat.tags.label` key; the slash popup itself is an English
-	 * surface today (its rows and footers are literal), so this memo needs no
-	 * locale subscription of its own. The one exception is the `/agent` argument
-	 * list, whose shipped-seed descriptions are catalogue copy: the
-	 * argument-source hook subscribes for that.
+	 * audited `ui.chat.tags.label` key, and THE REGISTRY ITSELF IS PER LANGUAGE
+	 * (C5): the query above is keyed by the resolved locale, so a switch rebuilds
+	 * `query.data` with the rows the backend described in the new language and
+	 * this memo follows it. The popup's own literal footers are still English
+	 * copy, which is why the memo takes no locale subscription of its own - the
+	 * key change is what redraws the rows.
 	 */
 	const tagsEnabled = desktopFeatureEnabled(capabilities.data, "session_tags");
 	/*
@@ -1014,7 +1026,7 @@ export function useSlashCompletion({
 	const { client, provided } = useOptionalQueryClient();
 	const query = useQuery(
 		{
-			queryKey: desktopKeys.commands,
+			queryKey: desktopKeys.commandsFor(locale),
 			queryFn: () =>
 				desktopResult<{ commands: SlashCommandMeta[] }>({
 					op: "commands.list",
@@ -1040,9 +1052,9 @@ export function useSlashCompletion({
 				tagsEnabled && Boolean(sessionId),
 				t("ui.chat.tags.label"),
 			),
-		/* `t` is read at build time of this memo; the popup is the existing
-		   English slash surface, so a live language switch is not a promise it
-		   makes. The tag store's own copy is translated where it is shown. */
+		/* `t` and the registry are both read at the locale the query carried: the
+		   key changes with the language, so this memo rebuilds with the rows the
+		   backend described in that language and the tag label beside them. */
 		[query.data, tagsEnabled, sessionId],
 	);
 	const vocabulary = useMemo(() => argumentVocabulary(registry), [registry]);

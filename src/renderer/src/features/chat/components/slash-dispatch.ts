@@ -58,6 +58,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
 	admitChatDraft,
@@ -533,8 +534,16 @@ export function useSlashDispatch({
 	const aidaControl = useAidaControl();
 	const resolveAida = useAidaResolver();
 
+	/*
+	 * THE SAME LOCALE-SCOPED KEY THE COMPLETION POPUP READS (i18n programme, C5),
+	 * and for the same reason: `commands.list` returns rows the BACKEND described
+	 * in the language it resolved, so a key without the locale hands this reader
+	 * the previous language's document. One key, both readers - a second spelling
+	 * here is how dispatch starts naming rows the popup no longer shows.
+	 */
+	const locale = useI18nLocale();
 	const commandsQuery = useQuery({
-		queryKey: desktopKeys.commands,
+		queryKey: desktopKeys.commandsFor(locale),
 		queryFn: () =>
 			desktopResult<{ commands: SlashCommandMeta[] }>({
 				op: "commands.list",
@@ -542,6 +551,16 @@ export function useSlashDispatch({
 		enabled: commandsEnabled,
 		staleTime: 300_000,
 	});
+	/*
+	 * ACCEPTED TRADE-OFF, not an oversight: because the key is scoped to the
+	 * language, the registry is EMPTY for the one round-trip after a language
+	 * switch - `commandsQuery.data` is undefined until the new language's document
+	 * lands, so a command typed inside that gap is reported as "Unknown command"
+	 * and the reader retries. The alternative - keeping the previous document as
+	 * placeholder data - is precisely the defect this change fixes: it would paint
+	 * the old language's descriptions under the new locale's chrome. Empty for one
+	 * fetch is the honest state; nothing is mislabelled.
+	 */
 	// The one active presentation request. A new command replaces it; Esc or
 	// Done clears it. Consumed once per command receipt, never per reconnect.
 	const [picker, setPicker] = useState<PickerContext | null>(null);

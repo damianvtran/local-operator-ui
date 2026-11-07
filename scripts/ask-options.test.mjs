@@ -1043,7 +1043,7 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 	);
 	assert.match(
 		code,
-		/cardOnScreen:\s*\n?\s*document\.querySelector\(\s*\n?\s*'\[aria-label="Answer options"\], \[data-ask-secret\]',\s*\n?\s*\) !== null,/,
+		/cardOnScreen:\s*\n?\s*document\.querySelector\(\s*`\$\{ASK_OPTIONS_SELECTOR\}, \[data-ask-secret\]`,?\s*\)\s*!==\s*\n?\s*null,/,
 		"the DOM read is the frame's cardOnScreen over BOTH answer surfaces - the options band and the secret field's form - with the identity decided by the keys rather than by the query alone",
 	);
 	// The composer arm: the sentence AND the report's own code, in that arm, plus

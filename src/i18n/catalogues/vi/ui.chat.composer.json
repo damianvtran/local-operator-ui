@@ -69,5 +69,6 @@
 	"ui.chat.composer.tip.phone_access": "yêu cầu truy cập từ điện thoại để điều khiển phiên từ xa",
 	"ui.chat.composer.tip.run_panel": "mở bảng lượt chạy để xem kế hoạch và tác nhân con của lượt",
 	"ui.chat.composer.tip.schedule": "đặt lịch chạy prompt theo hẹn giờ",
-	"ui.chat.composer.tip.search_past_work": "tìm cuộc trò chuyện và tác nhân để mở lại phiên trước đó"
+	"ui.chat.composer.tip.search_past_work": "tìm cuộc trò chuyện và tác nhân để mở lại phiên trước đó",
+	"ui.chat.composer.secret_closure_notice": "Trả lời yêu cầu bí mật trong bảng câu hỏi — ô này tạm dừng cho đến khi có câu trả lời, và bản nháp của bạn vẫn được giữ lại."
 }

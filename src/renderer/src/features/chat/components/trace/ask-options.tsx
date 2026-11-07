@@ -218,6 +218,16 @@ export const AskOptions = ({
 		 * stays 8px (`mt-1` 4px + `py-1` 4px).
 		 */
 		<fieldset
+			/*
+			 * MACHINE IDENTITY, NOT THE ACCESSIBLE NAME. The band's name is translated
+			 * (`ui.chat.asks.answer_options`), so the keyboard paths that find this card -
+			 * the press probe, the card-on-screen check and the focus restore in
+			 * `chat-page.tsx`, and the first-live-option reader in `message-input.tsx` -
+			 * cannot query the English label they used to spell. The marker is emitted
+			 * here and read there; the label below stays catalogue-backed and unchanged,
+			 * because a reader still has to HEAR what this band is.
+			 */
+			data-ask-options
 			aria-label={t("ui.chat.asks.answer_options")}
 			className="flex min-w-0 max-h-[380px] flex-col gap-0.5 overflow-y-auto border-0 p-1"
 			onKeyDown={(event) => {

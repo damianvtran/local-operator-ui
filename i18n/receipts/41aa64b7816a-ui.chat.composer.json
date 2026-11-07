@@ -1,0 +1,22 @@
+{
+  "locale": "ru",
+  "namespace": "ui.chat.composer",
+  "agent": "i18n-auditor",
+  "instance": "41aa64b7816a",
+  "model": "radient/auto",
+  "requested_route": "radient/auto",
+  "served_underlying_model": "UNKNOWN",
+  "model_kind": "requested_route_only",
+  "status": "passed",
+  "date": "2026-11-03",
+  "source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+  "target_sha256": "21db848209b6959b43ef97ce3c70a282c964e89d8ea9b18d680b31ab02567511",
+  "context_sha256": "77c879963392e2e3f202aa689ff5d372946995c76891cc0eabc293fe75097df7",
+  "base_target_sha256": "1f6d86a128e758f04a6bd4cf6323ecdde8120e2d64a83148677dc89a3f7d090f",
+  "reviewed_keys": [
+    "ui.chat.composer.secret_closure_notice"
+  ],
+  "findings": [],
+  "scope": "Delta only: 1 new key in ui.chat.composer (secret_closure_notice). 66 pre-existing values and their order proved byte-identical and unchanged; no full-namespace re-audit.",
+  "limits": "Source-only read/hash/re inspection. No validator, no Node, no render, no runtime, no pseudo-localization, no screenshots. Width constraints absent in the English context sidecar, so fit is not asserted. ru is LTR: no RTL/bidi assessment applies."
+}

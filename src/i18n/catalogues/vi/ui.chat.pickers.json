@@ -739,5 +739,16 @@
 	"ui.chat.pickers.slash.phase.arguments": "Tham số",
 	"ui.chat.pickers.slash.region_label": "Lệnh gạch chéo",
 	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "Không có tác nhân nào được đăng ký.",
-	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "Áp dụng cho cuộc trò chuyện sẽ được tạo từ bản nháp này."
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "Áp dụng cho cuộc trò chuyện sẽ được tạo từ bản nháp này.",
+	"ui.chat.pickers.slash.source.model": "Mô hình",
+	"ui.chat.pickers.slash.source.effort": "Mức suy luận",
+	"ui.chat.pickers.slash.source.approvals": "Phê duyệt",
+	"ui.chat.pickers.slash.source.team": "Nhóm",
+	"ui.chat.pickers.slash.source.agent": "Tác nhân",
+	"ui.chat.pickers.slash.source.providers": "Nhà cung cấp",
+	"ui.chat.pickers.slash.source.provider_accounts": "Tài khoản",
+	"ui.chat.pickers.slash.source.mcp": "Máy chủ",
+	"ui.chat.pickers.slash.source.theme": "Giao diện",
+	"ui.chat.pickers.slash.source.title_refresh": "Tùy chọn",
+	"ui.chat.pickers.slash.source.session_tags": "Nhãn"
 }

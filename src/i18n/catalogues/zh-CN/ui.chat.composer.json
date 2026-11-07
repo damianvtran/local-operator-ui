@@ -69,5 +69,6 @@
 	"ui.chat.composer.tip.phone_access": "申请手机访问，以便用手机操控此会话",
 	"ui.chat.composer.tip.run_panel": "打开运行面板，查看当前轮次的计划和子智能体",
 	"ui.chat.composer.tip.schedule": "设置定时，按时运行提示词",
-	"ui.chat.composer.tip.search_past_work": "搜索对话和智能体，重新打开先前的会话"
+	"ui.chat.composer.tip.search_past_work": "搜索对话和智能体，重新打开先前的会话",
+	"ui.chat.composer.secret_closure_notice": "请在请求面板中回复这条敏感信息请求——在它得到答复前，此输入框暂停使用，草稿已保留。"
 }

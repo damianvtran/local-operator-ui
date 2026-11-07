@@ -17,6 +17,7 @@
  */
 
 import { t } from "@shared/i18n";
+import type { MessageKey } from "@shared/i18n";
 
 import type {
 	DesktopCapabilities,
@@ -581,16 +582,23 @@ export function showsUnmatchedList(
  * Lives beside the source union so a new source cannot be added without the
  * label being decided: the record is exhaustive over `ArgumentSource`, so a
  * seventh source is a type error here rather than a list that renders under the
- * previous subject's name (round 1 D3 / UX U3). Sentence case, like every other
- * label in the app.
+ * previous subject's name (round 1 D3 / UX U3).
+ *
+ * IT HOLDS MESSAGE KEYS, NOT SENTENCES (i18n audit, C4). The English words used
+ * to live here as literals, so the popup's heading stayed English while every
+ * other word in the composer switched: a module-level record is read once at
+ * import and no `t()` ever saw it. Callers resolve the key at PRESENTATION time
+ * (`phaseLabel`), so a locale switch redraws the heading and the table itself
+ * never carries a stale language. The `MessageKey` type is what stops a literal
+ * creeping back in - a new source still cannot be added without naming a key.
  */
-export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
-	model: "Models",
-	effort: "Effort",
-	approvals: "Approvals",
-	team: "Teams",
-	agent: "Agents",
-	providers: "Providers",
+export const ARGUMENT_SOURCE_LABEL = {
+	model: "ui.chat.pickers.slash.source.model",
+	effort: "ui.chat.pickers.slash.source.effort",
+	approvals: "ui.chat.pickers.slash.source.approvals",
+	team: "ui.chat.pickers.slash.source.team",
+	agent: "ui.chat.pickers.slash.source.agent",
+	providers: "ui.chat.pickers.slash.source.providers",
 	/*
 	 * `/logout`'s list: the providers that hold stored credentials, one row each.
 	 * "Accounts" is the word the LogoutPicker and the accounts route already use
@@ -598,7 +606,7 @@ export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
 	 * for one thing (the spec's §5 copy rule: copy stays per-surface, but a
 	 * surface's own words do not drift between its list and its dialog).
 	 */
-	"provider-accounts": "Accounts",
+	"provider-accounts": "ui.chat.pickers.slash.source.provider_accounts",
 	/*
 	 * `/mcp`'s two slots read as one list across two keystrokes — the verbs, then
 	 * their servers, split on the argument exactly as the TUI's list is — so the
@@ -607,8 +615,8 @@ export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
 	 * the first slot ("Subcommands") would misdescribe the list a user is looking
 	 * at after one more keystroke.
 	 */
-	mcp: "Servers",
-	theme: "Themes",
+	mcp: "ui.chat.pickers.slash.source.mcp",
+	theme: "ui.chat.pickers.slash.source.theme",
 	/*
 	 * `/rename`'s list, and why it is not called "Titles".
 	 *
@@ -621,11 +629,11 @@ export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
 	 * prevent, reached from the other direction. "Options" is what the rows are,
 	 * and it keeps the plural-noun shape of its siblings.
 	 */
-	"title-refresh": "Options",
+	"title-refresh": "ui.chat.pickers.slash.source.title_refresh",
 	/* The conversation's own tags, a renderer-local list. "Tags" is the same word
 	   the command and the sidebar use for the same subject. */
-	"session-tags": "Tags",
-};
+	"session-tags": "ui.chat.pickers.slash.source.session_tags",
+} as const satisfies Record<ArgumentSource, MessageKey>;
 
 /**
  * `400k` / `1.0m` / `""` when unknown.

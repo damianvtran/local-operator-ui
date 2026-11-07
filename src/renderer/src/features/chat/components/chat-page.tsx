@@ -131,6 +131,10 @@ import {
 } from "../canonical/working-line-model";
 import { useStripSpeaksConnection } from "../chat-status-presence";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
+/* The ask band's machine anchor: its accessible name is translated, so the
+ * keyboard probes below cannot query the English label they used to spell
+ * (i18n audit, C2). */
+import { ASK_OPTIONS_SELECTOR } from "../composer-field";
 import {
 	caughtFailureNotice,
 	composerNoticeFor,
@@ -2588,7 +2592,8 @@ function SessionPanel({
 	 * was told nothing while a fresh question appeared where they had pressed.
 	 *
 	 * `cardOnScreen` asks about EITHER answer surface — the options band
-	 * (`[aria-label="Answer options"]`) and the secret field's form
+	 * (`data-ask-options`, the machine anchor its translated name cannot be) and
+	 * the secret field's form
 	 * (`[data-ask-secret]`) — because the question the probe exists for is "is
 	 * this answer's own surface still on screen and able to carry its
 	 * sentence", and a secret answer's surface is the field it was typed in.
@@ -2610,9 +2615,8 @@ function SessionPanel({
 			sentEpoch: canonical.ownerEpoch,
 			liveEpoch: liveOwnerEpoch.current,
 			cardOnScreen:
-				document.querySelector(
-					'[aria-label="Answer options"], [data-ask-secret]',
-				) !== null,
+				document.querySelector(`${ASK_OPTIONS_SELECTOR}, [data-ask-secret]`) !==
+				null,
 		});
 		switch (report.to) {
 			case "refused":
@@ -2723,7 +2727,7 @@ function SessionPanel({
 		 */
 		const fromKeyboard =
 			document.activeElement instanceof HTMLElement &&
-			document.activeElement.closest('[aria-label="Answer options"]') !== null;
+			document.activeElement.closest(ASK_OPTIONS_SELECTOR) !== null;
 		/*
 		 * The pressed option is `disabled` the moment this press lands, and a
 		 * disabled control cannot hold focus: the browser drops it to the document
@@ -3164,7 +3168,7 @@ function SessionPanel({
 			 * surface or the other, never both, so this stays the "first live thing
 			 * the next question offers" the option-only query was.
 			 */
-			'[aria-label="Answer options"] button:not([disabled]), [data-ask-secret] input:not([disabled])',
+			`${ASK_OPTIONS_SELECTOR} button:not([disabled]), [data-ask-secret] input:not([disabled])`,
 		);
 		if (next) next.focus();
 		else input.current?.focusInput();

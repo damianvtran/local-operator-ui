@@ -48,6 +48,24 @@ test("a newly added object literal is a counterfactual guard failure", () => {
 	]);
 });
 
+test("a copy const rendered through a JSX expression is a guard failure", () => {
+	const rendered = lineFor("{ADDED_CONST_COPY}");
+	assert.deepEqual(findings(new Set([rendered])), [
+		{ line: rendered, kind: "jsx-expression:const", text: "Added const copy" },
+	]);
+});
+
+test("a copy const rendered into a copy attribute is a guard failure", () => {
+	const rendered = lineFor("aria-label={ADDED_CONST_LABEL}");
+	assert.deepEqual(findings(new Set([rendered])), [
+		{
+			line: rendered,
+			kind: "attribute:aria-label:const",
+			text: "Added const label",
+		},
+	]);
+});
+
 test("all newly added static copy shapes are visible to the guard", () => {
 	const found = findings(null);
 	const texts = new Set(found.map((finding) => finding.text));
@@ -64,6 +82,8 @@ test("all newly added static copy shapes are visible to the guard", () => {
 		"Added nullish label",
 		"Added JSX expression text",
 		"Added JSX logical text",
+		"Added const copy",
+		"Added const label",
 		"Added expression label",
 		"Added expression placeholder",
 		"Added enabled alt",

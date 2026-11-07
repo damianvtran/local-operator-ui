@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "session": "68db5d33c61e",
+  "instance": "68db5d33c61e-u1664m1-zh-cn",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.pickers",
+  "audit_date": "2026-11-05",
+  "date": "2026-11-05",
+  "head": "625b865eff2ab4476fdff40144c1368a05878482",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+    "zh-CN": "9fb0a6c242291790b791f284916e2e9eba3e749424feae2a3922243d59c0421c"
+  },
+  "context_sha256": "a03f45c9158177d2282d89c088fec46c949f42952959ac84d6a8b72e0582d981",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.pickers.json",
+      "sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.pickers.context.json",
+      "sha256": "a03f45c9158177d2282d89c088fec46c949f42952959ac84d6a8b72e0582d981"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.pickers.json",
+      "sha256": "9fb0a6c242291790b791f284916e2e9eba3e749424feae2a3922243d59c0421c"
+    }
+  },
+  "key_count": 752,
+  "reviewed_keys": [
+    "ui.chat.pickers.analytics_model.highest_at",
+    "ui.chat.pickers.analytics_model.total",
+    "ui.chat.pickers.context_panel.block",
+    "ui.chat.pickers.destination_pickers.cold_no_owner_running",
+    "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i",
+    "ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it",
+    "ui.chat.pickers.destination_pickers.masked_cleared_after_storing",
+    "ui.chat.pickers.destination_pickers.opens_the_provider_s_sign_in_methods_in_settings_browser_and_device_flow",
+    "ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w",
+    "ui.chat.pickers.destination_pickers.request_admitted_once",
+    "ui.chat.pickers.destination_pickers.this_goal_is_settled_it_stays_in_the_goal_history_dismiss_it_to_clear_th",
+    "ui.chat.pickers.destination_pickers.write_and_command_tools_prompt_before_running",
+    "ui.chat.pickers.destination_pickers.your_message_was_admitted_once",
+    "ui.chat.pickers.info_model.live_not_answering",
+    "ui.chat.pickers.info_panel.live",
+    "ui.chat.pickers.info_panel.live65c821",
+    "ui.chat.pickers.info_panel.live_total",
+    "ui.chat.pickers.session_panel.ok_they_are_a_different_population_and_are_counted_in_neither_rate_above",
+    "ui.chat.pickers.session_panel.plus_its_subagents_where_the_ledger_could_be_walked",
+    "ui.chat.pickers.slash.source.agent",
+    "ui.chat.pickers.slash.source.approvals",
+    "ui.chat.pickers.slash.source.effort",
+    "ui.chat.pickers.slash.source.mcp",
+    "ui.chat.pickers.slash.source.model",
+    "ui.chat.pickers.slash.source.provider_accounts",
+    "ui.chat.pickers.slash.source.providers",
+    "ui.chat.pickers.slash.source.session_tags",
+    "ui.chat.pickers.slash.source.team",
+    "ui.chat.pickers.slash.source.theme",
+    "ui.chat.pickers.slash.source.title_refresh",
+    "ui.chat.pickers.usage_view_model.reported_balance"
+  ],
+  "retained_key_count": 721,
+  "findings": [],
+  "auditor_provenance": {
+    "agent": "i18n-auditor",
+    "session": "68db5d33c61e",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "actual_model_source": "Authoritative in-session model-switch notice: openai/gpt-6.1-sol after anthropic quota failures; all linguistic judgments and recorded validator executions occurred after that notice. Initial instructions/header named anthropic/claude-sonnet-5-5.",
+    "requested_model": "anthropic/claude-sonnet-5-5",
+    "fallback": true,
+    "fallback_chain": [
+      {
+        "from": "anthropic/claude-sonnet-5-5",
+        "to": "anthropic/claude-opus-5-5",
+        "reason": "provider failure: quota"
+      },
+      {
+        "from": "anthropic/claude-sonnet-5-5",
+        "to": "openai/gpt-6.1-sol",
+        "reason": "provider failure: quota"
+      }
+    ]
+  },
+  "record_reference": "i18n/audits/evidence/zh-CN/ui.chat.pickers/u1664m1-zh-cn/record.json",
+  "report_reference": "i18n/audits/evidence/zh-CN/ui.chat.pickers/u1664m1-zh-cn/report.md",
+  "scope": "752-key mechanical validation; fresh 31-key linguistic union across both parents; 721 keys retained with parent-audit provenance. No new finding; historical optional NITs retained separately in record.",
+  "dimensions_not_executed": [
+    "Fresh linguistic audit covers the 31-key union of deltas against both parents, not a fresh linguistic audit of all 752 keys. The other 721 keys retain parent audit provenance after exact value comparison.",
+    "No browser, Electron, pseudo-localization, screenshot, native app, production launch, build, full suite, install, runtime locale-switch or actual overflow validation executed.",
+    "Static CJK cell estimates are not pixel-width proof; none of the 31 context entries has a numeric maxCells/maxChars hint. Slash headings span 4–8 cells.",
+    "No UI-local style/glossary tree or canonical evidence README exists in frozen checkout. Used actual core glossary/style guides and UI docs/I18N.md. No schema or retention contract files created.",
+    "New report does not supersede or recreate any dated record; high-visibility second-pass and runtime/render gates are not waived.",
+    "First custom slash-token regex probe produced false failures due to Unicode word boundaries; actual failed output is retained in audit.log, followed by corrected ASCII-boundary probe and passing Chinese-adjacency negative control."
+  ]
+}
