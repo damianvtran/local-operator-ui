@@ -466,10 +466,21 @@ export const ProviderBlockView: FC<{
 					reset.canReset(block.report) && (
 						<Button
 							ref={chipRef}
-							variant="ghost"
+							variant="tonal"
 							size="sm"
 							type="button"
-							className={cn("h-5 px-1.5 text-meta")}
+							className={cn("h-6 px-2 font-semibold text-meta")}
+							/*
+							 * DESIGN ROUND 1, D1. As a `ghost` chip this was `ink-muted` at 12 px
+							 * on a transparent ground — the SAME colour, size and background as
+							 * the account address beside it, differing only by weight, and it
+							 * echoed the "resets in 4d" column on the row below. Readers took it
+							 * for a second count rather than a control, which is why the one
+							 * affordance this surface adds was invisible. `tonal` is the existing
+							 * token for a quiet but VISIBLE action (sunken ground, body ink,
+							 * >= 7.10:1 on all 59 palettes); `h-6` brings it to the 24 px target
+							 * floor. It stays inside the heading line, so nothing is displaced.
+							 */
 							/*
 							 * The spoken name carries the COUNT the chip draws: the visible
 							 * label is "Reset · 3", so an accessible name without the number
@@ -479,6 +490,10 @@ export const ProviderBlockView: FC<{
 							 * spend — the click opens a confirmation.
 							 */
 							aria-label={t("ui.chat.usage_reset.chip_label", {
+								account: resetLabel,
+								count: credits,
+							})}
+							title={t("ui.chat.usage_reset.chip_label", {
 								account: resetLabel,
 								count: credits,
 							})}
