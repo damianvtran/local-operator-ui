@@ -47,6 +47,23 @@ import type { TagCategory } from "../../../../../shared/desktop-contract";
  */
 export const TAG_HEADER_STOP_ATTR = "data-chat-tag-header";
 
+/**
+ * The attribute a group header's fold chevron carries (issue #1639). Its own ring
+ * stop for the same reason `⋯` has one: it must answer neither type-to-filter nor
+ * the row chords. It sits BEFORE `⋯` in DOM order, so the arrow ring (which walks
+ * `querySelectorAll` order) reaches the fold first and the actions second.
+ */
+export const TAG_TOGGLE_STOP_ATTR = "data-chat-tag-toggle";
+
+/**
+ * The id of the `[data-tag-drop-body]` a header's chevron controls. Derived, not
+ * `useId()`, because the body is rendered by the sidebar and the header by this
+ * component, and both must name it; `scope` is the section it sits in, since one tag
+ * can draw a body in `Pinned` and another in a time section.
+ */
+export const tagGroupBodyId = (scope: string, tagId: string) =>
+	`chat-tag-body-${scope}-${tagId}`;
+
 /** The keyboard chords a focused header answers (spec D2/D8). */
 export function tagHeaderChord(event: {
 	key: string;
@@ -205,6 +222,7 @@ export function ChatTagHeader({
 	below,
 	announce,
 	unused = false,
+	disclosure,
 }: {
 	id: string;
 	name: string;
@@ -214,6 +232,13 @@ export function ChatTagHeader({
 	announce: (sentence: string) => void;
 	/** A footer row for a tag with no conversations: delete needs no confirm. */
 	unused?: boolean;
+	/**
+	 * The group's fold (issue #1639). Absent for the footer's unused-tag slots,
+	 * which have no body to fold. `bodyId` is the `[data-tag-drop-body]` this
+	 * controls - present in the DOM even while folded, so `aria-controls` never
+	 * names a missing element.
+	 */
+	disclosure?: { collapsed: boolean; bodyId: string; onToggle: () => void };
 }) {
 	useI18nLocale();
 	const registry = useChatTagRegistry();
@@ -364,6 +389,50 @@ export function ChatTagHeader({
 					setMenuOpen(true);
 				}}
 			>
+				{disclosure && !renaming && (
+					/*
+					 * THE CHEVRON IS THE ONLY HIT AREA (issue #1639). The subheader itself
+					 * stays a static label and a drop target: when the old time-section
+					 * headings were whole-row disclosure buttons, a click meant for the row a
+					 * few pixels below folded the section under it (the U22 fix recorded in
+					 * `chat-sidebar.tsx`). A 20px target at the row's start keeps the fold
+					 * deliberate and leaves double-click-to-rename on the name intact.
+					 *
+					 * Enter/Space come from the native button; no chord is added, so F2,
+					 * Alt+Up/Down and Shift+F10 keep meaning what `tagHeaderChord` says on
+					 * the `⋯` stop. Bare arrows bubble to the sidebar's ring walk.
+					 */
+					<button
+						type="button"
+						tabIndex={-1}
+						{...{ [TAG_TOGGLE_STOP_ATTR]: id }}
+						aria-expanded={!disclosure.collapsed}
+						aria-controls={disclosure.bodyId}
+						aria-label={t(
+							disclosure.collapsed
+								? "ui.chat.tag_groups.expand"
+								: "ui.chat.tag_groups.collapse",
+							{ name: label },
+						)}
+						title={t(
+							disclosure.collapsed
+								? "ui.chat.tag_groups.expand"
+								: "ui.chat.tag_groups.collapse",
+							{ name: label },
+						)}
+						className="-ms-1 flex size-5 shrink-0 items-center justify-center rounded-sm text-ink-dim hover:bg-row-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+						onClick={disclosure.onToggle}
+					>
+						<ChevronRight
+							aria-hidden="true"
+							// The footer's `Unused tags` chevron, same glyph and rotation.
+							className={cn(
+								"size-3.5 shrink-0",
+								!disclosure.collapsed && "rotate-90",
+							)}
+						/>
+					</button>
+				)}
 				{renaming ? (
 					<TagNameField
 						initial={name}

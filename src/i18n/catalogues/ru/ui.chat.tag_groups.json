@@ -1,0 +1,4 @@
+{
+	"ui.chat.tag_groups.collapse": "Свернуть «{name}»",
+	"ui.chat.tag_groups.expand": "Развернуть «{name}»"
+}

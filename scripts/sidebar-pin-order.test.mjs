@@ -721,7 +721,7 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 	// Tags subdivide the ranked input, never replace it with catalogue order.
 	// The flat path and every occupied bucket still use the same row renderer;
 	// the tag grouping lane separately pins stable order within each bucket.
-	assert.ok(source.includes("{taggedRows(orderedPinned)}"));
+	assert.ok(source.includes(`{taggedRows(orderedPinned, "pinned")}`));
 	const grouping = source.slice(
 		source.indexOf("const taggedRows = ("),
 		source.indexOf("const sessionRow = ("),
@@ -734,7 +734,11 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 	// Grouped rows are non-nested and opt into the tag-drag cursor; ungrouped
 	// rows above retain the default renderer without advertising tag dragging.
 	assert.ok(
-		grouping.includes("bucket.rows.map((row) => sessionRow(row, false, true))"),
+		// The body draws through `tagGroupBodyRows` since issue #1639 (a folded
+		// group draws none), still with the same non-nested, drag-enabled call.
+		/tagGroupBodyRows\(bucket\.rows, expanded, bucket\.id\)\.map\(\(row\) =>\s*sessionRow\(row, false, true\)/.test(
+			grouping,
+		),
 	);
 	// Sidebar tags v3 removes Move to tag… (the anchored Tags… picker now owns
 	// that act), while retaining Remove all tags and the pinned Move pair.

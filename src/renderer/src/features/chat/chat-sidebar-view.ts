@@ -271,6 +271,74 @@ export function toggleSectionDisclosure(
 }
 
 /**
+ * A TAG GROUP'S DISCLOSURE (issue #1639): the key it is recorded under in the same
+ * `localStorage['chat-sidebar-disclosures']` map the section headings write.
+ *
+ * WHY THAT MAP AND NOT A `collapsedTags` FIELD ON `SidebarView`. The view record is
+ * the reader's choice of LENS (what is grouped, what is shown); the disclosure map
+ * already means "this group is folded" and is already persisted, migrated and reset
+ * by the stories/evidence rigs as one blob. A second home for the same kind of fact
+ * is the drift this file's header warns about.
+ *
+ * WHY KEYED BY TAG ID, NOT BY (section, tag). One tag can draw a header in `Pinned`
+ * AND in a time section; folding one and leaving the other open would make a single
+ * press mean two different things depending on where it landed, so one key folds
+ * every header of that tag. The `tag:` prefix keeps the namespace apart from the
+ * section keys (`pinned`, `today`, `agents`, ...), which are plain words.
+ */
+export function tagDisclosureKey(tagId: string): string {
+	return `tag:${tagId}`;
+}
+
+/**
+ * Whether a tag group's body is folded. ABSENT MEANS OPEN: a tag nobody has pressed
+ * shows its rows, which is how every group drew before this control existed, so an
+ * old profile's map (no `tag:` keys) renders exactly as it did.
+ */
+export function tagGroupCollapsed(
+	expanded: Record<string, boolean>,
+	tagId: string,
+): boolean {
+	return expanded[tagDisclosureKey(tagId)] === false;
+}
+
+/**
+ * THE CHEVRON PRESS on a tag group header: the disclosure map in, the next map out.
+ *
+ * Pure for the reason `toggleSectionDisclosure` is: the transition is reachable by
+ * `scripts/chat-sidebar-view.test.mjs` rather than being a condition inside JSX. It
+ * deliberately has NO cap or query argument. A tag group has no row cap of its own
+ * (the section's cap bounds it), and under a LIST QUERY grouping is suspended
+ * altogether (`groupChatsByTag(..., !query.trim())` returns null and the flat path
+ * draws every match), so there is no header to press and nothing for a fold to hide -
+ * the stored fold simply waits for the query to clear.
+ *
+ * NOTHING ELSE WRITES THIS KEY. In particular a drop onto a folded group's header
+ * leaves it folded: the header's count rising is the confirmation the row landed,
+ * and springing the group open under the pointer would move every row below it
+ * mid-gesture (the v2 rule that keeps drag targets from shifting).
+ */
+export function toggleTagDisclosure(
+	expanded: Record<string, boolean>,
+	tagId: string,
+): Record<string, boolean> {
+	const key = tagDisclosureKey(tagId);
+	return { ...expanded, [key]: !(expanded[key] ?? true) };
+}
+
+/**
+ * The rows a tag group's body draws: none while folded. The header (name + count) is
+ * drawn either way by the caller, so the count stays the group's whole size.
+ */
+export function tagGroupBodyRows<T>(
+	rows: readonly T[],
+	expanded: Record<string, boolean>,
+	tagId: string,
+): readonly T[] {
+	return tagGroupCollapsed(expanded, tagId) ? [] : rows;
+}
+
+/**
  * WHETHER THE ROSTER'S FIELD IS DRAWN - and with it whether the filter it carries may
  * NARROW anything, because the two move together (design round 1's D2, agent review's
  * B3, UX round 1's U2 and U3 are one defect seen four ways).
