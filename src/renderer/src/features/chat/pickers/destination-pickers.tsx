@@ -136,6 +136,7 @@ import {
 	effortLadder,
 	effortLevel,
 	fastModeState,
+	frontendNamesModel,
 	modelSelector,
 	specUnresolved,
 } from "../session-status/session-model";
@@ -903,6 +904,22 @@ export const ModelPicker: FC<PickerContext> = ({
 		},
 		[],
 	);
+	/*
+	 * THE OWNER'S FRONTEND AS THE IN-FLIGHT PRESS READS IT.
+	 *
+	 * `canonical` is a render-time snapshot, and `onPick` keeps the one it was
+	 * created with for the whole await — so the frames that arrive DURING a switch
+	 * are invisible to that closure. The busy repeat has to see them: a frame naming
+	 * the requested model says the switch already landed (the same reading
+	 * `use-canonical-session` uses to retire the pending paint), which is what stops
+	 * it repeating under a dialog that still reads `Switching the model…` (design
+	 * round 1, D3). A ref updated from each render is the smallest seam that can see
+	 * a frame the closure cannot; the comparison itself stays in `onPick`.
+	 */
+	const frontendLive = useRef(canonical.frontend);
+	useEffect(() => {
+		frontendLive.current = canonical.frontend;
+	}, [canonical.frontend]);
 
 	/*
 	 * WHICH VIEW OF THE CATALOGUE THIS DIALOG SHOWS.
@@ -1633,16 +1650,86 @@ export const ModelPicker: FC<PickerContext> = ({
 			switching.current = true;
 			let run: Awaited<ReturnType<typeof command.run>>;
 			try {
-				run = await command.run("model", value);
+				/*
+				 * THE SWITCH IS REPEATED ON A BUSY OWNER, and only here.
+				 *
+				 * A `runtime_busy` on this route is INDETERMINATE rather than a refusal: the
+				 * daemon is telling us its owner did not answer the ack in time, having
+				 * already written the frame (`mobile/attach_client.py`). Reporting "could not
+				 * be confirmed" for a switch that landed is the defect this call closes, and
+				 * the old-style fix — resending under the SAME request id — cannot work on
+				 * this route: its receipt is claimed `retry_safe=False`, so a same-id retry
+				 * is answered 409 "Request outcome is indeterminate" and would read as a
+				 * definite failure. `resendWhileBusy` therefore repeats the DISPATCH, and
+				 * each dispatch mints a fresh id (see `runSessionCommand`), which is a fresh
+				 * journal claim. Re-running `set_model` with the SAME target is a no-op in
+				 * effect, so a press that lands twice is indistinguishable from one that
+				 * lands once; a general command (a `/goal` append) could not be repeated
+				 * this way, which is why the option is opt-in and lives at this call site.
+				 *
+				 * THE WAIT HAS THREE ENDINGS, and the third is the one the dialog has to be
+				 * honest about:
+				 *
+				 *  1. THE FRAME LANDS FIRST. The switch applied before the ack was lost, the
+				 *     authoritative frame names this model, reconciliation drops the paint
+				 *     while the repeat is still waiting — and `landed` below stops the repeat
+				 *     at its next attempt, because there is nothing left to ask for.
+				 *  2. THE REPEAT LANDS. A later attempt's receipt confirms it; the press ends
+				 *     as the switch it was.
+				 *  3. THE ATTEMPTS ARE SPENT. The press ends in the indeterminate register
+				 *     ("The request could not be confirmed."), never as "did not run": the
+				 *     switch may have applied on any attempt whose ack was lost. The 15 s
+				 *     backstop (`PENDING_MODEL_TIMEOUT_MS`, which counts from the paint and
+				 *     is not reset by the repeat) may have already taken the optimistic
+				 *     value down by then, in which case the band is showing the model in
+				 *     force — which is the truth, not a second failure.
+				 *
+				 * WHAT THE BOUND IS: `BUSY_RESENDS` (3) more attempts, each wait
+				 * `min(max(0, retry_after_ms ?? 2000), 5000)`. With the backend's 2 s hint
+				 * that is 6 s of waiting; capped, 15 s. The attempt itself is bounded by
+				 * `desktopRequestTimeoutMs` (25 s) and a deadline breach is NOT retryable, so
+				 * the deadline is a ceiling on one attempt rather than a term in a sum. How
+				 * long a refusal takes to ARRIVE is the arm's own property: an attach that
+				 * times out (`DESKTOP_CONTROL_ATTACH_S` 3 s) refuses in ~3.1 s, so the whole
+				 * repeat is ≈18 s; the lost-ack arm this defect is about waits out
+				 * `ACK_TIMEOUT_S` (15 s) per attempt, so the same four attempts span ≈66 s.
+				 * The dialog stays busy throughout (its footer reads `Switching the
+				 * model…`), so the wait is stated rather than silent.
+				 *
+				 * THE PAINT IS MADE ONCE, above, and never re-made: it is the press's
+				 * optimistic value, and the repeat changes nothing about it. Endings 1 and 2
+				 * retire it through the owner's own frame; ending 3 leaves it to the backstop
+				 * or clears it in the failure arm below.
+				 */
+				run = await command.run("model", value, undefined, {
+					resendWhileBusy: true,
+					/*
+					 * LIVE, not from this closure: the frame can land while an attempt is
+					 * failing, and once it names the requested spec this press has nothing left
+					 * to ask for. The predicate is a pure READING — "does the session name the
+					 * target now" — and `runSessionCommand` samples it once at press time as the
+					 * baseline, so it never suppresses the first send (D5) and an unchanged
+					 * reading is never taken for evidence (round 3: with a pinned fallback the
+					 * session already names the pressed model before the press). The comparison
+					 * is the SAME helper the canonical handle's reconciliation clears the paint
+					 * with (`frontendNamesModel`, selected OR effective), so the picker cannot
+					 * call the switch confirmed on evidence the band would not accept.
+					 */
+					landed: () => frontendNamesModel(frontendLive.current, value),
+				});
 			} finally {
 				switching.current = false;
 			}
 			const { outcome, result: failure } = run;
 			if (
-				!outcome ||
-				isNativeAction(outcome) ||
-				outcome.kind === "error" ||
-				failure.tone === "error"
+				// A frame-confirmed press has no receipt by construction: the owner's own
+				// statement of the model in force IS the confirmation, so the failure arm's
+				// `!outcome` test must not read it as one.
+				!run.confirmedByFrame &&
+				(!outcome ||
+					isNativeAction(outcome) ||
+					outcome.kind === "error" ||
+					failure.tone === "error")
 			) {
 				// The owner refused (or the call itself failed): the band goes back to
 				// the authoritative model rather than keeping a paint that never landed.

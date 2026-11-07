@@ -14,8 +14,13 @@ import {
 	DesktopControlError,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
+// The app's ONE `runtime_busy` patience policy (bound, waits, and the reason the
+// renderer's own deadline does not compound it) lives in the canonical store.
+// Reused rather than restated here, so a second bound cannot drift from it.
+import { withBusyResends } from "@shared/store/canonical-sessions-store";
 import { useCallback, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import type { DesktopRequest } from "../../../../../shared/desktop-contract";
 import type {
 	DesktopCommandReceipt,
 	DesktopSessionFrame,
@@ -40,7 +45,25 @@ export type CommandRun = {
 	result: PickerResult;
 	/** A missing acknowledgement is not proof that the mutation was refused. */
 	unconfirmed?: boolean;
+	/**
+	 * The owner's own frontend frame named the requested spec while the press was
+	 * still waiting, so the press LANDED without a command receipt ever arriving.
+	 * Distinct from `unconfirmed`: this is confirmation, just not by ack.
+	 */
+	confirmedByFrame?: boolean;
 };
+
+/**
+ * The stop signal behind `confirmedByFrame`: not a refusal, not a transport
+ * failure, and deliberately not a `DesktopControlError`, so the busy policy
+ * rethrows it instead of repeating.
+ */
+class PressLandedWhileWaiting extends Error {
+	constructor() {
+		super("the owner's frontend frame already names the requested spec");
+		this.name = "PressLandedWhileWaiting";
+	}
+}
 
 export function isNativeAction(
 	result: SlashOutcome,
@@ -102,10 +125,177 @@ export function errorText(error: unknown): string {
 		: t("ui.chat.pickers.use_picker_backend.the_backend_refused_it");
 }
 
+/** One command request, as the transport sees it. */
+type CommandRequest = Extract<DesktopRequest, { op: "sessions.command" }>;
+
 /**
- * Run one owner command against the session and keep its outcome. The
- * request id is minted per call: a retry of the SAME intent should reuse it,
- * but a picker submission is a new intent each time the user confirms.
+ * The transport seam, so a test can watch the requests a run actually makes.
+ * Defaults to the real one; nothing in the app passes this.
+ */
+type SendCommand = (request: CommandRequest) => Promise<DesktopCommandReceipt>;
+
+/**
+ * Run ONE owner command and classify its answer, outside React.
+ *
+ * WHY IT IS NOT A HOOK (this change's whole testability): the busy repeat below
+ * is only meaningful as a *sequence of real dispatches* — the fix is that each
+ * one carries a fresh `requestId` — and a `useState`-bound hook cannot be driven
+ * from `node --test`. The hook keeps the state; the policy and the classification
+ * live here where a suite can count attempts and read the ids that went out.
+ *
+ * THE REQUEST ID IS MINTED PER DISPATCH, INSIDE THE CALLBACK. That is the one
+ * fact the whole repeat rests on: `/v1/desktop/sessions/{id}/commands` claims its
+ * receipt WITHOUT `retry_safe` (`desktop_sessions.py`, `desktop_receipts.py`), so
+ * a second attempt under the SAME id is answered `409 "Request outcome is
+ * indeterminate"` — a definite failure claimed over a switch that may have
+ * landed. A fresh id is a fresh journal claim instead, and re-issuing the same
+ * target is idempotent in effect (`set_model`), so the repeat cannot double the
+ * operation's result. It would NOT be safe for a general command resend: `/goal`
+ * appends a turn, and a fresh id there would admit a second one.
+ */
+export async function runSessionCommand(
+	input: {
+		sessionId: string;
+		command: string;
+		args: string;
+		/** The caller's own prefix for a failure that never reached the owner. */
+		failure?: string;
+		/**
+		 * Repeat the dispatch on a `runtime_busy` refusal. OPT-IN, and only the
+		 * model switch passes it: a busy owner is the one refusal whose own body
+		 * invites a resend (`retryable: true`, `retry_after_ms`), and the switch is
+		 * the one command whose repetition is a no-op. Every other caller keeps the
+		 * single-attempt behaviour, so `/goal`, `/loop` and the approval escapes are
+		 * untouched.
+		 */
+		resendWhileBusy?: boolean;
+		/**
+		 * Whether the session's CURRENT reading already names the model being pressed
+		 * for — sampled ONCE at press time as the BASELINE, and read again before each
+		 * repeat. Two rules follow, and both are load-bearing:
+		 *
+		 *  - THE FIRST DISPATCH IS UNCONDITIONAL (design round 2, D5). A press whose
+		 *    session already names the target must still be SENT: re-selecting the same
+		 *    model is the documented way the backend drops a fallback pin
+		 *    (`session.py` `_drop_fallback_pin`), so suppressing that send would report
+		 *    a switch that never happened while a fallback kept serving.
+		 *  - ONLY A CHANGE ENDS THE REPEAT (design round 3, the displaced state). The
+		 *    predicate is evidence only if the baseline did NOT already satisfy it: in
+		 *    the pinned-fallback state `selected = session.model` while `effective = the
+		 *    active fallback` (`frontend_state.py`), so the reading names one of the two
+		 *    candidates BEFORE the press — and a predicate comparing readings alone
+		 *    would treat that unchanged reading as proof the switch landed, stopping the
+		 *    repeat after one attempt in exactly the state that most needs it.
+		 *
+		 * What it buys when the baseline does not satisfy it: once a frame names the
+		 * requested spec mid-wait, further attempts ask the owner for something it has
+		 * already done, under a footer still reading `Switching the model…`.
+		 *
+		 * A press on the running model with no fallback satisfies the baseline, so a
+		 * busy answer there may still repeat: that is honest (each attempt is a fresh
+		 * claim and the operation is idempotent in effect), and it is left alone rather
+		 * than special-cased into a second rule. Only a caller that can see the frames
+		 * passes this at all.
+		 */
+		landed?: () => boolean;
+	},
+	send: SendCommand = (request) =>
+		desktopResult<DesktopCommandReceipt>(request),
+): Promise<CommandRun> {
+	const { sessionId, command, args, failure, resendWhileBusy, landed } = input;
+	/*
+	 * THE BASELINE, SAMPLED BEFORE ANYTHING IS SENT. This one read is what keeps the
+	 * displaced state from impersonating evidence: with a pinned fallback the session
+	 * already names the pressed model before the press, so a later reading of the
+	 * same value proves nothing — only a value that CHANGED does (design round 3).
+	 */
+	const baselineNames = landed?.() ?? false;
+	/*
+	 * ATTEMPTS, not "is landed": `landed` is consulted only for a REPEAT, so the
+	 * first dispatch is unconditional. The distinction is the whole of design round
+	 * 2's D5 — with the predicate read first, a press on the model the session
+	 * already names sent NOTHING and took the success path, which is exactly how a
+	 * fallback pin (selected A, effective B) keeps serving after the user re-selects
+	 * A to drop it.
+	 */
+	let dispatched = 0;
+	const dispatch = async () => {
+		/*
+		 * The stop is thrown as a NON-DesktopControlError on purpose: `withBusyResends`
+		 * rethrows anything that is not `runtime_busy` at once, so this ends the
+		 * repeat at its first opportunity without touching that helper's bound or its
+		 * waits. The residual is one wait (the busy hint, 2 s today) if the frame lands
+		 * during it — measured, that is the window design D3 saw, not the whole repeat.
+		 */
+		if (dispatched > 0 && !baselineNames && landed?.())
+			throw new PressLandedWhileWaiting();
+		dispatched += 1;
+		return send({
+			op: "sessions.command",
+			sessionId,
+			requestId: uuidv4(),
+			command,
+			args,
+		});
+	};
+	try {
+		const receipt = await (resendWhileBusy
+			? withBusyResends(dispatch)
+			: dispatch());
+		return { outcome: receipt.result, result: toResult(receipt.result) };
+	} catch (error) {
+		if (error instanceof PressLandedWhileWaiting) {
+			/*
+			 * Reachable only from a REPEAT (the first dispatch never reads `landed`),
+			 * and only when the baseline did not already name the model — so the press
+			 * went out at least once, the change is evidence, and that frame answers a
+			 * send that really happened. No receipt arrived, so there is nothing to
+			 * quote: `outcome` is null and the strip stays empty (the hook skips `result`
+			 * on this arm).
+			 */
+			return {
+				outcome: null,
+				result: { tone: "success", text: "" },
+				confirmedByFrame: true,
+			};
+		}
+		// A lost reply can follow an accepted mutation. Keep that disposition
+		// separate from an acknowledged rejection; never replay the command
+		// or turn the old backend's unavailable sentence into proof of failure.
+		const unconfirmed =
+			!(error instanceof DesktopControlError) ||
+			error.code === "runtime_busy" ||
+			error.status === null ||
+			error.status >= 500;
+		const result: PickerResult = {
+			tone: unconfirmed ? "warning" : "error",
+			text: unconfirmed
+				? [
+						t(
+							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+						),
+						error instanceof DesktopControlError &&
+						error.code === "runtime_unreachable"
+							? errorText(error)
+							: null,
+					]
+						.filter(Boolean)
+						.join(" ")
+				: `${failure ?? t("ui.chat.pickers.use_picker_backend.did_not_run", { command: command })}: ${errorText(error)}`,
+		};
+		return { outcome: null, result, unconfirmed };
+	}
+}
+
+/**
+ * Run one owner command against the session and keep its outcome.
+ *
+ * The dispatch and its classification are `runSessionCommand` (plain, and
+ * therefore testable); this hook adds the strip's state around it. The request
+ * id is minted per DISPATCH: a retry of the same intent would normally reuse it,
+ * but on `/commands` a reused id meets the receipt journal's indeterminate 409,
+ * so the one call that repeats (`options.resendWhileBusy`, the model switch)
+ * needs a new id and gets it — the same logical press, re-claimed.
  */
 export function useSessionCommand(sessionId: string) {
 	const [busy, setBusy] = useState(false);
@@ -127,48 +317,35 @@ export function useSessionCommand(sessionId: string) {
 			 * the colon is still whatever the transport or the owner said.
 			 */
 			failure?: string,
+			/**
+			 * SEE `runSessionCommand`'s `resendWhileBusy`: the model switch is the only
+			 * caller that sets it, because a switch's repeat is a no-op while `/goal`'s
+			 * would admit a second turn. Absent, a command is dispatched exactly once -
+			 * the behaviour every other control in this tree was written against.
+			 */
+			options?: { resendWhileBusy?: boolean; landed?: () => boolean },
 		): Promise<CommandRun> => {
 			setBusy(true);
 			setResult(null);
 			try {
-				const receipt = await desktopResult<DesktopCommandReceipt>({
-					op: "sessions.command",
+				const settled = await runSessionCommand({
 					sessionId,
-					requestId: uuidv4(),
 					command,
 					args,
+					failure,
+					resendWhileBusy: options?.resendWhileBusy,
+					landed: options?.landed,
 				});
-				setOutcome(receipt.result);
-				const result = toResult(receipt.result);
-				setResult(result);
-				return { outcome: receipt.result, result };
-			} catch (error) {
-				// A lost reply can follow an accepted mutation. Keep that disposition
-				// separate from an acknowledged rejection; never replay the command
-				// or turn the old backend's unavailable sentence into proof of failure.
-				const unconfirmed =
-					!(error instanceof DesktopControlError) ||
-					error.code === "runtime_busy" ||
-					error.status === null ||
-					error.status >= 500;
-				const result: PickerResult = {
-					tone: unconfirmed ? "warning" : "error",
-					text: unconfirmed
-						? [
-								t(
-									"ui.projects.use_request_update.the_request_could_not_be_confirmed",
-								),
-								error instanceof DesktopControlError &&
-								error.code === "runtime_unreachable"
-									? errorText(error)
-									: null,
-							]
-								.filter(Boolean)
-								.join(" ")
-						: `${failure ?? t("ui.chat.pickers.use_picker_backend.did_not_run", { command: command })}: ${errorText(error)}`,
-				};
-				setResult(result);
-				return { outcome: null, result, unconfirmed };
+				// A repeat leaves the control busy for the whole press, so nothing is
+				// reported while the app still has a chance (the policy's own property);
+				// only the settled run reaches the strip.
+				if (settled.outcome) setOutcome(settled.outcome);
+				// A press the owner's frame confirmed carries NO receipt, so there is no
+				// sentence to put in the strip. Leaving the last result there would be a
+				// second claim about a press that already moved on, and the dialog keeps
+				// its own header (the model in force) as the answer.
+				if (!settled.confirmedByFrame) setResult(settled.result);
+				return settled;
 			} finally {
 				setBusy(false);
 			}

@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 /*
@@ -89,18 +91,41 @@ const bundle = await build({
 	],
 });
 
-const bundlePath = new URL(
-	`./_ask-busy-resend-${process.pid}.mjs`,
-	import.meta.url,
-);
+/*
+ * WRITTEN OUTSIDE THE TRACKED TREE (review round 2, nit). `scripts/` is tracked, so
+ * an artifact left by a lane that dies between the write and the import would show
+ * up as an untracked file in a tree-clean check. `node_modules` is ignored
+ * wholesale, and a bundle written there still resolves bare specifiers by walking
+ * up to the repository's own `node_modules`.
+ */
+const bundleDir = join(process.cwd(), "node_modules", ".cache");
+mkdirSync(bundleDir, { recursive: true });
+const bundlePath = join(bundleDir, `_ask-busy-resend-${process.pid}.mjs`);
+const bundleUrl = pathToFileURL(bundlePath).href;
 await writeFile(bundlePath, bundle.outputFiles[0].text);
+/*
+ * THE ARTIFACT IS ALSO REAPED ON EXIT. The `finally` below only runs if this
+ * process gets as far as the import; a run that fails to build, or one killed
+ * between the write and the import (a bounded harness, a cancelled QA lane),
+ * leaves the bundle behind — measured in `scripts/` before the path moved to
+ * `node_modules/.cache`, and the reason
+ * this handler exists rather than the `finally` alone.
+ */
+process.once("exit", () => {
+	try {
+		rmSync(bundlePath, { force: true });
+	} catch {
+		/* An exit path must not mask the failure it is running past. */
+	}
+});
+
 /*
  * The bundle is removed even when it FAILS TO LOAD: the sibling suite records the
  * incident where a broken alias left the artifact sitting in `scripts/`.
  */
 let shipped;
 try {
-	shipped = await import(bundlePath.href);
+	shipped = await import(bundleUrl);
 } finally {
 	await unlink(bundlePath);
 }
@@ -279,6 +304,13 @@ test("the picker command path is not wrapped in the busy loop, for the measured 
 	 * `retry_safe=True`, which is why the send path's `withBusyResends` does work;
 	 * `/answers` has no receipt journal at all.) A later edit that adds the wrap
 	 * here must read that measurement first, so it fails here with the reason.
+	 *
+	 * THE MODEL SWITCH NOW REPEATS, ONE LEVEL DOWN, AND THAT DOES NOT CONTRADICT
+	 * THIS. `runSessionCommand` (in this same module) mints a request id INSIDE
+	 * each dispatch, so its repeat is a FRESH claim rather than this forbidden
+	 * same-id resend; it is opt-in, and the switch is the one caller that opts in
+	 * because `set_model` is idempotent in effect. This guard still holds its
+	 * line: `run` must not wrap the request it was handed.
 	 */
 	const source = readFileSync(
 		"src/renderer/src/features/chat/pickers/use-picker-backend.ts",

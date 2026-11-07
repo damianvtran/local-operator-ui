@@ -190,6 +190,36 @@ export function modelSelector(
 	return `${provider}/${id}`;
 }
 
+/**
+ * Does the owner's frontend name `selector` — as the model SELECTED, or as the one
+ * EFFECTIVE?
+ *
+ * The two readers are the ones `modelSelector`'s note names: the picker's live
+ * `landed` predicate and the canonical handle's pending-model reconciliation. They
+ * must give the same answer — a picker that called a switch confirmed on a reading
+ * the band would not accept is the class of defect the reconciliation exists to
+ * prevent — so the comparison is stated once here rather than twice in the hope the
+ * two stay equal. The `effective` half is what makes the pinned-fallback state
+ * reachable at all: `selected_model` is the session's own pick while
+ * `effective_model` is the fallback actually serving.
+ */
+export function frontendNamesModel(
+	frontend:
+		| {
+				selected_model?: CanonicalModel | null;
+				effective_model?: CanonicalModel | null;
+		  }
+		| null
+		| undefined,
+	selector: string | null,
+): boolean {
+	if (!selector) return false;
+	return (
+		modelSelector(frontend?.selected_model) === selector ||
+		modelSelector(frontend?.effective_model) === selector
+	);
+}
+
 export function modelIdentity(
 	model: CanonicalModel | null | undefined,
 ): ModelIdentity | null {

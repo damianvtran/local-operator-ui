@@ -198,6 +198,8 @@ type BridgeRequest = {
 	value?: unknown;
 	command?: string;
 	args?: string;
+	/** The receipt key of one command dispatch; a repeat must carry a new one. */
+	requestId?: string;
 };
 
 /** A promise that never settles: the frame is the state while it is pending. */
@@ -845,18 +847,40 @@ const UnconfirmedModelFrame: FC<{
 	committed?: boolean;
 	readPending?: boolean;
 	cold?: boolean;
+	/**
+	 * How many answers are busy BEFORE the owner accepts. Omitted means every
+	 * attempt is busy (the exhausted repeat); a number is the arm where the busy
+	 * clears on its own, which is the whole reason the press is repeated.
+	 */
+	busyTimes?: number;
+	/**
+	 * The model the read-only snapshot (`sessions.get`) reports, when it must not be
+	 * the authority the story's frames carry. The two are one variable in reality
+	 * only while the frame is alive: a LOST frame plus a fresh read is the arm where
+	 * the reconciliation can confirm a switch the push never did, so a story about
+	 * that arm has to be able to disagree with `selected` here.
+	 */
+	readModel?: { provider: string; model_id: string };
 }> = ({
 	disconnected = false,
 	readFails = false,
 	committed = true,
 	readPending = false,
 	cold = false,
+	busyTimes,
+	readModel,
 }) => {
 	const authoritative = useRef(CURRENT);
 	const [selected, setSelected] = useState(CURRENT);
 	const [notes, setNotes] = useState<{ id: string; text: string }[]>([]);
 	const [open, setOpen] = useState(true);
 	const mutations = useRef(0);
+	/*
+	 * EVERY dispatch's request id, in order. A repeat must mint a NEW one: this
+	 * route's receipt is claimed without `retry_safe`, so a reused id is the
+	 * journal's "outcome is indeterminate" 409 rather than a second attempt.
+	 */
+	const requestIds = useRef<string[]>([]);
 	const [reads, setReads] = useState(0);
 	const [preferencesWrites, setPreferencesWrites] = useState(0);
 	const note = useCallback(
@@ -874,13 +898,28 @@ const UnconfirmedModelFrame: FC<{
 			}
 			if (request.op === "sessions.command") {
 				mutations.current += 1;
+				if (request.requestId) requestIds.current.push(request.requestId);
+				const value = request.args ?? "";
+				const slash = value.indexOf("/");
+				const model = {
+					provider: value.slice(0, slash),
+					model_id: value.slice(slash + 1),
+				};
+				const from = `${authoritative.current.provider}/${authoritative.current.model_id}`;
+				/*
+				 * `busyTimes` is the owner's patience running out on its own: the first
+				 * N answers are busy and nothing has landed, the next one is accepted
+				 * with a receipt. It is a DIFFERENT arm from `committed`, where the
+				 * authority moves even though the receipt never arrives.
+				 */
+				const accepts =
+					busyTimes !== undefined && mutations.current > busyTimes;
+				if (accepts) {
+					authoritative.current = model;
+					setSelected(model);
+					return ok({ command: "model", result: receipt(from, value) });
+				}
 				if (!disconnected && committed) {
-					const value = request.args ?? "";
-					const slash = value.indexOf("/");
-					const model = {
-						provider: value.slice(0, slash),
-						model_id: value.slice(slash + 1),
-					};
 					authoritative.current = model;
 					setSelected(model);
 				}
@@ -907,8 +946,8 @@ const UnconfirmedModelFrame: FC<{
 						cold,
 						frontend: {
 							snapshot: {
-								selected_model: authoritative.current,
-								effective_model: authoritative.current,
+								selected_model: readModel ?? authoritative.current,
+								effective_model: readModel ?? authoritative.current,
 							},
 						},
 					},
@@ -916,7 +955,15 @@ const UnconfirmedModelFrame: FC<{
 			}
 			return undefined;
 		},
-		[disconnected, readFails, committed, readPending, cold],
+		[
+			disconnected,
+			readFails,
+			committed,
+			readPending,
+			cold,
+			busyTimes,
+			readModel,
+		],
 	);
 	return (
 		<>
@@ -934,6 +981,9 @@ const UnconfirmedModelFrame: FC<{
 			>
 				<output data-testid="authoritative-model">{`${selected.provider}/${selected.model_id}`}</output>
 				<div data-testid="model-operation-counts">{`mutations=${mutations.current}; snapshot reads=${reads}`}</div>
+				<div data-testid="model-request-ids">
+					{requestIds.current.join(",")}
+				</div>
 				<div data-testid="model-preferences-count">{`preferences writes=${preferencesWrites}`}</div>
 				{notes.map((note) => (
 					<p key={note.id} data-testid="model-command-note">
@@ -945,33 +995,64 @@ const UnconfirmedModelFrame: FC<{
 	);
 };
 
-/** Accepted mutation, lost ACK, and a read-only authoritative reconciliation. */
-export const AckTimeoutIndeterminate: Story = {
+/**
+ * The switch landed; the ACK was lost. The owner's own frame confirms it, so the
+ * press stops repeating and reports no doubt (design round 1, D3).
+ *
+ * WHY THIS REPLACED `AckTimeoutIndeterminate`: once the picker stops repeating as
+ * soon as a frame names the requested model, the commit-then-busy arm can no
+ * longer reach the indeterminate register — the frame IS the confirmation, and
+ * the extra attempts would only keep a dialog reading `Switching the model…` over
+ * a session already on it. The indeterminate register still has a story: the arm
+ * where nothing landed, `AckTimeoutNotApplied` below.
+ */
+export const AckTimeoutConfirmedByFrame: Story = {
 	render: () => <UnconfirmedModelFrame />,
 	play: async () => {
 		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
-		await waitFor(() =>
-			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
-				"mutations=1; snapshot reads=1",
-			),
+		/*
+		 * ONE dispatch and NO snapshot read: the repeat stops at its second
+		 * opportunity (a fresh id is never minted), and the press never falls back
+		 * to the read-only reconciliation because it was never unconfirmed.
+		 */
+		await waitFor(
+			() =>
+				expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+					"mutations=1; snapshot reads=0",
+				),
+			SLOW,
 		);
 		expect(screen.getByTestId("authoritative-model").textContent).toBe(
 			`${PICKED.provider}/${PICKED.model_id}`,
 		);
-		const text = screen.getByTestId("model-command-note").textContent ?? "";
-		expect(text).toContain("The request could not be confirmed.");
-		expect(text).not.toMatch(MATCH_NOT_CHANGED_DID_NOT_RUN_RECONNECT);
+		expect(screen.queryByTestId("model-command-note")).toBeNull();
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).not.toContain("The request could not be confirmed.");
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).not.toMatch(MATCH_NOT_CHANGED_DID_NOT_RUN_RECONNECT);
 	},
 };
 
+/**
+ * The switch never landed, and every attempt met a busy owner.
+ *
+ * The repeat is bounded (`BUSY_RESENDS`, three more attempts, waits of
+ * `min(max(0, retry_after_ms ?? 2000), 5000)` — six seconds with the backend's
+ * 2 s hint), and what is left is the honest register rather than "did not run":
+ * the switch may have applied on any attempt whose ACK was lost.
+ */
 export const AckTimeoutNotApplied: Story = {
 	render: () => <UnconfirmedModelFrame committed={false} />,
 	play: async () => {
 		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
-		await waitFor(() =>
-			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
-				"mutations=1; snapshot reads=1",
-			),
+		await waitFor(
+			() =>
+				expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+					"mutations=4; snapshot reads=1",
+				),
+			SLOW,
 		);
 		expect(screen.getByTestId("authoritative-model").textContent).toBe(
 			CURRENT_SELECTOR,
@@ -979,6 +1060,40 @@ export const AckTimeoutNotApplied: Story = {
 		expect(screen.getByTestId("model-command-note").textContent).toBe(
 			"The request could not be confirmed.",
 		);
+	},
+};
+
+/**
+ * The busy owner clears on its own: the second attempt is accepted.
+ *
+ * This is the win the repeat exists for, and the two facts a capture alone cannot
+ * show are asserted here: the second attempt carries a DIFFERENT request id (a
+ * reused one would be the receipt journal's indeterminate 409, not a retry), and
+ * the user is never told the switch could not be confirmed.
+ */
+export const BusyThenConfirmed: Story = {
+	render: () => <UnconfirmedModelFrame committed={false} busyTimes={1} />,
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(
+			() =>
+				expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+					"mutations=2; snapshot reads=0",
+				),
+			SLOW,
+		);
+		const ids = (screen.getByTestId("model-request-ids").textContent ?? "")
+			.split(",")
+			.filter(Boolean);
+		expect(ids.length).toBe(2);
+		expect(new Set(ids).size).toBe(2);
+		expect(screen.getByTestId("authoritative-model").textContent).toBe(
+			`${PICKED.provider}/${PICKED.model_id}`,
+		);
+		expect(screen.queryByTestId("model-command-note")).toBeNull();
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).not.toContain("The request could not be confirmed.");
 	},
 };
 
@@ -1014,10 +1129,12 @@ export const DisconnectedOwnerUnconfirmed: Story = {
 
 const assertDefaultStaysLocked = async () => {
 	await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
-	await waitFor(() =>
-		expect(screen.getByTestId("model-operation-counts").textContent).toBe(
-			"mutations=1; snapshot reads=1",
-		),
+	await waitFor(
+		() =>
+			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+				"mutations=4; snapshot reads=1",
+			),
+		SLOW,
 	);
 	const checkbox = screen.getByRole("checkbox", { name: MODEL_DEFAULT_LABEL });
 	await waitFor(() => expect(checkbox.hasAttribute("disabled")).toBe(true));
@@ -1028,27 +1145,41 @@ const assertDefaultStaysLocked = async () => {
 	expect(checkbox.getAttribute("data-state")).toBe("unchecked");
 };
 
+/*
+ * `committed={false}` on all four: the lock these stories are about is the one a
+ * genuinely unconfirmed switch leaves behind. A switch whose frame names it is
+ * confirmed by that frame now (see `AckTimeoutConfirmedByFrame`), so the lock arm
+ * has to be the one where nothing landed — otherwise the story would be asserting
+ * a state the picker no longer reaches.
+ */
+
 /** Direct neighbors of the unconfirmed switch: none can save stale defaults. */
 export const UnconfirmedDefaultPending: Story = {
-	render: () => <UnconfirmedModelFrame readPending />,
+	render: () => <UnconfirmedModelFrame readPending committed={false} />,
 	play: assertDefaultStaysLocked,
 };
 export const UnconfirmedDefaultFailed: Story = {
-	render: () => <UnconfirmedModelFrame readFails />,
+	render: () => <UnconfirmedModelFrame readFails committed={false} />,
 	play: assertDefaultStaysLocked,
 };
 export const UnconfirmedDefaultCold: Story = {
-	render: () => <UnconfirmedModelFrame cold />,
+	render: () => <UnconfirmedModelFrame cold committed={false} />,
 	play: assertDefaultStaysLocked,
 };
 export const UnconfirmedDefaultResolved: Story = {
-	render: () => <UnconfirmedModelFrame />,
+	/*
+	 * The push never came (no frame names the pick) but the READ does: this is the
+	 * reconciliation arm, so the snapshot is the only thing that may confirm it.
+	 */
+	render: () => <UnconfirmedModelFrame committed={false} readModel={PICKED} />,
 	play: async () => {
 		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
-		await waitFor(() =>
-			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
-				"mutations=1; snapshot reads=1",
-			),
+		await waitFor(
+			() =>
+				expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+					"mutations=4; snapshot reads=1",
+				),
+			SLOW,
 		);
 		const checkbox = screen.getByRole("checkbox", {
 			name: MODEL_DEFAULT_LABEL,
