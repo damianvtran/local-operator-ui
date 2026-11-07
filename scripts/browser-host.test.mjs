@@ -96,6 +96,11 @@ const bundle = await build({
 			// below can pin the dispatched code to them; the gate that keeps them equal
 			// to the vendored driver's functions is scripts/check-geometry-sources.test.mjs.
 			'export * from "./src/main/browser/actions/geometry-sources.gen";',
+			// The two page PROGRAMS the host injects (`select`, `setvalue`), for the
+			// same reason: the lane tests below assert the `functionDeclaration` that
+			// actually reached CDP is this constant, which is the invariant the
+			// bytecode transport breaks when it is fed a computed `.toString()`.
+			'export * from "./src/main/browser/actions/page-programs.gen";',
 			// The main-process locale store, reached through the SAME module graph the host
 			// resolves `t()` from, so a test can drive the language the host speaks.
 			'export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "./src/i18n";',
@@ -184,6 +189,8 @@ const {
 	READ_STYLES_SOURCE,
 	HIT_TEST_SOURCE,
 	ANCESTORS_SOURCE,
+	SELECT_PAGE_SOURCE,
+	SETVALUE_PAGE_SOURCE,
 	navigateView,
 	settle,
 	// The popup policy's pure decision function and its cap constant: the matrix
@@ -7132,13 +7139,22 @@ class FakeDownloadItem {
 /** An armer over one tab, with the quiet window shortened so the suite is not
  * slowed by real waiting. `log` is collected so a test can assert the operator's
  * trace exists without reading stdout. */
-function makeArmer({ tabId = 7, webContentsId = 101, lines = [] } = {}) {
+function makeArmer({
+	tabId = 7,
+	webContentsId = 101,
+	lines = [],
+	popupOpener = new Map(),
+} = {}) {
 	const armer = new DownloadArmer({
 		tabForWebContents: (id) => (id === webContentsId ? tabId : null),
+		// The one-hop attribution seam: popup webContents id → the webContents id that
+		// opened it. Empty by default, so every other test in this file exercises the
+		// direct lookup exactly as it did before the hop existed.
+		openerWebContentsId: (id) => popupOpener.get(id) ?? null,
 		log: (message) => lines.push(message),
 		quietMs: 5,
 	});
-	return { armer, tabId, webContentsId, lines };
+	return { armer, tabId, webContentsId, lines, popupOpener };
 }
 
 function tempDir(name) {
@@ -7724,6 +7740,204 @@ test("the armer creates the harness directory 0700", () => {
 	rmSync(parent, { recursive: true, force: true });
 });
 
+// ---- a download the PAGE starts, and the three outcomes the agent can see ------
+
+// THE POPUP ATTRIBUTION (operator report, 2026-11-06). `will-download` names the
+// webContents that started the item, and a popup window is not a registry tab — so
+// before the hop a download a page started through `window.open` was cancelled with
+// "no download call is armed on this tab" while the tab that opened the popup sat
+// armed and waiting. The hop is ONE step, and only when the direct lookup misses.
+test("a download a POPUP starts lands through the arm on the tab that opened it", async () => {
+	const dir = tempDir("popup");
+	// The popup's webContents is 9_001; the DRIVEN tab's is 700 and it owns tab 3.
+	const popupOpener = new Map([[9_001, 700]]);
+	const { armer } = makeArmer({ webContentsId: 700, tabId: 3, popupOpener });
+	const arm = armer.arm(3, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "key.json", total: 12 });
+	assert.deepEqual(armer.decide(item, 9_001), { cancel: false, reason: "" });
+	assert.equal(
+		item.savePath,
+		join(dir, "key.json"),
+		"the popup's download lands in the directory the armed call composed",
+	);
+	writeFileSync(item.savePath, '{"k":1}');
+	item.finish("completed");
+	const result = await arm.done();
+	assert.equal(result.files.length, 1);
+	assert.equal(result.files[0].name, "key.json");
+	assert.equal(
+		result.reason,
+		"",
+		"a landed file is neither a refusal nor a no-op",
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a webContents with NO known opener is refused, with the reason it always had", () => {
+	const dir = tempDir("popup-orphan");
+	const { armer, tabId } = makeArmer({ webContentsId: 700, tabId: 3 });
+	armer.arm(tabId, dir, 5_000);
+	const decision = armer.decide(
+		new FakeDownloadItem({ filename: "key.json" }),
+		9_255,
+	);
+	assert.deepEqual(decision, {
+		cancel: true,
+		reason: "no download call is armed on this tab",
+	});
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("the direct lookup WINS over the hop, so a tab's own download is never re-attributed", () => {
+	const dir = tempDir("direct-first");
+	// A map that would send the driven tab's OWN webContents to a tab nobody armed:
+	// if the hop ran first this download would be cancelled instead of captured.
+	const popupOpener = new Map([[700, 900]]);
+	const { armer } = makeArmer({ webContentsId: 700, tabId: 3, popupOpener });
+	armer.arm(3, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "receipt.pdf", total: 8 });
+	assert.deepEqual(armer.decide(item, 700), { cancel: false, reason: "" });
+	assert.equal(item.savePath, join(dir, "receipt.pdf"));
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// THE THREE OUTCOMES, asserted head-first because the HARNESS keys on the head: a
+// `reason` whose head is `refused:` is recorded as `armed_refused`; any other
+// non-empty one is relayed as the host's own account (`armed_reason`); an empty one
+// with no files is the `no_download` row. One shape, three distinguishable answers.
+test("nothing started, refused and landed are three distinguishable answers", async () => {
+	const dir = tempDir("outcomes");
+	const { armer, tabId, webContentsId } = makeArmer();
+	// (1) NOTHING STARTED: the page began no transfer at all.
+	const idle = armer.arm(tabId, dir, 5_000);
+	armer.forget(tabId);
+	const idleResult = await idle.done();
+	assert.deepEqual(idleResult.files, []);
+	assert.match(idleResult.reason, /^no download started within /);
+	assert.doesNotMatch(idleResult.reason, /^refused: /);
+	// (2) STARTED AND REFUSED: the page's attempt reached the host, and the host said
+	// no — the refusal, not an account of a call that saw nothing.
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.decide(
+		new FakeDownloadItem({ filename: "payload.command" }),
+		webContentsId,
+	);
+	armer.forget(tabId);
+	const refusedResult = await armed.done();
+	assert.deepEqual(refusedResult.files, []);
+	assert.match(refusedResult.reason, /^refused: /);
+	assert.doesNotMatch(refusedResult.reason, /no download started/);
+	// (3) STARTED AND LANDED: a file, and no sentence at all.
+	const landing = armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "receipt.pdf", total: 8 });
+	armer.decide(item, webContentsId);
+	writeFileSync(item.savePath, "%PDF-1.4");
+	item.finish("completed");
+	armer.forget(tabId);
+	const landed = await landing.done();
+	assert.equal(landed.files.length, 1);
+	assert.equal(landed.reason, "");
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// A PAGE THAT DOWNLOADS THROUGH A POPUP the host denied never reaches
+// `will-download`, so the only honest answer to the armed call is the refusal the
+// host made — otherwise it waits out its budget and claims nothing started.
+test("a denied popup is named in the armed answer, not reported as nothing started", async () => {
+	const dir = tempDir("popup-denied");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "scheme");
+	armer.forget(tabId);
+	const result = await armed.done();
+	assert.deepEqual(result.files, []);
+	assert.match(result.reason, /^refused: /);
+	assert.match(
+		result.reason,
+		/opened a popup and the host denied it \(scheme\)/,
+	);
+	assert.doesNotMatch(result.reason, /no download started/);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// THE GRANDCHILD DENY-ALL, asserted as a SOURCE shape for the same reason the
+// restore-failure marks are: `wirePopup` needs a real `BrowserWindow` this suite
+// must never boot (agent review round 1, R1-1).
+const WIRE_POPUP_TELLS_THE_ARM =
+	/setWindowOpenHandler\([\s\S]{0,1200}?noteRefusedPopup\(tabId, "popup_from_popup"\)[\s\S]{0,200}?action: "deny"/;
+const WIRE_POPUP_RECEIVES_THE_TAB =
+	/wirePopup\(\s*child,\s*popupChildren,\s*routed\.presentation,\s*tabId\s*\)/;
+
+// EVERY DENIAL POINT TELLS THE ARMED CALL (agent review round 1, R1-1). The two
+// wired sites left this one out, so a page whose download path opens a popup from
+// INSIDE its popup reproduced the reported silence exactly: the call waited out its
+// budget and answered "no download started within Ns".
+test("a popup opened from inside a popup is named in the armed answer, not silence", async () => {
+	const source = readFileSync(
+		new URL("../src/main/browser/index.ts", import.meta.url),
+		"utf8",
+	);
+	const wirePopup = functionBody(
+		source,
+		"function wirePopup(",
+		"src/main/browser/index.ts",
+	);
+	assert.match(
+		wirePopup,
+		WIRE_POPUP_TELLS_THE_ARM,
+		"the grandchild deny-all says nothing to the armed call: a page that downloads through a popup opened from its popup is back to 'no download started'",
+	);
+	// The tab whose arm owns the denied popup is the OPENER's, and it has to arrive:
+	// `wirePopup` is a sibling of `wireView`, so it cannot read `tabId` from scope.
+	assert.match(
+		functionBody(source, "function wireView(", "src/main/browser/index.ts"),
+		WIRE_POPUP_RECEIVES_THE_TAB,
+		"the popup is wired without its opener's tab id, so the denial cannot be attributed",
+	);
+	assert.equal(
+		(source.match(/downloads\.noteRefusedPopup\(/g) || []).length,
+		3,
+		"there are three popup denial points (the open handler, the refused route, the grandchild deny-all) and each one must tell the armed call",
+	);
+	// AND THE TOKEN THAT WIRING PASSES becomes the refusal the model reads, not the
+	// no-op sentence — the other half of the loop, driven through the real armer.
+	const dir = tempDir("popup-nested");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "popup_from_popup");
+	armer.forget(tabId);
+	const result = await armed.done();
+	assert.deepEqual(result.files, []);
+	assert.match(result.reason, /^refused: /);
+	assert.match(result.reason, /denied it \(popup_from_popup\)/);
+	assert.doesNotMatch(result.reason, /no download started/);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// WHAT THIS PROVES IS THE OBSERVABLE PROPERTY, NOT THE `capture.settled` GUARD
+// (agent review round 1, R1-4). The mechanism under test is the map entry going
+// away — `forget` here, and `settle` in the deadline path — and the guard itself is
+// cheap defence that both of those paths currently make unreachable.
+test("a popup denied after the call answered changes nothing, and an unarmed tab is a no-op", async () => {
+	const dir = tempDir("popup-late");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "cap");
+	// The call ends the way a real one does — the arm is dropped when the action's
+	// `finally` runs — so the suite is not slowed by the deadline budget.
+	armer.forget(tabId);
+	const answered = await armed.done();
+	// The answer is out; a popup denied afterwards must not change a result a caller
+	// already holds.
+	armer.noteRefusedPopup(tabId, "link_depth");
+	assert.match(answered.reason, /denied it \(cap\)/);
+	assert.doesNotMatch(answered.reason, /link_depth/);
+	// A tab nobody armed has no capture to tell, which is not an error: the button
+	// that opens a popup exists on every page.
+	armer.noteRefusedPopup(424_242, "scheme");
+	rmSync(dir, { recursive: true, force: true });
+});
+
 /** A `FileFact`-shaped input for the upload-note test, which needs names and no
  * bytes on disk. */
 function factOf2(name) {
@@ -7817,6 +8031,9 @@ test("/health carries the capabilities this build serves", async () => {
 		"press_chord",
 		"hover",
 		"select",
+		// Writing a form control's value; the pin above exists so this list is
+		// edited by the PR that adds the capability, never discovered drifting.
+		"setvalue",
 		"network_start",
 		"network_stop",
 		"network_read",
@@ -7825,6 +8042,10 @@ test("/health carries the capabilities this build serves", async () => {
 		"record_stop",
 		"record_size",
 		"record_quality",
+		// Clipboard write through the host. Literal like the rest, for the same
+		// reason: the harness refuses `copy` on the extension, the cmux host and any
+		// desktop build that does not advertise it.
+		"copy",
 	]);
 });
 
@@ -12376,10 +12597,23 @@ test("press with a selector focuses the element first, refuses one that will not
 test("hover is in the wire vocabulary, advertised beside press, lane-scoped, and not a navigating action", async () => {
 	assert.ok(METHODS.includes("hover"));
 	assert.ok(isMethod("hover"));
+	// `hover` was APPENDED when it landed, then main appended `setvalue`, then this
+	// branch appended `copy`, so the pin is that no append moved an existing index:
+	// the tail is hover, select, setvalue, copy in that order.
+	assert.deepEqual(
+		METHODS.slice(-4),
+		["hover", "select", "setvalue", "copy"],
+		"appends only: no existing method's index moved",
+	);
 	assert.equal(
-		METHODS.at(-2),
+		METHODS.at(-4),
 		"hover",
-		"appended: no existing method's index moved",
+		"copy was appended last: no existing method's index moved",
+	);
+	assert.equal(
+		METHODS.at(-1),
+		"copy",
+		"copy was appended after setvalue: no existing method's index moved",
 	);
 	assert.ok(HOST_CAPABILITIES.includes("hover"));
 	// The harness gates extended press on this exact token; `press` alone is true of
@@ -12684,9 +12918,14 @@ test("select is advertised, owned/document scoped, and restores forbidden change
 	const { owner, tab } = await openApprovedTab(host);
 	const contents = registry.requireSurface(tab).view.webContents;
 	const original = cdp.send;
+	// Every program this action injects. The assertion after the dispatch is the
+	// one a computed `.toString()` cannot survive: in a bytecode bundle it sends
+	// the loader's dummy string, not the program.
+	const declarations = [];
 	cdp.send = async (target, method, params) => {
 		if (method === "DOM.resolveNode") return { object: { objectId: "select" } };
 		if (method === "Runtime.callFunctionOn") {
+			declarations.push(params.functionDeclaration);
 			if (params.functionDeclaration.includes("tagName === 'SELECT'"))
 				return { result: { value: true } };
 			if (params.arguments?.[0]?.value === "apply") {
@@ -12710,6 +12949,10 @@ test("select is advertised, owned/document scoped, and restores forbidden change
 	);
 	assert.equal(contents.url, "https://approved.example/");
 	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	assert.ok(
+		declarations.includes(SELECT_PAGE_SOURCE),
+		"the program that reached CDP is the generated constant, never a computed .toString()",
+	);
 	await assert.rejects(
 		host.dispatch(
 			"select",
@@ -12724,4 +12967,158 @@ test("select is advertised, owned/document scoped, and restores forbidden change
 		),
 		{ code: "owner_refused" },
 	);
+});
+
+test("setvalue is advertised, document/owner scoped, and restores forbidden change-handler landings without Fetch", async () => {
+	assert.ok(METHODS.includes("setvalue"));
+	assert.ok(isMethod("setvalue"));
+	// MEMBERSHIP, not adjacency: order inside the capability list carries no
+	// semantics, and the literal `/health` snapshot above already fails loudly
+	// when the list changes (review R1-6).
+	assert.ok(HOST_CAPABILITIES.includes("setvalue"));
+	assert.equal(COMMAND_TIMEOUTS_S.setvalue, 25);
+	const { host, cdp, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const contents = registry.requireSurface(tab).view.webContents;
+	const original = cdp.send;
+	// Every program this action injects, asserted against the generated constant
+	// below. That is the invariant a computed `.toString()` cannot survive: in a
+	// bytecode bundle it sends the loader's dummy string, not the program
+	// (review R1-4).
+	const declarations = [];
+	// A plain write: the program's own read-back is the whole answer, and no
+	// per-hop gate is armed (that is click/type/press only — a write fetches
+	// nothing itself).
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode")
+			return { object: { objectId: "setvalue" } };
+		if (method === "Runtime.callFunctionOn") {
+			declarations.push(params.functionDeclaration);
+			return {
+				result: {
+					value: {
+						status: "ready",
+						kind: "input",
+						type: "text",
+						value: "Damian",
+						verified: true,
+					},
+				},
+			};
+		}
+		return original(target, method, params);
+	};
+	cdp.calls.length = 0;
+	const written = await host.dispatch(
+		"setvalue",
+		{ ...owner, tab, selector: "#i", text: "Damian" },
+		"setvalue",
+	);
+	assert.equal(written.value, "Damian");
+	assert.equal(written.verified, true);
+	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	assert.ok(
+		declarations.includes(SETVALUE_PAGE_SOURCE),
+		"the program that reached CDP is the generated constant, never a computed .toString()",
+	);
+	// A page answer is answered by the host in kind: the harness routes on these
+	// three shapes, so each is driven here through the real dispatcher.
+	const answers = async (value) => {
+		cdp.send = async (target, method, params) => {
+			if (method === "DOM.resolveNode")
+				return { object: { objectId: "setvalue" } };
+			if (method === "Runtime.callFunctionOn") return { result: { value } };
+			return original(target, method, params);
+		};
+	};
+	// A typed refusal rides `data.reason`, not prose: that is the field a caller
+	// branches on, and the wire's ErrorCode vocabulary is closed.
+	await answers({ status: "disabled", tag: "input" });
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#i", text: "x" },
+			"setvalue",
+		),
+		(e) => e.code === "element_not_found" && e.data.reason === "disabled",
+	);
+	// A checkbox is not a value control, and the refusal must name the verb that
+	// DOES work: a caller told only "refused" retries the same call.
+	await answers({
+		status: "not_a_value_control",
+		tag: "input",
+		input_type: "checkbox",
+	});
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#c", text: "true" },
+			"setvalue",
+		),
+		(e) =>
+			e.code === "element_not_found" &&
+			e.data.reason === "not_a_value_control" &&
+			e.message.includes("click"),
+	);
+	// A value-sanitizing field reports the format that WOULD work, and the type.
+	await answers({
+		status: "value_rejected",
+		tag: "input",
+		input_type: "date",
+		expected: "YYYY-MM-DD",
+	});
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#d", text: "01/03/2027" },
+			"setvalue",
+		),
+		(e) =>
+			e.code === "element_not_found" &&
+			e.data.reason === "value_rejected" &&
+			e.data.expected === "YYYY-MM-DD" &&
+			e.data.input_type === "date",
+	);
+	// A password answer carries `verified` and NO value: nothing on this path may
+	// put a credential into a transcript (review, credential safety).
+	await answers({
+		status: "ready",
+		kind: "input",
+		type: "password",
+		redacted: true,
+		verified: true,
+	});
+	const secret = await host.dispatch(
+		"setvalue",
+		{ ...owner, tab, selector: "#p", text: "hunter2" },
+		"setvalue",
+	);
+	assert.equal(secret.verified, true);
+	assert.equal(secret.input_type, "password");
+	assert.equal("value" in secret, false, "the credential is not in the answer");
+	// The change handler navigates to an unapproved origin and the program throws
+	// on the context teardown: the THROW path is judged and the tab restored,
+	// exactly as `select`'s is.
+	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode")
+			return { object: { objectId: "setvalue" } };
+		if (method === "Runtime.callFunctionOn") {
+			contents.url = "https://forbidden.example/written";
+			registry.bumpEpoch(registry.requireSurface(tab).tabId);
+			throw new Error("context destroyed on change");
+		}
+		return original(target, method, params);
+	};
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#i", text: "x" },
+			"setvalue",
+		),
+		(e) =>
+			e.code === "origin_not_allowed" &&
+			e.data.origin === "https://forbidden.example",
+	);
+	assert.equal(contents.url, "https://approved.example/");
 });

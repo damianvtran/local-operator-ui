@@ -21,6 +21,7 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMessageAttachments } from "./attachments/member-attachments";
 import { InlineDataBody } from "./inline-data-receipt";
+import { TeamBridgeMessageLinkPreviews } from "./link-preview/team-bridge-message-link-previews";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
 	type TeamBridgeArrivalIdentity,
@@ -1348,6 +1349,16 @@ const MessageRowView: FC<MessageRowProps> = ({
 					</p>
 				)}
 				<TeamBridgeDeliveryAnnotation message={message} />
+				{/* Link previews read the same body the prose above renders, and the
+				    account this subtree was rendered under as their receipt - the value
+				    the attachment route below already carries, never a default. A null
+				    body is a withheld message, and nothing withheld is previewed. */}
+				{message.body !== null && (
+					<TeamBridgeMessageLinkPreviews
+						body={message.body}
+						expectedAccountId={accountId}
+					/>
+				)}
 				{/* Images and files come ONLY from the structured lists, never from
 				    the body. A file-less message keeps the pre-S3b condition. */}
 				{((message.attachments?.length ?? 0) > 0 ||

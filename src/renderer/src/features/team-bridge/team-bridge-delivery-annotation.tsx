@@ -123,6 +123,21 @@ const DELIVERY_CHIEF_LABELS: ChiefLabels = {
  */
 const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
+/**
+ * CJK sentence-final and closing punctuation, whose glyph already includes the
+ * whitespace on its trailing side.
+ *
+ * NO JOINING SPACE AFTER THESE (design review D2 on #1666). The glyph sits in a
+ * full-width em box with its ink on the leading side, so `。` renders its own
+ * gap; adding the Latin sentence's space on top doubled it (measured zh-CN
+ * `<nobr>。 ⓘ</nobr>` against ru `<nobr>. ⓘ</nobr>`). A Latin `.` has no such
+ * bearing, which is why the space stays for every other final grapheme - the
+ * space is what keeps the glyph off the word. Listed rather than derived: the
+ * marks are the ones CJK copy actually ends a sentence or a quotation with, and
+ * a regex over East Asian Width is not expressible in ECMAScript.
+ */
+const CJK_CLOSING_PUNCTUATION = /[。、，．：；！？）」』】》〉〕］｝]/u;
+
 /** `text` split before its final grapheme cluster: `[head, last]`. */
 function splitLastGrapheme(text: string): [string, string] {
 	let last = "";
@@ -137,9 +152,10 @@ function splitLastGrapheme(text: string): [string, string] {
  * atomic inline, and a line break is allowed before one, so a sentence that
  * filled its line pushed the glyph onto a continuation line by itself (ru
  * `refused_out_of_scope` at the narrow pane width). The sentence's FINAL
- * grapheme, the space and the glyph now sit in one `whitespace-nowrap` span:
- * the last word has no break opportunity inside it, so the whole word travels
- * with the glyph to the next line instead.
+ * grapheme and the glyph now sit in one `whitespace-nowrap` span, separated by
+ * a space except after CJK closing punctuation (see
+ * `CJK_CLOSING_PUNCTUATION`): a break inside the span would strand the glyph,
+ * so the last word moves with it.
  *
  * Only the final grapheme is bound, never the whole last word: a nowrap run
  * cannot take the list's `[overflow-wrap:anywhere]`, so binding a long
@@ -152,11 +168,15 @@ const DeliveryLine: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
 	const text = deliveryLineText(line);
 	if (line.kind === "pending") return <>{text}</>;
 	const [head, last] = splitLastGrapheme(text);
+	/* The separator is a character of its own, so a CJK sentence can end flush
+	 * against the glyph without losing the space every other script needs. */
+	const join = CJK_CLOSING_PUNCTUATION.test(last) ? "" : " ";
 	return (
 		<>
 			{head}
 			<span className="whitespace-nowrap">
-				{last}{" "}
+				{last}
+				{join}
 				<DeliveryInfo
 					text={
 						line.kind === "refused"

@@ -7,6 +7,7 @@ import { MarkdownTable } from "../chat/components/markdown-table";
 import "../chat/components/markdown.css";
 import type { MessageMentionRun } from "./mentions/message-mentions";
 import { remarkTeamBridgeMentions } from "./mentions/remark-mentions";
+import { EXTERNAL_HREF } from "./team-bridge-external-href";
 
 /**
  * Markdown for Team Bridge message bodies: text written by OTHER PEOPLE (and
@@ -27,8 +28,6 @@ import { remarkTeamBridgeMentions } from "./mentions/remark-mentions";
  * react-markdown does not render it without `rehype-raw`, which is not used.
  * Attachments, when Team Bridge has them, will be a separate, explicit surface.
  */
-const EXTERNAL_HREF = /^(https?:|mailto:)/i;
-
 const COMPONENTS: Components = {
 	a: ({ href, children }) =>
 		typeof href === "string" && EXTERNAL_HREF.test(href) ? (

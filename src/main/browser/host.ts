@@ -19,6 +19,7 @@ import * as pageActions from "./actions/page";
 import * as queryActions from "./actions/query";
 import * as recordingActions from "./actions/recording";
 import * as selectActions from "./actions/select";
+import * as setvalueActions from "./actions/setvalue";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import { collectAddressHistory, mergeAddressHistory } from "./address-history";
@@ -73,11 +74,18 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"ancestors",
 	"snapshot",
 	// `query` is a read of the CURRENT document's DOM (CSS in, descriptors out),
-	// so it is authorized against that document on entry and again on the result
-	// exactly as `read` is: an answer that raced a navigation it did not cause
-	// must be discarded, not reported as the new page's (agent review round 2 on
-	// the query slice — the action was missing from BOTH sets).
+	// so it is authorized on entry and again on the result exactly as `read` is:
+	// an answer that raced a navigation it did not cause must be discarded, not
+	// reported as the new page's (agent review round 2 on the query slice — the
+	// action was missing from BOTH sets).
 	"query",
+	// `copy` reads an element's text out of the CURRENT document and puts it on the
+	// user's clipboard, which is the strongest reason in this set to hold it to the
+	// entry document: an answer that raced an autonomous navigation would mean the
+	// clipboard now holds text from a document the agent was never approved for,
+	// and the receipt would describe it as the approved page's. It is NOT a
+	// NAVIGATING_ACTION — copying drives no click and fetches nothing — so the
+	// per-hop Document gate stays off, exactly as it does for `read`.
 	"screenshot",
 	"click",
 	"type",
@@ -86,8 +94,14 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	// stack, so it is authorized on entry and on the result exactly like `click`.
 	"hover",
 	"select",
+	// `setvalue` writes into a control on the CURRENT document and reports the
+	// value it read back from it, so it is authorized on entry and on the result
+	// exactly as `select` is: an answer that raced a navigation it did not cause
+	// must be discarded, never reported as the new page's.
+	"setvalue",
 	"scroll",
 	"logs",
+	"copy",
 	// `download` names a control on the CURRENT document (the link or button that
 	// starts the file) and `upload` names a file input on it, so both are authorized
 	// against that document on entry and again on the result. BOTH are in the
@@ -155,6 +169,11 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	// landing on success OR throw, and restore if unapproved. No native popup,
 	// no agent-initiated document request to intercept with Fetch.
 	"select",
+	// A `setvalue` change handler can navigate exactly like a select change: an
+	// auto-submitting form turns a write into a navigation. Adopt/authorize the
+	// landing on success OR throw, restore if unapproved, and stay OUT of
+	// NAVIGATION_ACTIONS for the reason below: the write fetches nothing itself.
+	"setvalue",
 	"download",
 	"upload",
 ]);
@@ -223,6 +242,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"press",
 	"hover",
 	"select",
+	"setvalue",
 	"scroll",
 	"logs",
 	"close",
@@ -234,6 +254,11 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	// which call.
 	"download",
 	"upload",
+	// `copy` resolves a selector against ONE tab's document and writes what it finds
+	// to a process-wide clipboard, so two concurrent copies on one tab would leave
+	// the clipboard holding whichever finished last while both receipts claimed
+	// success. The lane is what makes "the bytes this answer describes" true.
+	"copy",
 	// Network capture is TAB-scoped and deliberately NOT `DOCUMENT_SCOPED`, for the
 	// same reason `logs` is not: its answer describes the tab's TRAFFIC (which
 	// spans documents, redirects and third-party subresources), not the document
@@ -808,10 +833,14 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.hover(this, params);
 			case "select":
 				return selectActions.select(this, params);
+			case "setvalue":
+				return setvalueActions.setvalue(this, params);
 			case "download":
 				return downloadActions.download(this, params);
 			case "upload":
 				return uploadActions.upload(this, params);
+			case "copy":
+				return pageActions.copy(this, params);
 			case "network_start":
 				return networkActions.networkStart(this, params, requestId);
 			case "network_stop":
