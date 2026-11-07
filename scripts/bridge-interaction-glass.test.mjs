@@ -75,7 +75,11 @@ test("inset message hover and keyboard focus use the same shared glass roles", (
 	for (const role of ["surface", "elevated"]) {
 		assert.ok(row.includes(`hover:before:bg-row-hover-${role}`));
 		assert.ok(row.includes(`focus-within:before:bg-row-hover-${role}`));
-		assert.ok(css.includes(`--color-row-hover-${role}: var(--lo-${role})`));
+		// Opaque fallback routes through the themed `--color-<role>` token, not
+		// `--lo-<role>`: scripts/generate-theme-css.mjs forbids aliasing one
+		// `--lo-*` role twice, and #1700 already aliases these roles. The resolved
+		// value is unchanged (same palette role on :root).
+		assert.ok(css.includes(`--color-row-hover-${role}: var(--color-${role})`));
 		assert.ok(
 			css.includes(`--color-row-hover-${role}: var(--color-row-hover)`),
 		);
@@ -94,11 +98,12 @@ test("shared skeleton and floating toolbar preserve opaque fallbacks and indepen
 			"[data-glass-placeholder] {\n\tbackground-color: var(--color-placeholder)",
 		),
 	);
-	assert.ok(css.includes("--color-placeholder: var(--lo-sunken)"));
+	// Same one-to-one generator invariant as the row-hover fallbacks above.
+	assert.ok(css.includes("--color-placeholder: var(--color-sunken)"));
 	assert.ok(css.includes("--color-placeholder: var(--color-row-selected)"));
 	assert.ok(toolbar.includes('data-glass-plane="floating"'));
 	assert.ok(toolbar.includes("bg-floating p-0.5 shadow-overlay"));
-	assert.ok(css.includes("--color-floating: var(--lo-elevated)"));
+	assert.ok(css.includes("--color-floating: var(--color-elevated)"));
 	assert.ok(css.includes("backdrop-filter: var(--lo-floating-backdrop, none)"));
 	assert.ok(toolbar.includes("pointer-events-none opacity-0"));
 	assert.ok(toolbar.includes("group-focus-within/message:pointer-events-auto"));
