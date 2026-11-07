@@ -595,6 +595,7 @@ export const UpdateContainer = ({
 						}
 					: undefined
 			}
+			data-lo-floating=""
 			className={cn(
 				"fixed top-4 end-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
 				"rounded-lg bg-elevated shadow-overlay",

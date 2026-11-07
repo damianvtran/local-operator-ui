@@ -3591,6 +3591,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 */}
 						<PaneSlot
 							width={askPresentation.width}
+							data-lo-floating={
+								askPresentation.mode === "docked" ? undefined : ""
+							}
 							className={
 								askPresentation.mode === "docked"
 									? undefined

@@ -2677,11 +2677,31 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 	 * `overlayEdgeMix` is still derived and solver-checked above because the runtime
 	 * still publishes it (`--lo-glass-overlay-edge-mix`); nothing paints it now.
 	 */
+	/*
+	 * [offset toward the bottom side, blur, spread] per contact layer, READ FROM
+	 * `--shadow-overlay` rather than copied (agent review round 2, m2): a hand copy
+	 * let a blur/spread change in CSS leave this row measuring a shadow nothing
+	 * paints - the R2 failure mode. Only the layers painted in
+	 * `--lo-shadow-contact` are contact; the ambient is the palette's far field.
+	 */
+	const shadowOverlay =
+		/--shadow-overlay:\s*([^;]+);/.exec(
+			readFileSync(join(ROOT, "src/renderer/src/styles/index.css"), "utf8"),
+		)?.[1] ?? "";
 	const CONTACT_LAYERS = [
-		/* [offset toward the bottom side, blur, spread] */
-		[0, 2, -1],
-		[2, 6, -3],
-	];
+		...shadowOverlay.matchAll(
+			/(-?[\d.]+)(?:px)?\s+(-?[\d.]+)(?:px)?\s+(-?[\d.]+)(?:px)?\s+(-?[\d.]+)(?:px)?\s+var\(--lo-shadow-contact\)/g,
+		),
+	].map(([, x, y, blur, spread]) => {
+		/* The coverage model below is vertical-only; a sideways contact needs a new one. */
+		if (Number(x) !== 0)
+			authoredRun.fail(`--shadow-overlay contact layer has x-offset ${x}`);
+		return [Number(y), Number(blur), Number(spread)];
+	});
+	if (CONTACT_LAYERS.length === 0)
+		authoredRun.fail(
+			"--shadow-overlay has no `var(--lo-shadow-contact)` layer to measure",
+		);
 	/* Mirror the glass rule's `--lo-shadow-contact` in `styles/index.css`;
 	 * `glass-overlay.test.mjs` O-3 pins the CSS to the same two numbers. */
 	const CONTACT_SHARE = 0.45;
@@ -2774,6 +2794,16 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 			}
 		}
 	}
+	/*
+	 * THE RATCHET TIGHTENS, TOO (agent review round 2, m1): a floor that only fails
+	 * on drops goes stale after an improvement, and lowering it later is a silent
+	 * edit. Past 0.02 of headroom, the pinned value must be raised to the measurement.
+	 */
+	for (const [key, pinned] of Object.entries(OVERLAY_CONTACT_RATCHET))
+		if ((contactMin[key] ?? pinned) - pinned > 0.02)
+			authoredRun.fail(
+				`the floating overlay's painted edge (${key}) now measures ${contactMin[key].toFixed(3)}:1, over its ratchet ${pinned}; raise the ratchet to ${Math.floor(contactMin[key] * 100) / 100}`,
+			);
 	console.log(
 		`Window glass round 3: the floating overlay's painted contact edge - ${Object.entries(
 			contactMin,

@@ -735,6 +735,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	return (
 		<div
 			ref={containerRef}
+			data-lo-floating=""
 			className={cn(
 				POPOVER,
 				reviewState ? POPOVER_REVIEW_WIDTH : POPOVER_PROMPT_WIDTH,

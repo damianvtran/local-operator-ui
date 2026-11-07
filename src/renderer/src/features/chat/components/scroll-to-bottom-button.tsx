@@ -82,6 +82,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 			<Button
 				variant="secondary"
 				size={hasNewActivity ? "sm" : "icon"}
+				data-lo-floating=""
 				className={cn(
 					"rounded-full shadow-overlay",
 					/*

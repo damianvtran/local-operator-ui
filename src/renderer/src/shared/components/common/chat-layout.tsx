@@ -822,6 +822,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 									 */}
 									<PaneSlot
 										width={askPresentation.width}
+										data-lo-floating={
+											askPresentation.mode === "docked" ? undefined : ""
+										}
 										className={
 											askPresentation.mode === "docked"
 												? undefined

@@ -486,6 +486,7 @@ export function SkillSuggestionsPopup({
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
 			aria-label={t("ui.chat.pickers.skills.title")}
+			data-lo-floating=""
 			className={cn(
 				"absolute bottom-full left-0 right-0 z-20 mb-1",
 				"overflow-hidden rounded-md bg-elevated",

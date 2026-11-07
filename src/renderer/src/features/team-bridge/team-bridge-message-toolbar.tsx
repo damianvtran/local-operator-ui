@@ -222,6 +222,7 @@ export function TeamBridgeMessageToolbar({
 				aria-label={t("ui.teamBridge.actions.label")}
 				aria-orientation="horizontal"
 				onKeyDown={onKeyDown}
+				data-lo-floating=""
 				className={cn(
 					/* `shadow-overlay`: the contract's one shadow, for what leaves the
 					   flow (design round 1, D5). */

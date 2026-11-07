@@ -753,6 +753,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 		return (
 			<output
 				ref={shellRef}
+				data-lo-floating=""
 				className={cn(
 					"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
 					"overflow-hidden rounded-md bg-elevated",
@@ -825,6 +826,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
 			aria-label={t("ui.chat.pickers.at_menu.region_label")}
+			data-lo-floating=""
 			className={cn(
 				"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the row

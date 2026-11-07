@@ -1748,6 +1748,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						// in `styles/index.css`). The press handler is on the CONTAINER so the
 						// header and the padding keep the field's focus too: a press there used
 						// to blur the field and discard the draft (QA Q2).
+						data-lo-floating=""
 						className="absolute start-0 end-0 top-[calc(100%+5px)] z-20 overflow-hidden rounded-md bg-elevated shadow-overlay"
 						data-tour-tag="browser-address-suggestions"
 						data-address-list-placement="dom"

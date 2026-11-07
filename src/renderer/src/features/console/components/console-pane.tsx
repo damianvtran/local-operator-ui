@@ -1516,6 +1516,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 */}
 			{session.cleanupNotice !== null ? (
 				<output
+					data-lo-floating=""
 					className={cn(
 						/*
 						 * POINTER-TRANSPARENT (design round 3, D15): the notice is status text, not a

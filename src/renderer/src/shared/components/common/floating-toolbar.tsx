@@ -95,6 +95,7 @@ export const FloatingToolbar = forwardRef<HTMLDivElement, FloatingToolbarProps>(
 				ref={ref}
 				role="toolbar"
 				aria-label={label}
+				data-lo-floating=""
 				className={cn(FLOATING_TOOLBAR_CHROME, className)}
 				onMouseDown={(event) => event.preventDefault()}
 			>

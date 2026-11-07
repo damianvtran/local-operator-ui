@@ -205,6 +205,7 @@ export const TeamBridgeComposeBar: FC<{
 					role="listbox"
 					aria-label={t("ui.teamBridge.compose.label")}
 					// A floating list, so the one floating shadow (branding § 2), not `shadow-lg`.
+					data-lo-floating=""
 					className="absolute top-full right-5 left-5 z-20 mt-1 max-h-64 overflow-y-auto rounded-lg bg-elevated p-1 shadow-overlay"
 				>
 					{options.map((option, index) => {

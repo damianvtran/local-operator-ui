@@ -62,7 +62,21 @@
  *       floating primitive, or wears one beside `shadow-overlay`, makes
  *       tailwind-merge DROP `shadow-overlay` (its class group, `utils.ts`) - and
  *       with it the contact layer and the glass contact (agent review round 1,
- *       R3). The image lightbox is the one named exception: it is not a panel.
+ *       R3). The image lightbox's `DialogContent` is the one named exception, keyed
+ *       by file AND tag so the rest of that file stays covered: it is not a panel.
+ *
+ *  O-8  WEARS THE SHADOW, CARRIES THE MARKER. The two stylesheet rules keyed on
+ *       `[data-lo-floating]` (the focus reset's exclusion, O-6, and the
+ *       forced-colors edge, O-4b) reach only what carries the marker, and ~25
+ *       hand-rolled panels wore `shadow-overlay` without it - so the mini sheet
+ *       and the update card, which focus THEMSELVES, lost their only separation on
+ *       a keyboard open, and none of them got the forced-colors edge (agent review
+ *       round 2, N1). The population is derived the O-1 way: every element that
+ *       wears the one shadow is floating, including a floating CONTROL such as the
+ *       scroll-to-bottom button - it leaves the flow over moving text exactly as a
+ *       panel does, so it keeps its elevation on focus and gets the edge under
+ *       forced colors. There is no exception list; a panel whose float is
+ *       conditional (the ask drawer, the message strip) marks conditionally.
  *
  * WHAT "NO BORDER" RESTS ON. There is no DOM here, so a computed border-width is
  * argued rather than measured - this file asserts no computed value - and the
@@ -79,7 +93,12 @@
  * Beyond the walk's reach: an INLINE `style` that sets a border, a class string
  * composed at runtime, and a class constant imported from another module - so this
  * file does not promise no panel can ever again carry a stroke, it promises that
- * the two shapes this codebase writes are decisions.
+ * the two shapes this codebase writes are decisions. O-8 has the same reach: a
+ * surface that takes `var(--shadow-overlay)` through an inline style or a DOM
+ * builder is not a class and is not counted. The canvas diff widget
+ * (`code-editor-diff.ts`) sets the marker by hand; the toast container, the
+ * spreadsheet's third-party theme and the search theme style elements this
+ * renderer does not author, and are not marked.
  * The rendered confirmation over real themes and over window glass is a browser
  * run's evidence, not this file's.
  */
@@ -380,7 +399,7 @@ const OTHER_SHADOW =
  * so there is nothing to lift. A new entry here needs the same kind of reason.
  */
 const SHADOW_OVERRIDE_ALLOWED = new Set([
-	"src/renderer/src/shared/components/common/image-lightbox.tsx",
+	"src/renderer/src/shared/components/common/image-lightbox.tsx DialogContent",
 ]);
 
 test("O-7 no floating call site trades the one shadow for another", () => {
@@ -393,7 +412,10 @@ test("O-7 no floating call site trades the one shadow for another", () => {
 				FLOATING_CALL_SITES.test(tag.name) || /\bshadow-overlay\b/.test(text);
 			if (!floating) continue;
 			const others = [...text.matchAll(OTHER_SHADOW)].map((m) => m[0]);
-			if (others.length > 0 && !SHADOW_OVERRIDE_ALLOWED.has(path))
+			if (
+				others.length > 0 &&
+				!SHADOW_OVERRIDE_ALLOWED.has(`${path} ${tag.name}`)
+			)
 				offenders.push(`${path}: <${tag.name}> ${others.join(", ")}`);
 		}
 	}
@@ -401,5 +423,71 @@ test("O-7 no floating call site trades the one shadow for another", () => {
 		offenders,
 		[],
 		`tailwind-merge puts \`shadow-overlay\` in Tailwind's shadow group (\`utils.ts\`), so a second \`shadow-*\` on a floating panel DROPS it - the contact layer and the glass contact go with it (agent review round 1, R3). Remove the override:\n${offenders.join("\n")}`,
+	);
+});
+
+/** The one shadow as a CLASS - the lookbehind keeps `var(--shadow-overlay)` out. */
+const FLOATING_SHADOW_CLASS = /(?<![\w-])shadow-overlay(?![\w-])/;
+const MARKER_ATTRIBUTE = /(?<![\w-])data-lo-floating\s*=/g;
+/* No `g`: a per-tag `test`, so no lastIndex carries between tags. */
+const HAS_MARKER = /(?<![\w-])data-lo-floating\s*=/;
+const CLASS_NAME_PROP = /\bclassName\b/;
+const LINE_BREAK = /\n/;
+const stripComments = (text) =>
+	stripLineComments(text.replace(/\/\*[\s\S]*?\*\//g, " "));
+
+test("O-8 every element that wears the floating shadow carries the marker", () => {
+	const offenders = [];
+	let tags = 0;
+	for (const path of rendererFiles()) {
+		const source = read(path);
+		const code = stripComments(source);
+		const shadowConstants = [
+			...moduleLevelClassConstants(source, { opening: PANEL_CLASS_VALUE }),
+		]
+			.filter(([, value]) => FLOATING_SHADOW_CLASS.test(stripComments(value)))
+			.map(([name]) => new RegExp(`\\b${name}\\b`));
+		/*
+		 * BY ELEMENT, where the walk reaches: the marker must sit on the tag that
+		 * wears the shadow (directly or through a same-file constant), not on a
+		 * wrapper. `className` gates the constant path so a TypeScript generic such
+		 * as `VariantProps<typeof sheetVariants>`, which the walk reads as a tag, is
+		 * not mistaken for an element.
+		 */
+		for (const tag of openingTags(source)) {
+			const text = stripLineComments(tag.text);
+			const wears =
+				FLOATING_SHADOW_CLASS.test(text) ||
+				(CLASS_NAME_PROP.test(text) &&
+					shadowConstants.some((name) => name.test(text)));
+			if (!wears) continue;
+			tags++;
+			if (!HAS_MARKER.test(text)) offenders.push(`${path}: <${tag.name}>`);
+		}
+		/*
+		 * BY COUNT, for what the walk cannot delimit: `/`-commands, the skill picker,
+		 * the compose bar and the mini sheet are NOT reached through `openingTags`
+		 * (see this file's header), and the mini sheet is one of the two panels that
+		 * focus themselves. Each code line wearing the shadow class is one floating
+		 * element (a constant counts once, and is worn at least once), so a file
+		 * needs at least as many markers as it has such lines.
+		 */
+		const wearing = code
+			.split(LINE_BREAK)
+			.filter((line) => FLOATING_SHADOW_CLASS.test(line)).length;
+		const marked = (code.match(MARKER_ATTRIBUTE) ?? []).length;
+		if (marked < wearing)
+			offenders.push(
+				`${path}: ${wearing} element(s) wear shadow-overlay, ${marked} carry data-lo-floating`,
+			);
+	}
+	assert.ok(
+		tags >= 25,
+		`the walk reached ${tags} elements wearing the shadow; a scan that sees none passes vacuously`,
+	);
+	assert.deepEqual(
+		offenders,
+		[],
+		`an element wears \`shadow-overlay\` without \`data-lo-floating\`, so the focus reset strips its elevation when it takes focus and forced-colors mode leaves it edgeless (agent review round 2, N1). Add \`data-lo-floating=""\` to the element that wears the shadow (conditionally, if it only floats in one mode):\n${offenders.join("\n")}`,
 	);
 });

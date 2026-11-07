@@ -117,6 +117,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 
 	return (
 		<div
+			data-lo-floating={inline ? undefined : ""}
 			className={cn(
 				"flex items-center gap-0.5",
 				inline

@@ -2128,6 +2128,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 					? t("ui.chat.pickers.slash.arguments_region_label")
 					: t("ui.chat.pickers.slash.region_label")
 			}
+			data-lo-floating=""
 			className={cn(
 				"@container/slash absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the
