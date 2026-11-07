@@ -3931,7 +3931,8 @@ test("file Save: each relay answer has its own state, register and focus", async
 			state: "too_large",
 			key: "ui.teamBridge.fileCard.too_large",
 			control: false,
-			danger: true,
+			// Not retryable, so no alarm (design round 1, D4).
+			danger: false,
 		},
 		// Transport, upstream and rate failures: the reader may press again.
 		{
@@ -3971,6 +3972,15 @@ test("file Save: each relay answer has its own state, register and focus", async
 				'[data-bridge-file-card="available"]',
 			);
 			const button = saveButton(card);
+			// D2: the image tile's Save, exactly - radius, 16px glyph, inset ring.
+			for (const cls of [
+				"size-7",
+				"rounded-xs",
+				"hover:bg-row-hover",
+				"focus-visible:-outline-offset-2",
+			])
+				assert.ok(button.classList.contains(cls), `${expected.status} ${cls}`);
+			assert.equal(button.querySelector("svg").getAttribute("width"), "16");
 			button.focus();
 			await press(button);
 			const label = String(expected.status);
@@ -3982,12 +3992,20 @@ test("file Save: each relay answer has its own state, register and focus", async
 			assert.ok(card.textContent.includes(m.t(expected.key)), label);
 			assert.ok(!card.textContent.includes("private reason"), label);
 			assert.equal(Boolean(saveButton(card)), expected.control, label);
+			/* Danger marks a RETRYABLE failure by its glyph, never its words
+			   (design round 1, D3/D4): the status text stays in the status ink,
+			   and the tile's kind glyph becomes a danger alert glyph. */
 			const status = card.querySelector("[aria-live]");
-			assert.equal(
-				status.classList.contains("text-danger"),
-				expected.danger,
-				label,
-			);
+			assert.equal(status.classList.contains("text-danger"), false, label);
+			assert.ok(status.classList.contains("text-ink-dim"), label);
+			// D1: the status wraps to two lines and the card grows, never clips.
+			assert.ok(status.classList.contains("line-clamp-2"), label);
+			assert.ok(!status.classList.contains("truncate"), label);
+			assert.ok(card.classList.contains("min-h-12"), label);
+			assert.ok(!card.classList.contains("h-12"), label);
+			const glyph = card.querySelector("[data-file-save-failed]");
+			assert.equal(Boolean(glyph), expected.danger, label);
+			if (glyph) assert.ok(glyph.classList.contains("text-danger"), label);
 			// Focus never falls to the document: the control keeps it, or the card takes it.
 			assert.equal(
 				document.activeElement,
@@ -4128,6 +4146,48 @@ test("file Save: the proposed name is the descriptor's, made safe, with a class 
 	assert.equal(name(undefined, "container", 2), "file-3.zip");
 	assert.equal(name(undefined, "other", 0), "file-1");
 	assert.equal(name("///", "pdf", 0), "file-1.pdf");
+	/* R2: Unicode format characters go by the bridge's own rule - a bidi
+	   override would show `invoiceexe.pdf` in the dialog and save an `.exe`. */
+	assert.equal(name("invoice\u202Efdp.exe", "other"), "invoicefdp.exe");
+	assert.equal(name("a\u200Eb.txt", "text"), "ab.txt");
+	assert.equal(name("\u2066report\u2069.pdf"), "report.pdf");
+	assert.equal(name("x\u200By\uFEFF.txt", "text"), "xy.txt");
+	// ZWNJ/ZWJ shape hi/ur names and build emoji: kept.
+	assert.equal(name("می\u200Cخواهم.txt", "text"), "می\u200Cخواهم.txt");
+	assert.equal(name("क्\u200Dष.pdf"), "क्\u200Dष.pdf");
+	/* R3: a 200-byte UTF-8 budget with the extension kept whole. */
+	const bytes = (value) => new TextEncoder().encode(value).byteLength;
+	const long = name(`${"a".repeat(300)}.pdf`);
+	assert.equal(bytes(long), 200);
+	assert.ok(long.endsWith("a.pdf"), long);
+	const wide = name(`${"報".repeat(300)}.xlsx`, "other");
+	assert.ok(bytes(wide) <= 200, String(bytes(wide)));
+	assert.ok(wide.endsWith("報.xlsx"), wide);
+	assert.equal(bytes(name("😀".repeat(300), "other")), 200);
+	assert.equal(name("short.pdf"), "short.pdf");
+	/* R4: Windows device names, bare or with an extension, become files. */
+	for (const device of [
+		"CON",
+		"prn",
+		"Aux",
+		"NUL",
+		"COM1",
+		"com9",
+		"LPT1",
+		"lpt9",
+	]) {
+		assert.equal(name(device, "other"), `_${device}`);
+		assert.equal(name(`${device}.txt`, "text"), `_${device}.txt`);
+	}
+	assert.equal(name("nul.tar.gz", "other"), "_nul.tar.gz");
+	for (const ordinary of [
+		"CONSOLE.txt",
+		"COM10.txt",
+		"lpt0.txt",
+		"aux-notes.md",
+		"nullable.ts",
+	])
+		assert.equal(name(ordinary, "text"), ordinary);
 	for (const status of [404, 401, 403, 409, 410, 422])
 		assert.equal(m.fileSaveFailure(status), "unavailable", String(status));
 	assert.equal(m.fileSaveFailure(413), "too_large");

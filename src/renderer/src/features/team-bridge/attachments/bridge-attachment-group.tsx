@@ -1,5 +1,4 @@
 import { Spinner } from "@shared/components/common/spinner";
-import { Button } from "@shared/components/ui/button";
 /**
  * Presentation, plus the generic file's Save: resource authority stays with the
  * caller. In particular, owner-audit descriptors must never fall through to the
@@ -11,7 +10,14 @@ import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Clock, Download, FileIcon, FileX, ImageIcon } from "lucide-react";
+import {
+	CircleAlert,
+	Clock,
+	Download,
+	FileIcon,
+	FileX,
+	ImageIcon,
+} from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import {
@@ -37,6 +43,7 @@ import {
 	splitFileNameTail,
 } from "./attachment-model";
 import {
+	CLUSTER_BUTTON_CLASS,
 	type InlineImageBox,
 	InlineImageFailure,
 	InlineImageOverflow,
@@ -512,10 +519,10 @@ function BridgeFileCard({
 		: size
 			? t("ui.chat.attachments.file_meta", { type, size })
 			: type;
-	/* The status line says the one thing that is true now. The danger register
-	 * is for a save that FAILED (the relay was unreachable, or the file is over
-	 * the ceiling); an expired or refused file is a fact about the file, read in
-	 * the same muted register as every other unavailable card. */
+	/* The status line says the one thing that is true now, always in the card's
+	 * status ink. An expired, refused or over-ceiling file is a fact about the
+	 * file: `too_large` can never succeed and offers no control, so it takes no
+	 * alarm at all (design round 1, D4). */
 	const status =
 		view === "expired"
 			? t("ui.teamBridge.fileCard.expired")
@@ -528,7 +535,18 @@ function BridgeFileCard({
 						: phase === "too_large"
 							? t("ui.teamBridge.fileCard.too_large")
 							: facts;
-	const danger = available && (phase === "failed" || phase === "too_large");
+	/*
+	 * A RETRYABLE failure is marked by its GLYPH, not its words (design round 1,
+	 * D3). `danger` as 11px text on this card's `mediaSurface` fill measured
+	 * 4.17-4.44:1 in ten light palettes, under the 4.5:1 text floor, and
+	 * re-authoring `danger` would move every danger surface in the app. So the
+	 * words stay in the status ink and a `danger` alert glyph replaces the kind
+	 * glyph in the tile (the composer's dictation-failure pattern), on the
+	 * tile's `elevated` fill - a pairing the contract asserts at the text floor
+	 * ("team bridge file card failure glyph"). Without colour it still reads as
+	 * a failure: a distinct glyph and "Couldn't save. Try again."
+	 */
+	const failed = available && phase === "failed";
 	return (
 		<li
 			ref={card}
@@ -536,13 +554,27 @@ function BridgeFileCard({
 			style={{ width }}
 			data-bridge-file-card={view}
 			data-file-save={available && readFile ? phase : undefined}
+			/*
+			 * GROWS, NEVER CLIPS (design round 1, D1). The shared chip is a fixed
+			 * 48px; a file card's status can need two lines (`ru`, and `ur` in the
+			 * compact 240px card, cut "try again" mid-word). So this card is a
+			 * 48px MINIMUM with the chip's own 6px vertical breathing room: one-line
+			 * cards measure exactly as before, and a long locale adds a line.
+			 */
 			className={cn(
 				CHIP_CLASS,
-				"gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus",
+				"h-auto min-h-12 gap-2.5 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus",
 			)}
 		>
 			<span className={cn(CHIP_TILE_CLASS, "text-ink-muted")}>
-				{available ? (
+				{failed ? (
+					<CircleAlert
+						size={16}
+						aria-hidden="true"
+						data-file-save-failed=""
+						className="text-danger"
+					/>
+				) : available ? (
 					<AttachmentKindIcon
 						name={name ?? ""}
 						mimeType={CLASS_MIME.get(file.fileClass)}
@@ -571,21 +603,22 @@ function BridgeFileCard({
 				{status && (
 					<span
 						aria-live="polite"
-						className={cn(
-							"block truncate text-meta-sm",
-							danger ? "text-danger" : "text-ink-dim",
-						)}
+						/* Up to two lines, never one: the second half of the failure copy
+						   is the remedy ("Try again"), and a single-line truncate deleted
+						   it in two shipped locales (design round 1, D1). The copy is
+						   two short sentences by contract, so two lines hold it. */
+						className="line-clamp-2 break-words text-meta-sm text-ink-dim"
 					>
 						{status}
 					</span>
 				)}
 			</span>
 			{offersSave && (
-				<Button
+				<button
+					type="button"
 					ref={button}
-					variant="ghost"
-					size="icon-sm"
-					className="shrink-0"
+					/* The image tile's Save, exactly (design round 1, D2). */
+					className={cn(CLUSTER_BUTTON_CLASS, "shrink-0")}
 					/* D9: a position, never the name. The tooltip is the image tile's
 					   own plain "Save as…", the same action through the same dialog. */
 					aria-label={t("ui.teamBridge.fileCard.save", {
@@ -600,11 +633,11 @@ function BridgeFileCard({
 					onClick={() => void save()}
 				>
 					{phase === "saving" ? (
-						<Spinner size="xs" />
+						<Spinner size="sm" />
 					) : (
-						<Download aria-hidden="true" />
+						<Download size={16} aria-hidden="true" />
 					)}
-				</Button>
+				</button>
 			)}
 		</li>
 	);

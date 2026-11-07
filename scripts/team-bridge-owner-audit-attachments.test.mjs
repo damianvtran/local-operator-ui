@@ -690,13 +690,21 @@ test("file lane: exactly octet-stream under core's headers; pictures, HTML and S
 				`${label} ${missing}`,
 			);
 		}
-		assert.equal(
-			(await read(new Response(new Uint8Array(0), { headers: fileHeaders() })))
-				.status,
-			422,
-			label,
+		/* A zero-byte FILE is a file (agent review round 1, R1 / QA Q1): served
+		   as an empty body for the Save, never refused as unreadable. */
+		const empty = await read(
+			new Response(new Uint8Array(0), { headers: fileHeaders() }),
 		);
+		assert.equal(empty.status, 200, label);
+		assert.equal(empty.kind, "bytes", label);
+		assert.equal(empty.data.byteLength, 0, label);
 	}
+	// A zero-byte PICTURE is still refused: there is nothing to decode.
+	const emptyImage = await m.readOwnerAuditAttachment(
+		new Response(new Uint8Array(0), { headers: headers("image/png") }),
+	);
+	assert.equal(emptyImage.kind, "error");
+	assert.equal(emptyImage.status, 422);
 	// Anything but the exact string keeps the picture lane: no drift into opaque bytes.
 	for (const stale of [true, "FILE", "files", 1, undefined])
 		assert.equal(

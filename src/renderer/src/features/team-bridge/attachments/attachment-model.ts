@@ -1,3 +1,5 @@
+import { stripFormatCharacters } from "../../chat/components/trace/bridge-row-model";
+
 /** Wire metadata is untrusted; neither dimensions nor state grant byte access. */
 export type BridgeAttachmentDescriptor = {
 	id: string;
@@ -207,6 +209,47 @@ const UNSAFE_NAME = /[\\/:*?"<>|]/g;
 /* Leading/trailing spaces and dots: a hidden file, or a name Windows refuses. */
 const NAME_EDGES = /^[\s.]+|[\s.]+$/g;
 const HAS_MEANING = /[^_]/;
+/*
+ * Windows' reserved device names, bare or with any extension (`CON`, `nul.txt`,
+ * `COM1.tar.gz`): the save dialog either refuses them or opens the device
+ * instead of a file (agent review round 1, R4). A `_` prefix keeps the name
+ * recognisable and makes it an ordinary file on every platform.
+ */
+const RESERVED_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
+/*
+ * The proposed name's UTF-8 budget (agent review round 1, R3). Most desktop
+ * file systems cap a name at 255 BYTES, not characters, and a CJK or Devanagari
+ * name spends three per code point; 200 leaves room for the `(1)` a dialog
+ * appends on a clash. Bytes, measured with `TextEncoder`, because a character
+ * count under-reads exactly the names this card exists to show.
+ */
+const SAVE_NAME_MAX_BYTES = 200;
+const utf8 = new TextEncoder();
+
+/**
+ * `name` cut to `SAVE_NAME_MAX_BYTES`, at code-point boundaries (never through
+ * a surrogate pair), with the extension kept whole when it is short enough to
+ * be one (`MAX_EXTENSION_TAIL`, the card's own rule): the extension is what a
+ * platform opens the saved file with, so it is the last thing to lose.
+ */
+function capSaveName(name: string): string {
+	if (utf8.encode(name).byteLength <= SAVE_NAME_MAX_BYTES) return name;
+	const chars = Array.from(name);
+	const dot = chars.lastIndexOf(".");
+	const keep =
+		dot > 0 && chars.length - dot <= MAX_EXTENSION_TAIL
+			? chars.slice(dot).join("")
+			: "";
+	const stem = chars.slice(0, keep ? dot : chars.length);
+	let budget = SAVE_NAME_MAX_BYTES - utf8.encode(keep).byteLength;
+	let end = 0;
+	for (; end < stem.length; end++) {
+		const cost = utf8.encode(stem[end]).byteLength;
+		if (cost > budget) break;
+		budget -= cost;
+	}
+	return `${stem.slice(0, end).join("").replace(NAME_EDGES, "")}${keep}`;
+}
 const CLASS_EXTENSION = new Map([
 	["pdf", ".pdf"],
 	["text", ".txt"],
@@ -228,15 +271,23 @@ export function fileSaveName(
 	file: BridgeFileDescriptor,
 	index: number,
 ): string {
-	// C0/C1 controls by code point: a regex range over them is unreadable.
-	const cleaned = Array.from(file.displayName ?? "", (character) => {
-		const code = character.codePointAt(0) ?? 0;
-		return code < 0x20 || (code >= 0x7f && code <= 0x9f) ? "_" : character;
-	})
-		.join("")
-		.replace(UNSAFE_NAME, "_")
-		.replace(NAME_EDGES, "");
-	if (cleaned && HAS_MEANING.test(cleaned)) return cleaned;
+	/*
+	 * Format characters first, by the bridge's own rule (agent review round 1,
+	 * R2): `invoice\u202Efdp.exe` shows as `invoiceexe.pdf` in a save dialog and
+	 * lands on disk as an executable. ZWNJ/ZWJ survive - they shape hi/ur names.
+	 * Then C0/C1 controls by code point: a regex range over them is unreadable.
+	 */
+	const cleaned = capSaveName(
+		Array.from(stripFormatCharacters(file.displayName ?? ""), (character) => {
+			const code = character.codePointAt(0) ?? 0;
+			return code < 0x20 || (code >= 0x7f && code <= 0x9f) ? "_" : character;
+		})
+			.join("")
+			.replace(UNSAFE_NAME, "_")
+			.replace(NAME_EDGES, ""),
+	);
+	if (cleaned && HAS_MEANING.test(cleaned))
+		return RESERVED_DEVICE_NAME.test(cleaned) ? `_${cleaned}` : cleaned;
 	return `file-${index + 1}${CLASS_EXTENSION.get(file.fileClass) ?? ""}`;
 }
 

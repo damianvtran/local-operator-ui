@@ -71,8 +71,13 @@ const CLUSTER_CLASS = cn(
 	"group-hover/tile:pointer-events-auto group-hover/tile:opacity-100",
 	"group-focus-within/tile:pointer-events-auto group-focus-within/tile:opacity-100",
 );
-/* Hover is a colour step, focus an outline (AGENTS.md, Design and branding). */
-const CLUSTER_BUTTON_CLASS =
+/*
+ * Hover is a colour step, focus an outline (AGENTS.md, Design and branding).
+ * Exported because the file card's Save is the SAME action through the same
+ * dialog, so it is the same control (design round 1, D2): one radius, glyph
+ * size, hover step and inset ring for both, instead of two families.
+ */
+export const CLUSTER_BUTTON_CLASS =
 	"flex size-7 items-center justify-center rounded-xs text-ink-muted hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus";
 
 export function InlineImageTile({

@@ -655,6 +655,22 @@ export const CONTROLS = [
 		edge: false,
 	},
 	/*
+	 * THE FILE CARD'S RETRYABLE-FAILURE GLYPH (decision a-fdf0; design round 1,
+	 * D3). The tile's kind glyph becomes a `danger` alert glyph while a Save
+	 * can be retried. `danger` as the card's 11px status TEXT on `mediaSurface`
+	 * measured 4.17-4.44:1 in ten light palettes, so the colour moved to the
+	 * glyph and onto the tile's own `elevated` fill, held here at the text
+	 * floor - stricter than the 3:1 a non-text glyph needs (WCAG 1.4.11).
+	 */
+	{
+		name: "team bridge file card failure glyph",
+		on: ["mediaSurface"],
+		fill: "elevated",
+		border: null,
+		ink: "danger",
+		edge: false,
+	},
+	/*
 	 * THE INLINE IMAGE ACTION CLUSTER: Open and Save float over the picture's
 	 * top corner on hover/focus, an overlay (`shadow-overlay`), so its ground is
 	 * the PICTURE - unknowable - and the cluster's own `elevated` fill is what

@@ -30,16 +30,28 @@ type Lane = {
 	cap: number;
 	/** Read the refusal's declared code (bounded) to tell "too large" apart. */
 	declared: boolean;
+	/**
+	 * Whether a zero-byte body is a valid answer. A picture with no bytes cannot
+	 * be decoded, so the image lane refuses it (422) rather than handing the
+	 * renderer a broken `<img>`. A FILE may legitimately be empty - core #3521
+	 * serves a bound empty upload in file mode - and refusing it left the Save
+	 * permanently "unavailable" for a file that exists (agent review round 1,
+	 * R1 / QA Q1). The owner-audit route's own empty-body refusal is core's to
+	 * fix; main does not special-case either authority.
+	 */
+	allowsEmpty: boolean;
 };
 const IMAGE_LANE: Lane = {
 	types: new Set(["image/png", "image/jpeg"]),
 	cap: IMAGE_CAP,
 	declared: false,
+	allowsEmpty: false,
 };
 const FILE_LANE: Lane = {
 	types: new Set(["application/octet-stream"]),
 	cap: TEAM_BRIDGE_FILE_MAX_BYTES,
 	declared: true,
+	allowsEmpty: true,
 };
 
 /*
@@ -147,7 +159,7 @@ async function readGuardedBytes(
 			}
 			chunks.push(value);
 		}
-		if (size === 0) return refusal(422);
+		if (size === 0 && !lane.allowsEmpty) return refusal(422);
 		const data = new Uint8Array(size);
 		let offset = 0;
 		for (const chunk of chunks) {
