@@ -149,8 +149,9 @@ export const JobCancelPopover = ({
 				bottom: placement.bottom,
 				width: CARD_WIDTH,
 			}}
+			data-lo-floating=""
 			className={cn(
-				"z-50 max-w-[calc(100vw-2rem)] rounded-md border border-hairline bg-elevated p-4",
+				"z-50 max-w-[calc(100vw-2rem)] rounded-md bg-elevated p-4",
 				"text-body-sm text-ink shadow-overlay",
 			)}
 		>
@@ -181,7 +182,9 @@ export const JobCancelPopover = ({
 				 */}
 				<Button
 					ref={keepRef}
-					variant="secondary"
+					// `tonal`, not `secondary`: this card floats, and a bordered button
+					// inside a borderless floating panel rebuilds the box (branding § 2).
+					variant="tonal"
 					size="sm"
 					data-job-confirm-keep=""
 					disabled={busy}

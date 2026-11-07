@@ -118,6 +118,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 
 	return (
 		<div
+			data-lo-floating=""
 			className={cn(
 				"absolute top-1 end-1 z-10 flex items-center gap-1 rounded-md bg-elevated p-1 shadow-overlay",
 				containerClassName,

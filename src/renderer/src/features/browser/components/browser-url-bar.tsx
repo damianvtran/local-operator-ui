@@ -1741,13 +1741,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					   rule. It registers no native-view suppression: nothing here touches
 					   the page view. */
 					<div
-						// `border-control`, the role the contrast contract registers for
-						// "browser address suggestions" (design D7); the hairline measured
-						// 1.23:1 on this ground. The press handler is on the CONTAINER so
-						// the header, the padding and the border keep the field's focus
-						// too: a press there used to blur the field and discard the draft
-						// (QA Q2).
-						className="absolute start-0 end-0 top-[calc(100%+5px)] z-20 overflow-hidden rounded-md border border-control bg-elevated shadow-overlay"
+						// NO BORDER (2026-11-06). This panel used to take `border-control` because
+						// the hairline measured 1.23:1 against its ground; the stroke is gone with
+						// every other floating surface, and the boundary it drew is now the
+						// contact layer of the one shadow (`shadow-overlay`, see "-- elevation --"
+						// in `styles/index.css`). The press handler is on the CONTAINER so the
+						// header and the padding keep the field's focus too: a press there used
+						// to blur the field and discard the draft (QA Q2).
+						data-lo-floating=""
+						className="absolute start-0 end-0 top-[calc(100%+5px)] z-20 overflow-hidden rounded-md bg-elevated shadow-overlay"
 						data-tour-tag="browser-address-suggestions"
 						data-address-list-placement="dom"
 						onMouseDown={(event) => event.preventDefault()}

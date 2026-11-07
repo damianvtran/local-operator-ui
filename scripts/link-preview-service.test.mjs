@@ -80,6 +80,16 @@ function cacheDouble(codes = {}) {
 		dropped,
 		stored,
 		cache: {
+			/**
+			 * The fence value the service takes BEFORE its media round trip and hands
+			 * back to `store` (the cache's clear-is-a-fence rule). A double that did not
+			 * answer this would make the service's epoch capture throw, which is how this
+			 * row failed the first time the port was added; a constant is the honest
+			 * double for a test that never clears mid-flight.
+			 */
+			currentEpoch() {
+				return 0;
+			},
 			// The real signature: a hit is the answer for THIS (id, receipt) pair.
 			async read(id, accountFingerprint) {
 				if (codes.hit === undefined) return null;

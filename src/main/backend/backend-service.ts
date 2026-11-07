@@ -65,6 +65,7 @@ import {
 } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { type UserShellPath, withUserShellPath } from "../shell-path";
+import type { TeamBridgeImageCache } from "../team-bridge-image-cache";
 import {
 	readInstallIdentity,
 	resolveGlobalConsoleScript,
@@ -990,6 +991,19 @@ export class BackendServiceManager {
 	private desktopToken: string | null =
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null;
 
+	/**
+	 * The Team Bridge image cache (`../team-bridge-image-cache`), attached by
+	 * `src/main/index.ts` once the app is ready.
+	 *
+	 * WHY A SETTER RATHER THAN A CONSTRUCTOR OPTION. This manager is constructed at
+	 * module load (`index.ts`), before there is a `userData` path to put a cache
+	 * directory under; the cache is built in the ready block beside the link-preview
+	 * one. `null` - a test, a rig, or a process that never attached one - means the
+	 * relay has no cache and every read is a fetch, which is the behaviour before
+	 * this existed.
+	 */
+	private teamBridgeImages: TeamBridgeImageCache | null = null;
+
 	/** Authenticated SSE relay for canonical session events. Recreated when the
 	 * backend URL rotates (external-backend discovery) or the desktop token does
 	 * (every managed start mints one), and dropped outright by `stop()`.
@@ -1076,6 +1090,17 @@ export class BackendServiceManager {
 	 * outlive the backend it described.
 	 */
 	private backendReadyObserver: (() => void) | null = null;
+
+	/**
+	 * Attach the Team Bridge image cache, once, from the ready block that owns it.
+	 *
+	 * Called from the same place that owns the cache's lifetime, so there is one
+	 * owner for "does this process cache message images". Idempotent, and passing
+	 * `null` detaches it - useful to a test, never used by the app.
+	 */
+	attachTeamBridgeImageCache(cache: TeamBridgeImageCache | null): void {
+		this.teamBridgeImages = cache;
+	}
 
 	onBackendReady(observer: (() => void) | null): void {
 		this.backendReadyObserver = observer;
@@ -1392,6 +1417,7 @@ export class BackendServiceManager {
 			bytes,
 			this.backendUrl,
 			this.desktopToken,
+			this.teamBridgeImages,
 		).then(({ response, answered }) => {
 			// A media answer is recorded as LIVENESS and nothing else, and the
 			// reason is structural rather than provisional: `desktopAnswerProvesPairing`

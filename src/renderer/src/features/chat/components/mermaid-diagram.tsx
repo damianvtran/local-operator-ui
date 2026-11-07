@@ -415,6 +415,7 @@ const DiagramControls: FC<DiagramControlsProps> = ({
 	children,
 }) => (
 	<div
+		data-lo-floating=""
 		className={cn(
 			"absolute z-10 flex items-center gap-0.5 rounded-md bg-elevated p-1 shadow-overlay",
 			className,

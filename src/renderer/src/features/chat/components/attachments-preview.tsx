@@ -325,7 +325,7 @@ const AttachmentTile: FC<{
 				</Tooltip>
 			</div>
 			{(image || video) && url && (
-				<div className={LARGE_PREVIEW}>
+				<div data-lo-floating="" className={LARGE_PREVIEW}>
 					{url && image ? (
 						<img
 							src={url}

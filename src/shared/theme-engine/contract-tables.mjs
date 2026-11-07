@@ -411,6 +411,41 @@ export const CONTROLS = [
 		border: "accentActive",
 		ink: "onAccent",
 	},
+	/*
+	 * THE TONAL BUTTON: the action inside a floating surface (`button.tsx`,
+	 * variant `tonal`). It lives on `elevated` - menus, popovers, dialogs, sheets
+	 * are all that ground - and its three states are a ground ramp with `ink` on
+	 * top. It draws no border and its fill is a ground STEP off the panel, never a
+	 * 3:1 boundary (no ground pair in any palette is), so the rows declare
+	 * `edge: false` like the library card and the reaction pills; the step itself
+	 * (ΔE00 >= 6.07 `sunken` off `elevated`) is the ground ladder's own assertion.
+	 * `STRUCTURAL_CALL_SITES` pins the variant's classes, so a row cannot stay
+	 * green about a button that stopped wearing these fills.
+	 */
+	{
+		name: "tonal button",
+		on: ["elevated"],
+		fill: "sunken",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "tonal button (hover)",
+		on: ["elevated"],
+		fill: "surface",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "tonal button (pressed)",
+		on: ["elevated"],
+		fill: "hairline",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
 	{
 		name: "outline control",
 		on: GROUNDS,

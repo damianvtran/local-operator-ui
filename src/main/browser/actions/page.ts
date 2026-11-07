@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { BrowserHostError } from "../errors";
 import { drainLogs } from "../log-capture";
 import { SCROLL_DIRECTIONS, sleep } from "../policy/adapter";
@@ -120,6 +121,254 @@ export async function read(
 	}
 	ctx.registry.touch(record);
 	return { text: String(text), ...pageOf(record.view) };
+}
+
+/**
+ * The bytes an element shows, as a fixed isolated-world function.
+ *
+ * WHY A COMMITTED SOURCE STRING and not a page program built at runtime: the
+ * same reason `READ_FUNCTION` is one — a bytecode build makes anything handed to
+ * `Function.prototype.toString()` come back as a dummy zero-width source, so a
+ * program the host cannot verify from its own tree is a program the next reader
+ * has to guess about.
+ *
+ * WHY IT ISOLATED (the mirror of `read`'s reason, and load-bearing here in a way
+ * it is not there): the text this returns is written to the USER'S CLIPBOARD, so
+ * a page that could patch `Node.prototype.textContent` (or `value` on the input
+ * prototypes) could have the host copy whatever it liked while the receipt —
+ * `chars` and `sha256` — described the lie as if it were the element's content.
+ * An isolated world shares the DOM but not the JavaScript heap, so the page
+ * cannot see this function or redefine what it reads.
+ *
+ * EXACTLY ONE ELEMENT: `querySelectorAll` rather than `querySelector`, because a
+ * selector that matches five things has no single answer, and silently copying
+ * the first is how a caller copies a header instead of a key. The refusal names
+ * what DID match (bounded to five, tag/id/name only — never their text, which is
+ * what this action must not spill) so one call corrects the selector.
+ *
+ * `value` for a form field, trimmed `textContent` otherwise: an `input`'s
+ * displayed content is its value (its text nodes are empty), while markup adds
+ * the newlines and indentation of the source rather than of the text.
+ */
+export const COPY_TEXT_FUNCTION = `function (selector) {
+  const matches = document.querySelectorAll(selector);
+  if (matches.length !== 1) {
+    return {
+      status: matches.length === 0 ? "missing" : "ambiguous",
+      count: matches.length,
+      matches: Array.prototype.slice.call(matches, 0, 5).map(function (node) {
+        return {
+          tag: String(node.tagName || "").toLowerCase(),
+          id: String(node.id || ""),
+          name: String((node.getAttribute && node.getAttribute("name")) || ""),
+        };
+      }),
+    };
+  }
+  const element = matches[0];
+  const tag = String(element.tagName || "").toLowerCase();
+  const field = tag === "input" || tag === "textarea" || tag === "select";
+  const raw = field ? element.value : element.textContent;
+  return {
+    status: "ok",
+    count: 1,
+    tag: tag,
+    id: String(element.id || ""),
+    name: String((element.getAttribute && element.getAttribute("name")) || ""),
+    text: field ? String(raw === null || raw === undefined ? "" : raw) : String(raw === null || raw === undefined ? "" : raw).trim(),
+  };
+}`;
+
+/** What the page program above answers, as much of it as this module reads. */
+interface CopyAnswer {
+	status?: string;
+	count?: number;
+	matches?: Array<{ tag?: string; id?: string; name?: string }>;
+	tag?: string;
+	id?: string;
+	name?: string;
+	text?: string;
+}
+
+/** `copy`'s answer: identity proof for bytes that never travel with it. */
+export interface CopyResult {
+	/** The text's length in CODE POINTS (Python's `len`), not UTF-16 units. */
+	chars: number;
+	/** The first 16 hex characters of the UTF-8 bytes' SHA-256. */
+	sha256: string;
+	element: { tag: string; id: string; name: string };
+	/** Whether a compare-only readback in MAIN matched what was written. */
+	verified: boolean;
+}
+
+/**
+ * `copy`: put an element's bytes on the OS clipboard, from the MAIN process.
+ *
+ * WHY MAIN AND NOT THE PAGE: the page's own `navigator.clipboard.writeText` is
+ * the mechanism requirement 1 fixes (the permission grant in `profile.ts`), but
+ * a harness action cannot depend on a page permission, on a user gesture, or on
+ * the page not overriding the API — and an agent must be able to copy from a page
+ * whose copy button is broken or absent. `clipboard.writeText` in main has none
+ * of those dependencies, and this host already writes the user's clipboard from
+ * main for the page context menu's "Copy link address" (`index.ts`).
+ *
+ * WHAT NEVER LEAVES THIS FUNCTION: the text. Not in the result, not in a log
+ * line, not in an error message, not in a stack — the receipt carries `chars` and
+ * a 16-hex fingerprint instead, which is enough to prove WHICH bytes landed
+ * without ever holding them. That is the whole reason this action exists: a key
+ * displayed exactly once must reach a secret store, or a shell, without passing
+ * through a transcript on the way.
+ *
+ * THE READBACK IS COMPARE-ONLY: `clipboard.readText()` runs in main (never in a
+ * page, so it is not the read permission this session refuses), its value is
+ * compared and dropped, and only the boolean survives. A `verified: false` is an
+ * honest "something else owns the clipboard now" — the write still happened.
+ *
+ * ERRORS travel as codes from the ONE vocabulary (`protocol.py`'s `ErrorCode`,
+ * mirrored in `protocol.ts`): an unknown code is SILENTLY DROPPED by the
+ * session's model validation, and the caller then waits out its whole budget. A
+ * missing, ambiguous or invalid selector is `element_not_found` with
+ * `data.reason` naming which (the code every caller already branches on), an
+ * element that exists with no text is `empty_element_text`, and a clipboard the
+ * OS refused is `clipboard_write_failed` — the two codes added with this action,
+ * because collapsing either into the older ones would give the model advice for
+ * the wrong problem.
+ */
+export async function copy(
+	ctx: BrowserActionContext,
+	params: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+	const selector = stringParam(params, "selector");
+	if (!selector) {
+		throw new BrowserHostError("internal", "copy needs a selector", {
+			reason: "invalid_arguments",
+		});
+	}
+	const record = ctx.registry.requireSurface(params.tab);
+	const code = `(${COPY_TEXT_FUNCTION})(${JSON.stringify(selector)})`;
+	let answer: unknown;
+	try {
+		answer = await deadline(
+			record.view.webContents.executeJavaScriptInIsolatedWorld(
+				ISOLATED_WORLD_ID,
+				[{ code }],
+			),
+			SCRIPTING_DEADLINE_MS,
+			`copy(${selector})`,
+		);
+	} catch (error) {
+		// A syntax error in a selector reaches us as the isolated world's rejection;
+		// it is the caller's input, not a host fault.
+		if (error instanceof Error && INVALID_SELECTOR.test(error.message)) {
+			throw new BrowserHostError(
+				"element_not_found",
+				`selector ${selector} is not valid`,
+			);
+		}
+		throw error;
+	}
+	const read = (
+		answer && typeof answer === "object" ? answer : {}
+	) as CopyAnswer;
+	if (read.status === "missing") {
+		throw new BrowserHostError(
+			"element_not_found",
+			`selector ${selector} matched nothing`,
+		);
+	}
+	if (read.status === "ambiguous") {
+		const count = typeof read.count === "number" ? read.count : 0;
+		throw new BrowserHostError(
+			"element_not_found",
+			`selector ${selector} matched ${count} elements; copy needs exactly one`,
+			{
+				reason: "ambiguous_selector",
+				count,
+				matches: Array.isArray(read.matches) ? read.matches : [],
+			},
+		);
+	}
+	if (read.status !== "ok" || typeof read.text !== "string") {
+		// The document went away between the registry lookup and the read, or the
+		// isolated world answered something this host does not recognise. Naming it
+		// as a host fault is the honest reading: a page cannot produce this shape
+		// through the committed program above.
+		throw new BrowserHostError(
+			"internal",
+			`copy could not read the element ${selector} names`,
+			{ reason: "unreadable_answer" },
+		);
+	}
+	if (!read.text) {
+		// The element EXISTS and is empty (a cleared field, a placeholder-only
+		// button). `element_not_found` is the code the session branches on and this
+		// list has no `empty`; `reason` is what says which case it was, so the
+		// model's correction is "there is nothing to copy", not "wrong selector".
+		throw new BrowserHostError(
+			"empty_element_text",
+			`selector ${selector} matched an element with no text to copy`,
+			{ reason: "empty_text" },
+		);
+	}
+	const text = read.text;
+	/*
+	 * WHY THE ELECTRON IMPORT IS DYNAMIC AND NOT AT MODULE SCOPE: this module is
+	 * bundled by several node-only rigs (`browser-select`, `browser-chord`,
+	 * `browser-page-controls`, `browser-toolbar`, `browser-chrome-gaps` all reach it
+	 * through `select.ts`/`input.ts`/`query.ts`), and the electron package's
+	 * `index.js` calls `getElectronPath()` at module scope, which throws in plain
+	 * Node when the binary is not where it expects. A static import here would make
+	 * every one of those bundles require the electron binary just to load a module
+	 * that never touches the clipboard — so the import happens inside the ONE
+	 * function that needs it, and a rig that never calls `copy` never resolves it.
+	 */
+	const { clipboard } = await import("electron");
+	try {
+		// `await` because this runtime's clipboard is PROMISE-ONLY (Electron 45 made
+		// `writeText`/`readText` async — the same change `index.ts`'s paste handler
+		// answers with `sendSync`). A dropped rejection here would report a receipt for
+		// a copy that never happened, which is the one failure this action must not have.
+		await clipboard.writeText(text);
+	} catch (error) {
+		// The OS clipboard refused (a sandboxed or locked session, a platform
+		// without one). Never interpolate the text into this message: the caller
+		// gets the reason, not the bytes.
+		throw new BrowserHostError(
+			"clipboard_write_failed",
+			`the clipboard refused the text of ${selector}: ${error instanceof Error ? error.message : String(error)}`,
+			{ reason: "clipboard_write_failed" },
+		);
+	}
+	let verified = false;
+	try {
+		verified = (await clipboard.readText()) === text;
+	} catch {
+		// A readback that fails is not a write that failed; `verified: false` says
+		// only that this function could not confirm it.
+		verified = false;
+	}
+	const receipt: CopyResult = {
+		// `chars` is the character count a reader expects (code points, so an emoji
+		// counts once), not `String.length`'s UTF-16 units: the audience for this
+		// number is a person checking a key came across whole.
+		chars: Array.from(text).length,
+		// THE FINGERPRINT IS THE POINT OF THE RECEIPT: it lets a caller prove WHICH
+		// bytes landed on the clipboard without ever holding them, and it is what
+		// makes `lop secret set` verifiable later — re-copy the same element, compare
+		// the hash, and know the value is the one already stored.
+		sha256: createHash("sha256")
+			.update(text, "utf8")
+			.digest("hex")
+			.slice(0, 16),
+		element: {
+			tag: typeof read.tag === "string" ? read.tag : "",
+			id: typeof read.id === "string" ? read.id : "",
+			name: typeof read.name === "string" ? read.name : "",
+		},
+		verified,
+	};
+	ctx.registry.touch(record);
+	return { ...receipt };
 }
 
 /**

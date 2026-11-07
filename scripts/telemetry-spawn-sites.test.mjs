@@ -412,6 +412,14 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/browser-clipboard-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure the page clipboard gate; the build carries the live analytics key, which no scratch profile can switch off, so the child's environment carries the telemetry kill switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-host-proof.mjs",
 		"spawn",
 		1,

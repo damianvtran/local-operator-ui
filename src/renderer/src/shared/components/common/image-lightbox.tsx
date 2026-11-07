@@ -847,10 +847,12 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 					// Every panel clothes the primitive puts on, removed. `p-0` is
 					// load-bearing rather than tidy: padding would enlarge the content
 					// box past the picture, and the click-outside region would grow with
-					// it. `border-transparent` is not redundancy beside `border-0` —
-					// tailwind-merge drops the earlier width and keeps the earlier
-					// COLOUR, which this is the only way to take off.
-					"gap-0 rounded-none border-0 border-transparent bg-transparent p-0 shadow-none",
+					// it. No border override: the primitive carries no stroke any more
+					// (branding § 2). `shadow-none` stays because a lightbox is not a
+					// floating panel - it is the picture on the scrim, with nothing to
+					// lift - and `floating-surface-no-border.test.mjs` names this call
+					// site as the one sanctioned shadow override.
+					"gap-0 rounded-none bg-transparent p-0 shadow-none",
 				)}
 				{...layerAttributes}
 			>

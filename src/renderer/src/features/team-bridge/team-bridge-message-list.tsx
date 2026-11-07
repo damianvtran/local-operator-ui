@@ -21,6 +21,7 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMessageAttachments } from "./attachments/member-attachments";
 import { InlineDataBody } from "./inline-data-receipt";
+import { TeamBridgeMessageLinkPreviews } from "./link-preview/team-bridge-message-link-previews";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
 	type TeamBridgeArrivalIdentity,
@@ -801,6 +802,30 @@ const HistoryEdge: FC<{
  * The date still FLOATS while a long day scrolls past; it is drawn once by
  * `DayPillOverlay`, which follows the viewport instead of a day group. Nothing
  * is lost from the grouped list's behaviour - only the mechanism changes.
+ *
+ * THE RULE BREAKS AT THE PILL BECAUSE IT IS TWO RULES, not one rule painted over
+ * a pill. It used to be one full-width `absolute` hairline behind a non-positioned
+ * centred pill row, and that is a PAINT-ORDER defect rather than a colour one:
+ * CSS 2.1 Appendix E paints a positioned sibling in step 6, above a
+ * non-positioned row's background (step 3) and its inline text (step 5), so the
+ * line crossed the pill's fill AND overwrote the label's glyph rows - measured on
+ * a 2x frame of the built app: pill `rgb(47,42,31)`, pane `rgb(29,27,23)`, rule
+ * `rgb(59,54,39)` identical inside and outside the pill, one 1px row at the
+ * label's mid-height. Splitting the rule means NOTHING is painted behind the pill,
+ * so the break no longer depends on the pill's fill being opaque: under window
+ * glass, or any future translucent `elevated`, the line still stops at the pill
+ * while the grouped variant would need an occluder.
+ *
+ * WHICH IS WHY `DayGroup` KEEPS ITS ABSOLUTE RULE. There the rule must NOT travel
+ * with the sticky pill - a line inside the sticky row would lift off the day it
+ * belongs to - so it is painted once in the group's own flow and the pill is an
+ * OPAQUE `elevated` occluder in front of it (`sticky top-2 z-[5]`). Two mechanisms,
+ * because a sticky pill and a scrolling pill cannot share one.
+ *
+ * GEOMETRY IS FIXED BY THE WINDOWER: the item must stay
+ * `TEAM_BRIDGE_DAY_ITEM_HEIGHT` (40px) with the pill 8px in and 24px tall, because
+ * `stickyDayAt` and `windowLayout` measure against those numbers - hence `py-2`
+ * around a `h-6` pill, and equal `flex-1` segments so the pill stays centred.
  */
 const DayHeading: FC<{
 	item: Extract<ThreadItem, { type: "day" }>;
@@ -815,19 +840,24 @@ const DayHeading: FC<{
 			aria-label={label ?? undefined}
 			className="relative"
 		>
-			<span
-				aria-hidden="true"
-				data-day-rule=""
-				className="absolute inset-x-5 top-5 h-px bg-hairline"
-			/>
 			<div
 				aria-hidden="true"
 				data-day-divider=""
-				className="flex justify-center py-2"
+				className="flex items-center px-5 py-2"
 			>
+				<span
+					aria-hidden="true"
+					data-day-rule=""
+					className="h-px flex-1 bg-hairline"
+				/>
 				{/* `dayLabel` answers a string for a day item; the null case is the
 				    grouped list's pill-less group, which cannot reach this component. */}
 				<DayPill label={label ?? ""} />
+				<span
+					aria-hidden="true"
+					data-day-rule=""
+					className="h-px flex-1 bg-hairline"
+				/>
 			</div>
 		</li>
 	);
@@ -1348,6 +1378,16 @@ const MessageRowView: FC<MessageRowProps> = ({
 					</p>
 				)}
 				<TeamBridgeDeliveryAnnotation message={message} />
+				{/* Link previews read the same body the prose above renders, and the
+				    account this subtree was rendered under as their receipt - the value
+				    the attachment route below already carries, never a default. A null
+				    body is a withheld message, and nothing withheld is previewed. */}
+				{message.body !== null && (
+					<TeamBridgeMessageLinkPreviews
+						body={message.body}
+						expectedAccountId={accountId}
+					/>
+				)}
 				{/* Images and files come ONLY from the structured lists, never from
 				    the body. A file-less message keeps the pre-S3b condition. */}
 				{((message.attachments?.length ?? 0) > 0 ||

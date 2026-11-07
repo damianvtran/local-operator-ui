@@ -86,8 +86,12 @@ test("deferred overlays and sheets use logical inline edges", () => {
 	assert.match(dialog, /gap-1\.5 pe-8/);
 
 	const sheet = source("src/renderer/src/shared/components/ui/sheet.tsx");
-	assert.match(sheet, /start:\s*"inset-y-0 start-0 .*border-e"/);
-	assert.match(sheet, /end:\s*"inset-y-0 end-0 .*border-s"/);
+	/* The logical edge is the POSITION now. The inner-edge hairline these rows used
+	 * to pin (`border-e` / `border-s`) went with every floating surface's stroke on
+	 * 2026-11-06 (branding § 2; `floating-surface-no-border.test.mjs`), so asserting it
+	 * here would demand the border that suite forbids. */
+	assert.match(sheet, /start:\s*"inset-y-0 start-0 /);
+	assert.match(sheet, /end:\s*"inset-y-0 end-0 /);
 	assert.match(sheet, /absolute top-4 end-4/);
 
 	const options = source(

@@ -1,13 +1,60 @@
 import type { MenuItemConstructorOptions, PopupOptions } from "electron";
 
 /**
+ * `clipboard`, which the browser host's `copy` action writes through.
+ *
+ * WHY IT IS MODELLED AS A REAL STORE rather than a no-op: `copy` reads its own
+ * write back to answer `verified`, so a stub that forgot the value would make
+ * every test of the receipt assert a permanent false. The store is in memory and
+ * per process; `failWrite` lets a test drive the OS-refused path, which is the
+ * one branch the host cannot otherwise reach without a locked clipboard.
+ *
+ * It records what was written so a test can assert the BYTES landed, and it never
+ * prints them — the same rule the shipped action follows.
+ */
+export const clipboard = {
+	text: "",
+	failWrite: null as string | null,
+	/** Async like the real one: Electron 45 made the clipboard promise-only. */
+	async writeText(value: string): Promise<void> {
+		if (clipboard.failWrite) {
+			throw new Error(clipboard.failWrite);
+		}
+		clipboard.text = String(value);
+	},
+	async readText(): Promise<string> {
+		return clipboard.text;
+	},
+};
+
+/**
+ * `session`, which `profile.ts` imports as a value for `fromPartition`.
+ *
+ * The stub has no browsing profile and cannot make one: `installBrowserSessionHandlers`
+ * takes the Session as an argument, which is exactly how the permission rules are
+ * driven here (a fake session records the handlers it was given). The one entry
+ * point that would ask Electron for the real session refuses rather than
+ * pretending a jar exists.
+ */
+export const session = {
+	fromPartition(): never {
+		throw new Error(
+			"the electron stub has no browsing session: pass a fake Session",
+		);
+	},
+};
+
+/**
  * A stand-in for Electron's `electron` module, for the desktop suite's
  * in-memory bundles.
  *
- * WHY IT EXISTS. `src/main/browser/consent-notifier.ts` imports `Notification`
- * from Electron as a VALUE, which is the one browser module in this repo that
- * does — every other one reaches Electron through a type-only import, and the
- * desktop suite's bundles rely on that ("no fixture is needed"). The unaliased
+ * WHY IT EXISTS. A few browser modules import Electron as a VALUE rather than
+ * through a type-only import, and each is a deliberate narrow exception:
+ * `consent-notifier.ts` (`Notification`), `profile.ts` (`session.fromPartition`,
+ * the one correct source of the browsing jar) and `actions/page.ts` (`clipboard`,
+ * because `copy` must write from MAIN and never from a page). Everything else
+ * reaches Electron through a type-only import, which is what let the desktop
+ * suite's bundles go without a fixture ("no fixture is needed"). The unaliased
  * import resolves, in plain Node, to the electron package's own `index.js`, which
  * calls `getElectronPath()` at module scope and throws when the binary's
  * `path.txt` is not where it expects it. So a test that wants to exercise the

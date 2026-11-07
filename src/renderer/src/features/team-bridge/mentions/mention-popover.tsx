@@ -170,8 +170,9 @@ export const MentionPopover: FC<MentionPopoverProps> = ({
 		<div
 			data-mention-popover=""
 			style={style}
+			data-lo-floating=""
 			className={cn(
-				"z-50 w-[min(22rem,calc(100vw-16px))] overflow-hidden rounded-md border border-hairline bg-elevated shadow-lg",
+				"z-50 w-[min(22rem,calc(100vw-16px))] overflow-hidden rounded-md bg-elevated shadow-overlay",
 			)}
 		>
 			<div

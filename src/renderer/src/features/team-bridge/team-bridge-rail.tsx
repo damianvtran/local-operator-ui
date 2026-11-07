@@ -345,12 +345,7 @@ export const RailSection: FC<{
 								<MoreHorizontal size={13} aria-hidden="true" />
 							</button>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent
-							align="start"
-							side="right"
-							/* Borderless chrome, as the row menu: the menu rises on its shadow. */
-							className="border-transparent shadow-lg"
-						>
+						<DropdownMenuContent align="start" side="right">
 							{menu.items.map((item) => (
 								<DropdownMenuItem key={item.key} onSelect={item.onSelect}>
 									{item.icon}
@@ -592,8 +587,10 @@ const ConversationRowMenu: FC<{
 		<DropdownMenuContent
 			align="start"
 			side="right"
-			/* Borderless chrome (design round 1, D3): the menu rises on its shadow. */
-			className="w-64 border-transparent shadow-lg"
+			/* Width only: the primitive owns the borderless chrome and the one shadow
+			 * (branding § 2). A `shadow-*` here would make tailwind-merge drop
+			 * `shadow-overlay` and with it the contact layer and the glass contact. */
+			className="w-64"
 		>
 			<TeamBridgeConversationMenuItems
 				sections={menu.sections}
@@ -623,12 +620,7 @@ const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
 				<MoreHorizontal size={14} aria-hidden="true" />
 			</button>
 		</DropdownMenuTrigger>
-		<DropdownMenuContent
-			align="start"
-			side="right"
-			/* Borderless chrome (design round 1, D3): the menu rises on its shadow. */
-			className="border-transparent shadow-lg"
-		>
+		<DropdownMenuContent align="start" side="right">
 			<DropdownMenuItem onSelect={onStartGroup}>
 				<Users size={14} aria-hidden="true" />
 				{t("ui.teamBridge.row.start_group")}

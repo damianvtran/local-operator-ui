@@ -138,6 +138,16 @@ export const METHODS = [
 	// framework's instance tracker cannot swallow the update), `input` then
 	// `change` dispatched. Appended here so no existing method index moves.
 	"setvalue",
+	// Clipboard write through the HOST rather than through a page permission:
+	// the element's bytes are read in an isolated world and written from the main
+	// process, and the answer is a receipt (chars, a 16-hex sha256, verified) that
+	// carries no text at all. APPENDED (after `setvalue`, which main landed first)
+	// so no existing method's index moves on this host, the same rule `hover`
+	// follows above: the Python mirror places it in its own group and the wire is
+	// by NAME, so `isMethod` admits it either way, and HOST_CAPABILITIES is what
+	// refuses it on a host that predates it instead of a version bump (an additive
+	// method must not close an already-released peer with `proto_mismatch`).
+	"copy",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -173,6 +183,9 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	// One page program plus a read-back: the same budget as `select`, which is
 	// the same shape (resolve, run, report), and it waits on no page load.
 	setvalue: 25.0,
+	// One selector resolution, one isolated-world read and one synchronous
+	// clipboard write: the cheapest shape in this table, and it waits on nothing.
+	copy: 20.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -257,6 +270,15 @@ export const ERROR_CODES = [
 	// code against, and an unknown code is silently dropped by the session's model —
 	// a command that hangs rather than one that fails.
 	...CONSOLE_ERROR_CODES,
+	// `copy`'s two refusals, in `protocol.py`'s order (the `ErrorCode` enum the
+	// generated `protocol.gen.ts` carries). They arrived with the action: an element
+	// that exists but has no text is not a missing element, and a clipboard the OS
+	// refused is not a host fault, and collapsing either into a code that means
+	// something else is how a caller's correction advice goes wrong. Additive in the
+	// safe direction — this host emits them, and only a session that knows the
+	// vocabulary reads them.
+	"empty_element_text",
+	"clipboard_write_failed",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -434,6 +456,16 @@ export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	// High-quality recording (quality on record_start) is not a method either; the
 	// harness capability-gates the one param on this name.
 	"record_quality",
+	// Clipboard write, served by the DESKTOP app's browser host only: the copy is
+	// a Node-side `clipboard.writeText` in the host's main process, which a
+	// browser extension has no equivalent of (an extension's clipboard API is
+	// user-gesture-bound and cannot be driven from a service worker), and the
+	// cmux host drives a panel it does not own the process of. Advertising it here
+	// is what lets the harness refuse `copy` by CAPABILITY on the extension, the
+	// cmux host and any desktop build that predates this one — the `download`
+	// precedent — instead of sending a method the peer answers `internal` for or,
+	// worse, never answers at all.
+	"copy",
 ];
 
 export interface Request {

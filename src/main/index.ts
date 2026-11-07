@@ -166,6 +166,7 @@ import {
 	installSupplementProtocol,
 	registerSupplementScheme,
 } from "./supplement-protocol";
+import { TeamBridgeImageCache } from "./team-bridge-image-cache";
 import { TeamBridgeNotificationImages } from "./team-bridge-notification-images";
 import { TeamBridgeNotifier } from "./team-bridge-notifier";
 import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
@@ -2796,13 +2797,34 @@ app
 				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
 				nativeBadge.reset();
 			},
-			// Fire-and-forget: the sign-out must not wait on a directory sweep, and a
-			// clear that fails is retried by the next transition's orphan pass. The
-			// cache is constructed just below this statement — see why there, beside
-			// that construction — and this closure only reaches it when a transition
-			// actually fires, which is after this synchronous block has finished.
+			// Fire-and-forget: the sign-out must not wait on a directory sweep. A delete that
+			// fails is retried by the next `clear()` and otherwise waits for the NEXT LAUNCH:
+			// this process reaps orphaned files in `open()` and in every `clearLocked()`, and
+			// nowhere else (review round 1, F-4; corrected in round 2). Both caches are
+			// constructed just below this statement — see why there, beside those
+			// constructions — and these closures only reach them when a transition actually
+			// fires, which is after this synchronous block has finished.
 			principalChanged: () => {
-				void linkPreviewArtifacts.clear();
+				// `fence()`, not `clear()`, for both caches and for the same reason: the
+				// transition drops everything only once this process has confirmed a principal,
+				// so the `null -> <account>` report every launch produces does not delete a cache
+				// the feature exists to keep.
+				void linkPreviewArtifacts.fence();
+				void teamBridgeImages.fence();
+			},
+			/*
+			 * THE SAME PRINCIPAL, AS A STATE RATHER THAN ONLY AS AN EVENT.
+			 *
+			 * `principalChanged` above is fired from one witness (`observeResponse`), so it
+			 * never fires for a principal that changed while this process was closed, and
+			 * it fires spuriously at every launch. This port carries the answer instead:
+			 * fired from a renderer status AND from the reconcile poll, it lets the image
+			 * cache bind its bytes to the principal the app can actually see, and drop
+			 * them when that is a different account or a verified sign-out.
+			 */
+			principalResolved: (accountId) => {
+				void linkPreviewArtifacts.bind(accountId);
+				void teamBridgeImages.bind(accountId);
 			},
 		});
 		/*
@@ -2819,12 +2841,13 @@ app
 		 * synchronous block finishes.
 		 *
 		 * WHAT IT IS FOR. It holds third-party image BYTES for 24 h, and a sign-out or
-		 * account switch must not leave the departing account's images on disk — so
-		 * `principalChanged` clears it, on the same fence that stops a stale unread
-		 * aggregate landing after a sign-out. A per-entry account fingerprint already
-		 * stops a replayed id being served under another receipt (see
-		 * `link-preview/artifact-cache.ts`); this is the other half: the bytes stop
-		 * existing.
+		 * account switch must not leave the departing account's images on disk — so it
+		 * consumes BOTH principal ports above, exactly as the Team Bridge image cache
+		 * does: `principalResolved` binds it to the account the app can see (same keeps,
+		 * different drops, a verified sign-out drops), `principalChanged` drops it at the
+		 * transition. A per-entry account fingerprint already stops a replayed id being
+		 * served under another receipt (see `link-preview/artifact-cache.ts`); this is
+		 * the other half: the bytes stop existing.
 		 *
 		 * WHAT MAIN DOES NOT DO HERE, because the next reader will be tempted: it does
 		 * not fetch, parse, or validate any remote document. Issues with a preview
@@ -2842,6 +2865,51 @@ app
 			dir: join(app.getPath("userData"), "cache", "link-previews"),
 		});
 		void linkPreviewArtifacts.open().catch(() => {});
+		/*
+		 * TEAM BRIDGE MESSAGE IMAGES' BYTE CACHE — built here, for the same two reasons
+		 * the link-preview cache is: this region is outside the slice
+		 * `scripts/app-icon-badge.test.mjs` evaluates (see the note above), and a cache
+		 * needs `app.getPath("userData")`, which only exists once the app is ready.
+		 *
+		 * WHAT IT IS FOR. Entering a channel re-downloaded every visible image and
+		 * nothing survived a restart. This holds the bytes behind one
+		 * `team_bridge.attachment` receipt for seven days, bounded, and is consulted by
+		 * the media relay before it fetches — same request, same bearer, same route, no
+		 * new IPC op and no renderer contract change. It does NOT park blob URLs: the
+		 * network cost goes, the IPC cost stays (`team-bridge-image-cache.ts` states
+		 * that decision where the next reader will look for it).
+		 *
+		 * AND A SIGN-OUT MUST NOT LEAVE THEM BEHIND, which is why this cache consumes BOTH
+		 * of the attention service's principal ports above: `principalResolved` binds the
+		 * bytes to the account the app can see and drops them for a different one or a
+		 * verified sign-out (the state check, fed by a renderer status AND by the
+		 * reconcile poll), while `principalChanged` drops them at the transition itself,
+		 * before the next read can race the switch. A per-entry account fingerprint
+		 * already stops a replayed key being served under another receipt; the drop is
+		 * the other half, where the bytes stop existing.
+		 *
+		 * ATTACHED, NOT PASSED, to the media relay: `backendService` is constructed at
+		 * module load, long before this block, so the cache reaches it through
+		 * `attachTeamBridgeImageCache` — one owner for "does this process cache
+		 * message images", and a `null` there means every read is a fetch.
+		 *
+		 * OPENED IN THE BACKGROUND, like its link-preview neighbour: until `open()`
+		 * settles every lookup is a miss and every store is a no-op. A cold cache is
+		 * not an error, and blocking the first paint on a directory scan to save one
+		 * image download would be the wrong trade. No principal is passed here on
+		 * purpose: at this instant the app has not answered a status yet, so "unknown"
+		 * is the truth, and `bind` resolves it on the first answer. Passing `null` as
+		 * "signed out" would delete the cache at every launch — the thing it exists to
+		 * avoid — and buys nothing, because a read can only be answered for the account
+		 * whose fingerprint stored the entry.
+		 */
+		const teamBridgeImages = new TeamBridgeImageCache({
+			// The documented home: <userData>/cache/team-bridge-images, one hashed file
+			// per receipt with an `index.json` beside them.
+			dir: join(app.getPath("userData"), "cache", "team-bridge-images"),
+		});
+		void teamBridgeImages.open().catch(() => {});
+		backendService.attachTeamBridgeImageCache(teamBridgeImages);
 		refreshAppIconBadge = () => {
 			if (process.platform === "win32") nativeBadge.invalidateOverlayTarget();
 			appAttention.projection.refresh();

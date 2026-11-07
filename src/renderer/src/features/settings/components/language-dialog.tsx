@@ -578,7 +578,7 @@ export const LanguageDialog: FC = () => {
 							<span>{pairingSentence}</span>
 							{remedy && (
 								<Button
-									variant="secondary"
+									variant="tonal"
 									size="sm"
 									className="shrink-0"
 									data-language-retry=""

@@ -200,7 +200,11 @@ export function InlineImageTile({
 				)}
 			</button>
 			{url && !more && (
-				<div className={CLUSTER_CLASS} data-attachment-actions="">
+				<div
+					data-lo-floating=""
+					className={CLUSTER_CLASS}
+					data-attachment-actions=""
+				>
 					{/* Out of the tab order AND the accessibility tree: the tile itself
 					    is the open control, and a second node with its name would be
 					    read twice by a virtual cursor (agent review round 1, nit 2). */}
