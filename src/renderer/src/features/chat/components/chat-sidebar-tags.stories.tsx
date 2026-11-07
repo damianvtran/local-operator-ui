@@ -43,7 +43,39 @@ type Scenario =
 	| "manage-error"
 	| "unused"
 	| "load-failed"
-	| "management-concurrency";
+	| "management-concurrency"
+	| "fold-all"
+	| "fold-mixed"
+	| "fold-many"
+	| "fold-drop";
+/*
+ * THE FOLDS EACH SCENARIO STARTS WITH (issue #1639), written into the SAME
+ * `chat-sidebar-disclosures` blob the sidebar reads at mount. Only `tag:` keys
+ * are touched - section disclosures other stories rely on are left as found -
+ * and every scenario clears them first, so a fold pressed in one story never
+ * leaks into the next one Storybook mounts in the same tab.
+ */
+const FOLD_SEEDS: Partial<Record<Scenario, string[]>> = {
+	"fold-all": ["review", "project", "concept", "untagged"],
+	"fold-mixed": ["review"],
+	"fold-many": ["extra-1", "extra-3", "extra-5", "untagged"],
+	"fold-drop": ["review"],
+};
+function seedFolds(scenario: Scenario) {
+	let stored: Record<string, boolean> = {};
+	try {
+		stored = JSON.parse(
+			localStorage.getItem("chat-sidebar-disclosures") ?? "{}",
+		);
+	} catch {
+		stored = {};
+	}
+	const kept = Object.fromEntries(
+		Object.entries(stored).filter(([key]) => !key.startsWith("tag:")),
+	);
+	for (const id of FOLD_SEEDS[scenario] ?? []) kept[`tag:${id}`] = false;
+	localStorage.setItem("chat-sidebar-disclosures", JSON.stringify(kept));
+}
 /** The actual sidebar and contract-shaped desktop bridge, not a proposed mock.
  * Mutable fixture data makes immediate assignment and registry edits observable through the
  * same catalogue refresh as production. No operator backend or config is used.
@@ -54,6 +86,7 @@ function installBridge(scenario: Scenario) {
 	let registryRequestIndex = 0;
 	document.body.dataset.tagsProof = "";
 	document.body.dataset.tagsOpened = "";
+	seedFolds(scenario);
 	let categories: TagCategory[] = ["no-categories", "picker-empty"].includes(
 		scenario,
 	)
@@ -98,6 +131,16 @@ function installBridge(scenario: Scenario) {
 			order: 3,
 			conversations: 0,
 		});
+	if (scenario === "fold-many")
+		categories = [
+			...categories,
+			...Array.from({ length: 8 }, (_, index) => ({
+				id: `extra-${index}`,
+				name: `Workstream ${index + 1}`,
+				order: index + 3,
+				conversations: 0,
+			})),
+		];
 	if (scenario === "picker-one") categories = categories.slice(0, 1);
 	if (scenario === "picker-empty") categories = [];
 	if (scenario === "picker-unicode") {
@@ -150,7 +193,7 @@ function installBridge(scenario: Scenario) {
 	].map((row, index) => ({
 		...row,
 		pinned:
-			scenario === "drop-ux" && row.id === "555555555555"
+			["drop-ux", "fold-drop"].includes(scenario) && row.id === "555555555555"
 				? true
 				: ["held-pin", "pinned-tags"].includes(scenario) &&
 						row.id === "222222222222"
@@ -175,6 +218,19 @@ function installBridge(scenario: Scenario) {
 		status_epoch: "tag-fixture-epoch",
 		tags_revision: "0",
 	}));
+	if (scenario === "fold-many")
+		for (let index = 0; index < 16; index++) {
+			const id = `extra-${index % 8}`;
+			rows.push({
+				...rows[1],
+				id: `f${String(index).padStart(11, "0")}`,
+				name: `Workstream ${(index % 8) + 1} · thread ${Math.floor(index / 8) + 1}`,
+				tags: tags(id),
+				primary: id,
+				mtime: now - (rows.length + index) * 60,
+				created_at: now - (rows.length + index) * 60,
+			});
+		}
 	if (scenario === "picker-eight")
 		rows[0].tags = tags(...categories.slice(0, 8).map((tag) => tag.id));
 	if (scenario === "picker-unicode")
@@ -906,6 +962,270 @@ export const HeaderArrowRing: Story = {
 		expect(document.activeElement).toHaveAttribute("data-chat-row");
 		document.body.dataset.tagsProof =
 			"PASS: header → row → header → row physical keyboard arrow walk";
+	},
+};
+/*
+ * COLLAPSIBLE TAG GROUPS (issue #1639). The static states are the design round's
+ * frames (expanded = `TagsOn`, collapsed, mixed, many, the unused footer that has
+ * no fold, a keyboard-focused chevron, light and dark); the play stories drive the
+ * real component through both edges, the keyboard, persistence and a drop onto a
+ * folded header.
+ */
+const chevron = (id = "review", section = "today") => {
+	const control = document.querySelector<HTMLButtonElement>(
+		`[data-chat-section="${section}"] [data-chat-tag-toggle="${id}"]`,
+	);
+	if (!control) throw new Error(`Missing ${section}/${id} chevron`);
+	return control;
+};
+const groupRows = (id: string, section = "today") =>
+	document.querySelectorAll(
+		`[data-chat-section="${section}"] [data-chat-tag-group="${id}"] [data-session-row]`,
+	).length;
+const storedFolds = () =>
+	JSON.parse(localStorage.getItem("chat-sidebar-disclosures") ?? "{}");
+export const TagGroupsCollapsed = story("fold-all");
+export const TagGroupsCollapsedLight = story(
+	"fold-all",
+	260,
+	"localOperatorLight",
+);
+export const TagGroupsMixed = story("fold-mixed");
+export const TagGroupsMixedLight = story(
+	"fold-mixed",
+	260,
+	"localOperatorLight",
+);
+export const TagGroupsMany = story("fold-many", 220);
+/** A tag with no conversations has no group, so its footer slot has no fold. */
+export const TagGroupsEmptyTagNoFold: Story = {
+	...story("unused"),
+	play: async () => {
+		await ready();
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: /^Unused tags/ }),
+		);
+		const unused = document.querySelector("[data-chat-tag-unused]");
+		expect(unused?.querySelector("[data-chat-tag-header]")).not.toBeNull();
+		expect(unused?.querySelector("[data-chat-tag-toggle]")).toBeNull();
+		document.body.dataset.tagsProof =
+			"PASS: unused tag slot renders its actions but no fold chevron";
+	},
+};
+const focusChevronByKeyboard = async () => {
+	await ready();
+	// From the first Today row, ArrowUp walks to the `⋯` stop and then to the
+	// chevron before it: the ring's DOM order, by keyboard so focus-visible paints.
+	const firstRow = document.querySelector<HTMLElement>(
+		'[data-chat-section="today"] [data-chat-row]',
+	);
+	if (!firstRow) throw new Error("Missing Today row");
+	firstRow.focus();
+	await userEvent.keyboard("{ArrowUp}");
+	expect(document.activeElement).toHaveAttribute("data-chat-tag-header");
+	await userEvent.keyboard("{ArrowUp}");
+	expect(document.activeElement).toHaveAttribute("data-chat-tag-toggle");
+};
+export const TagGroupChevronFocus: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await focusChevronByKeyboard();
+		document.body.dataset.tagsProof =
+			"PASS: row → ⋯ → chevron arrow walk; chevron holds keyboard focus";
+	},
+};
+export const TagGroupChevronFocusLight: Story = {
+	...story("tags-on", 260, "localOperatorLight"),
+	play: TagGroupChevronFocus.play,
+};
+export const TagGroupFoldRoundTrip: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		const control = chevron();
+		expect(control).toHaveAttribute("aria-expanded", "true");
+		const body = document.getElementById(
+			control.getAttribute("aria-controls") ?? "",
+		);
+		expect(body).toHaveAttribute("data-tag-drop-body");
+		expect(groupRows("review")).toBe(1);
+		expect(groupRows("review", "pinned")).toBe(1);
+		await userEvent.click(control);
+		// One fold per TAG: Today's and Pinned's Review headers both close.
+		await waitFor(() => expect(groupRows("review")).toBe(0));
+		expect(groupRows("review", "pinned")).toBe(0);
+		expect(chevron()).toHaveAttribute("aria-expanded", "false");
+		expect(chevron("review", "pinned")).toHaveAttribute(
+			"aria-expanded",
+			"false",
+		);
+		expect(chevron()).toHaveAccessibleName("Expand Review");
+		expect(body).not.toBeVisible();
+		expect(groupRows("project")).toBe(1);
+		// The header still states the group's size while folded.
+		const header = chevron().closest<HTMLElement>("[data-tag-drop-target]");
+		expect(header?.textContent).toContain("1");
+		await waitFor(() => expect(storedFolds()["tag:review"]).toBe(false));
+		// Keyboard edge: Enter on the focused chevron unfolds it again.
+		chevron().focus();
+		await userEvent.keyboard("{Enter}");
+		await waitFor(() => expect(groupRows("review")).toBe(1));
+		expect(groupRows("review", "pinned")).toBe(1);
+		await userEvent.keyboard(" ");
+		await waitFor(() => expect(groupRows("review")).toBe(0));
+		await userEvent.keyboard(" ");
+		await waitFor(() => expect(groupRows("review")).toBe(1));
+		expect(storedFolds()).not.toHaveProperty("tag:review");
+		// No write reached the backend: a fold is a local view preference.
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
+		document.body.dataset.tagsProof =
+			"PASS: click folds both Review headers (Pinned+Today); Enter/Space toggle; fold persisted in chat-sidebar-disclosures; 0 backend writes";
+	},
+};
+/** A seeded fold is read at mount: the relaunch half of persistence. */
+export const TagGroupFoldRestored: Story = {
+	...story("fold-mixed"),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(groupRows("project")).toBe(1));
+		expect(groupRows("review")).toBe(0);
+		expect(groupRows("review", "pinned")).toBe(0);
+		expect(chevron()).toHaveAttribute("aria-expanded", "false");
+		document.body.dataset.tagsProof =
+			"PASS: stored tag:review=false restores folded at mount";
+	},
+};
+/** A row dropped on a folded header lands, the fold holds, the count rises. */
+export const TagGroupDropOntoFolded: Story = {
+	...story("fold-drop"),
+	play: async () => {
+		await ready();
+		const header = () =>
+			document.querySelector<HTMLElement>(
+				'[data-chat-section="today"] [data-tag-drop-target="review"]:not([data-tag-drop-body])',
+			);
+		await waitFor(() => expect(header()).not.toBeNull());
+		expect(groupRows("review")).toBe(0);
+		expect(header()?.textContent).toContain("1");
+		const source = document.querySelector<HTMLElement>(
+			'[data-session-row="222222222222"] [data-chat-row]',
+		);
+		if (!source) throw new Error("Missing drag source");
+		const box = source.getBoundingClientRect();
+		const pointer = {
+			pointerId: 93,
+			pointerType: "mouse",
+			isPrimary: true,
+			button: 0,
+			clientX: box.left + 60,
+			clientY: box.top + 16,
+		};
+		fireEvent.pointerDown(source, pointer);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		const target = header()?.getBoundingClientRect();
+		if (!target) throw new Error("Missing folded header");
+		const over = {
+			...pointer,
+			clientX: target.left + 60,
+			clientY: target.top + 14,
+		};
+		fireEvent.pointerMove(window, over);
+		await waitFor(() => expect(header()).toHaveClass("bg-row-selected"));
+		fireEvent.pointerUp(window, over);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		await waitFor(() => expect(header()?.textContent).toContain("2"));
+		expect(groupRows("review")).toBe(0);
+		expect(chevron()).toHaveAttribute("aria-expanded", "false");
+		expect(storedFolds()["tag:review"]).toBe(false);
+		document.body.dataset.tagsProof =
+			"PASS: drop on folded Review header wrote 1 assignment; count 1 → 2; group stayed folded";
+	},
+};
+/* Round 1 remediation (UX U1-U3, review R1): the keyboard paths on a header. */
+export const TagGroupArrowFold: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await focusChevronByKeyboard();
+		await userEvent.keyboard("{ArrowLeft}");
+		await waitFor(() => expect(groupRows("review")).toBe(0));
+		expect(document.activeElement).toBe(chevron());
+		await userEvent.keyboard("{ArrowRight}");
+		await waitFor(() => expect(groupRows("review")).toBe(1));
+		await userEvent.keyboard("{ArrowRight}");
+		expect(document.activeElement).toHaveAttribute("data-chat-row");
+		expect(
+			document.activeElement?.closest("[data-chat-tag-group]"),
+		).toHaveAttribute("data-chat-tag-group", "review");
+		// The `⋯` stop answers the same gesture.
+		headerStop().focus();
+		await userEvent.keyboard("{ArrowLeft}");
+		await waitFor(() => expect(groupRows("review")).toBe(0));
+		document.body.dataset.tagsProof =
+			"PASS: ArrowLeft folds, ArrowRight unfolds then enters the first row; ⋯ folds too";
+	},
+};
+export const TagGroupChevronChords: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await focusChevronByKeyboard();
+		await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+		await within(document.body).findByRole("menuitem", { name: "Rename" });
+		await userEvent.keyboard("{Escape}");
+		chevron().focus();
+		await userEvent.keyboard("{F2}");
+		await within(document.body).findByRole("textbox", {
+			name: /Review/,
+		});
+		document.body.dataset.tagsProof =
+			"PASS: Shift+F10 opens the header menu and F2 renames from the chevron";
+	},
+};
+export const TagGroupRetagIntoFolded: Story = {
+	...story("fold-mixed"),
+	play: async () => {
+		await ready();
+		const row = () =>
+			document.querySelector<HTMLElement>(
+				'[data-session-row="222222222222"] [data-chat-row]',
+			);
+		await waitFor(() => expect(row()).not.toBeNull());
+		row()?.focus();
+		await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+		await userEvent.click(
+			await within(document.body).findByRole("menuitem", { name: /^Tags…/ }),
+		);
+		await userEvent.click(
+			await within(document.body).findByRole("option", { name: "Review" }),
+		);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		await userEvent.click(
+			within(document.body).getByRole("option", { name: "Project" }),
+		);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				2,
+			),
+		);
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(document.querySelector("[data-chat-tag-popover]")).toBeNull(),
+		);
+		// The row went into folded Review, so it is not drawn: focus follows it to
+		// that group's chevron instead of falling to <body>.
+		await waitFor(() => expect(document.activeElement).toBe(chevron()));
+		expect(row()).toBeNull();
+		expect(chevron()).toHaveAttribute("aria-expanded", "false");
+		document.body.dataset.tagsProof =
+			"PASS: re-tag into folded Review returns focus to its chevron, fold kept";
 	},
 };
 export const KeyboardDismiss: Story = {

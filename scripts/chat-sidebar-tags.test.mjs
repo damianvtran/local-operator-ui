@@ -25,7 +25,7 @@ const bundle = await build({
 		contents: `
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
 export {moveChatToTag} from "./src/renderer/src/features/chat/chat-tag-move";
-export {parseSidebarView, DEFAULT_SIDEBAR_VIEW} from "./src/renderer/src/features/chat/chat-sidebar-view";
+export {parseSidebarView, DEFAULT_SIDEBAR_VIEW, toggleTagDisclosure, tagGroupBodyRows, tagGroupCollapsed} from "./src/renderer/src/features/chat/chat-sidebar-view";
 export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api";
 export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
 export {useUiPreferencesStore} from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -93,6 +93,9 @@ const {
 	draftPrimary,
 	parseSidebarView,
 	DEFAULT_SIDEBAR_VIEW,
+	toggleTagDisclosure,
+	tagGroupBodyRows,
+	tagGroupCollapsed,
 	desktopEndpoint,
 	desktopRequestSchema,
 	useUiPreferencesStore: preferences,
@@ -192,6 +195,48 @@ test("grouping is suspended outside Time sections and while searching", () => {
 	assert.match(
 		source,
 		/tagsAvailable &&[\s\S]*?view.tagsEnabled &&[\s\S]*?view.groupBy === "section" &&[\s\S]*?!query\.trim\(\)/,
+	);
+});
+/*
+ * ISSUE #1639: a fold is keyed by TAG, so one press folds that tag's header in
+ * Pinned and in a time section alike; and under a list query grouping is
+ * suspended, so a stored fold hides nothing - every match draws flat.
+ */
+test("a tag fold applies to every section's header of that tag", () => {
+	const folded = toggleTagDisclosure({}, "a");
+	const pinned = groupChatsByTag(
+		[row("p1", "a"), row("p2", "b")],
+		categories,
+		true,
+	);
+	const today = groupChatsByTag(
+		[row("t1", "a"), row("t2", null)],
+		categories,
+		true,
+	);
+	for (const groups of [pinned, today]) {
+		const review = groups.find((group) => group.id === "a");
+		assert.equal(review.rows.length, 1, "the header count is the whole group");
+		assert.deepEqual(tagGroupBodyRows(review.rows, folded, review.id), []);
+		for (const other of groups.filter((group) => group.id !== "a"))
+			assert.equal(tagGroupBodyRows(other.rows, folded, other.id), other.rows);
+	}
+});
+test("a stored fold has no effect while a search query suspends grouping", () => {
+	const folded = toggleTagDisclosure(toggleTagDisclosure({}, "a"), "untagged");
+	assert.equal(tagGroupCollapsed(folded, "a"), true);
+	const rows = [row("x", "a"), row("y", null)];
+	// `taggedRows` passes `!query.trim()` as `enabled` (pinned by the test above):
+	// with a query there are no groups, so the flat path draws every row.
+	assert.equal(groupChatsByTag(rows, categories, false), null);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/if \(!groups\) return rows\.map\(\(row\) => sessionRow\(row\)\);/,
+		"the ungrouped path must draw every row, untouched by any fold",
 	);
 });
 test("parser accepts only boolean tagsEnabled and retains it across mode changes", () => {

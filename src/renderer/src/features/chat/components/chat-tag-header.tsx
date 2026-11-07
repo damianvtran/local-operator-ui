@@ -47,6 +47,23 @@ import type { TagCategory } from "../../../../../shared/desktop-contract";
  */
 export const TAG_HEADER_STOP_ATTR = "data-chat-tag-header";
 
+/**
+ * The attribute a group header's fold chevron carries (issue #1639). Its own ring
+ * stop for the same reason `⋯` has one: it must answer neither type-to-filter nor
+ * the row chords. It sits BEFORE `⋯` in DOM order, so the arrow ring (which walks
+ * `querySelectorAll` order) reaches the fold first and the actions second.
+ */
+export const TAG_TOGGLE_STOP_ATTR = "data-chat-tag-toggle";
+
+/**
+ * The id of the `[data-tag-drop-body]` a header's chevron controls. Derived, not
+ * `useId()`, because the body is rendered by the sidebar and the header by this
+ * component, and both must name it; `scope` is the section it sits in, since one tag
+ * can draw a body in `Pinned` and another in a time section.
+ */
+export const tagGroupBodyId = (scope: string, tagId: string) =>
+	`chat-tag-body-${scope}-${tagId}`;
+
 /** The keyboard chords a focused header answers (spec D2/D8). */
 export function tagHeaderChord(event: {
 	key: string;
@@ -205,6 +222,7 @@ export function ChatTagHeader({
 	below,
 	announce,
 	unused = false,
+	disclosure,
 }: {
 	id: string;
 	name: string;
@@ -214,6 +232,13 @@ export function ChatTagHeader({
 	announce: (sentence: string) => void;
 	/** A footer row for a tag with no conversations: delete needs no confirm. */
 	unused?: boolean;
+	/**
+	 * The group's fold (issue #1639). Absent for the footer's unused-tag slots,
+	 * which have no body to fold. `bodyId` is the `[data-tag-drop-body]` this
+	 * controls - present in the DOM even while folded, so `aria-controls` never
+	 * names a missing element.
+	 */
+	disclosure?: { collapsed: boolean; bodyId: string; onToggle: () => void };
 }) {
 	useI18nLocale();
 	const registry = useChatTagRegistry();
@@ -348,6 +373,14 @@ export function ChatTagHeader({
 		else if (chord === "menu") setMenuOpen(true);
 		else void move(chord);
 	};
+	const foldLabel = disclosure
+		? t(
+				disclosure.collapsed
+					? "ui.chat.tag_groups.expand"
+					: "ui.chat.tag_groups.collapse",
+				{ name: label },
+			)
+		: "";
 	const conversations =
 		useSessionTagsStore(
 			(state) => state.categories.find((tag) => tag.id === id)?.conversations,
@@ -364,6 +397,61 @@ export function ChatTagHeader({
 					setMenuOpen(true);
 				}}
 			>
+				{disclosure && !renaming && (
+					/*
+					 * THE CHEVRON IS THE ONLY HIT AREA (issue #1639). The subheader itself
+					 * stays a static label and a drop target: when the old time-section
+					 * headings were whole-row disclosure buttons, a click meant for the row a
+					 * few pixels below folded the section under it (the U22 fix recorded in
+					 * `chat-sidebar.tsx`). A 20px target at the row's start keeps the fold
+					 * deliberate and leaves double-click-to-rename on the name intact.
+					 *
+					 * Enter/Space come from the native button. No chord of its own: the
+					 * header's chords (F2, Alt+Up/Down, Shift+F10) answer here too through
+					 * the same `onKeyDown` as `⋯` (UX round 1, U2), because walking down
+					 * the ring lands on this stop first and a header must not need a second
+					 * unprompted step before its keys work. ArrowLeft/Right fold and unfold
+					 * in the sidebar's walk (U3); bare Up/Down bubble to it as before.
+					 *
+					 * GEOMETRY (design round 1, D2/D3): `-me-1.5` takes the header's gap
+					 * after the chevron down to 2px so the name sits on the rows'
+					 * leading-icon column (a two-column tree, ~38px at rest); and the `::after` stretches the POINTER area to
+					 * the full 28px header height while the drawn box and the horizontal
+					 * extent stay chevron-only. `rtl:-scale-x-100` mirrors the folded
+					 * glyph to point inline-end, the repo's disclosure-chevron rule
+					 * (`finder-files-view.tsx`). The focus ring is inset
+					 * (`-outline-offset-2`) and the 2px gap kept, because with the name
+					 * that close an outside ring (or a 0px gap) paints over its first
+					 * letter (measured on the focus-visible frame).
+					 */
+					<button
+						type="button"
+						tabIndex={-1}
+						{...{ [TAG_TOGGLE_STOP_ATTR]: id }}
+						aria-expanded={!disclosure.collapsed}
+						aria-controls={disclosure.bodyId}
+						aria-label={foldLabel}
+						title={foldLabel}
+						className="-ms-1 -me-1.5 relative flex size-5 shrink-0 items-center justify-center rounded-sm text-ink-dim after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-row-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2"
+						onClick={disclosure.onToggle}
+						onKeyDown={onKeyDown}
+					>
+						<ChevronRight
+							aria-hidden="true"
+							// The footer's `Unused tags` chevron, same glyph and rotation.
+							className={cn(
+								"size-3.5 shrink-0 rtl:-scale-x-100",
+								/*
+								 * `rtl:-rotate-90`, not the symmetric-glyph assumption: the
+								 * `scale` property applies BEFORE `rotate`, so the mirrored
+								 * glyph turned +90deg points UP (measured in the ur frame);
+								 * the mirror turned -90deg points down like LTR's open state.
+								 */
+								!disclosure.collapsed && "rotate-90 rtl:-rotate-90",
+							)}
+						/>
+					</button>
+				)}
 				{renaming ? (
 					<TagNameField
 						initial={name}

@@ -4,7 +4,10 @@ import {
 } from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
 import { CHAT_ROW_MENU_SCROLL_CLASS } from "@features/chat/chat-row-menu";
-import { TAG_DROP_PREVIEW_CLASSES } from "@features/chat/chat-tag-drag";
+import {
+	TAG_DROP_PREVIEW_CLASSES,
+	chatTagBucket,
+} from "@features/chat/chat-tag-drag";
 import {
 	groupChatsByTag,
 	tagBucketRowIds,
@@ -264,7 +267,10 @@ import {
 	sectionMoreLabel,
 	sectionMoreName,
 	shownSections,
+	tagGroupBodyRows,
+	tagGroupCollapsed,
 	toggleSectionDisclosure,
+	toggleTagDisclosure,
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
 import { clearSearch } from "../clear-search";
@@ -306,6 +312,8 @@ import {
 	ChatTagFooter,
 	ChatTagHeader,
 	TAG_HEADER_STOP_ATTR,
+	TAG_TOGGLE_STOP_ATTR,
+	tagGroupBodyId,
 } from "./chat-tag-header";
 import { ChatTagPopover } from "./chat-tag-popover";
 import {
@@ -1436,12 +1444,49 @@ export function ChatSidebar({
 		requestAnimationFrame(() => {
 			const id = tagsOriginId.current;
 			if (!id) return;
-			const target = document.querySelector<HTMLElement>(
-				`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
-			);
+			/*
+			 * A ROW RE-TAGGED INTO A FOLDED GROUP IS NOT DRAWN (issue #1639; agent
+			 * review R1, UX U1), so the lookup finds nothing and focus would fall to
+			 * `<body>`, the next Tab starting at the top of the panel. The reader goes
+			 * where the row went instead: that group's fold chevron. The fold is NOT
+			 * sprung open - the press was a tag assignment, not a request to unfold.
+			 */
+			const target =
+				document.querySelector<HTMLElement>(
+					`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
+				) ?? foldedRowFallback(id);
 			target?.focus();
 			target?.scrollIntoView({ block: "nearest" });
 		});
+	};
+	/*
+	 * The chevron of the folded group a row now lives in, or null. The bucket is the
+	 * one grouping files the row under (`chatTagBucket`), and the section is Pinned
+	 * for a pinned row, else the time section - which is the one copy of that tag's
+	 * header outside `[data-chat-section="pinned"]`.
+	 */
+	const foldedRowFallback = (sessionId: string): HTMLElement | null => {
+		const row = useCanonicalSessionsStore
+			.getState()
+			.sessions.find((item) => item.session_id === sessionId);
+		if (!row) return null;
+		const bucket = chatTagBucket(row, tagCategories);
+		if (!tagGroupCollapsed(expanded, bucket)) return null;
+		const pinned = row.pinned === true;
+		const controls = [
+			...document.querySelectorAll<HTMLElement>(
+				`[${TAG_TOGGLE_STOP_ATTR}="${CSS.escape(bucket)}"]`,
+			),
+		];
+		// A pinned row draws outside Pinned when pins do not section the list.
+		return (
+			controls.find(
+				(control) =>
+					(control.closest('[data-chat-section="pinned"]') !== null) === pinned,
+			) ??
+			controls[0] ??
+			null
+		);
 	};
 	const openTagsPopover = (row: CanonicalSessionRow) => {
 		tagsOriginId.current = row.session_id;
@@ -4304,7 +4349,7 @@ export function ChatSidebar({
 	 * banners are suppressed there), so that is a record of what the code does rather than
 	 * a measurement.
 	 */
-	const taggedRows = (rows: CanonicalSessionRow[]) => {
+	const taggedRows = (rows: CanonicalSessionRow[], scope: string) => {
 		const groups = groupChatsByTag(
 			rows,
 			tagCategories,
@@ -4322,25 +4367,55 @@ export function ChatSidebar({
 		const visibleTags = groups
 			.map((bucket) => bucket.id)
 			.filter((id) => id !== "untagged");
-		return groups.map((bucket) => (
-			<div
-				key={bucket.id}
-				data-chat-tag-group={bucket.id}
-				className="[&[data-tag-drop-preview]_[data-chat-row]]:bg-row-selected [&[data-tag-drop-preview]_[data-session-row]]:bg-row-selected"
-			>
-				<ChatTagHeader
-					id={bucket.id}
-					name={bucket.name}
-					count={bucket.rows.length}
-					above={visibleTags[visibleTags.indexOf(bucket.id) - 1] ?? null}
-					below={visibleTags[visibleTags.indexOf(bucket.id) + 1] ?? null}
-					announce={announcePinMove}
-				/>
-				<div data-tag-drop-target={bucket.id} data-tag-drop-body>
-					{bucket.rows.map((row) => sessionRow(row, false, true))}
+		return groups.map((bucket) => {
+			/*
+			 * A FOLDED GROUP (issue #1639) is its header - name AND the whole count,
+			 * which is why `count` stays `bucket.rows.length` - over an EMPTY,
+			 * `hidden` body. The body element stays mounted so the chevron's
+			 * `aria-controls` names a real node; its rows are not rendered at all,
+			 * so no folded row is a ring stop, a selection target or a drag source.
+			 * The header keeps its own `data-tag-drop-target`, so a drop onto a
+			 * folded group still lands, and the rising count confirms it (the fold
+			 * is not sprung open under the pointer - `toggleTagDisclosure` says why).
+			 */
+			const collapsed = tagGroupCollapsed(expanded, bucket.id);
+			const bodyId = tagGroupBodyId(scope, bucket.id);
+			return (
+				<div
+					key={bucket.id}
+					data-chat-tag-group={bucket.id}
+					{...(collapsed ? { "data-chat-tag-collapsed": "" } : {})}
+					className="[&[data-tag-drop-preview]_[data-chat-row]]:bg-row-selected [&[data-tag-drop-preview]_[data-session-row]]:bg-row-selected"
+				>
+					<ChatTagHeader
+						id={bucket.id}
+						name={bucket.name}
+						count={bucket.rows.length}
+						above={visibleTags[visibleTags.indexOf(bucket.id) - 1] ?? null}
+						below={visibleTags[visibleTags.indexOf(bucket.id) + 1] ?? null}
+						announce={announcePinMove}
+						disclosure={{
+							collapsed,
+							bodyId,
+							onToggle: () =>
+								setExpanded((current) =>
+									toggleTagDisclosure(current, bucket.id),
+								),
+						}}
+					/>
+					<div
+						id={bodyId}
+						hidden={collapsed}
+						data-tag-drop-target={bucket.id}
+						data-tag-drop-body
+					>
+						{tagGroupBodyRows(bucket.rows, expanded, bucket.id).map((row) =>
+							sessionRow(row, false, true),
+						)}
+					</div>
 				</div>
-			</div>
-		));
+			);
+		});
 	};
 	const sessionRow = (
 		row: CanonicalSessionRow,
@@ -7865,9 +7940,11 @@ export function ChatSidebar({
 	/*
 	 * A TAG GROUP HEADER IS A STOP TOO (v3 spec D2): its `⋯` control, by its own
 	 * attribute rather than `data-chat-row`, because the type-to-filter branch and
-	 * the row chords test `data-chat-row` and a header must answer neither.
+	 * the row chords test `data-chat-row` and a header must answer neither. The
+	 * fold chevron (issue #1639) is a second header stop under its own attribute;
+	 * the ring walks DOM order, so it is reached before that header's `⋯`.
 	 */
-	const RING_STOPS = `[data-chat-row], [${TAG_HEADER_STOP_ATTR}]`;
+	const RING_STOPS = `[data-chat-row], [${TAG_TOGGLE_STOP_ATTR}], [${TAG_HEADER_STOP_ATTR}]`;
 	const applyRowStop = (stop: HTMLElement | null) => {
 		const nav = navRef.current;
 		if (nav === null) return;
@@ -8322,6 +8399,32 @@ export function ChatSidebar({
 			 * one they are on.
 			 */
 			if (moved !== undefined) applyRowStop(moved);
+			return;
+		}
+		/*
+		 * A TAG GROUP HEADER FOLDS WITH ARROWLEFT/RIGHT (issue #1639, UX U3), the
+		 * gesture the agent/team groups below already answer: Right unfolds a folded
+		 * group, or steps into its first row when open; Left folds an open one. Both of
+		 * the header's stops (chevron and `⋯`) answer, so the reader need not know which
+		 * of the two the walk landed on.
+		 */
+		const tagFold = target.matches(
+			`[${TAG_TOGGLE_STOP_ATTR}], [${TAG_HEADER_STOP_ATTR}]`,
+		)
+			? target
+					.closest("[data-chat-tag-group]")
+					?.querySelector<HTMLButtonElement>(`[${TAG_TOGGLE_STOP_ATTR}]`)
+			: null;
+		if (tagFold && (event.key === "ArrowRight" || event.key === "ArrowLeft")) {
+			event.preventDefault();
+			const open = tagFold.getAttribute("aria-expanded") === "true";
+			if (event.key === "ArrowRight" && !open) tagFold.click();
+			else if (event.key === "ArrowRight")
+				document
+					.getElementById(tagFold.getAttribute("aria-controls") ?? "")
+					?.querySelector<HTMLElement>("[data-chat-row]")
+					?.focus();
+			else if (open) tagFold.click();
 			return;
 		}
 		const group = target.closest("[data-entity]");
@@ -9678,7 +9781,7 @@ export function ChatSidebar({
 					className="relative"
 				>
 					{sectionLabel(t(SIDEBAR_SECTION_LABEL.pinned))}
-					{taggedRows(orderedPinned)}
+					{taggedRows(orderedPinned, "pinned")}
 					{/*
 					 * THE INSERTION INDICATOR, and it exists ONLY while a drag does: a 2px line in
 					 * the gap the row would land in, `bg-accent`'s colour step and nothing else -
@@ -9734,7 +9837,7 @@ export function ChatSidebar({
 								 */
 								key === firstSection ? markAllReadControl : undefined,
 							)}
-							{taggedRows(rows)}
+							{taggedRows(rows, key)}
 						</section>
 					);
 				})}

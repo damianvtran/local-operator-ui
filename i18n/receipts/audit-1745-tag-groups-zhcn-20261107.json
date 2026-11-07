@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1745-tag-groups-zhcn-20261107",
+  "locale": "zh-CN",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.tag_groups",
+  "keys_read": 2,
+  "sha256": {
+    "en": "bb046f0781f89559eeeb9382a8ece731281d58d8872f342e0ca09e2229f7d3ca",
+    "zh-CN": "7513a93a5b62fd5949c955f394be8955057436cbf9dfc9283540f67990189f0e"
+  },
+  "findings": [],
+  "scope": "PR #1745 ui.chat.tag_groups at 2209af742306909800ae675df54d8df4dc5b3074: full 2-key namespace (collapse, expand), en catalogue + en context, sibling collapse/expand keys, ui.chat.tags.untagged substitution",
+  "independence": "lopdev translation-auditor, separate session (f015890e4661) from the PR coder that translated; same served model family (anthropic/claude-opus-5-5) disclosed; verdict rebuilt from the English source, the en context, sibling keys, the core glossary and the locale style guide.",
+  "references": "co",
+  "checks": "placeholders {name} exactly once per key, no ICU/plural arms (none in source; CLDR categories not applicable), key set == en, zero Unicode Cf (bidi/format) code points, aria-label + title only (no fixed width budget), Untagged substitution read in-locale",
+  "verdict": "zh-CN: passed — 折叠/展开 matches the sibling sidebar group fold (折叠{name}的对话) and goal; adding 标签组 + full-width colon is the idiomatic way to embed a bare user label in a zh imperative (a bare 折叠工作 would be ambiguous), and keeps {name} unquoted per the context note; full-width ： per zh-CN guide. Clean."
+}

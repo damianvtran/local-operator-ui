@@ -174,6 +174,10 @@ const {
 	releaseSectionCap,
 	SIDEBAR_SECTION_ROWS,
 	toggleSectionDisclosure,
+	tagDisclosureKey,
+	tagGroupCollapsed,
+	tagGroupBodyRows,
+	toggleTagDisclosure,
 	entityQueryAdmits,
 	entitySectionGap,
 	ENTITY_SECTION_GAP,
@@ -1889,4 +1893,77 @@ test("every view setting the popover writes survives a relaunch", () => {
 	);
 	assert.equal(again.loads, 2, "the page rung came back");
 	assert.equal(pageLimit(again.loads), CHAT_PAGE_STEPS[1]);
+});
+
+/*
+ * A TAG GROUP'S FOLD (issue #1639). Both edges of the chevron press, the key it is
+ * recorded under, and the persistence round trip through the SAME blob the section
+ * headings write - `localStorage['chat-sidebar-disclosures']`, serialized with
+ * `JSON.stringify` and read back with `JSON.parse` by the sidebar.
+ */
+test("a tag group's chevron folds and unfolds it, keyed by tag id", () => {
+	assert.equal(tagDisclosureKey("review"), "tag:review");
+	assert.equal(
+		tagGroupCollapsed({}, "review"),
+		false,
+		"an untouched tag must draw open, as every group did before the control",
+	);
+	const sections = { pinned: true, today: false };
+	const folded = toggleTagDisclosure(sections, "review");
+	assert.equal(tagGroupCollapsed(folded, "review"), true, "close edge");
+	assert.equal(folded.pinned, true, "a fold rewrote a section's disclosure");
+	assert.equal(folded.today, false, "a fold rewrote a section's disclosure");
+	assert.equal(
+		tagGroupCollapsed(folded, "project"),
+		false,
+		"a fold leaked onto another tag",
+	);
+	assert.notEqual(folded, sections, "the transition mutated its input");
+	assert.equal(sections["tag:review"], undefined);
+	const unfolded = toggleTagDisclosure(folded, "review");
+	assert.equal(tagGroupCollapsed(unfolded, "review"), false, "open edge");
+	assert.equal(
+		"tag:review" in unfolded,
+		false,
+		"an unfold must drop the key, not store an open entry (U6)",
+	);
+	assert.equal(unfolded.pinned, true, "an unfold dropped a section key");
+	/* A tag id that spells a section key cannot fold that section. */
+	assert.equal(toggleTagDisclosure({}, "today").today, undefined);
+});
+
+test("a folded group draws no body rows, and its count is still the group", () => {
+	const rows = ["a", "b", "c"];
+	const folded = toggleTagDisclosure({}, "review");
+	assert.deepEqual(tagGroupBodyRows(rows, folded, "review"), []);
+	assert.equal(tagGroupBodyRows(rows, {}, "review"), rows);
+	/*
+	 * A DROP onto the folded header changes the group's rows, never the map: the
+	 * fold holds and the header's count (the bucket's length) is what moves.
+	 */
+	const dropped = [...rows, "d"];
+	assert.equal(tagGroupCollapsed(folded, "review"), true);
+	assert.deepEqual(tagGroupBodyRows(dropped, folded, "review"), []);
+	assert.equal(dropped.length, 4);
+});
+
+test("a tag fold survives the disclosures blob's relaunch round trip", () => {
+	const written = JSON.stringify(
+		toggleTagDisclosure({ previous: true }, "review"),
+	);
+	const relaunched = JSON.parse(written);
+	assert.equal(tagGroupCollapsed(relaunched, "review"), true);
+	assert.equal(relaunched.previous, true);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	// The fold rides the existing blob: read once at mount, written by the
+	// `expanded` effect - no second storage key for the same kind of fact.
+	assert.match(
+		source,
+		/localStorage\.setItem\("chat-sidebar-disclosures", JSON\.stringify\(expanded\)\)/,
+	);
+	assert.match(source, /tagGroupCollapsed\(expanded, bucket\.id\)/);
+	assert.match(source, /toggleTagDisclosure\(current, bucket\.id\)/);
 });
