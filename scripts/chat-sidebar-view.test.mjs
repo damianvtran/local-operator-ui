@@ -2065,6 +2065,19 @@ test("tag mode: the page starts on the held 50-row head without rewriting loads"
 		pageLimit(effectiveLoads({ groupBy: "tag", loads: 0 }) + 1),
 		100,
 	);
+	/*
+	 * And the press holds the reader's place (design §2.6.3): rows land in groups
+	 * ABOVE the viewport in Tag mode, so the first visible row is recorded and put
+	 * back after the commit (`sidebar-focus-hold.test.mjs` drives the hold itself).
+	 */
+	assert.match(
+		source,
+		/if \(groupBy === "tag"\)\s*pageAnchorRef\.current = firstVisibleRow\(listPanelRef\.current\);/,
+	);
+	assert.match(
+		source,
+		/holdPageAnchor\(listPanelRef\.current, pageAnchorRef\.current\);/,
+	);
 });
 
 test("tag mode: the tag surface is the switch OR the mode", () => {

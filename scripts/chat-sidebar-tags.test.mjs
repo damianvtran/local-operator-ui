@@ -771,7 +771,9 @@ test("tag mode folds with the same tag:<id> key as Time section", () => {
 	);
 	// One header in both modes; only the top-level wrapper and heading differ.
 	assert.match(source, /headingId=\{headingId\}/);
-	assert.match(source, /data-chat-section=\{`tag:\$\{bucket\.id\}`\}/);
+	assert.match(source, /data-chat-tag-section=\{bucket\.id\}/);
+	// The arrangement is ONE drag section, so a row may move to any tag's header.
+	assert.match(source, /<div data-chat-section="tag">/);
 	assert.match(source, /aria-labelledby=\{headingId\}/);
 	const header = readFileSync(
 		"src/renderer/src/features/chat/components/chat-tag-header.tsx",

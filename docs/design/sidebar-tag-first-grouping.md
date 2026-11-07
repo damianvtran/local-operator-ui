@@ -275,7 +275,11 @@ list, and it reuses the shipped drag, toast and announcement. `sidebar-tags-v2.m
   the header's chevron is the focus fallback, and the count shows it is there.
   Focus stays in the popover while it is open.
 - **Landmarks and headings:** each top-level tag group is a
-  `<section data-chat-section="tag:<id>" aria-labelledby="…">`. In Tag mode the
+  `<section data-chat-tag-section="<id>" aria-labelledby="…">`, inside one
+  `data-chat-section="tag"` wrapper. (As built: the brief first named
+  `data-chat-section="tag:<id>"`, but the re-tag drag keeps a tagged row's drop
+  targets inside its own `[data-chat-section]`, so per-group sections would
+  forbid exactly the cross-tag move Tag mode exists for.) In Tag mode the
   header's **name is wrapped in `<h3>`**, the level of today's section labels
   (`chat-sidebar.tsx:7909`). That keeps heading navigation (VoiceOver rotor,
   NVDA `H`) jumping group to group. The chevron button stays outside the

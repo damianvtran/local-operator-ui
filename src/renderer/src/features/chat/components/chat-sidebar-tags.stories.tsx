@@ -1803,7 +1803,7 @@ export const PinnedHeaderPreviewLight: Story = {
  * the stored-value fallback.
  */
 const tagGroup = (id: string) =>
-	document.querySelector<HTMLElement>(`[data-chat-section="tag:${id}"]`);
+	document.querySelector<HTMLElement>(`[data-chat-tag-section="${id}"]`);
 const tagChevron = (id: string) => {
 	const control = tagGroup(id)?.querySelector<HTMLButtonElement>(
 		`[data-chat-tag-toggle="${id}"]`,
@@ -1826,14 +1826,9 @@ export const TagModePopulated: Story = {
 		await ready();
 		await waitFor(() => expect(tagGroup("review")).not.toBeNull());
 		const order = [
-			...document.querySelectorAll<HTMLElement>('[data-chat-section^="tag:"]'),
-		].map((node) => node.dataset.chatSection);
-		expect(order).toEqual([
-			"tag:review",
-			"tag:project",
-			"tag:concept",
-			"tag:untagged",
-		]);
+			...document.querySelectorAll<HTMLElement>("[data-chat-tag-section]"),
+		].map((node) => node.dataset.chatTagSection);
+		expect(order).toEqual(["review", "project", "concept", "untagged"]);
 		for (const key of ["pinned", "running", "today", "week", "older"])
 			expect(document.querySelector(`[data-chat-section="${key}"]`)).toBeNull();
 		const first = (id: string) =>
@@ -1864,6 +1859,8 @@ export const TagModeUnusedTag: Story = {
 		expect(
 			document.querySelector('[data-chat-tag-toggle="unused"]'),
 		).toBeNull();
+		document.body.dataset.tagsProof =
+			"PASS: empty tag has no header and no chevron";
 	},
 };
 /** S3: categories exist, nothing loaded carries one - one Untagged group. */
@@ -1872,9 +1869,11 @@ export const TagModeUntaggedOnly: Story = {
 	play: async () => {
 		await ready();
 		await waitFor(() => expect(tagGroup("untagged")).not.toBeNull());
-		expect(
-			document.querySelectorAll('[data-chat-section^="tag:"]'),
-		).toHaveLength(1);
+		expect(document.querySelectorAll("[data-chat-tag-section]")).toHaveLength(
+			1,
+		);
+		document.body.dataset.tagsProof =
+			"PASS: one Untagged group when no loaded row is tagged";
 	},
 };
 /** S3b: no registry at all - flat rows and the existing first-use footer. */
@@ -1895,6 +1894,8 @@ export const TagModeMany220: Story = {
 		expect(
 			await within(document.body).findByText("Show 50 more chats"),
 		).toBeVisible();
+		document.body.dataset.tagsProof =
+			"PASS: mixed folds held; 50-row head with one foot";
 	},
 };
 /** S6: the popover in Tag mode - Tag ticked second, the switch absent. */
@@ -1914,6 +1915,8 @@ export const TagModeViewOptions: Story = {
 		expect(
 			body.queryByRole("switch", { name: "Split time sections by tag" }),
 		).toBeNull();
+		document.body.dataset.tagsProof =
+			"PASS: Tag radio second and checked; switch absent";
 	},
 };
 /** S6: the popover in Time section - the switch, with its new label. */
@@ -1928,6 +1931,8 @@ export const TimeSectionViewOptions: Story = {
 		expect(
 			body.getByRole("menuitemradio", { name: "Time section" }),
 		).toHaveAttribute("aria-checked", "true");
+		document.body.dataset.tagsProof =
+			"PASS: switch relabelled; Time section checked";
 	},
 };
 /** S7: search suspends the groups; clearing restores them and their folds. */
@@ -1948,7 +1953,7 @@ export const TagModeSearch: Story = {
 		});
 		await userEvent.type(field, "the");
 		await waitFor(() =>
-			expect(document.querySelector('[data-chat-section^="tag:"]')).toBeNull(),
+			expect(document.querySelector("[data-chat-tag-section]")).toBeNull(),
 		);
 		await userEvent.clear(field);
 		await waitFor(() => expect(tagGroup("review")).not.toBeNull());
@@ -1998,7 +2003,7 @@ export const TagModeOldBackend: Story = {
 	...story("tag-mode-old-backend"),
 	play: async () => {
 		await ready();
-		expect(document.querySelector('[data-chat-section^="tag:"]')).toBeNull();
+		expect(document.querySelector("[data-chat-tag-section]")).toBeNull();
 		expect(
 			document.querySelector('[data-chat-section="today"]'),
 		).not.toBeNull();
@@ -2010,5 +2015,66 @@ export const TagModeOldBackend: Story = {
 		expect(
 			body.getByRole("menuitemradio", { name: "Time section" }),
 		).toHaveAttribute("aria-checked", "true");
+		document.body.dataset.tagsProof =
+			"PASS: stored tag draws Time section, Tag radio absent, stored value kept";
+	},
+};
+/*
+ * AC6: drag re-tagging in Tag mode (design §2.8), through the shipped drag with
+ * synthetic DOM pointers. The PINNED row is the source on purpose: in Tag mode
+ * its drag must be a tag move only, never the Time-section pin reorder.
+ */
+export const TagModeDragRetag: Story = {
+	...story("tag-mode"),
+	play: async () => {
+		await ready();
+		await waitFor(() => expect(tagGroup("project")).not.toBeNull());
+		const source = document.querySelector<HTMLElement>(
+			'[data-session-row="111111111111"] [data-chat-row]',
+		);
+		const target = tagGroup("project")?.querySelector<HTMLElement>(
+			'[data-tag-drop-target="project"]:not([data-tag-drop-body])',
+		);
+		if (!source || !target) throw new Error("Missing tag-mode drag fixture");
+		const box = source.getBoundingClientRect();
+		const pointer = {
+			pointerId: 91,
+			pointerType: "mouse",
+			isPrimary: true,
+			button: 0,
+			clientX: box.left + 60,
+			clientY: box.top + 16,
+		};
+		fireEvent.pointerDown(source, pointer);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		await waitFor(() =>
+			expect(getComputedStyle(source).cursor).toBe("grabbing"),
+		);
+		const rect = target.getBoundingClientRect();
+		const over = {
+			...pointer,
+			clientX: rect.left + 60,
+			clientY: rect.top + rect.height / 2,
+		};
+		fireEvent.pointerMove(window, over);
+		fireEvent.pointerUp(window, over);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+			primary: "project",
+		});
+		await waitFor(() =>
+			expect(
+				document
+					.querySelector('[data-session-row="111111111111"]')
+					?.closest("[data-chat-tag-section]"),
+			).toHaveAttribute("data-chat-tag-section", "project"),
+		);
+		expect(useUiPreferencesStore.getState().chatSidebarView.pins).toEqual([]);
+		document.body.dataset.tagsProof =
+			"PASS: pinned Review row dropped on Project header: 1 write, primary project, row now leads Project, pin order untouched (synthetic pointers)";
 	},
 };

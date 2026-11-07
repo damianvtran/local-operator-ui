@@ -323,3 +323,54 @@ export const refreshFocusedInside = (
 		clipHeight: container.clientHeight,
 	};
 };
+
+/**
+ * A row the list keeps at a fixed offset in its scroller across a page press.
+ *
+ * WHY A ROW AND NOT `scrollTop` (issue #1733): under `Group by › Tag` a foot press
+ * grows every tag group, so the content ABOVE the reader grows and an unchanged
+ * `scrollTop` slides what they were reading down and away. The scroller refuses
+ * Chromium's own anchoring (`overflow-anchor: none`, load-bearing for the re-file
+ * case above), so the list pins the anchor itself, by session id: the id survives
+ * a re-render that replaces every node, and the offset is measured against the
+ * scroller's clip box (`clipBox`), the frame of reference the reader sees.
+ */
+export type PageAnchor = { id: string; offset: number };
+
+/** The first row at least partly inside `container`'s clip box, or null. */
+export const firstVisibleRow = (
+	container: HTMLElement | null,
+): PageAnchor | null => {
+	if (!container) return null;
+	const { top } = clipBox(container);
+	for (const node of container.querySelectorAll<HTMLElement>(
+		"[data-session-row]",
+	)) {
+		const box = node.getBoundingClientRect();
+		if (box.height > 0 && box.bottom > top)
+			return { id: node.dataset.sessionRow ?? "", offset: box.top - top };
+	}
+	return null;
+};
+
+/**
+ * Put the anchor row back at its recorded offset, after a commit.
+ *
+ * Runs in the same layout effect as `holdFocusedRow` so the correction lands in
+ * the frame the rows arrive in (a passive effect would paint the jump first). A
+ * row that is gone (re-tagged into a folded group, deleted) is not chased: the
+ * hold just does nothing, which is the scroller's ordinary behaviour.
+ */
+export const holdPageAnchor = (
+	container: HTMLElement | null,
+	anchor: PageAnchor | null,
+) => {
+	if (!container || !anchor) return;
+	const node = container.querySelector<HTMLElement>(
+		`[data-session-row="${CSS.escape(anchor.id)}"]`,
+	);
+	if (!node) return;
+	const drift =
+		node.getBoundingClientRect().top - clipBox(container).top - anchor.offset;
+	if (Math.abs(drift) >= 1) container.scrollTop += drift;
+};

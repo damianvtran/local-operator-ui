@@ -759,7 +759,10 @@ export const rowDraggingMark =
 
 import {
 	type FocusedSlot,
+	type PageAnchor,
+	firstVisibleRow,
 	holdFocusedRow,
+	holdPageAnchor,
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
@@ -1746,6 +1749,22 @@ export function ChatSidebar({
 	 * Space carries no click count, and a real pointer press carries 1.
 	 */
 	const listPanelRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * THE TAG-MODE FOOT'S SCROLL ANCHOR (issue #1733, design §2.6.3). In Tag mode a
+	 * `Show N more chats` press lands new rows in EVERY group, most of them above
+	 * the viewport, and this scroller deliberately sets `overflow-anchor: none`
+	 * (the comment on the scroller says why it is load-bearing), so Chromium does
+	 * not compensate: measured in Storybook, the rows on screen jumped by hundreds
+	 * of pixels on one press. The press records the first visible row and its
+	 * offset; every commit restores that offset until the reader scrolls, presses
+	 * or types in the list themselves - which also covers a tail page that
+	 * arrives from the daemon a few frames after the press. Time section needs
+	 * none of this: its new rows land at the foot, below what the reader sees.
+	 */
+	const pageAnchorRef = useRef<PageAnchor | null>(null);
+	const releasePageAnchor = () => {
+		pageAnchorRef.current = null;
+	};
 	const movedRef = useRef<{
 		id: string;
 		top: number;
@@ -3938,6 +3957,8 @@ export function ChatSidebar({
 	 * the rows the page is taken over and a lifted row is drawn outside it.
 	 */
 	const pressPageMore = () => {
+		if (groupBy === "tag")
+			pageAnchorRef.current = firstVisibleRow(listPanelRef.current);
 		// From the DRAWN rung: in Tag mode the first press goes 50 -> 100, not
 		// 10 -> 25 (which would draw nothing new over the held head).
 		const next = loads + 1;
@@ -4458,10 +4479,18 @@ export function ChatSidebar({
 					</div>
 				</div>
 			);
+			/*
+			 * `data-chat-tag-section`, NOT `data-chat-section`: the arrangement's one
+			 * wrapper below carries `data-chat-section="tag"`, because the re-tag drag
+			 * keeps a tagged row's drop targets inside the row's own
+			 * `[data-chat-section]` (`tagDropTargetAt`). Per-group sections there
+			 * would make every other tag's header a forbidden cross-section target -
+			 * and in Tag mode moving a row to another tag is the whole gesture.
+			 */
 			return topLevel ? (
 				<section
 					key={bucket.id}
-					data-chat-section={`tag:${bucket.id}`}
+					data-chat-tag-section={bucket.id}
 					aria-labelledby={headingId}
 				>
 					{group}
@@ -8563,6 +8592,7 @@ export function ChatSidebar({
 	useLayoutEffect(() => {
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);
 		holdFocusedRow(listPanelRef.current, listSlotRef);
+		holdPageAnchor(listPanelRef.current, pageAnchorRef.current);
 	});
 
 	/*
@@ -9836,8 +9866,18 @@ export function ChatSidebar({
 			 * there is no Pinned or Running section. With no registry (or under search)
 			 * `taggedRows` falls back to the flat rows it was handed.
 			 */}
-			{groupBy === "tag" &&
-				taggedRows([...orderedPinned, ...pagedRows], "tag", true)}
+			{/*
+			 * ONE wrapper, so the list's `space-y-4` section gap is spent once around
+			 * the arrangement and the groups inside sit flush on the headers' 28px
+			 * rhythm - the rhythm the same headers keep inside a time section
+			 * (design §2.3: "headers sit flush with no extra gap token"). It is also
+			 * the drag's section (`taggedRows` says why).
+			 */}
+			{groupBy === "tag" && (
+				<div data-chat-section="tag">
+					{taggedRows([...orderedPinned, ...pagedRows], "tag", true)}
+				</div>
+			)}
 			{pinnedShown && groupBy === "section" && pinned.length > 0 && (
 				<section
 					ref={pinnedSectionRef}
@@ -10606,6 +10646,13 @@ export function ChatSidebar({
 					data-tag-drag-list=""
 					/* The edge cues (issue #845): `index.css` masks on this hook. */
 					data-lo-sidebar-edge-cues
+					/*
+					 * The reader's own gesture ends the Tag-mode foot's anchor hold
+					 * (`holdPageAnchor`): from here the scroll is theirs.
+					 */
+					onWheel={releasePageAnchor}
+					onPointerDown={releasePageAnchor}
+					onKeyDown={releasePageAnchor}
 					onScroll={() => {
 						refreshFocusedInside(entityPanelRef.current, entitySlotRef);
 						refreshFocusedInside(listPanelRef.current, listSlotRef);

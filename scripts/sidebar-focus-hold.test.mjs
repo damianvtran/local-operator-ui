@@ -56,10 +56,16 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { holdFocusedRow, refreshFocusedInside, rowVisibility, ringBand } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	holdFocusedRow,
+	refreshFocusedInside,
+	rowVisibility,
+	ringBand,
+	firstVisibleRow,
+	holdPageAnchor,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 /*
  * The DOM the module sees. `document.activeElement instanceof HTMLElement` is a
@@ -439,4 +445,74 @@ test("and with the box unchanged the same re-file is still followed (U1, the hal
 		"inside",
 		"and the cursor is back on screen",
 	);
+});
+
+/*
+ * THE TAG-MODE FOOT'S ANCHOR (issue #1733). Under `Group by › Tag` a foot press
+ * lands rows in groups ABOVE the reader; the scroller refuses Chromium's own
+ * anchoring, so `holdPageAnchor` must put the first visible row back where it
+ * was. The fake is a scroller whose rows are addressed by session id, the key
+ * the hold looks the anchor up by.
+ */
+const pagedScroller = (ids) => {
+	const state = { scrollTop: 0, ids: [...ids] };
+	const nodes = new Map();
+	const node = (id) => {
+		if (!nodes.has(id)) {
+			const row = new FakeElement();
+			row.dataset = { sessionRow: id };
+			row.getBoundingClientRect = () => {
+				const top = 401 + state.ids.indexOf(id) * ROW_H - state.scrollTop;
+				return { top, bottom: top + ROW_H, height: ROW_H };
+			};
+			nodes.set(id, row);
+		}
+		return nodes.get(id);
+	};
+	const container = new FakeElement();
+	container.clientTop = 1;
+	container.clientHeight = 5 * ROW_H;
+	Object.defineProperty(container, "scrollTop", {
+		get: () => state.scrollTop,
+		set: (value) => {
+			state.scrollTop = Math.max(0, value);
+		},
+	});
+	container.getBoundingClientRect = () => ({
+		top: 400,
+		bottom: 400 + 5 * ROW_H,
+	});
+	container.querySelectorAll = () => state.ids.map(node);
+	container.querySelector = (selector) => {
+		const id = /data-session-row="([^"]+)"/.exec(selector)?.[1];
+		return id && state.ids.includes(id) ? node(id) : null;
+	};
+	return { container, state };
+};
+globalThis.CSS = { escape: (value) => value };
+
+test("a foot press that grows rows above the reader leaves the first visible row in place", () => {
+	const { container, state } = pagedScroller(
+		Array.from({ length: 20 }, (_, i) => `r${i}`),
+	);
+	container.scrollTop = 10 * ROW_H + 12; // mid-row: r10 partly clipped
+	const anchor = firstVisibleRow(container);
+	assert.deepEqual(anchor, { id: "r10", offset: -12 });
+	// Seven new rows land ABOVE the reader (another tag group grew).
+	state.ids.splice(3, 0, ...Array.from({ length: 7 }, (_, i) => `n${i}`));
+	assert.notEqual(
+		firstVisibleRow(container).id,
+		"r10",
+		"control: without the hold the reader's row slides away",
+	);
+	holdPageAnchor(container, anchor);
+	assert.deepEqual(firstVisibleRow(container), anchor);
+	assert.equal(container.scrollTop, 17 * ROW_H + 12);
+	// A second commit with nothing new is a no-op, and a gone row is not chased.
+	holdPageAnchor(container, anchor);
+	assert.equal(container.scrollTop, 17 * ROW_H + 12);
+	holdPageAnchor(container, { id: "gone", offset: 0 });
+	assert.equal(container.scrollTop, 17 * ROW_H + 12);
+	holdPageAnchor(container, null);
+	assert.equal(container.scrollTop, 17 * ROW_H + 12);
 });
