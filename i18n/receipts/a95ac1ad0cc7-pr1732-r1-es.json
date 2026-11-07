@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (delta audit of three added keys)",
+  "date": "2026-11-06",
+  "auditor": "reviewer",
+  "agent": "reviewer",
+  "session": "a95ac1ad0cc7",
+  "instance": "a95ac1ad0cc7-pr1732-r1-es",
+  "audit_id": "rs1732-es-r1-a95ac1ad0cc7",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Session-declared model anthropic/claude-opus-5-5; no provider fallback was announced during this run.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "namespace": "ui.chat.radient_session",
+  "locale": "es",
+  "sha256": {
+    "es": "0f729f0efb6d2510f79cbc2a83633bc3b190dba2475343c94ec3eaf7826734f8",
+    "en": "49d5e57f39c27fc5c3dbaea99519cacb2ef739f9c3c88e1df8169fd349ccb8a1"
+  },
+  "context_sha256": "4a6f942d3bcbea56d180e0ff40463f84916d58748cba2ec3b11670107ed1ca04",
+  "style_guide": {
+    "path": "~/local-operator i18n/style-guides/es.md",
+    "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+    "glossary_path": "~/local-operator i18n/glossary.md",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "core_commit": "e21f92fa4ee"
+  },
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "pr": 1732,
+    "branch": "fix/radient-callout-no-terminal",
+    "head": "088881be3e494d1b5f9de2cfecc5861d4e8638e1",
+    "base": "ec09bc17aff"
+  },
+  "independence": "Independent Local Operator reviewer subagent, session a95ac1ad0cc7, dispatched as translation auditor for PR #1732. The values were translated by the PR's coder session (anthropic/claude-opus-5-5, per the PR body); this auditor translated nothing, edited no catalogue value and wrote only audit artifacts. Same model family as the translator, distinct instance. No translation API or MT service used. Row written by ledger-assemble.mjs.",
+  "scope": {
+    "delta_kind": "Delta audit: exactly the three keys added at e5248bff6be; every other value is byte-identical to base ec09bc17aff (proved in audit.log) and keeps its prior verdict.",
+    "keys": [
+      "ui.chat.radient_session.action.open_console",
+      "ui.chat.radient_session.prose.not_cleared",
+      "ui.chat.radient_session.title.not_cleared"
+    ],
+    "key_count_file": 11,
+    "out_of_scope": "unchanged keys, other namespaces, rendered fit and screenshots"
+  },
+  "audited": {
+    "ui.chat.radient_session.action.open_console": "Abrir la consola de Radient",
+    "ui.chat.radient_session.prose.not_cleared": "Se completó el inicio de sesión, pero Radient sigue sin aceptar el que usa este equipo. Revisa la cuenta de Radient en Ajustes, dentro de Proveedores de modelos, o abre la consola de Radient.",
+    "ui.chat.radient_session.title.not_cleared": "Iniciar sesión en Radient no lo resolvió"
+  },
+  "findings": [
+    {
+      "id": "ES-N1",
+      "severity": "NIT",
+      "key": "ui.chat.radient_session.title.not_cleared",
+      "current": "Iniciar sesión en Radient no lo resolvió",
+      "issue": "In a title the clitic «lo» has no antecedent in the locale's own copy (the English «this» refers to the callout's problem). Readable, but vaguer than the fr/ru/vi/ur/zh-CN titles, which all name «el problema».",
+      "suggestion": "Iniciar sesión en Radient no resolvió el problema"
+    }
+  ],
+  "checks": {
+    "mechanical": "key parity, delta = three keys, unchanged values byte-identical, placeholders, NFC, bidi controls, Radient in Latin, no terminal/command advice, shipped nav labels",
+    "execution_log": "i18n/audits/evidence/es/ui.chat.radient_session/rs1732-es-r1-a95ac1ad0cc7/audit.log",
+    "semantic": "tú register (Revisa, abre) per es.md; Ajustes / Proveedores de modelos match shipped navigation and the sibling pointer; «consola de Radient» matches ui.common.account usage."
+  },
+  "not_verified": "native-speaker naturalness (agent semantic read only), rendered fit in the callout, RTL layout proof (ur), screenshots.",
+  "terminal": true,
+  "verdict": "clean-with-findings: no BLOCKER or MAJOR; ES-N1 NIT recorded as follow-ups. Round 1 is TERMINAL for this locale."
+}
