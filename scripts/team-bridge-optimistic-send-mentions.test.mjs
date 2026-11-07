@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { act } from "react";
 import {
+	PNG_BASE64,
 	deferred,
 	mount,
 	send,
@@ -188,10 +189,13 @@ test("a silent (notify: false) mention keeps its flag: it is never put on the wi
 });
 
 /* A Finder drop onto the composer: the preload names the file's path and the
-   chip is staged; nothing is uploaded until a send binds it. */
+   chip is staged; nothing is uploaded until a send binds it. The bytes must be
+   a whole PNG (the same one the preload's `readFile` returns): the composer
+   routes by sniffed bytes, not the declared type, so a truncated signature
+   typed `image/png` is correctly sent down the generic file lane instead. */
 async function dropImage(host) {
 	const box = host.querySelector("textarea").parentElement;
-	const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "", {
+	const file = new File([Buffer.from(PNG_BASE64, "base64")], "", {
 		type: "image/png",
 	});
 	const event = new window.Event("drop", { bubbles: true, cancelable: true });

@@ -513,6 +513,37 @@ export const TeamBridgeApi = {
 	},
 
 	/**
+	 * One bound GENERIC FILE's bytes for the signed-in member's Save (decision
+	 * a-fdf0; core #3521's `?mode=file`). Same route and gates as the picture
+	 * read - tenant, membership, binding, the captured-owner receipt - only the
+	 * type class differs. Main accepts exactly `application/octet-stream` up to
+	 * 25 MiB and answers 413 when the file is over that ceiling, so a caller can
+	 * tell "too large" from a refusal by status alone. The bytes are for a save
+	 * dialog and nothing else: never a blob URL, cache entry, preview or log.
+	 */
+	async fileBytes(input: {
+		tenantId: string;
+		conversationId: string;
+		messageId: string;
+		attachmentId: string;
+		expectedAccountId: string;
+	}): Promise<Uint8Array> {
+		const answer = await desktopMedia(
+			{ op: "team_bridge.attachment", mode: "file", ...input },
+			null,
+		);
+		if (
+			answer.kind !== "bytes" ||
+			answer.mimeType !== "application/octet-stream"
+		)
+			throw new TeamBridgeAttachmentError(
+				answer.kind === "error" ? answer.status : 422,
+				answer.kind === "error" ? answer.code : undefined,
+			);
+		return answer.data;
+	},
+
+	/**
 	 * Typed seam for private avatar derivatives through core's binary hub relay;
 	 * never use the local desktop bearer on the directory's hub URL. The receipt
 	 * captures the commissioning viewer. Old-runtime 404s remain safe fallbacks.

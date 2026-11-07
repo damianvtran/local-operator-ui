@@ -702,9 +702,23 @@ export const TeamBridgeMessageAttachments: FC<{
 }> = ({ message, tenantId, density = "regular", accountId }) => {
 	useI18nLocale();
 	const attachments = message.attachments ?? [];
-	/* S3b generic files ride beside the images as metadata-only cards; they
-	 * never enter this component's byte relay, cache or lightbox. */
+	/* S3b generic files ride beside the images as cards. They never enter this
+	 * component's picture relay, blob cache or lightbox: a file is never drawn.
+	 * Its one action, Save (decision a-fdf0), reads the bound file through the
+	 * same member relay in file mode, only when pressed, and only with the
+	 * tenant and captured account this subtree was rendered under. */
 	const files = (message.files ?? []).map(toBridgeFileDescriptor);
+	const readFile =
+		tenantId !== null && accountId
+			? (file: { id: string }) =>
+					TeamBridgeApi.fileBytes({
+						tenantId,
+						conversationId: message.conversation_id,
+						messageId: message.id,
+						attachmentId: file.id,
+						expectedAccountId: accountId,
+					})
+			: undefined;
 	const fileCount = Math.max(files.length, message.file_count ?? 0);
 	const [open, setOpen] = useState<number | null>(null);
 	const [urls, setUrls] = useState<(string | null)[]>([]);
@@ -737,6 +751,7 @@ export const TeamBridgeMessageAttachments: FC<{
 				compact={density === "compact"}
 				files={files}
 				fileCount={fileCount}
+				readFile={readFile}
 				renderPreview={(attachment, index, slot) => (
 					<MessageImage
 						message={message}

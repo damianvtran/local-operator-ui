@@ -7315,6 +7315,9 @@ export type DesktopOwnerAuditAttachmentScope = {
 export type DesktopMediaRequest =
 	| ({
 			op: "team_bridge.owner_audit.attachment";
+			/* `file`: the owner's Save of one generic file (octet-stream, 25 MiB).
+			   Absent is the image lane. Main-side only; never sent to core. */
+			mode?: "image" | "file";
 	  } & DesktopOwnerAuditAttachmentScope)
 	| { op: "speech.create"; request: Record<string, unknown> }
 	| { op: "speech.agent"; agentId: string; request: Record<string, unknown> }
@@ -7447,6 +7450,9 @@ export type DesktopMediaRequest =
 	  }
 	| {
 			op: "team_bridge.attachment";
+			/* `file`: the member's Save of one bound generic file (core #3521,
+			   octet-stream up to 25 MiB). Absent is the unchanged png/jpeg lane. */
+			mode?: "image" | "file";
 			tenantId: string;
 			conversationId: string;
 			messageId: string;

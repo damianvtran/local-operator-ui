@@ -1,4 +1,7 @@
-import type { OwnerAuditScope } from "@shared/api/local-operator/team-bridge-owner-audit-api";
+import {
+	type OwnerAuditScope,
+	TeamBridgeOwnerAuditApi,
+} from "@shared/api/local-operator/team-bridge-owner-audit-api";
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -66,8 +69,8 @@ function AuditImage({
 		count: String(count),
 	});
 	/* The member transcript's tile and failure, so an owner reading the audit
-	 * sees the same picture a member does. No download control: this client
-	 * offers none from the audit (#1634). */
+	 * sees the same picture a member does. No Save on an audit PICTURE (#1634):
+	 * decision a-fdf0 added a download for generic files only. */
 	if (source.state === "failed" || source.state === "unavailable")
 		return (
 			<InlineImageFailure
@@ -120,9 +123,11 @@ export function AuditAttachmentGroup({
 }: {
 	attachments: readonly BridgeAttachmentDescriptor[];
 	count: number;
-	/* S3b files: metadata cards only. The audit grants the owner file bytes
-	 * server-side, but this client offers no download, so `scope` is never
-	 * consulted for a file and no audit media read is commissioned. */
+	/* S3b files: cards with one action, Save (decision a-fdf0 replaced the
+	 * metadata-only rule of #1634 for files). The audit grants the human owner
+	 * file bytes server-side; a card reads them through the owner-audit relay in
+	 * file mode, only when pressed and only under this row's captured `scope`.
+	 * Without a scope the cards offer nothing, and nothing is ever previewed. */
 	files?: readonly BridgeFileDescriptor[];
 	fileCount?: number;
 	scope:
@@ -198,6 +203,15 @@ export function AuditAttachmentGroup({
 				compact={compact}
 				files={files}
 				fileCount={fileCount}
+				readFile={
+					scope
+						? (file) =>
+								TeamBridgeOwnerAuditApi.fileBytes({
+									...scope,
+									attachmentId: file.id,
+								})
+						: undefined
+				}
 				renderPreview={
 					scope
 						? (attachment, _index, slot) =>

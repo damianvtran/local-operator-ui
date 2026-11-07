@@ -1,4 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import {
+	FILE_SAVE_FILES,
+	fileSaveAnswer,
+	pressFileSaves,
+} from "../team-bridge-attachments.fixtures";
+import {
+	type BridgeFileDescriptor,
+	toBridgeFileDescriptor,
+} from "./attachment-model";
 import { BridgeAttachmentGroup } from "./bridge-attachment-group";
 
 const metadata = {
@@ -51,7 +60,8 @@ export const NarrowAudit: Story = {
 /*
  * S3b generic files (`files[]` / `file_count`). Synthetic descriptors shaped
  * like agent-server `docs/bridge-files-s3b-binding.md`; names are fixture text,
- * never real uploads. Cards are metadata only: no download or open control.
+ * never real uploads. Without a `readFile` (these first stories) a card offers
+ * nothing; the Save stories below hand in a synthetic one.
  */
 const file = (
 	id: string,
@@ -59,7 +69,14 @@ const file = (
 	displayName: string | null,
 	size: number,
 	state = "bound",
-) => ({ id, fileClass, displayName, size, state });
+): BridgeFileDescriptor => ({
+	id,
+	fileClass,
+	displayName,
+	size,
+	state,
+	expiresAt: null,
+});
 const s3bFiles = [
 	file("bfile_pdf", "pdf", "Q4 board report (signed).pdf", 184_320),
 	file("bfile_csv", "text", "تقرير الربع الرابع.csv", 920),
@@ -106,4 +123,52 @@ export const MixedImagesAndFilesCompact: Story = {
 			</div>
 		),
 	],
+};
+
+/*
+ * SAVE (decision a-fdf0). `readFile` is the caller's authority in the app (the
+ * member relay or the owner-audit relay); here it is the shared synthetic file
+ * lane, keyed by fixture id. One story per state that needs a press, so each
+ * frame also shows where focus lands: on the control while saving or after a
+ * failure, on the card once the control is gone (refused, too large).
+ */
+const saveFiles = FILE_SAVE_FILES.map(toBridgeFileDescriptor);
+const readFile = async (target: BridgeFileDescriptor) => {
+	const answer = await fileSaveAnswer(target.id);
+	if (answer.kind === "bytes") return answer.data;
+	throw Object.assign(new Error("synthetic refusal"), {
+		status: answer.status,
+	});
+};
+const pressOnly: NonNullable<Story["play"]> = async ({ canvasElement }) => {
+	canvasElement.querySelector<HTMLButtonElement>("li button")?.click();
+	await new Promise((resolve) => setTimeout(resolve, 50));
+};
+const only = (id: string): Story => ({
+	args: {
+		attachments: [],
+		files: saveFiles.filter((row) => row.id === id),
+		readFile,
+	},
+	play: pressOnly,
+});
+export const FileSaveAvailable: Story = {
+	args: { attachments: [], files: saveFiles, readFile },
+};
+export const FileSaveStates: Story = {
+	args: { attachments: [], files: saveFiles, readFile },
+	play: async ({ canvasElement }) => pressFileSaves(canvasElement),
+};
+export const FileSaveSaving = only("bfile_save_hold");
+export const FileSaveRefused = only("bfile_save_refused");
+export const FileSaveTooLarge = only("bfile_save_large");
+export const FileSaveFailed = only("bfile_save_offline");
+export const FileSaveExpired: Story = {
+	args: {
+		attachments: [],
+		files: saveFiles.filter(
+			(row) => row.id.endsWith("expired") || row.id.endsWith("lapsed"),
+		),
+		readFile,
+	},
 };

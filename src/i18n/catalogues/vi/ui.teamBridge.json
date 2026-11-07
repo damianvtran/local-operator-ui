@@ -341,6 +341,12 @@
 	"ui.teamBridge.attachmentCard.unavailable": "Tệp đính kèm không khả dụng",
 	"ui.teamBridge.fileCard.list": "{count, number} tệp",
 	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Tệp văn bản} container {ZIP} other {Tệp}}",
+	"ui.teamBridge.fileCard.save": "Lưu tệp {index}/{count}",
+	"ui.teamBridge.fileCard.saving": "Đang lưu…",
+	"ui.teamBridge.fileCard.save_failed": "Không lưu được. Hãy thử lại.",
+	"ui.teamBridge.fileCard.too_large": "Tệp quá lớn để lưu",
+	"ui.teamBridge.fileCard.expired": "Tệp đã hết hạn",
+	"ui.teamBridge.fileCard.unavailable": "Tệp không khả dụng",
 	"ui.teamBridge.members_panel.title": "Thành viên",
 	"ui.teamBridge.members_panel.close": "Đóng danh sách thành viên",
 	"ui.teamBridge.members_panel.open_label": "{count, plural, other {Xem # thành viên}}",
@@ -397,5 +403,7 @@
 	"ui.teamBridge.files.unavailable": "Tài khoản này chưa hỗ trợ tệp. Hãy xóa tệp để gửi văn bản hoặc hình ảnh.",
 	"ui.teamBridge.files.add": "Đính kèm tệp",
 	"ui.teamBridge.files.no_schedule": "Có thể gửi tệp ngay, nhưng không thể lên lịch.",
-	"ui.teamBridge.files.uploading": "Đang tải tệp lên…"
+	"ui.teamBridge.files.uploading": "Đang tải tệp lên…",
+	"ui.teamBridge.files.attached": "Đã đính kèm",
+	"ui.teamBridge.files.not_uploaded": "Chưa tải lên"
 }

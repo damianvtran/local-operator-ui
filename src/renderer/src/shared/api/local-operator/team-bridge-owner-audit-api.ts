@@ -33,9 +33,34 @@ const attachmentTuple = (scope: OwnerAuditAttachmentInput) => ({
 });
 
 /** Deliberately no member-history or agent-tool fallback. A refusal must remain
- * a refusal, not become a read under different authority. Attachment metadata
- * uses only the dedicated owner-audit relay. Generic files remain metadata-only; no download path or opaque byte transport is exposed. */
+ * a refusal, not become a read under different authority. Attachment bytes use
+ * only the dedicated owner-audit relay. Generic files were metadata-only until
+ * the operator's decision a-fdf0 (download, never preview): `fileBytes` is the
+ * owner's Save of one file, through this same relay and receipt, and its bytes
+ * go to a save dialog only - no blob cache, preview or inline rendering. */
 export const TeamBridgeOwnerAuditApi = {
+	/** One audited generic file for the owner's Save: exactly octet-stream, up
+	 * to 25 MiB; main answers 413 over that ceiling (see `fileBytes` on the
+	 * member API for the shared status vocabulary). */
+	async fileBytes(scope: OwnerAuditAttachmentInput): Promise<Uint8Array> {
+		const result = await desktopMedia(
+			{
+				op: "team_bridge.owner_audit.attachment",
+				mode: "file",
+				...attachmentTuple(scope),
+			},
+			null,
+		);
+		if (
+			result.kind !== "bytes" ||
+			result.status !== 200 ||
+			result.mimeType !== "application/octet-stream"
+		)
+			throw new OwnerAuditAttachmentError(
+				result.kind === "error" ? result.status : 422,
+			);
+		return result.data;
+	},
 	async attachmentBytes(
 		scope: OwnerAuditAttachmentInput,
 	): Promise<{ data: Uint8Array; mimeType: string }> {

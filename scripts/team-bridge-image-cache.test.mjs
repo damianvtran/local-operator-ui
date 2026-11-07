@@ -592,6 +592,50 @@ test("two reads of the same image cost exactly ONE upstream fetch", async () => 
 	);
 });
 
+/*
+ * Convergence of the image cache with the generic-file Save lane (a-fdf0, PR
+ * #1735). The cache key hashes the five receipt ids and not `mode`, so without the
+ * guard in `imageCacheAddress` a `mode=file` Save of a receipt whose picture is
+ * already cached was answered from disk: the image bytes, no `?mode=file` fetch.
+ */
+const FILE_MODE_QUERY = /[?&]mode=file(&|$)/;
+
+test("a mode=file read bypasses the image cache in both directions", async () => {
+	const hub = await startHub({
+		status: 200,
+		contentType: PNG,
+		bytes: bytesOf(32, 5),
+	});
+	const { cache } = await openCache();
+	const receipt = receiptOf("filelane");
+
+	await fetchThroughRelay(hub.backendUrl, receipt, cache);
+	assert.equal(hub.state.requests.length, 1, "the picture was fetched once");
+	assert.equal(cache.stats().entries, 1, "and stored");
+
+	hub.state.mode = {
+		status: 200,
+		contentType: "application/octet-stream",
+		bytes: bytesOf(16, 9),
+	};
+	const file = await requestDesktopMediaOutcome(
+		{ op: "team_bridge.attachment", mode: "file", ...receipt },
+		null,
+		hub.backendUrl,
+		TOKEN,
+		cache,
+	);
+	assert.equal(hub.state.requests.length, 2, "the file read reached the hub");
+	assert.match(hub.state.requests[1].url, FILE_MODE_QUERY);
+	// The hub stub omits the file lane's hardening headers, so the file reader
+	// refuses the body; what matters here is that the answer came from the hub
+	// (`answered`), never from the cached picture (a hit is `answered: false`).
+	assert.equal(file.answered, true, "answered by the hub, not by the cache");
+	assert.notEqual(file.response.kind, "bytes", "the picture was not served");
+	assert.equal(cache.stats().hits, 0, "the cached picture was never served");
+	assert.equal(cache.stats().entries, 1, "and the file was not stored");
+});
+
 test("a failed fetch is not stored and cannot damage an existing entry", async () => {
 	const hub = await startHub({
 		status: 200,

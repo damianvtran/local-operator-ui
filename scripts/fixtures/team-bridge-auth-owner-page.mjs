@@ -1005,4 +1005,4 @@ async function send(host) {
 	await act(async () => button.click());
 }
 
-export { mount, ui, type, send, until, delay, deferred };
+export { mount, ui, type, send, until, delay, deferred, PNG_BASE64 };

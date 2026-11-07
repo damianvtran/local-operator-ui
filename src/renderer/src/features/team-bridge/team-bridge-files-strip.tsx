@@ -67,12 +67,18 @@ export function TeamBridgeFilesStrip({
 										: "text-ink-muted",
 								)}
 							>
+								{/* Each chip says its OWN state (design D5 on #1720): `Attached`,
+								    not the list's plural name, and a capability-off chip says
+								    `Not uploaded` - nothing was attempted, so `Upload failed`
+								    would be false; the note under the list says why. */}
 								{t(
 									chip.status === "error"
-										? "ui.teamBridge.files.failed"
+										? state.enabled
+											? "ui.teamBridge.files.failed"
+											: "ui.teamBridge.files.not_uploaded"
 										: chip.status === "uploading"
 											? "ui.teamBridge.files.uploading"
-											: "ui.teamBridge.files.staged",
+											: "ui.teamBridge.files.attached",
 								)}
 							</span>
 						</div>
