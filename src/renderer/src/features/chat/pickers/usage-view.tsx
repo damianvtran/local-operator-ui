@@ -469,7 +469,9 @@ export const ProviderBlockView: FC<{
 							variant="tonal"
 							size="sm"
 							type="button"
-							className={cn("h-6 px-2 font-semibold text-meta")}
+							className={cn(
+								"h-6 px-2 font-semibold text-meta hover:bg-hairline",
+							)}
 							/*
 							 * DESIGN ROUND 1, D1. As a `ghost` chip this was `ink-muted` at 12 px
 							 * on a transparent ground — the SAME colour, size and background as
@@ -479,7 +481,13 @@ export const ProviderBlockView: FC<{
 							 * affordance this surface adds was invisible. `tonal` is the existing
 							 * token for a quiet but VISIBLE action (sunken ground, body ink,
 							 * >= 7.10:1 on all 59 palettes); `h-6` brings it to the 24 px target
-							 * floor. It stays inside the heading line, so nothing is displaced.
+							 * floor. It stays inside the heading line, so no row is added — the line
+							 * itself is 24 px instead of 20, which is the 4.5 px design round 2
+							 * measured and the price of the target floor.
+							 *
+							 * `hover:bg-hairline`, not the variant's own `hover:bg-surface`: surface
+							 * IS the card, so hovering erased the fill and the chip collapsed back
+							 * into the plain-bold-text look this finding was about (round 2, D6).
 							 */
 							/*
 							 * The spoken name carries the COUNT the chip draws: the visible
