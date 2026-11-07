@@ -4,6 +4,7 @@ import {
 	COMPOSER_PLACEHOLDER,
 	type SendOutcome,
 } from "@shared/hooks/use-message-input";
+import { currentLocale } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	SEND_FAILURE_COPY,
@@ -16,13 +17,16 @@ import {
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent, within } from "@storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
 import { type ReactNode, useEffect, useState } from "react";
+import { useArgs } from "storybook/internal/preview-api";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 } from "../../../../../../src/shared/desktop-contract";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
+import enComposer from "../../../../../i18n/catalogues/en/ui.chat.composer.json";
+import frComposer from "../../../../../i18n/catalogues/fr/ui.chat.composer.json";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import {
 	type PickerContext,
@@ -2308,6 +2312,250 @@ export const CredentialPillUnbacked: Story = {
 			</div>
 		</Frame>
 	),
+};
+
+/*
+ * THE SECRET-CLOSURE NOTICE'S STORIES - why they exist at all.
+ *
+ * `#composer-secret-closure-notice` renders only while a BLOCKING secret ask is
+ * pending (`secretAnswer`) AND the box holds a draft. Its copy moved from a
+ * module-level English `const` to `t("ui.chat.composer.secret_closure_notice")`
+ * (i18n audit, C1), and the rendered proof of that - per locale, per theme, a
+ * locale switch that keeps the draft, the answer that lifts the pause - could not
+ * be taken from the compiled app: reaching the blocking-secret state needs a
+ * backend parking a secret ask, and the app's installer stalls under the isolated
+ * HOME a fixture run requires (PR thread, "C1 blocking-state proof"). These
+ * stories mount the REAL `MessageInput` in that state instead.
+ *
+ * WHAT THEY CLAIM: the shipped component's own render of the notice in the
+ * requested locale and theme, the draft untouched across a locale switch, and the
+ * notice gone with the box writable once `secretAnswer` turns false. WHAT THEY DO
+ * NOT CLAIM: anything about native Electron, the backend's secret-ask protocol or
+ * the asks panel that delivers the answer - the prop flip stands in for all three.
+ *
+ * Their own conversation id keeps the seeded draft out of the `"story"` draft the
+ * credential stories share: the draft store is persisted, so a shared id would
+ * hand this sentence to whichever story the iframe loads next.
+ */
+const SECRET_CLOSURE_CONVERSATION = "story-secret-closure";
+const SECRET_CLOSURE_DRAFT =
+	"deploy notes for the staging box — finish after the key is in";
+const SECRET_CLOSURE_NOTICE = "#composer-secret-closure-notice";
+
+/** The composer's box, or a throw naming the missing piece. */
+const composerBox = (root: ParentNode): HTMLTextAreaElement => {
+	const box = root.querySelector<HTMLTextAreaElement>(
+		'textarea[role="combobox"]',
+	);
+	if (!box) throw new Error("the composer's textarea is not in this story");
+	return box;
+};
+
+/**
+ * Hold the shutter until `ready()` holds, then release it; an expiry REFUSES.
+ *
+ * The notice and the draft both arrive after the first paint (the draft is
+ * written in `WithDraft`'s effect, and the notice renders only once the store
+ * hands the composer a nonempty value), so a rig sampling the first settled frame
+ * could photograph the paused box with no notice under it. An expired hold writes
+ * `data-capture-failed` - which the capture rigs refuse - and throws, rather than
+ * releasing onto a frame that does not carry the claimed state (AGENTS.md, "What
+ * a capture may claim").
+ */
+const holdShutterUntil = (
+	ready: () => boolean,
+	label: string,
+): Promise<void> => {
+	holdShutter();
+	const started = Date.now();
+	return new Promise((resolve, reject) => {
+		const timer = window.setInterval(() => {
+			if (ready()) {
+				window.clearInterval(timer);
+				releaseShutter();
+				resolve();
+				return;
+			}
+			if (Date.now() - started > 20_000) {
+				window.clearInterval(timer);
+				releaseShutter();
+				document.documentElement.dataset.captureFailed = `secret-closure-shutter-not-reached: ${label}`;
+				reject(new Error(`secret-closure state never reached: ${label}`));
+			}
+		}, 50);
+	});
+};
+
+/**
+ * THE NOTICE ON SCREEN, per locale and theme: a paused box holding an ordinary
+ * draft, and the closure sentence under it.
+ *
+ * The locale is the preview's `?args=locale:<tag>` pin and the theme its theme
+ * arg - nothing here hard-codes either, so the fr / ru / ur x light / dark set is
+ * one story addressed six ways. The shutter waits for the notice AND for the
+ * draft in the box: a frame with the notice and an empty box would be a state
+ * the component cannot produce, and one with the draft and no notice is the
+ * defect this copy fix is about.
+ */
+export const SecretClosureNotice: Story = {
+	render: () => (
+		<Frame label="a blocking secret ask is pending and the box holds a draft: the closure notice">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<WithDraft
+					conversation={SECRET_CLOSURE_CONVERSATION}
+					text={SECRET_CLOSURE_DRAFT}
+				>
+					<MessageInput
+						isLoading={false}
+						messages={NONEMPTY}
+						conversationId={SECRET_CLOSURE_CONVERSATION}
+						onSendMessage={async () => true}
+						secretAnswer={true}
+					/>
+				</WithDraft>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		await holdShutterUntil(() => {
+			const notice = canvasElement.querySelector(SECRET_CLOSURE_NOTICE);
+			const box = canvasElement.querySelector<HTMLTextAreaElement>(
+				'textarea[role="combobox"]',
+			);
+			return (
+				Boolean(notice?.textContent) && box?.value === SECRET_CLOSURE_DRAFT
+			);
+		}, "notice with the draft in the box");
+	},
+};
+
+/*
+ * The lifecycle harness's controls, published for the play function: the play
+ * runs outside React, and these are the two state changes it has to make from
+ * there. Module-level because a story has no other channel from its render to
+ * its play; `null` whenever the harness is not mounted.
+ */
+let secretClosureControls: {
+	answer: () => void;
+	switchLocale: (locale: string) => void;
+} | null = null;
+
+/**
+ * The composer under a blocking secret ask whose ANSWER can arrive: `secretAnswer`
+ * is this component's state rather than a fixed prop, and `answer()` is the asks
+ * panel's answer landing (the prop going false), which is all the composer sees
+ * of it.
+ */
+const SecretClosureHarness = ({
+	switchLocale,
+}: {
+	switchLocale: (locale: string) => void;
+}) => {
+	const [pending, setPending] = useState(true);
+	useEffect(() => {
+		secretClosureControls = {
+			answer: () => setPending(false),
+			switchLocale,
+		};
+		return () => {
+			secretClosureControls = null;
+		};
+	}, [switchLocale]);
+	return (
+		<WithDraft
+			conversation={SECRET_CLOSURE_CONVERSATION}
+			text={SECRET_CLOSURE_DRAFT}
+		>
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId={SECRET_CLOSURE_CONVERSATION}
+				onSendMessage={async () => true}
+				secretAnswer={pending}
+			/>
+		</WithDraft>
+	);
+};
+
+/** One play at a time: an args update must not start a second, overlapping run. */
+let secretClosureLifecycleRunning = false;
+
+/**
+ * THE NOTICE'S LIFECYCLE, asserted rather than photographed: en -> fr with the
+ * draft byte-identical, then the answer arriving lifts the pause.
+ *
+ * THE LOCALE MOVES THROUGH THE PREVIEW'S ARG, not a bare `setLocale`: the
+ * preview's locale frame re-asserts its pinned locale on every store change
+ * (its sticky subscription against bridge stubs), so a direct `setLocale("fr")`
+ * from here is reverted before the composer can redraw. Updating the `locale`
+ * arg makes the preview itself call `setLocale(locale)` - the same store seam -
+ * the way a capture's `?args=locale:` pin does. The play restores the arg it
+ * found, so the stories loaded after this one keep their own pin.
+ *
+ * The expected sentences are the catalogues' own values, imported rather than
+ * retyped, so a copy edit cannot leave this test asserting yesterday's text.
+ */
+export const SecretClosureLifecycle: Story = {
+	args: { locale: "en" },
+	render: function Render() {
+		const [, updateArgs] = useArgs();
+		return (
+			<Frame label="lifecycle: the closure notice across a locale switch, then the answer arriving">
+				<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+					<SecretClosureHarness
+						switchLocale={(locale) => updateArgs({ locale })}
+					/>
+				</div>
+			</Frame>
+		);
+	},
+	play: async ({ canvasElement, args }) => {
+		if (secretClosureLifecycleRunning) return;
+		secretClosureLifecycleRunning = true;
+		// `Meta` is untyped here, so the preview's global `locale` arg is read by name.
+		const requested = (args as { locale?: unknown }).locale;
+		const pinned = typeof requested === "string" ? requested : "en";
+		const controls = () => {
+			if (!secretClosureControls)
+				throw new Error("the secret-closure harness is not mounted");
+			return secretClosureControls;
+		};
+		try {
+			const noticeText = () =>
+				canvasElement.querySelector(SECRET_CLOSURE_NOTICE)?.textContent;
+			const en = enComposer["ui.chat.composer.secret_closure_notice"];
+			const fr = frComposer["ui.chat.composer.secret_closure_notice"];
+
+			if (currentLocale() !== "en") controls().switchLocale("en");
+			await waitFor(() => expect(noticeText()).toBe(en));
+			const box = composerBox(canvasElement);
+			await waitFor(() => expect(box.value).toBe(SECRET_CLOSURE_DRAFT));
+			// Paused the way the component pauses: read-only (not `disabled`, so the
+			// draft stays selectable) and announced as unavailable; a keystroke lands
+			// nowhere.
+			expect(box.readOnly).toBe(true);
+			expect(box.getAttribute("aria-disabled")).toBe("true");
+			await userEvent.type(box, "x");
+			expect(box.value).toBe(SECRET_CLOSURE_DRAFT);
+
+			controls().switchLocale("fr");
+			await waitFor(() => expect(currentLocale()).toBe("fr"));
+			await waitFor(() => expect(noticeText()).toBe(fr));
+			expect(composerBox(canvasElement).value).toBe(SECRET_CLOSURE_DRAFT);
+
+			controls().answer();
+			await waitFor(() =>
+				expect(canvasElement.querySelector(SECRET_CLOSURE_NOTICE)).toBeNull(),
+			);
+			const answered = composerBox(canvasElement);
+			expect(answered.readOnly).toBe(false);
+			expect(answered.getAttribute("aria-disabled")).toBeNull();
+			expect(answered.value).toBe(SECRET_CLOSURE_DRAFT);
+		} finally {
+			secretClosureControls?.switchLocale(pinned);
+			secretClosureLifecycleRunning = false;
+		}
+	},
 };
 
 /**
