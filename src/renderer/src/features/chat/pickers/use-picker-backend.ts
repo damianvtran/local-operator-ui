@@ -170,12 +170,15 @@ export async function runSessionCommand(
 		 */
 		resendWhileBusy?: boolean;
 		/**
-		 * The press has LANDED, read live, checked before every repeat (design round 1,
-		 * D3). A frontend frame naming the requested spec is the owner's own statement
-		 * of the model in force — the same reading `use-canonical-session` uses to
-		 * retire the pending paint — so repeating the switch while the dialog still
-		 * reads `Switching the model…` would tell the user it is waiting for something
-		 * that already happened. Only a caller that can see the frames passes it.
+		 * The press has LANDED, read live, and read ONLY before a REPEAT — never before
+		 * the first dispatch (design round 2, D5). A press whose session already names
+		 * the target must still be SENT once: re-selecting the same model is the
+		 * documented way the backend drops a fallback pin (`session.py`
+		 * `_drop_fallback_pin`), so suppressing that send would report a switch that
+		 * never happened while a fallback kept serving. What the predicate ends is the
+		 * REPEAT: once a frame names the requested spec mid-wait, further attempts ask
+		 * the owner for something it has already done, under a footer still reading
+		 * `Switching the model…`. Only a caller that can see the frames passes it.
 		 */
 		landed?: () => boolean;
 	},
@@ -183,16 +186,25 @@ export async function runSessionCommand(
 		desktopResult<DesktopCommandReceipt>(request),
 ): Promise<CommandRun> {
 	const { sessionId, command, args, failure, resendWhileBusy, landed } = input;
+	/*
+	 * ATTEMPTS, not "is landed": `landed` is consulted only for a REPEAT, so the
+	 * first dispatch is unconditional. The distinction is the whole of design round
+	 * 2's D5 — with the predicate read first, a press on the model the session
+	 * already names sent NOTHING and took the success path, which is exactly how a
+	 * fallback pin (selected A, effective B) keeps serving after the user re-selects
+	 * A to drop it.
+	 */
+	let dispatched = 0;
 	const dispatch = async () => {
 		/*
 		 * The stop is thrown as a NON-DesktopControlError on purpose: `withBusyResends`
 		 * rethrows anything that is not `runtime_busy` at once, so this ends the
-		 * repeat at the first opportunity without touching that helper's bound or its
-		 * waits. The residual is one wait (the busy hint, 2 s today) if the frame
-		 * lands during it — measured, that is the window design D3 saw, not the whole
-		 * repeat.
+		 * repeat at its first opportunity without touching that helper's bound or its
+		 * waits. The residual is one wait (the busy hint, 2 s today) if the frame lands
+		 * during it — measured, that is the window design D3 saw, not the whole repeat.
 		 */
-		if (landed?.()) throw new PressLandedWhileWaiting();
+		if (dispatched > 0 && landed?.()) throw new PressLandedWhileWaiting();
+		dispatched += 1;
 		return send({
 			op: "sessions.command",
 			sessionId,
@@ -209,9 +221,11 @@ export async function runSessionCommand(
 	} catch (error) {
 		if (error instanceof PressLandedWhileWaiting) {
 			/*
-			 * No receipt ever arrived, so there is nothing to quote: `outcome` is null
-			 * and the strip stays empty (the hook skips `result` on this arm). What the
-			 * press has instead is the owner's own frame naming the model it asked for.
+			 * Reachable only from a REPEAT (the first dispatch never reads `landed`), so
+			 * the press went out at least once and the frame that named the model is the
+			 * answer to that send. No receipt arrived, so there is nothing to quote:
+			 * `outcome` is null and the strip stays empty (the hook skips `result` on this
+			 * arm).
 			 */
 			return {
 				outcome: null,

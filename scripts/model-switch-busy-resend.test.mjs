@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -106,6 +106,21 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
+/*
+ * THE ARTIFACT IS ALSO REAPED ON EXIT. The `finally` below only runs if this
+ * process gets as far as the import; a run that fails to build, or one killed
+ * between the write and the import (a bounded harness, a cancelled QA lane),
+ * leaves `scripts/_<name>-<pid>.mjs` in the worktree — measured, and the reason
+ * this handler exists rather than the `finally` alone.
+ */
+process.once("exit", () => {
+	try {
+		rmSync(bundlePath, { force: true });
+	} catch {
+		/* An exit path must not mask the failure it is running past. */
+	}
+});
+
 /*
  * The bundle is removed even when it FAILS TO LOAD: the sibling suite records the
  * incident where a broken alias left the artifact sitting in `scripts/`.
@@ -327,17 +342,15 @@ test("a deadline breach is not retried either, so the repeat cannot compound the
 
 /* --------------------------- 4. the repeat is opt-in, and only this caller opts in */
 
-test("the repeat stops at its next opportunity once a frame names the requested model (design D3)", async () => {
+test("a frame that lands during the wait ends the REPEAT, not the press (design D3)", async () => {
 	/*
 	 * The lost-ack arm where the switch DID land: the authoritative frame arrives
 	 * while the first attempt is failing, so a second dispatch would ask the owner
 	 * for something it has already done — and the dialog would keep reading
 	 * `Switching the model…` over a session already on it (design round 1, D3).
 	 *
-	 * The stop is observed as traffic: one dispatch, then no second one, and the
-	 * run reports `confirmedByFrame` rather than `unconfirmed`. A `landed` that is
-	 * true from the start is the same stop one attempt earlier, asserted in the
-	 * same test so a predicate that is only read once cannot pass both.
+	 * The stop is observed as traffic: the first dispatch happened, and no second
+	 * one follows. The run reports `confirmedByFrame` rather than `unconfirmed`.
 	 */
 	let landed = false;
 	const requests = [];
@@ -362,21 +375,41 @@ test("the repeat stops at its next opportunity once a frame names the requested 
 		"not the indeterminate register",
 	);
 	assert.equal(outcome.outcome, null, "there is no receipt to quote");
+});
 
-	let already = 0;
-	const second = await runSessionCommand(
-		dispatchInput({ landed: () => true }),
-		async () => {
-			already += 1;
+test("a press on the model the session ALREADY names is still sent, exactly once (design round 2, D5)", async () => {
+	/*
+	 * THE FALLBACK-PIN CASE. With a fallback serving (selected A, effective B),
+	 * re-selecting A is the documented way the backend drops the pin
+	 * (`session.py::_drop_fallback_pin`, "explicit re-selection of the SAME
+	 * model"). So `landed` must never suppress the FIRST dispatch: read before
+	 * every attempt, it did — nothing went out, the picker marked A as in force,
+	 * and B kept serving. That is a false confirmation over a switch that never
+	 * happened, the defect this whole change exists to remove.
+	 *
+	 * A predicate that is true from the start now costs nothing: the first send is
+	 * unconditional, and its receipt is the press's answer.
+	 */
+	const requests = [];
+	const outcome = await runSessionCommand(
+		dispatchInput({
+			// The session already names the target, and says so before the press.
+			landed: () => true,
+		}),
+		async (request) => {
+			requests.push(request);
 			return switched;
 		},
 	);
+	assert.equal(requests.length, 1, "the press is sent exactly once");
+	assert.equal(requests[0].command, "model");
+	assert.equal(requests[0].args, TARGET, "the send carries the picked model");
+	assert.equal(outcome.outcome, switched.result, "the receipt is the answer");
 	assert.equal(
-		already,
-		0,
-		"a press that has already landed never goes out again",
+		outcome.confirmedByFrame,
+		undefined,
+		"a receipted press is not the frame-confirmed arm",
 	);
-	assert.equal(second.confirmedByFrame, true);
 });
 
 test("a caller that does not opt in is dispatched exactly once, even on a busy refusal", async () => {

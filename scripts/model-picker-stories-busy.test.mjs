@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { rmSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -131,6 +132,21 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
+/*
+ * THE ARTIFACT IS ALSO REAPED ON EXIT. The `finally` below only runs if this
+ * process gets as far as the import; a run that fails to build, or one killed
+ * between the write and the import (a bounded harness, a cancelled QA lane),
+ * leaves `scripts/_<name>-<pid>.mjs` in the worktree — measured, and the reason
+ * this handler exists rather than the `finally` alone.
+ */
+process.once("exit", () => {
+	try {
+		rmSync(bundlePath, { force: true });
+	} catch {
+		/* An exit path must not mask the failure it is running past. */
+	}
+});
+
 let stories;
 try {
 	stories = await import(bundlePath.href);
