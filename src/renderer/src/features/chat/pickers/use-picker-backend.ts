@@ -14,8 +14,13 @@ import {
 	DesktopControlError,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
+// The app's ONE `runtime_busy` patience policy (bound, waits, and the reason the
+// renderer's own deadline does not compound it) lives in the canonical store.
+// Reused rather than restated here, so a second bound cannot drift from it.
+import { withBusyResends } from "@shared/store/canonical-sessions-store";
 import { useCallback, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import type { DesktopRequest } from "../../../../../shared/desktop-contract";
 import type {
 	DesktopCommandReceipt,
 	DesktopSessionFrame,
@@ -102,10 +107,106 @@ export function errorText(error: unknown): string {
 		: t("ui.chat.pickers.use_picker_backend.the_backend_refused_it");
 }
 
+/** One command request, as the transport sees it. */
+type CommandRequest = Extract<DesktopRequest, { op: "sessions.command" }>;
+
 /**
- * Run one owner command against the session and keep its outcome. The
- * request id is minted per call: a retry of the SAME intent should reuse it,
- * but a picker submission is a new intent each time the user confirms.
+ * The transport seam, so a test can watch the requests a run actually makes.
+ * Defaults to the real one; nothing in the app passes this.
+ */
+type SendCommand = (request: CommandRequest) => Promise<DesktopCommandReceipt>;
+
+/**
+ * Run ONE owner command and classify its answer, outside React.
+ *
+ * WHY IT IS NOT A HOOK (this change's whole testability): the busy repeat below
+ * is only meaningful as a *sequence of real dispatches* — the fix is that each
+ * one carries a fresh `requestId` — and a `useState`-bound hook cannot be driven
+ * from `node --test`. The hook keeps the state; the policy and the classification
+ * live here where a suite can count attempts and read the ids that went out.
+ *
+ * THE REQUEST ID IS MINTED PER DISPATCH, INSIDE THE CALLBACK. That is the one
+ * fact the whole repeat rests on: `/v1/desktop/sessions/{id}/commands` claims its
+ * receipt WITHOUT `retry_safe` (`desktop_sessions.py`, `desktop_receipts.py`), so
+ * a second attempt under the SAME id is answered `409 "Request outcome is
+ * indeterminate"` — a definite failure claimed over a switch that may have
+ * landed. A fresh id is a fresh journal claim instead, and re-issuing the same
+ * target is idempotent in effect (`set_model`), so the repeat cannot double the
+ * operation's result. It would NOT be safe for a general command resend: `/goal`
+ * appends a turn, and a fresh id there would admit a second one.
+ */
+export async function runSessionCommand(
+	input: {
+		sessionId: string;
+		command: string;
+		args: string;
+		/** The caller's own prefix for a failure that never reached the owner. */
+		failure?: string;
+		/**
+		 * Repeat the dispatch on a `runtime_busy` refusal. OPT-IN, and only the
+		 * model switch passes it: a busy owner is the one refusal whose own body
+		 * invites a resend (`retryable: true`, `retry_after_ms`), and the switch is
+		 * the one command whose repetition is a no-op. Every other caller keeps the
+		 * single-attempt behaviour, so `/goal`, `/loop` and the approval escapes are
+		 * untouched.
+		 */
+		resendWhileBusy?: boolean;
+	},
+	send: SendCommand = (request) =>
+		desktopResult<DesktopCommandReceipt>(request),
+): Promise<CommandRun> {
+	const { sessionId, command, args, failure, resendWhileBusy } = input;
+	const dispatch = () =>
+		send({
+			op: "sessions.command",
+			sessionId,
+			requestId: uuidv4(),
+			command,
+			args,
+		});
+	try {
+		const receipt = await (resendWhileBusy
+			? withBusyResends(dispatch)
+			: dispatch());
+		return { outcome: receipt.result, result: toResult(receipt.result) };
+	} catch (error) {
+		// A lost reply can follow an accepted mutation. Keep that disposition
+		// separate from an acknowledged rejection; never replay the command
+		// or turn the old backend's unavailable sentence into proof of failure.
+		const unconfirmed =
+			!(error instanceof DesktopControlError) ||
+			error.code === "runtime_busy" ||
+			error.status === null ||
+			error.status >= 500;
+		const result: PickerResult = {
+			tone: unconfirmed ? "warning" : "error",
+			text: unconfirmed
+				? [
+						t(
+							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+						),
+						error instanceof DesktopControlError &&
+						error.code === "runtime_unreachable"
+							? errorText(error)
+							: null,
+					]
+						.filter(Boolean)
+						.join(" ")
+				: `${failure ?? t("ui.chat.pickers.use_picker_backend.did_not_run", { command: command })}: ${errorText(error)}`,
+		};
+		return { outcome: null, result, unconfirmed };
+	}
+}
+
+/**
+ * Run one owner command against the session and keep its outcome.
+ *
+ * The dispatch and its classification are `runSessionCommand` (plain, and
+ * therefore testable); this hook adds the strip's state around it. The request
+ * id is minted per DISPATCH: a retry of the same intent would normally reuse it,
+ * but on `/commands` a reused id meets the receipt journal's indeterminate 409,
+ * so the one call that repeats (`options.resendWhileBusy`, the model switch)
+ * needs a new id and gets it — the same logical press, re-claimed.
  */
 export function useSessionCommand(sessionId: string) {
 	const [busy, setBusy] = useState(false);
@@ -127,48 +228,30 @@ export function useSessionCommand(sessionId: string) {
 			 * the colon is still whatever the transport or the owner said.
 			 */
 			failure?: string,
+			/**
+			 * SEE `runSessionCommand`'s `resendWhileBusy`: the model switch is the only
+			 * caller that sets it, because a switch's repeat is a no-op while `/goal`'s
+			 * would admit a second turn. Absent, a command is dispatched exactly once -
+			 * the behaviour every other control in this tree was written against.
+			 */
+			options?: { resendWhileBusy?: boolean },
 		): Promise<CommandRun> => {
 			setBusy(true);
 			setResult(null);
 			try {
-				const receipt = await desktopResult<DesktopCommandReceipt>({
-					op: "sessions.command",
+				const settled = await runSessionCommand({
 					sessionId,
-					requestId: uuidv4(),
 					command,
 					args,
+					failure,
+					resendWhileBusy: options?.resendWhileBusy,
 				});
-				setOutcome(receipt.result);
-				const result = toResult(receipt.result);
-				setResult(result);
-				return { outcome: receipt.result, result };
-			} catch (error) {
-				// A lost reply can follow an accepted mutation. Keep that disposition
-				// separate from an acknowledged rejection; never replay the command
-				// or turn the old backend's unavailable sentence into proof of failure.
-				const unconfirmed =
-					!(error instanceof DesktopControlError) ||
-					error.code === "runtime_busy" ||
-					error.status === null ||
-					error.status >= 500;
-				const result: PickerResult = {
-					tone: unconfirmed ? "warning" : "error",
-					text: unconfirmed
-						? [
-								t(
-									"ui.projects.use_request_update.the_request_could_not_be_confirmed",
-								),
-								error instanceof DesktopControlError &&
-								error.code === "runtime_unreachable"
-									? errorText(error)
-									: null,
-							]
-								.filter(Boolean)
-								.join(" ")
-						: `${failure ?? t("ui.chat.pickers.use_picker_backend.did_not_run", { command: command })}: ${errorText(error)}`,
-				};
-				setResult(result);
-				return { outcome: null, result, unconfirmed };
+				// A repeat leaves the control busy for the whole press, so nothing is
+				// reported while the app still has a chance (the policy's own property);
+				// only the settled run reaches the strip.
+				if (settled.outcome) setOutcome(settled.outcome);
+				setResult(settled.result);
+				return settled;
 			} finally {
 				setBusy(false);
 			}

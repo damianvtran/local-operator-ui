@@ -279,6 +279,13 @@ test("the picker command path is not wrapped in the busy loop, for the measured 
 	 * `retry_safe=True`, which is why the send path's `withBusyResends` does work;
 	 * `/answers` has no receipt journal at all.) A later edit that adds the wrap
 	 * here must read that measurement first, so it fails here with the reason.
+	 *
+	 * THE MODEL SWITCH NOW REPEATS, ONE LEVEL DOWN, AND THAT DOES NOT CONTRADICT
+	 * THIS. `runSessionCommand` (in this same module) mints a request id INSIDE
+	 * each dispatch, so its repeat is a FRESH claim rather than this forbidden
+	 * same-id resend; it is opt-in, and the switch is the one caller that opts in
+	 * because `set_model` is idempotent in effect. This guard still holds its
+	 * line: `run` must not wrap the request it was handed.
 	 */
 	const source = readFileSync(
 		"src/renderer/src/features/chat/pickers/use-picker-backend.ts",

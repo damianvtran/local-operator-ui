@@ -1633,7 +1633,35 @@ export const ModelPicker: FC<PickerContext> = ({
 			switching.current = true;
 			let run: Awaited<ReturnType<typeof command.run>>;
 			try {
-				run = await command.run("model", value);
+				/*
+				 * THE SWITCH IS REPEATED ON A BUSY OWNER, and only here.
+				 *
+				 * A `runtime_busy` on this route is INDETERMINATE rather than a refusal: the
+				 * daemon is telling us its owner did not answer the ack in time, having
+				 * already written the frame (`mobile/attach_client.py`). Reporting "could not
+				 * be confirmed" for a switch that landed is the defect this call closes, and
+				 * the old-style fix — resending under the SAME request id — cannot work on
+				 * this route: its receipt is claimed `retry_safe=False`, so a same-id retry
+				 * is answered 409 "Request outcome is indeterminate" and would read as a
+				 * definite failure. `resendWhileBusy` therefore repeats the DISPATCH, and
+				 * each dispatch mints a fresh id (see `runSessionCommand`), which is a fresh
+				 * journal claim. Re-running `set_model` with the SAME target is a no-op in
+				 * effect, so a press that lands twice is indistinguishable from one that
+				 * lands once; a general command (a `/goal` append) could not be repeated
+				 * this way, which is why the option is opt-in and lives at this call site.
+				 *
+				 * THE PAINT IS MADE ONCE, above, and never re-made: it is the press's
+				 * optimistic value, and the repeat changes nothing about it. If the switch
+				 * landed before the ack was lost, the authoritative frame names this model and
+				 * reconciliation drops the paint while the repeat is still waiting; if it did
+				 * not, the 15 s backstop (`PENDING_MODEL_TIMEOUT_MS`) drops it and the band goes
+				 * back to the model in force. Both endings are true, and neither is the
+				 * press's failure — only an exhausted repeat or a non-busy refusal reaches the
+				 * failure arm below, which clears the paint itself.
+				 */
+				run = await command.run("model", value, undefined, {
+					resendWhileBusy: true,
+				});
 			} finally {
 				switching.current = false;
 			}
