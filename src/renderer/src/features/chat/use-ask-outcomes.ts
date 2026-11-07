@@ -32,7 +32,11 @@
  */
 import { useCallback, useRef, useState } from "react";
 import type { PendingAskQuestion } from "../../../../shared/desktop-session-contract";
-import { type AnswerOutcome, createSendLock } from "./ask-answer";
+import {
+	type AnswerOutcome,
+	answerOwnerIsBusy,
+	createSendLock,
+} from "./ask-answer";
 import {
 	type AskDismissReason,
 	type AskOutcome,
@@ -128,6 +132,8 @@ export const useAskOutcomes = ({
 						[act.askId]: {
 							sending: false,
 							refused: askRefusalSentence(outcome.error),
+							/* The ink's half of the same classification; see `AskOutcome.busy`. */
+							busy: answerOwnerIsBusy(outcome.error),
 							...(act.kind === "changed" && current[act.askId]?.settled
 								? { settled: current[act.askId]?.settled }
 								: {}),
