@@ -72,6 +72,7 @@ import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiChatThreadSearch from "./catalogues/en/ui.chat.thread_search.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
+import enUiChatUsageReset from "./catalogues/en/ui.chat.usage_reset.json";
 import enUiChatUserTurn from "./catalogues/en/ui.chat.user_turn.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
@@ -198,6 +199,7 @@ import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
 import esUiChatThreadSearch from "./catalogues/es/ui.chat.thread_search.json";
 import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
+import esUiChatUsageReset from "./catalogues/es/ui.chat.usage_reset.json";
 import esUiChatUserTurn from "./catalogues/es/ui.chat.user_turn.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
@@ -324,6 +326,7 @@ import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
 import frUiChatThreadSearch from "./catalogues/fr/ui.chat.thread_search.json";
 import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
+import frUiChatUsageReset from "./catalogues/fr/ui.chat.usage_reset.json";
 import frUiChatUserTurn from "./catalogues/fr/ui.chat.user_turn.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
@@ -450,6 +453,7 @@ import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
 import hiUiChatThreadSearch from "./catalogues/hi/ui.chat.thread_search.json";
 import hiUiChatTranscriptCopy from "./catalogues/hi/ui.chat.transcript_copy.json";
+import hiUiChatUsageReset from "./catalogues/hi/ui.chat.usage_reset.json";
 import hiUiChatUserTurn from "./catalogues/hi/ui.chat.user_turn.json";
 import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
@@ -576,6 +580,7 @@ import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
 import ruUiChatThreadSearch from "./catalogues/ru/ui.chat.thread_search.json";
 import ruUiChatTranscriptCopy from "./catalogues/ru/ui.chat.transcript_copy.json";
+import ruUiChatUsageReset from "./catalogues/ru/ui.chat.usage_reset.json";
 import ruUiChatUserTurn from "./catalogues/ru/ui.chat.user_turn.json";
 import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
@@ -702,6 +707,7 @@ import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
 import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
 import urUiChatThreadSearch from "./catalogues/ur/ui.chat.thread_search.json";
 import urUiChatTranscriptCopy from "./catalogues/ur/ui.chat.transcript_copy.json";
+import urUiChatUsageReset from "./catalogues/ur/ui.chat.usage_reset.json";
 import urUiChatUserTurn from "./catalogues/ur/ui.chat.user_turn.json";
 import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
 import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
@@ -828,6 +834,7 @@ import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
 import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
 import viUiChatThreadSearch from "./catalogues/vi/ui.chat.thread_search.json";
 import viUiChatTranscriptCopy from "./catalogues/vi/ui.chat.transcript_copy.json";
+import viUiChatUsageReset from "./catalogues/vi/ui.chat.usage_reset.json";
 import viUiChatUserTurn from "./catalogues/vi/ui.chat.user_turn.json";
 import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
 import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
@@ -954,6 +961,7 @@ import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
 import zhCNUiChatThreadSearch from "./catalogues/zh-CN/ui.chat.thread_search.json";
 import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
+import zhCNUiChatUsageReset from "./catalogues/zh-CN/ui.chat.usage_reset.json";
 import zhCNUiChatUserTurn from "./catalogues/zh-CN/ui.chat.user_turn.json";
 import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
 import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
@@ -1083,6 +1091,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatTags,
 	...enUiChatThreadSearch,
 	...enUiChatTranscriptCopy,
+	...enUiChatUsageReset,
 	...enUiChatUserTurn,
 	...enUiCodeReview,
 	...enUiCommandPalette,
@@ -1217,6 +1226,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatTags,
 		...esUiChatThreadSearch,
 		...esUiChatTranscriptCopy,
+		...esUiChatUsageReset,
 		...esUiChatUserTurn,
 		...esUiCodeReview,
 		...esUiCommandPalette,
@@ -1345,6 +1355,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatTags,
 		...frUiChatThreadSearch,
 		...frUiChatTranscriptCopy,
+		...frUiChatUsageReset,
 		...frUiChatUserTurn,
 		...frUiCodeReview,
 		...frUiCommandPalette,
@@ -1473,6 +1484,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatTags,
 		...hiUiChatThreadSearch,
 		...hiUiChatTranscriptCopy,
+		...hiUiChatUsageReset,
 		...hiUiChatUserTurn,
 		...hiUiCodeReview,
 		...hiUiCommandPalette,
@@ -1601,6 +1613,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatTags,
 		...ruUiChatThreadSearch,
 		...ruUiChatTranscriptCopy,
+		...ruUiChatUsageReset,
 		...ruUiChatUserTurn,
 		...ruUiCodeReview,
 		...ruUiCommandPalette,
@@ -1729,6 +1742,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatTags,
 		...urUiChatThreadSearch,
 		...urUiChatTranscriptCopy,
+		...urUiChatUsageReset,
 		...urUiChatUserTurn,
 		...urUiCodeReview,
 		...urUiCommandPalette,
@@ -1857,6 +1871,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatTags,
 		...viUiChatThreadSearch,
 		...viUiChatTranscriptCopy,
+		...viUiChatUsageReset,
 		...viUiChatUserTurn,
 		...viUiCodeReview,
 		...viUiCommandPalette,
@@ -1985,6 +2000,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatTags,
 		...zhCNUiChatThreadSearch,
 		...zhCNUiChatTranscriptCopy,
+		...zhCNUiChatUsageReset,
 		...zhCNUiChatUserTurn,
 		...zhCNUiCodeReview,
 		...zhCNUiCommandPalette,
@@ -5663,6 +5679,19 @@ export type MessageParams = {
 	"ui.chat.transcript_copy.technical_details": undefined;
 	"ui.chat.transcript_copy.toast.copied_markdown": undefined;
 	"ui.chat.transcript_copy.toast.copied_selection": undefined;
+	"ui.chat.usage_reset.busy": { account: string };
+	"ui.chat.usage_reset.busy_action": undefined;
+	"ui.chat.usage_reset.chip": { count: string };
+	"ui.chat.usage_reset.chip_label": { account: string; count: number };
+	"ui.chat.usage_reset.confirm_cost": { count: number };
+	"ui.chat.usage_reset.confirm_title": { account: string };
+	"ui.chat.usage_reset.outcome_already_redeemed": { account: string };
+	"ui.chat.usage_reset.outcome_failed": { account: string };
+	"ui.chat.usage_reset.outcome_no_credit": { account: string };
+	"ui.chat.usage_reset.outcome_nothing_to_reset": { account: string };
+	"ui.chat.usage_reset.outcome_refused": { account: string };
+	"ui.chat.usage_reset.outcome_reset": { count: number; account: string };
+	"ui.chat.usage_reset.outcome_unknown": { account: string; outcome: string };
 	"ui.chat.user_turn.show_less": undefined;
 	"ui.chat.user_turn.show_more": undefined;
 	"ui.code_review.activity.close": undefined;

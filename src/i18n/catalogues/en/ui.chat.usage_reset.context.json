@@ -1,0 +1,67 @@
+{
+	"ui.chat.usage_reset.chip": {
+		"role": "chip control on a provider block's heading line",
+		"tone": "Short machine-adjacent label, sentence case, a numeral after a middle dot.",
+		"note": "Sits beside the account name inside the /usage panel's block heading; the dot and numeral are not prose. {count} is the number of reset credits left (a bare integer, no thousands separator). Keep it short enough not to push the heading's binding window out of its column."
+	},
+	"ui.chat.usage_reset.chip_label": {
+		"role": "accessible name for the same chip",
+		"tone": "Plain, complete sentence; this is spoken, not drawn.",
+		"note": "A screen reader hears this instead of the short chip. {account} is a provider name plus, when known, a middle dot and the account's label (an email or an account id). {count} is the number of reset credits still available (always 1 or more), and it is REQUIRED in the label: the visible chip draws the same number, and a spoken name that omits it fails WCAG 2.5.3 (label in name). One ICU plural on {count}; do not promise the spend here (the click opens a confirmation)."
+	},
+	"ui.chat.usage_reset.confirm_title": {
+		"role": "heading of an inline confirmation",
+		"tone": "Direct question, same construction as the surrounding dialog's questions.",
+		"note": "{account} is a provider name plus, when known, a middle dot and the account label. The confirmation appears inside the account's block, so do not repeat the panel's own title."
+	},
+	"ui.chat.usage_reset.confirm_cost": {
+		"role": "the cost line under the confirmation heading",
+		"tone": "Matter-of-fact statement, not a warning; the action is reversible only by the provider.",
+		"note": "One ICU plural on {count} (reset credits still available, always 1 or more). It must state BOTH facts: one credit is spent, and the account's rate-limit windows are cleared. Translate as one sentence pair joined by a semicolon; do not split into two strings."
+	},
+	"ui.chat.usage_reset.busy": {
+		"role": "in-flight explanation beside the inert confirmation",
+		"tone": "Calm, present tense; says the wait is the provider's, not a failure.",
+		"note": "Shown while the request is in flight; the buttons beside it are disabled. {account} is a provider name plus, when known, a middle dot and the account label."
+	},
+	"ui.chat.usage_reset.busy_action": {
+		"role": "label of the disabled confirm button while in flight",
+		"tone": "Progress, not success or failure.",
+		"note": "One word plus U+2026, matching ui.common.actions.retrying's shape. Keep it to a single word where the language allows."
+	},
+	"ui.chat.usage_reset.outcome_reset": {
+		"role": "result line after a credit was spent",
+		"tone": "Quiet confirmation of a completed action; one line, no exclamation.",
+		"note": "ICU plural on {count} = how many rate-limit windows the provider cleared (at least 1). {account} is a provider name plus, when known, a middle dot and the account label. This is the success arm."
+	},
+	"ui.chat.usage_reset.outcome_already_redeemed": {
+		"role": "result line when the same reset had already been applied",
+		"tone": "Plain, reassuring on the one fact that matters: no second credit was spent.",
+		"note": "Reached when a retry carries the request id of an attempt the provider had already applied. {account} is a provider name plus, when known, a middle dot and the account label."
+	},
+	"ui.chat.usage_reset.outcome_no_credit": {
+		"role": "result line when the account had nothing left to spend",
+		"tone": "Neutral fact plus the reassurance that nothing was spent.",
+		"note": "{account} is a provider name plus, when known, a middle dot and the account label. Do not add a purchase or upgrade instruction: this app does not sell credits."
+	},
+	"ui.chat.usage_reset.outcome_nothing_to_reset": {
+		"role": "result line when no window needed clearing",
+		"tone": "Neutral fact plus the reassurance that nothing was spent.",
+		"note": "{account} is a provider name plus, when known, a middle dot and the account label. 'window' means a quota window (a five-hour or weekly rate limit), not an application window."
+	},
+	"ui.chat.usage_reset.outcome_failed": {
+		"role": "result line when the outcome is unknown",
+		"tone": "Candid and calm; it must not read as an error the user caused, and must not invite alarm.",
+		"note": "The two clauses are both required: the credit's fate is unknown, AND asking again reuses the same request id so it cannot spend a second credit. {account} is a provider name plus, when known, a middle dot and the account label. Never shorten this to 'failed'."
+	},
+	"ui.chat.usage_reset.outcome_refused": {
+		"role": "result line when the request was refused before anything was sent",
+		"tone": "Plain, factual; the important half is that nothing was spent.",
+		"note": "{account} is a provider name plus, when known, a middle dot and the account label. 'refused' names a pre-send refusal, not a provider rejection."
+	},
+	"ui.chat.usage_reset.outcome_unknown": {
+		"role": "result line for an outcome this app has no words for",
+		"tone": "Neutral report of an unrecognised machine value; do not apologise.",
+		"note": "{outcome} is an untranslated machine token from the backend (snake_case); render it verbatim. {account} is a provider name plus, when known, a middle dot and the account label. Do not translate {outcome}."
+	}
+}

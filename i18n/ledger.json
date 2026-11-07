@@ -81145,6 +81145,216 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.usage_reset",
+			"source_sha256": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+			"target_sha256": "7c7954d14ed0d9f3e8321fc8246fc8f1ef6aae542f61f491c09a8fcfdfc94f5b",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean-with-findings",
+					"instance": "audit-1743-usage-reset-es-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 5,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/audit-1743-usage-reset-es-20261107.json",
+					"receipt_sha256": "12ae4db0f1976aaa14aecc41f4b12b53be00ea4e33b1b061593d305c5a67d69a",
+					"scope": "PR #1743 ui.chat.usage_reset full 13-key namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.usage_reset",
+			"source_sha256": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+			"target_sha256": "f11d48a6476c64662157bbc6a5a71f2b784d758d5e4b64ad1ff2ab57787b40f2",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean-with-findings",
+					"instance": "audit-1743-usage-reset-fr-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 8,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/audit-1743-usage-reset-fr-20261107.json",
+					"receipt_sha256": "3dbeaf45e9b4c8aac2ad0159012ea74b8fe2931c271c5a9472b6e105e3665757",
+					"scope": "PR #1743 ui.chat.usage_reset full 13-key namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.usage_reset",
+			"source_sha256": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+			"target_sha256": "f566899b07913ae325e02414d1531345b208c557ef54292f0ea75c40b0c801db",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean-with-findings",
+					"instance": "audit-1743-usage-reset-hi-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 5,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/audit-1743-usage-reset-hi-20261107.json",
+					"receipt_sha256": "6cfd693796e8a0cc804d9384462e3df411f14ef2a10cec6142b8d025852458d4",
+					"scope": "PR #1743 ui.chat.usage_reset full 13-key namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.usage_reset",
+			"source_sha256": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+			"target_sha256": "a59c0cebb900e9b592d2afd5211ebe76688c07ad885f2fd871996a27d661441d",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1743-usage-reset-ru-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1743-usage-reset-ru-20261107.json",
+					"receipt_sha256": "7a0294f0e9382ade6b75b6a8bd32022ff75349a436cc7d197ac6cd5325fe7484",
+					"scope": "PR #1743 ui.chat.usage_reset full 13-key namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.usage_reset",
+			"source_sha256": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+			"target_sha256": "77608441c358afbf8b3e3cb206b11cab128e05f831e8f7982a7a6d5885d3cd70",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean",
+					"instance": "audit-1743-usage-reset-ur-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1743-usage-reset-ur-20261107.json",
+					"receipt_sha256": "1f78ecb301da6f67e434e67900737e58cd12c4a8ad50e6f3629e3ad16650911e",
+					"scope": "PR #1743 ui.chat.usage_reset full 13-key namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.usage_reset",
+			"source_sha256": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+			"target_sha256": "eb29e90708aeac9503d7642544ea12730f8feb31f5926fbe0f0601fe218ec855",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean-with-findings",
+					"instance": "audit-1743-usage-reset-vi-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 8,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1743-usage-reset-vi-20261107.json",
+					"receipt_sha256": "c94b0de63fbf5881dd4148f020669ccec6000958a461b2c1033919fc4556429e",
+					"scope": "PR #1743 ui.chat.usage_reset full 13-key namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.usage_reset",
+			"source_sha256": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+			"target_sha256": "52d218fab2983b225efc86ebd19e1873d876f2e56d9bc1912f4b25359216e45c",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-07"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-07",
+					"result": "clean-with-findings",
+					"instance": "audit-1743-usage-reset-zhcn-20261107",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 12,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-1743-usage-reset-zhcn-20261107.json",
+					"receipt_sha256": "bab1c4d8b3e20b5577da89aa6420b745a51b1a0770d34e932ff14a3593b26a8a",
+					"scope": "PR #1743 ui.chat.usage_reset full 13-key namespace"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

@@ -86,6 +86,25 @@ export type UsageReport = {
 	/** Server clock minus `fetched_at`, computed server-side. */
 	age_ms: number;
 	state: UsageState;
+	/**
+	 * Reset credits the vendor says are still on this login, or null/absent.
+	 *
+	 * `null` means the provider has no reset-credit product OR the payload
+	 * omitted the field; `0` means the product exists and nothing is left. The
+	 * distinction is why the chip is offered on this number and not on "not
+	 * unavailable": a provider without the product must not grow an affordance
+	 * that can only ever refuse.
+	 */
+	resets_available?: number | null;
+	/**
+	 * The stable ref of the credential this report was fetched with, or null.
+	 *
+	 * `identity` cannot do this job: it is a display label (email, then account
+	 * id), and two legitimately stored logins can share one. A reset resolves to
+	 * a credential ROW, so the request is built from this where the backend
+	 * supplied it -- and an absent ref is what makes a report unspendable.
+	 */
+	credential_ref?: string | null;
 };
 
 export type UsageState =
@@ -1188,3 +1207,304 @@ export const describeSource = (
 				: t("ui.chat.pickers.usage_view_model.cached"),
 		formatage: formatAge(Math.max(0, nowMs - confirmedAtMs)),
 	});
+
+/* -------------------------------------------------------------------------
+ * Redeeming a reset credit
+ *
+ * The TUI owns the same machine (`usage_panel.py`'s reset action): one attempt
+ * at a time PER ACCOUNT, a confirmation before anything is spent, and — the
+ * property this port exists to keep — the CLIENT-MINTED `redeem_request_id`
+ * retained across a result or a close until an outcome is definitive.
+ *
+ * WHY THE ID SURVIVES THE RESULT. A `failed` outcome means the credit's fate is
+ * unknown, and the vendor's rule is that a retry carrying the SAME id joins the
+ * first attempt instead of spending a second credit. A view that minted a fresh
+ * id per click would turn "we do not know" into "we spent twice" on the one
+ * action in this app that cannot be undone. `refused` is not definitive either:
+ * nothing reached the vendor, so the id is still unspent and still the right one
+ * to carry into a retry.
+ *
+ * React-free and exported as plain transitions, like the rest of this file: the
+ * stories and `scripts/usage-view.test.mjs` drive the state machine without a
+ * renderer, and there is no second copy of the rule in the JSX.
+ * ---------------------------------------------------------------------- */
+
+/** The account a reset spends against: provider plus the credential ref. */
+export type ResetAccount = { provider: string; credentialRef: string };
+
+/**
+ * The account a report can spend on, or null when it cannot name one.
+ *
+ * A report with no `credential_ref` is NOT spendable even when it advertises
+ * credits: the label is not a key, and the backend would have to guess which
+ * stored login to charge. Returning null here is what keeps that guess from
+ * ever being sent.
+ */
+export const resetAccountOf = (report: UsageReport): ResetAccount | null => {
+	const ref = report.credential_ref;
+	if (typeof ref !== "string" || ref.length === 0) return null;
+	return { provider: report.provider, credentialRef: ref };
+};
+
+/**
+ * The map key for one account.
+ *
+ * `\u0000` because neither half can contain it: a provider id and a credential
+ * ref are both single tokens, so a separator that cannot occur in either is
+ * what keeps `a:b` + `c` from colliding with `a` + `b:c`.
+ */
+export const resetAccountKey = (account: ResetAccount): string =>
+	`${account.provider}\u0000${account.credentialRef}`;
+
+/**
+ * Fold a reset answer's rows into the payload already on screen.
+ *
+ * WHY NOT REPLACE. The redeem route refreshes ONLY the provider it spent
+ * (`fetch_usage([body.provider], force_refresh=True)`), so its `usage` is a
+ * PARTIAL answer: writing it over the cached set deleted every other provider's
+ * block from an unscoped `/usage` until the next read (review round 1, M1).
+ *
+ * The merge is by PROVIDER, not by appended list: every provider the answer
+ * carries replaces that provider's cached rows IN PLACE, so a block does not
+ * jump down the panel when it is refreshed, and a provider the answer does not
+ * mention keeps the rows it had. The payload's `source`/`fetched_at` come from
+ * the answer — its confirmation is the newest in the set, which is what the
+ * dialog's age line reads (`newestConfirmedMs`) — while each block's own rows
+ * still carry their own `fetched_at`.
+ */
+export const mergeResetUsage = (
+	cached: UsagePayload | undefined,
+	refreshed: UsagePayload,
+): UsagePayload => {
+	if (!cached) return refreshed;
+	const replaced = new Set(refreshed.reports.map((report) => report.provider));
+	const reports: UsageReport[] = [];
+	let inserted = false;
+	for (const report of cached.reports) {
+		if (!replaced.has(report.provider)) {
+			reports.push(report);
+			continue;
+		}
+		// First row of a replaced provider: its whole refreshed block takes this
+		// slot. Later rows of the same provider are the stale ones being dropped.
+		if (inserted) continue;
+		reports.push(...refreshed.reports);
+		inserted = true;
+	}
+	if (!inserted) reports.push(...refreshed.reports);
+	return {
+		reports,
+		source: refreshed.source,
+		fetched_at: refreshed.fetched_at,
+	};
+};
+
+/**
+ * Whether the chip is offered at all.
+ *
+ * BOTH halves are required, and each is a separate fact the report states:
+ * a positive integer `resets_available` (a provider with no reset product
+ * reports null, and 0 reports a spent one) AND a `credential_ref` the request
+ * can name. `Number.isInteger` rather than a truthiness test because a backend
+ * summing credits must not turn `0.5` into a spendable account.
+ */
+export const canReset = (report: UsageReport): boolean => {
+	const credits = report.resets_available;
+	return (
+		resetAccountOf(report) !== null &&
+		typeof credits === "number" &&
+		Number.isInteger(credits) &&
+		credits > 0
+	);
+};
+
+/** The outcome vocabulary the backend publishes today. */
+export const RESET_OUTCOMES = [
+	"reset",
+	"already_redeemed",
+	"no_credit",
+	"nothing_to_reset",
+	"failed",
+	"refused",
+] as const;
+
+/** A vendor answer this app has not heard of is still an answer. */
+export type UsageResetOutcome = (typeof RESET_OUTCOMES)[number] | (string & {});
+
+const DEFINITIVE_RESET_OUTCOMES: ReadonlySet<string> = new Set([
+	// The credit is spent, or the server established that spending it was
+	// pointless: in every one of these the id has served its purpose.
+	"reset",
+	"already_redeemed",
+	"no_credit",
+	"nothing_to_reset",
+]);
+
+/**
+ * Whether an outcome settles the attempt.
+ *
+ * `failed` and `refused` deliberately answer false: the id must survive them,
+ * and so must the result line the user reads.
+ */
+export const isDefinitiveResetOutcome = (outcome: string): boolean =>
+	DEFINITIVE_RESET_OUTCOMES.has(outcome);
+
+/** What a settle carries, narrowed from the route's answer in the view. */
+export type UsageResetResultView = {
+	outcome: UsageResetOutcome;
+	windowsReset: number;
+	/** The backend's own diagnostic sentence; never rendered as app copy. */
+	detail: string;
+	refused: boolean;
+};
+
+/**
+ * One account's reset state.
+ *
+ * `idle` carries the pending id rather than dropping it, because "dismissed the
+ * result" is not "the attempt is over" — the user may still retry, and that
+ * retry has to carry the id the vendor already saw.
+ */
+export type AccountResetState =
+	| { phase: "idle"; pendingRedeemRequestId: string | null }
+	| { phase: "confirm"; redeemRequestId: string }
+	| { phase: "busy"; redeemRequestId: string }
+	| {
+			phase: "result";
+			/** The id a retry would carry; null once the outcome is definitive. */
+			redeemRequestId: string | null;
+			result: UsageResetResultView;
+	  };
+
+/** An account with no history, and no id owed to the vendor. */
+export const IDLE_RESET_STATE: AccountResetState = {
+	phase: "idle",
+	pendingRedeemRequestId: null,
+};
+
+/** The reset states of every account the view has asked about, by `resetAccountKey`. */
+export type ResetStates = Readonly<Record<string, AccountResetState>>;
+
+export const resetStateFor = (
+	states: ResetStates,
+	account: ResetAccount | null,
+): AccountResetState =>
+	(account ? states[resetAccountKey(account)] : undefined) ?? IDLE_RESET_STATE;
+
+/** Immutably replace one account's state, leaving every other account's alone. */
+export const withResetState = (
+	states: ResetStates,
+	account: ResetAccount,
+	next: AccountResetState,
+): ResetStates => ({ ...states, [resetAccountKey(account)]: next });
+
+/** The id this account's next attempt must carry, or null when it owes none. */
+export const pendingRedeemRequestId = (
+	state: AccountResetState,
+): string | null =>
+	state.phase === "idle" ? state.pendingRedeemRequestId : state.redeemRequestId;
+
+/**
+ * Open the confirmation, minting an id only when this account owes none.
+ *
+ * A `busy` account refuses to move: one attempt at a time per account is the
+ * backend's concurrency rule AND this machine's, so the second click on a
+ * spending account is inert rather than a second request.
+ */
+export const askReset = (
+	state: AccountResetState,
+	mint: () => string,
+): AccountResetState => {
+	if (state.phase === "busy") return state;
+	return {
+		phase: "confirm",
+		redeemRequestId: pendingRedeemRequestId(state) ?? mint(),
+	};
+};
+
+/** Confirm -> busy. Anything else is left exactly as it was. */
+export const confirmReset = (state: AccountResetState): AccountResetState =>
+	state.phase === "confirm"
+		? { phase: "busy", redeemRequestId: state.redeemRequestId }
+		: state;
+
+/**
+ * Cancel a confirmation. The minted id is kept as the pending one: it was never
+ * sent, so it is not spent, and reusing it on the next attempt is indistinguishable
+ * from the fresh id it saves the caller from minting.
+ */
+export const cancelReset = (state: AccountResetState): AccountResetState =>
+	state.phase === "confirm"
+		? { phase: "idle", pendingRedeemRequestId: state.redeemRequestId }
+		: state;
+
+/** Record an answer, keeping the id whenever the outcome is not definitive. */
+export const settleReset = (
+	state: AccountResetState,
+	result: UsageResetResultView,
+): AccountResetState => ({
+	phase: "result",
+	redeemRequestId: isDefinitiveResetOutcome(result.outcome)
+		? null
+		: pendingRedeemRequestId(state),
+	result,
+});
+
+/** Hide the result line without forgetting what a retry still owes. */
+export const dismissReset = (state: AccountResetState): AccountResetState =>
+	state.phase === "result"
+		? { phase: "idle", pendingRedeemRequestId: state.redeemRequestId }
+		: state;
+
+/**
+ * The line a result prints, one per outcome.
+ *
+ * EVERY OUTCOME HAS ITS OWN SENTENCE, including the ones that spent nothing:
+ * "the reset did not work" would be a claim about the credit in a case where
+ * the credit is provably untouched, and "it worked" would be a claim in a case
+ * where nobody knows. `failed` is the only arm that is allowed to say the
+ * credit's fate is unknown, and it says the second half too — that the retry
+ * reuses the same request id, so asking again cannot spend a second credit.
+ *
+ * `detail` is NOT printed: it is the backend's own diagnostic prose, and an
+ * English server sentence inside a localized panel is a second copy source the
+ * catalogue cannot reach.
+ */
+export const resetOutcomeText = (
+	result: UsageResetResultView,
+	account: string,
+): string => {
+	switch (result.outcome) {
+		case "reset":
+			return t("ui.chat.usage_reset.outcome_reset", {
+				count: result.windowsReset,
+				account,
+			});
+		case "already_redeemed":
+			return t("ui.chat.usage_reset.outcome_already_redeemed", { account });
+		case "no_credit":
+			return t("ui.chat.usage_reset.outcome_no_credit", { account });
+		case "nothing_to_reset":
+			return t("ui.chat.usage_reset.outcome_nothing_to_reset", { account });
+		case "failed":
+			return t("ui.chat.usage_reset.outcome_failed", { account });
+		case "refused":
+			return t("ui.chat.usage_reset.outcome_refused", { account });
+		default:
+			// Additive vocabulary: name the word rather than inventing a verdict.
+			return t("ui.chat.usage_reset.outcome_unknown", {
+				outcome: result.outcome,
+				account,
+			});
+	}
+};
+
+/** The tint a result line may claim, from the outcome alone. */
+export type ResetTone = "ok" | "muted" | "danger";
+
+export const resetOutcomeTone = (outcome: string): ResetTone =>
+	outcome === "reset" ? "ok" : outcome === "failed" ? "danger" : "muted";
+
+/** The account as the confirmation and the result lines name it. */
+export const resetAccountLabel = (report: UsageReport): string =>
+	report.identity ? `${report.provider} · ${report.identity}` : report.provider;
