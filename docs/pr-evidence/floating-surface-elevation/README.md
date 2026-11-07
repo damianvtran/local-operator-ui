@@ -186,3 +186,35 @@ flips Chromium's focus-visible modality). Without that flag it does what v3 does
   shares the pointer-only path.
 - Dialog, submenu and the forced-colors frame cover localOperatorDark (and light for
   the dialog), not all four cells.
+
+## Scroll-to-bottom disc and update card (QA round 3, design round 3)
+
+- `PAIR--scroll-to-bottom--{dark,light}.png` — **real app**, rest state, 1440×900@2,
+  the same `stb-*-context` crop QA round 3 used (the transcript scrolled up by four
+  real wheel events so the disc shows, pointer parked). BEFORE is QA round 3's
+  base frame (`cff518c396e`: `bg-surface` face plus a 1px `border-control` ring);
+  AFTER is `c31de825b66` (design round 3, D10: `tonal` with its rest face lifted
+  from `sunken` to `elevated`, no ring). Captured against a run-owned
+  `local-operator serve --hosting test --model mock-model` on 127.0.0.1:8080 with
+  a copy of QA's seeded config; the operator's daemon was not touched.
+- `PAIR--update-card--{dark,light}.png` — **Storybook**, QA round 3's
+  `Common/UpdateNotification` › `backend-update-with-release-notes` pair (base
+  `cff518c396e` | head `1f1306907f5`): "Update later" goes from an outline ring to
+  the borderless `tonal` fill. Unchanged by `c31de825b66`, which touches only the
+  scroll button.
+
+Measured on the AFTER (computed style; CIEDE2000 and WCAG contrast against the
+transcript `canvas`, the ground the disc floats over):
+
+| Theme | Disc | Ground | ΔE00 | ΔL | Contrast |
+|---|---|---|---|---|---|
+| localOperatorDark | `rgb(47,42,31)` `elevated` | `rgb(29,27,23)` | 6.21 | +7.4 | 1.21:1 |
+| localOperatorLight | `rgb(254,253,250)` `elevated` | `rgb(242,237,227)` | 4.65 | +5.4 | 1.15:1 |
+| (1f1306907f5, dark) | `rgb(23,21,18)` `sunken` | same | 2.06 | −3.0 | 1.06:1 |
+| (1f1306907f5, light) | `rgb(236,230,216)` `sunken` | same | 2.26 | −2.5 | 1.07:1 |
+
+Pixels sampled from the AFTER frames agree (dark `#2e2a20` on `#1d1b17`, ΔE00 5.80;
+light `#fefdfa` on `#f1ede4`, ΔE00 4.32 — the PNG ground is a pixel off the token).
+Border measures `0px` on all four sides in both themes; hover `surface` / pressed
+`hairline` stay in the class list. No glass frame: the disc is deliberately
+unmarked (`DEFERRED_PANELS`), so on glass it paints the same opaque `elevated`.
