@@ -386,6 +386,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-identity-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots a BUILT app tree headless on a scratch HOME/config/log/profile to read the browser tab's presented identity (UA, client hints) on the agent and human tab paths; the scratch environment must suppress notifications and telemetry and strip CMUX_*/LOP_*, so a rerun cannot banner the operator or report as a product user",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-hover-press-proof.mjs",
 		"spawn",
 		1,

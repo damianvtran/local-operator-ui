@@ -396,6 +396,14 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/browser-identity-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots a BUILT app tree headless on a scratch profile to read the browser tab's presented identity; a proof run must never report itself to the product's analytics as a user",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-challenge-proof.mjs",
 		"spawn",
 		1,
