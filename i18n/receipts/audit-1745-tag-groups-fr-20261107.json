@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1745-tag-groups-fr-20261107",
+  "locale": "fr",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.tag_groups",
+  "keys_read": 2,
+  "sha256": {
+    "en": "bb046f0781f89559eeeb9382a8ece731281d58d8872f342e0ca09e2229f7d3ca",
+    "fr": "04f3646e906c583af3d05ada704c17756662616d399b2fd0c3455fad746d2050"
+  },
+  "findings": [],
+  "scope": "PR #1745 ui.chat.tag_groups at 2209af742306909800ae675df54d8df4dc5b3074: full 2-key namespace (collapse, expand), en catalogue + en context, sibling collapse/expand keys, ui.chat.tags.untagged substitution",
+  "independence": "lopdev translation-auditor, separate session (f015890e4661) from the PR coder that translated; same served model family (anthropic/claude-opus-5-5) disclosed; verdict rebuilt from the English source, the en context, sibling keys, the core glossary and the locale style guide.",
+  "references": "co",
+  "checks": "placeholders {name} exactly once per key, no ICU/plural arms (none in source; CLDR categories not applicable), key set == en, zero Unicode Cf (bidi/format) code points, aria-label + title only (no fixed width budget), Untagged substitution read in-locale",
+  "verdict": "fr: passed — Replier/Déplier is the pair the sidebar already uses for the same fold (ui.chat.sidebar.entity.*_chats) and the settings filter bar; imperative, sentence case, {name} intact and unquoted (fr guide does not require « » for an embedded label); 'Replier Sans étiquette' reads naturally. Clean."
+}

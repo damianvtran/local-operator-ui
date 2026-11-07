@@ -4,7 +4,10 @@ import {
 } from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
 import { CHAT_ROW_MENU_SCROLL_CLASS } from "@features/chat/chat-row-menu";
-import { TAG_DROP_PREVIEW_CLASSES } from "@features/chat/chat-tag-drag";
+import {
+	TAG_DROP_PREVIEW_CLASSES,
+	chatTagBucket,
+} from "@features/chat/chat-tag-drag";
 import {
 	groupChatsByTag,
 	tagBucketRowIds,
@@ -1441,12 +1444,49 @@ export function ChatSidebar({
 		requestAnimationFrame(() => {
 			const id = tagsOriginId.current;
 			if (!id) return;
-			const target = document.querySelector<HTMLElement>(
-				`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
-			);
+			/*
+			 * A ROW RE-TAGGED INTO A FOLDED GROUP IS NOT DRAWN (issue #1639; agent
+			 * review R1, UX U1), so the lookup finds nothing and focus would fall to
+			 * `<body>`, the next Tab starting at the top of the panel. The reader goes
+			 * where the row went instead: that group's fold chevron. The fold is NOT
+			 * sprung open - the press was a tag assignment, not a request to unfold.
+			 */
+			const target =
+				document.querySelector<HTMLElement>(
+					`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
+				) ?? foldedRowFallback(id);
 			target?.focus();
 			target?.scrollIntoView({ block: "nearest" });
 		});
+	};
+	/*
+	 * The chevron of the folded group a row now lives in, or null. The bucket is the
+	 * one grouping files the row under (`chatTagBucket`), and the section is Pinned
+	 * for a pinned row, else the time section - which is the one copy of that tag's
+	 * header outside `[data-chat-section="pinned"]`.
+	 */
+	const foldedRowFallback = (sessionId: string): HTMLElement | null => {
+		const row = useCanonicalSessionsStore
+			.getState()
+			.sessions.find((item) => item.session_id === sessionId);
+		if (!row) return null;
+		const bucket = chatTagBucket(row, tagCategories);
+		if (!tagGroupCollapsed(expanded, bucket)) return null;
+		const pinned = row.pinned === true;
+		const controls = [
+			...document.querySelectorAll<HTMLElement>(
+				`[${TAG_TOGGLE_STOP_ATTR}="${CSS.escape(bucket)}"]`,
+			),
+		];
+		// A pinned row draws outside Pinned when pins do not section the list.
+		return (
+			controls.find(
+				(control) =>
+					(control.closest('[data-chat-section="pinned"]') !== null) === pinned,
+			) ??
+			controls[0] ??
+			null
+		);
 	};
 	const openTagsPopover = (row: CanonicalSessionRow) => {
 		tagsOriginId.current = row.session_id;
@@ -8359,6 +8399,32 @@ export function ChatSidebar({
 			 * one they are on.
 			 */
 			if (moved !== undefined) applyRowStop(moved);
+			return;
+		}
+		/*
+		 * A TAG GROUP HEADER FOLDS WITH ARROWLEFT/RIGHT (issue #1639, UX U3), the
+		 * gesture the agent/team groups below already answer: Right unfolds a folded
+		 * group, or steps into its first row when open; Left folds an open one. Both of
+		 * the header's stops (chevron and `⋯`) answer, so the reader need not know which
+		 * of the two the walk landed on.
+		 */
+		const tagFold = target.matches(
+			`[${TAG_TOGGLE_STOP_ATTR}], [${TAG_HEADER_STOP_ATTR}]`,
+		)
+			? target
+					.closest("[data-chat-tag-group]")
+					?.querySelector<HTMLButtonElement>(`[${TAG_TOGGLE_STOP_ATTR}]`)
+			: null;
+		if (tagFold && (event.key === "ArrowRight" || event.key === "ArrowLeft")) {
+			event.preventDefault();
+			const open = tagFold.getAttribute("aria-expanded") === "true";
+			if (event.key === "ArrowRight" && !open) tagFold.click();
+			else if (event.key === "ArrowRight")
+				document
+					.getElementById(tagFold.getAttribute("aria-controls") ?? "")
+					?.querySelector<HTMLElement>("[data-chat-row]")
+					?.focus();
+			else if (open) tagFold.click();
 			return;
 		}
 		const group = target.closest("[data-entity]");

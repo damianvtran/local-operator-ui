@@ -323,7 +323,17 @@ export function toggleTagDisclosure(
 	tagId: string,
 ): Record<string, boolean> {
 	const key = tagDisclosureKey(tagId);
-	return { ...expanded, [key]: !(expanded[key] ?? true) };
+	/*
+	 * AN UNFOLD REMOVES THE KEY rather than writing `true` (UX round 1, U6): absent
+	 * already means open, so the blob only ever holds the folds in force and does
+	 * not accumulate one entry per tag ever pressed. A deleted tag's fold still
+	 * lingers until pruned; harmless, as tag ids are never reused (uuid4).
+	 */
+	if (tagGroupCollapsed(expanded, tagId)) {
+		const { [key]: _open, ...rest } = expanded;
+		return rest;
+	}
+	return { ...expanded, [key]: false };
 }
 
 /**

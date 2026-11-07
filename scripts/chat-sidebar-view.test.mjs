@@ -1922,6 +1922,12 @@ test("a tag group's chevron folds and unfolds it, keyed by tag id", () => {
 	assert.equal(sections["tag:review"], undefined);
 	const unfolded = toggleTagDisclosure(folded, "review");
 	assert.equal(tagGroupCollapsed(unfolded, "review"), false, "open edge");
+	assert.equal(
+		"tag:review" in unfolded,
+		false,
+		"an unfold must drop the key, not store an open entry (U6)",
+	);
+	assert.equal(unfolded.pinned, true, "an unfold dropped a section key");
 	/* A tag id that spells a section key cannot fold that section. */
 	assert.equal(toggleTagDisclosure({}, "today").today, undefined);
 });

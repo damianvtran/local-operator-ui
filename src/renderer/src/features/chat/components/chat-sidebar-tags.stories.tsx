@@ -1075,7 +1075,7 @@ export const TagGroupFoldRoundTrip: Story = {
 		await waitFor(() => expect(groupRows("review")).toBe(0));
 		await userEvent.keyboard(" ");
 		await waitFor(() => expect(groupRows("review")).toBe(1));
-		expect(storedFolds()["tag:review"]).toBe(true);
+		expect(storedFolds()).not.toHaveProperty("tag:review");
 		// No write reached the backend: a fold is a local view preference.
 		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
 		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
@@ -1144,6 +1144,88 @@ export const TagGroupDropOntoFolded: Story = {
 		expect(storedFolds()["tag:review"]).toBe(false);
 		document.body.dataset.tagsProof =
 			"PASS: drop on folded Review header wrote 1 assignment; count 1 → 2; group stayed folded";
+	},
+};
+/* Round 1 remediation (UX U1-U3, review R1): the keyboard paths on a header. */
+export const TagGroupArrowFold: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await focusChevronByKeyboard();
+		await userEvent.keyboard("{ArrowLeft}");
+		await waitFor(() => expect(groupRows("review")).toBe(0));
+		expect(document.activeElement).toBe(chevron());
+		await userEvent.keyboard("{ArrowRight}");
+		await waitFor(() => expect(groupRows("review")).toBe(1));
+		await userEvent.keyboard("{ArrowRight}");
+		expect(document.activeElement).toHaveAttribute("data-chat-row");
+		expect(
+			document.activeElement?.closest("[data-chat-tag-group]"),
+		).toHaveAttribute("data-chat-tag-group", "review");
+		// The `⋯` stop answers the same gesture.
+		headerStop().focus();
+		await userEvent.keyboard("{ArrowLeft}");
+		await waitFor(() => expect(groupRows("review")).toBe(0));
+		document.body.dataset.tagsProof =
+			"PASS: ArrowLeft folds, ArrowRight unfolds then enters the first row; ⋯ folds too";
+	},
+};
+export const TagGroupChevronChords: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await focusChevronByKeyboard();
+		await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+		await within(document.body).findByRole("menuitem", { name: "Rename" });
+		await userEvent.keyboard("{Escape}");
+		chevron().focus();
+		await userEvent.keyboard("{F2}");
+		await within(document.body).findByRole("textbox", {
+			name: /Review/,
+		});
+		document.body.dataset.tagsProof =
+			"PASS: Shift+F10 opens the header menu and F2 renames from the chevron";
+	},
+};
+export const TagGroupRetagIntoFolded: Story = {
+	...story("fold-mixed"),
+	play: async () => {
+		await ready();
+		const row = () =>
+			document.querySelector<HTMLElement>(
+				'[data-session-row="222222222222"] [data-chat-row]',
+			);
+		await waitFor(() => expect(row()).not.toBeNull());
+		row()?.focus();
+		await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+		await userEvent.click(
+			await within(document.body).findByRole("menuitem", { name: /^Tags…/ }),
+		);
+		await userEvent.click(
+			await within(document.body).findByRole("option", { name: "Review" }),
+		);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		await userEvent.click(
+			within(document.body).getByRole("option", { name: "Project" }),
+		);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				2,
+			),
+		);
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(document.querySelector("[data-chat-tag-popover]")).toBeNull(),
+		);
+		// The row went into folded Review, so it is not drawn: focus follows it to
+		// that group's chevron instead of falling to <body>.
+		await waitFor(() => expect(document.activeElement).toBe(chevron()));
+		expect(row()).toBeNull();
+		expect(chevron()).toHaveAttribute("aria-expanded", "false");
+		document.body.dataset.tagsProof =
+			"PASS: re-tag into folded Review returns focus to its chevron, fold kept";
 	},
 };
 export const KeyboardDismiss: Story = {
