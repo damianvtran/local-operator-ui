@@ -6,7 +6,7 @@ import {
 	type WebContents,
 	session,
 } from "electron";
-import { installClientHints } from "./client-hints";
+import { forgetClientHintOptIns, installClientHints } from "./client-hints";
 import type { DownloadDecision } from "./downloads";
 import type { DownloadItemLike } from "./electron-types";
 
@@ -242,14 +242,15 @@ export function installBrowserSessionHandlers(
 	// client-hints delegate), which is the inconsistency Google's sign-in check
 	// can see. See `client-hints.ts` for the measurement and why the brand list is
 	// the engine's own.
-	const detachClientHints = installClientHints(
+	const clientHints = installClientHints(
 		browserSession,
 		{
 			chromeVersion: process.versions.chrome ?? "0",
 			platform: process.platform,
 			arch: process.arch,
 			// macOS: the product version Chromium reports (`27.2.0` measured in both
-			// this runtime and Chrome); Linux: the kernel release, as Chromium sends.
+			// this runtime and Chrome); Linux: the kernel release, as Chromium sends;
+			// Windows: unused (`composeClientHints` omits that one hint there).
 			// `getSystemVersion` is Electron's; a plain-Node test host has none.
 			platformVersion:
 				process.platform === "darwin" && process.getSystemVersion
@@ -350,7 +351,7 @@ export function installBrowserSessionHandlers(
 	// Remove only our listener; the permission-denying session policy stays set.
 	return () => {
 		browserSession.removeListener("will-download", onDownload);
-		detachClientHints();
+		clientHints.detach();
 	};
 }
 
@@ -413,6 +414,9 @@ export async function clearBrowsingData(
 				"backgroundFetch",
 			],
 		});
+		// A site's `Accept-CH` opt-in is site data it wrote; logging out of every
+		// site must not leave a per-site pattern that re-identifies the user.
+		forgetClientHintOptIns(browserSession);
 		return;
 	}
 	// "everything": the same call with no filter, plus the cache — `clearData`'s
@@ -420,6 +424,7 @@ export async function clearBrowsingData(
 	// user who asked for everything should not keep it.
 	await browserSession.clearData();
 	await browserSession.clearCache();
+	forgetClientHintOptIns(browserSession);
 	// HISTORY IS PART OF "EVERYTHING": a user who asked for all browsing data to
 	// be gone would be misled by a local list of every URL they visited surviving
 	// the clear. The snapshot is deleted synchronously inside `clear()`, so this
@@ -467,6 +472,7 @@ export async function clearOriginData(
 	// "Forget this site" is one intention, so the suggestion history for the
 	// origin goes with its cookies. Other origins' rows are untouched.
 	history?.clearOrigin(origin);
+	forgetClientHintOptIns(browserSession, origin);
 }
 
 /** Write any buffered DOMStorage to disk. Called on quit so a hard kill does not

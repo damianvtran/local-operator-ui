@@ -162,16 +162,20 @@ export function normalisePlatformVersion(raw: string): string {
  *
  * `lowEntropy` goes on every request to a potentially trustworthy URL, as Chrome
  * sends it; `highEntropy` only to an origin that asked for that hint by
- * `Accept-CH`. Returns null on Windows: Chromium's Windows `platformVersion` is
- * the UniversalApiContract version, which nothing in Node reports, and a
- * fabricated value would be a new inconsistency rather than a fix — the tab there
- * keeps the runtime's behaviour unchanged.
+ * `Accept-CH`.
+ *
+ * WINDOWS OMITS ONLY `sec-ch-ua-platform-version`: Chromium's Windows value is the
+ * UniversalApiContract version, which nothing in Node reports, and a fabricated
+ * value would be a new inconsistency rather than a fix. Everything else — the
+ * low-entropy trio included, which is the part the defect was about — needs no
+ * OS version, so Windows documents get it like every other platform (review
+ * round 1, R1-3). An origin that asks for the platform version there gets no
+ * answer, which is a smaller claim than Chrome's, never a different one.
  */
 export function composeClientHints(facts: ClientHintFacts): {
 	lowEntropy: Record<string, string>;
 	highEntropy: Record<string, string>;
 } | null {
-	if (facts.platform === "win32") return null;
 	const full = facts.chromeVersion;
 	const major = Number.parseInt(full.split(".")[0] ?? "", 10);
 	if (!Number.isFinite(major) || major <= 0) return null;
@@ -184,9 +188,13 @@ export function composeClientHints(facts: ClientHintFacts): {
 		highEntropy: {
 			"sec-ch-ua-full-version-list": brandHeader(greasedBrandList(major, full)),
 			"sec-ch-ua-full-version": quoted(full),
-			"sec-ch-ua-platform-version": quoted(
-				normalisePlatformVersion(facts.platformVersion),
-			),
+			...(facts.platform === "win32"
+				? {}
+				: {
+						"sec-ch-ua-platform-version": quoted(
+							normalisePlatformVersion(facts.platformVersion),
+						),
+					}),
 			"sec-ch-ua-arch": quoted(architecture(facts.arch)),
 			"sec-ch-ua-bitness": quoted(facts.arch.endsWith("64") ? "64" : "32"),
 			"sec-ch-ua-model": quoted(""),
@@ -283,6 +291,67 @@ const originOf = (url: string): string | null => {
 };
 
 /**
+ * The most origins whose `Accept-CH` opt-in is remembered at once (review round
+ * 1, R1-5/S1-N2). Only top-level documents can opt in, so this is "distinct
+ * sites the user opened this run"; past it the OLDEST opt-in is dropped, which
+ * costs that site its high-entropy hints until its next document response
+ * re-sends `Accept-CH` — the same as a first visit. A cap rather than "unbounded
+ * on purpose" because the map lives for the process and a long-running app
+ * should not grow without limit on anything a page controls.
+ */
+export const MAX_OPTED_IN_ORIGINS = 512;
+
+/** What `installClientHints` hands back. */
+export interface ClientHintsHandle {
+	/** Remove both session listeners. */
+	detach: () => void;
+	/**
+	 * Drop the remembered `Accept-CH` opt-ins: one origin's ("forget this site"),
+	 * or all of them ("clear browsing data"). The opt-in is per-site state the
+	 * site wrote, so it goes with the site's other data — Chrome clears its
+	 * client-hint prefs with site data for the same reason (security round 1,
+	 * S1-2): leaving it would let a site re-identify the user after a clear.
+	 */
+	forget: (origin?: string) => void;
+}
+
+/**
+ * The installed handle per session, so `profile.ts`'s clear functions — which
+ * are handed the Session, not the install — can reach `forget` without a second
+ * parameter threaded through every caller. Weak, so a session that goes away
+ * takes its entry with it.
+ */
+const installed = new WeakMap<object, ClientHintsHandle>();
+
+/** `forget` for whatever `installClientHints` put on this session, if anything. */
+export function forgetClientHintOptIns(
+	browserSession: object,
+	origin?: string,
+): void {
+	installed.get(browserSession)?.forget(origin);
+}
+
+/**
+ * The top-level document's origin for a request, or null when it cannot be told.
+ *
+ * A `mainFrame` request IS the top-level document, so its own URL answers. For
+ * everything else Electron hands the initiating `WebFrameMain` (`details.frame`),
+ * whose `top` is the committed top-level document; the view's URL is the fallback
+ * for a request Electron gives no frame for. Unknown means low-entropy only: a
+ * hint withheld is always the safe direction.
+ */
+export function topLevelOrigin(details: {
+	url: string;
+	resourceType?: string;
+	frame?: { top?: { url?: string } | null } | null;
+	webContents?: { getURL?: () => string } | null;
+}): string | null {
+	if (details.resourceType === "mainFrame") return originOf(details.url);
+	const top = details.frame?.top?.url || details.webContents?.getURL?.() || "";
+	return top ? originOf(top) : null;
+}
+
+/**
  * Install the hints on the browser session (BROWSER_PARTITION only — the app's
  * own renderer is in the default session and never sees this).
  *
@@ -290,36 +359,58 @@ const originOf = (url: string): string | null => {
  * popups and restored tabs — makes its requests through this one network layer,
  * so there is no per-view wiring that a new kind of view could miss.
  *
+ * `Accept-CH` FOLLOWS CHROME'S SCOPE, NOT THE RESPONSE'S (security round 1, S1-1;
+ * review R1-2; QA Q1/Q2). Chrome honours `Accept-CH` only on a top-level document
+ * response from a secure origin, and sends high-entropy hints to another origin
+ * only when the top-level page delegates them by Permissions-Policy. Recording it
+ * from any response let an embedded third party (a pixel, an ad frame) opt ITSELF
+ * in and then read the hints back on every site it is embedded in — passive
+ * cross-site fingerprinting, and an unpartitioned per-origin storage channel (the
+ * set of hints it asked for is state it writes and reads back), neither of which
+ * Chrome allows. So: only `mainFrame` responses opt in, and high-entropy hints go
+ * only to a request whose origin IS the top-level document's origin and that
+ * origin opted in. Subframes and third parties get the low-entropy trio only;
+ * Permissions-Policy delegation is not implemented (deferred, round 1 N1), which
+ * sends fewer hints than Chrome would — safe, and never a different identity.
+ *
  * ONE LISTENER PER EVENT PER SESSION is Electron's rule for `webRequest`, so this
  * must stay the only `onBeforeSendHeaders`/`onHeadersReceived` caller on the
  * browser session (the default session's `guardPreviewResponses` is a different
- * session). The returned function removes both listeners.
+ * session).
  */
 export function installClientHints(
 	browserSession: Session,
 	facts: ClientHintFacts,
 	log?: (line: string) => void,
-): () => void {
+): ClientHintsHandle {
 	const hints = composeClientHints(facts);
 	if (!hints) {
 		log?.(
-			`[browser] client hints left to the runtime on ${facts.platform}: no truthful platformVersion source`,
+			`[browser] client hints left to the runtime: no Chromium major in ${facts.chromeVersion}`,
 		);
-		return () => {};
+		return { detach: () => {}, forget: () => {} };
 	}
-	/** origin -> hint names it asked for by `Accept-CH`, for this process lifetime. */
+	/** top-level origin -> hint names it asked for by `Accept-CH`, this process lifetime. */
 	const acceptCh = new Map<string, Set<string>>();
 	let driftReported = false;
 
 	browserSession.webRequest.onHeadersReceived((details, callback) => {
-		const origin = originOf(details.url);
-		const accept = details.responseHeaders
-			? Object.entries(details.responseHeaders).find(
-					([key]) => key.toLowerCase() === "accept-ch",
-				)?.[1]
-			: undefined;
-		if (origin && accept && isPotentiallyTrustworthy(details.url)) {
-			acceptCh.set(origin, parseAcceptCh(accept));
+		if (details.resourceType === "mainFrame") {
+			const origin = originOf(details.url);
+			const accept = details.responseHeaders
+				? Object.entries(details.responseHeaders).find(
+						([key]) => key.toLowerCase() === "accept-ch",
+					)?.[1]
+				: undefined;
+			if (origin && accept && isPotentiallyTrustworthy(details.url)) {
+				// Re-inserting moves the origin to the newest end for the cap.
+				acceptCh.delete(origin);
+				acceptCh.set(origin, parseAcceptCh(accept));
+				if (acceptCh.size > MAX_OPTED_IN_ORIGINS) {
+					const oldest = acceptCh.keys().next().value;
+					if (oldest !== undefined) acceptCh.delete(oldest);
+				}
+			}
 		}
 		callback({});
 	});
@@ -338,18 +429,32 @@ export function installClientHints(
 			}
 		}
 		const origin = originOf(details.url);
+		const top = topLevelOrigin(details);
 		callback({
 			requestHeaders: withClientHints(
 				details.url,
 				details.requestHeaders,
 				hints,
-				origin ? acceptCh.get(origin) : undefined,
+				origin && origin === top ? acceptCh.get(origin) : undefined,
 			),
 		});
 	});
 
-	return () => {
-		browserSession.webRequest.onBeforeSendHeaders(null);
-		browserSession.webRequest.onHeadersReceived(null);
+	const handle: ClientHintsHandle = {
+		detach: () => {
+			browserSession.webRequest.onBeforeSendHeaders(null);
+			browserSession.webRequest.onHeadersReceived(null);
+			if (installed.get(browserSession) === handle)
+				installed.delete(browserSession);
+		},
+		forget: (origin) => {
+			if (origin === undefined) acceptCh.clear();
+			else {
+				const key = originOf(origin);
+				if (key) acceptCh.delete(key);
+			}
+		},
 	};
+	installed.set(browserSession, handle);
+	return handle;
 }

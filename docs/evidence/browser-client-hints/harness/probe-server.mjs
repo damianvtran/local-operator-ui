@@ -18,7 +18,7 @@ r.chrome={present:typeof window.chrome,runtime:typeof (window.chrome&&chrome.run
 r.plugins=navigator.plugins.length;r.mimeTypes=navigator.mimeTypes.length;r.pdfViewerEnabled=navigator.pdfViewerEnabled;
 r.notification=typeof Notification!=="undefined"?Notification.permission:"absent";
 try{r.permNotifications=(await navigator.permissions.query({name:"notifications"})).state}catch(e){r.permNotifications="err:"+e.message}
-r.languages=navigator.languages;r.hwc=navigator.hardwareConcurrency;r.publicKeyCredential=typeof window.PublicKeyCredential;
+r.publicKeyCredential=typeof window.PublicKeyCredential;
 try{r.uvpa=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()}catch(e){r.uvpa="err"}
 try{r.conditionalMediation=await PublicKeyCredential.isConditionalMediationAvailable()}catch(e){r.conditionalMediation="err"}
 // Runtime.enable detectors: console serialisation only touches these objects
@@ -31,7 +31,7 @@ r.cdpEarly=detect();await new Promise(s=>setTimeout(s,2500));r.cdpLate=detect();
 r.runtimeEnableDetected=r.cdpEarly.stack||r.cdpEarly.proxy||r.cdpLate.stack||r.cdpLate.proxy;
 r.outer=[outerWidth,outerHeight];r.visibility=document.visibilityState;r.hasFocus=document.hasFocus();
 document.getElementById("o").textContent=JSON.stringify(r,null,1);
-fetch("/report",{method:"POST",body:JSON.stringify(r)});})();
+fetch("/report",{method:"POST",body:JSON.stringify(r)});const xo=new URLSearchParams(location.search).get("xo");if(xo){await fetch(xo+"/subac?tag="+r.label).catch(()=>0);await fetch(xo+"/echo?tag="+r.label).catch(()=>0);}})();
 </script>`;
 http
 	.createServer((req, res) => {
@@ -53,15 +53,29 @@ http
 			});
 			return;
 		}
-		if (req.url !== "/" && !req.url.startsWith("/?")) {
-			res.statusCode = 404;
-			return res.end();
-		}
 		const h = Object.fromEntries(
 			Object.entries(req.headers).filter(
 				([k]) => k.startsWith("sec-ch") || k === "user-agent",
 			),
 		);
+		// A cross-origin echo (third-party scoping) and a SUBRESOURCE that sends
+		// Accept-CH (which must opt nothing in), fetched by a page loaded with
+		// ?xo=<this server's origin> from a second instance on another port.
+		if (req.url.startsWith("/echo") || req.url.startsWith("/subac")) {
+			const kind = req.url.startsWith("/subac") ? "subac" : "echo";
+			const tag = new URL(req.url, "http://x").searchParams.get("tag") || "";
+			fs.appendFileSync(
+				out,
+				`${JSON.stringify({ label: `${kind}-${tag}`, port, headers: h })}\n`,
+			);
+			if (kind === "subac") res.setHeader("Accept-CH", HINTS);
+			res.setHeader("Access-Control-Allow-Origin", "*");
+			return res.end("ok");
+		}
+		if (req.url !== "/" && !req.url.startsWith("/?")) {
+			res.statusCode = 404;
+			return res.end();
+		}
 		res.setHeader("Accept-CH", HINTS);
 		res.setHeader(
 			"Critical-CH",

@@ -47,10 +47,39 @@ presents the engine's own brand list (see `src/main/browser/client-hints.ts`).
 
 | # | shape | outcome |
 |---|---|---|
-| 1 | built before, scratch profile, agent path | accepted: password step ("Hi Damian / Enter your password") |
+| 1 | built before, scratch profile, agent path | accepted: password step ("Hi <account name> / Enter your password") |
 | 2 | live 0.52.1, operator profile, account chooser click | already signed in: landed in Gmail |
 | 3 | built after, scratch profile, agent path | accepted: password step |
+| 4 | remediation head + rig with `--use-mock-keychain` (round 1 R1-1), scratch profile, agent path | accepted: `/v3/signin/challenge/pwd` ("Welcome / Enter your password") |
+
+Arms 1 and 3 ran BEFORE the rig passed the mock-keychain switch, so their scratch
+cookie store could not encrypt (review round 1, R1-1); arm 4 is the one re-measured
+with it. Its outcome is the same.
 
 The refusal did not reproduce on 2026-11-07 in any shape, before or after,
 so this evidence does not show that the operator's refusal is fixed. It shows
 that the one measured inconsistency is gone and that nothing regressed.
+
+## Accept-CH scoping (round 1 remediation, S1-1 / R1-2 / Q1 / Q2)
+
+Labels `r2c-*` in `readings.jsonl`: two probe instances on ports 47811 and 47812
+(two origins). The remediation head (its `src/` built), built, headless, agent path:
+
+```
+node docs/evidence/browser-client-hints/harness/probe-server.mjs 47811 out.jsonl &
+node docs/evidence/browser-client-hints/harness/probe-server.mjs 47812 out.jsonl &
+node scripts/browser-identity-proof.mjs --app-tree . --scratch <s> --mode agent \
+  --url "http://127.0.0.1:47811/?xo=http://127.0.0.1:47812#r2c-agent-first" \
+  --then "http://127.0.0.1:47812/?second#r2c-agent-second-origin"
+```
+
+| request | low entropy | high entropy |
+|---|---|---|
+| :47811 first document (no opt-in yet; no Critical-CH restart) | yes | 0 |
+| :47811 same-origin POST after its document's Accept-CH | yes | 8 |
+| :47812 `/subac` + `/echo`, third party under the opted-in :47811 top level | yes | **0** |
+| :47812 document after its `/subac` SUBRESOURCE sent Accept-CH | yes | **0**, so the subresource opted nothing in |
+| :47812 same-origin POST after its own document's Accept-CH | yes | 8 |
+
+On `1a579a1`, QA measured both leaks: b5 (third party got 8) and b6
+(a subresource opt-in carried over to the next document).

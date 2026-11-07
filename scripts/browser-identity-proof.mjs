@@ -45,7 +45,7 @@
  * Usage:
  *   node scripts/browser-identity-proof.mjs --app-tree <dir> --scratch <dir>
  *     --url <url> [--mode agent|human] [--hold-ms N] [--google <identifier>]
- *     [--shot <png>] [--window-mode headless|inactive]
+ *     [--then <url>] [--shot <png>] [--window-mode headless|inactive]
  */
 
 import { spawn } from "node:child_process";
@@ -58,6 +58,7 @@ import {
 	reapOnExit,
 	stopAppTree,
 } from "./app-tree-teardown.mjs";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -77,6 +78,7 @@ const HOLD_MS = Number(arg("hold-ms", "6000"));
 const GOOGLE_ID = arg("google");
 const SHOT = arg("shot");
 const EXPERIMENT_UA = arg("experiment-cdp-ua");
+const THEN_URL = arg("then");
 const WINDOW_MODE = arg("window-mode", "headless");
 if (!arg("scratch") || !URL_TO_OPEN) {
 	console.error("--scratch and --url are required");
@@ -118,6 +120,10 @@ async function launch() {
 			`--remote-debugging-port=${devtoolsPort}`,
 			"--window-size=1380x900",
 			`--window-mode=${WINDOW_MODE}`,
+			// HOME is redirected to a scratch dir with no login keychain: without this
+			// the run raises macOS's "Keychain Not Found" prompt on the operator's
+			// screen and the scratch cookie store cannot encrypt (chrome-keychain.mjs).
+			MOCK_KEYCHAIN_SWITCH,
 		],
 		{ env, cwd: APP_TREE, detached: true, stdio: ["ignore", "pipe", "pipe"] },
 	);
@@ -248,6 +254,17 @@ async function openBrowserRoute(renderer) {
 }
 
 async function openAgent(state, renderer, url) {
+	await approve(state, renderer, url);
+	const requester = "session:identity-rig";
+	const opened = await rpc(state, "open", { url, requester });
+	const token = opened.json?.result?.tab ?? null;
+	say(`[rig] open status=${opened.status} token=${Boolean(token)}`);
+	if (!token) say(`[rig] open reply ${opened.text.slice(0, 400)}`);
+	return token;
+}
+
+/** The per-origin gate, answered the way the user answers it (the app's chrome). */
+async function approve(state, renderer, url) {
 	const origin = new URL(url).origin;
 	const requester = "session:identity-rig";
 	const asked = await rpc(state, "request_access", { url: origin, requester });
@@ -265,11 +282,6 @@ async function openAgent(state, renderer, url) {
 		);
 	}
 	await rpc(state, "await_access", { url: origin, requester });
-	const opened = await rpc(state, "open", { url, requester });
-	const token = opened.json?.result?.tab ?? null;
-	say(`[rig] open status=${opened.status} token=${Boolean(token)}`);
-	if (!token) say(`[rig] open reply ${opened.text.slice(0, 400)}`);
-	return token;
 }
 
 async function main() {
@@ -335,6 +347,14 @@ async function main() {
 		say(`[rig] goto status=${g.status}`);
 	}
 	await sleep(HOLD_MS);
+	if (THEN_URL && token) {
+		// A second document in the same tab: what it carries depends on what the
+		// first one's responses opted in (or failed to).
+		await approve(state, renderer, THEN_URL);
+		const g = await rpc(state, "goto", { tab: token, url: THEN_URL });
+		say(`[rig] then goto ${g.text.slice(0, 160)}`);
+		await sleep(HOLD_MS);
+	}
 	if (GOOGLE_ID && token) {
 		// Accounts.google.com's identifier field; the identifier only, never a secret.
 		const typed = await rpc(state, "type", {

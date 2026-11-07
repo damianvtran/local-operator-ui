@@ -87,11 +87,20 @@ test("the tab presents the engine's own identity, consistently", () => {
 	}
 });
 
-test("Windows keeps the runtime's behaviour: no truthful platformVersion", () => {
-	assert.equal(
-		hints.composeClientHints({ ...MAC, platform: "win32", arch: "x64" }),
-		null,
-	);
+test("Windows sends the low-entropy trio and omits only the platform version", () => {
+	const win = hints.composeClientHints({
+		...MAC,
+		platform: "win32",
+		arch: "x64",
+	});
+	assert.deepEqual(win.lowEntropy, {
+		"sec-ch-ua": '"Not:A-Brand";v="8", "Chromium";v="156"',
+		"sec-ch-ua-mobile": "?0",
+		"sec-ch-ua-platform": '"Windows"',
+	});
+	assert.equal(win.highEntropy["sec-ch-ua-platform-version"], undefined);
+	assert.equal(win.highEntropy["sec-ch-ua-arch"], '"x86"');
+	assert.equal(win.highEntropy["sec-ch-ua-bitness"], '"64"');
 });
 
 test("a request gains only the hints it is missing, and only where Chrome sends them", () => {
@@ -144,7 +153,8 @@ test("a request gains only the hints it is missing, and only where Chrome sends 
 	}
 });
 
-test("installClientHints owns both session header listeners and removes them", () => {
+/** A fake browser session with the two listeners captured. */
+function installed() {
 	const calls = [];
 	const session = {
 		webRequest: {
@@ -153,38 +163,145 @@ test("installClientHints owns both session header listeners and removes them", (
 		},
 	};
 	const lines = [];
-	const detach = hints.installClientHints(session, MAC, (l) => lines.push(l));
+	const handle = hints.installClientHints(session, MAC, (l) => lines.push(l));
 	const recv = calls.find(([k]) => k === "recv")[1];
-	const send = calls.find(([k]) => k === "send")[1];
+	const sendFn = calls.find(([k]) => k === "send")[1];
+	const receive = (url, resourceType, accept) =>
+		recv(
+			{
+				url,
+				resourceType,
+				responseHeaders: accept ? { "Accept-CH": [accept] } : {},
+			},
+			() => {},
+		);
+	/** One request; `top` is the top-level document URL its frame reports. */
+	const send = (url, resourceType, top, requestHeaders = {}) => {
+		let sent;
+		sendFn(
+			{
+				url,
+				resourceType,
+				requestHeaders,
+				frame: top ? { top: { url: top } } : null,
+			},
+			(r) => {
+				sent = r.requestHeaders;
+			},
+		);
+		return sent;
+	};
+	return { session, calls, lines, handle, receive, send };
+}
 
-	recv(
-		{
-			url: "https://accounts.google.com/v3/signin",
-			responseHeaders: { "accept-ch": ["Sec-CH-UA-Platform-Version"] },
-		},
-		() => {},
+const HE = "Sec-CH-UA-Platform-Version, Sec-CH-UA-Arch";
+const GOOGLE = "https://accounts.google.com/v3/signin";
+
+test("a top-level document opts its own origin in, and the next requests carry it", () => {
+	const s = installed();
+	s.receive(GOOGLE, "mainFrame", HE);
+	const doc = s.send("https://accounts.google.com/next", "mainFrame", null);
+	assert.equal(doc["sec-ch-ua-platform-version"], '"27.2.0"');
+	assert.equal(doc["sec-ch-ua-arch"], '"arm"');
+	assert.equal(doc["sec-ch-ua"], '"Not:A-Brand";v="8", "Chromium";v="156"');
+	// Its own subresources, under it as top level, carry it too.
+	const sub = s.send("https://accounts.google.com/x.js", "script", GOOGLE);
+	assert.equal(sub["sec-ch-ua-arch"], '"arm"');
+});
+
+test("Accept-CH over plain http to a remote host is ignored", () => {
+	const s = installed();
+	s.receive("http://plain.example/", "mainFrame", HE);
+	// Same host over https is a different origin and never opted in.
+	const doc = s.send("https://plain.example/", "mainFrame", null);
+	assert.equal(doc["sec-ch-ua-arch"], undefined);
+	assert.ok(doc["sec-ch-ua"], "low entropy still goes to https");
+});
+
+test("Accept-CH on a subresource or iframe response opts nothing in", () => {
+	const s = installed();
+	s.receive("https://tracker.example/p.gif", "image", HE);
+	s.receive("https://tracker.example/frame", "subFrame", HE);
+	const doc = s.send("https://tracker.example/", "mainFrame", null);
+	assert.equal(doc["sec-ch-ua-arch"], undefined);
+	assert.equal(doc["sec-ch-ua-platform-version"], undefined);
+});
+
+test("an opted-in origin gets low entropy only when it is a third party", () => {
+	const s = installed();
+	s.receive(GOOGLE, "mainFrame", HE);
+	// accounts.google.com embedded or fetched from another top-level site.
+	for (const type of ["subFrame", "image", "xhr"]) {
+		const third = s.send(
+			"https://accounts.google.com/embed",
+			type,
+			"https://news.example/",
+		);
+		assert.equal(third["sec-ch-ua-arch"], undefined, type);
+		assert.ok(third["sec-ch-ua"], type);
+	}
+	// And a third party under the opted-in top level gets low entropy only too.
+	const pixel = s.send("https://tracker.example/p.gif", "image", GOOGLE);
+	assert.equal(pixel["sec-ch-ua-arch"], undefined);
+	assert.ok(pixel["sec-ch-ua"]);
+	// No frame at all: unknown top level, so low entropy only.
+	const orphan = s.send("https://accounts.google.com/y", "xhr", null);
+	assert.equal(orphan["sec-ch-ua-arch"], undefined);
+});
+
+test("forget drops one origin's opt-in, or all of them", () => {
+	const s = installed();
+	s.receive(GOOGLE, "mainFrame", HE);
+	s.receive("https://github.com/", "mainFrame", HE);
+	hints.forgetClientHintOptIns(s.session, "https://accounts.google.com");
+	assert.equal(
+		s.send("https://accounts.google.com/", "mainFrame", null)["sec-ch-ua-arch"],
+		undefined,
 	);
-	let sent;
-	send({ url: "https://accounts.google.com/next", requestHeaders: {} }, (r) => {
-		sent = r.requestHeaders;
-	});
-	assert.equal(sent["sec-ch-ua-platform-version"], '"27.2.0"');
-	assert.equal(sent["sec-ch-ua"], '"Not:A-Brand";v="8", "Chromium";v="156"');
+	assert.equal(
+		s.send("https://github.com/", "mainFrame", null)["sec-ch-ua-arch"],
+		'"arm"',
+	);
+	s.handle.forget();
+	assert.equal(
+		s.send("https://github.com/", "mainFrame", null)["sec-ch-ua-arch"],
+		undefined,
+	);
+	// Low entropy is not opt-in state and survives a forget.
+	assert.ok(s.send("https://github.com/", "mainFrame", null)["sec-ch-ua"]);
+});
 
+test("the opt-in map is capped, dropping the oldest origin", () => {
+	const s = installed();
+	s.receive("https://first.example/", "mainFrame", HE);
+	for (let i = 0; i < hints.MAX_OPTED_IN_ORIGINS; i++)
+		s.receive(`https://o${i}.example/`, "mainFrame", HE);
+	assert.equal(
+		s.send("https://first.example/", "mainFrame", null)["sec-ch-ua-arch"],
+		undefined,
+	);
+	assert.equal(
+		s.send("https://o0.example/", "mainFrame", null)["sec-ch-ua-arch"],
+		'"arm"',
+	);
+});
+
+test("installClientHints owns both session header listeners and removes them", () => {
+	const s = installed();
 	// Drift: a runtime whose own brand list differs is reported once.
-	send(
-		{ url: "https://a.example/", requestHeaders: { "sec-ch-ua": "other" } },
-		() => {},
-	);
-	send(
-		{ url: "https://a.example/", requestHeaders: { "sec-ch-ua": "other" } },
-		() => {},
-	);
-	assert.equal(lines.filter((l) => l.includes("drift")).length, 1);
+	s.send("https://a.example/", "image", "https://a.example/", {
+		"sec-ch-ua": "other",
+	});
+	s.send("https://a.example/", "image", "https://a.example/", {
+		"sec-ch-ua": "other",
+	});
+	assert.equal(s.lines.filter((l) => l.includes("drift")).length, 1);
 
-	detach();
+	s.handle.detach();
 	assert.deepEqual(
-		calls.slice(-2).map(([, fn]) => fn),
+		s.calls.slice(-2).map(([, fn]) => fn),
 		[null, null],
 	);
+	// A detached install is no longer reachable through the session.
+	hints.forgetClientHintOptIns(s.session);
 });
