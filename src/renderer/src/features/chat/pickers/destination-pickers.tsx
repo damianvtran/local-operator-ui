@@ -136,6 +136,7 @@ import {
 	effortLadder,
 	effortLevel,
 	fastModeState,
+	frontendNamesModel,
 	modelSelector,
 	specUnresolved,
 } from "../session-status/session-model";
@@ -1705,20 +1706,16 @@ export const ModelPicker: FC<PickerContext> = ({
 					/*
 					 * LIVE, not from this closure: the frame can land while an attempt is
 					 * failing, and once it names the requested spec this press has nothing left
-					 * to ask for. IT NEVER SUPPRESSES THE FIRST SEND — the predicate is read only
-					 * before a repeat (design round 2, D5): re-selecting the model the session
-					 * already names is meaningful, because that is how the backend drops a
-					 * fallback pin. The comparison is `use-canonical-session`'s own (selected OR
-					 * effective), so the picker cannot call the switch confirmed on evidence the
-					 * band would not accept.
+					 * to ask for. The predicate is a pure READING — "does the session name the
+					 * target now" — and `runSessionCommand` samples it once at press time as the
+					 * baseline, so it never suppresses the first send (D5) and an unchanged
+					 * reading is never taken for evidence (round 3: with a pinned fallback the
+					 * session already names the pressed model before the press). The comparison
+					 * is the SAME helper the canonical handle's reconciliation clears the paint
+					 * with (`frontendNamesModel`, selected OR effective), so the picker cannot
+					 * call the switch confirmed on evidence the band would not accept.
 					 */
-					landed: () => {
-						const frontend = frontendLive.current;
-						return (
-							modelSelector(frontend?.selected_model) === value ||
-							modelSelector(frontend?.effective_model) === value
-						);
-					},
+					landed: () => frontendNamesModel(frontendLive.current, value),
 				});
 			} finally {
 				switching.current = false;

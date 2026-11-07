@@ -94,7 +94,10 @@ import {
 	seedWaitingComposes,
 } from "@features/chat/canonical/transcript-reducer";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
-import { modelSelector } from "@features/chat/session-status/session-model";
+import {
+	frontendNamesModel,
+	modelSelector,
+} from "@features/chat/session-status/session-model";
 import {
 	desktopResult,
 	subscribeDesktopStream,
@@ -7402,10 +7405,7 @@ export function useCanonicalSessionStream(
 		const painted = modelSelector(pending);
 		if (!painted) return;
 		const frontend = view.frontend;
-		if (
-			modelSelector(frontend?.selected_model) === painted ||
-			modelSelector(frontend?.effective_model) === painted
-		) {
+		if (frontendNamesModel(frontend, painted)) {
 			commitView((current) => ({ ...current, pendingModel: null }));
 		}
 	}, [commitView, view.frontend, view.pendingModel]);

@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import {
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	statSync,
+} from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 /*
@@ -101,16 +108,27 @@ const bundle = await build({
 	],
 });
 
-const bundlePath = new URL(
-	`./_model-switch-busy-resend-${process.pid}.mjs`,
-	import.meta.url,
+/*
+ * WRITTEN OUTSIDE THE TRACKED TREE (review round 2, nit). `scripts/` is tracked, so
+ * an artifact left by a lane that dies between the write and the import would show
+ * up as an untracked file in a tree-clean check. `node_modules` is ignored
+ * wholesale, and a bundle written there still resolves bare specifiers by walking
+ * up to the repository's own `node_modules`.
+ */
+const bundleDir = join(process.cwd(), "node_modules", ".cache");
+mkdirSync(bundleDir, { recursive: true });
+const bundlePath = join(
+	bundleDir,
+	`_model-switch-busy-resend-${process.pid}.mjs`,
 );
+const bundleUrl = pathToFileURL(bundlePath).href;
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 /*
  * THE ARTIFACT IS ALSO REAPED ON EXIT. The `finally` below only runs if this
  * process gets as far as the import; a run that fails to build, or one killed
  * between the write and the import (a bounded harness, a cancelled QA lane),
- * leaves `scripts/_<name>-<pid>.mjs` in the worktree — measured, and the reason
+ * leaves the bundle behind — measured in `scripts/` before the path moved to
+ * `node_modules/.cache`, and the reason
  * this handler exists rather than the `finally` alone.
  */
 process.once("exit", () => {
@@ -127,7 +145,7 @@ process.once("exit", () => {
  */
 let shipped;
 try {
-	shipped = await import(bundlePath.href);
+	shipped = await import(bundleUrl);
 } finally {
 	await unlink(bundlePath);
 }
@@ -410,6 +428,64 @@ test("a press on the model the session ALREADY names is still sent, exactly once
 		undefined,
 		"a receipted press is not the frame-confirmed arm",
 	);
+});
+
+test("the displaced state still repeats: a reading that already named the target is not evidence", async () => {
+	/*
+	 * THE PINNED-FALLBACK STATE, and the reason the stop needs a BASELINE. With a
+	 * fallback serving, `selected = session.model` while `effective` is the active
+	 * fallback (`frontend_state.py`), so pressing the selected model finds the
+	 * reading already naming the target BEFORE the press — and a predicate comparing
+	 * readings alone would treat that unchanged reading as proof the switch landed,
+	 * stopping the repeat after one attempt in exactly the state that most needs it.
+	 *
+	 * So `landed()` is true from the start here and stays true. The first send goes
+	 * out (D5), the busy refusal is repeated, and the switch genuinely lands on a
+	 * later attempt.
+	 */
+	let attempt = 0;
+	const requests = [];
+	const outcome = await runSessionCommand(
+		dispatchInput({ landed: () => true }),
+		async (request) => {
+			requests.push(request);
+			attempt += 1;
+			if (attempt < 3) throw busy();
+			return switched;
+		},
+	);
+	assert.equal(
+		requests.length,
+		3,
+		"an unchanged reading proves nothing: the repeat runs",
+	);
+	assert.equal(
+		new Set(requests.map((request) => request.requestId)).size,
+		3,
+		"each repeated attempt is still a fresh claim",
+	);
+	assert.equal(outcome.outcome, switched.result);
+	assert.equal(
+		outcome.confirmedByFrame,
+		undefined,
+		"the receipt is the answer",
+	);
+
+	/*
+	 * And it runs its NORMAL BOUNDED COURSE when the owner never accepts: the
+	 * baseline suppresses the early stop, not the bound.
+	 */
+	let exhausted = 0;
+	const spent = await runSessionCommand(
+		dispatchInput({ landed: () => true }),
+		async () => {
+			exhausted += 1;
+			throw busy();
+		},
+	);
+	assert.equal(exhausted, 4, "one send plus BUSY_RESENDS");
+	assert.equal(spent.unconfirmed, true);
+	assert.equal(spent.confirmedByFrame, undefined);
 });
 
 test("a caller that does not opt in is dispatched exactly once, even on a busy refusal", async () => {

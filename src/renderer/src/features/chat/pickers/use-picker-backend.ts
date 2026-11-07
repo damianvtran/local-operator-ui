@@ -170,15 +170,32 @@ export async function runSessionCommand(
 		 */
 		resendWhileBusy?: boolean;
 		/**
-		 * The press has LANDED, read live, and read ONLY before a REPEAT — never before
-		 * the first dispatch (design round 2, D5). A press whose session already names
-		 * the target must still be SENT once: re-selecting the same model is the
-		 * documented way the backend drops a fallback pin (`session.py`
-		 * `_drop_fallback_pin`), so suppressing that send would report a switch that
-		 * never happened while a fallback kept serving. What the predicate ends is the
-		 * REPEAT: once a frame names the requested spec mid-wait, further attempts ask
-		 * the owner for something it has already done, under a footer still reading
-		 * `Switching the model…`. Only a caller that can see the frames passes it.
+		 * Whether the session's CURRENT reading already names the model being pressed
+		 * for — sampled ONCE at press time as the BASELINE, and read again before each
+		 * repeat. Two rules follow, and both are load-bearing:
+		 *
+		 *  - THE FIRST DISPATCH IS UNCONDITIONAL (design round 2, D5). A press whose
+		 *    session already names the target must still be SENT: re-selecting the same
+		 *    model is the documented way the backend drops a fallback pin
+		 *    (`session.py` `_drop_fallback_pin`), so suppressing that send would report
+		 *    a switch that never happened while a fallback kept serving.
+		 *  - ONLY A CHANGE ENDS THE REPEAT (design round 3, the displaced state). The
+		 *    predicate is evidence only if the baseline did NOT already satisfy it: in
+		 *    the pinned-fallback state `selected = session.model` while `effective = the
+		 *    active fallback` (`frontend_state.py`), so the reading names one of the two
+		 *    candidates BEFORE the press — and a predicate comparing readings alone
+		 *    would treat that unchanged reading as proof the switch landed, stopping the
+		 *    repeat after one attempt in exactly the state that most needs it.
+		 *
+		 * What it buys when the baseline does not satisfy it: once a frame names the
+		 * requested spec mid-wait, further attempts ask the owner for something it has
+		 * already done, under a footer still reading `Switching the model…`.
+		 *
+		 * A press on the running model with no fallback satisfies the baseline, so a
+		 * busy answer there may still repeat: that is honest (each attempt is a fresh
+		 * claim and the operation is idempotent in effect), and it is left alone rather
+		 * than special-cased into a second rule. Only a caller that can see the frames
+		 * passes this at all.
 		 */
 		landed?: () => boolean;
 	},
@@ -186,6 +203,13 @@ export async function runSessionCommand(
 		desktopResult<DesktopCommandReceipt>(request),
 ): Promise<CommandRun> {
 	const { sessionId, command, args, failure, resendWhileBusy, landed } = input;
+	/*
+	 * THE BASELINE, SAMPLED BEFORE ANYTHING IS SENT. This one read is what keeps the
+	 * displaced state from impersonating evidence: with a pinned fallback the session
+	 * already names the pressed model before the press, so a later reading of the
+	 * same value proves nothing — only a value that CHANGED does (design round 3).
+	 */
+	const baselineNames = landed?.() ?? false;
 	/*
 	 * ATTEMPTS, not "is landed": `landed` is consulted only for a REPEAT, so the
 	 * first dispatch is unconditional. The distinction is the whole of design round
@@ -203,7 +227,8 @@ export async function runSessionCommand(
 		 * waits. The residual is one wait (the busy hint, 2 s today) if the frame lands
 		 * during it — measured, that is the window design D3 saw, not the whole repeat.
 		 */
-		if (dispatched > 0 && landed?.()) throw new PressLandedWhileWaiting();
+		if (dispatched > 0 && !baselineNames && landed?.())
+			throw new PressLandedWhileWaiting();
 		dispatched += 1;
 		return send({
 			op: "sessions.command",
@@ -221,11 +246,12 @@ export async function runSessionCommand(
 	} catch (error) {
 		if (error instanceof PressLandedWhileWaiting) {
 			/*
-			 * Reachable only from a REPEAT (the first dispatch never reads `landed`), so
-			 * the press went out at least once and the frame that named the model is the
-			 * answer to that send. No receipt arrived, so there is nothing to quote:
-			 * `outcome` is null and the strip stays empty (the hook skips `result` on this
-			 * arm).
+			 * Reachable only from a REPEAT (the first dispatch never reads `landed`),
+			 * and only when the baseline did not already name the model — so the press
+			 * went out at least once, the change is evidence, and that frame answers a
+			 * send that really happened. No receipt arrived, so there is nothing to
+			 * quote: `outcome` is null and the strip stays empty (the hook skips `result`
+			 * on this arm).
 			 */
 			return {
 				outcome: null,

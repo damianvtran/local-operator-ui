@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
 /*
  * THE MODEL PICKER'S BUSY-RETRY STORIES, RUN — not just compiled.
  *
- * Why this file exists: `scripts/model-picker-busy-retry.test.mjs` proves the
+ * Why this file exists: `scripts/model-switch-busy-resend.test.mjs` proves the
  * repeat at the module seam, but the stories are where the picker's REAL
  * composition is pinned, and nothing in CI runs a story's `play`. Round 1 shipped
  * a retry that left `AckTimeoutIndeterminate` and `AckTimeoutNotApplied` asserting
@@ -127,16 +129,24 @@ const bundle = await build({
 	],
 });
 
-const bundlePath = new URL(
-	`./_model-picker-stories-${process.pid}.mjs`,
-	import.meta.url,
-);
+/*
+ * WRITTEN OUTSIDE THE TRACKED TREE (review round 2, nit). `scripts/` is tracked, so
+ * an artifact left by a lane that dies between the write and the import would show
+ * up as an untracked file in a tree-clean check. `node_modules` is ignored
+ * wholesale, and a bundle written there still resolves bare specifiers by walking
+ * up to the repository's own `node_modules`.
+ */
+const bundleDir = join(process.cwd(), "node_modules", ".cache");
+mkdirSync(bundleDir, { recursive: true });
+const bundlePath = join(bundleDir, `_model-picker-stories-${process.pid}.mjs`);
+const bundleUrl = pathToFileURL(bundlePath).href;
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 /*
  * THE ARTIFACT IS ALSO REAPED ON EXIT. The `finally` below only runs if this
  * process gets as far as the import; a run that fails to build, or one killed
  * between the write and the import (a bounded harness, a cancelled QA lane),
- * leaves `scripts/_<name>-<pid>.mjs` in the worktree — measured, and the reason
+ * leaves the bundle behind — measured in `scripts/` before the path moved to
+ * `node_modules/.cache`, and the reason
  * this handler exists rather than the `finally` alone.
  */
 process.once("exit", () => {
@@ -149,7 +159,7 @@ process.once("exit", () => {
 
 let stories;
 try {
-	stories = await import(bundlePath.href);
+	stories = await import(bundleUrl);
 } finally {
 	await unlink(bundlePath);
 }
