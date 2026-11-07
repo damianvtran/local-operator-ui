@@ -100,6 +100,7 @@ import {
 	type SendLock,
 	answerGateOption,
 	answerGateSecret,
+	answerOwnerIsBusy,
 	answerQueuedAsk,
 	answerReport,
 	answerValue,
@@ -2915,8 +2916,23 @@ function SessionPanel({
 					 * the chip only ever read the sentence.
 					 */
 					refusedByOwner: askRefusalIsOwner(outcome.error),
+					/* The ink's half of the same classification; see `AskOutcome.busy`. */
+					busy: answerOwnerIsBusy(outcome.error),
 				},
 			}));
+			/*
+			 * A BUSY PRESS MAY HAVE LANDED, SO THIS ARM READS THE QUEUE AGAIN (design round
+			 * 1, D2). The old note here - "nothing reached the owner" - is true of a
+			 * transport failure and FALSE of `runtime_busy`, which is the write-then-wait
+			 * arm: the frame may have been written with only its acknowledgement lost.
+			 * Returning without a read left a settled ask drawn `open` for up to
+			 * `FLEET_ASKS_POLL_MS`, and the operator pressing it again inside that window
+			 * was answering an ask that had already been answered. Same key, same call and
+			 * same tolerance as the success path below: `void`, so a failed refetch is not
+			 * a second failure to report and the poll corrects it.
+			 */
+			if (answerOwnerIsBusy(outcome.error))
+				void queryClient.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
 			return;
 		}
 		setAskOutcomes((current) => ({
@@ -2936,7 +2952,8 @@ function SessionPanel({
 		 * its own settles (`fleet-ask-drawer.tsx`); this is the session scope's
 		 * half, through the one key both reads share. Both remaining statuses reach
 		 * here (`sent` and `refused` - a refusal is the ask changing under us); the
-		 * transport-failure arm returned above because nothing reached the owner.
+		 * transport-failure arm returned above because nothing reached the owner, and
+		 * the BUSY arm refreshed before returning for the opposite reason (D2).
 		 */
 		void queryClient.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
 	};

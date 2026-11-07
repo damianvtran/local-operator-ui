@@ -1224,6 +1224,22 @@ export type AskOutcome = {
 	 */
 	refusedByOwner?: boolean;
 	/**
+	 * Whether the refusal above is the answers route's RETRYABLE-BUSY arm - the
+	 * owner is alive and did not confirm the press, so the answer may or may not
+	 * have landed (`answerOwnerIsBusy`).
+	 *
+	 * IT DECIDES THE INK, and only the ink (design round 1, D1). The sentence is
+	 * `ANSWER_BUSY_MESSAGE` either way; a busy press is a moment the app is still
+	 * absorbing, not a verdict on the act, and the GATE card has painted it in the
+	 * muted register since `answerReport` (its `muted` field, `question-dock.tsx`).
+	 * Before this field existed the queued card painted the same sentence in the
+	 * danger band, so one disposition read as a definite failure on one surface and
+	 * as a wait on the other. Classified where the error is still in hand, for the
+	 * reason `refusedByOwner` gives: a reader of this record only ever gets the
+	 * sentence.
+	 */
+	busy?: boolean;
+	/**
 	 * THE ACT THIS SURFACE SAW ACCEPTED, painted over a frame that has not caught up
 	 * (`askWithLocalSettle`). A surface whose rows come from a READ rather than the
 	 * live session stream - the Notifications detail pane, the fleet pane between its

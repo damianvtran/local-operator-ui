@@ -1208,12 +1208,24 @@ export const answerQueuedAsk = async (
 		 * is that lost ack plus a client that never repeated it.
 		 *
 		 * THE SAME `request` goes out whole, and the answers route carries NO
-		 * receipt journal to replay from: an answer settles through the ask log's
-		 * own single-winner rule, which is the idempotent settle the backend cites
-		 * on both of its busy arms (`desktop_sessions.py`: "an answer gate re-issues
-		 * under its own idempotent settle"). So a repeat under this body cannot
-		 * double-answer, and one that lands while the owner is free again turns the
-		 * press into `sent` here instead of a failure over a write that happened.
+		 * receipt journal to replay from: a repeat cannot double-answer because the
+		 * ask log is FIRST-ANSWER-WINS. So what a repeat lands as depends on whether
+		 * the lost ack hid a write that had already happened: if the busy owner never
+		 * took the first one (the common case - it was mid-turn), the repeat is
+		 * accepted and this path returns `sent`; if the answer WAS recorded, the
+		 * owner refuses the repeat with its own sentence - "already answered by
+		 * <surface>" (`asks/render.py`'s `refusal_copy`, answered 409 by the answers
+		 * route) - which the card paints as that state rather than as a failure. It
+		 * is never a second answer, and it is never this path claiming the press
+		 * landed when the owner said otherwise.
+		 *
+		 * THE GATE BRANCH BESIDE IT IS THE IDEMPOTENT ONE, and the difference matters
+		 * when reading either comment: `answerGateOption` re-issues under the answer's
+		 * own settle (the backend's "an answer gate re-issues under its own idempotent
+		 * settle", on both busy arms), so ITS repeat comes back `sent` even when the
+		 * first write landed. A queued ask has no such op - the ask log has already
+		 * decided - so this door's honest ceiling is "sent, or the owner's
+		 * already-answered refusal".
 		 *
 		 * THE LOCK IS HELD ACROSS THE RESENDS, exactly as the gate path holds it:
 		 * the one-answer-in-flight rule covers the whole press rather than its first

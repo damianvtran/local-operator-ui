@@ -149,6 +149,21 @@ test("a busy answer press is repeated with the SAME request, and the repeat can 
 	const outcome = await answerQueuedAsk(deps(lock), async (request) => {
 		sent.push(request);
 		attempt += 1;
+		/*
+		 * THE LOCK IS HELD ACROSS THE RESENDS, asserted at the one moment that can
+		 * tell: a second acquire succeeding while an attempt is in flight would mean
+		 * the lock was released between attempts, and a second press could then race
+		 * this one through the retry waits (review R1-1). A successful grab is
+		 * released at once, so a regression fails on the assertion rather than by
+		 * poisoning the rest of the case.
+		 */
+		const grabbed = lock.tryAcquire();
+		if (grabbed) lock.release();
+		assert.equal(
+			grabbed,
+			false,
+			`the one-answer lock stays held during attempt ${attempt}`,
+		);
 		if (attempt === 1) throw busy();
 		return { status: "sent" };
 	});
@@ -269,8 +284,21 @@ test("the picker command path is not wrapped in the busy loop, for the measured 
 		"src/renderer/src/features/chat/pickers/use-picker-backend.ts",
 		"utf8",
 	);
+	/*
+	 * THE `run` BODY, not the whole file (review R1-3): a later, legitimate use of
+	 * the loop elsewhere in this module - a read, a different op - must not fail
+	 * this guard. The two markers are asserted first, so a rename that moves the
+	 * body fails here instead of passing on an empty slice.
+	 */
+	const start = source.indexOf("const run = useCallback(");
+	const end = source.indexOf("[sessionId],", start);
 	assert.ok(
-		!source.includes("withBusyResends"),
-		"the command route refuses a same-id resend with a receipt conflict; do not retry it",
+		start !== -1 && end > start,
+		"the `run` body is findable, so the guard below measures something",
+	);
+	const runBody = source.slice(start, end);
+	assert.ok(
+		!runBody.includes("withBusyResends"),
+		"the command route refuses a same-id resend with a receipt conflict; do not retry it in `run`",
 	);
 });
