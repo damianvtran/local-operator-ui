@@ -454,7 +454,7 @@ export const CustomThemeEditor = ({
 									measured.findings.length > 0 && (
 										<Button
 											type="button"
-											variant="secondary"
+											variant="tonal"
 											size="sm"
 											onClick={adjust}
 										>
@@ -650,7 +650,7 @@ export const CustomThemeEditor = ({
 						{t("ui.settings.appearance.editor.discard_description")}
 					</DialogDescription>
 					<div className="flex flex-wrap justify-end gap-2">
-						<Button variant="secondary" onClick={() => setDiscard(false)}>
+						<Button variant="tonal" onClick={() => setDiscard(false)}>
 							{t("ui.settings.appearance.editor.keep_editing")}
 						</Button>
 						<Button

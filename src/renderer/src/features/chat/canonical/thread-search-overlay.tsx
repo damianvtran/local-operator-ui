@@ -317,7 +317,8 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 			   on glass it takes the panel's fill and the dim-ink rebind rather than
 			   sitting opaque over a translucent column. */
 			data-glass-overlay=""
-			className="pointer-events-auto w-[26rem] max-w-full rounded-md border border-hairline bg-elevated text-body-sm text-ink shadow-overlay"
+			data-lo-floating=""
+			className="pointer-events-auto w-[26rem] max-w-full rounded-md bg-elevated text-body-sm text-ink shadow-overlay"
 		>
 			<div className="p-2">
 				<div

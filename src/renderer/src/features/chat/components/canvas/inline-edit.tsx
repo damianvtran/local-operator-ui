@@ -112,7 +112,7 @@ type InlineEditProps = {
  */
 const POPOVER = cn(
 	"absolute z-[1300] box-border flex flex-col gap-3",
-	"rounded-lg border border-hairline bg-elevated p-2 shadow-overlay",
+	"rounded-lg bg-elevated p-2 shadow-overlay",
 	// This panel is the prompt field's visible frame, so it draws the field's
 	// focus ring and the textarea suppresses its own - a ring inside this
 	// border would read as a second frame. Scoped to `textarea` on purpose:
@@ -735,6 +735,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	return (
 		<div
 			ref={containerRef}
+			data-lo-floating=""
 			className={cn(
 				POPOVER,
 				reviewState ? POPOVER_REVIEW_WIDTH : POPOVER_PROMPT_WIDTH,
@@ -870,8 +871,10 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							{/* Neutral, not danger: rejecting a suggestion keeps the user's own
 							    text, so nothing is destroyed and nothing is irreversible. Red
 							    here would be the loudest thing on the surface for the safer of
-							    the two choices. */}
-							<Button variant="secondary" size="sm" onClick={onRejectDiff}>
+							    the two choices. And `tonal` rather than `secondary`: this row
+							    sits inside the floating `POPOVER` panel, which has no stroke,
+							    so a bordered button would draw one back (QA round 2, Q3). */}
+							<Button variant="tonal" size="sm" onClick={onRejectDiff}>
 								<X aria-hidden="true" />
 								{t("ui.canvas.inline_edit.reject")}
 							</Button>

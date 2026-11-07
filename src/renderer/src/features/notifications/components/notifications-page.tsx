@@ -2344,7 +2344,7 @@ const ConfirmDismissSession: FC<{
 				})}
 			</DialogTitle>
 			<div className="mt-4 flex justify-end gap-2">
-				<Button variant="secondary" onClick={onCancel}>
+				<Button variant="tonal" onClick={onCancel}>
 					{t("ui.notifications.confirm.cancel")}
 				</Button>
 				<Button
@@ -2900,7 +2900,7 @@ const ConfirmDismissView: FC<{
 						{t("ui.notifications.bulk.review_asks")}
 					</Button>
 				)}
-				<Button variant="secondary" onClick={onCancel}>
+				<Button variant="tonal" onClick={onCancel}>
 					{t("ui.notifications.confirm.cancel")}
 				</Button>
 				<Button

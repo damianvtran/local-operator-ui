@@ -212,7 +212,7 @@ export const useCustomThemeActions = () => {
 						</p>
 					)}
 					<div className="flex justify-end gap-2">
-						<Button variant="secondary" onClick={() => setDeleting(null)}>
+						<Button variant="tonal" onClick={() => setDeleting(null)}>
 							{t("ui.settings.appearance.editor.cancel")}
 						</Button>
 						<Button
@@ -321,7 +321,7 @@ export const useCustomThemeActions = () => {
 					</p>
 					<div className="flex flex-wrap justify-end gap-2">
 						<Button
-							variant="secondary"
+							variant="tonal"
 							onClick={() => {
 								if (!exporting) return;
 								try {

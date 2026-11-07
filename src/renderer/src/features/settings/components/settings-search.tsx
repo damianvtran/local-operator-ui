@@ -443,7 +443,8 @@ export const SettingsSearch = forwardRef<
 					   `--lo-glass-a-overlay` and rebinds its dim ink, so it follows the
 					   material exactly as the portalled menus do. */
 					data-glass-overlay=""
-					className="absolute top-full right-0 z-40 mt-2 flex max-h-[min(24rem,60vh)] w-full min-w-80 flex-col overflow-y-auto rounded-md border border-hairline bg-elevated p-1 shadow-overlay"
+					data-lo-floating=""
+					className="absolute top-full right-0 z-40 mt-2 flex max-h-[min(24rem,60vh)] w-full min-w-80 flex-col overflow-y-auto rounded-md bg-elevated p-1 shadow-overlay"
 				>
 					{notice && (
 						/*

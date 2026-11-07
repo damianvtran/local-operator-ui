@@ -78,7 +78,7 @@ export const ContextMenuRadioGroup = ContextMenuPrimitive.RadioGroup;
 
 /** Panel chrome, copied from `dropdown-menu.tsx`'s `panelClasses`. */
 const panelClasses = [
-	"z-50 min-w-32 overflow-hidden rounded-md border border-hairline bg-elevated p-1",
+	"z-50 min-w-32 overflow-hidden rounded-md bg-elevated p-1",
 	// No entrance animation; see the note at the top of `tooltip.tsx`.
 	"shadow-overlay",
 ];
@@ -111,6 +111,7 @@ export const ContextMenuContent = forwardRef<
 				ref={composedRef}
 				data-titlebar-no-drag=""
 				data-glass-overlay=""
+				data-lo-floating=""
 				className={cn(panelClasses, "min-w-56", className)}
 				{...props}
 			/>

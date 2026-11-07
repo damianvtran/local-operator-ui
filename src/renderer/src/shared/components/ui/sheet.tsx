@@ -24,8 +24,14 @@ import { Button } from "./button";
  * unsafe. The reasoning is on the `sheetVariants` base below and in full at
  * the top of `tooltip.tsx`.
  *
- * No border on the outer edges: the panel meets the window frame there, and a
- * line drawn against the window edge is chrome with nothing on the far side.
+ * NO BORDER ON ANY EDGE (2026-11-06). The outer edges meet the window frame,
+ * where a line would be chrome with nothing on the far side - and the inner edge,
+ * which used to carry the hairline, is a floating surface's boundary like any
+ * other, so it separates by `elevated` ground plus the one shadow's contact layer
+ * rather than by a stroke. The panel wears `data-lo-floating` for the guard that
+ * enforces this; the full argument is on `panelClasses` in `dropdown-menu.tsx`. A
+ * drawer is a dialog that enters from an edge, and two boundary languages for one
+ * class of surface is how they drift apart.
  */
 
 const sheetVariants = cva(
@@ -40,14 +46,12 @@ const sheetVariants = cva(
 	{
 		variants: {
 			side: {
-				top: "inset-x-0 top-0 border-hairline border-b",
-				bottom: "inset-x-0 bottom-0 border-hairline border-t",
-				start:
-					"inset-y-0 start-0 h-full w-3/4 max-w-sm border-hairline border-e",
-				end: "inset-y-0 end-0 h-full w-3/4 max-w-sm border-hairline border-s",
-				left: "inset-y-0 left-0 h-full w-3/4 max-w-sm border-hairline border-r",
-				right:
-					"inset-y-0 right-0 h-full w-3/4 max-w-sm border-hairline border-l",
+				top: "inset-x-0 top-0",
+				bottom: "inset-x-0 bottom-0",
+				start: "inset-y-0 start-0 h-full w-3/4 max-w-sm",
+				end: "inset-y-0 end-0 h-full w-3/4 max-w-sm",
+				left: "inset-y-0 left-0 h-full w-3/4 max-w-sm",
+				right: "inset-y-0 right-0 h-full w-3/4 max-w-sm",
 			},
 		},
 		defaultVariants: { side: "right" },
@@ -131,6 +135,7 @@ export const SheetContent = forwardRef<
 					 * measured 3.36-3.80:1 in the light palette). It keeps the opaque
 					 * `elevated` role and its shadow.
 					 */
+					data-lo-floating=""
 					className={cn(sheetVariants({ side }), className)}
 					{...props}
 				>

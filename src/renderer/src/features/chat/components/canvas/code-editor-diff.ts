@@ -74,6 +74,9 @@ class DiffWidget extends WidgetType {
 		   third boundary saying the same thing. */
 		container.style.backgroundColor = "var(--color-elevated)";
 		container.style.boxShadow = "var(--shadow-overlay)";
+		/* Floating, so the focus reset skips it and forced colors draws its edge
+		   (`index.css`, `[data-lo-floating]`). */
+		container.dataset.loFloating = "";
 		container.style.fontFamily = MONO_FAMILY;
 		container.style.fontSize = "var(--text-mono)";
 
