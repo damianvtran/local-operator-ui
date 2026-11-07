@@ -3,6 +3,10 @@ import {
 	desktopKeys,
 } from "@shared/api/local-operator/desktop-hooks";
 import { MessageInput } from "@shared/components/composer/message-input";
+/* The seeded registry must land under the SAME locale-scoped key the readers
+ * query (C5); `currentLocale()` is the store's own answer, the one the reader's
+ * `useI18nLocale()` returns. */
+import { currentLocale } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 /*
@@ -699,7 +703,10 @@ const TypedDraft = ({ label }: { label: string }) => {
 	const conversationId = conversationIdFor(label);
 	const queryClient = useQueryClient();
 	useLayoutEffect(() => {
-		queryClient.setQueryData(desktopKeys.commands, COMMANDS);
+		queryClient.setQueryData(
+			desktopKeys.commandsFor(currentLocale()),
+			COMMANDS,
+		);
 		for (const command of ["team", "agent"]) {
 			queryClient.setQueryData(
 				["desktop", "entities", conversationId, command, ""],
@@ -733,7 +740,10 @@ const SeededDraft = ({ label, draft }: { label: string; draft: string }) => {
 	const conversationId = conversationIdFor(label);
 	const queryClient = useQueryClient();
 	useLayoutEffect(() => {
-		queryClient.setQueryData(desktopKeys.commands, COMMANDS);
+		queryClient.setQueryData(
+			desktopKeys.commandsFor(currentLocale()),
+			COMMANDS,
+		);
 		for (const command of ["team", "agent"]) {
 			queryClient.setQueryData(
 				["desktop", "entities", conversationId, command, ""],
@@ -1081,7 +1091,10 @@ const GeometryProbe = ({
 	 * than the client so the effect cannot re-run on every render.
 	 */
 	useLayoutEffect(() => {
-		queryClient.setQueryData(desktopKeys.commands, COMMANDS);
+		queryClient.setQueryData(
+			desktopKeys.commandsFor(currentLocale()),
+			COMMANDS,
+		);
 		/*
 		 * AND THE ROSTER, which the `name` run reads (`useEntities`), for the same
 		 * reason one round later: it resolves over the API fixture after first paint,

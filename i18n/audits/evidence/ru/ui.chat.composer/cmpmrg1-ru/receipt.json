@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "d0f873a0bc82-cmpmrg1-ru",
+  "session": "d0f873a0bc82",
+  "date": "2026-11-04",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "locale": "ru",
+  "namespace": "ui.chat.composer",
+  "sha256": {
+    "ru": "96126dd7d640c3fd21768d478dfb32147e8a1c878f68b4d892f9631a74efaf7b",
+    "en": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14"
+  },
+  "source_sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+  "target_sha256": "96126dd7d640c3fd21768d478dfb32147e8a1c878f68b4d892f9631a74efaf7b",
+  "context_sha256": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc",
+  "model_provenance": {
+    "actual_audit_model": "anthropic/claude-sonnet-5-5",
+    "fallback_this_round": null
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.composer.insert_transcript",
+      "id": "F1",
+      "note": "ru style guide pins transcript → «транскрипт» (used for the chat transcript, e.g. Вид транскрипта). Here 'transcript' means the dictated words, a different sense; the translators chose «расшифровка» ("
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.composer.steer_hint",
+      "id": "F2",
+      "note": "«Направить агента» alone can read as 'send the agent somewhere'. Same verb root is already the settled rendering of steer in placeholder.waiting («Направляйте агента») and mesh_approvals («направлять "
+    }
+  ],
+  "reviewed_keys": [
+    "ui.chat.composer.insert_transcript",
+    "ui.chat.composer.insert_transcript_hint",
+    "ui.chat.composer.send_recording",
+    "ui.chat.composer.send_recording_hint",
+    "ui.chat.composer.steer_hint",
+    "ui.chat.composer.secret_closure_notice"
+  ],
+  "scope": "Merge-convergence delta audit at 801b1ad29d4: 6 keys (secret_closure_notice + main's five composer keys); 66 other keys read for consistency only.",
+  "limits": "Source/bytes reading plus intl-messageformat parse; no rendered frame; repo validators not run. ru is LTR.",
+  "canonical_record": "i18n/audits/evidence/ru/ui.chat.composer/cmpmrg1-ru/record.json"
+}

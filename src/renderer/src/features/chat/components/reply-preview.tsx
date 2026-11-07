@@ -68,6 +68,14 @@ export const ReplyPreview: FC<ReplyPreviewProps> = ({
 							size="icon-sm"
 							className="shrink-0 text-ink-dim hover:bg-elevated hover:text-ink"
 							onClick={() => onRemoveReply(reply.id)}
+							/*
+							 * THE FOCUS HAND-OFF FINDS THIS CONTROL BY MARKER, NOT BY NAME. Its
+							 * accessible name is translated, so the removal in `message-input.tsx`
+							 * looked for an English string that stops existing after a locale switch
+							 * and focus fell out of the strip (i18n audit, C3). The marker is machine
+							 * identity; the label below is what a reader hears.
+							 */
+							data-reply-chip-remove
 							aria-label={t("ui.chat.reply.remove")}
 						>
 							<X aria-hidden="true" />

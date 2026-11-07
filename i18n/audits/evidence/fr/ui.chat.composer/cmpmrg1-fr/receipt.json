@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none",
+  "model_provenance": "Session 9a8cf2fffd64 system header: anthropic/claude-sonnet-5-5; no provider fallback observed.",
+  "independence": "Separate session from the translators of secret_closure_notice and of main's five keys; read en source, context sidecar, sibling keys, glossary and fr style guide; did not read translators' commit text; edited no catalogue/ledger/receipt.",
+  "instance": "9a8cf2fffd64-cmpmrg1-fr",
+  "session": "9a8cf2fffd64",
+  "locale": "fr",
+  "namespace": "ui.chat.composer",
+  "branch": "fix/i18n-four-flow-defects",
+  "head": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+  "date": "2026-11-04",
+  "status": "passed",
+  "audit_kind": "delta audit of 6 keys in the merged file (our secret_closure_notice + main's 5); other keys unchanged and not re-audited",
+  "delta_keys_audited": [
+    "ui.chat.composer.secret_closure_notice",
+    "ui.chat.composer.insert_transcript",
+    "ui.chat.composer.insert_transcript_hint",
+    "ui.chat.composer.send_recording",
+    "ui.chat.composer.send_recording_hint",
+    "ui.chat.composer.steer_hint"
+  ],
+  "scope": "ui.chat.composer: secret_closure_notice, insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint",
+  "sha256": {
+    "en": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+    "fr": "d40ca3b6771c39fd126e481f7e4c4b4065edbc68877307441b54336093ac2a93",
+    "context": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+  },
+  "reference_sha256": {
+    "glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+  },
+  "evidence": {
+    "record": "i18n/audits/evidence/fr/ui.chat.composer/cmpmrg1-fr/record.json",
+    "report": "i18n/audits/evidence/fr/ui.chat.composer/cmpmrg1-fr/report.md"
+  },
+  "verified": [
+    "key set en=fr=72; no placeholders/ICU/markup in the six; NFC; no bidi/zero-width",
+    "context-parity 8/8, composer-machine-anchors 3/3 pass",
+    "maxCells respected: 24/24, 48/48, 24/24, 48/48, 59/64",
+    "terminology vs glossary, fr style guide and sibling keys"
+  ],
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.composer.secret_closure_notice",
+      "note": "'jusqu’à votre réponse' narrower than EN 'until it is answered'; suggest 'tant que la demande n’a pas reçu de réponse'."
+    },
+    {
+      "severity": "INFO",
+      "key": [
+        "ui.chat.composer.insert_transcript_hint",
+        "ui.chat.composer.steer_hint"
+      ],
+      "note": "Entrée/Échap match shipped fr siblings; the sidecar 'exactly as written (Enter)' is imprecise, not the translation."
+    }
+  ]
+}

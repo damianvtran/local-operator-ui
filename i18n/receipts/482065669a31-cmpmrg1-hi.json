@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "482065669a31-cmpmrg1-hi",
+  "session": "482065669a31",
+  "date": "2026-11-04",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "locale": "hi",
+  "namespace": "ui.chat.composer",
+  "model_provenance": {
+    "actual_audit_model": "anthropic/claude-sonnet-5-5",
+    "fallback_this_round": null,
+    "source": "session header"
+  },
+  "sha256": {
+    "en": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+    "hi": "ce5666e842d6bbc8e7768523a8caade2f5df6cf7132f5fa02d91d6cbaff2210b",
+    "context": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+  },
+  "findings": [
+    {
+      "id": "CMPMRG1-HI-M1",
+      "severity": "MINOR",
+      "key": "ui.chat.composer.send_recording_hint",
+      "note": "'बिना जाँचे' terse; suggest 'जाँचने का मौका नहीं मिलेगा'; non-gating"
+    }
+  ],
+  "scope": {
+    "head": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+    "keys": [
+      "ui.chat.composer.secret_closure_notice",
+      "ui.chat.composer.insert_transcript",
+      "ui.chat.composer.insert_transcript_hint",
+      "ui.chat.composer.send_recording",
+      "ui.chat.composer.send_recording_hint",
+      "ui.chat.composer.steer_hint"
+    ],
+    "kind": "delta audit of merged six keys; unchanged keys read for consistency only",
+    "not_audited": [
+      "unchanged keys of the namespace",
+      "rendered fit in the live UI",
+      "runtime ICU formatting"
+    ]
+  },
+  "independence": "Auditor session 482065669a31 did not translate or edit these strings; reviewed on merged bytes at HEAD 801b1ad29d47.",
+  "evidence": "i18n/audits/evidence/hi/ui.chat.composer/cmpmrg1-hi/record.json"
+}

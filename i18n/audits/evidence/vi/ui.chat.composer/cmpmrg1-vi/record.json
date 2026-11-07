@@ -1,0 +1,66 @@
+{
+  "audit_id": "cmpmrg1-vi",
+  "audit_date": "2026-11-04",
+  "locale": "vi",
+  "namespace": "ui.chat.composer",
+  "key_count": 6,
+  "namespace_key_count": 72,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "23222fa5deec",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "actual_model_source": "session system header 'Model: anthropic/claude-sonnet-5-5'; transcript scanned, no session incident or model-switch notice; upstream model otherwise not observable",
+    "fallback_used": false
+  },
+  "head": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.composer.json",
+      "sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+      "sha256": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.chat.composer.json",
+      "sha256": "fdf0b4669e2145757db34286fe415d957bf5d0bdc71007d2f57a535d677313fb"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/vi/ui.chat.composer/cmpmrg1-vi/report.md",
+      "sha256": "c40bbde80ed2942ff3882ba2545099ac9aaea6c248f14b1c04f2f9be22131989"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.chat.composer/cmpmrg1-vi/receipt.json",
+      "sha256": "b81399c8d58b6c710398933586bc541c8f45c31121f242361960366972aeed59"
+    }
+  ],
+  "audit_notes_not_execution_log": "Delta audit of 6 keys (secret_closure_notice + 5 main-added) in the merged vi file. ICU/placeholders: none. Fit by character count: 17/24, 36/48, 14/24, 35/48, 52/64; notice uncapped. One MINOR (V1, term call to record in the style guide), no BLOCKER/MAJOR.",
+  "commands_actually_run": [
+    "python key-set/NFC/format-char/width checks (inline)",
+    "git show HEAD:<path> byte-equality with disk for en, context, vi",
+    "node scripts/i18n/context-parity.test.mjs (8/8)",
+    "node scripts/i18n/catalogue-union-parity.test.mjs (9/9)",
+    "node scripts/i18n/locale-parity.test.mjs (43 pass, 1 fail: fr stub check on 3 ui.chat.pickers keys, out of scope; all vi checks pass)",
+    "node scripts/i18n/ledger-check.mjs (read-only; 3 expected vi/ui.chat.composer findings)"
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "V1"
+    ]
+  },
+  "original_lost_evidence": null
+}

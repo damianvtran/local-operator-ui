@@ -1,0 +1,137 @@
+# Actual command execution log — 2026-11-05
+Auditor: i18n-auditor; session 84f34f75ad89; served model openai/gpt-6.1-sol (quota fallback; host switch notice).
+This log contains fresh execution only. Linguistic reasoning lives in report.md as audit_notes_not_execution_log.
+Custom bounded validator source (retained inline so the scratch script is not an artifact dependency):
+import fs from 'node:fs';
+import cp from 'node:child_process';
+import crypto from 'node:crypto';
+import {createRequire} from 'node:module';
+const root='/Users/damian/local-operator-ui/.worktrees/i18n-four-flows';
+const require=createRequire(root+'/package.json');
+const {parse,TYPE}=require('@formatjs/icu-messageformat-parser');
+const {namespaceGap}=await import(root+'/scripts/i18n/context-parity.mjs');
+const {messageArguments}=await import(root+'/scripts/i18n/generate.mjs');
+const packet='/Users/damian/.local-operator/sessions/37ac9ab7d68f/scratchpad/ui1664-picker-delta-audits-625b865eff2a/vi.json';
+const p=JSON.parse(fs.readFileSync(packet));
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+const head=cp.execFileSync('git',['-C',root,'rev-parse','HEAD'],{encoding:'utf8'}).trim();
+if(head!==p.frozen_merge_sha) throw Error('HEAD mismatch');
+const data={};
+for(const f of ['source','context','target']) {const b=fs.readFileSync(root+'/'+p[f].repo_relative_path); if(sha(b)!==p[f].sha256) throw Error(f+' hash mismatch'); const frozen=cp.execFileSync('git',['-C',root,'show',head+':'+p[f].repo_relative_path]); if(!b.equals(frozen)) throw Error(f+' blob mismatch');data[f]=JSON.parse(b);}
+const en=data.source,vi=data.target;
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const sortedKeys=o=>Object.keys(o).sort();
+if(!same(sortedKeys(en),sortedKeys(vi))||!same(sortedKeys(en),sortedKeys(data.context)))throw Error('key parity failed');
+const delta=new Set(); const parents={};
+for(const [name,v] of Object.entries(p.parents)){
+ const raw=cp.execFileSync('git',['-C',root,'show',v.commit+':'+p.target.repo_relative_path]); if(sha(raw)!==v.target_sha256) throw Error('parent hash mismatch');
+ const old=JSON.parse(raw);const added=sortedKeys(vi).filter(k=>!(k in old));const removed=sortedKeys(old).filter(k=>!(k in vi));const changed=sortedKeys(vi).filter(k=>k in old&&old[k]!==vi[k]);const retained=sortedKeys(vi).filter(k=>old[k]===vi[k]);
+ for(const [key,list]of Object.entries({added,removed,changed}))if(!same(list,[...v.delta[key]].sort()))throw Error(name+' delta mismatch '+key);
+ if(!same(retained,[...v.exact_retained_ids].sort()))throw Error(name+' retained mismatch');for(const k of [...added,...changed])delta.add(k);parents[name]={added:added.length,removed:removed.length,changed:changed.length,retained:retained.length};
+}
+const failures=[],advisories=[],plurals=[]; let parsed=0;
+function inspect(ast,where){const args=[],sels=[],tags=[],styles=[];function walk(nodes){for(const n of nodes){if([TYPE.argument,TYPE.number,TYPE.date,TYPE.time,TYPE.select,TYPE.plural].includes(n.type)) args.push([n.value,n.type]);if([TYPE.number,TYPE.date,TYPE.time].includes(n.type))styles.push([n.value,n.type,n.style??null]);if(n.type===TYPE.select)sels.push([n.value,sortedKeys(n.options)]);if(n.type===TYPE.tag){tags.push(n.value);walk(n.children);}if(n.type===TYPE.plural){const keys=sortedKeys(n.options);if(!keys.includes('other'))failures.push([where,'missing other']);if(where.startsWith('vi:')){plurals.push([where,keys]);const missing=new Intl.PluralRules('vi',{type:n.pluralType}).resolvedOptions().pluralCategories.filter(k=>!keys.includes(k));if(missing.length) failures.push([where,'CLDR missing',missing]);const extra=keys.filter(k=>!k.startsWith('=')&&k!=='other');if(extra.length)advisories.push([where,'pre-existing unused categories',extra]);}}for(const o of Object.values(n.options??{}))walk(o.value);}}walk(ast);return {args:[...new Set(args.map(JSON.stringify))].sort(),sels:sels.map(JSON.stringify).sort(),tags:tags.sort(),styles:[...new Set(styles.map(JSON.stringify))].sort()};}
+for(const k of sortedKeys(en)){
+ const ea=parse(en[k]),va=parse(vi[k]); parsed+=2;
+ const e=inspect(ea,'en:'+k),v=inspect(va,'vi:'+k);
+ if(!same(e.args,v.args))failures.push([k,'AST placeholder name/type mismatch',e.args,v.args]);
+ if(!same(e.sels,v.sels))failures.push([k,'select structure mismatch']);
+ if(!same(e.tags,v.tags))failures.push([k,'Rich/HTML tag mismatch']);
+ if(!same(e.styles,v.styles))failures.push([k,'number/date/time style mismatch']);
+ if(!same(messageArguments(en[k]).sort(),messageArguments(vi[k]).sort()))failures.push([k,'repo messageArguments mismatch']);
+ const code=s=>[...s.matchAll(/`[^`]*`/g)].map(x=>x[0]).sort();if(!same(code(en[k]),code(vi[k])))failures.push([k,'backtick code mismatch']);
+ const commands=s=>[...s.matchAll(/(?<![\w/])\/[a-z][a-z0-9_-]*/g)].map(x=>x[0]).sort();if(!same(commands(en[k]),commands(vi[k])))failures.push([k,'slash command mismatch']);
+ const flags=s=>[...s.matchAll(/(?<![\w-])--[a-zA-Z][\w-]*/g)].map(x=>x[0]).sort();if(!same(flags(en[k]),flags(vi[k])))failures.push([k,'flag mismatch']);
+ if(vi[k].normalize('NFC')!==vi[k])failures.push([k,'Vietnamese not NFC']);
+ if(/[\u202a-\u202e\u2066-\u2069]/u.test(vi[k]))advisories.push([k,'bidi controls']);
+}
+const gap=namespaceGap(p.namespace,root+'/src/i18n/catalogues');if(gap.uncovered.length||gap.orphaned.length||!gap.hasSidecar)failures.push(['repo namespaceGap',gap]);
+const output={head,input_hashes:Object.fromEntries(['source','context','target'].map(k=>[k,p[k].sha256])),key_count:Object.keys(en).length,parsed_messages:parsed,delta_count:delta.size,retained_linguistic_keys:Object.keys(en).length-delta.size,parents,failures,advisories,plural_messages:plurals.length,explicit_fit_hints:Object.entries(data.context).filter(([k,v])=>'maxChars' in v||'maxCells'in v).map(([k,v])=>({key:k,maxChars:v.maxChars,maxCells:v.maxCells})),status:failures.length?'FAIL':'PASS'};
+console.log(JSON.stringify(output,null,2));if(failures.length)process.exitCode=1;
+
+# Executions
+$ node scripts/i18n/context-parity.mjs
+exit_code: 0
+stdout:
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+
+stderr:
+
+$ node /Users/damian/.local-operator/sessions/84f34f75ad89/scratchpad/u1664m1-vi-mechanical.mjs
+exit_code: 0
+stdout:
+{
+  "head": "625b865eff2ab4476fdff40144c1368a05878482",
+  "input_hashes": {
+    "source": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+    "context": "a03f45c9158177d2282d89c088fec46c949f42952959ac84d6a8b72e0582d981",
+    "target": "262fe49cc21c91392e70fe2b8b2a5dfb27b1c594b92115a53353c3a78cb0a7cf"
+  },
+  "key_count": 752,
+  "parsed_messages": 1504,
+  "delta_count": 45,
+  "retained_linguistic_keys": 707,
+  "parents": {
+    "PR_parent": {
+      "added": 0,
+      "removed": 0,
+      "changed": 34,
+      "retained": 718
+    },
+    "main_parent": {
+      "added": 11,
+      "removed": 0,
+      "changed": 0,
+      "retained": 741
+    }
+  },
+  "failures": [],
+  "advisories": [
+    [
+      "vi:ui.chat.pickers.info_model.count_noun",
+      "pre-existing unused categories",
+      [
+        "one"
+      ]
+    ],
+    [
+      "vi:ui.chat.pickers.table_pager.range",
+      "pre-existing unused categories",
+      [
+        "one"
+      ]
+    ]
+  ],
+  "plural_messages": 31,
+  "explicit_fit_hints": [],
+  "status": "PASS"
+}
+
+stderr:
+
+# Actual Python eval checks
+duplicate-key rejecting object_pairs_hook: 3/3 JSON inputs passed
+source/context parent deltas: {"PR_parent": {"source": {"added": [], "removed": [], "changed": []}, "context": {"added": [], "removed": [], "changed": []}}, "main_parent": {"source": {"added": ["ui.chat.pickers.slash.source.agent", "ui.chat.pickers.slash.source.approvals", "ui.chat.pickers.slash.source.effort", "ui.chat.pickers.slash.source.mcp", "ui.chat.pickers.slash.source.model", "ui.chat.pickers.slash.source.provider_accounts", "ui.chat.pickers.slash.source.providers", "ui.chat.pickers.slash.source.session_tags", "ui.chat.pickers.slash.source.team", "ui.chat.pickers.slash.source.theme", "ui.chat.pickers.slash.source.title_refresh"], "removed": [], "changed": []}, "context": {"added": ["ui.chat.pickers.slash.source.agent", "ui.chat.pickers.slash.source.approvals", "ui.chat.pickers.slash.source.effort", "ui.chat.pickers.slash.source.mcp", "ui.chat.pickers.slash.source.model", "ui.chat.pickers.slash.source.provider_accounts", "ui.chat.pickers.slash.source.providers", "ui.chat.pickers.slash.source.session_tags", "ui.chat.pickers.slash.source.team", "ui.chat.pickers.slash.source.theme", "ui.chat.pickers.slash.source.title_refresh"], "removed": [], "changed": []}}}
+
+# Actual read-only receipt contract execution (assembler NOT invoked)
+$ ["node", "--input-type=module", "-e", "import fs from 'node:fs'; import {deriveReceiptAudit} from './scripts/i18n/ledger-rules.mjs'; const bytes=fs.readFileSync('i18n/audits/evidence/vi/ui.chat.pickers/u1664m1-vi/receipt.json');console.log(JSON.stringify(deriveReceiptAudit(bytes,{locale:'vi',namespace:'ui.chat.pickers',sourceHash:'ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c',targetHash:'262fe49cc21c91392e70fe2b8b2a5dfb27b1c594b92115a53353c3a78cb0a7cf'}),null,2));"]
+exit_code: 0
+stdout:
+{
+  "agent": "i18n-auditor",
+  "instance": "84f34f75ad89-u1664m1-vi",
+  "model": "openai/gpt-6.1-sol",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 5
+  },
+  "source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+  "target_sha256": "262fe49cc21c91392e70fe2b8b2a5dfb27b1c594b92115a53353c3a78cb0a7cf",
+  "receipt_sha256": "8797f6ce6b6102755f63e920951714b6e0f29428da2680364eb80792579667d5"
+}
+
+stderr:
+

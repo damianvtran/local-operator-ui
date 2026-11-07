@@ -739,5 +739,16 @@
 	"ui.chat.pickers.slash.phase.arguments": "Аргументы",
 	"ui.chat.pickers.slash.region_label": "Slash-команды",
 	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "Нет зарегистрированных агентов.",
-	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "Применяется к разговору, который начинает этот чат."
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "Применяется к разговору, который начинает этот чат.",
+	"ui.chat.pickers.slash.source.model": "Модели",
+	"ui.chat.pickers.slash.source.effort": "Усилия",
+	"ui.chat.pickers.slash.source.approvals": "Одобрения",
+	"ui.chat.pickers.slash.source.team": "Команды",
+	"ui.chat.pickers.slash.source.agent": "Агенты",
+	"ui.chat.pickers.slash.source.providers": "Провайдеры",
+	"ui.chat.pickers.slash.source.provider_accounts": "Учётные записи",
+	"ui.chat.pickers.slash.source.mcp": "Серверы",
+	"ui.chat.pickers.slash.source.theme": "Темы",
+	"ui.chat.pickers.slash.source.title_refresh": "Параметры",
+	"ui.chat.pickers.slash.source.session_tags": "Теги"
 }

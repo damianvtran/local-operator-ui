@@ -77,7 +77,9 @@ import {
 	unstoredNotice,
 } from "@features/chat/components/credential-capture";
 import {
+	ASK_OPTIONS_SELECTOR,
 	COMPOSER_TEXTAREA_SELECTOR,
+	REPLY_CHIP_REMOVE_SELECTOR,
 	registerComposerFocus,
 } from "@features/chat/composer-field";
 import {
@@ -262,8 +264,6 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
  * this box.
  */
 const SECRET_CLOSURE_NOTICE_ID = "composer-secret-closure-notice";
-const SECRET_CLOSURE_NOTICE =
-	"Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.";
 
 /**
  * The QUEUED secret ask's notice, and the confirm a password-shaped send opens.
@@ -1636,7 +1636,7 @@ const readFileAsDataUrl = (file: File): Promise<string | null> =>
  */
 const firstLiveAnswerOption = (): HTMLElement | null =>
 	document.querySelector<HTMLElement>(
-		'[aria-label="Answer options"] button:not([disabled])',
+		`${ASK_OPTIONS_SELECTOR} button:not([disabled])`,
 	);
 
 /**
@@ -1655,13 +1655,12 @@ const composerBox = (): HTMLTextAreaElement | null =>
 /**
  * A staged quote's own remove control, as the removal's focus hand-off finds it.
  *
- * The accessible name is the handle rather than a `data-` attribute, because it
- * is the same one `reply-preview.tsx` labels the control with and the same one a
- * screen reader announces - a second name for the same button is how the
- * control and its selector stop meaning the same thing.
+ * A `data-` marker, not the accessible name: that name is translated
+ * (`ui.chat.reply.remove`), so the English spelling this used to query stopped
+ * matching after a locale switch and focus fell out of the strip (i18n audit,
+ * C3). The marker is emitted by `reply-preview.tsx` and named once in
+ * `composer-field.ts`, where the field's own anchor lives for the same reason.
  */
-const REPLY_CHIP_REMOVE_SELECTOR = '[aria-label="Remove reply"]';
-
 /**
  * Whether the user has POINTED at the composer since it was last handed focus.
  *
@@ -8940,7 +8939,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							id={SECRET_CLOSURE_NOTICE_ID}
 							className={cn(CHAT_MEASURE, credentialNoticeLine)}
 						>
-							{SECRET_CLOSURE_NOTICE}
+							{/*
+							 * RESOLVED WHERE IT RENDERS, NOT WHERE THE MODULE LOADS. The sentence is
+							 * catalogue copy (`ui.chat.composer.secret_closure_notice`), so `t()` has
+							 * to run in the render body: a module-level `const` - which is what this
+							 * was - freezes the English string at import and hands every locale the
+							 * same sentence (i18n audit, C1). The component subscribes to the locale
+							 * above, so a switch redraws this line with the draft still in the box.
+							 */}
+							{t("ui.chat.composer.secret_closure_notice")}
 						</output>
 					)}
 					{/*

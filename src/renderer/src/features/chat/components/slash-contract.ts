@@ -847,7 +847,7 @@ export function phaseLabel(
 	if (!source) return t("ui.chat.pickers.slash.phase.arguments");
 	if (source === "mcp" && !mcpInServerSlot(argument))
 		return t("ui.chat.pickers.commands.title");
-	return ARGUMENT_SOURCE_LABEL[source];
+	return t(ARGUMENT_SOURCE_LABEL[source]);
 }
 
 /**
