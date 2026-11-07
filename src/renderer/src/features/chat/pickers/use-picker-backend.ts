@@ -45,7 +45,25 @@ export type CommandRun = {
 	result: PickerResult;
 	/** A missing acknowledgement is not proof that the mutation was refused. */
 	unconfirmed?: boolean;
+	/**
+	 * The owner's own frontend frame named the requested spec while the press was
+	 * still waiting, so the press LANDED without a command receipt ever arriving.
+	 * Distinct from `unconfirmed`: this is confirmation, just not by ack.
+	 */
+	confirmedByFrame?: boolean;
 };
+
+/**
+ * The stop signal behind `confirmedByFrame`: not a refusal, not a transport
+ * failure, and deliberately not a `DesktopControlError`, so the busy policy
+ * rethrows it instead of repeating.
+ */
+class PressLandedWhileWaiting extends Error {
+	constructor() {
+		super("the owner's frontend frame already names the requested spec");
+		this.name = "PressLandedWhileWaiting";
+	}
+}
 
 export function isNativeAction(
 	result: SlashOutcome,
@@ -151,25 +169,56 @@ export async function runSessionCommand(
 		 * untouched.
 		 */
 		resendWhileBusy?: boolean;
+		/**
+		 * The press has LANDED, read live, checked before every repeat (design round 1,
+		 * D3). A frontend frame naming the requested spec is the owner's own statement
+		 * of the model in force — the same reading `use-canonical-session` uses to
+		 * retire the pending paint — so repeating the switch while the dialog still
+		 * reads `Switching the model…` would tell the user it is waiting for something
+		 * that already happened. Only a caller that can see the frames passes it.
+		 */
+		landed?: () => boolean;
 	},
 	send: SendCommand = (request) =>
 		desktopResult<DesktopCommandReceipt>(request),
 ): Promise<CommandRun> {
-	const { sessionId, command, args, failure, resendWhileBusy } = input;
-	const dispatch = () =>
-		send({
+	const { sessionId, command, args, failure, resendWhileBusy, landed } = input;
+	const dispatch = async () => {
+		/*
+		 * The stop is thrown as a NON-DesktopControlError on purpose: `withBusyResends`
+		 * rethrows anything that is not `runtime_busy` at once, so this ends the
+		 * repeat at the first opportunity without touching that helper's bound or its
+		 * waits. The residual is one wait (the busy hint, 2 s today) if the frame
+		 * lands during it — measured, that is the window design D3 saw, not the whole
+		 * repeat.
+		 */
+		if (landed?.()) throw new PressLandedWhileWaiting();
+		return send({
 			op: "sessions.command",
 			sessionId,
 			requestId: uuidv4(),
 			command,
 			args,
 		});
+	};
 	try {
 		const receipt = await (resendWhileBusy
 			? withBusyResends(dispatch)
 			: dispatch());
 		return { outcome: receipt.result, result: toResult(receipt.result) };
 	} catch (error) {
+		if (error instanceof PressLandedWhileWaiting) {
+			/*
+			 * No receipt ever arrived, so there is nothing to quote: `outcome` is null
+			 * and the strip stays empty (the hook skips `result` on this arm). What the
+			 * press has instead is the owner's own frame naming the model it asked for.
+			 */
+			return {
+				outcome: null,
+				result: { tone: "success", text: "" },
+				confirmedByFrame: true,
+			};
+		}
 		// A lost reply can follow an accepted mutation. Keep that disposition
 		// separate from an acknowledged rejection; never replay the command
 		// or turn the old backend's unavailable sentence into proof of failure.
@@ -234,7 +283,7 @@ export function useSessionCommand(sessionId: string) {
 			 * would admit a second turn. Absent, a command is dispatched exactly once -
 			 * the behaviour every other control in this tree was written against.
 			 */
-			options?: { resendWhileBusy?: boolean },
+			options?: { resendWhileBusy?: boolean; landed?: () => boolean },
 		): Promise<CommandRun> => {
 			setBusy(true);
 			setResult(null);
@@ -245,12 +294,17 @@ export function useSessionCommand(sessionId: string) {
 					args,
 					failure,
 					resendWhileBusy: options?.resendWhileBusy,
+					landed: options?.landed,
 				});
 				// A repeat leaves the control busy for the whole press, so nothing is
 				// reported while the app still has a chance (the policy's own property);
 				// only the settled run reaches the strip.
 				if (settled.outcome) setOutcome(settled.outcome);
-				setResult(settled.result);
+				// A press the owner's frame confirmed carries NO receipt, so there is no
+				// sentence to put in the strip. Leaving the last result there would be a
+				// second claim about a press that already moved on, and the dialog keeps
+				// its own header (the model in force) as the answer.
+				if (!settled.confirmedByFrame) setResult(settled.result);
 				return settled;
 			} finally {
 				setBusy(false);

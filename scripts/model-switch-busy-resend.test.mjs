@@ -327,6 +327,58 @@ test("a deadline breach is not retried either, so the repeat cannot compound the
 
 /* --------------------------- 4. the repeat is opt-in, and only this caller opts in */
 
+test("the repeat stops at its next opportunity once a frame names the requested model (design D3)", async () => {
+	/*
+	 * The lost-ack arm where the switch DID land: the authoritative frame arrives
+	 * while the first attempt is failing, so a second dispatch would ask the owner
+	 * for something it has already done — and the dialog would keep reading
+	 * `Switching the model…` over a session already on it (design round 1, D3).
+	 *
+	 * The stop is observed as traffic: one dispatch, then no second one, and the
+	 * run reports `confirmedByFrame` rather than `unconfirmed`. A `landed` that is
+	 * true from the start is the same stop one attempt earlier, asserted in the
+	 * same test so a predicate that is only read once cannot pass both.
+	 */
+	let landed = false;
+	const requests = [];
+	const outcome = await runSessionCommand(
+		dispatchInput({ landed: () => landed }),
+		async (request) => {
+			requests.push(request);
+			// The owner applies the switch, then loses the ack.
+			landed = true;
+			throw busy();
+		},
+	);
+	assert.equal(
+		requests.length,
+		1,
+		"no second dispatch once the frame has named it",
+	);
+	assert.equal(outcome.confirmedByFrame, true, "the frame is the confirmation");
+	assert.equal(
+		outcome.unconfirmed,
+		undefined,
+		"not the indeterminate register",
+	);
+	assert.equal(outcome.outcome, null, "there is no receipt to quote");
+
+	let already = 0;
+	const second = await runSessionCommand(
+		dispatchInput({ landed: () => true }),
+		async () => {
+			already += 1;
+			return switched;
+		},
+	);
+	assert.equal(
+		already,
+		0,
+		"a press that has already landed never goes out again",
+	);
+	assert.equal(second.confirmedByFrame, true);
+});
+
 test("a caller that does not opt in is dispatched exactly once, even on a busy refusal", async () => {
 	/*
 	 * `/goal`'s dispatch, with the option absent — the shape every other caller in
@@ -381,7 +433,7 @@ test("only the model switch asks for the repeat, and the id is minted inside the
 		"src/renderer/src/features/chat/pickers/use-picker-backend.ts",
 		"utf8",
 	);
-	const dispatch = source.indexOf("const dispatch = () =>");
+	const dispatch = source.indexOf("const dispatch = async () => {");
 	const id = source.indexOf("requestId: uuidv4()", dispatch);
 	const repeat = source.indexOf("withBusyResends(dispatch)", dispatch);
 	assert.ok(dispatch !== -1, "the dispatch callback is findable");
