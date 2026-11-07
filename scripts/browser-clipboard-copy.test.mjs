@@ -85,6 +85,8 @@ function fakeSession() {
 		},
 		on() {},
 		removeListener() {},
+		// `installClientHints` owns the session's two header listeners.
+		webRequest: { onBeforeSendHeaders() {}, onHeadersReceived() {} },
 	};
 }
 
