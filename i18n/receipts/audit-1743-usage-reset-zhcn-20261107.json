@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1743-usage-reset-zhcn-20261107",
+  "locale": "zh-CN",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.usage_reset",
+  "keys_read": 13,
+  "sha256": {
+    "en": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+    "zh-CN": "52d218fab2983b225efc86ebd19e1873d876f2e56d9bc1912f4b25359216e45c"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.busy_action",
+      "current": "正在重置…",
+      "proposed": "正在重置……",
+      "reason": "Single '…' where the zh-CN style guide requires '……' (220 vs 8 in the catalogue) and the sibling ui.common.actions.retrying ('正在重试……') whose shape the context note says to match."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.chip_label",
+      "current": "重置 {account} 的速率限制。{count, plural, other {剩余 # 个重置额度。}}",
+      "proposed": "重置{account}的速率限制。{count, plural, other {剩余#个重置额度。}}",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.confirm_title",
+      "current": "重置 {account}？",
+      "proposed": "重置{account}？",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.confirm_cost",
+      "current": "{count, plural, other {消耗 # 个重置额度中的 1 个；清除此账户的速率限制窗口。}}",
+      "proposed": "{count, plural, other {消耗#个重置额度中的1个；清除此账户的速率限制窗口。}}",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.busy",
+      "current": "正在等待 {account} 回应。这可能需要一点时间。",
+      "proposed": "正在等待{account}回应。这可能需要一点时间。",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_reset",
+      "current": "{count, plural, other {已清除 {account} 的 # 个速率限制窗口。}}",
+      "proposed": "{count, plural, other {已清除{account}的#个速率限制窗口。}}",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_already_redeemed",
+      "current": "{account} 的重置已被使用过。未消耗第二个额度。",
+      "proposed": "{account}的重置已被使用过。未消耗第二个额度。",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_no_credit",
+      "current": "{account} 已没有可用的重置额度。未消耗任何额度。",
+      "proposed": "{account}已没有可用的重置额度。未消耗任何额度。",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_nothing_to_reset",
+      "current": "{account} 没有需要清除的速率限制窗口。未消耗任何额度。",
+      "proposed": "{account}没有需要清除的速率限制窗口。未消耗任何额度。",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_failed",
+      "current": "{account} 的重置未返回结果，因此该额度的去向未知。再次尝试会复用同一请求，不会消耗第二个额度。",
+      "proposed": "{account}的重置未返回结果，因此该额度的去向未知。再次尝试会复用同一请求，不会消耗第二个额度。",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_refused",
+      "current": "未消耗任何额度：{account} 的重置在到达提供商之前就被拒绝。",
+      "proposed": "未消耗任何额度：{account}的重置在到达提供商之前就被拒绝。",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_unknown",
+      "current": "{account} 的重置返回了此应用无法识别的结果：{outcome}。",
+      "proposed": "{account}的重置返回了此应用无法识别的结果：{outcome}。",
+      "reason": "Spaces between CJK text and a placeholder/number run; the zh-CN catalogue writes them adjacent 929 times vs 25 spaced."
+    }
+  ],
+  "scope": "PR #1743 ui.chat.usage_reset at 1d0e0cc0cb801f8ee1e2f1626212fddca32113c0 (clean working tree): full 13-key namespace, all seven locales",
+  "independence": "Separate session from the PR coder; verdict rebuilt from the English source, the en context, sibling keys and the locale style guide.",
+  "verdict": "zh-CN: passed — bytes unchanged since the prior pass; accurate, '窗口' used consistently for window, single other arm intact; remaining items are MINOR typography (single '…', spaces around placeholder/number runs)."
+}

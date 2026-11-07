@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1743-usage-reset-fr-20261107",
+  "locale": "fr",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.usage_reset",
+  "keys_read": 13,
+  "sha256": {
+    "en": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+    "fr": "f11d48a6476c64662157bbc6a5a71f2b784d758d5e4b64ad1ff2ab57787b40f2"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.confirm_title",
+      "current": "Réinitialiser {account} ?",
+      "proposed": "Réinitialiser {account} ?",
+      "reason": "U+0020 before ; : ? where fr style guide §typography requires U+202F (a plain space lets the mark wrap alone)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.confirm_cost",
+      "current": "{count, plural, one {Consomme 1 des # crédits de réinitialisation ; efface les fenêtres de limite de débit de ce compte.} many {Consomme 1 des # crédits de réinitialisation ; efface les fenêtres de limite de débit de ce compte.} other {Consomme 1 des # crédits de réinitialisation ; efface les fenêtres de limite de débit de ce compte.}}",
+      "proposed": "{count, plural, one {Consomme 1 crédit de réinitialisation sur # ; efface les fenêtres de limite de débit de ce compte.} many {Consomme 1 des # crédits de réinitialisation ; efface les fenêtres de limite de débit de ce compte.} other {Consomme 1 des # crédits de réinitialisation ; efface les fenêtres de limite de débit de ce compte.}}",
+      "reason": "The one arm renders 'Consomme 1 des 1 crédits' whenever a single credit remains (agreement error); also U+0020 before ; : ? where fr style guide §typography requires U+202F (a plain space lets the mark wrap alone)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_already_redeemed",
+      "current": "La réinitialisation de {account} avait déjà été utilisée. Aucun second crédit n'a été consommé.",
+      "proposed": "La réinitialisation de {account} avait déjà été utilisée. Aucun second crédit n’a été consommé.",
+      "reason": "Straight apostrophe where the fr style guide requires U+2019 (2865 curly vs 20 straight in the rest of the fr catalogue)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_no_credit",
+      "current": "{account} n'a plus de crédit de réinitialisation. Rien n'a été consommé.",
+      "proposed": "{account} n’a plus de crédit de réinitialisation. Rien n’a été consommé.",
+      "reason": "Straight apostrophe where the fr style guide requires U+2019 (2865 curly vs 20 straight in the rest of the fr catalogue)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_nothing_to_reset",
+      "current": "Aucune fenêtre de limite de débit de {account} n'avait besoin d'être effacée. Rien n'a été consommé.",
+      "proposed": "Aucune fenêtre de limite de débit de {account} n’avait besoin d’être effacée. Rien n’a été consommé.",
+      "reason": "Straight apostrophe where the fr style guide requires U+2019 (2865 curly vs 20 straight in the rest of the fr catalogue)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_failed",
+      "current": "La réinitialisation de {account} n'a renvoyé aucun résultat : le sort du crédit est inconnu. Relancer réutilise la même demande, donc aucun second crédit ne sera consommé.",
+      "proposed": "La réinitialisation de {account} n’a renvoyé aucun résultat : le sort du crédit est inconnu. Relancer réutilise la même demande, donc aucun second crédit ne sera consommé.",
+      "reason": "U+0020 before ; : ? where fr style guide §typography requires U+202F (a plain space lets the mark wrap alone); straight apostrophe where the fr style guide requires U+2019 (2865 curly vs 20 straight in the rest of the fr catalogue)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_refused",
+      "current": "Rien n'a été consommé : la réinitialisation de {account} a été refusée avant d'atteindre le fournisseur.",
+      "proposed": "Rien n’a été consommé : la réinitialisation de {account} a été refusée avant d’atteindre le fournisseur.",
+      "reason": "U+0020 before ; : ? where fr style guide §typography requires U+202F (a plain space lets the mark wrap alone); straight apostrophe where the fr style guide requires U+2019 (2865 curly vs 20 straight in the rest of the fr catalogue)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_unknown",
+      "current": "La réinitialisation de {account} a renvoyé un résultat que cette application ne reconnaît pas : {outcome}.",
+      "proposed": "La réinitialisation de {account} a renvoyé un résultat que cette application ne reconnaît pas : {outcome}.",
+      "reason": "U+0020 before ; : ? where fr style guide §typography requires U+202F (a plain space lets the mark wrap alone)."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.usage_reset.chip",
+      "current": "Réinitialiser · {count}",
+      "proposed": "Réinitialiser · {count}",
+      "reason": "'Réinitialiser · N' is ~2.6× the English 'Reset · N' on a heading line whose context note asks it not to push the binding window out of its column; confirm in a rendered /usage heading at minimum panel width (no shorter idiomatic verb exists, so no text change proposed)."
+    }
+  ],
+  "scope": "PR #1743 ui.chat.usage_reset at 1d0e0cc0cb801f8ee1e2f1626212fddca32113c0 (clean working tree): full 13-key namespace, all seven locales",
+  "independence": "Separate session from the PR coder; verdict rebuilt from the English source, the en context, sibling keys and the locale style guide.",
+  "verdict": "fr: passed — chip_label now opens with 'Réinitialiser' and carries the count (prior MAJOR fixed); 'window' is 'fenêtre' throughout; remaining items are MINOR typography (U+0020 before ; : ?, straight apostrophes) and the one-arm agreement in confirm_cost, plus an overflow nit."
+}

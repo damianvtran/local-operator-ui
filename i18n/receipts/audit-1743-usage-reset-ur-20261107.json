@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1743-usage-reset-ur-20261107",
+  "locale": "ur",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.usage_reset",
+  "keys_read": 13,
+  "sha256": {
+    "en": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+    "ur": "77608441c358afbf8b3e3cb206b11cab128e05f831e8f7982a7a6d5885d3cd70"
+  },
+  "findings": [],
+  "scope": "PR #1743 ui.chat.usage_reset at 1d0e0cc0cb801f8ee1e2f1626212fddca32113c0 (clean working tree): full 13-key namespace, all seven locales",
+  "independence": "Separate session from the PR coder; verdict rebuilt from the English source, the en context, sibling keys and the locale style guide.",
+  "verdict": "ur: passed — 'window' is now 'مدت/مدتیں' in all three keys, matching the /usage panel (prior MAJORs fixed); placeholders and one/other arms intact, no bidi controls, Urdu punctuation; no findings."
+}
