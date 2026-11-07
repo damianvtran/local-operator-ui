@@ -1728,3 +1728,222 @@ test("a balance row is spoken as missing a limit, not as missing a report", asyn
 		"the spoken status must not contradict the printed number",
 	);
 });
+
+/*
+ * THE RESET WIRING, driven through the REAL container: a chip click, a
+ * confirmation, the bridge, and the cache write the answer produces.
+ *
+ * Every claim below is about a path a unit test over the state machine cannot
+ * reach: that the chip only renders when the report is spendable, that Confirm
+ * posts exactly once with the id the confirmation minted, that the returned
+ * report is written into the `usage.get` cache (so the rows behind the result
+ * line are the post-spend ones), and that the RESULT survives the chip
+ * disappearing when the spend takes the account to zero credits.
+ */
+const resetPayload = (credits) => ({
+	reports: [
+		{
+			provider: "openai",
+			fetched_at: NOW,
+			identity: "me@example.com",
+			notes: null,
+			consecutive_failures: 0,
+			usage_unavailable: false,
+			next_probe_at_ms: null,
+			credential_invalid: false,
+			age_ms: 0,
+			state: "available",
+			resets_available: credits,
+			credential_ref: "cred-openai-1",
+			limits: [
+				{
+					id: "five_hour",
+					label: "5-hour",
+					window: "five_hour",
+					status: "exhausted",
+					resets_at: null,
+					resets_at_ms: NOW + 3_600_000,
+					tier: "",
+					shared: true,
+					amount: {
+						used: 100,
+						limit: 100,
+						remaining: 0,
+						used_fraction: 1,
+						unit: "percent",
+					},
+				},
+			],
+		},
+	],
+	source: "cached",
+	fetched_at: NOW,
+});
+
+test("a confirmed reset posts once, writes the returned report, and the result outlives the chip", async () => {
+	const client = newClient();
+	const posted = [];
+	respond = async (request) => {
+		if (request.op === "usage.reset") {
+			posted.push(request);
+			return {
+				status: 200,
+				body: {
+					result: {
+						reset: {
+							outcome: "reset",
+							windows_reset: 2,
+							detail: "",
+							refused: false,
+						},
+						// The post-spend report: the same account, credits at zero.
+						usage: {
+							...resetPayload(0),
+							source: "live",
+						},
+					},
+				},
+			};
+		}
+		return { status: 200, body: { result: resetPayload(3) } };
+	};
+	const view = await mountUsage(client);
+	await view.settle(60);
+	const host = document.body.lastElementChild;
+	const button = (pattern) =>
+		[...host.querySelectorAll("button")].find((node) =>
+			pattern.test(node.textContent?.trim() ?? ""),
+		);
+	try {
+		// The chip names the count and is reachable by its accessible name.
+		const chip = button(/^Reset · 3$/);
+		assert.ok(
+			chip,
+			`the chip must render on a spendable account: ${view.text()}`,
+		);
+		assert.match(
+			chip.getAttribute("aria-label") ?? "",
+			/Reset the rate limits/,
+		);
+
+		await act(async () => {
+			chip.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+		});
+		// The confirmation states the cost and the account, and Cancel holds focus.
+		assert.match(view.text(), /Reset openai · me@example\.com\?/);
+		assert.match(view.text(), /Uses 1 of 3 reset credits/);
+		assert.equal(
+			document.activeElement?.textContent?.trim(),
+			"Cancel",
+			"the spending confirmation must open with Cancel focused",
+		);
+
+		await act(async () => {
+			button(/^Confirm$/)?.dispatchEvent(
+				new dom.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		await view.settle(80);
+
+		assert.equal(posted.length, 1, "one confirm is one request");
+		assert.equal(posted[0].op, "usage.reset");
+		assert.equal(posted[0].provider, "openai");
+		assert.equal(posted[0].credentialRef, "cred-openai-1");
+		assert.match(
+			posted[0].redeemRequestId,
+			/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+			"the request must carry the UUID idempotency key",
+		);
+		// The result line is the success arm, and it is still there after the
+		// chip went away: the answer's credits are zero, so the account is no
+		// longer spendable and `canReset` now says so.
+		assert.match(view.text(), /Cleared 2 rate-limit windows for openai/);
+		assert.equal(
+			button(/^Reset · /),
+			undefined,
+			"no chip once no credits are left",
+		);
+		// And the rows behind it are the POST-SPEND ones the answer carried, not
+		// a fabricated refresh: the cache write is what makes that true.
+		const cached = client.getQueryData(
+			usageQueryOptions(undefined, "auto", 0).queryKey,
+		);
+		assert.equal(cached?.reports?.[0]?.resets_available, 0);
+		assert.equal(cached?.source, "live");
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("a failed reset keeps its request id, so the retry cannot spend a second credit", async () => {
+	const client = newClient();
+	const posted = [];
+	respond = async (request) => {
+		if (request.op === "usage.reset") {
+			posted.push(request);
+			/*
+			 * BOTH the first attempt AND React Query's automatic retry fail, so the
+			 * app ends in the unknown arm with the id still owed. The retry re-sends
+			 * the same variables, which is exactly why that automatic retry is safe
+			 * on a spend: one id, one attempt at the vendor.
+			 */
+			if (posted.length <= 2) throw new Error("transport refused");
+			return {
+				status: 200,
+				body: {
+					result: {
+						reset: {
+							outcome: "already_redeemed",
+							windows_reset: 0,
+							detail: "",
+							refused: false,
+						},
+						usage: { ...resetPayload(1), source: "live" },
+					},
+				},
+			};
+		}
+		return { status: 200, body: { result: resetPayload(2) } };
+	};
+	const view = await mountUsage(client);
+	await view.settle(60);
+	const host = document.body.lastElementChild;
+	const button = (pattern) =>
+		[...host.querySelectorAll("button")].find((node) =>
+			pattern.test(node.textContent?.trim() ?? ""),
+		);
+	const press = async (node) => {
+		assert.ok(node, "the control under test must render");
+		await act(async () => {
+			node.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+		});
+	};
+	try {
+		await press(button(/^Reset · 2$/));
+		await press(button(/^Confirm$/));
+		// Past the app's own mutation retry, so the unknown arm is the settled one.
+		await view.settle(1500);
+
+		// The unknown arm: the line says so, and it offers the retry.
+		assert.match(view.text(), /did not report a result/);
+		assert.match(view.text(), /will not spend a second credit/);
+		assert.ok(button(/^Retry$/), "the unknown outcome must offer a retry");
+		assert.equal(posted.length, 2, "the app retried once, with the same id");
+
+		// The retry re-opens the CONFIRMATION rather than firing straight away,
+		// and the id it posts is the one the earlier attempts already used.
+		await press(button(/^Retry$/));
+		await press(button(/^Confirm$/));
+		await view.settle(200);
+
+		assert.equal(posted.length, 3);
+		const ids = new Set(posted.map((request) => request.redeemRequestId));
+		assert.equal(ids.size, 1, "every attempt of one reset carries ONE id");
+		// The third answer is definitive, and says no second credit was spent.
+		assert.match(view.text(), /had already been redeemed/);
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});

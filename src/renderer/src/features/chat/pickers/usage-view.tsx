@@ -31,24 +31,46 @@ import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { type Query, useQuery } from "@tanstack/react-query";
+import {
+	type Query,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
+import { usageResetResultSchema } from "../../../../../shared/desktop-contract";
 import { PickerHost } from "./picker-host";
 import type { MachinePanelContext } from "./picker-registry";
 import {
 	type LimitRow,
 	type ProviderBlock,
+	type ResetAccount,
+	type ResetStates,
+	type ResetTone,
 	type StatusTone,
 	type UsagePayload,
 	type UsageReport,
+	type UsageResetResultView,
+	askReset,
+	canReset,
+	cancelReset,
 	collectStats,
+	confirmReset,
 	currentUsageReport,
 	describeSource,
+	dismissReset,
 	hasMuseAllowanceNote,
 	newestConfirmedMs,
 	providerBlocks,
+	resetAccountLabel,
+	resetAccountOf,
+	resetOutcomeText,
+	resetOutcomeTone,
+	resetStateFor,
+	settleReset,
 	statsTerms,
 	statusTone,
+	withResetState,
 } from "./usage-view-model";
 import { errorText } from "./use-picker-backend";
 
@@ -299,9 +321,76 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 	);
 };
 
+/**
+ * What the block needs to draw and drive one account's reset.
+ *
+ * Passed in rather than owned here because the state machine, the mutation and
+ * the id it mints all live in the container -- a second copy in the presentational
+ * half is how a story and the app would drift apart about what `busy` means.
+ */
+export type UsageResetControls = {
+	/** Every account's machine state, keyed by `resetAccountKey`. */
+	states: ResetStates;
+	/** The model's own predicate, so the chip and the request cannot disagree. */
+	canReset: (report: UsageReport) => boolean;
+	onAsk: (report: UsageReport) => void;
+	onConfirm: (report: UsageReport) => void;
+	onCancel: (report: UsageReport) => void;
+	onDismiss: (report: UsageReport) => void;
+};
+
+/**
+ * The ink a result line may take.
+ *
+ * Three tones, not the five status tones: a result is not a quota window. `ok`
+ * is a spent-and-cleared credit, `danger` is the one arm whose fate is unknown,
+ * and everything else -- including the outcomes that spent nothing -- is a
+ * neutral statement of fact rather than an alarm.
+ */
+const RESULT_TINT: Record<ResetTone, string> = {
+	ok: "text-success",
+	muted: "text-ink-muted",
+	danger: "text-danger",
+};
+
 /** One provider: heading, the window that binds, any note, then every window. */
-export const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => {
+export const ProviderBlockView: FC<{
+	block: ProviderBlock;
+	reset?: UsageResetControls;
+}> = ({ block, reset }) => {
 	useI18nLocale();
+	/*
+	 * A report with no `credential_ref` has NO reset state: the map is keyed by
+	 * the account a spend would name, and a block that cannot name one is not
+	 * offered the control at all (`canReset`). `resetStateFor` answers the idle
+	 * state for such a block, so nothing below has to branch on the absence.
+	 */
+	const resetAccount = resetAccountOf(block.report);
+	const resetState = resetStateFor(reset?.states ?? {}, resetAccount);
+	const resetLabel = resetAccountLabel(block.report);
+	/*
+	 * The confirmation focuses CANCEL, not Confirm: this is the one action in the
+	 * panel that spends something the app cannot refund, so a stray Return must
+	 * decline rather than spend. Focus moves only when the phase BECOMES confirm,
+	 * so a re-render of an open confirmation cannot pull focus back off whichever
+	 * control the user has since reached.
+	 */
+	const cancelRef = useRef<HTMLButtonElement>(null);
+	const busyRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		/*
+		 * Confirm -> busy DISABLES the button that was clicked, and a disabled
+		 * element cannot hold focus: the press would drop the keyboard user back
+		 * to the document body with the in-flight explanation unread. The busy
+		 * region therefore takes the focus the button handed it.
+		 */
+		if (resetState.phase === "confirm") cancelRef.current?.focus();
+		else if (resetState.phase === "busy") busyRef.current?.focus();
+	}, [resetState.phase]);
+	const confirming =
+		resetState.phase === "confirm" || resetState.phase === "busy";
+	const busy = resetState.phase === "busy";
+	const credits = block.report.resets_available ?? 0;
 	return (
 		<section className="rounded-md border border-hairline bg-surface px-3 py-2.5">
 			<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -313,6 +402,32 @@ export const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => {
 						{block.report.identity}
 					</span>
 				)}
+				{/*
+				 * The reset chip rides the heading line that already exists, between the
+				 * account and the binding cluster: it is a property of THIS account and
+				 * belongs beside its name, and putting it on a row of its own would move
+				 * every window down for an affordance most accounts do not have. It is
+				 * drawn only while a confirmation is not already open, and the binding
+				 * cluster keeps `ms-auto`, so its presence never re-flows the numbers on
+				 * the right.
+				 */}
+				{reset &&
+					resetAccount &&
+					!confirming &&
+					reset.canReset(block.report) && (
+						<Button
+							variant="ghost"
+							size="sm"
+							type="button"
+							className={cn("h-5 px-1.5 text-meta")}
+							aria-label={t("ui.chat.usage_reset.chip_label", {
+								account: resetLabel,
+							})}
+							onClick={() => reset.onAsk(block.report)}
+						>
+							{t("ui.chat.usage_reset.chip", { count: String(credits) })}
+						</Button>
+					)}
 				{/* The binding window is stated on the block's FIRST row because "can I
 			    keep working" is the question the view is opened to answer; leaving
 			    it to be found among equals is what the TUI's header fixed.
@@ -367,6 +482,125 @@ export const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => {
 						</span>
 					)}
 			</div>
+			{/*
+			 * THE CONFIRMATION, inline in the block it spends on.
+			 *
+			 * Inline rather than a second dialog: the picker IS a dialog, and a modal
+			 * opened on top of it would hide the rows the decision is about ("is this
+			 * the exhausted account?") exactly when the user needs them. Inline also
+			 * keeps Esc meaning "close the panel" rather than "dismiss a modal inside
+			 * it".
+			 *
+			 * The cost sentence replaces the confirmation heading's room while busy:
+			 * the buttons are inert there, and the one thing worth reading is which
+			 * account the app is still waiting on (`busy` explains the wait instead of
+			 * re-stating a cost that has already been paid or refused).
+			 */}
+			{reset && resetAccount && confirming && (
+				<div
+					ref={busyRef}
+					tabIndex={-1}
+					className={cn(
+						"mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-sm bg-sunken px-2 py-1.5",
+					)}
+				>
+					<div className={cn("min-w-0")}>
+						<p className={cn("text-body-sm text-ink")}>
+							{t("ui.chat.usage_reset.confirm_title", { account: resetLabel })}
+						</p>
+						<p className={cn("text-meta text-ink-muted")}>
+							{busy
+								? t("ui.chat.usage_reset.busy", { account: resetLabel })
+								: t("ui.chat.usage_reset.confirm_cost", { count: credits })}
+						</p>
+					</div>
+					<div className={cn("ms-auto flex items-center gap-2")}>
+						<Button
+							ref={cancelRef}
+							variant="secondary"
+							size="sm"
+							type="button"
+							disabled={busy}
+							onClick={() => reset.onCancel(block.report)}
+						>
+							{t("ui.common.actions.cancel")}
+						</Button>
+						<Button
+							variant="primary"
+							size="sm"
+							type="button"
+							disabled={busy}
+							onClick={() => reset.onConfirm(block.report)}
+						>
+							{busy
+								? t("ui.chat.usage_reset.busy_action")
+								: t("ui.common.actions.confirmation_modal.confirm")}
+						</Button>
+					</div>
+				</div>
+			)}
+			{/*
+			 * THE RESULT LINE, and it outlives the chip.
+			 *
+			 * The spend is what makes the chip disappear (the refreshed report carries
+			 * zero credits), so a result rendered only beside the chip would vanish at
+			 * the exact moment it has something to report. It is therefore its own line,
+			 * keyed on the STATE rather than on `canReset`, and it stays until the user
+			 * dismisses it or another attempt replaces it.
+			 *
+			 * The status node is MOUNTED EMPTY and filled on settle -- a live region
+			 * announces a change to a node already in the document, and text that
+			 * arrives with the node is its initial content (the same measurement that
+			 * fixed the panel's own announcement region).
+			 */}
+			{reset && resetAccount && (
+				<div className={cn("flex flex-wrap items-baseline gap-x-2 pt-1")}>
+					<output
+						className={cn(
+							"min-w-0 text-meta",
+							resetState.phase === "result"
+								? RESULT_TINT[resetOutcomeTone(resetState.result.outcome)]
+								: undefined,
+						)}
+					>
+						{resetState.phase === "result"
+							? resetOutcomeText(resetState.result, resetLabel)
+							: ""}
+					</output>
+					{resetState.phase === "result" && (
+						<span className={cn("ms-auto flex items-center gap-1")}>
+							{/*
+							 * Retry is offered only where a retry is both meaningful and safe:
+							 * the two non-definitive outcomes. It re-opens the CONFIRMATION
+							 * rather than firing a second request from a result line -- a spend
+							 * always asks first -- and the id it will carry is the one already
+							 * owed, which is what makes the failed line's promise true.
+							 */}
+							{(resetState.result.outcome === "failed" ||
+								resetState.result.outcome === "refused") && (
+								<Button
+									variant="ghost"
+									size="sm"
+									type="button"
+									className={cn("h-5 px-1.5 text-meta")}
+									onClick={() => reset.onAsk(block.report)}
+								>
+									{t("ui.common.actions.retry")}
+								</Button>
+							)}
+							<Button
+								variant="ghost"
+								size="sm"
+								type="button"
+								className={cn("h-5 px-1.5 text-meta")}
+								onClick={() => reset.onDismiss(block.report)}
+							>
+								{t("ui.common.actions.dismiss")}
+							</Button>
+						</span>
+					)}
+				</div>
+			)}
 			{block.note && (
 				<p
 					className={cn(
@@ -410,6 +644,16 @@ export type UsageReportsProps = {
 	source: string;
 	/** The clock countdowns are measured from. Pinned by stories and tests. */
 	now: number;
+	/**
+	 * The reset surface, when the container has one.
+	 *
+	 * Optional because this component is also what the stories render without a
+	 * backend: absent means no chip, no confirmation and no result line, and every
+	 * other state of the table is unchanged. A story that wants the chip supplies
+	 * its own controls -- the same controls the container builds, not a
+	 * story-only imitation.
+	 */
+	reset?: UsageResetControls;
 };
 
 /**
@@ -419,7 +663,11 @@ export type UsageReportsProps = {
  * countdown columns are fixed-width and right-aligned across every block, so
  * the blocks scan as one table instead of several that happen to be stacked.
  */
-export const UsageReports: FC<UsageReportsProps> = ({ reports, now }) => {
+export const UsageReports: FC<UsageReportsProps> = ({
+	reports,
+	now,
+	reset,
+}) => {
 	useI18nLocale();
 	// The baseline blocks are aged against is the set's newest CONFIRMATION, not
 	// the response's stamp. See `newestConfirmedMs` for what the difference cost.
@@ -436,6 +684,7 @@ export const UsageReports: FC<UsageReportsProps> = ({ reports, now }) => {
 					// providers that report none (openrouter sends `identity: null`).
 					key={`${block.report.provider}:${block.report.identity ?? index}`}
 					block={block}
+					reset={reset}
 				/>
 			))}
 		</div>
@@ -562,6 +811,14 @@ export type UsageDialogProps = {
 	outcome?: { tone: "info" | "error"; text: string } | null;
 	/** The clock ages and countdowns are measured from. Pinned by stories. */
 	now: number;
+	/**
+	 * The reset surface, when the container has one; the stories pass their own.
+	 *
+	 * It rides the DIALOG rather than the table so the confirmation and result
+	 * lines are reachable from the same contract the container builds, and so a
+	 * story can render any phase without a backend.
+	 */
+	reset?: UsageResetControls;
 };
 
 /**
@@ -583,6 +840,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 	onFetchLive,
 	outcome = null,
 	now,
+	reset,
 }) => {
 	// The local clock already repaints countdowns. Age passive receipts on that
 	// same tick, including the tally, without re-querying or buying inference.
@@ -795,6 +1053,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 							reports={reports}
 							source={payload?.source ?? "cached"}
 							now={now}
+							reset={reset}
 						/>
 					)}
 				</section>
@@ -987,6 +1246,16 @@ export const usageQueryOptions = (
 	}) as const;
 
 /**
+ * A fresh vendor idempotency key for one reset attempt.
+ *
+ * `crypto.randomUUID()` rather than a counter or a timestamp: the id has to be
+ * unique across app restarts and windows because the VENDOR dedupes on it, and
+ * the contract's schema only admits a UUID. It is minted when a confirmation
+ * opens and then owned by the state machine, so the same attempt reuses it.
+ */
+const mintRedeemRequestId = (): string => crypto.randomUUID();
+
+/**
  * `/usage` as the registry mounts it.
  *
  * The cached report paints first, then a distinct cache-aware live check runs
@@ -995,6 +1264,7 @@ export const usageQueryOptions = (
  * provider on open would spend rate-limited requests. Provider scope comes from
  * the slash line's argument.
  */
+
 export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	/*
 	 * The view ENTERS on `auto`, and that is load-bearing rather than tidy.
@@ -1025,6 +1295,185 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	 * second query it simply stays mounted, and its answer is adopted below.
 	 */
 	const snapshot = useQuery(usageQueryOptions(provider, "cached"));
+
+	/*
+	 * THE RESET SURFACE.
+	 *
+	 * State, not the query cache: what a reset has done is not part of any read,
+	 * and it has to OUTLIVE the read that follows it -- a spend that takes the
+	 * account to zero credits drops the chip on the next payload, and the result
+	 * line has to stay on screen anyway.
+	 *
+	 * The map is per ACCOUNT (`provider` + `credential_ref`), which is the
+	 * backend's own unit: one provider can hold several stored logins, and "one
+	 * attempt at a time" is a property of the login being charged, not of the
+	 * panel.
+	 */
+	const queryClient = useQueryClient();
+	const [resetStates, setResetStates] = useState<ResetStates>({});
+	/*
+	 * The app's default `retry: 1` is LEFT IN PLACE here, and it is only safe
+	 * because of the machine above: a React Query retry re-sends the SAME
+	 * variables, so it carries the same `redeem_request_id` and the backend joins
+	 * the attempt instead of spending a second credit. A transient transport blip
+	 * therefore heals without the user's involvement and without a second spend --
+	 * which is strictly better than the unknown line for a request that never
+	 * reached the vendor. Stated rather than assumed, because an op that spends
+	 * something must not inherit a retry policy nobody checked.
+	 */
+	const resetUsage = useMutation({
+		mutationFn: async (variables: {
+			account: ResetAccount;
+			identity: string | null;
+			redeemRequestId: string;
+		}) => {
+			const answer = await desktopResult<unknown>({
+				op: "usage.reset",
+				provider: variables.account.provider,
+				credentialRef: variables.account.credentialRef,
+				// Only when the report carried one: an empty label is not an
+				// identifier, and the route's own field bound refuses it.
+				...(variables.identity ? { identity: variables.identity } : {}),
+				redeemRequestId: variables.redeemRequestId,
+			});
+			return usageResetResultSchema.parse(answer);
+		},
+	});
+
+	const settleAccount = useCallback(
+		(account: ResetAccount, result: UsageResetResultView) => {
+			setResetStates((previous) =>
+				withResetState(
+					previous,
+					account,
+					settleReset(resetStateFor(previous, account), result),
+				),
+			);
+		},
+		[],
+	);
+
+	const askResetFor = useCallback((report: UsageReport) => {
+		const account = resetAccountOf(report);
+		if (!account) return;
+		setResetStates((previous) =>
+			withResetState(
+				previous,
+				account,
+				askReset(resetStateFor(previous, account), mintRedeemRequestId),
+			),
+		);
+	}, []);
+
+	const cancelResetFor = useCallback((report: UsageReport) => {
+		const account = resetAccountOf(report);
+		if (!account) return;
+		setResetStates((previous) =>
+			withResetState(
+				previous,
+				account,
+				cancelReset(resetStateFor(previous, account)),
+			),
+		);
+	}, []);
+
+	const dismissResetFor = useCallback((report: UsageReport) => {
+		const account = resetAccountOf(report);
+		if (!account) return;
+		setResetStates((previous) =>
+			withResetState(
+				previous,
+				account,
+				dismissReset(resetStateFor(previous, account)),
+			),
+		);
+	}, []);
+
+	/*
+	 * Confirm, then send. The id comes from the machine, never from this handler:
+	 * a second spend of the SAME attempt is only prevented by carrying the id the
+	 * first one used (`pendingRedeemRequestId`).
+	 */
+	const confirmResetFor = useCallback(
+		(report: UsageReport) => {
+			const account = resetAccountOf(report);
+			if (!account) return;
+			const current = resetStateFor(resetStates, account);
+			const next = confirmReset(current);
+			/*
+			 * Identity, not a phase comparison: `confirmReset` returns the SAME object
+			 * when there is nothing to confirm, so this cannot send a request for a
+			 * confirmation that was cancelled between the click and this call.
+			 */
+			if (next === current || next.phase !== "busy") return;
+			setResetStates(withResetState(resetStates, account, next));
+			resetUsage.mutate(
+				{
+					account,
+					identity: report.identity,
+					redeemRequestId: next.redeemRequestId,
+				},
+				{
+					onSuccess: (answer) => {
+						settleAccount(account, {
+							outcome: answer.reset.outcome,
+							windowsReset: answer.reset.windows_reset,
+							detail: answer.reset.detail,
+							refused: answer.reset.refused,
+						});
+						/*
+						 * The route refreshes the provider on a DEFINITIVE outcome and hands
+						 * the post-spend report back in the same answer, so the rows behind
+						 * the result line are the ones the spend produced -- no second, slower
+						 * read is bought here. `usage` is null after `failed`/`refused`
+						 * (nothing was refreshed there), and a null must NOT be written: the
+						 * rows already on screen are still the truth, and replacing them with
+						 * an invented refresh is exactly what this branch avoids.
+						 */
+						if (!answer.usage) return;
+						const refreshed: UsagePayload = {
+							reports: answer.usage.reports as unknown as UsageReport[],
+							source: answer.usage.source,
+							fetched_at: answer.usage.fetched_at,
+						};
+						queryClient.setQueryData(
+							usageQueryOptions(provider, mode, askId).queryKey,
+							refreshed,
+						);
+					},
+					onError: (error) => {
+						// A transport or protocol failure establishes nothing about the
+						// credit, so it settles as the unknown outcome -- the one line that
+						// says so and promises a retry cannot spend twice.
+						settleAccount(account, {
+							outcome: "failed",
+							windowsReset: 0,
+							detail: errorText(error),
+							refused: false,
+						});
+					},
+				},
+			);
+		},
+		[
+			resetStates,
+			resetUsage,
+			settleAccount,
+			queryClient,
+			provider,
+			mode,
+			askId,
+		],
+	);
+
+	const resetControls: UsageResetControls = {
+		states: resetStates,
+		canReset,
+		onAsk: askResetFor,
+		onConfirm: confirmResetFor,
+		onCancel: cancelResetFor,
+		onDismiss: dismissResetFor,
+	};
 
 	/*
 	 * Ask again, and mean it.
@@ -1208,6 +1657,7 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 			// One clock reading per render, shared by every countdown and age on
 			// screen, so two rows in the same frame cannot disagree about the time.
 			now={now}
+			reset={resetControls}
 		/>
 	);
 };

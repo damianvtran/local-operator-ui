@@ -1,0 +1,15 @@
+{
+	"ui.chat.usage_reset.chip": "रीसेट · {count}",
+	"ui.chat.usage_reset.chip_label": "{account} की दर सीमाएँ रीसेट करें। इससे एक रीसेट क्रेडिट खर्च होता है।",
+	"ui.chat.usage_reset.confirm_title": "{account} को रीसेट करें?",
+	"ui.chat.usage_reset.confirm_cost": "{count, plural, one {# में से 1 रीसेट क्रेडिट खर्च करता है; इस खाते की दर-सीमा विंडो साफ़ करता है।} other {# में से 1 रीसेट क्रेडिट खर्च करता है; इस खाते की दर-सीमा विंडो साफ़ करता है।}}",
+	"ui.chat.usage_reset.busy": "{account} के उत्तर की प्रतीक्षा है। इसमें थोड़ा समय लग सकता है।",
+	"ui.chat.usage_reset.busy_action": "रीसेट हो रहा है…",
+	"ui.chat.usage_reset.outcome_reset": "{count, plural, one {{account} की # दर-सीमा विंडो साफ़ की गई।} other {{account} की # दर-सीमा विंडो साफ़ की गईं।}}",
+	"ui.chat.usage_reset.outcome_already_redeemed": "{account} का रीसेट पहले ही उपयोग हो चुका था। कोई दूसरा क्रेडिट खर्च नहीं हुआ।",
+	"ui.chat.usage_reset.outcome_no_credit": "{account} के पास कोई रीसेट क्रेडिट नहीं बचा है। कुछ भी खर्च नहीं हुआ।",
+	"ui.chat.usage_reset.outcome_nothing_to_reset": "{account} की किसी दर-सीमा विंडो को साफ़ करने की ज़रूरत नहीं थी। कुछ भी खर्च नहीं हुआ।",
+	"ui.chat.usage_reset.outcome_failed": "{account} के रीसेट ने कोई परिणाम नहीं बताया, इसलिए क्रेडिट का परिणाम अज्ञात है। दोबारा कोशिश वही अनुरोध दोहराती है, इसलिए दूसरा क्रेडिट खर्च नहीं होगा।",
+	"ui.chat.usage_reset.outcome_refused": "कुछ भी खर्च नहीं हुआ: {account} का रीसेट प्रदाता तक पहुँचने से पहले अस्वीकार कर दिया गया।",
+	"ui.chat.usage_reset.outcome_unknown": "{account} के रीसेट ने ऐसा परिणाम दिया जिसे यह ऐप नहीं पहचानता: {outcome}।"
+}
