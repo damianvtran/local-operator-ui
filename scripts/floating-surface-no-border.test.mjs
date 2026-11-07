@@ -528,6 +528,9 @@ test("O-8 every element that wears the floating shadow carries the marker", () =
  */
 const BORDERED_NEUTRAL_VARIANT = /"(secondary|outline)"/;
 const VARIANT_PROP = /\bvariant=/;
+const TONAL_VARIANT = /\bvariant="tonal"/;
+const SECONDARY_BUTTON_IS_TONAL =
+	/export const SecondaryButton = forwardRef[^;]*?variant="tonal"/;
 
 /*
  * Lines in a marking file whose bordered variant is genuinely OUTSIDE the panel,
@@ -545,7 +548,7 @@ test("O-9a the operator's named nested controls stay borderless", () => {
 	const tag = card.slice(card.lastIndexOf("<Button", send), send);
 	assert.match(
 		stripComments(tag),
-		/\bvariant="tonal"/,
+		TONAL_VARIANT,
 		"the profile popover's Message button must be `tonal`: a bordered variant redraws the stroke the operator photographed",
 	);
 	const dialog = read(
@@ -553,7 +556,7 @@ test("O-9a the operator's named nested controls stay borderless", () => {
 	);
 	assert.match(
 		dialog,
-		/export const SecondaryButton = forwardRef[^;]*?variant="tonal"/,
+		SECONDARY_BUTTON_IS_TONAL,
 		"the dialogs' `SecondaryButton` must render `tonal`: every dialog footer sits on a floating panel",
 	);
 });
