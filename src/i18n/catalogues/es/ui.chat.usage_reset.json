@@ -1,6 +1,6 @@
 {
 	"ui.chat.usage_reset.chip": "Restablecer · {count}",
-	"ui.chat.usage_reset.chip_label": "Restablece los límites de uso de {account}. {count, plural, one {Queda # crédito de restablecimiento.} many {Quedan # créditos de restablecimiento.} other {Quedan # créditos de restablecimiento.}}",
+	"ui.chat.usage_reset.chip_label": "Restablecer los límites de uso de {account}. {count, plural, one {Queda # crédito de restablecimiento.} many {Quedan # créditos de restablecimiento.} other {Quedan # créditos de restablecimiento.}}",
 	"ui.chat.usage_reset.confirm_title": "¿Restablecer {account}?",
 	"ui.chat.usage_reset.confirm_cost": "{count, plural, one {Usa 1 de # crédito de restablecimiento; borra las ventanas de límite de uso de esta cuenta.} many {Usa 1 de # créditos de restablecimiento; borra las ventanas de límite de uso de esta cuenta.} other {Usa 1 de # créditos de restablecimiento; borra las ventanas de límite de uso de esta cuenta.}}",
 	"ui.chat.usage_reset.busy": "Esperando la respuesta de {account}. Puede tardar un momento.",
