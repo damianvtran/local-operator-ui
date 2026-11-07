@@ -1,5 +1,10 @@
 import { readLinkPreviewArtifact } from "./link-preview/artifact-reader";
 import { readOwnerAuditAttachment } from "./team-bridge-audit-media";
+import {
+	type TeamBridgeImageCache,
+	teamBridgeImageAccountFingerprint,
+	teamBridgeImageKey,
+} from "./team-bridge-image-cache";
 /**
  * Authenticated binary/multipart relay for the legacy media routes.
  *
@@ -647,6 +652,27 @@ export function scalarParams(
 	return Object.keys(out).length > 0 ? out : undefined;
 }
 
+/**
+ * Where one `team_bridge.attachment` request's bytes live in the disk cache, or
+ * `null` for every other op.
+ *
+ * WHY THE ADDRESS IS DERIVED HERE, ONCE. A hit and a store have to name the same
+ * key, and the only way they can disagree is if each derives it. The tuple is the
+ * one the schema already shape-checked (`TEAM_BRIDGE_ATTACHMENT`'s five ids), so
+ * nothing in the caller reaches the file name: `teamBridgeImageKey` hashes the
+ * tuple and `teamBridgeImageAccountFingerprint` hashes the account, which is what
+ * keeps a directory listing from naming a tenant, a conversation or an identity.
+ */
+function imageCacheAddress(
+	request: DesktopMediaRequest,
+): { key: string; fingerprint: string } | null {
+	if (request.op !== "team_bridge.attachment") return null;
+	return {
+		key: teamBridgeImageKey(request),
+		fingerprint: teamBridgeImageAccountFingerprint(request.expectedAccountId),
+	};
+}
+
 export async function requestDesktopMediaOutcome(
 	input: unknown,
 	// ArrayBuffer-backed by contract: `Blob`, which this relay builds the
@@ -656,6 +682,14 @@ export async function requestDesktopMediaOutcome(
 	bytes: Uint8Array<ArrayBuffer> | null,
 	backendUrl: string,
 	token: string | null,
+	/*
+	 * The Team Bridge image cache (`./team-bridge-image-cache`), or absent for every
+	 * caller without one - a test, a rig, or the one shipped path before main has
+	 * opened it. It answers `team_bridge.attachment` and nothing else; see the two
+	 * comments at those sites for why the read sits where it does and why the store
+	 * is awaited.
+	 */
+	imageCache?: TeamBridgeImageCache | null,
 ): Promise<DesktopMediaOutcome> {
 	const parsed = mediaRequestSchema.safeParse(input);
 	if (
@@ -725,6 +759,56 @@ export async function requestDesktopMediaOutcome(
 		};
 	}
 	const target = endpoint(request);
+	/*
+	 * THE IMAGE CACHE READS HERE, IN FRONT OF THE FETCH AND AFTER EVERY REFUSAL
+	 * THIS RELAY OWNS. It comes after the schema, the pairing and the size checks
+	 * for one reason: an unpaired app must keep saying "pair me" rather than
+	 * serving pictures out of a directory an earlier session wrote - the cache
+	 * removes a NETWORK call, so it may not turn a refusal into an answer. It comes
+	 * before the request is built for the mirror reason: a hit spends no bearer, no
+	 * body and no timeout.
+	 *
+	 * A HIT IS STILL SUBJECT TO THE SAME MIME RULE. `read` applies the allowlist on
+	 * the way out, so an entry a hand-edited index types as `image/svg+xml` is a
+	 * miss - it can never become a document this relay hands the renderer.
+	 */
+	const imageAddress = imageCache ? imageCacheAddress(request) : null;
+	/*
+	 * THE FENCE VALUE IS TAKEN HERE, BEFORE THE ROUND TRIP, and handed back to
+	 * `store` below. A principal clear that lands while this response is in flight
+	 * moves the cache's epoch; the store then refuses to write, because the bytes in
+	 * hand belong to the account that just left (review round 1, F-2a). Capturing it
+	 * at store time instead would always match and close nothing.
+	 */
+	const imageEpoch = imageCache && imageAddress ? imageCache.currentEpoch() : 0;
+	if (imageCache && imageAddress) {
+		const cached = await imageCache.read(
+			imageAddress.key,
+			imageAddress.fingerprint,
+		);
+		if (cached) {
+			return {
+				response: {
+					status: 200,
+					kind: "bytes",
+					mimeType: cached.mime,
+					data: cached.bytes,
+				},
+				/*
+				 * `answered: false`, and that is not a detail: `answered` is "fetch
+				 * resolved" (`desktop-transport.ts`), and `backend-service.ts` feeds it
+				 * straight into `recordTransportAnswer()`, which resets the probe-miss
+				 * counter and stamps fresh transport evidence for 30 s. A hit contacted
+				 * no daemon, so claiming it did would keep a DEAD daemon looking alive for
+				 * as long as images keep being read, and none of this app's detach and
+				 * re-discovery would ever fire (review round 1, F-1). The bytes are still
+				 * a valid answer to the caller - they stand on the receipt the daemon once
+				 * gave - but they are not evidence that anything is listening.
+				 */
+				answered: false,
+			};
+		}
+	}
 
 	let body: BodyInit | undefined;
 	let contentType: string | undefined;
@@ -1110,11 +1194,47 @@ export async function requestDesktopMediaOutcome(
 				answered: true,
 			};
 		}
+		/*
+		 * THE STORE HAPPENS HERE, AFTER THE MIME AND SIZE RULES HAVE ALREADY PASSED,
+		 * and only for a 200. Nothing else may enter the cache: a refusal body, a
+		 * partial read and a non-picture are all decided above this line, so a cache
+		 * entry can only ever describe bytes this relay already agreed to hand over.
+		 *
+		 * AWAITED, unlike the link-preview service's store. The cost is one atomic
+		 * write of a bounded image on a MISS - paid once, where a fetch was already
+		 * paid - and the benefit is that the second read of the image is guaranteed to
+		 * hit rather than depending on whether an unawaited write has landed. A store
+		 * that fails still answers with the bytes it holds.
+		 */
+		if (imageCache && imageAddress && response.status === 200) {
+			await imageCache.store(
+				imageAddress.key,
+				// The NORMALISED header, which is the spelling the allowlist above
+				// compared: `image/png; charset=binary` is kept as `image/png`.
+				(responseType.split(";")[0] ?? "")
+					.trim()
+					.toLowerCase(),
+				buffer,
+				imageAddress.fingerprint,
+				imageEpoch,
+			);
+		}
 		return {
 			response: {
 				status: response.status,
 				kind: "bytes",
-				mimeType: responseType || "application/octet-stream",
+				/*
+				 * THIS OP REPORTS ONE SPELLING, hit or miss. A hit carries the index's
+				 * normalised mime, so the miss normalises the header too - otherwise the
+				 * same image is described as `image/png; charset=binary` uncached and
+				 * `image/png` cached, which is an observable difference between two
+				 * answers for one receipt. Every other op keeps the header verbatim
+				 * (review round 1, NIT-2).
+				 */
+				mimeType:
+					request.op === "team_bridge.attachment"
+						? (responseType.split(";")[0] ?? "").trim().toLowerCase()
+						: responseType || "application/octet-stream",
 				data: buffer,
 			},
 			answered: true,
@@ -1144,7 +1264,15 @@ export async function requestDesktopMedia(
 	bytes: Uint8Array<ArrayBuffer> | null,
 	backendUrl: string,
 	token: string | null,
+	imageCache?: TeamBridgeImageCache | null,
 ): Promise<DesktopMediaResponse> {
-	return (await requestDesktopMediaOutcome(input, bytes, backendUrl, token))
-		.response;
+	return (
+		await requestDesktopMediaOutcome(
+			input,
+			bytes,
+			backendUrl,
+			token,
+			imageCache,
+		)
+	).response;
 }
