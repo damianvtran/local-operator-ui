@@ -106,6 +106,20 @@ import { BARE_OPTION_ORDINAL, approvalVerdict } from "./approval-words";
  * and an `import type` is erased rather than dragging that module's imports in.
  */
 import type { AskDismissReason } from "./ask-queue";
+/*
+ * THE BUSY ARM'S TWO HALVES LIVE IN `ask-queue.ts` AND ARE RE-EXPORTED HERE, which
+ * is the reverse of the type-only rule above and deliberate: that module decides
+ * the QUEUED ask's refusal sentences (`askRefusalSentence`) and may not import this
+ * one — its node-side bundle in `scripts/ask-queue.test.mjs` aliases `@shared` only,
+ * and this module's reach into the store is not resolvable there. `ask-queue` has no
+ * runtime import of this module, so a value import in this direction is the one
+ * that closes the loop, and re-exporting keeps both names on the API every existing
+ * reader imports them from (`answerReport` here, `scripts/ask-options.test.mjs`).
+ * One disposition, one predicate, one sentence — wherever the ask is painted.
+ */
+import { ANSWER_BUSY_MESSAGE, answerOwnerIsBusy } from "./ask-queue";
+
+export { ANSWER_BUSY_MESSAGE, answerOwnerIsBusy };
 
 export {
 	APPROVAL_OPTIONS,
@@ -447,63 +461,6 @@ export const answerUnconfirmedMessage = (error: unknown): string =>
 	)}`;
 
 /**
- * The sentence for a press the route could not hand to a BUSY owner, after the
- * app's own repeats are spent.
- *
- * The answers route answers `503 {"code": "runtime_busy", "retryable": true,
- * "retry_after_ms": 2000}` when the session's owner is alive and not answering
- * its attach socket. Two things about that arm decide this copy, and both were
- * design round 1 on the backend change (D1/D2/D4/D5):
- *
- *  - IT MUST NOT CLAIM THE ANSWER WAS NOT SENT. The busy refusal is raised for
- *    `RuntimeUnresponsiveError` AND for an ack timeout on a live owner
- *    (`desktop_sessions.py`), and the second is the write-then-wait path this app
- *    records on `DESKTOP_REFUSAL_CODE.transportFailed`: the frame was written and
- *    only its acknowledgement was lost. So the answer may have been taken, and
- *    this arm takes the unknowable register, exactly as the deadline and lost-hop
- *    arms do. The app's own bounded repeat (`withBusyResends`, spent before this
- *    sentence can paint) is what makes that acceptable to say in the first place.
- *
- *    THE SEND PATH HOLDS THE SAME EXPOSURE, and its copy is not changed here
- *    (agent review round 1, MINOR-2, which corrected an earlier draft of this
- *    note). That draft rested the argument on "nothing was admitted is true of
- *    `runtime_busy` on `/messages`", and the merged ladder does not support it:
- *    the busy refusal is raised from the SHARED `errors()` ladder, whose second
- *    arm is the generic ack timeout on a live owner, and that ladder wraps
- *    `/v1/desktop/sessions/{id}/messages` too - where admission is itself an
- *    acked write (`AttachedSession.admit_prompt` ends in
- *    `request_ack_with_duplicate`). So a send can meet this code over a
- *    write-then-wait loss, where `SEND_FAILURE_COPY.busy`'s "your message wasn't
- *    sent" is as unprovable as the sentence this arm replaced. Nothing about the
- *    ANSWER path changes either way - that arm's classification and copy are right
- *    on both raise arms - and the send half is deferred rather than fixed
- *    silently, because it is a copy decision about a different surface.
- *  - IT MUST NOT CARRY THE BACKEND'S PROSE. The route's sentence on this arm is
- *    the unreachable one - "Reconnect and reconcile before retrying" - which
- *    names a control this screen does not have and tells the user to retry what
- *    the app has already retried. The app's own noun for this owner is "the
- *    agent" (`SEND_FAILURE_COPY.busy`), not "the session owner".
- *
- * "isn't confirmed yet" rather than "wasn't sent" is the whole finding, and
- * "yet" is load-bearing: the owner may still take it, and the app may still be
- * told so.
- *
- * ITS LEAD IS DELIBERATELY ITS OWN, not `ANSWER_UNCONFIRMED_LEAD` (agent review
- * round 1, NIT-1). The sibling arm composes its lead so the two "outcome is not
- * knowable" sentences cannot drift apart, and composing this one too would put
- * that longer register - "Whether your answer landed is not knowable." - in front
- * of a sentence the design round chose short for a measured reason: the band
- * wraps to two lines at the 172 px column and the shorter candidate is the one
- * that fits it (`composer-notice-arms`, the busy arm's three widths). The factual
- * claim is the same one the lead makes ("isn't confirmed YET"), stated in the
- * first person of a press rather than the passive; the drift risk the sibling's
- * composition guards against is one of wording between two sentences that say the
- * same thing, and here the wording is the point.
- */
-export const ANSWER_BUSY_MESSAGE =
-	"Your answer isn't confirmed yet. The agent is busy.";
-
-/**
  * The sentence for a press addressed to a session the app could not reach at all.
  *
  * `runtime_unreachable` is the daemon's own hop failure: it could not hand the
@@ -527,16 +484,6 @@ export const ANSWER_BUSY_MESSAGE =
  * that say "the outcome is not knowable" cannot drift apart in one word.
  */
 export const ANSWER_SESSION_UNREACHABLE_MESSAGE = `${ANSWER_UNCONFIRMED_LEAD} The app could not reach this chat's session at all.`;
-
-/**
- * Whether this failure is the answers route's retryable-busy refusal.
- *
- * Keyed on the CODE and never the status: a `503` on a `/v1/desktop/` route is
- * also how the desktop plane refuses this app (`pairing.plane-closed`), which IS
- * an answer about the request rather than a lost sight of it.
- */
-export const answerOwnerIsBusy = (error: unknown): boolean =>
-	error instanceof DesktopControlError && error.code === RUNTIME_BUSY_CODE;
 
 /**
  * Whether this failure is the daemon's own hop failure to the session's owner.
@@ -1252,7 +1199,31 @@ export const answerQueuedAsk = async (
 		answers,
 	};
 	try {
-		await send(request);
+		/*
+		 * THE APP'S OWN REPEAT, which this path did not have and `answerGateOption`
+		 * does. A queued ask's press reaches the owner over the same attach socket,
+		 * so a lost acknowledgement comes back as the retryable `runtime_busy`
+		 * refusal while the answer may already be in the ask log - the operator's
+		 * report (`a-7039` timed out under `The request could not be confirmed.`)
+		 * is that lost ack plus a client that never repeated it.
+		 *
+		 * THE SAME `request` goes out whole, and the answers route carries NO
+		 * receipt journal to replay from: an answer settles through the ask log's
+		 * own single-winner rule, which is the idempotent settle the backend cites
+		 * on both of its busy arms (`desktop_sessions.py`: "an answer gate re-issues
+		 * under its own idempotent settle"). So a repeat under this body cannot
+		 * double-answer, and one that lands while the owner is free again turns the
+		 * press into `sent` here instead of a failure over a write that happened.
+		 *
+		 * THE LOCK IS HELD ACROSS THE RESENDS, exactly as the gate path holds it:
+		 * the one-answer-in-flight rule covers the whole press rather than its first
+		 * attempt, so a second press cannot race this one while it waits out a busy
+		 * owner. Nothing is reported while it repeats - only the refusal left after
+		 * `BUSY_RESENDS` is spent reaches the classifier, which is what lets the
+		 * exhausted case say the outcome is not confirmed (`askRefusalSentence`'s
+		 * busy arm) instead of a definite "was not sent".
+		 */
+		await withBusyResends(() => send(request));
 		return { status: "sent" };
 	} catch (error) {
 		return { status: "failed", request, error };
