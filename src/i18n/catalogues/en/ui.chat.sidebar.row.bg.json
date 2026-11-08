@@ -1,0 +1,8 @@
+{
+	"ui.chat.sidebar.row.bg.subagents": "{count, plural, one {{count, number, ::group-off} subagent} other {{count, number, ::group-off} subagents}}",
+	"ui.chat.sidebar.row.bg.jobs": "{count, plural, one {{count, number, ::group-off} job} other {{count, number, ::group-off} jobs}}",
+	"ui.chat.sidebar.row.bg.running": "{items} running",
+	"ui.chat.sidebar.row.bg.queued": "{count, plural, one {{count, number, ::group-off} queued} other {{count, number, ::group-off} queued}}",
+	"ui.chat.sidebar.row.bg.subagents_queued": "{count, plural, one {{count, number, ::group-off} subagent queued} other {{count, number, ::group-off} subagents queued}}",
+	"ui.chat.sidebar.row.bg.waiting": "Waiting on background work"
+}

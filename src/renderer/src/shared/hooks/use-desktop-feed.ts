@@ -49,7 +49,10 @@ import {
 import { hostPublishRecord } from "@shared/lib/host-publish-record";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useEffect, useRef, useState } from "react";
-import type { DesktopFeedFrame } from "../../../../shared/desktop-session-contract";
+import type {
+	DesktopFeedFrame,
+	SessionStatusFrameCounts,
+} from "../../../../shared/desktop-session-contract";
 
 export type DesktopFeedConnection = {
 	/** The backend advertises the feed AND this build can consume it. */
@@ -330,6 +333,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					{ code: frame.payload.code, label: frame.payload.label },
 					frame.payload.revision,
 					frame.epoch,
+					statusFrameCounts(frame.payload),
 				);
 				/*
 				 * THE OTHER ALWAYS-PUBLISHED EDGE of a turn that started or finished:
@@ -438,4 +442,32 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		codeRequestsRevision,
 		configChange,
 	};
+}
+
+/**
+ * The background-work counts a `session_status` frame carries, projected onto
+ * exactly the row's field names - or `undefined` for an older backend's frame,
+ * which carries only the derived pair and must leave the row's counts alone.
+ *
+ * Projected key by key for the same reason the status pair is: the store
+ * spreads what it is given onto the row, and the payload's `code`/`label`/
+ * `revision` are not row fields. A key is copied only when the wire sent it, so
+ * an absent count stays "as the list last said" rather than becoming `undefined`.
+ */
+export function statusFrameCounts(
+	payload: SessionStatusFrameCounts,
+): SessionStatusFrameCounts | undefined {
+	if (typeof payload.background_work !== "boolean") return undefined;
+	const counts: SessionStatusFrameCounts = {
+		background_work: payload.background_work,
+	};
+	for (const key of [
+		"subagents_running",
+		"subagents_queued",
+		"jobs_running",
+		"waiting_on",
+	] as const) {
+		if (key in payload) counts[key] = payload[key] ?? null;
+	}
+	return counts;
 }

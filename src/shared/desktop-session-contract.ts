@@ -175,6 +175,14 @@ export type SessionCatalogueRow = {
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
 	/**
+	 * Whether the session still has work running beside or after its own turn
+	 * (a subagent running or queued, a background job, an armed wait). Core
+	 * derives it from the counts on this row, independent of `status.code` and
+	 * not suppressed by a build drain; absent on a backend older than the
+	 * field, which `hasBackgroundWork` reads as "fall back to the code".
+	 */
+	background_work?: boolean;
+	/**
 	 * -- THE MESH'S FLAT LOCALITY FIELDS, on every row of a listing that asked for
 	 * them (`include_peers`, gated on `features.peers`).
 	 *
@@ -2253,7 +2261,18 @@ export type DesktopFeedFrame =
 			seq: number;
 			type: "session_status";
 			session_id: CanonicalSessionId;
-			payload: { code: string; label: string; revision: number };
+			/**
+			 * The counts ride the frame beside the code (core: they are in the
+			 * dedupe key, and a 1->0 transition is ONE frame), so the store can
+			 * write code and counts in one update and a row never leaves Running
+			 * a frame before its counts say the work ended. All optional: an
+			 * older backend sends only the derived pair.
+			 */
+			payload: {
+				code: string;
+				label: string;
+				revision: number;
+			} & SessionStatusFrameCounts;
 	  }
 	| {
 			epoch: string;
@@ -2563,4 +2582,17 @@ export type DesktopInterruptReceipt = {
 	children_running: number;
 	background_jobs: number;
 	replayed: boolean;
+};
+
+/**
+ * The background-work counts a `session_status` frame carries beside its code
+ * (same names and meaning as the catalogue row's fields). `null` is "this
+ * build does not report", never zero.
+ */
+export type SessionStatusFrameCounts = {
+	subagents_running?: number | null;
+	subagents_queued?: number | null;
+	jobs_running?: number | null;
+	waiting_on?: number | null;
+	background_work?: boolean;
 };

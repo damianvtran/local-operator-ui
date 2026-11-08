@@ -50,6 +50,7 @@
 
 import { type WithoutParams, t } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { hasBackgroundWork } from "./chat-session-subagents";
 
 export type ChatListSection = "running" | "today" | "week" | "older";
 
@@ -115,8 +116,19 @@ export const RUNNING_CODES = new Set([
 	"wedged",
 ]);
 
+/**
+ * Running = a live code OR work still running after the turn.
+ *
+ * The second arm is the operator's report (2026-11-07): a session whose own
+ * turn had ended but whose subagent and background job were still at work
+ * filed under Today looking idle. `hasBackgroundWork` owns that fact (core's
+ * `background_work` flag, gated off for a stale remote link), so the section,
+ * the lane under the status cell and the tooltip clause read one predicate.
+ * When the last child ends the flag and the code arrive in one frame, so the
+ * row re-files to Today in the same render its lane disappears.
+ */
 export function isRunningRow(row: CanonicalSessionRow): boolean {
-	return RUNNING_CODES.has(row.status?.code ?? "");
+	return RUNNING_CODES.has(row.status?.code ?? "") || hasBackgroundWork(row);
 }
 
 /**

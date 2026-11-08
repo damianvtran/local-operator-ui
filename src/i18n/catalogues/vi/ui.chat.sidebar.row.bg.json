@@ -1,0 +1,8 @@
+{
+	"ui.chat.sidebar.row.bg.subagents": "{count, plural, other {{count, number, ::group-off} tác nhân con}}",
+	"ui.chat.sidebar.row.bg.jobs": "{count, plural, other {{count, number, ::group-off} tác vụ}}",
+	"ui.chat.sidebar.row.bg.running": "{items} đang chạy",
+	"ui.chat.sidebar.row.bg.queued": "{count, plural, other {{count, number, ::group-off} trong hàng đợi}}",
+	"ui.chat.sidebar.row.bg.subagents_queued": "{count, plural, other {{count, number, ::group-off} tác nhân con trong hàng đợi}}",
+	"ui.chat.sidebar.row.bg.waiting": "Đang chờ công việc nền"
+}

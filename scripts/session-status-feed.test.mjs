@@ -722,6 +722,81 @@ test("the subagent counts ride the list response and keep a null as null", async
 });
 
 /*
+ * BACKGROUND WORK (2026-11-07): a `session_status` frame carries the counts and
+ * core's `background_work` flag beside the code, and the store writes them in
+ * ONE update - so a row never sits in Running by its code while its counts say
+ * the work ended (or vice versa). A staler list cannot replace the counts of a
+ * fresher frame either: they are held with the code they arrived beside.
+ */
+test("a status frame writes code and background-work counts in one update", async () => {
+	seeded({
+		status: { code: "idle", label: "Idle" },
+		background_work: true,
+		subagents_running: 1,
+		jobs_running: 1,
+	});
+	const seen = [];
+	const stop = store.subscribe((state) => {
+		const r = state.sessions.find((item) => item.session_id === SESSION);
+		seen.push([r.status.code, r.background_work, r.subagents_running]);
+	});
+	store
+		.getState()
+		.applySessionStatus(SESSION, { code: "idle", label: "Idle" }, 6, EPOCH, {
+			background_work: false,
+			subagents_running: 0,
+			subagents_queued: 0,
+			jobs_running: 0,
+			waiting_on: 0,
+		});
+	stop();
+	// Exactly one state change for the 1 -> 0 transition, and it carries both.
+	assert.deepEqual(seen, [["idle", false, 0]]);
+	assert.equal(row().jobs_running, 0);
+	assert.equal(row().status_revision, 6);
+
+	// A list computed before that frame (lower revision) cannot put the work back.
+	const rows = await list([
+		wire({
+			status: { code: "idle", label: "Idle" },
+			status_revision: 5,
+			status_epoch: EPOCH,
+			background_work: true,
+			subagents_running: 1,
+			jobs_running: 1,
+		}),
+	]);
+	const held = rows.find((item) => item.session_id === SESSION);
+	assert.equal(held.background_work, false);
+	assert.equal(held.subagents_running, 0);
+	assert.equal(held.jobs_running, 0);
+
+	// A fresher list carries the flag through the list path.
+	const fresh = await list([
+		wire({
+			status: { code: "complete", label: "Complete" },
+			status_revision: 7,
+			status_epoch: EPOCH,
+			background_work: true,
+			jobs_running: 2,
+		}),
+	]);
+	const moved = fresh.find((item) => item.session_id === SESSION);
+	assert.equal(moved.background_work, true);
+	assert.equal(moved.jobs_running, 2);
+});
+
+test("an older backend's frame (no flag) leaves the row's counts alone", async () => {
+	seeded({ subagents_running: 2, subagents_queued: 1 });
+	store
+		.getState()
+		.applySessionStatus(SESSION, { code: "delegating", label: "x" }, 6, EPOCH);
+	assert.equal(row().subagents_running, 2);
+	assert.equal(row().subagents_queued, 1);
+	assert.equal(row().background_work, undefined);
+});
+
+/*
  * The other half of the same division: what a `catalogue` frame HANDS the client.
  *
  * The frame is the refetch trigger, and its payload is a revision rather than a

@@ -47,6 +47,7 @@ import { cn } from "@shared/lib/utils";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { Bot } from "lucide-react";
 import {
+	BackgroundWorkLane,
 	ChatSessionStatus,
 	ChatSessionStatusBadge,
 	sessionStatusMark,
@@ -155,7 +156,11 @@ function PicturedSessionAvatar({
 				glyph={<Bot className="size-2.5" aria-hidden="true" />}
 			/>
 			{AVATAR_STATUS_VARIANT === "badge" ? (
-				<ChatSessionStatusBadge row={row} />
+				<>
+					<ChatSessionStatusBadge row={row} />
+					{/* The running lane sits under the 16px picture exactly where it sits under a glyph cell (spec "running lane", avatar rows). In `beside` mode the status cell draws its own. */}
+					{sessionStatusMark(row).backgroundWork && <BackgroundWorkLane />}
+				</>
 			) : null}
 		</span>
 	);
