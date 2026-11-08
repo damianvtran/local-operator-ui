@@ -4175,10 +4175,15 @@ function SessionPanel({
 	 * and the row's `Send again` would offer a second live press for the same
 	 * message. Read from the same store `Edit` wrote to, so the comparison is
 	 * against the box the user is looking at.
+	 *
+	 * The read is a BOOLEAN and it sits beside `editText` (see
+	 * `composerHoldsEditText` below, where the payload is computed) rather than
+	 * here: a selector answering the raw `currentInput` re-rendered this whole
+	 * 5,500-line page on EVERY keystroke of every draft - measured at 1.04 commits
+	 * per keystroke (`scripts/composer-typing-perf.test.mjs`, B2). A selector can
+	 * only see the store, so it has to be built where this render's `editText`
+	 * exists.
 	 */
-	const composerText = useConversationInputStore(
-		(state) => state.inputByConversation[identity]?.currentInput ?? "",
-	);
 	/*
 	 * §F3's PER-MESSAGE FAILURE STATE, addressed here because this page owns both
 	 * halves of it: the row it is about (the draft's open claim, or the
@@ -4236,6 +4241,19 @@ function SessionPanel({
 	 */
 	const editDraft = deliveryTurn ? editDraftOf(deliveryTurn.text) : null;
 	const editText = deliveryTurn ? (editDraft?.text ?? deliveryTurn.text) : null;
+	/*
+	 * A BOOLEAN, NOT THE STRING (composer typing perf, 2026-11-08). This page's one
+	 * use of the draft is "does the box hold exactly the payload `Edit` handed
+	 * back", and a selector answering the raw `currentInput` re-rendered the whole
+	 * page on every keystroke of every draft (1.04 commits/keystroke, measured in
+	 * `scripts/composer-typing-perf.test.mjs` B2). Comparing here means the page
+	 * commits only when the ANSWER changes - the press goes live, or it goes dim -
+	 * which is what `retryDisabled` reads.
+	 */
+	const composerHoldsEditText = useConversationInputStore((state) => {
+		const composed = state.inputByConversation[identity]?.currentInput ?? "";
+		return composed.trim().length > 0 && composed === editText;
+	});
 	const undeliveredTurn = deliveryTurn
 		? {
 				recordId: deliveryTurn.recordId,
@@ -4249,8 +4267,7 @@ function SessionPanel({
 				 * the comparison is exact rather than trimmed: a box the user changed is a
 				 * different message and the row's press is re-armed rather than dimmed.
 				 */
-				retryDisabled:
-					composerText.trim().length > 0 && composerText === editText,
+				retryDisabled: composerHoldsEditText,
 				onSendAgain: () => {
 					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
 				},

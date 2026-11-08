@@ -6,7 +6,7 @@
  */
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { type PersistStorage, persist } from "zustand/middleware";
 
 /**
  * Represents a reply to a message
@@ -775,6 +775,176 @@ function stripDeliveredPayload(
  */
 const MAX_SUBMITTED_MESSAGES = 20;
 
+/*
+ * THE DRAFT'S WRITE WINDOW, AND WHY IT IS NOT THE BOX'S OWN LATENCY.
+ *
+ * Every `set()` on this store is a keystroke's store write (`use-message-input`'s
+ * `handleChange` makes two of them per character), and the persist middleware
+ * runs `partialize` over EVERY conversation's row and hands the whole thing to
+ * `localStorage` SYNCHRONOUSLY on each one. With a pasted screenshot staged, that
+ * row's `attachments[].path` is a `data:` URL megabytes long, so one keystroke
+ * serialised and wrote ~3 MB with one image and ~18 MB with six - measured, twice
+ * per keystroke, on the renderer's main thread (`scripts/composer-typing-perf.test.mjs`,
+ * B1). Nothing about a keystroke needs the DISK to be current: the in-memory row is
+ * what the box and every reader of this store read, so the persisted copy only has
+ * to be right before the process goes away.
+ *
+ * So the write is COALESCED here rather than the state being deferred: `set()`
+ * stays synchronous, readers never see a stale row, and only the serialise + the
+ * `localStorage` write move onto a trailing timer. The trade-off is stated where
+ * the user feels it: a draft typed in the last `COMPOSER_DRAFT_PERSIST_DEBOUNCE_MS`
+ * before a hard process death is lost, and every seam that retires or hands over a
+ * draft flushes instead of waiting (see `flushComposerDraftPersist`'s call sites in
+ * `use-message-input.ts`, plus the page-hide listeners below).
+ *
+ * NOTHING SECRET RIDES THE TIMER. `partialize` - the credential gate - runs at
+ * SCHEDULE time, not at fire time, so a queued payload has already been through it;
+ * and the capture's own text never enters `currentInput` while `draftHeld` is set
+ * (the hook's keystroke gate), which is the only field this seam does not redact.
+ * The bench's B4 asserts exactly that against a real queued write.
+ */
+export const COMPOSER_DRAFT_PERSIST_DEBOUNCE_MS = 300;
+
+/** The shape `partialize` hands to storage - the same rows, minus volatile text. */
+type PersistedDraftRows = {
+	inputByConversation: Record<string, ConversationInputState>;
+};
+
+const DRAFT_PERSIST_KEY = "conversation-input-store";
+
+/** The `{ state, version }` envelope `persist` hands to storage, and reads back. */
+type PersistedDraftValue = { state: PersistedDraftRows; version?: number };
+
+let pendingDraft: PersistedDraftValue | null = null;
+let pendingDraftKey = DRAFT_PERSIST_KEY;
+let pendingDraftTimer: ReturnType<typeof setTimeout> | null = null;
+let draftQuotaWarned = false;
+
+/**
+ * The renderer's `localStorage`, or null when it cannot be reached.
+ *
+ * ACCESS is the failure mode, not use: a renderer whose storage is denied throws
+ * on the property read itself, so the read is what is guarded.
+ */
+const resolveLocalStorage = (): Storage | null => {
+	try {
+		const storage = globalThis.localStorage as Storage | undefined;
+		return storage ?? null;
+	} catch {
+		return null;
+	}
+};
+
+/**
+ * Write the queued draft NOW, and drop the timer.
+ *
+ * The serialise happens here rather than at schedule time, so a burst of typing
+ * pays for one `JSON.stringify` of the largest payload instead of one per
+ * keystroke. A quota failure is REPORTED once and swallowed: it used to be thrown
+ * by the persist middleware straight out of the store write, i.e. into the
+ * keystroke that caused it, and a draft the browser will not store must not take
+ * the typing surface down with it.
+ */
+const writePendingDraft = (): void => {
+	if (pendingDraftTimer !== null) {
+		clearTimeout(pendingDraftTimer);
+		pendingDraftTimer = null;
+	}
+	const value = pendingDraft;
+	const key = pendingDraftKey;
+	pendingDraft = null;
+	if (!value) return;
+	const storage = resolveLocalStorage();
+	if (!storage) return;
+	try {
+		storage.setItem(key, JSON.stringify(value));
+	} catch (error) {
+		if (!draftQuotaWarned) {
+			draftQuotaWarned = true;
+			console.warn(
+				"[composer] the draft could not be persisted; it stays in memory for this session",
+				error,
+			);
+		}
+	}
+};
+
+/**
+ * Land any queued draft write immediately.
+ *
+ * The seam every edge that retires or hands over a draft calls: a send, a
+ * conversation switch, and the page being hidden or closed (`pagehide`,
+ * `beforeunload`, `visibilitychange`) are all moments where "the timer will get
+ * to it" is not good enough. Synchronous by design - the caller is about to lose
+ * the process or the row.
+ */
+export const flushComposerDraftPersist = (): void => {
+	writePendingDraft();
+};
+
+/**
+ * The persist storage, debounced: `setItem` queues, everything else is immediate.
+ *
+ * `getItem` flushes first because a pending payload is NEWER than the disk, and a
+ * hydrate that read the older copy would restore a draft the user has since
+ * changed.
+ */
+const composerDraftPersistStorage: PersistStorage<PersistedDraftRows> = {
+	getItem: (name) => {
+		writePendingDraft();
+		const storage = resolveLocalStorage();
+		if (!storage) return null;
+		const raw = storage.getItem(name);
+		if (raw === null) return null;
+		try {
+			return JSON.parse(raw) as PersistedDraftValue;
+		} catch {
+			// A payload an older build could not finish writing is not a draft.
+			return null;
+		}
+	},
+	setItem: (name, value) => {
+		/*
+		 * THE WHOLE VALUE, wrapper included: persist's `getItem` contract is
+		 * `{ state, version }`, and a payload written without it hydrates as nothing
+		 * - the draft would appear to survive in memory and vanish on the next boot.
+		 */
+		pendingDraft = value;
+		pendingDraftKey = name;
+		if (pendingDraftTimer !== null) clearTimeout(pendingDraftTimer);
+		pendingDraftTimer = setTimeout(() => {
+			pendingDraftTimer = null;
+			writePendingDraft();
+		}, COMPOSER_DRAFT_PERSIST_DEBOUNCE_MS);
+	},
+	removeItem: (name) => {
+		pendingDraft = null;
+		if (pendingDraftTimer !== null) {
+			clearTimeout(pendingDraftTimer);
+			pendingDraftTimer = null;
+		}
+		resolveLocalStorage()?.removeItem(name);
+	},
+};
+
+/*
+ * THE LAST RESORT, and the reason a 300 ms window is safe to offer: the process
+ * tells the renderer before it goes away, and a hidden document is one whose
+ * timers may be throttled to the point of never firing. Both listeners are
+ * best-effort by nature - a SIGKILL reaches neither - which is why the seams that
+ * retire a draft flush eagerly rather than relying on them.
+ */
+if (
+	typeof window !== "undefined" &&
+	typeof window.addEventListener === "function"
+) {
+	window.addEventListener("pagehide", writePendingDraft);
+	window.addEventListener("beforeunload", writePendingDraft);
+	window.document?.addEventListener("visibilitychange", () => {
+		if (window.document.visibilityState === "hidden") writePendingDraft();
+	});
+}
+
 /**
  * Zustand store implementation
  */
@@ -1029,6 +1199,16 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 			resetCurrentHistoryIndex: (conversationId) => {
 				const existing = get().inputByConversation[conversationId];
 				if (!existing) return;
+				/*
+				 * ALREADY AT REST IS NOT A WRITE. Every keystroke calls this to abandon a
+				 * history walk it was not doing: `currentHistoryIndex` is `null` in the
+				 * ordinary case, so the old unconditional `set()` allocated a new state
+				 * object, notified every subscriber and ran a whole persist pass for a
+				 * change that was not a change - the second of the two writes measured on
+				 * the typing path (B1). The value written below is identical by
+				 * construction, so skipping it is not observable in the state.
+				 */
+				if ((existing.currentHistoryIndex ?? null) === null) return;
 				set({
 					inputByConversation: {
 						...get().inputByConversation,
@@ -1439,7 +1619,8 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 			},
 		}),
 		{
-			name: "conversation-input-store",
+			name: DRAFT_PERSIST_KEY,
+			storage: composerDraftPersistStorage,
 			/*
 			 * NEVER A CREDENTIAL ON DISK. A payload written while a masked capture was
 			 * open keeps its text in memory only - the same rule the keystroke path

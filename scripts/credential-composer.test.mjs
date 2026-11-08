@@ -318,7 +318,7 @@ const bundle = await build({
 			export { CredentialChipLayer } from "./src/renderer/src/features/chat/components/credential-chip-layer.tsx";
 			export { CHAT_MEASURE } from "./src/renderer/src/features/chat/chat-measure";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
+			export { useConversationInputStore, flushComposerDraftPersist } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { ASK_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export { t } from "@shared/i18n";
 			export {
@@ -365,6 +365,7 @@ const {
 	QueryClient,
 	QueryClientProvider,
 	useConversationInputStore,
+	flushComposerDraftPersist,
 	useRadientCredentialProbe,
 	credentialArmedNotice,
 	credentialEmptySpanDraftNotice,
@@ -596,6 +597,14 @@ async function mount({
 		 * it does not describe is visible here and nowhere else.
 		 */
 		disclosure: () => {
+			/*
+			 * DRAFT WRITES ARE COALESCED on a 300 ms window
+			 * (`conversation-input-store.ts`), so reading the PERSISTED copy means
+			 * landing the queue first - the seam the app itself uses on a send, a
+			 * conversation switch and the page being hidden. Without it this reads
+			 * whatever the last coalesced write left, not what the box holds now.
+			 */
+			flushComposerDraftPersist();
 			const raw = window.localStorage.getItem("conversation-input-store");
 			if (!raw) return undefined;
 			const parsed = JSON.parse(raw);
@@ -608,6 +617,8 @@ async function mount({
 			return { start: field.selectionStart, end: field.selectionEnd };
 		},
 		draft: () => {
+			/* Coalesced writes: land the queue, then read (see `disclosure` above). */
+			flushComposerDraftPersist();
 			const raw = window.localStorage.getItem("conversation-input-store");
 			if (!raw) return undefined;
 			const parsed = JSON.parse(raw);

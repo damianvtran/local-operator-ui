@@ -172,7 +172,7 @@ const bundle = await build({
  export {resetPendingSendsForTest, usePendingSends} from "./src/renderer/src/features/team-bridge/team-bridge-pending-sends";
  export {TeamBridgeFilesStrip} from "./src/renderer/src/features/team-bridge/team-bridge-files-strip";
  export {useTeamBridgeFiles, filesCapability, splitBridgeFiles} from "./src/renderer/src/features/team-bridge/use-team-bridge-files";
- export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";`,
+ export {useConversationInputStore, flushComposerDraftPersist} from "./src/renderer/src/shared/store/conversation-input-store";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1708,6 +1708,12 @@ test("page R2-01: an image dropped DURING a send stays in the composer and the d
 		1,
 		"only the sent image left the composer; the mid-send drop stayed",
 	);
+	/*
+	 * DRAFT WRITES ARE COALESCED on a 300 ms window (`conversation-input-store.ts`),
+	 * so a durable-row read lands the queue first - the seam the app itself uses on
+	 * a send, a switch and a hidden page. The row asserted below is unchanged.
+	 */
+	m.flushComposerDraftPersist();
 	const stagedRow = Object.values(
 		JSON.parse(localStorage.getItem("conversation-input-store") ?? "{}").state
 			?.inputByConversation ?? {},
@@ -1814,6 +1820,12 @@ test("page R3-01: an image dropped DURING a schedule stays in the composer and t
 		1,
 		"only the scheduled image left the composer",
 	);
+	/*
+	 * DRAFT WRITES ARE COALESCED on a 300 ms window (`conversation-input-store.ts`),
+	 * so a durable-row read lands the queue first - the seam the app itself uses on
+	 * a send, a switch and a hidden page. The row asserted below is unchanged.
+	 */
+	m.flushComposerDraftPersist();
 	const stagedRow = Object.values(
 		JSON.parse(localStorage.getItem("conversation-input-store") ?? "{}").state
 			?.inputByConversation ?? {},

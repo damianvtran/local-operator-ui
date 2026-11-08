@@ -103,7 +103,8 @@ const bundle = await build({
  export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
  export {TeamBridgeScheduledListView, TeamBridgeScheduledRow, TeamBridgeScheduleDialog} from "./src/renderer/src/features/team-bridge/team-bridge-scheduled";
  export {teamBridgeScheduledMessageSchema, teamBridgeScheduledListSchema} from "./src/shared/team-bridge-contract";
- export {useStickToBottom} from "./src/renderer/src/features/team-bridge/use-stick-to-bottom";`,
+ export {useStickToBottom} from "./src/renderer/src/features/team-bridge/use-stick-to-bottom";
+ export {flushComposerDraftPersist} from "./src/renderer/src/shared/store/conversation-input-store";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1127,6 +1128,8 @@ test("a held schedule can be explicitly discarded before a fresh send or schedul
 			 * duplicate-owner defect (R2) instead of the rule.
 			 */
 			assert.equal(entry.body ?? "", "");
+			/* Coalesced draft writes: land the queue before reading the durable row. */
+			model.flushComposerDraftPersist();
 			assert.equal(
 				Object.values(
 					JSON.parse(localStorage.getItem("conversation-input-store") ?? "{}")
@@ -1812,6 +1815,8 @@ test("r12 B1: text typed while a send is in flight survives the success clear", 
 		 * of a naming scheme - and it still fails for a bespoke textarea, which
 		 * writes the journal and never touches this store.
 		 */
+		/* Coalesced draft writes: land the queue before reading the durable row. */
+		model.flushComposerDraftPersist();
 		const stored = JSON.parse(
 			localStorage.getItem("conversation-input-store") ?? "{}",
 		);
