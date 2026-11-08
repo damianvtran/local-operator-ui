@@ -94,3 +94,25 @@ export const MachineJsx = () => (
 		<span>·</span>
 	</div>
 );
+
+/* --- plain assignment, return and array templates: the ratchet's STATED GAP --- */
+
+/*
+ * `check-strings.mjs` does not count a template in a `const`, a `return` or an
+ * array literal, and this block is the boundary WRITTEN DOWN rather than an
+ * oversight: in that position this tree's templates are overwhelmingly ids,
+ * URLs, units and CSS, and the walker has no key vocabulary to separate them
+ * from prose (234 such templates across 108 renderer files at the head that
+ * introduced the shapes). `check-added-strings.mjs` counts the shape on ADDED
+ * lines instead — same text, same letter test, one rule that needs no
+ * allowance — so new copy of it cannot land.
+ */
+export const PlainTemplates = (count: number) => {
+	const sentence = `Unlisted plain ${count} rows`;
+	const table = [`Unlisted array ${count} rows`];
+	return `${sentence} over ${table.length} rows`;
+};
+
+/* A template whose only letters live in the substitution is not copy: the
+ * letter test runs on the text with the substitution elided. */
+export const OnlySubstitution = (count: number) => <span>{`${count}`}</span>;

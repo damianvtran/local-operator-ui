@@ -10,7 +10,15 @@
  *   - expression-valued copy attributes such as `aria-label={"New chat"}`;
  *   - static literal arms of conditionals, logical fallbacks and `+`
  *     concatenations, plus literal spans of template expressions in either sink;
- *   - static text in JSX expression containers, including logical branches.
+ *   - static text in JSX expression containers, including logical branches;
+ *   - a TEMPLATE in a plain `const X = …`, `return …` or array-literal element
+ *     under `src/renderer/` (the `template:` sinks). This is the one shape the
+ *     ratchet (`check-strings.mjs`) deliberately leaves out: measured at this
+ *     head, 234 such templates in 108 renderer files carry a letter and most of
+ *     them are ids, URLs, units and CSS, so listing them would put machine text
+ *     in the debt ledger. An ADDED line needs no allowance, so the diff guard
+ *     takes the shape instead — new copy of it cannot land, and the historical
+ *     occurrences stay a stated gap rather than a silent one.
  *
  * This is a static sink check, not a claim about arbitrary runtime or server
  * text. Dynamic values, non-copy property names, and calls such as `t()` do not
@@ -32,11 +40,13 @@ import {
 	SCAN_ROOTS,
 	allowlistReason,
 	collapse,
+	copyTexts,
 	enclosingElement,
 	inSpan,
 	isScanned,
 	lineSpan,
 	loadAllowlist,
+	onDataShapeSurface,
 	openSnapshot,
 	pragmaLines,
 	staticTextNodes,
@@ -177,7 +187,11 @@ function nearestCopyDeclaration(identifier) {
  * Find the additional copy shapes in one parsed file. `addedLines === null`
  * means a new/untracked file, for which every finding is new by construction.
  */
-export function findAddedCopyViolations(sourceFile, addedLines) {
+export function findAddedCopyViolations(
+	sourceFile,
+	addedLines,
+	{ templateSinks = false } = {},
+) {
 	const pragmas = pragmaLines(sourceFile);
 	const findings = [];
 	const isAdded = (line) => addedLines === null || addedLines.has(line);
@@ -242,6 +256,38 @@ export function findAddedCopyViolations(sourceFile, addedLines) {
 			}
 		}
 	};
+	/**
+	 * A template in a plain `const` / `return` / array position.
+	 *
+	 * The ONE shape `check-strings.mjs` leaves to this guard (see its KNOWN
+	 * BOUNDARIES): the ratchet cannot tell prose from ids, URLs, units and CSS
+	 * in that position, because there is no key vocabulary to appeal to, so 234
+	 * such templates stay outside its allowance. Here they cost one pragma on a
+	 * line the author just wrote, never a debt entry — and `copyTexts` is the
+	 * shared renderer that already treats a template as ONE sentence.
+	 *
+	 * Bounds: a template whose text is a single token still counts (the letter
+	 * test is the same one every other sink uses), so a machine-shaped template
+	 * takes an `// i18n: ignore <reason>`, exactly as a token site does in the
+	 * ratchet. Narrowing this by a prose heuristic would make the guard's
+	 * verdict depend on how the sentence happens to start.
+	 */
+	const takeTemplate = (node, kind) => {
+		if (
+			node === undefined ||
+			(node.kind !== SyntaxKind.TemplateExpression &&
+				node.kind !== SyntaxKind.NoSubstitutionTemplateLiteral)
+		)
+			return;
+		const line =
+			sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line +
+			1;
+		if (!isAdded(line) || exempt(node)) return;
+		for (const sentence of copyTexts(node)) {
+			const text = collapse(sentence);
+			if (LETTER_RE.test(text)) findings.push({ line, kind, text });
+		}
+	};
 	const visit = (node) => {
 		if (node.kind === SyntaxKind.PropertyAssignment) {
 			const name = propertyName(node.name);
@@ -264,6 +310,16 @@ export function findAddedCopyViolations(sourceFile, addedLines) {
 			if (node.parent?.kind !== SyntaxKind.JsxAttribute && node.expression) {
 				takeReference(node.expression, "jsx-expression");
 			}
+		} else if (templateSinks && node.kind === SyntaxKind.VariableDeclaration) {
+			takeTemplate(node.initializer, "template:const");
+		} else if (templateSinks && node.kind === SyntaxKind.ReturnStatement) {
+			takeTemplate(node.expression, "template:return");
+		} else if (
+			templateSinks &&
+			node.kind === SyntaxKind.ArrayLiteralExpression
+		) {
+			for (const element of node.elements)
+				takeTemplate(element, "template:array");
 		}
 		node.forEachChild(visit);
 	};
@@ -382,6 +438,9 @@ export function runAddedCheck({
 			for (const finding of findAddedCopyViolations(
 				sourceFile,
 				additions.get(rel),
+				/* The template sinks are the ratchet's stated boundary, so they
+				 * follow the SAME surface the ratchet's data shapes do. */
+				{ templateSinks: onDataShapeSurface(rel) },
 			)) {
 				findings.push({ path: rel, ...finding });
 			}

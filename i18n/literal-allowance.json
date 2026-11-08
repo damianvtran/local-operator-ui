@@ -309,13 +309,6 @@
 			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/chat/components/slash-commands.tsx",
-			"ids": ["jsx-child-expression | [x]"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/chat/components/trace/agent-reasoning.tsx",
 			"ids": ["jsx-child-expression | ${…} for ${…}"],
 			"owner": "the i18n renderer-keying lane",
@@ -390,13 +383,6 @@
 			"owner": "the i18n renderer-keying lane",
 			"payoff": "2027-01-31",
 			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/settings/components/delegated-retention-copy.tsx",
-			"ids": ["jsx-child-expression | lop exec"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
 			"file": "src/renderer/src/features/settings/components/integrations/integration-key-dialog.tsx",

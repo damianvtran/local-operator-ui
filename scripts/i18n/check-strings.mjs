@@ -71,6 +71,21 @@
  *     its measured uses are prose. The key set is the prose vocabulary of the
  *     DATA, not the union of every prose-named prop — the two vocabularies
  *     overlap and are not the same.
+ *   - A TEMPLATE in a plain `const X = …`, `return …` or array-literal element
+ *     is NOT counted by this file, on either surface. Measured at this head,
+ *     `src/renderer` carries 234 such templates with a letter in 108 files, and
+ *     169 of them also hold two alphabetic words separated by whitespace — and
+ *     most of both sets is machine text (`tool:${…}`, `/v1/agents/${…}/avatar`,
+ *     `${…} KB`, `calc(…)`, `@keyframes …`). Listing them would put machine
+ *     text in a debt ledger whose whole design (`OBJECT_COPY_KEYS`, below) is
+ *     to keep machine text out of it, and no predicate this scanner owns
+ *     separates the two classes in that position: there is no key vocabulary
+ *     to appeal to. That shape is therefore the ONE the ratchet leaves to the
+ *     diff guard: `check-added-strings.mjs` counts a template in
+ *     `const`/`return`/array position on an ADDED line under `src/renderer`
+ *     (the `template:` sinks), so new copy of that shape cannot land, and the
+ *     historical 234 stay outside the allowance — a stated gap rather than a
+ *     silent one.
  *   - A prop that is not in `COPY_ATTRIBUTES` is invisible. Adding a prose
  *     prop to a component is a reason to add its name here.
  *   - Prose assembled by a function and passed through (`label={describe(x)}`)
@@ -105,7 +120,9 @@
  *     An object-literal property has no enclosing element, so its OWN line is
  *     the whole pragma surface — the trailing comment on the property.
  *   - `i18n/literal-allowance.json` governs the data shapes INSTEAD of the
- *     baseline: one exact id per finding (`<kind> | <text>`), an owner, a
+ *     baseline: one exact id per distinct `<kind> | <text>` (two identical
+ *     sentences in one file share one id, which is what the writer emits), an
+ *     owner, a
  *     payoff, and a base-ref growth check. A finding not listed FAILS and a
  *     listed id that is gone FAILS, so the file can only shrink — the debt is
  *     named and owed, never exempt. `--prune-allowance` is its one writing
@@ -214,24 +231,43 @@ export const COPY_ATTRIBUTES = new Set([
  *
  * DERIVED FROM THIS TREE, not copied from `COPY_ATTRIBUTES`, because the two
  * vocabularies only overlap. Measured over `src/renderer` (the shape's surface,
- * see the module docstring), each key below was read at its uses:
+ * see the module docstring) at the commit that introduced this set. Each key
+ * below was read at its uses, and the count is FINDINGS — one per rendered
+ * sentence, which is what the allowance lists — not occurrences of the
+ * property name:
  *
- *   - `label` (87 uses: `{ label: "By turn" }`, table columns, modes),
- *     `title` (26), `message` (21), `description` (12), `detail` (12),
- *     `text` (8), `cancel` (2) — prose in every measured use;
+ *   - `label` 16, `text` 11, `message` 9, `description` 4, `detail` 4,
+ *     `title` 1, `cancel` 1 — prose in every measured use;
  *   - `confirm`, `heading`, `placeholder`, `caption`, `summary`, `ariaLabel`,
- *     `hint` — zero uses under this shape today, listed because a data key
+ *     `hint` — 0 findings on this tree today, listed because a data key
  *     with that name is prose by definition; a token under one of them is the
  *     case the `i18n: ignore <reason>` pragma exists for.
  *
- * DELIBERATELY ABSENT, each measured as a token under this shape rather than
- * assumed: `name` (193 uses, ids such as `agent-messages-onboarding`), `action`
- * (119, enums such as `plan`/`none`), `verb` (21, `undo`), `tooltip` (1,
- * `never`), `empty` (1, `text-ink-muted`), `content` (2, class names), `noun`
- * (0). They stay in `COPY_ATTRIBUTES` — as a component PROP each renders the
- * value — and out of this set, because as a data KEY each names a token here.
- * A prop that becomes prose in data is a reason to add its name here, exactly
- * as a new prose prop is a reason to add it above.
+ * DELIBERATELY ABSENT, each measured as what adding the key would report at
+ * this head: `action` 106 (enums such as `reauth`/`none`), `name` 99 (ids and
+ * storage keys such as `agent-messages-onboarding`/
+ * `canonical-sessions-storage`), `content` 2 (class names), `tooltip` 1
+ * (`never`), `empty` 1 (`text-ink-muted`), `noun` 0 — tokens in the uses that
+ * matter, so they stay in `COPY_ATTRIBUTES` (as a component PROP each renders
+ * the value) and out of this set, because as a data KEY each names a token
+ * here. A prop that becomes prose in data is a reason to add its name here,
+ * exactly as a new prose prop is a reason to add it above.
+ *
+ * `verb` is the one key whose absence is a GAP rather than a token judgement,
+ * and it is named rather than rounded away: it would add 27 findings, 25 of
+ * them the trace-verb table in `trace-labels.ts` (`Read`, `Wrote`, `Ran code`,
+ * `Delegated work`). That table is real copy and keying it is its own slice of
+ * the lane; in the meantime it is invisible to BOTH gates, because `verb` is in
+ * neither this set nor `COPY_PROPERTIES` in `check-added-strings.mjs`.
+ *
+ * The measurement behind every number above, run from the repository root:
+ *
+ *   node --input-type=module -e 'import("./scripts/i18n/check-strings.mjs").then(m=>{const r=m.runCheck();const n=new Map();for(const fs of r.scanned.values())for(const f of fs)if(m.governedByAllowance(f.kind))n.set(f.kind,(n.get(f.kind)??0)+1);console.log([...n].sort().join("\n"))})'
+ *
+ * — one `<count>\t<shape>` line per key. The "would add" counts for the absent
+ * keys are that command with `m.OBJECT_COPY_KEYS.add("name")` in front of
+ * `runCheck()` (one key per scratch run; adding several at once would count the
+ * shared files, not each key).
  */
 export const OBJECT_COPY_KEYS = new Set([
 	"label",
@@ -1180,8 +1216,13 @@ export function allowanceGrowth(base, head) {
  *
  * A new id is a NEW debt, and adding one must be a reviewed decision with an
  * owner and a payoff — not something a failing check talks you into. The base is
- * the CI pull-request base when set, else `origin/main`, else skipped with a
- * stated reason rather than a silent pass.
+ * the CI pull-request base when set, else `origin/main`.
+ *
+ * A base that resolved but does not carry the file yet is the pull request that
+ * INTRODUCES the allowance: there is nothing to compare against, and the
+ * comparison legitimately returns nothing. A base that did not resolve at all is
+ * not that case — the caller has to say so, and `allowanceBaseReport` is where
+ * it does (a failure when the base was required, a stated gap when it was not).
  */
 export function checkAllowanceGrowth(
 	ref,
@@ -1249,8 +1290,12 @@ function ciAllowanceBase() {
  * `check-coverage.mjs` deliberately: an explicit ref or the CI pull-request base
  * is REQUIRED and an unresolvable one fails the gate rather than silently
  * skipping the comparison — a growth check that quietly passes when its base is
- * missing is the same "gate in name only" this file's docstring rejects. A local
- * checkout with neither is the one case that skips, and says so.
+ * missing is the same "gate in name only" this file's docstring rejects.
+ *
+ * A local checkout with neither is the one case that is NOT required — a clone
+ * with no `origin/main` must still be runnable — and that is a skip the caller
+ * has to REPORT: `allowanceBaseReport` prints the gap and the success line
+ * repeats it, so "not required" never reads as "compared and passed".
  *
  * The single `git fetch` is the CI case `actions/checkout` creates (a shallow
  * checkout has the merge commit and not its base); no fetch happens when the ref
@@ -1361,7 +1406,6 @@ export function runCheck({
 		const failures = ratchetFindings(counts, loaded.files);
 		const debt = allowance ?? loadLiteralAllowance(allowancePath);
 		const { allowed, problems } = validateLiteralAllowance(debt);
-		const governed = extraScan.length > 0;
 		const { unlisted, stale } = literalAllowanceFindings(scanned, allowed);
 		return {
 			scanned,
@@ -1405,15 +1449,25 @@ export function failureSummary(failures) {
 }
 
 /**
- * The remedy sentence for the literal allowance, printed only after a failure.
+ * The remedy sentence for the literal allowance, printed only after a failure
+ * THAT IS ONE.
  *
- * The three failure shapes have different remedies and naming the wrong one is
- * how a gate teaches a contributor to weaken it: an UNLISTED finding is paid by
+ * The failure shapes have different remedies and naming the wrong one is how a
+ * gate teaches a contributor to weaken it: an UNLISTED finding is paid by
  * extracting the string; a STALE id is paid by pruning the entry (never by
- * leaving it, and never by re-adding the literal); a NEW id is not something a
- * failing check can talk you into — it needs a reviewer.
+ * leaving it, and never by re-adding the literal); an id that GREW relative to
+ * the base is a reviewer's decision, not something a failing check can talk you
+ * into; the allowance's own shape is fixed in the file. No part applies and the
+ * sentence is empty — a baseline breach, an unresolved base or a `--prune`
+ * problem has its own line above, and this one used to print an empty pair of
+ * parentheses over all of them (agent review round 1, N1 / QA Q-1).
  */
-export function allowanceSummary({ unlisted, stale, allowanceProblems }) {
+export function allowanceSummary({
+	unlisted,
+	stale,
+	allowanceProblems,
+	growth,
+}) {
 	const parts = [];
 	if (toCount(allowanceProblems) > 0) parts.push("fix the allowance's shape");
 	if (toCount(unlisted) > 0)
@@ -1424,7 +1478,39 @@ export function allowanceSummary({ unlisted, stale, allowanceProblems }) {
 		parts.push(
 			"run `node scripts/i18n/check-strings.mjs --prune-allowance` for the ids that are no longer found — the allowance can only shrink",
 		);
+	if (toCount(growth) > 0)
+		parts.push(
+			"revert the ids this branch added relative to the base, or take them to a reviewer — growth is a decision, never a check-fix",
+		);
+	if (parts.length === 0) return "";
 	return `check-strings.mjs: FAILED — the data shapes (${parts.join("; ")}). See docs/i18n/literal-allowance.md.`;
+}
+
+/**
+ * The growth check's own line: a FAILURE when the base was required, and a
+ * stated GAP when it was not.
+ *
+ * `resolveAllowanceBase` cannot fail the run by itself — a local checkout with
+ * no `origin/main` is a legitimate run — so the reporting lives here, and the
+ * one thing it must never do is stay quiet: a growth comparison that did not
+ * run is a check that did not look, and the success line repeats it so no one
+ * reads an `ok` as a comparison that happened (agent review round 1, M1).
+ */
+export function allowanceBaseReport({ ref, required }) {
+	if (ref !== null) return { lines: [], failed: false };
+	if (required)
+		return {
+			lines: [
+				"i18n/literal-allowance.json: cannot resolve the base ref to compare growth against (`--allowance-base <ref>` or the CI pull-request base) — the growth check cannot be skipped silently.",
+			],
+			failed: true,
+		};
+	return {
+		lines: [
+			"i18n/literal-allowance.json: the growth check DID NOT RUN — no base ref resolved (no `--allowance-base`, no CI pull-request base, and no `origin/main` in this checkout), so ids added since the base are not compared here. Pass `--allowance-base <ref>` to run it.",
+		],
+		failed: false,
+	};
 }
 
 function toCount(value) {
@@ -1674,12 +1760,9 @@ export function main(
 		failed = true;
 	}
 	const base = resolveAllowanceBase(allowanceBase);
-	if (base.ref === null && base.required) {
-		process.stdout.write(
-			"i18n/literal-allowance.json: cannot resolve the base ref to compare growth against (`--allowance-base <ref>` or the CI pull-request base) — the growth check cannot be skipped silently.\n",
-		);
-		failed = true;
-	}
+	const baseReport = allowanceBaseReport(base);
+	for (const line of baseReport.lines) process.stdout.write(`${line}\n`);
+	if (baseReport.failed) failed = true;
 	const growth =
 		base.ref === null
 			? []
@@ -1704,7 +1787,8 @@ export function main(
 		failed = true;
 	}
 	if (failed) {
-		process.stdout.write(`${allowanceSummary(result)}\n`);
+		const summary = allowanceSummary({ ...result, growth });
+		if (summary) process.stdout.write(`${summary}\n`);
 		return 1;
 	}
 	const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
@@ -1713,9 +1797,15 @@ export function main(
 			.filter((finding) => governedByAllowance(finding.kind))
 			.map(() => rel),
 	).length;
+	/* The ok line must not read as a comparison that did not run: the gap line
+	 * above says the same thing, and a reader who skipped it reads it here
+	 * (agent review round 1, M1). */
+	const growthNote =
+		base.ref === null
+			? "; the growth comparison against the base DID NOT run (see above)"
+			: "";
 	process.stdout.write(
-		`check-strings.mjs: ok — ${scanned.size} file(s) scanned, ${total} literal(s) at or below the baseline; ` +
-			`${owed} literal(s) in the data shapes, all listed in i18n/literal-allowance.json (shrink-only)\n`,
+		`check-strings.mjs: ok — ${scanned.size} file(s) scanned, ${total} literal(s) at or below the baseline; ${owed} literal(s) in the data shapes, all listed in i18n/literal-allowance.json (shrink-only)${growthNote}\n`,
 	);
 	return 0;
 }

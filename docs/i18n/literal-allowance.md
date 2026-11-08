@@ -50,6 +50,20 @@ still "fit".
 - **Prose assembled by a function and passed through** (`label={describe(x)}`)
   is still invisible at the call site; its literals live wherever the helper
   builds them.
+- **A template in a plain `const`, `return` or array position is outside this
+  file, and the diff guard takes it instead.** Measured at this head: 234 such
+  templates under `src/renderer/` (108 files) carry a letter, and most of both
+  that set and the 169 of them holding two words are machine text —
+  `` `tool:${id}` ``, `` `/v1/agents/${id}/avatar` ``, `` `${n} KB` ``,
+  `calc(…)`, `@keyframes …`. This file has no key vocabulary to tell those from
+  `Hide ${n}`, so listing them would put machine text in a debt ledger built to
+  keep it out. `scripts/i18n/check-added-strings.mjs` counts the shape on
+  **added** lines under `src/renderer/` (`template:const`, `template:return`,
+  `template:array`), so new copy of that shape cannot land without a pragma;
+  the 234 historical occurrences stay a stated gap. `mark-all-read.ts`'s
+  `scope:` — a `join(" ")` of two templates in an array — is the live example,
+  and `verb`-keyed tables such as `trace-labels.ts` are the same class: real
+  copy that neither the allowance nor the property vocabulary can see yet.
 - **Two identical sentences in one file share one id.** Extracting the sentence
   is one decision, and the call sites are found from the same entry.
 
@@ -74,6 +88,8 @@ line, exactly as an exempt JSX attribute does. The reason is the review.
 | A data-shape finding not listed for its file | FAIL — "not in i18n/literal-allowance.json" |
 | A listed id no longer found | FAIL — the allowance can only shrink; run `--prune-allowance` |
 | An id present in the head allowance but not the base (`--allowance-base <ref>`, CI's pull-request base, else `origin/main`) | FAIL — growth is a reviewed decision, never a check-fix |
+| The base ref cannot be resolved while one was required (an explicit `--allowance-base`, or the CI pull-request base) | FAIL — the growth check cannot be skipped silently |
+| No base ref at all: a local run with no `--allowance-base`, no CI event and no `origin/main` | NOT a failure, but **stated**: the run prints that the growth comparison did not run, and the closing `ok` line repeats it so a green run is never read as a comparison that happened |
 | `schema` not 1, unknown/missing field, empty or unsorted or duplicate ids, an id naming a shape the allowance does not govern, a payoff that is neither a real ISO date nor a tracker key | FAIL — the file would otherwise read as attributed debt while carrying no plan |
 
 The per-file ceilings in `i18n/baseline.json` are **not** used for these shapes.
@@ -90,8 +106,11 @@ that genuinely starts from zero); it does not touch this file.
 
 At the commit that introduced the shapes, the renderer carried **127** data-shape
 literals across **42** files, listed here with the owner
-(`the i18n renderer-keying lane`) and the payoff date. The list is the audit: the
-counts below are what the checker reported, not an estimate.
+(`the i18n renderer-keying lane`) and the payoff date. Two of them were machine
+text and took `i18n: ignore` pragmas instead of debt (agent review round 1, M2;
+`"lop exec"` and the `[x]` tag marker), so the file now lists **125** findings as
+**120** ids in **40** entries. The list is the audit: the counts below are what
+the checker reported, not an estimate.
 
 Paying an entry down is ordinary keying work and needs no discussion. Growing one
 does.
