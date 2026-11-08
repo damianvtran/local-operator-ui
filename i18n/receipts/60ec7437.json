@@ -1,0 +1,90 @@
+{
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "model_provenance": "Served as deepseek/deepseek-flash for every read and verdict in this round. The session was pinned to anthropic/claude-sonnet-5-5 and fell back through anthropic/claude-opus-5-5 and openai/gpt-6.1-sol on provider quota failures before serving deepseek/deepseek-flash; disclosed per the harness model-provenance rule. No verdict was formed by a model other than the one named here.",
+  "instance": "60ec7437",
+  "session": "60ec7437665f",
+  "date": "2026-11-08",
+  "status": "passed",
+  "result": "clean",
+  "namespace": "ui.chat",
+  "locale": "ur",
+  "key": "ui.chat.question_dock.hint.approval",
+  "branch": "fix/urdu-question-dock-hint",
+  "base": "f64fc8897782cfaa168c6851f2933354d1c020d4",
+  "head": "7003c9c587468a8d1762153d0052b1b639432ca1",
+  "scope": "One Arabic-script string: ui.chat.question_dock.hint.approval in src/i18n/catalogues/ur/ui.chat.json. Diff f64fc8897782..7003c9c5874 is 1 file / 1 insertion / 1 deletion; the English source, the other 205 ur ui.chat values, keys.gen.ts and the ledger are untouched. Round 1 of this change; the ledger row's prior audit (instance 1350b32a, receipt i18n/receipts/u1-question-dock-hint-1350b32a.json) certified the PREVIOUS bytes dd452057c2f9…, which this commit replaces.",
+  "independence": "This session (60ec7437665f) did not write, translate or commit the string, and did not author any earlier audit of this key. The verdict was rebuilt from the English source, the painted label values in ur/ui.chat.approval.json, the render site in question-dock.tsx, the Hindi sibling, the ur style guide and glossary, and the prior receipt's claims (read as claims and checked, not believed).",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.chat.json",
+    "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/ur/ui.chat.json",
+    "sha256": "ff3a28460b5027d6067b39aa75463e85f2996ce597e3b6c88e1e1a1fbaa63580"
+  },
+  "source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+  "target_sha256": "ff3a28460b5027d6067b39aa75463e85f2996ce597e3b6c88e1e1a1fbaa63580",
+  "sha256": {
+    "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+    "ur": "ff3a28460b5027d6067b39aa75463e85f2996ce597e3b6c88e1e1a1fbaa63580"
+  },
+  "items": {
+    "1_naturalness": "PASS",
+    "2_label_agreement": "PASS",
+    "3_preserved_tokens": "PASS",
+    "4_no_semantic_loss": "PASS",
+    "5_scope": "PASS",
+    "6_hindi_precedent": "PASS"
+  },
+  "checks": {
+    "string_before": "اوپر منظور کریں یا مسترد کریں منتخب کریں، یا پیغام کے خانے میں yes، no، 1 یا 2 لکھ کر بھیجیں، یا وہیں Escape دبا کر باری روکیں۔",
+    "string_after": "اوپر کے بٹنوں سے منظور کریں یا مسترد کریں، یا پیغام کے خانے میں yes، no، 1 یا 2 لکھ کر بھیجیں، یا وہیں Escape دبا کر باری روکیں۔",
+    "naturalness": "PASS. 'اوپر کے بٹنوں سے منظور کریں یا مسترد کریں' is a well-formed Urdu instrumental construction: اوپر کے + oblique masculine plural بٹنوں + سے ('with the buttons above'), then two respectful imperatives. The BEFORE postposed منتخب کریں ('select') onto two imperative clauses, which Urdu does not allow - انتخاب takes a nominal object ('منظوری یا انکار منتخب کریں'), not a clause - so it read as a third stacked verb with no object and required the reader to infer that the labels were items. The AFTER reads fluent and is a clear improvement. Length 127 -> 128 characters (+1), so the rewrite does not inflate the hint.",
+    "changed_region": "Byte-level isolation of the diff: common prefix 'اوپر '; BEFORE middle 'منظور کریں یا مسترد کریں منتخب'; AFTER middle 'کے بٹنوں سے منظور کریں یا مسترد'; common suffix ' کریں، یا پیغام کے خانے میں yes، no، 1 یا 2 لکھ کر بھیجیں، یا وہیں Escape دبا کر باری روکیں۔'. Only منتخب dropped and کے بٹنوں سے inserted; the whole tail is byte-identical.",
+    "label_agreement": "PASS, byte-identical. ur/ui.chat.approval.json at this head holds ui.chat.approval.option.approve = 'منظور کریں' and .deny = 'مسترد کریں' (file sha256 29d27224b758a1cf65003bf4e6f42bc6c12ce144693222e8eff805b8d3f1530e); both appear in the hint as exact code-point substrings, each a whole painted label followed by ' یا ' or '،', with no attached clitic or punctuation inside the label. The hint therefore still names the two buttons it points at, and a glyph-level diff of the two labels against the render path confirms it.",
+    "painted_labels": "PASS. The buttons the hint points at are painted from those keys: question-dock.tsx:621-628 renders AskOptions with options={APPROVAL_OPTIONS} display={approvalOptionDisplay}; approval-words.ts:71,76 resolves t('ui.chat.approval.option.approve') / t('.deny') at render; question-dock.tsx:184 is the only render site of the hint key.",
+    "buttons_are_above": "PASS. The claim 'above' is true in the DOM, not just in the source order: the approval pair is rendered at question-dock.tsx:623 and the hint paragraph at question-dock.tsx:645, as siblings inside the same section with className 'flex flex-col gap-2' (question-dock.tsx:546) - no order/flex-col-reverse class, so the pair paints above the sentence in both LTR and RTL layouts.",
+    "tokens_preserved": "PASS. yes, no, 1, 2 and Escape are present byte-identically; an exhaustive code-point scan of the value finds no manual bidi control (U+200E, U+200F, U+061C, U+202A-U+202E, U+2066-U+2069), no ZWSP/ZWNJ/ZWJ, no BOM and no NBSP; NFC is stable; no leading/trailing space and no double space. Manual bidi controls are forbidden here because the render layer wraps each string in FSI/PDI (style guide, RTL & bidi).",
+    "semantic_loss": "PASS. All three exits survive: (1) approve or deny with the two buttons above, (2) type yes/no/1/2 in the message box and send - and both digits really resolve, approval-words.ts:127-136 maps 1/2 through APPROVAL_OPTIONS.positionally - and (3) press Escape in the message box to stop the turn ('وہیں' anchors Escape to the message box named in the previous clause, which is the turn's interrupt per question-dock.tsx:539-549). No exit is added, dropped or re-scoped.",
+    "scope": "PASS. git diff --stat f64fc8897782..7003c9c5874 = 1 file changed, 1 insertion(+), 1 deletion(-), and the single changed line is the one value. src/i18n/catalogues/en/ui.chat.json is byte-identical across the range; the other 205 values in ur/ui.chat.json are byte-identical (the file's only differing line is this key); keys.gen.ts is untouched; no test, fixture, snapshot or receipt in the tree pins the old Urdu sentence (the only occurrence of the old label region outside the catalogue is the superseded receipt u1-question-dock-hint-1350b32a.json, which is history).",
+    "hindi_precedent": "PASS. hi/ui.chat.json holds 'ऊपर के बटन से स्वीकृति दें या अस्वीकार करें, या yes, no, 1, या 2 टाइप करके भेजें, या टर्न रोकने के लिए संदेश बॉक्स में Escape दबाएँ।' - the same construction the AFTER now uses: source the two acts from the buttons above and keep each locale's painted labels. The Urdu differs only in naming both painted buttons in the plural (بٹنوں) where Hindi says बटन singular; the plural matches the pair actually drawn, so it is the more precise form, and the sibling locale is out of this diff's scope.",
+    "ledger_gate_measured": "This change makes the ur/ui.chat ledger row stale, as expected for any namespace edit: `NODE_OPTIONS=--max-old-space-size=1024 node scripts/i18n/ledger-check.mjs` at this head exits 1 with exactly 2 findings, both on ur/ui.chat - 'stale target_sha256 (ledger dd452057c2f9…, file ff3a28460b50…)' and 'auditor 1: the receipt does not name the target bytes on disk' - 'FAILED — 2 finding(s) across 1078 ledger entr(ies)'. No other locale or namespace is affected, which also independently confirms the change touched nothing else."
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.chat.question_dock.hint.approval",
+      "locale": "ur",
+      "note": "Prior-round record, not a defect: the ledger row's previous audit (instance 1350b32a, 2026-11-08) passed the PREVIOUS bytes and carried an INFO saying the three stacked کریں forms were 'grammatical and verb-final' and that 'a more idiomatic rewrite would break label agreement and is NOT recommended'. This round's change disproves that premise - the labels stay byte-identical and only the misplaced منتخب is dropped - so the earlier observation should not be read as a standing objection to this shape. The earlier audit described older bytes and is superseded by them changing."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.question_dock.hint.approval",
+      "locale": "ur",
+      "note": "Merge prerequisite, not a translation defect: the ur/ui.chat ledger row still names the base bytes. Reassemble it with this receipt (instance 60ec7437, model deepseek/deepseek-flash, result clean) so the row records source 270fc75…/target ff3a284…; that also moves the 1350b32a audit to `superseded` and is what turns the ledger gate green."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.question_dock.hint.approval",
+      "locale": "all",
+      "note": "Carried from the previous round and still true at this head: no test pins hint/label agreement for a non-English locale. interrupt-control.test.mjs:577-590 pins only the English sentence in en/ui.chat.json, so a future locale edit can leave a hint naming the wrong words without a red test. A cross-locale assertion (the hint contains that locale's ui.chat.approval.option.approve and .deny) would prevent it; that is a code change outside this audit's scope."
+    }
+  ],
+  "findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "merge_prerequisite": "Not a translation defect and therefore not counted above: commit i18n/ledger.json with the ur/ui.chat row reassembled from this receipt. `node scripts/i18n/ledger-assemble.mjs --locale ur --file src/i18n/catalogues/ur/ui.chat.json --auditor-instance 60ec7437 --auditor-model deepseek/deepseek-flash --result clean --receipt <this file>` derives both hashes and the counts from disk, and by its own contract copies the receipt byte-for-byte to i18n/receipts/60ec7437.json - either reference that copy from the row or keep this descriptive name (rows may name any i18n/receipts/*.json path, as the row's previous u1-… receipt did).",
+  "references": {
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+    "style_guide": "local-operator/i18n/style-guides/ur.md",
+    "glossary": "local-operator/i18n/glossary.md",
+    "approval_catalogue_sha256": "29d27224b758a1cf65003bf4e6f42bc6c12ce144693222e8eff805b8d3f1530e",
+    "hindi_catalogue_sha256": "7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a"
+  }
+}
