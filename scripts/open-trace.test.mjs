@@ -556,6 +556,69 @@ test("onEnd: runs once on the trace's end, at once for an ended token", () => {
 });
 
 /*
+ * THE `request` STAGE'S TWO WRITERS (agent review round 1, MAJOR 1). The click
+ * stamps where it asked for the stream; the pane stamps only when it had to ask
+ * itself. The click's stamp is a FALLBACK, so the pane's real stamp replaces it
+ * and the fallback stands when the pane adopted the click's connection - which is
+ * what makes the line honest in BOTH outcomes rather than only in the one where
+ * the fix applied.
+ */
+test("a real stamp replaces a fallback", () => {
+	const r = rig();
+	r.at(1000);
+	const t = r.tracer.begin("abc123", "sidebar");
+	r.at(1002);
+	r.tracer.note("abc123", "request", t, { fallback: true });
+	r.at(1200);
+	r.tracer.note("abc123", "request", t);
+	r.at(1300);
+	r.tracer.note("abc123", "sendable");
+	r.at(1400);
+	r.tracer.note("abc123", "content");
+	r.flushFrames(1416);
+	assert.equal(r.lines.length, 1);
+	assert.equal(
+		fields(r.lines[0]).request,
+		"200",
+		"the pane's own ask is the request, not the click's guess",
+	);
+});
+
+test("a fallback fills the stage when nothing better arrives", () => {
+	const r = rig();
+	r.at(1000);
+	r.tracer.begin("abc123", "sidebar");
+	r.at(1003);
+	r.tracer.note("abc123", "request", 1, { fallback: true });
+	r.at(1300);
+	r.tracer.note("abc123", "sendable");
+	r.at(1400);
+	r.tracer.note("abc123", "content");
+	r.flushFrames(1416);
+	assert.equal(
+		fields(r.lines[0]).request,
+		"3",
+		"the click's ask stands when the pane adopted it",
+	);
+});
+
+test("a fallback never displaces a real stamp, and never overwrites another", () => {
+	const r = rig();
+	r.at(500);
+	const t = r.tracer.begin("abc123", "sidebar");
+	r.at(510);
+	r.tracer.note("abc123", "request", t);
+	r.at(520);
+	r.tracer.note("abc123", "request", t, { fallback: true });
+	r.at(590);
+	r.tracer.note("abc123", "sendable");
+	r.at(600);
+	r.tracer.note("abc123", "content");
+	r.flushFrames(620);
+	assert.equal(fields(r.lines[0]).request, "10", "the real stamp holds");
+});
+
+/*
  * Wiring, asserted against the source like `window-mode.test.mjs` does: these
  * are facts about call sites, not about the tracer.
  */
@@ -564,16 +627,19 @@ const read = (rel) => readFileSync(join(SRC, rel), "utf8");
 
 test("wiring: every stage has its one hook and the entrances start traces", () => {
 	const open = read("features/chat/open-conversation.ts");
+	const hook = read("shared/hooks/use-canonical-session.ts");
 	assert.match(
 		open,
 		/*
-		 * The click's order, pinned: the trace starts, the STREAM IS ASKED FOR, and
-		 * only then does the store write happen. The prewarm between them is the fix
-		 * (`prewarmSessionStream`): a request issued after the store write is a
-		 * request that waits for React's passive effect, which is the 0.2-16.6 s
-		 * queue the operator's trace measured.
+		 * The click's order, pinned: the trace starts, the `request` stage is noted as a
+		 * FALLBACK, and only then does the guarded prewarm ask the desktop plane for the
+		 * stream - still before the store write. The prewarm between them is the fix
+		 * (`prewarmSessionStream`): a request issued after the store write is a request
+		 * that waits for React's passive effect, which is the 0.2-16.6 s queue the
+		 * operator's trace measured. The `try` is the guard: the optimisation must never
+		 * be able to eat the click (agent review round 1, MINOR 3).
 		 */
-		/const traceId = beginOpenTrace\(sessionId, entrance\);\s*if \(traceId !== null\) \{[\s\S]{0,1600}?prewarmSessionStream\(sessionId\);\s*openTrace\.note\(sessionId, "request", traceId\);\s*\}\s*const store = useCanonicalSessionsStore\.getState\(\);/,
+		/const traceId = beginOpenTrace\(sessionId, entrance\);\s*if \(traceId !== null\) \{[\s\S]{0,2400}?openTrace\.note\(sessionId, "request", traceId, \{ fallback: true \}\);[\s\S]{0,600}?try \{\s*prewarmSessionStream\(sessionId, \{[\s\S]{0,600}?\} catch \{[\s\S]{0,200}?\}\s*\}\s*const store = useCanonicalSessionsStore\.getState\(\);/,
 	);
 	assert.match(
 		open,
@@ -597,14 +663,20 @@ test("wiring: every stage has its one hook and the entrances start traces", () =
 		/if \(frame\.type === "snapshot"\) \{[\s\S]{0,200}openTrace\.note\(sessionId, "snapshot", openTraceToken\)/,
 	);
 	/*
-	 * The REQUEST stage: noted immediately before the transport call, so the line
-	 * separates the renderer's own overhead from the backend's service time. A
-	 * regex rather than "the string exists somewhere": the stage is only honest
-	 * if it sits on the one line that issues the request.
+	 * The REQUEST stage: the pane stamps it from the subscription's DECISION, and
+	 * only when it opened a connection of its own. A stamp beside the transport call
+	 * would report the commit on the adopted path - the click asked, the pane merely
+	 * picked the connection up - so that shape is asserted GONE, and the stamp is
+	 * pinned inside the `requested` arm.
 	 */
-	assert.match(
-		read("shared/hooks/use-canonical-session.ts"),
+	assert.doesNotMatch(
+		hook,
 		/openTrace\.note\(sessionId, "request", openTraceToken\);\s*dispose = subscribeDesktopStream\(/,
+		"a stamp beside the call reports the commit on the adopted path",
+	);
+	assert.match(
+		hook,
+		/\(decision\) => \{[\s\S]{0,1200}?if \(decision === "requested"\)\s*openTrace\.note\(sessionId, "request", openTraceToken\);/,
 	);
 	// The token is captured per connection, at connect time.
 	assert.match(

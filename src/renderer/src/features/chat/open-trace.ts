@@ -47,6 +47,16 @@
  *                preamble: a passive effect cannot run until React commits, and it
  *                is then flushed in a task of its own - so this segment is where a
  *                main thread busy with the outgoing view shows up as silence.
+ *                TWO WRITERS, ONE NUMBER. The click stamps this stage where it asks
+ *                the desktop plane for the stream (`prewarmSessionStream`), and the
+ *                pane stamps it again when it had to open its OWN connection because
+ *                that prewarm was refused - a refused prewarm is a request that did
+ *                not leave at the click, and this line must not claim it did (agent
+ *                review round 1, MAJOR 1: every refusal reported `request=0`). The
+ *                click's stamp is a FALLBACK (see `note`): the pane's own ask
+ *                replaces it, and the click's stands only when no pane stamp comes,
+ *                which is the adopted case - there the request really did leave with
+ *                the click.
  *   - `snapshot` the session stream's first `snapshot` frame for the target was
  *                received and parsed (before it is folded into state). Counted
  *                only from a stream connection opened under THIS trace (see
@@ -146,6 +156,14 @@ interface Trace {
 	entrance: OpenEntrance;
 	start: number;
 	stages: Partial<Record<OpenStage, number>>;
+	/**
+	 * Stages whose stamp is a FALLBACK: a value recorded by a writer that knows
+	 * the stage happened but not that it is the one to report. Folded into
+	 * `stages` at `finish` only when nothing better stamped the stage - see
+	 * `note`. Kept apart rather than flagged in place so a real stamp always
+	 * wins, whatever order the two arrive in.
+	 */
+	fallbacks: Partial<Record<OpenStage, number>>;
 	timer: unknown;
 	frameRequested: boolean;
 	endListeners: Array<() => void>;
@@ -159,11 +177,18 @@ export interface OpenTracer {
 	 * write wins. With `token`, also only if that trace is still the open one:
 	 * an observer that captured `currentToken()` when it started (the stream
 	 * connection) cannot stamp a later trace for the same session.
+	 *
+	 * With `options.fallback`, the stamp is recorded ASIDE as the stage's value
+	 * only if nothing better arrives: the last writer still wins, but a fallback
+	 * never displaces a real stamp, and a real stamp always replaces a fallback.
+	 * That is the `request` stage's shape - the click says where the ask left
+	 * from, and the pane corrects it if the connection it asked for was refused.
 	 */
 	note(
 		sessionId: string | null | undefined,
 		stage: OpenStage,
 		token?: number | null,
+		options?: { fallback?: boolean },
 	): void;
 	/** Ends the open trace for `sessionId` with a terminal non-settled outcome. */
 	fail(sessionId: string | null | undefined, outcome: "missing" | "left"): void;
@@ -215,6 +240,12 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 		if (!trace) return;
 		current = null;
 		deps.clearTimer(trace.timer);
+		// A stage nothing better stamped reports the fallback, so a line written
+		// before the pane could correct it still carries the ask's own time.
+		for (const stage of Object.keys(trace.fallbacks) as OpenStage[]) {
+			if (trace.stages[stage] === undefined)
+				trace.stages[stage] = trace.fallbacks[stage];
+		}
 		deps.log(formatOpenTraceLine(trace, outcome, supersededBy));
 		for (const listener of trace.endListeners.splice(0)) listener();
 	};
@@ -240,6 +271,7 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 				entrance,
 				start: deps.now(),
 				stages: {},
+				fallbacks: {},
 				timer: undefined,
 				frameRequested: false,
 				endListeners: [],
@@ -250,10 +282,20 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 			current = trace;
 			return token;
 		},
-		note(sessionId, stage, token) {
+		note(sessionId, stage, token, options) {
 			const trace = current;
 			if (!trace || !sessionId || trace.sessionId !== sessionId) return;
 			if (token !== undefined && token !== trace.token) return;
+			if (options?.fallback === true) {
+				// Held aside, never written into `stages`: a fallback is a claim about
+				// what happened that a better-informed writer may still contradict.
+				if (
+					trace.stages[stage] === undefined &&
+					trace.fallbacks[stage] === undefined
+				)
+					trace.fallbacks[stage] = deps.now();
+				return;
+			}
 			if (stage === "content" && !trace.frameRequested) {
 				trace.frameRequested = true;
 				record(trace, "content");

@@ -1,5 +1,12 @@
-import { prewarmSessionStream } from "@shared/api/local-operator/desktop-api";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	discardPrewarmedStream,
+	prewarmSessionStream,
+	prewarmedSessionStreamId,
+} from "@shared/api/local-operator/desktop-api";
+import {
+	remoteOwnedId,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { getCurrentPath } from "@shared/utils/path-utils";
 import type { NavigateFunction } from "react-router-dom";
 import { type OpenEntrance, openTrace, watchSendable } from "./open-trace";
@@ -97,6 +104,42 @@ export function beginOpenTrace(
 	return traceId;
 }
 
+/**
+ * THE PREWARM DIES WITH THE SWITCH THAT ASKED FOR IT.
+ *
+ * `openConversation` asks for the target's stream before React renders. If the
+ * navigation then goes somewhere else - the user leaves chat for Settings, a
+ * refused open restores the conversation they came from, a later route wins -
+ * nothing will ever subscribe to that connection and it would sit open until the
+ * prewarm's own TTL (agent review round 1, NIT 1: one stream held for a minute
+ * after the click that abandoned it).
+ *
+ * So the route is watched, for as long as the app runs: one listener pair, armed
+ * by the first switch that prewarms, whose body is two reads and - almost always -
+ * a `null`. It is safe by construction rather than by a flag on the prewarm:
+ * `discardPrewarmedStream` closes only the prewarm for the id it is handed, and an
+ * adopted prewarm is already gone, so a late event cannot touch a newer click's
+ * connection. Non-DOM hosts (the node test suites, the mini view) have no router
+ * to watch and return here.
+ */
+let watchingPrewarmRoute = false;
+function watchPrewarmAbandonment(): void {
+	if (watchingPrewarmRoute) return;
+	if (typeof window === "undefined") return;
+	if (typeof window.addEventListener !== "function") return;
+	watchingPrewarmRoute = true;
+	const check = () => {
+		const target = prewarmedSessionStreamId();
+		if (!target) return;
+		// Whole-segment match: a session id is one segment of `/chat/<id>`, and a
+		// substring test against the whole path could match a prefix of another.
+		if (getCurrentPath().split("/").includes(target)) return;
+		discardPrewarmedStream(target);
+	};
+	window.addEventListener("hashchange", check);
+	window.addEventListener("popstate", check);
+}
+
 export function openConversation(
 	navigate: NavigateFunction,
 	sessionId: string,
@@ -123,12 +166,39 @@ export function openConversation(
 		 * request off that queue; the pane adopts the connection when it commits
 		 * (`subscribeDesktopStream`), and paints nothing itself.
 		 *
-		 * The `request` stage is noted from HERE when a prewarm goes out, so the
-		 * trace line reports when the desktop plane was actually asked rather than
-		 * when the subscription was finally built.
+		 * The `request` stage is noted from HERE as a FALLBACK, so the trace line
+		 * reports when the desktop plane was actually asked rather than when the
+		 * subscription was finally built. It is a fallback because the ask can be
+		 * REFUSED - the pane then opens its own connection and stamps the real
+		 * `request`, replacing this one (agent review round 1, MAJOR 1: stamping here
+		 * unconditionally reported `request=0` on switches where nothing left at the
+		 * click). When the pane adopts, this stamp is the honest number and it stands.
+		 *
+		 * The prewarm is GUARDED. It is an optimisation, and an optimisation that can
+		 * throw must not be able to eat the click: without this the throw would take
+		 * the store write and the `navigate` with it, leaving the user on the
+		 * conversation they pressed away from (agent review round 1, MINOR 3).
 		 */
-		prewarmSessionStream(sessionId);
-		openTrace.note(sessionId, "request", traceId);
+		openTrace.note(sessionId, "request", traceId, { fallback: true });
+		const before = useCanonicalSessionsStore.getState();
+		try {
+			prewarmSessionStream(sessionId, {
+				/*
+				 * THIS conversation's placement, not the departed pane's declaration:
+				 * the complete-contract flag is per-conversation, and inheriting it asked
+				 * for a local target's stream under a peer's declaration (agent review
+				 * round 1, MINOR 1).
+				 */
+				remoteOwned: remoteOwnedId(
+					before.sessions,
+					before.placementFacts,
+					sessionId,
+				),
+			});
+			watchPrewarmAbandonment();
+		} catch {
+			// The click proceeds: no prewarm simply means the pane asks for itself.
+		}
 	}
 	const store = useCanonicalSessionsStore.getState();
 	const pending = store.openSession(sessionId);
