@@ -53,7 +53,7 @@
 	"ui.hub.pages.empty.category.title": "Không có tác nhân trong {category}.",
 	"ui.hub.pages.empty.category.body": "Chưa có gì trong danh mục này. Hãy xóa bộ lọc để xem toàn bộ trung tâm.",
 	"ui.hub.pages.empty.search.title": "Không có tác nhân khớp với tìm kiếm đó.",
-	"ui.hub.pages.empty.search.body": "Không tên hay mô tả tác nhân nào chứa nội dung đó. Hãy xóa tìm kiếm để xem toàn bộ trung tâm.",
+	"ui.hub.pages.empty.search.body": "Không có tên hay mô tả tác nhân nào chứa nội dung đó. Hãy xóa tìm kiếm để xem toàn bộ trung tâm.",
 	"ui.hub.pages.empty.public.title": "Trung tâm đang trống.",
 	"ui.hub.pages.empty.public.body": "Chưa ai xuất bản tác nhân nào. Tác nhân của bạn có thể là tác nhân đầu tiên.",
 	"ui.hub.pages.clear.filter": "Xóa bộ lọc",

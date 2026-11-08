@@ -49,7 +49,7 @@
 	"ui.hub.pages.org.no_access_body": "你不是{org}的成员，因此这里不列出其智能体。所有者可以再次邀请你。",
 	"ui.hub.pages.org.that_organization": "该组织",
 	"ui.hub.pages.empty.org.title": "此组织尚无共享的智能体。",
-	"ui.hub.pages.empty.org.body": "发布到{org}的智能体将在此显示，供其成员查看。",
+	"ui.hub.pages.empty.org.body": "发布到{org}的智能体会在此显示，供其成员查看。",
 	"ui.hub.pages.empty.category.title": "{category}中没有智能体。",
 	"ui.hub.pages.empty.category.body": "此分类中暂无内容。清除筛选即可查看整个中心。",
 	"ui.hub.pages.empty.search.title": "没有符合该搜索条件的智能体。",

@@ -52,7 +52,7 @@
 	"ui.hub.pages.empty.org.body": "{org} में प्रकाशित एजेंट यहाँ उसके सदस्यों को दिखते हैं।",
 	"ui.hub.pages.empty.category.title": "{category} में कोई एजेंट नहीं।",
 	"ui.hub.pages.empty.category.body": "इस श्रेणी में अभी कुछ नहीं है। पूरा हब देखने के लिए फ़िल्टर हटाएँ।",
-	"ui.hub.pages.empty.search.title": "उस खोज से कोई एजेंट मेल नहीं खाता।",
+	"ui.hub.pages.empty.search.title": "इस खोज से कोई एजेंट मेल नहीं खाता।",
 	"ui.hub.pages.empty.search.body": "किसी एजेंट का नाम या विवरण इससे मेल नहीं खाता। पूरा हब देखने के लिए खोज हटाएँ।",
 	"ui.hub.pages.empty.public.title": "हब खाली है।",
 	"ui.hub.pages.empty.public.body": "अभी किसी ने कोई एजेंट प्रकाशित नहीं किया है। आपका पहला हो सकता है।",
