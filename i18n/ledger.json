@@ -88909,104 +88909,15 @@
 			"status": "audited"
 		},
 		{
-			"locale": "ru",
-			"namespace": "ui.hub.pages",
-			"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
-			"target_sha256": "ac2b823544a09aaf4606a3c22803f93121bc758cbf33231d770fb03626f81fc0",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "8e74cbf9-pages",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/8e74cbf9-pages.json",
-					"receipt_sha256": "c37ec1276f4313ec79f12b6c62801e1ebc4ad8bf48afe573699fd1dcf1d375d6",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "ru",
-			"namespace": "ui.hub.teams",
-			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
-			"target_sha256": "90494f6a40cad0406bf8d2a0b13527645f4b85e82f6f02c05fc4f6493b514f1f",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "88dcbe8a-teams",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/88dcbe8a-teams.json",
-					"receipt_sha256": "4d2523e77a6dfe91f298b1e539c7bb599876a762a2fae396256e3f26815010a7",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "vi",
-			"namespace": "ui.hub.pages",
-			"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
-			"target_sha256": "04590db6c40efc1c3c3f31f1ad9d5bc25f6b2d51c33363f4a00dc9cb77777c82",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "fd16ff0a-hub-pages-r2-pages",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/fd16ff0a-hub-pages-r2-pages.json",
-					"receipt_sha256": "79ebf01d0c0f2d2ab9b1a43d54e9579a3fdb75a622d90afd3f09cc3cc24be36e",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
-				}
-			],
-			"status": "audited"
-		},
-		{
 			"locale": "es",
 			"namespace": "ui.hub.pages",
 			"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
 			"target_sha256": "f01512e7b7d680f3e0edaa3d712d85bfb457bc540bd9751bcbd37159ba2ea0cc",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
+				"model": "radient/auto",
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -89014,19 +88925,116 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-08",
 					"result": "clean",
-					"instance": "2ff5f985-pages",
+					"instance": "2ff5f985-pages-v2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2ff5f985-pages.json",
-					"receipt_sha256": "c6ca94de4edc15886dceb64a8919b6c91b6e7aa82d88c8b121cdfe4d0e30a77f",
+					"receipt": "i18n/receipts/2ff5f985-pages-v2.json",
+					"receipt_sha256": "fc25b3c9a432111c7c0a728f76ec359b08189b007aa1ac14a213d80078537d0d",
+					"scope": "the 16 key(s) this PR adds to ui.hub.pages for es; every other key in the namespace is byte-identical to the base and was not re-audited",
 					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "ccbcf384a7270728c37ef2ca94b924a9be49b16a52d7077f0d207ca36c235a2b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "c6732d07a0de",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/c6732d07a0de.json",
+							"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+					"target_sha256": "c6de82c391873f4ba3734a3f2fb77039454ef4a242c033b786ac2f8784dee697",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "acd53e2cf056-r4-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/acd53e2cf056-r4-es.json",
+							"receipt_sha256": "2e8466fb2fa602f6cd2ee49dc89149bff0a55e0e7b2e30014fee7dd6813846b2",
+							"scope": "ui.hub.pages: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+					"target_sha256": "6d13c1bc52d7217446b728226c37b5afed423dfc2ed1e0639508b87b05134683",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "fafd8194566d-merge-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fafd8194566d-merge-es.json",
+							"receipt_sha256": "561aa02b039de445a2a1cad4f80deafe3b1c86d64068cc9f355e8815e435dd77",
+							"scope": "ui.hub.pages: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20",
+					"target_sha256": "2daf5d10c96963ece3918e6433c9834d53736b8fd608d6763677e1939a383be3",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "78c4c8dbce2e-ui1753-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/78c4c8dbce2e-ui1753-es.json",
+							"receipt_sha256": "18cb3169c02a8a6d7d70ae4c3f80078cebb031f1100ffc5986fa844a523dbb91",
+							"scope": "the 3 keys this PR added to ui.hub.pages (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -89035,8 +89043,8 @@
 			"target_sha256": "f19073d108d542f23947a78a52f01c3e290dc73224aa365f6e25171aae88ade4",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
+				"model": "radient/auto",
+				"date": "2026-10-26"
 			},
 			"auditors": [
 				{
@@ -89044,19 +89052,66 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-08",
 					"result": "clean",
-					"instance": "2ff5f985-teams",
+					"instance": "2ff5f985-teams-v2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2ff5f985-teams.json",
-					"receipt_sha256": "9556b8e8df4d63296978b71b17f54e291f7d6e04de2a4a1f04822b5af07466d6",
+					"receipt": "i18n/receipts/2ff5f985-teams-v2.json",
+					"receipt_sha256": "11d7fe4f23d0322249df6d7d2f247fea0d9c1284674b95d985f0e84d662cc214",
+					"scope": "the 1 key(s) this PR adds to ui.hub.teams for es; every other key in the namespace is byte-identical to the base and was not re-audited",
 					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "19cfae6a6ccac69ed022387b8305819ff74fd8d9e0b7e90e39fa2d7fa28e0c18",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a87a6ca87ae3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a87a6ca87ae3.json",
+							"receipt_sha256": "43eb4783d26037f0c6128d12532d4fca8a183f4258dc48fd05c3b9d82199cdb0"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+					"target_sha256": "4b813ab392272a05c3fd55288c2458cea7672522c43b856e9a05f42e9982fe59",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "e9688c682c8f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e9688c682c8f.json",
+							"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -89065,8 +89120,9 @@
 			"target_sha256": "79205724a6f674e880ed72431e5d17da107d3101567b0cf26304662adfd577db",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
+				"model": "radient/auto",
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -89074,19 +89130,116 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-08",
 					"result": "clean",
-					"instance": "cf863242ed03-fr-hub-pages",
+					"instance": "cf863242ed03-fr-hub-pages-v2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cf863242ed03-fr-hub-pages.json",
-					"receipt_sha256": "2ffc90bb090a9151289b6e001a5f15ff6bbe4b79208083dd51ef3a764fff2636",
+					"receipt": "i18n/receipts/cf863242ed03-fr-hub-pages-v2.json",
+					"receipt_sha256": "86d72e7bbd5502af6e49053276037bf7189c6bb0bdd5eda8a5c7d9d9807c7464",
+					"scope": "the 16 key(s) this PR adds to ui.hub.pages for fr; every other key in the namespace is byte-identical to the base and was not re-audited",
 					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "21fab8c093c0df4c899c7b4ac924369796510410ecfefc449de7e02ff3881ba7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "caa0f0b9574d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/caa0f0b9574d.json",
+							"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+					"target_sha256": "949a30eb0e7bb7a8a0c8800f476bd06ee84d559043fb3569a40f63db59d55df9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "e67567d1d626-r4-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e67567d1d626-r4-fr.json",
+							"receipt_sha256": "6649136f08be868848f662a94ab8607c3756dbcac7239ac9e6bf8df7cbcd5e16",
+							"scope": "ui.hub.pages: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+					"target_sha256": "eebd0cf4cb0ab660a937b0c40b3cd300ad329e7e8020f4c2c8c5180c03a5f7d4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro (fallback from anthropic/claude-sonnet-5-5, provider quota)",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "4e009299149e-merge-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4e009299149e-merge-fr.json",
+							"receipt_sha256": "f140cf498fe3a28fc39aa50ab02d4c744c43624dd011ad1639f2e821a55ee23d",
+							"scope": "ui.hub.pages: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20",
+					"target_sha256": "45d5c394ee2aa6ad3074574a4e2b8a9b3e1f70a96db293a1b0e1a8af55bd0449",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "6ff7a7a1f3b4-ui1753-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6ff7a7a1f3b4-ui1753-fr.json",
+							"receipt_sha256": "f6197d6aa3d6a949739405047da9354dd8830da6ecfc072a715d2925fa77aeb3",
+							"scope": "the 3 keys this PR added to ui.hub.pages (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -89095,8 +89248,8 @@
 			"target_sha256": "b6e741a8dce567644f7eadd7045edd252f638b0d3e3b8301a0a5da903df6938f",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
+				"model": "radient/auto",
+				"date": "2026-10-26"
 			},
 			"auditors": [
 				{
@@ -89104,199 +89257,67 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-08",
 					"result": "clean",
-					"instance": "cf863242ed03-fr-hub-teams",
+					"instance": "cf863242ed03-fr-hub-teams-v2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cf863242ed03-fr-hub-teams.json",
-					"receipt_sha256": "dd7052168b9a1cd8578317a33082b3d614ad83280339a96c9adc40841af07fd5",
+					"receipt": "i18n/receipts/cf863242ed03-fr-hub-teams-v2.json",
+					"receipt_sha256": "1111042d2e0b21d26d31d74ad493ef7e607f6cd5ce78dd619e5063a7fa04d46b",
+					"scope": "the 1 key(s) this PR adds to ui.hub.teams for fr; every other key in the namespace is byte-identical to the base and was not re-audited",
 					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
 				}
 			],
-			"status": "audited"
-		},
-		{
-			"locale": "hi",
-			"namespace": "ui.hub.teams",
-			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
-			"target_sha256": "2db41a12c1229c95b0089f3f36d8bbeaaa1026095382c4483301d962a653ae30",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
-			},
-			"auditors": [
+			"status": "audited",
+			"superseded": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "7c948004-hub-hi-teams",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/7c948004-hub-hi-teams.json",
-					"receipt_sha256": "a9fd28e68c3756aa570679c480764c02a8829ddf456d2b149bd846f622b3b9c3",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "ur",
-			"namespace": "ui.hub.pages",
-			"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
-			"target_sha256": "64db9972172dbc6646741a4a977c84d52d46d0225a6e5928bc9ab4d2a6376665",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
-			},
-			"auditors": [
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "8c73962ef3c16f1afeccfc148a884aad7ca54d838084277b4f68d98481bbdfa0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "01adc4da374e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/01adc4da374e.json",
+							"receipt_sha256": "f1cb9d8554050301933621f6c9a9a00143bbf048fa31eced56bd1ba2e988bc70"
+						}
+					],
+					"status": "audited"
+				},
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "95bc536f37d9-pages",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/95bc536f37d9-pages.json",
-					"receipt_sha256": "c625ab9d6188120462aa907bce8a0902bc2884821fd53d8a2f713f3a28afb4fc",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+					"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+					"target_sha256": "c24e2db54df54bf99673141ce02ec9f056d6c9e77ed63be4986ddf9264b38859",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "4acffbcd1c3d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4acffbcd1c3d.json",
+							"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
+							"note": "i18n/audits/evidence/fr/ui.hub.teams/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 49-key file / 2 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
+						}
+					],
+					"status": "audited"
 				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "ur",
-			"namespace": "ui.hub.teams",
-			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
-			"target_sha256": "60680030ea7a7614e6ce7176d5c8dd9a654c56eb9f105c03f16af05d661afcc3",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "95bc536f37d9-teams",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/95bc536f37d9-teams.json",
-					"receipt_sha256": "245240a836ad4fb696ca47bbcc5a9b249e9f44c10c6f9969a78fdaf1b623e69f",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "vi",
-			"namespace": "ui.hub.teams",
-			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
-			"target_sha256": "40a65f956e637bad9cbdf18adf0815cecbafd122d26809043dcf100633ed719f",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "0f28bdfc-hub-teams-r1-teams",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/0f28bdfc-hub-teams-r1-teams.json",
-					"receipt_sha256": "d4c3d6538b78131b400f6732401a494b9d4a1590493b9721bdd6f66be2b4929a",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "zh-CN",
-			"namespace": "ui.hub.pages",
-			"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
-			"target_sha256": "1460736d8cbf2e5250396570680ef130cb29eab9c312c923b09fedf86c8e0d1c",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "0188cd92-hub-pages-r2-pages",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/0188cd92-hub-pages-r2-pages.json",
-					"receipt_sha256": "61667176cedbea3b44171add8c05db0824ef966320522bafa62da645ba256f95",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "zh-CN",
-			"namespace": "ui.hub.teams",
-			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
-			"target_sha256": "e2d4fb7642673a0b5bef52357b91f6fbafdbde85d1bb473999facbe6149b8f90",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "ba884773-teams",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/ba884773-teams.json",
-					"receipt_sha256": "b204d24461bd51f433d618179e12438df765dcee58ed8824f3e5e7a6f95041c0",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
-				}
-			],
-			"status": "audited"
+			]
 		},
 		{
 			"locale": "hi",
@@ -89305,8 +89326,9 @@
 			"target_sha256": "c0899f88ccf51cdb52cc955338f8062d5d59beebccb64bfd792d9c8042516738",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-08"
+				"model": "radient/auto",
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -89314,19 +89336,1049 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-08",
 					"result": "clean",
-					"instance": "470ac3a7-hub-hi-r2-pages",
+					"instance": "470ac3a7-hub-hi-r2-pages-v2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/470ac3a7-hub-hi-r2-pages.json",
-					"receipt_sha256": "2248c17c449cc9d23477c2f62443228f341cb0bd848a5b45f5343f2e3a4c0e09",
+					"receipt": "i18n/receipts/470ac3a7-hub-hi-r2-pages-v2.json",
+					"receipt_sha256": "32ef232c7a03cc5888b860a6d8ea37578bcbe2bfcbc6cd958c3206dd627f5792",
+					"scope": "the 16 key(s) this PR adds to ui.hub.pages for hi; every other key in the namespace is byte-identical to the base and was not re-audited; a round-2 delta re-audit covers the five corrected strings",
 					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "2fe3a57086e80cf270ce9d3f8d3ef59b88b78f569ba188f54a39463fa1483a6b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "9f3c2137fe40",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9f3c2137fe40.json",
+							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+					"target_sha256": "d55a6f04583acd064d1b4051dd57371c2ffc2de62f046757967c260f922fc994",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean-with-findings",
+							"instance": "740a6d12c8a5-r4-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/740a6d12c8a5-r4-hi.json",
+							"receipt_sha256": "0d49d1b581464c3c5eac0ef67a93984a788b6d051ceddbe30cc23f6a1a039ed5",
+							"scope": "ui.hub.pages: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+					"target_sha256": "6c0de7648e2af86aa22907d646b49108748975182c53896829c68b3c6d700b44",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto (fallback; provider 429)",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "9f60aa2edb42-merge-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9f60aa2edb42-merge-hi.json",
+							"receipt_sha256": "a525c23bbc8c220f4f3a7ca3f91a94b83b903ae645b52ae2c96358796717a2d3",
+							"scope": "ui.hub.pages: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20",
+					"target_sha256": "7c8111633ed43fa7315fd79ea9235a3199fa90147680dfcb702aee7df670ab3b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "050f568ab597",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/050f568ab597.json",
+							"receipt_sha256": "2e140f685e9a147aceb472be77294577a1336adf8b65d80e867cb4710e9b4775",
+							"scope": "the 3 keys this PR added to ui.hub.pages (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.hub.teams",
+			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+			"target_sha256": "2db41a12c1229c95b0089f3f36d8bbeaaa1026095382c4483301d962a653ae30",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "7c948004-hub-hi-teams-v2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/7c948004-hub-hi-teams-v2.json",
+					"receipt_sha256": "4fb77fed4ec612de9d6e9050c60371f0894b2dcb07277974ef1765ce1580efa7",
+					"scope": "the 1 key(s) this PR adds to ui.hub.teams for hi; every other key in the namespace is byte-identical to the base and was not re-audited",
+					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "734157cc9890f1b0ed37dd20a4406d4682bf69fba85c38999a258a75616da967",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "9f3c2137fe40",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9f3c2137fe40.json",
+							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+					"target_sha256": "693742d696271132acd44eb8d7217e0b43c9ed7772ce56e8d4211f73a48880a2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "c512d3228b7f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c512d3228b7f.json",
+							"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.hub.pages",
+			"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+			"target_sha256": "ac2b823544a09aaf4606a3c22803f93121bc758cbf33231d770fb03626f81fc0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "8e74cbf9-pages-v2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/8e74cbf9-pages-v2.json",
+					"receipt_sha256": "d0e5e9cd115cd42f6caf09b888a76ae76c2688819bb584eda2f6088b87dd9be4",
+					"scope": "the 16 key(s) this PR adds to ui.hub.pages for ru; every other key in the namespace is byte-identical to the base and was not re-audited; a round-2 delta re-audit covers the five corrected strings",
+					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "953c2f0fe1c77cb9c9f37528e4e1520761b3a2c6ce8a27dfa5969d00ce5bd9cd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a7f4f2fdf169",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a7f4f2fdf169.json",
+							"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+					"target_sha256": "83e7863d0310840c70d6c4c2f690f65f273e4bbb71bb064b436ca0f76307e3c9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "f684e610b106-r4-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f684e610b106-r4-ru.json",
+							"receipt_sha256": "9111b90ae562405349dce2bad2522025bc525182c4d0fd57979129ce27b7fb25",
+							"scope": "ui.hub.pages: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+					"target_sha256": "316fe29f54f1a5dfaff0a0b66727cde172c744bd11f19afbe25d178bd682327c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "889ea925e187-merge-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/889ea925e187-merge-ru.json",
+							"receipt_sha256": "48e81191749ccb2bd7ec6dedcb3239e14c0ffc80bc57ae6e892aca491276c27e",
+							"scope": "ui.hub.pages: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20",
+					"target_sha256": "ae290eb91cf9534a980cc9a8a917a63152f1bcd67634a00c201b58d01e6c0188",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "05dd4fa2b221-ui1753-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/05dd4fa2b221-ui1753-ru.json",
+							"receipt_sha256": "ec04548218150371863adc9922ded3953b91d16ccf9a8a8a460cfc00538a732a",
+							"scope": "the 3 keys this PR added to ui.hub.pages (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.hub.teams",
+			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+			"target_sha256": "90494f6a40cad0406bf8d2a0b13527645f4b85e82f6f02c05fc4f6493b514f1f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "88dcbe8a-teams-v2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/88dcbe8a-teams-v2.json",
+					"receipt_sha256": "15e24b5b2383a64de8bf83bb26f1edaf952e34d47d4afda6169b772eb9935883",
+					"scope": "the 1 key(s) this PR adds to ui.hub.teams for ru; every other key in the namespace is byte-identical to the base and was not re-audited",
+					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "293db853e0f9f5e4cee72a92073d47ebc4f933f858babf9a01854ddbb1359161",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "cec82e80ef07",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cec82e80ef07.json",
+							"receipt_sha256": "014943d97be0008d208fcaff5700cba5a9d074859fb499fb501725fb58a910fa"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+					"target_sha256": "31b2d3bffac3f7a0b8ffcc475a9409fceb876acf40d13283109c8cf19e13c4ee",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "114c8d6e8551",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/114c8d6e8551.json",
+							"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.hub.pages",
+			"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+			"target_sha256": "64db9972172dbc6646741a4a977c84d52d46d0225a6e5928bc9ab4d2a6376665",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "95bc536f37d9-pages-v2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/95bc536f37d9-pages-v2.json",
+					"receipt_sha256": "64c4efce4ef35c568ac02581682131bbe4c31b2472af3c02a64c5c55b4dbc74b",
+					"scope": "the 16 key(s) this PR adds to ui.hub.pages for ur; every other key in the namespace is byte-identical to the base and was not re-audited",
+					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "8c9bcd5bfc64b7de15a2bbab828110b7afc5d0a90e005711fd6655e0b8c1efd2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "74bd1d94a511",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/74bd1d94a511.json",
+							"receipt_sha256": "fb36dbd7c46376b42467909f6b8428d58fb43dff756e7beb275073403fe6802c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+					"target_sha256": "8e6bfbaae61d4539aa004bcd98c2876760ad0d439e6c5a29e6e09dec3e25d930",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "d2cc21c7d250-r4-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2cc21c7d250-r4-ur.json",
+							"receipt_sha256": "de15eb15600b56e8737e0787a17e9d8e6d86a531d6bd729c8cfdb4250ccbc33b",
+							"scope": "ui.hub.pages: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+					"target_sha256": "59c2c9382424df511177c8ad3da80f5be1fff496248c85fd3f6c15e7e25939bc",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "91a92bcb62b5-merge-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/91a92bcb62b5-merge-ur.json",
+							"receipt_sha256": "83953dd7a60d40bf61d19f49afb6a5095a0a774938ba9cda0f2c31f1e9ee14e0",
+							"scope": "ui.hub.pages: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20",
+					"target_sha256": "c44c3f18c229e9d7a408d3361855af5da3a4820cecb061b2ee898e7a234e30e1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "ab407cfa3e46-ui1753-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ab407cfa3e46-ui1753-ur.json",
+							"receipt_sha256": "6a201068e55667716093e6d48ad24439a3ddff6945641f0dbb06ece7c0203240",
+							"scope": "the 3 keys this PR added to ui.hub.pages (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.hub.teams",
+			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+			"target_sha256": "60680030ea7a7614e6ce7176d5c8dd9a654c56eb9f105c03f16af05d661afcc3",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "95bc536f37d9-teams-v2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/95bc536f37d9-teams-v2.json",
+					"receipt_sha256": "84838f764622937f6467d779fbf0430ff90c41f35a224f4ba885c7cf4a7960b0",
+					"scope": "the 1 key(s) this PR adds to ui.hub.teams for ur; every other key in the namespace is byte-identical to the base and was not re-audited",
+					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "7c548a02ccd34bef24865ba9459e47ddf1910e1ce6d85b4420b8bb4acbb26b5f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "2ae1e9eafd56",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2ae1e9eafd56.json",
+							"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+					"target_sha256": "256bb29b71ef571f7652ae455baa8b5f15f731dd0bdb08ab72e22a5d47daa4a6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "d959bfda62d5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d959bfda62d5.json",
+							"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+							"note": "Record: i18n/audits/evidence/ur/ui.hub.teams/lit2-ur-r2-20261026/record.json."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.hub.pages",
+			"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+			"target_sha256": "04590db6c40efc1c3c3f31f1ad9d5bc25f6b2d51c33363f4a00dc9cb77777c82",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "fd16ff0a-hub-pages-r2-pages-v2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/fd16ff0a-hub-pages-r2-pages-v2.json",
+					"receipt_sha256": "30a2f09c7337f9a91d199f778b7e88d415a41746ad213d75f3cd0b627eef9c35",
+					"scope": "the 16 key(s) this PR adds to ui.hub.pages for vi; every other key in the namespace is byte-identical to the base and was not re-audited; a round-2 delta re-audit covers the five corrected strings",
+					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "ec9798085400729808cb62d3e4a77dec2b1a09bcc361223b83e4ce033ba5e92a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d1e9640e5ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/3d1e9640e5ae.json",
+							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+					"target_sha256": "bbc635988fa06c886d6ce24e7dfc8f8ef17fb84947ec8d373ee3181945c10801",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "1cb068fe5f90-r5-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1cb068fe5f90-r5-vi.json",
+							"receipt_sha256": "722e606373163eb9828acbd56cfe3ce7da7d046860c77cddd39350f3e9574177",
+							"scope": "ui.hub.pages: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "1cb068fe5f90-r6-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1cb068fe5f90-r6-vi.json",
+							"receipt_sha256": "07d6bd8e99e0977b8cebe934f13b8ab8c170073110b367228285e89ef6f18978",
+							"scope": "ui.hub.pages: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+					"target_sha256": "e1fa917249af506fd1854a7bb14877d35c35da3bfbc1c0840515ef0ae4cab159",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "60922d5a6008-merge-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/60922d5a6008-merge-vi.json",
+							"receipt_sha256": "a464edd8710a8ee60b2906630a66d26942395c09e49ee10d8ffa5954603d74cd",
+							"scope": "ui.hub.pages: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20",
+					"target_sha256": "2e637ba0f365dad6f3bc53a09977af7da1b29b2b0ea8ae86487171ed0ee36578",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "200a953fa085-ui1753-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/200a953fa085-ui1753-vi.json",
+							"receipt_sha256": "2610b82de42cf1e20231b2fffb3035497cbe6f19b70864b19e41b5f328c61243",
+							"scope": "the 3 keys this PR added to ui.hub.pages (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.hub.teams",
+			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+			"target_sha256": "40a65f956e637bad9cbdf18adf0815cecbafd122d26809043dcf100633ed719f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "0f28bdfc-hub-teams-r1-teams-v2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/0f28bdfc-hub-teams-r1-teams-v2.json",
+					"receipt_sha256": "8b052341757e7157a3403fd65a6903c65077d897666e43b5693fb6e4679a8fb5",
+					"scope": "the 1 key(s) this PR adds to ui.hub.teams for vi; every other key in the namespace is byte-identical to the base and was not re-audited",
+					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "799e7db8aeffbb017ab089286bb5082c0bdf764dc8d7612ed49dfd71dbf2bc38",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d1e9640e5ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/3d1e9640e5ae.json",
+							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+					"target_sha256": "5c0c58773fad3a2fcd35e9d269f74db4719df4a5abb41d6bca6a8052f0765ca8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "abdb30734404",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/abdb30734404.json",
+							"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+							"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.hub.pages",
+			"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+			"target_sha256": "1460736d8cbf2e5250396570680ef130cb29eab9c312c923b09fedf86c8e0d1c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "0188cd92-hub-pages-r2-pages-v2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/0188cd92-hub-pages-r2-pages-v2.json",
+					"receipt_sha256": "9fa21e54f0baf28009f799c23270cf43517f1e53627d6666658d4c61eb9de0a4",
+					"scope": "the 16 key(s) this PR adds to ui.hub.pages for zh-CN; every other key in the namespace is byte-identical to the base and was not re-audited; a round-2 delta re-audit covers the five corrected strings",
+					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "b82cefb8d92e95496575620c9697687bd1e970f93efac0f7ffc96b36cbd76536",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "fa696f7f3dff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fa696f7f3dff.json",
+							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+					"target_sha256": "5cb98e1b0f1735b9988c79fca6b9d81ce380c4c1c1c0caf47924b25d36a56e7c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "f1a4a43284cd-r4-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f1a4a43284cd-r4-zh-cn.json",
+							"receipt_sha256": "af91c8e57a905458dcc243241cba5c532da90a938aa9873c595b9bed5bb10734",
+							"scope": "ui.hub.pages: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "f1a4a43284cd-r7-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f1a4a43284cd-r7-zh-cn.json",
+							"receipt_sha256": "71554f9616f33c2f9aaf8423737f7db7a36e35cd6796281da6aeee5615dde51c",
+							"scope": "ui.hub.pages: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+					"target_sha256": "7ef702b7a9637821254d2dd7255d59bf3e92e79504aabe45c251f5edf2577d34",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro (temporary fallback from anthropic/claude-sonnet-5-5)",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "5cd09504ac8b-merge-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5cd09504ac8b-merge-zh-cn.json",
+							"receipt_sha256": "22fa6d6b117de74056a0ee20c9905a8d9b5e13fb7ea54efae895b0de61977cbf",
+							"scope": "ui.hub.pages: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20",
+					"target_sha256": "0ad3500473707802dfa21ada4f6a6ceda14bab41913dbe2e48038e1b7abda248",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "7d3d4a9a80a4-ui1753-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/7d3d4a9a80a4-ui1753-zh-cn.json",
+							"receipt_sha256": "df3f3c8c1341cf428d1882f755e48af66db7ed7852b1c47574ea6674ea69c371",
+							"scope": "the 3 keys this PR added to ui.hub.pages (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.hub.teams",
+			"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+			"target_sha256": "e2d4fb7642673a0b5bef52357b91f6fbafdbde85d1bb473999facbe6149b8f90",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "ba884773-teams-v2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/ba884773-teams-v2.json",
+					"receipt_sha256": "4e59d9317a6faf3ce70b6361b2331dc9b558aa4ae0de846597ccfca025b5d980",
+					"scope": "the 1 key(s) this PR adds to ui.hub.teams for zh-CN; every other key in the namespace is byte-identical to the base and was not re-audited",
+					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "3f8d5cbf07c498b9394f9c109431294ce84a929af5b50dd752848f4126f0b268",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "fa696f7f3dff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fa696f7f3dff.json",
+							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+					"target_sha256": "de8eefc67e19fc55f9f12be3ec855c4d5613789609fabbe2aea6af27524d4a32",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "c041efdee6f6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c041efdee6f6.json",
+							"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }
