@@ -1,0 +1,77 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "b7e41c09-uf-vi",
+	"locale": "vi",
+	"audit_date": "2026-11-08",
+	"status": "passed",
+	"scope": [
+		"ui.updates.service",
+		"ui.updates.status",
+		"ui.installer.setup_cause"
+	],
+	"independent_note": "Did not author or edit any audited value; read English source, context sidecars, shipped vi panel/installer/common.updates for glossary; rendered ICU with intl-messageformat; ran check-coverage, locale-parity.test, context-parity (all ok).",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 38,
+			"sha256": {
+				"en": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+				"vi": "7d0240806b98735e94d4f71a7224735fa8613ed8f8a52bb92ef8c4867c8a3707"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.updates.service.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.updates.service.json",
+			"findings": [
+				{
+					"id": "m1",
+					"severity": "MINOR",
+					"key": "ui.updates.service.global.legacy_installer.remedy",
+					"current": "trình cập nhật đó ghi lại môi trường dùng chung ngay tại chỗ, có thể làm gián đoạn các phiên giữa chừng một lượt",
+					"proposed": "trình cập nhật đó ghi đè lên môi trường dùng chung ngay tại chỗ, có thể làm gián đoạn các phiên đang giữa một lượt",
+					"reason": "\"ghi lại\" reads as 'record again'; 'rewrites in place' is 'ghi đè' (overwrite), and 'giữa chừng một lượt' is a stiff rendering of 'mid-turn'."
+				},
+				{
+					"id": "n1",
+					"severity": "NIT",
+					"key": "ui.updates.service.disk_space.message",
+					"current": "mà hiện chỉ còn {free, number, ::group-off} MB",
+					"proposed": "và hiện còn {free, number, ::group-off} MB",
+					"reason": "Adds an emphasis ('only') the English does not state; harmless because the sentence is a shortfall, so optional."
+				},
+				{
+					"id": "n2",
+					"severity": "NIT",
+					"key": "ui.updates.service.server_failure.rebuild_unchanged",
+					"current": "vẫn trỏ đến cùng một bản sửa đổi",
+					"proposed": "vẫn trỏ đến cùng một bản sửa đổi (revision) — or keep as is",
+					"reason": "'bản sửa đổi' is not otherwise used in the shipped vi updates copy so it has no glossary precedent; acceptable but a developer reader may expect 'commit'/'revision'. Optional."
+				}
+			]
+		},
+		"ui.updates.status": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 3,
+			"sha256": {
+				"en": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+				"vi": "3c138fe6347e6b2bfcb203e4f6ee12bf9729dc8e7766228c377d9925f2055af4"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.updates.status.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.updates.status.json",
+			"findings": []
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 7,
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"vi": "9f92db8a0fab634522a7dff1f8154fa7205a9a4f09a7f5d4113b5252333628f0"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.installer.setup_cause.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.installer.setup_cause.json",
+			"findings": []
+		}
+	}
+}

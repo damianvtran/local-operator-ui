@@ -1,0 +1,105 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "6f522c60-uf-ur",
+	"locale": "ur",
+	"status": "passed",
+	"scope": "ur translation of ui.updates.service (38), ui.updates.status (3), ui.installer.setup_cause (7); 48 keys, uncommitted working-tree files audited as on disk; ICU rendered with intl-messageformat (ur), RTL checked with fribidi",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"namespace": "ui.updates.service",
+			"sha256": {
+				"en": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+				"ur": "1cf8c9cd3ab20b6242cc8d777f18a32192968e3a5e616324fece1c12a10c0a51"
+			},
+			"keys_read": 38,
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.disk_space.message",
+					"current": "ایپ نے اس ایپ کو سروس دینے والے ماحول کو نہیں چھیڑا",
+					"proposed": "ایپ نے اس سرور کو چلانے والے ماحول کو نہیں چھیڑا",
+					"reason": "'سروس دینے والے' calques 'serving' and 'ایپ نے اس ایپ کو' repeats ایپ in one clause; 'the environment running this app's server' reads natively."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.server_failure.rebuild_unchanged",
+					"current": "اس کی `.lop-source` اب بھی",
+					"proposed": "اس کی ‎`.lop-source`‎ اب بھی",
+					"reason": "Rendered with the UBA (fribidi, RTL paragraph) the leading '.' of the dotfile token is reordered to the END of the run, displaying `lop-source.`; an LRM on each side restores `.lop-source` (verified). Skip if the consuming renderer isolates backtick spans (rendered check)."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.global.source_rebuild.remedy",
+					"current": "اس میں آدھا گھنٹہ تک لگ سکتا ہے",
+					"proposed": "اس میں زیادہ سے زیادہ آدھا گھنٹہ لگ سکتا ہے",
+					"reason": "'آدھا گھنٹہ تک' is ungrammatical (postposition needs 'آدھے گھنٹے تک'); the shipped ui.common.updates sentence has the same slip and a correct 'زیادہ سے زیادہ آدھا گھنٹہ' form elsewhere; fix both together."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.global.legacy_installer.remedy",
+					"current": "غیر خلل انداز انسٹالر سے پہلے کی ہے",
+					"proposed": "اس انسٹالر سے پہلے کی ہے جو سیشنز میں خلل نہیں ڈالتا",
+					"reason": "'غیر خلل انداز' is a calque of 'non-disruptive' with no shipped precedent; a relative clause is idiomatic."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.fleet.unknown.body",
+					"current": "انہیں غیر مصروف سمجھ لینے سے",
+					"proposed": "انہیں غیر فعال سمجھ لینے سے",
+					"reason": "Shipped ui.common.updates / ui.settings render 'idle' as 'غیر فعال'; 'غیر مصروف' is a second term for the same concept."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.attempt_running.message_moments",
+					"current": "اس ایپ کی شروع کی ہوئی سرور اپ ڈیٹ جو ابھی ابھی شروع ہوئی تھی، اب بھی چل رہی ہے",
+					"proposed": "اس ایپ نے جو سرور اپ ڈیٹ ابھی ابھی شروع کی تھی، وہ اب بھی چل رہی ہے",
+					"reason": "'شروع کی ہوئی ... شروع ہوئی تھی' says 'started' twice and stacks relative clauses; same restructure applies to _minutes ('اس ایپ نے {minutes} منٹ پہلے جو سرور اپ ڈیٹ شروع کی تھی، وہ اب بھی چل رہی ہے') and _unknown_age."
+				},
+				{
+					"severity": "INFO",
+					"key": "ui.updates.service.attempt_running.message_minutes",
+					"current": "{minutes, plural, one {# منٹ} other {# منٹ}}",
+					"proposed": "{minutes, plural, one {# منٹ} other {# منٹ}} (unchanged)",
+					"reason": "Identical branches are correct: Urdu CLDR has only one/other and منٹ does not inflect; kept for ICU shape parity - no change required."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.fleet.unknown.credentials_refused",
+					"current": "اسناد قبول نہیں کیں",
+					"proposed": "اسناد مسترد کر دیں",
+					"reason": "Shipped ui.common.errors uses 'اسناد مسترد' for refused credentials; 'قبول نہیں کیں' is correct but a second spelling."
+				}
+			]
+		},
+		"ui.updates.status": {
+			"status": "passed",
+			"namespace": "ui.updates.status",
+			"sha256": {
+				"en": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+				"ur": "414d617e99ee4e22d0221a43c83cd538d253f8c30f311242cd4dae9a99dace32"
+			},
+			"keys_read": 3,
+			"findings": []
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"namespace": "ui.installer.setup_cause",
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"ur": "4376176e2ca5aa25963b739d514ce7906e3d8ca24d49cf86033835b85994b1ac"
+			},
+			"keys_read": 7,
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.installer.setup_cause.clock_or_expired",
+					"current": "سرٹیفکیٹ کو میعاد ختم یا ابھی غیر مؤثر پڑھا",
+					"proposed": "سرٹیفکیٹ کو میعاد ختم شدہ یا ابھی تک غیر درست پایا",
+					"reason": "'پڑھا' calques 'read ... as' and 'غیر مؤثر' (ineffective) does not say 'not yet valid'; a user could misread it as 'invalid'."
+				}
+			]
+		}
+	}
+}

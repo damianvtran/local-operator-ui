@@ -1,0 +1,88 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "8048eb56-uf-es",
+	"locale": "es",
+	"status": "passed",
+	"scope": "es working-tree files (uncommitted) for ui.updates.service, ui.updates.status, ui.installer.setup_cause audited against en + .context.json sidecars; ICU rendered with intl-messageformat for plural values 0,1,2,5,11,21,100,1000000; check-coverage, locale-parity (44 pass), context-parity all ok",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"keys_read": 38,
+			"sha256": {
+				"en": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+				"es": "65fe7aa9002d5dc73033614b98a18e6e87e1c73e683ce64dd8bf376a8b49d9c8"
+			},
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.attempt_running.message_unknown_age",
+					"current": "…así que no se iniciará otra a su lado.",
+					"proposed": "…así que no se iniciará otra en paralelo.",
+					"reason": "'a su lado' is a word-for-word rendering of 'beside it'; Spanish says 'en paralelo' for a concurrent second run."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.attempt_running.message_moments",
+					"current": "…así que no se iniciará otra a su lado.",
+					"proposed": "…así que no se iniciará otra en paralelo.",
+					"reason": "Same calque of 'beside it'."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.attempt_running.message_minutes",
+					"current": "…así que no se iniciará otra a su lado.",
+					"proposed": "…así que no se iniciará otra en paralelo.",
+					"reason": "Same calque of 'beside it'; plural branches one/many/other are correct and unchanged."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.server_failure.run_yourself",
+					"current": "También puedes ejecutar `{command}` tú mismo en una terminal.",
+					"proposed": "También puedes ejecutar `{command}` por tu cuenta en una terminal.",
+					"reason": "'tú mismo' hard-codes masculine gender for every reader; 'por tu cuenta' keeps the tú register and is gender-neutral."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.global.legacy_installer.remedy",
+					"current": "…anterior al instalador no disruptivo, así que…",
+					"proposed": "…anterior al instalador sin interrupciones, así que…",
+					"reason": "'no disruptivo' is a calque of 'non-disruptive'; 'sin interrupciones' is the idiomatic phrasing (no shipped es precedent for the term)."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.disk_space.message",
+					"current": "…dejó intacto el entorno que sirve a esta app.",
+					"proposed": "…dejó intacto el entorno que da servicio a esta app.",
+					"reason": "'app … app' repetition in one clause; optional polish, meaning is correct."
+				}
+			]
+		},
+		"ui.updates.status": {
+			"status": "passed",
+			"keys_read": 3,
+			"sha256": {
+				"en": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+				"es": "cd2c1bb0ea69a16663c27d48b05ae1127c08cffb72c2630c1c3ff081768b8ee1"
+			},
+			"findings": []
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"keys_read": 7,
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"es": "60b9b1e4fb3e568c334d8665d67f3088c8aadfc91a0138ac168178e39d9fafab"
+			},
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.installer.setup_cause.tls_interception",
+					"current": "Pide a TI el certificado raíz",
+					"proposed": "Pide al departamento de TI el certificado raíz",
+					"reason": "Capitalised 'TI' directly after 'a' can be misread as 'a ti' (you); naming the department removes the ambiguity at a small width cost."
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,126 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "c9399dc9-uf-hi",
+  "locale": "hi",
+  "scope": "hi translation of ui.updates.service, ui.updates.status, ui.installer.setup_cause (uncommitted working-tree files)",
+  "evidence": "check-coverage.mjs ok; context-parity.mjs ok; locale-parity.test.mjs 44/44 pass; all 48 strings parse with @formatjs/icu-messageformat-parser; plurals rendered with intl-messageformat for 0,1,2,5,11,21,100 (hi CLDR: 0,1=one; 2,5,11,21,100=other)",
+  "namespaces": {
+    "ui.updates.service": {
+      "status": "changes_requested",
+      "keys_read": 38,
+      "sha256": {
+        "en": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+        "hi": "cb6738df72ce14bfc288882cd056af5b9246b2e34ab0a42b6aad8cca96534419"
+      },
+      "findings": [
+        {
+          "severity": "MAJOR",
+          "key": "ui.updates.service.fleet.busy.lead",
+          "current": "इस मशीन पर {count, plural, one {# सत्र} other {# सत्र}} अब भी काम कर रहा है: {names}{extra, plural, =0 {} other { और # और}}।",
+          "proposed": "इस मशीन पर {count, plural, one {# सत्र अब भी काम कर रहा है} other {# सत्र अब भी काम कर रहे हैं}}: {names}{extra, plural, =0 {} other { और # अन्य}}।",
+          "reason": "Verb is outside the plural block, so it is singular for every count; rendered 'इस मशीन पर 5 सत्र अब भी काम कर रहा है' (hi CLDR: 0,1=one; 2+=other). Move the verb into the branches (English also carries is/are inside them) and replace the 'और # और' stutter."
+        },
+        {
+          "severity": "MAJOR",
+          "key": "ui.updates.service.server_failure.target_fallback",
+          "current": "नया रिलीज़",
+          "proposed": "नई रिलीज़",
+          "reason": "Fallback fills {target} in '{target} पर सर्वर अपडेट लागू नहीं हुआ': rendered 'नया रिलीज़ पर ...', ungrammatical (masc. adjective before a postposition needs the oblique). The shipped locale treats रिलीज़ as feminine ('रिलीज़ अभी प्रकाशित हो रही है', 'अगली रिलीज़'), so 'नई रिलीज़' is both agreement-correct and consistent; the version-number case ('0.42.7 पर') is unaffected."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.updates.service.release_publishing.message",
+          "current": "सर्वर का नया रिलीज़ ({version}) अभी प्रकाशित हो रहा है, ...",
+          "proposed": "सर्वर की नई रिलीज़ ({version}) अभी प्रकाशित हो रही है, इसलिए अपडेट अभी नहीं दिखाया गया। कुछ मिनट बाद फिर जाँचें।",
+          "reason": "Gender drift: रिलीज़ is masculine here but feminine in shipped ui.common.updates/ui.updates.panel."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.updates.service.release_unreadable.message",
+          "current": "ऐप यह नहीं पढ़ सका कि कौन-सा रिलीज़ इंस्टॉल करना है, ...",
+          "proposed": "ऐप यह नहीं पढ़ सका कि कौन-सी रिलीज़ इंस्टॉल करनी है, इसलिए उसने अपने सर्वर एनवायरनमेंट को नहीं छेड़ा। कनेक्शन जाँचें और फिर कोशिश करें।",
+          "reason": "Same रिलीज़ gender drift (masculine vs shipped feminine)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.updates.service.global.source_rebuild.remedy",
+          "current": "... यह इंस्टॉलेशन ऐप के सुझाए रिलीज़ का नहीं, चेकआउट का संस्करण ही बताता रहता है।",
+          "proposed": "... यह इंस्टॉलेशन ऐप की पेश की गई रिलीज़ का नहीं, चेकआउट का संस्करण ही बताता रहता है।",
+          "reason": "Same रिलीज़ gender drift; also 'turns' is rendered as 'काम' here whereas shipped ui.common.updates renders the identical English sentence with 'चल रहे टर्न' — use 'इस मशीन पर चल रहे टर्न पूरे होने का इंतज़ार करता है' and 'कोई टर्न बीच में रुक सकता है' for glossary consistency (टर्न vs काम drift; also in fleet.busy.body/fleet.unknown.body/fleet.legacy 'काम')."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.updates.service.attempt_running.message_unknown_age",
+          "current": "इस ऐप ने जो सर्वर अपडेट किसी न पढ़े जा सकने वाले समय पर शुरू किया था, वह अब भी चल रहा है ...",
+          "proposed": "इस ऐप ने एक सर्वर अपडेट शुरू किया था, जिसके शुरू होने का समय पढ़ा नहीं जा सका; वह अब भी चल रहा है (प्रोसेस ग्रुप {group}), इसलिए उसके साथ दूसरा शुरू नहीं किया जाएगा। अगर वह अपडेट जवाब देना बंद कर चुका है, तो अपडेट सेवा के लॉग में दिखता है कि वह क्या कर रहा था।",
+          "reason": "'किसी न पढ़े जा सकने वाले समय पर' is a word-for-word calque and reads as stilted; restructure."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.updates.service.global.legacy_installer.remedy",
+          "current": "यह इंस्टॉलेशन गैर-बाधक इंस्टॉलर से पहले का है, ...",
+          "proposed": "यह इंस्टॉलेशन बिना रुकावट वाले इंस्टॉलर से पहले का है, इसलिए इसे एक बार अपने टर्मिनल से अपडेट करें; वह अपडेटर साझा एनवायरनमेंट को उसी जगह बदलता है, जिससे सत्र टर्न के बीच में रुक सकते हैं। उसके बाद अपडेट ऐप संभालता है।",
+          "reason": "'गैर-बाधक' is a calque of 'non-disruptive' not used in natural Hindi; also 'mid-turn' → 'टर्न के बीच में' for glossary consistency."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.updates.service.server_failure.not_run",
+          "current": "इंस्टॉलर को इतना नहीं चलाया जा सका कि कोई नतीजा मिले।",
+          "proposed": "इंस्टॉलर इतना नहीं चल सका कि कोई नतीजा मिल पाए।",
+          "reason": "Calque of 'run to a verdict'; active intransitive reads more naturally."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.updates.service.server_failure.exited",
+          "current": "... `{command}` कोड {code} के साथ बाहर निकल गया।",
+          "proposed": "... `{command}` कोड {code} के साथ समाप्त हुआ।",
+          "reason": "'बाहर निकल गया' is literal 'exited'; 'समाप्त हुआ' is the usual process wording. Placeholders unchanged."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.updates.service.* / ui.installer.setup_cause.*",
+          "current": "'फिर कोशिश करें' (8 uses) / 'फिर जाँचें'",
+          "proposed": "'दोबारा कोशिश करें' / 'दोबारा जाँचें'",
+          "reason": "Shipped catalogues use 'दोबारा कोशिश' 7x vs 'फिर कोशिश' 2x; negligible, fold in only if touching the keys anyway."
+        }
+      ],
+      "summary": "38 keys read; placeholders ({version},{group},{minutes},{count},{extra},{names},{closing},{needed},{free},{target},{installed},{command},{code}), ::group-off skeletons, backticked commands, .lop-source, uv/pipx/pip, MB, Local Operator intact; 2 MAJOR agreement defects (fleet.busy.lead verb number, target_fallback 'नया रिलीज़ पर')."
+    },
+    "ui.updates.status": {
+      "status": "passed",
+      "keys_read": 3,
+      "sha256": {
+        "en": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+        "hi": "93aed0c766e9cc922b67f5bbbb4d26ae0ca9b6c5f8dc99327a0672341fa917a6"
+      },
+      "findings": [],
+      "summary": "3 keys read; clean."
+    },
+    "ui.installer.setup_cause": {
+      "status": "passed",
+      "keys_read": 7,
+      "sha256": {
+        "en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+        "hi": "72cf365a8a2facfcb8b02d74fd473b3657b6e1515e1b0f3d012615d08966a507"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.installer.setup_cause.clock_or_expired",
+          "current": "Local Operator ने पैकेज इंडेक्स के प्रमाणपत्र को समाप्त या अभी अमान्य पाया।",
+          "proposed": "Local Operator ने पाया कि पैकेज इंडेक्स का प्रमाणपत्र समाप्त हो चुका है या अभी मान्य नहीं है।",
+          "reason": "'not yet valid' ≠ 'अमान्य' (invalid); shipped ui.browser says 'अभी मान्य नहीं', and the calque with 'को ... पाया' is awkward."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.installer.setup_cause.disk_full",
+          "current": "सेटअप के दौरान इस Mac की डिस्क में जगह खत्म हो गई।",
+          "proposed": "बैकएंड सेट करते समय इस Mac की डिस्क में जगह खत्म हो गई। कुछ जगह खाली करें और फिर कोशिश करें।",
+          "reason": "Drops 'the backend' from 'while setting up the backend' (fact omitted)."
+        }
+      ],
+      "summary": "7 keys read; no blocker/major; 2 minor (clock_or_expired, disk_full)."
+    }
+  }
+}

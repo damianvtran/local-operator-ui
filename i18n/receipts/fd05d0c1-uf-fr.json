@@ -1,0 +1,169 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "fd05d0c1-uf-fr",
+	"locale": "fr",
+	"status": "passed",
+	"scope": "fr translation of ui.updates.service (38), ui.updates.status (3), ui.installer.setup_cause (7); 48 keys, uncommitted working-tree files at branch head a71f64a822c",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"namespace": "ui.updates.service",
+			"sha256": {
+				"en": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+				"fr": "f1bfc4222c628ca99adf2cc872eac0069cf4ad85728b0129d35829598087902b"
+			},
+			"keys_read": 38,
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.attempt_running.message_unknown_age",
+					"current": "à un moment illisible ... une seconde ne sera donc pas démarrée en parallèle",
+					"proposed": "lancée par cette application à une heure indéterminée ... une autre ne sera donc pas démarrée en parallèle",
+					"reason": "'à un moment illisible' calques 'a time that could not be read'; 'une seconde' is also the time unit and reads ambiguously beside minutes."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.attempt_running.message_moments",
+					"current": "une seconde ne sera donc pas démarrée en parallèle",
+					"proposed": "une autre ne sera donc pas démarrée en parallèle",
+					"reason": "'une seconde' = 'a second (of time)' homograph; 'une autre' is unambiguous."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.attempt_running.message_minutes",
+					"current": "il y a {minutes...} est toujours en cours ... une seconde ne sera donc pas démarrée en parallèle",
+					"proposed": "... une autre ne sera donc pas démarrée en parallèle",
+					"reason": "Same 'une seconde' homograph, here next to a minutes count."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.disk_space.message",
+					"current": "et {free, number, ::group-off} Mo seulement sont disponibles",
+					"proposed": "et il n’y en a que {free, number, ::group-off} Mo",
+					"reason": "Rendered with free=1: '1 Mo seulement sont disponibles' (plural verb with 1; same for 0); 'seulement' is also an addition. Invariant phrasing avoids the agreement error."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.server_failure.not_run",
+					"current": "le programme d’installation n’a pas pu être exécuté jusqu’à un verdict",
+					"proposed": "l’installateur n’a pas pu être exécuté jusqu’à l’obtention d’un résultat",
+					"reason": "Calque of 'run to a verdict' ('verdict' is not idiomatic for an exit status) and glossary drift: shipped ui.common.updates renders 'installer' as 'installateur'."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.server_failure.pointer_below",
+					"current": "La sortie du programme d’installation figure ci-dessous.",
+					"proposed": "La sortie de l’installateur figure ci-dessous.",
+					"reason": "Glossary drift: shipped ui.common.updates uses 'Sortie de l’installateur' for the same installer output block directly beneath this sentence."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.server_failure.pointer_log",
+					"current": "La sortie du programme d’installation figure dans le journal du service de mise à jour.",
+					"proposed": "La sortie de l’installateur figure dans le journal du service de mise à jour.",
+					"reason": "Same installer glossary drift as pointer_below."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.fleet.closing",
+					"current": "continue d’exécuter la version qu’il a chargée",
+					"proposed": "continue d’exécuter la compilation qu’il a chargée",
+					"reason": "'build' is 'compilation' in shipped ui.common.updates (e.g. 'ancienne compilation'); here it drifts to 'version', which also blurs release vs build."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.global.source_rebuild.remedy",
+					"current": "Recompile ce checkout avec `lop-update`.",
+					"proposed": "Recompilation de ce checkout avec `lop-update`.",
+					"reason": "English is a third-person description; 'Recompile' reads as a tu-imperative inside a vous-register panel. Noun phrase mirrors shipped 'Recompilation du serveur depuis ...'."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.global.legacy_installer.remedy",
+					"current": "antérieure au programme d’installation non disruptif",
+					"proposed": "antérieure à l’installateur qui n’interrompt pas les sessions",
+					"reason": "'non disruptif' is a business-jargon calque of 'non-disruptive'; plus installer glossary drift (installateur). Later sentence 'Ce programme de mise à jour' may stay."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.server_failure.stopped",
+					"current": "un processus qu’il a lancé peut encore être en train de remplacer l’installation",
+					"proposed": "quelque chose qu’il a lancé peut encore remplacer l’installation",
+					"reason": "English says 'something it started'; 'un processus' adds a specific fact. Low risk."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.server_failure.not_effective",
+					"current": "vers {target}",
+					"proposed": "(no change required)",
+					"reason": "With a bare version the sentence reads 'vers 0.42.7'; shipped panel says 'vers la version {version}'. Rendered cases with both fallbacks agree grammatically, so informational."
+				},
+				{
+					"severity": "MINOR",
+					"key": "(all keys using ; or : — 27 keys: release_publishing.message, version_unknown.message, attempt_running.message_unknown_age, attempt_running.message_moments, attempt_running.message_minutes, install_not_found.message, start_mode_unknown.message, release_unreadable.message, disk_space.message, not_installed.message, install_in_flight.message, server_failure.not_run, server_failure.exited, server_failure.rebuild_unchanged, server_failure.not_effective, server_failure.stopped, fleet.closing, fleet.unknown.credentials_refused, fleet.unknown.unreadable, fleet.unknown.body, fleet.busy.lead, global.source_build.remedy, global.pipx.remedy, global.pip.remedy, global.unknown.remedy, global.source_rebuild.remedy, global.legacy_installer.remedy)",
+					"current": "regular U+0020 before ; and :",
+					"proposed": "U+202F (narrow no-break space) before ; and :",
+					"reason": "Nearest shipped precedent ui.updates.panel (same failure panel) uses U+202F before every ; and : (27+2 occurrences, 0 plain); plain space allows a line to wrap leaving the mark orphaned at line start."
+				}
+			]
+		},
+		"ui.updates.status": {
+			"status": "passed",
+			"namespace": "ui.updates.status",
+			"sha256": {
+				"en": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+				"fr": "05ee1d827b0f29f766192e99634357c047cd2abaafc77c52df1af39933d13981"
+			},
+			"keys_read": 3,
+			"findings": [
+				{
+					"severity": "NIT",
+					"key": "ui.updates.status.dev_mode.backend",
+					"current": "Les mises à jour du backend sont désactivées en mode développement.",
+					"proposed": "(no change)",
+					"reason": "1.37× the English length (49→67 chars) in a single-line snackbar; normal French expansion, flag for a rendered width check only."
+				}
+			]
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"namespace": "ui.installer.setup_cause",
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"fr": "8024348d75f8060e0658771d6ec76bd1a03d4a0f9c5ea15059306aa489a0764c"
+			},
+			"keys_read": 7,
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.installer.setup_cause.tls_interception",
+					"current": "ajoutez-le au magasin de certificats du système, que cette application reconnaît déjà",
+					"proposed": "ajoutez-le au magasin de certificats du système, auquel cette application fait déjà confiance",
+					"reason": "'this app already trusts that store' is a trust statement; 'reconnaît' weakens it, and 'que' can attach to 'certificats'."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.installer.setup_cause.clock_or_expired",
+					"current": "a lu le certificat de l’index de paquets comme expiré ou pas encore valide",
+					"proposed": "a jugé le certificat de l’index de paquets expiré ou pas encore valide",
+					"reason": "'a lu ... comme' calques 'read ... as'; 'a jugé ... expiré' is the idiomatic report of a validity verdict."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.installer.setup_cause.not_started",
+					"current": "mais ne s’est pas lancé correctement",
+					"proposed": "mais n’a pas démarré correctement",
+					"reason": "'démarrer' is the natural verb for a backend/service starting."
+				},
+				{
+					"severity": "MINOR",
+					"key": "(keys using ; or : — 1: clock_or_expired)",
+					"current": "regular U+0020 before ; and :",
+					"proposed": "U+202F before ; and :",
+					"reason": "Same typography precedent as ui.updates.service (ui.updates.panel uses U+202F)."
+				}
+			]
+		}
+	}
+}
