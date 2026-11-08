@@ -2,7 +2,7 @@
 	"ui.chat.sidebar.row.bg.subagents": "{count, plural, one {{count, number, ::group-off} субагент} few {{count, number, ::group-off} субагента} many {{count, number, ::group-off} субагентов} other {{count, number, ::group-off} субагента}}",
 	"ui.chat.sidebar.row.bg.jobs": "{count, plural, one {{count, number, ::group-off} задание} few {{count, number, ::group-off} задания} many {{count, number, ::group-off} заданий} other {{count, number, ::group-off} задания}}",
 	"ui.chat.sidebar.row.bg.running": "В работе: {items}",
-	"ui.chat.sidebar.row.bg.queued": "{count, plural, one {{count, number, ::group-off} в очереди} few {{count, number, ::group-off} в очереди} many {{count, number, ::group-off} в очереди} other {{count, number, ::group-off} в очереди}}",
+	"ui.chat.sidebar.row.bg.queued": "{count, plural, one {в очереди: {count, number, ::group-off}} few {в очереди: {count, number, ::group-off}} many {в очереди: {count, number, ::group-off}} other {в очереди: {count, number, ::group-off}}}",
 	"ui.chat.sidebar.row.bg.subagents_queued": "{count, plural, one {{count, number, ::group-off} субагент в очереди} few {{count, number, ::group-off} субагента в очереди} many {{count, number, ::group-off} субагентов в очереди} other {{count, number, ::group-off} субагента в очереди}}",
 	"ui.chat.sidebar.row.bg.waiting": "Ожидание фоновой работы"
 }
