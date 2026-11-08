@@ -92,7 +92,8 @@ const bundle = await build({
 			import { createElement } from "react";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
 			export { Disclosure } from "./src/renderer/src/shared/components/ui/disclosure";
-			export { foldSummary, foldSummarySpec } from "./src/renderer/src/features/chat/canonical/trace-fold-model";
+			export { foldSummary, foldSummarySpec, foldUnitSeparator } from "./src/renderer/src/features/chat/canonical/trace-fold-model";
+			export { setLocale } from "./src/renderer/src/shared/i18n";
 			export { createElement };
 		`,
 		resolveDir: process.cwd(),
@@ -128,8 +129,15 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
 
-const { TraceFold, Disclosure, createElement, foldSummary, foldSummarySpec } =
-	await import(bundlePath.href);
+const {
+	TraceFold,
+	Disclosure,
+	createElement,
+	foldSummary,
+	foldSummarySpec,
+	foldUnitSeparator,
+	setLocale,
+} = await import(bundlePath.href);
 
 /**
  * Controlled the way the transcript drives it, so the mount exercises the
@@ -156,7 +164,7 @@ const SUMMARY_UPDATED = /4 shell · 1 python/;
 const SUMMARY_GROWN = /5 shell · 1 python/;
 const NEVER_A_ZERO = /0s/;
 const LIVE_SPAN_SECONDS = /^4[45]s$/;
-const BIDI_ISOLATES = /[\u2068\u2069]/g;
+const BIDI_ISOLATES = /[\u2066-\u2069]/g;
 
 const element = (props) =>
 	createElement(ControlledFold, {
@@ -865,55 +873,84 @@ test("a sentence summary is painted to wrap, not held whole", async (t) => {
 });
 
 /**
- * EACH COUNT UNIT IS ITS OWN BIDI ISOLATE (UBA rule W7; ui1753 audit, ur).
+ * EACH COUNT UNIT IS ITS OWN BIDI ISOLATE, IN THE LOCALE'S DIRECTION (UBA rule
+ * W7; ui1753 audit and design round 1 D1, ur).
  *
  * In an RTL locale a unit that ends in a Latin run (`Python`, or a Latin tool
  * name from `fold.count.named`) turns the NEXT unit's leading European number
  * into L, and the line reorders across the ` · `: fribidi paints the ur units
- * `3 Python` and `1 <Arabic-script noun>` as `<noun> Python · 1 3`, and with an
- * isolate around each unit as the two units in order. jsdom has no bidi engine,
- * so the reorder is the audit's evidence; what is pinned here is the structure
- * that cures it - one `<bdi>` per unit in the painted line, and FSI/PDI around
- * each unit in the tooltip, which is a string with no DOM to put a `<bdi>` in -
- * while the words, order and separators stay exactly the unwrapped line's.
+ * `3 Python` and `1 <Arabic-script noun>` as `<noun> Python · 1 3`. A bare
+ * `<bdi>` cures that but picks its direction from the unit's FIRST STRONG
+ * LETTER, so `3 Python <noun>` (Latin first) laid out LTR with its count at the
+ * left edge while its neighbours laid out RTL (measured in the browser: the
+ * line read `1 · 3`). So each `<bdi>` is told the locale's direction, and the
+ * tooltip - a string with no DOM, where FSI has the same first-letter rule -
+ * wraps each unit in RLI/PDI, but ONLY in an RTL locale: an LTR tooltip is the
+ * plain join, with no invisible mark in `en` text.
+ *
+ * jsdom has no bidi engine, so what is pinned is the structure the browser
+ * lays out from: the `dir` each unit actually gets and the exact tooltip
+ * bytes; the words, order and separators stay exactly the plain line's.
  */
-test("every count unit is an isolated bidi run, in the line and in the tooltip", async (t) => {
-	// Escaped so no right-to-left character sits in this source: Urdu "shell".
-	const units = ["3 Python", "1 \u0634\u06cc\u0644", "2 Rust"];
-	const mounted = await mount(t, {
-		summary: { units, prose: false },
-		span: null,
-		live: null,
-		sectionLive: false,
+const unitsFixture = ["3 Python", "1 \u0634\u06cc\u0644", "2 Rust"];
+
+for (const [locale, dir] of [
+	["en", "ltr"],
+	["ur", "rtl"],
+]) {
+	test(`every count unit is an isolated bidi run with the ${locale} direction (${dir}), in the line and in the tooltip`, async (t) => {
+		setLocale(locale);
+		t.after(() => setLocale("en"));
+		// Escaped so no right-to-left character sits in this source: Urdu "shell".
+		const units = unitsFixture;
+		const mounted = await mount(t, {
+			summary: { units, prose: false },
+			span: null,
+			live: null,
+			sectionLive: false,
+		});
+		const summary = mounted.container.querySelector("[data-fold-summary]");
+		assert.ok(summary, "the header's summary span is on screen");
+		const isolates = [...summary.querySelectorAll("bdi")];
+		assert.deepEqual(
+			isolates.map((node) => node.textContent),
+			units,
+			"one <bdi> per unit, each holding exactly its own unit",
+		);
+		assert.deepEqual(
+			isolates.map((node) => node.getAttribute("dir")),
+			units.map(() => dir),
+			"every unit states the locale's direction, whatever letter it starts with",
+		);
+		assert.equal(
+			summary.querySelectorAll("span[aria-hidden] bdi").length,
+			0,
+			"the ` · ` separators stay outside the isolates, between them",
+		);
+		const separator = summary.querySelector("span[aria-hidden]").textContent;
+		assert.equal(
+			summary.textContent,
+			units.join(separator),
+			"the wrapper adds no text: the painted line is the plain join",
+		);
+		const title = summary.getAttribute("title");
+		const glue = foldUnitSeparator();
+		assert.equal(
+			title,
+			dir === "rtl"
+				? units.map((unit) => `\u2067${unit}\u2069`).join(glue)
+				: units.join(glue),
+			dir === "rtl"
+				? "the RTL tooltip isolates each unit with RLI/PDI (never FSI) before joining"
+				: "the LTR tooltip is the plain join: no invisible mark in en text",
+		);
+		assert.equal(
+			title.replace(BIDI_ISOLATES, ""),
+			units.join(glue),
+			"and stripped of the marks it is the plain join",
+		);
+		if (dir === "ltr") {
+			assert.equal(title.match(BIDI_ISOLATES), null, "LTR carries no marks");
+		}
 	});
-	const summary = mounted.container.querySelector("[data-fold-summary]");
-	assert.ok(summary, "the header's summary span is on screen");
-	const isolates = [...summary.querySelectorAll("bdi")];
-	assert.deepEqual(
-		isolates.map((node) => node.textContent),
-		units,
-		"one <bdi> per unit, each holding exactly its own unit",
-	);
-	assert.equal(
-		summary.querySelectorAll("span[aria-hidden] bdi").length,
-		0,
-		"the ` · ` separators stay outside the isolates, between them",
-	);
-	const separator = summary.querySelector("span[aria-hidden]").textContent;
-	assert.equal(
-		summary.textContent,
-		units.join(separator),
-		"the wrapper adds no text: the painted line is the plain join",
-	);
-	const title = summary.getAttribute("title");
-	assert.equal(
-		title,
-		units.map((unit) => `\u2068${unit}\u2069`).join(separator),
-		"the tooltip isolates each unit with FSI/PDI before joining",
-	);
-	assert.equal(
-		title.replace(BIDI_ISOLATES, ""),
-		units.join(separator),
-		"and stripped of the marks it is the plain join",
-	);
-});
+}
