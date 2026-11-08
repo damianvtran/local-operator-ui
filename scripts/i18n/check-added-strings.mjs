@@ -26,6 +26,15 @@
  * `i18n: ignore <reason>` or allowlist reason as the original scanner.
  *
  * Usage: node scripts/i18n/check-added-strings.mjs [--base origin/main]
+ *        [--repo <path>]
+ *
+ * `--repo` exists so the CLI can be exercised against a scratch git repo.
+ * `runAddedCheck` always took a repo; `main` did not forward one, so the only
+ * way to prove the CLI end to end (exit code, stdout, findings) was to run it
+ * against THIS checkout. That needs the whole project inventory to parse - one
+ * run measured 13.2 s on a loaded host - and it wrote a probe into the working
+ * tree, whose leftover reached a commit once (#1767). A scratch repo has one
+ * file per case and nothing to leave behind.
  */
 
 import { spawnSync } from "node:child_process";
@@ -465,14 +474,17 @@ export function runAddedCheck({
 
 export function main(argv = process.argv.slice(2)) {
 	let base = "origin/main";
+	let repo = REPO;
 	for (let index = 0; index < argv.length; index += 1) {
 		if (argv[index] === "--base" && argv[index + 1]) {
 			base = argv[++index];
+		} else if (argv[index] === "--repo" && argv[index + 1]) {
+			repo = argv[++index];
 		} else {
 			throw new Error(`Unknown or incomplete argument: ${argv[index]}`);
 		}
 	}
-	const result = runAddedCheck({ base });
+	const result = runAddedCheck({ repo, base });
 	for (const finding of result.findings) {
 		console.log(
 			`${finding.path}:${finding.line}: ${finding.kind}: ${finding.text}`,
