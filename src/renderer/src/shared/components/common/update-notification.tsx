@@ -704,10 +704,28 @@ const isolatedTokenNodes = (text: string) => (
 	 * every reader of this panel - the copy assertions, the tab path, and the
 	 * stand-in renderer the update cases mount all walk one child element per line -
 	 * so text either side of the token exposed as siblings would read as a line
-	 * ending before the token plus a second line holding the rest. `<bdi>` with no
-	 * `dir` takes the sentence's own direction, which is the paragraph's.
+	 * ending before the token plus a second line holding the rest.
+	 *
+	 * WHY THE WRAPPER IS A `<span>` AND NOT A `<bdi>` (review round 1, M1). An earlier
+	 * cut wrapped the sentence in `<bdi>` and its comment claimed that made the element
+	 * take the paragraph's direction. It does not: `dir` on a `bdi` DEFAULTS TO THE AUTO
+	 * STATE, so `<bdi>` IS `<bdi dir="auto">` - an isolate whose direction is taken from
+	 * the sentence's own FIRST STRONG CHARACTER. That is nil for today's
+	 * `rebuild_unchanged` value only because the Urdu is strong-RTL from its first
+	 * letter. A sentence that LEADS with a strong-L run takes LTR direction instead and
+	 * re-orders the Urdu around it: `not_effective` opens with `{target}` (`v0.4.84 ...`)
+	 * and `exited` opens with an exit code, and 796 of the 8142 shipped `ur` values
+	 * already start strong-L, so this is one translation away from a real RTL defect.
+	 *
+	 * A `<span>` is inline with `unicode-bidi: normal`, so it carries NO direction of its
+	 * own: its content resolves in the paragraph's direction and joins the paragraph's
+	 * bidi run, whatever the sentence's first character is. Nothing is lost by dropping
+	 * the outer isolate, because the sentence is the `<p>`'s only child - there is no
+	 * sibling run for it to interact with - and the tokens below keep their own
+	 * `<bdi dir="ltr">`, which IS an isolate and is scoped to the token, which is the
+	 * one place LTR content sits in an otherwise RTL sentence.
 	 */
-	<bdi>
+	<span>
 		{isolatedTokenParts(text).map((part) =>
 			part.kind === "token" ? (
 				<bdi key={part.at} dir="ltr">
@@ -717,7 +735,7 @@ const isolatedTokenNodes = (text: string) => (
 				<Fragment key={part.at}>{part.text}</Fragment>
 			),
 		)}
-	</bdi>
+	</span>
 );
 
 /**

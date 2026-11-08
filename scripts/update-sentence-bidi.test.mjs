@@ -63,11 +63,33 @@ const { isolatedTokenParts } = await import(
 
 const MANUAL_BIDI = /[\u200e\u200f\u2066\u2067\u2068\u2069]/;
 
-/** A bare `{failure.sentence}` child in the panel - the form that drops the isolate. */
-const BARE_SENTENCE_CHILD = /(?<!text=)\{failure\.sentence\}/g;
+/**
+ * A `{failure.sentence}` child in the panel - the form that drops the isolate.
+ *
+ * NO `text=` EXEMPTION (review round 1, M2). An earlier cut let `text={failure.sentence}`
+ * through on the theory that a component taking the sentence as a `text` PROP would
+ * isolate it itself. Nothing does: the panel has no such prop, so the exemption was
+ * never exercised - it was a hole in the guard waiting for the first bare render to
+ * arrive wearing a prop name. The needle is a braced EXPRESSION CHILD; a prop cannot
+ * be one, so the exemption bought nothing and is gone.
+ */
+const BARE_SENTENCE_CHILD = /\{failure\.sentence\}/g;
 
 /** The isolate itself, so the guard reads the element rather than a comment. */
 const BDI_ISOLATE = /<bdi key=\{part\.at\} dir="ltr">/;
+
+/** A `bdi` with no `dir` at all - the auto-direction form review round 1 M1 measured. */
+const AUTO_BDI = /<bdi(?![^>]*\bdir=)/g;
+
+/**
+ * The sentence wrapper that carries NO direction of its own, open and close.
+ *
+ * A `<span>` is inline with `unicode-bidi: normal`, so the sentence resolves in the
+ * paragraph's direction; the closing tag is asserted too, because a stray `</span>`
+ * would mean the wrapper is not the element this guard thinks it is.
+ */
+const SPAN_WRAPPER = /<span>/;
+const SPAN_WRAPPER_END = /<\/span>\s*$/;
 
 const urCatalogue = JSON.parse(
 	readFileSync("src/i18n/catalogues/ur/ui.updates.service.json", "utf8"),
@@ -183,5 +205,56 @@ test("STATIC GUARD: the panel renders the failure sentence only through the isol
 		source,
 		BDI_ISOLATE,
 		'the token must render inside <bdi dir="ltr">',
+	);
+});
+
+/**
+ * The wrapper element `isolatedTokenNodes` actually returns, so a guard can read it.
+ *
+ * Comments are stripped: this block explains the `bdi` defect in prose, and a guard that
+ * read the prose would either pass on a comment or fail on one - neither is a fact about
+ * the markup. `dir` on `bdi` defaults to AUTO, so only the JSX can answer the question.
+ */
+const sentenceWrapper = (() => {
+	const source = readFileSync(
+		"src/renderer/src/shared/components/common/update-notification.tsx",
+		"utf8",
+	);
+	const start = source.indexOf("const isolatedTokenNodes");
+	return start === -1
+		? ""
+		: source
+				.slice(start, source.indexOf("\n);", start))
+				.replace(/\/\*[\s\S]*?\*\//g, "");
+})();
+
+test("REGRESSION (review round 1, M1): the wrapper inherits direction, it never auto-detects it", () => {
+	assert.ok(
+		sentenceWrapper,
+		"isolatedTokenNodes is not in the shape this guard reads - fix the guard, it is checking nothing",
+	);
+	/*
+	 * `dir` on a `bdi` DEFAULTS TO THE AUTO STATE, so a bare `<bdi>` is an isolate whose
+	 * direction comes from the sentence's own FIRST STRONG character rather than the
+	 * paragraph's. That is invisible for today's value and wrong the moment a sentence
+	 * opens with a strong-L run - `not_effective` opens with `{target}`, `exited` with an
+	 * exit code - which is the defect review round 1 M1 measured.
+	 */
+	assert.deepEqual(
+		sentenceWrapper.match(AUTO_BDI) ?? [],
+		[],
+		"<bdi> with no dir is dir=\"auto\": it takes the sentence's first strong character instead of the paragraph's direction",
+	);
+	// A `<span>` is inline with `unicode-bidi: normal` and carries no direction of its
+	// own, so the sentence resolves in the paragraph's direction whatever it starts with.
+	assert.match(
+		sentenceWrapper,
+		SPAN_WRAPPER,
+		"the sentence wrapper must be a <span> - the element that has no direction of its own",
+	);
+	assert.match(
+		sentenceWrapper,
+		SPAN_WRAPPER_END,
+		"the sentence wrapper must close on </span>, or it is wrapping something else",
 	);
 });
