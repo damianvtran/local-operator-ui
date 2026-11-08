@@ -562,6 +562,23 @@ function cases(root) {
 			stderr: /^$/,
 		},
 		{
+			// `ci.yml`'s Condense Parity Fixture job, which reads an exit status and
+			// nothing else. The comparison is derived from the module's own URL (the
+			// generator pins `absWorkingDir: ROOT` because a cwd-relative one wrote
+			// `../../../Users/...` into the committed fixture), so a run from a plain
+			// cwd still compares THIS tree - and the verdict line names the case count
+			// and the fixture's digest, which is exactly what a run that resolved
+			// nothing would leave missing.
+			script: "generate-condense-parity.mjs",
+			args: ["--check"],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout:
+				/condense parity fixture is current: \d+ cases, sha256 [0-9a-f]{12}/,
+			stderr: /^$/,
+		},
+		{
 			// `ci.yml`'s Lint job, on a scratch repository whose `main` is HEAD: the whole
 			// verdict path runs (base resolution, merge base, changed-file scan) and
 			// answers in its own words, with no biome invocation to depend on and nothing
