@@ -1,0 +1,291 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "final-independent",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent final translation auditor (team lopdev, task final-ui1753-ur); not a translator, remediator or earlier auditor of these keys",
+  "instance": "ab407cfa3e46-ui1753-ur",
+  "session": "ab407cfa3e46",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "Session header reports anthropic/claude-sonnet-5-5; no provider or model fallback was reported or observed during this session. The session id is read from the harness session metadata (scratchpad path and header), not derived.",
+  "independence": "This session wrote no catalogue, remediation, ledger, allowance or code change for PR #1753. The translator summaries, round-1 and delta-audit findings were consumed only as claims to re-verify; every verdict below was rebuilt from the English source, the en context sidecar, the committed ur bytes, shipped ur precedent and the ur style guide. Peer locale receipts written in the same worktree were not opened."
+ },
+ "agent": "translation-auditor",
+ "instance": "ab407cfa3e46-ui1753-ur",
+ "session": "ab407cfa3e46",
+ "model": "anthropic/claude-sonnet-5-5",
+ "fallback": "none reported",
+ "locale": "ur",
+ "direction": "rtl",
+ "plural_categories": [
+  "one",
+  "other"
+ ],
+ "branch": "i18n/key-census-literals",
+ "head": "bd17b456e079c761013c580ea4263b5c4bc57f5d",
+ "pr": "damianvtran/local-operator-ui#1753",
+ "date": "2026-11-07",
+ "english_additions_commit": "874446c2c80e8c3849c20ed72780d1455e7752a9",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "findings_total": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 3,
+  "nit": 1
+ },
+ "scope": "Final audit of the 86 keys PR #1753 added in 7 namespaces (ui.chat.canonical 55, ui.chat.asks 8, ui.chat.sidebar 7, ui.chat.pickers 8, ui.chat.run_details 2, ui.chat.user_turn 3, ui.hub.pages 3) for ur against committed bytes at bd17b456e079. Key list derived from git diff 874446c2c80e^..874446c2c80e -- src/i18n/catalogues/en (86 added, 0 changed). Prior round-1 and delta findings re-judged on the FINAL text.",
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/ur.md)": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+  "renderer (src/renderer/src/features/chat/components/trace/trace-fold.tsx)": "1913aebf0f21adedcc8a7cdc92173b14b8b63869fa3e34f97bbe92498f8a93f4"
+ },
+ "prior_findings_confirmed_resolved": [
+  "fold.count.python: 'N Python رن' in both arms; trace-fold.tsx at HEAD wraps each unit in <bdi> (git diff 874446c2c80e..HEAD) and the tooltip title in FSI/PDI per unit; fribidi on '3 Python رن · 1 فائل · 2 کنسولز' with per-unit isolates orders correctly. The 'Python رن' redundancy minor is withdrawn: 'رن' qualifies a bare 'Python' (the unit noun) and the isolate removes the W7 hazard; no finding.",
+  "fold.count.list_variables: 'N بار متغیرات کی فہرست' (both arms) — device present, count binds to times.",
+  "fold.count.hub / fold.count.project: other arms inflect ('ذیلی ایجنٹس', 'پروجیکٹس'; delete arms 'پروجیکٹس کا حذف'), one arms singular — shipped precedent ui.agents / ui.projects uses the same forms.",
+  "fold.count.todo / todo_read: 'کاموں کی فہرست' = ui.chat.run_details.todos.title 'To-dos' (shipped); the number-binding minor stays recorded as UR-1753-1.",
+  "user_turn.stamp.sent/answered/ran: 'بھیجا گیا: {date}' etc. carry the colon; fribidi on a real date value keeps 'label: date' in reading order.",
+  "accepted-not-fixed slash bidi (pickers.slash.unknown_command, _suggest; run_details.wake.managed_note): re-judged as final, recorded as renderer-level minors UR-1753-3 / UR-1753-4."
+ ],
+ "verified": [
+  "Key census: 86 added keys per namespace (55/8/7/8/2/3/3) equal the task; 0 English values changed; for all 7 namespaces the ur key set equals en (241/41/80/760/93/5/43 keys).",
+  "ICU: every one of the 86 messages parses with @formatjs/icu-messageformat-parser (requiresOtherClause) and its placeholder/argument set, nested plural arms and ::group-off number skeletons equal English's; every plural has an 'other' arm; ur has exactly one/other (Intl.PluralRules('ur')). All 54 plural messages were rendered with intl-messageformat at counts 0,1,2,3,5,11,21,22,25,100,1000: every render succeeded and contains the count (0 and 1000 take 'other'; only 1 takes 'one'; 0 -> plural, which is correct for ur).",
+  "Agreement checked in the renders: 1 کمانڈ چلائی / 2 کمانڈز چلائیں; 1 فائل دیکھی / 2 فائلیں دیکھیں; 1 فائل میں ترمیم کی / 2 فائلوں میں ترمیم کی; 1 کام تفویض کیا / 2 کام تفویض کیے; 1 سوال منتظر ہے / 2 سوالات منتظر ہیں; delivering: 1 جواب … اسے / 2 جوابات … انہیں; 1 آنے والا پیغام / 2 آنے والے پیغامات.",
+  "Characters: all 86 values are NFC, contain no Cf/bidi control or zero-width character, no edge-space change versus English (fold.unit_separator ' · ' and asks.scope_line ' · ' are byte-identical to English), no double space, single U+2026 in sidebar.groups.loading, Urdu ۔ ، and “ ” used (no ASCII quotes, no danda, no Arabic-Indic digits).",
+  "Meaning and safety: pending/failed never reads as done — asks.clause.delivering 'ابھی پہنچایا نہیں گیا — آپ اسے اب بھی بدل سکتے ہیں' keeps both facts; transcript.not_delivered 'نہیں پہنچا' reads as failure (shipped: 'جو پیغام نہیں پہنچ سکا' ui.chat.composer.delivery_remedies_hint) and is not confusable with 'پہنچا دیا گیا' (late_delivery); clause.timed_out is quiet and final; clause.outstanding keeps 'زیر التوا' (ui.chat.asks.outstanding_aria).",
+  "Terminology vs shipped ur: بیداری (wake; ui.schedules.count.wake, style guide), نگرانی (monitor; ui.chat.run_details.monitors.more), ہدایت دی گئی (steer; ui.chat.composer.steer_hint), باری (turn; ui.chat.checkpoint.turn), جابز (ui.chat.run_details.jobs), کنسول (ui.console.empty.detail), ایجنٹس/ذیلی ایجنٹ, راز (secret; ui.chat.composer.secret_ask_notice), مسودہ (ui.chat.sidebar draft family, ui.teamBridge.drafts.empty), اسناد (credential; ui.agents.publication.hub_unauthorized.body), آرکائیو شدہ شامل کریں byte-identical to ui.chat.sidebar.search.include_archived (the quoted label in groups.withheld), Esc … کرتا ہے hint form (ui.chat.composer.placeholder.aside), فی الحال چالو (ui.chat.pickers.fast_picker_options.on), قدر (value; ui.canvas.variables_viewer.copy_value), سوالات for asks (ui.chat.asks.all_asks).",
+  "Register: آپ throughout, respectful imperatives (کریں/دکھائیں/استعمال کریں), no padding honorifics, no '!'; the stamps use 'label: {date}' and the Radient product name stays Latin.",
+  "Bidi (DERIVED from the Unicode Bidirectional Algorithm with fribidi 1.0.16 --rtl --nobreak --nopad --clean, UCD 16.0.0; NOT observed in a browser): stamps read 'بھیجا گیا: 10 اکتوبر، 2026 3:42 PM' in correct order with the colon after the label; quoted draft title “Fix the bug” keeps the opening quote on the right; 'Enter @package.json داخل کرتا ہے · Esc بند کرتا ہے' orders correctly; fold_count.actions_partial '+3 کارروائیاں' paints the sign after the digit ('3+'), which is the intended lower-bound reading; per-unit isolates fix the Python/number ordering; slash-command runs are the only defect (UR-1753-3/4, renderer-owned).",
+  "node scripts/i18n/check-coverage.mjs -> 'coverage-check: ok — 7 gated language(s) over 129 namespace(s); 0 allowed key(s) remain across 0 pair(s)'.",
+  "Overflow: unit labels are 2-4 words (Python رن, کاموں کی فہرست اپ ڈیٹس is the longest at ~22 characters, still one unbreakable unit that wraps at the ' · ' separator); the longest sentences (clause.delivering, withheld) are prose lines with no width budget. No rendered check was made, so the width estimate is arithmetic, not pixels."
+ ],
+ "namespaces": {
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 55,
+   "keys_added_by_pr_read": 55,
+   "namespace_keys_total_en_ur": 241,
+   "sha256": {
+    "ur": "1bf0af8888365ae102150f7df7f919c4963ba4ad27cbc4e86165b96dc4b3e6de",
+    "en": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   },
+   "context_sha256": "88a491a6e91758d1cd956d458a341717c878a8b3d61caf003b7a9f1ed1a4593a",
+   "findings": [
+    {
+     "id": "UR-1753-1",
+     "severity": "minor",
+     "key": "ui.chat.canonical.fold.count.todo",
+     "keys": [
+      "ui.chat.canonical.fold.count.todo",
+      "ui.chat.canonical.fold.count.todo_read"
+     ],
+     "summary": "Number-binding: '3 کاموں کی فہرست اپ ڈیٹس' lets the count attach to کاموں ('3 tasks') instead of the update/read events, so a reader can take it as 'list of 3 tasks, updates'. Meaning stays recoverable from the summary line (each unit is one fact joined by ' · ') and the glossary-consistent 'کاموں کی فہرست' (= ui.chat.run_details.todos.title) is kept. The ledger-accepted wording is left standing; optional polish reusing the 'بار' device the remediation already applied to list_variables.",
+     "before": "{count} کاموں کی فہرست اپ ڈیٹ / اپ ڈیٹس ; {count} کاموں کی فہرست پڑھنا",
+     "after": "{count} بار کاموں کی فہرست اپ ڈیٹ ; {count} بار کاموں کی فہرست پڑھنا",
+     "resolution": "accepted by prior audit, re-judged here as a minor; not blocking, not edited by the auditor"
+    },
+    {
+     "id": "UR-1753-2",
+     "severity": "nit",
+     "key": "ui.chat.canonical.fold.count.shell",
+     "summary": "Both plural arms are the bare 'شیل', while shipped ur inflects the same loanword ('شیلز', ui.settings.section.delegated_enabled.help) and this PR inflects its siblings ('کنسولز', 'پروجیکٹس'). The English arms are identical on purpose and the style guide allows invariant loanwords where natural ('سیشن'), so this is polish only.",
+     "before": "{count} شیل (one and other)",
+     "after": "other arm: {count} شیلز",
+     "resolution": "not edited by the auditor"
+    }
+   ],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   }
+  },
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "keys_added_by_pr_read": 8,
+   "namespace_keys_total_en_ur": 41,
+   "sha256": {
+    "ur": "0755c0d0ec2d81922e31a150eb8dd70e1489e281ab343412764dba4a3ca1f15f",
+    "en": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "context_sha256": "f61b397ea87067d1792983c3a1d904d1f88ee92ca98539a7335eaa2cbb3b8c3e",
+   "findings": [],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 7,
+   "keys_added_by_pr_read": 7,
+   "namespace_keys_total_en_ur": 80,
+   "sha256": {
+    "ur": "7aed2ec52855216b8981a2b1ffd395eef41412c0d399baf0421ab52653cfadee",
+    "en": "da4e961e7f19619d98860565be68e0edf65d26ebd8eef4eac2a48e8e6aa8b3df"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+    "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+   },
+   "context_sha256": "8e06707ca7184110e9599e1d4acaa5ad4f4409e3034dabfb4d861244a07c4cbb",
+   "findings": [],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 8,
+   "keys_added_by_pr_read": 8,
+   "namespace_keys_total_en_ur": 760,
+   "sha256": {
+    "ur": "75cfb4ce7c68474f75bbf4d3eecda2349069cf68f968b96a7a38c0f78f7df1dd",
+    "en": "fc24432940fa342e87f169992f8f9bf00d2d73a06ee654a29a62b547bcb6be37"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "context_sha256": "39138377d3df864dfcb9f64e084110244a40abce650f3c0837e1d31e45fa1df9",
+   "findings": [
+    {
+     "id": "UR-1753-3",
+     "severity": "minor",
+     "key": "ui.chat.pickers.slash.unknown_command",
+     "keys": [
+      "ui.chat.pickers.slash.unknown_command",
+      "ui.chat.pickers.slash.unknown_command_suggest"
+     ],
+     "summary": "Slash-command bidi (renderer-owned, accepted-not-fixed, re-judged as final). In logical order 'کمانڈ /help۔' the neutral '/' sits between R and L so UBA N1/N2 resolves it to the RTL embedding level and it paints AFTER the command: fribidi 1.0.16 gives the visual run 'help/' (and 'help, /hist/' in the suggest key, where the first slash trails the whole run). The catalogue text is the only form the ur style guide permits (no manual RLM/LRM/FSI/PDI), it reads exactly like ten shipped strings (e.g. ui.chat.pickers.mcp_command.unknown_mcp_server_or_command_use_mcp_login_name_or_mcp_reauth_name, ui.canvas.goals_viewer.no_goal_set_goal_text_to_set_one_finished_goals_are_kept_here), and the fix is a renderer isolate (<bdi>/dir=ltr) around the interpolated command, not a wording change. Residual user-visible effect: the slash is drawn after the command name.",
+     "before": "نامعلوم کمانڈ /{command}۔ مکمل فہرست کے لیے / ٹائپ کریں۔",
+     "after": "no catalogue change; wrap the interpolated command (and suggestions) in <bdi dir=ltr> in the renderer",
+     "resolution": "accepted as a renderer-level minor; derived from the Unicode Bidirectional Algorithm via fribidi, not observed in a browser"
+    }
+   ],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 2,
+   "keys_added_by_pr_read": 2,
+   "namespace_keys_total_en_ur": 93,
+   "sha256": {
+    "ur": "9c4168e7bc586f95943b72bd6c97d50bbc84702920b159c7cd11fd88acf13e73",
+    "en": "92fb1e13c99204304e7f567f29be4983416d7eddd3c5ff092a3abf4716dbf5e4"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+   },
+   "context_sha256": "be214f5b36ae7cd9c131b4372d0537321d7a22c6d35555883e8ca3f149c4bdb7",
+   "findings": [
+    {
+     "id": "UR-1753-4",
+     "severity": "minor",
+     "key": "ui.chat.run_details.wake.managed_note",
+     "summary": "Same slash-bidi class as UR-1753-3: the literal '/aida pause' follows Urdu text so the leading slash resolves RTL and fribidi paints 'aida pause/'. The command is verbatim as the context requires and a catalogue-side fix would need a bidi control the style guide forbids; renderer-owned and identical to shipped precedent.",
+     "before": "… ان چیک اِنز کو روکنے کے لیے /aida pause استعمال کریں۔",
+     "after": "no catalogue change; render the literal command in an LTR isolate",
+     "resolution": "accepted as a renderer-level minor; UBA-derived, not browser-observed"
+    }
+   ],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  },
+  "ui.chat.user_turn": {
+   "namespace": "ui.chat.user_turn",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "keys_added_by_pr_read": 3,
+   "namespace_keys_total_en_ur": 5,
+   "sha256": {
+    "ur": "c1571c66081a8c5c7bb76429f315e82708137b2e3e884936757a0a3d9ffc8fb7",
+    "en": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.user_turn.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.user_turn.json",
+    "context": "src/i18n/catalogues/en/ui.chat.user_turn.context.json"
+   },
+   "context_sha256": "83dc1782e60b76208d1baacc6bbfbcc49acb8ea10421ae17ff7acd5f44c9637f",
+   "findings": [],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.hub.pages": {
+   "namespace": "ui.hub.pages",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "keys_added_by_pr_read": 3,
+   "namespace_keys_total_en_ur": 43,
+   "sha256": {
+    "ur": "c44c3f18c229e9d7a408d3361855af5da3a4820cecb061b2ee898e7a234e30e1",
+    "en": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+    "target": "src/i18n/catalogues/ur/ui.hub.pages.json",
+    "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+   },
+   "context_sha256": "a767550cecb7c9469be395ece18098651441441777713e5f9101045f5df58ce5",
+   "findings": [],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  }
+ },
+ "method": [
+  "Read the 86 English values, the en context sidecar notes and the committed ur values side by side per namespace; grepped the ur catalogues for each term to quote shipped precedent; ran ICU parse/format and Intl.PluralRules from the worktree node_modules; ran fribidi on realistic strings; read the trace-fold.tsx and at-contract.ts render sites; no install, network, generator or ledger-assemble was run and no file other than this receipt was written."
+ ]
+}
