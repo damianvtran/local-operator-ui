@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { installedElectronBinary } from "./electron-runtime-path.mjs";
 
 /*
  * A FAILED passkey attempt must not leave its loopback listeners behind.
@@ -47,6 +48,19 @@ function externalise(module) {
 }
 
 test("a passkey attempt that throws closes both listeners and the process exits", () => {
+	/*
+	 * HERMETIC PRECONDITION. The probe imports `electron` at module scope
+	 * (scripts/browser-challenge-proof.mjs:97), and Electron 45's index runs its
+	 * own installer when dist/ is missing. A checkout without the runtime
+	 * therefore spends the child's whole spawn bound downloading it and reports
+	 * `Downloading Electron binary...` with ETIMEDOUT instead of anything about
+	 * listeners (run 42474269773, shard 3, 60 s). Resolve the binary the probe
+	 * will resolve -- without executing the package, which is what downloads --
+	 * and fail here instead, by name, in milliseconds. Never a skip: an absent
+	 * runtime is an environment defect this test has to report.
+	 */
+	installedElectronBinary(ROOT);
+
 	/*
 	 * The mutation oracle is the assertion itself: delete the wrapper's
 	 * `finally` (or move the close back to the success return) and the injected
