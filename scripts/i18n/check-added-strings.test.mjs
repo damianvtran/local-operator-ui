@@ -268,6 +268,45 @@ test("the real CLI rejects logical and JSX text in untracked and staged-new file
 	}
 });
 
+/* Visibility, not tidiness: the probe the CLI test above writes is deliberately
+ * left un-ignored. `check-added-strings.mjs` builds its untracked list from
+ * `git ls-files --others --exclude-standard`, so an ignore rule for
+ * `scripts/i18n/review-r1-*` made the probe invisible to git, the checker
+ * reported "0 changed file(s)" and passed vacuously while the test above still
+ * expected a finding (UI main, run 42506540162, job 128810354835, node 1244).
+ * The checker's untracked path IS git visibility, so visibility is not something
+ * a tidiness rule may take away.
+ *
+ * The debris that rule aimed at is real, though: a `SIGKILL` (this lane was
+ * OOM-killed twice) bypasses the `finally` above, and the next `git add -A`
+ * sweeps `scripts/i18n/review-r1-<pid>-<mode>.tsx` into a commit as if it were
+ * product code - that is exactly how `review-r1-42960-staged-new.tsx` reached
+ * #1767 and turned Language Coverage and Lint red on a rule that was correct.
+ *
+ * So guard the symptom instead of hiding the source: a probe left on disk is
+ * scratch the next run reclaims, a TRACKED probe is a defect in the commit. */
+test("no runtime probe is ever tracked in the index", () => {
+	// An inherited GIT_DIR/GIT_INDEX_FILE aims `git ls-files` at another
+	// repository or index, and a guard reading the wrong index passes silently.
+	const env = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+	);
+	const listed = spawnSync("git", ["ls-files", "-z", "--", "scripts/i18n"], {
+		cwd: REPO,
+		env,
+		encoding: "utf8",
+	});
+	assert.equal(listed.status, 0, listed.stderr);
+	const probes = listed.stdout
+		.split("\0")
+		.filter((rel) => rel.startsWith("scripts/i18n/review-r1-"));
+	assert.deepEqual(
+		probes,
+		[],
+		`a runtime probe was committed, so a killed run's scratch became product code: \`git rm --cached\` each of ${probes.join(", ")} and delete it on disk`,
+	);
+});
+
 /* The vanished-file race (CI runs 41603855749 / 41595469149): a sibling test's
  * transient `_*.bundle.mjs` is listed as untracked and deleted before the
  * checker reads it. `afterListing` opens that window deterministically in a
