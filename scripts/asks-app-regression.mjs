@@ -75,6 +75,14 @@ export const ASKS_CONTROL_PINNED = "2461cfa3f3beaa1124727a9de93dfe01c4381b0d";
  * The single fetch `resolveAsksControl` may make, bounded so a stalled or slow
  * remote degrades to the pinned revision instead of hanging the producer. It is a
  * FALLBACK on a path that must also work offline, never a requirement.
+ *
+ * WHERE THE NUMBER COMES FROM. MEASURED: `spawnSync`'s timeout is enforced on the
+ * process group, not decorative - a 1000 ms cap returned at 1003 ms with `ETIMEDOUT`
+ * even with a grandchild holding the inherited stdout pipe (review round 1), so this
+ * bound really does end the fetch. CHOSEN, NOT MEASURED: 20 s. One ref at depth 1 on a
+ * warm runner is seconds, and an optional fallback must stay far below the step's own
+ * timeout rather than consume a macOS leg; there is no distribution of real fetch
+ * times behind the exact value, so it is a policy ceiling and says so.
  */
 const CONTROL_FETCH_TIMEOUT_MS = 20000;
 
@@ -94,13 +102,32 @@ const CONTROL_FETCH_TIMEOUT_MS = 20000;
  * an exception, and every branch below reports itself.
  *
  * WHY THE MERGE PARENT COMES BEFORE ANY FETCH. In CI this job checks out GitHub's
- * recomputed `refs/pull/N/merge` at depth 1, where `origin/main` is absent but the
- * merge commit's FIRST PARENT is main as of that run - the base the candidate was
- * built from, and the one baseline a fork PR cannot mislead: on a fork PR the
- * remote's `main` is the FORK's, which is why the sibling asks step in ci.yml
- * derives `HEAD^1` rather than consulting `origin/main`. Same rule here, no network.
- * A network fetch stays a LAST-RESORT fallback (see below) rather than a requirement,
- * so an offline tree still resolves.
+ * recomputed `refs/pull/N/merge`, and THAT COMMIT'S FIRST PARENT is main as of the
+ * run - the base the candidate was built from, and the one baseline a fork PR cannot
+ * mislead: on a fork PR the remote's `main` is the FORK's, which is why the sibling
+ * asks step in ci.yml derives `HEAD^1` rather than consulting `origin/main`. Same rule
+ * here, no network.
+ *
+ * WHY THAT PARENT IS NOT A PROPERTY OF THE CHECKOUT, AND WHAT SUPPLIES IT. This branch
+ * does NOT fire on the raw checkout. MEASURED here: a depth-1 fetch of a merge commit
+ * leaves BOTH parents unresolvable (`HEAD^1` and `HEAD^2` absent, `.git/shallow`
+ * naming the merge commit), which is what ci.yml:1167-1171 states - "a depth-1
+ * checkout carries neither". The parent exists only because the earlier asks step in
+ * the same workspace runs `git fetch --no-tags --depth=2 origin $(git rev-parse HEAD)`
+ * (ci.yml:1171) and the model-case step inherits the deepened clone. So this branch is
+ * correct AND it DEPENDS on that fetch: delete the `--depth=2` line and the resolver
+ * silently drops to the pinned baseline. The regression test builds the real depth-1
+ * shape and then deepens it, so it fails for that deletion instead of describing it.
+ *
+ * WHY EVERY PROVENANCE LINE IS ON STDERR. This module is a release script with a
+ * contract: `scripts/entry-point.test.mjs` pins its refusal path to `stdout: /^$/`,
+ * and the resolution below runs at IMPORT time (`ASKS_CONTROL`), before the permission
+ * door can refuse. Printing there turned that contract red on run 42515867037 (job
+ * 128838711899) with 255 bytes of the DEGRADED line on stdout. stderr is where this
+ * script's other diagnostics already go, and the contract's stderr assertion is a
+ * SEARCH, so the branch stays named and stdout stays silent. The tests capture the two
+ * streams separately and assert the split, so a line moving back to stdout fails a
+ * source test rather than a required check.
  */
 export function resolveAsksControl() {
 	const override = process.env.ASKS_CONTROL_OVERRIDE;
@@ -110,12 +137,12 @@ export function resolveAsksControl() {
 	if (onMain) {
 		const merged = probeMergeBase("origin/main", "HEAD");
 		if (merged) {
-			console.log(
+			console.error(
 				`asks-app-regression: control derived from the merge base of origin/main and HEAD (${merged})`,
 			);
 			return merged;
 		}
-		console.log(
+		console.error(
 			`asks-app-regression: origin/main (${onMain}) shares no history with HEAD; falling through to the next control source`,
 		);
 	}
@@ -124,11 +151,15 @@ export function resolveAsksControl() {
 	 * The merge ref's first parent. Only when HEAD really is a MERGE COMMIT (`HEAD^2`
 	 * exists): on a developer's ordinary branch `HEAD^1` is the previous commit, not
 	 * main, so accepting it there would compare the change against itself.
+	 *
+	 * Both parents are present only because ci.yml deepened this clone before this step
+	 * ran (`git fetch --depth=2 origin $(git rev-parse HEAD)`, ci.yml:1171). The `HEAD^2`
+	 * guard is what keeps that from misfiring on an ordinary branch.
 	 */
 	if (probeCommit("HEAD^2")) {
 		const parent = probeCommit("HEAD^1");
 		if (parent) {
-			console.log(
+			console.error(
 				`asks-app-regression: origin/main unavailable in this clone; comparing against the merge ref's first parent ${parent}`,
 			);
 			return parent;
@@ -136,29 +167,37 @@ export function resolveAsksControl() {
 	}
 
 	/*
-	 * One bounded, best-effort fetch of the remote-tracking ref, for a bare depth-1
-	 * branch clone that has neither `origin/main` nor a merge parent. Never mandatory:
-	 * `ASKS_CONTROL_NO_FETCH` opts out, a tree with no `origin` remote skips it, and a
-	 * failure falls through to the pinned revision below. Only the PRODUCER fetches -
-	 * `isEntryPoint` (or an explicit `ASKS_CONTROL_ALLOW_FETCH=1`, which the tests use
-	 * to drive this branch against a local remote) keeps an importing suite off the
-	 * network.
+	 * One bounded, best-effort fetch of the remote's main into a PRIVATE ref, for a bare
+	 * depth-1 branch clone that has neither `origin/main` nor a merge parent. Never
+	 * mandatory: `ASKS_CONTROL_NO_FETCH` opts out, a tree with no `origin` remote skips
+	 * it, and a failure falls through to the pinned revision below. Only the PRODUCER
+	 * fetches - `isEntryPoint` (or an explicit `ASKS_CONTROL_ALLOW_FETCH=1`, which the
+	 * tests use to drive this branch against a local remote) keeps an importing suite
+	 * off the network.
+	 *
+	 * NON-DESTRUCTIVE BY CONSTRUCTION (review round 1, R1-4). The fetch goes to `origin`'s
+	 * URL rather than the remote name, writes only the private ref (see `fetchMainOnce`),
+	 * and takes a depth only where the clone is already shallow - so a developer's
+	 * `origin/main`, `FETCH_HEAD` and non-shallow history all survive the run. The
+	 * alternative the reviewer offered - refuse to fetch at all in a developer checkout
+	 * and take the pin - was rejected: it throws away the only real base available on
+	 * that path, whereas a disposable ref answers the same question without the mutation.
 	 */
 	if (
 		(process.env.ASKS_CONTROL_ALLOW_FETCH === "1" ||
 			isEntryPoint(import.meta.url)) &&
 		fetchMainOnce()
 	) {
-		const merged = probeMergeBase("origin/main", "HEAD");
+		const merged = probeMergeBase(ASKS_CONTROL_FETCH_REF, "HEAD");
 		if (merged) {
-			console.log(
-				`asks-app-regression: origin/main was absent; fetched it once and comparing against the merge base ${merged}`,
+			console.error(
+				`asks-app-regression: origin/main was absent; fetched it once into ${ASKS_CONTROL_FETCH_REF} and comparing against the merge base ${merged}`,
 			);
 			return merged;
 		}
 	}
 
-	console.log(
+	console.error(
 		`asks-app-regression: origin/main unavailable; comparing against pinned ${ASKS_CONTROL_PINNED} (DEGRADED: this clone has no origin/main, no merge parent and no usable fetch, so the control is the historical pin rather than this PR's base)`,
 	);
 	return ASKS_CONTROL_PINNED;
@@ -179,6 +218,18 @@ export function probeCommit(rev) {
 			encoding: "utf8",
 		},
 	);
+	/*
+	 * A SPAWN FAILURE IS NOT AN ANSWER ABOUT THE REVISION (review NIT R1-6). If `git`
+	 * itself cannot be launched, every probe would read as "absent" and the real cause
+	 * would surface much later as `assertControlPresent`'s "the control revision ... is
+	 * not in this clone", which is the wrong reason and sends the reader to the wrong
+	 * fix. Only a NON-ZERO EXIT means absent; an unlaunchable git is an environment
+	 * failure and is named as one.
+	 */
+	if (out.error)
+		throw new Error(
+			`asks-app-regression: could not run git to probe ${rev}: ${out.error.message}`,
+		);
 	return out.status === 0 ? out.stdout.trim() || null : null;
 }
 
@@ -191,29 +242,78 @@ function probeMergeBase(left, right) {
 }
 
 /**
- * Bounded, single, best-effort fetch of `origin`'s main into the remote-tracking ref.
- * Returns whether the ref resolves afterwards. Never throws and never hangs: a
- * missing remote, an offline tree or `ASKS_CONTROL_NO_FETCH` all answer false.
+ * The branch-private ref the fallback fetch writes.
+ *
+ * NOT `refs/remotes/origin/main` (review round 1, R1-4): that ref is read by people
+ * and by other tools, and a `--depth=1` fetch through it both MOVES it - masking the
+ * developer's own `origin/main` - and shallow-marks the clone. A ref under
+ * `refs/asks-control/` is disposable, shadows nothing, and `--no-write-fetch-head`
+ * keeps `FETCH_HEAD` from being replaced under a concurrent `git pull`.
+ */
+export const ASKS_CONTROL_FETCH_REF = "refs/asks-control/main";
+
+/** Whether this repository is ALREADY shallow, per git itself. */
+function repositoryIsShallow() {
+	const out = spawnSync("git", ["rev-parse", "--is-shallow-repository"], {
+		encoding: "utf8",
+	});
+	return out.status === 0 && out.stdout.trim() === "true";
+}
+
+/** `origin`'s URL, or null when this clone has no such remote. */
+function remoteOriginUrl() {
+	const out = spawnSync("git", ["remote", "get-url", "origin"], {
+		encoding: "utf8",
+	});
+	return out.status === 0 ? out.stdout.trim() || null : null;
+}
+
+/**
+ * Bounded, single, best-effort fetch of `origin`'s main into a PRIVATE ref. Returns
+ * the fetched commit, or null. Never throws and never hangs: a missing remote, an
+ * offline tree or `ASKS_CONTROL_NO_FETCH` all answer null.
+ *
+ * WHY IT FETCHES BY URL AND NOT BY REMOTE NAME. Naming the remote does not confine the
+ * write to the refspec given: MEASURED here, `git fetch origin +refs/heads/main:refs/asks-control/main`
+ * ALSO updated `refs/remotes/origin/main`, because the clone's `remote.origin.fetch`
+ * mapping is applied on top of the command-line refspec - so a private refspec alone
+ * still mutates the developer's clone. Fetching the URL writes no remote-tracking ref
+ * at all, because there is no remote to update.
+ *
+ * WHY `--depth` IS CONDITIONAL, WHICH IS THE OTHER HALF OF R1-4. `--depth=1` SHALLOWS
+ * the local repository whatever ref it lands in: MEASURED here, a full clone that
+ * fetched one ref at depth 1 gained a `.git/shallow` naming that tip, and the file
+ * outlives the process. A depth is only meaningful, and only harmless, where the clone
+ * is already shallow; a full clone gets a normal fetch, which transfers nothing it does
+ * not already have and keeps its history intact.
  */
 function fetchMainOnce() {
-	if (process.env.ASKS_CONTROL_NO_FETCH) return false;
-	if (
-		spawnSync("git", ["remote", "get-url", "origin"], { encoding: "utf8" })
-			.status !== 0
-	)
-		return false;
+	if (process.env.ASKS_CONTROL_NO_FETCH) return null;
+	const url = remoteOriginUrl();
+	if (!url) return null;
 	const fetched = spawnSync(
 		"git",
 		[
 			"fetch",
 			"--no-tags",
-			"--depth=1",
-			"origin",
-			"+refs/heads/main:refs/remotes/origin/main",
+			"--no-write-fetch-head",
+			...(repositoryIsShallow() ? ["--depth=1"] : []),
+			url,
+			`+refs/heads/main:${ASKS_CONTROL_FETCH_REF}`,
 		],
-		{ encoding: "utf8", timeout: CONTROL_FETCH_TIMEOUT_MS },
+		{
+			encoding: "utf8",
+			timeout: CONTROL_FETCH_TIMEOUT_MS,
+			/*
+			 * A private or expired-credential https remote would otherwise block on an
+			 * interactive username/password prompt until the cap expired (review R1-5).
+			 * This script only ever runs unattended - on a hosted runner, or by a developer
+			 * who is not watching a background step - so no prompt may survive.
+			 */
+			env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+		},
 	);
-	return fetched.status === 0 && Boolean(probeCommit("origin/main"));
+	return fetched.status === 0 ? probeCommit(ASKS_CONTROL_FETCH_REF) : null;
 }
 
 /**

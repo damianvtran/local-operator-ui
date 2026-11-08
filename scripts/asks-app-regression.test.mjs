@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
 	existsSync,
+	mkdirSync,
 	mkdtempSync,
 	readFileSync,
 	rmSync,
@@ -26,6 +27,7 @@ import {
 } from "./asks-app-fixture.mjs";
 import {
 	ASKS_CONTROL,
+	ASKS_CONTROL_FETCH_REF,
 	ASKS_CONTROL_PINNED,
 	ASKS_RAIL_CLOSE_POST_STATE,
 	CASES,
@@ -1044,12 +1046,21 @@ test("existing job performs real native capture and always uploads measurements"
  * 128830450208, RED) carry the identical `fatal:` line, so it is a log defect and a
  * SILENT degraded baseline, not what fails a step.
  *
- * Driven against repositories built here, so the four shapes cannot pass by stub: a
- * depth-1 PR checkout (merge commit, no `origin/main`), a branch clone that can fetch
- * the ref, a developer clone that has it, and an offline tree that must degrade LOUDLY
- * to the pin. `ASKS_CONTROL_NO_FETCH` is set throughout except in the fetch case: a
- * unit test has no business talking to a remote, and the fetch branch is driven
- * against a local one.
+ * Driven against repositories built here, so the shapes cannot pass by stub: a
+ * depth-1 PR checkout (merge commit, no `origin/main`) BOTH before and after the
+ * `--depth=2` fetch ci.yml:1171 runs - so deleting that line fails here - a branch
+ * clone that can fetch the ref, a developer clone that has it, an offline tree that
+ * must degrade LOUDLY to the pin, and the OVERRIDE branch, which is the only one this
+ * workflow actually executes (ci.yml:1179). `ASKS_CONTROL_NO_FETCH` is set throughout
+ * except in the fetch case: a unit test has no business talking to a remote, and the
+ * fetch branch is driven against a local one, which also proves that fetch writes a
+ * private ref and leaves the clone unshallow.
+ *
+ * AND THE TWO STREAMS ARE ASSERTED APART (round 1, R1-1). The provenance lines are on
+ * stderr because a release contract pins this script's stdout EMPTY on its refusal
+ * path, and they are emitted at IMPORT time, before any door can refuse. Every shape
+ * below therefore asserts `stdout === ""` instead of leaving the next reader to work
+ * out which stream a new line belongs on.
  */
 const controlGitEnv = {
 	...process.env,
@@ -1099,6 +1110,48 @@ function buildControlRepo(
 	return { work, origin };
 }
 
+/** Git's answer in `cwd`, or "" when git refuses - a probe that never throws. */
+function tryGit(cwd, ...args) {
+	const out = spawnSync("git", args, {
+		cwd,
+		encoding: "utf8",
+		env: controlGitEnv,
+	});
+	return out.status === 0 ? out.stdout.trim() : "";
+}
+
+/**
+ * THE RELEASE CONTRACT'S OWN RULE (round 1, R1-1), asserted for every shape: the
+ * resolver's provenance goes to stderr and stdout stays EMPTY. `entry-point.test.mjs`
+ * pins `stdout: /^$/` for a refusing invocation of this script, and the resolution
+ * runs at IMPORT time - so a line drifting back to stdout must fail HERE, at unit
+ * cost, rather than on a required check forty minutes later.
+ */
+function assertQuietStdout(label, run) {
+	assert.equal(
+		run.stdout,
+		"",
+		`${label}: the resolver must keep stdout empty (a release contract pins stdout: /^$/), got ${JSON.stringify(run.stdout)}`,
+	);
+}
+
+/**
+ * THE SHAPE ci.yml ACTUALLY CHECKS OUT, built for real: a depth-1 fetch of the merge
+ * commit into an empty repository. MEASURED: such a checkout carries NEITHER parent
+ * (`HEAD^1` and `HEAD^2` both absent), and only the `--depth=2` re-fetch of HEAD that
+ * ci.yml:1171 runs supplies them - so this case fails if that fetch is deleted, which
+ * the full-clone merge case cannot see (round 1, R1-3).
+ */
+function buildDepthOneMergeCheckout(root, remote, mergeSha) {
+	const dir = join(root, "depth-one");
+	mkdirSync(dir, { recursive: true });
+	controlGit(dir, "init", "-q", "-b", "merge");
+	controlGit(dir, "remote", "add", "origin", remote);
+	controlGit(dir, "fetch", "-q", "--no-tags", "--depth=1", "origin", mergeSha);
+	controlGit(dir, "update-ref", "refs/heads/merge", "FETCH_HEAD");
+	return dir;
+}
+
 /** `resolveAsksControl()` asked IN `dir`, with its provenance lines captured. */
 function resolveControlIn(dir, env = {}) {
 	const saved = {
@@ -1107,9 +1160,12 @@ function resolveControlIn(dir, env = {}) {
 		noFetch: process.env.ASKS_CONTROL_NO_FETCH,
 		allowFetch: process.env.ASKS_CONTROL_ALLOW_FETCH,
 		log: console.log,
+		error: console.error,
 	};
-	const logs = [];
-	console.log = (...args) => logs.push(args.join(" "));
+	const stdout = [];
+	const stderr = [];
+	console.log = (...args) => stdout.push(args.join(" "));
+	console.error = (...args) => stderr.push(args.join(" "));
 	try {
 		Reflect.deleteProperty(process.env, "ASKS_CONTROL_OVERRIDE");
 		process.env.ASKS_CONTROL_NO_FETCH = "1";
@@ -1121,9 +1177,16 @@ function resolveControlIn(dir, env = {}) {
 			else process.env[key] = value;
 		}
 		process.chdir(dir);
-		return { value: resolveAsksControl(), logs };
+		const value = resolveAsksControl();
+		return {
+			value,
+			stdout: stdout.join("\n"),
+			stderr: stderr.join("\n"),
+			logs: [...stdout, ...stderr],
+		};
 	} finally {
 		console.log = saved.log;
+		console.error = saved.error;
 		process.chdir(saved.cwd);
 		for (const [key, value] of [
 			["ASKS_CONTROL_OVERRIDE", saved.override],
@@ -1151,9 +1214,49 @@ test("the control resolver probes, fetches once, and names the branch it took", 
 		const fromMergeRef = resolveControlIn(merged.work);
 		assert.equal(fromMergeRef.value, expectedParent);
 		assert.match(
-			fromMergeRef.logs.join("\n"),
+			fromMergeRef.stderr,
 			new RegExp(`merge ref's first parent ${expectedParent}`),
 		);
+		assertQuietStdout("merge-ref checkout", fromMergeRef);
+
+		/*
+		 * 1b. THE SAME SHAPE AS THE DEPTH-1 CHECKOUT CI REALLY MAKES: `HEAD^1` is
+		 * absent, so the resolver must NOT invent a base - it degrades to the pin and
+		 * says so. Without this case the merge-parent assertion above proves only that
+		 * a full clone can read its own parent, which is not the property CI relies on.
+		 */
+		const depthOne = buildDepthOneMergeCheckout(
+			root,
+			merged.work,
+			controlGit(merged.work, "rev-parse", "HEAD"),
+		);
+		assert.equal(
+			tryGit(depthOne, "rev-parse", "--verify", "--quiet", "HEAD^1^{commit}"),
+			"",
+			"the depth-1 shape must really lack HEAD^1, or the case below proves nothing",
+		);
+		const dampened = resolveControlIn(depthOne);
+		assert.equal(dampened.value, ASKS_CONTROL_PINNED);
+		assert.match(dampened.stderr, /DEGRADED/);
+		assertQuietStdout("depth-1 merge-ref checkout", dampened);
+
+		/*
+		 * 1c. AND THE `--depth=2` FETCH ci.yml RUNS IS WHAT MAKES THE BRANCH WORK: delete
+		 * that line from the workflow and the assertion below is the one that fails.
+		 */
+		controlGit(
+			depthOne,
+			"fetch",
+			"-q",
+			"--no-tags",
+			"--depth=2",
+			"origin",
+			controlGit(depthOne, "rev-parse", "HEAD"),
+		);
+		const deepened = resolveControlIn(depthOne);
+		assert.equal(deepened.value, expectedParent);
+		assert.match(deepened.stderr, /merge ref's first parent/);
+		assertQuietStdout("deepened merge-ref checkout", deepened);
 
 		/* 2. A developer clone that HAS the ref keeps the merge-base answer. */
 		const full = buildControlRepo(join(root, "full"), { keepOriginMain: true });
@@ -1161,9 +1264,10 @@ test("the control resolver probes, fetches once, and names the branch it took", 
 		const fromFull = resolveControlIn(full.work);
 		assert.equal(fromFull.value, expectedBase);
 		assert.match(
-			fromFull.logs.join("\n"),
+			fromFull.stderr,
 			new RegExp(`merge base of origin/main and HEAD \\(${expectedBase}\\)`),
 		);
+		assertQuietStdout("developer clone", fromFull);
 
 		/*
 		 * 3. OFFLINE AND UNDEGRADED BY DEFAULT: no `origin/main`, no merge parent, no
@@ -1173,26 +1277,74 @@ test("the control resolver probes, fetches once, and names the branch it took", 
 		const offline = buildControlRepo(join(root, "offline"));
 		const degraded = resolveControlIn(offline.work);
 		assert.equal(degraded.value, ASKS_CONTROL_PINNED);
-		assert.match(degraded.logs.join("\n"), /DEGRADED/);
+		assert.match(degraded.stderr, /DEGRADED/);
 		assert.ok(
-			degraded.logs.join("\n").includes(ASKS_CONTROL_PINNED),
+			degraded.stderr.includes(ASKS_CONTROL_PINNED),
 			"the degraded line must name the revision it is comparing against",
 		);
+		assertQuietStdout("offline tree", degraded);
 
 		/*
 		 * 4. ONE BOUNDED FETCH MAKES THE COMPARISON REAL when the ref is absent but
-		 * reachable. Asked against a local remote, so no test reaches the network.
+		 * reachable - and it must leave the repository as it found it. Asked against a
+		 * local remote, so no test reaches the network.
 		 */
 		const fetchable = buildControlRepo(join(root, "fetchable"));
+		/* A sentinel proves `--no-write-fetch-head`: a real fetch would replace it. */
+		const fetchHead = join(fetchable.work, ".git", "FETCH_HEAD");
+		writeFileSync(fetchHead, "sentinel\n");
 		const fetched = resolveControlIn(fetchable.work, {
 			ASKS_CONTROL_ALLOW_FETCH: "1",
 			ASKS_CONTROL_NO_FETCH: undefined,
 		});
 		assert.equal(
 			fetched.value,
-			controlGit(fetchable.work, "rev-parse", "origin/main"),
+			controlGit(fetchable.work, "rev-parse", ASKS_CONTROL_FETCH_REF),
 		);
-		assert.match(fetched.logs.join("\n"), /fetched it once/);
+		assert.match(fetched.stderr, /fetched it once/);
+		assertQuietStdout("fetch branch", fetched);
+		/*
+		 * THE FETCH MUST NOT TOUCH WHAT A DEVELOPER READS (round 1, R1-4): no
+		 * remote-tracking ref written, no `FETCH_HEAD` replaced, and NO SHALLOW MARK -
+		 * `--depth=1` into a full clone writes `.git/shallow`, and that file outlives
+		 * the run, which is the mutation the private ref alone does not fix.
+		 */
+		assert.equal(
+			tryGit(
+				fetchable.work,
+				"rev-parse",
+				"--verify",
+				"--quiet",
+				"refs/remotes/origin/main",
+			),
+			"",
+			"the fallback fetch must not write the developer's remote-tracking ref",
+		);
+		assert.equal(readFileSync(fetchHead, "utf8"), "sentinel\n");
+		assert.equal(
+			existsSync(join(fetchable.work, ".git", "shallow")),
+			false,
+			"a full clone must not be shallow-marked by the fallback fetch",
+		);
+
+		/*
+		 * 5. THE BRANCH THIS WORKFLOW ACTUALLY TAKES (round 1, R1-2). ci.yml:1179 always
+		 * passes `ASKS_CONTROL_OVERRIDE` after refusing outright when `HEAD^1` is
+		 * missing, so on the model-case step the override - not the merge parent - is
+		 * what a real run resolves, and no test drove it. It must be returned VERBATIM
+		 * and BEFORE any probe: this clone HAS `origin/main`, so a resolver that probed
+		 * first would answer the merge base, and a value git cannot resolve proves no
+		 * validation rewrote it on the way out.
+		 */
+		const overridden = resolveControlIn(full.work, {
+			ASKS_CONTROL_OVERRIDE: "refs/heads/never-probed-by-the-resolver",
+		});
+		assert.equal(overridden.value, "refs/heads/never-probed-by-the-resolver");
+		assertQuietStdout("override branch", overridden);
+		assert.doesNotMatch(
+			overridden.logs.join("\n"),
+			/merge base of origin\/main/,
+		);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
@@ -1219,6 +1371,68 @@ test("a control revision that is not in the clone fails with the reason, not wit
 		);
 	} finally {
 		process.chdir(saved);
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+/*
+ * A `git` THAT CANNOT BE LAUNCHED IS NOT AN ABSENT REVISION (review NIT R1-6). Every
+ * answer this resolver gives comes from git, so before this the spawn failure read as
+ * "this clone has none of these refs": the degraded line blamed the clone's refs, and
+ * `assertControlPresent` would have blamed the control revision. Both send a reader to
+ * the wrong fix. Driven with an empty PATH so the failure is the real one, not a stub.
+ */
+test("a git that cannot be launched is named, not reported as an absent revision", () => {
+	const root = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD || tmpdir(),
+			"asks-control-no-git-",
+		),
+	);
+	try {
+		const emptyBin = join(root, "empty-bin");
+		mkdirSync(emptyBin);
+		const child = spawnSync(
+			process.execPath,
+			[
+				"--input-type=module",
+				"-e",
+				`const module = ${JSON.stringify(new URL("./asks-app-regression.mjs", import.meta.url).href)};
+try {
+	const imported = await import(module);
+	try {
+		imported.probeCommit("HEAD");
+		console.log("PROBED");
+	} catch (error) {
+		console.log("PROBE:" + error.message);
+	}
+} catch (error) {
+	console.log("IMPORT:" + error.message);
+}`,
+			],
+			{
+				cwd: root,
+				encoding: "utf8",
+				env: {
+					...process.env,
+					PATH: emptyBin,
+					GIT_CONFIG_SYSTEM: "/dev/null",
+					GIT_TERMINAL_PROMPT: "0",
+				},
+			},
+		);
+		assert.equal(child.status, 0, child.stderr);
+		assert.doesNotMatch(
+			child.stdout,
+			/PROBED/,
+			"an unlaunchable git must never answer as if the revision were absent",
+		);
+		assert.match(
+			child.stdout,
+			/could not run git to probe (origin\/main|HEAD)/,
+			`the failure must name git, got ${JSON.stringify(child.stdout)}`,
+		);
+	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
 });
