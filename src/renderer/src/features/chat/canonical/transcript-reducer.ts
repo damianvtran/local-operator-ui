@@ -54,6 +54,10 @@ import {
 	wakeIsHidden,
 } from "../components/trace/receipt-row-model";
 import {
+	preferToolResultDetails,
+	profileWriteDetails,
+} from "../components/trace/tool-result-details";
+import {
 	type SendDeliveryState,
 	diffFromDetails,
 	preferDeliveryState,
@@ -71,6 +75,11 @@ import {
 	receiveJournalOrder,
 	rememberJournalCalls,
 } from "./journal-order";
+import {
+	type PendingProfileHistoryReplacement,
+	profileHistoryReplacements,
+	retainAppliedProfileReplacement,
+} from "./profile-history-replacement";
 import { freezeRecordDeep } from "./record-immutability";
 import { type SkillRow, skillOf } from "./skill-row";
 import {
@@ -881,6 +890,8 @@ type TranscriptPayloadRecord =
 export type TranscriptRecord = TranscriptPayloadRecord & JournalPosition;
 
 export type TranscriptState = {
+	/** Non-rendered, bounded profile prunes awaiting their older native target. */
+	profileHistoryPending?: readonly PendingProfileHistoryReplacement[];
 	/** Order revision is independent of turn generation, view epoch and planner facts. */
 	journalMode?: boolean;
 	journalGeneration?: string;
@@ -3753,7 +3764,8 @@ function durableRecord(
 			// reloaded transcript reads the cancelled/conflict/refusal states from
 			// the same payload the live frames painted them from, and a row whose
 			// page carries no details keeps what it held.
-			details: preferProgressDetails(
+			details: preferToolResultDetails(
+				String(payload.tool_name ?? ""),
 				providerPayload.details,
 				previous?.kind === "tool" ? (previous.details ?? null) : null,
 			),
@@ -4527,6 +4539,7 @@ export function applyHistoryPage(
 	let state = initialState;
 	const previousOrder = state;
 	const admittedPeerIds: string[] = [];
+	let pendingProfiles = initialState.profileHistoryPending;
 	/*
 	 * THE MERGE'S OWN FINISH: lane flag, cleared admissions, cleared wave -
 	 * every return below goes through it so no exit can leave a peer page
@@ -4535,7 +4548,9 @@ export function applyHistoryPage(
 	const finish = (result: TranscriptState): TranscriptState =>
 		finalizePeerLane(
 			clearPeerAdmissions(
-				result,
+				result.profileHistoryPending === pendingProfiles
+					? result
+					: { ...result, profileHistoryPending: pendingProfiles },
 				admittedPeerIds,
 				options.peerSource === true && page.journal_order_state === "ready",
 			),
@@ -4613,8 +4628,19 @@ export function applyHistoryPage(
 		options.pagedBefore !== undefined && state.index.has(options.pagedBefore)
 			? options.pagedBefore
 			: state.records[0]?.id;
+	const profileHistory = profileHistoryReplacements(
+		page.entries,
+		state.records,
+		clearedView || previousOrder.journalGeneration !== state.journalGeneration
+			? []
+			: state.profileHistoryPending,
+	);
+	pendingProfiles =
+		!clearedView && profileHistory.pending.length
+			? profileHistory.pending
+			: undefined;
 	const incoming: TranscriptRecord[] = [];
-	for (const entry of page.entries) {
+	for (const entry of profileHistory.entries) {
 		if (clearedView && !isCompactionOutcome(entry, state.clearedAt)) continue;
 		// A tool row keys by call id, not entry id, so the prior record is looked
 		// up under both. A supplement row keys by ANCHOR (`supplementRecordKey`),
@@ -4631,7 +4657,19 @@ export function applyHistoryPage(
 			] ??
 			previousRecordForSupplement(state, entry);
 		let record = durableRecord(entry, previous);
-		if (record && state.journalMode)
+		// A continuation page may contain only the immutable queued original, not
+		// its later prune. Keep the already correlated applied overlay rather than
+		// rolling a signed completion back to a proposal on that partial read.
+		if (retainAppliedProfileReplacement(entry, previous) && previous)
+			record = previous;
+		// Keep the native target id for profile prune continuations arriving on a
+		// later partial page; canonical tool ids alone cannot identify their target.
+		if (
+			record &&
+			(state.journalMode ||
+				(record.kind === "tool" &&
+					profileWriteDetails(record.toolName, record.details)))
+		)
 			record = { ...record, sourceEntryId: entry.id };
 		/*
 		 * A CONTINUATION'S ROWS ARE OLDER THAN EVERYTHING THE READER HOLDS (see
@@ -6663,7 +6701,18 @@ export function applyEvent(
 				// unable-to-generate results carry it (the conflict pair included),
 				// a success result carries the last live frame's facts forward, and
 				// a budget-stripped frame keeps what the row held.
-				details: preferProgressDetails(result.details, base.details),
+				/*
+				 * A PROFILE WRITE KEEPS ITS OWN DETAILS. The progress carrier below drops
+				 * everything that is not progress-shaped, which threw away the saved/queued
+				 * receipt an `agent`/`team` result carries - and the card reads that receipt
+				 * (its `output` is prose). Narrow on purpose: the helper accepts only the
+				 * profile tools' bounded shapes, so no other row's details survive here.
+				 */
+				details: preferToolResultDetails(
+					base.toolName,
+					result.details,
+					base.details,
+				),
 			});
 		}
 		case "supplement_progress": {
@@ -7774,7 +7823,8 @@ export function clearTranscript(
 	state: TranscriptState,
 	at: number = Date.now(),
 ): TranscriptState {
-	if (state.records.length === 0) return state;
+	if (state.records.length === 0 && !state.profileHistoryPending?.length)
+		return state;
 	// `argsByCall` survives for the same reason it survives a `replace`: the
 	// history this clears is still on the backend, and repainting it must not
 	// lose the arguments the durable rows do not carry themselves.

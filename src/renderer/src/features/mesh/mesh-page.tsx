@@ -202,6 +202,12 @@ export const MeshSurface: FC<{
 		} | null;
 		/** `features.credential_approvals`: whether a credential card may be approved here. */
 		credentialApprovals: boolean;
+		/**
+		 * `features.profile_approvals`: whether a profile card may be answered here.
+		 * Its own key, not a bump of `approvals`: without it the backend serves no
+		 * route that accepts the reviewed-digest body for `profile_save`.
+		 */
+		profileApprovals: boolean;
 	};
 	/** The conversations the reads returned, and what each device holds. */
 	sessions: readonly MeshSessionRow[];
@@ -529,6 +535,7 @@ export const MeshSurface: FC<{
 				onRetry={approvals.onRetry}
 				nowSeconds={approvals.nowSeconds}
 				credentialApprovals={approvals.credentialApprovals}
+				profileApprovals={approvals.profileApprovals}
 				/*
 				 * The name the canvas already shows for a network, so the consent chip
 				 * does not name it twice (UX round 1, U1). `graph` is null until the mesh
@@ -887,6 +894,15 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 		desktopFeatureState(capabilities.data, "credential_approvals") ===
 		"enabled";
 	/*
+	 * THE PROFILE CARD'S OWN KEY. Core advertises `profile_approvals: 1` with
+	 * `profile_save` registered in production (as of core `7c44dfbb3b9` (PR #3449)), so this
+	 * reads true there; an older backend omits it, reads false, and the card states
+	 * the record without offering a signature. Reading the capability rather than a
+	 * build flag keeps both honest with no change here.
+	 */
+	const profileApprovals =
+		desktopFeatureState(capabilities.data, "profile_approvals") === "enabled";
+	/*
 	 * A REFUSED DECISION RENDERS ITS AUTHORED SENTENCE (agent review round 1,
 	 * finding 1): the store's refusals are the ones a waiting surface MUST carry
 	 * - a host with no signing surface ("ask Local Operator to set up operator
@@ -1119,6 +1135,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 					: null,
 				decisionRefusal,
 				credentialApprovals,
+				profileApprovals,
 				/*
 				 * The decision is resolved against the row it was drawn from and turned
 				 * into a request by `approvalDecisionRequest`, the one builder - so a
@@ -1134,7 +1151,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 						? approvalDecisionRequest(
 								row,
 								decision,
-								{ credentialApprovals },
+								{ credentialApprovals, profileApprovals },
 								decisionRefusal?.approvalId === approvalId
 									? decisionRefusal.retryable
 									: undefined,

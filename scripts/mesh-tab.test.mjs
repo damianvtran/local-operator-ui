@@ -2311,10 +2311,16 @@ test("the tray and the page route every credential decision through the typed bu
 		/desktopFeatureState\(capabilities\.data, "credential_approvals"\) ===\s*"enabled"/,
 		"the typed Approve is gated on its own feature key",
 	);
+	/*
+	 * THE CAPABILITY SET the builder is handed, not just its presence: the profile
+	 * kind joined the same call, and a row may only reach a route the backend
+	 * advertises. Both keys travel together, so neither surface can offer a signed
+	 * decision the other kind's key does not cover.
+	 */
 	assert.match(
 		page,
-		/approvalDecisionRequest\(\s*row,\s*decision,\s*\{ credentialApprovals \}/,
-		"the page builds the request from the row the card drew",
+		/approvalDecisionRequest\(\s*row,\s*decision,\s*\{\s*credentialApprovals,\s*profileApprovals\s*\}/,
+		"the page builds the request from the row the card drew, with every capability key",
 	);
 	assert.match(
 		page,

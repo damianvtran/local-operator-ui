@@ -1,0 +1,681 @@
+/**
+ * The profile-save consent contract: what a saved agent/team profile card may
+ * claim, and the ONE place its wire shapes are bounded.
+ *
+ * WHY THIS IS SHARED RATHER THAN IN THE MESH FEATURE. Two surfaces state the same
+ * fact about the same signed record: the Mesh approvals tray (the durable inbox,
+ * which must still hold an unattended proposal after a restart) and the chat
+ * transcript's saved card (the tool call's own receipt, with the one-click
+ * revert). A second parser beside the first is how the two start disagreeing
+ * about which field changed, so the row normaliser and the chat card both read
+ * this module and neither re-interprets a payload.
+ *
+ * THE WIRE IS THE BACKEND'S, FIELD FOR FIELD, and it is closed: every schema
+ * here is `.strict()`, because a payload that grew a field this build does not
+ * know is one this build would render as a claim it never bounded. The disclosure
+ * block mirrors `local_operator/profile_approval.py::disclosure`, the queued
+ * receipt the tool's own answer, and the revert descriptor the backend's
+ * `profile_revert` action.
+ *
+ * NO MANUFACTURED PLACEHOLDERS. An authored column is `undefined` when the wire
+ * omitted it and `null` when the wire said "explicitly none" (the agent `model`
+ * is the one nullable authored field). The two are different facts — a reset
+ * versus a build that never carried the column — so `profileFieldRows` reports
+ * three states rather than flattening them into one empty string.
+ */
+
+import { z } from "zod";
+
+export const PROFILE_SAVE_OPERATION = "profile_save" as const;
+export const PROFILE_REVERT_KIND = "profile_revert" as const;
+
+/** The two profile families the backend authors. */
+export const PROFILE_KINDS = ["agent", "team"] as const;
+export type ProfileKind = (typeof PROFILE_KINDS)[number];
+
+/** `create`/`update`/`revert` — the proposal's own operation, not the desktop op. */
+export const PROFILE_OPERATIONS = ["create", "update", "revert"] as const;
+export type ProfileOperation = (typeof PROFILE_OPERATIONS)[number];
+
+/** The only scope v1 mints; a wider value is a contract change, not a guess. */
+export const PROFILE_SCOPES = ["global"] as const;
+
+/**
+ * The authored columns, per family, in the order a reader compares them.
+ *
+ * `id` and `name` are deliberately absent: they identify the record rather than
+ * describe it, and the backend's own `changed_fields` excludes them
+ * (`profile_approval.disclosure`), so listing them would show a diff row for a
+ * rename that the disclosure does not claim.
+ */
+export const PROFILE_AUTHORED_FIELDS: Readonly<
+	Record<ProfileKind, readonly string[]>
+> = {
+	agent: [
+		"label",
+		"description",
+		"tags",
+		"categories",
+		"model",
+		"instructions",
+	],
+	team: [
+		"label",
+		"description",
+		"manager",
+		"members",
+		"aliases",
+		"instructions",
+		"project",
+	],
+};
+
+/*
+ * The bounds are the backend models' own (`profile_approval.AgentImage` and
+ * `TeamImage`). Restating them is the point: a client that accepted 200_000
+ * characters of instructions would render a card the server would have refused,
+ * and the reader would be reviewing a proposal that cannot be signed.
+ */
+const authoredText = z.string().max(100_000);
+const shortText = (max: number) => z.string().max(max);
+const token = z
+	.string()
+	.min(1)
+	.max(160)
+	.regex(/^[A-Za-z0-9_-]+$/);
+const digest = z.string().regex(/^sha256:[0-9a-f]{64}$/);
+
+/**
+ * One authored column's value, as the wire may spell it: a string, a list of
+ * strings, a team-member row, or an explicit `null` reset.
+ */
+const authoredValue = z.union([
+	z.string().max(100_000),
+	z.array(z.string().max(512)).max(128),
+	z.array(z.record(z.string(), z.unknown())).max(64),
+	z.null(),
+]);
+
+/**
+ * An agent image, closed. `model` is nullable because the backend authors a
+ * reset as `null`; every other column is required by the model, so an absent one
+ * is a payload this build refuses rather than repairs.
+ */
+export const profileAgentImageSchema = z
+	.object({
+		id: token,
+		name: z.string().min(1).max(128),
+		label: shortText(256),
+		description: shortText(16_000),
+		tags: z.array(shortText(512)).max(128),
+		categories: z.array(shortText(128)).max(32),
+		model: shortText(512).nullable(),
+		instructions: authoredText,
+	})
+	.strict();
+
+export const profileTeamImageSchema = z
+	.object({
+		id: token,
+		name: z.string().min(1).max(128),
+		label: shortText(256),
+		description: shortText(16_000),
+		manager: z.string().min(1).max(128),
+		/*
+		 * THE ROSTER IS THE BACKEND'S OWN `TeamMember` (`local_operator/teams.py`),
+		 * key for key, because a roster the card cannot read is a disclosure the
+		 * operator cannot review:
+		 *   role    required, non-empty — the specialist, or the team when kind="team";
+		 *   count   1..16, default 1 (how many of this role run);
+		 *   kind    "agent" | "team", default "agent" (a nested sub-team);
+		 *   tier    "lo" | "med" | "hi" | null — the model tier for THIS slot;
+		 *   effort  a TIER_EFFORTS level or "auto" | null (a str in the model, because
+		 *           the accepted set belongs to the effort module; the renderer keeps
+		 *           the word rather than inventing a second vocabulary);
+		 *   saver   bool | null — the Saver designation, present on the model and
+		 *           tolerated here so a roster that sets it still renders.
+		 *
+		 * `count` and `kind` are OPTIONAL WITH THE MODEL'S DEFAULTS, and the diff
+		 * renders the effective value: an omitted `count` IS one, so a roster that
+		 * omits it must not read as "1 -> 1 changed" beside one that states it.
+		 * `tier`, `effort` and `saver` are absent-or-null in the same way (no
+		 * override), and the row omits them rather than printing a placeholder.
+		 */
+		members: z
+			.array(
+				z
+					.object({
+						role: z.string().min(1).max(128),
+						count: z.number().int().min(1).max(16).optional(),
+						kind: z.enum(["agent", "team"]).optional(),
+						tier: z.enum(["lo", "med", "hi"]).nullable().optional(),
+						effort: z.string().max(64).nullable().optional(),
+						saver: z.boolean().nullable().optional(),
+					})
+					.strict(),
+			)
+			.max(64),
+		aliases: z.array(shortText(128)).max(32),
+		instructions: authoredText,
+		project: authoredText,
+	})
+	.strict();
+
+export type ProfileAgentImage = z.infer<typeof profileAgentImageSchema>;
+export type ProfileTeamImage = z.infer<typeof profileTeamImageSchema>;
+export type ProfileImage = ProfileAgentImage | ProfileTeamImage;
+
+/**
+ * The disclosure the card reviews, and the digests that bind it.
+ *
+ * THE DIGESTS ARE CARRIED, NEVER COMPUTED HERE: the renderer has no canonical
+ * JSON encoder matching the server's, so a digest minted in this process would be
+ * a claim about bytes the server never served. Both are echoed verbatim from the
+ * record on disk, and a mismatch is refused by the server before any signer runs.
+ */
+export const profileSaveDisclosureSchema = z
+	.object({
+		version: z.literal(1),
+		operation: z.literal(PROFILE_SAVE_OPERATION),
+		approval_id: z.string().min(1).max(64),
+		profile_kind: z.enum(PROFILE_KINDS),
+		scope: z.literal("global"),
+		profile_operation: z.enum(PROFILE_OPERATIONS),
+		target_id: token,
+		profile_name: z.string().min(1).max(128),
+		session_id: token,
+		tool_call_id: token,
+		receipt_id: token,
+		changed_fields: z.array(z.string().max(64)).max(32),
+		before: z.record(z.string(), authoredValue).nullable(),
+		after: z.record(z.string(), authoredValue),
+		base_commitment: digest,
+		after_commitment: digest,
+		expires_at: z.number().finite(),
+		signing_principal: z.string().min(1).max(160),
+	})
+	.strict();
+
+export type ProfileSaveDisclosure = z.infer<typeof profileSaveDisclosureSchema>;
+
+/** The typed block a profile row carries (`typed_approval`), closed like the wire's. */
+export const profileTypedApprovalSchema = z
+	.object({
+		/*
+		 * THE ACTION TOKEN IS LEGACY WIRE VOCABULARY, NOT THE SELECTOR.
+		 *
+		 * `desktop_approval.row_fields` writes `action: "approve-credential"` on EVERY
+		 * typed row - profile rows included - because the generic typed route grew out
+		 * of the credential one. Requiring `"approve-operation"` here refused every
+		 * real profile row, and the card degraded to the opaque fallback while the
+		 * story fixture (which hand-wrote the newer label) looked fine. So the label is
+		 * bounded but not keyed on, and the fact that selects this route is the
+		 * OPERATION: `operation === "profile_save"` or nothing.
+		 */
+		action: z.string().min(1).max(64),
+		operation: z.literal(PROFILE_SAVE_OPERATION),
+		request_digest: digest,
+		/*
+		 * THE HOST'S ASSURANCE, as the row states it: `assurance()`'s level and
+		 * whether that level can prove a person approved. Bounded fields of their own
+		 * rather than an open object, because this block is what a reader trusts when
+		 * the card says "signable here".
+		 */
+		assurance: z.string().max(64).optional(),
+		unproven_human: z.boolean().optional(),
+		/*
+		 * THE DISCLOSURE LIVES INSIDE THE ROW - there is no second GET for it. Absent
+		 * or null means the record carries no signable facts, which reads as opaque,
+		 * never as "no changes".
+		 */
+		disclosure: profileSaveDisclosureSchema.nullable().optional(),
+		disclosure_digest: digest.optional(),
+		/**
+		 * The server's own answer to "may THIS host sign it". Absent reads false:
+		 * an optimistic optional field must never enable a signature.
+		 */
+		signable_here: z.boolean(),
+		refusal: z.string().max(64).optional(),
+		refusal_message: z.string().max(2000).optional(),
+		apply_outcome: z
+			.object({
+				code: z.string().max(64),
+				retryable: z.boolean(),
+				reason: z.string().max(2000),
+				remedy: z.string().max(2000),
+			})
+			.strict()
+			.nullable()
+			.optional(),
+		/**
+		 * The presence-gated key's availability on this host: `{available, helper}`.
+		 * Reported, never assumed - and bounded, so a row that grew a field fails HERE
+		 * (by name) rather than being half-read.
+		 */
+		upgrade: z
+			.object({ available: z.boolean(), helper: z.string().max(64) })
+			.strict()
+			.optional(),
+	})
+	.strict();
+
+export type ProfileTypedApproval = z.infer<typeof profileTypedApprovalSchema>;
+
+/**
+ * What the tool answered when it filed the proposal, or after applying it: the
+ * receipt the chat card is built from.
+ *
+ * THE RECEIPT CARRIES THE DIFF, and that is the correction the backend's own code
+ * forced (`local_operator/tools/agent_tool.py::_queued_profile_receipt`): `fields`
+ * are the changed column names and `diff` are BACKEND-AUTHORED HUMAN-READABLE
+ * lines (built by `profile_scope.profile_diff_summary`). `diff` is what makes a
+ * policy change readable — effort/tools/class/delegate live inside the `tags`
+ * image, so a permission-relevant change would otherwise surface as a bare "tags
+ * changed". THE LINES ARE RENDERED VERBATIM AND NEVER RE-DERIVED here: parsing
+ * tag strings in the renderer would be a second policy vocabulary.
+ *
+ * Both lists are OPTIONAL because an older producer may omit them; when neither
+ * is present the card says the changes are not included rather than claiming the
+ * diff is empty.
+ */
+export const PROFILE_RECEIPT_STATUSES = ["queued", "applied"] as const;
+export const profileQueuedReceiptSchema = z
+	.object({
+		status: z.enum(PROFILE_RECEIPT_STATUSES),
+		approval_id: z.string().min(1).max(64).optional(),
+		request_digest: digest.optional(),
+		expires_at: z.number().finite().optional(),
+		receipt_id: token.optional(),
+		profile_kind: z.enum(PROFILE_KINDS),
+		profile_name: z.string().min(1).max(128),
+		scope: z.literal("global"),
+		/** The changed column names, as the backend named them. */
+		fields: z.array(z.string().max(64)).max(32).optional(),
+		/** The backend's own diff lines, rendered verbatim. */
+		diff: z.array(z.string().max(2000)).max(64).optional(),
+		/*
+		 * THE VERIFIED DESCRIPTOR's home: `details.profile_action`, parsed only by
+		 * `profileRevertDescriptorSchema`. It is carried here as an opaque value so the
+		 * receipt itself still parses; whether it may draw a control is decided by the
+		 * live status read, never by this block.
+		 */
+		profile_action: z.unknown().optional(),
+		/*
+		 * A LEGACY TEXT HINT, DELIBERATELY UNPARSED. An older applied card's details
+		 * hold `revert = {op: "revert", backup_id}` — prose for a human, not the agreed
+		 * verified descriptor. Accepted so the record still renders; it can NEVER
+		 * become a control, because only `profile_action` is ever parsed as one.
+		 */
+		revert: z.unknown().optional(),
+	})
+	.strict();
+
+export type ProfileQueuedReceipt = z.infer<typeof profileQueuedReceiptSchema>;
+
+/**
+ * An APPLIED record's `details`, as the real tool result carries it.
+ *
+ * WHY A SECOND SHAPE. The golden wire artifact (`profile-action-golden.ts`) shows the
+ * saved result and the queued receipt are different objects: queued carries
+ * `status`/`profile_kind`/`profile_name`, while the applied one carries
+ * `{kind, name, scope, fields, diff, backup_id, revision, authorized_by, profile_action,
+ * revert}` and NO status word — its savedness is the fact that a write happened, not a
+ * field. Reading it through the queued schema refused every real saved card, which is
+ * how the transcript fell back to a bare tool row on a successful save.
+ *
+ * `kind` is the record's own family word ("role" on an agent at this checkpoint), so it
+ * is carried verbatim and NOT mapped to the card's agent/team vocabulary: only a parsed
+ * descriptor, whose `profile_kind` the backend states, may name the family.
+ */
+export const profileSavedRecordSchema = z
+	.object({
+		kind: z.string().max(64).optional(),
+		name: z.string().min(1).max(128),
+		scope: z.literal("global"),
+		fields: z.array(z.string().max(64)).max(32).optional(),
+		diff: z.array(z.string().max(2000)).max(64).optional(),
+		backup_id: z.string().max(160).optional(),
+		revision: z.string().max(200).optional(),
+		authorized_by: z.string().max(160).optional(),
+		class: z.string().max(64).optional(),
+		/** The verified `profile_revert` descriptor (`local_operator/profile_actions.py`). */
+		profile_action: z.unknown().optional(),
+		/** The legacy `{op: "revert", backup_id}` hint — prose, never a control. */
+		revert: z.unknown().optional(),
+	})
+	.strict();
+
+export type ProfileSavedRecord = z.infer<typeof profileSavedRecordSchema>;
+
+/** The applied record, or `null` when the value is not exactly one this build bounds. */
+export function profileSavedRecord(value: unknown): ProfileSavedRecord | null {
+	const parsed = profileSavedRecordSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+}
+
+/**
+ * The revert descriptor — the ONLY thing that may draw a Revert button.
+ *
+ * Every field is namespaced (`profile_*`) and the kind is spelled, because a
+ * descriptor is untrusted input that arrives beside a tool result: a model-authored
+ * shape, a rebuilt transcript or a stale payload must not look like this one. A
+ * descriptor that fails this schema is not "unknown"; it is a reason to offer
+ * nothing, which is why the caller renders `unavailable` rather than a disabled
+ * guess.
+ */
+export const profileRevertDescriptorSchema = z
+	.object({
+		schema: z.literal(1),
+		kind: z.literal(PROFILE_REVERT_KIND),
+		/*
+		 * THE FROZEN MINT, LITERALLY: `prv_` and exactly 32 URL-safe characters.
+		 *
+		 * Read off core rather than guessed — `local_operator/profile_actions.py`
+		 * declares `action_id: str = Field(pattern=r"^prv_[A-Za-z0-9_-]{32}$")` and
+		 * mints it as `"prv_" + secrets.token_urlsafe(24)`. A looser shape would draw
+		 * a Revert for an id core cannot resolve; a legacy short id (`ra_5b81`),
+		 * another prefix, or a short/long tail is refused by name.
+		 */
+		action_id: z.string().regex(/^prv_[A-Za-z0-9_-]{32}$/),
+		label: z.string().min(1).max(64),
+		profile_kind: z.enum(PROFILE_KINDS),
+		profile_name: z.string().min(1).max(128),
+		receipt_id: token,
+	})
+	.strict();
+
+export type ProfileRevertDescriptor = z.infer<
+	typeof profileRevertDescriptorSchema
+>;
+
+/* --------------------------------------------------------- the diff rows */
+
+/** One authored column's three-valued state. */
+export type ProfileFieldPresence = "set" | "unset" | "absent";
+
+export type ProfileFieldRow = {
+	field: string;
+	before: { presence: ProfileFieldPresence; text: string };
+	after: { presence: ProfileFieldPresence; text: string };
+};
+
+/**
+ * One roster slot, in the words the diff compares.
+ *
+ * WHY IT SPELLS EVERY AUTHORED FIELD. The reproduced defect was a roster whose
+ * `count`/`kind`/`tier`/`effort` changed while the row did not: the old renderer
+ * read a `name` the wire never carries, so both sides were the empty string and a
+ * real change read as "no changes". This line moves when any authored field moves,
+ * and it uses the model's own defaults for the two optional fields, so an omitted
+ * `count` and an explicit `1` compare equal — the roster did not change there.
+ */
+function memberLine(entry: Record<string, unknown>): string {
+	const role = typeof entry.role === "string" ? entry.role : "";
+	if (!role) return "";
+	const count = typeof entry.count === "number" ? entry.count : 1;
+	const kind = entry.kind === "team" ? "team" : "agent";
+	const tier = typeof entry.tier === "string" ? entry.tier : "";
+	// `auto` and an absent effort mean different things (override vs inherit), so
+	// the word is kept verbatim rather than folded into the empty case.
+	const effort = typeof entry.effort === "string" ? entry.effort : "";
+	/*
+	 * `saver` is `bool | null` on the model: null or absent INHERITS, true sets the
+	 * designation and an explicit false CLEARS one. Folding false into the absent
+	 * case made "inherit" and "explicitly off" compare equal, so a real roster
+	 * change produced no row at all (review R2.3).
+	 */
+	const saver =
+		entry.saver === true ? "saver" : entry.saver === false ? "saver off" : "";
+	const extras = [kind === "team" ? "team" : "", tier, effort, saver].filter(
+		(part) => part !== "",
+	);
+	const times = count > 1 ? ` x${count}` : "";
+	return extras.length
+		? `${role}${times} (${extras.join(", ")})`
+		: `${role}${times}`;
+}
+
+function valueText(value: unknown): string {
+	if (typeof value === "string") return value;
+	if (Array.isArray(value))
+		return value
+			.map((entry) =>
+				typeof entry === "string"
+					? entry
+					: typeof entry === "object" && entry !== null
+						? memberLine(entry as Record<string, unknown>)
+						: "",
+			)
+			.filter((entry) => entry !== "")
+			.join(", ");
+	return "";
+}
+
+function presenceOf(
+	image: Record<string, unknown> | null,
+	field: string,
+): { presence: ProfileFieldPresence; text: string } {
+	if (image === null) return { presence: "absent", text: "" };
+	if (!Object.prototype.hasOwnProperty.call(image, field))
+		return { presence: "absent", text: "" };
+	if (image[field] === null) return { presence: "unset", text: "" };
+	return { presence: "set", text: valueText(image[field]) };
+}
+
+/**
+ * The BEFORE/AFTER rows the card draws, derived from the disclosure's OWN images.
+ *
+ * THE FIELD LIST IS THE DISCLOSURE'S, filtered to columns this build knows for
+ * the family. A `changed_fields` entry the images do not carry is dropped rather
+ * than rendered as an empty pair (that would be a placeholder for a change
+ * nobody can see), and a column whose two sides are equal is dropped for the same
+ * reason: the card's job is what changed.
+ *
+ * `model`, `members` and every other authored column appear when — and only when —
+ * the disclosure lists them, so a tools/class column that a future backend adds
+ * arrives as one more row through `PROFILE_AUTHORED_FIELDS`, and this module never
+ * invents one.
+ */
+export function profileFieldRows(
+	disclosure: ProfileSaveDisclosure,
+): ProfileFieldRow[] {
+	const known = PROFILE_AUTHORED_FIELDS[disclosure.profile_kind];
+	const rows: ProfileFieldRow[] = [];
+	for (const field of disclosure.changed_fields) {
+		if (!known.includes(field)) continue;
+		const before = presenceOf(disclosure.before, field);
+		const after = presenceOf(disclosure.after, field);
+		if (before.presence === "set" && after.presence === "set") {
+			if (before.text === after.text) continue;
+		} else if (
+			before.presence === after.presence &&
+			before.presence === "absent"
+		) {
+			continue;
+		}
+		rows.push({ field, before, after });
+	}
+	return rows;
+}
+
+/* -------------------------------------------------------- the revert states */
+
+/**
+ * The Revert button's whole state vocabulary.
+ *
+ * `unavailable` is a LOAD-BEARING state, not an error: a saved card whose
+ * descriptor did not survive the reload must say so plainly instead of drawing a
+ * dead button, because the one thing a consent surface may never do is offer a
+ * press that cannot work.
+ */
+export const PROFILE_REVERT_STATES = [
+	"available",
+	"pending",
+	"saved",
+	"stale",
+	"failed",
+	/*
+	 * `unconfirmed` exists because "failed" is a claim: the request may have
+	 * reached the backend and the answer may simply have been lost. QA reproduced
+	 * the old behaviour — a transport failure painted "did not go through" and
+	 * re-enabled the control — which invites a second revert of a change that may
+	 * already be undone. An unknown is its own state, and it stays latched.
+	 */
+	"unconfirmed",
+	"unavailable",
+] as const;
+export type ProfileRevertState = (typeof PROFILE_REVERT_STATES)[number];
+
+export type ProfileRevertInput = {
+	/**
+	 * The descriptor exactly as it arrived. Anything other than the verified
+	 * backend shape resolves to `unavailable`.
+	 */
+	descriptor: unknown;
+	/**
+	 * The backend's own verification of that descriptor in THIS runtime
+	 * (`features.profile_approvals` plus a verified receipt). Our parse alone is
+	 * never proof: a well-formed payload a model wrote is still a model's words.
+	 */
+	descriptorVerified: boolean;
+	/** The transcript was rebuilt after a restart and no verified reconstruction covers it. */
+	reconstructed?: boolean;
+	/** This descriptor's own press has been sent and is in flight. */
+	submitted?: boolean;
+	/**
+	 * The answered result of the press, once one landed. `state` is the backend's
+	 * own word for the record after the answer, or this app's `unconfirmed` when
+	 * the transport produced no answer at all.
+	 */
+	outcome?: { approved: boolean; state?: string } | null;
+	/** This `action_id` is already spent — a second press answers nothing. */
+	alreadyAnswered?: boolean;
+};
+
+/**
+ * Resolve the button's state, and whether it is enabled, in ONE place.
+ *
+ * ORDER MATTERS AND IS THE SAFETY PROPERTY: a descriptor that is not verified, or
+ * an action id already answered, resolves to a state that disables the control
+ * BEFORE any optimistic "pending" arm is considered — so a stale render cannot
+ * re-enable a duplicate press by painting the in-flight state.
+ */
+export function profileRevertState(input: ProfileRevertInput): {
+	state: ProfileRevertState;
+	enabled: boolean;
+} {
+	const parsed = profileRevertDescriptorSchema.safeParse(input.descriptor);
+	if (!input.descriptorVerified || !parsed.success)
+		return { state: "unavailable", enabled: false };
+	if (input.alreadyAnswered) return { state: "saved", enabled: false };
+	if (input.outcome) {
+		const settled = (input.outcome.state ?? "").toLowerCase();
+		/*
+		 * "WE DO NOT KNOW" HAS TWO SPELLINGS AND BOTH STAY UNCONFIRMED. `unconfirmed`
+		 * is this app's word for an answer that never arrived; `pending` is what a
+		 * reconcile read records when the activation may or may not have landed. Before
+		 * this, `pending` fell through to the refusal arm below and rendered "the revert
+		 * did not go through" — a claim nobody can make when the write's fate is
+		 * unknown (QA Q1, reproduced through the mounted hook into the shipped view).
+		 * Neither arm re-enables: a press that may have landed must not invite a second.
+		 */
+		if (settled === "unconfirmed" || settled === "pending")
+			return { state: "unconfirmed", enabled: false };
+		/* A refusal the backend actually authored as stale/expired IS knowable. */
+		if (settled === "expired" || settled === "stale")
+			return { state: "stale", enabled: false };
+		/*
+		 * A REFUSED ANSWER IS A KNOWN END, and it never re-offers the press: a
+		 * control that read "failed" while staying enabled invited an immediate
+		 * duplicate revert (QA Q2.1). The reader has to reconcile before retrying,
+		 * so no path in this resolver returns failed WITH enabled.
+		 */
+		if (input.outcome.approved === false)
+			return { state: "failed", enabled: false };
+		return { state: "saved", enabled: false };
+	}
+	if (input.submitted) return { state: "pending", enabled: false };
+	if (input.reconstructed) return { state: "unavailable", enabled: false };
+	return { state: "available", enabled: true };
+}
+
+/**
+ * The revert's activation request, or `null` when this press may not be sent.
+ *
+ * IT IS AN ORDINARY AUTHENTICATED APPROVAL ANSWER on the originating session
+ * (`sessions.answer`): `request_id` is the descriptor's `action_id` and `approved`
+ * is true. THERE IS NO `remember` FIELD, and its absence is the point: the gate
+ * answer carries `{session_id, epoch, request_id, approved}` and nothing else, so
+ * a revert can never be remembered into firing again on a later request id. A
+ * `remember: false` here would name a field the request schema refuses, and a
+ * shape that disagrees with its wire is how a false claim starts.
+ *
+ * No model argument, no raw command and no reconstructed action reaches this
+ * path — the caller holds a verified descriptor or nothing.
+ */
+export function profileRevertAnswer(args: {
+	descriptor: unknown;
+	sessionId: string | null;
+	ownerEpoch?: string | null;
+	state: ProfileRevertState;
+}): {
+	sessionId: string;
+	ownerEpoch?: string;
+	requestId: string;
+	approved: true;
+} | null {
+	const parsed = profileRevertDescriptorSchema.safeParse(args.descriptor);
+	if (!parsed.success || !args.sessionId) return null;
+	if (args.state !== "available") return null;
+	return {
+		sessionId: args.sessionId,
+		...(args.ownerEpoch ? { ownerEpoch: args.ownerEpoch } : {}),
+		requestId: parsed.data.action_id,
+		approved: true,
+	};
+}
+
+/** The disclosure, or `null` when the wire value is not exactly one this build bounds. */
+export function profileDisclosure(
+	value: unknown,
+): ProfileSaveDisclosure | null {
+	const parsed = profileSaveDisclosureSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+}
+
+/** The typed row block, or `null` — a `typed_approval` this build cannot echo. */
+export function profileTypedApproval(
+	value: unknown,
+): ProfileTypedApproval | null {
+	const parsed = profileTypedApprovalSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+}
+
+/** The queued receipt a tool call answered with, or `null`. */
+export function profileQueuedReceipt(
+	value: unknown,
+): ProfileQueuedReceipt | null {
+	const parsed = profileQueuedReceiptSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+}
+
+/**
+ * The revert descriptor a tool result carries, read from the one place it is
+ * allowed to live: a `profile_revert` action block on the SAVED result. A
+ * descriptor anywhere else (an argument, a free-form note) is not read.
+ */
+export function profileRevertDescriptor(
+	value: unknown,
+): ProfileRevertDescriptor | null {
+	const parsed = profileRevertDescriptorSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Whether a description of the operation is one this build will state in words.
+ * `create` names a new profile; `update` lists changed columns; `revert` restores
+ * a saved receipt — the three arms the backend mints, and nothing else.
+ */
+export function profileOperationKey(operation: ProfileOperation): string {
+	return `ui.mesh.mesh_approvals_tray.profile_operation_${operation}`;
+}

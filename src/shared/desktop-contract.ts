@@ -2322,6 +2322,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			cwd: z.string().min(1).max(4096),
 		})
 		.strict(),
+	/*
+	 * THE LIVE PROFILE-ACTION STATUS READ (read-only, session-scoped).
+	 *
+	 * It is the SOLE authority for enabling a Revert: core's gate is a live
+	 * action-registration/status check, and a persisted `revert_verified` in a tool
+	 * result is a record of what some producer once verified, never proof this
+	 * runtime can execute the action.
+	 *
+	 * THE SESSION COMES FROM THE TRANSPORT, NOT THE BODY: the session id is this
+	 * op's own routing field (the same one `sessions.answer` uses), and the body
+	 * carries only the opaque action identity plus the call it belongs to.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.profileActionStatus"),
+			sessionId,
+			/*
+			 * The frozen mint (`local_operator/profile_actions.py`): `prv_` plus
+			 * exactly 32 URL-safe characters. Pinned rather than bounded, because an id
+			 * this app cannot name is an action core cannot resolve.
+			 */
+			actionId: z.string().regex(/^prv_[A-Za-z0-9_-]{32}$/),
+			receiptId: z.string().min(1).max(160),
+			profileKind: z.enum(["agent", "team"]),
+			profileName: z.string().min(1).max(128),
+			/**
+			 * The tool call this row belongs to. Bound so a status answer can never be
+			 * applied to a different card than the one that asked.
+			 */
+			toolCallId: z.string().min(1).max(160),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.answer"),
@@ -4431,6 +4463,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
+	// Profile writes echo the reviewed commitments, never a model-authored command.
+	...(["approvals.approveOperation", "approvals.applyOperation"] as const).map(
+		(op) =>
+			z
+				.object({
+					op: z.literal(op),
+					approvalId,
+					operation: z.literal("profile_save"),
+					requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+					disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+				})
+				.strict(),
+	),
 	/*
 	 * THE TYPED CREDENTIAL DECISIONS (`features.credential_approvals`). A credential
 	 * permission cannot ride the bodiless `approve` above: that request proves
@@ -8533,6 +8578,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 * else (the model forbids extras), each copied from the request unchanged so
 		 * the digests reach the server exactly as the list row served them.
 		 */
+		case "approvals.approveOperation":
+		case "approvals.applyOperation":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/${request.op === "approvals.approveOperation" ? "approve-operation" : "apply-operation"}`,
+				method: "POST",
+				body: {
+					operation: request.operation,
+					request_digest: request.requestDigest,
+					disclosure_digest: request.disclosureDigest,
+				},
+			};
 		case "approvals.approveCredential":
 		case "approvals.applyCredential":
 			return {
@@ -9197,6 +9253,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 					command: request.command,
 					args: request.args ?? "",
 					images: request.images ?? [],
+				},
+			};
+		case "sessions.profileActionStatus":
+			/*
+			 * READ-ONLY. The path follows the sibling session-control routes
+			 * (`.../sessions/{id}/answers` for the answer door); the op name and body
+			 * are core's, and a different path is a one-line change here.
+			 */
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/profile-action-status`,
+				method: "POST",
+				body: {
+					action_id: request.actionId,
+					receipt_id: request.receiptId,
+					profile_kind: request.profileKind,
+					profile_name: request.profileName,
+					tool_call_id: request.toolCallId,
 				},
 			};
 		case "sessions.answer":
