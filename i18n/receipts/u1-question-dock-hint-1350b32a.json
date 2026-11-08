@@ -1,0 +1,141 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "model_provenance": "served as deepseek/deepseek-flash; session pinned anthropic/claude-sonnet-5-5 and fell back through anthropic/claude-opus-5-5 and openai/gpt-6.1-sol on provider quota failures, disclosed per the harness model-provenance rule",
+  "instance": "1350b32a",
+  "date": "2026-11-08",
+  "status": "passed",
+  "result": "clean",
+  "namespace": "ui.chat",
+  "key": "ui.chat.question_dock.hint.approval",
+  "scope": "one key, six locales: ui.chat.question_dock.hint.approval in es, fr, ru, ur, vi, zh-CN at bc368726061f; every other key in every touched file byte-identical to cd54839c707",
+  "base": "cd54839c707d7e53b828b93907c194733e802c08",
+  "head": "bc368726061ff2753470ba70885b38827e87fd86",
+  "locales": [
+    "es",
+    "fr",
+    "ru",
+    "ur",
+    "vi",
+    "zh-CN"
+  ],
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.chat.json",
+    "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+  },
+  "sha256": {
+    "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+    "es": "8f73283420b36ee33454efbd7520c99962c4fa550b9f6785bae2defe77cf6cfd",
+    "fr": "a1adfe329c0f49936fb307188c68b65041ce172c0b417cb50de860a6c1ea955a",
+    "ru": "4ea150feba1003ac9754f8fb5459350bbccbb7ced27c981768213b3f0d1ed609",
+    "ur": "dd452057c2f97bb3b88d050a21a4dae71c80beec9db71cfa55d3cf97ee144343",
+    "vi": "b9f1fea33a925933ec0c89571f9770678f45101b24def4ccfb44db02cba18a26",
+    "zh-CN": "0027aebd3b5ca07b67f7eacf4beac884f800664de828f3c77cf920925cd5b1d8"
+  },
+  "targets": [
+    {
+      "locale": "es",
+      "path": "src/i18n/catalogues/es/ui.chat.json",
+      "sha256": "8f73283420b36ee33454efbd7520c99962c4fa550b9f6785bae2defe77cf6cfd"
+    },
+    {
+      "locale": "fr",
+      "path": "src/i18n/catalogues/fr/ui.chat.json",
+      "sha256": "a1adfe329c0f49936fb307188c68b65041ce172c0b417cb50de860a6c1ea955a"
+    },
+    {
+      "locale": "ru",
+      "path": "src/i18n/catalogues/ru/ui.chat.json",
+      "sha256": "4ea150feba1003ac9754f8fb5459350bbccbb7ced27c981768213b3f0d1ed609"
+    },
+    {
+      "locale": "ur",
+      "path": "src/i18n/catalogues/ur/ui.chat.json",
+      "sha256": "dd452057c2f97bb3b88d050a21a4dae71c80beec9db71cfa55d3cf97ee144343"
+    },
+    {
+      "locale": "vi",
+      "path": "src/i18n/catalogues/vi/ui.chat.json",
+      "sha256": "b9f1fea33a925933ec0c89571f9770678f45101b24def4ccfb44db02cba18a26"
+    },
+    {
+      "locale": "zh-CN",
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.json",
+      "sha256": "0027aebd3b5ca07b67f7eacf4beac884f800664de828f3c77cf920925cd5b1d8"
+    }
+  ],
+  "checks": {
+    "label_agreement": "PASS all six - hint region is exactly <approve> + connector + <deny> taken from that locale's ui.chat.approval.json, codepoint-exact, NFC, pure-script (no Latin homoglyph in ru/ur/zh-CN)",
+    "painted_labels": "PASS - question-dock.tsx:621-624 passes options={APPROVAL_OPTIONS} display={approvalOptionDisplay} to AskOptions; approval-words.ts:71,76 resolves t('ui.chat.approval.option.approve'/.deny); ask-options.tsx:198,366 paints shown[index].label; that hint key has exactly one render site (question-dock.tsx:184)",
+    "no_collateral": "PASS - git diff --stat: 6 files, 6 insertions, 6 deletions, one line each; per-file JSON key diff names only ui.chat.question_dock.hint.approval; en/ui.chat.json byte-identical; keys.gen.ts unchanged and generate.mjs --check byte-identical; no baseline or allowance touched",
+    "other_i18n_gates": "PASS - generate.mjs --check, check-duplicates.mjs (1391 files, 0 duplicates), check-strings.mjs, context-parity.mjs all exit 0",
+    "tokens_preserved": "PASS - substituting the base label region back into each head sentence reproduces the base sentence byte-for-byte, so yes/no/1/2 and each locale's Escape name are untouched and only the label region moved",
+    "locale_specifics": "PASS - ru keeps «» (2 opening, 2 closing, zero ASCII quotes); zh-CN gains no space and has none around the labels; ur is now a single Arabic-script run so the bidi mixing that the English words caused is gone, verb-final order preserved; es/fr/vi use their own catalogue labels with the native connector",
+    "ledger_staleness": "PASS as scoped - ledger-check reports 18 findings over exactly the six rows es|fr|ru|ur|vi|zh-CN / ui.chat (stale target_sha256 + 2 prior auditors whose receipts no longer name the bytes) and no other locale or namespace; en and hi are unaffected (hi already names its labels and its file is unchanged)"
+  },
+  "per_locale": {
+    "es": {
+      "result": "PASS",
+      "approve_key_sha_matched": true,
+      "painted": "Aprobar / Denegar",
+      "hint_region": "Aprobar o Denegar"
+    },
+    "fr": {
+      "result": "PASS",
+      "approve_key_sha_matched": true,
+      "painted": "Approuver / Refuser",
+      "hint_region": "Approuver ou Refuser"
+    },
+    "ru": {
+      "result": "PASS",
+      "approve_key_sha_matched": true,
+      "painted": "Одобрить / Отклонить",
+      "hint_region": "«Одобрить» или «Отклонить»"
+    },
+    "ur": {
+      "result": "PASS",
+      "approve_key_sha_matched": true,
+      "painted": "منظور کریں / مسترد کریں",
+      "hint_region": "منظور کریں یا مسترد کریں"
+    },
+    "vi": {
+      "result": "PASS",
+      "approve_key_sha_matched": true,
+      "painted": "Phê duyệt / Từ chối",
+      "hint_region": "Phê duyệt hoặc Từ chối"
+    },
+    "zh-CN": {
+      "result": "PASS",
+      "approve_key_sha_matched": true,
+      "painted": "批准 / 拒绝",
+      "hint_region": "批准或拒绝"
+    }
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.chat.question_dock.hint.approval",
+      "locale": "ur",
+      "note": "the verbatim-label rule yields three consecutive کریں (منظور کریں / مسترد کریں / منتخب کریں). Grammatical and verb-final, and naming the painted label verbatim is the point of this fix, so recorded as an observation rather than a defect. A more idiomatic rewrite ('اوپر منظور یا مسترد منتخب کریں') would break label agreement and is NOT recommended."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.question_dock.hint.approval",
+      "locale": "all",
+      "note": "no test pins hint/label agreement for any non-English locale, which is why all six shipped naming the English words. interrupt-control.test.mjs:577-590 pins only the English sentence (and the English sentence happens to name the English labels). A cross-locale assertion - hint contains that locale's ui.chat.approval.option.approve and .deny - would stop a recurrence; it is a code change outside this audit's scope."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.approval.option.deny_description",
+      "locale": "es",
+      "note": "pre-existing, out of scope and not introduced here: the es deny label is 'Denegar' while its description reads 'Rechaza la acción'. The hint now correctly says 'Denegar'; the description synonym sits in a file this diff does not touch."
+    }
+  ],
+  "findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "merge_prerequisite": "NOT a translation defect and therefore not counted above: the branch cannot pass `pnpm check-i18n:catalogues` while the six ui.chat rows are stale. Run scripts/i18n/ledger-assemble.mjs once per locale with --auditor-instance 1350b32a --auditor-model deepseek/deepseek-flash --result clean and this receipt, then commit i18n/ledger.json plus i18n/receipts/u1-question-dock-hint-1350b32a.json. This receipt is shaped to serve all six invocations: no top-level `locale` (so it is not refused for the other five) and per-locale hashes under `sha256`."
+}
