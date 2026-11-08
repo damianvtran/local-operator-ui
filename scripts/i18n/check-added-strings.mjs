@@ -286,15 +286,18 @@ export function findAddedCopyViolations(
 		for (const sentence of copyTexts(node)) {
 			const text = collapse(sentence);
 			/*
-			 * A template sink is a SENTENCE: it must carry a space as well as a
-			 * letter. A single hyphenated or underscored token (`machine-token`,
-			 * `openai/gpt-5`) is an identifier, not copy, and flagging it would
-			 * make the shape report on the code it exists to leave alone. The
-			 * JSX-text and attribute paths still catch one-word copy, which is
-			 * where one-word copy actually lives.
+			 * FAIL CLOSED, and this is deliberate: a template with a letter is
+			 * reported whether or not it carries a space. The tempting
+			 * refinement — "require a space so identifiers stop firing" — was
+			 * measured and rejected, because it also silences genuine copy that
+			 * has no space: `` `${count}online` `` and a one-word label are copy
+			 * shapes, and a rule that lets them through is a false negative
+			 * nothing reports, which this gate must never quietly produce.
+			 * Machine strings are silenced by an `i18n: ignore <reason>` pragma
+			 * on their own line — visible in the diff, justified per case — not
+			 * by a rule that guesses at intent from the text.
 			 */
-			if (LETTER_RE.test(text) && /\s/.test(text))
-				findings.push({ line, kind, text });
+			if (LETTER_RE.test(text)) findings.push({ line, kind, text });
 		}
 	};
 	const visit = (node) => {

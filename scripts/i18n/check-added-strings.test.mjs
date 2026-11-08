@@ -116,13 +116,17 @@ test("the template sinks catch the shape the ratchet leaves out", () => {
 	const textsOf = (kind) =>
 		found.filter((finding) => finding.kind === kind).map((f) => f.text);
 	/*
-	 * Two const sinks fire and one does not: the pragma'd sibling
-	 * (`Silenced machine sentence`) is the only const template that stays
-	 * quiet. The list is ordered by line, which is how the walker emits.
+	 * Two const sinks fire and one does not, ordered by line as the walker
+	 * emits: the plain sentence, and the unpragma'd token. The token fires
+	 * because the rule is fail-closed — a letter is enough — and the pragma on
+	 * its sibling is the only thing that silences a machine string.
 	 */
 	assert.deepEqual(textsOf("template:const"), [
 		"Added plain const sentence",
-		"Unsilenced machine sentence",
+		"machine-token",
+		/* A substituting template with one word and NO space: copy, and the
+		   reason the rule may not require a space before it fires. */
+		"${…}online",
 	]);
 	assert.deepEqual(textsOf("template:array"), [
 		"Added array sentence",
@@ -141,24 +145,23 @@ test("the template sinks are off where the ratchet does not count the shape", ()
 	assert.deepEqual(findings(new Set(), { templateSinks: true }), []);
 });
 
-test("a prose template fires, and an `i18n: ignore` pragma is what silences it", () => {
+test("a machine template fires, and an `i18n: ignore` pragma is what silences it", () => {
 	const found = findings(null, { templateSinks: true });
 	/*
-	 * Both fixture sentences are prose, so the ONLY difference between them is
-	 * the pragma: one fires, one does not. A bare identifier is deliberately
-	 * absent here — the sinks count sentences, so an identifier has nothing to
-	 * demonstrate about the pragma.
+	 * Both fixtures are the same shape and the same kind of string, so the ONLY
+	 * variable between them is the pragma: one fires, one does not. That is the
+	 * gate's whole escape hatch — a rule that guessed from the text instead
+	 * would have to let `${count}online` through as well, which is copy.
 	 */
 	assert.ok(
 		found.some(
 			(finding) =>
-				finding.kind === "template:const" &&
-				finding.text === "Unsilenced machine sentence",
+				finding.kind === "template:const" && finding.text === "machine-token",
 		),
-		"a prose template on an added line must be flagged",
+		"a machine template on an added line must be flagged",
 	);
 	assert.deepEqual(
-		found.filter((finding) => finding.text === "Silenced machine sentence"),
+		found.filter((finding) => finding.text === "template-token"),
 		[],
 	);
 });
