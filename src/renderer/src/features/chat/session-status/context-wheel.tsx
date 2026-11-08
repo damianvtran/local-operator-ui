@@ -42,7 +42,7 @@ import type { ContextReading, ContextRung } from "./session-context";
 /** TUI rung -> this palette's semantic. See the header for the mapping. */
 const RUNG_STROKE: Record<ContextRung, string> = {
 	signal: "stroke-info",
-	label: "stroke-warning",
+	label: "stroke-warning", // i18n: ignore Tailwind stroke class, not interface copy
 	danger: "stroke-danger",
 };
 

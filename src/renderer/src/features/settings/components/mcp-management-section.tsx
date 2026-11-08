@@ -153,7 +153,7 @@ const PHASE: Record<string, McpFailurePhase> = {
 	reload: "reload",
 	remove: "remove",
 	sign_out: "disconnect",
-	cancel: "cancel",
+	cancel: "cancel", // i18n: ignore action-id token mapped to another action id
 	login: "grant",
 	reauth: "grant",
 };

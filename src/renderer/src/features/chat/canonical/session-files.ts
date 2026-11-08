@@ -65,7 +65,7 @@ const KIND: Record<string, CanvasDocumentType> = {
 	pdf: "pdf",
 	markdown: "markdown",
 	html: "html",
-	text: "text",
+	text: "text", // i18n: ignore file-kind token, the viewer label is keyed at the call site
 	code: "code",
 	document: "document",
 	spreadsheet: "spreadsheet",
