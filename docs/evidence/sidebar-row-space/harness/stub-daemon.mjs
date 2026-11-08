@@ -370,8 +370,51 @@ const route = (method, pathname, query, body) => {
 				 * sets still renders the app it was taken of.
 				 */
 				...(LATE !== "none" ? { desktop_feed: 1 } : {}),
+				/* `--peers`: the mesh reads below answer, so the sidebar files remote rows. */
+				...(PEERS ? { peers: 1 } : {}),
 				...(ARCHIVE ? { session_archive: 1, session_delete: 1 } : {}),
 			},
+		});
+	}
+	/*
+	 * `--peers` (evidence set `sidebar-background-work`): one network, two peer
+	 * devices - one answering, one whose link is down - and their sessions on the
+	 * `include_peers` read only, which is the one the mesh catalogue makes.
+	 */
+	if (PEERS && method === "GET" && pathname === "/v1/desktop/networks") {
+		return ok({
+			self_device_id: "stub-self",
+			networks: [
+				{
+					network_id: "stub-net",
+					name: "Home",
+					epoch: 1,
+					trust: "active",
+					members: [],
+				},
+			],
+		});
+	}
+	if (PEERS && method === "GET" && pathname === "/v1/desktop/peers") {
+		return ok({
+			peers: [
+				{
+					device_id: "synthetic-peer-a",
+					name: "Studio Mac",
+					reachable: true,
+					link_state: "reachable",
+					session_count: 1,
+				},
+				{
+					device_id: "synthetic-peer-b",
+					name: "Travel laptop",
+					reachable: false,
+					link_state: "unreachable",
+					unreachable_reason: "relay timeout",
+					last_seen_at: Date.now() / 1000 - 240,
+					session_count: 1,
+				},
+			],
 		});
 	}
 	if (method === "GET" && pathname === "/v1/desktop/commands") {
@@ -472,7 +515,10 @@ const route = (method, pathname, query, body) => {
 		const page = rows.slice(offset, offset + limit);
 		const more = offset + page.length < rows.length;
 		return ok({
-			sessions: page,
+			sessions:
+				PEERS && query.get("include_peers") === "true"
+					? [...page, ...remoteRows]
+					: page,
 			truncated: more,
 			...(PAGED
 				? {
@@ -746,6 +792,50 @@ const ROW_CODE_LABELS = {
 	attached: "Attached",
 };
 const LATE = arg("late", "none");
+/*
+ * `--late background-work` (evidence set `sidebar-background-work`, 2026-11-07):
+ * the target row BOOTS as a session whose own turn has ended (`idle`) while one
+ * subagent and one background job still run - core's `background_work` flag and
+ * counts on the row - and the late fact is the last child ending: ONE
+ * `session_status` frame carrying code + zeroed counts (core puts the counts in
+ * the dedupe key, so 1->0 is one frame), then the `catalogue` frame. Remote rows
+ * (`--peers`) carry the same counts and settle on the mesh read's own poll.
+ */
+const BACKGROUND_WORK = LATE === "background-work";
+const PEERS = process.argv.includes("--peers");
+const bgCounts = (active) => ({
+	background_work: active,
+	subagents_running: active ? 1 : 0,
+	subagents_queued: 0,
+	jobs_running: active ? 1 : 0,
+	waiting_on: 0,
+});
+const remoteRows = [
+	{
+		id: "c0ffee0a0b01",
+		name: "Crawl the pricing pages (on Studio Mac)",
+		mtime: Date.now() / 1000 - 300,
+		locality: "remote",
+		owner_device: "synthetic-peer-a",
+		owner_device_name: "Studio Mac",
+		reachable: true,
+		live_state: "idle",
+		status: { code: "idle", label: "Idle" },
+		...bgCounts(BACKGROUND_WORK),
+	},
+	{
+		id: "c0ffee0a0b02",
+		name: "Summarise the field notes (on Travel laptop)",
+		mtime: Date.now() / 1000 - 400,
+		locality: "remote",
+		owner_device: "synthetic-peer-b",
+		owner_device_name: "Travel laptop",
+		reachable: false,
+		live_state: "idle",
+		status: { code: "idle", label: "Idle" },
+		...bgCounts(BACKGROUND_WORK),
+	},
+];
 const LATE_MS = Number(arg("late-ms", "1200"));
 const LATE_ROW = arg("late-row", "b3f1a09c7d52");
 /** When the first catalogue answer went out; the late fact is timed against it. */
@@ -768,11 +858,28 @@ const applyRowCode = () => {
 	return true;
 };
 applyRowCode();
+if (BACKGROUND_WORK) {
+	const row = served.find((entry) => entry.id === LATE_ROW);
+	/* Recent, so the origin/main build files it under Today (the reported frame). */
+	if (row)
+		Object.assign(row, {
+			mtime: Date.now() / 1000 - 120,
+			status: { code: "idle", label: "Idle" },
+			...bgCounts(true),
+		});
+	/* No unread mark: the frame is of a FINISHED, seen turn with work still running. */
+	if (row) delete row.attention;
+}
 
 /** Put the chosen fact on the target row, as a backend would after its own event. */
 const applyLateFact = () => {
 	const row = served.find((entry) => entry.id === LATE_ROW);
 	if (!row) return false;
+	if (BACKGROUND_WORK) {
+		Object.assign(row, bgCounts(false));
+		Object.assign(remoteRows[0], bgCounts(false));
+		return true;
+	}
 	if (LATE === "subagents") row.subagents_running = 2;
 	else if (LATE === "subagents-queued") row.subagents_queued = 2;
 	else if (LATE === "asks") row.asks_open = 2;
@@ -908,6 +1015,19 @@ const server = createServer((request, response) => {
 			clearInterval(waiting);
 			const timer = setTimeout(() => {
 				applyLateFact();
+				if (BACKGROUND_WORK)
+					send({
+						epoch: FEED_EPOCH,
+						seq: nextSeq(),
+						type: "session_status",
+						session_id: LATE_ROW,
+						payload: {
+							code: "idle",
+							label: "Idle",
+							revision: 2,
+							...bgCounts(false),
+						},
+					});
 				send({
 					epoch: FEED_EPOCH,
 					seq: nextSeq(),
