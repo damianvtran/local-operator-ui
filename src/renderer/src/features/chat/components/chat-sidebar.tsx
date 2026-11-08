@@ -8035,7 +8035,7 @@ export function ChatSidebar({
 		key: string;
 		at: number;
 	} | null>(null);
-	const cappedRows = (key: string, rows: ReactNode[]) => {
+	const cappedRows = (key: "agents" | "teams", rows: ReactNode[]) => {
 		const cap = sectionCaps[key] ?? SIDEBAR_SECTION_ROWS;
 		const hidden = rows.length - cap;
 		/*
@@ -9725,11 +9725,11 @@ export function ChatSidebar({
 									aria-describedby={
 										row.pending ? draftWhyId(row.key) : undefined
 									}
-									aria-label={discardDraftLabel(row.label)}
+									aria-label={discardDraftLabel(row.title)}
 									title={
 										row.pending
 											? SENDING_DISCARD_WHY
-											: discardDraftLabel(row.label)
+											: discardDraftLabel(row.title)
 									}
 									onClick={(event) => {
 										/*

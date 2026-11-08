@@ -397,8 +397,11 @@ export function commandRowSlot(
 	fastState: FastModeState | undefined,
 ): string | null {
 	if (command.destination === "session.fast" && fastState != null)
-		return fastState === "on" ? "currently on" : "currently off";
-	if (command.arguments === "required") return "needs a value";
+		return fastState === "on"
+			? t("ui.chat.pickers.slash.row_slot.fast_on")
+			: t("ui.chat.pickers.slash.row_slot.fast_off");
+	if (command.arguments === "required")
+		return t("ui.chat.pickers.slash.row_slot.needs_value");
 	return null;
 }
 

@@ -285,11 +285,10 @@ export const askChipClause = (view: AskQueueView, nowMs: number): string => {
  * string a DOM-free rig asserts. One source, two renderers.
  */
 export const askChipCountClause = (view: AskQueueView): string => {
-	if (!askSplitIsKnowable(view)) return `${view.open} outstanding`;
+	if (!askSplitIsKnowable(view))
+		return t("ui.chat.asks.clause.outstanding", { count: view.open });
 	if (view.waiting > 0)
-		return view.waiting === 1
-			? "1 question waiting"
-			: `${view.waiting} questions waiting`;
+		return t("ui.chat.asks.clause.waiting", { count: view.waiting });
 	/*
 	 * ANSWERS STILL TO DELIVER COME BEFORE `All asks settled` (design §10, #1936).
 	 *
@@ -319,9 +318,7 @@ export const askChipCountClause = (view: AskQueueView): string => {
 	 * delivery.
 	 */
 	if (view.delivering > 0)
-		return view.delivering === 1
-			? "1 answer not yet delivered — you can still change it"
-			: `${view.delivering} answers not yet delivered — you can still change them`;
+		return t("ui.chat.asks.clause.delivering", { count: view.delivering });
 	/*
 	 * TIMED OUT, in the badge's own word (design round 1 on #1116, D2): the quiet
 	 * register, and AFTER the delivering clause because nothing on a timed-out ask can
@@ -329,10 +326,8 @@ export const askChipCountClause = (view: AskQueueView): string => {
 	 * third name for the state the row's badge calls `Timed out`.
 	 */
 	if (view.movedOn > 0)
-		return view.movedOn === 1
-			? "1 question timed out"
-			: `${view.movedOn} questions timed out`;
-	return "All asks settled";
+		return t("ui.chat.asks.clause.timed_out", { count: view.movedOn });
+	return t("ui.chat.asks.clause.settled");
 };
 
 /**
@@ -362,7 +357,9 @@ export type AskScope = "session" | "fleet";
 
 /** The scope line's subject noun: what set the count beside it counts. */
 export const askScopeSubject = (scope: AskScope): string =>
-	scope === "fleet" ? "All conversations" : "This conversation";
+	scope === "fleet"
+		? t("ui.chat.asks.scope.fleet")
+		: t("ui.chat.asks.scope.session");
 
 /**
  * WHAT THE DRAWER SAYS WHEN THE FRAME THAT DECIDES ITS CONTENTS HAS NOT BEEN READ.
@@ -434,7 +431,7 @@ export const askDrawerCountClause = (view: AskQueueView): string => {
 	 * delivered is a settled drawer, as the TUI's is.
 	 */
 	if (askSplitIsKnowable(view) && view.waiting === 0 && view.delivering === 0) {
-		return "All asks settled";
+		return t("ui.chat.asks.clause.settled");
 	}
 	return askChipCountClause(view);
 };
@@ -454,9 +451,14 @@ export const askDrawerCountClause = (view: AskQueueView): string => {
  */
 export const askScopeLine = (scope: AskScope, view: AskQueueView): string => {
 	const clause = askDrawerCountClause(view);
+	// One keyed phrase with both halves as placeholders, so a language can order
+	// or punctuate the subject and the count its own way.
 	return clause === ""
 		? askScopeSubject(scope)
-		: `${askScopeSubject(scope)} · ${clause}`;
+		: t("ui.chat.asks.scope_line", {
+				scope: askScopeSubject(scope),
+				clause,
+			});
 };
 
 /**

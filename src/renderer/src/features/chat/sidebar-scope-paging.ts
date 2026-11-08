@@ -117,8 +117,8 @@ export type GroupChatsView = {
  * is not loading, so it must not say so - and the reader's next move is named
  * rather than left to them.
  */
-export const GROUP_WITHHELD_SENTENCE =
-	"They may be archived. Search with Include archived.";
+export const groupWithheldSentence = (): string =>
+	t("ui.chat.sidebar.groups.withheld");
 
 export function groupChatsView(args: {
 	/** Whether the daemon negotiates `session_catalogue_page`. */
@@ -134,7 +134,7 @@ export function groupChatsView(args: {
 		const empty = args.held === 0;
 		return {
 			state: empty ? "empty" : "rows",
-			sentence: empty ? "No chats yet" : null,
+			sentence: empty ? t("ui.chat.sidebar.groups.empty") : null,
 			retry: false,
 			more: false,
 			addCount: 0,
@@ -153,7 +153,7 @@ export function groupChatsView(args: {
 		 */
 		return {
 			state: "loading",
-			sentence: "Loading chats…",
+			sentence: t("ui.chat.sidebar.groups.loading"),
 			retry: false,
 			more: false,
 			addCount: 0,
@@ -195,7 +195,7 @@ export function groupChatsView(args: {
 		if (scope.loading) {
 			return {
 				state: "loading",
-				sentence: "Loading chats…",
+				sentence: t("ui.chat.sidebar.groups.loading"),
 				retry: false,
 				more: false,
 				addCount: 0,
@@ -205,7 +205,7 @@ export function groupChatsView(args: {
 		if (forbidden) {
 			return {
 				state: "settled",
-				sentence: GROUP_WITHHELD_SENTENCE,
+				sentence: groupWithheldSentence(),
 				retry: false,
 				more: false,
 				addCount: 0,
@@ -214,7 +214,7 @@ export function groupChatsView(args: {
 		}
 		return {
 			state: "empty",
-			sentence: "No chats yet",
+			sentence: t("ui.chat.sidebar.groups.empty"),
 			retry: false,
 			more: false,
 			addCount: 0,

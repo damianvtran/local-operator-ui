@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type { AtSpan } from "./at-token";
 
 /**
@@ -401,11 +402,16 @@ export const AT_UNAVAILABLE_REASON =
 export function atFooter(
 	row: { path: string; directory: boolean } | undefined,
 ): string {
-	if (!row) return "Nothing to insert · Esc closes";
-	const verb = row.directory
-		? `Enter opens ${row.path}`
-		: `Enter inserts ${atFooterToken(row.path)}`;
-	return `${verb} · Esc closes`;
+	// Three WHOLE keyed lines, not a verb glued to " · Esc closes": the key names
+	// (Enter, Esc) sit inside each sentence for the translator to render as the
+	// language writes them (the same policy every other hint line follows), and
+	// the file name/token is the only placeholder.
+	if (!row) return t("ui.chat.pickers.at_menu.footer.nothing");
+	return row.directory
+		? t("ui.chat.pickers.at_menu.footer.opens", { path: row.path })
+		: t("ui.chat.pickers.at_menu.footer.inserts", {
+				reference: atFooterToken(row.path),
+			});
 }
 
 /** The token a footer line names: the write minus the space that closes it. */

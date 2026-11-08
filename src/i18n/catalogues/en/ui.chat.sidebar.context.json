@@ -561,5 +561,62 @@
 		"placeholders": {
 			"add": "Number of chats the press adds; select the locale's CLDR category and keep ::group-off."
 		}
+	},
+	"ui.chat.sidebar.groups.empty": {
+		"role": "empty-state sentence inside a sidebar group that holds no conversations",
+		"tone": "short plain statement, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Shown under a group (an agent's, a team's) with nothing in it. Not the whole-sidebar empty state, which is ui.chat.sidebar.list.empty and also offers next steps.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.groups.loading": {
+		"role": "loading sentence inside a sidebar group while its conversations are fetched",
+		"tone": "present participle phrase with an ellipsis",
+		"length": "Two words.",
+		"note": "Transient. Keep the single ellipsis character.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.groups.withheld": {
+		"role": "hedged explanation when a group's census count is non-zero but its page came back empty",
+		"tone": "two short sentences, second person implied, sentence case",
+		"length": "Two sentences.",
+		"note": "Follows a count line. 'Include archived' is the exact label of a search option elsewhere in the sidebar (check ui.chat.sidebar or ui.chat.thread_search for its current wording) and must match it.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.catalogue.show_more_agents": {
+		"role": "accessible name of the Agents section's 'Show N more' foot control",
+		"tone": "imperative phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "The visible label is ui.chat.sidebar.catalogue.show_more ('Show 4 more'); this longer name adds what the remainder is made of so two sections' feet are told apart by a screen reader. English keeps a single plural form on purpose (existing wording); other languages should use the natural plural for each CLDR category.",
+		"placeholders": {
+			"hidden": "how many agents are hidden behind the control"
+		}
+	},
+	"ui.chat.sidebar.catalogue.show_more_teams": {
+		"role": "accessible name of the Teams section's 'Show N more' foot control",
+		"tone": "imperative phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Same pattern as ui.chat.sidebar.catalogue.show_more_agents, for the Teams section.",
+		"placeholders": {
+			"hidden": "how many teams are hidden behind the control"
+		}
+	},
+	"ui.chat.sidebar.drafts.row_label": {
+		"role": "label of a sidebar row that stands for an unsent draft",
+		"tone": "short label with a prefix and a quoted first line, no trailing punctuation",
+		"length": "Prefix plus up to 48 characters of the draft's first line.",
+		"note": "The prefix says what the row is, since the row's name is otherwise the user's own words. The title is the draft's first line, user text, never translated.",
+		"placeholders": {
+			"title": "the draft's first line, capped to 48 characters, user-authored"
+		}
+	},
+	"ui.chat.sidebar.drafts.discard_label": {
+		"role": "accessible name and tooltip of the control that discards a draft row",
+		"tone": "imperative phrase naming the draft in typographic quotes, no trailing punctuation",
+		"length": "Three words plus the title.",
+		"note": "The action rather than the state. Keep the quotation marks around the title in the language's own style.",
+		"placeholders": {
+			"title": "the draft's first line, user-authored, never translated"
+		}
 	}
 }

@@ -170,5 +170,23 @@
 		"length_hint": "One word",
 		"note": "Opposite of 'every {duration}'. It is embedded mid-sentence by other strings (for example 'keep as once'), so it must read as a lowercase adverb.",
 		"placeholders": {}
+	},
+	"ui.chat.run_details.wake.managed_by": {
+		"role": "quiet state word in a scheduled-wake row that belongs to the chief-of-staff assistant",
+		"tone": "lowercase short phrase, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Replaces the cancel control, which does not exist for these wakes. The name is the operator's own name for their assistant (often Aida) and is never translated.",
+		"placeholders": {
+			"name": "the assistant's display name, as the operator configured it"
+		}
+	},
+	"ui.chat.run_details.wake.managed_note": {
+		"role": "explanation under a managed wake row: why there is no cancel and what to do instead",
+		"tone": "two plain sentences, sentence case, no pronoun for the assistant",
+		"length": "Two sentences.",
+		"note": "'/aida pause' is a literal command the user types: keep it verbatim. The name is the operator's own name for their assistant. Avoid a gendered pronoun for the assistant.",
+		"placeholders": {
+			"name": "the assistant's display name, as the operator configured it"
+		}
 	}
 }

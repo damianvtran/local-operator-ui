@@ -224,24 +224,37 @@ export function receiptFoldUnits(rows: readonly Row[]): string[] {
 		}
 	}
 	const units: string[] = [];
-	const count = (n: number, one: string, many: string) => {
-		if (n > 0) units.push(`${n} ${n === 1 ? one : many}`);
+	/*
+	 * Each unit is ONE keyed ICU plural phrase, number included, so a language
+	 * whose noun agrees with the count (or puts it after the noun) can say so;
+	 * the old `${n} ${one|many}` assembly fixed the English word order.
+	 */
+	const count = (n: number, phrase: (count: number) => string) => {
+		if (n > 0) units.push(phrase(n));
 	};
-	count(counts.incoming, "incoming message", "incoming messages");
-	count(counts.job_result, "job result", "job results");
-	count(counts.wake, "wake receipt", "wake receipts");
-	count(counts.monitor_prompt, "monitor prompt", "monitor prompts");
+	count(counts.incoming, (count) =>
+		t("ui.chat.canonical.fold.receipt.incoming", { count }),
+	);
+	count(counts.job_result, (count) =>
+		t("ui.chat.canonical.fold.receipt.job_result", { count }),
+	);
+	count(counts.wake, (count) =>
+		t("ui.chat.canonical.fold.receipt.wake", { count }),
+	);
+	count(counts.monitor_prompt, (count) =>
+		t("ui.chat.canonical.fold.receipt.monitor_prompt", { count }),
+	);
 	count(
 		rows.length -
 			counts.incoming -
 			counts.job_result -
 			counts.wake -
 			counts.monitor_prompt,
-		"other receipt",
-		"other receipts",
+		(count) => t("ui.chat.canonical.fold.receipt.other", { count }),
 	);
-	if (replyRequested) units.push("Reply requested");
-	if (steered) units.push("Steered");
+	if (replyRequested)
+		units.push(t("ui.chat.canonical.fold.receipt.reply_requested"));
+	if (steered) units.push(t("ui.chat.canonical.fold.receipt.steered"));
 	return units;
 }
 
@@ -373,6 +386,60 @@ export type FoldSummarySpec = {
 	prose: boolean;
 };
 
+type SentenceClass =
+	| "files"
+	| "searches"
+	| "web"
+	| "commands"
+	| "edits"
+	| "delegated";
+
+/**
+ * One class's clause of the summary sentence, count included, as ONE keyed ICU
+ * phrase. `follows` selects the spelling used when the clause is the second of
+ * two: English lowercases the verb there (\`Explored 4 files, delegated 3
+ * tasks\`), and that choice belongs to the catalogue, not to code that edits a
+ * translated string. \`files\` and \`searches\` have no follow spelling because the
+ * first never trails (it is first in \`order\`) and the second has no verb.
+ */
+const sentencePart = (
+	cls: SentenceClass,
+	count: number,
+	follows: boolean,
+): string => {
+	switch (cls) {
+		case "files":
+			return t("ui.chat.canonical.fold.sentence.files", { count });
+		case "searches":
+			return t("ui.chat.canonical.fold.sentence.searches", { count });
+		case "web":
+			return follows
+				? t("ui.chat.canonical.fold.sentence.web_follow", { count })
+				: t("ui.chat.canonical.fold.sentence.web_lead", { count });
+		case "commands":
+			return follows
+				? t("ui.chat.canonical.fold.sentence.commands_follow", { count })
+				: t("ui.chat.canonical.fold.sentence.commands_lead", { count });
+		case "edits":
+			return follows
+				? t("ui.chat.canonical.fold.sentence.edits_follow", { count })
+				: t("ui.chat.canonical.fold.sentence.edits_lead", { count });
+		case "delegated":
+			return follows
+				? t("ui.chat.canonical.fold.sentence.delegated_follow", { count })
+				: t("ui.chat.canonical.fold.sentence.delegated_lead", { count });
+	}
+};
+
+/**
+ * The glue between count-line units (\` · \` in English), keyed so a language
+ * can choose its own separator. The renderer draws the visible \`·\` glyphs
+ * between units itself; this is the one string the non-DOM consumers (the bar's
+ * \`title\`, the collapsed turn's title) join with.
+ */
+export const foldUnitSeparator = (): string =>
+	t("ui.chat.canonical.fold.unit_separator");
+
 export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 	const counts = new Map<string, number>();
 	let unknown = 0;
@@ -386,7 +453,14 @@ export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 		const units = foldCountUnits(segments);
 		// Only reachable for an empty run, which `foldRuns` never emits a summary for.
 		return {
-			units: units.length === 0 ? [`${actions.length} actions`] : units,
+			units:
+				units.length === 0
+					? [
+							t("ui.chat.canonical.fold.count.actions", {
+								count: actions.length,
+							}),
+						]
+					: units,
 			prose: false,
 			countUnits: segments,
 		};
@@ -398,38 +472,41 @@ export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 	 * whose wording depended on which call came first would change under a reader
 	 * who had not changed anything.
 	 */
-	const order = ["files", "searches", "web", "commands", "edits", "delegated"];
+	const order: SentenceClass[] = [
+		"files",
+		"searches",
+		"web",
+		"commands",
+		"edits",
+		"delegated",
+	];
 	const parts: string[] = [];
 	for (const cls of order) {
 		const count = counts.get(cls) ?? 0;
 		if (count === 0) continue;
-		if (cls === "files")
-			parts.push(`Explored ${count} file${count === 1 ? "" : "s"}`);
-		if (cls === "searches")
-			parts.push(`${count} search${count === 1 ? "" : "es"}`);
-		if (cls === "web")
-			parts.push(`Searched the web ${count} time${count === 1 ? "" : "s"}`);
-		if (cls === "commands")
-			parts.push(`Ran ${count} command${count === 1 ? "" : "s"}`);
-		if (cls === "edits")
-			parts.push(`Edited ${count} file${count === 1 ? "" : "s"}`);
-		if (cls === "delegated")
-			parts.push(`Delegated ${count} task${count === 1 ? "" : "s"}`);
+		parts.push(sentencePart(cls, count, parts.length > 0));
 	}
 	if (parts.length === 0)
 		return {
-			units: [`${actions.length} actions`],
+			units: [
+				t("ui.chat.canonical.fold.count.actions", { count: actions.length }),
+			],
 			prose: true,
 			countUnits: segments,
 		};
 	// A two-class sentence reads as "Explored 4 files, 1 search"; the second part
-	// keeps the join's own lowercase, which is why the first part is the only one
-	// that capitalises.
+	// is the catalogue's own `_follow` spelling (lowercase where English needs
+	// it), chosen by `sentencePart(…, follows)` rather than by lowercasing the
+	// first letter of a translated string, which is wrong for any language whose
+	// sentence-initial letter is not simply the capital of the word.
 	return {
 		units: [
 			parts.length === 1
 				? parts[0]
-				: `${parts[0]}, ${parts[1].charAt(0).toLowerCase()}${parts[1].slice(1)}`,
+				: t("ui.chat.canonical.fold.sentence.join", {
+						first: parts[0],
+						second: parts[1],
+					}),
 		],
 		prose: true,
 		countUnits: segments,
@@ -442,7 +519,7 @@ export const foldSummaryUnits = (actions: FoldableAction[]): string[] =>
 
 /** The units joined with the ` · ` the renderer draws between them. */
 export function foldSummary(actions: FoldableAction[]): string {
-	return foldSummaryUnits(actions).join(" · ");
+	return foldSummaryUnits(actions).join(foldUnitSeparator());
 }
 
 /**
@@ -486,28 +563,107 @@ export function foldSummary(actions: FoldableAction[]): string {
  *
  * Keys are the lowercase wire names, the same vocabulary `actionClass` reads.
  */
-const KIND_NOUNS: Record<string, { noun: string; plural: string }> = {
-	agent: { noun: "agent", plural: "agents" },
-	team: { noun: "team", plural: "teams" },
-	team_delete: { noun: "team deletion", plural: "team deletions" },
-	hub: { noun: "subagent", plural: "subagents" },
-	secret: { noun: "secret", plural: "secrets" },
-	project: { noun: "project", plural: "projects" },
-	project_delete: { noun: "project deletion", plural: "project deletions" },
-	wake: { noun: "wake", plural: "wakes" },
-	jobs: { noun: "job check", plural: "job checks" },
-	console: { noun: "console", plural: "consoles" },
-	network: { noun: "network call", plural: "network calls" },
-	browser: { noun: "browser action", plural: "browser actions" },
-	todo: { noun: "todo update", plural: "todo updates" },
-	send: { noun: "message", plural: "messages" },
-	ask: { noun: "question", plural: "questions" },
-	wait: { noun: "wait", plural: "waits" },
-	lsp: { noun: "code lookup", plural: "code lookups" },
-	web_read: { noun: "page", plural: "pages" },
-	list_variables: { noun: "variable lookup", plural: "variable lookups" },
-	read_variable: { noun: "variable read", plural: "variable reads" },
-	sessions: { noun: "session", plural: "sessions" },
+/**
+ * A count-line noun: how to say \`n\` of it, and the English-only key the rest
+ * of the line is ordered by.
+ *
+ * \`label\` is a keyed ICU plural phrase with the number INSIDE it
+ * (\`ui.chat.canonical.fold.count.*\`), because \`\${count} \${noun}\` assembly fixed
+ * English word order and English plural rules for every language. \`sort\` is the
+ * tie-break the tail ordering has always used (the English noun) and is NEVER
+ * painted: ordering by a translated word would reorder the same run when only
+ * the language changes.
+ */
+type Kind = { sort: string; label: (count: number) => string };
+
+const KIND_NOUNS: Record<string, Kind> = {
+	agent: {
+		sort: "agent",
+		label: (count) => t("ui.chat.canonical.fold.count.agent", { count }),
+	},
+	team: {
+		sort: "team",
+		label: (count) => t("ui.chat.canonical.fold.count.team", { count }),
+	},
+	team_delete: {
+		sort: "team deletion",
+		label: (count) => t("ui.chat.canonical.fold.count.team_delete", { count }),
+	},
+	hub: {
+		sort: "subagent",
+		label: (count) => t("ui.chat.canonical.fold.count.hub", { count }),
+	},
+	secret: {
+		sort: "secret",
+		label: (count) => t("ui.chat.canonical.fold.count.secret", { count }),
+	},
+	project: {
+		sort: "project",
+		label: (count) => t("ui.chat.canonical.fold.count.project", { count }),
+	},
+	project_delete: {
+		sort: "project deletion",
+		label: (count) =>
+			t("ui.chat.canonical.fold.count.project_delete", { count }),
+	},
+	wake: {
+		sort: "wake",
+		label: (count) => t("ui.chat.canonical.fold.count.wake", { count }),
+	},
+	jobs: {
+		sort: "job check",
+		label: (count) => t("ui.chat.canonical.fold.count.jobs", { count }),
+	},
+	console: {
+		sort: "console",
+		label: (count) => t("ui.chat.canonical.fold.count.console", { count }),
+	},
+	network: {
+		sort: "network call",
+		label: (count) => t("ui.chat.canonical.fold.count.network", { count }),
+	},
+	browser: {
+		sort: "browser action",
+		label: (count) => t("ui.chat.canonical.fold.count.browser", { count }),
+	},
+	todo: {
+		sort: "todo update",
+		label: (count) => t("ui.chat.canonical.fold.count.todo", { count }),
+	},
+	send: {
+		sort: "message",
+		label: (count) => t("ui.chat.canonical.fold.count.send", { count }),
+	},
+	ask: {
+		sort: "question",
+		label: (count) => t("ui.chat.canonical.fold.count.ask", { count }),
+	},
+	wait: {
+		sort: "wait",
+		label: (count) => t("ui.chat.canonical.fold.count.wait", { count }),
+	},
+	lsp: {
+		sort: "code lookup",
+		label: (count) => t("ui.chat.canonical.fold.count.lsp", { count }),
+	},
+	web_read: {
+		sort: "page",
+		label: (count) => t("ui.chat.canonical.fold.count.web_read", { count }),
+	},
+	list_variables: {
+		sort: "variable lookup",
+		label: (count) =>
+			t("ui.chat.canonical.fold.count.list_variables", { count }),
+	},
+	read_variable: {
+		sort: "variable read",
+		label: (count) =>
+			t("ui.chat.canonical.fold.count.read_variable", { count }),
+	},
+	sessions: {
+		sort: "session",
+		label: (count) => t("ui.chat.canonical.fold.count.sessions", { count }),
+	},
 };
 
 /**
@@ -575,7 +731,7 @@ export const foldCountUnits = (
 		 * work the cap hid, so it is never broken between `and 4` and `other
 		 * actions` - that break is the reader-visible defect D1 measured.
 		 */
-		`and ${other} other action${other === 1 ? "" : "s"}`,
+		t("ui.chat.canonical.fold.count.other_actions", { count: other }),
 	];
 };
 
@@ -602,7 +758,6 @@ export type FoldCountSegment = {
 export const foldCountSegments = (
 	actions: FoldableAction[],
 ): FoldCountSegment[] => {
-	type Kind = { noun: string; plural: string | null };
 	const counts = new Map<string, { kind: Kind; count: number }>();
 	const bump = (key: string, kind: Kind) => {
 		const seen = counts.get(key);
@@ -612,23 +767,45 @@ export const foldCountSegments = (
 	for (const action of actions) {
 		const n = action.name.toLowerCase();
 		if (n === "bash" || n === "exec" || n === "shell" || n === "run") {
-			bump("kind:shell", { noun: "shell", plural: null });
+			bump("kind:shell", {
+				sort: "shell",
+				label: (count) => t("ui.chat.canonical.fold.count.shell", { count }),
+			});
 			continue;
 		}
 		if (n === "eval") {
-			bump("kind:python", { noun: "python", plural: null });
+			bump("kind:python", {
+				sort: "python",
+				label: (count) => t("ui.chat.canonical.fold.count.python", { count }),
+			});
 			continue;
 		}
 		const cls = actionClass(action.name);
-		if (cls === "files") bump("class:files", { noun: "file", plural: "files" });
+		if (cls === "files")
+			bump("class:files", {
+				sort: "file",
+				label: (count) => t("ui.chat.canonical.fold.count.file", { count }),
+			});
 		else if (cls === "searches")
-			bump("class:searches", { noun: "search", plural: "searches" });
+			bump("class:searches", {
+				sort: "search",
+				label: (count) => t("ui.chat.canonical.fold.count.search", { count }),
+			});
 		else if (cls === "web")
-			bump("class:web", { noun: "web search", plural: "web searches" });
+			bump("class:web", {
+				sort: "web search",
+				label: (count) => t("ui.chat.canonical.fold.count.web", { count }),
+			});
 		else if (cls === "edits")
-			bump("class:edits", { noun: "edit", plural: "edits" });
+			bump("class:edits", {
+				sort: "edit",
+				label: (count) => t("ui.chat.canonical.fold.count.edit", { count }),
+			});
 		else if (cls === "delegated")
-			bump("class:delegated", { noun: "task", plural: "tasks" });
+			bump("class:delegated", {
+				sort: "task",
+				label: (count) => t("ui.chat.canonical.fold.count.task", { count }),
+			});
 		else if (n === "todo") {
 			/*
 			 * `todo view` is a READ and the five write ops are not; one noun for
@@ -639,7 +816,11 @@ export const foldCountSegments = (
 			 * op-less call is the write noun the family already had.
 			 */
 			if ((action.op ?? "").toLowerCase() === "view")
-				bump("kind:todo:view", { noun: "todo read", plural: "todo reads" });
+				bump("kind:todo:view", {
+					sort: "todo read",
+					label: (count) =>
+						t("ui.chat.canonical.fold.count.todo_read", { count }),
+				});
 			else bump("kind:todo", KIND_NOUNS.todo);
 		} else if (n === "jobs") {
 			/*
@@ -650,8 +831,9 @@ export const foldCountSegments = (
 			 */
 			if ((action.op ?? "").toLowerCase() === "cancel")
 				bump("kind:jobs:cancel", {
-					noun: "job cancellation",
-					plural: "job cancellations",
+					sort: "job cancellation",
+					label: (count) =>
+						t("ui.chat.canonical.fold.count.jobs_cancel", { count }),
 				});
 			else bump("kind:jobs", KIND_NOUNS.jobs);
 		} else if (n === "bridge") {
@@ -666,20 +848,39 @@ export const foldCountSegments = (
 			 */
 			if (BRIDGE_POST_OPS.has((action.op ?? "").toLowerCase()))
 				bump("kind:bridge:post", {
-					noun: t("ui.chat.canonical.fold.bridge_post.one"),
-					plural: t("ui.chat.canonical.fold.bridge_post.other"),
+					sort: "team message",
+					// The pre-existing one/other noun keys (already translated): kept as
+					// they are rather than re-keyed as ICU plurals in this change.
+					label: (count) =>
+						`${count} ${
+							count === 1
+								? t("ui.chat.canonical.fold.bridge_post.one")
+								: t("ui.chat.canonical.fold.bridge_post.other")
+						}`,
 				});
 			else
 				bump("kind:bridge", {
-					noun: t("ui.chat.canonical.fold.bridge.one"),
-					plural: t("ui.chat.canonical.fold.bridge.other"),
+					sort: "team action",
+					label: (count) =>
+						`${count} ${
+							count === 1
+								? t("ui.chat.canonical.fold.bridge.one")
+								: t("ui.chat.canonical.fold.bridge.other")
+						}`,
 				});
 		} else {
 			const noun = KIND_NOUNS[n];
 			if (noun) bump(`kind:${n}`, noun);
 			else {
 				const name = displayName(action.name);
-				bump(`name:${name}`, { noun: name, plural: null });
+				// An unclassed tool counts under its own identifier (an MCP tool, a
+				// tool newer than the table): the name is data, not copy, so only the
+				// order of count and name is the catalogue's.
+				bump(`name:${name}`, {
+					sort: name,
+					label: (count) =>
+						t("ui.chat.canonical.fold.count.named", { count, name }),
+				});
 			}
 		}
 	}
@@ -703,14 +904,12 @@ export const foldCountSegments = (
 		"kind:hub",
 	];
 	const segments: FoldCountSegment[] = [];
-	const fact = (count: number, kind: Kind) =>
-		`${count} ${count === 1 || kind.plural === null ? kind.noun : kind.plural}`;
 	for (const key of order) {
 		const seen = counts.get(key);
 		if (seen)
 			segments.push({
 				key,
-				label: fact(seen.count, seen.kind),
+				label: seen.kind.label(seen.count),
 				count: seen.count,
 			});
 	}
@@ -718,12 +917,12 @@ export const foldCountSegments = (
 		.filter(([key]) => !order.includes(key))
 		.sort(
 			([, a], [, b]) =>
-				b.count - a.count || a.kind.noun.localeCompare(b.kind.noun),
+				b.count - a.count || a.kind.sort.localeCompare(b.kind.sort),
 		);
 	for (const [key, seen] of rest)
 		segments.push({
 			key,
-			label: fact(seen.count, seen.kind),
+			label: seen.kind.label(seen.count),
 			count: seen.count,
 		});
 	return segments;
@@ -738,8 +937,11 @@ export const foldCountSegments = (
 export function foldCounts(actions: FoldableAction[]): string {
 	const segments = foldCountSegments(actions);
 	// Only reachable for an empty run, which `foldRuns` never emits a summary for.
-	if (segments.length === 0) return `${actions.length} actions`;
-	return foldCountUnits(segments).join(" · ");
+	if (segments.length === 0)
+		return t("ui.chat.canonical.fold.count.actions", {
+			count: actions.length,
+		});
+	return foldCountUnits(segments).join(foldUnitSeparator());
 }
 
 /**

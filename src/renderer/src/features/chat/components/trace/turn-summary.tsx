@@ -238,11 +238,15 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	 * the same thing in full. Kept beside each other so the two cannot drift into
 	 * claiming different things about the same number.
 	 */
+	// The same keyed ICU phrase the tool-summary fold uses for a bare total, so
+	// the bar, the foot and the fold cannot count "actions" three ways. The
+	// partial form (`N+`) is its own key: the plus sits after the number, and
+	// where it goes is the language's call.
 	const actionClause = partial
-		? `${actionCount}+ actions`
-		: actionCount === 1
-			? "1 action"
-			: `${actionCount} actions`;
+		? t("ui.chat.canonical.fold.count.actions_partial", {
+				count: actionCount,
+			})
+		: t("ui.chat.canonical.fold.count.actions", { count: actionCount });
 	const actionClauseTitle = `At least ${
 		actionCount === 1 ? "1 action" : `${actionCount} actions`
 	} — earlier rows of this turn are not loaded`;

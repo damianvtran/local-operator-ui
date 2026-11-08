@@ -487,9 +487,9 @@ function condenseSentence(segment: SegmentPlan): string {
 		if (segment.facts.actions > 0) {
 			parts.push(
 				minimum(
-					segment.facts.actions === 1
-						? "1 action"
-						: `${segment.facts.actions} actions`,
+					t("ui.chat.canonical.fold.count.actions", {
+						count: segment.facts.actions,
+					}),
 				),
 			);
 		}
@@ -1753,7 +1753,8 @@ const UserRow = memo(function UserRow({
 								aria-hidden="true"
 								className={cn("size-3.5 shrink-0")}
 							/>
-							{undelivered.message ?? "Not delivered"}
+							{undelivered.message ??
+								t("ui.chat.canonical.transcript.not_delivered")}
 						</span>
 						{undelivered.retry !== false && (
 							<button
@@ -2207,7 +2208,9 @@ const AssistantRow = memo(function AssistantRow({
 								·
 							</span>
 							<span className={cn("text-ink-dim")}>
-								{foot.actions === 1 ? "1 action" : `${foot.actions} actions`}
+								{t("ui.chat.canonical.fold.count.actions", {
+									count: foot.actions,
+								})}
 							</span>
 							{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
 							 * foot's `· N failed` control is retired with the bar's —

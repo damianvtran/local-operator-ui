@@ -1233,5 +1233,492 @@
 		"length": "Two words.",
 		"note": "The counterpart of a count disclosure: the closed state names how many more files or graphics are hidden, and this open state says only that pressing collapses them. Do not add a count.",
 		"placeholders": {}
+	},
+	"ui.chat.canonical.fold.count.shell": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts shell commands (bash/exec/shell/run) the turn ran; an invariant label in English, a count of command runs. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.python": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts python (eval) executions the turn ran. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.file": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts file reads, listings and greps the turn made. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.search": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts page fetches / lookups of a known address. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.web": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts web searches the turn made. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.edit": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts file edits and writes the turn made. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.task": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts tasks delegated to subagents. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.agent": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts reads of agent profiles. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.team": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts team operations. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.team_delete": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts teams deleted. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.hub": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts subagent hub calls. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.secret": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts secret operations (never their values). One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.project": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts project operations. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.project_delete": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts projects deleted. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.wake": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts scheduled-wake operations. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.jobs": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts background-job list/peek calls. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.jobs_cancel": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts background jobs cancelled. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.console": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts interactive terminal sessions driven. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.network": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts calls to the device mesh network. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.browser": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts browser actions. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.todo": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts writes to the to-do plan. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.todo_read": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts reads of the to-do plan. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.send": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts messages sent to other sessions. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.ask": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts questions asked of the user. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.wait": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts waits for a job or a condition. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.lsp": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts language-server code lookups. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.web_read": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts web pages read. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.list_variables": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts listings of kernel variables. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.read_variable": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts reads of one kernel variable. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.sessions": {
+		"role": "count-plus-noun unit in the collapsed tool-call summary line",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to four words including the count.",
+		"note": "Counts session listing/inspection calls. One of several units the summary joins with ui.chat.canonical.fold.unit_separator; each is painted unbreakable at narrow widths, so keep it short. The English singular/plural arms follow CLDR categories; supply every category the language needs.",
+		"placeholders": {
+			"count": "how many calls of this kind the turn made; printed without digit grouping, as before"
+		}
+	},
+	"ui.chat.canonical.fold.count.named": {
+		"role": "count-plus-tool-name unit in the summary line for a tool this app has no noun for",
+		"tone": "number then verbatim tool name",
+		"length": "Two tokens.",
+		"note": "Used for MCP and newer tools the app cannot name in prose. The tool name is the backend's own identifier and must stay verbatim; only the order of the two tokens may change.",
+		"placeholders": {
+			"count": "how many calls of this tool the turn made",
+			"name": "the tool's display name, a verbatim identifier"
+		}
+	},
+	"ui.chat.canonical.fold.count.actions": {
+		"role": "generic action total used when no class or kind can describe the run",
+		"tone": "lowercase noun phrase led by the number",
+		"length": "Two words including the count.",
+		"note": "Only reached for a run with nothing to classify, so it is a rare fallback. Counts every tool call.",
+		"placeholders": {
+			"count": "the number of tool calls in the run"
+		}
+	},
+	"ui.chat.canonical.fold.count.other_actions": {
+		"role": "tail unit in the summary line standing for everything past the capped kinds",
+		"tone": "lowercase phrase starting with 'and', no trailing punctuation",
+		"length": "Three to five words including the count.",
+		"note": "Closes a capped summary line, e.g. '6 searches · 1 task · and 4 other actions'. It is one fact and is painted unbreakable, so do not split it. It counts calls, not kinds.",
+		"placeholders": {
+			"count": "how many calls the cap hid"
+		}
+	},
+	"ui.chat.canonical.fold.unit_separator": {
+		"role": "separator between units of the tool-call summary line and its tooltip",
+		"tone": "composition punctuation only, not copy",
+		"length": "Three characters in English: space, middle dot, space.",
+		"note": "Keep the middle dot unless the script has a stronger convention for separating short facts; keep the surrounding spaces so wrapping can fall at the separator.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.fold.sentence.files": {
+		"role": "first clause of the two-class summary sentence: files read or listed",
+		"tone": "past-tense clause, sentence case, no trailing punctuation",
+		"length": "Three words including the count.",
+		"note": "Read as e.g. 'Explored 4 files, 1 search'. Always the first clause when present, so it only needs the sentence-initial form.",
+		"placeholders": {
+			"count": "number of files touched"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.searches": {
+		"role": "clause of the two-class summary sentence: lookups of a known address",
+		"tone": "noun phrase led by the number, no verb, no trailing punctuation",
+		"length": "Two words including the count.",
+		"note": "Verbless, so it works in first or second position of 'Explored 4 files, 1 search'.",
+		"placeholders": {
+			"count": "number of lookups"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.web_lead": {
+		"role": "first clause of the two-class summary sentence: web searches",
+		"tone": "past-tense clause, no trailing punctuation",
+		"length": "Three to five words including the count.",
+		"note": "The sentence-initial form. There are two keys because this clause is first in some summaries ('Ran 4 commands, edited 2 files' starts with it) and second in others; the second form is joined to the first by ui.chat.canonical.fold.sentence.join, so write it as it should read after the comma. The two forms are the same clause and must agree on the verb and number.",
+		"placeholders": {
+			"count": "number of web searches"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.web_follow": {
+		"role": "second clause of the two-class summary sentence: web searches",
+		"tone": "past-tense clause, no trailing punctuation, starts in lower case where the language has case",
+		"length": "Three to five words including the count.",
+		"note": "The mid-sentence, after a comma form. There are two keys because this clause is first in some summaries ('Ran 4 commands, edited 2 files' starts with it) and second in others; the second form is joined to the first by ui.chat.canonical.fold.sentence.join, so write it as it should read after the comma. The two forms are the same clause and must agree on the verb and number.",
+		"placeholders": {
+			"count": "number of web searches"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.commands_lead": {
+		"role": "first clause of the two-class summary sentence: shell commands",
+		"tone": "past-tense clause, no trailing punctuation",
+		"length": "Three to five words including the count.",
+		"note": "The sentence-initial form. There are two keys because this clause is first in some summaries ('Ran 4 commands, edited 2 files' starts with it) and second in others; the second form is joined to the first by ui.chat.canonical.fold.sentence.join, so write it as it should read after the comma. The two forms are the same clause and must agree on the verb and number.",
+		"placeholders": {
+			"count": "number of shell commands"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.commands_follow": {
+		"role": "second clause of the two-class summary sentence: shell commands",
+		"tone": "past-tense clause, no trailing punctuation, starts in lower case where the language has case",
+		"length": "Three to five words including the count.",
+		"note": "The mid-sentence, after a comma form. There are two keys because this clause is first in some summaries ('Ran 4 commands, edited 2 files' starts with it) and second in others; the second form is joined to the first by ui.chat.canonical.fold.sentence.join, so write it as it should read after the comma. The two forms are the same clause and must agree on the verb and number.",
+		"placeholders": {
+			"count": "number of shell commands"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.edits_lead": {
+		"role": "first clause of the two-class summary sentence: file edits",
+		"tone": "past-tense clause, no trailing punctuation",
+		"length": "Three to five words including the count.",
+		"note": "The sentence-initial form. There are two keys because this clause is first in some summaries ('Ran 4 commands, edited 2 files' starts with it) and second in others; the second form is joined to the first by ui.chat.canonical.fold.sentence.join, so write it as it should read after the comma. The two forms are the same clause and must agree on the verb and number.",
+		"placeholders": {
+			"count": "number of file edits"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.edits_follow": {
+		"role": "second clause of the two-class summary sentence: file edits",
+		"tone": "past-tense clause, no trailing punctuation, starts in lower case where the language has case",
+		"length": "Three to five words including the count.",
+		"note": "The mid-sentence, after a comma form. There are two keys because this clause is first in some summaries ('Ran 4 commands, edited 2 files' starts with it) and second in others; the second form is joined to the first by ui.chat.canonical.fold.sentence.join, so write it as it should read after the comma. The two forms are the same clause and must agree on the verb and number.",
+		"placeholders": {
+			"count": "number of file edits"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.delegated_lead": {
+		"role": "first clause of the two-class summary sentence: delegated tasks",
+		"tone": "past-tense clause, no trailing punctuation",
+		"length": "Three to five words including the count.",
+		"note": "The sentence-initial form. There are two keys because this clause is first in some summaries ('Ran 4 commands, edited 2 files' starts with it) and second in others; the second form is joined to the first by ui.chat.canonical.fold.sentence.join, so write it as it should read after the comma. The two forms are the same clause and must agree on the verb and number.",
+		"placeholders": {
+			"count": "number of delegated tasks"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.delegated_follow": {
+		"role": "second clause of the two-class summary sentence: delegated tasks",
+		"tone": "past-tense clause, no trailing punctuation, starts in lower case where the language has case",
+		"length": "Three to five words including the count.",
+		"note": "The mid-sentence, after a comma form. There are two keys because this clause is first in some summaries ('Ran 4 commands, edited 2 files' starts with it) and second in others; the second form is joined to the first by ui.chat.canonical.fold.sentence.join, so write it as it should read after the comma. The two forms are the same clause and must agree on the verb and number.",
+		"placeholders": {
+			"count": "number of delegated tasks"
+		}
+	},
+	"ui.chat.canonical.fold.sentence.join": {
+		"role": "joins the two clauses of the summary sentence",
+		"tone": "composition punctuation only, not copy",
+		"length": "Two placeholders and a comma in English.",
+		"note": "Joins e.g. 'Explored 4 files' and 'ran 2 commands'. Use the language's ordinary clause comma; do not add a conjunction.",
+		"placeholders": {
+			"first": "the first clause, e.g. 'Explored 4 files'",
+			"second": "the second clause in its mid-sentence form"
+		}
+	},
+	"ui.chat.canonical.fold.receipt.incoming": {
+		"role": "count-plus-noun unit in the collapsed receipt group's header",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to three words including the count.",
+		"note": "Counts messages delivered into the session from elsewhere. Joined with its siblings by ui.chat.canonical.fold.unit_separator.",
+		"placeholders": {
+			"count": "how many receipts of this family are in the group"
+		}
+	},
+	"ui.chat.canonical.fold.receipt.job_result": {
+		"role": "count-plus-noun unit in the collapsed receipt group's header",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to three words including the count.",
+		"note": "Counts background-job completion receipts. Joined with its siblings by ui.chat.canonical.fold.unit_separator.",
+		"placeholders": {
+			"count": "how many receipts of this family are in the group"
+		}
+	},
+	"ui.chat.canonical.fold.receipt.wake": {
+		"role": "count-plus-noun unit in the collapsed receipt group's header",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to three words including the count.",
+		"note": "Counts scheduled-wake firing receipts. Joined with its siblings by ui.chat.canonical.fold.unit_separator.",
+		"placeholders": {
+			"count": "how many receipts of this family are in the group"
+		}
+	},
+	"ui.chat.canonical.fold.receipt.monitor_prompt": {
+		"role": "count-plus-noun unit in the collapsed receipt group's header",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to three words including the count.",
+		"note": "Counts prompts raised by a monitor. Joined with its siblings by ui.chat.canonical.fold.unit_separator.",
+		"placeholders": {
+			"count": "how many receipts of this family are in the group"
+		}
+	},
+	"ui.chat.canonical.fold.receipt.other": {
+		"role": "count-plus-noun unit in the collapsed receipt group's header",
+		"tone": "lowercase noun phrase led by the number, no trailing punctuation",
+		"length": "Two to three words including the count.",
+		"note": "Counts receipts that fit no named family. Joined with its siblings by ui.chat.canonical.fold.unit_separator.",
+		"placeholders": {
+			"count": "how many receipts of this family are in the group"
+		}
+	},
+	"ui.chat.canonical.fold.receipt.reply_requested": {
+		"role": "flag unit in the collapsed receipt group's header",
+		"tone": "short status phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Shown when any receipt in the group asked the agent to reply.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.fold.receipt.steered": {
+		"role": "flag unit in the collapsed receipt group's header",
+		"tone": "single past participle, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Shown when any receipt in the group redirected the running turn.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.checkpoint_rail.label": {
+		"role": "accessible name of the checkpoint rail at the edge of the transcript",
+		"tone": "plural noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Names a group of small tick marks, one per turn, that jump to that turn. Screen-reader only; not painted.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.not_delivered": {
+		"role": "marker beside a user turn that could not be delivered, when the backend gave no reason",
+		"tone": "short status phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Fallback only: when the backend supplies its own message that text is shown instead. Sits beside the Send again and Edit actions, in danger ink, with a warning icon.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.fold.count.actions_partial": {
+		"role": "lower-bound action count on a turn bar whose earlier rows are not loaded",
+		"tone": "number, a plus sign, then the noun; lowercase, no trailing punctuation",
+		"length": "Two words including the count.",
+		"note": "The plus sign means 'at least this many': only the loaded rows are counted. Keep a visible sign that the number is a lower bound; its position relative to the number follows the language.",
+		"placeholders": {
+			"count": "the number of loaded actions; printed without digit grouping"
+		}
 	}
 }

@@ -151,5 +151,72 @@
 		"placeholders": {
 			"question": "The agent's question text; do not translate."
 		}
+	},
+	"ui.chat.asks.scope.session": {
+		"role": "scope name on the Requests rail item and drawer bar: the queue of the open conversation",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Says whose asks are being counted; paired with ui.chat.asks.scope.fleet. Also the subject of ui.chat.asks.scope_line.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.scope.fleet": {
+		"role": "scope name on the Requests rail item and drawer bar: the queue across every conversation",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Paired with ui.chat.asks.scope.session; must be visibly different from it at a glance.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.scope_line": {
+		"role": "scope name joined to its count clause in the Requests drawer bar and rail tooltip",
+		"tone": "composition pattern, not standalone copy",
+		"length": "Two placeholders and a middle dot.",
+		"note": "Reads e.g. 'This conversation · 2 questions waiting'. Keep the middle dot separator or use the language's equivalent; the placeholders may be reordered.",
+		"placeholders": {
+			"scope": "the scope name (ui.chat.asks.scope.session or .fleet)",
+			"clause": "the count clause, e.g. 'All asks settled'"
+		}
+	},
+	"ui.chat.asks.clause.settled": {
+		"role": "count clause stating that no ask is waiting",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Shown when every ask has been answered, timed out or dismissed. 'Asks' means requests the agent made of the user.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.clause.outstanding": {
+		"role": "count clause when the queue's split is unknown: how many asks are open",
+		"tone": "number plus one word, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Fallback used only when the runtime reports a total but not which asks wait on the user.",
+		"placeholders": {
+			"count": "total open asks"
+		}
+	},
+	"ui.chat.asks.clause.waiting": {
+		"role": "count clause: questions waiting for the user's answer",
+		"tone": "number plus noun phrase, no trailing punctuation",
+		"length": "Three words.",
+		"note": "The primary state of the Requests rail item; the agent is blocked on these.",
+		"placeholders": {
+			"count": "questions waiting"
+		}
+	},
+	"ui.chat.asks.clause.delivering": {
+		"role": "count clause: answers sent but not yet delivered, which the user may still change",
+		"tone": "one clause with an em dash, no trailing punctuation",
+		"length": "About ten words.",
+		"note": "States both the delivery status and that the answer can still be edited, so keep both facts. The pronoun in the second half follows the count.",
+		"placeholders": {
+			"count": "answers in the not-yet-delivered window"
+		}
+	},
+	"ui.chat.asks.clause.timed_out": {
+		"role": "count clause: questions whose deadline passed without an answer",
+		"tone": "number plus verb phrase, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Quiet register: nothing can be done on a timed-out ask.",
+		"placeholders": {
+			"count": "questions that timed out"
+		}
 	}
 }

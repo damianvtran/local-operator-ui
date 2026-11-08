@@ -524,7 +524,11 @@ test("the rows are newest-last in the store's own order, rendered reversed", () 
 		rows.map((row) => row.text),
 		["third", "second", "first"],
 	);
-	assert.equal(mod.DRAFT_ROW_PREFIX, "Draft: ");
+	assert.equal(mod.draftRowLabel("x"), "Draft: x");
+	assert.deepEqual(
+		rows.map((row) => row.label),
+		["Draft: third", "Draft: second", "Draft: first"],
+	);
 });
 
 /*

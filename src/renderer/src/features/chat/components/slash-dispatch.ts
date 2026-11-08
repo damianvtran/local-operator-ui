@@ -687,8 +687,11 @@ export function useSlashDispatch({
 				const suggestions = closestCommands(word, commands);
 				note(
 					suggestions.length > 0
-						? `Unknown command /${word}. Did you mean ${suggestions.join(", ")}? Type / for the full list.`
-						: `Unknown command /${word}. Type / for the full list.`,
+						? t("ui.chat.pickers.slash.unknown_command_suggest", {
+								command: word,
+								suggestions: suggestions.join(", "),
+							})
+						: t("ui.chat.pickers.slash.unknown_command", { command: word }),
 					true,
 				);
 				return "consumed";

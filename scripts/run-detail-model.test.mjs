@@ -1608,8 +1608,18 @@ test("the trigger's acknowledgement wiring asks the model's predicate", () => {
 	);
 	assert.match(
 		trigger,
-		/mcpProblems,\s*cap: runCap,\s*\}\)/,
+		/mcpProblems,\s*cap: runCap,\s*\};/,
 		"and the label must be given the problem count it is naming, and (since #928) the action's bound chord",
+	);
+	assert.match(
+		trigger,
+		/runDetailTriggerLabel\(details, seen, \{\s*\.\.\.labelOptions,\s*name: true,\s*\}\)/,
+		"the accessible name asks the model for the pane NAME (keyed), instead of rewriting the English verb phrase",
+	);
+	assert.doesNotMatch(
+		trigger,
+		/\.replace\(\/\^\(Open\|Close\) run details/,
+		"no English regex rewrite of the label survives",
 	);
 	/*
 	 * The deleted pair, asserted as absent rather than assumed gone: `§ 3.4`

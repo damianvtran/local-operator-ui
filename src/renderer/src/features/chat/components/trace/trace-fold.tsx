@@ -77,7 +77,10 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
-import { foldMediaClause } from "../../canonical/trace-fold-model";
+import {
+	foldMediaClause,
+	foldUnitSeparator,
+} from "../../canonical/trace-fold-model";
 import type {
 	FoldLive,
 	FoldSpan,
@@ -415,7 +418,7 @@ export const TraceFold = ({
 							 * units, which is exactly the claim this round had to correct.
 							 */
 							className={cn("min-w-0 break-words text-body-sm text-ink-muted")}
-							title={summary.units.join(" · ")}
+							title={summary.units.join(foldUnitSeparator())}
 							data-fold-summary=""
 						>
 							{/*

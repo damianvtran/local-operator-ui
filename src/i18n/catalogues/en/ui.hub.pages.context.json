@@ -203,5 +203,26 @@
 		"button label",
 		"plain",
 		"Visible word beside the chevron; the accessible name is the button's own 'Previous page'."
-	]
+	],
+	"ui.hub.pages.signed_out.title": {
+		"role": "heading of the Agent Hub error alert when the user is not signed in to Radient",
+		"tone": "imperative heading, sentence case, no trailing punctuation",
+		"length": "Five words.",
+		"note": "Shown instead of an outage message, because the failure is the missing credential, not the hub.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.signed_out.body": {
+		"role": "body of the Agent Hub alert explaining why the list cannot load and what to do",
+		"tone": "plain two-sentence explanation, second person, sentence case",
+		"length": "Two sentences, about thirty words.",
+		"note": "'Radient' is the product/account name and stays verbatim. Names the next step (sign in on the settings page) and then the Try again button under it.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.load_failed.title": {
+		"role": "heading of the Agent Hub error alert for a real load failure",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "Six words.",
+		"note": "Used only when the user IS signed in; the sign-in case has its own heading.",
+		"placeholders": {}
+	}
 }

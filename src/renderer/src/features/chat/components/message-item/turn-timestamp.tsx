@@ -99,14 +99,17 @@
  * `aria-label` above is the accessible path rather than a second way to the same
  * panel (design round 2, D2-4; the scope of the keyboard claim corrected for
  * the bar carrier in the cursor sweep's design review, D1). The full date and
- * time come from `formatCalendarDateTime` with `hour12` forced, so the tooltip
- * and the label agree with the 12-hour text the operator asked for rather than
- * taking the locale's own clock — on a 24-hour machine the two halves of one
- * element used to state the same instant in two conventions (review round 1, R3).
+ * time come from `formatCalendarDateTime`, and the visible text from
+ * `formatTurnTimestamp`: BOTH take the active language's own hour cycle, so the
+ * two halves of one element state the instant in one convention (review round
+ * 1, R3) and a French reader gets `21:28`, not an English `9:28 PM` inside a
+ * French date. English keeps its 12-hour `9:28 PM` because that IS the `en`
+ * cycle, not because anything forces it.
  */
 
 import { Tooltip } from "@shared/components/ui";
 import { useStampNow } from "@shared/hooks/use-calendar-day";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	formatCalendarDateTime,
@@ -140,17 +143,29 @@ export type TurnTimestampProps = {
 };
 
 /**
- * The verb each carrier's accessible name is built from.
+ * The accessible name each carrier's stamp is read out with.
  *
  * A stamp's visible text is a bare time, so the NAME is the only place the fact
  * it states is spelled out - and it has to be the right fact. `Sent` was
  * hardcoded while every stamp was a turn's own; it is false on an answer the
  * agent wrote and on a call that ran, which is what the three variants fix.
+ *
+ * Each is a WHOLE keyed phrase with a `{date}` placeholder rather than a verb
+ * glued to the date, so a language can put the date first or inflect the verb
+ * for it; the date inside is already formatted for the active locale.
  */
-const STAMP_VERB: Record<TurnTimestampProps["scope"], string> = {
-	turn: "Sent",
-	answer: "Answered",
-	tool: "Ran",
+const stampName = (
+	scope: TurnTimestampProps["scope"],
+	date: string,
+): string => {
+	switch (scope) {
+		case "turn":
+			return t("ui.chat.user_turn.stamp.sent", { date });
+		case "answer":
+			return t("ui.chat.user_turn.stamp.answered", { date });
+		case "tool":
+			return t("ui.chat.user_turn.stamp.ran", { date });
+	}
 };
 
 export const TurnTimestamp: FC<TurnTimestampProps> = ({
@@ -181,11 +196,12 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 	 * The same string for the tooltip and for the accessible name, built once:
 	 * they answer the same question (what instant is this, spelled out) and the
 	 * tooltip is the app's shared idiom here rather than a native `title`
-	 * (design round 1, D5). `hour12` is forced because the visible text is
-	 * 12-hour by the operator's request, and a title in the locale's own cycle
-	 * disagreed with it on a 24-hour machine (review round 1, R3).
+	 * (design round 1, D5). Neither this string nor the visible text forces a
+	 * clock: both follow the active language's hour cycle, so they cannot
+	 * disagree (review round 1, R3) and neither prints an English `PM` inside
+	 * another language's date.
 	 */
-	const full = formatCalendarDateTime(date, { hour12: true });
+	const full = formatCalendarDateTime(date);
 	return (
 		<Tooltip content={full} side="bottom" delayDuration={1200}>
 			<time
@@ -198,7 +214,7 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 				 * from `scope`, so the name is truthful per carrier - a turn was sent,
 				 * an answer was written, a call ran.
 				 */
-				aria-label={`${STAMP_VERB[scope]} ${full}`}
+				aria-label={stampName(scope, full)}
 				/*
 				 * `text-ink-dim` + `text-meta` is the contract's own pair for a
 				 * caption (§ 4: `text-meta` is "captions, timestamps, counts"; § 2:

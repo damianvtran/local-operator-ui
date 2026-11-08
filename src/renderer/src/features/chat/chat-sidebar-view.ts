@@ -481,8 +481,16 @@ export const sectionMoreLabel = (hidden: number) =>
  * which is the string `data-sidebar-section-more` already carries: one word for the
  * section, not a second vocabulary beside it.
  */
-export function sectionMoreName(hidden: number, unit: string): string {
-	return `${sectionMoreLabel(hidden)} ${unit}`;
+export function sectionMoreName(
+	hidden: number,
+	unit: "agents" | "teams",
+): string {
+	// One keyed plural PHRASE per section, noun inside, not the label with the
+	// section word appended: a sentence that ends in an English noun cannot be
+	// translated (it painted as "再显示4条 agents" in the census).
+	return unit === "agents"
+		? t("ui.chat.sidebar.catalogue.show_more_agents", { count: hidden })
+		: t("ui.chat.sidebar.catalogue.show_more_teams", { count: hidden });
 }
 
 /**
