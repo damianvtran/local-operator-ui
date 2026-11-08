@@ -16,6 +16,10 @@ import { useQuery } from "@tanstack/react-query";
 import { retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
 import type { DesktopCapabilities, DesktopProvider } from "./desktop-api";
+import {
+	type StreamCapabilityFlags,
+	recordStreamCapabilityFlags,
+} from "./desktop-stream-capabilities";
 
 export const desktopKeys = {
 	settings: ["desktop", "settings"] as const,
@@ -171,9 +175,28 @@ export function useDesktopCapabilities() {
 			queryKey: desktopKeys.capabilities,
 			queryFn: async () => {
 				try {
-					return await desktopResult<DesktopCapabilities>({
+					const answer = await desktopResult<DesktopCapabilities>({
 						op: "capabilities",
 					});
+					/*
+					 * THE ANSWER IS ALSO RECORDED FOR THE CLICK PATH, here, where it
+					 * arrives. Every stream subscription's request flags are this answer's
+					 * projection (`streamCapabilityFlags`), and the pane derives its own
+					 * flags from exactly this value on first render - so the prewarm, which
+					 * must phrase the same request from the click's task outside React,
+					 * reads them from here rather than from whichever subscription last
+					 * ran (`desktop-stream-capabilities.ts` carries the measured defect
+					 * that made the difference: an all-`false` prewarm on the first click
+					 * of an app session, refused at adoption and dropped unconsumed).
+					 *
+					 * ONLY ON SUCCESS, deliberately: a failed refetch leaves this stale
+					 * exactly as it leaves React Query's `data` stale, which is the same
+					 * answer the pane keeps painting from. Nothing is recorded before the
+					 * first answer, and the prewarm then asks undeclared - which is what
+					 * the pane asks too (`desktopFeatureEnabled(undefined, ...)`).
+					 */
+					recordStreamCapabilityFlags(streamCapabilityFlags(answer));
+					return answer;
 				} catch (error) {
 					// Collapsing every failure to `null` made the banner assert "this
 					// backend is older than the app expects" for four different
@@ -1137,6 +1160,33 @@ export function desktopFeatureEnabled(
 	return (
 		desktopFeatureState(capabilities, feature, minimumVersion) === "enabled"
 	);
+}
+
+/**
+ * The three request flags ONE stream subscription negotiates, off one answer.
+ *
+ * The single derivation both readers share: the pane builds its subscription's
+ * args from these exact fields (`chat-page.tsx`), and the answer is recorded for
+ * the click's prewarm through the same call (`useDesktopCapabilities` above). Two
+ * readers working one answer is what makes the prewarm's request phrase the
+ * pane's - which is the whole precondition of adoption.
+ *
+ * `peerJournalSource` is included as the CAPABILITY half only. Whether a given
+ * request may declare the complete contract is that capability AND-ed with the
+ * conversation's own placement, which only the click path can answer about its
+ * target (`prewarmSessionStream`'s `remoteOwned`).
+ */
+function streamCapabilityFlags(
+	capabilities: DesktopCapabilities | null | undefined,
+): StreamCapabilityFlags {
+	return {
+		openFrame: desktopFeatureEnabled(capabilities, "open_frame"),
+		journalOrder: desktopFeatureEnabled(capabilities, "journal_order"),
+		peerJournalSource: desktopFeatureEnabled(
+			capabilities,
+			"peer_journal_source",
+		),
+	};
 }
 
 /** Canonical provider registry rows, including aliases folded into methods. */
