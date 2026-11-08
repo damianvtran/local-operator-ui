@@ -342,6 +342,79 @@ const MAIN_BUNDLE_ROOT_FILES = new Set([
 const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
 
 /**
+ * Every repository file the condense parity pin covers, copied from its own
+ * `desktop.modelSources`.
+ *
+ * THE LIST IS THE FIXTURE'S CLAIM, NOT A SECOND OPINION ABOUT IT. A regenerated
+ * pin that names a file this set does not is a FAILING TEST (`ci-scope.test.mjs`
+ * asserts the two are equal), so the job cannot silently skip the pull request
+ * that staled the fixture - the exact drift that shipped a stale
+ * `scripts/fixtures/condense.parity.json` to `main` in #1758.
+ *
+ * STATIC RATHER THAN READ FROM THE FIXTURE, for the reason A13 exists: this
+ * module runs as a COPY under `$RUNNER_TEMP`, outside the checkout. A module that
+ * resolved the fixture from its own path reads nothing there, and one that read
+ * the DEFAULT branch's copy would let a pull request disarm the gate that judges
+ * it. Equality with the pin is proved by the test instead.
+ */
+const PARITY_MODEL_SOURCES = new Set([
+	"src/i18n/catalogue-locale.ts",
+	"src/i18n/format.ts",
+	"src/i18n/index.ts",
+	"src/i18n/locale.ts",
+	"src/i18n/messages.ts",
+	"src/renderer/src/features/chat/canonical/harness-chrome.ts",
+	"src/renderer/src/features/chat/canonical/image-gen-card-model.ts",
+	"src/renderer/src/features/chat/canonical/journal-order.ts",
+	"src/renderer/src/features/chat/canonical/profile-history-replacement.ts",
+	"src/renderer/src/features/chat/canonical/record-immutability.ts",
+	"src/renderer/src/features/chat/canonical/skill-row.ts",
+	"src/renderer/src/features/chat/canonical/sound-batch-model.ts",
+	"src/renderer/src/features/chat/canonical/sound-cost-caption.ts",
+	"src/renderer/src/features/chat/canonical/supplement-model.ts",
+	"src/renderer/src/features/chat/canonical/trace-fold-model.ts",
+	"src/renderer/src/features/chat/canonical/transcript-reducer.ts",
+	"src/renderer/src/features/chat/canonical/transcript-rows.ts",
+	"src/renderer/src/features/chat/canonical/turn-collapse-model.ts",
+	"src/renderer/src/features/chat/canonical/turn-segments.ts",
+	"src/renderer/src/features/chat/components/skill-invocation.ts",
+	"src/renderer/src/features/chat/components/skill-rank.ts",
+	"src/renderer/src/features/chat/components/slash-rank.ts",
+	"src/renderer/src/features/chat/components/slash-token.ts",
+	"src/renderer/src/features/chat/components/trace/bridge-receipt-model.ts",
+	"src/renderer/src/features/chat/components/trace/bridge-row-model.ts",
+	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
+	"src/renderer/src/features/chat/components/trace/tool-result-details.ts",
+	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
+	"src/renderer/src/features/chat/transcript-display-mode.ts",
+	"src/renderer/src/features/chat/utils/reply-utils.ts",
+	"src/shared/desktop-session-contract.ts",
+	"src/shared/profile-consent.ts",
+]);
+
+/**
+ * The pin's own files and the inputs of its GENERATOR: change any of these and
+ * the committed fixture's bytes can move without a single model source being
+ * touched. `record-tokens.mjs` is the token grammar every case is driven over and
+ * `entry-point.mjs` decides whether the generator's `main()` runs at all.
+ */
+const PARITY_PIN_FILES = new Set([
+	"scripts/entry-point.mjs",
+	"scripts/fixtures/condense.parity.json",
+	"scripts/fixtures/condense.parity.manifest.json",
+	"scripts/fixtures/record-tokens.mjs",
+	"scripts/generate-condense-parity.mjs",
+]);
+
+/**
+ * The directory the model itself lives in. A module ADDED beside the model is a
+ * file the next regeneration will name in `modelSources`, and the pull request
+ * that adds it is exactly the one that must run the pin - before any list can
+ * know its name. Cheap: 15 of the 27 declared sources live here.
+ */
+const PARITY_MODEL_PREFIX = "src/renderer/src/features/chat/canonical/";
+
+/**
  * Whether the category table NAMED this path's tree, rather than reaching its
  * answer through the `other` catch-all. See `KNOWN_LIVE_PREFIXES`.
  */
@@ -411,6 +484,7 @@ export const FLAGS = [
 	"runtime_deps",
 	"audit",
 	"pack",
+	"parity",
 ];
 
 /**
@@ -425,6 +499,8 @@ export const FLAGS = [
  */
 export const JOB_FLAGS = {
 	lint: ["lint"],
+	"condense-parity": ["parity"],
+	"locale-activation": ["i18n"],
 	"i18n-coverage": ["i18n", "types"],
 	"runtime-deps": ["runtime_deps"],
 	"check-types": ["types"],
@@ -514,6 +590,15 @@ export const JOB_COMMANDS = {
 		"pnpm check-i18n:added-strings",
 		"pnpm check-i18n:coverage",
 	],
+	// The same command the job runs, with the same argument order: a local
+	// spelling that regenerated instead of checking would write the fixture it
+	// was supposed to judge.
+	"condense-parity": ["node scripts/generate-condense-parity.mjs --check"],
+	// The locale bundle tests the desktop suite owns, minus the ones
+	// `pnpm check-i18n:catalogues` already runs on every pull request.
+	"locale-activation": [
+		"node --test scripts/i18n/activation.test.mjs scripts/i18n/absent-locale.test.mjs scripts/i18n/device-tag-activation.test.mjs scripts/i18n/es-activation.test.mjs scripts/i18n/hi-activation.test.mjs scripts/i18n/ru-activation.test.mjs scripts/i18n/ur-activation.test.mjs scripts/i18n/vi-activation.test.mjs scripts/i18n/zh-CN-activation.test.mjs scripts/i18n/locale-parity.test.mjs",
+	],
 	"runtime-deps": [
 		// The CI spelling, wrapper and all, because the wrapper is part of what the
 		// job verifies: `require-report.sh` refuses to read a silent success as a
@@ -592,6 +677,8 @@ export const FLAG_REASONS = {
 	i18n: "a path under `src/i18n/**` (catalogues and generated key types), `i18n/**` (the language manifest or `coverage-allowance.json` — an allowance-only change is data and must still re-run the growth comparison) or `scripts/i18n/**` (the checker)",
 	audit: "`package.json` or a lockfile change",
 	pack: "a changed path that is neither prose nor committed evidence",
+	parity:
+		"a source the condense parity pin declares in its own `modelSources`, the pin's fixture, manifest and generator inputs, or a file in the model's own directory `src/renderer/src/features/chat/canonical/` (a module added beside the model is a source the next regeneration names)",
 };
 
 /** A flag could not be rendered as `true`/`false`. See `flagValue`. */
@@ -746,6 +833,26 @@ export function flagsFor(categories, paths, releaseBump) {
 	const i18nPaths = [...pathSet].some((path) =>
 		I18N_PREFIXES.some((prefix) => path.startsWith(prefix)),
 	);
+	/*
+	 * The condense parity pin's selection: the sources the fixture was generated
+	 * FROM, the files that generate and carry it, and the model's own directory.
+	 * Fails closed on every one of them for the reason the i18n predicate does -
+	 * a missing term makes the job skip exactly when its verdict could have
+	 * changed. The INSTALL is in the predicate too: the comparison RE-RUNS the
+	 * model under the installed `esbuild` and TypeScript, so a dependency or
+	 * lockfile edit is the change most able to move the bytes it compares even
+	 * though no model source moved. Deliberately NOT fail-open on an unrecognised
+	 * path: the pin reads a closed, named set of files, so a new tree can only
+	 * become an input through a change to one of those files or to the canonical
+	 * directory.
+	 */
+	const parityPaths = [...pathSet].some(
+		(path) =>
+			PARITY_MODEL_SOURCES.has(path) ||
+			PARITY_PIN_FILES.has(path) ||
+			path.startsWith(PARITY_MODEL_PREFIX),
+	);
+	const parity = manifest || cats.has(CAT_LOCK) || parityPaths;
 
 	return {
 		lint: live,
@@ -755,6 +862,7 @@ export function flagsFor(categories, paths, releaseBump) {
 		evidence:
 			cats.has(CAT_EVIDENCE) || evidence || manifest || cats.has(CAT_LOCK),
 		i18n: manifest || cats.has(CAT_LOCK) || i18nPaths,
+		parity,
 		runtime_deps:
 			manifest || [...pathSet].some((path) => RUNTIME_DEP_SCRIPTS.has(path)),
 		audit: manifest || cats.has(CAT_LOCK),

@@ -2820,6 +2820,84 @@ test("A26: the language-coverage gate is selected by every path it reads", () =>
 });
 
 // ---------------------------------------------------------------------------
+// A27 - the condense parity filter covers everything the pin declares
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: a filter that names yesterday's model sources. The pin's own claim -
+ * `desktop.modelSources`, emitted by esbuild's `metafile.inputs` - is the only
+ * authority on which files the fixture was generated from, so a hand-written
+ * filter that drifts from it SKIPS the job on exactly the pull request whose
+ * change stalened the fixture. That is #1758's shape: `trace-fold-model.ts` was
+ * a model source, no pull-request job read the fixture, and the stale bytes
+ * reached `main`.
+ * Mutation: drop a model source from `PARITY_MODEL_SOURCES`; drop the pin files
+ * or the model directory from the predicate; widen the predicate to prose.
+ */
+test("A27: the condense parity filter covers every source the pin declares", () => {
+	const fixture = JSON.parse(
+		readFileSync(
+			join(repoRoot, "scripts/fixtures/condense.parity.json"),
+			"utf8",
+		),
+	);
+	const modelSources = fixture.desktop.modelSources;
+	assert.ok(
+		Array.isArray(modelSources) && modelSources.length > 0,
+		"the pin declares no model sources, so this assertion proves nothing",
+	);
+	for (const path of modelSources) {
+		assert.equal(
+			classify([path]).parity,
+			true,
+			`'${path}' is one of the pin's modelSources, so a pull request that changes it must run the Condense Parity Fixture job`,
+		);
+	}
+	// The pin's own bytes, the generator's inputs, and a module ADDED beside the
+	// model - the change that makes the fixture stale is not always a file the
+	// fixture already names.
+	for (const path of [
+		"scripts/generate-condense-parity.mjs",
+		"scripts/fixtures/condense.parity.json",
+		"scripts/fixtures/condense.parity.manifest.json",
+		"scripts/fixtures/record-tokens.mjs",
+		"scripts/entry-point.mjs",
+		"src/renderer/src/features/chat/canonical/a-model-added-tomorrow.ts",
+	]) {
+		assert.equal(
+			classify([path]).parity,
+			true,
+			`'${path}' can change the fixture's bytes, so the job must run on it`,
+		);
+	}
+	// Its own predicate, not a second name for "source changed": prose, an
+	// unrelated renderer module and the catalogue COPY the pin deliberately does
+	// not cover must not pay for it (the generator drops
+	// `src/i18n/catalogues/**`, so a copy edit moves no decision the pin records).
+	for (const path of [
+		"docs/README.md",
+		"src/renderer/src/features/agent-hub/agent-hub-view.tsx",
+		"src/i18n/catalogues/en/ui.chat.json",
+	]) {
+		assert.equal(
+			classify([path]).parity,
+			false,
+			`'${path}' is not an input to the parity pin`,
+		);
+	}
+	// Fail open where the classifier cannot answer, like every other flag: a
+	// `.github/**` change runs everything rather than narrowing the gates that
+	// judge it, and the INSTALL selects it because the comparison re-runs the
+	// model under the installed toolchain. An UNRECOGNISED path does not select
+	// it, for the reason A26 gives for `i18n`: the pin reads a closed, named set
+	// of files.
+	assert.equal(classify([".github/workflows/ci.yml"]).parity, true);
+	assert.equal(classify(["package.json"]).parity, true);
+	assert.equal(classify(["pnpm-lock.yaml"]).parity, true);
+	assert.equal(classify(["newdir/x"]).parity, false);
+});
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
