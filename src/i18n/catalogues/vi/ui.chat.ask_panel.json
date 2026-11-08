@@ -1,0 +1,22 @@
+{
+	"ui.chat.ask_panel.answer.attachment_refusal": "Chưa thể đính kèm tệp và hình ảnh vào câu trả lời. Hãy nhập câu trả lời tại đây, hoặc gửi tệp trong cuộc trò chuyện.",
+	"ui.chat.ask_panel.answer.limit_notice": "Câu trả lời tối đa {max, number} ký tự; phần vượt quá sẽ không được giữ lại.",
+	"ui.chat.ask_panel.dock.asking": "Tác nhân đang hỏi",
+	"ui.chat.ask_panel.dock.keys_one": "1 để trả lời",
+	"ui.chat.ask_panel.dock.keys_range": "1-{max, number} để trả lời",
+	"ui.chat.ask_panel.dock.sending": "Đang gửi câu trả lời của bạn…",
+	"ui.chat.ask_panel.empty.details_missing": "Không tải được chi tiết của các câu hỏi này.",
+	"ui.chat.ask_panel.empty.none_outstanding": "Không có câu hỏi nào chưa trả lời. Tác nhân không đang chờ điều gì.",
+	"ui.chat.ask_panel.empty.none_pending": "Không có câu hỏi nào đang chờ. Tất cả đã được xử lý — xem mục Đã xử lý.",
+	"ui.chat.ask_panel.empty.none_settled": "Chưa có câu hỏi nào được xử lý. Tất cả vẫn đang chờ.",
+	"ui.chat.ask_panel.filter.all": "Tất cả",
+	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
+	"ui.chat.ask_panel.filter.pending": "Đang chờ",
+	"ui.chat.ask_panel.filter.settled": "Đã xử lý",
+	"ui.chat.ask_panel.landing.many": "{count, plural, other {# câu hỏi đã hết thời gian chờ}}",
+	"ui.chat.ask_panel.landing.one": "Câu hỏi đã hết thời gian chờ",
+	"ui.chat.ask_panel.lapse.many": "{count, plural, other {# câu hỏi đã hết thời gian chờ; các câu trả lời của bạn chưa được gửi.}}",
+	"ui.chat.ask_panel.lapse.one": "Câu hỏi đó đã hết thời gian chờ; câu trả lời của bạn chưa được gửi.",
+	"ui.chat.ask_panel.no_question_text": "Không có nội dung câu hỏi",
+	"ui.chat.ask_panel.other_prompt": "Nhập câu trả lời"
+}

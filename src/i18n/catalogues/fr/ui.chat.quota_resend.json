@@ -1,0 +1,9 @@
+{
+	"ui.chat.quota_resend.failed": "Envoi impossible. Réessayez.",
+	"ui.chat.quota_resend.rate_limited": "Demandé récemment. Réessayez dans environ 2 minutes.",
+	"ui.chat.quota_resend.refresh_checking": "Vérification…",
+	"ui.chat.quota_resend.refresh_failed": "Vérification impossible. Réessayez.",
+	"ui.chat.quota_resend.refresh_unchanged": "Vérifié à l’instant — aucun changement pour l’instant.",
+	"ui.chat.quota_resend.sending": "Envoi…",
+	"ui.chat.quota_resend.sent": "Envoyé. Vérifiez votre boîte de réception et vos courriers indésirables."
+}

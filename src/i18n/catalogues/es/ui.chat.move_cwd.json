@@ -1,0 +1,10 @@
+{
+	"ui.chat.move_cwd.already_in": "ya está en {label}",
+	"ui.chat.move_cwd.failed": "No se cambió el directorio de trabajo.",
+	"ui.chat.move_cwd.in_flight": "Ya hay un cambio de directorio de trabajo en curso.",
+	"ui.chat.move_cwd.moved": "se movió a {label}",
+	"ui.chat.move_cwd.moved_restarting": "se movió a {label} — el runtime de esta sesión se está reiniciando allí",
+	"ui.chat.move_cwd.moved_restarting_lost": "se movió a {label} — el runtime de esta sesión se está reiniciando allí, así que se perdió todo lo que preparaste en eval",
+	"ui.chat.move_cwd.not_ready": "Esta sesión aún se está iniciando. Podrás mover su directorio de trabajo en cuanto esté activa.",
+	"ui.chat.move_cwd.unavailable": "Este backend no puede mover una sesión en ejecución. Inicia un chat nuevo para usar otra carpeta o actualiza el backend."
+}

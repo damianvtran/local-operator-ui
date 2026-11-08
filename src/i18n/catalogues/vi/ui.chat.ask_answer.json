@@ -1,0 +1,12 @@
+{
+	"ui.chat.ask_answer.eyebrow_waiting": "Đang chờ câu trả lời của bạn",
+	"ui.chat.ask_answer.lost_to_reconnect": "Câu trả lời của bạn chưa được gửi. Ứng dụng đã kết nối lại với một phiên bản runtime mới, nên câu hỏi chưa được trả lời tại đây.",
+	"ui.chat.ask_answer.moved_on": "Câu hỏi đó đã được giải quyết hoặc không còn mở nữa, nên câu trả lời của bạn chưa được gửi.",
+	"ui.chat.ask_answer.not_sent": "Câu trả lời của bạn chưa được gửi. {reason}",
+	"ui.chat.ask_answer.request_failed": "Không thể hoàn tất yêu cầu.",
+	"ui.chat.ask_answer.secret_docked": "Câu trả lời của bạn chưa được gửi — yêu cầu bí mật được trả lời ở trường phía trên ô soạn tin.",
+	"ui.chat.ask_answer.session_unreachable": "Ứng dụng hoàn toàn không kết nối được với phiên của cuộc trò chuyện này.",
+	"ui.chat.ask_answer.settled_elsewhere": "Câu hỏi đó đã được trả lời ở nơi khác, nên câu trả lời của bạn chưa được gửi.",
+	"ui.chat.ask_answer.unconfirmed": "{lead} {reason}",
+	"ui.chat.ask_answer.unconfirmed_lead": "Không thể biết câu trả lời của bạn đã đến nơi hay chưa."
+}

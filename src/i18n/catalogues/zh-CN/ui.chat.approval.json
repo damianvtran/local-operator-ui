@@ -1,0 +1,19 @@
+{
+	"ui.chat.approval.escape.default_saved": "此对话已设为自动，并保存为后续会话的默认设置；已有自己设置的对话保持不变。此请求仍需要回答。",
+	"ui.chat.approval.escape.default_saved_session_failed": "已将自动保存为后续会话的默认设置。会话部分未生效：{detail}。此请求仍需要回答。",
+	"ui.chat.approval.escape.global_default": "审批：{mode}——全局默认。",
+	"ui.chat.approval.escape.not_changed": "模式未更改",
+	"ui.chat.approval.escape.pinned_run": "审批：{mode}——本次运行。",
+	"ui.chat.approval.escape.session_override": "审批：{mode}——会话单独设置。",
+	"ui.chat.approval.escape.session_override_of": "审批：{mode}——会话单独设置；全局为{globalMode}。",
+	"ui.chat.approval.escape.session_saved": "此会话已设为自动——此请求仍需要回答。",
+	"ui.chat.approval.escape.set_all": "将所有会话设为自动",
+	"ui.chat.approval.escape.set_session": "将此会话设为自动",
+	"ui.chat.approval.escape.unchanged": "未更改：{detail}",
+	"ui.chat.approval.mode.ask": "询问",
+	"ui.chat.approval.mode.auto": "自动",
+	"ui.chat.approval.option.approve": "批准",
+	"ui.chat.approval.option.approve_description": "执行该操作并继续本轮。",
+	"ui.chat.approval.option.deny": "拒绝",
+	"ui.chat.approval.option.deny_description": "不执行该操作；本轮继续。"
+}

@@ -1,0 +1,8 @@
+{
+	"ui.chat.interrupt.idle": "No había ningún turno en ejecución, así que no había nada que detener.",
+	"ui.chat.interrupt.idle_disputed": "El runtime indica que no hay ningún turno en ejecución, así que no se detuvo nada. Puede que esta vista esté desactualizada.",
+	"ui.chat.interrupt.stopped_both": "Se detuvo este turno. {children, plural, one {# subagente} many {# de subagentes} other {# subagentes}} y {jobs, plural, one {# trabajo en segundo plano} many {# de trabajos en segundo plano} other {# trabajos en segundo plano}} siguen en ejecución — abre los detalles de ejecución para seguirlos y usa /stop para terminar la sesión y sus trabajos.",
+	"ui.chat.interrupt.stopped_children": "Se detuvo este turno. {count, plural, one {# subagente sigue} many {# de subagentes siguen} other {# subagentes siguen}} en ejecución — abre los detalles de ejecución para {count, plural, one {seguirlo} other {seguirlos}}, o usa /stop para terminar la sesión.",
+	"ui.chat.interrupt.stopped_jobs": "Se detuvo este turno. {count, plural, one {# trabajo en segundo plano sigue en ejecución — sobrevive al turno por diseño, así que /stop es lo que lo termina junto con la sesión.} many {# de trabajos en segundo plano siguen en ejecución — sobreviven al turno por diseño, así que /stop es lo que los termina junto con la sesión.} other {# trabajos en segundo plano siguen en ejecución — sobreviven al turno por diseño, así que /stop es lo que los termina junto con la sesión.}}",
+	"ui.chat.interrupt.unavailable": "Este backend es anterior al control de detención, así que este turno no se puede detener desde aquí — /stop termina la sesión y todo lo que contiene."
+}

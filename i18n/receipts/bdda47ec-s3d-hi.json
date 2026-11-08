@@ -1,0 +1,257 @@
+{
+ "schema": 1,
+ "instance": "bdda47ec-s3d-hi",
+ "agent": "translation-auditor",
+ "auditor": "translation-auditor",
+ "model": "deepseek/deepseek-flash",
+ "fallback": "anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash (provider quota failures mid-session; the same chain the s3c receipt for this locale recorded)",
+ "model_provenance": "Session bdda47ecd54a opened on anthropic/claude-sonnet-5-5; provider quota failures moved it to anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then deepseek/deepseek-flash, which carried out the catalogue reads, the ICU parse/render pass and these verdicts. The earlier stages contributed only the initial orientation (listing receipts and reading ledger-rules.mjs). Nothing here was taken from the translator's report or from an earlier auditor's prose: every claim was re-derived from the bytes on disk, the code call sites and rendered output.",
+ "independence": "Fresh session bdda47ecd54a, agent translation-auditor, independent of the translator. No hi catalogue was written or edited; the only file created in the repo is this receipt. Earlier receipts (cbb5be6a-s3c-hi, d967d245-s3b-hi, 11add240-s3a-hi) were read only to compute the carried/changed split and to re-verify their findings against the current bytes — their verdicts were not inherited, and each re-verification below names the evidence that was actually checked (call site, render, grep).",
+ "session": "bdda47ecd54a",
+ "locale": "hi",
+ "branch": "i18n/composer-keying",
+ "head": "7540e3cbc9d",
+ "pr": "damianvtran/local-operator-ui#1761",
+ "date": "2026-11-08",
+ "status": "passed",
+ "scope": "hi remediation audit (s3d) for the composer-keying PR. SCOPE COMPUTED, NOT ASSUMED: for each of the PR's 21 ui.chat.* namespaces the sha256 of the file on disk was compared with the target sha256 recorded for that namespace in the latest receipt covering it (cbb5be6a-s3c-hi covers all 21; five of its entries are themselves carried from d967d245-s3b-hi). 20 namespaces are byte-identical to the recorded target and are CARRIED with no rows (437 of the PR's 461 keys): 11 B2 namespaces audited by s3c (ask_panel 20, approval 17, read_ack 16, attachment_refusal 15, credential_notice 15, composer_notes 14, ask_answer 10, message_budget 10, move_cwd 8, sidebar_notes 8, quota_resend 7 = 140 keys), 4 B1 namespaces audited by s3c (session_readout 54, ask_queue 44, session_spend 32, aside 24 = 154 keys), and 5 batch-A namespaces carried by s3c from s3b (slash 89, page_chrome 26, header_menu 12, interrupt 6, fast_mode 10 = 143 keys). ONE namespace changed: ui.chat.device_move — s3c recorded 0d5397a9834b8ac2be32b14789f1fdf69d7dc1180d2a11f1805d9747f05b9c91 for hi, disk is 2d341fa74360e22b3451a673fb960ab303169f7b36f79304ea87920a1aa74eda, and the English source bytes are unchanged (2983e0f36bb471841c7937259e24fd5047db0d43c1d7f655984a02a7510c5e6f, as recorded by s3c). device_move's 24 keys were therefore audited IN FULL on the final bytes, including the en sidecar, the code call sites that supply each placeholder and a render of every key at realistic arguments.",
+ "key_count": 24,
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/hi.md)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "carried": {
+  "slash": {
+   "receipt": "d967d245-s3b-hi",
+   "receipt_file": "i18n/receipts/d967d245-s3b-hi-composer-b1-hi.json",
+   "hi_sha256": "79b9dbfff7a7fdd41ac82b1e63ef3c65d65e5a21b8a7feb7c52ae9d10b0d19cb",
+   "en_sha256": "7d9ae8c2ff74de40aec65a6bddb7ead03abbc537a04a8366b5c452d7a057be7c",
+   "result": "clean",
+   "carried_by": [
+    "cbb5be6a-s3c-hi"
+   ]
+  },
+  "page_chrome": {
+   "receipt": "d967d245-s3b-hi",
+   "receipt_file": "i18n/receipts/d967d245-s3b-hi-composer-b1-hi.json",
+   "hi_sha256": "b015aa3cbd7522780ec76ac4cbe22cb2f1dd66bc9c8df63d9c0f1b971c47ae42",
+   "en_sha256": "ad54b5d07aa2de04c8ffab1403fc6adb2b96adcbcb24eddeba99e0ff0425c73e",
+   "result": "clean",
+   "carried_by": [
+    "cbb5be6a-s3c-hi"
+   ]
+  },
+  "header_menu": {
+   "receipt": "d967d245-s3b-hi",
+   "receipt_file": "i18n/receipts/d967d245-s3b-hi-composer-b1-hi.json",
+   "hi_sha256": "6c90b1da39d7919d2a0f32ba814324237b134156dcced3d12b7ad71c995f77ad",
+   "en_sha256": "2bfaecb5b8bcba8f9b46087bb404d139566a8032578a0e60c3f8b449670e73d4",
+   "result": "clean",
+   "carried_by": [
+    "cbb5be6a-s3c-hi"
+   ]
+  },
+  "interrupt": {
+   "receipt": "d967d245-s3b-hi",
+   "receipt_file": "i18n/receipts/d967d245-s3b-hi-composer-b1-hi.json",
+   "hi_sha256": "bee7b77fff54f58e0252cfca9a9bafba4e675ff7c0c91f0e4246ee581e0f907e",
+   "en_sha256": "c360665564dcd59d5656131902ed17f4a5912914844feabc1e790ded2d2bd603",
+   "result": "clean",
+   "carried_by": [
+    "cbb5be6a-s3c-hi"
+   ]
+  },
+  "fast_mode": {
+   "receipt": "d967d245-s3b-hi",
+   "receipt_file": "i18n/receipts/d967d245-s3b-hi-composer-b1-hi.json",
+   "hi_sha256": "a694147abfbdd66db6b3813792e8f76b4e58b2a557d7dea018cbcbe28ea36479",
+   "en_sha256": "c6fd6fd1dfd776d099a74c866be11f0a8e821a4a1fa9beb7bccde11de095f412",
+   "result": "clean",
+   "carried_by": [
+    "cbb5be6a-s3c-hi"
+   ]
+  },
+  "ask_panel": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "ee698c0e322fb7e5e3e3e2c2117056536a0f5d23d7b6f95aec26ccb264293871",
+   "en_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+   "result": "clean",
+   "keys_read": 20
+  },
+  "approval": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "8cf1a180c24dd563c9798290bf386a8b18db7275c1d7682913bd229cf7259c1f",
+   "en_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
+   "result": "clean",
+   "keys_read": 17
+  },
+  "read_ack": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "b1e0fdf76cec17c10846b4291838e674921da28a94a02412bb639d339bb7a6d5",
+   "en_sha256": "c2f7a40ab687c96db28b6769093d20767b6877f7ea605db0e473bc05b97c7396",
+   "result": "clean",
+   "keys_read": 16
+  },
+  "attachment_refusal": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "17d7afdec2aca4cb36d67d9f2d5e79e850ea058a9a2a134cdb40978ef5ecb4fa",
+   "en_sha256": "3eb36121a317a16f814f92f9238acafc2bbd30951ee97c45836d9cd5f0706e0a",
+   "result": "clean",
+   "keys_read": 15
+  },
+  "credential_notice": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "3d545fad48adfa6b9e34935afdce01c38e26e66ab9a27bd98eeb0d259a2587e7",
+   "en_sha256": "1186b58d4ae1eee83dd05889a1b998919c30cc51b273a506b0d8fc656cfa23df",
+   "result": "clean",
+   "keys_read": 15
+  },
+  "composer_notes": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "24243e341d5f5ec7751927dfa4919b1564625d87f7bc7f9e2ab7786ddf42176d",
+   "en_sha256": "d0932047d10b6e27ac42fe82d4538463962e4372db886a650ee7fa8581e156e3",
+   "result": "clean",
+   "keys_read": 14
+  },
+  "ask_answer": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "94d99541ae5dca8e4c1d36ddab76acc9cda1850d72b0d81137dcf4cb398c79db",
+   "en_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
+   "result": "clean",
+   "keys_read": 10
+  },
+  "message_budget": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "bd3043e79c76889ff8d1f93272a2a4697748eec37dfd1b21ba94b6d3ec7674a2",
+   "en_sha256": "3a296a75d43ed1c31ea45efe50a44218e17c9c9ba13de6f1e6b4f0b83f045b97",
+   "result": "clean",
+   "keys_read": 10
+  },
+  "move_cwd": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "6035962fac43c2a16fec14c0e7f3978bd87d6acf8e4f877a6ddbdec847f78a4e",
+   "en_sha256": "a26c98328bd160b53fd2c5ad05294ed4b235870264243deee0937ead78db120c",
+   "result": "clean",
+   "keys_read": 8
+  },
+  "sidebar_notes": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "68992958ee2fa75029da703049b8e6e21d6b6266eaadb8b5c02520fba57bdb0d",
+   "en_sha256": "daee7358a02c0f81eecab2bed4b51fd35a61945ca2ba3e57d82fa4d1f0ddf28c",
+   "result": "clean",
+   "keys_read": 8
+  },
+  "quota_resend": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "e8562791c72fafa9f173cb20a0704979bd191ee882276d2d6ff5e6d8b640c196",
+   "en_sha256": "887b4c11f425ea373cd7c5c8ace8b81ca6b75a20ace11ba4a4a3143aa3cd340c",
+   "result": "clean",
+   "keys_read": 7
+  },
+  "session_readout": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "119ca9025b55cc29ec8c975f49d26f75cba3bdb244e57cda72ea40060f1ed7e8",
+   "en_sha256": "613dad2f1acee22dd7d6e4b7c482b1caa8ec49938f207b8bee52a071a18c4386",
+   "result": "clean",
+   "keys_read": 54
+  },
+  "ask_queue": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "29a049651b8a00fbbad95826adf8535cab326313330279432310400459f5b7fd",
+   "en_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+   "result": "clean",
+   "keys_read": 44
+  },
+  "session_spend": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "b5a376a6d08f815c8449a919f5645ca50ab573fe2e684acd83ae22e6c15b7eba",
+   "en_sha256": "4de17b68d20c7a8ea35b16bdaf466290075029806aa2c95d2c72dc8a225c31dd",
+   "result": "clean",
+   "keys_read": 32
+  },
+  "aside": {
+   "receipt": "cbb5be6a-s3c-hi",
+   "receipt_file": "i18n/receipts/cbb5be6a-s3c-hi-composer-final-hi.json",
+   "hi_sha256": "3fc516b0316ea3a5b8df9af64ec92baf017d24947af1d182bfcbfa275b9b04aa",
+   "en_sha256": "23591a418d92d4fbb7e67075c59a8efaee0ba9465bd8554ca2dcc51f539ad725",
+   "result": "clean",
+   "keys_read": 24
+  }
+ },
+ "prior_findings_verification": {
+  "hi-s3c-01": "APPLIED-AS-PROPOSED, judged correct — all six device_move keys are byte-identical to the proposal (result.copied.detail, result.copied.second, result.back.detail_deleted, result.moved.detail_running, result.moved.detail_there, result.source_retired now say कॉपी). No occurrence of प्रति remains in the namespace, so the flow reads one term end to end: plan.copy 'कॉपी करें', copied.verb 'कॉपी किया गया', and the six result lines. The reasoning holds on independent evidence: the shipped sibling of this very flow says कॉपी (ui.mesh.mesh_drop.copy_loss '{source} की कॉपी तब हटती है…', ui.mesh.mesh_actions.copy_notice 'गंतव्य पर नए id के साथ एक कॉपी बनती है'), and a grep of the 8,554 shipped hi values counted 160 values containing कॉपी against 36 containing प्रति, of which the 36 are mostly 'सहेजी गई प्रति' (a saved copy, a different concept). The six edits are the only byte differences from the state s3c audited: each was compared against the finding's own `current` map.",
+  "hi-s3b-01": "APPLIED-AS-PROPOSED, judged correct — device_move.another_device = 'दूसरे डिवाइस' (oblique). Verified independently rather than inherited: its ONLY consumer is chat-device-model.ts:815, which passes it as {name} to moveHoldSentence -> shipped ui.chat.device.sentence.move_in_flight ('यह बातचीत {name} पर ले जाई जा रही है।'). Rendered with intl-messageformat in hi: 'यह बातचीत दूसरे डिवाइस पर ले जाई जा रही है। वह वहाँ चलती रहेगी; यहाँ से भेजा गया कुछ भी नहीं पहुँचेगा।' — grammatical. Because there is no second consumer, no standalone-label surface is left holding an oblique form, so the fix does not merely move the error elsewhere. The shipped sibling ui.chat.header.move_device already uses 'दूसरे डिवाइस पर ले जाएँ'.",
+  "hi-s3b-02": "APPLIED-AS-PROPOSED, judged correct — device_move.other_device = 'उस दूसरे डिवाइस' (oblique). Its ONLY consumer is chat-device-model.ts:1006 (input.source ?? other_device), the {source} slot of the shipped ui.mesh.mesh_drop.copy_loss. Rendered: 'उस दूसरे डिवाइस की कॉपी तब हटती है जब {destination} को मिल जाती है।' — grammatical with 'की', which is exactly why the oblique is required. A named device renders the same way ('Mac mini की कॉपी तब हटती है…').",
+  "hi-s3b-03": "APPLIED-AS-PROPOSED, judged correct — all three keys are byte-identical to the proposal: gate.below_version 'यह बैकएंड बातचीत को नहीं ले जा सकता', ineligible.no_transfer 'यह बैकएंड अभी बातचीत को नहीं ले जा सकता', ineligible.cannot_receive 'बातचीत स्वीकार नहीं कर सकता'. The NIT's premise holds: 'नहीं ले जा सकता' is the idiomatic placement of the negative inside the compound verb ले जाना, and 'स्वीकार नहीं कर सकता' removes the 'cannot take (the) conversation' misreading while matching the shipped register in ui.mesh.mesh_actions.",
+  "regressions": "none: device_move re-parsed with @formatjs/icu-messageformat-parser after the six edits (24/24 en and hi values parse), re-compared structurally to en and re-rendered; every key parses, renders and keeps its placeholders."
+ },
+ "checks": [
+  "node --test scripts/i18n/locale-parity.test.mjs: tests 44, pass 44, fail 0 (all [hi] assertions pass: ships messages, one-namespace-per-key, carries every key, names only English keys, preserves every ICU placeholder, is not an English stub). Run on the worktree's uncommitted scripts/i18n/locale-parity.test.mjs (+81 uncommitted IDENTICAL_OK lines added by another role, not part of this audit). CORRECTION to a first reading of that edit: it IS load-bearing for hi. Four carried hi composer values are legitimately identical to their English source because they are placeholder-only compositions with no words — ui.chat.ask_panel.filter.chip '{label} · {count, number}', ui.chat.ask_answer.unconfirmed '{lead} {reason}', ui.chat.ask_queue.deadline.with_subject '{subject} {deadline}', ui.chat.session_spend.summary.basis_amount '{label} {amount}' — and none of those four key strings appears in the COMMITTED allowlist (git show HEAD:scripts/i18n/locale-parity.test.mjs), so the green result above depends on those rows being committed. All four rows are sound under the IDENTICAL_OK rule (language-neutral, no translatable words), none is a ui.chat.device_move key, and none affects this audit's verdict. The auditor did not edit the test file.",
+  "node scripts/i18n/context-parity.mjs: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s), none of them in the ui.chat composer namespaces.",
+  "@formatjs/icu-messageformat-parser, device_move: 24 en values and 24 hi values parsed with no error; key sets identical (24/24, no missing or extra); the 9 argument-bearing keys agree exactly on argument names and types — moving {name}, plan.copy {name}, plan.move {name}, result.back.detail_deleted {from}, result.copied.detail {name}{id}, result.copied.second {name}, result.copied.verb {name}, result.moved.second {name}, result.moved.verb {name}. The namespace carries no plural/select/number/date skeleton at all, so no CLDR category question arises and there is nothing for '::group-off' to protect; the plural count sweep (0,1,2,5,11,21,100) is therefore vacuous here and is recorded as vacuous rather than skipped.",
+  "whitespace/encoding scan of all 24 hi values: no NBSP or any U+1680/U+2000–200A/U+2028/U+2029/U+202F/U+205F/U+3000/U+FEFF character anywhere (so none inside an ICU argument header), no double space, no leading/trailing space, no control character, every value already NFC, no {brace} that is not a well-formed {lowercase_name}. (The fr U+202F question does not arise for hi: the style guide specifies ASCII comma plus danda, and no hi value in this namespace carries narrow or non-breaking spaces.)",
+  "terminal punctuation vs the sidecar's `tone` contract: every key marked 'no full stop' ends without danda. or period (gate.below_version, gate.unpaired, ineligible.*, moving, plan.*, back.detail, back.detail_deleted, back.verb, copied.detail, copied.verb, moved.detail_*, moved.verb, source_retired, another_device, other_device); the two keys specified as 'two sentences, ends with a full stop' do end with danda (copied.second, moved.second); gate.checking ends with the same … (U+2026) as the English.",
+  "rendered every hi key with intl-messageformat at hi with realistic arguments (name 'Damian का MacBook Pro' and 'Mac mini', from 'Mac mini', id 'a1b2c3'); all 24 render; the two cost/measure-free second lines, both detail lines and both verb pairs read correctly as Hindi. Splices rendered too, because three keys only ever appear inside another message: another_device into ui.chat.device.sentence.move_in_flight and other_device into ui.mesh.mesh_drop.copy_loss (see prior_findings_verification).",
+  "code call sites read (not assumed): chat-device-model.ts:813-816 (another_device -> moveHoldSentence only), :883-886 (back.detail / back.detail_deleted with {from}), :898-899 (copied.detail with {name},{id}), :914 (copied.second), :919-927 (moved.*), :940 (source_retired), :1004-1034 (plan.recall / other_device / plan.copy_here / plan.move / plan.copy) and chat-device-notice.tsx:173 (moving with move.name). Every placeholder is supplied as a string at its call site; none is a raw number or date, so no formatter skeleton is being bypassed.",
+  "vocabulary vs the shipped Mesh-tab sibling of the same flow (which is what a hi reader already knows): mesh_card.recall_to_this_device 'इस डिवाइस पर वापस लाएँ' = plan.recall exactly; mesh_card.copy_here_leave_it_there 'यहाँ कॉपी करें, वहाँ भी रखें' = plan.copy_here exactly; mesh_card.move_to '{device} पर ले जाएँ' = plan.move; mesh_card.copy_to '{device} पर कॉपी करें' = plan.copy; mesh_actions.the_copy_here_is_deleted_once_it '…यहाँ की कॉपी हट जाती है' matches moved.detail_* 'यहाँ की कॉपी हटा दी गई'. Register: आप-form polite imperative throughout (करें, लाएँ, रखें, भेजें, खोलें), consistent with the style guide and with the shipped corpus (1,246 shipped values contain करें against 1 containing कीजिए); no तुम/तू form; passive receipts ('ले जाया गया', 'कॉपी किया गया', 'वापस लाया गया') match the English headline shape.",
+  "no English stub: no hi value equals its English source, and no Latin run appears in any hi value outside a placeholder name; 'id' and 'Mac mini'/'Damian का MacBook Pro' arrive through {id}/{name}/{from} and stay byte-identical as the sidecar requires. Corrected ICU structure is therefore not masking a skipped string. (IDENTICAL_OK in scripts/i18n/locale-parity.test.mjs contains no entry for any ui.chat.device_move key, and none is needed.)"
+ ],
+ "observations": [
+  "FOR THE MANAGER (registry state, not a finding on hi): the locale-parity gate is green at this head only together with the uncommitted +81-line IDENTICAL_OK addition in scripts/i18n/locale-parity.test.mjs. Four carried hi composer keys are byte-identical to English by design — ui.chat.ask_panel.filter.chip, ui.chat.ask_answer.unconfirmed, ui.chat.ask_queue.deadline.with_subject, ui.chat.session_spend.summary.basis_amount, each a placeholder-only composition — and none is in the committed allowlist, so without that edit hi fails 'is not an English stub' on exactly those four keys. As the hi auditor I judge all four rows legitimate (no words to translate; the only differences across locales would be invented punctuation or spacing). This auditor edited no test file: the rows must be committed by whoever owns the surface.",
+  "OUT OF SCOPE, carried from s3c and re-confirmed by this audit's own render (NOT a finding on device_move): chat-device-model.ts:800 passes the shipped ui.mesh.mesh_drop.this_device ('यह डिवाइस', nominative) into the {destination} slot of the shipped ui.mesh.mesh_drop.copy_loss, rendering '…जब यह डिवाइस को मिल जाती है।' where the postposition को needs the oblique 'इस डिवाइस'. The defect sits in a shipped ui.mesh key that is also used as a nominative label elsewhere, so fixing it needs an oblique-form key and is a manager/translator decision outside these 21 namespaces. Recorded so it is not lost, not gated here.",
+  "Width: no maxCells budget to breach — all 24 entries in en/ui.chat.device_move.context.json carry an empty `length` field. Two keys exceed 1.5x the English code-point count (moving 16->27, gate.checking 9->15); both are short status strings and the hi style guide measures Devanagari optimistically (cell_len, not code points), so no overflow finding is recorded and no shorter phrasing is proposed. Flagged only so a rendered check can cover them if the manager wants one. Every other key is at or below 1.45x, and the long sentences are shorter than their English sources (0.61x-0.90x), which is the expected direction for hi.",
+  "result.copied.detail drops the English 'still' ('the original is still here' -> 'मूल कॉपी यहीं है'). Read in context the sentence still answers the reader's question (is the original gone?), and the contrast with '{name} पर … कॉपी मौजूद है' carries the persistence, so no finding is recorded; noted so a later style pass can add 'अभी भी' if it wants the emphasis explicit.",
+  "ineligible.no_answer renders 'पिछली बार पढ़ने पर जवाब नहीं दिया' for 'did not answer the last read'. The impersonal temporal clause is grammatical in hi and the row supplies the device as subject; a passive 'पिछली बार पढ़े जाने पर' would be more literal but not more natural. Not a finding."
+ ],
+ "namespaces": {
+  "ui.chat.device_move": {
+   "namespace": "ui.chat.device_move",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 24,
+   "sha256": {
+    "en": "2983e0f36bb471841c7937259e24fd5047db0d43c1d7f655984a02a7510c5e6f",
+    "hi": "2d341fa74360e22b3451a673fb960ab303169f7b36f79304ea87920a1aa74eda"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.device_move.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.device_move.json",
+    "context": "src/i18n/catalogues/en/ui.chat.device_move.context.json"
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "hi-s3d-01",
+     "severity": "NIT",
+     "key": "ui.chat.device_move.result.back.detail_deleted",
+     "current": {
+      "ui.chat.device_move.result.back.detail_deleted": "बातचीत अब यहाँ है; {from} पर की कॉपी हटा दी गई"
+     },
+     "proposed": {
+      "ui.chat.device_move.result.back.detail_deleted": "बातचीत अब यहाँ है; {from} की कॉपी हटा दी गई"
+     },
+     "reason": "Optional polish, NOT a defect and NOT gating: 'X पर की Y' is idiomatic Hindi ('मेज़ पर की किताब', 'घर पर की बात'), so the current line is grammatical and a native reader parses it correctly. It is recorded only because the shipped sibling for the very same concept uses the simpler construction — ui.mesh.mesh_drop.copy_loss renders 'the copy on {source}' as '{source} की कॉपी' ('Mac mini की कॉपी तब हटती है…') — so dropping पर aligns this line with the flow a hi reader already saw in the Mesh tab and shortens the sentence. It renders correctly with both source spellings: 'उस दूसरे डिवाइस की कॉपी हटा दी गई' (the other_device fallback) and 'Mac mini की कॉपी हटा दी गई'. If the manager prefers to keep the current text, the namespace is still acceptable as shipped."
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,10 @@
+{
+	"ui.chat.sidebar_notes.clear_all_why": "Đang gửi các bản nháp - có thể xóa khi việc gửi hoàn tất",
+	"ui.chat.sidebar_notes.draft_sending_why": "Đang gửi - có thể bỏ bản nháp này khi việc gửi hoàn tất",
+	"ui.chat.sidebar_notes.loading_more": "Đang tải thêm cuộc trò chuyện…",
+	"ui.chat.sidebar_notes.opened_by_anonymous": "do một tác nhân mở",
+	"ui.chat.sidebar_notes.opened_by_named": "do {agent} mở",
+	"ui.chat.sidebar_notes.running_none": "Hiện không có gì đang chạy.",
+	"ui.chat.sidebar_notes.running_unread": "Daemon không đọc được những cuộc trò chuyện nào đang chạy, nên danh sách này có thể chưa đầy đủ.",
+	"ui.chat.sidebar_notes.stale_list": "{message} Đang hiển thị các cuộc trò chuyện đã tải lần gần nhất."
+}

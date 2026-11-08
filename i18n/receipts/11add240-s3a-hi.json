@@ -1,0 +1,259 @@
+{
+  "schema": 1,
+  "instance": "11add240-s3a-hi",
+  "agent": "translation-auditor",
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none",
+  "model_provenance": "Every read, parse, render and verdict in this receipt ran on anthropic/claude-sonnet-5-5 (session 11add24092da, role translation-auditor); no fallback model was used.",
+  "independence": "Fresh session 11add24092da; did not write or edit the hi batch-A catalogues (translator report not consulted — verdicts are from the bytes on disk).",
+  "session": "11add24092da",
+  "locale": "hi",
+  "branch": "i18n/composer-keying",
+  "head": "a151ba95325",
+  "pr": "damianvtran/local-operator-ui#1761",
+  "date": "2026-11-08",
+  "status": "passed",
+  "scope": "ui.chat batch A: slash (89), page_chrome (26), header_menu (12), interrupt (6), fast_mode (10) — full read of all 143 keys against en values and .context.json sidecars (UNCOMMITTED translator files on disk)",
+  "key_count": 143,
+  "inputs_sha256": {
+    "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style guide (local-operator/i18n/style-guides/hi.md)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "checks": [
+    "node --test scripts/i18n/locale-parity.test.mjs: tests 44, pass 44, fail 0 (all six [hi] checks pass: ships messages, one-namespace-per-key, carries every key, only English keys, preserves ICU placeholders, not an English stub)",
+    "node scripts/i18n/context-parity.mjs: ok — every English key covered, 131 pre-existing allowed gaps in 4 namespaces, none in batch A",
+    "key order and key set identical en/hi in all five namespaces: 89/26/12/6/10 = 143; every sidecar has the same keys",
+    "@formatjs/icu-messageformat-parser parsed all 143 en and 143 hi values with no error; argument-name sets, argument types and select arms (on/other) identical en/hi; every plural has exactly one/other (CLDR hi); no whitespace other than U+0020 anywhere (no NBSP, U+200B–200F, U+202A–202E, U+2066–2069, FEFF); every value NFC and trimmed, no double spaces, none identical to English",
+    "technical tokens verbatim in hi: /stop, /skills, /{name}, /{word}, /{label}, ${name}, local-operator, Local Operator, Enter, ⌘Z via {cap}; the only Latin runs are those tokens plus API, env, AI (all shipped usage); full stops are danda throughout, no ASCII period",
+    "intl-messageformat (locale hi) rendered every plural/select key at counts 0,1,2,5,11,21,100,1000000: stopped_children 1→'चल रहा है … उसे', 2+→'चल रहे हैं … उन्हें'; stopped_jobs likewise; stopped_both (7 pairs) always plural; removal_many renders; fast_mode.dial_differs 4/4 select combinations correct; 10,00,000 grouping at one million",
+    "stopped_children count 0 renders the singular (CLDR hi 'one' covers 0 — style guide hi.md Plurals) but is unreachable: interrupt-turn.ts:224 returns null when children===0&&jobs===0 and :251 requires children>0",
+    "spliced fragments rendered with realistic arguments: 'Enter से “work” बनाएँ' / 'क्लिक से “work” हटाएँ' / 'Enter से “work” जोड़ें'; 'ड्राफ़्ट में डाला: /goal … Enter लक्ष्य सेट करता है और टेक्स्ट भेजता है।' with Latin, Devanagari-danda and bare-command sentences; staged.refused + clause reads as two sentences",
+    "glossary/style guide checked against shipped hi catalogues (8,093 shipped hi values) and i18n/glossary.md + style-guides/hi.md (sha256 82292dc8… for hi.md): कौशल, उप-एजेंट, सत्र, जॉब, रन का विवरण, कार्य फ़ोल्डर, नाम/मान, सवाल/सवालों का पैनल, अलग बातचीत, ड्राफ़्ट, बैकएंड, कैननिकल, फ़ोर्क, फ़ास्ट मोड, लक्ष्य, रजिस्टर all consistent; आप-register polite imperative throughout, no T/V drift",
+    "overflow: only status_strip.retry (2.4x, same value as the 5+ shipped retry buttons), status_strip.retrying (2.1x), options.resume (1.5x) and the two 'Loading…' lines (1.6x) exceed 1.5x the English on short labels; none is a defect, retrying and resume flagged",
+    "no .context.json, ledger, catalogue or source file was edited by the auditor; the only file written in the repo is this receipt"
+  ],
+  "namespaces": {
+    "ui.chat.slash": {
+      "namespace": "ui.chat.slash",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 89,
+      "sha256": {
+        "en": "7d9ae8c2ff74de40aec65a6bddb7ead03abbc537a04a8366b5c452d7a057be7c",
+        "hi": "904d56509c92850a7752247c37eda2120e86969c297ad7d6c6156701a52ac01a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.slash.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.slash.json",
+        "context": "src/i18n/catalogues/en/ui.chat.slash.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 5
+      },
+      "findings": [
+        {
+          "id": "hi-s3a-01",
+          "severity": "MINOR",
+          "key": "ui.chat.slash.arg.model_aggregated",
+          "current": "एग्रीगेटेड",
+          "proposed": "समेकित",
+          "reason": "Glossary drift: the shipped hi model-row detail for the same English word (ui.chat.pickers.destination_pickers.aggregated, \", aggregated\") is \"समेकित\"; two spellings for one concept on the same kind of model row. (Translator flagged this as its weakest choice; एग्रीगेटेड is intelligible, so not higher than minor — align it with the shipped term or change both together.)"
+        },
+        {
+          "id": "hi-s3a-02",
+          "severity": "MINOR",
+          "key": "ui.chat.slash.arg.removal_many",
+          "current": "{count, plural, one {# क्रेडेंशियल} other {# क्रेडेंशियल}} हटाएँ",
+          "proposed": "{count, plural, one {# क्रेडेंशियल} other {# क्रेडेंशियल्स}} हटाएँ",
+          "reason": "i18n/style-guides/hi.md binds \"credentials → क्रेडेंशियल (plural क्रेडेंशियल्स)\" and shipped hi uses क्रेडेंशियल्स for the plural (info_model.stored_credentials, destination_pickers.no_credentials_st…); both plural arms are identical here, so the plural branch does nothing."
+        },
+        {
+          "id": "hi-s3a-03",
+          "severity": "MINOR",
+          "key": "ui.chat.slash.skill.click_footer",
+          "current": "क्लिक से ${name} पूरा होता है।",
+          "proposed": "क्लिक करने पर ${name} पूरा हो जाता है।",
+          "reason": "Sibling footers shipped in ui.chat.pickers.slash.click.* all read \"क्लिक करने पर … हो जाता है\"; this footer appears in the same strip and should use the same construction (the {verb}-taking click.verb \"क्लिक से {verb}\" is fine, it needs the imperative)."
+        },
+        {
+          "id": "hi-s3a-04",
+          "severity": "MINOR",
+          "key": "ui.chat.slash.locked.taken",
+          "current": "/{word} के बाद के शब्द उसका आर्ग्युमेंट मान लिए गए, और कमांड लाइन में लिखा मान सहेजा नहीं जाता।",
+          "proposed": "/{word} के बाद के शब्दों को उसका आर्ग्युमेंट समझ लिया गया, और कमांड लाइन पर लिखा मान सहेजा नहीं जाता।",
+          "reason": "\"आर्ग्युमेंट मान लिए गए\" puts the verb मानना (\"taken as\") directly beside the noun मान (\"value\") used later in the same sentence, so it can be misread as \"argument value was taken\"; a security-relevant notice should not be ambiguous."
+        },
+        {
+          "id": "hi-s3a-05",
+          "severity": "NIT",
+          "key": "ui.chat.slash.arg.mcp_status.not_started",
+          "current": "कनेक्ट नहीं",
+          "proposed": "कनेक्ट नहीं है",
+          "reason": "Shipped hi renders \"Not connected\" as \"कनेक्ट नहीं है\" (settings.integrations…, settings.updates…); the sibling arg.mcp_status.connected here keeps \"है\", this one drops it. Three cells."
+        },
+        {
+          "id": "hi-s3a-06",
+          "severity": "NIT",
+          "key": "ui.chat.slash.arg.provider_state.local_ready",
+          "current": "कॉन्फ़िगर किया सर्वर",
+          "proposed": "कॉन्फ़िगर किया गया सर्वर",
+          "reason": "Clipped participle; shipped pattern is \"कॉन्फ़िगर किए गए MCP सर्वर\" / \"सहेजा गया\"."
+        },
+        {
+          "id": "hi-s3a-07",
+          "severity": "NIT",
+          "key": "ui.chat.slash.empty.not_reported",
+          "current": "अभी रिपोर्ट नहीं हुआ। Enter कमांड चलाता है।",
+          "proposed": "अभी रिपोर्ट नहीं किया गया। Enter कमांड चलाता है।",
+          "reason": "Shipped hi: \"not reported\" → \"रिपोर्ट नहीं किया गया\" (chat.pickers.usage_view_model.not_reported)."
+        },
+        {
+          "id": "hi-s3a-08",
+          "severity": "NIT",
+          "key": "ui.chat.slash.at.no_match_files",
+          "keys": [
+            "ui.chat.slash.at.no_match_files",
+            "ui.chat.slash.at.no_match_projects"
+          ],
+          "current": "\"{query}\" (straight quotes, copied from English)",
+          "proposed": "“{query}”",
+          "reason": "i18n/style-guides/hi.md: quotes “ ”; shipped agents.pages.empty.search uses “{query}”. Not a defect (shipped hi also keeps straight quotes where the English has them)."
+        },
+        {
+          "id": "hi-s3a-09",
+          "severity": "NIT",
+          "key": "ui.chat.slash.dispatch.could_not_run",
+          "current": "/{name} नहीं चल सका: {reason}",
+          "proposed": "/{name} नहीं चली: {reason}  (or keep masculine and align the shipped one)",
+          "reason": "The shipped sibling \"/{command} did not run\" (ui.chat.pickers.use_picker_backend.did_not_run) renders the command as feminine \"नहीं चली\"; कमांड gender varies across shipped hi (\"कमांड चल जाती है\" vs \"/{label} चल जाता है\"), so this is a pre-existing inconsistency the new keys inherit, not a defect."
+        }
+      ]
+    },
+    "ui.chat.page_chrome": {
+      "namespace": "ui.chat.page_chrome",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 26,
+      "sha256": {
+        "en": "ad54b5d07aa2de04c8ffab1403fc6adb2b96adcbcb24eddeba99e0ff0425c73e",
+        "hi": "44e372f45be3aa0ced8876deae525e0c3d8f69fc44d561c914a6b4324480368d"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.page_chrome.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.page_chrome.json",
+        "context": "src/i18n/catalogues/en/ui.chat.page_chrome.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 3
+      },
+      "findings": [
+        {
+          "id": "hi-s3a-10",
+          "severity": "NIT",
+          "key": "ui.chat.page_chrome.options.resume",
+          "current": "फिर शुरू करें",
+          "proposed": "जारी रखें",
+          "reason": "The button opens the picker titled \"बातचीत जारी रखें\" (ui.chat.pickers.resume.title); a different verb for the same action. Either is shipped (\"फिर शुरू करें\" in agentMessages, the style guide writes \"फिर से शुरू करें\"), so this is only a flag; \"जारी रखें\" is also shorter for the options bar."
+        },
+        {
+          "id": "hi-s3a-11",
+          "severity": "NIT",
+          "key": "ui.chat.page_chrome.aside_text_only",
+          "current": "पूछने के लिए जुड़ी फ़ाइलें हटाएँ।",
+          "proposed": "पूछने के लिए अटैच की गई फ़ाइलें हटाएँ।",
+          "reason": "Shipped hi renders attach as \"अटैच\" (canvas.files.emptyDetail, \"अटैचमेंट\"); \"जुड़ी\" is fine Hindi but a second spelling."
+        },
+        {
+          "id": "hi-s3a-12",
+          "severity": "NIT",
+          "key": "ui.chat.page_chrome.status_strip.retrying",
+          "current": "फिर कोशिश हो रही है…",
+          "proposed": "(keep; verify rendered)",
+          "reason": "About 2.1x the English width (≈20 cells vs 9) on a button that swaps its label while retrying; same value shape as the shipped \"फिर कोशिश करें\" button, so no change proposed, flagged for a rendered narrow-banner check."
+        }
+      ]
+    },
+    "ui.chat.header_menu": {
+      "namespace": "ui.chat.header_menu",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 12,
+      "sha256": {
+        "en": "2bfaecb5b8bcba8f9b46087bb404d139566a8032578a0e60c3f8b449670e73d4",
+        "hi": "6c90b1da39d7919d2a0f32ba814324237b134156dcced3d12b7ad71c995f77ad"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.header_menu.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.header_menu.json",
+        "context": "src/i18n/catalogues/en/ui.chat.header_menu.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.interrupt": {
+      "namespace": "ui.chat.interrupt",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 6,
+      "sha256": {
+        "en": "c360665564dcd59d5656131902ed17f4a5912914844feabc1e790ded2d2bd603",
+        "hi": "d2ffaec85b8a10ed6a15963e7a62732f5f892e9f47e6e3f4dda41cd344a8b9a9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.interrupt.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.interrupt.json",
+        "context": "src/i18n/catalogues/en/ui.chat.interrupt.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "findings": [
+        {
+          "id": "hi-s3a-13",
+          "severity": "NIT",
+          "key": "ui.chat.interrupt.idle_disputed",
+          "current": "यह दृश्य पुराना हो सकता है।",
+          "proposed": "यह व्यू पुराना हो सकता है।",
+          "reason": "\"view\" is rendered \"व्यू\" in shipped hi (canvas.shell.canvas_view) and the closest shipped sentence is \"यह बातचीत पुरानी हो सकती है\"; \"दृश्य\" (scene) is slightly literary for a UI."
+        }
+      ]
+    },
+    "ui.chat.fast_mode": {
+      "namespace": "ui.chat.fast_mode",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 10,
+      "sha256": {
+        "en": "c6fd6fd1dfd776d099a74c866be11f0a8e821a4a1fa9beb7bccde11de095f412",
+        "hi": "a694147abfbdd66db6b3813792e8f76b4e58b2a557d7dea018cbcbe28ea36479"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.fast_mode.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.fast_mode.json",
+        "context": "src/i18n/catalogues/en/ui.chat.fast_mode.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    }
+  }
+}

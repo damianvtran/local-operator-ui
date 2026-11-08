@@ -1,0 +1,12 @@
+{
+	"ui.chat.fast_mode.dial_differs": "اس ماڈل کے لیے فاسٹ موڈ {dial, select, on {چالو} other {بند}} ہے، اس لیے اسے {requested, select, on {چالو} other {بند}} نہیں کیا گیا۔",
+	"ui.chat.fast_mode.first_message_off": "پہلے پیغام کے لیے فاسٹ موڈ بند ہے۔",
+	"ui.chat.fast_mode.first_message_on": "پہلے پیغام کے لیے فاسٹ موڈ چالو ہے۔",
+	"ui.chat.fast_mode.not_changed": "فاسٹ موڈ تبدیل نہیں ہوا۔ دوبارہ کوشش کریں۔",
+	"ui.chat.fast_mode.pick_unsupported": "یہ ماڈل فاسٹ موڈ نہیں چلا سکتا۔ ایسا ماڈل منتخب کریں جو چلا سکے۔",
+	"ui.chat.fast_mode.service_cannot_carry": "فاسٹ موڈ بند ہے: Local Operator سروس کا یہ ورژن اسے سنبھال نہیں سکتا۔",
+	"ui.chat.fast_mode.service_unavailable": "Local Operator سروس کے اس ورژن میں فاسٹ موڈ دستیاب نہیں۔ Local Operator اپ ڈیٹ کریں، پھر دوبارہ کوشش کریں۔",
+	"ui.chat.fast_mode.stays_on": "اس ماڈل کے لیے فاسٹ موڈ چالو رہتا ہے۔",
+	"ui.chat.fast_mode.turned_off": "ماڈل بدلنے سے فاسٹ موڈ بند ہو گیا۔",
+	"ui.chat.fast_mode.unsupported_stays_off": "یہ ماڈل فاسٹ موڈ کو سپورٹ نہیں کرتا، اس لیے یہ بند رہتا ہے۔"
+}

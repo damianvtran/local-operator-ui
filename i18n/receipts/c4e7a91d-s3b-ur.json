@@ -1,0 +1,300 @@
+{
+ "schema": 1,
+ "instance": "c4e7a91d-s3b-ur",
+ "session": "1a1101e3968e",
+ "locale": "ur",
+ "audit_kind": "s3b composer batch A remediation + B1, ur (RTL), fresh independent audit of the final uncommitted bytes on disk",
+ "audit_date": "2026-11-08",
+ "pr": "damianvtran/local-operator-ui#1761",
+ "branch": "i18n/composer-keying",
+ "checkout_head": "a151ba95325",
+ "worktree": "local-operator-ui/.worktrees/i18n-composer-keying (uncommitted ur files)",
+ "auditor": {
+  "agent": "translation-auditor",
+  "team": "lopdev (s3b-au-ur)",
+  "instance": "c4e7a91d-s3b-ur",
+  "model": "anthropic/claude-sonnet-5-5",
+  "actual_model_source": "session header anthropic/claude-sonnet-5-5; no provider fallback observed",
+  "independent_from_translator_session": true
+ },
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "keys_read": 321,
+ "method": {
+  "icu": "every en and ur value of the ten namespaces parsed with @formatjs/icu-messageformat-parser (requiresOtherClause); argument names/types, number skeletons, select option sets compared per key: 0 differences; ur plural categories one/other only",
+  "render": "intl-messageformat locale ur at counts 0,1,2,5,11,21,100 for arg.removal_many, interrupt.stopped_children/jobs/both, summary.records_unpriced, ask_queue rail.open/close; fast_mode.dial_differs on all 4 pairs; every duration form (d/h/m/s, 1 and many, unknown) through expiry.in, deadline.with_subject, response.timed_out; owner_fallback phrase and a real device name through every {owner} key; effort/spend/device_move/aside splices with realistic arguments",
+  "hygiene": "NFC, no edge/double space, no non-ASCII whitespace or bidi/zero-width controls in any ICU header or value, no Arabic-only yeh/kaf/teh-marbuta, no Devanagari, no non-Latin digits, no ASCII . ? , ; after Urdu, technical tokens (/stop /btw /effort Enter Esc local-operator API Local Operator Canvas ${name}) verbatim, ::group-off absent from this slice",
+  "bidi": "fribidi --rtl --nopad --nobreak --clean over the rendered values with Latin tokens, sigils or caps; findings are code-side MINORs because the repo gate forbids U+200E/U+2066-2069 in ur values",
+  "glossary": "each term grepped across the 8093 shipped ur values outside these ten namespaces; checked against ~/local-operator/i18n/glossary.md and style-guides/ur.md",
+  "gates": "node --test scripts/i18n/locale-parity.test.mjs 44/44 pass (0 fail; the coder already added the IDENTICAL_OK entries); node scripts/i18n/context-parity.mjs ok; node --test scripts/i18n/ur-activation.test.mjs 3/3 pass"
+ },
+ "prior_receipt_verification": {
+  "UR-3 (slash.at.unavailable)": "applied exactly: فائل کے حوالے; no new defect",
+  "UR-N1 (slash.dispatch.no_argument_on_draft)": "applied (کو -> کے لیے) but introduces a doubled \"کے لیے\"; see UR-A1 (MINOR)",
+  "UR-N2 (page_chrome.error_view.failed)": "applied exactly: خرابی کی اطلاع دی; no new defect",
+  "UR-N3 (page_chrome.options.new)": "kept as نئی by decision; unchanged",
+  "UR-N4 (page_chrome.status_strip.retry/retrying)": "kept by decision; unchanged",
+  "UR-N5 (interrupt.stopped_both)": "applied exactly: اور سیشن اور اس کے کام; renders at 7 count pairs without defect",
+  "UR-1 / UR-2 / UR-1b (bidi)": "text unchanged as intended; still code-side MINORs (listed here)"
+ },
+ "namespaces": {
+  "ui.chat.slash": {
+   "status": "passed",
+   "keys_audited": 89,
+   "file_keys": 89,
+   "sha256": {
+    "en": "7d9ae8c2ff74de40aec65a6bddb7ead03abbc537a04a8366b5c452d7a057be7c",
+    "ur": "72491d29713c1a79dc1f384acbf57d86ea2ff651d52f1542df47ef680e6092cb"
+   },
+   "context_sha256": "c0ed86748344531c893f205ea6f8a1731effdbe45bb98647dce7ab6889b4a0fd",
+   "findings": [
+    {
+     "id": "UR-1",
+     "severity": "MINOR",
+     "kind": "bidi-literal-sigil",
+     "keys": [
+      "ui.chat.slash.dispatch.below_version",
+      "ui.chat.slash.dispatch.could_not_run",
+      "ui.chat.slash.dispatch.dialog_missing",
+      "ui.chat.slash.dispatch.model_resolving",
+      "ui.chat.slash.dispatch.model_unresolved",
+      "ui.chat.slash.dispatch.needs_conversation",
+      "ui.chat.slash.dispatch.needs_newer_backend",
+      "ui.chat.slash.dispatch.no_argument_on_draft",
+      "ui.chat.slash.dispatch.not_in_desktop",
+      "ui.chat.slash.dispatch.service_waiting",
+      "ui.chat.slash.dispatch.unpaired",
+      "ui.chat.slash.locked.taken",
+      "ui.chat.slash.skill.click_footer",
+      "ui.chat.slash.skill.empty_attached"
+     ],
+     "key": "ui.chat.slash.dispatch.could_not_run",
+     "current": "/{name} نہیں چل سکی: {reason}  (and 13 siblings)",
+     "proposed": "text unchanged; isolate in code (renderer step for dir=rtl: LRM before a / or $ that precedes a Latin letter or {)",
+     "reason": "A literal / or $ that opens the string or follows Urdu paints after the word under dir=rtl (fribidi --rtl: \"model/\"); repo gate forbids U+200E in ur values, so not fixable in the bytes."
+    },
+    {
+     "id": "UR-2",
+     "severity": "MINOR",
+     "kind": "bidi-value-placeholder",
+     "keys": [
+      "ui.chat.slash.dispatch.move_hint",
+      "ui.chat.slash.staged.runs",
+      "ui.chat.slash.staged.runs_again",
+      "ui.chat.slash.staged.sets_goal",
+      "ui.chat.slash.staged.refused",
+      "ui.chat.slash.locked.undo",
+      "ui.chat.slash.at.no_match_files",
+      "ui.chat.slash.at.no_match_projects"
+     ],
+     "key": "ui.chat.slash.dispatch.move_hint",
+     "current": "... {example} لکھیں  with {example}=\"/move <path>\"; {cap}=\"⌘Z\"; {scope}=\"~/src\"",
+     "proposed": "text unchanged; wrap the argument value in U+2068..U+2069 at the call site",
+     "reason": "Unisolated values carrying a sigil, bracket or symbol paint reversed after Urdu (\"<move <path/\", \"J⌘\"); FSI/PDI at the call site fixes it."
+    },
+    {
+     "id": "UR-A1",
+     "severity": "MINOR",
+     "kind": "idiom-regression-from-remediation",
+     "key": "ui.chat.slash.dispatch.no_argument_on_draft",
+     "current": "نئی چیٹ میں /{name} کوئی آرگیومنٹ نہیں لیتی۔ پہلے پیغام کے لیے اسے مقرر کرنے کے لیے صرف /{name} لکھیں۔",
+     "proposed": "نئی چیٹ میں /{name} کوئی آرگیومنٹ نہیں لیتی۔ پہلے پیغام کے لیے اسے مقرر کرنا ہو تو صرف /{name} لکھیں۔",
+     "reason": "Applying prior UR-N1 (کو -> کے لیے) left two consecutive \"کے لیے\" in one clause (\"پہلے پیغام کے لیے اسے مقرر کرنے کے لیے\"), which stutters; the conditional form reads natively and keeps the meaning."
+    }
+   ]
+  },
+  "ui.chat.page_chrome": {
+   "status": "passed",
+   "keys_audited": 26,
+   "file_keys": 26,
+   "sha256": {
+    "en": "ad54b5d07aa2de04c8ffab1403fc6adb2b96adcbcb24eddeba99e0ff0425c73e",
+    "ur": "d32db22423367dec4035031a28ca95c0b6a4b08bedec23b3acd31f588472d36b"
+   },
+   "context_sha256": "267fccd8002958294fc478dd1ebbd953ebf24e53e053412692fa4fd3f45f3596",
+   "findings": []
+  },
+  "ui.chat.header_menu": {
+   "status": "passed",
+   "keys_audited": 12,
+   "file_keys": 12,
+   "sha256": {
+    "en": "2bfaecb5b8bcba8f9b46087bb404d139566a8032578a0e60c3f8b449670e73d4",
+    "ur": "958464db9b4ec3d72305b49a9842d9c720011ec4898d7985185f83ab6415b383"
+   },
+   "context_sha256": "b353e09e5e5b828cc65b439b5dee87ef72a7969d40045b045ee8f578b7eed74a",
+   "findings": []
+  },
+  "ui.chat.fast_mode": {
+   "status": "passed",
+   "keys_audited": 10,
+   "file_keys": 10,
+   "sha256": {
+    "en": "c6fd6fd1dfd776d099a74c866be11f0a8e821a4a1fa9beb7bccde11de095f412",
+    "ur": "b04a44ba507fd8bd0110160088b4f27484a8f83053e239d42b5a4f23515a67ec"
+   },
+   "context_sha256": "ee883d0495afbf16f3f67367f9827b0a31458fe956ebe927732b376a92405694",
+   "findings": []
+  },
+  "ui.chat.interrupt": {
+   "status": "passed",
+   "keys_audited": 6,
+   "file_keys": 6,
+   "sha256": {
+    "en": "c360665564dcd59d5656131902ed17f4a5912914844feabc1e790ded2d2bd603",
+    "ur": "21c36263e480881ebf1494478bd2c2d523058a3635aff62dcfc14e0d5daef764"
+   },
+   "context_sha256": "b388c901f5ada7c3b98c2e094ea4d7e58f8abe5201e26004210ebaeae92a0100",
+   "findings": [
+    {
+     "id": "UR-1b",
+     "severity": "MINOR",
+     "kind": "bidi-literal-sigil",
+     "keys": [
+      "ui.chat.interrupt.stopped_both",
+      "ui.chat.interrupt.stopped_children",
+      "ui.chat.interrupt.stopped_jobs",
+      "ui.chat.interrupt.unavailable"
+     ],
+     "key": "ui.chat.interrupt.stopped_children",
+     "current": "... یا سیشن ختم کرنے کے لیے /stop استعمال کریں۔",
+     "proposed": "text unchanged; isolate in code",
+     "reason": "/stop follows Urdu so it paints \"stop/\" under dir=rtl; same class as UR-1."
+    }
+   ]
+  },
+  "ui.chat.session_readout": {
+   "status": "passed",
+   "keys_audited": 54,
+   "file_keys": 54,
+   "sha256": {
+    "en": "613dad2f1acee22dd7d6e4b7c482b1caa8ec49938f207b8bee52a071a18c4386",
+    "ur": "40c2616e2b984e0c800c33761ade59ac29a64df86faa60d35df73307d4fbb8ea"
+   },
+   "context_sha256": "bd9f4d0e5d1bfe3aa54f01e2c764e928f1a8384e349024c23defb384ace7bbab",
+   "findings": [
+    {
+     "id": "B1-1",
+     "severity": "MINOR",
+     "kind": "bidi-value-placeholder",
+     "key": "ui.chat.session_readout.effort.detail.not_reported",
+     "current": "... ابھی مقرر کرنے کے لیے {command} چلائیں۔  with {command}=\"/effort <level>\"",
+     "proposed": "text unchanged; wrap {command} in U+2068..U+2069 at the call site",
+     "reason": "fribidi --rtl paints the value as \"<effort <level/\"; FSI/PDI around the value fixes it (same class as UR-2)."
+    }
+   ]
+  },
+  "ui.chat.ask_queue": {
+   "status": "passed",
+   "keys_audited": 44,
+   "file_keys": 44,
+   "sha256": {
+    "en": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+    "ur": "90b0c1f8ca1f27dc43357b9365b1d872773665f1f69d05170513a07365bf004c"
+   },
+   "context_sha256": "69086c66cbe510f79384d5c019da4be842dd110b49a2953c53c2bf46ff58cb2a",
+   "findings": [
+    {
+     "id": "B1-2",
+     "severity": "MINOR",
+     "kind": "width",
+     "keys": [
+      "ui.chat.ask_queue.duration.days",
+      "ui.chat.ask_queue.duration.hours",
+      "ui.chat.ask_queue.duration.minutes",
+      "ui.chat.ask_queue.duration.seconds",
+      "ui.chat.ask_queue.expiry.in",
+      "ui.chat.ask_queue.deadline.with_subject"
+     ],
+     "key": "ui.chat.ask_queue.expiry.in",
+     "current": "{time} میں میعاد ختم ہو گی  (with duration \"5 گھنٹے\": 27 chars vs English \"expires in 5h\", 13)",
+     "proposed": "keep; if the rendered chip truncates use \"{time} میں ختم\" for expiry.in",
+     "reason": "Urdu has no one-letter unit abbreviations, so the chip text is about twice the English width; the sidecar asks for compact units, so flag for a rendered narrow-chip check. Grammar is correct: the duration is always in the oblique before میں/بعد (\"1 گھنٹے میں\")."
+    },
+    {
+     "id": "B1-3",
+     "severity": "MINOR",
+     "kind": "bidi-value-placeholder",
+     "keys": [
+      "ui.chat.ask_queue.rail.open",
+      "ui.chat.ask_queue.rail.close"
+     ],
+     "key": "ui.chat.ask_queue.rail.open",
+     "current": "سوالات کھولیں{hasCap, select, yes { ({cap})} ...  with {cap}=\"⌘J\"",
+     "proposed": "text unchanged; wrap {cap} in U+2068..U+2069 at the call site",
+     "reason": "fribidi --rtl paints \"(⌘J)\" as \"(J⌘)\"; Ctrl+J is unaffected."
+    },
+    {
+     "id": "B1-N1",
+     "severity": "NIT",
+     "kind": "idiom",
+     "key": "ui.chat.ask_queue.deadline.soonest_subject",
+     "current": "سب سے قریبی سوال",
+     "proposed": "جلد ختم ہونے والا سوال",
+     "reason": "\"قریبی\" reads as \"nearest/nearby\"; \"soonest\" here means the one that expires first."
+    },
+    {
+     "id": "B1-N2",
+     "severity": "NIT",
+     "kind": "idiom",
+     "key": "ui.chat.ask_queue.secret.placeholder_skip",
+     "current": "چھوڑنے کے لیے خالی رکھیں؛ آپ جو ٹائپ کریں گے وہ کبھی نہیں دکھایا جاتا",
+     "proposed": "نظرانداز کرنے کے لیے خالی چھوڑ دیں؛ آپ جو ٹائپ کریں گے وہ کبھی نہیں دکھایا جاتا",
+     "reason": "\"skip\" as \"چھوڑنے\" is ambiguous (leave/quit); \"نظرانداز کرنے\" names skipping the field."
+    }
+   ]
+  },
+  "ui.chat.session_spend": {
+   "status": "passed",
+   "keys_audited": 32,
+   "file_keys": 32,
+   "sha256": {
+    "en": "4de17b68d20c7a8ea35b16bdaf466290075029806aa2c95d2c72dc8a225c31dd",
+    "ur": "2f3679741c81e054c183a183b9e23ffd813299fca3e2777baa1942a70b7e79d3"
+   },
+   "context_sha256": "6b479221c6d3baa4a751bb7f3d5308cc746e716095b8d87eb81aa14bdb0bc507",
+   "findings": []
+  },
+  "ui.chat.aside": {
+   "status": "passed",
+   "keys_audited": 24,
+   "file_keys": 24,
+   "sha256": {
+    "en": "23591a418d92d4fbb7e67075c59a8efaee0ba9465bd8554ca2dcc51f539ad725",
+    "ur": "0ac4ea882edb00198c44b794e67be559041e7b06f07fee3c23b89eb64365370e"
+   },
+   "context_sha256": "027e95251f1404d795535cd438734746e0e6194a00cacc156b198bd0fe26c577",
+   "findings": [
+    {
+     "id": "B1-4",
+     "severity": "MINOR",
+     "kind": "bidi-literal-sigil",
+     "key": "ui.chat.aside.continuation_escape",
+     "current": "... پھر /btw سے نئی ضمنی گفتگو شروع کریں۔",
+     "proposed": "text unchanged; isolate in code",
+     "reason": "/btw follows Urdu so it paints \"btw/\" under dir=rtl (fribidi evidence); same class as UR-1."
+    },
+    {
+     "id": "B1-5",
+     "severity": "MINOR",
+     "kind": "bidi-value-placeholder",
+     "key": "ui.chat.aside.adopt.confirm",
+     "current": "... {cap} دوبارہ دبائیں۔  with {cap}=\"⌘+F\"",
+     "proposed": "text unchanged; wrap {cap} in U+2068..U+2069 at the call site",
+     "reason": "fribidi --rtl paints \"⌘+F\" as \"F+⌘\"; Ctrl+F is unaffected."
+    }
+   ]
+  },
+  "ui.chat.device_move": {
+   "status": "passed",
+   "keys_audited": 24,
+   "file_keys": 24,
+   "sha256": {
+    "en": "2983e0f36bb471841c7937259e24fd5047db0d43c1d7f655984a02a7510c5e6f",
+    "ur": "f85c6784a7cb86d4cbc2a97c922ac3a968bdda5f8e7307cef8fd5ee877352990"
+   },
+   "context_sha256": "1d7e9f375d2d82a04feacb6934503c18e56edec1b4211e2fd8c3394f870948d7",
+   "findings": []
+  }
+ }
+}

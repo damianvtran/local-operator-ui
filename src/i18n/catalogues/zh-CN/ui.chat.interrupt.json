@@ -1,0 +1,8 @@
+{
+	"ui.chat.interrupt.idle": "当前没有正在运行的轮次，因此无需停止。",
+	"ui.chat.interrupt.idle_disputed": "运行时显示当前没有轮次在运行，因此未停止任何内容。此视图可能已过期。",
+	"ui.chat.interrupt.stopped_both": "已停止本轮。{children, plural, other {#个子智能体}}和{jobs, plural, other {#个后台任务}}仍在运行——可打开“运行详情”查看，也可使用/stop结束会话及其任务。",
+	"ui.chat.interrupt.stopped_children": "已停止本轮。{count, plural, other {#个子智能体}}仍在运行——可打开“运行详情”查看，或使用/stop结束会话。",
+	"ui.chat.interrupt.stopped_jobs": "已停止本轮。{count, plural, other {#个后台任务仍在运行——后台任务本就设计为在本轮结束后继续运行，需使用/stop连同会话一并结束。}}",
+	"ui.chat.interrupt.unavailable": "此后端版本过旧，不支持停止控制，因此无法在此停止本轮——/stop会结束整个会话及其中的一切。"
+}

@@ -1,0 +1,749 @@
+{
+ "instance": "564797e3-s3c-fr",
+ "locale": "fr",
+ "audit_date": "2026-11-08",
+ "scope": [
+  "ui.chat.approval",
+  "ui.chat.ask_answer",
+  "ui.chat.ask_panel",
+  "ui.chat.attachment_refusal",
+  "ui.chat.credential_notice",
+  "ui.chat.composer_notes",
+  "ui.chat.message_budget",
+  "ui.chat.move_cwd",
+  "ui.chat.quota_resend",
+  "ui.chat.read_ack",
+  "ui.chat.sidebar_notes",
+  "ui.chat.session_readout",
+  "ui.chat.ask_queue",
+  "ui.chat.session_spend",
+  "ui.chat.aside",
+  "ui.chat.device_move"
+ ],
+ "carried": [
+  {
+   "namespace": "ui.chat.slash",
+   "receipt": "i18n/receipts/5a82e837-s3b-fr-composer-b1-fr.json",
+   "receipt_instance": "5a82e837-s3b-fr",
+   "keys": 89,
+   "sha256_fr": "2a779a7aa5ffc46f38eb350e47efafa6fda6b6114eb639ed577a681459828cf9",
+   "why": "target_sha256 in the s3b receipt equals the bytes on disk; not re-audited here"
+  },
+  {
+   "namespace": "ui.chat.page_chrome",
+   "receipt": "i18n/receipts/5a82e837-s3b-fr-composer-b1-fr.json",
+   "receipt_instance": "5a82e837-s3b-fr",
+   "keys": 26,
+   "sha256_fr": "86e1ec0f7dcf371602a23f31c3039d58850c062ac5bbe05fd1d932562597c082",
+   "why": "target_sha256 in the s3b receipt equals the bytes on disk; not re-audited here"
+  },
+  {
+   "namespace": "ui.chat.header_menu",
+   "receipt": "i18n/receipts/5a82e837-s3b-fr-composer-b1-fr.json",
+   "receipt_instance": "5a82e837-s3b-fr",
+   "keys": 12,
+   "sha256_fr": "cd1f263927a47a0838c95b9f61b099daa752812aa71f4b1b6b9115c5c480998e",
+   "why": "target_sha256 in the s3b receipt equals the bytes on disk; not re-audited here"
+  },
+  {
+   "namespace": "ui.chat.interrupt",
+   "receipt": "i18n/receipts/5a82e837-s3b-fr-composer-b1-fr.json",
+   "receipt_instance": "5a82e837-s3b-fr",
+   "keys": 6,
+   "sha256_fr": "e779263d84b06f51eb642eaab715882b00626f03134c86f98797a0908e1dd91f",
+   "why": "target_sha256 in the s3b receipt equals the bytes on disk; not re-audited here"
+  },
+  {
+   "namespace": "ui.chat.fast_mode",
+   "receipt": "i18n/receipts/5a82e837-s3b-fr-composer-b1-fr.json",
+   "receipt_instance": "5a82e837-s3b-fr",
+   "keys": 10,
+   "sha256_fr": "17c7eee3eb074ec47ac2fa87d940519e71e3b91016a9019b534ada5bb48ca679",
+   "why": "target_sha256 in the s3b receipt equals the bytes on disk; not re-audited here"
+  }
+ ],
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "f1c63bc9fa03",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "FALLBACK DISCLOSED: the run began on anthropic/claude-sonnet-5-5 and fell back to anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then deepseek/deepseek-flash after repeated provider quota failures. All three later models worked from the same evidence gathered in this session, and every byte-level check (hashes, ICU parse, plural renders, token and whitespace scans) is mechanical and model-independent. No model performed any translation.",
+  "independent_from_translator_session": true,
+  "independence_note": "This session wrote no fr value and edited no source file. Every judgement is derived from the bytes on disk (en + context sidecars vs fr) and from the shipped fr catalogue outside these 21 namespaces; the earlier s3a/s3b receipts were used only as a checklist of findings to verify. The repo is untouched apart from this receipt."
+ },
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 1,
+  "MINOR": 8,
+  "NIT": 6
+ },
+ "verdict": "changes_requested",
+ "verdict_reason": "318 keys read in full across 16 namespaces (140 in the eleven B2 namespaces, 178 in the five B1 namespaces whose bytes changed since the s3b receipt); the five batch A namespaces are carried at the s3b hashes (143 keys, not re-audited). ICU structure, CLDR fr categories (one/many/other), number skeletons including ::group-off, literal tokens, the vous register and U+202F typography hold in every audited value. One MAJOR: device_move.result.moved.second tells the reader to open the conversation « sur cet appareil » where the English says « on that device », contradicting the receipt line printed beside it. Six MINOR (glossary « répertoire » vs « dossier de travail »; « daemon » vs « service »; « stalled » as « bloqué » vs shipped « en attente »; the answered participle's gender against its own status family; two comma splices; a partitive « de » after a sum; one width flag) and six NIT. Every earlier s3b finding in a changed namespace is applied, and none of those edits introduced a defect.",
+ "earlier_findings": [
+  {
+   "id": "N2",
+   "namespace": "ui.chat.session_readout",
+   "key": "ui.chat.session_readout.strip.draft_failed.detail",
+   "state": "applied-ok (receipt changed no part of this key)",
+   "before": null,
+   "after": "Aucun modèle n’est encore défini pour cette conversation",
+   "new_defect": false
+  },
+  {
+   "id": "N3",
+   "namespace": "ui.chat.session_readout",
+   "key": "ui.chat.session_readout.access.owner_unavailable.title",
+   "state": "applied-ok (receipt changed no part of this key)",
+   "before": null,
+   "after": "{owner} ne peut pas fournir l’accès",
+   "new_defect": false
+  },
+  {
+   "id": "N4",
+   "namespace": "ui.chat.ask_queue",
+   "key": "ui.chat.ask_queue.deadline.soonest_subject",
+   "state": "applied-ok (receipt changed no part of this key)",
+   "before": null,
+   "after": "demande la plus proche",
+   "new_defect": false
+  },
+  {
+   "id": "N5",
+   "namespace": "ui.chat.ask_queue",
+   "key": "ui.chat.ask_queue.expiry.now_short",
+   "state": "applied-ok (receipt changed no part of this key)",
+   "before": null,
+   "after": "imminent",
+   "new_defect": false
+  },
+  {
+   "id": "N6",
+   "namespace": "ui.chat.ask_queue",
+   "key": "ui.chat.ask_queue.change_window_hint",
+   "state": "applied-ok (receipt changed no part of this key)",
+   "before": null,
+   "after": "Vous pouvez modifier votre réponse jusqu’à ce qu’elle soit remise à l’agent.",
+   "new_defect": false
+  },
+  {
+   "id": "N7",
+   "namespace": "ui.chat.session_spend",
+   "key": "ui.chat.session_spend.plan_clause",
+   "state": "applied-ok (receipt changed no part of this key)",
+   "before": null,
+   "after": "Inclut {amount} pris en charge par l’abonnement (équivalent API, non facturé).",
+   "new_defect": false
+  },
+  {
+   "id": "N8",
+   "namespace": "ui.chat.session_spend",
+   "key": "ui.chat.session_spend.summary.total",
+   "state": "applied-ok (receipt changed no part of this key)",
+   "before": null,
+   "after": "Total : {total}",
+   "new_defect": false
+  },
+  {
+   "id": "M1",
+   "namespace": "ui.chat.aside",
+   "key": "ui.chat.aside.blocked.working",
+   "state": "applied-ok (receipt changed no part of this key)",
+   "before": null,
+   "after": "Cette conversation est en cours d’exécution. Ajouter l’aparté maintenant insérerait un message au milieu d’un tour en cours.",
+   "new_defect": false
+  },
+  {
+   "id": "N9",
+   "namespace": "ui.chat.device_move",
+   "key": "ui.chat.device_move.plan.recall",
+   "state": "applied-ok",
+   "before": "Rapatrier vers cet appareil",
+   "after": "Rapatrier sur cet appareil",
+   "new_defect": false
+  },
+  {
+   "id": "N9",
+   "namespace": "ui.chat.device_move",
+   "key": "ui.chat.device_move.result.back.verb",
+   "state": "applied-ok (receipt changed no part of this key)",
+   "before": "Rapatriée sur cet appareil",
+   "after": "Rapatriée sur cet appareil",
+   "new_defect": false
+  }
+ ],
+ "checks_run": [
+  "node --test scripts/i18n/locale-parity.test.mjs -> \"# pass 44 / # fail 0\" (identical fr values all sit in IDENTICAL_OK: Auto, Max, Minimal, terminal, {count, number}h, {count, number}s, filter.chip, deadline.with_subject, summary.basis_amount, unconfirmed)",
+  "node scripts/i18n/context-parity.mjs -> \"context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s)\" (none in these 21)",
+  "@formatjs/icu-messageformat-parser parsed all 318 en + 318 fr values, 0 errors; argument-name sets, plural/select option keys and number skeletons equal English on every key; the only structural difference is the added fr many branch on 8 keys",
+  "ICU header scan over all 318 fr values: 0 non-ASCII characters inside a top-level argument header; the 62 U+202F in the slice are French punctuation inside literal text (before ; and :), outside headers",
+  "whitespace census over the 16 audited namespaces: only U+0020 (3006) and U+202F (62); no NBSP, U+200E/200F, U+2066-2069 or zero-width characters",
+  "placeholder scan: 23 number skeletons compared en vs fr, 0 mismatches (::group-off preserved in credential_notice.chip_title, clear_label, cleared); every backticked name, /command, ${name}, eval and key name (Entrée, Échap) present where the English carries it",
+  "plural/select rendered at 0,1,2,5,11,21,100,1000000 with Intl.PluralRules(\"fr\"): 1000000 selects many everywhere (« 1 000 000 de questions expirées », « 1 000 000 d’octets », « 1 000 000 de continuations », « 1 000 000 de caractères », « 1 000 000 de références »); every one/other pair is grammatical at 0 and 1",
+  "spliced fragments rendered with realistic arguments: attachment clauses joined by « ; » for 1, 2 and 3 files across read, upload and remote causes; read_ack refusal plus remedy; ask_answer unconfirmed lead plus reason; approval override and unchanged-mode lines; credential chip_title and cleared with a key name and ⌘Z; the sidebar read-ack clause appended after « · »; device_move receipts with a device name and a 6-character session id; ask_queue rail, chip and deadline with caps, counts and durations",
+  "glossary grep over the shipped fr catalogue (match the English value, compare the French) for: working directory, daemon/service, stalled, aside/aparté, ask/demande, effort, turn/tour, subagent/sous-agent, credential/identifiant, owner/propriétaire, Undo/Annuler, Try again/Réessayer, spam folder, system prompt/prompt système, backend, runtime, provider/fournisseur, chat/conversation"
+ ],
+ "limits": [
+  "Width risks are character counts, not pixels: session_readout.access.device_bound.title 46 vs 30 (R1), session_readout.strip.draft_failed.detail 56 vs 26 (the accepted s3b N2 remediation, no new finding), approval.escape.session_override_of 78 vs 49 (W1), quota_resend.sent 72 vs 39, ask_queue.expiry.now_short 8 vs 3, approval.escape.set_all 37 vs 25. None was rendered.",
+  "Only fr was opened; the other five locales were not read.",
+  "generate.mjs --check was not run (keys.gen.ts is stale until the manager regenerates); it is neither pass nor fail evidence here."
+ ],
+ "namespaces": {
+  "ui.chat.approval": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 17,
+   "sha256": {
+    "en": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
+    "fr": "b16053ace97730778a2e51a685381b526ee5f1b86bc4dac7178eee97ff02e9f7"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.approval.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.approval.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.approval.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 1
+   },
+   "findings": [
+    {
+     "id": "W1",
+     "severity": "NIT",
+     "keys": [
+      "ui.chat.approval.escape.session_override_of"
+     ],
+     "current": {
+      "ui.chat.approval.escape.session_override_of": "Approbations : {mode} — remplacement de session ; valeur globale : {globalMode}."
+     },
+     "proposed": {
+      "ui.chat.approval.escape.session_override_of": "Approbations : {mode} — remplacement de session ; valeur globale : {globalMode}."
+     },
+     "reason": "Width: the widest case renders 78 characters against 49 in English on the approval card (« Approbations : Auto — remplacement de session ; valeur globale : Demander. »); « défaut global » says the same in 6 fewer characters. Flag for a rendered check rather than a required fix."
+    }
+   ]
+  },
+  "ui.chat.ask_answer": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 10,
+   "sha256": {
+    "en": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
+    "fr": "16e0b433d31dcdfd16cb8db0bbb461f4652fd7932bb907ea7dd8ac42ce1abc42"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.ask_answer.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.ask_answer.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.ask_answer.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 0
+   },
+   "findings": [
+    {
+     "id": "B2",
+     "severity": "MINOR",
+     "keys": [
+      "ui.chat.ask_answer.moved_on",
+      "ui.chat.ask_answer.settled_elsewhere"
+     ],
+     "current": {
+      "ui.chat.ask_answer.moved_on": "Cette question a déjà été réglée ou dépassée, votre réponse n’a donc pas été envoyée.",
+      "ui.chat.ask_answer.settled_elsewhere": "Cette question a déjà reçu une réponse ailleurs, votre réponse n’a donc pas été envoyée."
+     },
+     "proposed": {
+      "ui.chat.ask_answer.moved_on": "Cette question a déjà été réglée ou dépassée ; votre réponse n’a donc pas été envoyée.",
+      "ui.chat.ask_answer.settled_elsewhere": "Cette question a déjà reçu une réponse ailleurs ; votre réponse n’a donc pas été envoyée."
+     },
+     "reason": "Punctuation: the same comma splice as attachment_refusal B1 — « … ou dépassée, votre réponse n’a donc pas été envoyée. » joins two independent clauses with a comma, where the slice's own habit is « ; … donc … » (ui.chat.read_ack.refusal.refused)."
+    }
+   ]
+  },
+  "ui.chat.ask_panel": {
+   "status": "passed",
+   "result": "clean",
+   "keys_audited": 20,
+   "sha256": {
+    "en": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+    "fr": "a8f4093d79cc17d18d5d342f7bd71811dc8aa4e2330c7d6074e70549a0829a63"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.ask_panel.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.ask_panel.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+   },
+   "findings": []
+  },
+  "ui.chat.attachment_refusal": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 15,
+   "sha256": {
+    "en": "3eb36121a317a16f814f92f9238acafc2bbd30951ee97c45836d9cd5f0706e0a",
+    "fr": "eefe508abddb3a7ba4c179ec6c52276f80abd47a90fc49e26f680c86f54f9802"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.attachment_refusal.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.attachment_refusal.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.attachment_refusal.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 0
+   },
+   "findings": [
+    {
+     "id": "B1",
+     "severity": "MINOR",
+     "keys": [
+      "ui.chat.attachment_refusal.files_many",
+      "ui.chat.attachment_refusal.files_one",
+      "ui.chat.attachment_refusal.images_many",
+      "ui.chat.attachment_refusal.images_one",
+      "ui.chat.attachment_refusal.mixed_many",
+      "ui.chat.attachment_refusal.mixed_one",
+      "ui.chat.attachment_refusal.read_many",
+      "ui.chat.attachment_refusal.read_one"
+     ],
+     "current": {
+      "ui.chat.attachment_refusal.files_one": "Ce brouillon contient {total, number} fichiers alors qu’un message en accepte jusqu’à {cap, number}, ce message n’a donc pas été envoyé. Retirez le fichier en trop, ou envoyez-le dans un second message.",
+      "ui.chat.attachment_refusal.read_one": "{name} n’a pas pu être lu (il a peut-être été déplacé ou supprimé), ce message n’a donc pas été envoyé. Joignez-le à nouveau, ou retirez-le du brouillon."
+     },
+     "proposed": {
+      "ui.chat.attachment_refusal.files_one": "Ce brouillon contient {total, number} fichiers alors qu’un message en accepte jusqu’à {cap, number} ; ce message n’a donc pas été envoyé. Retirez le fichier en trop, ou envoyez-le dans un second message."
+     },
+     "reason": "Punctuation: « , ce message n’a donc pas été envoyé » joins two independent clauses with a bare comma in all eight keys (files_many/files_one/images_many/images_one/mixed_many/mixed_one/read_many/read_one); the same construction is written « ; … donc … » everywhere else in this slice (ui.chat.read_ack.refusal.busy « L’état de lecture est occupé ; la marque non lue n’a donc pas été effacée. »). Same fix, all eight: replace the comma before « ce message n’a donc pas été envoyé » with « ; » except in mixed_many/mixed_one, whose {clauses} already end in a closing parenthesis — there a comma is acceptable, so those two may stay."
+    }
+   ]
+  },
+  "ui.chat.credential_notice": {
+   "status": "passed",
+   "result": "clean",
+   "keys_audited": 15,
+   "sha256": {
+    "en": "1186b58d4ae1eee83dd05889a1b998919c30cc51b273a506b0d8fc656cfa23df",
+    "fr": "4f5cffc1e50889424075ef4ade198ebddd9423762b77c08bffb68c6a6c1c4927"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.credential_notice.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.credential_notice.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.credential_notice.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+   },
+   "findings": []
+  },
+  "ui.chat.composer_notes": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 14,
+   "sha256": {
+    "en": "d0932047d10b6e27ac42fe82d4538463962e4372db886a650ee7fa8581e156e3",
+    "fr": "be4101f52305d48aed3d5430aac1ee70e8a014df5b04e0163bb482539037c573"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.composer_notes.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.composer_notes.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.composer_notes.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 2,
+    "NIT": 0
+   },
+   "findings": [
+    {
+     "id": "C1",
+     "severity": "MINOR",
+     "keys": [
+      "ui.chat.composer_notes.outside_mentions"
+     ],
+     "current": {
+      "ui.chat.composer_notes.outside_mentions": "{count, plural, one {# référence pointe en dehors du répertoire de travail de cette session ; l’agent vous demandera de l’approuver avant de la lire.} many {# de références pointent en dehors du répertoire de travail de cette session ; l’agent vous demandera de les approuver avant de les lire.} other {# références pointent en dehors du répertoire de travail de cette session ; l’agent vous demandera de les approuver avant de les lire.}}"
+     },
+     "proposed": {
+      "ui.chat.composer_notes.outside_mentions": "{count, plural, one {# référence pointe en dehors du dossier de travail de cette session ; l’agent vous demandera de l’approuver avant de la lire.} many {# de références pointent en dehors du dossier de travail de cette session ; l’agent vous demandera de les approuver avant de les lire.} other {# références pointent en dehors du dossier de travail de cette session ; l’agent vous demandera de les approuver avant de les lire.}}"
+     },
+     "reason": "Glossary drift: « working directory » is « dossier de travail » in the shipped composer family (ui.chat.directory.working_directory « Dossier de travail », working_directory_value, set, change, not_set, enter_path_label, move_cost) and in the new ui.chat.move_cwd, but « répertoire de travail » here — two French terms for the same folder in messages the composer shows. (Shipped ui.canvas also says « répertoire de travail »; that pair is pre-existing and out of this slice.)"
+    },
+    {
+     "id": "C2",
+     "severity": "MINOR",
+     "keys": [
+      "ui.chat.composer_notes.goal.stalled.breaker",
+      "ui.chat.composer_notes.goal.stalled.cap",
+      "ui.chat.composer_notes.goal.stalled.cap_fallback",
+      "ui.chat.composer_notes.goal.stalled.unknown"
+     ],
+     "current": {
+      "ui.chat.composer_notes.goal.stalled.breaker": "objectif bloqué : le juge n’a pas pu trancher — envoyez un message pour continuer",
+      "ui.chat.composer_notes.goal.stalled.cap": "objectif bloqué : arrêt après {count, plural, one {# continuation} many {# de continuations} other {# continuations}} — envoyez un message pour continuer",
+      "ui.chat.composer_notes.goal.stalled.cap_fallback": "objectif bloqué : limite de continuations atteinte — envoyez un message pour continuer",
+      "ui.chat.composer_notes.goal.stalled.unknown": "objectif bloqué : la continuation automatique s’est arrêtée — envoyez un message pour continuer"
+     },
+     "proposed": {
+      "ui.chat.composer_notes.goal.stalled.breaker": "objectif interrompu : le juge n’a pas pu trancher — envoyez un message pour continuer",
+      "ui.chat.composer_notes.goal.stalled.cap": "objectif interrompu : arrêt après {count, plural, one {# continuation} many {# de continuations} other {# continuations}} — envoyez un message pour continuer",
+      "ui.chat.composer_notes.goal.stalled.cap_fallback": "objectif interrompu : limite de continuations atteinte — envoyez un message pour continuer",
+      "ui.chat.composer_notes.goal.stalled.unknown": "objectif interrompu : la continuation automatique s’est arrêtée — envoyez un message pour continuer"
+     },
+     "reason": "Glossary drift: « stalled » is already « en attente » in the shipped fr catalogue (ui.chat.pickers.destination_pickers.stalled_send_a_message_to_continue « en attente — envoyez un message pour continuer »); these four new keys say « bloqué », so one backend state now has two French spellings. Either unify on « interrompu » (accurate for a goal that stopped mid-flight) or carry « en attente » across both surfaces."
+    }
+   ]
+  },
+  "ui.chat.message_budget": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 10,
+   "sha256": {
+    "en": "3a296a75d43ed1c31ea45efe50a44218e17c9c9ba13de6f1e6b4f0b83f045b97",
+    "fr": "78c4ef6b8be150df093931215939392ef8caf6898246bfbe7ef5470b2d586c9a"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.message_budget.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.message_budget.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.message_budget.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 1
+   },
+   "findings": [
+    {
+     "id": "M1",
+     "severity": "NIT",
+     "keys": [
+      "ui.chat.message_budget.command_size",
+      "ui.chat.message_budget.fork_size",
+      "ui.chat.message_budget.images_size",
+      "ui.chat.message_budget.prompt_size",
+      "ui.chat.message_budget.text_size"
+     ],
+     "current": {
+      "ui.chat.message_budget.command_size": "Cette commande fait {size}, plus que les {limit} qu’une commande peut contenir. Raccourcissez-la, ou mettez plutôt le texte dans un message.",
+      "ui.chat.message_budget.prompt_size": "Ce prompt système fait {size}, plus que les {limit} qu’un agent peut contenir. Raccourcissez-le."
+     },
+     "proposed": {
+      "ui.chat.message_budget.command_size": "Cette commande fait {size}, plus que les {limit} autorisés pour une commande. Raccourcissez-la, ou mettez plutôt le texte dans un message.",
+      "ui.chat.message_budget.fork_size": "Ce premier message fait {size}, plus que les {limit} autorisés pour un message. Raccourcissez-le, ou envoyez-le plutôt dans la nouvelle conversation.",
+      "ui.chat.message_budget.images_size": "Ces images totalisent {size}, plus que les {limit} autorisés pour un message. Retirez une image, ou envoyez-les dans un second message.",
+      "ui.chat.message_budget.prompt_size": "Ce prompt système fait {size}, plus que les {limit} autorisés pour un agent. Raccourcissez-le.",
+      "ui.chat.message_budget.text_size": "Le texte de ce message fait {size}, plus que les {limit} autorisés pour un message. Répartissez-le sur deux messages."
+     },
+     "reason": "Grammar: in the five *_size keys {limit} is a formatted size (« 880 KB »), and « les {limit} qu’une commande peut contenir » leaves the relative clause without a noun; the *_chars siblings are correct because {limit} there is a count of characters."
+    }
+   ]
+  },
+  "ui.chat.move_cwd": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 8,
+   "sha256": {
+    "en": "a26c98328bd160b53fd2c5ad05294ed4b235870264243deee0937ead78db120c",
+    "fr": "682f6a3d92adf7d1e542047857953f84bcde6cba23d9872498f96285a5911378"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.move_cwd.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.move_cwd.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.move_cwd.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 1
+   },
+   "findings": [
+    {
+     "id": "V1",
+     "severity": "NIT",
+     "keys": [
+      "ui.chat.move_cwd.not_ready"
+     ],
+     "current": {
+      "ui.chat.move_cwd.not_ready": "Cette session démarre encore. Son dossier de travail pourra être déplacé dès qu’elle sera active."
+     },
+     "proposed": {
+      "ui.chat.move_cwd.not_ready": "Cette session est encore en cours de démarrage. Son dossier de travail pourra être déplacé dès qu’elle sera active."
+     },
+     "reason": "Idiom: « démarre encore » is a word-for-word rendering of « is still starting » and can read as « démarre à nouveau »; the progressive form says what the English implies."
+    }
+   ]
+  },
+  "ui.chat.quota_resend": {
+   "status": "passed",
+   "result": "clean",
+   "keys_audited": 7,
+   "sha256": {
+    "en": "887b4c11f425ea373cd7c5c8ace8b81ca6b75a20ace11ba4a4a3143aa3cd340c",
+    "fr": "ebf954df45b7e837f54fc431e66e14179a3f1db64872beb773f4b9edec70fafa"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.quota_resend.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.quota_resend.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.quota_resend.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+   },
+   "findings": []
+  },
+  "ui.chat.read_ack": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 16,
+   "sha256": {
+    "en": "c2f7a40ab687c96db28b6769093d20767b6877f7ea605db0e473bc05b97c7396",
+    "fr": "fd86880c58909f0c90d35e4bd23e7fd3340ba6cab1840a0bef08c17195d5af31"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.read_ack.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.read_ack.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.read_ack.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 1
+   },
+   "findings": [
+    {
+     "id": "K1",
+     "severity": "NIT",
+     "keys": [
+      "ui.chat.read_ack.clause.pending"
+     ],
+     "current": {
+      "ui.chat.read_ack.clause.pending": "marquage comme lue en cours"
+     },
+     "proposed": {
+      "ui.chat.read_ack.clause.pending": "marquage en cours comme lue"
+     },
+     "reason": "Idiom: the trailing « en cours » sits four words from « marquage », so the chat row reads « Réunion · marquage comme lue en cours »; placing it beside the noun keeps every word and reads as one phrase."
+    }
+   ]
+  },
+  "ui.chat.sidebar_notes": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 8,
+   "sha256": {
+    "en": "daee7358a02c0f81eecab2bed4b51fd35a61945ca2ba3e57d82fa4d1f0ddf28c",
+    "fr": "1ece2c95f0870ea46463b53352af64833358bfaa914a2888e7637f6f2e8ebf9d"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.sidebar_notes.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.sidebar_notes.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.sidebar_notes.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 0
+   },
+   "findings": [
+    {
+     "id": "S1",
+     "severity": "MINOR",
+     "keys": [
+      "ui.chat.sidebar_notes.running_unread"
+     ],
+     "current": {
+      "ui.chat.sidebar_notes.running_unread": "Le daemon n’a pas pu déterminer quelles conversations sont en cours ; cette liste peut donc être incomplète."
+     },
+     "proposed": {
+      "ui.chat.sidebar_notes.running_unread": "Le service Local Operator n’a pas pu déterminer quelles conversations sont en cours ; cette liste peut donc être incomplète."
+     },
+     "reason": "Glossary drift: this is the ONLY « daemon » in the whole shipped fr catalogue; everywhere else the daemon is « le service » (ui.settings.updates.the_version_… « l’adresse du service auprès duquel elle a été lue »). The key's own sidecar note defines it as « the background Local Operator service »."
+    }
+   ]
+  },
+  "ui.chat.session_readout": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 54,
+   "sha256": {
+    "en": "613dad2f1acee22dd7d6e4b7c482b1caa8ec49938f207b8bee52a071a18c4386",
+    "fr": "db410d9e8b58647a3a4f6320df3b27dac01111c399d1e3dd8943f3040bd91982"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.session_readout.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.session_readout.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.session_readout.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 1
+   },
+   "findings": [
+    {
+     "id": "R1",
+     "severity": "MINOR",
+     "keys": [
+      "ui.chat.session_readout.access.device_bound.title"
+     ],
+     "current": {
+      "ui.chat.session_readout.access.device_bound.title": "{label} nécessite une connexion sur l’appareil"
+     },
+     "proposed": {
+      "ui.chat.session_readout.access.device_bound.title": "{label} : connexion requise sur l’appareil"
+     },
+     "reason": "Width: 46 characters against 30, on a popover title beside the composer model readout (rendered « Anthropic nécessite une connexion sur l’appareil »). The colon form keeps the whole status legible in the narrow popover; if the popover is rendered wide, keep the current wording and close this."
+    },
+    {
+     "id": "R2",
+     "severity": "NIT",
+     "keys": [
+      "ui.chat.session_readout.access.owner_unavailable.title"
+     ],
+     "current": {
+      "ui.chat.session_readout.access.owner_unavailable.title": "{owner} ne peut pas fournir l’accès"
+     },
+     "proposed": {
+      "ui.chat.session_readout.access.owner_fallback_cap (NEW key, follow-on slice)": "L’appareil propriétaire"
+     },
+     "reason": "Capitalisation on the fallback path: s3b N3 is applied and reads well with a device name, but when access.owner_fallback fills {owner} the popover title renders « l’appareil propriétaire ne peut pas fournir l’accès », beginning with a lowercase article because the fallback must stay lowercase where it is used mid-sentence (« auprès de {owner} », « via {owner} »). Fix belongs in the follow-on slice that owns owner_fallback.\n"
+    }
+   ]
+  },
+  "ui.chat.ask_queue": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 44,
+   "sha256": {
+    "en": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+    "fr": "c44134efbb0284fa40b182262f5667a80f14f87e8d096a684dbc2f2a7ed551ed"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.ask_queue.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.ask_queue.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 1
+   },
+   "findings": [
+    {
+     "id": "A1",
+     "severity": "MINOR",
+     "keys": [
+      "ui.chat.ask_queue.status.answered",
+      "ui.chat.ask_queue.response.answered"
+     ],
+     "current": {
+      "ui.chat.ask_queue.status.answered": "Répondu — remise en cours",
+      "ui.chat.ask_queue.response.answered": "Répondu — remise en cours (demande {askId})"
+     },
+     "proposed": {
+      "ui.chat.ask_queue.status.answered": "Répondue — remise en cours",
+      "ui.chat.ask_queue.response.answered": "Répondue — remise en cours (demande {askId})"
+     },
+     "reason": "Agreement/register: every sibling in this one status family agrees with « demande » (feminine) — « Refusée », « Ignorée », « Expirée », and response.declined « Demande {askId} refusée » — while status/response.answered are the only masculine « Répondu », so one ask list shows « Répondu » beside « Refusée ». (« Réponse envoyée » would also fix it if « Répondue » is judged heavy.) — remains open"
+    },
+    {
+     "id": "A2",
+     "severity": "NIT",
+     "keys": [
+      "ui.chat.ask_queue.expiry.now_short"
+     ],
+     "current": {
+      "ui.chat.ask_queue.expiry.now_short": "imminent"
+     },
+     "proposed": {
+      "ui.chat.ask_queue.expiry.now_short": "imminent"
+     },
+     "reason": "Width flag only, as s3b N5 proposed: « imminent » is 8 characters where the English narrow-band chip carries 3, in the tier that exists because the sentence does not fit. No value change; needs a rendered chip check."
+    }
+   ]
+  },
+  "ui.chat.session_spend": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 32,
+   "sha256": {
+    "en": "4de17b68d20c7a8ea35b16bdaf466290075029806aa2c95d2c72dc8a225c31dd",
+    "fr": "c68be4d9451ffb2ba28b00fa62ab8130aea8d22942c0ddfea3a0f50b108e26cf"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.session_spend.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.session_spend.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.session_spend.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 0
+   },
+   "findings": [
+    {
+     "id": "P1",
+     "severity": "MINOR",
+     "keys": [
+      "ui.chat.session_spend.summary.subagent_part"
+     ],
+     "current": {
+      "ui.chat.session_spend.summary.subagent_part": " ({amount} de sessions de sous-agents)"
+     },
+     "proposed": {
+      "ui.chat.session_spend.summary.subagent_part": " ({amount} en sessions de sous-agents)"
+     },
+     "reason": "Grammar: a sum followed by partitive « de » plus a noun is not French; rendered inside summary.total it reads « Total : 3,10 $ (1,20 $ de sessions de sous-agents) ». « en » marks the amount as the share attributable to those sessions."
+    }
+   ]
+  },
+  "ui.chat.aside": {
+   "status": "passed",
+   "result": "clean",
+   "keys_audited": 24,
+   "sha256": {
+    "en": "23591a418d92d4fbb7e67075c59a8efaee0ba9465bd8554ca2dcc51f539ad725",
+    "fr": "4142fe1cd6b6c1586899059dea74a1c2e5780250b392e3e16a05e935a6b504f9"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.aside.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.aside.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.aside.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+   },
+   "findings": []
+  },
+  "ui.chat.device_move": {
+   "status": "changes_requested",
+   "result": "changes_requested",
+   "keys_audited": 24,
+   "sha256": {
+    "en": "2983e0f36bb471841c7937259e24fd5047db0d43c1d7f655984a02a7510c5e6f",
+    "fr": "938e0c0c614c5b38ac4fb5fec73be2cbdfcfbfac811b7963f97825c750d806c7"
+   },
+   "en_path": "src/i18n/catalogues/en/ui.chat.device_move.json",
+   "fr_path": "src/i18n/catalogues/fr/ui.chat.device_move.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.device_move.context.json",
+   "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 1,
+    "MINOR": 0,
+    "NIT": 0
+   },
+   "findings": [
+    {
+     "id": "D1",
+     "severity": "MAJOR",
+     "keys": [
+      "ui.chat.device_move.result.moved.second"
+     ],
+     "current": {
+      "ui.chat.device_move.result.moved.second": "Rien ne s’exécute encore sur {name}. Envoyez un message pour l’y démarrer, ou ouvrez la conversation sur cet appareil."
+     },
+     "proposed": {
+      "ui.chat.device_move.result.moved.second": "Rien ne s’exécute encore sur {name}. Envoyez un message pour l’y démarrer, ou ouvrez la conversation sur cet appareil-là."
+     },
+     "reason": "Accuracy: the English says « open the conversation on that device » — the destination named by {name} — while « cet appareil » means THIS device. Rendered under result.moved.detail_there (« la conversation est là-bas ; la copie d’ici est supprimée ») the second line sends the reader back to the machine the conversation has just left. — reference: devicemove-accuracy-1"
+    }
+   ]
+  }
+ }
+}

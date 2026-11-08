@@ -1,0 +1,18 @@
+{
+	"ui.chat.read_ack.clause.offscreen": "滚动到结果处即可将此对话标记为已读",
+	"ui.chat.read_ack.clause.pending": "正在标记为已读",
+	"ui.chat.read_ack.clause.remote": "未读标记位于另一台设备，该设备更新后才会清除",
+	"ui.chat.read_ack.clause.remote_named": "未读标记位于{device}，该设备更新后才会清除",
+	"ui.chat.read_ack.description.offscreen": "滚动到结果处即可将此对话标记为已读。",
+	"ui.chat.read_ack.description.pending": "正在将此对话标记为已读。",
+	"ui.chat.read_ack.description.remote": "未读标记位于另一台设备。该设备更新后才会清除。",
+	"ui.chat.read_ack.description.remote_named": "未读标记位于{device}。该设备更新后才会清除。",
+	"ui.chat.read_ack.description.unsettled": "未标记为已读。{remedy}",
+	"ui.chat.read_ack.refusal.busy": "已读状态正忙，未清除未读标记。{remedy}",
+	"ui.chat.read_ack.refusal.refused": "无法写入已读状态，未清除未读标记。{remedy}",
+	"ui.chat.read_ack.refusal.unreachable": "{reason}未清除未读标记。{remedy}",
+	"ui.chat.read_ack.refusal.unreported": "未清除未读标记。{remedy}",
+	"ui.chat.read_ack.retry_remedy": "点击该对话重试",
+	"ui.chat.read_ack.retry_remedy_sentence": "点击该对话重试。",
+	"ui.chat.read_ack.unreachable_fallback": "应用无法连接后端。"
+}

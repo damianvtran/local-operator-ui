@@ -1,0 +1,14 @@
+{
+	"ui.chat.header_menu.close_asks": "Fermer les demandes",
+	"ui.chat.header_menu.close_browser": "Fermer le navigateur",
+	"ui.chat.header_menu.close_canvas": "Fermer le canvas",
+	"ui.chat.header_menu.close_code_review": "Fermer la revue de code",
+	"ui.chat.header_menu.close_console": "Fermer la console",
+	"ui.chat.header_menu.default_description": "Votre assistant IA sur votre appareil",
+	"ui.chat.header_menu.open_asks": "Ouvrir les demandes",
+	"ui.chat.header_menu.open_browser": "Ouvrir le navigateur",
+	"ui.chat.header_menu.open_canvas": "Ouvrir le canvas",
+	"ui.chat.header_menu.open_code_review": "Ouvrir la revue de code",
+	"ui.chat.header_menu.open_console": "Ouvrir la console",
+	"ui.chat.header_menu.rename_failed": "Impossible de renommer la conversation"
+}

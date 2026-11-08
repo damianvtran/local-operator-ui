@@ -1,0 +1,9 @@
+{
+	"ui.chat.quota_resend.failed": "Không gửi được. Hãy thử lại.",
+	"ui.chat.quota_resend.rate_limited": "Đã yêu cầu gần đây. Hãy thử lại sau khoảng 2 phút.",
+	"ui.chat.quota_resend.refresh_checking": "Đang kiểm tra…",
+	"ui.chat.quota_resend.refresh_failed": "Không kiểm tra được. Hãy thử lại.",
+	"ui.chat.quota_resend.refresh_unchanged": "Vừa kiểm tra xong — chưa có thay đổi.",
+	"ui.chat.quota_resend.sending": "Đang gửi…",
+	"ui.chat.quota_resend.sent": "Đã gửi. Hãy kiểm tra hộp thư đến và thư rác."
+}

@@ -1,0 +1,16 @@
+{
+	"ui.chat.composer_notes.default_not_saved": "新会话的默认模型未保存：{reason}",
+	"ui.chat.composer_notes.default_not_saved_fallback": "后端拒绝了该操作",
+	"ui.chat.composer_notes.default_saved": "新会话的默认模型：{model}",
+	"ui.chat.composer_notes.goal.done_tag": "——已完成",
+	"ui.chat.composer_notes.goal.stalled.breaker": "目标停滞：评判器无法做出判断——发送消息即可继续",
+	"ui.chat.composer_notes.goal.stalled.cap": "目标停滞：自动继续{count, plural, other {#次}}后已停止——发送消息即可继续",
+	"ui.chat.composer_notes.goal.stalled.cap_fallback": "目标停滞：已达到自动继续次数上限——发送消息即可继续",
+	"ui.chat.composer_notes.goal.stalled.unknown": "目标停滞：自动继续已停止——发送消息即可继续",
+	"ui.chat.composer_notes.hint.choose_model": "发送前先为此对话选择模型。",
+	"ui.chat.composer_notes.hint.connect_provider": "连接提供商后才能发送。",
+	"ui.chat.composer_notes.outside_mentions": "{count, plural, other {#个引用指向此会话工作目录之外；智能体读取前会请你批准。}}",
+	"ui.chat.composer_notes.skill_empty_body": "技能`{name}`的正文为空——将按原样发送你的消息",
+	"ui.chat.composer_notes.skill_load_failed": "无法加载技能`{name}`——将按原样发送你的消息",
+	"ui.chat.composer_notes.slash_needs_name": "在/{command}后输入名称，或从列表中选择一项。"
+}

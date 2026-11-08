@@ -211,18 +211,37 @@ test("LTR locales and the English fallback are byte-identical to the old output"
 			assert.doesNotMatch(out, CONTROLS, `${code} ${key}`);
 		}
 	}
-	// A key the ur catalogue does not carry falls back to ENGLISH text, which is
-	// formatted as English: no controls even though the UI locale is ur.
+	/*
+	 * THE ENGLISH-SOURCE PATH IS UNMARKED. A message that no target catalogue
+	 * answered — a per-key fallback, or a tag that resolves to no catalogue at
+	 * all — is formatted AS ENGLISH, and English text is never bidi-marked, even
+	 * when the UI tag asks for a right-to-left one.
+	 *
+	 * The probe used to be "a key the ur catalogue does not carry". The composer
+	 * wave completes ur coverage, and `check-coverage` keeps it complete, so no
+	 * bundled English key is missing from ur any more and that probe cannot be
+	 * constructed — asserted below rather than left to rot, because a gap
+	 * reappearing is exactly what the coverage gate must catch. The invariant is
+	 * then pinned where it is still reachable: a real English message with a
+	 * value-fed Latin token, rendered under the source locale and under a tag
+	 * that has no catalogue (`zh-Hant` resolves to English).
+	 */
 	const english = keys.bundledEnglish;
-	const probe = Object.keys(english).find(
+	const englishOnly = Object.keys(english).filter(
 		(key) => !(key in (keys.bundledCatalogues.ur ?? {})),
 	);
-	assert.ok(
-		probe,
-		"expected at least one English-only key to probe the fallback",
+	assert.deepEqual(
+		englishOnly,
+		[],
+		"ur carries every English key; a gap here is an untranslated fallback",
 	);
-	const text = run(probe, {}, "ur");
-	assert.equal(text, raw(probe, {}, "ur"));
+	const probe = "ui.chat.session_readout.effort.detail.not_reported";
+	const probeParams = paramsFor(english[probe]);
+	for (const tag of ["en", "zh-Hant"]) {
+		const text = run(probe, probeParams, tag);
+		assert.equal(text, raw(probe, probeParams, tag), tag);
+		assert.doesNotMatch(text, CONTROLS, `${tag} ${probe}`);
+	}
 });
 
 /** Parameters that exercise every argument the message names. */

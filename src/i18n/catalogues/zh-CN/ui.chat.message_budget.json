@@ -1,0 +1,12 @@
+{
+	"ui.chat.message_budget.bytes": "{count, plural, other {#字节}}",
+	"ui.chat.message_budget.command_chars": "此命令共{count, plural, other {#个字符}}，超过单条命令可容纳的{limit}个字符。请缩短命令，或改为将文本放入消息中发送。",
+	"ui.chat.message_budget.command_size": "此命令大小为{size}，超过单条命令可容纳的{limit}。请缩短命令，或改为将文本放入消息中发送。",
+	"ui.chat.message_budget.fork_chars": "首条消息共{count, plural, other {#个字符}}，超过单条消息可容纳的{limit}个字符。请缩短，或改为在新对话中发送。",
+	"ui.chat.message_budget.fork_size": "首条消息大小为{size}，超过单条消息可容纳的{limit}。请缩短，或改为在新对话中发送。",
+	"ui.chat.message_budget.images_size": "这些图片共{size}，超过单条消息可容纳的{limit}。请移除一张图片，或分两条消息发送。",
+	"ui.chat.message_budget.message_chars": "此消息共{count, plural, other {#个字符}}，超过单条消息可容纳的{limit}个字符。请拆分为两条消息发送。",
+	"ui.chat.message_budget.prompt_chars": "此系统提示词共{count, plural, other {#个字符}}，超过单个智能体可容纳的{limit}个字符。请缩短。",
+	"ui.chat.message_budget.prompt_size": "此系统提示词大小为{size}，超过单个智能体可容纳的{limit}。请缩短。",
+	"ui.chat.message_budget.text_size": "此消息的文本大小为{size}，超过单条消息可容纳的{limit}。请拆分为两条消息发送。"
+}

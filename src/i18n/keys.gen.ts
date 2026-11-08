@@ -202,26 +202,47 @@ import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
 import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
+import esUiChatApproval from "./catalogues/es/ui.chat.approval.json";
+import esUiChatAside from "./catalogues/es/ui.chat.aside.json";
+import esUiChatAskAnswer from "./catalogues/es/ui.chat.ask_answer.json";
+import esUiChatAskPanel from "./catalogues/es/ui.chat.ask_panel.json";
+import esUiChatAskQueue from "./catalogues/es/ui.chat.ask_queue.json";
 import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
+import esUiChatAttachmentRefusal from "./catalogues/es/ui.chat.attachment_refusal.json";
 import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
 import esUiChatBridgeReceipt from "./catalogues/es/ui.chat.bridgeReceipt.json";
 import esUiChatCanonical from "./catalogues/es/ui.chat.canonical.json";
 import esUiChatCommentaryActions from "./catalogues/es/ui.chat.commentary_actions.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
+import esUiChatComposerNotes from "./catalogues/es/ui.chat.composer_notes.json";
+import esUiChatCredentialNotice from "./catalogues/es/ui.chat.credential_notice.json";
 import esUiChatDevice from "./catalogues/es/ui.chat.device.json";
+import esUiChatDeviceMove from "./catalogues/es/ui.chat.device_move.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
 import esUiChatDirectory from "./catalogues/es/ui.chat.directory.json";
+import esUiChatFastMode from "./catalogues/es/ui.chat.fast_mode.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
+import esUiChatHeaderMenu from "./catalogues/es/ui.chat.header_menu.json";
+import esUiChatInterrupt from "./catalogues/es/ui.chat.interrupt.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatLiveUpdates from "./catalogues/es/ui.chat.live_updates.json";
+import esUiChatMessageBudget from "./catalogues/es/ui.chat.message_budget.json";
+import esUiChatMoveCwd from "./catalogues/es/ui.chat.move_cwd.json";
+import esUiChatPageChrome from "./catalogues/es/ui.chat.page_chrome.json";
 import esUiChatPickers from "./catalogues/es/ui.chat.pickers.json";
+import esUiChatQuotaResend from "./catalogues/es/ui.chat.quota_resend.json";
 import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json";
+import esUiChatReadAck from "./catalogues/es/ui.chat.read_ack.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
+import esUiChatSessionReadout from "./catalogues/es/ui.chat.session_readout.json";
+import esUiChatSessionSpend from "./catalogues/es/ui.chat.session_spend.json";
 import esUiChatSidebar from "./catalogues/es/ui.chat.sidebar.json";
 import esUiChatSidebarRowBg from "./catalogues/es/ui.chat.sidebar.row.bg.json";
+import esUiChatSidebarNotes from "./catalogues/es/ui.chat.sidebar_notes.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
+import esUiChatSlash from "./catalogues/es/ui.chat.slash.json";
 import esUiChatStatus from "./catalogues/es/ui.chat.status.json";
 import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
 import esUiChatTagGroups from "./catalogues/es/ui.chat.tag_groups.json";
@@ -335,26 +356,47 @@ import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
+import frUiChatApproval from "./catalogues/fr/ui.chat.approval.json";
+import frUiChatAside from "./catalogues/fr/ui.chat.aside.json";
+import frUiChatAskAnswer from "./catalogues/fr/ui.chat.ask_answer.json";
+import frUiChatAskPanel from "./catalogues/fr/ui.chat.ask_panel.json";
+import frUiChatAskQueue from "./catalogues/fr/ui.chat.ask_queue.json";
 import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
+import frUiChatAttachmentRefusal from "./catalogues/fr/ui.chat.attachment_refusal.json";
 import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
 import frUiChatBridgeReceipt from "./catalogues/fr/ui.chat.bridgeReceipt.json";
 import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
 import frUiChatCommentaryActions from "./catalogues/fr/ui.chat.commentary_actions.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
+import frUiChatComposerNotes from "./catalogues/fr/ui.chat.composer_notes.json";
+import frUiChatCredentialNotice from "./catalogues/fr/ui.chat.credential_notice.json";
 import frUiChatDevice from "./catalogues/fr/ui.chat.device.json";
+import frUiChatDeviceMove from "./catalogues/fr/ui.chat.device_move.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatDirectory from "./catalogues/fr/ui.chat.directory.json";
+import frUiChatFastMode from "./catalogues/fr/ui.chat.fast_mode.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
+import frUiChatHeaderMenu from "./catalogues/fr/ui.chat.header_menu.json";
+import frUiChatInterrupt from "./catalogues/fr/ui.chat.interrupt.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
+import frUiChatMessageBudget from "./catalogues/fr/ui.chat.message_budget.json";
+import frUiChatMoveCwd from "./catalogues/fr/ui.chat.move_cwd.json";
+import frUiChatPageChrome from "./catalogues/fr/ui.chat.page_chrome.json";
 import frUiChatPickers from "./catalogues/fr/ui.chat.pickers.json";
+import frUiChatQuotaResend from "./catalogues/fr/ui.chat.quota_resend.json";
 import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json";
+import frUiChatReadAck from "./catalogues/fr/ui.chat.read_ack.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
+import frUiChatSessionReadout from "./catalogues/fr/ui.chat.session_readout.json";
+import frUiChatSessionSpend from "./catalogues/fr/ui.chat.session_spend.json";
 import frUiChatSidebar from "./catalogues/fr/ui.chat.sidebar.json";
 import frUiChatSidebarRowBg from "./catalogues/fr/ui.chat.sidebar.row.bg.json";
+import frUiChatSidebarNotes from "./catalogues/fr/ui.chat.sidebar_notes.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
+import frUiChatSlash from "./catalogues/fr/ui.chat.slash.json";
 import frUiChatStatus from "./catalogues/fr/ui.chat.status.json";
 import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
 import frUiChatTagGroups from "./catalogues/fr/ui.chat.tag_groups.json";
@@ -468,26 +510,47 @@ import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
 import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
+import hiUiChatApproval from "./catalogues/hi/ui.chat.approval.json";
+import hiUiChatAside from "./catalogues/hi/ui.chat.aside.json";
+import hiUiChatAskAnswer from "./catalogues/hi/ui.chat.ask_answer.json";
+import hiUiChatAskPanel from "./catalogues/hi/ui.chat.ask_panel.json";
+import hiUiChatAskQueue from "./catalogues/hi/ui.chat.ask_queue.json";
 import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
+import hiUiChatAttachmentRefusal from "./catalogues/hi/ui.chat.attachment_refusal.json";
 import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
 import hiUiChatBridgeReceipt from "./catalogues/hi/ui.chat.bridgeReceipt.json";
 import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
 import hiUiChatCommentaryActions from "./catalogues/hi/ui.chat.commentary_actions.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
 import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
+import hiUiChatComposerNotes from "./catalogues/hi/ui.chat.composer_notes.json";
+import hiUiChatCredentialNotice from "./catalogues/hi/ui.chat.credential_notice.json";
 import hiUiChatDevice from "./catalogues/hi/ui.chat.device.json";
+import hiUiChatDeviceMove from "./catalogues/hi/ui.chat.device_move.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
 import hiUiChatDirectory from "./catalogues/hi/ui.chat.directory.json";
+import hiUiChatFastMode from "./catalogues/hi/ui.chat.fast_mode.json";
 import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
+import hiUiChatHeaderMenu from "./catalogues/hi/ui.chat.header_menu.json";
+import hiUiChatInterrupt from "./catalogues/hi/ui.chat.interrupt.json";
 import hiUiChat from "./catalogues/hi/ui.chat.json";
 import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
+import hiUiChatMessageBudget from "./catalogues/hi/ui.chat.message_budget.json";
+import hiUiChatMoveCwd from "./catalogues/hi/ui.chat.move_cwd.json";
+import hiUiChatPageChrome from "./catalogues/hi/ui.chat.page_chrome.json";
 import hiUiChatPickers from "./catalogues/hi/ui.chat.pickers.json";
+import hiUiChatQuotaResend from "./catalogues/hi/ui.chat.quota_resend.json";
 import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json";
+import hiUiChatReadAck from "./catalogues/hi/ui.chat.read_ack.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
+import hiUiChatSessionReadout from "./catalogues/hi/ui.chat.session_readout.json";
+import hiUiChatSessionSpend from "./catalogues/hi/ui.chat.session_spend.json";
 import hiUiChatSidebar from "./catalogues/hi/ui.chat.sidebar.json";
 import hiUiChatSidebarRowBg from "./catalogues/hi/ui.chat.sidebar.row.bg.json";
+import hiUiChatSidebarNotes from "./catalogues/hi/ui.chat.sidebar_notes.json";
 import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
+import hiUiChatSlash from "./catalogues/hi/ui.chat.slash.json";
 import hiUiChatStatus from "./catalogues/hi/ui.chat.status.json";
 import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
 import hiUiChatTagGroups from "./catalogues/hi/ui.chat.tag_groups.json";
@@ -601,26 +664,47 @@ import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
 import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
+import ruUiChatApproval from "./catalogues/ru/ui.chat.approval.json";
+import ruUiChatAside from "./catalogues/ru/ui.chat.aside.json";
+import ruUiChatAskAnswer from "./catalogues/ru/ui.chat.ask_answer.json";
+import ruUiChatAskPanel from "./catalogues/ru/ui.chat.ask_panel.json";
+import ruUiChatAskQueue from "./catalogues/ru/ui.chat.ask_queue.json";
 import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
+import ruUiChatAttachmentRefusal from "./catalogues/ru/ui.chat.attachment_refusal.json";
 import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
 import ruUiChatBridgeReceipt from "./catalogues/ru/ui.chat.bridgeReceipt.json";
 import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
 import ruUiChatCommentaryActions from "./catalogues/ru/ui.chat.commentary_actions.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
+import ruUiChatComposerNotes from "./catalogues/ru/ui.chat.composer_notes.json";
+import ruUiChatCredentialNotice from "./catalogues/ru/ui.chat.credential_notice.json";
 import ruUiChatDevice from "./catalogues/ru/ui.chat.device.json";
+import ruUiChatDeviceMove from "./catalogues/ru/ui.chat.device_move.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
 import ruUiChatDirectory from "./catalogues/ru/ui.chat.directory.json";
+import ruUiChatFastMode from "./catalogues/ru/ui.chat.fast_mode.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
+import ruUiChatHeaderMenu from "./catalogues/ru/ui.chat.header_menu.json";
+import ruUiChatInterrupt from "./catalogues/ru/ui.chat.interrupt.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
 import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
+import ruUiChatMessageBudget from "./catalogues/ru/ui.chat.message_budget.json";
+import ruUiChatMoveCwd from "./catalogues/ru/ui.chat.move_cwd.json";
+import ruUiChatPageChrome from "./catalogues/ru/ui.chat.page_chrome.json";
 import ruUiChatPickers from "./catalogues/ru/ui.chat.pickers.json";
+import ruUiChatQuotaResend from "./catalogues/ru/ui.chat.quota_resend.json";
 import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json";
+import ruUiChatReadAck from "./catalogues/ru/ui.chat.read_ack.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
+import ruUiChatSessionReadout from "./catalogues/ru/ui.chat.session_readout.json";
+import ruUiChatSessionSpend from "./catalogues/ru/ui.chat.session_spend.json";
 import ruUiChatSidebar from "./catalogues/ru/ui.chat.sidebar.json";
 import ruUiChatSidebarRowBg from "./catalogues/ru/ui.chat.sidebar.row.bg.json";
+import ruUiChatSidebarNotes from "./catalogues/ru/ui.chat.sidebar_notes.json";
 import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
+import ruUiChatSlash from "./catalogues/ru/ui.chat.slash.json";
 import ruUiChatStatus from "./catalogues/ru/ui.chat.status.json";
 import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
 import ruUiChatTagGroups from "./catalogues/ru/ui.chat.tag_groups.json";
@@ -734,26 +818,47 @@ import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
 import urUiBrowser from "./catalogues/ur/ui.browser.json";
 import urUiCanvas from "./catalogues/ur/ui.canvas.json";
 import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
+import urUiChatApproval from "./catalogues/ur/ui.chat.approval.json";
+import urUiChatAside from "./catalogues/ur/ui.chat.aside.json";
+import urUiChatAskAnswer from "./catalogues/ur/ui.chat.ask_answer.json";
+import urUiChatAskPanel from "./catalogues/ur/ui.chat.ask_panel.json";
+import urUiChatAskQueue from "./catalogues/ur/ui.chat.ask_queue.json";
 import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
+import urUiChatAttachmentRefusal from "./catalogues/ur/ui.chat.attachment_refusal.json";
 import urUiChatAttachments from "./catalogues/ur/ui.chat.attachments.json";
 import urUiChatBridgeReceipt from "./catalogues/ur/ui.chat.bridgeReceipt.json";
 import urUiChatCanonical from "./catalogues/ur/ui.chat.canonical.json";
 import urUiChatCommentaryActions from "./catalogues/ur/ui.chat.commentary_actions.json";
 import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
 import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
+import urUiChatComposerNotes from "./catalogues/ur/ui.chat.composer_notes.json";
+import urUiChatCredentialNotice from "./catalogues/ur/ui.chat.credential_notice.json";
 import urUiChatDevice from "./catalogues/ur/ui.chat.device.json";
+import urUiChatDeviceMove from "./catalogues/ur/ui.chat.device_move.json";
 import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
 import urUiChatDirectory from "./catalogues/ur/ui.chat.directory.json";
+import urUiChatFastMode from "./catalogues/ur/ui.chat.fast_mode.json";
 import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
+import urUiChatHeaderMenu from "./catalogues/ur/ui.chat.header_menu.json";
+import urUiChatInterrupt from "./catalogues/ur/ui.chat.interrupt.json";
 import urUiChat from "./catalogues/ur/ui.chat.json";
 import urUiChatLiveUpdates from "./catalogues/ur/ui.chat.live_updates.json";
+import urUiChatMessageBudget from "./catalogues/ur/ui.chat.message_budget.json";
+import urUiChatMoveCwd from "./catalogues/ur/ui.chat.move_cwd.json";
+import urUiChatPageChrome from "./catalogues/ur/ui.chat.page_chrome.json";
 import urUiChatPickers from "./catalogues/ur/ui.chat.pickers.json";
+import urUiChatQuotaResend from "./catalogues/ur/ui.chat.quota_resend.json";
 import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json";
+import urUiChatReadAck from "./catalogues/ur/ui.chat.read_ack.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
+import urUiChatSessionReadout from "./catalogues/ur/ui.chat.session_readout.json";
+import urUiChatSessionSpend from "./catalogues/ur/ui.chat.session_spend.json";
 import urUiChatSidebar from "./catalogues/ur/ui.chat.sidebar.json";
 import urUiChatSidebarRowBg from "./catalogues/ur/ui.chat.sidebar.row.bg.json";
+import urUiChatSidebarNotes from "./catalogues/ur/ui.chat.sidebar_notes.json";
 import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
+import urUiChatSlash from "./catalogues/ur/ui.chat.slash.json";
 import urUiChatStatus from "./catalogues/ur/ui.chat.status.json";
 import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
 import urUiChatTagGroups from "./catalogues/ur/ui.chat.tag_groups.json";
@@ -867,26 +972,47 @@ import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
 import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
+import viUiChatApproval from "./catalogues/vi/ui.chat.approval.json";
+import viUiChatAside from "./catalogues/vi/ui.chat.aside.json";
+import viUiChatAskAnswer from "./catalogues/vi/ui.chat.ask_answer.json";
+import viUiChatAskPanel from "./catalogues/vi/ui.chat.ask_panel.json";
+import viUiChatAskQueue from "./catalogues/vi/ui.chat.ask_queue.json";
 import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
+import viUiChatAttachmentRefusal from "./catalogues/vi/ui.chat.attachment_refusal.json";
 import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
 import viUiChatBridgeReceipt from "./catalogues/vi/ui.chat.bridgeReceipt.json";
 import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
 import viUiChatCommentaryActions from "./catalogues/vi/ui.chat.commentary_actions.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
 import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
+import viUiChatComposerNotes from "./catalogues/vi/ui.chat.composer_notes.json";
+import viUiChatCredentialNotice from "./catalogues/vi/ui.chat.credential_notice.json";
 import viUiChatDevice from "./catalogues/vi/ui.chat.device.json";
+import viUiChatDeviceMove from "./catalogues/vi/ui.chat.device_move.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
 import viUiChatDirectory from "./catalogues/vi/ui.chat.directory.json";
+import viUiChatFastMode from "./catalogues/vi/ui.chat.fast_mode.json";
 import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
+import viUiChatHeaderMenu from "./catalogues/vi/ui.chat.header_menu.json";
+import viUiChatInterrupt from "./catalogues/vi/ui.chat.interrupt.json";
 import viUiChat from "./catalogues/vi/ui.chat.json";
 import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
+import viUiChatMessageBudget from "./catalogues/vi/ui.chat.message_budget.json";
+import viUiChatMoveCwd from "./catalogues/vi/ui.chat.move_cwd.json";
+import viUiChatPageChrome from "./catalogues/vi/ui.chat.page_chrome.json";
 import viUiChatPickers from "./catalogues/vi/ui.chat.pickers.json";
+import viUiChatQuotaResend from "./catalogues/vi/ui.chat.quota_resend.json";
 import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json";
+import viUiChatReadAck from "./catalogues/vi/ui.chat.read_ack.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
+import viUiChatSessionReadout from "./catalogues/vi/ui.chat.session_readout.json";
+import viUiChatSessionSpend from "./catalogues/vi/ui.chat.session_spend.json";
 import viUiChatSidebar from "./catalogues/vi/ui.chat.sidebar.json";
 import viUiChatSidebarRowBg from "./catalogues/vi/ui.chat.sidebar.row.bg.json";
+import viUiChatSidebarNotes from "./catalogues/vi/ui.chat.sidebar_notes.json";
 import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
+import viUiChatSlash from "./catalogues/vi/ui.chat.slash.json";
 import viUiChatStatus from "./catalogues/vi/ui.chat.status.json";
 import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
 import viUiChatTagGroups from "./catalogues/vi/ui.chat.tag_groups.json";
@@ -1000,26 +1126,47 @@ import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
 import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
+import zhCNUiChatApproval from "./catalogues/zh-CN/ui.chat.approval.json";
+import zhCNUiChatAside from "./catalogues/zh-CN/ui.chat.aside.json";
+import zhCNUiChatAskAnswer from "./catalogues/zh-CN/ui.chat.ask_answer.json";
+import zhCNUiChatAskPanel from "./catalogues/zh-CN/ui.chat.ask_panel.json";
+import zhCNUiChatAskQueue from "./catalogues/zh-CN/ui.chat.ask_queue.json";
 import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
+import zhCNUiChatAttachmentRefusal from "./catalogues/zh-CN/ui.chat.attachment_refusal.json";
 import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
 import zhCNUiChatBridgeReceipt from "./catalogues/zh-CN/ui.chat.bridgeReceipt.json";
 import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
 import zhCNUiChatCommentaryActions from "./catalogues/zh-CN/ui.chat.commentary_actions.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
 import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
+import zhCNUiChatComposerNotes from "./catalogues/zh-CN/ui.chat.composer_notes.json";
+import zhCNUiChatCredentialNotice from "./catalogues/zh-CN/ui.chat.credential_notice.json";
 import zhCNUiChatDevice from "./catalogues/zh-CN/ui.chat.device.json";
+import zhCNUiChatDeviceMove from "./catalogues/zh-CN/ui.chat.device_move.json";
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
 import zhCNUiChatDirectory from "./catalogues/zh-CN/ui.chat.directory.json";
+import zhCNUiChatFastMode from "./catalogues/zh-CN/ui.chat.fast_mode.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
+import zhCNUiChatHeaderMenu from "./catalogues/zh-CN/ui.chat.header_menu.json";
+import zhCNUiChatInterrupt from "./catalogues/zh-CN/ui.chat.interrupt.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
 import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
+import zhCNUiChatMessageBudget from "./catalogues/zh-CN/ui.chat.message_budget.json";
+import zhCNUiChatMoveCwd from "./catalogues/zh-CN/ui.chat.move_cwd.json";
+import zhCNUiChatPageChrome from "./catalogues/zh-CN/ui.chat.page_chrome.json";
 import zhCNUiChatPickers from "./catalogues/zh-CN/ui.chat.pickers.json";
+import zhCNUiChatQuotaResend from "./catalogues/zh-CN/ui.chat.quota_resend.json";
 import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session.json";
+import zhCNUiChatReadAck from "./catalogues/zh-CN/ui.chat.read_ack.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
+import zhCNUiChatSessionReadout from "./catalogues/zh-CN/ui.chat.session_readout.json";
+import zhCNUiChatSessionSpend from "./catalogues/zh-CN/ui.chat.session_spend.json";
 import zhCNUiChatSidebar from "./catalogues/zh-CN/ui.chat.sidebar.json";
 import zhCNUiChatSidebarRowBg from "./catalogues/zh-CN/ui.chat.sidebar.row.bg.json";
+import zhCNUiChatSidebarNotes from "./catalogues/zh-CN/ui.chat.sidebar_notes.json";
 import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
+import zhCNUiChatSlash from "./catalogues/zh-CN/ui.chat.slash.json";
 import zhCNUiChatStatus from "./catalogues/zh-CN/ui.chat.status.json";
 import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
 import zhCNUiChatTagGroups from "./catalogues/zh-CN/ui.chat.tag_groups.json";
@@ -1298,26 +1445,47 @@ export const bundledCatalogues: Readonly<
 		...esUiBrowser,
 		...esUiCanvas,
 		...esUiChatAnalytics,
+		...esUiChatApproval,
+		...esUiChatAside,
+		...esUiChatAskAnswer,
+		...esUiChatAskPanel,
+		...esUiChatAskQueue,
 		...esUiChatAsks,
+		...esUiChatAttachmentRefusal,
 		...esUiChatAttachments,
 		...esUiChatBridgeReceipt,
 		...esUiChatCanonical,
 		...esUiChatCommentaryActions,
 		...esUiChatComposer,
 		...esUiChatComposerMedia,
+		...esUiChatComposerNotes,
+		...esUiChatCredentialNotice,
 		...esUiChatDevice,
+		...esUiChatDeviceMove,
 		...esUiChatDialogs,
 		...esUiChatDirectory,
+		...esUiChatFastMode,
 		...esUiChatHeader,
+		...esUiChatHeaderMenu,
+		...esUiChatInterrupt,
 		...esUiChat,
 		...esUiChatLiveUpdates,
+		...esUiChatMessageBudget,
+		...esUiChatMoveCwd,
+		...esUiChatPageChrome,
 		...esUiChatPickers,
+		...esUiChatQuotaResend,
 		...esUiChatRadientSession,
+		...esUiChatReadAck,
 		...esUiChatResponseActions,
 		...esUiChatRunDetails,
+		...esUiChatSessionReadout,
+		...esUiChatSessionSpend,
 		...esUiChatSidebar,
 		...esUiChatSidebarRowBg,
+		...esUiChatSidebarNotes,
 		...esUiChatSidebarView,
+		...esUiChatSlash,
 		...esUiChatStatus,
 		...esUiChatTagDialogs,
 		...esUiChatTagGroups,
@@ -1433,26 +1601,47 @@ export const bundledCatalogues: Readonly<
 		...frUiBrowser,
 		...frUiCanvas,
 		...frUiChatAnalytics,
+		...frUiChatApproval,
+		...frUiChatAside,
+		...frUiChatAskAnswer,
+		...frUiChatAskPanel,
+		...frUiChatAskQueue,
 		...frUiChatAsks,
+		...frUiChatAttachmentRefusal,
 		...frUiChatAttachments,
 		...frUiChatBridgeReceipt,
 		...frUiChatCanonical,
 		...frUiChatCommentaryActions,
 		...frUiChatComposer,
 		...frUiChatComposerMedia,
+		...frUiChatComposerNotes,
+		...frUiChatCredentialNotice,
 		...frUiChatDevice,
+		...frUiChatDeviceMove,
 		...frUiChatDialogs,
 		...frUiChatDirectory,
+		...frUiChatFastMode,
 		...frUiChatHeader,
+		...frUiChatHeaderMenu,
+		...frUiChatInterrupt,
 		...frUiChat,
 		...frUiChatLiveUpdates,
+		...frUiChatMessageBudget,
+		...frUiChatMoveCwd,
+		...frUiChatPageChrome,
 		...frUiChatPickers,
+		...frUiChatQuotaResend,
 		...frUiChatRadientSession,
+		...frUiChatReadAck,
 		...frUiChatResponseActions,
 		...frUiChatRunDetails,
+		...frUiChatSessionReadout,
+		...frUiChatSessionSpend,
 		...frUiChatSidebar,
 		...frUiChatSidebarRowBg,
+		...frUiChatSidebarNotes,
 		...frUiChatSidebarView,
+		...frUiChatSlash,
 		...frUiChatStatus,
 		...frUiChatTagDialogs,
 		...frUiChatTagGroups,
@@ -1568,26 +1757,47 @@ export const bundledCatalogues: Readonly<
 		...hiUiBrowser,
 		...hiUiCanvas,
 		...hiUiChatAnalytics,
+		...hiUiChatApproval,
+		...hiUiChatAside,
+		...hiUiChatAskAnswer,
+		...hiUiChatAskPanel,
+		...hiUiChatAskQueue,
 		...hiUiChatAsks,
+		...hiUiChatAttachmentRefusal,
 		...hiUiChatAttachments,
 		...hiUiChatBridgeReceipt,
 		...hiUiChatCanonical,
 		...hiUiChatCommentaryActions,
 		...hiUiChatComposer,
 		...hiUiChatComposerMedia,
+		...hiUiChatComposerNotes,
+		...hiUiChatCredentialNotice,
 		...hiUiChatDevice,
+		...hiUiChatDeviceMove,
 		...hiUiChatDialogs,
 		...hiUiChatDirectory,
+		...hiUiChatFastMode,
 		...hiUiChatHeader,
+		...hiUiChatHeaderMenu,
+		...hiUiChatInterrupt,
 		...hiUiChat,
 		...hiUiChatLiveUpdates,
+		...hiUiChatMessageBudget,
+		...hiUiChatMoveCwd,
+		...hiUiChatPageChrome,
 		...hiUiChatPickers,
+		...hiUiChatQuotaResend,
 		...hiUiChatRadientSession,
+		...hiUiChatReadAck,
 		...hiUiChatResponseActions,
 		...hiUiChatRunDetails,
+		...hiUiChatSessionReadout,
+		...hiUiChatSessionSpend,
 		...hiUiChatSidebar,
 		...hiUiChatSidebarRowBg,
+		...hiUiChatSidebarNotes,
 		...hiUiChatSidebarView,
+		...hiUiChatSlash,
 		...hiUiChatStatus,
 		...hiUiChatTagDialogs,
 		...hiUiChatTagGroups,
@@ -1703,26 +1913,47 @@ export const bundledCatalogues: Readonly<
 		...ruUiBrowser,
 		...ruUiCanvas,
 		...ruUiChatAnalytics,
+		...ruUiChatApproval,
+		...ruUiChatAside,
+		...ruUiChatAskAnswer,
+		...ruUiChatAskPanel,
+		...ruUiChatAskQueue,
 		...ruUiChatAsks,
+		...ruUiChatAttachmentRefusal,
 		...ruUiChatAttachments,
 		...ruUiChatBridgeReceipt,
 		...ruUiChatCanonical,
 		...ruUiChatCommentaryActions,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
+		...ruUiChatComposerNotes,
+		...ruUiChatCredentialNotice,
 		...ruUiChatDevice,
+		...ruUiChatDeviceMove,
 		...ruUiChatDialogs,
 		...ruUiChatDirectory,
+		...ruUiChatFastMode,
 		...ruUiChatHeader,
+		...ruUiChatHeaderMenu,
+		...ruUiChatInterrupt,
 		...ruUiChat,
 		...ruUiChatLiveUpdates,
+		...ruUiChatMessageBudget,
+		...ruUiChatMoveCwd,
+		...ruUiChatPageChrome,
 		...ruUiChatPickers,
+		...ruUiChatQuotaResend,
 		...ruUiChatRadientSession,
+		...ruUiChatReadAck,
 		...ruUiChatResponseActions,
 		...ruUiChatRunDetails,
+		...ruUiChatSessionReadout,
+		...ruUiChatSessionSpend,
 		...ruUiChatSidebar,
 		...ruUiChatSidebarRowBg,
+		...ruUiChatSidebarNotes,
 		...ruUiChatSidebarView,
+		...ruUiChatSlash,
 		...ruUiChatStatus,
 		...ruUiChatTagDialogs,
 		...ruUiChatTagGroups,
@@ -1838,26 +2069,47 @@ export const bundledCatalogues: Readonly<
 		...urUiBrowser,
 		...urUiCanvas,
 		...urUiChatAnalytics,
+		...urUiChatApproval,
+		...urUiChatAside,
+		...urUiChatAskAnswer,
+		...urUiChatAskPanel,
+		...urUiChatAskQueue,
 		...urUiChatAsks,
+		...urUiChatAttachmentRefusal,
 		...urUiChatAttachments,
 		...urUiChatBridgeReceipt,
 		...urUiChatCanonical,
 		...urUiChatCommentaryActions,
 		...urUiChatComposer,
 		...urUiChatComposerMedia,
+		...urUiChatComposerNotes,
+		...urUiChatCredentialNotice,
 		...urUiChatDevice,
+		...urUiChatDeviceMove,
 		...urUiChatDialogs,
 		...urUiChatDirectory,
+		...urUiChatFastMode,
 		...urUiChatHeader,
+		...urUiChatHeaderMenu,
+		...urUiChatInterrupt,
 		...urUiChat,
 		...urUiChatLiveUpdates,
+		...urUiChatMessageBudget,
+		...urUiChatMoveCwd,
+		...urUiChatPageChrome,
 		...urUiChatPickers,
+		...urUiChatQuotaResend,
 		...urUiChatRadientSession,
+		...urUiChatReadAck,
 		...urUiChatResponseActions,
 		...urUiChatRunDetails,
+		...urUiChatSessionReadout,
+		...urUiChatSessionSpend,
 		...urUiChatSidebar,
 		...urUiChatSidebarRowBg,
+		...urUiChatSidebarNotes,
 		...urUiChatSidebarView,
+		...urUiChatSlash,
 		...urUiChatStatus,
 		...urUiChatTagDialogs,
 		...urUiChatTagGroups,
@@ -1973,26 +2225,47 @@ export const bundledCatalogues: Readonly<
 		...viUiBrowser,
 		...viUiCanvas,
 		...viUiChatAnalytics,
+		...viUiChatApproval,
+		...viUiChatAside,
+		...viUiChatAskAnswer,
+		...viUiChatAskPanel,
+		...viUiChatAskQueue,
 		...viUiChatAsks,
+		...viUiChatAttachmentRefusal,
 		...viUiChatAttachments,
 		...viUiChatBridgeReceipt,
 		...viUiChatCanonical,
 		...viUiChatCommentaryActions,
 		...viUiChatComposer,
 		...viUiChatComposerMedia,
+		...viUiChatComposerNotes,
+		...viUiChatCredentialNotice,
 		...viUiChatDevice,
+		...viUiChatDeviceMove,
 		...viUiChatDialogs,
 		...viUiChatDirectory,
+		...viUiChatFastMode,
 		...viUiChatHeader,
+		...viUiChatHeaderMenu,
+		...viUiChatInterrupt,
 		...viUiChat,
 		...viUiChatLiveUpdates,
+		...viUiChatMessageBudget,
+		...viUiChatMoveCwd,
+		...viUiChatPageChrome,
 		...viUiChatPickers,
+		...viUiChatQuotaResend,
 		...viUiChatRadientSession,
+		...viUiChatReadAck,
 		...viUiChatResponseActions,
 		...viUiChatRunDetails,
+		...viUiChatSessionReadout,
+		...viUiChatSessionSpend,
 		...viUiChatSidebar,
 		...viUiChatSidebarRowBg,
+		...viUiChatSidebarNotes,
 		...viUiChatSidebarView,
+		...viUiChatSlash,
 		...viUiChatStatus,
 		...viUiChatTagDialogs,
 		...viUiChatTagGroups,
@@ -2108,26 +2381,47 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiBrowser,
 		...zhCNUiCanvas,
 		...zhCNUiChatAnalytics,
+		...zhCNUiChatApproval,
+		...zhCNUiChatAside,
+		...zhCNUiChatAskAnswer,
+		...zhCNUiChatAskPanel,
+		...zhCNUiChatAskQueue,
 		...zhCNUiChatAsks,
+		...zhCNUiChatAttachmentRefusal,
 		...zhCNUiChatAttachments,
 		...zhCNUiChatBridgeReceipt,
 		...zhCNUiChatCanonical,
 		...zhCNUiChatCommentaryActions,
 		...zhCNUiChatComposer,
 		...zhCNUiChatComposerMedia,
+		...zhCNUiChatComposerNotes,
+		...zhCNUiChatCredentialNotice,
 		...zhCNUiChatDevice,
+		...zhCNUiChatDeviceMove,
 		...zhCNUiChatDialogs,
 		...zhCNUiChatDirectory,
+		...zhCNUiChatFastMode,
 		...zhCNUiChatHeader,
+		...zhCNUiChatHeaderMenu,
+		...zhCNUiChatInterrupt,
 		...zhCNUiChat,
 		...zhCNUiChatLiveUpdates,
+		...zhCNUiChatMessageBudget,
+		...zhCNUiChatMoveCwd,
+		...zhCNUiChatPageChrome,
 		...zhCNUiChatPickers,
+		...zhCNUiChatQuotaResend,
 		...zhCNUiChatRadientSession,
+		...zhCNUiChatReadAck,
 		...zhCNUiChatResponseActions,
 		...zhCNUiChatRunDetails,
+		...zhCNUiChatSessionReadout,
+		...zhCNUiChatSessionSpend,
 		...zhCNUiChatSidebar,
 		...zhCNUiChatSidebarRowBg,
+		...zhCNUiChatSidebarNotes,
 		...zhCNUiChatSidebarView,
+		...zhCNUiChatSlash,
 		...zhCNUiChatStatus,
 		...zhCNUiChatTagDialogs,
 		...zhCNUiChatTagGroups,
