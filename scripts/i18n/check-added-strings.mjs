@@ -285,7 +285,16 @@ export function findAddedCopyViolations(
 		if (!isAdded(line) || exempt(node)) return;
 		for (const sentence of copyTexts(node)) {
 			const text = collapse(sentence);
-			if (LETTER_RE.test(text)) findings.push({ line, kind, text });
+			/*
+			 * A template sink is a SENTENCE: it must carry a space as well as a
+			 * letter. A single hyphenated or underscored token (`machine-token`,
+			 * `openai/gpt-5`) is an identifier, not copy, and flagging it would
+			 * make the shape report on the code it exists to leave alone. The
+			 * JSX-text and attribute paths still catch one-word copy, which is
+			 * where one-word copy actually lives.
+			 */
+			if (LETTER_RE.test(text) && /\s/.test(text))
+				findings.push({ line, kind, text });
 		}
 	};
 	const visit = (node) => {
