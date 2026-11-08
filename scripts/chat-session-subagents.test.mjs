@@ -28,6 +28,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/chat-session-subagents";',
 			'export { isRunningRow, sectionOf } from "./src/renderer/src/features/chat/chat-list-sections";',
 			'export { statusFrameCounts } from "./src/renderer/src/shared/hooks/use-desktop-feed";',
+			'export { setLocale } from "./src/i18n/locale";',
 		].join("\n"),
 		resolveDir: ROOT,
 		loader: "ts",
@@ -47,6 +48,8 @@ const {
 	backgroundWorkClause,
 	isRunningRow,
 	statusFrameCounts,
+	clauseReplacesLabel,
+	setLocale,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -140,7 +143,9 @@ test("remote rows: same rule; link down or uncertain reach stands down", () => {
 });
 
 test("the clause: '1 subagent, 1 job running' and the wire's ' · ' spelling", () => {
-	const c = (code, fields) => backgroundWorkClause(row(code, fields));
+	// A current backend: the flag is set whenever these counts are positive.
+	const c = (code, fields) =>
+		backgroundWorkClause(row(code, { background_work: true, ...fields }));
 	assert.equal(
 		c("idle", { subagents_running: 1, jobs_running: 1 }),
 		"1 subagent, 1 job running",
@@ -159,9 +164,78 @@ test("the clause: '1 subagent, 1 job running' and the wire's ' · ' spelling", (
 	// The wait is spoken only when it is the sole fact.
 	assert.equal(c("idle", { waiting_on: 1 }), "Waiting on background work");
 	assert.equal(c("idle", { waiting_on: 1, jobs_running: 1 }), "1 job running");
+	// A `waiting` row's label already says the wait (QA round 1, Q2).
+	assert.equal(c("waiting", { waiting_on: 1 }), "");
 	// Nothing positive, nothing said; unknown is not zero but is not a fact.
 	assert.equal(c("idle", {}), "");
 	assert.equal(c("idle", { subagents_running: null, jobs_running: 0 }), "");
+});
+
+test("the clause reads the section's predicate (review R1/R3, QA Q1)", () => {
+	// Flag false: core says nothing runs, so nothing is said, whatever the counts.
+	const quiet = row("complete", {
+		background_work: false,
+		subagents_running: 2,
+		jobs_running: 1,
+		waiting_on: 1,
+	});
+	assert.equal(isRunningRow(quiet), false);
+	assert.equal(backgroundWorkClause(quiet), "");
+	// Older backend (no flag), a row the section and lane do not mark: only
+	// main's own subagent sentence survives; the jobs and wait parts this change
+	// added stay silent, so the row never claims a job the lane does not show.
+	const old = row("complete", { subagents_running: 2, jobs_running: 1 });
+	assert.equal(isRunningRow(old), false);
+	assert.equal(backgroundWorkClause(old), "2 subagents running");
+	assert.equal(backgroundWorkClause(row("idle", { jobs_running: 1 })), "");
+	assert.equal(backgroundWorkClause(row("idle", { waiting_on: 1 })), "");
+	assert.equal(
+		backgroundWorkClause(row("attached", { subagents_queued: 2 })),
+		"2 subagents queued",
+	);
+	// Older backend, delegating (the code-only rule marks it): the job speaks.
+	assert.equal(
+		backgroundWorkClause(
+			row("delegating", { subagents_running: 1, jobs_running: 1 }),
+		),
+		"1 job running",
+	);
+});
+
+test("a resting label yields to the clause; a louder one keeps it (design D1)", () => {
+	const clause = "1 subagent, 1 job running";
+	for (const code of ["idle", "recent", undefined]) {
+		const r = code === undefined ? { session_id: "x" } : row(code);
+		assert.equal(clauseReplacesLabel(r, clause), true, String(code));
+		assert.equal(clauseReplacesLabel(r, ""), false, String(code));
+	}
+	for (const code of ["complete", "approval", "attached", "error", "waiting"]) {
+		assert.equal(clauseReplacesLabel(row(code), clause), false, code);
+	}
+});
+
+test("list joins use the locale's conjunction, not unit spacing (i18n I1)", () => {
+	const fields = {
+		background_work: true,
+		subagents_running: 1,
+		jobs_running: 1,
+	};
+	try {
+		setLocale("ru");
+		const ru = backgroundWorkClause(row("idle", fields));
+		// CLDR unit/short joined these with a bare space: "1 субагент 1 задание".
+		assert.match(ru, /1 субагент, 1 задание/u, ru);
+		setLocale("zh-CN");
+		const zh = backgroundWorkClause(row("idle", fields));
+		// ... and with nothing at all in zh-CN: "1个子智能体1个任务".
+		assert.match(zh, /1个子智能体、1个任务/u, zh);
+	} finally {
+		setLocale("en");
+	}
+	assert.equal(
+		backgroundWorkClause(row("idle", fields)),
+		"1 subagent, 1 job running",
+	);
 });
 
 test("delegating: the label already spells the subagent counts", () => {

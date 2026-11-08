@@ -7263,8 +7263,46 @@ async function sceneBackgroundWork(cdp) {
 		`[...document.querySelectorAll('[role="tooltip"]')].map((e) => e.textContent).join(" | ")`,
 	);
 	note("tooltip under the pointer", tooltip);
+	/*
+	 * Design review round 1, D1: on a resting code the clause IS the status line,
+	 * so the tooltip never reads "Idle · 1 subagent, 1 job running" on a row the
+	 * list files under Running.
+	 */
+	check(
+		"AFTER: the resting row's tooltip states the clause alone, not 'Idle · …'",
+		tooltip.includes("1 subagent, 1 job running") &&
+			!/\b(Idle|Recent) · /u.test(tooltip),
+		tooltip,
+	);
 	await capture(cdp, "bg-running-hover");
 	await parkPointer(cdp);
+	/*
+	 * FORCED COLORS (design review round 1, D2). The lane is an SVG rect with
+	 * `fill=currentColor` precisely because a `background-color` span is erased
+	 * in forced-colors mode while `color` is forced to a system colour; this is
+	 * the frame that shows it, emulated through CDP the way the reduced-motion
+	 * legs above emulate theirs, and reset before the transition is recorded.
+	 */
+	await cdp.send("Emulation.setEmulatedMedia", {
+		features: [{ name: "forced-colors", value: "active" }],
+	});
+	await wait(400);
+	const forced = await cdp.evaluate(
+		`(() => { const lane = document.querySelector('[data-session-row="${TARGET}"] [data-background-work]'); if (!lane) return null; const r = lane.getBoundingClientRect(); const probe = document.createElement("span"); probe.style.color = "CanvasText"; document.body.append(probe); const canvasText = getComputedStyle(probe).color; probe.remove(); return { active: matchMedia("(forced-colors: active)").matches, w: r.width, h: r.height, canvasText, rectFill: getComputedStyle(lane.querySelector("rect")).fill }; })()`,
+	);
+	note("lane under forced-colors", JSON.stringify(forced));
+	check(
+		"forced-colors: the lane still paints, 10x2, in the system's CanvasText",
+		forced !== null &&
+			forced.active === true &&
+			forced.w === 10 &&
+			forced.h === 2 &&
+			forced.rectFill === forced.canvasText,
+		JSON.stringify(forced),
+	);
+	await capture(cdp, "bg-running-forced-colors");
+	await cdp.send("Emulation.setEmulatedMedia", { features: [] });
+	await wait(250);
 	/* The recorder: one sample per painted frame until the row has re-filed. */
 	await cdp.evaluate(
 		`(() => { window.__bgSamples = []; const tick = () => { const s = ${stateOf(TARGET)}; const last = window.__bgSamples.at(-1); const key = s ? s.section + "|" + s.lane : "absent"; if (!last || last.key !== key) window.__bgSamples.push({ key, at: performance.now() }); window.__bgRaf = requestAnimationFrame(tick); }; tick(); return true; })()`,
@@ -17410,10 +17448,13 @@ async function scenePinnedReorder(cdp) {
 				panel: (() => { const el = document.querySelector('[data-sidebar-region="scroller"]'); return el ? box(el) : null; })(),
 				indicator: indicator ? { y: Math.round(indicator.getBoundingClientRect().top), h: Math.round(indicator.getBoundingClientRect().height) } : null,
 				dragging: rows.filter((node) => node.hasAttribute("data-dragging")).map((node) => node.getAttribute("data-session-row")),
-				/* #691's per-row mark (main's subagentMarks), counted here because this
-				   branch folds main's row render into the same sessionRow: the count is
-				   what says whether the fold can have moved these frames' pixels at all. */
-				subagentMarks: section.querySelectorAll("[data-subagent-mark]").length,
+				/* The row's background-work mark, counted here because these frames
+				   are validated by byte comparison: the count is what says whether a
+				   row mark can have moved these frames' pixels at all. It was #691's
+				   trio ([data-subagent-mark]) until the running lane retired it; the
+				   lane's hook is [data-background-work] (agent review round 1, R2) -
+				   counting the retired hook would read a constant 0 and pass blind. */
+				backgroundLanes: section.querySelectorAll("[data-background-work]").length,
 				announcement: live ? live.textContent : null,
 				stored: stored,
 				storedView: storedView,
@@ -17654,18 +17695,19 @@ async function scenePinnedReorder(cdp) {
 			JSON.stringify(boot.order),
 		);
 		/*
-		 * AND MAIN'S OWN ROW MARK HAS NOTHING TO DRAW IN THIS FIXTURE (#691, folded in
-		 * after these frames were first taken). The stand-in's rows carry no subagent
-		 * counts, so `subagentMarks` returns nothing for any of them - which is the fact
+		 * AND THE ROW'S BACKGROUND-WORK MARK HAS NOTHING TO DRAW IN THIS FIXTURE (#691's
+		 * trio, folded in after these frames were first taken, now the running lane).
+		 * The stand-in's rows carry no background work, so `hasBackgroundWork` draws
+		 * the lane under none of them - which is the fact
 		 * that lets the fold be validated as a BYTE COMPARISON rather than a re-shoot of
 		 * the whole set. Stated as a check rather than a note because a fixture that grew
 		 * a subagent count would start moving the row's layout, and this is where that
 		 * would be caught.
 		 */
 		check(
-			"the folded-in subagent mark draws nothing on the stand-in's rows",
-			boot.subagentMarks === 0,
-			`${boot.subagentMarks} marker(s) in the pinned section`,
+			"the background-work lane draws nothing on the stand-in's rows",
+			boot.backgroundLanes === 0,
+			`${boot.backgroundLanes} lane(s) in the pinned section`,
 		);
 		check(
 			"no move control is painted at rest",

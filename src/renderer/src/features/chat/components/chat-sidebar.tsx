@@ -237,7 +237,10 @@ import {
 	searchChats,
 } from "../chat-search";
 import { pinnedRows, unpinnedRows } from "../chat-sections";
-import { backgroundWorkClause } from "../chat-session-subagents";
+import {
+	backgroundWorkClause,
+	clauseReplacesLabel,
+} from "../chat-session-subagents";
 import {
 	agentRecencyMs,
 	filterAgentRows,
@@ -4727,10 +4730,18 @@ export function ChatSidebar({
 		 * cannot disagree about whether a row has anything to say.
 		 */
 		const backgroundClause = backgroundWorkClause(row);
-		// Joined with the wire label's own `·`, which is how the tooltip line and
-		// the `sr-only` sentence both append it after what precedes them.
+		/*
+		 * On a RESTING code the clause takes the status label's place rather than
+		 * following it (design review round 1, D1): "1 subagent, 1 job running",
+		 * never "Idle · 1 subagent, 1 job running" on a row filed under Running.
+		 * `statusSpokenText` reads the same predicate for the name's status slot,
+		 * so the tail below stays empty and the clause is heard once.
+		 */
+		const clauseIsStatus = clauseReplacesLabel(row, backgroundClause);
+		// Otherwise joined with the wire label's own `·`, which is how the tooltip
+		// line and the `sr-only` sentence both append it after what precedes them.
 		const subagentSentence =
-			backgroundClause === "" ? "" : ` · ${backgroundClause}`;
+			backgroundClause === "" || clauseIsStatus ? "" : ` · ${backgroundClause}`;
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
@@ -4931,6 +4942,7 @@ export function ChatSidebar({
 					{row.link_down === true
 						? peerLinkDownLabel(row, listNow / 1000)
 						: (peerUncertainLabel(row) ??
+							(clauseIsStatus ? backgroundClause : undefined) ??
 							statusLabelText(row) ??
 							(synthesized.has(row.session_id)
 								? t("ui.chat.sidebar.row.search_beyond")

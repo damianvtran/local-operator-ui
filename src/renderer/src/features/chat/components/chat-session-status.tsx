@@ -24,10 +24,17 @@ import {
 	peerUncertainLabel,
 } from "../../mesh/peer-presence";
 import { asksOutstandingLabel } from "../ask-queue";
-import { hasBackgroundWork } from "../chat-session-subagents";
+import {
+	RESTING_CODES,
+	backgroundWorkClause,
+	clauseReplacesLabel,
+	hasBackgroundWork,
+} from "../chat-session-subagents";
 
-/** Resting codes that legitimately render as a plain ring. */
-const KNOWN_RESTING = new Set(["idle", "recent"]);
+/** Resting codes that legitimately render as a plain ring. One set with the
+ * one that decides when the background-work clause replaces the label, so the
+ * ring and the sentence agree on what "resting" means. */
+const KNOWN_RESTING = RESTING_CODES;
 
 /**
  * The OUTSTANDING-ASKS mark for a conversation row (design §5.0).
@@ -169,6 +176,11 @@ export function ChatAsksOutstanding({
  *    starts or ends (sidebar-row-space s2);
  *  - `currentColor` in `text-accent` (the liveness role `busy` uses), drawn as
  *    an SVG rect because a `background-color` span vanishes in forced-colors;
+ *  - `forced-colors:text-[CanvasText]`, the notification dot's convention:
+ *    Chromium does NOT force `color` inside an SVG, so without it the lane
+ *    kept the theme's accent on the system Canvas - measured in the D2 frame
+ *    (design review round 1), where dark's #38c96a on a light Canvas would sit
+ *    near 2:1. CanvasText is the system's own ink against that Canvas;
  *  - static: `busy` owns motion in this column, and a fade would be a frame
  *    where the row has re-filed but its lane has not.
  *  - `aria-hidden`: the row's sentence carries the clause once
@@ -184,7 +196,7 @@ export function BackgroundWorkLane({ className }: { className?: string }) {
 			width="10"
 			height="2"
 			className={cn(
-				"pointer-events-none absolute start-[3px] top-[calc(100%+3px)] text-accent",
+				"pointer-events-none absolute start-[3px] top-[calc(100%+3px)] text-accent forced-colors:text-[CanvasText]",
 				className,
 			)}
 		>
@@ -254,9 +266,18 @@ export function statusSpokenText(
 	nowSeconds: number,
 	mark: ReturnType<typeof sessionStatusMark>,
 ): string {
+	/*
+	 * A RESTING LABEL YIELDS TO THE CLAUSE (design review round 1, D1): the
+	 * name says "1 subagent, 1 job running", not "Idle ... · 1 subagent, 1 job
+	 * running", in the same slot the tooltip's status line uses. The row's own
+	 * `sr-only` tail then stays silent (`clauseReplacesLabel` there too), so the
+	 * clause is heard once.
+	 */
+	const clause = backgroundWorkClause(row);
 	const label = mark.linkDown
 		? peerLinkDownLabel(row, nowSeconds)
 		: (mark.uncertainLabel ??
+			(clauseReplacesLabel(row, clause) ? clause : undefined) ??
 			statusLabelText(row) ??
 			t("ui.chat.sidebar.row.recent"));
 	return `${label}${mark.unreadMark !== null ? t("ui.chat.sidebar.row.unread_suffix") : ""}`;

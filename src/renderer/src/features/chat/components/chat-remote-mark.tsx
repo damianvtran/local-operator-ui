@@ -39,7 +39,7 @@
  *
  * `data-remote-mark` is the hook this change's tests and its evidence rig address
  * the mark by, following the row's existing convention (`data-session-time`,
- * `data-session-archived`, `data-subagent-mark`).
+ * `data-session-archived`, `data-background-work`).
  */
 import type { FC } from "react";
 

@@ -354,7 +354,8 @@ type StripCue = {
  * The sidebar's state for the target conversation.
  *
  * `current` is the row's `aria-current`, the mark the design says acknowledges
- * the switch. The two subagent markers and the archived flag are the row's other
+ * the switch. `lane` (the background-work lane, `[data-background-work]`, which
+ * retired the two subagent markers) and the archived flag are the row's other
  * attributes; `status` is the row's status word, which the shipped markup carries
  * ONLY in its `sr-only` name (there is no data attribute for the code), so it is
  * read from the first `sr-only` span - which is the status slot's, since
@@ -363,8 +364,7 @@ type StripCue = {
 type SidebarCue = {
 	current: string | null;
 	archived: boolean;
-	running: number;
-	queued: number;
+	lane: boolean;
 	status: string | null;
 };
 
@@ -844,8 +844,7 @@ const sidebarCue = (id: string): SidebarCue | null => {
 	return {
 		current: row.getAttribute("aria-current"),
 		archived: row.hasAttribute("data-session-archived"),
-		running: row.querySelectorAll('[data-subagent-mark="running"]').length,
-		queued: row.querySelectorAll('[data-subagent-mark="queued"]').length,
+		lane: row.querySelector("[data-background-work]") !== null,
 		status: oneLine(row.querySelector("span.sr-only")?.textContent) || null,
 	};
 };

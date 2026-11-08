@@ -111,7 +111,9 @@ const countsAreStale = (
  * every `session_status` frame, derived from the same counts, independent of
  * the code and NOT suppressed by a drain. This is its one reader: the Running
  * section (`isRunningRow`), the lane under the status cell and the clause in
- * the tooltip all ask here, so they cannot disagree about the same row.
+ * the tooltip all ask here, so they cannot disagree about the same row (the
+ * clause's one carve-out - main's own subagent sentence on an older backend -
+ * is stated on `backgroundWorkClause`).
  *
  * THE FLAG, NOT A RE-SUM OF THE COUNTS. Core owns which counts mean "work"
  * (a `null` jobs count is "unknown", a wait may or may not count), and summing
@@ -145,19 +147,28 @@ const ListFormat = (
 	Intl as unknown as {
 		ListFormat: new (
 			tag: string,
-			options: { type: "unit"; style: "short" },
+			options: { type: "conjunction"; style: "narrow" },
 		) => ListFormatter;
 	}
 ).ListFormat;
 
-/** The current locale's list joiner, cached per tag ("1 subagent, 1 job"). */
+/**
+ * The current locale's list joiner, cached per tag ("1 subagent, 1 job").
+ *
+ * CONJUNCTION/NARROW, NOT UNIT/SHORT (i18n audit round 1, I1): CLDR's unit
+ * list joins with a bare space in ru ("1 субагент 1 задание") and with nothing
+ * at all in zh-CN ("1个子智能体1个任务"), which reads as one run-on count. The
+ * narrow conjunction keeps en's "1 subagent, 1 job" byte-identical and gives
+ * every other shipped locale its own list punctuation ("、" in zh-CN, "، " in ur,
+ * "y"/"और" where the language joins two items with a word).
+ */
 let listFormat: { tag: string; format: ListFormatter } | null = null;
 const joinItems = (items: string[]): string => {
 	const tag = currentLocale();
 	if (listFormat?.tag !== tag) {
 		listFormat = {
 			tag,
-			format: new ListFormat(tag, { type: "unit", style: "short" }),
+			format: new ListFormat(tag, { type: "conjunction", style: "narrow" }),
 		};
 	}
 	return listFormat.format.format(items);
@@ -183,13 +194,26 @@ const joinItems = (items: string[]): string => {
  * accessible name carry verbatim, so saying them again would announce the same
  * numbers twice. Jobs and waits are not in that label, so they still speak.
  *
- * Drawn from the COUNTS, gated by the same staleness rule as the lane: a count
- * read from a link that is down is not a fact worth announcing.
+ * GATED ON THE SAME PREDICATE AS THE SECTION AND THE LANE (agent review
+ * round 1, R1/R3; QA Q1): the clause speaks only when `hasBackgroundWork` says
+ * the row has work, so a row filed under Today with no lane never announces
+ * work running. That covers the stale remote link (inside the predicate) and a
+ * backend whose flag is `false`. The counts still supply the WORDS only.
+ *
+ * THE ONE EXCEPTION IS MAIN'S OWN SENTENCE. On an older backend (no
+ * `background_work` on the wire) the predicate falls back to the code, yet the
+ * client before this change already said ", 2 subagents running" on any row
+ * whose subagent counts were positive (`subagentClause`, beside the trio). So
+ * with no flag the subagent parts keep speaking as they did, and only the
+ * parts this change added - jobs and the wait - wait for the predicate. An
+ * upgrade of this client alone therefore neither loses a sentence a reader
+ * heard yesterday nor gains a claim the lane and section contradict.
  */
 export function backgroundWorkClause(
 	row: Pick<
 		CanonicalSessionRow,
 		| "status"
+		| "background_work"
 		| "subagents_running"
 		| "subagents_queued"
 		| "jobs_running"
@@ -200,6 +224,9 @@ export function backgroundWorkClause(
 	>,
 ): string {
 	if (countsAreStale(row)) return "";
+	const marked = hasBackgroundWork(row);
+	// A flag of `false` is core's answer that nothing runs; say nothing.
+	if (!marked && typeof row.background_work === "boolean") return "";
 	const subagentsSpoken = !speaksForItself(row.status?.code);
 	const running: string[] = [];
 	if (subagentsSpoken && hasWork(row.subagents_running)) {
@@ -209,7 +236,7 @@ export function backgroundWorkClause(
 			}),
 		);
 	}
-	if (hasWork(row.jobs_running)) {
+	if (marked && hasWork(row.jobs_running)) {
 		running.push(
 			t("ui.chat.sidebar.row.bg.jobs", {
 				count: whole(row.jobs_running as number),
@@ -235,8 +262,49 @@ export function backgroundWorkClause(
 				: t("ui.chat.sidebar.row.bg.subagents_queued", { count }),
 		);
 	}
-	if (clauses.length === 0 && hasWork(row.waiting_on)) {
+	/*
+	 * THE WAIT SPEAKS ONLY AS THE SOLE FACT (agent review round 1, R5). A wait
+	 * is almost always a wait ON the subagent or job the clause has already
+	 * named, so "1 job running · Waiting on background work" would say the same
+	 * work twice; alone, it is the only thing keeping the row in Running and
+	 * must be said.
+	 *
+	 * NOR ON A `waiting` ROW (QA round 1, Q2): core's `waiting` label already
+	 * carries the wait ("Waiting on 1 job"), which the tooltip and the
+	 * accessible name render verbatim - the same "say it once" rule that drops
+	 * the subagent counts on `delegating`.
+	 */
+	if (
+		marked &&
+		clauses.length === 0 &&
+		row.status?.code !== "waiting" &&
+		hasWork(row.waiting_on)
+	) {
 		clauses.push(t("ui.chat.sidebar.row.bg.waiting"));
 	}
 	return clauses.join(" · ");
+}
+
+/**
+ * Status codes that say only "nothing is happening in the turn" - the plain
+ * ring's codes. `chat-session-status` reads the same set for its glyph.
+ */
+export const RESTING_CODES: ReadonlySet<string> = new Set(["idle", "recent"]);
+
+/**
+ * Whether the row's background-work clause REPLACES its status label in the
+ * tooltip and the accessible name, rather than following it after a `·`.
+ *
+ * WHY (design review round 1, D1): a resting label beside the clause read
+ * "Idle · 1 subagent, 1 job running" on a row filed under RUNNING - the label
+ * contradicts both the section heading and the clause after it, and carries
+ * nothing the clause does not supersede. A non-resting label is a second,
+ * true fact ("Complete · 1 job running", "Approval needed · ..."), so it stays.
+ * A row with no code is the `recent` fallback, so it rests too.
+ */
+export function clauseReplacesLabel(
+	row: Pick<CanonicalSessionRow, "status">,
+	clause: string,
+): boolean {
+	return clause !== "" && RESTING_CODES.has(row.status?.code ?? "recent");
 }
