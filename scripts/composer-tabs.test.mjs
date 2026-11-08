@@ -2482,7 +2482,7 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	);
 	assert.match(
 		source,
-		/noModel\s*\?\s*t\("ui\.chat\.composer_notes\.hint\.choose_model"\)/,
+		/noModel\s*\?\s*"Choose a model for this conversation before sending\."/,
 		"and the refusal must say which state it is refusing in",
 	);
 });

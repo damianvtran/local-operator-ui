@@ -20,10 +20,8 @@
  * (`Keep as once`, `Reasoning effort: High.`), so a changed English string would
  * silently invalidate them. (2) A synthetic NON-English catalogue changes what is
  * painted - the marker values have a shape no English sentence has, so a literal
- * that never reached the catalogue stays visible. (3) The wire value is never
- * translated - `effortDisplay` is display-only - while every word the effort
- * table KNOWS is keyed copy and localizes; a token the table does not know, and
- * the sentinel `inherit`, pass through exactly as they arrive.
+ * that never reached the catalogue stays visible. (3) The wire value and unknown
+ * tokens are NOT translated: only the display word is keyed.
  *
  * NEGATIVE CONTROL. Against the unfixed model source the marker cases fail: `effortDisplay("high")` answers
  * `High` under the marker catalogue, `wakeClause(2)` answers `2 wakes armed`, and
@@ -144,44 +142,20 @@ test("state words and raw inherit pass through untouched", () => {
 });
 
 test("a translated catalogue changes the display word and nothing else", () => {
-	/*
-	 * EVERY word the effort table owns has to be covered by the marker, in both
-	 * families it reads: `low`/`medium`/`high` are keyed in `session_status`, the
-	 * rest in `session_readout` (the composer wave keyed those). A marker that
-	 * covers one family only passes on the ENGLISH FALLBACK of the other, so it
-	 * cannot tell a localized word from a missing one — which is the fault this
-	 * file exists to catch.
-	 */
-	const readoutWords = [
-		"auto",
-		"none",
-		"minimal",
-		"xhigh",
-		"max",
-		"unknown",
-		"reasoning",
-	];
-	const marker = Object.fromEntries([
-		...Object.keys(LEVELS).map((wire) => [
+	const marker = Object.fromEntries(
+		Object.keys(LEVELS).map((wire) => [
 			`ui.chat.session_status.effort_level.${wire}`,
 			`FR[${wire}]`,
 		]),
-		...readoutWords.map((word) => [
-			`ui.chat.session_readout.effort.level.${word}`,
-			`FR[${word}]`,
-		]),
-	]);
+	);
 	withLocale("fr", marker, () => {
 		for (const wire of Object.keys(LEVELS)) {
 			assert.equal(effortDisplay(wire), `FR[${wire}]`);
 		}
-		for (const word of readoutWords) {
-			assert.equal(effortDisplay(word), `FR[${word}]`);
-		}
-		// A token the table does not know, and the sentinel `inherit`, stay as they
-		// arrive: nothing is matched on this string.
+		// The raw token and the state words stay as they arrive: nothing is
+		// matched on this string, and `inherit` is deliberately raw.
 		assert.equal(effortDisplay("inherit"), "inherit");
-		assert.equal(effortDisplay("turbo"), "turbo");
+		assert.equal(effortDisplay("unknown"), "unknown");
 	});
 });
 

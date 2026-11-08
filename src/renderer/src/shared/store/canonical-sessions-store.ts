@@ -1423,7 +1423,7 @@ export const SEND_FAILURE_COPY = {
 	/*
 	 * THE TWO ASIDE REFUSALS (fold of `origin/main` = `f9d92ac1e`, #482). The aside panel's own
 	 * semantics are that PR's and are re-stated here rather than re-spelled: the sentence is the
-	 * one `asideAskFailure` composes for a refused ask, and the second is `asideAskBusy`
+	 * one `asideAskFailure` composes for a refused ask, and the second is `ASIDE_ASK_BUSY`
 	 * verbatim, because the two surfaces that state these facts - the panel and, when it is gone,
 	 * this composer - must not read as two different facts. What each row carries is the control:
 	 * neither offers Retry, and the classifier says why for both (`withholdsRetryHint`).

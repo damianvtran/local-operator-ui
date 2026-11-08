@@ -1,7 +1,3 @@
-/// <reference lib="es2021.intl" />
-// `Intl.ListFormat` (see `formatList`) is es2021.intl; Electron 44 and the Node
-// test runtime both provide it, so declare its types rather than widen the
-// project-wide ES target (same precedent as `src/shared/team-bridge-notify.ts`).
 /**
  * The Intl formatter layer: the one place UI code builds formatters.
  *
@@ -41,7 +37,6 @@ import { currentLocale } from "./locale";
 const dateFormats = new Map<string, Intl.DateTimeFormat>();
 const numberFormats = new Map<string, Intl.NumberFormat>();
 const relativeFormats = new Map<string, Intl.RelativeTimeFormat>();
-const listFormats = new Map<string, Intl.ListFormat>();
 
 /** Stable cache keys for option bags — called with literal objects in practice. */
 function optionsKey(options: object | undefined): string {
@@ -195,67 +190,4 @@ export function formatBytes(size: number, locale?: string): string {
 	return `${formatNumber(value, { maximumFractionDigits: digits }, tag)} ${
 		BYTE_UNITS[unitIndex]
 	}`;
-}
-
-/**
- * A bare enumeration spelled with the locale's own separator: `["low",
- * "medium", "high"]` -> `"low, medium, high"` (en), `"低、中、高"` (zh-CN),
- * `"low، medium، high"` (ur).
- *
- * WHY THIS EXISTS. User-visible sentences that spliced a list in with
- * `items.join(", ")` rendered an ASCII comma and space in every language, so a
- * Chinese sentence read `此模型支持低, 中, 高。` (zh-CN audit of the composer
- * batch, `ui.chat.session_readout.effort.detail.offers`) and an Urdu one
- * carried a Latin comma. The separator is the locale's, not the catalogue's:
- * it belongs to the joiner, which only code can supply.
- *
- * WHY `conjunction` + `narrow`. The English sentences this replaced are bare
- * enumerations with no "and" ("It offers low, medium, high."), and this
- * output must stay byte-identical for them. Measured against Node's ICU:
- * `conjunction`/`narrow` is `"a, b, c"` in en (and fr, ru, vi, pt), `"a、b、c"`
- * in zh-CN/ja, `"a، b، c"` in ur; the `unit` types are NOT usable because ru
- * and zh-CN run the items together with no separator at all. Where CLDR
- * spells even the narrow list with a word (hi `और`, es `y`) the locale's own
- * conjunction is the grammatical form, and it is used.
- *
- * Items are passed through verbatim: a list of file names or command tokens is
- * still the caller's data. Fewer than two items need no separator.
- */
-export function formatList(items: readonly string[], locale?: string): string {
-	const tag = locale ?? currentLocale();
-	let format = listFormats.get(tag);
-	if (format === undefined) {
-		format = new Intl.ListFormat(tag, {
-			type: "conjunction",
-			style: "narrow",
-		});
-		listFormats.set(tag, format);
-	}
-	return format.format(items);
-}
-
-/**
- * The clause separator of a sentence that strings whole clauses together
- * (`"a; b"`): ASCII `; ` for most languages, the full-width `；` for Chinese
- * (no following space) and the Arabic-script `؛ ` for Urdu.
- *
- * `Intl.ListFormat` has no semicolon form (it only spells item lists), so the
- * three spellings are held here, keyed by primary language, with the same
- * source as the comma in `formatList`: CLDR's punctuation for those scripts
- * (zh `；` U+FF1B, ur/ar `؛` U+061B). Clause text is the caller's own, already
- * localized sentence fragments (`ui.chat.attachment_refusal.*`).
- */
-const CLAUSE_SEPARATORS: Readonly<Record<string, string>> = {
-	zh: "\uFF1B",
-	ja: "\uFF1B",
-	ur: "\u061B ",
-	ar: "\u061B ",
-};
-
-export function formatClauses(
-	clauses: readonly string[],
-	locale?: string,
-): string {
-	const language = (locale ?? currentLocale()).split("-")[0]?.toLowerCase();
-	return clauses.join(CLAUSE_SEPARATORS[language ?? ""] ?? "; ");
 }

@@ -49,7 +49,6 @@
 
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
-import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -68,7 +67,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { isolateValue } from "../../../../../../i18n/bidi";
 import { t } from "../../../../../../i18n/messages";
 import type {
 	PendingAsk,
@@ -84,11 +82,11 @@ import type {
 	AskSecrets,
 } from "../../ask-queue";
 import {
+	ASK_CHANGE_WINDOW_HINT,
 	COMPOSER_TEXTAREA_SELECTOR,
 	EMPTY_DRAFT,
 	askAnswerMap,
 	askCellWith,
-	askChangeWindowHint,
 	askDismissReason,
 	askOtherSeed,
 	askPanelHalves,
@@ -318,7 +316,7 @@ const LIVE_CONTROL =
  * that a user meets in sequence (the row's hint, then the field's placeholder once
  * pressed) are the ones that must agree.
  */
-const otherPrompt = (): string => t("ui.chat.ask_panel.other_prompt");
+const OTHER_PROMPT = "Type your answer";
 
 /**
  * Focus a control the user's own press asked for, with the CARET AFTER ITS TEXT when it
@@ -464,15 +462,6 @@ const AskQuestionField = ({
 	 * unselected `Other` is not one (pinned by `scripts/ask-other.test.mjs`, N1).
 	 */
 	const labels = options.map((option) => option.label);
-	/*
-	 * THE QUESTION IS A VALUE THIS FILE DOES NOT WRITE (design round 1, D2). The
-	 * sentence comes from the daemon, so no catalogue and no `t()` call stands
-	 * between it and the DOM - in Urdu a Latin question ending in `?` painted
-	 * `?Which environment should I deploy this to`, the `?` resolving to the
-	 * paragraph's direction and leaving the run it belongs to. `isolateValue`
-	 * puts the whole sentence in one isolate, LTR locales untouched.
-	 */
-	const dir = useTextDirection();
 	const [other, setOther] = useState<AskOther>(() =>
 		askOtherSeed(selected, labels),
 	);
@@ -502,7 +491,7 @@ const AskQuestionField = ({
 	};
 	return (
 		<div className="flex flex-col gap-1.5" data-lo-ask-question={question.id}>
-			<p className="text-ink text-sm">{isolateValue(question.question, dir)}</p>
+			<p className="text-ink text-sm">{question.question}</p>
 			{question.secret ? (
 				<input
 					data-ask-secret={question.id}
@@ -736,7 +725,7 @@ const AskQuestionField = ({
 							 * judge.
 							 */} {other.open ? null : (
 								<span className="ms-1.5 text-ink-muted text-xs">
-									{otherPrompt()}
+									{OTHER_PROMPT}
 								</span>
 							)}
 						</span>
@@ -751,7 +740,7 @@ const AskQuestionField = ({
 								ariaLabel={t("ui.chat.asks.answer_aria", {
 									question: question.question,
 								})}
-								placeholder={otherPrompt()}
+								placeholder={OTHER_PROMPT}
 								onChange={(text) => writeOther({ open: true, text })}
 								onEnter={() => onAdvance(question.id)}
 							/>
@@ -776,7 +765,7 @@ const AskQuestionField = ({
 					ariaLabel={t("ui.chat.asks.answer_aria", {
 						question: question.question,
 					})}
-					placeholder={otherPrompt()}
+					placeholder={OTHER_PROMPT}
 					onChange={(text) => writeOther({ open: true, text })}
 					onEnter={() => onAdvance(question.id)}
 				/>
@@ -833,8 +822,6 @@ const AskRow = ({
 			? ask.last_user_message_at
 			: null;
 	const locale = useI18nLocale();
-	/* The settled row echoes the same daemon payload, so it takes the same isolate. */
-	const dir = useTextDirection();
 	/*
 	 * CHANGING THE INTERFACE LANGUAGE RE-RENDERS THE FORMATTED TIME, which is why
 	 * the locale is read through the hook rather than at module scope: a stored
@@ -1382,7 +1369,7 @@ const AskRow = ({
 							<div key={entry.id} className="flex flex-col gap-0.5">
 								{echoedByTrigger ? null : (
 									<span className="text-ink-muted text-xs">
-										{isolateValue(entry.question, dir)}
+										{entry.question}
 									</span>
 								)}
 								{entry.answers.length > 0 ? (
@@ -1670,7 +1657,7 @@ const AskRow = ({
 							 * AGAINST: the answer is still theirs only until the agent is handed
 							 * it.
 							 */}
-							<p className="text-ink-dim text-meta">{askChangeWindowHint()}</p>
+							<p className="text-ink-dim text-meta">{ASK_CHANGE_WINDOW_HINT}</p>
 							<div className="flex items-center gap-2">
 								<button
 									type="button"
@@ -1937,8 +1924,6 @@ export const AskPanel = ({
 	 * with a queue whose rows change under it.
 	 */
 	const [filter, setFilter] = useState<AskFilter>("all");
-	/* The settled rows print the same daemon payload as the card; same isolate. */
-	const dir = useTextDirection();
 	const showPending = filter !== "settled";
 	const showSettledRows = filter !== "outstanding";
 
@@ -2267,8 +2252,8 @@ export const AskPanel = ({
 				seq: note.seq + 1,
 				text:
 					dropped === 1
-						? t("ui.chat.ask_panel.lapse.one")
-						: t("ui.chat.ask_panel.lapse.many", { count: dropped }),
+						? "That question timed out; your answer was not sent."
+						: `${dropped} questions timed out; your answers were not sent.`,
 			}));
 		const id = focusedAsk;
 		if (id === null || !heldIds.has(id) || held.has(id)) return;
@@ -2280,8 +2265,8 @@ export const AskPanel = ({
 				seq: current.seq + 1,
 				text:
 					newlyHeld.length === 1
-						? t("ui.chat.ask_panel.landing.one")
-						: t("ui.chat.ask_panel.landing.many", { count: newlyHeld.length }),
+						? "Question timed out"
+						: `${newlyHeld.length} questions timed out`,
 				from: id,
 			}));
 			return;
@@ -2373,8 +2358,7 @@ export const AskPanel = ({
 		 */
 		const word = askStatusWord(presentation.status);
 		const question =
-			presentation.ask.questions[0]?.question ??
-			t("ui.chat.ask_panel.no_question_text");
+			presentation.ask.questions[0]?.question ?? "No question text";
 		/*
 		 * THE REFUSAL TRAVELS WITH THE ROW (UX round 1, U1 = design round 1, D1).
 		 *
@@ -2438,7 +2422,7 @@ export const AskPanel = ({
 							 */}
 							<span className="flex min-w-0 flex-col gap-0.5">
 								<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
-									{isolateValue(question, dir)}
+									{question}
 								</span>
 								{settledAnswerLine(presentation)}
 							</span>
@@ -2494,7 +2478,7 @@ export const AskPanel = ({
 		>
 			{(
 				[
-					["all", t("ui.chat.ask_panel.filter.all"), view.rows.length],
+					["all", "All", view.rows.length],
 					/*
 					 * `Pending`, the panel's own word for the half (`askPanelHalves`) and the
 					 * opposite of `Settled` (design round 1 on #1116, D1). It replaced
@@ -2502,12 +2486,8 @@ export const AskPanel = ({
 					 * since D11 that ask is settled, so the old label named a set the half no
 					 * longer held. The backend's TUI filter takes the same word (#2481).
 					 */
-					[
-						"outstanding",
-						t("ui.chat.ask_panel.filter.pending"),
-						pending.length,
-					],
-					["settled", t("ui.chat.ask_panel.filter.settled"), settled.length],
+					["outstanding", "Pending", pending.length],
+					["settled", "Settled", settled.length],
 				] as const
 			).map(([value, label, count]) => (
 				<button
@@ -2525,7 +2505,7 @@ export const AskPanel = ({
 							: "text-ink-muted hover:bg-row-hover hover:text-ink",
 					)}
 				>
-					{t("ui.chat.ask_panel.filter.chip", { label, count })}
+					{`${label} · ${count}`}
 				</button>
 			))}
 		</fieldset>
@@ -2562,17 +2542,17 @@ export const AskPanel = ({
 	const emptySlice =
 		view.rows.length === 0
 			? view.open > 0
-				? t("ui.chat.ask_panel.empty.details_missing")
-				: t("ui.chat.ask_panel.empty.none_outstanding")
+				? "The details for these asks could not be loaded."
+				: "No asks outstanding. The agent is not waiting on anything."
 			: /*
 				 * The TRUE pending count, not the drawn one (m1): a held ask is settled, so
 				 * `Pending · 0` owes its sentence even while a spacer still holds a slot. It
 				 * is drawn only when nothing is pending, so it cannot push a live card down.
 				 */
 				filter === "outstanding" && pending.length === 0
-				? t("ui.chat.ask_panel.empty.none_pending")
+				? "No asks are pending. They have all settled — see Settled."
 				: filter === "settled" && settled.length === 0
-					? t("ui.chat.ask_panel.empty.none_settled")
+					? "No asks have settled yet. They are all still pending."
 					: null;
 
 	return (

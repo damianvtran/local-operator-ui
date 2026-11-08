@@ -95,7 +95,7 @@ const {
 	channelBasisWords,
 	channelBreakdown,
 	channelRowName,
-	channelsUntrackedNote,
+	CHANNELS_UNTRACKED_NOTE,
 	contextReading,
 	contextSemanticColor,
 	contextSpelling,
@@ -117,7 +117,7 @@ const {
 	modelAccessOwnsRadientStatus,
 	composerModelAccessReading,
 	modelAccessLocality,
-	priceUnknownText,
+	PRICE_UNKNOWN_TEXT,
 	sessionCost,
 	specUnresolved,
 	spendChannelsUsable,
@@ -580,7 +580,7 @@ test("tracked=false says so, carries the cue, and never fabricates a zero", () =
 		costTooltip(cost),
 		/Channels are not tracked for this conversation/,
 	);
-	assert.ok(costTooltip(cost).includes(channelsUntrackedNote()));
+	assert.ok(costTooltip(cost).includes(CHANNELS_UNTRACKED_NOTE));
 	// The figure itself is still the published total: untracked means the
 	// JOURNAL was not keeping channel rows, not that the total is unknown —
 	// and the chip now carries the cue that the tooltip's sentence explains
@@ -790,7 +790,7 @@ test("a channel row with no sizeable amount is a fact with its own words", () =>
 	assert.deepEqual(
 		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
 		[
-			["TTS · radient", priceUnknownText(), ""],
+			["TTS · radient", PRICE_UNKNOWN_TEXT, ""],
 			["Image · openai-sub/gpt-image-2", "$0.053", "Included"],
 		],
 	);

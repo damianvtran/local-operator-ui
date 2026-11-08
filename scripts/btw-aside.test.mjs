@@ -91,9 +91,9 @@ const bundle = await build({
 				asideAnnouncement,
 				asideAnnounceableText,
 				asideModelDeclined,
-				asideAskBusy,
-				asideContinuationEscape,
-				asideDeclinedOptions,
+				ASIDE_ASK_BUSY,
+				ASIDE_CONTINUATION_ESCAPE,
+				ASIDE_DECLINED_OPTIONS,
 				ASIDE_OFF_PANEL_MAX_CHARS,
 				ASIDE_ADOPT_CONFIRM_FLOOR_MS,
 				reportUncarriedAsideRefusal,
@@ -107,12 +107,12 @@ const bundle = await build({
 				asideAdoptFailure,
 				queuedAdoptionStep,
 				settleQueuedAdoption,
-				asideAdoptQueued,
+				ASIDE_ADOPT_QUEUED,
 				ASIDE_ADOPT_REFUSED_SENTENCES,
-				asideAskQueued,
+				ASIDE_ASK_QUEUED,
 				ASIDE_QUEUED_RETRY_MS,
-				asideAdoptNotLanded,
-				asideAdoptUnconfirmed,
+				ASIDE_ADOPT_NOT_LANDED,
+				ASIDE_ADOPT_UNCONFIRMED,
 			} from "./src/renderer/src/features/chat/aside";
 			/*
 			   The canonical hook rides this bundle because adoptAside re-reads the
@@ -261,9 +261,9 @@ const {
 	asideAnnouncement,
 	asideAnnounceableText,
 	asideModelDeclined,
-	asideAskBusy,
-	asideContinuationEscape,
-	asideDeclinedOptions,
+	ASIDE_ASK_BUSY,
+	ASIDE_CONTINUATION_ESCAPE,
+	ASIDE_DECLINED_OPTIONS,
 	ASIDE_OFF_PANEL_MAX_CHARS,
 	ASIDE_ADOPT_CONFIRM_FLOOR_MS,
 	reportUncarriedAsideRefusal,
@@ -277,12 +277,12 @@ const {
 	asideAdoptFailure,
 	queuedAdoptionStep,
 	settleQueuedAdoption,
-	asideAdoptQueued,
+	ASIDE_ADOPT_QUEUED,
 	ASIDE_ADOPT_REFUSED_SENTENCES,
-	asideAskQueued,
+	ASIDE_ASK_QUEUED,
 	ASIDE_QUEUED_RETRY_MS,
-	asideAdoptNotLanded,
-	asideAdoptUnconfirmed,
+	ASIDE_ADOPT_NOT_LANDED,
+	ASIDE_ADOPT_UNCONFIRMED,
 	__registerCanonicalResync,
 	resyncCanonicalSession,
 	batchMovesView,
@@ -1158,7 +1158,7 @@ test("a queued adopt keeps the panel up, read-only, until the pair lands", async
 		// Read-only: a follow-up ask is refused in the app with its own sentence.
 		assert.equal(
 			asideAskBlockedReason(useAsideStore.getState(), SESSION),
-			asideAskQueued(),
+			ASIDE_ASK_QUEUED,
 		);
 		// The turn is still running and the rows are not there: it waits.
 		settleQueuedAdoption(SESSION, () => false, true);
@@ -1178,14 +1178,11 @@ test("a queued adopt keeps the panel up, read-only, until the pair lands", async
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);
 	assert.equal(
-		asideAdoptQueued(),
+		ASIDE_ADOPT_QUEUED,
 		"Queued \u2014 this aside joins the conversation when the current turn finishes.",
 	);
-	assert.match(panel, /const blocked = queued\s*\?\s*asideAdoptQueued\(\)/);
-	assert.match(
-		panel,
-		/const announcement = queued\s*\?\s*asideAdoptQueued\(\)/,
-	);
+	assert.match(panel, /const blocked = queued\s*\?\s*ASIDE_ADOPT_QUEUED/);
+	assert.match(panel, /const announcement = queued\s*\?\s*ASIDE_ADOPT_QUEUED/);
 	assert.match(
 		panel,
 		/!queued && asideAdoptReady\(stream, sessionStreaming, adoptQueueSupported\)/,
@@ -1256,7 +1253,7 @@ test("a queued pair that never lands leaves the panel up, says so, and re-enable
 		const attached = useAsideStore.getState().attached[SESSION];
 		assert.notEqual(attached, undefined, "the panel is NOT detached");
 		assert.equal(attached.queued, undefined, "and is no longer read-only");
-		assert.equal(attached.notice, asideAdoptNotLanded());
+		assert.equal(attached.notice, ASIDE_ADOPT_NOT_LANDED);
 		assert.equal(attached.turns.length, 1);
 		// The exchange is still there to add, and the control is live for it.
 		const stream = useAsideStore.getState().streams.t1;
@@ -1279,7 +1276,7 @@ test("a queued pair that never lands leaves the panel up, says so, and re-enable
 		await settleFor(2 * ASIDE_QUEUED_RETRY_MS + 100);
 		assert.equal(
 			useAsideStore.getState().attached[SESSION].notice,
-			asideAdoptUnconfirmed(),
+			ASIDE_ADOPT_UNCONFIRMED,
 		);
 	} finally {
 		unregister();
@@ -1350,7 +1347,7 @@ test("a queued panel stays read-only when the aside reads back as adoptable", as
 	assert.notEqual(attached.queued, undefined);
 	assert.equal(
 		asideAskBlockedReason(useAsideStore.getState(), SESSION),
-		asideAskQueued(),
+		ASIDE_ASK_QUEUED,
 	);
 	const panel = read(
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
@@ -2221,7 +2218,7 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 	const continued = useAsideStore.getState().streams[calls[1].requestId];
 	assert.equal(
 		continued.error,
-		`This aside is no longer available ${asideContinuationEscape()}`,
+		`This aside is no longer available ${ASIDE_CONTINUATION_ESCAPE}`,
 	);
 
 	/*
@@ -2265,7 +2262,7 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		 */
 		assert.equal(
 			refused.error,
-			`${declined.message.replace(/\s+ask again\.$/, "")} ${asideDeclinedOptions()}`,
+			`${declined.message.replace(/\s+ask again\.$/, "")} ${ASIDE_DECLINED_OPTIONS}`,
 			`a ${code} refusal keeps the owner's sentence and states both roads: the panel still continues`,
 		);
 		assert.equal(
@@ -2278,7 +2275,7 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		assert.match(refused.error, /Ask again here to keep this exchange/);
 		assert.match(refused.error, /press Esc to close the aside and discard it/);
 		assert.equal(
-			(refused.error ?? "").includes(asideContinuationEscape()),
+			(refused.error ?? "").includes(ASIDE_CONTINUATION_ESCAPE),
 			false,
 			"the escape clause would send the user away from a working panel",
 		);
@@ -2319,14 +2316,14 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 	); // The panel keeps the owner's own sentence, and nothing else.
 	assert.equal(
 		asidePanelRefusal(new DesktopControlError(409, "gone"), true),
-		`gone ${asideContinuationEscape()}`,
+		`gone ${ASIDE_CONTINUATION_ESCAPE}`,
 	);
 	assert.equal(
 		asidePanelRefusal(
 			new DesktopControlError(409, "gone", undefined, "aside_unanswered"),
 			true,
 		),
-		`gone ${asideDeclinedOptions()}`,
+		`gone ${ASIDE_DECLINED_OPTIONS}`,
 		"continued, but the model declined: the exchange is still continuable",
 	);
 	// A FRESH ask the model declined has no exchange above it for Esc to cost, so the
@@ -2339,7 +2336,7 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		"gone",
 	);
 	// The lost-prefix clause says what Esc costs as well, since it sends the user there.
-	assert.match(asideContinuationEscape(), /discards this exchange/);
+	assert.match(ASIDE_CONTINUATION_ESCAPE, /discards this exchange/);
 });
 
 /*
@@ -2379,7 +2376,7 @@ test("an ask is refused in the app while the exchange is still answering", () =>
 		"no exchange: nothing to wait for",
 	);
 	store().beginAsk(SESSION, "turn-1", "asked");
-	assert.equal(asideAskBlockedReason(store(), SESSION), asideAskBusy());
+	assert.equal(asideAskBlockedReason(store(), SESSION), ASIDE_ASK_BUSY);
 	store().settleAside("turn-1", "answered");
 	assert.equal(asideAskBlockedReason(store(), SESSION), null);
 	store().beginAsk(SESSION, "turn-2", "asked again");
@@ -2393,10 +2390,10 @@ test("an ask is refused in the app while the exchange is still answering", () =>
 
 	// The sentence names the press that does work at the moment it starts working.
 	assert.equal(
-		asideAskBusy(),
+		ASIDE_ASK_BUSY,
 		"The aside is still answering. Press Enter again once the answer is in.",
 	);
-	assert.equal(asideAskBusy().includes("\u2014"), false);
+	assert.equal(ASIDE_ASK_BUSY.includes("\u2014"), false);
 
 	const page = read("src/renderer/src/features/chat/components/chat-page.tsx");
 	const dispatch = read(

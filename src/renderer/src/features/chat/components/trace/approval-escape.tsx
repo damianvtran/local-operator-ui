@@ -73,17 +73,15 @@
  * a request-derived provenance would be a claim about the wrong moment
  * (design round 1, D2).
  *
- * THE COPY IS KEYED (`ui.chat.approval.escape.*`), resolved at CALL time through
- * `APPROVAL_ESCAPE_COPY`'s functions so a language switch re-words a card that is
- * already on screen. It used to be literal on purpose, because a new English-only
- * key cannot pass the manifest-backed coverage gate; the keying slice therefore
- * lands together with its translations. The mode words (`Auto`/`Ask`) are copy
- * too, but the mode VALUES (`auto`/`ask`) that travel to the runtime are not.
+ * THE COPY IS LITERAL ON PURPOSE, following the rest of this surface: the chat
+ * trace card is not localized yet, and a new English-only key cannot pass the
+ * manifest-backed coverage gate — every supported locale must carry every
+ * English key, so new copy either ships translated in all seven or reds
+ * `pnpm check-i18n` by construction. These strings live in one object so the
+ * i18n wave can extract them without touching the layout.
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import { t } from "@shared/i18n";
-import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCallback, useId, useRef, useState } from "react";
 import type { CommandRun } from "../../pickers/use-picker-backend";
@@ -116,13 +114,16 @@ export const approvalPolicyLine = ({
 	globalMode?: ApprovalEscapeMode;
 }): string | null => {
 	if (!mode || !provenance) return null;
-	const word = modeWord(mode);
+	const word = mode === "auto" ? "Auto" : "Ask";
 	switch (provenance) {
 		case "pin":
 			return APPROVAL_ESCAPE_COPY.pinnedRun(word);
 		case "session":
 			return globalMode
-				? APPROVAL_ESCAPE_COPY.sessionOverrideOf(word, modeWord(globalMode))
+				? APPROVAL_ESCAPE_COPY.sessionOverrideOf(
+						word,
+						globalMode === "auto" ? "Auto" : "Ask",
+					)
 				: APPROVAL_ESCAPE_COPY.sessionOverride(word);
 		case "global":
 			return APPROVAL_ESCAPE_COPY.globalDefault(word);
@@ -245,52 +246,38 @@ export async function runApprovalEscape(
  * rather than `t()` keys.
  */
 export const APPROVAL_ESCAPE_COPY = {
-	setSession: () => t("ui.chat.approval.escape.set_session"),
-	setAll: () => t("ui.chat.approval.escape.set_all"),
-	sessionSaved: () => t("ui.chat.approval.escape.session_saved"),
-	defaultSaved: () => t("ui.chat.approval.escape.default_saved"),
+	setSession: "Set auto for this session",
+	setAll: "Set auto for all sessions",
+	sessionSaved: "Auto for this session — this request still needs an answer.",
+	defaultSaved:
+		"Auto set for this conversation; saved as the default for sessions that follow it. Conversations with their own choice keep it. This request still needs an answer.",
 	/**
 	 * The half-succeeded all-sessions arm: the default is saved, the live
 	 * conversation's command was refused. It names both facts so the reader can
 	 * see what did and did not change.
 	 */
 	defaultSavedSessionFailed: (detail: string) =>
-		t("ui.chat.approval.escape.default_saved_session_failed", { detail }),
-	unchanged: (detail: string) =>
-		t("ui.chat.approval.escape.unchanged", { detail }),
+		`Auto saved as the default for sessions that follow it. The session part did not apply: ${detail}. This request still needs an answer.`,
+	unchanged: (detail: string) => `Unchanged: ${detail}`,
 	/** The prefix a transport failure carries, since no backend detail exists. */
-	notChanged: () => t("ui.chat.approval.escape.not_changed"),
+	notChanged: "The mode was not changed",
 	/** The effective-policy line; see `approvalPolicyLine`. */
-	globalDefault: (mode: string) =>
-		t("ui.chat.approval.escape.global_default", { mode }),
-	sessionOverride: (mode: string) =>
-		t("ui.chat.approval.escape.session_override", { mode }),
+	globalDefault: (mode: string) => `Approvals: ${mode} — global default.`,
+	sessionOverride: (mode: string) => `Approvals: ${mode} — session override.`,
 	sessionOverrideOf: (mode: string, globalMode: string) =>
-		t("ui.chat.approval.escape.session_override_of", {
-			mode,
-			globalMode,
-		}),
-	pinnedRun: (mode: string) =>
-		t("ui.chat.approval.escape.pinned_run", { mode }),
+		`Approvals: ${mode} — session override; global ${globalMode}.`,
+	pinnedRun: (mode: string) => `Approvals: ${mode} — this run.`,
 };
-
-/** The localized word for an approval mode value (the value itself is protocol). */
-const modeWord = (mode: string | undefined): string =>
-	mode === "auto"
-		? t("ui.chat.approval.mode.auto")
-		: t("ui.chat.approval.mode.ask");
 
 /**
  * The words `useSessionCommand.run` puts in front of a call that never reached
  * the owner. The status copy adds `Unchanged: ` itself, so that prefix is
  * removed rather than nested; the transport's own detail survives intact.
  */
-const dropOurFailurePrefix = (text: string): string => {
-	// Built per call: the prefix is the localized sentence `run` was handed, so a
-	// module-level constant would pin it to the language at load time.
-	const prefix = `${APPROVAL_ESCAPE_COPY.notChanged()}: `;
-	return text.startsWith(prefix) ? text.slice(prefix.length) : text;
-};
+const FAILURE_PREFIX = `${APPROVAL_ESCAPE_COPY.notChanged}: `;
+
+const dropOurFailurePrefix = (text: string): string =>
+	text.startsWith(FAILURE_PREFIX) ? text.slice(FAILURE_PREFIX.length) : text;
 
 const ESCAPE_LINK =
 	"inline-flex min-h-11 items-center rounded-sm text-meta text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:text-ink-disabled disabled:no-underline";
@@ -298,9 +285,9 @@ const ESCAPE_LINK =
 const statusText = (status: ApprovalEscapeStatus): string => {
 	switch (status.kind) {
 		case "session-saved":
-			return APPROVAL_ESCAPE_COPY.sessionSaved();
+			return APPROVAL_ESCAPE_COPY.sessionSaved;
 		case "default-saved":
-			return APPROVAL_ESCAPE_COPY.defaultSaved();
+			return APPROVAL_ESCAPE_COPY.defaultSaved;
 		case "default-saved-session-failed":
 			return APPROVAL_ESCAPE_COPY.defaultSavedSessionFailed(status.detail);
 		case "refused":
@@ -331,7 +318,6 @@ export const ApprovalEscapeControls = ({
 	onSetAll: () => void;
 	className?: string;
 }) => {
-	useI18nLocale();
 	const statusId = useId();
 	return (
 		<div
@@ -352,7 +338,7 @@ export const ApprovalEscapeControls = ({
 					onClick={onSetSession}
 					className={ESCAPE_LINK}
 				>
-					{APPROVAL_ESCAPE_COPY.setSession()}
+					{APPROVAL_ESCAPE_COPY.setSession}
 				</button>
 				<button
 					type="button"
@@ -362,7 +348,7 @@ export const ApprovalEscapeControls = ({
 					onClick={onSetAll}
 					className={ESCAPE_LINK}
 				>
-					{APPROVAL_ESCAPE_COPY.setAll()}
+					{APPROVAL_ESCAPE_COPY.setAll}
 				</button>
 			</div>
 			{/*
@@ -411,7 +397,6 @@ export const ApprovalEscape = ({
 	approvalGlobalMode?: ApprovalEscapeMode;
 	className?: string;
 }) => {
-	useI18nLocale();
 	const command = useSessionCommand(sessionId);
 	const [target, setTarget] = useState<ApprovalEscapeTarget | null>(null);
 	const [status, setStatus] = useState<ApprovalEscapeStatus>({ kind: "idle" });
@@ -446,7 +431,7 @@ export const ApprovalEscape = ({
 					 * used.
 					 */
 					runCommand: (name, args) =>
-						command.run(name, args, APPROVAL_ESCAPE_COPY.notChanged()),
+						command.run(name, args, APPROVAL_ESCAPE_COPY.notChanged),
 					editDefault,
 				});
 				setStatus(

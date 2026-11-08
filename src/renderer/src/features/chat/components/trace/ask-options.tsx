@@ -115,15 +115,6 @@ export type AskOptionsProps = {
 	busy?: boolean;
 	/** Submit this option's label as the answer. */
 	onAnswer: (label: string) => void;
-	/**
-	 * What to DRAW for an option when it differs from what is SUBMITTED. The
-	 * submitted `label` is the wire/protocol token; the client's own approval pair
-	 * uses this to show localized words while still submitting `label` verbatim.
-	 */
-	display?: (option: PendingDesktopGate["options"][number]) => {
-		label: string;
-		description?: string;
-	};
 	/** Stable prefix for option keys, so two gates never share a key. */
 	requestId: string;
 };
@@ -172,7 +163,6 @@ export const AskOptions = ({
 	busy = false,
 	onAnswer,
 	requestId,
-	display,
 }: AskOptionsProps) => {
 	useI18nLocale();
 	if (options.length === 0) return null;
@@ -187,15 +177,6 @@ export const AskOptions = ({
 	// which row is marked: an index that is absent, null, out of range or not an
 	// integer badges NOTHING rather than the wrong row.
 	const marked = recommendedIndex(recommended, options.length);
-	/*
-	 * Resolved ONCE per option, not once per field. `display` is a catalogue
-	 * lookup and the row reads both the label and the description, so calling it
-	 * at each site ran it twice per option per render for one value (review
-	 * round 1, N3). One array keeps the two readings identical as well - a
-	 * translator whose label and description are resolved separately cannot
-	 * disagree with itself.
-	 */
-	const shown = options.map((option) => display?.(option) ?? option);
 
 	return (
 		/*
@@ -363,7 +344,7 @@ export const AskOptions = ({
 									marked === index && "font-semibold",
 								)}
 							>
-								{shown[index].label}
+								{option.label}
 							</span>
 							{marked === index && (
 								/*
@@ -397,14 +378,14 @@ export const AskOptions = ({
 						 * synonyms — dropping it makes the user answer a thinner
 						 * question than the model asked.
 						 */}
-						{shown[index].description && (
+						{option.description && (
 							<span
 								className={cn(
 									"text-body-sm",
 									busy ? "text-ink-disabled" : "text-ink-muted",
 								)}
 							>
-								{shown[index].description}
+								{option.description}
 							</span>
 						)}
 					</span>

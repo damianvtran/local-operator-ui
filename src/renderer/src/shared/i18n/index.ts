@@ -27,8 +27,6 @@ export {
 	formatDate,
 	formatDateTime,
 	formatDuration,
-	formatClauses,
-	formatList,
 	formatNumber,
 	formatRelativeTime,
 	formatTime,
@@ -40,7 +38,6 @@ export {
 	subscribeLocale,
 	t,
 	translate,
-	translateRaw,
 } from "../../../../i18n";
 
 /* Direction is a property of the language (see `i18n/direction.ts`), and the

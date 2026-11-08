@@ -1,9 +1,0 @@
-{
-	"ui.chat.quota_resend.failed": "भेजा नहीं जा सका। फिर कोशिश करें।",
-	"ui.chat.quota_resend.rate_limited": "हाल ही में अनुरोध किया जा चुका है। लगभग 2 मिनट बाद फिर कोशिश करें।",
-	"ui.chat.quota_resend.refresh_checking": "जाँच हो रही है…",
-	"ui.chat.quota_resend.refresh_failed": "जाँच नहीं हो सकी। फिर कोशिश करें।",
-	"ui.chat.quota_resend.refresh_unchanged": "अभी-अभी जाँचा गया — अब तक कोई बदलाव नहीं।",
-	"ui.chat.quota_resend.sending": "भेजा जा रहा है…",
-	"ui.chat.quota_resend.sent": "भेज दिया गया। अपना इनबॉक्स और स्पैम फ़ोल्डर देखें।"
-}

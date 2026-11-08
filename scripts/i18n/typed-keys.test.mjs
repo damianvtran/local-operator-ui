@@ -47,22 +47,6 @@ before(() => {
 		recursive: true,
 	});
 	rmSync(join(workdir, "i18n", "catalogues"), { recursive: true, force: true });
-	// `messages.ts` reads the language manifest through `direction.ts` (RTL
-	// catalogues get bidi isolation at render time). In the repo that file sits
-	// at `../../i18n/languages.json`; this temp tree has no such parent, so the
-	// manifest is copied beside the module and the one import is pointed at it.
-	cpSync(
-		join(REPO, "i18n", "languages.json"),
-		join(workdir, "i18n", "languages.json"),
-	);
-	const directionPath = join(workdir, "i18n", "direction.ts");
-	writeFileSync(
-		directionPath,
-		readFileSync(directionPath, "utf8").replace(
-			"../../i18n/languages.json",
-			"./languages.json",
-		),
-	);
 	cpSync(join(FIXTURES, "catalogues"), join(workdir, "i18n", "catalogues"), {
 		recursive: true,
 	});

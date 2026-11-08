@@ -33,7 +33,7 @@
  * is what makes the segment's presence informative.
  */
 
-import { currentLocale, formatList, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
 import type {
 	CanonicalEffectiveAccessState,
 	CanonicalFrontendState,
@@ -82,8 +82,7 @@ const AGGREGATOR_ROUTER_MODEL_IDS = new Set(["auto", "openrouter/auto"]);
  * app identifies the model by is unchanged — the chip's tooltip still prints
  * `radient/auto`.
  */
-const routerDisplayName = (): string =>
-	t("ui.chat.session_readout.model.router_auto");
+const ROUTER_DISPLAY_NAME = "Auto";
 
 /**
  * The bare tail of a selector: what the band falls back to when it will not
@@ -250,7 +249,7 @@ export function modelIdentity(
 		AGGREGATOR_PROVIDERS.has(provider) &&
 		AGGREGATOR_ROUTER_MODEL_IDS.has(model.model_id);
 	return {
-		name: router ? routerDisplayName() : refused ? bareId(selector) : display,
+		name: router ? ROUTER_DISPLAY_NAME : refused ? bareId(selector) : display,
 		selector,
 	};
 }
@@ -475,71 +474,23 @@ export function effortChosenRung(
 export function effortDisplay(level: string): string {
 	const trimmed = level.trim();
 	if (!trimmed) return trimmed;
+	// These display words are copy, not wire values. Keep the shared formatter
+	// as their owner so the status strip and both effort pickers agree; the
+	// lowercase rung and raw `inherit` never go through this display lookup.
+	const known: Record<string, string> = {
+		auto: "Auto",
+		none: "None",
+		minimal: "Minimal",
+		low: t("ui.chat.session_status.effort_level.low"),
+		medium: t("ui.chat.session_status.effort_level.medium"),
+		high: t("ui.chat.session_status.effort_level.high"),
+		xhigh: "xHigh",
+		max: "Max",
+	};
 	// A non-level word (`unknown`, `reasoning`, or a rung this file does not
 	// know) is returned as-is: it is a state or an unfamiliar token, not a level.
-	return knownEffortLabel(trimmed) ?? trimmed;
+	return known[trimmed.toLowerCase()] ?? trimmed;
 }
-
-/**
- * The display words for the levels this file knows, keyed by the ACTIVE locale.
- *
- * `t()` resolves at call time, so a module-level constant would freeze the
- * language the app booted in - the frozen-copy defect `translate()`'s docstring
- * names. Building the record on every call keeps that property but re-runs ten
- * `t()` calls per rung per render, and `effortDisplay` runs once for every rung
- * of the ladder on each status strip paint (review round 1, N2). Keying the
- * cache by locale keeps the call-time property AND the cost: a locale change is
- * a miss, so the next render rebuilds in the new language.
- */
-const effortLabelsByLocale = new Map<string, Record<string, string>>();
-
-/**
- * The localized label of a level this file knows, or `undefined` for anything
- * else. These display words are copy, not wire values. Keep the shared
- * formatter as their owner so the status strip and both effort pickers agree;
- * the lowercase rung and raw `inherit` never go through this display lookup.
- */
-function knownEffortLabel(trimmed: string): string | undefined {
-	const locale = currentLocale();
-	let known = effortLabelsByLocale.get(locale);
-	if (known === undefined) {
-		known = {
-			auto: t("ui.chat.session_readout.effort.level.auto"),
-			none: t("ui.chat.session_readout.effort.level.none"),
-			minimal: t("ui.chat.session_readout.effort.level.minimal"),
-			low: t("ui.chat.session_status.effort_level.low"),
-			medium: t("ui.chat.session_status.effort_level.medium"),
-			high: t("ui.chat.session_status.effort_level.high"),
-			xhigh: t("ui.chat.session_readout.effort.level.xhigh"),
-			max: t("ui.chat.session_readout.effort.level.max"),
-			// `label` placeholders `effortState` hands back for a level it cannot name.
-			unknown: t("ui.chat.session_readout.effort.level.unknown"),
-			reasoning: t("ui.chat.session_readout.effort.level.reasoning"),
-		};
-		effortLabelsByLocale.set(locale, known);
-	}
-	return known[trimmed.toLowerCase()];
-}
-
-/** A level spelled mid-sentence: the localized word, lowercased as the English was. */
-const effortWord = (level: string): string =>
-	effortDisplay(level).toLowerCase();
-
-/**
- * A level spelled mid-sentence like `effortWord`, but a word this file does
- * not know as a level comes back EXACTLY as given (no trim, no lowercasing).
- *
- * For sentences that quote a raw rung the backend or the user's earlier pick
- * supplied (`ui.chat.session_readout.draft.confirm_*`): handing the wire token
- * `none` to a ru/zh-CN sentence printed an English word inside it, and the
- * level's localized label is what the same screen's chip already shows. English
- * output is byte-identical for every rung the ladder carries, which are
- * lowercase wire tokens and so equal their lowercased English labels.
- */
-export const effortWordOrRaw = (level: string): string => {
-	const label = knownEffortLabel(level.trim());
-	return label === undefined ? level : label.toLowerCase();
-};
 
 export type EffortState = {
 	/** The word the chip prints. */
@@ -711,10 +662,8 @@ export function effortState(
 			levelKnown: true,
 			detail:
 				ladder && ladder.length > 0
-					? t("ui.chat.session_readout.effort.detail.offers", {
-							levels: formatList(ladder.map(effortWord)),
-						})
-					: t("ui.chat.session_readout.effort.detail.session"),
+					? `Reasoning effort. This model offers ${ladder.join(", ")}.`
+					: "Reasoning effort for this session.",
 		};
 
 	if (ladder && ladder.length > 0)
@@ -727,14 +676,9 @@ export function effortState(
 			adjustable: true,
 			knownLadder: true,
 			levelKnown: true,
-			detail: fallbackDefault
-				? t("ui.chat.session_readout.effort.detail.auto_with_default", {
-						default: effortWord(fallbackDefault),
-						levels: formatList(ladder.map(effortWord)),
-					})
-				: t("ui.chat.session_readout.effort.detail.auto", {
-						levels: formatList(ladder.map(effortWord)),
-					}),
+			detail: `No level is set, so this model runs at its own default${
+				fallbackDefault ? ` (${fallbackDefault})` : ""
+			}. It offers ${ladder.join(", ")}.`,
 		};
 
 	/*
@@ -785,9 +729,8 @@ export function effortState(
 			 * is the one act that resolves it, so that is what the sentence names
 			 * (UX round 3, U12).
 			 */
-			detail: t("ui.chat.session_readout.effort.detail.not_reported", {
-				command: "/effort <level>",
-			}),
+			detail:
+				"This session has not reported its reasoning effort yet. It appears after the next turn, or run /effort <level> to set one now.",
 		};
 	// Ladder present and EMPTY: a reasoning model with no rungs to choose from.
 	if (ladder && model.reasoning)
@@ -798,7 +741,8 @@ export function effortState(
 			// it is the only source entitled to make this control read-only.
 			knownLadder: true,
 			levelKnown: true,
-			detail: t("ui.chat.session_readout.effort.detail.no_levels"),
+			detail:
+				"This model reasons, but exposes no effort levels to choose between.",
 		};
 
 	// Ladder UNKNOWN (an owner that predates the field). The default level is
@@ -810,7 +754,8 @@ export function effortState(
 			adjustable: false,
 			knownLadder: false,
 			levelKnown: true,
-			detail: t("ui.chat.session_readout.effort.detail.default_only"),
+			detail:
+				"The level this model runs at by default. This backend does not report which other levels it accepts.",
 		};
 
 	// Non-reasoning, or an old backend with nothing to say. Rendering nothing
@@ -874,9 +819,7 @@ export function reconcileEffort(
 	return {
 		...state,
 		adjustable: true,
-		detail: t("ui.chat.session_readout.effort.detail.offers", {
-			levels: formatList(rungs.map(effortWord)),
-		}),
+		detail: `Reasoning effort. This model offers ${rungs.join(", ")}.`,
 	};
 }
 
@@ -971,7 +914,7 @@ export function modelAccessReading(
 			owner:
 				wireWords(access.owner_label) ||
 				wireWords(access.owner_device) ||
-				t("ui.chat.session_readout.access.owner_fallback"),
+				"the owner device",
 			observedAt: epochSeconds(access.observed_at),
 			lastGrantAt: epochSeconds(access.last_grant_at),
 			lastGrantExpiresAt: epochSeconds(access.last_grant_expires_at),
@@ -1063,57 +1006,45 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 	canSwitchModel: boolean;
 } {
 	const { label, effectiveState } = access;
-	const owner =
-		access.owner || t("ui.chat.session_readout.access.owner_fallback");
+	const owner = access.owner || "the owner device";
 	const readings: Record<CanonicalEffectiveAccessState, [string, string]> = {
 		local: [
-			t("ui.chat.session_readout.access.local.title", { label }),
-			t("ui.chat.session_readout.access.local.description"),
+			`${label} access available`,
+			"This session uses its own provider access.",
 		],
 		pending: [
-			t("ui.chat.session_readout.access.pending.title", { label }),
-			t("ui.chat.session_readout.access.pending.description"),
+			`Checking ${label} access`,
+			"Access has not converged yet. The next request checks the owner automatically; no additional sign-in is needed here.",
 		],
 		eligible_borrow_unverified: [
-			t("ui.chat.session_readout.access.eligible_borrow_unverified.title", {
-				owner,
-			}),
-			t(
-				"ui.chat.session_readout.access.eligible_borrow_unverified.description",
-				{ label, owner },
-			),
+			`Checking access from ${owner}`,
+			`This session may borrow ${label} access, but it has not resolved it yet. The next request verifies ${owner} automatically.`,
 		],
 		effective_borrow: [
-			t("ui.chat.session_readout.access.effective_borrow.title", {
-				label,
-				owner,
-			}),
-			t("ui.chat.session_readout.access.effective_borrow.description"),
+			`${label} access from ${owner}`,
+			"The runtime resolved borrowed access for this session. Every new request checks the owner again.",
 		],
 		expired: [
-			t("ui.chat.session_readout.access.expired.title", { label }),
-			t("ui.chat.session_readout.access.expired.description", { owner }),
+			`Fresh ${label} access needed`,
+			`The last borrowed grant expired, but borrowing permission is still present. The next request asks ${owner} for fresh access automatically.`,
 		],
 		withdrawn: [
-			t("ui.chat.session_readout.access.withdrawn.title", { label }),
-			t("ui.chat.session_readout.access.withdrawn.description"),
+			`${label} access needs attention`,
+			"The owner cannot currently provide borrowed access, or borrowing permission is unavailable. Restore owner access or permission before retrying, or choose another model.",
 		],
 		owner_unavailable: [
-			t("ui.chat.session_readout.access.owner_unavailable.title", { owner }),
-			t("ui.chat.session_readout.access.owner_unavailable.description", {
-				label,
-				owner,
-			}),
+			`${owner} cannot provide access`,
+			`This session could not resolve ${label} access from ${owner}. Previous access cannot be reused. Retry after owner access is restored, or choose another model.`,
 		],
 		device_bound: [
-			t("ui.chat.session_readout.access.device_bound.title", { label }),
-			t("ui.chat.session_readout.access.device_bound.description"),
+			`${label} needs a device sign-in`,
+			"This login cannot be borrowed. Sign in on the device running this session, or choose another model.",
 		],
 		absent: [
-			t("ui.chat.session_readout.access.absent.title", { label }),
+			`No ${label} access`,
 			access.connectHere === true
-				? t("ui.chat.session_readout.access.absent.description_connect")
-				: t("ui.chat.session_readout.access.absent.description_remote"),
+				? "The serving device has no effective provider access for this session. Connect an account or choose another model."
+				: "The device running this session has no effective provider access. Sign in or restore access on that device, or choose another model.",
 		],
 	};
 	const legacyUnavailable = access.state === "temporarily_unavailable";
@@ -1131,24 +1062,14 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 			];
 	const context: string[] = [];
 	if (effectiveState && access.observedAt !== undefined) {
-		context.push(
-			t("ui.chat.session_readout.access.history.last_checked", {
-				time: accessTime(access.observedAt),
-			}),
-		);
+		context.push(`Last checked: ${accessTime(access.observedAt)}.`);
 	}
 	if (effectiveState && access.lastGrantAt !== undefined) {
-		context.push(
-			t("ui.chat.session_readout.access.history.last_resolved", {
-				time: accessTime(access.lastGrantAt),
-			}),
-		);
+		context.push(`Last resolved: ${accessTime(access.lastGrantAt)}.`);
 	}
 	if (effectiveState && access.lastGrantExpiresAt !== undefined) {
 		context.push(
-			t("ui.chat.session_readout.access.history.grant_expiry", {
-				time: accessTime(access.lastGrantExpiresAt),
-			}),
+			`Recorded grant expiry: ${accessTime(access.lastGrantExpiresAt)}.`,
 		);
 	}
 	if (
@@ -1156,7 +1077,7 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 		(access.lastGrantAt !== undefined ||
 			access.lastGrantExpiresAt !== undefined)
 	) {
-		context.push(t("ui.chat.session_readout.access.history.only"));
+		context.push("History only; not permission to reuse access.");
 	}
 	return {
 		title,

@@ -14,8 +14,6 @@
  * landed; only their home changed.
  */
 
-// Relative, not `@shared/i18n`: this module is bundled with no alias map (see above).
-import { t } from "../../../../i18n/messages";
 import type { PendingDesktopGate } from "../../../../shared/desktop-session-contract";
 
 /**
@@ -51,33 +49,6 @@ export const APPROVAL_OPTIONS: PendingDesktopGate["options"] = [
 	{ label: "Approve", description: "Run the action and continue the turn." },
 	{ label: "Deny", description: "Refuse the action; the turn continues." },
 ];
-
-/**
- * What the card SHOWS for one of the client's own approval options.
- *
- * `APPROVAL_OPTIONS` is protocol, not copy: `label` is the token a press submits
- * and `approvalVerdict` compares against, so keying it would make a French
- * session answer a different string from an English one. Display therefore goes
- * through this map, resolved at render (never at module load), and an option
- * that is not one of the pair (an ask's model-authored option) is returned
- * untouched.
- */
-export const approvalOptionDisplay = (option: {
-	label: string;
-	description?: string;
-}): { label: string; description?: string } => {
-	if (option.label === APPROVAL_OPTIONS[0]?.label)
-		return {
-			label: t("ui.chat.approval.option.approve"),
-			description: t("ui.chat.approval.option.approve_description"),
-		};
-	if (option.label === APPROVAL_OPTIONS[1]?.label)
-		return {
-			label: t("ui.chat.approval.option.deny"),
-			description: t("ui.chat.approval.option.deny_description"),
-		};
-	return option;
-};
 
 /**
  * The verdict an approval option's label carries, or `null` for any other

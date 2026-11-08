@@ -34,7 +34,11 @@ import {
 	costTooltip,
 	sessionCost,
 } from "./session-cost";
-import { durationReading, formatDuration } from "./session-duration";
+import {
+	DURATION_EXPLANATION,
+	durationReading,
+	formatDuration,
+} from "./session-duration";
 import {
 	READING_GAP,
 	type ReadingDirection,
@@ -470,12 +474,8 @@ export const LAST_READING_NOTE = () =>
  * (it stopped holding them), not what the numbers became - nothing measured
  * them again, so anything stronger would be a claim nobody observed (R21).
  */
-/** The working-time readout's tooltip line; see `session-duration.ts` for why it lives here. */
-const durationExplanation = (): string =>
-	t("ui.chat.session_spend.duration_explanation");
-
-export const readingsDroppedNote = (): string =>
-	t("ui.chat.session_readout.strip.readings_dropped");
+export const READINGS_DROPPED_NOTE =
+	"Readings dropped when the connection was lost.";
 
 /**
  * The fast badge's sentence, carried by the model chip's ONE tooltip.
@@ -492,8 +492,7 @@ export const readingsDroppedNote = (): string =>
  * fact — one trigger, one panel, both registers truthful. Exported so the
  * rendered-markup test can pin the exact string (`composer-readings.test.mjs`).
  */
-export const fastModeOnNote = (): string =>
-	t("ui.chat.session_readout.strip.fast_mode_on");
+export const FAST_MODE_ON_NOTE = "Fast mode on";
 
 /**
  * How wide the channel variant's tooltip is allowed to be.
@@ -1084,7 +1083,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = (props) => {
 						className,
 					)}
 				>
-					{readingsDroppedNote()}
+					{READINGS_DROPPED_NOTE}
 				</p>
 			);
 		}
@@ -1564,11 +1563,11 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 								pending
 									? [
 											identity.selector,
-											t("ui.chat.session_readout.strip.model_switching"),
+											"Switching the model; waiting for the session to confirm it",
 										]
 									: [
 											identity.selector,
-											...(fastOn ? [fastModeOnNote()] : []),
+											...(fastOn ? [FAST_MODE_ON_NOTE] : []),
 											modelReason(draft, Boolean(openModel)),
 										]
 							}
@@ -1690,13 +1689,13 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 							lines={
 								draftResolution.status === "failed"
 									? [
-											t("ui.chat.session_readout.strip.draft_failed.title"),
-											t("ui.chat.session_readout.strip.draft_failed.detail"),
-											t("ui.chat.session_readout.strip.draft_failed.retry"),
+											"This conversation's model was not resolved",
+											"No model is set for it yet",
+											"Retry",
 										]
 									: [
-											t("ui.chat.session_readout.strip.draft_pending.title"),
-											t("ui.chat.session_readout.strip.draft_pending.detail"),
+											"Resolving",
+											"Working out which model this conversation will run on",
 										]
 							}
 						/>
@@ -1713,8 +1712,8 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 				>
 					<span className="truncate">
 						{draftResolution.status === "failed"
-							? t("ui.chat.session_readout.strip.draft_failed.retry")
-							: t("ui.chat.session_readout.strip.draft_pending.label")}
+							? "Retry"
+							: "Resolving the model"}
 					</span>
 					{draftResolution.status === "pending" && (
 						<Spinner
@@ -1761,9 +1760,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 			{effort && (!draft || effort.levelKnown) && (
 				<Reading
 					label={[
-						t("ui.chat.session_readout.strip.effort_aria", {
-							level: effortDisplay(effort.label),
-						}),
+						`Reasoning effort: ${effortDisplay(effort.label)}.`,
 						// The action BEFORE the reason (design review): "… resumes on
 						// X. Change it." read as though the instruction applied to
 						// the fallback sentence rather than to the effort level.
@@ -2058,7 +2055,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 						})}
 						tooltip={
 							<TooltipLines
-								lines={[formatDuration(activeSeconds), durationExplanation()]}
+								lines={[formatDuration(activeSeconds), DURATION_EXPLANATION]}
 							/>
 						}
 						// Inert, like the spend beside it and like the band's own: it

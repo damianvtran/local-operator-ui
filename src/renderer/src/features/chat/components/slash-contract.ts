@@ -867,10 +867,8 @@ export function phaseLabel(
  * `ARMED_ONLY_DESTINATIONS`. An unlisted destination gets the generic predicate,
  * which is true of any staged armed line.
  */
-/* Destinations whose staged Enter does something other than "run it": the key
- * of the whole staged sentence, so the verb is never spliced into English. */
-const STAGED_PROMISE_KEYS: Record<string, "ui.chat.slash.staged.sets_goal"> = {
-	"session.goal": "ui.chat.slash.staged.sets_goal",
+const STAGED_PROMISE: Record<string, string> = {
+	"session.goal": "sets the goal and sends the text",
 };
 
 /**
@@ -881,13 +879,8 @@ const STAGED_PROMISE_KEYS: Record<string, "ui.chat.slash.staged.sets_goal"> = {
  * so the absence of a sentence cannot turn into a note that says nothing about
  * the key the user is about to press.
  */
-function stagedPromiseKey(
-	destination: string | undefined,
-): "ui.chat.slash.staged.sets_goal" | "ui.chat.slash.staged.runs" {
-	return (
-		(destination ? STAGED_PROMISE_KEYS[destination] : undefined) ??
-		"ui.chat.slash.staged.runs"
-	);
+export function stagedPromiseVerb(destination: string | undefined): string {
+	return (destination ? STAGED_PROMISE[destination] : undefined) ?? "runs it";
 }
 /**
  * The stop a sentence already ends in, so the note does not double it.
@@ -931,8 +924,8 @@ export function stagedSentence(text: string): string {
  * used to carry it in the same beat as the refusal and was changed to defer to the
  * dispatcher instead of quoting it (`lockedCommandNote`).
  */
-export const noConversationClause = (): string =>
-	t("ui.chat.slash.needs_conversation_clause");
+export const NO_CONVERSATION_CLAUSE =
+	"Needs an open conversation; start one first.";
 
 /**
  * The staged ARMED line's own receipt (`message-input.tsx`'s `onSlashNote`).
@@ -955,11 +948,8 @@ export function stagedNote(
 	paneHasSession: boolean,
 ): string {
 	return paneHasSession
-		? t(stagedPromiseKey(destination), { sentence: stagedSentence(text) })
-		: t("ui.chat.slash.staged.refused", {
-				sentence: stagedSentence(text),
-				clause: noConversationClause(),
-			});
+		? `Staged ${stagedSentence(text)} Enter ${stagedPromiseVerb(destination)}.`
+		: `Staged ${stagedSentence(text)} ${NO_CONVERSATION_CLAUSE}`;
 }
 /**
  * The REASSEMBLY's own staged line: the note the composer writes when Enter
@@ -981,11 +971,8 @@ export function stagedNote(
  */
 export function reassembledNote(text: string, paneHasSession: boolean): string {
 	return paneHasSession
-		? t("ui.chat.slash.staged.runs_again", { sentence: stagedSentence(text) })
-		: t("ui.chat.slash.staged.refused", {
-				sentence: stagedSentence(text),
-				clause: noConversationClause(),
-			});
+		? `Staged ${stagedSentence(text)} Enter again runs it.`
+		: `Staged ${stagedSentence(text)} ${NO_CONVERSATION_CLAUSE}`;
 }
 
 /**
@@ -1051,8 +1038,10 @@ export function lockedCommandNote(
 	},
 	isMac: boolean,
 ): string {
-	const taken = t("ui.chat.slash.locked.taken", { word });
-	const fields = shape.dialog ? t("ui.chat.slash.locked.fields") : "";
+	const taken = `The words after /${word} were taken as its argument, and a value written on a command line is not stored.`;
+	const fields = shape.dialog
+		? `Enter the secret in the dialog's Name and Value fields.`
+		: "";
 	/*
 	 * AND THE KEY ONLY WHERE THERE IS SOMETHING TO GIVE BACK (UX round 2, U8). A draft
 	 * that arrived holding MASK CELLS — a reloaded or restored masked draft, whose value
@@ -1063,7 +1052,7 @@ export function lockedCommandNote(
 	 * honest instruction: it has to be entered again.
 	 */
 	const back = shape.undo
-		? t("ui.chat.slash.locked.undo", { cap: lockedRunUndoCap(isMac) })
+		? `Press ${lockedRunUndoCap(isMac)} in the composer to put the words back.`
 		: "";
 	return [taken, fields, back].filter(Boolean).join(" ");
 }
@@ -1248,10 +1237,8 @@ export function enterFooter(input: EnterFooterInput): string | null {
 				})
 			)
 				return input.paneHasSession
-					? t("ui.chat.slash.enter.stages", { label: input.label })
-					: t("ui.chat.slash.enter.stages_no_conversation", {
-							label: input.label,
-						});
+					? `Enter stages /${input.label}; the next Enter runs it.`
+					: `Enter stages /${input.label}; this pane needs an open conversation to run it.`;
 			/*
 			 * The four answers this table carried before the arming, kept exactly as
 			 * the router reads them: unambiguous + a running destination RUNS,
@@ -1261,12 +1248,10 @@ export function enterFooter(input: EnterFooterInput): string | null {
 			 * word instead.
 			 */
 			return input.runs
-				? t("ui.chat.slash.enter.runs", { label: input.label })
+				? `Enter runs /${input.label}.`
 				: input.opensList
-					? t("ui.chat.slash.enter.completes", { label: input.label })
-					: t("ui.chat.slash.enter.completes_then_runs", {
-							label: input.label,
-						});
+					? `Enter completes /${input.label}.`
+					: `Enter completes /${input.label}; Enter again runs it.`;
 		}
 		/*
 		 * Ambiguous, so Enter narrows where there is somewhere further to go, and the
@@ -1277,25 +1262,20 @@ export function enterFooter(input: EnterFooterInput): string | null {
 		 */
 		if (input.prefix.length === 0 || input.prefix.length <= input.query.length)
 			return enterNeedsAPick();
-		return t("ui.chat.slash.enter.completes_to", { prefix: input.prefix });
+		return `Enter completes to ${input.prefix}.`;
 	}
-	if (input.nameThenMessage) return t("ui.chat.slash.enter.chooses_name");
+	if (input.nameThenMessage) return "Enter chooses this name.";
 	if (!input.runs)
 		return input.complete
-			? t("ui.chat.slash.enter.closes_list")
-			: t("ui.chat.slash.enter.completes_value");
+			? "Enter closes the list; Enter again runs."
+			: "Enter completes the value.";
 	if (!input.unambiguous)
 		return input.connect
-			? t("ui.chat.slash.enter.completes_then_connects", {
-					name: input.connect,
-				})
-			: t("ui.chat.slash.enter.completes_then_runs_value");
-	if (input.connect)
-		return t("ui.chat.slash.enter.connects", { name: input.connect });
+			? `Enter completes; Enter again connects ${input.connect}.`
+			: "Enter completes; Enter again runs.";
+	if (input.connect) return `Enter connects ${input.connect}.`;
 	const command = input.command ? `/${input.command} ` : "";
-	return t("ui.chat.slash.enter.runs_target", {
-		target: `${command}${input.value}`.trim(),
-	});
+	return `Enter runs ${command}${input.value}.`.trim();
 }
 
 export type ClickFooterInput = {
@@ -1446,9 +1426,9 @@ export type EmptyArgumentList = {
  * fixture to agree with the component's rule.
  */
 export function argumentEmptyCopy(list: EmptyArgumentList): string {
-	if (list.needsSession) return t("ui.chat.slash.empty.needs_conversation");
+	if (list.needsSession) return "Needs an open conversation. Start one first.";
 	if (list.error) return list.error;
-	if (list.loading) return t("ui.chat.slash.empty.loading");
+	if (list.loading) return "Loading…";
 	/*
 	 * The source's own sentence, when it has one. It outranks the two generic
 	 * arms below because it is a fact about THIS slot rather than about the
@@ -1460,6 +1440,6 @@ export function argumentEmptyCopy(list: EmptyArgumentList): string {
 	if (list.emptyCopy) return list.emptyCopy;
 	// Rows exist, the query excluded all of them: "not reported yet" would be a
 	// lie about the source rather than a fact about the filter.
-	if (list.rows.length > 0) return t("ui.chat.slash.empty.no_matches");
-	return t("ui.chat.slash.empty.not_reported");
+	if (list.rows.length > 0) return "No matches. Enter runs the command.";
+	return "Not reported yet. Enter runs the command.";
 }

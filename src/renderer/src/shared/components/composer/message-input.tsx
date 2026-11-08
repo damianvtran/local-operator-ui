@@ -31,7 +31,13 @@ import { ComposerStatusRow } from "@features/chat/components/composer-status-row
  * for why that split is the point rather than tidiness.
  */
 import {
+	CREDENTIAL_CLEAR_UNDO_LABEL,
+	CREDENTIAL_DISCARDED_NOTICE,
+	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
+	CREDENTIAL_EMPTY_SPAN_NOTICE,
+	CREDENTIAL_ESCAPE_HELD_NOTICE,
 	CREDENTIAL_TOKEN,
+	CREDENTIAL_TYPING_NOTICE,
 	CREDENTIAL_WORDS,
 	type CancelledToken,
 	type Capture,
@@ -48,13 +54,7 @@ import {
 	citedPayloads,
 	clearCitedCredential,
 	clearedToastLine,
-	credentialClearUndoLabel,
-	credentialDiscardedNotice,
-	credentialEmptySpanDraftNotice,
-	credentialEmptySpanNotice,
-	credentialEscapeHeldNotice,
 	credentialNamesFrom,
-	credentialTypingNotice,
 	escapeHolds,
 	holdsCancelledToken,
 	isArmed,
@@ -97,7 +97,7 @@ import type {
 } from "@features/chat/draft-selection";
 import { useRoleGuard } from "@features/chat/hooks/use-role-guard";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
-import { moveUnavailableReason } from "@features/chat/move-session";
+import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
 import { connectProviderForSelector } from "@features/chat/pickers/model-catalogue-listing";
 import {
 	destinationNeedsSession,
@@ -943,7 +943,7 @@ export type MessageInputProps = {
 	cwdWritePath?: DirectoryWritePath;
 	/**
 	 * Why the chip is read-only here. Supplied per cause rather than assumed:
-	 * `moveUnavailableReason` is false on a session that is merely still being
+	 * `MOVE_UNAVAILABLE_REASON` is false on a session that is merely still being
 	 * created, and the composer is the layer that knows which of the two it is
 	 * looking at (agent review m1).
 	 */
@@ -3017,15 +3017,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							skillEntries.push({ name: mention.name, body });
 						else if (body !== null)
 							onSlashNote?.(
-								t("ui.chat.composer_notes.skill_empty_body", {
-									name: mention.name,
-								}),
+								`skill \`${mention.name}\` has an empty body — sending your message as written`,
 							);
 						else
 							onSlashNote?.(
-								t("ui.chat.composer_notes.skill_load_failed", {
-									name: mention.name,
-								}),
+								`could not load skill \`${mention.name}\` — sending your message as written`,
 							);
 					}
 				}
@@ -4539,9 +4535,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					// waiting for (round 1 UX U5).
 					if (slash.open && slash.matches.length > 0) return;
 					onSlashNote?.(
-						t("ui.chat.composer_notes.slash_needs_name", {
-							command: plan.command.name,
-						}),
+						`Type a name after /${plan.command.name}, or choose one from the list.`,
 					);
 					return;
 				}
@@ -5117,18 +5111,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					);
 					setNewMessage("");
 					onSlashNote?.(
-						t("ui.chat.composer_notes.default_saved", {
-							model: `${model.provider}/${model.model_id}`,
-						}),
+						`Default for new sessions: ${model.provider}/${model.model_id}`,
 					);
 				} catch (error) {
 					onSlashNote?.(
-						t("ui.chat.composer_notes.default_not_saved", {
-							reason:
-								error instanceof Error
-									? error.message
-									: t("ui.chat.composer_notes.default_not_saved_fallback"),
-						}),
+						`The default was not saved: ${
+							error instanceof Error ? error.message : "the backend refused it"
+						}`,
 					);
 				}
 			},
@@ -6446,7 +6435,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				slot.toastId = showWarningToast(clearedToastLine(index), {
 					action: {
-						label: credentialClearUndoLabel(),
+						label: CREDENTIAL_CLEAR_UNDO_LABEL,
 						onClick: () => undoClear(slot),
 					},
 				});
@@ -7902,15 +7891,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				? // Keyed on (buffer, value), so the first edit after the held Esc
 					// restores the ordinary typing sentence without any reset path.
 					escapeIsHeld(newMessage, capture)
-					? credentialEscapeHeldNotice()
-					: credentialTypingNotice()
+					? CREDENTIAL_ESCAPE_HELD_NOTICE
+					: CREDENTIAL_TYPING_NOTICE
 				: credentialSessionId
-					? credentialEmptySpanNotice()
-					: credentialEmptySpanDraftNotice()
+					? CREDENTIAL_EMPTY_SPAN_NOTICE
+					: CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE
 			: // The discard line stands only over the buffer the discard left, so the
 				// next edit retires it the same way the hold is retired.
 				discardedOver !== null && discardedOver === newMessage
-				? credentialDiscardedNotice()
+				? CREDENTIAL_DISCARDED_NOTICE
 				: noticeLineFor({
 						unredacted:
 							unredactedChars !== null
@@ -9128,9 +9117,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */}
 					{outsideMentions > 0 && (
 						<span id={MENTION_OUTSIDE_NOTICE_ID} className="sr-only">
-							{t("ui.chat.composer_notes.outside_mentions", {
-								count: outsideMentions,
-							})}
+							{outsideMentions === 1
+								? "1 reference points outside this session's working directory; the agent will ask you to approve it before reading."
+								: `${outsideMentions} references point outside this session's working directory; the agent will ask you to approve them before reading.`}
 						</span>
 					)}
 					{/*
@@ -10094,7 +10083,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											readOnlyReason={
 												cwdWritePath
 													? undefined
-													: (cwdReadOnlyReason ?? moveUnavailableReason())
+													: (cwdReadOnlyReason ?? MOVE_UNAVAILABLE_REASON)
 											}
 										/>
 									)}
@@ -10621,8 +10610,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					<div className={cn("mt-2", CHAT_MEASURE)}>
 						<output className="block text-body-sm text-ink-muted">
 							{noModel
-								? t("ui.chat.composer_notes.hint.choose_model")
-								: t("ui.chat.composer_notes.hint.connect_provider")}
+								? "Choose a model for this conversation before sending."
+								: "Connect a provider to send."}
 						</output>
 					</div>
 				) : null}

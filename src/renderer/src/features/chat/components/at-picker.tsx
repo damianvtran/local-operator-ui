@@ -54,6 +54,7 @@ import {
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
 	AT_ROWS_MIN,
+	AT_UNAVAILABLE_REASON,
 	type AtKeyInput,
 	type AtKeyIntent,
 	atCount,
@@ -64,7 +65,6 @@ import {
 	atRowBudget,
 	atRowId,
 	atSectionRuns,
-	atUnavailableReason,
 } from "./at-contract";
 import {
 	type AtRow,
@@ -559,7 +559,7 @@ export function useAtPicker({
 		 * composer that is idle, so an ordinary draft never carries it.
 		 */
 		unavailable:
-			tokenKey !== null && unsupported ? atUnavailableReason() : null,
+			tokenKey !== null && unsupported ? AT_UNAVAILABLE_REASON : null,
 		active: state.active,
 		rows,
 		token,

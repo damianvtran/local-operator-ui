@@ -38,7 +38,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { formatList, t } from "../../../../../../i18n";
+import { t } from "../../../../../../i18n";
 import {
 	formatDate,
 	formatDateTime,
@@ -643,7 +643,7 @@ export function FinderFilesView({
 								variant="outline"
 								size="md"
 								className={cn(prefs.kinds.length > 0 && "bg-accent-wash")}
-								aria-label={`${t("ui.canvas.files.filter")}: ${formatList(prefs.kinds.map(kindLabel)) || t("ui.canvas.files.files")}`}
+								aria-label={`${t("ui.canvas.files.filter")}: ${prefs.kinds.map(kindLabel).join(", ") || t("ui.canvas.files.files")}`}
 							>
 								<Funnel aria-hidden="true" />
 								{prefs.kinds.length
@@ -727,7 +727,7 @@ export function FinderFilesView({
 					<div
 						className={cn("flex items-center gap-2 text-meta text-ink-muted")}
 					>
-						<span>{formatList(prefs.kinds.map(kindLabel))}</span>
+						<span>{prefs.kinds.map(kindLabel).join(", ")}</span>
 						<Button
 							variant="ghost"
 							size="sm"

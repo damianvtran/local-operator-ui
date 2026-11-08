@@ -1,4 +1,4 @@
-import { formatList, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
 /**
  * What a `models.catalogue` answer means: the rows it holds, the providers that
  * failed, and whether the listing failed outright.
@@ -107,7 +107,7 @@ export function catalogueListing(
 			"ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did",
 			{ length: failed.length },
 		),
-		noticeDetail: formatList(failed),
+		noticeDetail: failed.join(", "),
 	};
 }
 

@@ -72,7 +72,6 @@ import { cn } from "@shared/lib/utils";
 import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
-import { approvalOptionDisplay } from "../../approval-words";
 import { APPROVAL_OPTIONS, gateIsSecret } from "../../ask-answer";
 import { composerField, focusComposer } from "../../composer-field";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -556,9 +555,7 @@ export const QuestionDock = ({
 					 * (design round 1, D3; UX round 1, U2).
 					 */}
 					<p className="font-medium text-ink-muted text-meta">
-						{sending
-							? t("ui.chat.ask_panel.dock.sending")
-							: t("ui.chat.ask_panel.dock.asking")}
+						{sending ? "Sending your answer…" : "The agent is asking"}
 					</p>
 					{/*
 					 * The ordinal eyebrow, for every kind whose rows print digits: an ask's
@@ -568,10 +565,8 @@ export const QuestionDock = ({
 					{options.length > 0 && (
 						<p aria-hidden={true} className="ml-auto text-ink-dim text-meta">
 							{options.length === 1
-								? t("ui.chat.ask_panel.dock.keys_one")
-								: t("ui.chat.ask_panel.dock.keys_range", {
-										max: Math.min(options.length, 9),
-									})}
+								? "1 to answer"
+								: `1-${Math.min(options.length, 9)} to answer`}
 						</p>
 					)}
 				</div>
@@ -621,7 +616,6 @@ export const QuestionDock = ({
 					<>
 						<AskOptions
 							options={APPROVAL_OPTIONS}
-							display={approvalOptionDisplay}
 							requestId={gate.request_id}
 							busy={busy}
 							onAnswer={(label) => onAnswer?.(label)}

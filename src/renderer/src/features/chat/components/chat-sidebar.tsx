@@ -460,12 +460,13 @@ const READ_ACK_TOAST_ID = "read-ack";
  * control was the pointer-only channel engines are least reliable about, and it
  * reached no keyboard reader at all).
  */
-const sendingDiscardWhy = (): string =>
-	t("ui.chat.sidebar_notes.draft_sending_why");
+const SENDING_DISCARD_WHY =
+	"Sending - this draft can be discarded when the send settles";
 /** The sr-only why's id, keyed so each row's control points at its own. */
 const draftWhyId = (key: string) => `draft-discard-why-${key}`;
 /** The disabled Clear all's own why, same two-channel rule. */
-const clearAllWhy = (): string => t("ui.chat.sidebar_notes.clear_all_why");
+const CLEAR_ALL_WHY =
+	"Drafts are sending - they can be cleared when the sends settle";
 const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
 
 /*
@@ -3153,7 +3154,7 @@ export function ChatSidebar({
 			<div className="py-1" aria-live="polite">
 				<p className="line-clamp-2 text-meta text-ink-dim">
 					{tailState.kind === "loading"
-						? t("ui.chat.sidebar_notes.loading_more")
+						? "Loading more chats…"
 						: tailState.sentence}
 				</p>
 				{tailState.kind === "error" && (
@@ -4283,9 +4284,7 @@ export function ChatSidebar({
 	const agentOpenedRow = (row: CanonicalSessionRow) => row.opened_by != null;
 	const openedBySentence = (row: CanonicalSessionRow) => {
 		const agent = row.opened_by?.agent?.trim();
-		return agent
-			? t("ui.chat.sidebar_notes.opened_by_named", { agent })
-			: t("ui.chat.sidebar_notes.opened_by_anonymous");
+		return `opened by ${agent || "an agent"}`;
 	};
 	const openedByNote = (row: CanonicalSessionRow) => {
 		if (!row.opened_by) return "";
@@ -8942,11 +8941,8 @@ export function ChatSidebar({
 				!coveredByCompatibilityBanner && (
 					<div className="space-y-1 text-meta text-ink-muted">
 						<p>
-							{stale
-								? t("ui.chat.sidebar_notes.stale_list", {
-										message: capabilities.error.message,
-									})
-								: capabilities.error.message}
+							{capabilities.error.message}
+							{stale ? " Showing the last chats loaded." : ""}
 						</p>
 						<button
 							type="button"
@@ -9724,7 +9720,7 @@ export function ChatSidebar({
 								 */}
 								{row.pending && (
 									<span id={draftWhyId(row.key)} className="sr-only">
-										{sendingDiscardWhy()}
+										{SENDING_DISCARD_WHY}
 									</span>
 								)}
 								{/*
@@ -9763,7 +9759,7 @@ export function ChatSidebar({
 									aria-label={discardDraftLabel(row.title)}
 									title={
 										row.pending
-											? sendingDiscardWhy()
+											? SENDING_DISCARD_WHY
 											: discardDraftLabel(row.title)
 									}
 									onClick={(event) => {
@@ -9906,7 +9902,7 @@ export function ChatSidebar({
 							aria-label={t("ui.chat.sidebar.drafts.clear_all_label")}
 							title={
 								clearableDraftRows.length === 0
-									? clearAllWhy()
+									? CLEAR_ALL_WHY
 									: t("ui.chat.sidebar.drafts.clear_all_label")
 							}
 							onClick={(event) => {
@@ -9986,7 +9982,7 @@ export function ChatSidebar({
 						 */}
 						{clearableDraftRows.length === 0 && (
 							<span id={CLEAR_ALL_WHY_ID} className="sr-only">
-								{clearAllWhy()}
+								{CLEAR_ALL_WHY}
 							</span>
 						)}
 					</div>
@@ -10125,8 +10121,8 @@ export function ChatSidebar({
 								{sectionLabel(t(CHAT_LIST_SECTION_LABEL[key]))}
 								<p className="px-2 text-meta text-ink-dim">
 									{livenessUnread
-										? t("ui.chat.sidebar_notes.running_unread")
-										: t("ui.chat.sidebar_notes.running_none")}
+										? "The daemon could not read which chats are running, so this list may be incomplete."
+										: "Nothing running right now."}
 								</p>
 							</section>
 						);
@@ -10810,9 +10806,9 @@ export function ChatSidebar({
 				<p aria-live="polite" className="sr-only">
 					{awaiting &&
 					lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length)
-						? t("ui.chat.sidebar.search.searching")
+						? "Searching conversations."
 						: query.trim() && showList && !matching.length && answered
-							? t("ui.chat.sidebar.search.no_match", { query: query.trim() })
+							? `Nothing in your chats matches ${query.trim()}.`
 							: ""}
 				</p>
 				{/* ONE SCROLLER, ONE FLOW (operator report, 2026-09-26): the entity

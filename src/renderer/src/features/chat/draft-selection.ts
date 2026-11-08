@@ -30,14 +30,12 @@ import {
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
-import { t } from "@shared/i18n";
 import { keepPreviousData } from "@tanstack/react-query";
 import type { DesktopModelSelection } from "../../../../shared/desktop-contract";
 import type {
 	CanonicalFrontendSync,
 	CanonicalModel,
 } from "../../../../shared/desktop-session-contract";
-import { effortWordOrRaw } from "./session-status/session-model";
 
 /** What a draft pane is asking about: where it runs, as whom, and on what. */
 export type DraftSelectionTarget = {
@@ -257,8 +255,7 @@ export function effortCarry(
 		return {
 			checked: true,
 			rung: null,
-			confirmation: (selector) =>
-				t("ui.chat.session_readout.draft.confirm_model", { selector }),
+			confirmation: (selector) => `This conversation will run ${selector}.`,
 		};
 	if (!target.ladderKnown)
 		return {
@@ -270,7 +267,8 @@ export function effortCarry(
 			 * it. It also stops repeating "changed", which the previous wording
 			 * did twice in one breath (review round 5, D19).
 			 */
-			refusal: t("ui.chat.session_readout.draft.refusal_ladder_unread"),
+			refusal:
+				"Nothing was changed, because that model's effort levels could not be read. Try again.",
 		};
 	const offered = target.ladder.find(
 		(rung) => rung.trim().toLowerCase() === wanted.toLowerCase(),
@@ -280,25 +278,15 @@ export function effortCarry(
 			checked: true,
 			rung: offered,
 			confirmation: (selector) =>
-				t("ui.chat.session_readout.draft.confirm_model_effort", {
-					selector,
-					effort: effortWordOrRaw(offered),
-				}),
+				`This conversation will run ${selector} at ${offered} effort.`,
 		};
 	return {
 		checked: true,
 		rung: null,
 		confirmation: (selector) =>
 			target.level
-				? t("ui.chat.session_readout.draft.confirm_effort_changed", {
-						selector,
-						level: effortWordOrRaw(target.level),
-						wanted: effortWordOrRaw(wanted),
-					})
-				: t("ui.chat.session_readout.draft.confirm_effort_unset", {
-						selector,
-						wanted: effortWordOrRaw(wanted),
-					}),
+				? `This conversation will run ${selector}. Its effort is now ${target.level}, because ${wanted} is not one of that model's levels.`
+				: `This conversation will run ${selector}. No effort level is set on it, because ${wanted} is not one of that model's levels.`,
 	};
 }
 
@@ -333,9 +321,9 @@ export function fastModelPickNotice(
 	dial: "on" | "off" | null,
 ): string | null {
 	if (carried !== true) return null;
-	if (dial === "on") return t("ui.chat.fast_mode.stays_on");
-	if (dial === "off") return t("ui.chat.fast_mode.turned_off");
-	return t("ui.chat.fast_mode.unsupported_stays_off");
+	if (dial === "on") return "Fast mode stays on for this model.";
+	if (dial === "off") return "Changing the model turned fast mode off.";
+	return "This model does not support fast mode, so it stays off.";
 }
 
 /**
@@ -349,8 +337,8 @@ export function fastModelPickNotice(
  * `draftModelForWire`), nor to drop it in silence, which is the discard the
  * effort carry exists to prevent.
  */
-export const fastUnavailableSentence = (): string =>
-	t("ui.chat.fast_mode.service_cannot_carry");
+export const FAST_UNAVAILABLE_SENTENCE =
+	"Fast mode is off: this version of the Local Operator service cannot carry it.";
 
 /**
  * The notice's own code, so the statement survives the machinery that retires the
@@ -375,7 +363,7 @@ export const FAST_UNAVAILABLE_CODE = "fast_unavailable";
  * `sessions.draft` (the warm mint) and `sessions.create`. Dropping it at the
  * senders is the guard; the ROW is left alone, because the dial was the user's
  * choice and a capable backend restores it, and the pane says so in the same
- * breath (`fastUnavailableSentence`, surfaced by the chat page).
+ * breath (`FAST_UNAVAILABLE_SENTENCE`, surfaced by the chat page).
  *
  * A selection with no `fast_mode` is returned by IDENTITY: the ordinary body
  * must stay byte-for-byte what every caller sent before the field existed.
@@ -439,10 +427,10 @@ export function pickResultText(input: {
 export function fastPickFailure(error: unknown): string {
 	const refusal = error instanceof DesktopControlError ? error : null;
 	if (refusal?.code === "fast_mode_unsupported")
-		return t("ui.chat.fast_mode.pick_unsupported");
+		return "This model cannot run fast mode. Pick a model that can.";
 	if (refusal?.status === 422)
-		return t("ui.chat.fast_mode.service_unavailable");
-	return t("ui.chat.fast_mode.not_changed");
+		return "Fast mode is not available on this version of the Local Operator service. Update Local Operator, then try again.";
+	return "Fast mode was not changed. Try again.";
 }
 
 /**

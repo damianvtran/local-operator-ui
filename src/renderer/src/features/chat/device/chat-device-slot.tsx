@@ -36,7 +36,6 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useCallback, useMemo } from "react";
@@ -286,7 +285,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	const onPick = useCallback(
 		(deviceId: string | null, keep: boolean) => {
 			const row = deviceId ? findRow(model, deviceId) : null;
-			const name = row ? row.name : t("ui.mesh.mesh_drop.this_device");
+			const name = row ? row.name : "this device";
 			/*
 			 * A DRAFT'S PICK IS A SETTING, EXERCISED ON THE FIRST SEND: it rides the
 			 * draft row (and from there the create route's own `peer`) rather than

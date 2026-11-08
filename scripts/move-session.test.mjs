@@ -42,8 +42,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export {
-				moveUnavailableReason,
-				moveNotReadyReason,
+				MOVE_UNAVAILABLE_REASON,
+				MOVE_NOT_READY_REASON,
 				MOVE_SETTLE_TIMEOUT_MS,
 				moveReceiptLine,
 				pendingAfterCommit,
@@ -121,8 +121,8 @@ export const errors = {
 const bundlePath = new URL("./_move-session.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
-	moveUnavailableReason,
-	moveNotReadyReason,
+	MOVE_UNAVAILABLE_REASON,
+	MOVE_NOT_READY_REASON,
 	MOVE_SETTLE_TIMEOUT_MS,
 	moveReceiptLine,
 	pendingAfterCommit,
@@ -425,7 +425,7 @@ test("no request is issued at all without the session_move capability", () => {
 	// And the sentence that stands in for the missing route, which is the whole
 	// degradation story for an older backend.
 	assert.match(
-		moveUnavailableReason(),
+		MOVE_UNAVAILABLE_REASON,
 		/^This backend cannot move a live session\./,
 	);
 });
@@ -457,7 +457,7 @@ test("both `/move` forms ask the pane's readiness, not the capability alone (age
 		"the bare form and the argument form must both consult it",
 	);
 	assert.equal(
-		(dispatchSource.match(/note\(moveNotReadyReason\(\), true\);/g) ?? [])
+		(dispatchSource.match(/note\(MOVE_NOT_READY_REASON, true\);/g) ?? [])
 			.length,
 		2,
 		"and both must answer with the readiness sentence",
@@ -479,11 +479,11 @@ test("both `/move` forms ask the pane's readiness, not the capability alone (age
 		"identity is answered before readiness, in both forms",
 	);
 	assert.notEqual(
-		moveNotReadyReason(),
-		moveUnavailableReason(),
+		MOVE_NOT_READY_REASON,
+		MOVE_UNAVAILABLE_REASON,
 		"a session that is still starting is not a backend that cannot move one",
 	);
-	assert.match(moveNotReadyReason(), /still starting/);
+	assert.match(MOVE_NOT_READY_REASON, /still starting/);
 });
 
 test("the latch's ref is written synchronously, before the state update (agent review R3-4, F4-4)", () => {
@@ -688,7 +688,7 @@ test("a typed /move runs its argument without posting to /commands first", () =>
 		"the execute branch must precede the command post, or `/move <path>` posts to /commands first",
 	);
 	assert.match(dispatchSource, /if \(!canMove\) \{/);
-	assert.match(dispatchSource, /note\(moveUnavailableReason\(\), true\)/);
+	assert.match(dispatchSource, /note\(MOVE_UNAVAILABLE_REASON, true\)/);
 });
 
 test("the destination table keys the move on the backend's own destination name", () => {

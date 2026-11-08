@@ -85,7 +85,6 @@ import {
 	ANSWER_NOT_SENT_CODE,
 	withBusyResends,
 } from "@shared/store/canonical-sessions-store";
-import { t } from "../../../../i18n/messages";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
@@ -118,9 +117,9 @@ import type { AskDismissReason } from "./ask-queue";
  * reader imports them from (`answerReport` here, `scripts/ask-options.test.mjs`).
  * One disposition, one predicate, one sentence — wherever the ask is painted.
  */
-import { answerBusyMessage, answerOwnerIsBusy } from "./ask-queue";
+import { ANSWER_BUSY_MESSAGE, answerOwnerIsBusy } from "./ask-queue";
 
-export { answerBusyMessage, answerOwnerIsBusy };
+export { ANSWER_BUSY_MESSAGE, answerOwnerIsBusy };
 
 export {
 	APPROVAL_OPTIONS,
@@ -364,8 +363,8 @@ export const errorCodeOf = (error: unknown): string | undefined =>
  * same shape, and in those the question was still pending (measured — code review
  * round 1, MAJOR-1). Those two now have their own arms below.
  */
-export const settledElsewhereMessage = (): string =>
-	t("ui.chat.ask_answer.settled_elsewhere");
+export const SETTLED_ELSEWHERE_MESSAGE =
+	"That question was already answered somewhere else, so your answer was not sent.";
 
 /**
  * The sentence for a press whose question the ask had already moved past.
@@ -377,8 +376,8 @@ export const settledElsewhereMessage = (): string =>
  * the question, or the ask advanced on its own schedule) and both are true of
  * the user's situation: the question they answered is not the question on screen.
  */
-export const questionMovedOnMessage = (): string =>
-	t("ui.chat.ask_answer.moved_on");
+export const QUESTION_MOVED_ON_MESSAGE =
+	"That question had already been settled or moved on, so your answer was not sent.";
 
 /**
  * The sentence for a press addressed to a runtime instance that is gone.
@@ -404,8 +403,8 @@ export const questionMovedOnMessage = (): string =>
  * U8). `answerReport` now chooses the sentence from the outcome class first and
  * the surface second, so this string is what both surfaces carry.
  */
-export const answerLostToReconnectMessage = (): string =>
-	t("ui.chat.ask_answer.lost_to_reconnect");
+export const ANSWER_LOST_TO_RECONNECT_MESSAGE =
+	"Your answer was not sent. The app reconnected to a new runtime instance, so the question was not answered here.";
 
 /**
  * The sentence for a press whose fate is genuinely UNKNOWN.
@@ -443,8 +442,8 @@ export const answerLostToReconnectMessage = (): string =>
  * and the destination second, so an unknowable outcome says so wherever it is
  * reported.
  */
-export const answerUnconfirmedLead = (): string =>
-	t("ui.chat.ask_answer.unconfirmed_lead");
+export const ANSWER_UNCONFIRMED_LEAD =
+	"Whether your answer landed is not knowable.";
 
 /**
  * The whole sentence: the unknown register, then the app's own reason.
@@ -456,10 +455,10 @@ export const answerUnconfirmedLead = (): string =>
  * tells the user not to press again blindly.
  */
 export const answerUnconfirmedMessage = (error: unknown): string =>
-	t("ui.chat.ask_answer.unconfirmed", {
-		lead: answerUnconfirmedLead(),
-		reason: userFacingMessage(error, t("ui.chat.ask_answer.request_failed")),
-	});
+	`${ANSWER_UNCONFIRMED_LEAD} ${userFacingMessage(
+		error,
+		"The request could not be completed.",
+	)}`;
 
 /**
  * The sentence for a press addressed to a session the app could not reach at all.
@@ -484,11 +483,7 @@ export const answerUnconfirmedMessage = (error: unknown): string =>
  * It is composed from the shared lead rather than spelled out, so the two arms
  * that say "the outcome is not knowable" cannot drift apart in one word.
  */
-export const answerSessionUnreachableMessage = (): string =>
-	t("ui.chat.ask_answer.unconfirmed", {
-		lead: answerUnconfirmedLead(),
-		reason: t("ui.chat.ask_answer.session_unreachable"),
-	});
+export const ANSWER_SESSION_UNREACHABLE_MESSAGE = `${ANSWER_UNCONFIRMED_LEAD} The app could not reach this chat's session at all.`;
 
 /**
  * Whether this failure is the daemon's own hop failure to the session's owner.
@@ -553,9 +548,10 @@ export const answerRefusedWithoutACode = (error: unknown): boolean =>
  * rather than `error.message`.
  */
 export const unsentAnswerMessage = (error: unknown): string =>
-	t("ui.chat.ask_answer.not_sent", {
-		reason: userFacingMessage(error, t("ui.chat.ask_answer.request_failed")),
-	});
+	`Your answer was not sent. ${userFacingMessage(
+		error,
+		"The request could not be completed.",
+	)}`;
 
 /**
  * What one option press reports, and WHERE it reports it.
@@ -903,15 +899,16 @@ const pressSentenceFor = (error: unknown, frame: PressFrame): string => {
 	 * before the unknowable arm because both ARE unknowable outcomes - the busy arm
 	 * is in that set, and `runtime_unreachable` always has been.
 	 */
-	if (answerOwnerIsBusy(error)) return answerBusyMessage();
-	if (answerSessionUnreachable(error)) return answerSessionUnreachableMessage();
+	if (answerOwnerIsBusy(error)) return ANSWER_BUSY_MESSAGE;
+	if (answerSessionUnreachable(error))
+		return ANSWER_SESSION_UNREACHABLE_MESSAGE;
 	if (answerOutcomeIsUnknown(error)) return answerUnconfirmedMessage(error);
 	if (answerRefusedWithoutACode(error)) {
 		if (frame.liveEpoch !== frame.sentEpoch)
-			return answerLostToReconnectMessage();
-		if (frame.liveGateKey === null) return settledElsewhereMessage();
+			return ANSWER_LOST_TO_RECONNECT_MESSAGE;
+		if (frame.liveGateKey === null) return SETTLED_ELSEWHERE_MESSAGE;
 		if (frame.liveGateKey !== frame.pressedGateKey)
-			return questionMovedOnMessage();
+			return QUESTION_MOVED_ON_MESSAGE;
 	}
 	return unsentAnswerMessage(error);
 };
@@ -954,8 +951,8 @@ const composerCodeFor = (error: unknown): string => {
  * the composer's alert offers no press that cannot work, exactly as the
  * approval's "Reply yes or no" refusal does.
  */
-export const secretAnswerDockedMessage = (): string =>
-	t("ui.chat.ask_answer.secret_docked");
+export const SECRET_ANSWER_DOCKED_MESSAGE =
+	"Your answer was not sent — a secret request is answered in the field above the composer.";
 
 /** The `sessions.answer` request, as the wire contract defines it. */
 export type GateAnswerRequest = Extract<

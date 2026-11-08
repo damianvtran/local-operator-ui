@@ -24,7 +24,6 @@
  */
 
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
-import { t } from "@shared/i18n";
 import type {
 	QuotaNotice,
 	QuotaNoticeAction,
@@ -207,8 +206,8 @@ const RADIENT_CREDENTIAL_REFUSED_CODE = "radient_credential_refused";
 export const QUOTA_RESEND_COOLDOWN_MS = 120_000;
 
 /** What the press says after the server took it. */
-export const quotaResendSentSentence = (): string =>
-	t("ui.chat.quota_resend.sent");
+export const QUOTA_RESEND_SENT_SENTENCE =
+	"Sent. Check your inbox and spam folder.";
 
 /**
  * What the press says while the op is in flight.
@@ -217,8 +216,7 @@ export const quotaResendSentSentence = (): string =>
  * design N2: in-flight read like cooldown). It borrows the rate-limited
  * sentence's slot instead, so every phase that disables the control says why.
  */
-export const quotaResendSendingSentence = (): string =>
-	t("ui.chat.quota_resend.sending");
+export const QUOTA_RESEND_SENDING_SENTENCE = "Sending…";
 
 /**
  * What the press says when it failed and can be tried again.
@@ -228,12 +226,11 @@ export const quotaResendSendingSentence = (): string =>
  * and nothing said whether a mail went out. One sentence in the same
  * `<output>` slot as the other outcomes, and the button stays offered.
  */
-export const quotaResendFailedSentence = (): string =>
-	t("ui.chat.quota_resend.failed");
+export const QUOTA_RESEND_FAILED_SENTENCE = "Could not send. Try again.";
 
 /** What the press says when the server's own cooldown refused it. */
-export const quotaResendRateLimitedSentence = (): string =>
-	t("ui.chat.quota_resend.rate_limited");
+export const QUOTA_RESEND_RATE_LIMITED_SENTENCE =
+	"Requested recently. Try again in about 2 minutes.";
 
 /**
  * The resend press's own lifecycle. `degraded` is terminal for the mount: the
@@ -329,14 +326,14 @@ export function quotaResendView(
 		case "sending":
 			return {
 				disabled: true,
-				sentence: quotaResendSendingSentence(),
+				sentence: QUOTA_RESEND_SENDING_SENTENCE,
 				offered: true,
 			};
 		case "sent":
 			return state.until > now
 				? {
 						disabled: true,
-						sentence: quotaResendSentSentence(),
+						sentence: QUOTA_RESEND_SENT_SENTENCE,
 						offered: true,
 					}
 				: { disabled: false, sentence: null, offered: true };
@@ -344,14 +341,14 @@ export function quotaResendView(
 			return state.until > now
 				? {
 						disabled: true,
-						sentence: quotaResendRateLimitedSentence(),
+						sentence: QUOTA_RESEND_RATE_LIMITED_SENTENCE,
 						offered: true,
 					}
 				: { disabled: false, sentence: null, offered: true };
 		case "failed":
 			return {
 				disabled: false,
-				sentence: quotaResendFailedSentence(),
+				sentence: QUOTA_RESEND_FAILED_SENTENCE,
 				offered: true,
 			};
 		case "degraded":
@@ -386,12 +383,10 @@ export function quotaNoticeActions(
  * every settled outcome of the press gets a sentence, in the same `<output>`
  * slot the resend outcomes use.
  */
-export const quotaRefreshCheckingSentence = (): string =>
-	t("ui.chat.quota_resend.refresh_checking");
-export const quotaRefreshUnchangedSentence = (): string =>
-	t("ui.chat.quota_resend.refresh_unchanged");
-export const quotaRefreshFailedSentence = (): string =>
-	t("ui.chat.quota_resend.refresh_failed");
+export const QUOTA_REFRESH_CHECKING_SENTENCE = "Checking…";
+export const QUOTA_REFRESH_UNCHANGED_SENTENCE =
+	"Checked just now — no change yet.";
+export const QUOTA_REFRESH_FAILED_SENTENCE = "Could not check. Try again.";
 
 /** The refresh press's phase, beside the resend press's. */
 export type QuotaRefreshCue = "idle" | "checking" | "unchanged" | "failed";
@@ -402,11 +397,11 @@ export function quotaRefreshSentence(cue: QuotaRefreshCue): string | null {
 		case "idle":
 			return null;
 		case "checking":
-			return quotaRefreshCheckingSentence();
+			return QUOTA_REFRESH_CHECKING_SENTENCE;
 		case "unchanged":
-			return quotaRefreshUnchangedSentence();
+			return QUOTA_REFRESH_UNCHANGED_SENTENCE;
 		case "failed":
-			return quotaRefreshFailedSentence();
+			return QUOTA_REFRESH_FAILED_SENTENCE;
 	}
 }
 

@@ -52,12 +52,12 @@ import {
 	useState,
 } from "react";
 import {
+	SKILL_PHASE_LABEL,
 	type SkillNotice,
 	skillClickFooter,
 	skillEnterFooter,
 	skillKeyIntent,
 	skillNotice,
-	skillPhaseLabel,
 	skillRowId,
 } from "./skill-contract";
 import { skillSuggestions } from "./skill-rank";
@@ -494,7 +494,7 @@ export function SkillSuggestionsPopup({
 			)}
 		>
 			<div className="border-b border-hairline px-3 py-1 text-meta text-ink-dim">
-				{skillPhaseLabel()}
+				{SKILL_PHASE_LABEL}
 			</div>
 			<div
 				className="overflow-y-auto"

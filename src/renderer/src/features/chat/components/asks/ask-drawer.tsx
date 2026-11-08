@@ -114,11 +114,11 @@ import type {
 	AskScope,
 } from "../../ask-queue";
 import {
+	ASK_DRAWER_UNAVAILABLE_LINE,
+	ASK_DRAWER_UNREAD_LINE,
 	ASK_ITEM_SELECTOR,
 	ASK_RAIL_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
-	askDrawerUnavailableLine,
-	askDrawerUnreadLine,
 	askQueueView,
 	askScopeLine,
 	noopDraftChange,
@@ -1259,7 +1259,9 @@ export const AskDrawer = ({
 						 * falsy-`published` case is the resolved-but-unsupported one below it.
 						 */
 						<p className="text-ink-muted text-body">
-							{frameUnread ? askDrawerUnreadLine() : askDrawerUnavailableLine()}
+							{frameUnread
+								? ASK_DRAWER_UNREAD_LINE
+								: ASK_DRAWER_UNAVAILABLE_LINE}
 						</p>
 					)}
 				</div>

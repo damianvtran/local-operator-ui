@@ -83,7 +83,7 @@ const bundle = await build({
 		contents: [
 			'export { AskPanel } from "./src/renderer/src/features/chat/components/asks/ask-panel";',
 			'export { askQueueView, askChipCountClause, askRevisionDraft, askAnswerMap, presentAsk, askStatusText, askStatusWord } from "./src/renderer/src/features/chat/ask-queue";',
-			'export { askLateUndeliveredText, askRefusalIsOwner, askRefusalSentence, askScopeLine } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { ASK_LATE_UNDELIVERED_TEXT, askRefusalIsOwner, askRefusalSentence, askScopeLine } from "./src/renderer/src/features/chat/ask-queue";',
 			'export { t } from "./src/i18n";',
 			'export { DesktopControlError, desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 			'export { DESKTOP_LOST_SIGHT_CODE, DESKTOP_MACHINE_DETAIL, DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_COPY_KEY, RUNTIME_BUSY_CODE, desktopRequestDeadlineDetail } from "./src/shared/desktop-contract";',
@@ -143,7 +143,7 @@ const {
 	presentAsk,
 	askStatusText,
 	askStatusWord,
-	askLateUndeliveredText,
+	ASK_LATE_UNDELIVERED_TEXT,
 	askRefusalIsOwner,
 	askRefusalSentence,
 	askScopeLine,
@@ -785,9 +785,9 @@ test("a late-undelivered row does not claim the agent was told", () => {
 	 */
 	assert.equal(
 		askStatusText(lateNotDelivered(), NOW),
-		askLateUndeliveredText(),
+		ASK_LATE_UNDELIVERED_TEXT,
 	);
-	assert.equal(askLateUndeliveredText(), "Answered late — not yet delivered");
+	assert.equal(ASK_LATE_UNDELIVERED_TEXT, "Answered late — not yet delivered");
 	const markup = panelMarkup(lateNotDelivered());
 	assert.ok(markup.includes("Answered late — not yet delivered"));
 	assert.equal(

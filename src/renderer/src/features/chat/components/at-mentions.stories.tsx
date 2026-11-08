@@ -42,7 +42,7 @@ import { expect, userEvent } from "@storybook/test";
 import type { ReactNode } from "react";
 import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
 import type { Message } from "../types/message";
-import { atUnavailableReason } from "./at-contract";
+import { AT_UNAVAILABLE_REASON } from "./at-contract";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 
 type Entry = { name: string; directory: boolean };
@@ -1005,7 +1005,7 @@ export const HarnessCannotExpand: Story = stateStory({
 	settled: () =>
 		chipCount() === 0 &&
 		rowCount() === 0 &&
-		noticeText() === atUnavailableReason(),
+		noticeText() === AT_UNAVAILABLE_REASON,
 });
 
 /**

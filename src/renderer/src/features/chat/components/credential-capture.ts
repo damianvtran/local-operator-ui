@@ -136,7 +136,7 @@ export const MASK_CELL = "\u2022";
  * module is bundled from source by `scripts/soft-breaks.test.mjs` with no alias
  * map, and `ask-answer.ts` reads `@shared`.
  */
-import { formatList, t } from "../../../../../i18n";
+import { t } from "../../../../../i18n";
 import { approvalAnswerValue } from "../approval-words";
 import { SEPARATOR, SEPARATOR_CLASS, pyTrim } from "./slash-token";
 
@@ -1975,7 +1975,8 @@ export const clearedNotice = (
 	key: string,
 	index: number,
 	undoCap: string,
-): string => t("ui.chat.credential_notice.cleared", { key, index, undoCap });
+): string =>
+	`Removed ${key} (credential #${index}) from this message. Its value is gone — press ${undoCap} to put it back, or paste it again after /credential to reuse it.`;
 
 /**
  * The clear control's accessible name, per chip (design round 1, D4).
@@ -1987,7 +1988,7 @@ export const clearedNotice = (
  * distinguishes the two in a screen reader's control list.
  */
 export const clearControlLabel = (index: number): string =>
-	t("ui.chat.credential_notice.clear_label", { index });
+	`Remove credential #${index}`;
 
 /**
  * The composer chip's `title` (UX round 1, U3).
@@ -2005,7 +2006,7 @@ export const clearControlLabel = (index: number): string =>
  * that they cannot read it back.
  */
 export const markerChipTitle = (index: number, chars: number): string =>
-	t("ui.chat.credential_notice.chip_title", { index, chars });
+	`Credential #${index}, ${chars} chars — held in this message; its value cannot be read`;
 
 /**
  * The notice-line half of the clear (UX round 1, U2).
@@ -2040,8 +2041,7 @@ export const clearedNoticeLine = (
  * offer. It lives here rather than inline at the call site for the reason the
  * notices above do — one home for the words that describe a credential's fate.
  */
-export const credentialClearUndoLabel = (): string =>
-	t("ui.chat.credential_notice.undo");
+export const CREDENTIAL_CLEAR_UNDO_LABEL = "Undo";
 
 /**
  * The toast's own half of the clear (UX round 2, U9).
@@ -2094,7 +2094,7 @@ export type ComposerNoticeInput = {
  */
 export const noticeLineFor = (input: ComposerNoticeInput): string | null => {
 	if (input.unredacted !== null) return input.unredacted;
-	if (input.armed) return credentialArmedNotice();
+	if (input.armed) return CREDENTIAL_ARMED_NOTICE;
 	if (input.cleared !== null) {
 		return clearedNoticeLine(
 			input.cleared.key,
@@ -2194,7 +2194,7 @@ export function restoreClearedCredential(args: {
  * verb that stored them, so this is the operator's half.
  */
 export const storedNotice = (keys: readonly string[]): string =>
-	t("ui.notices.credentials.stored", { keys: formatList(keys) });
+	t("ui.notices.credentials.stored", { keys: keys.join(", ") });
 
 /**
  * The notice for a store that ANSWERED and refused the write (§9.4), naming
@@ -2214,7 +2214,7 @@ export const storedNotice = (keys: readonly string[]): string =>
 export function unstoredNotice(keys: readonly string[]): string {
 	return t("ui.notices.credentials.unstored", {
 		count: keys.length,
-		keys: formatList([...keys].sort()),
+		keys: [...keys].sort().join(", "),
 	});
 }
 
@@ -2239,8 +2239,7 @@ export function unstoredNotice(keys: readonly string[]): string {
  * label clamps at the narrow rungs and the key survives the ellipsis, which is the
  * property round 2 asked to be able to read off a frame.
  */
-export const unconfirmedChipWords = (): string =>
-	t("ui.chat.credential_notice.unconfirmed_words");
+export const UNCONFIRMED_CHIP_WORDS = "store unconfirmed";
 
 /**
  * The words on their own, for the one arm whose sentence names no key.
@@ -2248,14 +2247,13 @@ export const unconfirmedChipWords = (): string =>
  * There is nothing to lead with there, so the label says what the whole of it is —
  * the same words the TUI parity comment used before the reference joined them.
  */
-export const unconfirmedChipWordsAlone = (): string =>
-	t("ui.chat.credential_notice.unconfirmed_alone");
+export const UNCONFIRMED_CHIP_WORDS_ALONE = "Credential store unconfirmed";
 
 /** {@link UNCONFIRMED_CHIP_WORDS} with the reference its sentence named, if any. */
 export const unconfirmedChipLabel = (key: string): string =>
 	key === ""
-		? unconfirmedChipWordsAlone()
-		: t("ui.chat.credential_notice.unconfirmed_labelled", { key });
+		? UNCONFIRMED_CHIP_WORDS_ALONE
+		: `${key} · ${UNCONFIRMED_CHIP_WORDS}`;
 
 /**
  * The move that works, in the operator's own terms — ONE wording, two surfaces.
@@ -2266,8 +2264,8 @@ export const unconfirmedChipLabel = (key: string): string =>
  * prevent. `unconfirmedNotice` and `unconfirmedHover` compose it rather
  * than repeating it (design round 1, D2).
  */
-export const unconfirmedOperatorMove = (): string =>
-	t("ui.chat.credential_notice.operator_move");
+export const UNCONFIRMED_OPERATOR_MOVE =
+	"Paste the value again after /credential to store it again.";
 
 /**
  * What HOVERING an unresolved chip says (design round 1, D2).
@@ -2280,7 +2278,7 @@ export const unconfirmedOperatorMove = (): string =>
  * halves stay in this module because this module owns the spellings.
  */
 export const unconfirmedHover = (citation: string): string =>
-	`${citation} ${unconfirmedOperatorMove()}`;
+	`${citation} ${UNCONFIRMED_OPERATOR_MOVE}`;
 
 /**
  * The notice for a store the session never confirmed EITHER WAY (§9.4).
@@ -2301,13 +2299,13 @@ export const unconfirmedHover = (citation: string): string =>
 export function unconfirmedNotice(keys: readonly string[]): string {
 	return t("ui.notices.credentials.unconfirmed", {
 		count: keys.length,
-		keys: formatList([...keys].sort()),
+		keys: [...keys].sort().join(", "),
 	});
 }
 
 /** Shown while the token is seated and the secret has not started arriving. */
-export const credentialArmedNotice = (): string =>
-	t("ui.chat.credential_notice.armed");
+export const CREDENTIAL_ARMED_NOTICE =
+	"armed — add a space, then type or paste the secret";
 
 /**
  * Shown once the operator has STARTED TYPING a secret and the composer is
@@ -2342,8 +2340,8 @@ export const credentialArmedNotice = (): string =>
  * design review round 1, D4). Both now fit one line at that rung, so the press
  * changes the words and nothing else.
  */
-export const credentialTypingNotice = (): string =>
-	t("ui.chat.credential_notice.typing");
+export const CREDENTIAL_TYPING_NOTICE =
+	"masked as you type — Enter makes a pill, Esc twice discards";
 
 /**
  * The same state with NOTHING typed into the span yet, where Enter does
@@ -2368,8 +2366,8 @@ export const credentialTypingNotice = (): string =>
  * Both keep the token's own words ("masked") first, because the state they
  * describe is still a masking one: the next character typed becomes a cell.
  */
-export const credentialEmptySpanNotice = (): string =>
-	t("ui.chat.credential_notice.empty_span");
+export const CREDENTIAL_EMPTY_SPAN_NOTICE =
+	"masked — Enter opens the credential picker; type or paste the secret into this span";
 
 /**
  * Shown after the FIRST Esc on a span with characters in it ({@link escapeHolds}).
@@ -2384,8 +2382,8 @@ export const credentialEmptySpanNotice = (): string =>
  * from the typing sentence. The composer also paints the held span in the warning
  * role, so the state reads without the sentence.
  */
-export const credentialEscapeHeldNotice = (): string =>
-	t("ui.chat.credential_notice.escape_held");
+export const CREDENTIAL_ESCAPE_HELD_NOTICE =
+	"Esc again discards it — still masked, Enter makes a pill";
 
 /**
  * Shown once, after the SECOND Esc discarded a held value (design review round 1,
@@ -2394,8 +2392,8 @@ export const credentialEscapeHeldNotice = (): string =>
  * and no length, the same rule as every other credential sentence. The next edit
  * retires it.
  */
-export const credentialDiscardedNotice = (): string =>
-	t("ui.chat.credential_notice.discarded");
+export const CREDENTIAL_DISCARDED_NOTICE =
+	"credential discarded — nothing was stored or sent";
 
 /**
  * The empty-span form for a pane with no session yet; see
@@ -2414,8 +2412,8 @@ export const credentialDiscardedNotice = (): string =>
  * action the live-session variant already carries. It keeps the dispatcher's own
  * cause, so the notice and the line that follows it still agree word for word.
  */
-export const credentialEmptySpanDraftNotice = (): string =>
-	t("ui.chat.credential_notice.empty_span_draft");
+export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
+	"masked — Enter runs /credential, which needs an open conversation; type or paste the secret into this span";
 
 /**
  * Said while the box holds characters a credential gesture put there as plain text:
@@ -2430,7 +2428,7 @@ export const credentialEmptySpanDraftNotice = (): string =>
  * with that machinery (agent review round 1, R1-2).
  */
 export const unredactedNotice = (length: number): string =>
-	t("ui.chat.credential_notice.unredacted", { length });
+	`${length} characters are now PLAIN TEXT in the composer — Enter will expose them`;
 
 /**
  * The buffer with a LIVE mask replaced by the characters it stands for.

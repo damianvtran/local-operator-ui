@@ -322,12 +322,12 @@ const bundle = await build({
 			export { ASK_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export { t } from "@shared/i18n";
 			export {
-				credentialArmedNotice,
-				credentialEmptySpanDraftNotice,
-				credentialEmptySpanNotice,
+				CREDENTIAL_ARMED_NOTICE,
+				CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
+				CREDENTIAL_EMPTY_SPAN_NOTICE,
 				CREDENTIAL_KEY_ALPHABET,
-				credentialTypingNotice,
-				credentialDiscardedNotice,
+				CREDENTIAL_TYPING_NOTICE,
+				CREDENTIAL_DISCARDED_NOTICE,
 				MASK_CELL,
 				unredactedNotice,
 			} from "./src/renderer/src/features/chat/components/credential-capture.ts";
@@ -366,12 +366,12 @@ const {
 	QueryClientProvider,
 	useConversationInputStore,
 	useRadientCredentialProbe,
-	credentialArmedNotice,
-	credentialEmptySpanDraftNotice,
-	credentialEmptySpanNotice,
+	CREDENTIAL_ARMED_NOTICE,
+	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
+	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_KEY_ALPHABET,
-	credentialTypingNotice,
-	credentialDiscardedNotice,
+	CREDENTIAL_TYPING_NOTICE,
+	CREDENTIAL_DISCARDED_NOTICE,
 	MASK_CELL,
 	unredactedNotice,
 	ASK_ITEM_SELECTOR,
@@ -922,7 +922,7 @@ test("an empty span reaches the picker from the button as it does from the key",
 	// The span is open and EMPTY, which is the state U10 is about: Enter does not
 	// mint a pill here, it falls through to the dispatcher, so the notice names
 	// the door instead of promising one.
-	assert.equal(frame.notice(), credentialEmptySpanDraftNotice());
+	assert.equal(frame.notice(), CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE);
 	/*
 	 * AND IT DESCRIBES THE GESTURE THE OPERATOR IS STANDING IN (UX round 3, U15).
 	 * The round-2 sentence ("a new chat has no open conversation yet, so Enter
@@ -1304,7 +1304,7 @@ test("accepting the /credential row opens the capture, so the paste is captured"
 	assert.equal(frame.sent.length, 0, "completing a row is not a send");
 	assert.equal(
 		frame.notice(),
-		credentialEmptySpanDraftNotice(),
+		CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 		"the picker-accepted trailing space opens the capture",
 	);
 
@@ -2676,7 +2676,7 @@ test("an edit between the two Escapes re-arms the hold rather than discarding", 
 	await type(frame, DUMMY_SECRET);
 	await esc(frame);
 	await type(frame, "4");
-	assert.equal(frame.notice(), credentialTypingNotice(), "typing resumed");
+	assert.equal(frame.notice(), CREDENTIAL_TYPING_NOTICE, "typing resumed");
 	await esc(frame);
 	assert.equal(
 		frame.value(),
@@ -2747,7 +2747,7 @@ test("a hold ends with its capture: a later identical capture is not pre-held (a
 	await type(frame, DUMMY_SECRET);
 	assert.equal(
 		frame.notice(),
-		credentialTypingNotice(),
+		CREDENTIAL_TYPING_NOTICE,
 		"a fresh capture opens in the typing state, not pre-held",
 	);
 	await esc(frame);
@@ -2766,7 +2766,7 @@ test("the second Esc says the value was discarded, and the next edit retires the
 	await esc(frame);
 	await esc(frame);
 	assert.equal(frame.value(), "deploy with /credential ");
-	assert.equal(frame.notice(), credentialDiscardedNotice());
+	assert.equal(frame.notice(), CREDENTIAL_DISCARDED_NOTICE);
 	assert.ok(
 		!frame.notice().includes(String(DUMMY_SECRET.length)),
 		"the line names no length",
@@ -2774,14 +2774,14 @@ test("the second Esc says the value was discarded, and the next edit retires the
 	await type(frame, "x");
 	assert.notEqual(
 		frame.notice(),
-		credentialDiscardedNotice(),
+		CREDENTIAL_DISCARDED_NOTICE,
 		"an edit retires it",
 	);
 	// An EMPTY-span Esc discarded nothing, so it owes no such line.
 	const empty = await mount({ conversationId: "conv-esc-empty-no-line" });
 	await openCapture(empty);
 	await esc(empty);
-	assert.notEqual(empty.notice(), credentialDiscardedNotice());
+	assert.notEqual(empty.notice(), CREDENTIAL_DISCARDED_NOTICE);
 });
 
 test("leaving a held capture by switch or reload persists no plaintext", async () => {
@@ -2858,7 +2858,7 @@ test("the empty span's sentence names what Enter does in a LIVE session", async 
 		sessionStatus: { frontend: null },
 	});
 	await openCapture(frame);
-	assert.equal(frame.notice(), credentialEmptySpanNotice());
+	assert.equal(frame.notice(), CREDENTIAL_EMPTY_SPAN_NOTICE);
 	assert.match(frame.notice(), /picker/);
 	assert.ok(
 		!frame.notice().includes("new chat"),

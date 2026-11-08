@@ -1,9 +1,0 @@
-{
-	"ui.chat.quota_resend.failed": "发送失败。请重试。",
-	"ui.chat.quota_resend.rate_limited": "刚刚已请求过。约2分钟后再试。",
-	"ui.chat.quota_resend.refresh_checking": "正在检查……",
-	"ui.chat.quota_resend.refresh_failed": "检查失败。请重试。",
-	"ui.chat.quota_resend.refresh_unchanged": "刚刚已检查——暂无变化。",
-	"ui.chat.quota_resend.sending": "正在发送……",
-	"ui.chat.quota_resend.sent": "已发送。请检查收件箱和垃圾邮件文件夹。"
-}

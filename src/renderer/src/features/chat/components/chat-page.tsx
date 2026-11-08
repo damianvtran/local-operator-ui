@@ -96,6 +96,7 @@ import {
 } from "../aside";
 import {
 	type AnswerOutcome,
+	SECRET_ANSWER_DOCKED_MESSAGE,
 	type SendLock,
 	answerGateOption,
 	answerGateSecret,
@@ -109,7 +110,6 @@ import {
 	dismissQueuedAsk,
 	gateIsSecret,
 	reviseQueuedAsk,
-	secretAnswerDockedMessage,
 } from "../ask-answer";
 import {
 	type AskAnswerAttempt,
@@ -149,8 +149,8 @@ import {
 	type DraftResolution,
 	type DraftSelectionTarget,
 	FAST_UNAVAILABLE_CODE,
+	FAST_UNAVAILABLE_SENTENCE,
 	draftPreviewQuery,
-	fastUnavailableSentence,
 } from "../draft-selection";
 import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "../fleet-asks";
 import { useInterruptOnEscape } from "../hooks/use-interrupt-on-escape";
@@ -161,8 +161,8 @@ import {
 	sessionInterruptEnabled,
 } from "../interrupt-turn";
 import {
-	moveNotReadyReason,
-	moveUnavailableReason,
+	MOVE_NOT_READY_REASON,
+	MOVE_UNAVAILABLE_REASON,
 	sessionMoveEnabled,
 	useSessionMove,
 } from "../move-session";
@@ -220,34 +220,6 @@ const gateKeyOf = (gate: { request_id: string; question_index: number }) =>
  * prepared by the store first; changing rows never stops the outgoing runtime. */
 /** The header's second line when nothing true can fill it; see the live arm. */
 const HELD_DESCRIPTION_LINE = "\u00a0";
-
-/**
- * The options bar's button label for a slash command, resolved at render.
- *
- * Keyed per command (not `command[0].toUpperCase()`-derived): capitalising the
- * command NAME is English grammar, and the name itself is a protocol token that
- * must not be what a French reader sees. The names stay the dispatch argument.
- */
-const optionsCommandLabel = (command: string): string => {
-	switch (command) {
-		case "agent":
-			return t("ui.chat.page_chrome.options.choose_agent");
-		case "team":
-			return t("ui.chat.page_chrome.options.choose_team");
-		case "model":
-			return t("ui.chat.page_chrome.options.model");
-		case "rename":
-			return t("ui.chat.page_chrome.options.rename");
-		case "resume":
-			return t("ui.chat.page_chrome.options.resume");
-		case "fork":
-			return t("ui.chat.page_chrome.options.fork");
-		case "new":
-			return t("ui.chat.page_chrome.options.new");
-		default:
-			return t("ui.chat.page_chrome.options.settings");
-	}
-};
 
 /** How a send held for the validation window ends; see `send`. */
 type WindowOutcome = "ready" | "failed" | "gone" | "abandoned";
@@ -1296,7 +1268,7 @@ function SessionPanel({
 	 * And the sentence for the case where there is none, PER CAUSE (agent review
 	 * m1).
 	 *
-	 * `moveUnavailableReason` is about the backend, so it is only true where the
+	 * `MOVE_UNAVAILABLE_REASON` is about the backend, so it is only true where the
 	 * backend is the reason. The second case is a pane whose session is being
 	 * created: `draftKey` survives admission by design (the pane is keyed on the
 	 * session identity so it does not remount), and for that window a move would
@@ -1307,10 +1279,10 @@ function SessionPanel({
 	 */
 	const cwdReadOnlyReason =
 		draftKey && (Boolean(draft?.sessionId) || admitting)
-			? moveNotReadyReason()
+			? MOVE_NOT_READY_REASON
 			: canMove
 				? undefined
-				: moveUnavailableReason();
+				: MOVE_UNAVAILABLE_REASON;
 	const navigate = useNavigate();
 	const rebind = (id: string) => {
 		/* The `/chat` slash finger on the switch; the rule is in `openConversation`. */
@@ -1559,7 +1531,7 @@ function SessionPanel({
 		 * pending on a restored draft and retired a statement of fact as if it were
 		 * a claim about a flight.
 		 */
-		setSendError(fastUnavailableSentence());
+		setSendError(FAST_UNAVAILABLE_SENTENCE);
 		setSendErrorCode(FAST_UNAVAILABLE_CODE);
 		setSendErrorRetry(false);
 		setSendErrorMuted(true);
@@ -2053,14 +2025,14 @@ function SessionPanel({
 				 *
 				 * The sentence and the code are the ones every refused answer uses, so
 				 * the composer's alert offers no press that cannot work
-				 * (`secretAnswerDockedMessage` carries the reasoning). The read itself
+				 * (`SECRET_ANSWER_DOCKED_MESSAGE` carries the reasoning). The read itself
 				 * is `gateIsSecret` — the ONE predicate the dock's field arm, the
 				 * composer's closure and the answer door share (agent review round 1,
 				 * NIT-1), so no surface can mask while another stays open.
 				 */
 				if (gateIsSecret(gate))
 					throw new UserFacingError(
-						secretAnswerDockedMessage(),
+						SECRET_ANSWER_DOCKED_MESSAGE,
 						ANSWER_NOT_SENT_CODE,
 					);
 				if (gate.kind === "approval") {
@@ -2258,7 +2230,9 @@ function SessionPanel({
 					 * where the chips that have to be removed are. `false` keeps both halves
 					 * with the user.
 					 */
-					setSendError(t("ui.chat.page_chrome.aside_text_only"));
+					setSendError(
+						"An aside answers text only. Remove the attached files to ask it.",
+					);
 					return false;
 				}
 				/*
@@ -3445,7 +3419,7 @@ function SessionPanel({
 				 */
 				const sentence = userFacingMessage(
 					error,
-					t("ui.chat.page_chrome.stop_unconfirmed"),
+					"Stop could not be confirmed. The turn may still be running.",
 				);
 				stopAlertSentence.current = sentence;
 				setSendError(sentence);
@@ -4702,7 +4676,11 @@ function SessionPanel({
 								void dispatch({ name: command, args: "" });
 							}}
 						>
-							{optionsCommandLabel(command)}
+							{command === "agent"
+								? "Choose agent"
+								: command === "team"
+									? "Choose team"
+									: command.charAt(0).toUpperCase() + command.slice(1)}
 						</button>
 					))}
 				</div>
@@ -5264,7 +5242,9 @@ export function ChatPage() {
 		 * non-session identity - gets the honest sentence.
 		 */
 		if (!SESSION_ID.test(routeIdentity)) {
-			setRouteError(t("ui.chat.page_chrome.legacy_link"));
+			setRouteError(
+				"This legacy link has no canonical chat. Its saved history is unchanged.",
+			);
 			return;
 		}
 		const id = routeIdentity;
@@ -5428,14 +5408,14 @@ export function ChatPage() {
 						 * itself is untouched while the backend is being reached.
 						 */}
 						{capabilities.isLoading
-							? t("ui.chat.page_chrome.backend.connecting")
+							? "Connecting to the backend… Your conversation is safe."
 							: capabilities.error
 								? userFacingMessage(
 										capabilities.error,
-										t("ui.chat.page_chrome.backend.no_answer"),
+										"The Local Operator server did not answer as expected.",
 									)
 								: (pairingSentence ??
-									t("ui.chat.page_chrome.backend.update_needed"))}
+									"Update the backend to use canonical chats. Your existing histories are unchanged.")}
 					</p>
 					{offerRetry && (
 						<button

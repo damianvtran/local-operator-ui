@@ -16,10 +16,10 @@ import {
 	useState,
 } from "react";
 import {
+	ASIDE_ADOPT_QUEUED,
 	adoptAside,
 	asideAdoptBlockedReason,
 	asideAdoptCap,
-	asideAdoptQueued,
 	asideAdoptReady,
 	asideAnnouncement,
 	asideCapIsMeasured,
@@ -623,7 +623,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	const ready =
 		!queued && asideAdoptReady(stream, sessionStreaming, adoptQueueSupported);
 	const blocked = queued
-		? asideAdoptQueued()
+		? ASIDE_ADOPT_QUEUED
 		: asideAdoptBlockedReason(stream, sessionStreaming, adoptQueueSupported);
 	/*
 	 * WHAT A SCREEN READER IS TOLD, AND WHY IT IS A PHASE SENTENCE RATHER THAN
@@ -658,7 +658,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 * started but cannot see complete, which is exactly the class of state this
 	 * region exists for, and the answer's own sentence was already heard at settle.
 	 */
-	const announcement = queued ? asideAdoptQueued() : asideAnnouncement(stream);
+	const announcement = queued ? ASIDE_ADOPT_QUEUED : asideAnnouncement(stream);
 	// `navigator.platform`, derived at the call site exactly as `chat-sidebar.tsx`
 	// and `chat-header.tsx` do it: the cap is a promise about a key, and an
 	// awaited platform would flash the wrong one.
