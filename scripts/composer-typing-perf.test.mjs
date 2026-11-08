@@ -18,7 +18,7 @@
  * real app writes: `partialize` runs over EVERY conversation's row on every
  * `set()`, which is why the fixtures seed other conversations' drafts too.
  *
- * THREE BENCHES:
+ * THE BENCHES:
  *   B1  per-keystroke cost at 0 / 1 / 6 attachments, in the two shapes an
  *       attachment arrives in: a PASTED image (a `data:` URL of ~1.5 MB base64,
  *       which is the shape the operator's screenshot shows — six images and no
@@ -36,6 +36,20 @@
  *   B3  the persistence window: how many bytes hit disk per keystroke, whether a
  *       burst of keystrokes coalesces to one write, and whether the persisted
  *       payload still restores the draft (the restart-restore contract).
+ *   B6  the serialise alone: one `JSON.stringify` of the payload the six-image
+ *       row produces, reported so the wall-clock rows can be read against an
+ *       independent anchor.
+ *   B7  THE ATTACHMENT ROW'S OWN COMMIT. The composer commits on every
+ *       keystroke, and the row of staged chips lives inside that commit: this
+ *       measures the REAL `AttachmentsPreview` through a real React root, per
+ *       commit, at 0 / 1 / 6 pasted images and 6 picked paths. It is the row
+ *       QA measured as missing (round 1 on PR #1773): the store half is B1, and
+ *       the ~25 ms/keystroke the operator still felt at six pasted images was
+ *       all in here — every chip re-deriving its name, kind and MIME type from a
+ *       1.5 MB `data:` URL on every render. The pin asserts the row is flat in
+ *       PAYLOAD (pasted within a small factor of picked) plus an absolute
+ *       ceiling, so removing either the memo boundary or the bounded scans puts
+ *       the cost back and fails here.
  *
  * BEFORE/AFTER. The counters are all module- or process-level, so the SAME file
  * runs against two trees: this branch (after) and its base (before). The only
@@ -55,6 +69,7 @@
  */
 import assert from "node:assert/strict";
 import { readFile, unlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -663,6 +678,214 @@ const runSerialise = async () => {
 	};
 };
 
+/* ------------- B7: the attachment row's own commit, per keystroke -------- */
+
+/*
+ * WHY THIS ROW EXISTS. B1 measured the store write and B2 counted the commits the
+ * selectors ask for, and between them they said the keystroke was cheap — while
+ * the composer still took ~25 ms per keystroke at six pasted images, which is the
+ * number the operator feels (QA round 1 on PR #1773, measured end to end through
+ * the real `MessageInput`). The cost was in the attachment row's own render, and
+ * nothing in this file looked at it. This does: the REAL component, a real React
+ * root, a real commit per keystroke.
+ *
+ * WHAT IS STUBBED AND WHY IT CANNOT FLATTER THE RESULT. The two seams the copy
+ * test already stubs (`@shared/components/ui`, `@shared/hooks/use-file-blob-url`)
+ * are replaced so the bench does not read private files or paint real bytes: the
+ * file bridge answers `loading`, so a tile paints its 100px ground and no `<img>`.
+ * That removes DECODE work (where a browser would differ from node) and keeps what
+ * is measured — this component's own JavaScript per commit — which is
+ * engine-independent: QA's CPython anchor and V8 agreed on the per-call costs of
+ * exactly these helpers.
+ */
+const ATTACHMENT_COMMITS = Number(process.env.PERF_BENCH_COMMITS ?? 20);
+const ATTACHMENT_MOUNTS = 5;
+/*
+ * The ceiling the six-image commit must stay under. Set from the measured
+ * distribution in this PR (see the B7 rows in the report): the fixed row commits
+ * in well under a millisecond on the machine that measured it, and the pre-fix
+ * row cost an order of magnitude more than this line. It is a wide floor, not a
+ * tuned threshold — a slow CI host must not fail the pin for being slow.
+ */
+const ATTACHMENT_COMMIT_CEILING_MS = 3;
+const STUB_MODULES = /^@shared\/(components\/ui|hooks\/use-file-blob-url)$/;
+const ANY_MODULE = /.*/;
+
+const medianOf = (samples) => {
+	const sorted = [...samples].sort((a, b) => a - b);
+	return sorted[Math.floor(sorted.length / 2)];
+};
+
+let attachmentPreviewModule = null;
+
+/**
+ * The real `AttachmentsPreview`, bundled once and cached for every row.
+ */
+const loadAttachmentPreview = async () => {
+	if (attachmentPreviewModule) return attachmentPreviewModule;
+	const built = await build({
+		stdin: {
+			contents: [
+				'import { AttachmentsPreview } from "./src/renderer/src/features/chat/components/attachments-preview";',
+				"export { AttachmentsPreview };",
+			].join("\n"),
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		jsx: "automatic",
+		/*
+		 * CJS, REQUIRED FROM DISK rather than ESM imported: the component tree pulls
+		 * `lucide-react`, whose build is CJS and whose `require("react")` cannot run
+		 * inside an ESM output. This is the same seam the copy test next to the
+		 * component uses; `react` stays external, so the bench and the component share
+		 * one React instance.
+		 */
+		format: "cjs",
+		platform: "node",
+		write: false,
+		/* The `@shared/*` and `@features/*` aliases live in the web tsconfig. */
+		tsconfig: "tsconfig.web.json",
+		loader: {
+			".css": "empty",
+			".svg": "text",
+			".png": "dataurl",
+			".webp": "dataurl",
+		},
+		external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+		plugins: [
+			{
+				name: "isolated-attachment-dependencies",
+				setup(plugin) {
+					plugin.onResolve({ filter: STUB_MODULES }, (args) => ({
+						path: args.path,
+						namespace: "attachment-fixture",
+					}));
+					plugin.onLoad(
+						{ filter: ANY_MODULE, namespace: "attachment-fixture" },
+						(args) => ({
+							contents: args.path.endsWith("components/ui")
+								? 'import React from "react"; export const Button = ({children, size, variant, ...props}) => React.createElement("button", props, children); export const Tooltip = ({children}) => children;'
+								: 'export const useFileBlobUrl = () => ({status: "loading"}); export const previewFailureReason = () => "bridge failure";',
+							resolveDir: process.cwd(),
+						}),
+					);
+				},
+			},
+		],
+	});
+	const modulePath = new URL(
+		`./_composer-attachment-row-${process.pid}.cjs`,
+		import.meta.url,
+	);
+	await writeFile(modulePath, built.outputFiles[0].text);
+	attachmentPreviewModule = createRequire(import.meta.url)(modulePath.pathname);
+	await unlink(modulePath);
+	return attachmentPreviewModule;
+};
+
+/**
+ * The chips the composer would hold, from B1's own fixtures: six pasted images of
+ * ~1.5 MB or six picked paths on one row.
+ */
+const stagedRow = (count, shape) =>
+	Array.from({ length: count }, (_, i) => ({
+		id: `att-${i}`,
+		path: shape === "pasted" ? pastedImagePath(i + 1) : pickedPath(i),
+	}));
+
+/**
+ * One composer commit's cost in the attachment row, at `count` staged chips.
+ *
+ * The props are built ONCE and kept: a text keystroke changes `currentInput`, and
+ * the store spreads that row (`conversation-input-store.ts`, `setCurrentInput`),
+ * so `attachments` keeps its identity while the box changes. A bench that rebuilt
+ * the array per commit would measure a surface the app never has. The commit
+ * itself is a fresh element with those same prop values, which is exactly what a
+ * parent re-render hands a child.
+ */
+const runAttachmentCommitBench = async ({ count, shape }) => {
+	const { AttachmentsPreview } = await loadAttachmentPreview();
+	const props = {
+		attachments: stagedRow(count, shape),
+		onRemoveAttachment: () => {},
+		disabled: false,
+	};
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	const commit = async () => {
+		const started = performance.now();
+		await act(async () => {
+			//
+			root.render(h(AttachmentsPreview, props));
+		});
+		return performance.now() - started;
+	};
+	// Warmed twice, so the measured commits carry no first-render allocation.
+	await commit();
+	await commit();
+	const samples = [];
+	for (let i = 0; i < ATTACHMENT_COMMITS; i += 1) samples.push(await commit());
+	const markupChars = container.innerHTML.length;
+	await act(async () => {
+		root.unmount();
+	});
+	container.remove();
+	/*
+	 * A MOUNT IS A DIFFERENT QUESTION: it is paid once per paste, and it also
+	 * derives each pasted chip's byte size from its payload (`useAttachmentSize`),
+	 * which is a stated once-per-paste cost rather than a per-keystroke one.
+	 * Reported, not pinned.
+	 */
+	const mounts = [];
+	for (let i = 0; i < ATTACHMENT_MOUNTS; i += 1) {
+		const host = document.createElement("div");
+		document.body.appendChild(host);
+		const mountRoot = createRoot(host);
+		const started = performance.now();
+		await act(async () => {
+			mountRoot.render(h(AttachmentsPreview, props));
+		});
+		mounts.push(performance.now() - started);
+		await act(async () => {
+			mountRoot.unmount();
+		});
+		host.remove();
+	}
+	return {
+		attachments: count,
+		shape,
+		commits: ATTACHMENT_COMMITS,
+		msPerCommitMedian: Number(medianOf(samples).toFixed(3)),
+		msPerCommitMax: Number(Math.max(...samples).toFixed(3)),
+		msPerMountMedian: Number(medianOf(mounts).toFixed(3)),
+		markupChars,
+	};
+};
+
+/** One chip rendered through the real component, as markup. */
+const renderChip = async (path) => {
+	const { AttachmentsPreview } = await loadAttachmentPreview();
+	const host = document.createElement("div");
+	document.body.appendChild(host);
+	const root = createRoot(host);
+	await act(async () => {
+		root.render(
+			h(AttachmentsPreview, {
+				attachments: [{ id: "att-0", path }],
+				onRemoveAttachment: () => {},
+				disabled: false,
+			}),
+		);
+	});
+	const html = host.innerHTML;
+	await act(async () => {
+		root.unmount();
+	});
+	host.remove();
+	return html;
+};
+
 /* --------------------------------- the run ------------------------------- */
 
 const SHAPES = [
@@ -744,6 +967,103 @@ test(`${ARM} B5: the chat page holds the bounded selector`, async () => {
 test(`${ARM} B6: the serialise alone`, async () => {
 	report.B6 = await runSerialise();
 	console.error(`PERF_BENCH_B6 ${JSON.stringify(report.B6)}`);
+});
+
+test(`${ARM} B7: the attachment row's commit is flat in payload size`, async () => {
+	report.B7 = [];
+	for (const fixture of [
+		{ count: 0, shape: "pasted" },
+		{ count: 1, shape: "pasted" },
+		{ count: 6, shape: "pasted" },
+		{ count: 6, shape: "picked" },
+	]) {
+		report.B7.push(await runAttachmentCommitBench(fixture));
+	}
+	console.error(`PERF_BENCH_B7 ${JSON.stringify(report.B7)}`);
+	for (const row of report.B7) {
+		console.error(
+			`  ${row.shape}/${row.attachments}att: commit median ${row.msPerCommitMedian}ms, max ${row.msPerCommitMax}ms, mount median ${row.msPerMountMedian}ms, markup ${row.markupChars} chars`,
+		);
+	}
+	const pasted6 = report.B7.find(
+		(row) => row.shape === "pasted" && row.attachments === 6,
+	);
+	const picked6 = report.B7.find(
+		(row) => row.shape === "picked" && row.attachments === 6,
+	);
+	/*
+	 * THE INVARIANT THIS ROW PROTECTS: what a keystroke costs in the attachment
+	 * row is set by the ROW (how many chips, how much markup) and never by the
+	 * BYTES sitting behind them. Six pasted images and six picked paths are the
+	 * same row to this component — six chips, same 100px tiles — so the two
+	 * figures must land in the same neighbourhood; the `+ 0.5` is slack for a
+	 * host where the picked row is too fast to compare against (a ratio alone
+	 * would let 0.02 vs 0.06 ms pass as "3x").
+	 *
+	 * The pre-fix row fails this by an order of magnitude, which is the whole
+	 * finding: ~10.5 ms of engine-independent JS per keystroke, six tiles costing
+	 * `isImage` + `isVideo` + two `mimeTypeForPath` calls each, scanning ~1.5 MB
+	 * per call on every render of a box that is being typed into.
+	 */
+	assert.ok(
+		pasted6.msPerCommitMedian <= picked6.msPerCommitMedian * 2 + 0.5,
+		`a commit at 6 pasted images cost ${pasted6.msPerCommitMedian}ms against ${picked6.msPerCommitMedian}ms for 6 picked paths - the attachment row is paying for the payload, not the row`,
+	);
+	/*
+	 * THE ABSOLUTE BUDGET, and the ceiling's provenance: the commit that holds
+	 * six chips must stay inside the fraction of a keystroke's 16.7 ms frame that
+	 * a preview row may claim. Measured on this machine after the fix the row is
+	 * reported above (sub-millisecond); the pre-fix figure was an order of
+	 * magnitude over this line, so it is a floor no host speed can fake rather
+	 * than a tuned threshold.
+	 */
+	assert.ok(
+		pasted6.msPerCommitMedian < ATTACHMENT_COMMIT_CEILING_MS,
+		`a commit at 6 pasted images cost ${pasted6.msPerCommitMedian}ms (ceiling ${ATTACHMENT_COMMIT_CEILING_MS}ms)`,
+	);
+	/* The row still renders: a bail-out that painted nothing would measure fast. */
+	assert.ok(
+		pasted6.markupChars > 1_000,
+		`the six-image row painted only ${pasted6.markupChars} characters of markup`,
+	);
+	console.error(`PERF_BENCH_REPORT ${JSON.stringify(report)}`);
+});
+
+/*
+ * AND THE CLASSIFIERS STILL SAY WHAT THEY SAID. Bounding a scan to the tail or to
+ * a `data:` header is only correct if the `endsWith` answers do not move, so this
+ * reads them off the rendered markup instead of off the source: a media tile
+ * carries ONE `<svg>` (its remove button), a file card carries TWO (the type glyph
+ * as well). Uppercase extensions matter — `.PNG` and `.MP4` are still media — and a
+ * `.pdf` is still a card. `data:` URLs are pinned in both shapes too, because the
+ * header is now the only part of them read.
+ */
+test(`${ARM} B7b: bounding the scans did not move the classification`, async () => {
+	const svgCount = (html) => (html.match(/<svg/g) ?? []).length;
+	const png = await renderChip("/Users/operator/Shots/PHOTO.PNG");
+	assert.equal(
+		svgCount(png),
+		1,
+		"an uppercase .PNG stopped being a media tile",
+	);
+	assert.ok(png.includes("PHOTO.PNG"), "the tile lost its filename caption");
+	const mp4 = await renderChip("/Users/operator/Clips/clip.MP4");
+	assert.equal(
+		svgCount(mp4),
+		1,
+		"an uppercase .MP4 stopped being a media tile",
+	);
+	const pdf = await renderChip("/tmp/report.pdf");
+	assert.equal(svgCount(pdf), 2, "a .pdf stopped being a file card");
+	assert.ok(pdf.includes("report.pdf"), "the card lost its filename");
+	const pastedImage = await renderChip(pastedImagePath(1));
+	assert.equal(svgCount(pastedImage), 1, "a pasted image stopped being a tile");
+	const pastedPdf = await renderChip("data:application/pdf;base64,AA");
+	assert.equal(svgCount(pastedPdf), 2, "a pasted PDF stopped being a card");
+	assert.ok(
+		pastedPdf.includes("Pasted application/pdf"),
+		"a pasted PDF lost its header-derived name",
+	);
 });
 
 test(`${ARM} the pin`, async () => {

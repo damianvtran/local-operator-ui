@@ -1,4 +1,4 @@
-import { mimeTypeForPath } from "@features/chat/utils/file-kind";
+import { dataUrlHeader, mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { Button, Tooltip } from "@shared/components/ui";
 import {
 	previewFailureReason,
@@ -10,7 +10,7 @@ import { cn } from "@shared/lib/utils";
 import type { Attachment } from "@shared/store/conversation-input-store";
 import { X } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AttachmentKindIcon, attachmentMetaLine } from "./attachment-file-card";
 
 /**
@@ -92,50 +92,83 @@ const REMOVE_CORNER = cn(
 
 /**
  * Check if a file is an image based on its path/URL
+ *
+ * BOUNDED ON PURPOSE (perf, QA round 1 on PR #1773). This ran per attachment on
+ * every composer render — and the composer re-renders on every KEYSTROKE —
+ * against a path that can be a 1.5 MB `data:` URL. Two things were paid there:
+ * a fresh extension array per call, and `path.toLowerCase()` over the whole
+ * string (~0.25 ms at 1.5 MB, measured). The lists are constants now and the
+ * lowercase reads the TAIL only: `endsWith` can observe nothing else, the
+ * longest extension here is five characters, and a real path is ~1 KB at most.
  */
-const isImage = (path: string): boolean => {
-	if (path.startsWith("data:image/")) {
-		return true;
-	}
-	const imageExtensions = [
-		".jpg",
-		".jpeg",
-		".png",
-		".gif",
-		".webp",
-		".bmp",
-		".svg",
-	];
-	const lowerPath = path.toLowerCase();
-	return imageExtensions.some((ext) => lowerPath.endsWith(ext));
-};
+const IMAGE_EXTENSIONS = [
+	".jpg",
+	".jpeg",
+	".png",
+	".gif",
+	".webp",
+	".bmp",
+	".svg",
+];
 
 /**
  * Check if a file is a video based on its path/URL
  */
+const VIDEO_EXTENSIONS = [
+	".mp4",
+	".webm",
+	".ogg",
+	".mov",
+	".avi",
+	".wmv",
+	".flv",
+	".mkv",
+	".m4v",
+	".3gp",
+	".3g2",
+];
+
+/**
+ * How much of a path an extension check may read: enough for the longest
+ * extension plus slack, and no more.
+ */
+const EXTENSION_TAIL_CHARS = 12;
+
+/**
+ * The characters an `endsWith` on a lowercased path can ever observe.
+ *
+ * Case mapping is per character apart from length changes at the extreme
+ * (`"İ".toLowerCase()` is two units), which twelve characters absorb, so this
+ * answers exactly what lowercasing the whole string did.
+ */
+const lowerTail = (path: string): string =>
+	(path.length <= EXTENSION_TAIL_CHARS
+		? path
+		: path.slice(-EXTENSION_TAIL_CHARS)
+	).toLowerCase();
+
+const isImage = (path: string): boolean => {
+	if (path.startsWith("data:image/")) {
+		return true;
+	}
+	const tail = lowerTail(path);
+	return IMAGE_EXTENSIONS.some((ext) => tail.endsWith(ext));
+};
+
 const isVideo = (path: string): boolean => {
 	if (path.startsWith("data:video/")) {
 		return true;
 	}
-	const videoExtensions = [
-		".mp4",
-		".webm",
-		".ogg",
-		".mov",
-		".avi",
-		".wmv",
-		".flv",
-		".mkv",
-		".m4v",
-		".3gp",
-		".3g2",
-	];
-	const lowerPath = path.toLowerCase();
-	return videoExtensions.some((ext) => lowerPath.endsWith(ext));
+	const tail = lowerTail(path);
+	return VIDEO_EXTENSIONS.some((ext) => tail.endsWith(ext));
 };
 
 /**
  * Extract filename from path
+ *
+ * A `data:` URL is read from its HEADER (`dataUrlHeader`): the payload cannot
+ * name the file, and both regexes below used to walk megabytes of base64 on
+ * every render to discover that.
  */
 const getFileName = (path: string): string => {
 	if (path.startsWith("data:image/")) {
@@ -143,7 +176,8 @@ const getFileName = (path: string): string => {
 	}
 	if (path.startsWith("data:")) {
 		// For other pasted files (non-image)
-		const nameMatch = path.match(RESOURCE_NAME_REGEX);
+		const header = dataUrlHeader(path);
+		const nameMatch = header.match(RESOURCE_NAME_REGEX);
 		if (nameMatch?.[1]) {
 			try {
 				return decodeURIComponent(nameMatch[1]);
@@ -151,7 +185,7 @@ const getFileName = (path: string): string => {
 				// Fallback if decoding fails, continue to MIME type extraction
 			}
 		}
-		const mimeTypeMatch = path.match(MIME_TYPE_REGEX);
+		const mimeTypeMatch = header.match(MIME_TYPE_REGEX);
 		if (mimeTypeMatch?.[1]) {
 			return t("ui.chat.composer_media.pasted_type", {
 				mimeType: mimeTypeMatch[1],
@@ -219,20 +253,36 @@ function useAttachmentSize(attachment: string): number | null {
  * hover preview is not rendered at all. The tile says WHY in its `title`
  * rather than looking the same for every cause. Both degrades are stated
  * rather than dressed as a picture that is still coming.
+ *
+ * MEMOISED, AND IT TAKES ITS ID RATHER THAN A CLOSURE (perf, QA round 1 on PR
+ * #1773). The composer re-renders on every keystroke and this row is inside that
+ * render, so every chip re-rendered too - re-running its classifiers and its
+ * `mimeTypeForPath` over a 1.5 MB payload. `onRemove` used to arrive as
+ * `handleRemove(id)`, a fresh closure per render, which defeats `memo` by
+ * construction: the callback is stable now and the id is already a prop.
  */
-const AttachmentTile: FC<{
+const AttachmentTile = memo(function AttachmentTile({
+	attachment,
+	id,
+	fileName,
+	mimeType,
+	image,
+	video,
+	disabled,
+	onRemove,
+}: {
 	attachment: string;
 	id: string;
 	fileName: string;
+	/** Resolved once per row change by the parent, not twice per tile per render. */
+	mimeType: string;
 	image: boolean;
 	video: boolean;
 	disabled: boolean;
-	onRemove: (event: React.MouseEvent) => void;
-}> = ({ attachment, id, fileName, image, video, disabled, onRemove }) => {
+	onRemove: (id: string) => void;
+}) {
 	useI18nLocale();
-	const state = useFileBlobUrl(attachment, {
-		mimeType: mimeTypeForPath(attachment),
-	});
+	const state = useFileBlobUrl(attachment, { mimeType });
 	const readyUrl = state.status === "ready" ? state.url : null;
 	// Keyed on the URL it describes, so a rewritten file (a new blob) is judged
 	// afresh rather than condemned by the old bytes' failure.
@@ -264,7 +314,7 @@ const AttachmentTile: FC<{
 		>
 			<AttachmentKindIcon
 				name={fileName}
-				mimeType={mimeTypeForPath(attachment)}
+				mimeType={mimeType}
 				className="size-4.5"
 			/>
 			<span className={cn("line-clamp-2 break-all font-medium text-meta")}>
@@ -316,7 +366,10 @@ const AttachmentTile: FC<{
 						variant="ghost"
 						size="icon-sm"
 						className={REMOVE_CORNER}
-						onClick={onRemove}
+						onClick={(event) => {
+							event.stopPropagation();
+							onRemove(id);
+						}}
 						disabled={disabled}
 						aria-label={t("ui.chat.composer_media.remove_attachment")}
 					>
@@ -345,7 +398,7 @@ const AttachmentTile: FC<{
 			)}
 		</div>
 	);
-};
+});
 
 /**
  * A non-image file's card: the type glyph, the name, and `TYPE · size`.
@@ -355,18 +408,28 @@ const AttachmentTile: FC<{
  * recognise. The wider row keeps the whole filename readable and states what the
  * tile could not: what kind of file it is and how big.
  */
-const AttachmentFileCard: FC<{
+const AttachmentFileCard = memo(function AttachmentFileCard({
+	attachment,
+	id,
+	fileName,
+	mimeType,
+	disabled,
+	byteSize,
+	onRemove,
+}: {
 	attachment: string;
 	id: string;
 	fileName: string;
+	/** Resolved once per row change by the parent, not once per card per render. */
+	mimeType: string;
 	disabled: boolean;
 	byteSize?: number;
-	onRemove: (event: React.MouseEvent) => void;
-}> = ({ attachment, id, fileName, disabled, byteSize, onRemove }) => {
+	/** Stable across renders: takes the id, so no card owns a fresh closure. */
+	onRemove: (id: string) => void;
+}) {
 	useI18nLocale();
 	const probedSize = useAttachmentSize(attachment);
 	const size = byteSize ?? probedSize;
-	const mimeType = mimeTypeForPath(attachment);
 	return (
 		<div className={FILE_CARD} data-attachment-id={id}>
 			<AttachmentKindIcon
@@ -393,7 +456,10 @@ const AttachmentFileCard: FC<{
 					variant="ghost"
 					size="icon-sm"
 					className={REMOVE_CORNER}
-					onClick={onRemove}
+					onClick={(event) => {
+						event.stopPropagation();
+						onRemove(id);
+					}}
 					disabled={disabled}
 					aria-label={t("ui.chat.composer_media.remove_attachment")}
 				>
@@ -402,7 +468,92 @@ const AttachmentFileCard: FC<{
 			</Tooltip>
 		</div>
 	);
-};
+});
+
+/**
+ * The row of chips, behind a memo boundary.
+ *
+ * WHY THIS SEAM (perf, QA round 1 on PR #1773). The composer commits on every
+ * keystroke, so this subtree re-rendered per keystroke and re-derived every
+ * chip's name, kind and MIME type from paths that can be 1.5 MB `data:` URLs —
+ * ~10.5 ms of engine-independent JS per keystroke at six pasted images, which is
+ * the operator's complaint surviving the store fix. The row's props now change
+ * only when the ROW changes: `attachments` keeps its identity across a text
+ * keystroke (the store spreads the row, it does not rebuild the array), `disabled`
+ * is a boolean, and `onRemove` is stable by construction. So a keystroke costs
+ * this subtree nothing at all, and the derivatives below are computed once per
+ * row change instead of once per render.
+ */
+const AttachmentRow: FC<{
+	attachments: readonly Attachment[];
+	disabled: boolean;
+	byteSizes?: Readonly<Record<string, number>>;
+	onRemove: (id: string) => void;
+}> = memo(function AttachmentRow({
+	attachments,
+	disabled,
+	byteSizes,
+	onRemove,
+}) {
+	// Filename fallbacks are derived here, not cached when the attachment is added.
+	const locale = useI18nLocale();
+	/* `t()` runs inside `getFileName`, so a locale change must rebuild the copy: */
+	/* biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is a deliberate rebuild trigger - `getFileName` resolves translated copy through `t()`, and the callback's parameter list cannot name the language, so the dependency list is the only place it can appear (the same shape as `settings-search.tsx`). */
+	const chips = useMemo(
+		() =>
+			attachments.map(({ id, path }) => ({
+				id,
+				path,
+				fileName: getFileName(path),
+				/* Once per chip, not twice per tile per render. */
+				mimeType: mimeTypeForPath(path),
+				image: isImage(path),
+				video: isVideo(path),
+			})),
+		[attachments, locale],
+	);
+
+	return (
+		<div className={cn("flex flex-col gap-1 py-2")}>
+			<div className={cn("flex flex-wrap gap-3")}>
+				{chips.map((chip) =>
+					chip.image || chip.video ? (
+						<AttachmentTile
+							// The attachment id, never the index: removing one must not remount
+							// the chips after it (contract §6).
+							key={chip.id}
+							id={chip.id}
+							attachment={chip.path}
+							fileName={chip.fileName}
+							mimeType={chip.mimeType}
+							image={chip.image}
+							video={chip.video}
+							disabled={disabled}
+							onRemove={onRemove}
+						/>
+					) : (
+						<AttachmentFileCard
+							key={chip.id}
+							id={chip.id}
+							attachment={chip.path}
+							fileName={chip.fileName}
+							mimeType={chip.mimeType}
+							disabled={disabled}
+							byteSize={byteSizes?.[chip.path]}
+							onRemove={onRemove}
+						/>
+					),
+				)}
+			</div>
+			<span
+				className={cn("text-ink-muted text-meta")}
+				data-attachment-pending="true"
+			>
+				{t("ui.chat.attachments.pending_caption")}
+			</span>
+		</div>
+	);
+});
 
 /**
  * Component to display a preview of attachments
@@ -418,20 +569,22 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	disabled = false,
 	byteSizes,
 }) => {
-	// Filename fallbacks are derived here, not cached when the attachment is added.
-	useI18nLocale();
-	/**
-	 * Handle removing an attachment
+	/*
+	 * THE STABLE REMOVE. The chips below are memoised, so their props must not
+	 * change when this component merely re-renders — and its parent, the composer,
+	 * re-renders on every keystroke. `onRemoveAttachment` and `disabled` are read
+	 * through a ref so the callback keeps one identity across those renders while
+	 * still invoking the newest pair (the previous `handleRemove(id)` minted a
+	 * closure per render, which defeats `memo` by construction).
 	 */
-	const handleRemove = useCallback(
-		(id: string) => (event: React.MouseEvent) => {
-			event.stopPropagation();
-			if (!disabled) {
-				onRemoveAttachment(id);
-			}
-		},
-		[onRemoveAttachment, disabled],
-	);
+	const latest = useRef({ onRemoveAttachment, disabled });
+	latest.current = { onRemoveAttachment, disabled };
+	const remove = useCallback((id: string) => {
+		const current = latest.current;
+		if (!current.disabled) {
+			current.onRemoveAttachment(id);
+		}
+	}, []);
 
 	// If no attachments, don't render anything
 	if (!attachments.length) {
@@ -439,44 +592,11 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	}
 
 	return (
-		<div className={cn("flex flex-col gap-1 py-2")}>
-			<div className={cn("flex flex-wrap gap-3")}>
-				{attachments.map(({ id, path }) => {
-					const image = isImage(path);
-					const video = isVideo(path);
-					const fileName = getFileName(path);
-					return image || video ? (
-						<AttachmentTile
-							// The attachment id, never the index: removing one must not remount
-							// the chips after it (contract §6).
-							key={id}
-							id={id}
-							attachment={path}
-							fileName={fileName}
-							image={image}
-							video={video}
-							disabled={disabled}
-							onRemove={handleRemove(id)}
-						/>
-					) : (
-						<AttachmentFileCard
-							key={id}
-							id={id}
-							attachment={path}
-							fileName={fileName}
-							disabled={disabled}
-							byteSize={byteSizes?.[path]}
-							onRemove={handleRemove(id)}
-						/>
-					);
-				})}
-			</div>
-			<span
-				className={cn("text-ink-muted text-meta")}
-				data-attachment-pending="true"
-			>
-				{t("ui.chat.attachments.pending_caption")}
-			</span>
-		</div>
+		<AttachmentRow
+			attachments={attachments}
+			disabled={disabled}
+			byteSizes={byteSizes}
+			onRemove={remove}
+		/>
 	);
 };
