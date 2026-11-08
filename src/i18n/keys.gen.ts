@@ -11415,6 +11415,7 @@ export type MessageParams = {
 	"ui.updates.service.fleet.unknown.body": { minutes: number; closing: string };
 	"ui.updates.service.fleet.unknown.credentials_refused": undefined;
 	"ui.updates.service.fleet.unknown.unreadable": undefined;
+	"ui.updates.service.global.app_owned.remedy": undefined;
 	"ui.updates.service.global.legacy_installer.remedy": undefined;
 	"ui.updates.service.global.pip.remedy": undefined;
 	"ui.updates.service.global.pipx.remedy": undefined;

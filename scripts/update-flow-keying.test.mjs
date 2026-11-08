@@ -106,6 +106,8 @@ const PINNED = {
 		"The app could not read which release to install, so it left its server environment alone. Check the connection and try again.",
 	"ui.updates.service.not_installed.message":
 		"The server update did not install, so the environment serving this app was left as it was.",
+	"ui.updates.service.global.app_owned.remedy":
+		"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own.",
 	"ui.updates.service.install_in_flight.message":
 		"Version {version} can't finish installing while Local Operator is open — keeping it open cancels the install. Quit and leave it closed until the app opens again by itself.",
 };
@@ -223,6 +225,183 @@ test("update-service.ts sends no English literal on backend-update-error or the 
 		assert.ok(arg, `${channel} send not found`);
 		assert.match(arg, /^t\("ui\.updates\.status\.dev_mode\./, channel);
 	}
+});
+
+/**
+ * Every `message:` / `remedy:` / `detail:` property in the main-process update
+ * files whose value is an English literal, as `{ line, key, value }`.
+ *
+ * WHY THIS EXISTS (review M1). The guard above only reads
+ * `backend-update-error` payloads, so the install plan's `remedy: "..."` - which
+ * reaches the reader as `remedy: plan.remedy` and as the message of
+ * `backend-update-manual-required` - sat outside it as a bare English sentence.
+ * The property name is what the reader-bound shapes share, so the guard keys on
+ * it wherever it appears in these two files rather than on one channel name.
+ *
+ * A value on the NEXT line (`remedy:\n\t"..."`, the shape prettier gives a long
+ * sentence) is followed. Comment-only lines are skipped so prose that mentions
+ * `remedy:` cannot read as a property.
+ */
+function literalProperties(source) {
+	const lines = source.split("\n");
+	const found = [];
+	const isCommentLine = (line) => /^\s*(\/\/|\/\*|\*)/.test(line);
+	for (let index = 0; index < lines.length; index += 1) {
+		if (isCommentLine(lines[index])) continue;
+		const match = /^\s*(message|remedy|detail)\s*:\s*(.*)$/.exec(lines[index]);
+		if (!match) continue;
+		let value = match[2].trim();
+		let at = index;
+		while (value === "" && at + 1 < lines.length) {
+			at += 1;
+			if (isCommentLine(lines[at])) continue;
+			value = lines[at].trim();
+		}
+		if (isEnglishLiteral(value)) {
+			found.push({ line: at + 1, key: match[1], value });
+		}
+	}
+	return found;
+}
+
+/**
+ * The literals that are English BY DESIGN, each with the reason. `remedy` and
+ * `message` have NO entries: those are sentences the reader is meant to
+ * understand, so they are keyed or the test fails. What is left is the `detail`
+ * support records - the text behind "Copy details" - which carries paths,
+ * versions, shas and byte counts for whoever reads a bug report; the operator's
+ * rule allows technical tokens as a named exception, and a translated sha
+ * comparison is not support-friendly. `startsWith` is matched against the
+ * source text after `detail: `, so a NEW literal does not ride an old entry.
+ */
+const SUPPORT_RECORD = "Copy-details diagnostics: paths, versions, shas, sizes";
+const ENGLISH_BY_DESIGN = [
+	[
+		"src/main/update-service.ts",
+		"detail",
+		"`No staged artifact",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-service.ts",
+		"detail",
+		"`${artifactPath}: ${String(error)}`",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-service.ts",
+		"detail",
+		"`The app started this server itself",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`codesign --verify",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`${appBundlePath}: ${detail}`",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`${name} has no matching entry",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`${name} is ${input.actualSize} bytes",
+		SUPPORT_RECORD,
+	],
+	["src/main/update-install.ts", "detail", "`${name} sha512", SUPPORT_RECORD],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`Install needs ${formatGiB(needed)}",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`${facts.artifactName} carries no",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`${facts.artifactName} claims",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`Install started ${startedText}",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`Install started ${installStartedText(marker)}",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`${detail}${",
+		"The installer fallback scaffold (installer slice): the support detail plus its `What happened:` lead-in, appended to the keyed remedy",
+	],
+];
+
+test("the property guard flags a remedy/message/detail literal and follows a wrapped value (negative control)", () => {
+	const flagged = (source) => literalProperties(source).map((f) => f.key);
+	assert.deepEqual(flagged('\t\tremedy: "Do the thing.",'), ["remedy"]);
+	assert.deepEqual(flagged('\t\tremedy:\n\t\t\t"Do the thing.",'), ["remedy"]);
+	assert.deepEqual(flagged("\t\tmessage: `Update ${v} failed.`,"), ["message"]);
+	assert.deepEqual(flagged('\t\tmessage:\n\t\t\t// why\n\t\t\t"Failed.",'), [
+		"message",
+	]);
+	assert.deepEqual(flagged("\t\tdetail: `at ${path}`,"), ["detail"]);
+	// Keyed, composed and shorthand shapes are not literals.
+	assert.deepEqual(flagged('\t\tremedy: t("ui.updates.service.x"),'), []);
+	assert.deepEqual(flagged('\t\tmessage: `${t("ui.k")} ${cause}`,'), []);
+	assert.deepEqual(flagged("\t\tremedy: plan.remedy,"), []);
+	assert.deepEqual(flagged('\t\t// remedy: "prose in a comment"'), []);
+	assert.deepEqual(flagged('\t * remedy: "prose in a docblock"'), []);
+});
+
+test("update-service.ts and update-install.ts carry no English remedy/message/detail literal outside the named by-design list", async () => {
+	const used = new Set();
+	for (const file of [
+		"src/main/update-service.ts",
+		"src/main/update-install.ts",
+	]) {
+		const source = await readFile(file, "utf8");
+		const literals = literalProperties(source);
+		for (const { line, key, value } of literals) {
+			const index = ENGLISH_BY_DESIGN.findIndex(
+				([entryFile, entryKey, prefix]) =>
+					entryFile === file && entryKey === key && value.startsWith(prefix),
+			);
+			assert.notEqual(
+				index,
+				-1,
+				`${file}:${line} ${key} is an English literal that reaches the UI - key it with t(), or add it to ENGLISH_BY_DESIGN with a reason: ${value.slice(0, 90)}`,
+			);
+			used.add(index);
+		}
+	}
+	// A stale allowlist entry would let that literal come back unnoticed.
+	ENGLISH_BY_DESIGN.forEach((entry, index) =>
+		assert.ok(
+			used.has(index),
+			`ENGLISH_BY_DESIGN entry matches nothing: ${entry[2]}`,
+		),
+	);
 });
 
 test("the update-service keys the static guard relies on all exist", async () => {

@@ -43,6 +43,7 @@
  */
 
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import { backendUpdateUnexplained } from "@shared/components/common/backend-compatibility-banner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -70,26 +71,6 @@ import type { McpRemedyControls } from "./use-mcp-remedy";
 import type { MonitorControls } from "./use-monitor-controls";
 import type { WakeControls } from "./use-wake-controls";
 import type { AidaWakeIdentity } from "./wake-controls-model";
-
-/**
- * What the pane says when the updater refused and said nothing else.
- *
- * The main process names a reason on `backend-update-error` for every failing
- * branch of `update-backend`, so this is the backstop for a bridge that answered
- * without one - and it names the next step rather than only the outcome: this row
- * is where the user's own action lives, and "could not start" on its own told them
- * nothing they could do (design D4, UX U4).
- */
-/*
- * A function and not a module-level constant: `t()` read at import time freezes
- * the locale the renderer booted with, before the backend's language is known,
- * so the sentence stayed English after a switch. Same key as the banner's backstop
- * (one sentence, one translation).
- */
-const backendUpdateUnexplained = (): string =>
-	t(
-		"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_",
-	);
 
 export type RunPanelProps = {
 	details: RunDetails;

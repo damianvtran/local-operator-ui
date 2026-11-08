@@ -36,5 +36,6 @@
 	"ui.updates.service.global.pip.remedy": "The server is a pip install, so update it from your terminal",
 	"ui.updates.service.global.unknown.remedy": "The app could not tell how this server was installed, so update it with the tool you installed it with - uv, pipx or pip",
 	"ui.updates.service.global.source_rebuild.remedy": "Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.",
-	"ui.updates.service.global.legacy_installer.remedy": "This install predates the non-disruptive installer, so update it once from your terminal; that updater rewrites the shared environment in place, which can interrupt sessions mid-turn. The app manages updates after that."
+	"ui.updates.service.global.legacy_installer.remedy": "This install predates the non-disruptive installer, so update it once from your terminal; that updater rewrites the shared environment in place, which can interrupt sessions mid-turn. The app manages updates after that.",
+	"ui.updates.service.global.app_owned.remedy": "This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own."
 }

@@ -242,5 +242,11 @@
 		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
 		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
 		"note": "English source: This install predates the non-disruptive installer, so update it once from your terminal; that updater rewrites the shared environment in place, which can interrupt sessions mid-turn. The app manages updates after that."
+	},
+	"ui.updates.service.global.app_owned.remedy": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "Two or three sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own. Shown when the server was started by something other than this app but runs from the app's own managed environment; the reader is told to stop it and let the app start its own."
 	}
 }

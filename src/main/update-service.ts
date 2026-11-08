@@ -6780,8 +6780,7 @@ export class UpdateService {
 					 */
 					managedRoute: null,
 					installPrefix: null,
-					remedy:
-						"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own.",
+					remedy: t("ui.updates.service.global.app_owned.remedy"),
 					detail,
 					sourceBuild: false,
 					appOwned: true,
