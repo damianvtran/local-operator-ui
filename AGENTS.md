@@ -2291,6 +2291,14 @@ carries no `Merge gate (full suite)` and the pull request is blocked (GitHub sho
 the final head. Never retry a single job - the gate is the whole suite or it is
 nothing.
 
+**A green gate is a verdict about the PR head, not a promise about `main`.** The
+gate certifies this pull request's head with the base as it stood when it ran
+(`Main Protection` has `strict_required_status_checks_policy: false`, so the
+branch is never forced up to date), and two individually-green pull requests can
+still compose red on `main`. `main`'s own full-suite run after the merge is the
+backstop for that - semantic conflicts between two green diffs are the one thing
+this check cannot see.
+
 **Why a label, and why no label CONDITION on the jobs.** GitHub counts a
 `skipped` check as SATISFYING a required status check, and `pull_request:
 [labeled]` fires for EVERY label. A suite job behind `if: contains(...

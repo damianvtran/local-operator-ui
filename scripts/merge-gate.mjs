@@ -33,6 +33,14 @@
  * --force` is idempotent), so the ritual does not depend on an undocumented
  * manual step.
  *
+ * IT FAILS LOUDLY, and that is a feature: a number that names no pull request,
+ * a pull request that is not open, and a label event that starts NO run all exit
+ * 1 with the reason. Each of those, if reported as success, leaves the operator
+ * believing a gate was armed while the head still carries no verdict - and the
+ * head is otherwise indistinguishable from an armed one (`Expected` looks the
+ * same either way). The wait for the run is bounded: past the bound it is an
+ * error, never a quiet "probably queued".
+ *
  * Call it ONLY when the review rounds are clean and the head is final. One label
  * event costs one full suite run, and a run started on a head that then moves is
  * a run nobody reads. See AGENTS.md, "The merge gate (full suite)".
@@ -44,11 +52,6 @@ import process from "node:process";
 const LABEL = "ready-to-merge";
 const WORKFLOW = "full-suite.yml";
 const CHECK_NAME = "Merge gate (full suite)";
-/** Bounded so a queued-but-not-yet-listed run does not hang the ritual. */
-const POLL_ATTEMPTS = 6;
-const POLL_INTERVAL_MS = 5_000;
-/** GitHub stamps `createdAt` in whole seconds; stay behind its clock, not ahead. */
-const SINCE_SKEW_MS = 10_000;
 
 function fail(message) {
 	console.error(`merge-gate: ${message}`);
@@ -56,21 +59,57 @@ function fail(message) {
 }
 
 /**
- * Run `gh`, returning its stdout. `tolerate` returns null instead of exiting on
- * a non-zero status, for the one call whose failure is expected.
+ * A bounded wait is a number measured against GitHub's queue, not against this
+ * machine, so it is overridable - that is how the FAILURE path is exercised in
+ * seconds instead of half a minute (scripts/ci-scope.test.mjs). The invariant it
+ * bounds is unchanged by the override: a run that never appears exits 1. A
+ * malformed value fails too, rather than silently falling back to a bound the
+ * caller did not ask for.
  */
-function gh(args, { tolerate = false } = {}) {
+function bounded(name, fallback, minimum) {
+	const raw = process.env[name];
+	if (raw === undefined || raw === "") return fallback;
+	const value = Number(raw);
+	if (!Number.isInteger(value) || value < minimum)
+		fail(
+			`${name} must be an integer >= ${minimum}, got ${JSON.stringify(raw)}.`,
+		);
+	return value;
+}
+
+/** Bounded so a queued-but-not-yet-listed run does not hang the ritual. */
+const POLL_ATTEMPTS = bounded("MERGE_GATE_POLL_ATTEMPTS", 6, 1);
+const POLL_INTERVAL_MS = bounded("MERGE_GATE_POLL_INTERVAL_MS", 5_000, 0);
+/** GitHub stamps `createdAt` in whole seconds; stay behind its clock, not ahead. */
+const SINCE_SKEW_MS = 10_000;
+
+/**
+ * Run `gh` and hand back its outcome instead of exiting, for the calls whose
+ * failure has a message of its own (a number that names no pull request is a
+ * typo or the wrong repository, not a `gh` fault). A `gh` that could not be
+ * STARTED is never tolerable: that is a missing or unauthenticated CLI.
+ */
+function ghTry(args) {
 	const result = spawnSync("gh", args, { encoding: "utf8" });
 	if (result.error)
 		fail(
 			`could not run gh (${result.error.message}): install the GitHub CLI and authenticate it.`,
 		);
-	if (result.status !== 0) {
-		if (tolerate) return null;
-		const detail = (result.stderr || "").trim() || `exit ${result.status}`;
+	return {
+		ok: result.status === 0,
+		stdout: result.stdout ?? "",
+		detail: (result.stderr || "").trim() || `exit ${result.status}`,
+	};
+}
+
+/** Run `gh`, returning its stdout, and exit on any non-zero status. */
+function gh(args) {
+	const result = ghTry(args);
+	if (!result.ok) {
+		const detail = result.detail;
 		fail(`gh ${args.join(" ")} failed: ${detail}`);
 	}
-	return result.stdout ?? "";
+	return result.stdout;
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -87,25 +126,23 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 async function waitForRun(branch, since) {
 	for (let attempt = 1; attempt <= POLL_ATTEMPTS; attempt += 1) {
-		const output = gh(
-			[
-				"run",
-				"list",
-				"--workflow",
-				WORKFLOW,
-				"--event",
-				"pull_request",
-				"--branch",
-				branch,
-				"--limit",
-				"20",
-				"--json",
-				"databaseId,url,status,conclusion,createdAt",
-			],
-			// A workflow with no run on this branch answers `[]` rather than an
-			// error, so every non-zero exit here is a real problem (auth,
-			// permissions) and must be reported instead of becoming "no run yet".
-		);
+		// A workflow with no run on this branch answers `[]` rather than an
+		// error, so every non-zero exit here is a real problem (auth,
+		// permissions) and is reported instead of becoming "no run yet".
+		const output = gh([
+			"run",
+			"list",
+			"--workflow",
+			WORKFLOW,
+			"--event",
+			"pull_request",
+			"--branch",
+			branch,
+			"--limit",
+			"20",
+			"--json",
+			"databaseId,url,status,conclusion,createdAt",
+		]);
 		const fresh = JSON.parse(output)
 			.filter(
 				(candidate) => Date.parse(candidate.createdAt) >= since - SINCE_SKEW_MS,
@@ -121,15 +158,21 @@ const argument = process.argv[2];
 if (!argument || !/^\d+$/u.test(argument))
 	fail("usage: pnpm merge-gate <pull-request-number>");
 
-const view = JSON.parse(
-	gh([
-		"pr",
-		"view",
-		argument,
-		"--json",
-		"number,url,state,isDraft,headRefName,headRefOid,labels",
-	]),
-);
+const viewCall = ghTry([
+	"pr",
+	"view",
+	argument,
+	"--json",
+	"number,url,state,isDraft,headRefName,headRefOid,labels",
+]);
+// `gh pr view` fails for a number that does not exist AND for every `gh` fault
+// (auth, network, wrong repository). Both mean "nothing was armed", so both exit
+// non-zero; the detail is what tells them apart.
+if (!viewCall.ok)
+	fail(
+		`no pull request #${argument} to arm (${viewCall.detail}). Check the number, and that gh is authenticated against the intended repository.`,
+	);
+const view = JSON.parse(viewCall.stdout);
 if (view.state !== "OPEN")
 	fail(
 		`#${view.number} is ${view.state}: the merge gate only runs for an open pull request.`,
@@ -164,26 +207,28 @@ console.log(
 );
 
 const run = await waitForRun(view.headRefName, startedAt);
+// No run is a FAILED arm, not a slow one: the head now carries no new verdict,
+// and `Expected` looks identical to a run nobody has started yet - the exact
+// state an operator cannot tell apart from a real gate. Exit non-zero and say
+// where to look, so a red ritual is never mistaken for a queued one.
+if (!run)
+	fail(
+		[
+			`no \`${WORKFLOW}\` pull_request run appeared for ${view.headRefName} within ${(POLL_ATTEMPTS * POLL_INTERVAL_MS) / 1000}s of the label event. \`${LABEL}\` is now ON #${view.number}, so the delivered event is not lost - find out whether the workflow ran before re-arming:`,
+			`  gh run list --workflow ${WORKFLOW} --event pull_request --branch ${view.headRefName} --limit 5`,
+			`  ${view.url}/checks`,
+		].join("\n"),
+	);
 console.log("");
-if (run) {
-	const verdict = run.conclusion ? ` (${run.conclusion})` : "";
-	console.log(`Run ${run.databaseId} is ${run.status}${verdict}: ${run.url}`);
-	console.log(
-		`Required check: \`${CHECK_NAME}\`, reported by the \`merge-gate\` job.`,
-	);
-	console.log("");
-	console.log("Follow it:");
-	console.log(`  gh run watch ${run.databaseId} --exit-status`);
-	console.log(`  gh pr checks ${argument} --watch`);
-} else {
-	console.log(
-		`No run appeared within ${(POLL_ATTEMPTS * POLL_INTERVAL_MS) / 1000}s. The label event was still delivered - check the workflow's own list rather than re-adding the label again:`,
-	);
-	console.log(
-		`  gh run list --workflow ${WORKFLOW} --event pull_request --branch ${view.headRefName} --limit 5`,
-	);
-	console.log(`  ${view.url}/checks`);
-}
+const verdict = run.conclusion ? ` (${run.conclusion})` : "";
+console.log(`Run ${run.databaseId} is ${run.status}${verdict}: ${run.url}`);
+console.log(
+	`Required check: \`${CHECK_NAME}\`, reported by the \`merge-gate\` job.`,
+);
+console.log("");
+console.log("Follow it:");
+console.log(`  gh run watch ${run.databaseId} --exit-status`);
+console.log(`  gh pr checks ${argument} --watch`);
 console.log("");
 console.log(
 	`If this head moves, the check stays on the old SHA and the pull request is blocked: re-run \`pnpm merge-gate ${argument}\` on the FINAL head.`,

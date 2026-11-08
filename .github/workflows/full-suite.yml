@@ -43,10 +43,11 @@ name: Full Test Suite
 #     no per-label trigger filter), and a red pull request would merge. So NO
 #     job in this file carries a label-name condition: any label costs one full
 #     run for that head, and that is the accepted trade. The required check is
-#     therefore a job that always runs whenever this workflow runs at all, and
-#     this workflow runs for the merge-gate intent only (plus `main`'s own
-#     record, where the check is not required and the job is deliberately
-#     skipped).
+#     therefore a job that always runs whenever this workflow runs at all, with
+#     NO event guard: a run that is not the merge-gate intent (`main`'s own
+#     record, a branch dispatch) publishes that run's REAL verdict from its own
+#     `needs`, never a skip - because a skip published on a pull request's head
+#     branch is the pass above (round-1 review B1, round-1 QA Q-1).
 #  2. A REQUIRED CHECK THAT NEVER REPORTS IS "Expected" AND BLOCKS. That is the
 #     intended block, but it must never be a state an agent cannot leave - hence
 #     the re-arm ritual (the `merge-gate` package script, AGENTS.md *The merge
@@ -732,14 +733,24 @@ jobs:
     name: Merge gate (full suite)
     needs: [changes, test, desktop-tests-result]
     # NO LABEL CONDITION - hostile case 1 in this file's header. This job always
-    # runs whenever the workflow runs for a pull request, whatever label started
-    # it, and `always()` keeps it running when a dependency failed so the
-    # required check goes RED rather than disappearing from the head.
+    # runs whenever the workflow runs, whatever label started it, and `always()`
+    # keeps it running when a dependency failed so the required check goes RED
+    # rather than disappearing from the head.
     #
-    # PR ONLY: on `push`/`schedule`/`workflow_dispatch` this is a deliberate
-    # skip. Those runs are `main`'s record and a branch dispatch; reporting the
-    # gate there would attach the required check to a ref nobody merges from.
-    if: always() && github.event_name == 'pull_request'
+    # NO EVENT GUARD EITHER (round-1 review B1, round-1 QA Q-1). An `if:` that
+    # excluded non-pull-request runs made this job SKIP - and a skipped job still
+    # publishes its check NAME on that ref's tip, which a ruleset counts as a
+    # PASS. `workflow_dispatch` is allowed on any branch (that is what the
+    # concurrency comment above records), so `gh workflow run full-suite.yml
+    # --ref <pr-branch>` would hand a pull request's head a `skipped` `Merge gate
+    # (full suite)`: the exact false pass this job exists to prevent. `always()`
+    # with no guard - the same shape as `CI Gate` in ci.yml - makes EVERY run of
+    # this workflow publish a verdict computed from its OWN `needs`: on `main`
+    # that is main's record, on a branch dispatch it is that branch tip's real
+    # result. Publishing everywhere costs nothing here because this job has no
+    # side effect; `issues: write` stays on `report`, which keeps its main-only
+    # guard so a branch dispatch can never write the `ci-main-red` record.
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
