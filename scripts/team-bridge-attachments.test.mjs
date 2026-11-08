@@ -1732,6 +1732,71 @@ test("page R2-01: an image dropped DURING a send stays in the composer and the d
 });
 
 /*
+ * R1-3 (agent review round 1): the send's own flush is the only thing that makes
+ * "a send emptied it" durable, and nothing pinned it - every durable read after a
+ * send landed the queue itself first, so deleting `retireDraft`'s
+ * `flushComposerDraftPersist()` failed no test. This case sends through the REAL
+ * composer and reads the disk with NO flush in the test, so the flush it is
+ * asserting is the app's own.
+ *
+ * THE WAIT OUTSIDE THE WINDOW IS THE CONTROL. Without it the post-send read could
+ * pass because nothing had been written yet - the same "negative assertion that
+ * cannot fail" shape as R1-2 - so the case first proves the typed draft really is
+ * on disk, then sends, then reads.
+ */
+test("a send lands the emptied draft on disk without the test flushing anything", async () => {
+	localStorage.clear();
+	mediaCalls = [];
+	const sends = [];
+	const target = { type: "person", accountId: "acct_b" };
+	const app = await mountPage(
+		pageProps({
+			target,
+			onSend: async (sent) => {
+				sends.push(sent);
+			},
+		}),
+	);
+	await typeBody(app.element, "retire me");
+	await new Promise((done) => setTimeout(done, 400));
+	const beforeRaw = localStorage.getItem("conversation-input-store") ?? "";
+	const beforeRows = JSON.parse(beforeRaw || "{}").state?.inputByConversation;
+	const rowKey = Object.keys(beforeRows ?? {}).find(
+		(key) => beforeRows[key]?.currentInput === "retire me",
+	);
+	assert.ok(
+		rowKey,
+		"control: the typed draft is on disk before the press, so a later absence means the send retired it",
+	);
+
+	await act(async () => sendButton(app.element).click());
+	for (let i = 0; i < 5; i += 1) await settle();
+	assert.deepEqual(sends, ["retire me"], "the press sent the draft");
+
+	const afterRaw = localStorage.getItem("conversation-input-store") ?? "";
+	const afterRow = JSON.parse(afterRaw || "{}").state?.inputByConversation?.[
+		rowKey
+	];
+	assert.equal(
+		afterRow?.currentInput ?? null,
+		"",
+		"the retired row itself is what reached the disk",
+	);
+	/*
+	 * The text is not gone from the payload - it moved into the recall history,
+	 * which is the store's record of what was sent. Asserting it here is what makes
+	 * the row above a POST-send payload: without the retire's flush the disk still
+	 * holds the pre-send copy, whose history is empty.
+	 */
+	assert.deepEqual(
+		afterRow?.submittedMessages ?? [],
+		["retire me"],
+		"and the landed row is the one the send wrote, not the pre-send copy",
+	);
+	await app.close();
+});
+
+/*
  * Round 3 (R3-01): the schedule twin of `page R2-01`, and the R2-02 alert
  * suppression. Both paths were remediated without a pinning test.
  */
@@ -2214,6 +2279,12 @@ test("denied browser storage: attachment draft and descriptor paths render, read
 	 * an attachment, in the composer's store or in the bridge's draft journal.
 	 */
 	for (const key of ["conversation-input-store"]) {
+		/*
+		 * LAND THE QUEUE FIRST: the claim below is NEGATIVE ("no row holds a picture"),
+		 * and a coalesced write that has not happened yet satisfies it for the wrong
+		 * reason (agent review round 1, R1-2).
+		 */
+		m.flushComposerDraftPersist();
 		const stored = JSON.parse(localStorage.getItem(key) ?? "{}");
 		for (const row of Object.values(stored.state?.inputByConversation ?? {}))
 			assert.deepEqual(

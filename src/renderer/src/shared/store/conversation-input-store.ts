@@ -844,6 +844,21 @@ const resolveLocalStorage = (): Storage | null => {
  * by the persist middleware straight out of the store write, i.e. into the
  * keystroke that caused it, and a draft the browser will not store must not take
  * the typing surface down with it.
+ *
+ * THE CLIFF IS REAL AND STATED HERE (agent review round 1, R1-4): Chromium's
+ * per-origin quota is ~10 MB and a pasted screenshot is ~1.5 MB of base64, so the
+ * six-image row in the operator's own report is ~9-18 MB - at or over the quota,
+ * where this write refuses and the row survives in memory only. That is a limit on
+ * what STORAGE can hold, not on what a keystroke costs, and the fix cannot move it;
+ * it is stated because the warning below is the only place the user meets it.
+ *
+ * THE PAYLOAD IS DROPPED ONLY ONCE IT HAS LANDED (agent review round 1, R1-5). It
+ * used to be nulled before the write was attempted, so a refused `localStorage`
+ * (`resolveLocalStorage` returning null - a permission the user or the platform can
+ * change mid-session) silently threw the queued draft away and left a stale copy on
+ * disk that every later read treats as the truth. Keeping it costs nothing - the
+ * next `setItem` replaces it and the next flush retries - and losing it costs the
+ * draft.
  */
 const writePendingDraft = (): void => {
 	if (pendingDraftTimer !== null) {
@@ -851,14 +866,20 @@ const writePendingDraft = (): void => {
 		pendingDraftTimer = null;
 	}
 	const value = pendingDraft;
-	const key = pendingDraftKey;
-	pendingDraft = null;
 	if (!value) return;
+	const key = pendingDraftKey;
 	const storage = resolveLocalStorage();
 	if (!storage) return;
 	try {
 		storage.setItem(key, JSON.stringify(value));
 	} catch (error) {
+		/*
+		 * THE FLAG IS THE STREAK, NOT THE PROCESS (agent review round 1, R1-4). It is
+		 * re-armed by the success below, so one transient refusal cannot silence the
+		 * warning for the life of the process - and staying set through a run of
+		 * failures is what stops a permanently over-quota row from warning on every
+		 * keystroke.
+		 */
 		if (!draftQuotaWarned) {
 			draftQuotaWarned = true;
 			console.warn(
@@ -866,7 +887,10 @@ const writePendingDraft = (): void => {
 				error,
 			);
 		}
+		return;
 	}
+	pendingDraft = null;
+	draftQuotaWarned = false;
 };
 
 /**
@@ -883,15 +907,46 @@ export const flushComposerDraftPersist = (): void => {
 };
 
 /**
+ * Drop the queued write WITHOUT writing it.
+ *
+ * The other half of R1-1 (`getItem`, below): a document that adopts another
+ * document's write replaces its whole row map with the disk's, so a payload still
+ * queued here describes a state this document no longer holds - landing it 300 ms
+ * later would revert the newer foreign draft for the FIRST document too. Called by
+ * the storage-event adoption, which is the only place a document learns that its
+ * own copy is the older one.
+ */
+export const discardQueuedComposerDraftWrite = (): void => {
+	pendingDraft = null;
+	if (pendingDraftTimer !== null) {
+		clearTimeout(pendingDraftTimer);
+		pendingDraftTimer = null;
+	}
+};
+
+/**
  * The persist storage, debounced: `setItem` queues, everything else is immediate.
  *
- * `getItem` flushes first because a pending payload is NEWER than the disk, and a
- * hydrate that read the older copy would restore a draft the user has since
- * changed.
+ * A READ DOES NOT WRITE, and that is a fix rather than an omission (agent review
+ * round 1, R1-1). `getItem` used to flush the queue first, on the theory that a
+ * pending payload is NEWER than the disk. That theory holds for exactly one caller
+ * and is inverted for the other:
+ *
+ *  - boot (persist's own hydrate at store creation): the queue is empty by
+ *    construction - nothing has called `setItem` yet - so the flush was a no-op;
+ *  - the cross-window adoption (`conversation-input-sync.ts`), the ONLY runtime
+ *    `rehydrate()` caller: it exists because the DISK is the newer copy, and the
+ *    queue it would land holds this document's stale rows. Because a document
+ *    writes the same key it is about to read, the flush wrote its own copy over the
+ *    other document's newer draft and then hydrated it back, so the adopting window
+ *    adopted nothing and reverted the other document's rows on disk.
+ *
+ * So the ordering is named where it belongs: the queue is the newest copy only for
+ * a document that has not been told otherwise, and `getItem` is never told. The
+ * adoption drops its own queue (`discardQueuedComposerDraftWrite`) and reads.
  */
 const composerDraftPersistStorage: PersistStorage<PersistedDraftRows> = {
 	getItem: (name) => {
-		writePendingDraft();
 		const storage = resolveLocalStorage();
 		if (!storage) return null;
 		const raw = storage.getItem(name);
