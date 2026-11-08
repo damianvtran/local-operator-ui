@@ -27,6 +27,7 @@ import {
 	plan,
 	receipt,
 	scopeDecision,
+	shardIndexOf,
 	tapSummary,
 	validateFiles,
 	verify,
@@ -89,25 +90,86 @@ function rows(p) {
 	);
 }
 
-test("derived inventory includes nested names; count-balanced partition is complete, disjoint and permutation invariant", () => {
+test("derived inventory includes nested names; partition is complete, disjoint, permutation invariant and pinned", () => {
 	const files = selectDesktopTests(names, {});
 	assert.equal(files.length, 542);
 	assert.ok(files.includes("scripts/i18n/case-0000.test.mjs"));
+	const sizes = {};
 	for (const count of [2, 3, SHARD_COUNT]) {
 		const parts = partition(files, count);
 		assert.deepEqual(parts, partition([...files].reverse(), count));
 		assert.deepEqual(parts.flat().sort(), files);
 		assert.equal(new Set(parts.flat()).size, files.length);
+		// Path hashing cannot give the exact +/-1 deal round-robin gave, and that
+		// deal is precisely what moved a file when the inventory changed. The
+		// tolerance is stated rather than implied so a salt change that piled a
+		// quarter of the suite onto one shard fails here instead of in CI.
 		assert.ok(
-			Math.max(...parts.map((p) => p.length)) -
-				Math.min(...parts.map((p) => p.length)) <=
-				1,
+			Math.max(...parts.map((p) => p.length)) <=
+				Math.ceil((files.length / count) * 1.1),
+			`count ${count} exceeds 10% over the mean shard size`,
 		);
+		sizes[count] = parts.map((p) => p.length);
 	}
-	assert.deepEqual(
-		partition(files).map((p) => p.length),
-		[136, 136, 135, 135],
+	// These numbers may only move when SHARD_COUNT or SHARD_SALT moves: they are
+	// the mapping pinned by path, not an incidental deal order.
+	assert.deepEqual(sizes, {
+		2: [255, 287],
+		3: [196, 182, 164],
+		4: [126, 144, 129, 143],
+	});
+});
+
+test("shard membership survives inventory edits; the position deal it replaced does not", () => {
+	const files = selectDesktopTests(names, {});
+	const shardOf = (list, deal) => {
+		const map = new Map();
+		for (const [index, group] of deal(list).entries())
+			for (const file of group) map.set(file, index);
+		return map;
+	};
+	// The scheme this replaced, verbatim: sort, then deal by POSITION mod count.
+	// Kept only as the negative control that proves the assertions below can fail.
+	const positionDeal = (list, count = SHARD_COUNT) => {
+		const groups = Array.from({ length: count }, () => []);
+		[...list].sort().forEach((file, i) => groups[i % count].push(file));
+		return groups;
+	};
+	// Counts only files present in both inventories, so a removal cannot be
+	// mistaken for a reshuffle of the file it removed.
+	const moved = (list, deal) => {
+		const before = shardOf(files, deal);
+		const after = shardOf(list, deal);
+		return [...after.keys()].filter(
+			(file) => before.has(file) && before.get(file) !== after.get(file),
+		).length;
+	};
+	// A file that sorts first, one that sorts into the middle, and one that
+	// appends: the first two are what a normal PR adding a test file looks like.
+	const insertions = [
+		"scripts/aaa-first.test.mjs",
+		"scripts/case-0200x.test.mjs",
+		"scripts/zzz-last.test.mjs",
+	];
+	for (const added of insertions) {
+		// Nothing that already existed may move. This is the property a PR head and
+		// the main head it lands on must agree on, and the one whose absence let the
+		// same commit pass on a branch and fail on main with a different shard.
+		assert.equal(moved([...files, added], partition), 0, `adding ${added}`);
+	}
+	assert.equal(moved([...files, ...insertions], partition), 0, "adding three");
+	assert.equal(
+		moved(
+			files.filter((file) => file !== files[300]),
+			partition,
+		),
+		0,
+		"removing one",
 	);
+	// Negative control: the same inputs reshuffle under the deal this replaced,
+	// so a regression back to position-based assignment cannot pass silently.
+	assert.equal(moved([...files, insertions[0]], positionDeal), 542);
+	assert.ok(moved([...files, insertions[1]], positionDeal) > 300);
 });
 
 test("inventory rejects unsupported syntax instead of guessing shell semantics", () => {
@@ -580,9 +642,21 @@ const actualProductionPreamble =
 	"desktop tests: 541 files, concurrency 3 (CI runner: governor stands down, node default for 4 cores)\ndesktop tests: memory bound 9.5 GB for the test process group (max(9728 MB floor, 25% of 15983 MB RAM), capped at 62.5%); sampled every 2s on max(footprint, rss)\ndesktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group";
 
 test("R4: actual three-line production preamble accepts healthy TAP and preserves bad-count rejection", () => {
-	const files = Array.from(
-		{ length: 541 * SHARD_COUNT },
-		(_, i) => `scripts/data-${i}.test.mjs`,
+	// Exactly 541 files per lane, selected by the real assignment. The deal this
+	// replaced produced a fixed 541 by construction; assignment is path-hashed
+	// now, so the inventory is built from the hash instead of assuming its shape.
+	// Everything below still exercises the genuine 541-file production lane.
+	const buckets = Array.from({ length: SHARD_COUNT }, () => []);
+	for (let i = 0; buckets.some((lane) => lane.length < 541); i++) {
+		const file = `scripts/data-${i}.test.mjs`;
+		const lane = buckets[shardIndexOf(file)];
+		if (lane.length < 541) lane.push(file);
+	}
+	const files = buckets.flat();
+	assert.equal(files.length, 541 * SHARD_COUNT);
+	assert.deepEqual(
+		partition(files).map((lane) => lane.length),
+		Array.from({ length: SHARD_COUNT }, () => 541),
 	);
 	const p = {
 		...expected(),
