@@ -301,10 +301,21 @@ export const RESTING_CODES: ReadonlySet<string> = new Set(["idle", "recent"]);
  * nothing the clause does not supersede. A non-resting label is a second,
  * true fact ("Complete · 1 job running", "Approval needed · ..."), so it stays.
  * A row with no code is the `recent` fallback, so it rests too.
+ *
+ * ONLY ON A MARKED ROW (agent review round 2, M1; QA round 2, Q3): the
+ * replacement is justified by the row sitting under Running with a lane. An
+ * older backend's idle row with counted subagents is NOT marked
+ * (`hasBackgroundWork` is false), stays in its date section and keeps main's
+ * "Idle · 2 subagents running" - dropping the label there would erase the
+ * row's only status with nothing else saying what state it is in.
  */
 export function clauseReplacesLabel(
-	row: Pick<CanonicalSessionRow, "status">,
+	row: Parameters<typeof hasBackgroundWork>[0],
 	clause: string,
 ): boolean {
-	return clause !== "" && RESTING_CODES.has(row.status?.code ?? "recent");
+	return (
+		clause !== "" &&
+		RESTING_CODES.has(row.status?.code ?? "recent") &&
+		hasBackgroundWork(row)
+	);
 }

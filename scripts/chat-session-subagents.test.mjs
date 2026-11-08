@@ -204,14 +204,40 @@ test("the clause reads the section's predicate (review R1/R3, QA Q1)", () => {
 
 test("a resting label yields to the clause; a louder one keeps it (design D1)", () => {
 	const clause = "1 subagent, 1 job running";
+	const marked = { background_work: true };
 	for (const code of ["idle", "recent", undefined]) {
-		const r = code === undefined ? { session_id: "x" } : row(code);
+		const r =
+			code === undefined ? { session_id: "x", ...marked } : row(code, marked);
 		assert.equal(clauseReplacesLabel(r, clause), true, String(code));
 		assert.equal(clauseReplacesLabel(r, ""), false, String(code));
 	}
 	for (const code of ["complete", "approval", "attached", "error", "waiting"]) {
-		assert.equal(clauseReplacesLabel(row(code), clause), false, code);
+		assert.equal(clauseReplacesLabel(row(code, marked), clause), false, code);
 	}
+});
+
+test("an unmarked resting row keeps its label beside the clause (review M1, QA Q3)", () => {
+	// Older backend (no `background_work`), idle, subagents still counted: the
+	// row is NOT under Running and has no lane, so main's "Idle · 2 subagents
+	// running" is the truthful sentence. Replacing the label here would drop
+	// the only status the row has while nothing marks it as running.
+	const old = row("idle", { subagents_running: 2 }, "Idle");
+	const clause = backgroundWorkClause(old);
+	assert.equal(isRunningRow(old), false);
+	assert.equal(clause, "2 subagents running");
+	assert.equal(clauseReplacesLabel(old, clause), false);
+	assert.equal(
+		clauseReplacesLabel(
+			row("recent", { subagents_running: 1 }),
+			"1 subagent running",
+		),
+		false,
+	);
+	// Flag explicitly false: core says nothing runs, so the label stands too.
+	assert.equal(
+		clauseReplacesLabel(row("idle", { background_work: false }), "x"),
+		false,
+	);
 });
 
 test("list joins use the locale's conjunction, not unit spacing (i18n I1)", () => {
