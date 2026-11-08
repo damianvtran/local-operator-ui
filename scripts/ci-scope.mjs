@@ -428,8 +428,11 @@ export const JOB_FLAGS = {
 	"i18n-coverage": ["i18n", "types"],
 	"runtime-deps": ["runtime_deps"],
 	"check-types": ["types"],
-	test: ["unit"],
-	"desktop-tests-result": ["unit"],
+	// The desktop suite's shard matrix and its aggregate left this workflow for
+	// full-suite.yml (main, nightly); pull requests keep the tree-wide guards
+	// and the native-QA bundle the first shard used to build.
+	guards: ["unit"],
+	"qa-bundle": ["unit"],
 	"bytecode-build": ["bytecode"],
 	evidence: ["evidence"],
 	audit: ["audit"],
@@ -458,6 +461,10 @@ export const UNGATED_JOBS = {
 		"event condition here would collaterally skip the whole workflow on a push " +
 		"to `main` (D7). The event-conditional behaviour lives inside this module, " +
 		"which returns every flag true for anything that is not a `pull_request`.",
+	"ci-gate":
+		"always runs: it is the ONE stable check name a ruleset requires, and it " +
+		"reads every other job's result, so a scope flag here would let a skipped " +
+		"gate stand in for a failed one. It costs a few seconds and runs no suite.",
 };
 
 /**
@@ -528,7 +535,9 @@ export const JOB_COMMANDS = {
 		"node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs scripts/desktop-suite-checkpoints.test.mjs",
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
 	],
-	test: ["pnpm test:desktop"],
+	// The guard list, not the suite: a pull request's unit evidence is the
+	// targeted `pnpm test:affected --run --evidence`, chosen from the diff.
+	guards: ["pnpm test:guards"],
 	// The same command the job runs, with the developer's own `.env` supplying
 	// the four `VITE_*` values the build config refuses to start without. CI
 	// substitutes placeholders; neither set ends up in a shipped artifact.
@@ -547,10 +556,10 @@ export const JOB_COMMANDS = {
  * quietly narrower than it looks.
  */
 export const LOCAL_EXCLUSIONS = {
-	"desktop-tests-result":
-		"CI matrix result aggregation, no local suite execution. The existing test " +
-		"mapping already runs the full inventory once; this job validates the three " +
-		"same-head worker receipts and must not duplicate pnpm test:desktop locally.",
+	"qa-bundle":
+		"it builds and uploads the plain-JS bundle isolated native QA downloads from " +
+		"the run. That is an artifact for another machine, not a check: a local " +
+		"`pnpm build` produces the same tree and proves nothing a developer reads.",
 	audit:
 		"no faithful local spelling. CI reads the critical-severity COUNT out of " +
 		"`pnpm audit --json` and tolerates every other advisory; a bare local " +
