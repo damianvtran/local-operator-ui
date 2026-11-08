@@ -41,5 +41,21 @@
 	"ui.hub.pages.viewer_unknown": "Không đọc được lượt thích và mục yêu thích nên không thẻ nào hiển thị trạng thái của bạn.",
 	"ui.hub.pages.signed_out.title": "Đăng nhập để dùng trung tâm",
 	"ui.hub.pages.signed_out.body": "Bạn chưa đăng nhập vào Radient nên trung tâm không có thông tin xác thực để đọc danh sách tác nhân. Hãy đăng nhập ở trang cài đặt, rồi thử lại.",
-	"ui.hub.pages.load_failed.title": "Không tải được trung tâm"
+	"ui.hub.pages.load_failed.title": "Không tải được trung tâm",
+	"ui.hub.pages.list_unreadable": "Không tải được danh sách tác nhân.",
+	"ui.hub.pages.org.plan_headline": "Tổ chức đó cần gói Team đang hoạt động",
+	"ui.hub.pages.org.no_access_headline": "Bạn không có quyền truy cập tổ chức đó",
+	"ui.hub.pages.org.plan_body": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của {org} có thể kích hoạt gói này trong Radient Console, sau đó tác nhân của tổ chức sẽ được liệt kê ở đây.",
+	"ui.hub.pages.org.no_access_body": "Bạn không phải thành viên của {org} nên tác nhân của tổ chức không được liệt kê ở đây. Chủ sở hữu có thể mời bạn lại.",
+	"ui.hub.pages.org.that_organization": "tổ chức đó",
+	"ui.hub.pages.empty.org.title": "Tổ chức này chưa có tác nhân nào được chia sẻ.",
+	"ui.hub.pages.empty.org.body": "Tác nhân được xuất bản vào {org} sẽ hiện ở đây cho các thành viên.",
+	"ui.hub.pages.empty.category.title": "Không có tác nhân trong {category}.",
+	"ui.hub.pages.empty.category.body": "Chưa có gì trong danh mục này. Hãy xóa bộ lọc để xem toàn bộ trung tâm.",
+	"ui.hub.pages.empty.search.title": "Không có tác nhân khớp với tìm kiếm đó.",
+	"ui.hub.pages.empty.search.body": "Không tên hay mô tả tác nhân nào chứa nội dung đó. Hãy xóa tìm kiếm để xem toàn bộ trung tâm.",
+	"ui.hub.pages.empty.public.title": "Trung tâm đang trống.",
+	"ui.hub.pages.empty.public.body": "Chưa ai xuất bản tác nhân nào. Tác nhân của bạn có thể là tác nhân đầu tiên.",
+	"ui.hub.pages.clear.filter": "Xóa bộ lọc",
+	"ui.hub.pages.clear.search": "Xóa tìm kiếm"
 }

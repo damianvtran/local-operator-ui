@@ -41,5 +41,21 @@
 	"ui.hub.pages.viewer_unknown": "No se pudieron leer tus “me gusta” y favoritos, así que ninguna tarjeta indica si te gusta o lo tienes en favoritos.",
 	"ui.hub.pages.signed_out.title": "Inicia sesión para usar el hub",
 	"ui.hub.pages.signed_out.body": "No has iniciado sesión en Radient, así que el hub no tiene ninguna credencial con la que leer la lista de agentes. Inicia sesión en la página de ajustes y vuelve a intentarlo.",
-	"ui.hub.pages.load_failed.title": "No se pudo cargar el hub"
+	"ui.hub.pages.load_failed.title": "No se pudo cargar el hub",
+	"ui.hub.pages.list_unreadable": "No se pudo cargar la lista de agentes.",
+	"ui.hub.pages.org.plan_headline": "Esa organización necesita un plan Team activo",
+	"ui.hub.pages.org.no_access_headline": "No tienes acceso a esa organización",
+	"ui.hub.pages.org.plan_body": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de {org} puede activarlo en la consola de Radient y, a partir de entonces, sus agentes aparecerán aquí.",
+	"ui.hub.pages.org.no_access_body": "No eres miembro de {org}, así que sus agentes no aparecen aquí. Un propietario puede invitarte de nuevo.",
+	"ui.hub.pages.org.that_organization": "esa organización",
+	"ui.hub.pages.empty.org.title": "Esta organización aún no tiene agentes compartidos.",
+	"ui.hub.pages.empty.org.body": "Los agentes publicados en {org} aparecen aquí para sus miembros.",
+	"ui.hub.pages.empty.category.title": "No hay agentes en {category}.",
+	"ui.hub.pages.empty.category.body": "Todavía no hay nada en esta categoría. Quita el filtro para ver todo el hub.",
+	"ui.hub.pages.empty.search.title": "Ningún agente coincide con esa búsqueda.",
+	"ui.hub.pages.empty.search.body": "Ningún nombre ni descripción de agente contiene eso. Borra la búsqueda para ver todo el hub.",
+	"ui.hub.pages.empty.public.title": "El hub está vacío.",
+	"ui.hub.pages.empty.public.body": "Todavía no se ha publicado ningún agente. El tuyo podría ser el primero.",
+	"ui.hub.pages.clear.filter": "Quitar filtro",
+	"ui.hub.pages.clear.search": "Borrar búsqueda"
 }
