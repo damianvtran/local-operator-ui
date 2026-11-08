@@ -156,11 +156,25 @@ const AIMING_GIT_VARS = new Set([
 	"GIT_DISCOVERY_ACROSS_FILESYSTEM",
 ]);
 
+/**
+ * The `GIT_CONFIG_*` family that also aims git, dropped for the same reason.
+ *
+ * `GIT_CONFIG_COUNT` with `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` is git's
+ * environment spelling of `-c`, so one of those triples can point `core.worktree`
+ * or `core.repositoryformatversion` wherever it likes — the same class of
+ * accident as an inherited `GIT_DIR`, arriving by a different key. It is filtered
+ * by SHAPE (`KEY_0`, `KEY_12`) rather than by a list of numbers, because the
+ * count is the caller's to choose.
+ */
+const CONFIG_AIMING_GIT_VAR_RE =
+	/^GIT_CONFIG_(?:PARAMETERS|COUNT|KEY_\d+|VALUE_\d+)$/;
+
 /** The parent environment minus every repository-aiming `GIT_*` key. */
-function cleanGitEnv() {
+export function cleanGitEnv(source = process.env) {
 	return Object.fromEntries(
-		Object.entries(process.env).filter(
-			([key]) => !AIMING_GIT_VARS.has(key) && key !== "GIT_CONFIG_PARAMETERS",
+		Object.entries(source).filter(
+			([key]) =>
+				!AIMING_GIT_VARS.has(key) && !CONFIG_AIMING_GIT_VAR_RE.test(key),
 		),
 	);
 }
@@ -187,18 +201,49 @@ export function exportHead({
 }) {
 	const dir = realpathSync(mkdtempSync(join(tmpRoot, `${label}-`)));
 	const tarPath = join(dir, "export.tar");
-	git(
-		[
-			"archive",
-			"--format=tar",
-			"-o",
-			tarPath,
-			"HEAD",
-			"--",
-			...paths.filter((path) => existsSync(join(repo, path))),
-		],
-		{ cwd: repo },
-	);
+	/* THE SURFACE IS DERIVED FROM HEAD, NEVER FROM THE CHECKOUT (review R-2).
+	 *
+	 * `existsSync` against the working tree used to decide which pathspecs were
+	 * exported, so a checkout that merely LACKED a path silently narrowed the
+	 * export: a sparse checkout, a partial clone, or a developer who had just
+	 * removed `src/` dropped that pathspec, the added-copy guard then read every
+	 * `src/renderer` file as a deletion, `--diff-filter=ACMR` discarded them, and
+	 * a branch full of hardcoded copy passed VACUOUSLY. An untracked path is the
+	 * mirror case - `git archive HEAD` exports nothing for it - and the verdict
+	 * then described a different set from the one the runner claims to read.
+	 *
+	 * `ls-tree HEAD` answers the only question that matters ("what does this
+	 * commit contain"), and a surface that misses entirely stops the run loudly
+	 * rather than narrowing it silently (see the guard below). */
+	const present =
+		paths.length === 0
+			? []
+			: git(["ls-tree", "--name-only", "HEAD", "--", ...paths], {
+					cwd: repo,
+				})
+					.split("\n")
+					.filter((path) => path !== "");
+	/* An empty surface must not become "export the whole tree": `git archive HEAD
+	 * --` with no pathspec exports everything, which is both the wrong answer and
+	 * an expensive one. Fail closed and say which list missed. */
+	if (present.length === 0) {
+		rmSync(dir, { recursive: true, force: true });
+		throw new Error(
+			`the export surface (${paths.join(", ") || "<empty>"}) matches nothing in HEAD; refusing to export an empty surface`,
+		);
+	}
+	try {
+		git(["archive", "--format=tar", "-o", tarPath, "HEAD", "--", ...present], {
+			cwd: repo,
+		});
+	} catch (error) {
+		/* The temp dir is this function's to reap on EVERY failure path, not only
+		 * on the `tar` one below (review N-3): a thrown `git archive` - an
+		 * unreadable object, a full disk - used to leave the export directory
+		 * behind on a machine where ~25 sessions share the disk. */
+		rmSync(dir, { recursive: true, force: true });
+		throw error;
+	}
 	const extracted = join(dir, "tree");
 	mkdirSync(extracted, { recursive: true });
 	const tar = spawnSync("tar", ["-xf", tarPath, "-C", extracted], {
@@ -372,9 +417,41 @@ export function formatReport(result) {
 	return { standard, error, code: 0 };
 }
 
-export function main(argv = process.argv.slice(2)) {
-	let base = process.env.CLEAN_VIEW_BASE || DEFAULT_BASE;
-	let allowanceBase = process.env.CLEAN_VIEW_ALLOWANCE_BASE || base;
+/**
+ * Resolve `ref` to a commit in THIS repository, with the caller's repository-
+ * aiming `GIT_*` keys scrubbed (review R-5).
+ *
+ * This used to inherit `process.env`, so an inherited `GIT_DIR` — set by an
+ * enclosing worktree, a hook, or another rig on this machine — aimed the ref
+ * validation at a DIFFERENT repository than the one being exported. The verdict
+ * then depended on which ref happened to exist over there: usually a refusal to
+ * report a verdict at all, but the same inheritance is what would let a
+ * coincidentally-matching ref through. Every other git call in this file already
+ * went through `cleanGitEnv`; this one did not.
+ */
+export function resolveCommit(ref) {
+	const resolved = spawnSync(
+		"git",
+		["rev-parse", "--verify", "--quiet", `${ref}^{commit}`],
+		{ cwd: REPO, env: cleanGitEnv(), encoding: "utf8" },
+	);
+	return resolved.status === 0 ? resolved.stdout.trim() : undefined;
+}
+
+/**
+ * The two refs one run uses: the environment first, then the flags.
+ *
+ * `--base` CASCADES to the allowance base when nothing named one explicitly,
+ * which is `runCleanView`'s own default (`allowanceBase = base`). It did not
+ * (review R-6): on the command line, `--base X` judged the added-copy diff
+ * against X while `check-coverage` compared its allowance against
+ * `origin/main`, so one run could hold two different bases depending on whether
+ * the caller used the flag or the function.
+ */
+export function parseRefs(argv = [], env = process.env) {
+	let base = env.CLEAN_VIEW_BASE || DEFAULT_BASE;
+	let allowanceBase = env.CLEAN_VIEW_ALLOWANCE_BASE || undefined;
+	let help = false;
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
 		if (arg === "--base" && argv[index + 1]) {
@@ -382,28 +459,32 @@ export function main(argv = process.argv.slice(2)) {
 		} else if (arg === "--allowance-base" && argv[index + 1]) {
 			allowanceBase = argv[++index];
 		} else if (arg === "--help" || arg === "-h") {
-			process.stdout.write(
-				"usage: node scripts/i18n/check-clean-view.mjs [--base <ref>] [--allowance-base <ref>]\n\n" +
-					"Runs ledger-check, check-added-strings and check-coverage against `git archive HEAD`\n" +
-					"rather than the working tree, so untracked or uncommitted local state cannot turn\n" +
-					"any of them green. Both refs default to origin/main.\n",
-			);
-			return 0;
+			help = true;
 		} else {
 			throw new Error(`Unknown or incomplete argument: ${arg}`);
 		}
+	}
+	return { base, allowanceBase: allowanceBase ?? base, help };
+}
+
+export function main(argv = process.argv.slice(2)) {
+	const { base, allowanceBase, help } = parseRefs(argv);
+	if (help) {
+		process.stdout.write(
+			"usage: node scripts/i18n/check-clean-view.mjs [--base <ref>] [--allowance-base <ref>]\n\n" +
+				"Runs ledger-check, check-added-strings and check-coverage against `git archive HEAD`\n" +
+				"rather than the working tree, so untracked or uncommitted local state cannot turn\n" +
+				"any of them green. Both refs default to origin/main, and --base is what\n" +
+				"--allowance-base falls back to.\n",
+		);
+		return 0;
 	}
 	/* A resolved ref is the only way `git diff <base>` describes a real commit. */
 	for (const [flag, ref] of [
 		["--base", base],
 		["--allowance-base", allowanceBase],
 	]) {
-		const resolved = spawnSync(
-			"git",
-			["rev-parse", "--verify", "--quiet", `${ref}^{commit}`],
-			{ cwd: REPO, encoding: "utf8" },
-		);
-		if (resolved.status !== 0) {
+		if (resolveCommit(ref) === undefined) {
 			process.stderr.write(
 				`clean-view: cannot resolve ${flag} ${ref} to a commit; refusing to report a verdict against a ref that does not exist\n`,
 			);

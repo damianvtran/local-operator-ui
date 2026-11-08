@@ -19,7 +19,12 @@ import {
 	resolveComparisonBase,
 	runAddedCheck,
 } from "./check-added-strings.mjs";
-import { isScanned, openSnapshot } from "./check-strings.mjs";
+import {
+	findViolations,
+	isScanned,
+	openSnapshot,
+	pragmaCoveredLines,
+} from "./check-strings.mjs";
 
 const REPO = new URL("../..", import.meta.url).pathname;
 const HUNK_ERROR_RE = /hunk header/;
@@ -71,6 +76,7 @@ function fixtureSourceFile() {
 
 after(() => {
 	fixtureSnapshot?.api.close();
+	realPragmaSnapshot?.api.close();
 	rmSync(SCRATCH, { recursive: true, force: true });
 });
 
@@ -276,9 +282,142 @@ test("a pragma elsewhere in the element does not exempt its siblings", () => {
 			texts.includes("Drop this instead"),
 			`an element-mate's pragma must not exempt this literal, saw ${texts.join(", ")}`,
 		);
+		/* The RATCHET is not asserted here on purpose, and the reason is a real
+		 * difference in GRANULARITY rather than in the rule: that walker reports
+		 * per NODE, so a conditional's multi-line node contains the pragma line and
+		 * is exempt as a whole, while this guard decides per LITERAL. The rule both
+		 * gates share is the LINE COVERAGE (`pragmaCoveredLines`), which the real
+		 * pragmas below pin on both walkers; the ratchet's own charging direction
+		 * (a tag's second attribute, its child text) is pinned in
+		 * `check-strings.test.mjs` against the scan fixture. */
 	} finally {
 		scratch.close();
 	}
+});
+
+/* THE PRAGMA SCOPE RULE IS ONE RULE, and these are its three real cases (review
+ * R-1 on #1787).
+ *
+ * The first edition of the narrowing stated the rule here and a DIFFERENT one in
+ * the ratchet, so the two gates disagreed about the same pragma:
+ * `agent-detail.tsx`'s `"inherit"` - annotated by a JSX comment written ABOVE its
+ * element - was exempt in the ratchet and charged by this guard. The fix is one
+ * exported function, `pragmaCoveredLines` in `check-strings.mjs`, and this test
+ * walks the REAL files through BOTH walkers so a future change to either cannot
+ * re-open the split.
+ *
+ * Copying the bytes into the scratch root keeps the line numbers of the real
+ * files while avoiding a build of this checkout's two tsconfig projects (~16 s,
+ * see `fixtureSourceFile`); the walkers are pure functions of the SourceFile.
+ */
+const REAL_PRAGMA_CASES = [
+	{
+		/* A JSX comment on the line ABOVE the literal: the annotation-above shape,
+		 * which an own-line-only rule charged. */
+		path: "src/renderer/src/features/agents/components/agent-detail.tsx",
+		literal: '{profile.effort ?? "inherit"}',
+		text: "inherit",
+	},
+	{
+		/* Inline on the literal's own line, with its `[ ]` sibling one line below:
+		 * the two cases review M1/Q-2 on #1767 filed. */
+		path: "src/renderer/src/features/chat/components/slash-commands.tsx",
+		literal: '? "[x]"',
+		text: "[x]",
+		sibling: "[ ]",
+	},
+	{
+		/* Inline on the literal's own line, inside a JSX expression container. */
+		path: "src/renderer/src/features/settings/components/delegated-retention-copy.tsx",
+		literal: '"lop exec"',
+		text: "lop exec",
+	},
+];
+
+let realPragmaSnapshot;
+function realPragmaSourceFiles() {
+	if (realPragmaSnapshot === undefined) {
+		const dir = scratchTree("real-pragmas-");
+		const copies = REAL_PRAGMA_CASES.map(({ path }) => {
+			const copy = join(dir, path);
+			mkdirSync(dirname(copy), { recursive: true });
+			writeFileSync(copy, readFileSync(join(REPO, path)));
+			return copy;
+		});
+		const opened = openSnapshot(dir, copies);
+		realPragmaSnapshot = {
+			api: opened.api,
+			sourceFiles: copies.map((copy) =>
+				opened.snapshot
+					.getDefaultProjectForFile(copy)
+					.program.getSourceFile(copy),
+			),
+		};
+	}
+	return realPragmaSnapshot;
+}
+
+/** The 1-based line holding `needle`, which must appear exactly once. */
+function singleLineOf(sourceFile, needle) {
+	const hits = sourceFile.text
+		.split("\n")
+		.flatMap((line, index) => (line.includes(needle) ? [index + 1] : []));
+	assert.equal(hits.length, 1, `${needle} must appear on exactly one line`);
+	return hits[0];
+}
+
+test("both gates exempt the three real pragmas, and the rule covers their lines", () => {
+	const { sourceFiles } = realPragmaSourceFiles();
+	assert.equal(sourceFiles.length, REAL_PRAGMA_CASES.length);
+	REAL_PRAGMA_CASES.forEach((realCase, index) => {
+		const sourceFile = sourceFiles[index];
+		assert.ok(sourceFile, `${realCase.path} must parse`);
+		const literalLine = singleLineOf(sourceFile, realCase.literal);
+		const covered = pragmaCoveredLines(sourceFile);
+		assert.ok(
+			covered.has(literalLine),
+			`${realCase.path}: the shared rule must cover line ${literalLine}`,
+		);
+		const ratchet = findViolations(sourceFile).map((finding) => finding.text);
+		assert.ok(
+			!ratchet.includes(realCase.text),
+			`${realCase.path}: the ratchet must exempt ${realCase.text}, saw it charged`,
+		);
+		/* `null` added lines: every line counts as added, so this is the diff
+		 * guard's answer for a file whose every line is in the change. */
+		const added = findAddedCopyViolations(sourceFile, null).map(
+			(finding) => finding.text,
+		);
+		assert.ok(
+			!added.includes(realCase.text),
+			`${realCase.path}: the added-copy guard must exempt ${realCase.text}, saw it charged`,
+		);
+	});
+});
+
+test("the rule stops at the pragma's own literal, on the real slash-commands span", () => {
+	const { sourceFiles } = realPragmaSourceFiles();
+	const index = REAL_PRAGMA_CASES.findIndex(
+		(realCase) => realCase.sibling !== undefined,
+	);
+	assert.ok(index >= 0, "a case with a sibling literal must be pinned");
+	const sourceFile = sourceFiles[index];
+	const pragmaLine = singleLineOf(sourceFile, REAL_PRAGMA_CASES[index].literal);
+	const covered = pragmaCoveredLines(sourceFile);
+	assert.ok(covered.has(pragmaLine), "the pragma's own line is covered");
+	/* One line below the pragma sits the `[ ]` arm it must NOT silence. That arm
+	 * carries no letter, so no walker ever charges it; the letter-bearing sibling
+	 * above is what proves the charging side, and it uses the same shape. */
+	assert.ok(
+		!covered.has(pragmaLine + 1),
+		`line ${pragmaLine + 1} is an unannotated sibling in the same span and must stay uncovered`,
+	);
+	assert.ok(
+		sourceFile.text
+			.split("\n")
+			[pragmaLine].includes(REAL_PRAGMA_CASES[index].sibling),
+		"the sibling literal must still sit one line below the pragma",
+	);
 });
 
 test("diff hunks cover added and new-file lines, including empty ranges", () => {

@@ -37,6 +37,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	realpathSync,
 	rmSync,
 	symlinkSync,
@@ -49,7 +50,12 @@ import { fileURLToPath } from "node:url";
 
 import {
 	EXPORT_PATHS,
+	GATES,
+	cleanGitEnv,
+	exportHead,
 	formatReport,
+	parseRefs,
+	resolveCommit,
 	runCleanView,
 } from "./check-clean-view.mjs";
 
@@ -62,6 +68,7 @@ const EXPORT_LINE_RE = /HEAD export/;
 const GATE_NAME_RE = /check-added-strings\.mjs/;
 const NOT_WORKTREE_RE = /HEAD EXPORT, not on the working tree/;
 const BASE_FAILURE_RE = /no-such-ref|git /;
+const PRINTED_NOTHING_RE = /printed nothing/;
 
 /* The modules the three gates import, plus the gates themselves. Copied rather
  * than re-implemented: the runner's job is to prove the REAL gates, and a stub
@@ -426,6 +433,219 @@ test("an unresolvable base ref is refused instead of reported as a pass", () => 
 		assert.notEqual(formatReport(result).code, 0);
 	} catch (error) {
 		assert.match(String(error.message), BASE_FAILURE_RE);
+	} finally {
+		removeFixture(dir);
+	}
+});
+
+/* THE RUNNER'S OWN KNOBS, pinned where they can be seen rather than inferred
+ * from a passing run (review R-3, R-5, R-6, N-4). Each assertion below fails if
+ * the behaviour it names is removed, which is the point: a gate whose set,
+ * environment or refs can change without a red test is a gate that quietly stops
+ * checking something. */
+test("the gate set is pinned, so dropping one cannot leave the run green", () => {
+	/* The failure this prevents: delete `check-coverage` from `GATES` and every
+	 * remaining test still passes, because the runner reports whatever gates it
+	 * was handed. The set is the product here. */
+	assert.deepEqual(
+		GATES.map((gate) => [gate.name, gate.baseFlag]),
+		[
+			["ledger-check.mjs", undefined],
+			["check-added-strings.mjs", "--base"],
+			["check-coverage.mjs", "--allowance-base"],
+		],
+	);
+	/* `script` is what actually gets spawned, so it is pinned too rather than
+	 * assumed to track `name`. */
+	assert.deepEqual(
+		GATES.map((gate) => gate.script),
+		["ledger-check.mjs", "check-added-strings.mjs", "check-coverage.mjs"],
+	);
+});
+
+test("the cleaned env drops every repository-aiming GIT_* key and keeps the rest", () => {
+	/* Kept deliberately: `GIT_CONFIG_SYSTEM`/`GIT_TERMINAL_PROMPT` are how a rig
+	 * keeps git away from the operator's keychain and off a prompt. Dropped
+	 * deliberately: anything that can aim git at another repository, work tree,
+	 * index or config — including the `GIT_CONFIG_COUNT`/`KEY_n`/`VALUE_n`
+	 * triple, which is git's environment spelling of `-c`. */
+	assert.deepEqual(
+		cleanGitEnv({
+			PATH: "/bin",
+			GIT_DIR: "/elsewhere",
+			GIT_WORK_TREE: "/elsewhere/tree",
+			GIT_INDEX_FILE: "/elsewhere/index",
+			GIT_CONFIG_PARAMETERS: "'core.bare=true'",
+			GIT_CONFIG_COUNT: "1",
+			GIT_CONFIG_KEY_0: "core.worktree",
+			GIT_CONFIG_VALUE_0: "/elsewhere",
+			GIT_CONFIG_KEY_7: "core.bare",
+			GIT_CONFIG_SYSTEM: "/dev/null",
+			GIT_TERMINAL_PROMPT: "0",
+		}),
+		{ PATH: "/bin", GIT_CONFIG_SYSTEM: "/dev/null", GIT_TERMINAL_PROMPT: "0" },
+	);
+});
+
+test("ref validation is aimed at this repository, not at an inherited GIT_DIR", () => {
+	const saved = process.env.GIT_DIR;
+	try {
+		process.env.GIT_DIR = join(SCRATCH, "no-such-repo.git");
+		/* Measured: with GIT_DIR inherited, `git rev-parse` exits 128 and the
+		 * runner refuses a ref it can actually resolve. The cleaned env is what
+		 * makes this the same answer as the checkout's HEAD. */
+		assert.equal(
+			resolveCommit("HEAD"),
+			git(REPO, "rev-parse", "HEAD"),
+			"an inherited GIT_DIR must not aim the ref check at another repository",
+		);
+		assert.equal(resolveCommit("no-such-ref"), undefined);
+	} finally {
+		if (saved === undefined) Reflect.deleteProperty(process.env, "GIT_DIR");
+		else process.env.GIT_DIR = saved;
+	}
+});
+
+test("--base cascades to the allowance base unless one was named explicitly", () => {
+	/* The inconsistency review R-6 filed: `runCleanView({base})` cascades (its
+	 * signature defaults `allowanceBase = base`) while the flag did not, so the
+	 * same intent produced two different bases depending on the entry point. */
+	assert.deepEqual(parseRefs(["--base", "a"], {}), {
+		base: "a",
+		allowanceBase: "a",
+		help: false,
+	});
+	assert.deepEqual(parseRefs(["--base", "a", "--allowance-base", "b"], {}), {
+		base: "a",
+		allowanceBase: "b",
+		help: false,
+	});
+	assert.deepEqual(parseRefs([], { CLEAN_VIEW_BASE: "c" }), {
+		base: "c",
+		allowanceBase: "c",
+		help: false,
+	});
+	assert.deepEqual(
+		parseRefs(["--base", "a"], { CLEAN_VIEW_ALLOWANCE_BASE: "d" }),
+		{ base: "a", allowanceBase: "d", help: false },
+	);
+	assert.equal(parseRefs(["--help"], {}).help, true);
+});
+
+test("a gate that exits 0 without printing is refused, not reported as a pass", () => {
+	const { dir, base } = fixture();
+	try {
+		/* Measured, not hypothesised: all three gates end with a
+		 * `import.meta.url === pathToFileURL(...)` guard, and a `/var/folders` vs
+		 * `/private/var/folders` mismatch once made every one of them exit 0
+		 * without running a line. This stub reproduces that state deterministically
+		 * for ONE gate - the committed script prints nothing and succeeds - and the
+		 * runner must refuse to call it a pass. */
+		const stub = "process.exitCode = 0;\n";
+		writeFileSync(join(dir, "scripts", "i18n", "ledger-check.mjs"), stub);
+		git(dir, "add", "--", "scripts/i18n/ledger-check.mjs");
+		git(
+			dir,
+			"-c",
+			"user.name=t",
+			"-c",
+			"user.email=t@t",
+			"commit",
+			"-qm",
+			"silent gate",
+		);
+
+		const result = cleanView(dir, base);
+		const silent = result.gates.find(
+			(gate) => gate.name === "ledger-check.mjs",
+		);
+		assert.ok(silent, "the silent gate must have been run");
+		assert.equal(
+			silent.code,
+			1,
+			"a gate that printed nothing did not run, so it is not a pass",
+		);
+		assert.match(`${silent.stdout}${silent.stderr}`, PRINTED_NOTHING_RE);
+		assert.equal(formatReport(result).code, 1);
+	} finally {
+		removeFixture(dir);
+	}
+});
+
+test("the export surface comes from HEAD, not from what the checkout happens to have", () => {
+	const { dir, base } = fixture();
+	try {
+		/* The committed failure state first: the stray file IS in HEAD, so a
+		 * clean export of this commit must fail the added-copy gate. */
+		writeFileSync(join(dir, STRAY_PATH), STRAY_SOURCE);
+		git(dir, "add", "--", STRAY_PATH);
+		git(
+			dir,
+			"-c",
+			"user.name=t",
+			"-c",
+			"user.email=t@t",
+			"commit",
+			"-qm",
+			"stray",
+		);
+		/* Then the checkout loses `src` entirely - a sparse checkout, a partial
+		 * clone, or a developer cleaning up. Deriving the surface from the working
+		 * tree narrowed the export to nothing that mattered, every `src/renderer`
+		 * file read as a deletion, and the gate passed VACUOUSLY. */
+		rmSync(join(dir, "src"), { recursive: true, force: true });
+
+		const result = cleanView(dir, base);
+		const added = result.gates.find(
+			(gate) => gate.name === "check-added-strings.mjs",
+		);
+		assert.ok(added, "the added-copy gate must have run");
+		assert.equal(
+			added.code,
+			1,
+			`a checkout missing src must not narrow the export to a vacuous pass:\n${added.stdout}${added.stderr}`,
+		);
+		assert.ok(
+			`${added.stdout}${added.stderr}`.includes("Stray local copy"),
+			"the failure must still name the committed literal",
+		);
+
+		/* And directly: the export carries the committed tree even though the
+		 * checkout no longer has it. */
+		const exported = exportHead({ repo: dir, tmpRoot: SCRATCH });
+		try {
+			assert.ok(
+				existsSync(join(exported.tree, STRAY_PATH)),
+				"the export must carry what HEAD carries",
+			);
+		} finally {
+			rmSync(exported.dir, { recursive: true, force: true });
+		}
+	} finally {
+		removeFixture(dir);
+	}
+});
+
+test("the export directory is removed when git archive itself throws", () => {
+	const { dir } = fixture();
+	try {
+		/* A corrupt object is the cheapest deterministic throw: `ls-tree HEAD`
+		 * reads TREE objects only, so the surface resolves, and `git archive` then
+		 * fails on the BLOB it cannot read. The temp directory is this function's
+		 * to reap on every path, not only the `tar` one (review N-3) - this disk is
+		 * shared with ~25 sessions, and a throw used to leave an export behind. */
+		const blob = git(
+			dir,
+			"rev-parse",
+			"HEAD:scripts/i18n/check-added-strings.mjs",
+		);
+		rmSync(join(dir, ".git", "objects", blob.slice(0, 2), blob.slice(2)));
+		assert.throws(() => exportHead({ repo: dir, tmpRoot: SCRATCH }));
+		assert.deepEqual(
+			readdirSync(SCRATCH).filter((name) => name.startsWith("export-")),
+			[],
+			"a throw from git archive must reap its temp dir",
+		);
 	} finally {
 		removeFixture(dir);
 	}

@@ -106,7 +106,7 @@ import {
 	loadAllowlist,
 	onDataShapeSurface,
 	openSnapshot,
-	pragmaLines,
+	pragmaCoveredLines,
 	staticTextNodes,
 } from "./check-strings.mjs";
 
@@ -599,26 +599,28 @@ export function findAddedCopyViolations(
 	addedLines,
 	{ templateSinks = false, restore } = {},
 ) {
-	const pragmas = pragmaLines(sourceFile);
+	const pragmas = pragmaCoveredLines(sourceFile);
 	const findings = [];
 	const isAdded = (line) => addedLines === null || addedLines.has(line);
 	/**
-	 * A pragma exempts exactly the literal whose OWN lines carry it.
+	 * WHICH PRAGMA COVERS WHICH LITERAL is ONE rule, and it lives in
+	 * `check-strings.mjs`'s `pragmaCoveredLines` — both gates call it, so the
+	 * ratchet and this diff guard cannot disagree about the same pragma again.
 	 *
-	 * It used to also exempt every literal in the enclosing JSX element, because
-	 * the element's whole span was searched for a pragma line. One glyph's reason
-	 * therefore silenced its siblings: in `slash-commands.tsx` the pragma written
-	 * for the `[x]` marker on its own line also covered the `[ ]` arm one line
-	 * later, and the element-scoped reading was the loophole review M1/Q-2 filed
-	 * on #1767 (that file's 2437-2462 span and
-	 * `delegated-retention-copy.tsx`'s 50-54 were the two cases).
+	 * They did. This guard used to search the enclosing JSX element's whole
+	 * span, so one glyph's reason silenced its siblings: in `slash-commands.tsx`
+	 * the pragma written for the `[x]` marker on its own line also covered the
+	 * `[ ]` arm one line later, which is the loophole review M1/Q-2 filed on
+	 * #1767. The first narrowing dropped the element span entirely — correct for
+	 * that file, wrong one file over: `agent-detail.tsx`'s `"inherit"` is
+	 * annotated by a JSX comment written ABOVE its element, so an own-line-only
+	 * reading charged copy the ratchet still exempted, and the two gates
+	 * disagreed about a pragma neither had changed.
 	 *
-	 * Own-line is not a new rule invented here: `docs/i18n/literal-allowance.md`
-	 * already documents the exemption as "an inline `// i18n: ignore <reason>`
-	 * pragma on its own line", and the template-sink contract below says the
-	 * same. The two real pragmas from that review sit inline on their literals'
-	 * own lines, so they keep working unchanged - which is why this narrowing
-	 * needs no source change, only the dropped element span.
+	 * The shared rule covers the literal's own line, and the line after a pragma
+	 * that stands alone on its own line (the annotation-above shape), and it
+	 * stops there. `check-added-strings.test.mjs` pins it on the three real
+	 * pragmas, through both walkers.
 	 */
 	const exempt = (node) => inSpan(lineSpan(sourceFile, node), pragmas);
 	/**

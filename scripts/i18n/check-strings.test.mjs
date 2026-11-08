@@ -166,6 +166,12 @@ test("the fixture's findings are exactly the flagged shapes, on pinned lines", (
 		{ line: 28, kind: "jsx-text", text: "Nested flagged text" },
 		{ line: 30, kind: "attribute:alt", text: "Flagged alt" },
 		{ line: 31, kind: "attribute:placeholder", text: "Flagged placeholder" },
+		/* The pragma on line 34 stands alone, so it covers the line below it —
+		 * `aria-label` — and stops there. Its tag-mate `title` and the tag's
+		 * child text are copy nobody annotated, so both are charged: that is the
+		 * per-literal rule, pinned rather than implied. */
+		{ line: 36, kind: "attribute:title", text: "Exempt title" },
+		{ line: 38, kind: "jsx-text", text: "Exempt ok" },
 		{
 			line: 41,
 			kind: "jsx-text",
@@ -180,13 +186,15 @@ test("the fixture's findings are exactly the flagged shapes, on pinned lines", (
 
 test("the fixture's exempt shapes stay unflagged", () => {
 	const texts = fixtureFindings().map((finding) => finding.text);
-	// A pragma inside the element exempts the element's own text...
+	// A pragma standing alone on its line exempts the line BELOW it: the
+	// annotation-above spelling, which is how this tree writes them...
 	assert.ok(!texts.includes("Exempt text"));
-	// ...and one between attributes exempts the attribute copy after it (an
-	// attribute cannot carry a comment of its own; the enclosing element is
-	// the span the walker consults).
+	// ...and the attribute it was written for inside the tag. An attribute cannot
+	// carry a trailing comment of its own, so the line above it is the surface.
 	assert.ok(!texts.includes("Exempt aria"));
-	assert.ok(!texts.includes("Exempt title"));
+	// The rule stops at one literal: the tag's second attribute and its child
+	// text are charged above, because no pragma annotates them.
+	assert.ok(texts.includes("Exempt title") && texts.includes("Exempt ok"));
 	// The reasonless pragma (its closer is not a reason) exempts nothing: the
 	// span after it IS flagged, asserted above.
 	// Punctuation, symbol and digit-only texts are not copy...
@@ -344,14 +352,16 @@ test("the shipped allowlist parses and every entry carries a reason", () => {
 });
 
 test("an unbaselined file with literals FAILS", () => {
-	// No entry at all: the fixture's 11 literals must fail, not print as advice.
-	// This is the exact state every new file starts in.
+	// No entry at all: the fixture's 13 literals must fail, not print as advice.
+	// This is the exact state every new file starts in. (It was 11 before the
+	// pragma rule became per-literal: a tag-level pragma no longer silences the
+	// tag's second attribute or its child text.)
 	const { counts, failures } = runCheck({
 		repo: REPO,
 		extraScan: [FIXTURE],
 		baseline: { files: {}, note: "" },
 	});
-	assert.equal(counts[FIXTURE], 11);
+	assert.equal(counts[FIXTURE], 13);
 	assert.deepEqual(
 		failures.map((finding) => finding.path),
 		[FIXTURE],
