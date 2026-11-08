@@ -1,5 +1,8 @@
 import { currentLocale, formatDate, formatTime, t } from "@shared/i18n";
-import type { TranscriptRecord } from "../../canonical/transcript-reducer";
+import type {
+	TranscriptRecord,
+	TranscriptState,
+} from "../../canonical/transcript-reducer";
 import type { WorkingLineState } from "../../canonical/working-line-model";
 
 /**: the arithmetic behind the header popover.
@@ -1344,7 +1347,19 @@ const deriveChild = (
 	 */
 	const cancelledBeforeStart = fullResultText === CANCELLED_BEFORE_START;
 	const launchPrompts = toWireStringMap(job.launch_prompts);
-	const launchMessageId = wireText(job.launch_message_id);
+	// The runtime OMITS `launch_message_id` whenever the job id implies it
+	// (`frontend_state.py` `_elide_derivable_launch_id_in_place`: the launch row
+	// is minted as `subagent-launch:<job id>`), so an absent field means the
+	// derived identity, not "no launch". Without this every task child read as
+	// launch-less, and the reader could never ask for its launch row (R1).
+	// Derived only when `launch_prompts` names that identity: a runtime that
+	// predates both fields keeps `""`, and its reader keeps the old fallback.
+	const derivedLaunchId = id ? `${LAUNCH_MESSAGE_ID_PREFIX}${id}` : "";
+	const launchMessageId =
+		wireText(job.launch_message_id) ||
+		(derivedLaunchId && launchPrompts[derivedLaunchId] !== undefined
+			? derivedLaunchId
+			: "");
 	const rawPrompt = wireText(job.prompt).trim();
 
 	return {
@@ -1397,7 +1412,14 @@ const deriveChild = (
 		// The brief is ABSENT rather than empty when the wire reported neither: an
 		// empty string renders a folded block with one blank row, which claims the
 		// parent delegated nothing in as many words.
-		brief: launchPrompts[launchMessageId] ?? (rawPrompt || null),
+		// The launch entry is clipped to 200 chars on the wire while `prompt` carries
+		// up to 1,000: when the longer one extends the clip, show that, so a reader
+		// that cannot point-read the launch row (an older runtime) still degrades to
+		// the longest text the roster already holds (review round 1, R1).
+		brief:
+			launchPrompts[launchMessageId] !== undefined
+				? recoverClippedBrief(launchPrompts[launchMessageId], rawPrompt)
+				: rawPrompt || null,
 		launchMessageId,
 		launchPrompts,
 	};
@@ -2382,6 +2404,89 @@ export function hasRunDetails(
 	);
 }
 
+/** `frontend_state.py` `LAUNCH_MESSAGE_ID_PREFIX`: a child's launch row id. */
+const LAUNCH_MESSAGE_ID_PREFIX = "subagent-launch:";
+
+type UserRecord = Extract<TranscriptRecord, { kind: "user" }>;
+
+/**
+ * Whether the reader should point-read the child's launch row
+ * (`subagents.transcript` with `entryId`, review round 1, R1).
+ *
+ * WHY: the reader loads only the newest page (100 rows), so a busy child's
+ * launch row — the one place the WHOLE brief lives — is not on screen, and the
+ * roster only carries a 200-char clip of it. Asked only when the tail is known
+ * to be partial (`hasMore`) and the row is not already loaded: a short child's
+ * first page already holds it, and a finished history without it (a record
+ * that predates `launch_message_id`, or a compacted head) has nothing to find.
+ */
+export function wantsLaunchRow(
+	transcript: Pick<TranscriptState, "hasMore" | "index">,
+	launchMessageId: string,
+): boolean {
+	return (
+		Boolean(launchMessageId) &&
+		transcript.hasMore &&
+		!transcript.index.has(launchMessageId)
+	);
+}
+
+/**
+ * The launch row out of a point-read page, or `null`.
+ *
+ * Matched by id, never by position: a runtime that predates `entry_id`
+ * ignores the parameter and answers its newest row instead, and painting that
+ * as the brief would be the wrong text with the right label.
+ */
+export function launchRecordFrom(
+	records: readonly TranscriptRecord[],
+	launchMessageId: string,
+): UserRecord | null {
+	for (const record of records)
+		if (record.kind === "user" && record.id === launchMessageId) return record;
+	return null;
+}
+
+/**
+ * The reader's transcript with the launch turn placed first when the loaded
+ * pages do not hold it.
+ *
+ * The brief then renders as an ordinary user turn through `CanonicalTranscript`
+ * — the parent's own bubble: 8-line clamp, mask fade, Show more, markdown and
+ * Copy of the painted text — instead of the mono "Delegated with" block. First
+ * is chronologically right: the launch is the child's oldest turn, so older
+ * pages, when loaded, land after it. `launch` is the point-read row when the
+ * runtime served it, else a stand-in carrying the longest text the roster holds
+ * (`row.brief`), so an older runtime degrades to the 1,000-char preview or the
+ * clip rather than to nothing. Once paging reaches the real row it is loaded,
+ * and the transcript is returned untouched.
+ */
+export function withLaunchRecord(
+	transcript: TranscriptState,
+	launch: UserRecord | null,
+): TranscriptState {
+	if (!launch || transcript.index.has(launch.id)) return transcript;
+	const index = new Map<string, number>([[launch.id, 0]]);
+	for (const [id, position] of transcript.index) index.set(id, position + 1);
+	return { ...transcript, records: [launch, ...transcript.records], index };
+}
+
+/** The stand-in launch turn for `withLaunchRecord`, from the roster's brief. */
+export function standInLaunchRecord(
+	launchMessageId: string,
+	brief: string | null,
+	startSeconds: number | null,
+): UserRecord | null {
+	if (!launchMessageId || !brief) return null;
+	return {
+		kind: "user",
+		id: launchMessageId,
+		ts: startSeconds ?? 0,
+		text: brief,
+		images: [],
+	};
+}
+
 /**
  * Replace the child's durable launch turns with their concise authored prompts.
  *
@@ -2413,11 +2518,54 @@ export function reconcileLaunchTurns(
 	const next = records.map((record) => {
 		if (record.kind !== "user") return record;
 		const concise = launchPrompts[record.id];
-		if (concise === undefined || concise === record.text) return record;
+		if (concise === undefined) return record;
+		const text = recoverClippedBrief(concise, record.text);
+		if (text === record.text) return record;
 		changed = true;
-		return { ...record, text: concise };
+		return { ...record, text };
 	});
 	return changed ? next : records;
+}
+
+/**
+ * The whole authored brief, recovered from the durable launch row when the
+ * wire clipped the concise copy.
+ *
+ * WHY: `launch_prompts` is bounded at the wire (`JOB_LAUNCH_PROMPT_WIRE_CHARS =
+ * 200`, cut as `text[:200] + "…"` by `frontend_state._wire_launch_prompts`), so
+ * reconciling the launch row with it alone left the reader's opening bubble at
+ * ~3 lines ending `…` — under the user bubble's 8-line clamp, so no Show more
+ * ever appeared and the rest of the brief was unreachable (and Copy copied the
+ * prefix). The list frame must stay cheap, so raising that bound is the wrong
+ * fix; the full text already arrives LAZILY, in the child transcript page the
+ * reader fetches anyway: the durable launch row is `preamble + prompt`, and
+ * every branch of `harness/subagent.py::_effective_prompt` (and the resume path
+ * that prepends `effective_resume`) APPENDS the authored prompt last. So the
+ * brief is the suffix of the row starting at the clipped head.
+ *
+ * CONSTRAINTS: only a value carrying the wire's marker is treated as clipped; a
+ * bare `…` is the budget-elided placeholder (`LAUNCH_PROMPT_ELIDED_PLACEHOLDER`)
+ * and has no head to match, so it — like a head under `BRIEF_PREFIX_FLOOR`, or
+ * one the row does not contain — keeps the concise value exactly as before
+ * (never the preamble). The FIRST occurrence is used: preambles are fixed
+ * role/team text that cannot carry a 200-char slice of this prompt, but the
+ * prompt itself can repeat its own opening (a brief that restates the
+ * operator's request later), and the last match would cut it at the
+ * restatement while looking complete (review round 1, R2).
+ *
+ * The same rule recovers from `job.prompt` (the roster's 1,000-char preview),
+ * which is how a runtime without the point read still shows more than the clip.
+ */
+export function recoverClippedBrief(concise: string, durable: string): string {
+	if (!BRIEF_TRAILING_ELLIPSIS.test(concise)) return concise;
+	const head = concise.replace(BRIEF_TRAILING_ELLIPSIS, "");
+	if (head.trim().length < BRIEF_PREFIX_FLOOR) return concise;
+	const at = durable.indexOf(head);
+	if (at < 0) return concise;
+	const full = durable.slice(at);
+	// Recovery must only ever ADD text: a suffix no longer than the head means
+	// the row held nothing past what the wire already sent.
+	return full.length > head.length ? full : concise;
 }
 
 /**
@@ -2466,7 +2614,18 @@ export function briefIsInTranscript(
 		// A short prefix is a coincidence (`Run`, `Check the`), not a copy of the
 		// same instruction: the floor is what stops a two-word record from
 		// silencing a paragraph the reader still needs.
-		return head.length >= BRIEF_PREFIX_FLOOR && wanted.startsWith(head);
+		if (head.length >= BRIEF_PREFIX_FLOOR && wanted.startsWith(head)) {
+			return true;
+		}
+		// The converse: `recoverClippedBrief` now paints the WHOLE brief while
+		// `row.brief` is still the wire's clipped copy, so the painted row is
+		// the longer of the two and the clipped brief is its prefix.
+		const wantedHead = wanted.replace(BRIEF_TRAILING_ELLIPSIS, "").trim();
+		return (
+			wantedHead !== wanted &&
+			wantedHead.length >= BRIEF_PREFIX_FLOOR &&
+			painted.startsWith(wantedHead)
+		);
 	});
 }
 

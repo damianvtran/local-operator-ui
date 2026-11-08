@@ -629,6 +629,19 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			"GET",
 			undefined,
 		],
+		// The launch-row point read (run-details R1): `entry_id`, one row.
+		[
+			{
+				op: "subagents.transcript",
+				sessionId,
+				childId,
+				entryId: "subagent-launch:job-1",
+				limit: 1,
+			},
+			`/${sessionId}/children/${childId}/transcript?limit=1&entry_id=subagent-launch%3Ajob-1`,
+			"GET",
+			undefined,
+		],
 		[
 			{
 				op: "sessions.watch",

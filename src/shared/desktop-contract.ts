@@ -2234,6 +2234,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			childId: sessionId,
 			beforeId: id.optional(),
+			/*
+			 * A point read of ONE row (the child's launch row, which holds the
+			 * whole brief) for a child whose launch sits above the tail page. A
+			 * runtime that predates `entry_id` ignores it and answers its tail,
+			 * so callers match the returned id instead of trusting the shape.
+			 * Not `id`: a launch row's id is `subagent-launch:<job>`, so the colon
+			 * is admitted here (and only here); the length cap is the route's.
+			 */
+			entryId: z
+				.string()
+				.min(1)
+				.max(128)
+				.regex(/^[a-zA-Z0-9_:-]+$/)
+				.optional(),
 			limit: z.number().int().min(1).max(500).optional(),
 		})
 		.strict(),
@@ -9145,6 +9159,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 				limit: String(request.limit ?? 100),
 			});
 			if (request.beforeId) query.set("before_id", request.beforeId);
+			if (request.entryId) query.set("entry_id", request.entryId);
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/transcript?${query}`,
 				method: "GET",
