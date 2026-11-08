@@ -1156,7 +1156,11 @@ function logPrewarmDecision(
 			n.journalOrder ? "1" : "0",
 			n.peerJournalSource ? "1" : "0",
 		].join(",");
-	const parts = [PREWARM_TRACE_PREFIX, `session=${id}`, `decision=${decision}`];
+	const parts = [
+		PREWARM_TRACE_PREFIX,
+		`session=${id}`, // i18n: ignore developer log trace field, machine text
+		`decision=${decision}`, // i18n: ignore developer log trace field, machine text
+	];
 	if (decision === "requested") {
 		parts.push(`why=${refusal}`, `asked=${flags(asked)}`);
 		if (prewarmedNegotiation)

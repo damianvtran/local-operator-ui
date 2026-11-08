@@ -1165,11 +1165,19 @@ export function desktopFeatureEnabled(
 /**
  * The three request flags ONE stream subscription negotiates, off one answer.
  *
- * The single derivation both readers share: the pane builds its subscription's
- * args from these exact fields (`chat-page.tsx`), and the answer is recorded for
- * the click's prewarm through the same call (`useDesktopCapabilities` above). Two
- * readers working one answer is what makes the prewarm's request phrase the
- * pane's - which is the whole precondition of adoption.
+ * This is the CLICK path's copy of the derivation, and a MIRROR of the pane's
+ * rather than a call both share: `chat-page.tsx` derives the same three flags by
+ * calling `desktopFeatureEnabled` inline for its subscription args, so nothing at
+ * runtime ties the two sites together - they are kept in step by hand.
+ * `scripts/stream-prewarm.test.mjs` pins THIS body (same predicate, same three
+ * features, same order as the pane's calls), and it does not read the pane, so a
+ * change to the pane's inline copy still has to move this function with it.
+ * Their agreeing is the precondition of adoption: the prewarm must phrase the
+ * request the pane will make from the same answer, or the pane never claims the
+ * prewarm.
+ *
+ * The answer these flags read is recorded for the click's prewarm in the same
+ * place (`useDesktopCapabilities` above).
  *
  * `peerJournalSource` is included as the CAPABILITY half only. Whether a given
  * request may declare the complete contract is that capability AND-ed with the
