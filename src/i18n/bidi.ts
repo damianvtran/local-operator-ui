@@ -43,6 +43,8 @@
 import { TYPE } from "@formatjs/icu-messageformat-parser";
 import type { MessageFormatElement } from "@formatjs/icu-messageformat-parser";
 
+import type { TextDirection } from "./direction";
+
 const FSI = "\u2068";
 const LRI = "\u2066";
 const PDI = "\u2069";
@@ -227,4 +229,54 @@ export function isolateSigils(text: string): string {
 		index += 1;
 	}
 	return out;
+}
+
+/*
+ * THE THIRD KIND OF STRING: one the CODE renders, with no catalogue value
+ * anywhere in the path. A slash-command row paints `/{label}` as a literal in
+ * JSX, so it never passes through `translate()` and neither step above can
+ * reach it; the footer of that same panel paints `/help` from an ICU value and
+ * is already correct, which is the tell that the row was the odd one out.
+ *
+ * WHY A WHOLE RUN AND NOT ONE ISOLATE PER TOKEN. `isolateSigils` decides token
+ * by token, and its output is only right when the tokens are separated by
+ * strong Latin text. The palette paints a RUN of them - the command word, then
+ * its aliases joined by spaces - and ADJACENT ISOLATES IN AN RTL PARAGRAPH ARE
+ * ORDERED RIGHT-TO-LEFT, so per-token wrapping reverses the run instead of
+ * fixing it. Measured with fribidi 1.0.16 (`fribidi --rtl`): `/help /h` paints
+ * `help /h/` bare, `/h /help` when each token carries its own isolate, and
+ * `/help /h` when the run carries ONE. The run is the unit that reads as one
+ * token to the user, which is the same reason a path is one isolate inside
+ * `LATIN_WORD` above.
+ */
+
+/**
+ * One isolate around a code-rendered sigil run (`/help`, `/help /h`).
+ *
+ * LRI, not FSI: the run is a command word by construction - always Latin - so
+ * the first-strong scan has nothing to decide, and LRI states the intent. An
+ * empty run is returned as it is rather than becoming a bare pair of controls.
+ *
+ * `dir` is the ACTIVE writing direction, and every other direction returns the
+ * input by identity: the en source locale stays byte-identical to what it
+ * painted before, which is what keeps `dir` out of the callers' business and
+ * the LTR parity assertion in `rtl-code-tokens.test.mjs` true.
+ */
+export function isolateSigilRun(text: string, dir: TextDirection): string {
+	return dir === "rtl" && text !== "" ? `${LRI}${text}${PDI}` : text;
+}
+
+/**
+ * One isolate around a VALUE the app does not author - an ask's question, a
+ * transcript payload - painted inside RTL copy.
+ *
+ * FSI, like the value step above and for the same reason: the app cannot know
+ * whether the daemon's text is Latin or Arabic, so the value's own first strong
+ * character has to decide. What this fixes is punctuation that BELONGS to the
+ * value: a Latin question ending in `?` paints `?Which environment ...` in an
+ * RTL paragraph (`fribidi --rtl`), because the `?` is a neutral resolving to
+ * the paragraph's direction; inside the isolate it stays with the sentence.
+ */
+export function isolateValue(text: string, dir: TextDirection): string {
+	return dir === "rtl" && text !== "" ? `${FSI}${text}${PDI}` : text;
 }

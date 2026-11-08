@@ -53,7 +53,8 @@ import type {
 	ReusableTeam,
 } from "@shared/api/local-operator/profile-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
-import { t } from "@shared/i18n";
+import { type TextDirection, t } from "@shared/i18n";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -72,6 +73,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { isolateSigilRun } from "../../../../../i18n/bidi";
 import type { TagCategory } from "../../../../../shared/desktop-contract";
 import type { CanonicalModel } from "../../../../../shared/desktop-session-contract";
 import { archiveDestinationApplies } from "../chat-archived";
@@ -1829,7 +1831,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	onPick,
 	onActionPick,
 }) => {
-	useI18nLocale();
+	/*
+	 * THE DIRECTION, read through the store so a language switch repaints the rows
+	 * with the rest of the popup - and read ONCE, above the list, because the row
+	 * content is built by plain functions that cannot hold a hook of their own.
+	 */
+	const dir = useTextDirection();
 	const listId = state.listId;
 	const activeRef = useRef<HTMLLIElement | null>(null);
 	/*
@@ -2291,7 +2298,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 								}}
 							>
 								{row.kind === "command"
-									? commandRowContent(row)
+									? commandRowContent(row, dir)
 									: row.kind === "action"
 										? actionRowContent(row.row)
 										: argumentRowContent(row, state.inline?.source)}
@@ -2316,7 +2323,22 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	);
 };
 
-function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
+function commandRowContent(
+	row: Extract<CompletionRow, { kind: "command" }>,
+	/*
+	 * The popup's active direction, for the two CODE-RENDERED slash tokens on this
+	 * row (QA Q1 / design D1, round 1).
+	 *
+	 * WHY THESE NEED IT AND THE FOOTER DOES NOT: `/help` in the footer is an ICU
+	 * value, so it reaches `translate()` and comes back isolated. The command word
+	 * and the aliases below are literals this function BUILDS, so no catalogue is
+	 * consulted and nothing on the translate path can see them; in Urdu the `/`
+	 * resolved to the paragraph's direction and the row painted `help/`, `exit/`,
+	 * `clear/`. One isolate per painted RUN (not per token) is what keeps the
+	 * word whole and the alias run in its written order - see `isolateSigilRun`.
+	 */
+	dir: TextDirection,
+) {
 	const { command, label, fastState } = row;
 	/*
 	 * THE DANGER ROLE ON THE COMMAND'S OWN WORD, which is the ink `/delete` is
@@ -2337,6 +2359,14 @@ function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 	 * the state, which is what a metadata column may spend on a fact.
 	 */
 	const slot = commandRowSlot(command, fastState);
+	const word = isolateSigilRun(`/${label}`, dir);
+	const aliases = isolateSigilRun(
+		command.aliases
+			.filter((alias) => alias !== label)
+			.map((alias) => `/${alias}`)
+			.join(" "),
+		dir,
+	);
 	return (
 		<>
 			<span
@@ -2345,15 +2375,10 @@ function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 					destructive ? "text-danger" : "text-ink",
 				)}
 			>
-				/{label}
+				{word}
 			</span>
 			{command.aliases.length > 0 && (
-				<span className="shrink-0 text-meta text-ink-dim">
-					{command.aliases
-						.filter((alias) => alias !== label)
-						.map((alias) => `/${alias}`)
-						.join(" ")}
-				</span>
+				<span className="shrink-0 text-meta text-ink-dim">{aliases}</span>
 			)}
 			<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
 				{command.description}

@@ -49,6 +49,7 @@
 
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -67,6 +68,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { isolateValue } from "../../../../../../i18n/bidi";
 import { t } from "../../../../../../i18n/messages";
 import type {
 	PendingAsk,
@@ -462,6 +464,15 @@ const AskQuestionField = ({
 	 * unselected `Other` is not one (pinned by `scripts/ask-other.test.mjs`, N1).
 	 */
 	const labels = options.map((option) => option.label);
+	/*
+	 * THE QUESTION IS A VALUE THIS FILE DOES NOT WRITE (design round 1, D2). The
+	 * sentence comes from the daemon, so no catalogue and no `t()` call stands
+	 * between it and the DOM - in Urdu a Latin question ending in `?` painted
+	 * `?Which environment should I deploy this to`, the `?` resolving to the
+	 * paragraph's direction and leaving the run it belongs to. `isolateValue`
+	 * puts the whole sentence in one isolate, LTR locales untouched.
+	 */
+	const dir = useTextDirection();
 	const [other, setOther] = useState<AskOther>(() =>
 		askOtherSeed(selected, labels),
 	);
@@ -491,7 +502,7 @@ const AskQuestionField = ({
 	};
 	return (
 		<div className="flex flex-col gap-1.5" data-lo-ask-question={question.id}>
-			<p className="text-ink text-sm">{question.question}</p>
+			<p className="text-ink text-sm">{isolateValue(question.question, dir)}</p>
 			{question.secret ? (
 				<input
 					data-ask-secret={question.id}
@@ -822,6 +833,8 @@ const AskRow = ({
 			? ask.last_user_message_at
 			: null;
 	const locale = useI18nLocale();
+	/* The settled row echoes the same daemon payload, so it takes the same isolate. */
+	const dir = useTextDirection();
 	/*
 	 * CHANGING THE INTERFACE LANGUAGE RE-RENDERS THE FORMATTED TIME, which is why
 	 * the locale is read through the hook rather than at module scope: a stored
@@ -1369,7 +1382,7 @@ const AskRow = ({
 							<div key={entry.id} className="flex flex-col gap-0.5">
 								{echoedByTrigger ? null : (
 									<span className="text-ink-muted text-xs">
-										{entry.question}
+										{isolateValue(entry.question, dir)}
 									</span>
 								)}
 								{entry.answers.length > 0 ? (
@@ -1924,6 +1937,8 @@ export const AskPanel = ({
 	 * with a queue whose rows change under it.
 	 */
 	const [filter, setFilter] = useState<AskFilter>("all");
+	/* The settled rows print the same daemon payload as the card; same isolate. */
+	const dir = useTextDirection();
 	const showPending = filter !== "settled";
 	const showSettledRows = filter !== "outstanding";
 
@@ -2423,7 +2438,7 @@ export const AskPanel = ({
 							 */}
 							<span className="flex min-w-0 flex-col gap-0.5">
 								<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
-									{question}
+									{isolateValue(question, dir)}
 								</span>
 								{settledAnswerLine(presentation)}
 							</span>

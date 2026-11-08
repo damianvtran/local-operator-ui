@@ -45,6 +45,7 @@ import {
 } from "@shared/hooks/use-canonical-session";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { formatList, t } from "@shared/i18n";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	type ModelAuthorityReceipt,
@@ -98,6 +99,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { isolateSigilRun } from "../../../../../i18n/bidi";
 import type { DesktopModelSelection } from "../../../../../shared/desktop-contract";
 import type {
 	DesktopLoopState,
@@ -5281,11 +5283,28 @@ export const HelpPalette: FC<PickerContext> = ({
 	dispatch,
 }) => {
 	const locale = useI18nLocale();
+	/*
+	 * THE PALETTE'S ROWS CARRY THE SAME CODE-RENDERED TOKEN AS THE SLASH POPUP
+	 * (round 1, QA Q1 / design D1 measured on the palette): `/{name}` and its
+	 * aliases are built here, so no ICU value carries them and nothing on the
+	 * translate path isolates them. In Urdu the leading `/` resolved to the
+	 * paragraph's direction and each row painted `help/`, `exit/`, `clear/`.
+	 *
+	 * ONE ISOLATE OVER THE WHOLE LABEL, not one per token: adjacent isolates in an
+	 * RTL paragraph are ordered right-to-left, which reverses
+	 * `/help  (/h, /?)` instead of fixing it (`isolateSigilRun`). The clean
+	 * `value` below is what the matcher and the dispatch read, so search, the
+	 * keywords and the pick on Enter are untouched.
+	 */
+	const dir = useTextDirection();
 	const options = useMemo<PickerOption[]>(() => {
 		void locale;
 		return commands.map((command) => ({
 			value: command.name,
-			label: `/${command.name}${command.aliases.length ? `  (${formatList(command.aliases.map((a) => `/${a}`))})` : ""}`,
+			label: isolateSigilRun(
+				`/${command.name}${command.aliases.length ? `  (${formatList(command.aliases.map((a) => `/${a}`))})` : ""}`,
+				dir,
+			),
 			description: command.description,
 			// The right-hand column used to print the routing id
 			// (`transcript.clear`, `radient.mobile`) as the most prominent
@@ -5304,7 +5323,7 @@ export const HelpPalette: FC<PickerContext> = ({
 					? t("ui.chat.pickers.destination_pickers.session_runs_on_the_owner")
 					: t("ui.chat.pickers.destination_pickers.desktop"),
 		}));
-	}, [commands, locale]);
+	}, [commands, dir, locale]);
 	return (
 		<PickerHost
 			open
