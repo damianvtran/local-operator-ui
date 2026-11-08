@@ -14,6 +14,7 @@ import { after, test } from "node:test";
 
 import {
 	findAddedCopyViolations,
+	formatReport,
 	parseAddedLines,
 	resolveComparisonBase,
 	runAddedCheck,
@@ -481,6 +482,526 @@ test("a tracked changed file deleted after listing still fails closed", () => {
 				}),
 			DISAPPEARED_RE,
 		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/*
+ * Restored content: an added line that re-introduces copy the base branch
+ * already carried is REPORTED, never counted as new. Every case below drives the
+ * real `runAddedCheck` in a scratch git repo and then the printed report, so
+ * both directions - restored passes, genuinely new copy fails - are proven
+ * through the path CI runs rather than through the helpers alone.
+ */
+
+/** Commit the scratch working tree as the base the next check compares against. */
+function commitScratchBase(dir) {
+	const env = gitEnv();
+	for (const args of [
+		["add", "-A"],
+		["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base"],
+	]) {
+		const result = spawnSync("git", args, { cwd: dir, env, encoding: "utf8" });
+		assert.equal(result.status, 0, `git ${args.join(" ")}: ${result.stderr}`);
+	}
+}
+
+function reportText(report) {
+	return [...report.standard, ...report.error].join("\n");
+}
+
+// Top-level like the file's other patterns, because `scripts/check-scripts-lint`
+// runs biome over this file and an inline literal is a lint violation.
+const VERBATIM_EVIDENCE_RE = /verbatim in src\/a\.tsx at [0-9a-f]{7}$/;
+// Source B's evidence names the un-keyed catalogue key and the message file; the
+// key itself is asserted where a case depends on which message was un-keyed.
+const DEKEYED_EVIDENCE_RE =
+	/^un-keyed ui\.probe\.[a-z]+ in src\/i18n\/catalogues\/en\/ui\.probe\.json at [0-9a-f]{7}$/;
+const UNKEYED_TITLE_PREFIX = "un-keyed ui.probe.title in ";
+const INVALID_JSON_RE = /is not valid JSON/;
+
+test("a literal restored verbatim into the same file passes and is reported", () => {
+	const dir = scratchRepo();
+	try {
+		// Base carries the literal in a copy sink; the working tree reflows the
+		// element, so the very same literal now sits on an ADDED line.
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "Restored verbatim copy"} />;\n',
+		);
+		commitScratchBase(dir);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = (\n\t<b title={x && "Restored verbatim copy"} />\n);\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.findings, [], "restored content must not be new");
+		assert.equal(result.restored.length, 1);
+		assert.equal(result.restored[0].path, "src/a.tsx");
+		assert.equal(result.restored[0].line, 2);
+		assert.equal(result.restored[0].kind, "attribute:title");
+		assert.equal(result.restored[0].text, "Restored verbatim copy");
+		assert.match(result.restored[0].evidence, VERBATIM_EVIDENCE_RE);
+		const report = formatReport(result);
+		assert.equal(report.code, 0);
+		const output = reportText(report);
+		assert.ok(
+			output.includes(
+				"RESTORED: src/a.tsx:2: attribute:title: Restored verbatim copy",
+			),
+			output,
+		);
+		assert.ok(
+			output.includes("1 restored literal(s) reported, not counted as new"),
+			output,
+		);
+		assert.ok(
+			report.error.some((line) =>
+				line.startsWith(
+					"WARN: 1 restored literal(s) the base tree already carried at ",
+				),
+			),
+			output,
+		);
+		assert.ok(
+			!output.includes("FAIL:"),
+			`restored content must not fail the gate:\n${output}`,
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a literal restored from the base English catalogue passes", () => {
+	const dir = scratchRepo();
+	try {
+		const catalogue = join(dir, "src/i18n/catalogues/en/ui.probe.json");
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		writeFileSync(
+			catalogue,
+			`${JSON.stringify({ "ui.probe.title": "Restored from the catalogue." }, null, 2)}\n`,
+		);
+		// Base renders the message through a keyed call: that call is what a revert
+		// inverts, and its removal from THIS file is source B's whole proof.
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={t("ui.probe.title")} />;\n',
+		);
+		commitScratchBase(dir);
+		// The revert shape: the keyed message is deleted and its English text
+		// comes back as a literal in the file that used to call t().
+		rmSync(catalogue);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "Restored from the catalogue."} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.findings, []);
+		assert.equal(result.restored.length, 1);
+		assert.equal(result.restored[0].path, "src/a.tsx");
+		assert.equal(result.restored[0].text, "Restored from the catalogue.");
+		assert.match(result.restored[0].evidence, DEKEYED_EVIDENCE_RE);
+		assert.ok(
+			result.restored[0].evidence.startsWith(UNKEYED_TITLE_PREFIX),
+			result.restored[0].evidence,
+		);
+		const report = formatReport(result);
+		assert.equal(report.code, 0);
+		assert.ok(
+			reportText(report).includes(
+				"RESTORED: src/a.tsx:1: attribute:title: Restored from the catalogue.",
+			),
+			reportText(report),
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("genuinely new copy still fails", () => {
+	const dir = scratchRepo();
+	try {
+		writeFileSync(
+			join(dir, "src/c.tsx"),
+			'export const c = <b title={x && "Genuinely new copy"} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.restored, []);
+		// The unchanged finding shape: no `restored` key leaks into a new one.
+		assert.deepEqual(result.findings, [
+			{
+				path: "src/c.tsx",
+				line: 1,
+				kind: "attribute:title",
+				text: "Genuinely new copy",
+			},
+		]);
+		const report = formatReport(result);
+		assert.equal(report.code, 1);
+		assert.ok(
+			report.error.includes(
+				"FAIL: 1 newly added literal-copy finding(s). Use t() or a narrow reasoned i18n exemption; do not add a baseline.",
+			),
+			reportText(report),
+		);
+		assert.ok(!reportText(report).includes("RESTORED:"), reportText(report));
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a near-miss of an existing message still fails", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.probe.json"),
+			`${JSON.stringify({ "ui.probe.title": "Restore complete for the probe." }, null, 2)}\n`,
+		);
+		/* The file DOES un-key this message, so the run reaches the comparison and
+		 * fails on the copy itself: one interior character apart from the message is
+		 * different copy, newly authored no matter how close it reads. */
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={t("ui.probe.title")} />;\n',
+		);
+		commitScratchBase(dir);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "Restored complete for the probe."} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.restored, []);
+		assert.equal(result.findings.length, 1);
+		assert.equal(result.findings[0].text, "Restored complete for the probe.");
+		assert.equal(formatReport(result).code, 1);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a word that is only a prefix of a longer base message is not restored", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.probe.json"),
+			`${JSON.stringify({ "ui.probe.title": "Searching conversations unmatched" }, null, 2)}\n`,
+		);
+		// Un-keyed by this diff, so the only question left is whether `Search` is a
+		// bounded run of the message - and a prefix of `Searching` is not.
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={t("ui.probe.title")} />;\n',
+		);
+		commitScratchBase(dir);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "Search"} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.restored, []);
+		assert.equal(result.findings.length, 1);
+		assert.equal(formatReport(result).code, 1);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a whole word of a longer base message is reported as restored (the documented residue)", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.probe.json"),
+			`${JSON.stringify({ "ui.probe.title": "Searching conversations unmatched" }, null, 2)}\n`,
+		);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={t("ui.probe.title")} />;\n',
+		);
+		commitScratchBase(dir);
+		/* Bounded-run containment is what makes a real revert provable, and a whole
+		 * run inside the message THIS file un-keyed is bounded. Accepting it is the
+		 * residue the module docblock states: visible as a RESTORED line, never a
+		 * silent pass. What is gone is the vocabulary-wide version of this
+		 * acceptance: only the message the removed call named can vouch. */
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "Searching"} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.findings, []);
+		assert.equal(result.restored.length, 1);
+		assert.match(result.restored[0].evidence, DEKEYED_EVIDENCE_RE);
+		assert.ok(
+			result.restored[0].evidence.startsWith(UNKEYED_TITLE_PREFIX),
+			result.restored[0].evidence,
+		);
+		assert.equal(formatReport(result).code, 0);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("unreadable base evidence fails closed", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		// Committed at base, and not JSON: the oracle cannot distinguish restored
+		// from newly authored copy, so the run must throw instead of passing.
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.broken.json"),
+			'{"ui.probe.title": "unterminated\n',
+		);
+		commitScratchBase(dir);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "Cannot be vouched for"} />;\n',
+		);
+		assert.throws(
+			() => runAddedCheck({ repo: dir, base: "HEAD" }),
+			INVALID_JSON_RE,
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("no candidate finding never reads the base catalogue", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.broken.json"),
+			'{"ui.probe.title": "unterminated\n',
+		);
+		commitScratchBase(dir);
+		// A diff with no literal copy must not pay for (or trip over) the oracle.
+		writeFileSync(join(dir, "src/a.tsx"), "export const a = 2;\n");
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.findings, []);
+		assert.deepEqual(result.restored, []);
+		assert.equal(formatReport(result).code, 0);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a translator-note sidecar is not evidence of restored copy", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		/* The real sidecar shape: a key mapped to [register, style, note prose]. The
+		 * note is instruction ABOUT the copy, so a sentence lifted out of one is newly
+		 * authored English however familiar it reads - a sidecar is not evidence. */
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.probe.context.json"),
+			`${JSON.stringify(
+				{
+					"ui.probe.title": [
+						"a short label",
+						"plain",
+						"Keep the label short; the tooltip carries the rest.",
+					],
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		commitScratchBase(dir);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "The tooltip carries the rest."} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.restored, []);
+		assert.equal(result.findings.length, 1);
+		assert.equal(result.findings[0].text, "The tooltip carries the rest.");
+		assert.equal(formatReport(result).code, 1);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/*
+ * Source B is a de-keying proof, and these cases pin the boundary from both
+ * sides: the call must be removed from THIS diff and from THIS file, and the
+ * message words must be the copy, not merely a vocabulary the catalogue happens
+ * to hold. Each drives the real `runAddedCheck` in a scratch git repo.
+ */
+
+test("a message this change does not un-key is not evidence", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.probe.json"),
+			`${JSON.stringify({ "ui.probe.title": "Searching conversations unmatched" }, null, 2)}\n`,
+		);
+		// The call stays keyed: nothing here was un-keyed, so the message says
+		// nothing about a literal that happens to reuse one of its words.
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={t("ui.probe.title")} />;\n',
+		);
+		commitScratchBase(dir);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={t("ui.probe.title")} />;\nexport const b = <i title={x && "Searching"} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.restored, []);
+		assert.equal(result.findings.length, 1);
+		assert.equal(result.findings[0].text, "Searching");
+		assert.equal(formatReport(result).code, 1);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a de-keyed call in another file does not vouch", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.probe.json"),
+			`${JSON.stringify({ "ui.probe.title": "Retry the transfer" }, null, 2)}\n`,
+		);
+		writeFileSync(
+			join(dir, "src/b.tsx"),
+			'export const b = <b title={t("ui.probe.title")} />;\n',
+		);
+		commitScratchBase(dir);
+		// b.tsx un-keys the message; the literal lands in a DIFFERENT file, so the
+		// proof belongs to b.tsx and cannot be spent on a.tsx.
+		writeFileSync(join(dir, "src/b.tsx"), "export const b = <b />;\n");
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "Retry the transfer"} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.restored, []);
+		assert.equal(result.findings.length, 1);
+		assert.equal(result.findings[0].path, "src/a.tsx");
+		assert.equal(formatReport(result).code, 1);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a new file reusing an existing English message fails", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		/* The reviewer's probe: plausible short labels that unrelated English
+		 * catalogues already carry. A new file removes no t() call, so none of them
+		 * can be vouched for and all of them are new copy. */
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.probe.json"),
+			`${JSON.stringify(
+				{
+					"ui.probe.retry": "Retry",
+					"ui.probe.search": "Search",
+					"ui.probe.loading": "Loading messages",
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		commitScratchBase(dir);
+		writeFileSync(
+			join(dir, "src/new.tsx"),
+			'export const n = (\n\t<>\n\t\t<b title={x && "Retry"} />\n\t\t<i title={x && "Search"} />\n\t\t<u title={x && "Loading messages"} />\n\t</>\n);\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.restored, []);
+		assert.equal(result.findings.length, 3);
+		assert.equal(formatReport(result).code, 1);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("an interior number is different copy", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.probe.json"),
+			`${JSON.stringify({ "ui.probe.attachments": "Max 3 attachments allowed." }, null, 2)}\n`,
+		);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={t("ui.probe.attachments")} />;\n',
+		);
+		commitScratchBase(dir);
+		// A count INSIDE the sentence is copy, not interpolation drift: only a
+		// leading count token is normalized away.
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "Max 8 attachments allowed."} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.restored, []);
+		assert.equal(result.findings.length, 1);
+		assert.equal(result.findings[0].text, "Max 8 attachments allowed.");
+		assert.equal(formatReport(result).code, 1);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a leading count token renders differently and is the same copy", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/i18n/catalogues/en"), { recursive: true });
+		writeFileSync(
+			join(dir, "src/i18n/catalogues/en/ui.probe.json"),
+			`${JSON.stringify(
+				{
+					"ui.probe.reference":
+						"{# reference points outside this session's working directory.}",
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={t("ui.probe.reference")} />;\n',
+		);
+		commitScratchBase(dir);
+		// ICU renders `#` for the count where a restored literal bakes the number in.
+		writeFileSync(
+			join(dir, "src/a.tsx"),
+			'export const a = <b title={x && "1 reference points outside this session\'s working directory."} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.findings, []);
+		assert.equal(result.restored.length, 1);
+		assert.match(result.restored[0].evidence, DEKEYED_EVIDENCE_RE);
+		assert.equal(formatReport(result).code, 0);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a base path containing a space is absent, not unreadable", () => {
+	const dir = scratchRepo();
+	try {
+		// No such path at base: git answers `<name> missing`, and that record echoes
+		// a name that may contain spaces. Field-position parsing threw on it.
+		writeFileSync(
+			join(dir, "src/my copy.tsx"),
+			'export const m = <b title={x && "Copy in a spaced path"} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(result.restored, []);
+		assert.equal(result.findings.length, 1);
+		assert.equal(result.findings[0].path, "src/my copy.tsx");
+		assert.equal(formatReport(result).code, 1);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}

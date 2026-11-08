@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import {
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	rmSync,
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
 	DESKTOP_COMMAND,
 	EXEMPT,
@@ -18,7 +20,10 @@ import {
 } from "./desktop-test-inventory.mjs";
 import {
 	SHARD_COUNT,
+	SHARD_FILE_CEILING,
+	SHARD_WARNING_LANE,
 	assertDesktopCommand,
+	assertShardCeiling,
 	inventory,
 	loadReceipts,
 	main,
@@ -27,7 +32,9 @@ import {
 	plan,
 	receipt,
 	scopeDecision,
+	shardHeadroomWarning,
 	shardIndexOf,
+	shardMatrix,
 	tapSummary,
 	validateFiles,
 	verify,
@@ -67,6 +74,25 @@ function fixture(fn) {
 			JSON.stringify({ scripts: { "test:desktop": DESKTOP_COMMAND } }),
 		);
 		return fn(root, [...files].sort());
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+}
+// A throwaway checkout carrying exactly `files`, every EXEMPT entry (the walk
+// refuses an exemption that names nothing) and a derived test:desktop command:
+// the shape `plan` reads, so a synthetic inventory can be planned end to end.
+function tree(files, fn) {
+	const root = mkdtempSync(join(tmpdir(), "desktop-shard-ceiling-"));
+	try {
+		for (const file of [...files, ...EXTERNAL_TESTS, ...Object.keys(EXEMPT)]) {
+			mkdirSync(join(root, file, ".."), { recursive: true });
+			writeFileSync(join(root, file), "// data only\n");
+		}
+		writeFileSync(
+			join(root, "package.json"),
+			JSON.stringify({ scripts: { "test:desktop": DESKTOP_COMMAND } }),
+		);
+		return fn(root);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
@@ -170,6 +196,313 @@ test("shard membership survives inventory edits; the position deal it replaced d
 	// so a regression back to position-based assignment cannot pass silently.
 	assert.equal(moved([...files, insertions[0]], positionDeal), 542);
 	assert.ok(moved([...files, insertions[1]], positionDeal) > 300);
+});
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+// Lane-shaped inventories built from the REAL hash: names are generated until
+// each lane holds the number the case asks for, so nothing below stubs
+// shardIndexOf and the deal under test is the one CI runs.
+function shaped(counts) {
+	if (counts.length !== SHARD_COUNT)
+		throw new Error("shaped() must describe every shard");
+	const buckets = counts.map(() => []);
+	for (
+		let i = 0;
+		buckets.some((bucket, lane) => bucket.length < counts[lane]);
+		i++
+	) {
+		if (i > 100000) throw new Error("cannot shape inventory");
+		const file = `scripts/fixture-${String(i).padStart(5, "0")}.test.mjs`;
+		const lane = shardIndexOf(file, counts.length);
+		if (buckets[lane].length < counts[lane]) buckets[lane].push(file);
+	}
+	return buckets;
+}
+
+test("the shard memory ceiling fails hard, naming the shard, its size, the ceiling, the runway and the runs", () => {
+	// Positive control: the inventory this repository runs today fits, derived by
+	// the same walk CI derives it with and planned through the same entry point CI
+	// uses. A guard never exercised on the input it must let through is the
+	// "documented, not enforced" failure this replaces.
+	const real = plan(REPO_ROOT, HEAD, CHECKOUT);
+	assert.ok(real.total > 700, `real inventory was only ${real.total} files`);
+	const largest = Math.max(...real.shards.map((group) => group.length));
+	assert.ok(
+		largest <= SHARD_FILE_CEILING,
+		`largest real shard ${largest} exceeds the ${SHARD_FILE_CEILING}-file ceiling`,
+	);
+	// No empty lane today, which is why refill does not run on the real inventory.
+	assert.ok(real.shards.every((group) => group.length > 0));
+	// Boundary, both directions, through the assertion the planner calls, so the
+	// guard cannot decay into decoration: the ceiling itself passes, one over fails.
+	assert.doesNotThrow(() =>
+		assertShardCeiling(shaped([SHARD_FILE_CEILING, 1, 1, 1])),
+	);
+	const over = shaped([SHARD_FILE_CEILING + 1, 1, 1, 1]);
+	assert.throws(() => assertShardCeiling(over), /memory ceiling/);
+	let message = "";
+	try {
+		assertShardCeiling(over);
+	} catch (caught) {
+		message = caught.message;
+	}
+	// Every fact the person who trips this needs, in the order they need it:
+	// which shard, how big, the ceiling, then how much growth was left, then the
+	// lever that actually works. The lane size and the ceiling are read from the
+	// constants, so this cannot pin a number that later moves.
+	assert.match(
+		message,
+		new RegExp(`shard 1/4 holds ${SHARD_FILE_CEILING + 1} files`),
+	);
+	assert.match(
+		message,
+		new RegExp(`${SHARD_FILE_CEILING}-file memory ceiling`),
+	);
+	assert.match(message, /40992181176/);
+	assert.match(message, /40996898976/);
+	// The runway arithmetic, measured rather than asserted (see CEILING_RUNWAY):
+	// how many added test files, in what spread, and how many days that is.
+	assert.match(message, /median 38 added test files/);
+	assert.match(message, /p10 30, p90 46/);
+	assert.match(message, /2\.5 to 3\.4 days/);
+	// The real lever is named BEFORE the salt re-pick, and the salt is priced: a
+	// 20,000-salt sweep bottoms out at the arithmetic floor, which is 2 files.
+	assert.ok(
+		message.indexOf("another lane") < message.indexOf("Re-picking SHARD_SALT"),
+		"the shard count must be offered before the salt re-pick",
+	);
+	assert.match(message, /Re-picking SHARD_SALT/);
+	assert.match(message, /at most 2 files/);
+	// The evidence correction, pinned: 206 PASSED while 205 died, and the budget
+	// those deaths ran under is smaller than the one in force now.
+	assert.match(message, /206-file lanes in those same runs PASSED/);
+	assert.match(message, /9\.5 GB \(9728 MB\)/);
+	assert.match(message, /22% more headroom/);
+	// And end to end through the planner: a real tree whose largest lane is over
+	// the ceiling fails `plan`, which is the one path plan/run/receipt/verify all
+	// take, so this fails a CI lane instead of launching it.
+	tree(shaped([SHARD_FILE_CEILING + 1, 1, 1, 1]).flat(), (root) => {
+		assert.throws(() => plan(root, HEAD, CHECKOUT), /memory ceiling/);
+	});
+});
+
+test("empty-lane refill is pinned, including the case that disproved its reachability claim", () => {
+	// Five paths over four lanes deal [3,1,0,1]: lane 2 is empty although the
+	// inventory is LARGER than the shard count, which the old comment here said
+	// could not happen.
+	const five = [
+		"scripts/probe-0.test.mjs",
+		"scripts/probe-1.test.mjs",
+		"scripts/probe-2.test.mjs",
+		"scripts/probe-3.test.mjs",
+		"scripts/probe-4.test.mjs",
+	];
+	assert.deepEqual(
+		five.map((file) => shardIndexOf(file, 4)),
+		[1, 0, 0, 0, 3],
+	);
+	const refilled = [
+		["scripts/probe-1.test.mjs", "scripts/probe-3.test.mjs"],
+		["scripts/probe-0.test.mjs"],
+		["scripts/probe-2.test.mjs"],
+		["scripts/probe-4.test.mjs"],
+	];
+	assert.deepEqual(partition(five, 4), refilled);
+	// The exception measured rather than argued: adding scripts/extra-2.test.mjs
+	// fills lane 2, so refill does not run and probe-2 returns to lane 0. One
+	// existing file changes shard because ANOTHER file was added - inventory
+	// dependence, which the ordinary deal does not have and refill reintroduces.
+	const after = partition([...five, "scripts/extra-2.test.mjs"], 4);
+	assert.deepEqual(after, [
+		[
+			"scripts/probe-1.test.mjs",
+			"scripts/probe-2.test.mjs",
+			"scripts/probe-3.test.mjs",
+		],
+		["scripts/probe-0.test.mjs"],
+		["scripts/extra-2.test.mjs"],
+		["scripts/probe-4.test.mjs"],
+	]);
+	const laneOf = (groups) =>
+		new Map(
+			groups.flatMap((group, index) => group.map((file) => [file, index])),
+		);
+	const before = laneOf(refilled);
+	assert.deepEqual(
+		[...laneOf(after)]
+			.filter(([file, lane]) => before.has(file) && before.get(file) !== lane)
+			.map(([file]) => file),
+		["scripts/probe-2.test.mjs"],
+	);
+	// Bounded to WHICH files exist, not to their order: the same inventory listed
+	// backwards refills identically, so this is not the position dependence the
+	// path-hash deal removed.
+	assert.deepEqual(partition([...five].reverse(), 4), refilled);
+});
+
+test("refill cannot reach a suite this size, and cannot hide a lane that is over", () => {
+	const ceiling = SHARD_FILE_CEILING;
+	// 3 x the ceiling + 1 is the largest inventory whose refilled partition can
+	// still pass: it needs the two other lanes at the ceiling or less and the
+	// largest at ceiling + 1. One file more and the dispatched partition is over.
+	const dispatches = assertShardCeiling(
+		partition(shaped([ceiling + 1, ceiling, ceiling, 0]).flat()),
+	);
+	assert.deepEqual(
+		dispatches.map((group) => group.length),
+		[ceiling, ceiling, ceiling, 1],
+	);
+	assert.throws(
+		() =>
+			assertShardCeiling(
+				partition(shaped([ceiling + 2, ceiling, ceiling, 0]).flat()),
+			),
+		/memory ceiling/,
+	);
+	// Refill is why the assertion runs on the partition that is DISPATCHED rather
+	// than on the raw deal: three empty lanes refill a raw ceiling + 1 lane down
+	// to ceiling - 2, and ceiling - 2 is a lane memory can carry, so the shard
+	// that runs is the one that is checked.
+	assert.deepEqual(
+		assertShardCeiling(partition(shaped([ceiling + 1, 0, 0, 0]).flat())).map(
+			(group) => group.length,
+		),
+		[ceiling - 2, 1, 1, 1],
+	);
+	// And refill cannot rescue a lane that is genuinely over: taking three files
+	// off 300 leaves 297, which fails.
+	assert.throws(
+		() => assertShardCeiling(partition(shaped([300, 0, 0, 0]).flat())),
+		/memory ceiling/,
+	);
+});
+
+test("the lane count is one constant: CI derives its matrix from it, and a disagreement fails loudly", async () => {
+	// The count lives in SHARD_COUNT alone, so `matrix` mode is its indices and
+	// nothing else - this is exactly what full-suite.yml expands.
+	const printed = [];
+	const originalLog = console.log;
+	console.log = (...args) => printed.push(args.join(" "));
+	let code;
+	try {
+		code = await main(["matrix"]);
+	} finally {
+		console.log = originalLog;
+	}
+	assert.equal(code, 0);
+	assert.deepEqual(
+		JSON.parse(printed.join("\n")),
+		Array.from({ length: SHARD_COUNT }, (_, index) => index),
+	);
+
+	// The workflow must DERIVE from that output. A literal `shard: [...]` list is
+	// a second place to edit, and a literal that drifts dispatches fewer lanes
+	// than the receipts prove: a partial suite that reads green is the failure
+	// this file exists to make impossible.
+	const workflow = readFileSync(
+		join(REPO_ROOT, ".github", "workflows", "full-suite.yml"),
+		"utf8",
+	);
+	assert.doesNotMatch(workflow, /^\s*shard: \[[^\]]*\]\s*$/m);
+	assert.match(workflow, /desktop-test-shards\.mjs matrix/);
+	assert.match(
+		workflow,
+		/shard: \$\{\{ fromJSON\(needs\.changes\.outputs\.shards\) \}\}/,
+	);
+	assert.match(workflow, /shards: \$\{\{ steps\.shards\.outputs\.shards \}\}/);
+	// The display name counts the same lanes, so a fifth lane cannot advertise
+	// itself as 5/4 and split a required check's name in two.
+	assert.match(
+		workflow,
+		/Desktop Tests shard \(\$\{\{ matrix\.shard \}\}\/\$\{\{ needs\.changes\.outputs\.shardcount \}\}\)/,
+	);
+
+	// The runtime half of the same assertion, for the path CI actually takes: an
+	// index outside the constant is refused, and a partial run cannot be verified
+	// as complete.
+	const p = expected();
+	assert.throws(
+		() => receipt(p, SHARD_COUNT, runnerLog(p.shards[0].length), 0, 1),
+		/Invalid shard index/,
+	);
+	assert.throws(
+		() =>
+			verify(
+				p,
+				rows(p).slice(0, SHARD_COUNT - 1),
+				"true",
+				"success",
+				"success",
+			),
+		/Expected exactly [0-9]+ receipts/,
+	);
+	// And the deal itself cannot be built for a lane count nobody dispatches.
+	assert.throws(() => partition(names, SHARD_COUNT + 1), /Partition count/);
+});
+
+test("headroom warns on stderr without failing, and the hard failure still bites through run mode", async () => {
+	// 199 is today's largest lane and must stay silent; 200 is the warning line.
+	assert.equal(
+		shardHeadroomWarning(shaped([SHARD_WARNING_LANE - 1, 1, 1, 1])),
+		null,
+	);
+	const warn = shardHeadroomWarning(shaped([SHARD_WARNING_LANE, 1, 1, 1]));
+	assert.match(
+		warn,
+		new RegExp(
+			`shard 1/4 holds ${SHARD_WARNING_LANE} files, ${SHARD_FILE_CEILING - SHARD_WARNING_LANE} under the ${SHARD_FILE_CEILING}-file memory ceiling`,
+		),
+	);
+	// The warning carries the same runway arithmetic as the failure: the point of
+	// warning early is that the reader can act before the red exists.
+	assert.match(warn, /median 38 added test files/);
+	assert.match(warn, /another lane/);
+	assert.match(warn, /Warning only: this run continues/);
+
+	// End to end through `plan`, the path every mode takes: the warning reaches
+	// stderr and the plan is still RETURNED. A warning that also failed would be
+	// the hard failure wearing a different name.
+	const writes = [];
+	const originalWrite = process.stderr.write;
+	let planned = null;
+	tree(shaped([SHARD_WARNING_LANE, 1, 1, 1]).flat(), (root) => {
+		process.stderr.write = (chunk) => {
+			writes.push(String(chunk));
+			return true;
+		};
+		try {
+			planned = plan(root, HEAD, CHECKOUT);
+		} finally {
+			process.stderr.write = originalWrite;
+		}
+	});
+	assert.ok(planned, "the plan must still be produced under the warning");
+	assert.ok(
+		Math.max(...planned.shards.map((group) => group.length)) >=
+			SHARD_WARNING_LANE,
+	);
+	assert.equal(writes.length, 1);
+	assert.match(writes[0], /Warning only: this run continues/);
+
+	// ...and the hard failure is unchanged and still one file past the ceiling,
+	// through `run` mode - the real CI entry point - so the lane is refused before
+	// the guarded runner is launched at all.
+	let rejection = null;
+	tree(shaped([SHARD_FILE_CEILING + 1, 1, 1, 1]).flat(), (root) => {
+		rejection = main([
+			"run",
+			"--root",
+			root,
+			"--head",
+			HEAD,
+			"--checkout",
+			CHECKOUT,
+			"--index",
+			"0",
+		]);
+	});
+	await assert.rejects(rejection, /memory ceiling/);
 });
 
 test("inventory rejects unsupported syntax instead of guessing shell semantics", () => {
