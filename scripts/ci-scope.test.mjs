@@ -3397,7 +3397,9 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
  * without `always()` is SKIPPED when a dependency fails, and a skipped required
  * check is not a red one; a gate that counts `skipped` as failure reds every
  * diff the classifier correctly narrowed. And the suite that left PR CI must
- * still run where nothing can cancel the record of a `main` commit.
+ * still run where nothing can cancel the record of a `main` commit - it does,
+ * and since 2026-11-08 it ALSO runs on pull requests at the merge gate (the
+ * second test below), which is why `pull_request` is no longer absent here.
  * And only `main` may write the `ci-main-red` record: a branch dispatch that
  * reports would close a real main-red issue on a green branch, and a shared
  * concurrency group would let it replace a queued `main` run.
@@ -3440,7 +3442,10 @@ test("A18: the full suite runs on main, nightly and on demand, and only its repo
 	assert.deepEqual(on.push.branches, ["main"]);
 	assert.ok(on.schedule?.length >= 1);
 	assert.ok(Object.hasOwn(on, "workflow_dispatch"));
-	assert.equal(Object.hasOwn(on, "pull_request"), false);
+	// The merge gate's trigger, and the ONLY pull-request event this workflow
+	// listens for: `opened`/`synchronize` would run the suite on every push of
+	// every PR again, which is the cost that moved it here.
+	assert.deepEqual(on.pull_request, { types: ["labeled"] });
 	assert.deepEqual(full.concurrency, {
 		group: "full-suite-${{ github.ref }}",
 		"cancel-in-progress": false,
@@ -3462,4 +3467,94 @@ test("A18: the full suite runs on main, nightly and on demand, and only its repo
 	assert.match(run, /if \[ "\$RESULT" = success \]/);
 	assert.match(run, /gh issue close/);
 	assert.match(run, /gh issue create/);
+});
+
+/*
+ * Defect: the merge gate is the ONE check whose absence a merge cannot survive,
+ * so every way it can report a false PASS is a way a red pipeline reaches
+ * `main`. GitHub counts a `skipped` check as SATISFYING a required status
+ * check, so a label-name `if:` on the gate - the obvious way to narrow
+ * `pull_request: [labeled]`, which fires for EVERY label - would report
+ * `skipped` on a run some other label started and let a red pull request merge.
+ * A gate that does not need every suite job ignores a red one. A gate without
+ * `always()` disappears when a dependency fails, and a check that never reports
+ * is `Expected`, not red. And the ritual has to keep working: a label event is
+ * the only trigger, so re-arming means REMOVE then ADD - `--add-label` on a
+ * label that is already present delivers no event at all, which would leave the
+ * head permanently `Expected` with no way out.
+ * Mutation: add `if: contains(github.event.pull_request.labels.*.name, ...)` to
+ * the gate or to a shard; drop a job from `merge-gate.needs`; replace `always()`
+ * with nothing; widen the gate to `push`; make `report` run on a branch; delete
+ * the `--remove-label` call; point `pull_request` at `[opened, synchronize]`.
+ */
+test("A18: the merge gate is PR-only, always runs, and needs every suite job", () => {
+	const full = load(readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8"));
+	const on = full.on ?? full[true];
+	const suite = full.jobs;
+	// `labeled` and nothing else: no `opened`, no `synchronize`, no `reopened`.
+	assert.deepEqual(on.pull_request, { types: ["labeled"] });
+
+	const gate = suite["merge-gate"];
+	assert.ok(gate, "full-suite.yml must carry the required merge-gate job");
+	assert.equal(gate.name, "Merge gate (full suite)");
+	// The exact string pins all three properties at once: it runs on a FAILED
+	// dependency, it never reports outside a pull request, and it carries no
+	// label condition (hostile case 1: a skippable job must never own this name).
+	assert.equal(
+		String(gate.if).trim(),
+		"always() && github.event_name == 'pull_request'",
+	);
+	assert.equal(gate["timeout-minutes"], 5);
+	assert.equal(
+		gate.permissions,
+		undefined,
+		"the gate needs contents: read only",
+	);
+	// Every job that produces a suite verdict, and `report` deliberately absent:
+	// it is the main-only `ci-main-red` writer and is skipped on every PR.
+	assert.deepEqual(
+		[...gate.needs].sort(),
+		Object.keys(suite)
+			.filter((job) => job !== "merge-gate" && job !== "report")
+			.sort(),
+		"a suite job missing from needs is a red suite that cannot red the gate",
+	);
+	assert.ok(
+		!gate.needs.includes("report"),
+		"report is the main-only ci-main-red writer, not a suite producer",
+	);
+
+	// No job in this workflow is gated on a label: any label event runs the whole
+	// gate, and nothing here can report its way out with a `skipped` verdict.
+	for (const [id, job] of Object.entries(suite))
+		assert.doesNotMatch(
+			String(job.if ?? ""),
+			/labels|contains\(/iu,
+			`${id} must not be gated on a label name - a skipped required check is a pass`,
+		);
+
+	// The aggregate body: skipped passes, failed/cancelled reds.
+	assert.ok(
+		gate.steps.some((step) => step.env?.NEEDS === "${{ toJSON(needs) }}"),
+	);
+	const body = gate.steps.map((step) => step.run ?? "").join("\n");
+	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/u);
+	assert.match(body, /process\.exit\(1\)/u);
+
+	// The `main` record keeps its own job, main-only, so a branch dispatch can
+	// never close a real main-red issue.
+	assert.equal(
+		String(suite.report.if).trim(),
+		"always() && github.ref == 'refs/heads/main'",
+	);
+
+	// The ritual is the only way to EXIT the `Expected` state, so it is pinned
+	// here with the workflow: both edits (remove, then add) and the label name.
+	assert.equal(pkg.scripts["merge-gate"], "node scripts/merge-gate.mjs");
+	const ritual = readFileSync(join(repoRoot, "scripts/merge-gate.mjs"), "utf8");
+	assert.match(ritual, /ready-to-merge/u);
+	assert.match(ritual, /"--remove-label"/u);
+	assert.match(ritual, /"--add-label"/u);
+	assert.match(ritual, /"label",\s*"create"/u);
+	assert.match(ritual, /full-suite\.yml/u);
 });
