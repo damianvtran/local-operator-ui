@@ -173,6 +173,7 @@ jobs:
       runtime_deps: ${{ steps.classify.outputs.runtime_deps }}
       audit: ${{ steps.classify.outputs.audit }}
       pack: ${{ steps.classify.outputs.pack }}
+      parity: ${{ steps.classify.outputs.parity }}
 
     steps:
       - name: Checkout code
@@ -537,6 +538,128 @@ jobs:
   # in `check-types` above. The list lives in ONE place, `GUARD_TESTS` in
   # scripts/affected-tests.mjs, so this job and the local helper cannot drift
   # into two opinions about what a guard is.
+  # A GENERATED FIXTURE GOES STALE IN A PULL REQUEST, NOT IN A RELEASE. #1758 is
+  # the measured case: a pull request edited
+  # `src/renderer/src/features/chat/canonical/trace-fold-model.ts`, which is one
+  # of the pin's 32 declared `modelSources`, without regenerating
+  # `scripts/fixtures/condense.parity.json`. Nothing on the pull request read the
+  # fixture, so the stale bytes reached `main` and reded the desktop suite there
+  # - a fix-forward for a defect a one-second comparison would have stopped.
+  #
+  # WHY THE FILTER IS THIS NARROW, AND WHY IT CANNOT DRIFT SILENTLY. `esbuild`'s
+  # own `metafile.inputs` decides what the pin covers, so the covered set is
+  # those 32 files plus the generator's own inputs; the list lives in
+  # `scripts/ci-scope.mjs` (`PARITY_MODEL_SOURCES`) and
+  # `scripts/ci-scope.test.mjs` asserts it EQUALS the fixture's
+  # `desktop.modelSources`. A regenerated pin that names a file the filter does
+  # not is therefore a FAILING TEST, not a pull request that quietly skips this
+  # job. The model's own directory is in the filter as well: a module ADDED
+  # beside the model is a source the next regeneration names, and the change that
+  # adds it is the change that must run the pin.
+  condense-parity:
+    name: Condense Parity Fixture
+    needs: [changes]
+    # Same `!= 'false'` spelling as every other gate: an output that was never
+    # written is EMPTY, so a classifier that died runs this job rather than
+    # skipping it.
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.parity != 'false'
+    runs-on: ubuntu-latest
+    # The comparison is ~1 s; this bound is for the install, not the check.
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # THE INSTALL IS GENUINE AND MINIMAL: the generator bundles the shipped
+      # model with `esbuild`, a devDependency, so it cannot run without the
+      # lockfile's tree. Nothing here builds the app - measured locally on
+      # 2026-11-08, `--check` is 1.0 s once node_modules exists.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The generator already says the fixture is STALE and names the command
+      # that rewrites it. The annotation adds WHICH FILES to commit: a
+      # regeneration writes the manifest beside the fixture, and committing only
+      # one of the two fails the next run for a different-looking reason.
+      - name: Check the condense parity fixture is current
+        run: |
+          if ! node scripts/generate-condense-parity.mjs --check; then
+            echo "::error title=Condense parity fixture is STALE::scripts/fixtures/condense.parity.json no longer matches the model it pins. Run node scripts/generate-condense-parity.mjs and commit BOTH scripts/fixtures/condense.parity.json and scripts/fixtures/condense.parity.manifest.json."
+            exit 1
+          fi
+
+  # THE CATALOGUE VALIDATORS ARE NOT THE GAP - the locale BUNDLE tests are. The
+  # `Language Coverage` job above already runs `pnpm check-i18n:catalogues`
+  # (`generate --check`, `check-duplicates`, `check-strings`, `ledger-check`,
+  # `context-parity`), `check-i18n:added-strings` and `check-i18n:coverage` on
+  # every pull request, so this job deliberately does NOT repeat them: five
+  # validators already ran and passed, and duplicating them would buy nothing and
+  # pay twice.
+  #
+  # What no pull-request job ran is the ten `node --test` files the desktop suite
+  # owns, and #1762 is the measured cost: a manual bidi control (U+200E)
+  # committed into `src/i18n/catalogues/ur/ui.updates.service.json` passed every
+  # catalogue validator above and reded the desktop suite on `main`. The desktop
+  # suite left pull-request CI for full-suite.yml, so nothing compared the
+  # SHIPPED CATALOGUE BUNDLE against the locale rules before the merge.
+  #
+  # Each file bundles the real catalogues through esbuild and asserts over the
+  # BUNDLE rather than over fixtures - that is why the install is required and a
+  # fixture-only pass would not do (the argument `ur-activation.test.mjs` makes in
+  # its own header, after a forgotten generated import shipped once). Measured
+  # locally on 2026-11-08: all ten files, 2.5 s once node_modules exists.
+  locale-activation:
+    name: Locale Activation
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.i18n != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The failing file's own output already names the locale, the key and the
+      # rule; the annotation says what a reader has to know to act on it, which
+      # is that the fix is a CATALOGUE byte change and that the ledger gates will
+      # ask for a re-audit of the value they changed.
+      - name: Check the shipped catalogue bundles against the locale rules
+        run: |
+          if ! node --test scripts/i18n/activation.test.mjs scripts/i18n/absent-locale.test.mjs scripts/i18n/device-tag-activation.test.mjs scripts/i18n/es-activation.test.mjs scripts/i18n/hi-activation.test.mjs scripts/i18n/ru-activation.test.mjs scripts/i18n/ur-activation.test.mjs scripts/i18n/vi-activation.test.mjs scripts/i18n/zh-CN-activation.test.mjs scripts/i18n/locale-parity.test.mjs; then
+            echo "::error title=Locale activation failed::a shipped catalogue violates the locale rules above (manual bidi control, forbidden script, an English value left in a non-English catalogue, or a missing locale). The failing test names the locale and the key; the same node --test command runs it locally, and the fix is a catalogue byte change that pnpm check-i18n:catalogues will then ask you to re-ledger."
+            exit 1
+          fi
+
   guards:
     name: Guards
     needs: [changes]
@@ -1228,6 +1351,8 @@ jobs:
     needs:
       - changes
       - lint
+      - condense-parity
+      - locale-activation
       - i18n-coverage
       - runtime-deps
       - check-types
