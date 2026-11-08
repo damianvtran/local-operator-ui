@@ -156,6 +156,7 @@ const SUMMARY_UPDATED = /4 shell · 1 python/;
 const SUMMARY_GROWN = /5 shell · 1 python/;
 const NEVER_A_ZERO = /0s/;
 const LIVE_SPAN_SECONDS = /^4[45]s$/;
+const BIDI_ISOLATES = /[\u2068\u2069]/g;
 
 const element = (props) =>
 	createElement(ControlledFold, {
@@ -729,7 +730,11 @@ test("the painted count line is the capped one, and it may wrap", async (t) => {
 	 * it now reads the units the header paints, so the two cannot disagree.
 	 */
 	assert.equal(
-		summary.getAttribute("title"),
+		// The tooltip isolates each unit with FSI/PDI (see the bidi test below);
+		// the marks are invisible, so the words and separators are what is compared.
+		summary
+			.getAttribute("title")
+			.replace(BIDI_ISOLATES, ""),
 		capped,
 		"the header's own tooltip states the units it paints",
 	);
@@ -856,5 +861,59 @@ test("a sentence summary is painted to wrap, not held whole", async (t) => {
 		summary.querySelectorAll("span[aria-hidden]").length,
 		0,
 		"and a sentence carries no ` · ` separators to break at",
+	);
+});
+
+/**
+ * EACH COUNT UNIT IS ITS OWN BIDI ISOLATE (UBA rule W7; ui1753 audit, ur).
+ *
+ * In an RTL locale a unit that ends in a Latin run (`Python`, or a Latin tool
+ * name from `fold.count.named`) turns the NEXT unit's leading European number
+ * into L, and the line reorders across the ` · `: fribidi paints the ur units
+ * `3 Python` and `1 <Arabic-script noun>` as `<noun> Python · 1 3`, and with an
+ * isolate around each unit as the two units in order. jsdom has no bidi engine,
+ * so the reorder is the audit's evidence; what is pinned here is the structure
+ * that cures it - one `<bdi>` per unit in the painted line, and FSI/PDI around
+ * each unit in the tooltip, which is a string with no DOM to put a `<bdi>` in -
+ * while the words, order and separators stay exactly the unwrapped line's.
+ */
+test("every count unit is an isolated bidi run, in the line and in the tooltip", async (t) => {
+	// Escaped so no right-to-left character sits in this source: Urdu "shell".
+	const units = ["3 Python", "1 \u0634\u06cc\u0644", "2 Rust"];
+	const mounted = await mount(t, {
+		summary: { units, prose: false },
+		span: null,
+		live: null,
+		sectionLive: false,
+	});
+	const summary = mounted.container.querySelector("[data-fold-summary]");
+	assert.ok(summary, "the header's summary span is on screen");
+	const isolates = [...summary.querySelectorAll("bdi")];
+	assert.deepEqual(
+		isolates.map((node) => node.textContent),
+		units,
+		"one <bdi> per unit, each holding exactly its own unit",
+	);
+	assert.equal(
+		summary.querySelectorAll("span[aria-hidden] bdi").length,
+		0,
+		"the ` · ` separators stay outside the isolates, between them",
+	);
+	const separator = summary.querySelector("span[aria-hidden]").textContent;
+	assert.equal(
+		summary.textContent,
+		units.join(separator),
+		"the wrapper adds no text: the painted line is the plain join",
+	);
+	const title = summary.getAttribute("title");
+	assert.equal(
+		title,
+		units.map((unit) => `\u2068${unit}\u2069`).join(separator),
+		"the tooltip isolates each unit with FSI/PDI before joining",
+	);
+	assert.equal(
+		title.replace(BIDI_ISOLATES, ""),
+		units.join(separator),
+		"and stripped of the marks it is the plain join",
 	);
 });

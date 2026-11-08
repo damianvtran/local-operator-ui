@@ -96,6 +96,17 @@ import { formatSettledDuration } from "./tool-row-model";
  */
 const ROW_HEIGHT = "min-h-5 py-0";
 
+/**
+ * The summary's tooltip: the same units the header paints, each wrapped in
+ * FSI/PDI (U+2068/U+2069) before the locale's separator joins them. A `title`
+ * is a string with no DOM, so the inline equivalent of the header's `<bdi>` is
+ * the only way to give it the same UBA W7 protection (see the unit wrapper
+ * below). The marks are invisible and live in this renderer join only, never in
+ * catalogue text, which stays translator-readable.
+ */
+const isolatedUnitsTitle = (units: string[]): string =>
+	units.map((unit) => `\u2068${unit}\u2069`).join(foldUnitSeparator());
+
 /** The fold's clock ticks at 1Hz, the interval the row's own clock uses. */
 const FOLD_CLOCK_MS = 1000;
 
@@ -418,7 +429,7 @@ export const TraceFold = ({
 							 * units, which is exactly the claim this round had to correct.
 							 */
 							className={cn("min-w-0 break-words text-body-sm text-ink-muted")}
-							title={summary.units.join(foldUnitSeparator())}
+							title={isolatedUnitsTitle(summary.units)}
 							data-fold-summary=""
 						>
 							{/*
@@ -438,7 +449,17 @@ export const TraceFold = ({
 											summary.prose ? "whitespace-normal" : "whitespace-nowrap",
 										)}
 									>
-										{unit}
+										{/*
+										 * EACH UNIT IS AN ISOLATED BIDI RUN (UBA rule W7). In an RTL locale
+										 * a unit ending in a Latin run (`Python`, or a Latin tool name from
+										 * `fold.count.named`) turns the NEXT unit's leading European number
+										 * into L, so the line reorders across the ` · `: the ur units
+										 * `3 Python` and `1 <Arabic-script noun>` painted the noun first and
+										 * the counts reversed, `<noun> Python · 1 3` (fribidi, independent
+										 * audit of the ur catalogue); with an isolate per unit it is correct.
+										 * The wrapper adds no text, so `textContent` is unchanged everywhere.
+										 */}
+										<bdi>{unit}</bdi>
 									</span>
 								</Fragment>
 							))}
