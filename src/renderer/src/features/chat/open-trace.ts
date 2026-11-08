@@ -23,16 +23,29 @@
  * WHAT EACH STAGE MEANS (milliseconds from the trace's start, `-` = not reached):
  *   - `routed`   the transcript pane committed with the target session id.
  *   - `snapshot` the session stream's first `snapshot` frame for the target was
- *                received and parsed (before it is folded into state).
+ *                received and parsed (before it is folded into state). Counted
+ *                only from a stream connection opened under THIS trace (see
+ *                `note`'s token), so on A->B->A a late snapshot from the first
+ *                A's still-draining connection cannot stamp the second A.
  *   - `content`  the first React commit that put a transcript row on the DOM
  *                (the same layout effect as the older `lop:open:first-row`).
- *   - `painted`  the animation frame AFTER `content`. A PAINT PROXY, not a paint
- *                measurement: a rAF callback runs before the next frame is
- *                composited, so this bounds "the browser has had its chance to
- *                paint the committed rows", within one frame (~16 ms).
- *   - `sendable` the store has the target active with its validation window
- *                closed (`validatingSessionId` released), i.e. a send would not
- *                be refused for "still checking this conversation".
+ *   - `painted`  the first task AFTER the rendering update that follows
+ *                `content`: a rAF callback, then a `MessageChannel` post from
+ *                inside it (`afterNextPaint`). A rAF callback alone runs at the
+ *                START of the rendering update - before that frame's style
+ *                recalc, layout and paint - so it would leave out exactly the
+ *                cost that grows with transcript size. The posted message runs
+ *                once those steps (and the paint/commit to the compositor) have
+ *                finished. It is still a PROXY: it does not see GPU raster or
+ *                the display's vsync, so it can under-read the pixels reaching
+ *                the screen by up to one frame (~16 ms), and it can over-read
+ *                by however long other queued tasks run before the message.
+ *   - `sendable` the store has the target active - `activeSessionId` is the
+ *                target AND no draft is staged over it (`activeDraftKey` unset;
+ *                `stageDraft` leaves `activeSessionId` untouched) - with its
+ *                validation window closed (`validatingSessionId` released),
+ *                i.e. a send would not be refused for "still checking this
+ *                conversation".
  *   - `settled`  the later of `painted` and `sendable`: the switch is done.
  *
  * OUTCOMES. `settled`; `superseded` (a newer open began before this one settled -
@@ -106,19 +119,35 @@ interface Trace {
 	stages: Partial<Record<OpenStage, number>>;
 	timer: unknown;
 	frameRequested: boolean;
+	endListeners: Array<() => void>;
 }
 
 export interface OpenTracer {
 	/** Starts a trace; ends (as `superseded`) any trace still open. Returns its token. */
 	begin(sessionId: string, entrance: OpenEntrance): number;
-	/** Records a stage for `sessionId` if it is the open trace's target; first write wins. */
-	note(sessionId: string | null | undefined, stage: OpenStage): void;
+	/**
+	 * Records a stage for `sessionId` if it is the open trace's target; first
+	 * write wins. With `token`, also only if that trace is still the open one:
+	 * an observer that captured `currentToken()` when it started (the stream
+	 * connection) cannot stamp a later trace for the same session.
+	 */
+	note(
+		sessionId: string | null | undefined,
+		stage: OpenStage,
+		token?: number | null,
+	): void;
 	/** Ends the open trace for `sessionId` with a terminal non-settled outcome. */
 	fail(sessionId: string | null | undefined, outcome: "missing" | "left"): void;
 	/** The open trace's target, for observers that must not do work otherwise. */
 	activeSessionId(): string | null;
 	/** The open trace's token, so an observer can tell its own trace from a newer one. */
 	currentToken(): number | null;
+	/**
+	 * Runs `listener` once when trace `token` ends, whatever the outcome; at
+	 * once if it already has. Lets the `sendable` watcher drop its store
+	 * subscription the moment its trace is done instead of on the next write.
+	 */
+	onEnd(token: number, listener: () => void): void;
 }
 
 export function formatOpenTraceLine(
@@ -158,6 +187,7 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 		current = null;
 		deps.clearTimer(trace.timer);
 		deps.log(formatOpenTraceLine(trace, outcome, supersededBy));
+		for (const listener of trace.endListeners.splice(0)) listener();
 	};
 
 	const record = (trace: Trace, stage: OpenStage) => {
@@ -183,6 +213,7 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 				stages: {},
 				timer: undefined,
 				frameRequested: false,
+				endListeners: [],
 			};
 			trace.timer = deps.setTimer(() => {
 				if (current === trace) finish("timeout");
@@ -190,9 +221,10 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 			current = trace;
 			return token;
 		},
-		note(sessionId, stage) {
+		note(sessionId, stage, token) {
 			const trace = current;
 			if (!trace || !sessionId || trace.sessionId !== sessionId) return;
+			if (token !== undefined && token !== trace.token) return;
 			if (stage === "content" && !trace.frameRequested) {
 				trace.frameRequested = true;
 				record(trace, "content");
@@ -217,6 +249,10 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 		currentToken() {
 			return current?.token ?? null;
 		},
+		onEnd(token, listener) {
+			if (current?.token === token) current.endListeners.push(listener);
+			else listener();
+		},
 	};
 }
 
@@ -225,11 +261,44 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
  * that import this one) so that loading the module never throws.
  */
 const hasDom = typeof window !== "undefined";
+
+/**
+ * Calls `callback` in the first task after the next rendering update (see the
+ * `painted` stage above for why one rAF is not enough). The scheduling
+ * primitives are parameters so the ordering is testable without a browser.
+ * `MessageChannel` rather than `setTimeout(0)`: a posted message is not
+ * subject to timer clamping, so it lands as soon as the frame's work is done.
+ */
+export function afterNextPaint(
+	callback: () => void,
+	requestFrame: (cb: () => void) => void,
+	postTask: (cb: () => void) => void,
+): void {
+	requestFrame(() => postTask(callback));
+}
+
+const postMessageTask = (callback: () => void) => {
+	const channel = new MessageChannel();
+	channel.port1.onmessage = () => {
+		channel.port1.close();
+		callback();
+	};
+	channel.port2.postMessage(null);
+};
+
 export const openTrace: OpenTracer = createOpenTracer({
 	now: () => performance.now(),
 	nextFrame: (callback) => {
-		if (hasDom && typeof requestAnimationFrame === "function")
-			requestAnimationFrame(() => callback());
+		if (
+			hasDom &&
+			typeof requestAnimationFrame === "function" &&
+			typeof MessageChannel === "function"
+		)
+			afterNextPaint(
+				callback,
+				(cb) => requestAnimationFrame(() => cb()),
+				postMessageTask,
+			);
 		else setTimeout(callback, 0);
 	},
 	log: (line) => console.warn(line),
@@ -240,7 +309,7 @@ export const openTrace: OpenTracer = createOpenTracer({
 /**
  * The `sendable` stage, observed from the store rather than written into it.
  *
- * Takes the store's two fields rather than importing the store, so this module
+ * Takes the store's three fields rather than importing the store, so this module
  * stays free of the store's dependency graph (it is imported by the stream hook
  * and the transcript, both hot paths). Called by `openConversation` and the
  * native entrance after `begin`, with the store's own `subscribe`.
@@ -250,6 +319,7 @@ export function watchSendable(
 	token: number,
 	read: () => {
 		activeSessionId: string | null;
+		activeDraftKey: string | null;
 		validatingSessionId: string | null;
 	},
 	subscribe: (listener: () => void) => () => void,
@@ -258,18 +328,18 @@ export function watchSendable(
 	// store write (so the click is the start), and until that write lands the
 	// store is legitimately on the conversation being left.
 	let sawTarget = false;
-	let unsubscribe: (() => void) | null = null;
 	const check = () => {
 		const target = tracer.activeSessionId();
 		// The trace this watcher belongs to ended (settled, superseded, timed
-		// out); a later trace installs its own watcher.
-		if (target === null || tracer.currentToken() !== token) {
-			unsubscribe?.();
-			unsubscribe = null;
-			return;
-		}
+		// out); a later trace installs its own watcher. `onEnd` has already
+		// unsubscribed, this only covers a notification already in flight.
+		if (target === null || tracer.currentToken() !== token) return;
 		const state = read();
-		if (state.activeSessionId !== target) {
+		// A staged draft keeps `activeSessionId` (the store's `stageDraft` only
+		// sets `activeDraftKey`), so the id alone would read "New chat over A"
+		// as being on A: before this switch's commit that stamped a false
+		// `sendable=0`, and a draft staged mid-load never ended the trace.
+		if (state.activeSessionId !== target || state.activeDraftKey) {
 			// The view moved off the target with no new open (a new open would
 			// already have superseded this trace): New chat, a staged draft, the
 			// store's own rollback.
@@ -283,6 +353,7 @@ export function watchSendable(
 		// no window, so it is sendable on commit - which is what the store says.
 		if (state.validatingSessionId !== target) tracer.note(target, "sendable");
 	};
-	unsubscribe = subscribe(check);
+	const unsubscribe = subscribe(check);
+	tracer.onEnd(token, unsubscribe);
 	check();
 }

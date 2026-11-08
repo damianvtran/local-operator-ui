@@ -35,6 +35,7 @@ const bundle = await build({
 const {
 	createOpenTracer,
 	watchSendable,
+	afterNextPaint,
 	formatOpenTraceLine,
 	OPEN_TRACE_TIMEOUT_MS,
 } = await import(
@@ -312,10 +313,10 @@ test("sendable waits for the switch's validation window to close (openSession pa
 	r.at(900);
 	s.set({ validatingSessionId: null });
 	r.tracer.note("new1", "content");
+	assert.equal(s.listenerCount(), 1, "still watching until the trace ends");
 	r.flushFrames(916);
 	assert.equal(fields(r.lines[0]).sendable, "900");
-	// The watcher detaches on the next store write after its trace ended.
-	s.set({});
+	// N1: the watcher detaches the moment its trace ends, not on a later write.
 	assert.equal(s.listenerCount(), 0);
 });
 
@@ -363,9 +364,186 @@ test("a superseded trace's watcher does not stamp the newer trace", () => {
 	r.tracer.note("b1", "content");
 	r.flushFrames(616);
 	assert.equal(fields(r.lines[1]).sendable, "600");
-	// Both watchers detach lazily, on the first store write after their trace ended.
-	s.set({});
+	// Both watchers detached when their traces ended (A superseded, B settled).
 	assert.equal(s.listenerCount(), 0);
+});
+
+/*
+ * A store fake that mirrors the REAL field writes of `canonical-sessions-store.ts`
+ * (R3): `openSession` (no-op arm when already on the id with no draft; else
+ * sets the id, clears the draft key and opens the validation window in one
+ * write), `stageDraft` (sets `activeDraftKey`, closes the window, LEAVES
+ * `activeSessionId`), and the validation clear. `open` mirrors
+ * `beginOpenTrace` + `openConversation`: the guard, `begin` before the store
+ * write, the watcher. Driving this is what catches a watcher that reads only
+ * `activeSessionId` (R1).
+ */
+function sessionsStore(tracer, initial) {
+	const s = store({
+		activeSessionId: null,
+		activeDraftKey: null,
+		validatingSessionId: null,
+		...initial,
+	});
+	return {
+		...s,
+		openSession(id) {
+			const st = s.read();
+			if (st.activeSessionId === id && !st.activeDraftKey) return;
+			s.set({
+				activeSessionId: id,
+				activeDraftKey: null,
+				validatingSessionId: id,
+			});
+		},
+		stageDraft(key = "new:1") {
+			s.set({ activeDraftKey: key, validatingSessionId: null });
+		},
+		validated() {
+			s.set({ validatingSessionId: null });
+		},
+		open(id, entrance = "sidebar") {
+			const st = s.read();
+			if (!(st.activeSessionId === id && !st.activeDraftKey)) {
+				const token = tracer.begin(id, entrance);
+				watchSendable(tracer, token, s.read, s.subscribe);
+			}
+			this.openSession(id);
+		},
+	};
+}
+
+test("R1: New chat over A, then click A: no false sendable before A's validation window", () => {
+	const r = rig();
+	const s = sessionsStore(r.tracer, { activeSessionId: "aaa" });
+	s.stageDraft(); // New chat: activeSessionId stays "aaa"
+	r.at(0);
+	s.open("aaa");
+	assert.equal(r.tracer.activeSessionId(), "aaa", "a trace started");
+	r.at(1000);
+	r.tracer.note("aaa", "content");
+	r.flushFrames(1016);
+	assert.equal(r.lines.length, 0, "not settled: validation still open");
+	r.at(1200);
+	s.validated();
+	const f = fields(r.lines[0]);
+	assert.equal(f.outcome, "settled");
+	assert.equal(f.sendable, "1200", "the real window close, not 0");
+	assert.equal(f.settled, "1200");
+});
+
+test("R1: click B, then New chat while B loads: the trace ends as left, never sendable", () => {
+	const r = rig();
+	const s = sessionsStore(r.tracer, { activeSessionId: "aaa" });
+	r.at(0);
+	s.open("bbb");
+	r.at(200);
+	s.stageDraft(); // clears validatingSessionId while activeSessionId is still bbb
+	assert.equal(r.lines.length, 1);
+	const f = fields(r.lines[0]);
+	assert.equal(f.outcome, "left");
+	assert.equal(f.sendable, "-");
+	assert.equal(s.listenerCount(), 0, "the watcher detached on left");
+	assert.equal(r.tracer.activeSessionId(), null);
+});
+
+test("R3: realistic store, plain switch settles on the validation clear; reselect starts nothing", () => {
+	const r = rig();
+	const s = sessionsStore(r.tracer, { activeSessionId: "aaa" });
+	s.open("aaa"); // reselect of the row on screen
+	assert.equal(r.tracer.activeSessionId(), null);
+	r.at(0);
+	s.open("bbb");
+	r.at(5);
+	r.tracer.note("bbb", "routed");
+	r.at(700);
+	s.validated();
+	r.at(800);
+	r.tracer.note("bbb", "content");
+	r.flushFrames(820);
+	const f = fields(r.lines[0]);
+	assert.equal(f.outcome, "settled");
+	assert.equal(f.sendable, "700");
+	assert.equal(f.painted, "820");
+	assert.equal(s.listenerCount(), 0);
+});
+
+test("R2: painted lands in the task after the frame, not in the rAF callback", () => {
+	const order = [];
+	const frames = [];
+	const tasks = [];
+	afterNextPaint(
+		() => order.push("painted"),
+		(cb) => frames.push(cb),
+		(cb) => tasks.push(cb),
+	);
+	assert.deepEqual(order, []);
+	// The rendering update: rAF callbacks, then style/layout/paint.
+	for (const cb of frames.splice(0)) cb();
+	order.push("style-layout-paint");
+	assert.deepEqual(
+		order,
+		["style-layout-paint"],
+		"not inside the rAF callback",
+	);
+	for (const cb of tasks.splice(0)) cb();
+	assert.deepEqual(order, ["style-layout-paint", "painted"]);
+});
+
+test("R2: the shipped nextFrame posts a message from inside rAF", () => {
+	const src = readFileSync(
+		join(process.cwd(), "src/renderer/src/features/chat/open-trace.ts"),
+		"utf8",
+	);
+	assert.match(
+		src,
+		/afterNextPaint\(\s*callback,\s*\(cb\) => requestAnimationFrame\(\(\) => cb\(\)\),\s*postMessageTask,?\s*\)/,
+	);
+	assert.match(src, /channel\.port2\.postMessage\(null\)/);
+});
+
+test("snapshot from a connection opened under an earlier trace cannot stamp A->B->A's second A", () => {
+	const r = rig();
+	const first = r.tracer.begin("aaa", "open");
+	const firstConnection = r.tracer.currentToken(); // the first A's stream connects
+	assert.equal(firstConnection, first);
+	r.at(10);
+	r.tracer.begin("bbb", "open");
+	r.at(20);
+	r.tracer.begin("aaa", "open");
+	const secondConnection = r.tracer.currentToken();
+	r.at(50);
+	r.tracer.note("aaa", "snapshot", firstConnection); // late, from the first A
+	r.at(300);
+	r.tracer.note("aaa", "snapshot", secondConnection);
+	r.tracer.note("aaa", "sendable");
+	r.tracer.note("aaa", "content");
+	r.flushFrames(316);
+	assert.equal(fields(r.lines[2]).snapshot, "280");
+	// A connection opened with no trace live never stamps one either.
+	const r2 = rig();
+	r2.tracer.begin("ccc", "open");
+	r2.tracer.note("ccc", "snapshot", null);
+	r2.tracer.note("ccc", "sendable");
+	r2.tracer.note("ccc", "content");
+	r2.flushFrames(16);
+	assert.equal(fields(r2.lines[0]).snapshot, "-");
+});
+
+test("onEnd: runs once on the trace's end, at once for an ended token", () => {
+	const r = rig();
+	let calls = 0;
+	const t = r.tracer.begin("aaa", "open");
+	r.tracer.onEnd(t, () => calls++);
+	assert.equal(calls, 0);
+	r.tracer.begin("bbb", "open");
+	assert.equal(calls, 1);
+	r.tracer.onEnd(t, () => calls++);
+	assert.equal(
+		calls,
+		2,
+		"an already-ended token runs the listener immediately",
+	);
 });
 
 /*
@@ -400,7 +578,12 @@ test("wiring: every stage has its one hook and the entrances start traces", () =
 	);
 	assert.match(
 		read("shared/hooks/use-canonical-session.ts"),
-		/if \(frame\.type === "snapshot"\) \{[\s\S]{0,200}openTrace\.note\(sessionId, "snapshot"\)/,
+		/if \(frame\.type === "snapshot"\) \{[\s\S]{0,200}openTrace\.note\(sessionId, "snapshot", openTraceToken\)/,
+	);
+	// The token is captured per connection, at connect time.
+	assert.match(
+		read("shared/hooks/use-canonical-session.ts"),
+		/const connect = \(\) => \{[\s\S]{0,400}const openTraceToken = openTrace\.currentToken\(\);/,
 	);
 	assert.match(
 		read("features/chat/components/chat-page.tsx"),
