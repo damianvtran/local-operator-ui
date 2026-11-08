@@ -32,7 +32,7 @@
  * wired-but-untranslated key cannot look translated. The seven shipped locales
  * carry the translations in the same PR (audit trail: docs/i18n/update-flow-
  * provenance.md), and `scripts/i18n/update-flow-translation.test.mjs` pins that
- * each of the 48 values differs from English in every shipped locale.
+ * each of the 49 values differs from English in every shipped locale.
  */
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
