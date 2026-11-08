@@ -358,7 +358,20 @@ const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
  * it. Equality with the pin is proved by the test instead.
  */
 export const PARITY_MODEL_SOURCES = new Set([
+	/*
+	 * #1761 (the composer keying work) gave `src/i18n/messages.ts` VALUE imports of
+	 * `./bidi` and `./direction` - the RTL isolation of code-rendered tokens - so
+	 * the model bundle now reads these three files through it, and `direction.ts`
+	 * reads the locale manifest. They are CODE the model executes, not catalogue
+	 * copy the exclusion list in `generate-condense-parity.mjs` drops, so the pin
+	 * covers them; by A27's SET EQUALITY this list must name them too, or a patch
+	 * to `bidi.ts` would move the fixture's bytes while the parity job skipped the
+	 * very pull request that moved them.
+	 */
+	"i18n/languages.json",
+	"src/i18n/bidi.ts",
 	"src/i18n/catalogue-locale.ts",
+	"src/i18n/direction.ts",
 	"src/i18n/format.ts",
 	"src/i18n/index.ts",
 	"src/i18n/locale.ts",
