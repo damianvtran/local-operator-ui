@@ -107,7 +107,7 @@
 	"ui.chat.error_block.schema.after_before": "请在",
 	"ui.chat.error_block.schema.after": "更换模型以解决此问题。建议使用Radient Automatic，它会根据你的请求挑选最省钱、最智能的组合（通常比自带密钥更便宜），也可以选用带星标的推荐模型。",
 	"ui.chat.approval.reply_required": "回复yes或no即可回应审批请求。",
-	"ui.chat.question_dock.hint.approval": "在上方选择Approve或Deny，或输入yes、no、1或2后发送；也可以在消息输入框中按Esc停止本轮。",
+	"ui.chat.question_dock.hint.approval": "在上方选择批准或拒绝，或输入yes、no、1或2后发送；也可以在消息输入框中按Esc停止本轮。",
 	"ui.chat.question_dock.hint.approval_held": "改在输入框中回答：输入yes、no、1或2后发送；也可以在消息输入框中按Esc停止本轮。",
 	"ui.chat.question_dock.hint.prefix": "问题{index}/{total}。",
 	"ui.chat.question_dock.hint.secret": "{prefix}在上方输入或粘贴敏感信息 · Enter发送 · Esc隐藏",

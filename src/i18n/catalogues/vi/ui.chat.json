@@ -107,7 +107,7 @@
 	"ui.chat.error_block.schema.after_before": "Đổi mô hình trong",
 	"ui.chat.error_block.schema.after": "để khắc phục. Chúng tôi khuyên dùng Radient Automatic để hệ thống chọn giúp bạn tổ hợp rẻ và thông minh nhất dựa trên yêu cầu của bạn (thường rẻ hơn tự dùng khóa riêng), hoặc dùng một trong các mô hình đề xuất có biểu tượng ngôi sao.",
 	"ui.chat.approval.reply_required": "Trả lời yes hoặc no để phản hồi yêu cầu phê duyệt.",
-	"ui.chat.question_dock.hint.approval": "Chọn Approve hoặc Deny ở trên, nhập yes, no, 1 hoặc 2 rồi gửi, hoặc nhấn Escape trong ô soạn tin để dừng lượt.",
+	"ui.chat.question_dock.hint.approval": "Chọn Phê duyệt hoặc Từ chối ở trên, nhập yes, no, 1 hoặc 2 rồi gửi, hoặc nhấn Escape trong ô soạn tin để dừng lượt.",
 	"ui.chat.question_dock.hint.approval_held": "Hãy trả lời từ ô soạn tin: nhập yes, no, 1 hoặc 2 rồi gửi, hoặc nhấn Escape trong ô soạn tin để dừng lượt.",
 	"ui.chat.question_dock.hint.prefix": "Câu hỏi {index}/{total}. ",
 	"ui.chat.question_dock.hint.secret": "{prefix}Nhập hoặc dán thông tin bí mật ở trên · Enter để gửi · Esc để ẩn",

@@ -107,7 +107,7 @@
 	"ui.chat.error_block.schema.after_before": "Cambia tu modelo en la",
 	"ui.chat.error_block.schema.after": "para solucionarlo. Recomendamos Radient Automatic, que elige para ti la mejor combinación de barato e inteligente según tus solicitudes (normalmente más barato que usar tu propia clave), o uno de los modelos recomendados con el icono de estrella.",
 	"ui.chat.approval.reply_required": "Responde “yes” o “no” para contestar la solicitud de aprobación.",
-	"ui.chat.question_dock.hint.approval": "Elige Approve o Deny arriba, escribe “yes”, “no”, 1 o 2 y envía, o pulsa Escape en el cuadro de mensaje para detener el turno.",
+	"ui.chat.question_dock.hint.approval": "Elige Aprobar o Denegar arriba, escribe “yes”, “no”, 1 o 2 y envía, o pulsa Escape en el cuadro de mensaje para detener el turno.",
 	"ui.chat.question_dock.hint.approval_held": "Responde desde el compositor: escribe “yes”, “no”, 1 o 2 y envía, o pulsa Escape en el cuadro de mensaje para detener el turno.",
 	"ui.chat.question_dock.hint.prefix": "Pregunta {index} de {total}. ",
 	"ui.chat.question_dock.hint.secret": "{prefix}Escribe o pega el secreto arriba · Intro envía · Esc oculta",
