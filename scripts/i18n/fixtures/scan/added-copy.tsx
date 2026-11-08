@@ -90,12 +90,14 @@ export const AddedTemplateFixture = ({ count }: { count: number }) => {
 };
 
 export const AddedTemplateToken = () => {
-	// biome-ignore lint/style/noUnusedTemplateLiteral: pins a token that takes the pragma
-	const machine = `template-token`; /* i18n: ignore a machine token, not copy */
+	// biome-ignore lint/style/noUnusedTemplateLiteral: pins a sentence that takes the pragma
+	const machine = `Silenced machine sentence`; /* i18n: ignore a fixture sentence, not copy */
 	return machine;
 };
 
-/* The same machine shape WITHOUT a pragma: the rule fires on it, which is why
- * the token above needs the pragma rather than being invisible. */
-// biome-ignore lint/style/noUnusedTemplateLiteral: pins a machine token that the rule still flags
-export const ADDED_MACHINE_TOKEN = `machine-token`;
+/* The same sentence shape WITHOUT a pragma: the rule fires on it, which is why
+ * the sentence above needs the pragma rather than being invisible. A bare
+ * identifier (`machine-token`) is deliberately NOT in this fixture any more:
+ * the sinks count prose, so a token has nothing to demonstrate here. */
+// biome-ignore lint/style/noUnusedTemplateLiteral: pins a sentence that the rule still flags
+export const ADDED_MACHINE_TOKEN = `Unsilenced machine sentence`;

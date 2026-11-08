@@ -115,7 +115,15 @@ test("the template sinks catch the shape the ratchet leaves out", () => {
 	const found = findings(null, { templateSinks: true });
 	const textsOf = (kind) =>
 		found.filter((finding) => finding.kind === kind).map((f) => f.text);
-	assert.deepEqual(textsOf("template:const"), ["Added plain const sentence"]);
+	/*
+	 * Two const sinks fire and one does not: the pragma'd sibling
+	 * (`Silenced machine sentence`) is the only const template that stays
+	 * quiet. The list is ordered by line, which is how the walker emits.
+	 */
+	assert.deepEqual(textsOf("template:const"), [
+		"Added plain const sentence",
+		"Unsilenced machine sentence",
+	]);
 	assert.deepEqual(textsOf("template:array"), [
 		"Added array sentence",
 		"Added second array sentence",
@@ -133,20 +141,24 @@ test("the template sinks are off where the ratchet does not count the shape", ()
 	assert.deepEqual(findings(new Set(), { templateSinks: true }), []);
 });
 
-test("a machine template fires, and an `i18n: ignore` pragma is what silences it", () => {
+test("a prose template fires, and an `i18n: ignore` pragma is what silences it", () => {
 	const found = findings(null, { templateSinks: true });
-	// The unpragma'd machine token is a finding, so the guard really does look
-	// at this shape on an added line …
+	/*
+	 * Both fixture sentences are prose, so the ONLY difference between them is
+	 * the pragma: one fires, one does not. A bare identifier is deliberately
+	 * absent here — the sinks count sentences, so an identifier has nothing to
+	 * demonstrate about the pragma.
+	 */
 	assert.ok(
 		found.some(
 			(finding) =>
-				finding.kind === "template:const" && finding.text === "machine-token",
+				finding.kind === "template:const" &&
+				finding.text === "Unsilenced machine sentence",
 		),
-		"a machine template on an added line must be flagged",
+		"a prose template on an added line must be flagged",
 	);
-	// … and the pragma on the sibling line is the whole reason it is quiet.
 	assert.deepEqual(
-		found.filter((finding) => finding.text === "template-token"),
+		found.filter((finding) => finding.text === "Silenced machine sentence"),
 		[],
 	);
 });
