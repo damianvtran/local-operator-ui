@@ -1,0 +1,68 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "a7c41e29-uf4-fr",
+	"locale": "fr",
+	"audit_date": "2026-11-08",
+	"status": "passed",
+	"scope": "fresh independent audit of fr ui.updates.service (39 keys incl. new global.app_owned.remedy) and ui.installer.setup_cause (7); on-disk working-tree files, UI worktree i18n-update-flow @ 7390ee9dc92 + uncommitted translation edits; verifies the fix for the MAJOR in receipt 3b8d6a1e-uf3-fr (U+202F inside ::group-off arguments of disk_space.message)",
+	"evidence": "Read all 46 keys en vs fr side by side with .context.json sidecars and shipped fr copy (ui.updates.panel, ui.installer, ui.common.updates, ui.common.errors, ui.browser). PRIOR MAJOR VERIFIED FIXED: @formatjs/icu-messageformat-parser parsed all 46 fr values (requiresOtherClause) with 0 errors; disk_space.message has 2 ::group-off args and both parse to useGrouping:false; argument headers contain only U+0020 (no non-ASCII whitespace inside any {...} header anywhere); all 32 U+202F in both files lie in literal text nodes (0 outside literals; no other non-ASCII whitespace, no U+00A0). intl-messageformat (fr): disk_space needed=1500,free=12345 -> 'environ 1500 Mo ... 12345 Mo ;' (ungrouped; en control '1500 MB ... 12345 MB'), 1234567/0 -> '1234567 Mo ... 0 Mo'. Plurals fr one/many/other: minutes 0/1 -> 'minute', 2/5/11/21/100 -> 'minutes', 1000000 -> '1 000 000 de minutes' (many), 1000001/1500000 -> 'minutes'; fleet.busy.lead (count,extra): 0,0/1,0 -> '1 session exécute ... A, B, C.'; 1,1 -> 'et 1 autre'; 2,1 -> '2 sessions exécutent ... et 1 autre'; 11,3 -> 'et 3 autres'; 1000000,0 -> '1 000 000 de sessions exécutent'; 1000000,1000000 -> 'et 1 000 000 d’autres'; 100,97 -> 'et 97 autres'; =0 branch correctly empty. Placeholders ({version},{group},{command},{code},{target},{installed},{minutes},{count},{extra},{names},{closing},{needed},{free}) identical en vs fr as parsed argument sets for all 46 keys; backtick tokens (`{command}`, `.lop-source`, `lop-update`) verbatim; Local Operator, lop-update, uv/pipx/pip verbatim; no ASCII apostrophes, no ASCII space before ; : ? ! in prose, U+202F present before every prose ; and : (32/32), no spaced hyphens (English ' - ' asides rendered as ; : or commas). Rendered: not_effective -> 'La mise à jour du serveur vers 0.42.7 n’a pas pris effet : l’installation signale toujours 0.41.0.'; exited -> '... `uv tool upgrade local-operator` s’est terminé avec le code 1.'; install_in_flight/release_publishing/run_yourself render with real values. Register: vous throughout (imperatives Réessayez/Redémarrez/Libérez/Quittez/Consultez/Vérifiez/Demandez), matches shipped fr. Glossary consistent with shipped fr: installateur (installer), programme de mise à jour (updater), journal du service de mise à jour, checkout, recompilation/compilation (rebuild/build), tour (turn), session, backend, cet ordinateur. All previous fr audit findings confirmed applied in the bytes. English leftovers: none. Width: fr is 1.2-1.58x en as normal for French; widest server_failure.not_run 1.58 (123 chars), fleet.busy.lead 1.55 (placeholder-expanded), file_missing 1.45 - all one-to-two-sentence messages whose sidecars ask only to keep the source shape; no single-line label affected. global.app_owned.remedy: faithful (own managed environment / no package manager owns it / no terminal command updates it correctly / app updates only a server it started: stop this one, relaunch Local Operator, let it start its own), idiomatic, 1.23x. Repo checks (read-only): check-coverage.mjs: ok (7 gated languages, 133 namespaces, 0 allowed keys remain); locale-parity.test.mjs: 44/44 pass; context-parity.mjs: ok (131 allowed gaps in 4 other namespaces; none in these two).",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"namespace": "ui.updates.service",
+			"keys_read": 39,
+			"sha256": {
+				"en": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+				"fr": "91f712b7c4fcb68ee54fe96e48d97ba54097a9ab88b3f71a16551b184bc62d76"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.updates.service.json",
+			"target_path": "src/i18n/catalogues/fr/ui.updates.service.json",
+			"counts": {
+				"BLOCKER": 0,
+				"MAJOR": 0,
+				"MINOR": 0,
+				"NIT": 1
+			},
+			"summary": "39 keys read; no blocker/major/minor; 1 nit. The prior MAJOR (U+202F inside ::group-off arguments of disk_space.message) is fixed: both arguments now use ASCII space and parse to useGrouping:false; numbers render ungrouped at needed=1500, free=12345. All 32 U+202F sit in prose text nodes only. New key global.app_owned.remedy accurate and idiomatic.",
+			"findings": [
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.version_unknown.message",
+					"current": "La version du serveur installée n’a pas pu être déterminée ; aucune mise à jour n’a donc été proposée. Redémarrez l’application pour réessayer.",
+					"proposed": "La version installée du serveur n’a pas pu être déterminée ; aucune mise à jour n’a donc été proposée. Redémarrez l’application pour réessayer.",
+					"reason": "Stranded participle after 'du serveur' can read as 'the server that was installed'; 'La version installée du serveur' attaches the adjective to the version as the English 'installed server version' means. Optional."
+				}
+			]
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"namespace": "ui.installer.setup_cause",
+			"keys_read": 7,
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"fr": "64a2e8f0a86610568df694b0a658aae3a5c3fd7b9022d470b5ececec64fafe1c"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.installer.setup_cause.json",
+			"target_path": "src/i18n/catalogues/fr/ui.installer.setup_cause.json",
+			"counts": {
+				"BLOCKER": 0,
+				"MAJOR": 0,
+				"MINOR": 0,
+				"NIT": 1
+			},
+			"summary": "7 keys read; no blocker/major/minor; 1 nit. Previous findings (clock_or_expired 'a jugé ... expiré', tls_interception 'auquel cette application fait déjà confiance', not_started 'n’a pas démarré correctement') verified applied.",
+			"findings": [
+				{
+					"severity": "NIT",
+					"key": "ui.installer.setup_cause.disk_full",
+					"current": "Ce Mac a manqué d’espace disque pendant la configuration du backend. Libérez de l’espace, puis réessayez.",
+					"proposed": "L’espace disque de ce Mac a été épuisé pendant la configuration du backend. Libérez de l’espace, puis réessayez.",
+					"reason": "'a manqué d’espace' is a slightly literal rendering of 'ran out of'; the shipped fr failure cause for the same condition (ui.common.updates failure_cause_disk) reads 'L’espace disque a été épuisé pendant la mise à jour.', so this aligns the two. Optional."
+				}
+			]
+		}
+	}
+}

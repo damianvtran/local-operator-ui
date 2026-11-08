@@ -1,0 +1,41 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "e3a85f17-uf3-vi",
+	"locale": "vi",
+	"audit_date": "2026-11-08",
+	"status": "passed",
+	"scope": ["ui.updates.service"],
+	"scope_note": "Fresh independent re-audit after the remediation wave, on-disk working-tree bytes of UI PR #1760 worktree i18n-update-flow (head 7390ee9dc92 + uncommitted edits). ui.installer.setup_cause is unchanged for vi and ui.updates.status is byte-unchanged and already audited: both excluded by task.",
+	"independent_note": "Did not author or edit any audited value. Read all 39 keys of en and vi against the .context.json sidecar and shipped vi copy (ui.updates.panel, ui.installer, ui.common.updates, ui.common.connection). check-coverage.mjs: ok; locale-parity.test.mjs: 44/44 pass; context-parity.mjs: ok. Placeholders, skeletons, backticked commands and technical tokens (Local Operator, lop-update, .lop-source, uv/pipx/pip, ::group-off) compared en vs vi programmatically: identical. intl-messageformat (vi; CLDR vi has only 'other') rendered at 0,1,2,5,11,21,100: fleet.busy.lead -> '1 phiên vẫn đang chạy một lượt trên máy này: A, B, C và 1 phiên khác.' ... '100 phiên ... và 100 phiên khác.'; extra=0 drops the clause. Prior receipt b7e41c09-uf-vi-update-flow-vi.json: m1 (legacy_installer.remedy 'ghi đè lên ... đang giữa một lượt') applied correctly; n1 (disk_space 'và hiện còn') applied correctly, renders 'cần khoảng 1500 MB ..., và hiện còn 20480 MB'; n2 (bản sửa đổi) intentionally left, still an optional nit. New key global.app_owned.remedy: meaning faithful (own managed environment, no package manager owns it, no terminal command can update it correctly, app updates only a server it started, stop this one, restart Local Operator), register and glossary match the shipped 'được khởi chạy bên ngoài Local Operator ... hãy dừng máy chủ đó rồi khởi động lại Local Operator'; two sentences like the source, no new defect.",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_read": 39,
+			"summary": "39 keys read; no blocker/major/minor; 2 nits. All prior findings folded in correctly; new app_owned.remedy clean.",
+			"sha256": {
+				"en": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+				"vi": "6a018f8742380354a57f886f66e98481b6355f7dd3479dbc702ea1ae79aa16ab"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.updates.service.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.updates.service.json",
+			"findings": [
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.server_failure.rebuild_unchanged",
+					"current": "vẫn trỏ đến cùng một bản sửa đổi",
+					"proposed": "keep as is (optional: 'vẫn trỏ đến cùng một bản sửa đổi (revision)')",
+					"reason": "Carried from the prior audit: 'bản sửa đổi' has no precedent in shipped vi updates copy, but it is accurate and understandable; no change required."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.server_failure.stopped",
+					"current": "có thể vẫn còn thứ do nó khởi chạy đang thay thế bản cài.",
+					"proposed": "thứ mà nó đã khởi chạy có thể vẫn đang thay thế bản cài.",
+					"reason": "Identical meaning; the proposed wording is what shipped ui.common.updates already uses for the same sentence, so adopting it removes a tiny cross-surface drift. Optional."
+				}
+			]
+		}
+	}
+}

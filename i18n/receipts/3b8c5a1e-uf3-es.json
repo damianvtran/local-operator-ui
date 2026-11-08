@@ -1,0 +1,52 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "3b8c5a1e-uf3-es",
+	"locale": "es",
+	"scope": "fresh independent re-audit of es ui.updates.service (39 keys, incl. new global.app_owned.remedy) and ui.installer.setup_cause (7 keys); ui.updates.status excluded (byte-unchanged, already audited); on-disk working-tree files, UI PR #1760 worktree i18n-update-flow @ 7390ee9dc92 + uncommitted edits",
+	"evidence": "Every key of both namespaces read against en + .context.json sidecars and shipped es copy (ui.updates.panel, ui.installer, ui.common.updates). check-coverage.mjs: ok (7 gated languages, 0 allowed keys remain); locale-parity.test.mjs: 44/44 pass; context-parity.mjs: ok. Placeholder names, ::group-off skeletons and backticked commands compared en vs es programmatically for all 39 service keys: 0 mismatches; all 7 setup_cause keys have identical placeholder sets (none). intl-messageformat (locale es) rendered at 0,1,2,5,11,21,100,1000000: minutes -> '0 minutos','1 minuto','2 minutos','5 minutos','11 minutos','21 minutos','100 minutos','1.000.000 de minutos' (CLDR es many applied only at 1e6); busy.lead -> '1 sesión sigue ejecutando un turno en este equipo: A, B, C.' / '2 sesiones siguen ... ' / '5 sesiones siguen ... A, B, C y 2 más.' / '1.000.000 de sesiones siguen ... y 999.997 más.' (extra=0 drops the clause); disk_space {needed:12345,free:987} -> 'unos 12345 MB ... hay 987 MB libres' (::group-off honoured); not_effective real -> 'a 0.42.7 ... sigue indicando 0.41.0', fallbacks -> 'a la versión nueva ... su versión anterior' (agreement correct); exited -> '`lop-update` terminó con el código 1'. All 5 findings of the previous audit (8048eb56-uf-es) verified applied: 'en paralelo' x3, 'por tu cuenta', 'sin interrupciones', 'da servicio a esta app', 'Pide al departamento de TI'; none introduced a defect. New key global.app_owned.remedy renders 'Este servidor se ejecuta desde el propio entorno gestionado de Local Operator, que no pertenece a ningún gestor de paquetes, así que no hay ningún comando de terminal que pueda actualizarlo correctamente. La app solo puede actualizar un servidor que ella misma inició: detén este, inicia Local Operator de nuevo y deja que la app inicie el suyo.' - faithful on all four meaning points (managed env / no package manager owns it / no terminal command / stop this one, restart, let app start its own), tú register, 345 vs 288 chars (1.20x, within the other long remedies and the sidecar's 'two or three sentences').",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"keys_read": 39,
+			"sha256": {
+				"en": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+				"es": "ab251ac509f8a873873a5b688f5330fa81e296746a7339c1f7ed276d03ab9f79"
+			},
+			"summary": "39 keys read; no blocker/major/minor; 3 nit. Placeholders, plural branches (one/many/other), ::group-off skeletons, backticked commands and technical tokens intact; no English leftovers.",
+			"findings": [
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.global.source_rebuild.remedy",
+					"current": "Recompila esta copia de trabajo con `lop-update`.",
+					"proposed": "Se recompila esta copia de trabajo con `lop-update`.",
+					"reason": "Third-person 'Recompila' is homographic with the tú imperative and could be read as an instruction to run the command; the next sentence disambiguates, so optional."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.not_installed.message",
+					"current": "…el entorno que sirve a esta app quedó como estaba.",
+					"proposed": "…el entorno que da servicio a esta app quedó como estaba.",
+					"reason": "Same English 'serving this app' is rendered 'da servicio a' in disk_space.message after the remediation; align the two within the namespace."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.global.legacy_installer.remedy",
+					"current": "…reescribe el entorno compartido en su sitio…",
+					"proposed": "…reescribe el entorno compartido en su ubicación…",
+					"reason": "English 'in place' is 'en su ubicación' in shipped ui.updates.panel.server.rebuild copy; 'en su sitio' (also in source_rebuild.remedy) is natural Spanish, so purely a cross-namespace glossary-drift nit."
+				}
+			]
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"keys_read": 7,
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"es": "0a8b9d249c865ffcd3a4fdb4b2f564410c350134e47b45bcc413c96f77bb04eb"
+			},
+			"summary": "7 keys read; clean. 'Pide al departamento de TI' fixes the a-TI/'a ti' ambiguity; no placeholders; widths 1.02-1.30x English.",
+			"findings": []
+		}
+	}
+}
