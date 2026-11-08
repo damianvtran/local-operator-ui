@@ -104,5 +104,4 @@ export const ADDED_MACHINE_TOKEN = `machine-token`;
  * reason the sink rule may not demand a space before it fires, and the case
  * that would slip through if it did. */
 declare const addedMachineCount: number;
-// biome-ignore lint/style/noUnusedTemplateLiteral: pins a substituting template with no space
 export const ADDED_SUBSTITUTING_TEMPLATE = `${addedMachineCount}online`;
