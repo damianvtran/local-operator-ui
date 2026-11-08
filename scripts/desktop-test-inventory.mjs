@@ -117,7 +117,7 @@ export const EXEMPT = Object.freeze({
 	"scripts/session-cookie-electron.test.mjs":
 		"`pnpm test:session-cookies` — it boots the REAL Electron binary twice, which no CI step does today; a pre-existing gap, recorded rather than papered over.",
 	"scripts/chat-tag-dialogs-immediate.test.mjs":
-		"`pnpm test:tag-dialogs` — its own step in the Desktop Tests job (ci.yml), run BEFORE `pnpm test:desktop` so its process exits and releases memory first. It bundles the shipped renderer with esbuild and drives it in jsdom; inside the desktop lane its peak landed on the files already resident there and the process group was killed at 9.7 GB against the 7.8 GB budget (main's suite passes at 851aea1).",
+		"`pnpm test:tag-dialogs` — its own step in full-suite.yml's Desktop Tests shard 0 (main and nightly; pull requests run it only when `pnpm test:affected` names it), run BEFORE `pnpm test:desktop` so its process exits and releases memory first. It bundles the shipped renderer with esbuild and drives it in jsdom; inside the desktop lane its peak landed on the files already resident there and the process group was killed at 9.7 GB against the 7.8 GB budget (main's suite passes at 851aea1).",
 });
 
 /**

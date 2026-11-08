@@ -34,13 +34,16 @@ on:
     - cron: '37 6 * * *'
   workflow_dispatch:
 
-# ONE group for every run, and never cancel one in progress: each completed run
+# ONE group PER REF, and never cancel one in progress: each completed `main` run
 # is the record that decides whether the `ci-main-red` issue opens or closes, so
 # a run killed half way would leave that record wrong. A newer run that arrives
 # while one is queued still replaces the QUEUED one - that is GitHub's grouping,
 # and it is the right trade here: the newest `main` is the one worth testing.
+# Keyed by ref so a `workflow_dispatch` on a feature branch queues in its own
+# group: a shared group let a branch dispatch replace a queued `main` push run,
+# leaving that tip untested until the nightly (PR #1750 QA round 1, Q2).
 concurrency:
-  group: full-suite-main
+  group: full-suite-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -641,7 +644,12 @@ jobs:
   report:
     name: Report
     needs: [changes, test, desktop-tests-result]
-    if: always()
+    # `main` only. The issue is the record of the DEFAULT branch: a green
+    # feature-branch dispatch would otherwise close a real main-red issue (a
+    # false all-clear) and a red one would open "red on main" over a branch SHA
+    # (PR #1750 review R1-2 / QA Q1, reproduced with a stub `gh`). `always()`
+    # stays so a failed or cancelled suite on `main` still reports.
+    if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

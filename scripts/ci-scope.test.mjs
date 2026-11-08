@@ -3276,9 +3276,13 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
  * check is not a red one; a gate that counts `skipped` as failure reds every
  * diff the classifier correctly narrowed. And the suite that left PR CI must
  * still run where nothing can cancel the record of a `main` commit.
+ * And only `main` may write the `ci-main-red` record: a branch dispatch that
+ * reports would close a real main-red issue on a green branch, and a shared
+ * concurrency group would let it replace a queued `main` run.
  * Mutation: drop a job from `ci-gate.needs`; remove `always()`; set
  * `cancel-in-progress: true` in full-suite.yml; widen `issues: write` to the
- * workflow.
+ * workflow; drop the `refs/heads/main` guard from `report`; key the
+ * concurrency group by a constant again.
  */
 test("A18: CI Gate needs every job and reds only on failure or cancellation", () => {
 	const gate = jobs["ci-gate"];
@@ -3316,7 +3320,7 @@ test("A18: the full suite runs on main, nightly and on demand, and only its repo
 	assert.ok(Object.hasOwn(on, "workflow_dispatch"));
 	assert.equal(Object.hasOwn(on, "pull_request"), false);
 	assert.deepEqual(full.concurrency, {
-		group: "full-suite-main",
+		group: "full-suite-${{ github.ref }}",
 		"cancel-in-progress": false,
 	});
 	assert.deepEqual(full.permissions, { contents: "read" });
@@ -3325,7 +3329,11 @@ test("A18: the full suite runs on main, nightly and on demand, and only its repo
 			assert.equal(job.permissions, undefined, `${id} widens permissions`);
 	const report = full.jobs.report;
 	assert.deepEqual(report.permissions, { issues: "write" });
-	assert.equal(String(report.if).trim(), "always()");
+	assert.equal(
+		String(report.if).trim(),
+		"always() && github.ref == 'refs/heads/main'",
+		"the ci-main-red reporter must run for main only, and still on failure",
+	);
 	assert.ok(report.needs.includes("desktop-tests-result"));
 	const run = report.steps.map((step) => step.run ?? "").join("\n");
 	assert.match(run, /label=ci-main-red/);

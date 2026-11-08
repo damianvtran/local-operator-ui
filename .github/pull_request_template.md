@@ -37,12 +37,22 @@ Describe the impact of these changes on the codebase:
 - What specific scenarios were validated?
 - Mention any automated tests that were added or updated.
 
+## Targeted test evidence
+
+Paste the `pnpm test:affected --run --evidence` block, re-run on the current head.
+
+- Range: `<base-sha>..<head-sha>`
+- Command(s): the exact commands, including any extra tests and any exempt `pnpm test:*` the helper named
+- Result: the actual pass/fail counts and wall time for each command
+- Not run, and why: UNREACHED or BROAD paths, and exempt tests you skipped
+
 ## Checklist
 
 - [ ] My code follows the style guidelines of this project.
 - [ ] I have performed a self-review of my code.
 - [ ] I have added tests that prove my changes work as intended.
-- [ ] The gates pass: `pnpm lint`, `pnpm check-types`, `pnpm check-themes`, `pnpm test:desktop`.
+- [ ] The gates pass: `pnpm lint`, `pnpm check-types`, `pnpm check-themes`.
+- [ ] Targeted tests pass, recorded below on the current head: `pnpm test:affected --run --evidence` plus the callers and neighbours I judged it missed. I did not run the full desktop suite; it runs on `main` and nightly.
 - [ ] This PR does not change the `version` line in `package.json` — only a `chore(release):` PR may, and the release owner cuts that one.
 - [ ] If this PR touches `docs/evidence/manifest.json` or changes files under `src/` or `scripts/`, it joins the serialized fold window (see AGENTS.md).
 - [ ] I have updated the documentation when required.

@@ -77,16 +77,30 @@ export const GUARD_TESTS = Object.freeze([
 	// named. It shares its file with 26 unit tests; the whole file is the guard
 	// until that audit is split out (59 s alone at load ~260, 2026-11-07).
 	"scripts/chat-sidebar-selection.test.mjs",
+	// Chrome launch-site inventory: a new rig that launches Chrome without the
+	// mock-keychain switch (scripts/chrome-keychain.mjs owns its spelling) puts
+	// a keychain prompt on the operator's screen, and a NEW file's absence from
+	// the inventory is invisible to a diff walk.
+	"scripts/chrome-keychain.test.mjs",
 	"scripts/ci-log-guard.test.mjs",
+	// No tracked file carries a git conflict marker - including `.md`, which
+	// the selection treats as INERT, so only a guard can see it.
+	"scripts/conflict-markers.test.mjs",
 	"scripts/desktop-test-memory-guard.test.mjs",
 	"scripts/focus-stability-ci-policy.test.mjs",
 	"scripts/lane-registration.test.mjs",
+	// No tracked source file constructs a WebSocket: a property of every file,
+	// including ones no test imports.
+	"scripts/no-websocket-plane.test.mjs",
 	// Spawn-site inventories: every new Electron/evidence rig must register.
 	// Three of 13 real red UI PR runs (browser-google-signin-trust,
 	// browser-clipboard-write, notifications-glass-composition) were this
 	// class, and a diff-scoped selection cannot see a NEW file's absence.
 	"scripts/notification-spawn-sites.test.mjs",
 	"scripts/run-desktop-tests.test.mjs",
+	// Every literal `/settings?section=` route names a live section, wherever
+	// the route string is written.
+	"scripts/settings-section-routes.test.mjs",
 	"scripts/telemetry-spawn-sites.test.mjs",
 	"scripts/test-inventory.test.mjs",
 ]);
@@ -372,8 +386,44 @@ export function literalPins(path, testLiterals) {
 	return hits;
 }
 
+function packageScripts() {
+	return JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).scripts;
+}
+
+/**
+ * The exact command that runs one EXEMPT test. A reached exempt file is not
+ * run by `--run` (it is exempt from the shared lanes for a reason - display,
+ * memory, its own step), and since the desktop suite left PR CI nothing runs
+ * it before merge unless the agent does; a bare file name made them work out
+ * how (PR #1750 QA round 1, M2). Preference order: the package.json script
+ * that names the file (the command its owners maintain), then a `pnpm ...`
+ * the EXEMPT reason opens with, then the guarded runner - never a bare
+ * `node --test`, which has no memory bound.
+ */
+export function exemptCommand(
+	file,
+	{ scripts = packageScripts(), reason = EXEMPT[file] ?? "" } = {},
+) {
+	const named = Object.entries(scripts ?? {})
+		.filter(
+			([name, body]) =>
+				!name.startsWith("//") &&
+				typeof body === "string" &&
+				body.split(/\s+/).includes(file),
+		)
+		.map(([name]) => name)
+		.sort();
+	if (named.length) return `pnpm ${named[0]}`;
+	const lead = /^`(pnpm [^`]+)`/.exec(reason);
+	if (lead) return lead[1];
+	return `node ${RUNNER} ${file}`;
+}
+
 /** The changed paths that are reachable from each test; see the module docstring. */
-export function selectTests(changed, { graph, inventory, exempt = EXEMPT }) {
+export function selectTests(
+	changed,
+	{ graph, inventory, exempt = EXEMPT, scripts },
+) {
 	const tests = new Set(inventory);
 	const exemptSet = new Set(Object.keys(exempt));
 	const selected = new Map(); // test -> the changed paths that reached it
@@ -430,6 +480,10 @@ export function selectTests(changed, { graph, inventory, exempt = EXEMPT }) {
 		affected: [...selected.keys()].sort(),
 		guards,
 		exempt: [...exemptHit.keys()].sort(),
+		exemptRuns: [...exemptHit.keys()].sort().map((file) => ({
+			file,
+			command: exemptCommand(file, { scripts, reason: exempt[file] ?? "" }),
+		})),
 		unreached: unreached.sort(),
 		broad: broad.sort(),
 		inert: inert.sort(),
@@ -471,7 +525,7 @@ export function evidenceMarkdown({ range, changed, selection, command, run }) {
 	];
 	if (selection.exempt.length)
 		lines.push(
-			`- Reached but exempt from the desktop suite (they run where \`EXEMPT\` says): ${selection.exempt.map((f) => `\`${f}\``).join(", ")}`,
+			`- Reached but exempt from the desktop suite, so \`--run\` did not run them; run each yourself: ${(selection.exemptRuns ?? selection.exempt.map((file) => ({ file }))).map(({ file, command }) => (command ? `\`${file}\` → \`${command}\`` : `\`${file}\``)).join(", ")}`,
 		);
 	if (selection.unreached.length)
 		lines.push(
@@ -479,7 +533,7 @@ export function evidenceMarkdown({ range, changed, selection, command, run }) {
 		);
 	if (selection.broad.length)
 		lines.push(
-			`- BROAD change (${selection.broad.map((f) => `\`${f}\``).join(", ")}): a graph cannot bound it; run \`pnpm test:desktop\` deliberately if it matters`,
+			`- BROAD change (${selection.broad.map((f) => `\`${f}\``).join(", ")}): a graph cannot bound it; add the tests you judge it reaches - the full suite runs on \`main\` (full-suite.yml), not here`,
 		);
 	if (run) {
 		const c = run.counts;
@@ -578,6 +632,7 @@ export async function main(argv) {
 			affected: [],
 			guards: [...GUARD_TESTS],
 			exempt: [],
+			exemptRuns: [],
 			unreached: [],
 			broad: [],
 			inert: [],
@@ -610,9 +665,11 @@ export async function main(argv) {
 		);
 		for (const path of selection.unreached)
 			console.error(`  unreached: ${path}`);
+		for (const { file, command } of selection.exemptRuns)
+			console.error(`  exempt (not run): ${file} - run it with \`${command}\``);
 		for (const path of selection.broad)
 			console.error(
-				`  BROAD: ${path} - a graph cannot bound this; \`pnpm test:desktop\` is the deliberate full run`,
+				`  BROAD: ${path} - a graph cannot bound this; add the tests you judge it reaches (the full suite runs on main, not on PRs)`,
 			);
 		if (!args.run) console.log(selection.files.join("\n"));
 	}

@@ -14,6 +14,7 @@ import {
 	GUARD_TESTS,
 	buildGraph,
 	evidenceMarkdown,
+	exemptCommand,
 	literalPins,
 	mentionedPaths,
 	parseArgs,
@@ -157,6 +158,79 @@ test("a reached EXEMPT test is reported, not run", () => {
 	assert.deepEqual(result.exempt, ["scripts/x.test.mjs"]);
 	assert.ok(!result.files.includes("scripts/x.test.mjs"));
 	assert.deepEqual(result.unreached, []);
+});
+
+/*
+ * Defect (PR #1750 QA round 1, M2): a reached EXEMPT test was named but no
+ * command was given, and with the desktop suite off PR CI nothing ran it.
+ * Mutation: drop the package.json lookup, or fall back to a bare `node --test`.
+ */
+test("a reached EXEMPT test carries the exact command that runs it", () => {
+	const scripts = {
+		"//test:tag-dialogs": "a note naming scripts/t.test.mjs",
+		"test:tag-dialogs": "node scripts/run-desktop-tests.mjs scripts/t.test.mjs",
+	};
+	assert.equal(
+		exemptCommand("scripts/t.test.mjs", { scripts }),
+		"pnpm test:tag-dialogs",
+	);
+	assert.equal(
+		exemptCommand("scripts/w.test.mjs", {
+			scripts,
+			reason: "`pnpm test:window-guards` - boots the REAL Electron",
+		}),
+		"pnpm test:window-guards",
+	);
+	assert.equal(
+		exemptCommand("scripts/r.test.mjs", { scripts, reason: "release step" }),
+		"node scripts/run-desktop-tests.mjs scripts/r.test.mjs",
+	);
+	// The real table: the case QA reproduced.
+	assert.equal(
+		exemptCommand("scripts/chat-tag-dialogs-immediate.test.mjs"),
+		"pnpm test:tag-dialogs",
+	);
+	const graph = {
+		importers: new Map([["scripts/x.mjs", new Set(["scripts/t.test.mjs"])]]),
+		dirMentions: new Map(),
+	};
+	const selection = selectTests(["scripts/x.mjs"], {
+		graph,
+		inventory: [],
+		exempt: { "scripts/t.test.mjs": "its own step" },
+		scripts,
+	});
+	assert.deepEqual(selection.exemptRuns, [
+		{ file: "scripts/t.test.mjs", command: "pnpm test:tag-dialogs" },
+	]);
+	const text = evidenceMarkdown({
+		range: "a..b",
+		changed: ["scripts/x.mjs"],
+		selection,
+		command: "node scripts/run-desktop-tests.mjs",
+		run: null,
+	});
+	assert.match(
+		text,
+		/exempt.*`scripts\/t\.test\.mjs` → `pnpm test:tag-dialogs`/,
+	);
+});
+
+/*
+ * Defect (PR #1750 review round 1, R1-1): tree-wide guards whose subject is a
+ * NEW file's absence or an INERT path (Chrome launch sites, conflict markers,
+ * WebSocket construction, settings routes) were not guards, so a diff walk
+ * could never select them and only the nightly would catch them.
+ */
+test("the tree-wide inventories a diff walk cannot reach are guards", () => {
+	for (const guard of [
+		"scripts/chrome-keychain.test.mjs",
+		"scripts/conflict-markers.test.mjs",
+		"scripts/no-websocket-plane.test.mjs",
+		"scripts/settings-section-routes.test.mjs",
+	])
+		assert.ok(GUARD_TESTS.includes(guard), `${guard} is not a guard`);
+	assert.deepEqual([...GUARD_TESTS].sort(), [...GUARD_TESTS]);
 });
 
 test("tests are leaves: a file that only LISTS a test does not spread the selection", () => {
