@@ -214,6 +214,73 @@ test("a machine template fires, and an `i18n: ignore` pragma is what silences it
 	);
 });
 
+/* The pragma is per literal, NOT per element (review M1/Q-2 on #1767).
+ *
+ * One element, two letter-bearing literals, one pragma: the literal whose own
+ * line carries it stays silent and its sibling one line later still fires.
+ * `enclosingElement` is the NEAREST element, so both literals below resolve to
+ * the same `<div>` - under the old element-scoped reading the `<div>` span
+ * (lines 2-6) contained the pragma line and silenced BOTH. That is the bug; the
+ * counterfactual is the test. */
+function pragmaScratchSource(prefix, source) {
+	const dir = scratchTree(prefix);
+	const file = join(dir, "src/pragma.tsx");
+	writeFileSync(file, source);
+	const opened = openSnapshot(dir, [file]);
+	const sourceFile = opened.snapshot
+		.getDefaultProjectForFile(file)
+		.program.getSourceFile(file);
+	assert.ok(sourceFile, "the pragma scratch file must parse");
+	return {
+		sourceFile,
+		close: () => {
+			opened.api.close();
+			rmSync(dir, { recursive: true, force: true });
+		},
+	};
+}
+
+const PRAGMA_SIBLINGS = `export const a = (
+	<div>
+		{cond
+			? "Keep exact syntax" /* i18n: ignore a machine phrase, not prose */
+			: "Drop this instead"}
+	</div>
+);
+`;
+
+test("a pragma on a literal's own line silences that literal", () => {
+	const scratch = pragmaScratchSource("pragma-own-", PRAGMA_SIBLINGS);
+	try {
+		const texts = findAddedCopyViolations(scratch.sourceFile, null).map(
+			(finding) => finding.text,
+		);
+		assert.ok(
+			!texts.includes("Keep exact syntax"),
+			`a pragma on the literal's own line must exempt it, saw ${texts.join(", ")}`,
+		);
+	} finally {
+		scratch.close();
+	}
+});
+
+test("a pragma elsewhere in the element does not exempt its siblings", () => {
+	const scratch = pragmaScratchSource("pragma-sibling-", PRAGMA_SIBLINGS);
+	try {
+		const texts = findAddedCopyViolations(scratch.sourceFile, null).map(
+			(finding) => finding.text,
+		);
+		/* The whole point of the narrowing: this literal sits in the SAME element
+		 * as a pragma'd literal and carries no pragma of its own, so it fires. */
+		assert.ok(
+			texts.includes("Drop this instead"),
+			`an element-mate's pragma must not exempt this literal, saw ${texts.join(", ")}`,
+		);
+	} finally {
+		scratch.close();
+	}
+});
+
 test("diff hunks cover added and new-file lines, including empty ranges", () => {
 	assert.deepEqual(
 		[...parseAddedLines("@@ -0,0 +1,3 @@\n+a\n+b\n+c").added],

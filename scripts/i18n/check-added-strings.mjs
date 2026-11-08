@@ -67,6 +67,14 @@
  * expose a static literal to flag. Technical copy still needs the same narrow
  * `i18n: ignore <reason>` or allowlist reason as the original scanner.
  *
+ * AN EXEMPTION IS PER LITERAL, ON ITS OWN LINE. A pragma silences the literal
+ * whose own lines carry it and nothing else - not the rest of the JSX element
+ * it sits in, which is how a reason written for one glyph used to silence its
+ * siblings too (review M1/Q-2 on #1767). That is the form
+ * `docs/i18n/literal-allowance.md` documents. A multi-line literal is covered
+ * by a pragma on any of its own lines; the enclosing element's other literals
+ * are not covered by it.
+ *
  * Usage: node scripts/i18n/check-added-strings.mjs [--base origin/main]
  *        [--repo <path>]
  *
@@ -92,7 +100,6 @@ import {
 	allowlistReason,
 	collapse,
 	copyTexts,
-	enclosingElement,
 	inSpan,
 	isScanned,
 	lineSpan,
@@ -595,13 +602,25 @@ export function findAddedCopyViolations(
 	const pragmas = pragmaLines(sourceFile);
 	const findings = [];
 	const isAdded = (line) => addedLines === null || addedLines.has(line);
-	const exempt = (node) => {
-		const element = enclosingElement(node);
-		return (
-			inSpan(lineSpan(sourceFile, node), pragmas) ||
-			(element !== undefined && inSpan(lineSpan(sourceFile, element), pragmas))
-		);
-	};
+	/**
+	 * A pragma exempts exactly the literal whose OWN lines carry it.
+	 *
+	 * It used to also exempt every literal in the enclosing JSX element, because
+	 * the element's whole span was searched for a pragma line. One glyph's reason
+	 * therefore silenced its siblings: in `slash-commands.tsx` the pragma written
+	 * for the `[x]` marker on its own line also covered the `[ ]` arm one line
+	 * later, and the element-scoped reading was the loophole review M1/Q-2 filed
+	 * on #1767 (that file's 2437-2462 span and
+	 * `delegated-retention-copy.tsx`'s 50-54 were the two cases).
+	 *
+	 * Own-line is not a new rule invented here: `docs/i18n/literal-allowance.md`
+	 * already documents the exemption as "an inline `// i18n: ignore <reason>`
+	 * pragma on its own line", and the template-sink contract below says the
+	 * same. The two real pragmas from that review sit inline on their literals'
+	 * own lines, so they keep working unchanged - which is why this narrowing
+	 * needs no source change, only the dropped element span.
+	 */
+	const exempt = (node) => inSpan(lineSpan(sourceFile, node), pragmas);
 	/**
 	 * Push one candidate. A caller with no restore tester (every existing caller
 	 * and test) gets the unchanged `{ line, kind, text }` shape; with a tester a
