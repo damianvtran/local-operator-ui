@@ -1,7 +1,7 @@
 {
 	"ui.chat.tags.label": "Tags",
 	"ui.chat.tags.menu": "Tags…",
-	"ui.chat.tags.group": "Group chats by tag",
+	"ui.chat.tags.group": "Split time sections by tag",
 	"ui.chat.tags.mode_hint": "Tag groups use Time section grouping.",
 	"ui.chat.tags.use_time": "Use Time section",
 	"ui.chat.tags.auto_tag": "Auto-tag forked sessions",

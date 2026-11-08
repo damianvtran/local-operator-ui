@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_mode.live": "{count, plural, one {{count, number, ::group-off} جاری} other {{count, number, ::group-off} جاری}}",
+	"ui.chat.tag_mode.not_loaded": "اس ٹیگ کی پرانی چیٹس ابھی لوڈ نہیں ہوئیں۔",
+	"ui.chat.tag_mode.mode_hint": "ٹیگ گروہ وقت کے حصے یا ٹیگ کی گروہ بندی استعمال کرتے ہیں۔",
+	"ui.chat.tag_mode.use_tag": "ٹیگ استعمال کریں"
+}

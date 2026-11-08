@@ -88,6 +88,9 @@ export const useCanonicalSessionsStore = Object.assign(() => state, {
   setState: (next) => Object.assign(state, typeof next === "function" ? next(state) : next),
 });
 export const setCanonicalSessions = (sessions) => { state.sessions = sessions; };
+// \`chat-tag-header\` draws a folded group's live cue with \`ChatSessionStatus\`
+// (PR #1747 U1), which imports this. No row here is an unread completion.
+export const unreadMarkKind = () => null;
 `,
 		);
 		fixture(

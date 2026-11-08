@@ -123,6 +123,14 @@ const bundle = await build({
 			 */
 			'export * from "./src/renderer/src/features/chat/chat-sidebar-agents";',
 			/*
+			 * Tag mode (issue #1733) is a composition of three shipped modules -
+			 * the pin order, the tag bucketing and the fork auto-tag rule - so its
+			 * cases drive those modules rather than a restatement of them.
+			 */
+			'export { orderPinnedRows } from "./src/renderer/src/features/chat/chat-pin-order";',
+			'export { groupChatsByTag } from "./src/renderer/src/features/chat/chat-tag-groups";',
+			'export { forkAutoTag } from "./src/renderer/src/features/chat/chat-auto-tag";',
+			/*
 			 * The store joins the bundle for the PERSISTENCE case, and for one
 			 * reason: the view the popover writes is a persisted field, so the
 			 * claim "this setting survives a relaunch" is a claim about the
@@ -190,6 +198,12 @@ const {
 	CHAT_LIST_SECTIONS,
 	PINNED_AGENTS_MAX,
 	togglePinnedAgent,
+	drawnGroupBy,
+	effectiveLoads,
+	tagSurfaceOn,
+	orderPinnedRows,
+	groupChatsByTag,
+	forkAutoTag,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -1813,7 +1827,8 @@ test("the AGENTS/TEAMS region draws each entity row behind the view's own gate",
 test("a grouped list is the page plus the pinned rows, never the page alone", () => {
 	const source = readFileSync(SIDEBAR, "utf8");
 	assert.ok(
-		source.includes("groupRows([...pinned, ...pagedRows], view.groupBy)"),
+		// `orderedPinned` since issue #1733: the same pinned rows, in manual order.
+		source.includes("groupRows([...orderedPinned, ...pagedRows], groupBy)"),
 		"the grouped arrangement drops the pinned rows, so grouping acts as a filter",
 	);
 });
@@ -1966,4 +1981,201 @@ test("a tag fold survives the disclosures blob's relaunch round trip", () => {
 	);
 	assert.match(source, /tagGroupCollapsed\(expanded, bucket\.id\)/);
 	assert.match(source, /toggleTagDisclosure\(current, bucket\.id\)/);
+});
+
+/*
+ * `Group by › Tag` (issue #1733, docs/design/sidebar-tag-first-grouping.md).
+ * Each test below is one acceptance criterion of the brief's §6, driven through
+ * the shipped modules; the sidebar's own wiring is pinned by source where the
+ * JSX is the only place it can be read (the file header says why).
+ */
+test('tag mode: "tag" round-trips through the parser and the store', () => {
+	assert.equal(parseSidebarView({ groupBy: "tag" }).groupBy, "tag");
+	assert.equal(
+		parseSidebarView(JSON.parse(JSON.stringify({ groupBy: "tag" }))).groupBy,
+		"tag",
+		"the persisted blob is JSON; a relaunch re-parses it",
+	);
+	assert.equal(
+		parseSidebarView({ groupBy: "tags" }).groupBy,
+		DEFAULT_SIDEBAR_VIEW.groupBy,
+		"an unknown value still falls back to the default",
+	);
+	/*
+	 * Choosing Tag never writes the Time-section switch: the stored subheader
+	 * preference waits for Time section untouched (design §2.2).
+	 */
+	const before = parseSidebarView({ tagsEnabled: false });
+	const chosen = parseSidebarView({ ...before, groupBy: "tag" });
+	assert.equal(chosen.tagsEnabled, false);
+	assert.equal(
+		parseSidebarView({ ...chosen, groupBy: "section" }).tagsEnabled,
+		false,
+	);
+});
+
+test("tag mode: a stored tag on a tag-less backend draws Time section and is kept", () => {
+	const stored = parseSidebarView({ groupBy: "tag" });
+	assert.equal(drawnGroupBy(stored, true), "tag");
+	assert.equal(drawnGroupBy(stored, false), "section");
+	assert.equal(
+		stored.groupBy,
+		"tag",
+		"the fallback is a render answer, not a write",
+	);
+	for (const groupBy of ["section", "agent", "flat"])
+		assert.equal(drawnGroupBy({ groupBy }, false), groupBy);
+	/*
+	 * And the sidebar spreads the STORED view on every write - the drawn answer
+	 * lives in its own local, so no `{ ...view }` can carry it back.
+	 */
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(source, /const groupBy = drawnGroupBy\(view, tagsAvailable\);/);
+	assert.doesNotMatch(
+		source,
+		/setChatSidebarView\(\{\s*\.\.\.view,\s*groupBy\s*[,}]/,
+		"the drawn grouping is never written back as the stored one",
+	);
+});
+
+test("tag mode: the page starts on the held 50-row head without rewriting loads", () => {
+	assert.equal(effectiveLoads({ groupBy: "tag", loads: 0 }), 2);
+	assert.equal(pageLimit(effectiveLoads({ groupBy: "tag", loads: 0 })), 50);
+	assert.equal(effectiveLoads({ groupBy: "tag", loads: 1 }), 2);
+	assert.equal(
+		effectiveLoads({ groupBy: "tag", loads: 3 }),
+		3,
+		"a reader already past the head keeps their rung",
+	);
+	for (const groupBy of ["section", "agent", "flat"])
+		assert.equal(effectiveLoads({ groupBy, loads: 0 }), 0);
+	/*
+	 * The cut, the label and the press all read the ONE drawn rung, and the press
+	 * goes 50 -> 100 from it rather than 10 -> 25 (which would add nothing).
+	 */
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		/const loads = effectiveLoads\(\{ groupBy, loads: view\.loads \}\);/,
+	);
+	assert.match(source, /limit: pageLimit\(loads\),/);
+	assert.match(source, /const next = loads \+ 1;/);
+	assert.match(source, /pageReveal\(arranged, loads, page\.remaining\)/);
+	assert.equal(
+		pageLimit(effectiveLoads({ groupBy: "tag", loads: 0 }) + 1),
+		100,
+	);
+	/*
+	 * And the press holds the reader's place (design §2.6.3): rows land in groups
+	 * ABOVE the viewport in Tag mode, so the first visible row is recorded and put
+	 * back after the commit (`sidebar-focus-hold.test.mjs` drives the hold itself).
+	 */
+	assert.match(
+		source,
+		/groupBy === "tag" && !keyboard\s*\?\s*firstVisibleRow\(listPanelRef\.current\)/,
+	);
+	assert.match(
+		source,
+		/holdPageAnchor\(listPanelRef\.current, pageAnchorRef\.current\);/,
+	);
+});
+
+test("tag mode: the tag surface is the switch OR the mode", () => {
+	assert.equal(tagSurfaceOn({ groupBy: "section", tagsEnabled: false }), false);
+	assert.equal(tagSurfaceOn({ groupBy: "section", tagsEnabled: true }), true);
+	assert.equal(tagSurfaceOn({ groupBy: "tag", tagsEnabled: false }), true);
+	assert.equal(tagSurfaceOn({ groupBy: "agent", tagsEnabled: false }), false);
+});
+
+test("tag mode: forks auto-tag under Tag even with the Time-section switch off", () => {
+	const view = (extra) => ({ ...DEFAULT_SIDEBAR_VIEW, ...extra });
+	assert.equal(
+		forkAutoTag(view({ groupBy: "tag", tagsEnabled: false }), true),
+		true,
+	);
+	assert.equal(
+		forkAutoTag(view({ groupBy: "tag", autoTagForks: false }), true),
+		false,
+		"the reader's own auto-tag switch still wins",
+	);
+	assert.equal(
+		forkAutoTag(view({ groupBy: "agent", tagsEnabled: false }), true),
+		false,
+	);
+	assert.equal(forkAutoTag(view({ groupBy: "tag" }), false), undefined);
+});
+
+test("tag mode: pins lead their tag in manual order, then the lift, then the clock", () => {
+	const categories = [
+		{ id: "project", name: "Project", order: 1, conversations: 2 },
+		{ id: "review", name: "Review", order: 0, conversations: 3 },
+		{ id: "gone", name: "Unused", order: 2, conversations: 0 },
+	];
+	const tagged = (entry, id) => ({
+		...entry,
+		tags: [{ id, name: id }],
+		primary: id,
+	});
+	const pinned = [
+		tagged(row("pinA", SECONDS(50)), "review"),
+		tagged(row("pinB", SECONDS(2)), "review"),
+		row("pinC", SECONDS(3)),
+	];
+	const rest = [
+		tagged(row("old", SECONDS(100)), "review"),
+		tagged(row("new", SECONDS(1)), "review"),
+		tagged(row("live", SECONDS(300), "busy"), "project"),
+		tagged(row("quiet", SECONDS(5)), "project"),
+		row("loose", SECONDS(4)),
+		// A primary the registry no longer has is Untagged, never a ghost header.
+		{
+			...row("deleted", SECONDS(6)),
+			tags: [{ id: "deleted", name: "x" }],
+			primary: "deleted",
+		},
+	];
+	// The reader moved pinB above pinA: the manual order, not the catalogue's.
+	const orderedPinned = orderPinnedRows(pinned, ["pinB", "pinA", "pinC"]);
+	const paged = pageOrder(rest, "active-first", "active");
+	const groups = groupChatsByTag(
+		[...orderedPinned, ...paged],
+		categories,
+		true,
+	);
+	assert.deepEqual(
+		groups.map((group) => [
+			group.id,
+			group.rows.map((entry) => entry.session_id),
+		]),
+		[
+			["review", ["pinB", "pinA", "new", "old"]],
+			["project", ["live", "quiet"]],
+			["untagged", ["pinC", "loose", "deleted"]],
+		],
+		"registry order, Untagged last, no empty group, one row once",
+	);
+	// Most recent: no lift, the live row sits by its clock inside its group.
+	const recent = groupChatsByTag(
+		[...orderedPinned, ...pageOrder(rest, "recent", "active")],
+		categories,
+		true,
+	);
+	assert.deepEqual(
+		recent
+			.find((group) => group.id === "project")
+			.rows.map((entry) => entry.session_id),
+		["quiet", "live"],
+	);
+	// The sidebar hands the mode exactly that list, and the agent grouping now
+	// reads the same manual order (design §2.4 note).
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		/taggedRows\(\[\.\.\.orderedPinned, \.\.\.pagedRows\], "tag", true\)/,
+	);
+	assert.match(
+		source,
+		/groupRows\(\[\.\.\.orderedPinned, \.\.\.pagedRows\], groupBy\)/,
+	);
+	assert.equal(groupRows(rest, "tag"), null, "one bucketing implementation");
 });

@@ -100,3 +100,43 @@ export function tagBucketRowIds<
 			?.rows ?? rows
 	).map((row) => row.session_id);
 }
+
+/** A Tag-mode group: a loaded bucket, or a tag whose chats are all unloaded. */
+export type TagModeGroup<T> = TagGroup<T> & { unloaded?: true };
+
+/**
+ * The Tag-mode groups: the loaded buckets PLUS a header for every registry tag
+ * that carries conversations none of which is in the loaded page (PR #1747
+ * round 1, U2).
+ *
+ * WHY: `groupChatsByTag` draws only occupied buckets of the rows the client
+ * holds, and the footer lists only `conversations === 0` tags. A tag whose chats
+ * are all older than the 50-row head was therefore in neither place - no header,
+ * not "unused", nothing to press or drop onto - which breaks #1733's "keep older
+ * retained conversations discoverable within the selected tag-based view".
+ *
+ * HONEST, NOT INVENTED: the registry's `conversations` counts archived/hidden
+ * sessions and non-primary assignments (`sidebar-tags-api.md`), so it cannot be a
+ * group's count. An unloaded group therefore has NO count and no rows; the caller
+ * draws it only while more chats can be loaded (`more`), because once the whole
+ * catalogue is held a still-empty tag is genuinely not in this list.
+ * Registry order is kept, Untagged stays last. Per-tag server paging is deferred.
+ */
+export function withUnloadedTags<T>(
+	groups: readonly TagGroup<T>[],
+	categories: readonly TagCategory[],
+	more: boolean,
+): TagModeGroup<T>[] {
+	if (!more) return [...groups];
+	const drawn = new Map(groups.map((group) => [group.id, group]));
+	const ordered = [...categories].sort((a, b) => a.order - b.order);
+	const out: TagModeGroup<T>[] = ordered.flatMap((tag) => {
+		const group = drawn.get(tag.id);
+		if (group) return [group];
+		return tag.conversations > 0
+			? [{ id: tag.id, name: tag.name, rows: [], unloaded: true as const }]
+			: [];
+	});
+	const untagged = drawn.get("untagged");
+	return untagged ? [...out, untagged] : out;
+}

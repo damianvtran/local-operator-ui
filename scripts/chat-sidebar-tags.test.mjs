@@ -24,6 +24,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
+export {foldedLiveCue} from "./src/renderer/src/features/chat/chat-sidebar-view";
 export {moveChatToTag} from "./src/renderer/src/features/chat/chat-tag-move";
 export {parseSidebarView, DEFAULT_SIDEBAR_VIEW, toggleTagDisclosure, tagGroupBodyRows, tagGroupCollapsed} from "./src/renderer/src/features/chat/chat-sidebar-view";
 export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -96,6 +97,8 @@ const {
 	toggleTagDisclosure,
 	tagGroupBodyRows,
 	tagGroupCollapsed,
+	withUnloadedTags,
+	foldedLiveCue,
 	desktopEndpoint,
 	desktopRequestSchema,
 	useUiPreferencesStore: preferences,
@@ -187,15 +190,29 @@ test("a header move repositions past the VISIBLE neighbour, not the registry nei
 	assert.equal(moveTagPast(registry, "gone", "a", "up"), null);
 	assert.equal(moveTagPast(registry, "a", "gone", "up"), null);
 });
-test("grouping is suspended outside Time sections and while searching", () => {
+test("grouping is suspended under Agent and team, In one list, and while searching", () => {
 	const source = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
 	);
+	/*
+	 * Two arrangements draw tag headers since issue #1733: Time section with the
+	 * switch on, and `Group by › Tag`. Both through ONE predicate, minus search,
+	 * shared by the bucketing and the re-tag drag.
+	 */
 	assert.match(
 		source,
-		/tagsAvailable &&[\s\S]*?view.tagsEnabled &&[\s\S]*?view.groupBy === "section" &&[\s\S]*?!query\.trim\(\)/,
+		/const tagsGrouped =\s*tagsAvailable &&\s*\(groupBy === "section" \|\| groupBy === "tag"\) &&\s*tagSurfaceOn\(\{ \.\.\.view, groupBy \}\);/,
 	);
+	assert.match(
+		source,
+		/const tagRowsGrouped = tagsGrouped && !query\.trim\(\);/,
+	);
+	assert.match(
+		source,
+		/groupChatsByTag\(rows, tagCategories, tagRowsGrouped\)/,
+	);
+	assert.match(source, /enabled: tagRowsGrouped,/);
 });
 /*
  * ISSUE #1639: a fold is keyed by TAG, so one press folds that tag's header in
@@ -235,7 +252,7 @@ test("a stored fold has no effect while a search query suspends grouping", () =>
 	);
 	assert.match(
 		source,
-		/if \(!groups\) return rows\.map\(\(row\) => sessionRow\(row\)\);/,
+		/if \(!loaded\) return rows\.map\(\(row\) => sessionRow\(row\)\);/,
 		"the ungrouped path must draw every row, untouched by any fold",
 	);
 });
@@ -728,5 +745,235 @@ test("failed move restores the source tags and reports move-specific retry guida
 	assert.equal(
 		requests.filter((request) => request.op === "sessions.tags").length,
 		1,
+	);
+});
+
+/*
+ * ISSUE #1733, `Group by › Tag` (docs/design/sidebar-tag-first-grouping.md):
+ * the same header and the same fold map as the Time-section subheaders.
+ */
+test("tag mode folds with the same tag:<id> key as Time section", () => {
+	const folded = toggleTagDisclosure({}, "a");
+	// Tag mode draws ONE list of top-level groups; the Time section draws per section.
+	const tagMode = groupChatsByTag(
+		[row("p1", "a"), row("t1", "a"), row("t2", null)],
+		categories,
+		true,
+	);
+	const review = tagMode.find((group) => group.id === "a");
+	assert.equal(review.rows.length, 2);
+	assert.deepEqual(tagGroupBodyRows(review.rows, folded, "a"), []);
+	assert.equal(
+		tagGroupCollapsed(folded, "a"),
+		true,
+		"the fold Time section reads",
+	);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	// One header in both modes; only the top-level wrapper and heading differ.
+	assert.match(source, /headingId=\{headingId\}/);
+	assert.match(source, /data-chat-tag-section=\{bucket\.id\}/);
+	// The arrangement is ONE drag section, so a row may move to any tag's header.
+	assert.match(source, /<div data-chat-section="tag">/);
+	assert.match(source, /aria-labelledby=\{headingId\}/);
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
+	);
+	assert.match(header, /const NameTag = headingId \? "h3" : "span";/);
+});
+test("tag mode: a pinned row's drag is a tag move, never a pin reorder", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/if \(groupBy === "section" && pinnedDrawnIds\.includes\(id\)\) \{/,
+	);
+	assert.match(source, /pinsEnabled &&\s*groupBy === "section" &&\s*!nested/);
+});
+test("the popover offers Tag second, only with tags, and hides the switch under it", () => {
+	const menu = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar-view-menu.tsx",
+		"utf8",
+	);
+	const order = [
+		"time_section",
+		'ui.chat.sidebar_view.tag"',
+		"agent_team",
+		"one_list",
+	].map((key) => menu.indexOf(key));
+	assert.ok(order.every((at) => at > 0));
+	assert.deepEqual(
+		[...order].sort((a, b) => a - b),
+		order,
+		"radio order",
+	);
+	assert.match(menu, /\.\.\.\(tagsAvailable\s*\?\s*\[/);
+	assert.match(
+		menu,
+		/\{drawn !== "tag" && \(\s*<div className="flex h-\[39px\]/,
+	);
+	assert.match(menu, /tagSurfaceOn\(view\) && autoTagAvailable/);
+	assert.match(menu, /\(drawn === "agent" \|\| drawn === "flat"\) &&/);
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
+	);
+	assert.equal(en["ui.chat.tags.group"], "Split time sections by tag");
+	const view = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar_view.json", "utf8"),
+	);
+	assert.equal(view["ui.chat.sidebar_view.tag"], "Tag");
+});
+/*
+ * #1745 round-2 follow-ups, carried by the #1733 PR. Source pins, because the
+ * sidebar's ring cannot be rendered under node:test; `TagGroupKeyboardFollowUps`
+ * in `chat-sidebar-tags.stories.tsx` drives the same keys on the real component.
+ */
+test("#1745 follow-ups: bare arrows fold, Right moves the stop, Left climbs to the header", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	// N1: Alt/Meta+Arrow never fold.
+	assert.match(
+		source,
+		/const bareArrow =\s*!event\.altKey &&\s*!event\.metaKey &&/,
+	);
+	assert.match(source, /if \(tagFold && bareArrow\) \{/);
+	// M2: ArrowRight into the first row moves the ring's stop with it.
+	assert.match(source, /first\.focus\(\);\s*applyRowStop\(first\);/);
+	// U7: ArrowLeft from a row in a tag group climbs to that group's header.
+	assert.match(
+		source,
+		/event\.key === "ArrowLeft" &&\s*bareArrow &&\s*target\.hasAttribute\("data-chat-row"\)/,
+	);
+	assert.match(
+		source,
+		/rowGroupHeader\.focus\(\);\s*applyRowStop\(rowGroupHeader\);/,
+	);
+});
+test("#1745 follow-ups: a chord's action returns focus to the stop it was pressed on", () => {
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
+	);
+	// M1/U8: the origin is recorded on the chord and preferred on restore.
+	assert.match(
+		header,
+		/origin\.current = event\.currentTarget === toggle\.current \? "toggle" : "stop";/,
+	);
+	assert.match(
+		header,
+		/origin\.current === "toggle" && toggle\.current\?\.isConnected\s*\?\s*toggle\.current/,
+	);
+	// A pointer press on `⋯` is an action that started on `⋯`.
+	assert.match(
+		header,
+		/onPointerDown=\{\(\) => \{\s*origin\.current = "stop";/,
+	);
+	// D4: the inset ring must win over the shared outline utility's offset.
+	assert.match(header, /focus-visible:-outline-offset-2!/);
+	// The first-use title stays the mode-neutral pre-PR copy: it also draws in Tag
+	// mode, which has no time sections to split (PR #1747 round 1, D1/U3/R5/M1).
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
+	);
+	assert.equal(en["ui.chat.tags.empty_title"], "Group chats by tag.");
+});
+
+/*
+ * PR #1747 round 1, U2: a tag whose chats are all past the loaded page keeps a
+ * (countless) header in Tag mode while more can load - and only then.
+ */
+test("tag mode: a tag with only unloaded chats keeps its header while more can load", () => {
+	const registry = [
+		{ id: "b", name: "Project", order: 1, conversations: 1 },
+		{ id: "a", name: "Review", order: 0, conversations: 2 },
+		{ id: "taxes", name: "Taxes", order: 2, conversations: 4 },
+		{ id: "empty", name: "Empty", order: 3, conversations: 0 },
+	];
+	const loaded = groupChatsByTag(
+		[row("1", "a"), row("2", null)],
+		registry,
+		true,
+	);
+	const groups = withUnloadedTags(loaded, registry, true);
+	assert.deepEqual(
+		groups.map((group) => [
+			group.id,
+			group.rows.length,
+			group.unloaded ?? false,
+		]),
+		[
+			["a", 1, false],
+			["b", 0, true],
+			["taxes", 0, true],
+			["untagged", 1, false],
+		],
+		"registry order, unloaded tags with no rows, zero-conversation tags left to the footer, Untagged last",
+	);
+	assert.deepEqual(
+		withUnloadedTags(loaded, registry, false).map((group) => group.id),
+		["a", "untagged"],
+		"with nothing more to load, no placeholder promises a press with nothing behind it",
+	);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(source, /withUnloadedTags\(loaded, tagCategories, footShown\)/);
+	assert.match(source, /count=\{null\}/);
+	assert.match(
+		source,
+		/data-sidebar-page-more-tag=\{bucket\.id\}\s*onPointerDown=\{notePagePointer\}\s*onClick=\{pressPageMore\}/,
+	);
+});
+/* PR #1747 round 1, U1/D2: a folded group's live cue. */
+test("tag mode: a folded group hiding live chats owes its header a live cue", () => {
+	const live = (id, code) => ({ session_id: id, status: { code } });
+	const rows = [live("a", "idle"), live("b", "busy"), live("c", "approval")];
+	assert.equal(foldedLiveCue(rows, false), null, "open: the rows say it");
+	assert.equal(foldedLiveCue([live("a", "idle")], true), null);
+	const cue = foldedLiveCue(rows, true);
+	assert.equal(cue.count, 2);
+	assert.equal(cue.row.session_id, "c", "the row stopped on the reader wins");
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/live=\{topLevel \? foldedLiveCue\(bucket\.rows, collapsed\) : null\}/,
+	);
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
+	);
+	// The list's own status glyph, never a new token.
+	assert.match(header, /<ChatSessionStatus row=\{live\.row\} \/>/);
+	assert.match(
+		header,
+		/t\("ui\.chat\.tag_mode\.live", \{ count: live\.count \}\)/,
+	);
+});
+/* PR #1747 round 1, U4/U6. */
+test("tag mode: the Agent/flat hint offers Tag, and Tag mode speaks a pin", () => {
+	const menu = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar-view-menu.tsx",
+		"utf8",
+	);
+	assert.match(menu, /t\("ui\.chat\.tag_mode\.mode_hint"\)/);
+	assert.match(menu, /onView\(\{ \.\.\.view, groupBy: "tag" \}\)/);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/pinned && groupBy === "tag" && !nested && \(\s*<span className="sr-only">\s*, \{t\("ui\.chat\.sidebar_view\.section\.pinned"\)\}/,
 	);
 });

@@ -19,6 +19,7 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import {
 	ArrowDown,
@@ -37,6 +38,7 @@ import {
 	useState,
 } from "react";
 import type { TagCategory } from "../../../../../shared/desktop-contract";
+import { ChatSessionStatus } from "./chat-session-status";
 
 /**
  * The attribute a group header's `⋯` control carries. It is a stop in the
@@ -223,10 +225,18 @@ export function ChatTagHeader({
 	announce,
 	unused = false,
 	disclosure,
+	headingId,
+	live = null,
 }: {
 	id: string;
 	name: string;
-	count: number;
+	/**
+	 * The loaded bucket's size, or null for a Tag-mode tag whose chats are all
+	 * beyond the loaded page (PR #1747 U2): the registry's number counts archived
+	 * and non-primary assignments, so no honest count exists - the header draws
+	 * none rather than an invented one.
+	 */
+	count: number | null;
 	above: string | null;
 	below: string | null;
 	announce: (sentence: string) => void;
@@ -239,6 +249,23 @@ export function ChatTagHeader({
 	 * names a missing element.
 	 */
 	disclosure?: { collapsed: boolean; bodyId: string; onToggle: () => void };
+	/**
+	 * Set when the header is a TOP-LEVEL group (`Group by › Tag`, issue #1733):
+	 * the name is then an `<h3>` with this id, the level of the time-section
+	 * labels it replaces, so heading navigation (VoiceOver rotor, NVDA `H`) still
+	 * jumps group to group and the enclosing `<section>` can be labelled by it.
+	 * Only the name is the heading - the chevron and actions stay outside it, so
+	 * their own names are unchanged. Absent inside a Time section, where the
+	 * section label is already the heading and a nested one would be noise.
+	 */
+	headingId?: string;
+	/**
+	 * A FOLDED Tag-mode group hiding live chats (PR #1747 U1/D2, `foldedLiveCue`):
+	 * the header shows that row's own status glyph - the list's existing mark,
+	 * never a new token - and the chevron's name gains the live count, because Tag
+	 * mode has no Running section to keep a folded live chat in sight.
+	 */
+	live?: { row: CanonicalSessionRow; count: number } | null;
 }) {
 	useI18nLocale();
 	const registry = useChatTagRegistry();
@@ -249,6 +276,15 @@ export function ChatTagHeader({
 	const [retry, setRetry] = useState<(() => void) | null>(null);
 	const errorId = useId();
 	const stop = useRef<HTMLButtonElement>(null);
+	/*
+	 * WHICH OF THE HEADER'S TWO STOPS AN ACTION STARTED ON (#1745 round 2, M1/U8).
+	 * The chevron answers the header's chords too, so an F2 / Alt+Arrow / Shift+F10
+	 * pressed there must hand focus back THERE when the action settles - returning
+	 * it to `⋯` moved the reader one stop along the ring without their asking. A
+	 * pointer press on `⋯` resets it, because that action started on `⋯`.
+	 */
+	const toggle = useRef<HTMLButtonElement>(null);
+	const origin = useRef<"toggle" | "stop">("stop");
 	const cancelDelete = useRef<HTMLButtonElement>(null);
 	const box = useRef<HTMLDivElement>(null);
 	const managed = id !== "untagged";
@@ -266,11 +302,14 @@ export function ChatTagHeader({
 			// Prefer THIS section's control: one tag may have several headers.
 			// After deletion it no longer exists, so hand focus to a real survivor
 			// (or the footer's New tag row), never a detached node or the body.
-			const target = stop.current?.isConnected
-				? stop.current
-				: document.querySelector<HTMLElement>(
-						`[${TAG_HEADER_STOP_ATTR}="${CSS.escape(below ?? above ?? id)}"], [data-tag-new]`,
-					);
+			const target =
+				origin.current === "toggle" && toggle.current?.isConnected
+					? toggle.current
+					: stop.current?.isConnected
+						? stop.current
+						: document.querySelector<HTMLElement>(
+								`[${TAG_HEADER_STOP_ATTR}="${CSS.escape(below ?? above ?? id)}"], [data-tag-new]`,
+							);
 			focusFrame.current = null;
 			target?.focus({ preventScroll: true });
 		});
@@ -369,6 +408,7 @@ export function ChatTagHeader({
 		}
 		event.preventDefault();
 		event.stopPropagation();
+		origin.current = event.currentTarget === toggle.current ? "toggle" : "stop";
 		if (chord === "rename") setRenaming(true);
 		else if (chord === "menu") setMenuOpen(true);
 		else void move(chord);
@@ -381,10 +421,16 @@ export function ChatTagHeader({
 				{ name: label },
 			)
 		: "";
+	const NameTag = headingId ? "h3" : "span";
+	const liveLabel = live
+		? `${foldLabel}, ${t("ui.chat.tag_mode.live", { count: live.count })}`
+		: foldLabel;
 	const conversations =
 		useSessionTagsStore(
 			(state) => state.categories.find((tag) => tag.id === id)?.conversations,
-		) ?? count;
+		) ??
+		count ??
+		0;
 	return (
 		<div ref={box} aria-busy={registry.pending}>
 			<div
@@ -420,19 +466,22 @@ export function ChatTagHeader({
 					 * extent stay chevron-only. `rtl:-scale-x-100` mirrors the folded
 					 * glyph to point inline-end, the repo's disclosure-chevron rule
 					 * (`finder-files-view.tsx`). The focus ring is inset
-					 * (`-outline-offset-2`) and the 2px gap kept, because with the name
+					 * (`-outline-offset-2!`, important: without it the shared
+					 * `focus-visible` outline utility's own offset wins and the ring is
+					 * drawn outside - #1745 design round 2, D4) and the 2px gap kept, because with the name
 					 * that close an outside ring (or a 0px gap) paints over its first
 					 * letter (measured on the focus-visible frame).
 					 */
 					<button
+						ref={toggle}
 						type="button"
 						tabIndex={-1}
 						{...{ [TAG_TOGGLE_STOP_ATTR]: id }}
 						aria-expanded={!disclosure.collapsed}
 						aria-controls={disclosure.bodyId}
-						aria-label={foldLabel}
-						title={foldLabel}
-						className="-ms-1 -me-1.5 relative flex size-5 shrink-0 items-center justify-center rounded-sm text-ink-dim after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-row-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2"
+						aria-label={liveLabel}
+						title={liveLabel}
+						className="-ms-1 -me-1.5 relative flex size-5 shrink-0 items-center justify-center rounded-sm text-ink-dim after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-row-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2!"
 						onClick={disclosure.onToggle}
 						onKeyDown={onKeyDown}
 					>
@@ -468,15 +517,25 @@ export function ChatTagHeader({
 						}}
 					/>
 				) : (
-					<span
+					<NameTag
+						id={headingId}
 						className="min-w-0 flex-1 truncate"
 						title={label}
 						onDoubleClick={() => managed && setRenaming(true)}
 					>
 						{label}
+					</NameTag>
+				)}
+				{live && (
+					<span
+						aria-hidden="true"
+						data-chat-tag-live={live.count}
+						className="flex shrink-0"
+					>
+						<ChatSessionStatus row={live.row} />
 					</span>
 				)}
-				<span className="shrink-0">{count}</span>
+				{count !== null && <span className="shrink-0">{count}</span>}
 				{managed && !renaming && (
 					<DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
 						<Popover open={confirming} onOpenChange={setConfirming}>
@@ -487,6 +546,9 @@ export function ChatTagHeader({
 										type="button"
 										tabIndex={-1}
 										{...{ [TAG_HEADER_STOP_ATTR]: id }}
+										onPointerDown={() => {
+											origin.current = "stop";
+										}}
 										aria-label={t("ui.chat.tags.header_actions", {
 											name: label,
 										})}
@@ -513,6 +575,15 @@ export function ChatTagHeader({
 								onCloseAutoFocus={(event) => {
 									// Rename and the delete confirm take focus themselves.
 									if (renaming || confirming) event.preventDefault();
+									// A menu opened by Shift+F10 on the chevron closes back to
+									// the chevron, not to Radix's trigger (`origin`, M1/U8).
+									else if (
+										origin.current === "toggle" &&
+										toggle.current?.isConnected
+									) {
+										event.preventDefault();
+										toggle.current.focus({ preventScroll: true });
+									}
 								}}
 							>
 								<DropdownMenuItem onSelect={() => setRenaming(true)}>

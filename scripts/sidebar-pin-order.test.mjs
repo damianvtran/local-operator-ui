@@ -716,7 +716,7 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 	);
 	assert.match(
 		source,
-		/const offersPinnedMove = \(sessionId: string, nested = false\) =>\s*pinsEnabled &&\s*view\.groupBy === "section" &&\s*!nested &&\s*pinnedIndex\.has\(sessionId\)/,
+		/const offersPinnedMove = \(sessionId: string, nested = false\) =>\s*pinsEnabled &&\s*groupBy === "section" &&\s*!nested &&\s*pinnedIndex\.has\(sessionId\)/,
 	);
 	// Tags subdivide the ranked input, never replace it with catalogue order.
 	// The flat path and every occupied bucket still use the same row renderer;
@@ -728,7 +728,7 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 	);
 	assert.ok(
 		grouping.includes(
-			"if (!groups) return rows.map((row) => sessionRow(row));",
+			"if (!loaded) return rows.map((row) => sessionRow(row));",
 		),
 	);
 	// Grouped rows are non-nested and opt into the tag-drag cursor; ungrouped

@@ -93,8 +93,8 @@ release window owner.
 
 ### 3.2 Targets and the primary rule
 
-- **Eligible contexts** for tag drops: tags enabled, `groupBy === "section"`,
-  no search/filter active, and the row's section draws tag headers. This
+- **Eligible contexts** for tag drops: tags enabled and `groupBy === "section"`,
+  or `groupBy === "tag"` (issue #1733); no search/filter active, and the row's section draws tag headers. This
   includes the Pinned section: the shipped Pinned section groups by tags
   (`taggedRows(orderedPinned)`), so Pinned headers are valid assignment
   targets. Agent/team and Flat modes have no tag headers and no pinned

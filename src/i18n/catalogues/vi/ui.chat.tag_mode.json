@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_mode.live": "{count, plural, other {{count, number, ::group-off} đang chạy}}",
+	"ui.chat.tag_mode.not_loaded": "Các cuộc trò chuyện cũ hơn của nhãn này chưa được tải.",
+	"ui.chat.tag_mode.mode_hint": "Các nhóm nhãn dùng cách nhóm của mục Thời gian hoặc Nhãn.",
+	"ui.chat.tag_mode.use_tag": "Dùng Nhãn"
+}

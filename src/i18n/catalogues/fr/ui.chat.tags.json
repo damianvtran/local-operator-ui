@@ -1,7 +1,7 @@
 {
 	"ui.chat.tags.label": "Étiquettes",
 	"ui.chat.tags.menu": "Étiquettes…",
-	"ui.chat.tags.group": "Grouper les conversations par étiquette",
+	"ui.chat.tags.group": "Diviser les sections temporelles par étiquette",
 	"ui.chat.tags.mode_hint": "Les groupes d’étiquettes utilisent la section temporelle.",
 	"ui.chat.tags.use_time": "Utiliser la section temporelle",
 	"ui.chat.tags.auto_tag": "Étiqueter automatiquement les conversations bifurquées",

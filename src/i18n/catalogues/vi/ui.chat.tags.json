@@ -1,7 +1,7 @@
 {
 	"ui.chat.tags.label": "Nhãn",
 	"ui.chat.tags.menu": "Nhãn…",
-	"ui.chat.tags.group": "Nhóm cuộc trò chuyện theo nhãn",
+	"ui.chat.tags.group": "Chia các mục thời gian theo nhãn",
 	"ui.chat.tags.mode_hint": "Các nhóm nhãn dùng cách nhóm của mục Thời gian.",
 	"ui.chat.tags.use_time": "Dùng mục Thời gian",
 	"ui.chat.tags.auto_tag": "Tự động gắn nhãn cuộc trò chuyện tách nhánh",

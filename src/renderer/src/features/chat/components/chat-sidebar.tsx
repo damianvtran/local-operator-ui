@@ -9,9 +9,11 @@ import {
 	chatTagBucket,
 } from "@features/chat/chat-tag-drag";
 import {
+	type TagModeGroup,
 	groupChatsByTag,
 	tagBucketRowIds,
 	unusedTags,
+	withUnloadedTags,
 } from "@features/chat/chat-tag-groups";
 import { moveChatToTag } from "@features/chat/chat-tag-move";
 import { tagHeaderAt, useChatTagDrag } from "@features/chat/use-chat-tag-drag";
@@ -136,6 +138,7 @@ import {
 	type KeyboardEvent,
 	type MutableRefObject,
 	type FocusEvent as ReactFocusEvent,
+	type MouseEvent as ReactMouseEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	type Ref,
@@ -247,10 +250,13 @@ import {
 	SIDEBAR_SECTION_LABEL,
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
+	drawnGroupBy,
+	effectiveLoads,
 	entityMore,
 	entityQueryAdmits,
 	entityRows,
 	entitySectionGap,
+	foldedLiveCue,
 	groupRows,
 	isEntitySection,
 	isSectionShown,
@@ -269,6 +275,7 @@ import {
 	shownSections,
 	tagGroupBodyRows,
 	tagGroupCollapsed,
+	tagSurfaceOn,
 	toggleSectionDisclosure,
 	toggleTagDisclosure,
 } from "../chat-sidebar-view";
@@ -756,7 +763,11 @@ export const rowDraggingMark =
 
 import {
 	type FocusedSlot,
+	type PageAnchor,
+	firstVisibleRow,
 	holdFocusedRow,
+	holdPageAnchor,
+	holdPageFoot,
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
@@ -1743,6 +1754,46 @@ export function ChatSidebar({
 	 * Space carries no click count, and a real pointer press carries 1.
 	 */
 	const listPanelRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * THE TAG-MODE FOOT'S SCROLL ANCHOR (issue #1733, design §2.6.3). In Tag mode a
+	 * `Show N more chats` press lands new rows in EVERY group, most of them above
+	 * the viewport, and this scroller deliberately sets `overflow-anchor: none`
+	 * (the comment on the scroller says why it is load-bearing), so Chromium does
+	 * not compensate: measured in Storybook, the rows on screen jumped by hundreds
+	 * of pixels on one press. The press records the first visible row and its
+	 * offset; every commit restores that offset until the reader scrolls, presses
+	 * or types in the list themselves - which also covers a tail page that
+	 * arrives from the daemon a few frames after the press. Time section needs
+	 * none of this: its new rows land at the foot, below what the reader sees.
+	 */
+	const pageAnchorRef = useRef<PageAnchor | null>(null);
+	/*
+	 * THE ARRANGEMENT THE ANCHOR BELONGS TO (PR #1747 R4). A mode switch from the
+	 * popover or a query typed in the header search happens OUTSIDE the scroller,
+	 * so the gesture release below never sees it - and a later commit would pin an
+	 * unrelated list to the old row. The hold compares this key and lets go.
+	 */
+	const pageAnchorKeyRef = useRef("");
+	/*
+	 * A KEYBOARD PRESS FOLLOWS THE FOOT instead (PR #1747 U5): the anchor keeps
+	 * the rows still, which pushes the focused foot below the clip, and a keyboard
+	 * or screen-reader reader who presses Enter again loads rows they cannot see.
+	 * So a press with no pointer behind it keeps the foot in view; a pointer
+	 * press keeps the rows the eye is on. `footPressedRef` also lets focus fall back
+	 * to the last row when the press exhausts the catalogue and the foot unmounts
+	 * under focus (Q2), rather than to `<body>`.
+	 */
+	const footFollowRef = useRef(false);
+	const footPressedRef = useRef<HTMLElement | null>(null);
+	const footPointerRef = useRef<EventTarget | null>(null);
+	const notePagePointer = (event: ReactPointerEvent<HTMLButtonElement>) => {
+		footPointerRef.current = event.currentTarget;
+	};
+	const releasePageAnchor = () => {
+		pageAnchorRef.current = null;
+		footFollowRef.current = false;
+		footPressedRef.current = null;
+	};
 	const movedRef = useRef<{
 		id: string;
 		top: number;
@@ -3184,12 +3235,37 @@ export function ChatSidebar({
 	 */
 	const view = parseSidebarView(chatSidebarView);
 	/*
-	 * Whether tag groups are the list's arrangement (search aside). The tag footer
-	 * and the popover's "Shown under" line read this; the row grouping itself also
-	 * suspends while searching, which is why that predicate keeps its own spelling.
+	 * THE GROUPING THIS RENDER DRAWS, read instead of `view.groupBy` everywhere the
+	 * list is arranged (issue #1733). A stored `tag` on a backend without the tag
+	 * registry draws Time section; `view` itself stays the STORED preference, and
+	 * every `setChatSidebarView({ ...view, ... })` below spreads it, so that
+	 * fallback is never written back (`drawnGroupBy` says why).
+	 */
+	const groupBy = drawnGroupBy(view, tagsAvailable);
+	/*
+	 * THE RUNG THE PAGE IS CUT AT: `view.loads`, except that Tag mode starts on
+	 * the held fifty-row head (`effectiveLoads`). The cut, the foot label and the
+	 * foot press all read this one number, so the three cannot disagree.
+	 */
+	const loads = effectiveLoads({ groupBy, loads: view.loads });
+	/*
+	 * Whether tag groups are the list's arrangement (search aside): subheaders in
+	 * Time section with the switch on, or `Group by › Tag`, where tags are the
+	 * groups. The tag footer and the popover's "Shown under" line read this; the
+	 * row grouping itself also suspends while searching, which is why
+	 * `tagRowsGrouped` below adds that term.
 	 */
 	const tagsGrouped =
-		tagsAvailable && view.tagsEnabled && view.groupBy === "section";
+		tagsAvailable &&
+		(groupBy === "section" || groupBy === "tag") &&
+		tagSurfaceOn({ ...view, groupBy });
+	/*
+	 * Whether rows are drawn under tag headers right now: `tagsGrouped` minus
+	 * search, which suspends both arrangements (flat, relevance-ordered results).
+	 * One spelling for the bucketing and the re-tag drag, so a header is never
+	 * drawn where its drop target is not armed, or the reverse.
+	 */
+	const tagRowsGrouped = tagsGrouped && !query.trim();
 	/*
 	 * A pin pressed in this panel is written at the BOTTOM of the stored order (issue
 	 * #1067, rule 3; the WHY is on `appendPinnedOrder`). Kept out of the pin control's
@@ -3343,7 +3419,7 @@ export function ChatSidebar({
 	 */
 	const offersPinnedMove = (sessionId: string, nested = false) =>
 		pinsEnabled &&
-		view.groupBy === "section" &&
+		groupBy === "section" &&
 		!nested &&
 		pinnedIndex.has(sessionId);
 	/*
@@ -3429,7 +3505,7 @@ export function ChatSidebar({
 			tagCategories,
 			tagsAvailable &&
 				view.tagsEnabled &&
-				view.groupBy === "section" &&
+				groupBy === "section" &&
 				!query.trim(),
 			id,
 		);
@@ -3722,14 +3798,19 @@ export function ChatSidebar({
 	const settlePinDragRef = useRef(settlePinDrag);
 	settlePinDragRef.current = settlePinDrag;
 	const rowTagDrag = useChatTagDrag({
-		enabled:
-			tagsAvailable &&
-			view.tagsEnabled &&
-			view.groupBy === "section" &&
-			!query.trim(),
+		/*
+		 * Both tag arrangements re-tag by drag (design §2.8): in Tag mode a drop onto
+		 * a header or body is the most direct gesture the list has.
+		 */
+		enabled: tagRowsGrouped,
 		arm: (id) => {
 			announcePinMove(t("ui.chat.tags.move_armed", { name: rowLabel(id) }));
-			if (pinnedDrawnIds.includes(id)) {
+			/*
+			 * PIN REORDERING IS A TIME-SECTION AFFORDANCE (design §2.4): there is no
+			 * Pinned section in Tag mode, so a pinned row's drag there is a tag move
+			 * only and must not arm the pin-order gesture.
+			 */
+			if (groupBy === "section" && pinnedDrawnIds.includes(id)) {
 				pinDragRef.current = {
 					id,
 					label: rowLabel(id),
@@ -3876,7 +3957,7 @@ export function ChatSidebar({
 		? rest
 		: pageOrder(rest, view.orderBy, view.basis);
 	const page = pageRows(arranged, {
-		limit: pageLimit(view.loads),
+		limit: pageLimit(loads),
 		currentId: selectedConversation,
 		searching: searchActive,
 	});
@@ -3894,8 +3975,20 @@ export function ChatSidebar({
 	 * cursor.
 	 */
 	ladderHoldsRowsRef.current = page.remaining > 0 || view.hidden.length > 0;
-	const ladderStep = pageLimit(view.loads + 1) - pageLimit(view.loads);
+	const ladderStep = pageLimit(loads + 1) - pageLimit(loads);
 	const tailMore = groupPaging && catalogueHead.tailCursor !== null;
+	/*
+	 * Whether the page foot is drawn, and what it says - one value each, because
+	 * Tag mode's unloaded-tag placeholders (PR #1747 U2) offer the SAME press and
+	 * must never name a different page or appear when the foot does not.
+	 */
+	const footShown = !query.trim() && (page.remaining > 0 || tailMore);
+	const footLabel = pageMoreLabel(
+		loads,
+		page.remaining > 0
+			? pageReveal(arranged, loads, page.remaining)
+			: ladderStep,
+	);
 	/*
 	 * THE FOOT'S PRESS: SPEND THE RUNG, AND FOLLOW THE CURSOR WHEN THE RUNG IS
 	 * BEYOND WHAT IS HELD. The two are one gesture because the reader asked for one
@@ -3904,8 +3997,29 @@ export function ChatSidebar({
 	 * should have to make. `rest` rather than `pagedRows`, because the rung counts
 	 * the rows the page is taken over and a lifted row is drawn outside it.
 	 */
-	const pressPageMore = () => {
-		const next = view.loads + 1;
+	const pressPageMore = (event: ReactMouseEvent<HTMLButtonElement>) => {
+		/*
+		 * A pointer press is one a `pointerdown` on this very control led into;
+		 * Enter/Space (and assistive-tech activation) arrive with none. Read from a
+		 * ref rather than `event.detail`, which is 0 for every synthetic `click()`
+		 * whatever started it.
+		 */
+		const keyboard = footPointerRef.current !== event.currentTarget;
+		footPointerRef.current = null;
+		pageAnchorKeyRef.current = `${groupBy}\u0000${query}`;
+		footPressedRef.current = event.currentTarget;
+		footFollowRef.current = keyboard && groupBy === "tag";
+		pageAnchorRef.current =
+			groupBy === "tag" && !keyboard
+				? firstVisibleRow(listPanelRef.current)
+				: null;
+		/*
+		 * From the DRAWN rung: in Tag mode the first press goes 50 -> 100, not
+		 * 10 -> 25 (which would draw nothing new over the held head). So a press IS
+		 * written back as the stored rung (`effectiveLoads` says what that means
+		 * for Time section); only a mode SWITCH leaves `view.loads` alone.
+		 */
+		const next = loads + 1;
 		setChatSidebarView({ ...view, loads: next });
 		if (!groupPaging) return;
 		if (pageLimit(next) > rest.length) void fetchCatalogueTail();
@@ -4349,16 +4463,31 @@ export function ChatSidebar({
 	 * banners are suppressed there), so that is a record of what the code does rather than
 	 * a measurement.
 	 */
-	const taggedRows = (rows: CanonicalSessionRow[], scope: string) => {
-		const groups = groupChatsByTag(
-			rows,
-			tagCategories,
-			tagsAvailable &&
-				view.tagsEnabled &&
-				view.groupBy === "section" &&
-				!query.trim(),
-		);
-		if (!groups) return rows.map((row) => sessionRow(row));
+	/*
+	 * `topLevel` is `Group by › Tag` (issue #1733): the same buckets and the same
+	 * `ChatTagHeader` as the Time-section subheaders - one header in both modes, so
+	 * the thing a reader folds, renames and drops onto does not change with the
+	 * mode - but each group is then a labelled `<section>` whose heading is the
+	 * tag's name, because there is no time-section label above it to be one.
+	 * The fold key is the tag's own (`tag:<id>`), whatever the scope, which is
+	 * what makes folding Review here leave it folded in Time section.
+	 */
+	const taggedRows = (
+		rows: CanonicalSessionRow[],
+		scope: string,
+		topLevel = false,
+	) => {
+		const loaded = groupChatsByTag(rows, tagCategories, tagRowsGrouped);
+		if (!loaded) return rows.map((row) => sessionRow(row));
+		/*
+		 * Tag mode also draws the tags whose chats are all past the loaded page
+		 * (PR #1747 U2, `withUnloadedTags`), but only while the foot can load more:
+		 * their placeholder offers that same press, and a promise with nothing
+		 * behind it would be a dead end.
+		 */
+		const groups: TagModeGroup<CanonicalSessionRow>[] = topLevel
+			? withUnloadedTags(loaded, tagCategories, footShown)
+			: loaded;
 		/*
 		 * THE HEADER IS THE TAG'S MANAGEMENT SURFACE (v3 spec D2). `above`/`below`
 		 * are the tags drawn next to it IN THIS SECTION (Untagged excluded, it is
@@ -4380,7 +4509,49 @@ export function ChatSidebar({
 			 */
 			const collapsed = tagGroupCollapsed(expanded, bucket.id);
 			const bodyId = tagGroupBodyId(scope, bucket.id);
-			return (
+			const headingId = topLevel ? `${bodyId}-heading` : undefined;
+			/*
+			 * AN UNLOADED TAG (U2): a header with no count and no chevron - nothing is
+			 * drawn to fold - over a body that is still its drop target, so the tag can
+			 * be found and dropped onto, and that says so and offers the page foot's own
+			 * press. Same muted row as the foot; no second paging contract.
+			 */
+			const group = bucket.unloaded ? (
+				<div
+					key={bucket.id}
+					data-chat-tag-group={bucket.id}
+					data-chat-tag-unloaded=""
+				>
+					<ChatTagHeader
+						id={bucket.id}
+						name={bucket.name}
+						count={null}
+						above={visibleTags[visibleTags.indexOf(bucket.id) - 1] ?? null}
+						below={visibleTags[visibleTags.indexOf(bucket.id) + 1] ?? null}
+						announce={announcePinMove}
+						headingId={headingId}
+					/>
+					<div
+						id={bodyId}
+						data-tag-drop-target={bucket.id}
+						data-tag-drop-body
+						className="ps-4 pb-1"
+					>
+						<p className="px-2 py-1 text-meta text-ink-muted">
+							{t("ui.chat.tag_mode.not_loaded")}
+						</p>
+						<button
+							type="button"
+							data-sidebar-page-more-tag={bucket.id}
+							onPointerDown={notePagePointer}
+							onClick={pressPageMore}
+							className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+						>
+							{footLabel}
+						</button>
+					</div>
+				</div>
+			) : (
 				<div
 					key={bucket.id}
 					data-chat-tag-group={bucket.id}
@@ -4394,6 +4565,8 @@ export function ChatSidebar({
 						above={visibleTags[visibleTags.indexOf(bucket.id) - 1] ?? null}
 						below={visibleTags[visibleTags.indexOf(bucket.id) + 1] ?? null}
 						announce={announcePinMove}
+						headingId={headingId}
+						live={topLevel ? foldedLiveCue(bucket.rows, collapsed) : null}
 						disclosure={{
 							collapsed,
 							bodyId,
@@ -4414,6 +4587,25 @@ export function ChatSidebar({
 						)}
 					</div>
 				</div>
+			);
+			/*
+			 * `data-chat-tag-section`, NOT `data-chat-section`: the arrangement's one
+			 * wrapper below carries `data-chat-section="tag"`, because the re-tag drag
+			 * keeps a tagged row's drop targets inside the row's own
+			 * `[data-chat-section]` (`tagDropTargetAt`). Per-group sections there
+			 * would make every other tag's header a forbidden cross-section target -
+			 * and in Tag mode moving a row to another tag is the whole gesture.
+			 */
+			return topLevel ? (
+				<section
+					key={bucket.id}
+					data-chat-tag-section={bucket.id}
+					aria-labelledby={headingId}
+				>
+					{group}
+				</section>
+			) : (
+				group
 			);
 		});
 	};
@@ -5119,6 +5311,15 @@ export function ChatSidebar({
 				{remote && <span className="sr-only">, {remoteHost}</span>}
 				{remoteUnreachable && (
 					<span className="sr-only">, {remoteUnreachable}</span>
+				)}
+				{/* PINNED IS SPOKEN IN TAG MODE (PR #1747 U6). In Time section a pinned row
+				    sits under the PINNED heading, which is what tells a screen reader; in
+				    Tag mode pins lead their tag group with only the glyph to show it, so
+				    the row's name carries the same word the section label uses. */}
+				{pinned && groupBy === "tag" && !nested && (
+					<span className="sr-only">
+						, {t("ui.chat.sidebar_view.section.pinned")}
+					</span>
 				)}
 				{/* THE ATTRIBUTION'S `sr-only` SENTENCE, on the rows whose visible slot is the
 				    agent-opened claim's: the team slot above, and the silent team-less
@@ -8415,16 +8616,50 @@ export function ChatSidebar({
 					.closest("[data-chat-tag-group]")
 					?.querySelector<HTMLButtonElement>(`[${TAG_TOGGLE_STOP_ATTR}]`)
 			: null;
-		if (tagFold && (event.key === "ArrowRight" || event.key === "ArrowLeft")) {
+		/*
+		 * Bare arrows only (#1745 round 2, N1): Alt+Arrow is the header's own move
+		 * chord and Meta+Arrow belongs to the platform, so neither may also fold.
+		 */
+		const bareArrow =
+			!event.altKey &&
+			!event.metaKey &&
+			(event.key === "ArrowRight" || event.key === "ArrowLeft");
+		if (tagFold && bareArrow) {
 			event.preventDefault();
 			const open = tagFold.getAttribute("aria-expanded") === "true";
 			if (event.key === "ArrowRight" && !open) tagFold.click();
-			else if (event.key === "ArrowRight")
-				document
-					.getElementById(tagFold.getAttribute("aria-controls") ?? "")
-					?.querySelector<HTMLElement>("[data-chat-row]")
-					?.focus();
-			else if (open) tagFold.click();
+			else if (event.key === "ArrowRight") {
+				const first =
+					document
+						.getElementById(tagFold.getAttribute("aria-controls") ?? "")
+						?.querySelector<HTMLElement>("[data-chat-row]") ?? null;
+				// The ring's stop moves with the walk, as Up/Down do above (M2).
+				if (first) {
+					first.focus();
+					applyRowStop(first);
+				}
+			} else if (open) tagFold.click();
+			return;
+		}
+		/*
+		 * ArrowLeft FROM A ROW INSIDE A TAG GROUP climbs to that group's header
+		 * (#1745 round 2, U7), the step the agent/team child rows below take to their
+		 * entity: the chevron, the stop Right came down from.
+		 */
+		const rowGroupHeader =
+			event.key === "ArrowLeft" &&
+			bareArrow &&
+			target.hasAttribute("data-chat-row")
+				? target
+						.closest("[data-chat-tag-group]")
+						?.querySelector<HTMLElement>(
+							`[${TAG_TOGGLE_STOP_ATTR}], [${TAG_HEADER_STOP_ATTR}]`,
+						)
+				: null;
+		if (rowGroupHeader) {
+			event.preventDefault();
+			rowGroupHeader.focus();
+			applyRowStop(rowGroupHeader);
 			return;
 		}
 		const group = target.closest("[data-entity]");
@@ -8509,6 +8744,18 @@ export function ChatSidebar({
 	useLayoutEffect(() => {
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);
 		holdFocusedRow(listPanelRef.current, listSlotRef);
+		if (pageAnchorKeyRef.current !== `${groupBy}\u0000${query}`)
+			releasePageAnchor();
+		holdPageAnchor(listPanelRef.current, pageAnchorRef.current);
+		const fallback = holdPageFoot(
+			listPanelRef.current,
+			footFollowRef.current,
+			footPressedRef.current,
+		);
+		if (fallback) {
+			footPressedRef.current = null;
+			applyRowStop(fallback);
+		}
 	});
 
 	/*
@@ -9737,8 +9984,13 @@ export function ChatSidebar({
 			 * manual arrangement (`chat-pin-order.ts`) and no clock's to change.
 			 */}
 			{tagFooter && tagCategories.length === 0 && tagFooter}
-			{view.groupBy !== "section" &&
-				(groupRows([...pinned, ...pagedRows], view.groupBy) ?? []).map(
+			{/*
+			 * `orderedPinned`, the reader's MANUAL pin order, as the comment above
+			 * promises - this passed `pinned` (catalogue order) until issue #1733's
+			 * design pass noticed the two disagree.
+			 */}
+			{(groupBy === "agent" || groupBy === "flat") &&
+				(groupRows([...orderedPinned, ...pagedRows], groupBy) ?? []).map(
 					(entry) => (
 						<section key={entry.key} data-chat-section={entry.key}>
 							{entry.label ? sectionLabel(entry.label) : null}
@@ -9767,7 +10019,29 @@ export function ChatSidebar({
 					{pinMoveAnnouncement}
 				</span>
 			)}
-			{pinnedShown && view.groupBy === "section" && pinned.length > 0 && (
+			{/*
+			 * `Group by › Tag` (issue #1733, docs/design/sidebar-tag-first-grouping.md):
+			 * the occupied primary tags are the top-level groups across all dates,
+			 * registry order, Untagged last, no time headings. TAGS WIN over
+			 * membership here, the reverse of Time section: pinned rows lead their tag
+			 * group in manual pin order, and live rows follow under Active first through
+			 * `pageOrder`'s lift (a live row past the cut is still in `pagedRows`), so
+			 * there is no Pinned or Running section. With no registry (or under search)
+			 * `taggedRows` falls back to the flat rows it was handed.
+			 */}
+			{/*
+			 * ONE wrapper, so the list's `space-y-4` section gap is spent once around
+			 * the arrangement and the groups inside sit flush on the headers' 28px
+			 * rhythm - the rhythm the same headers keep inside a time section
+			 * (design §2.3: "headers sit flush with no extra gap token"). It is also
+			 * the drag's section (`taggedRows` says why).
+			 */}
+			{groupBy === "tag" && (
+				<div data-chat-section="tag">
+					{taggedRows([...orderedPinned, ...pagedRows], "tag", true)}
+				</div>
+			)}
+			{pinnedShown && groupBy === "section" && pinned.length > 0 && (
 				<section
 					ref={pinnedSectionRef}
 					data-chat-section="pinned"
@@ -9802,7 +10076,7 @@ export function ChatSidebar({
 					)}
 				</section>
 			)}
-			{view.groupBy === "section" &&
+			{groupBy === "section" &&
 				drawnSections.map((key) => {
 					const rows = sectioned[key];
 					if (key === "running" && rows.length === 0 && livenessUnread) {
@@ -9868,19 +10142,15 @@ export function ChatSidebar({
 			 * prints `Show N more sessions` as quiet text at the group's foot, and the
 			 * column's ink budget is spent on the rows themselves.
 			 */}
-			{!query.trim() && (page.remaining > 0 || tailMore) && (
+			{footShown && (
 				<button
 					type="button"
 					data-sidebar-page-more
+					onPointerDown={notePagePointer}
 					onClick={pressPageMore}
 					className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 				>
-					{pageMoreLabel(
-						view.loads,
-						page.remaining > 0
-							? pageReveal(arranged, view.loads, page.remaining)
-							: ladderStep,
-					)}
+					{footLabel}
 				</button>
 			)}
 			{/*
@@ -10541,6 +10811,13 @@ export function ChatSidebar({
 						extendCatalogueTail();
 					}}
 					className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]"
+					/*
+					 * The reader's own gesture ends the Tag-mode foot's anchor hold
+					 * (`holdPageAnchor`): from here the scroll is theirs.
+					 */
+					onWheel={releasePageAnchor}
+					onPointerDown={releasePageAnchor}
+					onKeyDown={releasePageAnchor}
 				>
 					{entityRegion}
 					{pinFailureLine}

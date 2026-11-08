@@ -485,7 +485,51 @@ export function sectionMoreName(hidden: number, unit: string): string {
 	return `${sectionMoreLabel(hidden)} ${unit}`;
 }
 
-export type SidebarGroupBy = "section" | "agent" | "flat";
+/**
+ * How the chats list is grouped.
+ *
+ * `tag` (issue #1733, `docs/design/sidebar-tag-first-grouping.md`) draws the
+ * occupied PRIMARY tags as the top-level groups across all dates - the second
+ * of the two tag arrangements. It is not a modifier of `section`: there are no
+ * time headings under it, and pinned/running rows lead their tag group instead
+ * of owning a section. It is only drawable on a backend that advertises
+ * `session_tags`; `drawnGroupBy` is the one place that decides what a stored
+ * `tag` draws where it cannot be.
+ */
+export type SidebarGroupBy = "section" | "tag" | "agent" | "flat";
+
+/**
+ * The grouping the list actually DRAWS for a stored view.
+ *
+ * A stored `tag` meeting a backend without the tag registry (an older daemon)
+ * draws `section` for that render, and the stored value is deliberately NOT
+ * rewritten: the reader chose Tag, and reconnecting to a capable backend must
+ * give it back. A mode change is never silent (sidebar-tags.md §2), so every
+ * write the sidebar makes keeps spreading the STORED view, never this answer.
+ */
+export function drawnGroupBy(
+	view: Pick<SidebarView, "groupBy">,
+	tagsAvailable: boolean,
+): SidebarGroupBy {
+	return view.groupBy === "tag" && !tagsAvailable ? "section" : view.groupBy;
+}
+
+/**
+ * Whether the tag surface is on: tag subheaders inside Time sections
+ * (`tagsEnabled`) or tags as the top-level groups (`groupBy: "tag"`).
+ *
+ * ONE PREDICATE because three things follow the SURFACE rather than the switch
+ * (design §2.2): auto-tagging forks, the auto-tag row in the popover, and the
+ * tag footer / `Shown under` line. Tag mode is tags-on by definition and never
+ * writes `tagsEnabled` - writing it would make a later return to Time section
+ * show subheaders the reader had turned off - so reading the switch alone would
+ * turn auto-tagging off in exactly the mode that is most about tags.
+ */
+export function tagSurfaceOn(
+	view: Pick<SidebarView, "groupBy" | "tagsEnabled">,
+): boolean {
+	return view.tagsEnabled || view.groupBy === "tag";
+}
 
 /**
  * How the chats list is ordered - the two meanings, restated on 2026-10-08
@@ -617,6 +661,32 @@ export const CHAT_PAGE_MAX = 500;
  */
 export const PINNED_AGENTS_MAX = 64;
 
+/**
+ * The ladder rung a view draws at, which differs from `view.loads` in one mode.
+ *
+ * TAG MODE STARTS ON THE HELD HEAD, rung 2 (50 rows), not on 10 (design §2.6):
+ * ten rows spread over six tags leaves most groups one row deep and defeats the
+ * mode, and fifty is the catalogue head the client already holds
+ * (`CATALOGUE_HEAD_PAGE`), so starting there costs no fetch. Folds (#1639) are
+ * the vertical-space answer, not a short page.
+ *
+ * A MODE SWITCH NEVER REWRITES `view.loads`: the page cut, the foot label and
+ * the foot press all read this instead, so switching to Tag and back without
+ * pressing restores the reader's own rung. A foot PRESS in Tag mode does write
+ * it - from the drawn rung, so the first press is 50 -> 100 - and Time section
+ * then honours that larger page: the reader asked for more chats, and quietly
+ * dropping them on a mode switch would be the surprise (PR #1747 round 1, R2). Pass the DRAWN grouping (`drawnGroupBy`), so a stored `tag`
+ * that draws as `section` also pages as `section`.
+ */
+export const TAG_MODE_MIN_LOADS = 2;
+export function effectiveLoads(
+	view: Pick<SidebarView, "groupBy" | "loads">,
+): number {
+	return view.groupBy === "tag"
+		? Math.max(view.loads, TAG_MODE_MIN_LOADS)
+		: view.loads;
+}
+
 /** How many rows a list that has been "load more"-ed `loads` times draws. */
 export function pageLimit(loads: number): number {
 	const steps = Math.max(0, Math.floor(loads));
@@ -679,6 +749,30 @@ export function pageReveal(
 	const add = Math.max(0, to - from - live);
 	if (add > 0) return add;
 	return Math.max(0, Math.min(step, remaining));
+}
+
+/**
+ * The live cue a FOLDED Tag-mode group owes its header (PR #1747 round 1, U1/D2).
+ *
+ * WHY: Tag mode has no Running section (design §2.4), so a fold is the one place
+ * a running chat - or one stopped waiting on the reader - can vanish with no
+ * trace; in Time section the RUNNING label stays above any fold. The cue is the
+ * row the header should show the existing status glyph of, plus the live count
+ * for its accessible suffix. A row stopped on the reader wins over a merely busy
+ * one, because it is the one the reader must act on (the lift's own first lane).
+ * Null when the group is open (its rows already say it) or holds nothing live.
+ */
+export function foldedLiveCue<T extends CanonicalSessionRow>(
+	rows: readonly T[],
+	collapsed: boolean,
+): { row: T; count: number } | null {
+	if (!collapsed) return null;
+	const live = rows.filter((row) => isActiveRow(row));
+	if (live.length === 0) return null;
+	return {
+		row: live.find((row) => isStoppedOnReader(row)) ?? (live[0] as T),
+		count: live.length,
+	};
 }
 
 /**
@@ -1171,7 +1265,10 @@ export type SidebarRowGroup = {
  * WEEK/OLDER rules live and the only place they should: a second implementation
  * of "which section is this row in" is how the labels and the lift disagree.
  * `agent` groups by the row's binding - its team, else its agent - and `flat`
- * is one unlabelled group.
+ * is one unlabelled group. `tag` also returns null: its partition is
+ * `chat-tag-groups.ts`'s `groupChatsByTag`, the same bucketing the Time section
+ * subheaders use, so the two tag arrangements cannot disagree about which tag a
+ * row is under (one bucketing implementation, design §2.3).
  *
  * UNGROUPED IS A REAL GROUP rather than a leftover, and it is drawn rather than
  * dropped: an untargeted chat, a chat whose agent was deleted, and a chat opened
@@ -1182,7 +1279,7 @@ export function groupRows(
 	rows: readonly CanonicalSessionRow[],
 	groupBy: SidebarGroupBy,
 ): SidebarRowGroup[] | null {
-	if (groupBy === "section") return null;
+	if (groupBy === "section" || groupBy === "tag") return null;
 	if (groupBy === "flat") return [{ key: "all", label: "", rows: [...rows] }];
 	const groups = new Map<string, SidebarRowGroup>();
 	for (const row of rows) {
@@ -1342,7 +1439,7 @@ export function canMoveSection(
 	return draws ? draws(target) : true;
 }
 
-const GROUP_BY: readonly SidebarGroupBy[] = ["section", "agent", "flat"];
+const GROUP_BY: readonly SidebarGroupBy[] = ["section", "tag", "agent", "flat"];
 const ORDER_BY: readonly SidebarOrderBy[] = ["active-first", "recent"];
 
 /**

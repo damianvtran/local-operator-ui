@@ -70,6 +70,7 @@ import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiChatStatus from "./catalogues/en/ui.chat.status.json";
 import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTagGroups from "./catalogues/en/ui.chat.tag_groups.json";
+import enUiChatTagMode from "./catalogues/en/ui.chat.tag_mode.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiChatThreadSearch from "./catalogues/en/ui.chat.thread_search.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
@@ -198,6 +199,7 @@ import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
 import esUiChatStatus from "./catalogues/es/ui.chat.status.json";
 import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
 import esUiChatTagGroups from "./catalogues/es/ui.chat.tag_groups.json";
+import esUiChatTagMode from "./catalogues/es/ui.chat.tag_mode.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
 import esUiChatThreadSearch from "./catalogues/es/ui.chat.thread_search.json";
 import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
@@ -326,6 +328,7 @@ import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
 import frUiChatStatus from "./catalogues/fr/ui.chat.status.json";
 import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
 import frUiChatTagGroups from "./catalogues/fr/ui.chat.tag_groups.json";
+import frUiChatTagMode from "./catalogues/fr/ui.chat.tag_mode.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
 import frUiChatThreadSearch from "./catalogues/fr/ui.chat.thread_search.json";
 import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
@@ -454,6 +457,7 @@ import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
 import hiUiChatStatus from "./catalogues/hi/ui.chat.status.json";
 import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
 import hiUiChatTagGroups from "./catalogues/hi/ui.chat.tag_groups.json";
+import hiUiChatTagMode from "./catalogues/hi/ui.chat.tag_mode.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
 import hiUiChatThreadSearch from "./catalogues/hi/ui.chat.thread_search.json";
 import hiUiChatTranscriptCopy from "./catalogues/hi/ui.chat.transcript_copy.json";
@@ -582,6 +586,7 @@ import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
 import ruUiChatStatus from "./catalogues/ru/ui.chat.status.json";
 import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
 import ruUiChatTagGroups from "./catalogues/ru/ui.chat.tag_groups.json";
+import ruUiChatTagMode from "./catalogues/ru/ui.chat.tag_mode.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
 import ruUiChatThreadSearch from "./catalogues/ru/ui.chat.thread_search.json";
 import ruUiChatTranscriptCopy from "./catalogues/ru/ui.chat.transcript_copy.json";
@@ -710,6 +715,7 @@ import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
 import urUiChatStatus from "./catalogues/ur/ui.chat.status.json";
 import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
 import urUiChatTagGroups from "./catalogues/ur/ui.chat.tag_groups.json";
+import urUiChatTagMode from "./catalogues/ur/ui.chat.tag_mode.json";
 import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
 import urUiChatThreadSearch from "./catalogues/ur/ui.chat.thread_search.json";
 import urUiChatTranscriptCopy from "./catalogues/ur/ui.chat.transcript_copy.json";
@@ -838,6 +844,7 @@ import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
 import viUiChatStatus from "./catalogues/vi/ui.chat.status.json";
 import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
 import viUiChatTagGroups from "./catalogues/vi/ui.chat.tag_groups.json";
+import viUiChatTagMode from "./catalogues/vi/ui.chat.tag_mode.json";
 import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
 import viUiChatThreadSearch from "./catalogues/vi/ui.chat.thread_search.json";
 import viUiChatTranscriptCopy from "./catalogues/vi/ui.chat.transcript_copy.json";
@@ -966,6 +973,7 @@ import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json"
 import zhCNUiChatStatus from "./catalogues/zh-CN/ui.chat.status.json";
 import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
 import zhCNUiChatTagGroups from "./catalogues/zh-CN/ui.chat.tag_groups.json";
+import zhCNUiChatTagMode from "./catalogues/zh-CN/ui.chat.tag_mode.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
 import zhCNUiChatThreadSearch from "./catalogues/zh-CN/ui.chat.thread_search.json";
 import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
@@ -1097,6 +1105,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatStatus,
 	...enUiChatTagDialogs,
 	...enUiChatTagGroups,
+	...enUiChatTagMode,
 	...enUiChatTags,
 	...enUiChatThreadSearch,
 	...enUiChatTranscriptCopy,
@@ -1233,6 +1242,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatStatus,
 		...esUiChatTagDialogs,
 		...esUiChatTagGroups,
+		...esUiChatTagMode,
 		...esUiChatTags,
 		...esUiChatThreadSearch,
 		...esUiChatTranscriptCopy,
@@ -1363,6 +1373,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatStatus,
 		...frUiChatTagDialogs,
 		...frUiChatTagGroups,
+		...frUiChatTagMode,
 		...frUiChatTags,
 		...frUiChatThreadSearch,
 		...frUiChatTranscriptCopy,
@@ -1493,6 +1504,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatStatus,
 		...hiUiChatTagDialogs,
 		...hiUiChatTagGroups,
+		...hiUiChatTagMode,
 		...hiUiChatTags,
 		...hiUiChatThreadSearch,
 		...hiUiChatTranscriptCopy,
@@ -1623,6 +1635,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatStatus,
 		...ruUiChatTagDialogs,
 		...ruUiChatTagGroups,
+		...ruUiChatTagMode,
 		...ruUiChatTags,
 		...ruUiChatThreadSearch,
 		...ruUiChatTranscriptCopy,
@@ -1753,6 +1766,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatStatus,
 		...urUiChatTagDialogs,
 		...urUiChatTagGroups,
+		...urUiChatTagMode,
 		...urUiChatTags,
 		...urUiChatThreadSearch,
 		...urUiChatTranscriptCopy,
@@ -1883,6 +1897,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatStatus,
 		...viUiChatTagDialogs,
 		...viUiChatTagGroups,
+		...viUiChatTagMode,
 		...viUiChatTags,
 		...viUiChatThreadSearch,
 		...viUiChatTranscriptCopy,
@@ -2013,6 +2028,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatStatus,
 		...zhCNUiChatTagDialogs,
 		...zhCNUiChatTagGroups,
+		...zhCNUiChatTagMode,
 		...zhCNUiChatTags,
 		...zhCNUiChatThreadSearch,
 		...zhCNUiChatTranscriptCopy,
@@ -5585,6 +5601,7 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.section.today": undefined;
 	"ui.chat.sidebar_view.section.week": undefined;
 	"ui.chat.sidebar_view.sections": undefined;
+	"ui.chat.sidebar_view.tag": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
 	"ui.chat.status.credential_refused": undefined;
@@ -5602,6 +5619,10 @@ export type MessageParams = {
 	"ui.chat.tag_dialogs.deleted_name": { name: string };
 	"ui.chat.tag_groups.collapse": { name: string };
 	"ui.chat.tag_groups.expand": { name: string };
+	"ui.chat.tag_mode.live": { count: number };
+	"ui.chat.tag_mode.mode_hint": undefined;
+	"ui.chat.tag_mode.not_loaded": undefined;
+	"ui.chat.tag_mode.use_tag": undefined;
 	"ui.chat.tags.add": undefined;
 	"ui.chat.tags.applying": undefined;
 	"ui.chat.tags.auto_tag": undefined;

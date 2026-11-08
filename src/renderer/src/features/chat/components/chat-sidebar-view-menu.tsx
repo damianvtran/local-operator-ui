@@ -72,10 +72,12 @@ import {
 	type SidebarSectionKey,
 	type SidebarView,
 	canMoveSection,
+	drawnGroupBy,
 	isChatSection,
 	isEntitySection,
 	isSectionShown,
 	moveSection,
+	tagSurfaceOn,
 	toggleSection,
 } from "@features/chat/chat-sidebar-view";
 import { Button } from "@shared/components/ui";
@@ -94,6 +96,7 @@ import {
 	Layers,
 	List,
 	SlidersHorizontal,
+	Tag,
 	Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -201,12 +204,34 @@ export function ChatSidebarViewMenu({
 	const draws = counts
 		? (key: SidebarSectionKey) => (counts[key] ?? 0) > 0
 		: undefined;
+	/*
+	 * The grouping the list DRAWS, which is what the tick marks: a stored `tag`
+	 * on a backend without tags draws Time section, so Time section is the row
+	 * that reads as selected - while the stored value is left alone for a
+	 * capable backend to honour again (`drawnGroupBy`).
+	 */
+	const drawn = drawnGroupBy(view, tagsAvailable);
+	/*
+	 * `Tag` SITS SECOND (issue #1733, design §2.1): Time section and Tag are the two
+	 * structured ways to organise conversations, so they sit together, and In one
+	 * list stays last as the unstructured end. Absent - not disabled - without the
+	 * backend's tag registry, the same rule the Tags group below follows.
+	 */
 	const groupBy: { key: SidebarGroupBy; label: string; icon: ReactNode }[] = [
 		{
 			key: "section",
 			label: t("ui.chat.sidebar_view.time_section"),
 			icon: <Layers aria-hidden="true" className="size-3.5" />,
 		},
+		...(tagsAvailable
+			? [
+					{
+						key: "tag" as const,
+						label: t("ui.chat.sidebar_view.tag"),
+						icon: <Tag aria-hidden="true" className="size-3.5" />,
+					},
+				]
+			: []),
 		{
 			key: "agent",
 			label: t("ui.chat.sidebar_view.agent_team"),
@@ -280,7 +305,7 @@ export function ChatSidebarViewMenu({
 						option.key,
 						option.icon,
 						option.label,
-						view.groupBy === option.key,
+						drawn === option.key,
 						() => onView({ ...view, groupBy: option.key }),
 					),
 				)}
@@ -338,8 +363,19 @@ export function ChatSidebarViewMenu({
 					),
 				)}
 			</fieldset>
-			{tagsAvailable && (
+			{/*
+			 * Under `Group by › Tag` the group holds only the auto-tag row, so with no
+			 * auto-tag field on the backend it would be a hairline around nothing.
+			 */}
+			{tagsAvailable && (drawn !== "tag" || autoTagAvailable) && (
 				<div className="border-hairline border-b" data-sidebar-tags-options>
+					{/*
+					 * THE SWITCH IS NOT DRAWN UNDER `Group by › Tag` (issue #1733, design
+					 * §2.2) - absent, not disabled: that mode is tags-on by definition, so
+					 * the switch could only offer a press that does nothing. It keeps its
+					 * stored value for Time section, which is the axis its label
+					 * (`Split time sections by tag`) names.
+					 */}
 					{/* 39px content plus the group hairline is the contracted 40px insertion. */}
 					{/*
 					 * LABEL + SWITCH ONLY (v3 spec D7). `Manage tags…` is gone: tags are
@@ -348,22 +384,24 @@ export function ChatSidebarViewMenu({
 					 * (a real `<label>`), where it used to read "Tags" while the switch
 					 * announced "Group chats by tag" (WCAG 2.5.3, label in name).
 					 */}
-					<div className="flex h-[39px] items-center gap-2 px-1">
-						<label
-							htmlFor="sidebar-tags-switch"
-							className="flex-1 text-meta text-ink-dim"
-						>
-							{t("ui.chat.tags.group")}
-						</label>
-						<Switch
-							id="sidebar-tags-switch"
-							aria-describedby="sidebar-tags-help"
-							checked={view.tagsEnabled}
-							onCheckedChange={(tagsEnabled) =>
-								onView({ ...view, tagsEnabled })
-							}
-						/>
-					</div>
+					{drawn !== "tag" && (
+						<div className="flex h-[39px] items-center gap-2 px-1">
+							<label
+								htmlFor="sidebar-tags-switch"
+								className="flex-1 text-meta text-ink-dim"
+							>
+								{t("ui.chat.tags.group")}
+							</label>
+							<Switch
+								id="sidebar-tags-switch"
+								aria-describedby="sidebar-tags-help"
+								checked={view.tagsEnabled}
+								onCheckedChange={(tagsEnabled) =>
+									onView({ ...view, tagsEnabled })
+								}
+							/>
+						</div>
+					)}
 					{/*
 					 * THE AUTO-TAG INTENT, inside the Tags group rather than beside it
 					 * (§5.4): it is a consequence of tagging, is only meaningful while the
@@ -375,7 +413,7 @@ export function ChatSidebarViewMenu({
 					 * a caption: it says WHICH tags (the reader's own) and WHEN (naming a
 					 * fork), the two facts the label alone leaves open.
 					 */}
-					{view.tagsEnabled && autoTagAvailable && (
+					{tagSurfaceOn(view) && autoTagAvailable && (
 						<>
 							<div className="flex min-h-7 items-center gap-2 px-1 py-0.5">
 								<span className="min-w-0 flex-1 text-meta text-ink-dim">
@@ -402,16 +440,31 @@ export function ChatSidebarViewMenu({
 					<span id="sidebar-tags-help" className="sr-only">
 						{t("ui.chat.tags.discovery")}
 					</span>
-					{view.groupBy !== "section" && (
+					{/*
+					 * BOTH TAG ARRANGEMENTS ARE OFFERED (PR #1747 U4): since `Group by › Tag`
+					 * exists, a hint that only offered Time section sent the reader to the
+					 * less direct mode. Each press is the reader's own explicit mode change.
+					 */}
+					{(drawn === "agent" || drawn === "flat") && (
 						<div className="px-1 text-meta text-ink-muted">
-							<p>{t("ui.chat.tags.mode_hint")}</p>
-							<Button
-								variant="ghost"
-								className="h-7 px-1 text-meta"
-								onClick={() => onView({ ...view, groupBy: "section" })}
-							>
-								{t("ui.chat.tags.use_time")}
-							</Button>
+							<p>{t("ui.chat.tag_mode.mode_hint")}</p>
+							<div className="flex flex-wrap gap-x-2">
+								<Button
+									variant="ghost"
+									className="h-7 px-1 text-meta"
+									onClick={() => onView({ ...view, groupBy: "section" })}
+								>
+									{t("ui.chat.tags.use_time")}
+								</Button>
+								<Button
+									variant="ghost"
+									data-sidebar-use-tag
+									className="h-7 px-1 text-meta"
+									onClick={() => onView({ ...view, groupBy: "tag" })}
+								>
+									{t("ui.chat.tag_mode.use_tag")}
+								</Button>
+							</div>
 						</div>
 					)}
 				</div>

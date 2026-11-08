@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_mode.live": "{count, plural, one {{count, number, ::group-off} running} other {{count, number, ::group-off} running}}",
+	"ui.chat.tag_mode.not_loaded": "Older chats in this tag aren't loaded yet.",
+	"ui.chat.tag_mode.mode_hint": "Tag groups use Time section or Tag grouping.",
+	"ui.chat.tag_mode.use_tag": "Use Tag"
+}
