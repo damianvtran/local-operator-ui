@@ -183,7 +183,11 @@ export const OrgTeamsList: React.FC<{
 			},
 			// `surface: "pull"`: the table is shared with the publish dialog, and its
 			// verb-bearing bodies must name the act this surface performed (C7).
-			{ name: failed?.name ?? "this team", hubAgentId: null, surface: "pull" },
+			{
+				name: failed?.name ?? t("ui.hub.teams.unnamed_team"),
+				hubAgentId: null,
+				surface: "pull",
+			},
 		);
 	}, [pull.error, failedTeamId, teams]);
 

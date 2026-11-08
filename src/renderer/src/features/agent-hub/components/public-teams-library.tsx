@@ -164,7 +164,11 @@ export const PublicTeamsLibrary: FC<{
 				message: pull.error.message,
 				details: pull.error.details,
 			},
-			{ name: failed?.name ?? "this team", hubAgentId: null, surface: "pull" },
+			{
+				name: failed?.name ?? t("ui.hub.teams.unnamed_team"),
+				hubAgentId: null,
+				surface: "pull",
+			},
 		);
 	}, [pull.error, failedTeamId, teams]);
 
