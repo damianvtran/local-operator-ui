@@ -167,6 +167,7 @@ import {
 	useSessionMove,
 } from "../move-session";
 import { openConversation } from "../open-conversation";
+import { openTrace } from "../open-trace";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { resolveSessionAskFrame } from "../session-asks";
 import {
@@ -3972,7 +3973,12 @@ function SessionPanel({
 		if (!sessionId || !windowOpen) return;
 		const store = useCanonicalSessionsStore.getState();
 		if (canonical.status === "live") store.confirmSessionLive(sessionId);
-		else if (canonical.missing) store.confirmSessionMissing(sessionId);
+		else if (canonical.missing) {
+			// Before the store write: `confirmSessionMissing` moves the view off
+			// the session, which the open trace would otherwise read as `left`.
+			openTrace.fail(sessionId, "missing");
+			store.confirmSessionMissing(sessionId);
+		}
 	}, [sessionId, windowOpen, canonical.status, canonical.missing]);
 	/*
 	 * The held sends' side of the window (see `send`): each waiter is settled by

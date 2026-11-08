@@ -94,6 +94,7 @@ import {
 	seedWaitingComposes,
 } from "@features/chat/canonical/transcript-reducer";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
+import { openTrace } from "@features/chat/open-trace";
 import {
 	frontendNamesModel,
 	modelSelector,
@@ -5894,6 +5895,9 @@ export function useCanonicalSessionStream(
 						// authenticated `open` can still be followed by an immediate close,
 						// and resetting the budget there would let that pair retry forever.
 						if (frame.type === "snapshot") {
+							// The open trace's `snapshot` stage (received + parsed, not
+							// yet folded); first write wins, so later snapshots are free.
+							openTrace.note(sessionId, "snapshot");
 							attempt = 0;
 							clearSnapshotTimer();
 							// A later stall is a new one and earns its own re-check.

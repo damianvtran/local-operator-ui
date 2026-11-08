@@ -1388,7 +1388,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const listBody: ReactNode = (
 		<ChatSidebar
 			selectedConversation={activeSessionId ?? undefined}
-			onSelectConversation={(id: string) => void openConversation(navigate, id)}
+			onSelectConversation={(id: string) =>
+				void openConversation(navigate, id, "sidebar")
+			}
 			onStageDraft={(target?: ChatTarget, fresh?: boolean) => {
 				useCanonicalSessionsStore.getState().stageDraft(target, fresh);
 				navigate("/chat");

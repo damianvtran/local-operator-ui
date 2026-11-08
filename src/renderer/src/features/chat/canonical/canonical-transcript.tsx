@@ -168,6 +168,7 @@ import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
+import { openTrace } from "../open-trace";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
@@ -5073,12 +5074,20 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * sample after the app returns to it.
 	 */
 	const tracedSession = useRef<string | null>(null);
+	// The open trace's `routed` stage: the pane committed for this session.
+	// A no-op unless a trace for exactly this id is open.
+	useLayoutEffect(() => {
+		openTrace.note(sessionId, "routed");
+	}, [sessionId]);
 	useLayoutEffect(() => {
 		if (visible.length === 0) return;
 		const key = sessionId ?? "";
 		if (tracedSession.current === key) return;
 		tracedSession.current = key;
 		performance.mark("lop:open:first-row");
+		// The logged open trace's `content` stage; it schedules its own
+		// next-frame `painted` proxy (see `open-trace.ts`).
+		openTrace.note(sessionId, "content");
 		const requested = performance
 			.getEntriesByName("lop:open:requested", "mark")
 			.at(-1);
