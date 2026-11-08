@@ -1,4 +1,7 @@
 {
 	"ui.chat.user_turn.show_more": "ज़्यादा दिखाएँ",
-	"ui.chat.user_turn.show_less": "कम दिखाएँ"
+	"ui.chat.user_turn.show_less": "कम दिखाएँ",
+	"ui.chat.user_turn.stamp.sent": "भेजा गया: {date}",
+	"ui.chat.user_turn.stamp.answered": "जवाब दिया गया: {date}",
+	"ui.chat.user_turn.stamp.ran": "चलाया गया: {date}"
 }

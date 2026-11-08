@@ -15,6 +15,8 @@ const ARCHIVED_RE = /archived/;
 const BODY_FOCUS_RE = /document\.body\.focus\(\)/;
 const COLLAPSE_FILTER_RE =
 	/!owned\.has\(row\.session_id\)[\s\S]{0,200}?fromHeadPage\.has\(row\.session_id\)[\s\S]{0,200}?row\.session_id === active/;
+const WITHHELD_CLAMP_RE =
+	/view\.forbidden\s*\?\s*"line-clamp-4 text-meta text-ink-dim"\s*:\s*"line-clamp-2 text-meta text-ink-dim"/;
 const BADGE_SR_ONLY_RE =
 	/\{badge > 0 && \(\s*<span className="sr-only">\{groupBadgeLabel\(badge\)\}<\/span>/;
 const DISCLOSURE_LABEL_RE =
@@ -1828,6 +1830,14 @@ test("the round-2 code paths are pinned in source", () => {
 	assert.ok(
 		clamped.length >= 3,
 		`the clamped sentence appears ${clamped.length} time(s); the group's first-page refusal, its extension refusal and the flat list's tail refusal all wear it (D10 = U9)`,
+	);
+	// The withheld ("chats may be archived") sentence alone gets four lines: it needs 3 in
+	// es/ru and 4 in fr at the default sidebar width (design round 1, D2), and it is
+	// catalogue copy, not an unbounded daemon string, so it cannot move the control.
+	assert.match(
+		SIDEBAR_SRC,
+		WITHHELD_CLAMP_RE,
+		"the withheld state is clamped to four lines and every other state keeps two",
 	);
 	const ownLine = SIDEBAR_SRC.match(/<p className="pt-1">\s*<button/g) ?? [];
 	assert.ok(

@@ -31,5 +31,13 @@
 	"ui.chat.asks.status.withdrawn_label": "已撤回",
 	"ui.chat.asks.outstanding_count": "{count, plural, other {{count_display}个请求}}",
 	"ui.chat.asks.outstanding_aria": "{label}待处理。智能体不会因等待你而停下。",
-	"ui.chat.asks.answer_aria": "你对此问题的回答：{question}"
+	"ui.chat.asks.answer_aria": "你对此问题的回答：{question}",
+	"ui.chat.asks.scope.session": "此对话",
+	"ui.chat.asks.scope.fleet": "全部对话",
+	"ui.chat.asks.scope_line": "{scope} · {clause}",
+	"ui.chat.asks.clause.settled": "所有请求均已结束",
+	"ui.chat.asks.clause.outstanding": "{count, plural, other {{count, number, ::group-off}项待处理}}",
+	"ui.chat.asks.clause.waiting": "{count, plural, other {{count, number, ::group-off}个问题等待回答}}",
+	"ui.chat.asks.clause.delivering": "{count, plural, other {{count, number, ::group-off}个回答尚未送达——仍可修改}}",
+	"ui.chat.asks.clause.timed_out": "{count, plural, other {{count, number, ::group-off}个问题已超时}}"
 }

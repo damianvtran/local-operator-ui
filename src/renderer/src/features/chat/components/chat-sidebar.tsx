@@ -7641,8 +7641,22 @@ export function ChatSidebar({
 							}
 						>
 							{view.state !== "rows" && view.sentence !== null && (
+								/*
+								 * THE WITHHELD STATE IS ALLOWED FOUR LINES, every other state keeps two
+								 * (design round 1, D2). "Chats may be archived" is a fixed catalogue
+								 * sentence, not a daemon string of unbounded length, and it carries the
+								 * reader's next move; at the default sidebar width it needs 3 lines in
+								 * es and ru and 4 in fr, so a two-line clamp cut off the instruction
+								 * itself. The two-line cap exists so a long BACKEND sentence cannot
+								 * move the control below it, which does not apply to this one.
+								 * `forbidden` is the flag `groupChatsView` sets for this sentence only.
+								 */
 								<p
-									className="line-clamp-2 text-meta text-ink-dim"
+									className={
+										view.forbidden
+											? "line-clamp-4 text-meta text-ink-dim"
+											: "line-clamp-2 text-meta text-ink-dim"
+									}
 									title={view.sentence}
 								>
 									{view.sentence}
@@ -8052,7 +8066,7 @@ export function ChatSidebar({
 		key: string;
 		at: number;
 	} | null>(null);
-	const cappedRows = (key: string, rows: ReactNode[]) => {
+	const cappedRows = (key: "agents" | "teams", rows: ReactNode[]) => {
 		const cap = sectionCaps[key] ?? SIDEBAR_SECTION_ROWS;
 		const hidden = rows.length - cap;
 		/*
@@ -9742,11 +9756,11 @@ export function ChatSidebar({
 									aria-describedby={
 										row.pending ? draftWhyId(row.key) : undefined
 									}
-									aria-label={discardDraftLabel(row.label)}
+									aria-label={discardDraftLabel(row.title)}
 									title={
 										row.pending
 											? SENDING_DISCARD_WHY
-											: discardDraftLabel(row.label)
+											: discardDraftLabel(row.title)
 									}
 									onClick={(event) => {
 										/*

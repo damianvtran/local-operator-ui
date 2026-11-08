@@ -71,5 +71,12 @@
 	"ui.chat.sidebar.row.unread_suffix": ", не прочитано",
 	"ui.chat.sidebar.row.silent_remedy": "/stop, если ответа всё нет.",
 	"ui.chat.sidebar.catalogue.show_more": "Показать ещё {hidden, plural, one {{hidden, number, ::group-off}} few {{hidden, number, ::group-off}} many {{hidden, number, ::group-off}} other {{hidden, number, ::group-off}}}",
-	"ui.chat.sidebar.catalogue.show_more_chats": "Показать ещё {add, plural, one {{add, number, ::group-off} чат} few {{add, number, ::group-off} чата} many {{add, number, ::group-off} чатов} other {{add, number, ::group-off} чата}}"
+	"ui.chat.sidebar.catalogue.show_more_chats": "Показать ещё {add, plural, one {{add, number, ::group-off} чат} few {{add, number, ::group-off} чата} many {{add, number, ::group-off} чатов} other {{add, number, ::group-off} чата}}",
+	"ui.chat.sidebar.groups.empty": "Чатов пока нет",
+	"ui.chat.sidebar.groups.loading": "Загрузка чатов…",
+	"ui.chat.sidebar.groups.withheld": "Возможно, они в архиве. Включите в поиске параметр «Включая архивные».",
+	"ui.chat.sidebar.catalogue.show_more_agents": "Показать ещё {count, plural, one {{count, number, ::group-off} агента} few {{count, number, ::group-off} агента} many {{count, number, ::group-off} агентов} other {{count, number, ::group-off} агента}}",
+	"ui.chat.sidebar.catalogue.show_more_teams": "Показать ещё {count, plural, one {{count, number, ::group-off} команду} few {{count, number, ::group-off} команды} many {{count, number, ::group-off} команд} other {{count, number, ::group-off} команды}}",
+	"ui.chat.sidebar.drafts.row_label": "Черновик: {title}",
+	"ui.chat.sidebar.drafts.discard_label": "Удалить черновик «{title}»"
 }

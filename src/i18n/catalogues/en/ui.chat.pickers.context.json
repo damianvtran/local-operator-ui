@@ -4492,5 +4492,70 @@
 		"note": "The /tag list: the current conversation's own tags, one row each. Keep the word the sidebar's tag surface uses for the same subject. It heads a list drawn under a half-typed slash command, read at a glance beside the rows, so do not expand it into a phrase or sentence.",
 		"length": "One word.",
 		"placeholders": {}
+	},
+	"ui.chat.pickers.at_menu.footer.nothing": {
+		"role": "footer hint of the @ file menu when it has no active row",
+		"tone": "two short facts joined by a middle dot, no trailing punctuation",
+		"length": "About five words.",
+		"note": "Esc and Enter are keyboard keys: write the key names as the keyboard labels them in this language, or keep Esc/Enter if that is the convention in this app's other hints (see ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes).",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.at_menu.footer.inserts": {
+		"role": "footer hint of the @ file menu over a file row",
+		"tone": "two short facts joined by a middle dot, no trailing punctuation",
+		"length": "About six words plus the reference.",
+		"note": "The reference is the exact text Enter writes into the composer (e.g. @package.json): keep it verbatim, including the @.",
+		"placeholders": {
+			"reference": "the @-reference that will be inserted, verbatim, e.g. @src/app.py"
+		}
+	},
+	"ui.chat.pickers.at_menu.footer.opens": {
+		"role": "footer hint of the @ file menu over a folder row",
+		"tone": "two short facts joined by a middle dot, no trailing punctuation",
+		"length": "About six words plus the path.",
+		"note": "The path is the folder's path as the user sees it; keep it verbatim.",
+		"placeholders": {
+			"path": "the folder's path, verbatim, e.g. src/components"
+		}
+	},
+	"ui.chat.pickers.slash.row_slot.fast_on": {
+		"role": "state word on the /fast command row: the session's fast dial is on",
+		"tone": "lowercase state phrase, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Qualified on purpose so it reads as the state the row starts from, not the result of pressing Enter. Paired with ui.chat.pickers.slash.row_slot.fast_off.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.row_slot.fast_off": {
+		"role": "state word on the /fast command row: the session's fast dial is off",
+		"tone": "lowercase state phrase, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Paired with ui.chat.pickers.slash.row_slot.fast_on.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.row_slot.needs_value": {
+		"role": "state phrase on a slash-command row whose argument is required",
+		"tone": "lowercase short phrase, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Tells the user the command cannot run until they type something after its name.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.unknown_command": {
+		"role": "notice after the user submits a slash word that matches no command",
+		"tone": "plain two-sentence notice, sentence case",
+		"length": "Two short sentences.",
+		"note": "'/' is the literal character that opens the command menu. The command is what the user typed, verbatim.",
+		"placeholders": {
+			"command": "the word the user typed after the slash, verbatim"
+		}
+	},
+	"ui.chat.pickers.slash.unknown_command_suggest": {
+		"role": "notice after an unknown slash word when close matches exist",
+		"tone": "plain three-sentence notice, sentence case",
+		"length": "Three short sentences.",
+		"note": "Suggestions are command names such as /help, already joined with commas; keep them verbatim. '/' is the literal character that opens the command menu.",
+		"placeholders": {
+			"command": "the word the user typed after the slash, verbatim",
+			"suggestions": "one or more command names, verbatim, joined with commas"
+		}
 	}
 }

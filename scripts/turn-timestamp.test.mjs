@@ -325,43 +325,52 @@ test("an instant that cannot be read states nothing", () => {
 	act(() => root.unmount());
 });
 
-test("the stamp's own clock agrees with its title on a 24-hour locale", () => {
+test("the stamp follows the ACTIVE language's hour cycle, and its title agrees", () => {
 	/*
-	 * The operator asked for am/pm, so `formatTurnTimestamp` forces `hour12`; the
-	 * title used to take the LOCALE's cycle, so on a machine whose default clock is
-	 * 24-hour one element stated the same instant two ways - `15 Sept, 3:42 pm`
-	 * under `15 September 2026 at 15:42` (review round 1, R3).
+	 * The census (installed app 0.52.3, `fr`) painted `Answered 7 novembre 2026 à
+	 * 9:28 PM`: an English 12-hour marker inside a French date, because the stamp
+	 * FORCED `hour12: true` for every language. The clock is now the active
+	 * language's own cycle - 24-hour `21:28` in French, the unchanged 12-hour
+	 * `9:28 PM` in English - and the tooltip/label half (`formatCalendarDateTime`)
+	 * follows the same cycle, so one element never states one instant in two
+	 * conventions (review round 1, R3, which the old forcing existed to prevent).
 	 *
-	 * The locale is the fixture rather than the machine, and the fixture now goes
-	 * through the i18n locale store: this test used to redefine
-	 * `navigator.language`, which the formatters read at call time; they read the
-	 * store now (the device locale is resolved ONCE - a process's device locale
-	 * cannot change - with `setLocale` as the documented test seam). de-DE
-	 * defaults to h23, so the assertion below is red exactly when the option
-	 * goes.
+	 * The language is the fixture rather than the machine: it goes through the
+	 * i18n locale store, the documented test seam (`setLocale`).
 	 */
 	const original = currentLocale();
-	setLocale("de-DE");
-	try {
-		const instant = new Date(2026, 8, 15, 15, 42);
-		const text = formatTurnTimestamp(instant, NOW);
-		assert.match(text, /3:42 PM/, "the visible clock is the requested am/pm");
-		assert.doesNotMatch(text, /15:42/, "not the locale's own 24-hour cycle");
-
+	const instant = new Date(2026, 8, 16, 21, 28);
+	const render = () => {
 		const container = document.createElement("div");
 		const root = createRoot(container);
 		act(() => {
-			root.render(h(TurnTimestamp, { timestamp: instant, scope: "turn" }));
+			root.render(h(TurnTimestamp, { timestamp: instant, scope: "answer" }));
 		});
-		const label = container.querySelector("time").getAttribute("aria-label");
-		assert.match(label, /15\. September 2026/);
-		assert.match(label, /3:42 PM/, "and the title half agrees with it");
-		assert.doesNotMatch(
-			label,
-			/15:42/,
-			"the two halves of one element differ no more",
-		);
+		const time = container.querySelector("time");
+		const label = time.getAttribute("aria-label");
 		act(() => root.unmount());
+		return label;
+	};
+	try {
+		setLocale("en");
+		assert.equal(plain(formatTurnTimestamp(instant, NOW)), "9:28 PM");
+		const en = plain(render());
+		assert.match(en, /^Answered .*9:28 PM$/, "English stays 12-hour");
+
+		setLocale("fr");
+		const fr = plain(formatTurnTimestamp(instant, NOW));
+		assert.equal(fr, "21:28", "French is the 24-hour clock");
+		assert.doesNotMatch(fr, /PM|AM/);
+		const frLabel = plain(render());
+		assert.match(frLabel, /21:28/, "and the title half agrees with it");
+		assert.doesNotMatch(
+			frLabel,
+			/\b(PM|AM)\b/,
+			"no English marker in a French date",
+		);
+
+		setLocale("de-DE");
+		assert.match(plain(formatTurnTimestamp(instant, NOW)), /21:28/);
 	} finally {
 		setLocale(original);
 	}

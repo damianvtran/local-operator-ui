@@ -75,9 +75,14 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
-import { foldMediaClause } from "../../canonical/trace-fold-model";
+import type { TextDirection } from "../../../../../../i18n/direction";
+import {
+	foldMediaClause,
+	foldUnitSeparator,
+} from "../../canonical/trace-fold-model";
 import type {
 	FoldLive,
 	FoldSpan,
@@ -92,6 +97,30 @@ import { formatSettledDuration } from "./tool-row-model";
  * `scripts/tool-row.test.mjs` asserts the two stay equal.
  */
 const ROW_HEIGHT = "min-h-5 py-0";
+
+/**
+ * The summary's tooltip: the units the header paints, joined by the locale's
+ * separator.
+ *
+ * In a RIGHT-TO-LEFT locale each unit is wrapped in RLI/PDI (U+2067/U+2069).
+ * A `title` is a string with no DOM, so this is the inline equivalent of the
+ * header's `<bdi dir="rtl">` below. FSI (U+2068) is NOT used: it picks the
+ * isolate's direction from the unit's first strong letter, and a unit that
+ * starts with a Latin tool name (`3 Python <noun>`) would lay out left-to-right
+ * while its neighbours lay out right-to-left, putting the count at the wrong
+ * edge. RLI states the direction the locale already has.
+ *
+ * In a LEFT-TO-RIGHT locale NO mark is added: the tooltip is the plain join,
+ * byte-identical to what it was before this change, because an invisible
+ * character in `en` text is copy that screen readers, search and copy/paste
+ * can all trip on for no benefit (nothing reorders in an LTR line). The marks
+ * live in this renderer join only, never in catalogue text, which stays
+ * translator-readable.
+ */
+const unitsTitle = (units: string[], dir: TextDirection): string =>
+	units
+		.map((unit) => (dir === "rtl" ? `\u2067${unit}\u2069` : unit))
+		.join(foldUnitSeparator());
 
 /** The fold's clock ticks at 1Hz, the interval the row's own clock uses. */
 const FOLD_CLOCK_MS = 1000;
@@ -214,6 +243,8 @@ export const TraceFold = ({
 	recordIds,
 	children,
 }: TraceFoldProps) => {
+	// The locale's direction, re-rendered on a language switch (see `unitsTitle`).
+	const direction = useTextDirection();
 	/*
 	 * NO CONDENSE EVENT LIVES IN THIS COMPONENT, and that is now the whole of the
 	 * state rule (operator report, 2026-09-27): a fold is opened and closed by
@@ -415,7 +446,7 @@ export const TraceFold = ({
 							 * units, which is exactly the claim this round had to correct.
 							 */
 							className={cn("min-w-0 break-words text-body-sm text-ink-muted")}
-							title={summary.units.join(" · ")}
+							title={unitsTitle(summary.units, direction)}
 							data-fold-summary=""
 						>
 							{/*
@@ -435,7 +466,21 @@ export const TraceFold = ({
 											summary.prose ? "whitespace-normal" : "whitespace-nowrap",
 										)}
 									>
-										{unit}
+										{/*
+										 * EACH UNIT IS AN ISOLATED BIDI RUN (UBA rule W7) WITH THE LOCALE'S
+										 * OWN DIRECTION. In an RTL locale a unit ending in a Latin run
+										 * (`Python`, or a Latin tool name from `fold.count.named`) turns the
+										 * NEXT unit's leading European number into L, so the line reorders
+										 * across the ` · ` (fribidi, independent audit of the ur catalogue);
+										 * an isolate per unit cures that. A bare `<bdi>` is not enough: it
+										 * takes its direction from the unit's first strong letter, so the ur
+										 * unit `3 Python <noun>` (first strong letter Latin) laid out LTR
+										 * with its `3` at the LEFT edge while the other units laid out RTL
+										 * (design round 1, D1: the line read `1 · 3`). `dir` states the
+										 * locale's direction, so every unit puts its count at its start edge.
+										 * The wrapper adds no text, so `textContent` is unchanged everywhere.
+										 */}
+										<bdi dir={direction}>{unit}</bdi>
 									</span>
 								</Fragment>
 							))}

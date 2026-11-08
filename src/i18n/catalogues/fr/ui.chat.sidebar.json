@@ -71,5 +71,12 @@
 	"ui.chat.sidebar.row.unread_suffix": ", non lue",
 	"ui.chat.sidebar.row.silent_remedy": "/stop si le silence persiste.",
 	"ui.chat.sidebar.catalogue.show_more": "Afficher {hidden, plural, one {{hidden, number, ::group-off} de plus} many {{hidden, number, ::group-off} de plus} other {{hidden, number, ::group-off} de plus}}",
-	"ui.chat.sidebar.catalogue.show_more_chats": "Afficher {add, plural, one {{add, number, ::group-off} conversation de plus} many {{add, number, ::group-off} de conversations de plus} other {{add, number, ::group-off} conversations de plus}}"
+	"ui.chat.sidebar.catalogue.show_more_chats": "Afficher {add, plural, one {{add, number, ::group-off} conversation de plus} many {{add, number, ::group-off} de conversations de plus} other {{add, number, ::group-off} conversations de plus}}",
+	"ui.chat.sidebar.groups.empty": "Aucune conversation pour l’instant",
+	"ui.chat.sidebar.groups.loading": "Chargement des conversations…",
+	"ui.chat.sidebar.groups.withheld": "Elles sont peut-être archivées. Lancez une recherche avec « Inclure les conversations archivées ».",
+	"ui.chat.sidebar.catalogue.show_more_agents": "Afficher {count, plural, one {{count, number, ::group-off} agent de plus} many {{count, number, ::group-off} d’agents de plus} other {{count, number, ::group-off} agents de plus}}",
+	"ui.chat.sidebar.catalogue.show_more_teams": "Afficher {count, plural, one {{count, number, ::group-off} équipe de plus} many {{count, number, ::group-off} d’équipes de plus} other {{count, number, ::group-off} équipes de plus}}",
+	"ui.chat.sidebar.drafts.row_label": "Brouillon : {title}",
+	"ui.chat.sidebar.drafts.discard_label": "Abandonner le brouillon « {title} »"
 }

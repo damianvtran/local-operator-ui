@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+
 /**
  * The Wakes section's control model: which rows may be cancelled, which ask
  * first, and which are not this app's to stop.
@@ -196,7 +198,7 @@ export const wakeConfirmNamesChief = (context: WakeControlContext): boolean =>
 
 /** The quiet state word in a managed row's control column. */
 export const managedWakeShortLabel = (name: string): string =>
-	`managed by ${name}`;
+	t("ui.chat.run_details.wake.managed_by", { name });
 
 /**
  * The managed row's sentence: why there is no cancel, and the lever that works.
@@ -211,7 +213,7 @@ export const managedWakeShortLabel = (name: string): string =>
  * the state's `title`, so there is one copy in two places rather than two.
  */
 export const managedWakeNote = (name: string): string =>
-	`This wake is ${name}'s own schedule, so it can't be cancelled here. To stop these check-ins, use /aida pause.`;
+	t("ui.chat.run_details.wake.managed_note", { name });
 
 /**
  * The confirmation's three strings, ONE home for both surfaces that ask.

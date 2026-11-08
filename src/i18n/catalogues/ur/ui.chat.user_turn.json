@@ -1,4 +1,7 @@
 {
 	"ui.chat.user_turn.show_more": "مزید دکھائیں",
-	"ui.chat.user_turn.show_less": "کم دکھائیں"
+	"ui.chat.user_turn.show_less": "کم دکھائیں",
+	"ui.chat.user_turn.stamp.sent": "بھیجا گیا: {date}",
+	"ui.chat.user_turn.stamp.answered": "جواب دیا گیا: {date}",
+	"ui.chat.user_turn.stamp.ran": "چلایا گیا: {date}"
 }

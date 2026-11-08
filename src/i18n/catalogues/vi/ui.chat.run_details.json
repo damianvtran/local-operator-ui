@@ -89,5 +89,7 @@
 	"ui.chat.run_details.monitors.more": "{count, plural, other {{count_display} mục giám sát nữa}}",
 	"ui.chat.run_details.wake.more": "{count, plural, other {{count_display} lịch đánh thức nữa}}",
 	"ui.chat.run_details.wake.armed_count": "{count, plural, other {{count_display} lịch thức dậy đã đặt}}",
-	"ui.chat.run_details.wake.cadence_once": "một lần"
+	"ui.chat.run_details.wake.cadence_once": "một lần",
+	"ui.chat.run_details.wake.managed_by": "do {name} quản lý",
+	"ui.chat.run_details.wake.managed_note": "Lịch đánh thức này là lịch riêng của {name} nên không thể hủy tại đây. Để dừng các lần kiểm tra này, hãy dùng /aida pause."
 }

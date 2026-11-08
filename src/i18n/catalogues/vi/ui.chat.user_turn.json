@@ -1,4 +1,7 @@
 {
 	"ui.chat.user_turn.show_more": "Hiện thêm",
-	"ui.chat.user_turn.show_less": "Hiện bớt"
+	"ui.chat.user_turn.show_less": "Hiện bớt",
+	"ui.chat.user_turn.stamp.sent": "Đã gửi {date}",
+	"ui.chat.user_turn.stamp.answered": "Đã trả lời {date}",
+	"ui.chat.user_turn.stamp.ran": "Đã chạy {date}"
 }

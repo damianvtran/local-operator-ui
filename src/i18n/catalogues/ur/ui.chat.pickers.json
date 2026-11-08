@@ -750,5 +750,13 @@
 	"ui.chat.pickers.slash.source.mcp": "سرورز",
 	"ui.chat.pickers.slash.source.theme": "تھیمز",
 	"ui.chat.pickers.slash.source.title_refresh": "اختیارات",
-	"ui.chat.pickers.slash.source.session_tags": "ٹیگز"
+	"ui.chat.pickers.slash.source.session_tags": "ٹیگز",
+	"ui.chat.pickers.at_menu.footer.nothing": "داخل کرنے کو کچھ نہیں · Esc بند کرتا ہے",
+	"ui.chat.pickers.at_menu.footer.inserts": "Enter {reference} داخل کرتا ہے · Esc بند کرتا ہے",
+	"ui.chat.pickers.at_menu.footer.opens": "Enter {path} کھولتا ہے · Esc بند کرتا ہے",
+	"ui.chat.pickers.slash.row_slot.fast_on": "فی الحال چالو",
+	"ui.chat.pickers.slash.row_slot.fast_off": "فی الحال بند",
+	"ui.chat.pickers.slash.row_slot.needs_value": "قدر درکار ہے",
+	"ui.chat.pickers.slash.unknown_command": "نامعلوم کمانڈ /{command}۔ مکمل فہرست کے لیے / ٹائپ کریں۔",
+	"ui.chat.pickers.slash.unknown_command_suggest": "نامعلوم کمانڈ /{command}۔ کیا آپ کا مطلب {suggestions} تھا؟ مکمل فہرست کے لیے / ٹائپ کریں۔"
 }

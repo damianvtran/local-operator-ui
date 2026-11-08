@@ -31,5 +31,13 @@
 	"ui.chat.asks.status.withdrawn_label": "Retirada",
 	"ui.chat.asks.outstanding_count": "{count, plural, one {{count_display} consulta} many {{count_display} de consultas} other {{count_display} consultas}}",
 	"ui.chat.asks.outstanding_aria": "{label} sin responder. El agente no está bloqueado esperando tu respuesta.",
-	"ui.chat.asks.answer_aria": "Tu respuesta a: {question}"
+	"ui.chat.asks.answer_aria": "Tu respuesta a: {question}",
+	"ui.chat.asks.scope.session": "Esta conversación",
+	"ui.chat.asks.scope.fleet": "Todas las conversaciones",
+	"ui.chat.asks.scope_line": "{scope} · {clause}",
+	"ui.chat.asks.clause.settled": "Todas las consultas atendidas",
+	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} sin responder} many {{count, number, ::group-off} sin responder} other {{count, number, ::group-off} sin responder}}",
+	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} consulta esperando respuesta} many {{count, number, ::group-off} de consultas esperando respuesta} other {{count, number, ::group-off} consultas esperando respuesta}}",
+	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} respuesta aún sin entregar — todavía puedes cambiarla} many {{count, number, ::group-off} de respuestas aún sin entregar — todavía puedes cambiarlas} other {{count, number, ::group-off} respuestas aún sin entregar — todavía puedes cambiarlas}}",
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} consulta caducó} many {{count, number, ::group-off} de consultas caducaron} other {{count, number, ::group-off} consultas caducaron}}"
 }

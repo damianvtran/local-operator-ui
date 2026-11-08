@@ -750,5 +750,13 @@
 	"ui.chat.pickers.slash.source.mcp": "सर्वर",
 	"ui.chat.pickers.slash.source.theme": "थीम",
 	"ui.chat.pickers.slash.source.title_refresh": "विकल्प",
-	"ui.chat.pickers.slash.source.session_tags": "टैग"
+	"ui.chat.pickers.slash.source.session_tags": "टैग",
+	"ui.chat.pickers.at_menu.footer.nothing": "जोड़ने के लिए कुछ नहीं · Esc बंद करें",
+	"ui.chat.pickers.at_menu.footer.inserts": "Enter से {reference} जोड़ें · Esc बंद करें",
+	"ui.chat.pickers.at_menu.footer.opens": "Enter से {path} खोलें · Esc बंद करें",
+	"ui.chat.pickers.slash.row_slot.fast_on": "अभी चालू",
+	"ui.chat.pickers.slash.row_slot.fast_off": "अभी बंद",
+	"ui.chat.pickers.slash.row_slot.needs_value": "मान चाहिए",
+	"ui.chat.pickers.slash.unknown_command": "अज्ञात कमांड /{command}। पूरी सूची के लिए / टाइप करें।",
+	"ui.chat.pickers.slash.unknown_command_suggest": "अज्ञात कमांड /{command}। क्या आपका मतलब {suggestions} था? पूरी सूची के लिए / टाइप करें।"
 }

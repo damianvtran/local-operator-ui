@@ -71,5 +71,12 @@
 	"ui.chat.sidebar.row.unread_suffix": ", अपठित",
 	"ui.chat.sidebar.row.silent_remedy": "/stop अगर यह चुप रहे।",
 	"ui.chat.sidebar.catalogue.show_more": "{hidden, plural, one {{hidden, number, ::group-off} और दिखाएँ} other {{hidden, number, ::group-off} और दिखाएँ}}",
-	"ui.chat.sidebar.catalogue.show_more_chats": "{add, plural, one {{add, number, ::group-off} और चैट दिखाएँ} other {{add, number, ::group-off} और चैट दिखाएँ}}"
+	"ui.chat.sidebar.catalogue.show_more_chats": "{add, plural, one {{add, number, ::group-off} और चैट दिखाएँ} other {{add, number, ::group-off} और चैट दिखाएँ}}",
+	"ui.chat.sidebar.groups.empty": "अभी कोई चैट नहीं",
+	"ui.chat.sidebar.groups.loading": "चैट लोड हो रही हैं…",
+	"ui.chat.sidebar.groups.withheld": "ये संग्रहित हो सकती हैं। “संग्रहित भी शामिल करें” के साथ खोजें।",
+	"ui.chat.sidebar.catalogue.show_more_agents": "{count, plural, one {{count, number, ::group-off} और एजेंट दिखाएँ} other {{count, number, ::group-off} और एजेंट दिखाएँ}}",
+	"ui.chat.sidebar.catalogue.show_more_teams": "{count, plural, one {{count, number, ::group-off} और टीम दिखाएँ} other {{count, number, ::group-off} और टीमें दिखाएँ}}",
+	"ui.chat.sidebar.drafts.row_label": "ड्राफ़्ट: {title}",
+	"ui.chat.sidebar.drafts.discard_label": "ड्राफ़्ट “{title}” मिटाएँ"
 }

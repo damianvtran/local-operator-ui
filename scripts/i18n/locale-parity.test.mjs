@@ -1537,6 +1537,106 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.chat.transcript_copy.role.assistant",
 		"French cognate: the French role name is « Assistant », same spelling; scoped to fr so other locales still translate it",
 	],
+	[
+		"fr:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
 ]);
 
 /*

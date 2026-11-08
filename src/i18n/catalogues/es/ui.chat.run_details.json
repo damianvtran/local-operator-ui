@@ -89,5 +89,7 @@
 	"ui.chat.run_details.monitors.more": "{count, plural, one {{count_display} monitor más} many {{count_display} de monitores más} other {{count_display} monitores más}}",
 	"ui.chat.run_details.wake.more": "{count, plural, one {{count_display} despertar más} many {{count_display} de despertares más} other {{count_display} despertares más}}",
 	"ui.chat.run_details.wake.armed_count": "{count, plural, one {{count_display} despertar activado} many {{count_display} de despertares activados} other {{count_display} despertares activados}}",
-	"ui.chat.run_details.wake.cadence_once": "una vez"
+	"ui.chat.run_details.wake.cadence_once": "una vez",
+	"ui.chat.run_details.wake.managed_by": "gestionado por {name}",
+	"ui.chat.run_details.wake.managed_note": "Este despertar es la programación propia de {name}, así que no se puede cancelar aquí. Para detener estos seguimientos, usa /aida pause."
 }

@@ -89,5 +89,7 @@
 	"ui.chat.run_details.monitors.more": "{count, plural, =1 {Ещё {count_display} мониторинг} one {Ещё {count_display} мониторинг} few {Ещё {count_display} мониторинга} many {Ещё {count_display} мониторингов} other {Ещё {count_display} мониторинга}}",
 	"ui.chat.run_details.wake.more": "{count, plural, =1 {Ещё {count_display} пробуждение} one {Ещё {count_display} пробуждение} few {Ещё {count_display} пробуждения} many {Ещё {count_display} пробуждений} other {Ещё {count_display} пробуждения}}",
 	"ui.chat.run_details.wake.armed_count": "{count, plural, =1 {{count_display} пробуждение запланировано} one {{count_display} пробуждение запланировано} few {{count_display} пробуждения запланированы} many {{count_display} пробуждений запланировано} other {{count_display} пробуждения запланировано}}",
-	"ui.chat.run_details.wake.cadence_once": "однократно"
+	"ui.chat.run_details.wake.cadence_once": "однократно",
+	"ui.chat.run_details.wake.managed_by": "под управлением {name}",
+	"ui.chat.run_details.wake.managed_note": "Это пробуждение входит в собственное расписание ассистента {name}, поэтому отменить его здесь нельзя. Чтобы остановить эти проверки, используйте /aida pause."
 }

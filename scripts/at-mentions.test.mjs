@@ -28,6 +28,8 @@ const bundle = await build({
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
+	// `at-contract` reads its footer lines through `t()` (`@shared/i18n`).
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 	bundle: true,
 	format: "esm",
 	platform: "node",

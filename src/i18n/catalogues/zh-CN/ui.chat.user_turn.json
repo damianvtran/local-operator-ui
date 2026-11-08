@@ -1,4 +1,7 @@
 {
 	"ui.chat.user_turn.show_more": "展开",
-	"ui.chat.user_turn.show_less": "收起"
+	"ui.chat.user_turn.show_less": "收起",
+	"ui.chat.user_turn.stamp.sent": "发送于{date}",
+	"ui.chat.user_turn.stamp.answered": "回答于{date}",
+	"ui.chat.user_turn.stamp.ran": "运行于{date}"
 }

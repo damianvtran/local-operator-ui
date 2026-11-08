@@ -71,5 +71,12 @@
 	"ui.chat.sidebar.row.unread_suffix": "，未读",
 	"ui.chat.sidebar.row.silent_remedy": "/stop 若持续无响应。",
 	"ui.chat.sidebar.catalogue.show_more": "再显示{hidden, plural, other {{hidden, number, ::group-off}条}}",
-	"ui.chat.sidebar.catalogue.show_more_chats": "再显示{add, plural, other {{add, number, ::group-off}个对话}}"
+	"ui.chat.sidebar.catalogue.show_more_chats": "再显示{add, plural, other {{add, number, ::group-off}个对话}}",
+	"ui.chat.sidebar.groups.empty": "暂无对话",
+	"ui.chat.sidebar.groups.loading": "正在加载对话……",
+	"ui.chat.sidebar.groups.withheld": "可能已归档。请搜索并启用“包含已归档对话”。",
+	"ui.chat.sidebar.catalogue.show_more_agents": "再显示{count, plural, other {{count, number, ::group-off}个智能体}}",
+	"ui.chat.sidebar.catalogue.show_more_teams": "再显示{count, plural, other {{count, number, ::group-off}个团队}}",
+	"ui.chat.sidebar.drafts.row_label": "草稿：{title}",
+	"ui.chat.sidebar.drafts.discard_label": "放弃草稿“{title}”"
 }

@@ -270,8 +270,8 @@ const CLAUSE_SEAM = ", ";
  * this one is not, and a control whose name did not flip would tell a reader
  * that pressing it opens something they are already looking at.
  */
-const LABEL_OPEN = "Open run details";
-const LABEL_CLOSE = "Close run details";
+const labelOpen = (): string => t("ui.chat.header.open_run_details");
+const labelClose = (): string => t("ui.chat.header.close_run_details");
 /**
  * The seam between the action and its first clause.
  *
@@ -4104,6 +4104,14 @@ export function runDetailTriggerLabel(
 	seen: SeenFailures = NOTHING_SEEN,
 	options: {
 		open?: boolean;
+		/**
+		 * Name the pane instead of the action: the head is the keyed pane label
+		 * (`Run details`) rather than the Open/Close verb. The rail item exposes
+		 * `aria-pressed`, so its accessible name drops the verb (UX round 1, U2) -
+		 * and takes the bare noun from the catalogue rather than by rewriting the
+		 * English verb phrase after the fact, which left it English in every locale.
+		 */
+		name?: boolean;
 		maxChars?: number;
 		/** Problem servers nobody has looked at, from the MCP ledger's own set. */
 		mcpProblems?: number;
@@ -4118,7 +4126,12 @@ export function runDetailTriggerLabel(
 	} = {},
 ): string {
 	const chord = options.cap ?? null;
-	const prefix = `${options.open ? LABEL_CLOSE : LABEL_OPEN}${chord === null ? "" : ` (${chord})`}`;
+	const head = options.name
+		? t("ui.chat.run_details.pane_label")
+		: options.open
+			? labelClose()
+			: labelOpen();
+	const prefix = `${head}${chord === null ? "" : ` (${chord})`}`;
 	if (!details) return prefix;
 	const attention: string[] = [];
 	const counts: string[] = [];

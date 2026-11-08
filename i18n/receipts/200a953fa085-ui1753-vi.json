@@ -1,0 +1,290 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "final-independent-delta-audit",
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "200a953fa085",
+  "instance": "200a953fa085-ui1753-vi",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "Model as shown by this session's runtime header (anthropic/claude-sonnet-5-5). No model-switch or fallback notice was reported or observed in this session, and none is claimed.",
+  "independence": "Separate session (200a953fa085, team lopdev translation-auditor) from the translator and remediator of the vi catalogues and from the round-1 and delta re-audit sessions. No prior audit receipt, translator summary or commit message was read as evidence; the verdict was rebuilt from the committed English and vi catalogue bytes, the en .context.json sidecar, the vi style guide, the glossary and shipped vi precedent.",
+  "independent_from_translator_session": true
+ },
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "200a953fa085-ui1753-vi",
+ "session": "200a953fa085",
+ "locale": "vi",
+ "pr": "damianvtran/local-operator-ui#1753",
+ "branch": "i18n/key-census-literals",
+ "head": "bd17b456e079c761013c580ea4263b5c4bc57f5d",
+ "english_additions_commit": "874446c2c80e8c3849c20ed72780d1455e7752a9",
+ "date": "2026-11-07",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "finding_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 2
+ },
+ "keys_read": 86,
+ "scope": "The 86 keys PR #1753 added in en (ui.chat.canonical 55, ui.chat.asks 8, ui.chat.sidebar 7, ui.chat.pickers 8, ui.chat.run_details 2, ui.chat.user_turn 3, ui.hub.pages 3; git diff 874446c2c80e^..874446c2c80e -- src/i18n/catalogues/en), read in vi against en and the .context.json sidecar. Whole-file hashes bind the committed bytes; the other keys of each namespace were not re-audited. Prior-round items re-judged on the final text and found resolved: fold.sentence.files 'Đã xem'; task -> 'tác vụ' (fold.count.task, fold.sentence.delegated_lead/follow); fold.count.secret 'thông tin bí mật'; fold.count.web_read 'trang web'; pickers.slash.unknown_command(_suggest) 'Lệnh /{command} không xác định'; asks.scope.fleet 'Mọi cuộc trò chuyện'.",
+ "namespaces": {
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read_delta": 55,
+   "delta_keys": [
+    "ui.chat.canonical.fold.count.shell",
+    "ui.chat.canonical.fold.count.python",
+    "ui.chat.canonical.fold.count.file",
+    "ui.chat.canonical.fold.count.search",
+    "ui.chat.canonical.fold.count.web",
+    "ui.chat.canonical.fold.count.edit",
+    "ui.chat.canonical.fold.count.task",
+    "ui.chat.canonical.fold.count.agent",
+    "ui.chat.canonical.fold.count.team",
+    "ui.chat.canonical.fold.count.team_delete",
+    "ui.chat.canonical.fold.count.hub",
+    "ui.chat.canonical.fold.count.secret",
+    "ui.chat.canonical.fold.count.project",
+    "ui.chat.canonical.fold.count.project_delete",
+    "ui.chat.canonical.fold.count.wake",
+    "ui.chat.canonical.fold.count.jobs",
+    "ui.chat.canonical.fold.count.jobs_cancel",
+    "ui.chat.canonical.fold.count.console",
+    "ui.chat.canonical.fold.count.network",
+    "ui.chat.canonical.fold.count.browser",
+    "ui.chat.canonical.fold.count.todo",
+    "ui.chat.canonical.fold.count.todo_read",
+    "ui.chat.canonical.fold.count.send",
+    "ui.chat.canonical.fold.count.ask",
+    "ui.chat.canonical.fold.count.wait",
+    "ui.chat.canonical.fold.count.lsp",
+    "ui.chat.canonical.fold.count.web_read",
+    "ui.chat.canonical.fold.count.list_variables",
+    "ui.chat.canonical.fold.count.read_variable",
+    "ui.chat.canonical.fold.count.sessions",
+    "ui.chat.canonical.fold.count.named",
+    "ui.chat.canonical.fold.count.actions",
+    "ui.chat.canonical.fold.count.other_actions",
+    "ui.chat.canonical.fold.unit_separator",
+    "ui.chat.canonical.fold.sentence.files",
+    "ui.chat.canonical.fold.sentence.searches",
+    "ui.chat.canonical.fold.sentence.web_lead",
+    "ui.chat.canonical.fold.sentence.web_follow",
+    "ui.chat.canonical.fold.sentence.commands_lead",
+    "ui.chat.canonical.fold.sentence.commands_follow",
+    "ui.chat.canonical.fold.sentence.edits_lead",
+    "ui.chat.canonical.fold.sentence.edits_follow",
+    "ui.chat.canonical.fold.sentence.delegated_lead",
+    "ui.chat.canonical.fold.sentence.delegated_follow",
+    "ui.chat.canonical.fold.sentence.join",
+    "ui.chat.canonical.fold.receipt.incoming",
+    "ui.chat.canonical.fold.receipt.job_result",
+    "ui.chat.canonical.fold.receipt.wake",
+    "ui.chat.canonical.fold.receipt.monitor_prompt",
+    "ui.chat.canonical.fold.receipt.other",
+    "ui.chat.canonical.fold.receipt.reply_requested",
+    "ui.chat.canonical.fold.receipt.steered",
+    "ui.chat.canonical.checkpoint_rail.label",
+    "ui.chat.canonical.transcript.not_delivered",
+    "ui.chat.canonical.fold.count.actions_partial"
+   ],
+   "sha256": {
+    "en": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
+    "vi": "7be5750808c26b883a8b9d9fd0c59c3dded418db03441c5cfa5d0657887abeb4"
+   },
+   "context_sha256": "88a491a6e91758d1cd956d458a341717c878a8b3d61caf003b7a9f1ed1a4593a",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   },
+   "findings": [
+    {
+     "id": "VI-1753-1",
+     "severity": "nit",
+     "key": "ui.chat.canonical.fold.receipt.reply_requested",
+     "summary": "Sibling flag ui.chat.canonical.fold.receipt.steered is a past-participle status ('Đã định hướng') but this flag has no 'Đã', so the pair reads as a status plus an imperative/noun phrase. Not unsafe (a flag, not a completion claim). Proposal: 'Đã yêu cầu trả lời' (or 'Cần trả lời').",
+     "before": "Yêu cầu trả lời",
+     "after": "Đã yêu cầu trả lời",
+     "resolution": "reported only; auditor does not edit"
+    },
+    {
+     "id": "VI-1753-2",
+     "severity": "nit",
+     "key": "ui.chat.canonical.fold.count.todo",
+     "summary": "Rendered '12 lần cập nhật việc cần làm' is 28 characters against 15 for English '12 todo updates' (1.9x); context says these units are painted unbreakable at narrow widths and to keep them short, and there is no numeric maxCells. Wording is correct and matches shipped 'Việc cần làm' (ui.chat.run_details.todos.title). Flag for a rendered narrow-width check; no text change proposed (fold.count.todo_read '12 lần đọc việc cần làm' is 23 vs 13, same case).",
+     "before": "{count, plural, other {{count, number, ::group-off} lần cập nhật việc cần làm}}",
+     "after": "(no change proposed; rendered check)",
+     "resolution": "reported only; auditor does not edit"
+    }
+   ]
+  },
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read_delta": 8,
+   "delta_keys": [
+    "ui.chat.asks.scope.session",
+    "ui.chat.asks.scope.fleet",
+    "ui.chat.asks.scope_line",
+    "ui.chat.asks.clause.settled",
+    "ui.chat.asks.clause.outstanding",
+    "ui.chat.asks.clause.waiting",
+    "ui.chat.asks.clause.delivering",
+    "ui.chat.asks.clause.timed_out"
+   ],
+   "sha256": {
+    "en": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
+    "vi": "498938f6a7ba474c05608ad07015e79ada211be54881b83152a3f2d032221ef5"
+   },
+   "context_sha256": "f61b397ea87067d1792983c3a1d904d1f88ee92ca98539a7335eaa2cbb3b8c3e",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/vi/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "status": "passed",
+   "result": "clean",
+   "keys_read_delta": 7,
+   "delta_keys": [
+    "ui.chat.sidebar.groups.empty",
+    "ui.chat.sidebar.groups.loading",
+    "ui.chat.sidebar.groups.withheld",
+    "ui.chat.sidebar.catalogue.show_more_agents",
+    "ui.chat.sidebar.catalogue.show_more_teams",
+    "ui.chat.sidebar.drafts.row_label",
+    "ui.chat.sidebar.drafts.discard_label"
+   ],
+   "sha256": {
+    "en": "da4e961e7f19619d98860565be68e0edf65d26ebd8eef4eac2a48e8e6aa8b3df",
+    "vi": "aa66e49ba7abeea417ee38914c7d744fbf28574d4ebd9ecd558586dda243932a"
+   },
+   "context_sha256": "8e06707ca7184110e9599e1d4acaa5ad4f4409e3034dabfb4d861244a07c4cbb",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+    "target": "src/i18n/catalogues/vi/ui.chat.sidebar.json",
+    "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean",
+   "keys_read_delta": 8,
+   "delta_keys": [
+    "ui.chat.pickers.at_menu.footer.nothing",
+    "ui.chat.pickers.at_menu.footer.inserts",
+    "ui.chat.pickers.at_menu.footer.opens",
+    "ui.chat.pickers.slash.row_slot.fast_on",
+    "ui.chat.pickers.slash.row_slot.fast_off",
+    "ui.chat.pickers.slash.row_slot.needs_value",
+    "ui.chat.pickers.slash.unknown_command",
+    "ui.chat.pickers.slash.unknown_command_suggest"
+   ],
+   "sha256": {
+    "en": "fc24432940fa342e87f169992f8f9bf00d2d73a06ee654a29a62b547bcb6be37",
+    "vi": "1fa2c625a28c265732ee5abba60427e66dfd00365b9ea8b4350e354f89eab269"
+   },
+   "context_sha256": "39138377d3df864dfcb9f64e084110244a40abce650f3c0837e1d31e45fa1df9",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "target": "src/i18n/catalogues/vi/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "result": "clean",
+   "keys_read_delta": 2,
+   "delta_keys": [
+    "ui.chat.run_details.wake.managed_by",
+    "ui.chat.run_details.wake.managed_note"
+   ],
+   "sha256": {
+    "en": "92fb1e13c99204304e7f567f29be4983416d7eddd3c5ff092a3abf4716dbf5e4",
+    "vi": "14996dc0d67780583735952fd4b2ec92a06015b6985b5cfd46adfc66f8b45149"
+   },
+   "context_sha256": "be214f5b36ae7cd9c131b4372d0537321d7a22c6d35555883e8ca3f149c4bdb7",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "target": "src/i18n/catalogues/vi/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.user_turn": {
+   "namespace": "ui.chat.user_turn",
+   "status": "passed",
+   "result": "clean",
+   "keys_read_delta": 3,
+   "delta_keys": [
+    "ui.chat.user_turn.stamp.sent",
+    "ui.chat.user_turn.stamp.answered",
+    "ui.chat.user_turn.stamp.ran"
+   ],
+   "sha256": {
+    "en": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8",
+    "vi": "1b00acfceb5aea98350cc517cc9e2c2be426ca9e275d9abd080244dcfe0420ab"
+   },
+   "context_sha256": "83dc1782e60b76208d1baacc6bbfbcc49acb8ea10421ae17ff7acd5f44c9637f",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.user_turn.json",
+    "target": "src/i18n/catalogues/vi/ui.chat.user_turn.json",
+    "context": "src/i18n/catalogues/en/ui.chat.user_turn.context.json"
+   },
+   "findings": []
+  },
+  "ui.hub.pages": {
+   "namespace": "ui.hub.pages",
+   "status": "passed",
+   "result": "clean",
+   "keys_read_delta": 3,
+   "delta_keys": [
+    "ui.hub.pages.signed_out.title",
+    "ui.hub.pages.signed_out.body",
+    "ui.hub.pages.load_failed.title"
+   ],
+   "sha256": {
+    "en": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20",
+    "vi": "2e637ba0f365dad6f3bc53a09977af7da1b29b2b0ea8ae86487171ed0ee36578"
+   },
+   "context_sha256": "a767550cecb7c9469be395ece18098651441441777713e5f9101045f5df58ce5",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+    "target": "src/i18n/catalogues/vi/ui.hub.pages.json",
+    "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+   },
+   "findings": []
+  }
+ },
+ "verified": [
+  "key sets of all seven vi namespaces equal en (241/41/80/760/93/5/43 keys) and the en context sidecars",
+  "ICU parsed with @formatjs/icu-messageformat-parser for all 86 keys: placeholder names and types identical to en in every key; number skeleton ::group-off preserved wherever en has it; nothing dropped, renamed or translated",
+  "plurals: Intl.PluralRules('vi') has only 'other'; all 54 plural keys carry only an 'other' arm; rendered with intl-messageformat at counts 0,1,2,3,5,11,21,22,25,100,1000, all well-formed, 1000 prints ungrouped",
+  "NFC and no Cf/bidi/zero-width/BOM characters in any of the 86 values; no double spaces; edge-space pattern equals en (fold.unit_separator ' · ' identical to en)",
+  "node scripts/i18n/check-coverage.mjs -> coverage-check: ok - 7 gated language(s) over 129 namespace(s); 0 allowed key(s) remain",
+  "pending/failed never reads as done: asks.clause.delivering 'chưa được chuyển đi — bạn vẫn có thể sửa' keeps both facts; transcript.not_delivered 'Chưa gửi được' reads as failure beside 'Gửi lại' (ui.chat.canonical.transcript.send_again); asks.clause.settled covers answered/timed-out/dismissed",
+  "terminology vs shipped precedent: wake noun 'lịch đánh thức' (ui.schedules.json, ui.chat.run_details.wakes.title; style guide prefers 'thức dậy' for the intransitive verb, shipped nouns use 'đánh thức'); subagent 'tác nhân con' (glossary, ui.agents.detail.delegate.label); prompt/monitor 'prompt'/'giám sát' (glossary); 'việc cần làm' (ui.chat.run_details.todos.title); 'thông tin bí mật' (ui.canvas.files.attachmentRefused); steer 'định hướng' (ui.chat.composer.steer_hint); sidebar.groups.withheld quotes 'Tìm cả mục đã lưu trữ' byte-identical to ui.chat.sidebar.search.include_archived; hub 'trung tâm' (ui.hub.links.title); key hints follow ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes; 'lúc {date}' follows ui.chat.run_details.wake.cancel_wake_due",
+  "observation, not a finding: job (glossary/style guide 'tác vụ') and task (shipped ui.schedules 'tác vụ theo lịch') share one vi word, so fold.count.jobs and fold.count.task read alike; recorded programme policy, not drift in these keys",
+  "observation, not a finding: src/i18n/catalogues/vi/ui.chat.sidebar.context.json is a tracked vi sidecar from commit 486d70fbb0e (all seven locales carry one); untouched by this PR"
+ ],
+ "limitations": [
+  "No rendered pixels, clipping or font-fit proof; fold.count.todo/todo_read overflow is flagged for a rendered check only.",
+  "No installs, network, generators or ledger-assemble were run."
+ ],
+ "findings": []
+}

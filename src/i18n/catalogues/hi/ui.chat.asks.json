@@ -31,5 +31,13 @@
 	"ui.chat.asks.status.withdrawn_label": "वापस लिया गया",
 	"ui.chat.asks.outstanding_count": "{count, plural, =1 {{count_display} सवाल} one {{count_display} सवाल} other {{count_display} सवाल}}",
 	"ui.chat.asks.outstanding_aria": "{label} बाकी। एजेंट आपके जवाब पर रुका नहीं है।",
-	"ui.chat.asks.answer_aria": "{question} पर आपका जवाब"
+	"ui.chat.asks.answer_aria": "{question} पर आपका जवाब",
+	"ui.chat.asks.scope.session": "यह बातचीत",
+	"ui.chat.asks.scope.fleet": "सभी बातचीतें",
+	"ui.chat.asks.scope_line": "{scope} · {clause}",
+	"ui.chat.asks.clause.settled": "सभी सवाल निपट गए",
+	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} बाकी} other {{count, number, ::group-off} बाकी}}",
+	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} सवाल इंतज़ार में} other {{count, number, ::group-off} सवाल इंतज़ार में}}",
+	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} जवाब अभी पहुँचा नहीं — आप इसे अब भी बदल सकते हैं} other {{count, number, ::group-off} जवाब अभी पहुँचे नहीं — आप इन्हें अब भी बदल सकते हैं}}",
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} सवाल की समय-सीमा खत्म हो गई} other {{count, number, ::group-off} सवालों की समय-सीमा खत्म हो गई}}"
 }

@@ -70,6 +70,8 @@ const bundle = await build({
 		resolveDir: process.cwd(),
 		loader: "ts",
 	},
+	// `draft-rows` words its marker and discard label through `t()`.
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 	bundle: true,
 	format: "esm",
 	platform: "node",
@@ -82,24 +84,25 @@ const draftRows = await import(
 
 test("the discard control's name is an action with the row's own title, not the row's label verbatim", () => {
 	/*
-	 * The action, never the state, and the prefix does not echo (the row's label
+	 * The action, never the state, and the marker does not echo (the row's label
 	 * already says "Draft: " - the control would otherwise read the noun twice).
+	 * It takes the row's TITLE (no marker to strip, so it holds in any language);
 	 * `title` carries the same string in the component below, so the pointer and
 	 * the screen reader describe the control in one voice.
 	 */
 	assert.equal(
-		draftRows.discardDraftLabel("Draft: Can you check our google drive"),
+		draftRows.discardDraftLabel("Can you check our google drive"),
 		"Discard draft “Can you check our google drive”",
 	);
 	assert.equal(
-		draftRows.discardDraftLabel("no prefix, kept as is"),
-		"Discard draft “no prefix, kept as is”",
+		draftRows.discardDraftLabel("no marker, kept as is"),
+		"Discard draft “no marker, kept as is”",
 	);
 	/*
-	 * And the module still declares the prefix the strip reads, so a prefix that
-	 * moves cannot silently leave the label intact.
+	 * The English render of the keyed row label is the old `Draft: ` + title
+	 * literal, byte for byte: keying the marker must not move a character.
 	 */
-	assert.equal(draftRows.DRAFT_ROW_PREFIX, "Draft: ");
+	assert.equal(draftRows.draftRowLabel("Fix it"), "Draft: Fix it");
 });
 
 test("the discard control is a SIBLING of the row's button, and the wrapper carries the group state", () => {

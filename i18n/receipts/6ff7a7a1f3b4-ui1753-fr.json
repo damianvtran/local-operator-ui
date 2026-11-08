@@ -1,0 +1,279 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "6ff7a7a1f3b4",
+  "instance": "6ff7a7a1f3b4-ui1753-fr",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "Model is the session header's own model line (anthropic/claude-sonnet-5-5). The session reported no fallback; the runtime provider cannot be independently verified from inside the session, so none is claimed beyond that.",
+  "independence": "Separate lopdev session (6ff7a7a1f3b4) from the PR coder, the fr translator, the remediator, the round-1 independent audit and the delta re-audit. The verdict was rebuilt from the committed fr/en bytes, the en context sidecars, the fr style guide, the glossary and shipped fr precedent; the translators' summaries were treated only as claims to check. Same model family as other lopdev sessions is possible; independence is by session and role, not provable from this file alone."
+ },
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "fallback": "none reported",
+ "instance": "6ff7a7a1f3b4-ui1753-fr",
+ "session": "6ff7a7a1f3b4",
+ "locale": "fr",
+ "branch": "i18n/key-census-literals",
+ "head": "bd17b456e079c761013c580ea4263b5c4bc57f5d",
+ "pr": "damianvtran/local-operator-ui#1753",
+ "date": "2026-11-07",
+ "status": "passed",
+ "result": "clean",
+ "scope": "Final independent audit of the fr text of the 86 keys PR #1753 added (English additions of 874446c2c80e8c3849c20ed72780d1455e7752a9, derived with git diff 874446c2c8^..874446c2c8 -- src/i18n/catalogues/en): ui.chat.canonical 55, ui.chat.asks 8, ui.chat.sidebar 7, ui.chat.pickers 8, ui.chat.run_details 2, ui.chat.user_turn 3, ui.hub.pages 3. Pre-existing keys were read only as precedent. Confirmed resolved from earlier rounds: fold.receipt.other, fold.count.list_variables, run_details.wake.managed_note. Prior accepted nits n1-n4 are not re-raised.",
+ "inputs_sha256": {
+  "en_context (ui.chat.canonical.context.json)": "88a491a6e91758d1cd956d458a341717c878a8b3d61caf003b7a9f1ed1a4593a",
+  "en_context (ui.chat.asks.context.json)": "f61b397ea87067d1792983c3a1d904d1f88ee92ca98539a7335eaa2cbb3b8c3e",
+  "en_context (ui.chat.sidebar.context.json)": "8e06707ca7184110e9599e1d4acaa5ad4f4409e3034dabfb4d861244a07c4cbb",
+  "en_context (ui.chat.pickers.context.json)": "39138377d3df864dfcb9f64e084110244a40abce650f3c0837e1d31e45fa1df9",
+  "en_context (ui.chat.run_details.context.json)": "be214f5b36ae7cd9c131b4372d0537321d7a22c6d35555883e8ca3f149c4bdb7",
+  "en_context (ui.chat.user_turn.context.json)": "83dc1782e60b76208d1baacc6bbfbcc49acb8ea10421ae17ff7acd5f44c9637f",
+  "en_context (ui.hub.pages.context.json)": "a767550cecb7c9469be395ece18098651441441777713e5f9101045f5df58ce5",
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/fr.md)": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+ },
+ "verified": [
+  "key list: the 86 added en keys equal 55+8+7+8+2+3+3 and every one exists in fr; the sha256 values below are over the whole committed en/fr namespace files at the head",
+  "ICU: all 86 fr messages parse with @formatjs/icu-messageformat-parser (requiresOtherClause); variable names and types equal en for every key; 54 plural messages carry exactly the fr CLDR categories many/one/other (Intl.PluralRules('fr')), no few; every arm still prints the count",
+  "plural render at counts 0,1,2,3,5,11,21,22,25,100,1000,1000000,1500000,2000000 via intl-messageformat: 0 and 1 use 'one' ('0 commande shell'), 1000000 and 2000000 use 'many' with de/d' ('1000000 de commandes shell'), 1500000 uses 'other'; no artifact ({ } # undefined NaN) at any count",
+  "typography: NFC, no Cf/BOM/ZW characters, no edge or double spaces (fold.unit_separator and fold.sentence.join excepted by design), U+202F before : ; ? and inside « » in every string that has them (withheld, row_label, discard_label, unknown_command_suggest, managed_note, signed_out.body), typographic apostrophe U+2019, no ASCII ' \" or ...",
+  "literals verbatim: /aida pause, /{command}, {reference}, {path}, {suggestions}, {title}, {name}, {date}, {scope} · {clause}; the sidebar withheld hint quotes the shipped label ui.chat.sidebar.sidebar.search.include_archived 'Inclure les conversations archivées'",
+  "safety: Not delivered -> 'Non remis'; answers not yet delivered -> 'pas encore remise(s)' with the can-still-edit fact kept; timed-out -> 'expirée'; nothing pending/failed reads as done",
+  "terminology vs shipped fr: job -> tâche (fr guide), wake -> réveil, subagent -> sous-agent, ask -> demande (ui.chat.asks.all_asks, outstanding_count), settled -> réglé(es), outstanding -> en attente (outstanding_aria), chat -> conversation (show_more_chats), steer -> orienter (composer.steer_hint), delivered -> remis (clause.delivering, late_delivery), discard -> abandonner (agents.detail), sign in -> Connectez-vous (agents.upload.sign_in), credential -> identifiant (glossary), Esc/Enter -> Échap/Entrée (picker_host)",
+  "register: vous throughout (Lancez, Saisissez, Vouliez-vous, utilisez, Connectez-vous, réessayez); assistant name {name} gets no gendered pronoun",
+  "node scripts/i18n/check-coverage.mjs -> 'coverage-check: ok — 7 gated language(s) over 129 namespace(s); 0 allowed key(s) remain'"
+ ],
+ "observations": [
+  "Not findings: fold.receipt.* uses 'accusé de réception/réveil' while ui.chat.pickers has 'récépissé de commande' and ui.hub 'Reçu d’opération' for other receipts; these name different objects (a delivered system notice vs a command/operation receipt) and the fr guide records no receipt term.",
+  "fold.count.search and fold.count.web both read 'recherche' / 'recherche web' because the en pair is 'search' / 'web search'; the context sidecar for count.search describes page fetches, but the fr follows the en word and the pair stays distinguishable.",
+  "Display artifact, not a finding: the auditing session's tool output masks the committed string 'Connectez-vous' (ui.hub.pages.signed_out.title and body) as a redaction marker when it starts a displayed segment. The catalogue bytes were checked codepoint by codepoint (U+0043 U+006F U+006E U+006E ... = 'Connectez-vous') and are unaffected; the same imperative is used by shipped fr keys such as ui.agents.upload.sign_in.title_continue."
+ ],
+ "namespaces": {
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 55,
+   "namespace_total_keys": 241,
+   "delta_keys_audited": [
+    "ui.chat.canonical.fold.count.shell",
+    "ui.chat.canonical.fold.count.python",
+    "ui.chat.canonical.fold.count.file",
+    "ui.chat.canonical.fold.count.search",
+    "ui.chat.canonical.fold.count.web",
+    "ui.chat.canonical.fold.count.edit",
+    "ui.chat.canonical.fold.count.task",
+    "ui.chat.canonical.fold.count.agent",
+    "ui.chat.canonical.fold.count.team",
+    "ui.chat.canonical.fold.count.team_delete",
+    "ui.chat.canonical.fold.count.hub",
+    "ui.chat.canonical.fold.count.secret",
+    "ui.chat.canonical.fold.count.project",
+    "ui.chat.canonical.fold.count.project_delete",
+    "ui.chat.canonical.fold.count.wake",
+    "ui.chat.canonical.fold.count.jobs",
+    "ui.chat.canonical.fold.count.jobs_cancel",
+    "ui.chat.canonical.fold.count.console",
+    "ui.chat.canonical.fold.count.network",
+    "ui.chat.canonical.fold.count.browser",
+    "ui.chat.canonical.fold.count.todo",
+    "ui.chat.canonical.fold.count.todo_read",
+    "ui.chat.canonical.fold.count.send",
+    "ui.chat.canonical.fold.count.ask",
+    "ui.chat.canonical.fold.count.wait",
+    "ui.chat.canonical.fold.count.lsp",
+    "ui.chat.canonical.fold.count.web_read",
+    "ui.chat.canonical.fold.count.list_variables",
+    "ui.chat.canonical.fold.count.read_variable",
+    "ui.chat.canonical.fold.count.sessions",
+    "ui.chat.canonical.fold.count.named",
+    "ui.chat.canonical.fold.count.actions",
+    "ui.chat.canonical.fold.count.other_actions",
+    "ui.chat.canonical.fold.unit_separator",
+    "ui.chat.canonical.fold.sentence.files",
+    "ui.chat.canonical.fold.sentence.searches",
+    "ui.chat.canonical.fold.sentence.web_lead",
+    "ui.chat.canonical.fold.sentence.web_follow",
+    "ui.chat.canonical.fold.sentence.commands_lead",
+    "ui.chat.canonical.fold.sentence.commands_follow",
+    "ui.chat.canonical.fold.sentence.edits_lead",
+    "ui.chat.canonical.fold.sentence.edits_follow",
+    "ui.chat.canonical.fold.sentence.delegated_lead",
+    "ui.chat.canonical.fold.sentence.delegated_follow",
+    "ui.chat.canonical.fold.sentence.join",
+    "ui.chat.canonical.fold.receipt.incoming",
+    "ui.chat.canonical.fold.receipt.job_result",
+    "ui.chat.canonical.fold.receipt.wake",
+    "ui.chat.canonical.fold.receipt.monitor_prompt",
+    "ui.chat.canonical.fold.receipt.other",
+    "ui.chat.canonical.fold.receipt.reply_requested",
+    "ui.chat.canonical.fold.receipt.steered",
+    "ui.chat.canonical.checkpoint_rail.label",
+    "ui.chat.canonical.transcript.not_delivered",
+    "ui.chat.canonical.fold.count.actions_partial"
+   ],
+   "sha256": {
+    "fr": "fddda38eab075c96d3a0678c4f4bcecb1c7828e018fda0c136c73bbb7030bba4",
+    "en": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   },
+   "context_sha256": "88a491a6e91758d1cd956d458a341717c878a8b3d61caf003b7a9f1ed1a4593a",
+   "findings": []
+  },
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "namespace_total_keys": 41,
+   "delta_keys_audited": [
+    "ui.chat.asks.scope.session",
+    "ui.chat.asks.scope.fleet",
+    "ui.chat.asks.scope_line",
+    "ui.chat.asks.clause.settled",
+    "ui.chat.asks.clause.outstanding",
+    "ui.chat.asks.clause.waiting",
+    "ui.chat.asks.clause.delivering",
+    "ui.chat.asks.clause.timed_out"
+   ],
+   "sha256": {
+    "fr": "4d6c7766f4d185ef64202a145688e5cb6e08f0bfd6c07b20d67ba97c39d694ee",
+    "en": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "context_sha256": "f61b397ea87067d1792983c3a1d904d1f88ee92ca98539a7335eaa2cbb3b8c3e",
+   "findings": []
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 7,
+   "namespace_total_keys": 80,
+   "delta_keys_audited": [
+    "ui.chat.sidebar.groups.empty",
+    "ui.chat.sidebar.groups.loading",
+    "ui.chat.sidebar.groups.withheld",
+    "ui.chat.sidebar.catalogue.show_more_agents",
+    "ui.chat.sidebar.catalogue.show_more_teams",
+    "ui.chat.sidebar.drafts.row_label",
+    "ui.chat.sidebar.drafts.discard_label"
+   ],
+   "sha256": {
+    "fr": "b8a25c08be6c7f4af90c878d2e34639fa23924cdd28b98b807ac334719da7fc8",
+    "en": "da4e961e7f19619d98860565be68e0edf65d26ebd8eef4eac2a48e8e6aa8b3df"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+    "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+   },
+   "context_sha256": "8e06707ca7184110e9599e1d4acaa5ad4f4409e3034dabfb4d861244a07c4cbb",
+   "findings": []
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "namespace_total_keys": 760,
+   "delta_keys_audited": [
+    "ui.chat.pickers.at_menu.footer.nothing",
+    "ui.chat.pickers.at_menu.footer.inserts",
+    "ui.chat.pickers.at_menu.footer.opens",
+    "ui.chat.pickers.slash.row_slot.fast_on",
+    "ui.chat.pickers.slash.row_slot.fast_off",
+    "ui.chat.pickers.slash.row_slot.needs_value",
+    "ui.chat.pickers.slash.unknown_command",
+    "ui.chat.pickers.slash.unknown_command_suggest"
+   ],
+   "sha256": {
+    "fr": "049c348748930a00a7823cc0654c798b76eb4dbeb695b9a34e09510805dce81a",
+    "en": "fc24432940fa342e87f169992f8f9bf00d2d73a06ee654a29a62b547bcb6be37"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "context_sha256": "39138377d3df864dfcb9f64e084110244a40abce650f3c0837e1d31e45fa1df9",
+   "findings": []
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 2,
+   "namespace_total_keys": 93,
+   "delta_keys_audited": [
+    "ui.chat.run_details.wake.managed_by",
+    "ui.chat.run_details.wake.managed_note"
+   ],
+   "sha256": {
+    "fr": "0207d99d11a058a62a1d8c64378aba2c5ee8a1400a9f86251e5533e67a06b6d2",
+    "en": "92fb1e13c99204304e7f567f29be4983416d7eddd3c5ff092a3abf4716dbf5e4"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+   },
+   "context_sha256": "be214f5b36ae7cd9c131b4372d0537321d7a22c6d35555883e8ca3f149c4bdb7",
+   "findings": []
+  },
+  "ui.chat.user_turn": {
+   "namespace": "ui.chat.user_turn",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "namespace_total_keys": 5,
+   "delta_keys_audited": [
+    "ui.chat.user_turn.stamp.sent",
+    "ui.chat.user_turn.stamp.answered",
+    "ui.chat.user_turn.stamp.ran"
+   ],
+   "sha256": {
+    "fr": "c7e3b36ab50c058b86c3918296d0dad81c8b856e4b012ba32fec8f5c43029bbf",
+    "en": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.user_turn.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.user_turn.json",
+    "context": "src/i18n/catalogues/en/ui.chat.user_turn.context.json"
+   },
+   "context_sha256": "83dc1782e60b76208d1baacc6bbfbcc49acb8ea10421ae17ff7acd5f44c9637f",
+   "findings": []
+  },
+  "ui.hub.pages": {
+   "namespace": "ui.hub.pages",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "namespace_total_keys": 43,
+   "delta_keys_audited": [
+    "ui.hub.pages.signed_out.title",
+    "ui.hub.pages.signed_out.body",
+    "ui.hub.pages.load_failed.title"
+   ],
+   "sha256": {
+    "fr": "45d5c394ee2aa6ad3074574a4e2b8a9b3e1f70a96db293a1b0e1a8af55bd0449",
+    "en": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+    "target": "src/i18n/catalogues/fr/ui.hub.pages.json",
+    "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+   },
+   "context_sha256": "a767550cecb7c9469be395ece18098651441441777713e5f9101045f5df58ce5",
+   "findings": []
+  }
+ }
+}

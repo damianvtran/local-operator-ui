@@ -211,8 +211,12 @@ export function checkpointRailRevealScrollTop(
 	return null;
 }
 
-/** The rail group's accessible name (UX round 1, U3 measured it absent). */
-export const CHECKPOINT_RAIL_LABEL = "Turn checkpoints";
+/**
+ * The rail group's accessible name (UX round 1, U3 measured it absent), read
+ * from the catalogue at render time so it follows the active language.
+ */
+export const checkpointRailLabel = (): string =>
+	t("ui.chat.canonical.checkpoint_rail.label");
 
 /** The tick's glyph per outcome (D5: ✓ / ! / ⊘ / dot). */
 const OUTCOME_ICONS: Record<CheckpointOutcome, typeof Check> = {
@@ -971,7 +975,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			data-lo-checkpoint-rail=""
 			role="toolbar"
 			aria-orientation="vertical"
-			aria-label={CHECKPOINT_RAIL_LABEL}
+			aria-label={checkpointRailLabel()}
 			/*
 			 * `z-10` IS THE ORDER THE COLUMN CANNOT GIVE (round-1 remediation,
 			 * measured): the rail moved FIRST in the column for the tab order (UX

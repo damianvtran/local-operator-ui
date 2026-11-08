@@ -8,5 +8,32 @@
 		"role": "Button beneath the user message prose inside its bubble.",
 		"tone": "Short action label, sentence case, no punctuation.",
 		"note": "Collapse the expanded message back to its 174px excerpt; never delete or hide the entire message."
+	},
+	"ui.chat.user_turn.stamp.sent": {
+		"role": "accessible name and tooltip-adjacent label of the time stamp under a message the user sent",
+		"tone": "past-tense phrase followed by a date and time, no trailing punctuation",
+		"length": "Short; the date placeholder carries most of the width.",
+		"note": "Screen-reader label for a visible bare time such as '3:42 PM'. The date placeholder is already localised (day, month, year and time) and its order is the language's own, so place it where the language reads naturally.",
+		"placeholders": {
+			"date": "the localised full date and time of the event, already formatted for this language"
+		}
+	},
+	"ui.chat.user_turn.stamp.answered": {
+		"role": "accessible name and tooltip-adjacent label of the time stamp under an answer the agent wrote",
+		"tone": "past-tense phrase followed by a date and time, no trailing punctuation",
+		"length": "Short; the date placeholder carries most of the width.",
+		"note": "Screen-reader label for a visible bare time such as '3:42 PM'. The date placeholder is already localised (day, month, year and time) and its order is the language's own, so place it where the language reads naturally.",
+		"placeholders": {
+			"date": "the localised full date and time of the event, already formatted for this language"
+		}
+	},
+	"ui.chat.user_turn.stamp.ran": {
+		"role": "accessible name and tooltip-adjacent label of the time stamp under a tool call that ran",
+		"tone": "past-tense phrase followed by a date and time, no trailing punctuation",
+		"length": "Short; the date placeholder carries most of the width.",
+		"note": "Screen-reader label for a visible bare time such as '3:42 PM'. The date placeholder is already localised (day, month, year and time) and its order is the language's own, so place it where the language reads naturally.",
+		"placeholders": {
+			"date": "the localised full date and time of the event, already formatted for this language"
+		}
 	}
 }

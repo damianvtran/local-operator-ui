@@ -89,5 +89,7 @@
 	"ui.chat.run_details.monitors.more": "{count, plural, =1 {{count_display} और मॉनिटर} one {{count_display} और मॉनिटर} other {{count_display} और मॉनिटर}}",
 	"ui.chat.run_details.wake.more": "{count, plural, =1 {{count_display} और जागृति} one {{count_display} और जागृति} other {{count_display} और जागृतियाँ}}",
 	"ui.chat.run_details.wake.armed_count": "{count, plural, =1 {{count_display} जागृति सक्रिय} one {{count_display} जागृति सक्रिय} other {{count_display} जागृतियाँ सक्रिय}}",
-	"ui.chat.run_details.wake.cadence_once": "एक बार"
+	"ui.chat.run_details.wake.cadence_once": "एक बार",
+	"ui.chat.run_details.wake.managed_by": "{name} द्वारा प्रबंधित",
+	"ui.chat.run_details.wake.managed_note": "यह जागृति {name} का अपना शेड्यूल है, इसलिए इसे यहाँ से रद्द नहीं किया जा सकता। इन्हें रोकने के लिए /aida pause चलाएँ।"
 }

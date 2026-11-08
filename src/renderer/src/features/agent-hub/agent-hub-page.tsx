@@ -1261,8 +1261,8 @@ export const AgentHubPage: React.FC = () => {
 											>
 												<AlertTitle>
 													{isAuthenticated
-														? "The hub could not be loaded"
-														: "Sign in to use the hub"}
+														? t("ui.hub.pages.load_failed.title")
+														: t("ui.hub.pages.signed_out.title")}
 												</AlertTitle>
 												<AlertDescription>
 													{/*
@@ -1285,7 +1285,7 @@ export const AgentHubPage: React.FC = () => {
 																"The agent list could not be loaded.",
 																error,
 															)
-														: "You are not signed in to Radient, so the hub has no credential to read the agent list with. Sign in on the settings page, then try again."}
+														: t("ui.hub.pages.signed_out.body")}
 												</AlertDescription>
 												{/*
 												 * The retry is a SIBLING of the description, not a child of it:
@@ -1313,7 +1313,9 @@ export const AgentHubPage: React.FC = () => {
 														disabled={isFetching}
 														aria-busy={isFetching}
 													>
-														{isFetching ? "Trying…" : "Try again"}
+														{isFetching
+															? t("ui.hub.detail.trying")
+															: t("ui.common.actions.retry_again")}
 													</Button>
 												</div>
 											</Alert>
@@ -1371,7 +1373,9 @@ export const AgentHubPage: React.FC = () => {
 														disabled={isFetching}
 														aria-busy={isFetching}
 													>
-														{isFetching ? "Trying…" : "Try again"}
+														{isFetching
+															? t("ui.hub.detail.trying")
+															: t("ui.common.actions.retry_again")}
 													</Button>
 												</div>
 											)}

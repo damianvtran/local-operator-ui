@@ -750,5 +750,13 @@
 	"ui.chat.pickers.slash.source.mcp": "服务器",
 	"ui.chat.pickers.slash.source.theme": "主题",
 	"ui.chat.pickers.slash.source.title_refresh": "选项",
-	"ui.chat.pickers.slash.source.session_tags": "标签"
+	"ui.chat.pickers.slash.source.session_tags": "标签",
+	"ui.chat.pickers.at_menu.footer.nothing": "没有可插入的内容 · Esc关闭",
+	"ui.chat.pickers.at_menu.footer.inserts": "Enter插入{reference} · Esc关闭",
+	"ui.chat.pickers.at_menu.footer.opens": "Enter打开{path} · Esc关闭",
+	"ui.chat.pickers.slash.row_slot.fast_on": "当前已开启",
+	"ui.chat.pickers.slash.row_slot.fast_off": "当前已关闭",
+	"ui.chat.pickers.slash.row_slot.needs_value": "需要输入值",
+	"ui.chat.pickers.slash.unknown_command": "未知命令：/{command}。输入/可查看完整列表。",
+	"ui.chat.pickers.slash.unknown_command_suggest": "未知命令：/{command}。你是不是想输入{suggestions}？输入/可查看完整列表。"
 }

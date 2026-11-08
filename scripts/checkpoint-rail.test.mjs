@@ -29,7 +29,7 @@ import React, { act } from "react";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { CheckpointRail, CHECKPOINT_CARD_OPEN_DELAY_MS, CHECKPOINT_CARD_CLOSE_DELAY_MS, CHECKPOINT_RAIL_LABEL, checkpointRailWindow, checkpointRailMarkTop, checkpointRailContentHeight, checkpointRailRevealScrollTop, RAIL_PITCH_PX, RAIL_TRACK_PAD_PX, RAIL_PORT_MAX_PX } from "./src/renderer/src/features/chat/canonical/checkpoint-rail"; export { setLocale } from "./src/i18n";',
+			'export { CheckpointRail, CHECKPOINT_CARD_OPEN_DELAY_MS, CHECKPOINT_CARD_CLOSE_DELAY_MS, checkpointRailLabel, checkpointRailWindow, checkpointRailMarkTop, checkpointRailContentHeight, checkpointRailRevealScrollTop, RAIL_PITCH_PX, RAIL_TRACK_PAD_PX, RAIL_PORT_MAX_PX } from "./src/renderer/src/features/chat/canonical/checkpoint-rail"; export { setLocale } from "./src/i18n";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -72,7 +72,7 @@ globalThis.document = bootstrap.window.document;
 const {
 	CheckpointRail,
 	CHECKPOINT_CARD_OPEN_DELAY_MS,
-	CHECKPOINT_RAIL_LABEL,
+	checkpointRailLabel,
 	CHECKPOINT_CARD_CLOSE_DELAY_MS,
 	checkpointRailWindow,
 	checkpointRailMarkTop,
@@ -870,7 +870,8 @@ test("the rail names itself, as a vertical toolbar (UX round 1, U3)", async () =
 		const root = rail.rail();
 		assert.equal(root.getAttribute("role"), "toolbar");
 		assert.equal(root.getAttribute("aria-orientation"), "vertical");
-		assert.equal(root.getAttribute("aria-label"), CHECKPOINT_RAIL_LABEL);
+		assert.equal(root.getAttribute("aria-label"), checkpointRailLabel());
+		assert.equal(checkpointRailLabel(), "Turn checkpoints");
 	} finally {
 		await rail.close();
 	}

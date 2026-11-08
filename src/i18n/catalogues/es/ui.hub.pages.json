@@ -38,5 +38,8 @@
 	"ui.hub.pages.tab.agents": "Agentes",
 	"ui.hub.pages.tab.teams": "Equipos",
 	"ui.hub.pages.updating": "Actualizando…",
-	"ui.hub.pages.viewer_unknown": "No se pudieron leer tus “me gusta” y favoritos, así que ninguna tarjeta indica si te gusta o lo tienes en favoritos."
+	"ui.hub.pages.viewer_unknown": "No se pudieron leer tus “me gusta” y favoritos, así que ninguna tarjeta indica si te gusta o lo tienes en favoritos.",
+	"ui.hub.pages.signed_out.title": "Inicia sesión para usar el hub",
+	"ui.hub.pages.signed_out.body": "No has iniciado sesión en Radient, así que el hub no tiene ninguna credencial con la que leer la lista de agentes. Inicia sesión en la página de ajustes y vuelve a intentarlo.",
+	"ui.hub.pages.load_failed.title": "No se pudo cargar el hub"
 }

@@ -38,5 +38,8 @@
 	"ui.hub.pages.tab.agents": "Agents",
 	"ui.hub.pages.tab.teams": "Teams",
 	"ui.hub.pages.updating": "Updating…",
-	"ui.hub.pages.viewer_unknown": "Your likes and favourites could not be read, so no card shows a viewer state."
+	"ui.hub.pages.viewer_unknown": "Your likes and favourites could not be read, so no card shows a viewer state.",
+	"ui.hub.pages.signed_out.title": "Sign in to use the hub",
+	"ui.hub.pages.signed_out.body": "You are not signed in to Radient, so the hub has no credential to read the agent list with. Sign in on the settings page, then try again.",
+	"ui.hub.pages.load_failed.title": "The hub could not be loaded"
 }

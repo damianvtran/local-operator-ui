@@ -31,5 +31,13 @@
 	"ui.chat.asks.status.withdrawn_label": "Отозвано",
 	"ui.chat.asks.outstanding_count": "{count, plural, =1 {{count_display} запрос} one {{count_display} запрос} few {{count_display} запроса} many {{count_display} запросов} other {{count_display} запроса}}",
 	"ui.chat.asks.outstanding_aria": "Без ответа: {label}. Агент не ждёт вашего ответа и продолжает работу.",
-	"ui.chat.asks.answer_aria": "Ответ на: {question}"
+	"ui.chat.asks.answer_aria": "Ответ на: {question}",
+	"ui.chat.asks.scope.session": "Этот разговор",
+	"ui.chat.asks.scope.fleet": "Все разговоры",
+	"ui.chat.asks.scope_line": "{scope} · {clause}",
+	"ui.chat.asks.clause.settled": "Все запросы решены",
+	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} запрос без ответа} few {{count, number, ::group-off} запроса без ответа} many {{count, number, ::group-off} запросов без ответа} other {{count, number, ::group-off} запроса без ответа}}",
+	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} вопрос ждёт ответа} few {{count, number, ::group-off} вопроса ждут ответа} many {{count, number, ::group-off} вопросов ждут ответа} other {{count, number, ::group-off} вопроса ждут ответа}}",
+	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} ответ ещё не передан агенту — его можно изменить} few {{count, number, ::group-off} ответа ещё не переданы агенту — их можно изменить} many {{count, number, ::group-off} ответов ещё не передано агенту — их можно изменить} other {{count, number, ::group-off} ответа ещё не передано агенту — их можно изменить}}",
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} вопрос: срок ответа истёк} few {{count, number, ::group-off} вопроса: срок ответа истёк} many {{count, number, ::group-off} вопросов: срок ответа истёк} other {{count, number, ::group-off} вопроса: срок ответа истёк}}"
 }

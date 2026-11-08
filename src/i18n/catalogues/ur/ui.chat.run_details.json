@@ -89,5 +89,7 @@
 	"ui.chat.run_details.monitors.more": "{count, plural, =1 {{count_display} مزید نگرانی} other {{count_display} مزید نگرانیاں}}",
 	"ui.chat.run_details.wake.more": "{count, plural, =1 {{count_display} مزید بیداری} other {{count_display} مزید بیداریاں}}",
 	"ui.chat.run_details.wake.armed_count": "{count, plural, =1 {{count_display} بیداری فعال ہے} one {{count_display} بیداری فعال ہے} other {{count_display} بیداریاں فعال ہیں}}",
-	"ui.chat.run_details.wake.cadence_once": "ایک بار"
+	"ui.chat.run_details.wake.cadence_once": "ایک بار",
+	"ui.chat.run_details.wake.managed_by": "{name} کے زیرِ انتظام",
+	"ui.chat.run_details.wake.managed_note": "یہ بیداری {name} کا اپنا شیڈول ہے، اس لیے اسے یہاں منسوخ نہیں کیا جا سکتا۔ ان چیک اِنز کو روکنے کے لیے /aida pause استعمال کریں۔"
 }

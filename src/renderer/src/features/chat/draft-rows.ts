@@ -45,10 +45,17 @@
  * truth - and `submittedText` is the press's own record of what went, kept until
  * the claim resolves.
  */
+import { t } from "@shared/i18n";
 import type { ChatDraft } from "@shared/store/canonical-sessions-store";
 
-/** What every draft row's label starts with, so the list states what the row is. */
-export const DRAFT_ROW_PREFIX = "Draft: ";
+/**
+ * A draft row's label: the title with the `Draft:` marker that states what the
+ * row is. One keyed phrase with a `{title}` placeholder, so a language can place
+ * or inflect the marker; the marker used to be an English prefix string glued on
+ * (and stripped again by a `startsWith`, which no translated label survives).
+ */
+export const draftRowLabel = (title: string): string =>
+	t("ui.chat.sidebar.drafts.row_label", { title });
 
 /** The default `listedSessionIds`: a caller that lists no sessions owns no row. */
 const EMPTY_LISTED_SESSIONS: ReadonlySet<string> = new Set();
@@ -63,6 +70,8 @@ const EMPTY_LISTED_SESSIONS: ReadonlySet<string> = new Set();
 export type DraftRow = {
 	key: string;
 	label: string;
+	/** The label without the `Draft:` marker (see `discardDraftLabel`). */
+	title: string;
 	text: string;
 	/**
 	 * Whether this row's send hop is LIVE (`ChatDraft.pending`): a create or a
@@ -106,17 +115,15 @@ export const draftRowTitle = (text: string): string => {
  * control.
  *
  * THE ACTION, NEVER THE STATE (the archive control's rule, one control over),
- * and the row's own prefix is DROPPED rather than echoed: `Draft: ` is what the
- * label already says the row IS, so keeping it would have the control read
- * "Discard draft “Draft: …”" - the noun twice, which is the kind of stutter
- * that makes a screen-reader pass feel unfinished.
+ * and it takes the row's TITLE, not its label: `Draft: ` is what the label
+ * already says the row IS, so echoing it would have the control read "Discard
+ * draft “Draft: …”" - the noun twice, which is the kind of stutter that makes a
+ * screen-reader pass feel unfinished. Taking the title (`DraftRow.title`)
+ * instead of stripping a prefix off the label is what keeps this correct in a
+ * language whose marker is not a prefix.
  */
-export const discardDraftLabel = (label: string): string => {
-	const title = label.startsWith(DRAFT_ROW_PREFIX)
-		? label.slice(DRAFT_ROW_PREFIX.length)
-		: label;
-	return `Discard draft “${title}”`;
-};
+export const discardDraftLabel = (title: string): string =>
+	t("ui.chat.sidebar.drafts.discard_label", { title });
 
 /**
  * The position a discard should hand the caret to, computed from the keys as
@@ -207,7 +214,8 @@ export function untargetedDraftRows(
 		if (text.trim().length === 0) continue;
 		rows.push({
 			key,
-			label: `${DRAFT_ROW_PREFIX}${draftRowTitle(text)}`,
+			label: draftRowLabel(draftRowTitle(text)),
+			title: draftRowTitle(text),
 			text,
 			pending: draft.pending === true,
 		});

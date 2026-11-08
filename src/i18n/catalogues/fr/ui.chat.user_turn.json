@@ -1,4 +1,7 @@
 {
 	"ui.chat.user_turn.show_more": "Afficher plus",
-	"ui.chat.user_turn.show_less": "Afficher moins"
+	"ui.chat.user_turn.show_less": "Afficher moins",
+	"ui.chat.user_turn.stamp.sent": "Envoyé le {date}",
+	"ui.chat.user_turn.stamp.answered": "Répondu le {date}",
+	"ui.chat.user_turn.stamp.ran": "Exécuté le {date}"
 }

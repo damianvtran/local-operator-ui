@@ -31,5 +31,13 @@
 	"ui.chat.asks.status.withdrawn_label": "Withdrawn",
 	"ui.chat.asks.outstanding_count": "{count, plural, =1 {{count_display} ask} other {{count_display} asks}}",
 	"ui.chat.asks.outstanding_aria": "{label} outstanding. The agent is not blocked on you.",
-	"ui.chat.asks.answer_aria": "Your answer to: {question}"
+	"ui.chat.asks.answer_aria": "Your answer to: {question}",
+	"ui.chat.asks.scope.session": "This conversation",
+	"ui.chat.asks.scope.fleet": "All conversations",
+	"ui.chat.asks.scope_line": "{scope} · {clause}",
+	"ui.chat.asks.clause.settled": "All asks settled",
+	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} outstanding} other {{count, number, ::group-off} outstanding}}",
+	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} question waiting} other {{count, number, ::group-off} questions waiting}}",
+	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} answer not yet delivered — you can still change it} other {{count, number, ::group-off} answers not yet delivered — you can still change them}}",
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} question timed out} other {{count, number, ::group-off} questions timed out}}"
 }
