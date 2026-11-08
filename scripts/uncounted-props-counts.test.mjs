@@ -14,7 +14,7 @@ import { IntlMessageFormat } from "intl-messageformat";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { t, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n/messages"; export { setLocale } from "./src/i18n/locale";',
+			'export { t, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n/messages"; export { setLocale } from "./src/i18n/locale"; export { isolateArguments, isolateSigils, plainArgumentNames } from "./src/i18n/bidi"; export { textDirectionFor } from "./src/i18n/direction";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -22,10 +22,18 @@ const bundle = await build({
 	format: "esm",
 	write: false,
 });
-const { t, setLocale, registerCatalogue, clearRegisteredCatalogues } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	t,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
+	isolateArguments,
+	isolateSigils,
+	plainArgumentNames,
+	textDirectionFor,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 const ROOT = "src/renderer/src/features/chat/";
 const SITES = [
 	[
@@ -241,7 +249,28 @@ function catalogueFor(locale) {
 function oracle(locale, key, params) {
 	const message = catalogueFor(locale)[key];
 	assert.equal(typeof message, "string", `${locale} ships ${key}`);
-	return new IntlMessageFormat(message, locale).format(params);
+	const format = new IntlMessageFormat(message, locale);
+	/*
+	 * #1761 put the product's bidi isolation in FRONT of the formatter: when an RTL
+	 * catalogue answers a key, every plain-spliced Latin-led value is wrapped in
+	 * FSI...PDI, so `count_display`'s raw digits cannot reorder the Urdu sentence
+	 * around them (`src/i18n/bidi.ts`, called from `src/i18n/messages.ts`).
+	 *
+	 * The oracle applies the SAME rule from the SAME module rather than a second
+	 * copy of it: this file judges the shipped PLURAL RESOLUTION against an
+	 * independent ICU instance, and duplicating the isolation rule here is what
+	 * would silently drift from the product. The formatter below is still this
+	 * file's own instance, so a bug in `t()`'s lookup or formatting path cannot
+	 * also corrupt the oracle.
+	 */
+	const isolate = textDirectionFor(locale) === "rtl";
+	const formatted = format.format(
+		isolate
+			? isolateArguments(params, plainArgumentNames(format.getAst()))
+			: params,
+	);
+	const text = typeof formatted === "string" ? formatted : String(formatted);
+	return isolate ? isolateSigils(text) : text;
 }
 function withLocale(locale, body) {
 	setLocale(locale);

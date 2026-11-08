@@ -387,8 +387,16 @@ test("the dispatcher's aida branch: capability fail-closed, and the send before 
 		/if \(!aidaCapable\) \{/,
 		"the capability is asked before anything is called",
 	);
+	/*
+	 * The refusal's sentence is KEYED since #1761: the branch carries
+	 * `t("ui.chat.slash.dispatch.needs_newer_backend")` and the sentence itself lives
+	 * in `ui.chat.slash.json`. The ordering below is pinned on the binding, which is
+	 * what the branch holds, and the copy is asserted where it moved - a key bound
+	 * over an emptied value must not read as a refusal.
+	 */
+	const refusalBinding = 't("ui.chat.slash.dispatch.needs_newer_backend"';
 	assert.ok(
-		branch.indexOf("needs a newer backend") >= 0,
+		branch.indexOf(refusalBinding) >= 0,
 		"the capability's refusal is still there to precede them",
 	);
 	/*
@@ -397,11 +405,18 @@ test("the dispatcher's aida branch: capability fail-closed, and the send before 
 	 * would satisfy a bare comparison — the pin could not fail on the change it
 	 * exists to catch.
 	 */
-	const refusalAt = branch.indexOf("needs a newer backend");
+	const refusalAt = branch.indexOf(refusalBinding);
 	const reservedAt = branch.indexOf("aidaReservedAction");
 	assert.ok(
 		refusalAt >= 0 && reservedAt >= 0 && refusalAt < reservedAt,
 		`the refusal must precede every route call in the branch (refusal@${refusalAt}, reserved@${reservedAt})`,
+	);
+	assert.match(
+		JSON.parse(
+			readFileSync("src/i18n/catalogues/en/ui.chat.slash.json", "utf8"),
+		)["ui.chat.slash.dispatch.needs_newer_backend"],
+		/needs a newer backend/,
+		"and the refusal still tells the reader the remedy: the capability's own words, not a fetched 404",
 	);
 	/*
 	 * The reserved words come from the pure module, so the rule is executed by
