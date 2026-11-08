@@ -94,6 +94,7 @@ import {
 	seedWaitingComposes,
 } from "@features/chat/canonical/transcript-reducer";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
+import { openTrace } from "@features/chat/open-trace";
 import {
 	frontendNamesModel,
 	modelSelector,
@@ -5581,6 +5582,11 @@ export function useCanonicalSessionStream(
 
 		const connect = () => {
 			const sourceRead = journalOrderRead(viewRef.current.transcript);
+			// The open trace live when this connection opened. Its `snapshot` stage
+			// is noted against this token, not just the session id, so on A->B->A a
+			// late snapshot from the first A's connection cannot stamp the second
+			// A's trace (a reconnect under the second A captures the new token).
+			const openTraceToken = openTrace.currentToken();
 			/*
 			 * THE CONNECTION'S OWN IDENTITY, AND WHY A GENERATION IS NOT ENOUGH.
 			 * `generation` names the session VISIT; this names the SUBSCRIPTION. A
@@ -5894,6 +5900,9 @@ export function useCanonicalSessionStream(
 						// authenticated `open` can still be followed by an immediate close,
 						// and resetting the budget there would let that pair retry forever.
 						if (frame.type === "snapshot") {
+							// The open trace's `snapshot` stage (received + parsed, not
+							// yet folded); first write wins, so later snapshots are free.
+							openTrace.note(sessionId, "snapshot", openTraceToken);
 							attempt = 0;
 							clearSnapshotTimer();
 							// A later stall is a new one and earns its own re-check.

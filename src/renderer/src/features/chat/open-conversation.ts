@@ -1,6 +1,7 @@
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { getCurrentPath } from "@shared/utils/path-utils";
 import type { NavigateFunction } from "react-router-dom";
+import { type OpenEntrance, openTrace, watchSendable } from "./open-trace";
 
 /**
  * A SWITCH'S URL IS WRITTEN HERE, WITH ITS COMMIT.
@@ -69,10 +70,43 @@ import type { NavigateFunction } from "react-router-dom";
  * here adds a second notion of "current": the truth about which switch is current
  * lives in the store, and this function owns only the URL half of it.
  */
+/**
+ * Starts the conversation-open trace (`open-trace.ts`) for a switch to
+ * `sessionId`, and its store-observed `sendable` stage.
+ *
+ * Observation only: it reads the store and never writes it. A press on the row
+ * the view is already on starts nothing, mirroring `openSession`'s own no-op
+ * arm - nothing loads, so there is nothing to time, and a trace there would
+ * only end as a timeout. Shared by `openConversation` and the native entrance
+ * (`app.tsx`), which switches through `setActiveSession` rather than here.
+ */
+export function beginOpenTrace(
+	sessionId: string,
+	entrance: OpenEntrance,
+): void {
+	const state = useCanonicalSessionsStore.getState();
+	if (state.activeSessionId === sessionId && !state.activeDraftKey) return;
+	const traceId = openTrace.begin(sessionId, entrance);
+	watchSendable(
+		openTrace,
+		traceId,
+		() => useCanonicalSessionsStore.getState(),
+		useCanonicalSessionsStore.subscribe,
+	);
+}
+
 export function openConversation(
 	navigate: NavigateFunction,
 	sessionId: string,
+	/**
+	 * Which entrance asked, for the open trace only. Optional so the many
+	 * callers keep their shape; the sidebar names itself because it is the
+	 * entrance the latency report is about.
+	 */
+	entrance: OpenEntrance = "open",
 ): Promise<boolean> {
+	// Before the store write, so the trace's zero is the click.
+	beginOpenTrace(sessionId, entrance);
 	const store = useCanonicalSessionsStore.getState();
 	const pending = store.openSession(sessionId);
 	const written = `/chat/${sessionId}`;

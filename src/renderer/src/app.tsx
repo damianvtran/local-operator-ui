@@ -20,6 +20,7 @@ import { ChatPage } from "@features/chat/components/chat-page";
 import { consoleRevealMayNavigate } from "@features/chat/composer-field";
 import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
+import { beginOpenTrace } from "@features/chat/open-conversation";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
@@ -494,7 +495,13 @@ const App: FC = () => {
 				 * conversation row to paint, and a mark for it would sit there until
 				 * some later open measured a row against it.
 				 */
-				if (sessionId !== null) performance.mark("lop:open:requested");
+				if (sessionId !== null) {
+					performance.mark("lop:open:requested");
+					// The same click starts the logged per-switch trace. This entrance
+					// switches through `setActiveSession`, not `openConversation`, so
+					// it is marked here and only here - never twice for one click.
+					beginOpenTrace(sessionId, "native");
+				}
 				// `null` is the catalogue: the store models "no active session" as
 				// exactly this, so a digest click lands where all the burst's
 				// conversations are listed rather than on one arbitrary member.
