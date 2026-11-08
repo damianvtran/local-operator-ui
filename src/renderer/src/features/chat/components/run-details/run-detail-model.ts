@@ -2471,7 +2471,16 @@ export function withLaunchRecord(
 	return { ...transcript, records: [launch, ...transcript.records], index };
 }
 
-/** The stand-in launch turn for `withLaunchRecord`, from the roster's brief. */
+/**
+ * The stand-in launch turn for `withLaunchRecord`, from the roster's brief.
+ *
+ * `startSeconds` is the job's wire `start_time` in epoch SECONDS (`readClock`),
+ * but a record's `ts` is epoch MILLISECONDS — the reducer scales every durable
+ * entry the same way (`transcript-reducer.ts`, `Math.round(entry.ts * 1000)`).
+ * Passing seconds through stamped the bubble "Jan 21, 1970" (QA Q2 on #1752),
+ * so the stand-in converts with the reducer's exact rounding; no clock keeps
+ * the reducer's own `0` fallback.
+ */
 export function standInLaunchRecord(
 	launchMessageId: string,
 	brief: string | null,
@@ -2481,7 +2490,7 @@ export function standInLaunchRecord(
 	return {
 		kind: "user",
 		id: launchMessageId,
-		ts: startSeconds ?? 0,
+		ts: startSeconds === null ? 0 : Math.round(startSeconds * 1000),
 		text: brief,
 		images: [],
 	};
