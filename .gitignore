@@ -95,6 +95,18 @@ storybook-static/
 scripts/_*.bundle.mjs
 scripts/_*.bundle.cjs
 
+# The added-strings rule's own test writes a probe here at runtime
+# (`scripts/i18n/check-added-strings.test.mjs` builds
+# `scripts/i18n/review-r1-<pid>-<mode>.tsx` to prove a new literal is caught) and
+# deletes it in a `finally` block. A `SIGKILL` bypasses `finally` - this lane was
+# OOM-killed twice - and the next `git add -A` sweeps the leftover into the
+# commit as if it were product code. That is exactly how
+# `review-r1-42960-staged-new.tsx` reached #1767 and turned Language Coverage and
+# Lint red on a rule that was itself correct. The probe is scratch: regenerable,
+# referenced by nothing, and never shipped, so the pattern keeps it out of the
+# index while leaving whatever a killed run left on disk for that run to reclaim.
+scripts/i18n/review-r1-*
+
 # The docs-library capture rig's default output tree
 # (`scripts/capture-docs-library.mjs` writes `docs-library-captures/` beside the
 # repo root). Regenerable from the rig, so it stays out of the repo.
