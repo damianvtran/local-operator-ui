@@ -1,3 +1,4 @@
+import { prewarmSessionStream } from "@shared/api/local-operator/desktop-api";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { getCurrentPath } from "@shared/utils/path-utils";
 import type { NavigateFunction } from "react-router-dom";
@@ -83,9 +84,9 @@ import { type OpenEntrance, openTrace, watchSendable } from "./open-trace";
 export function beginOpenTrace(
 	sessionId: string,
 	entrance: OpenEntrance,
-): void {
+): number | null {
 	const state = useCanonicalSessionsStore.getState();
-	if (state.activeSessionId === sessionId && !state.activeDraftKey) return;
+	if (state.activeSessionId === sessionId && !state.activeDraftKey) return null;
 	const traceId = openTrace.begin(sessionId, entrance);
 	watchSendable(
 		openTrace,
@@ -93,6 +94,7 @@ export function beginOpenTrace(
 		() => useCanonicalSessionsStore.getState(),
 		useCanonicalSessionsStore.subscribe,
 	);
+	return traceId;
 }
 
 export function openConversation(
@@ -106,7 +108,28 @@ export function openConversation(
 	entrance: OpenEntrance = "open",
 ): Promise<boolean> {
 	// Before the store write, so the trace's zero is the click.
-	beginOpenTrace(sessionId, entrance);
+	const traceId = beginOpenTrace(sessionId, entrance);
+	if (traceId !== null) {
+		/*
+		 * THE REQUEST LEAVES HERE - in the click's own task, before the store write
+		 * and before React renders anything.
+		 *
+		 * The pane opens its own subscription from a passive effect, and that flush
+		 * is queued behind whatever else the renderer is doing. Measured on the
+		 * operator's app (2026-11-08, 21 switches): the click's React commit landed
+		 * 38-400 ms after the click, and the subscription request 209-16,584 ms
+		 * after it, while the daemon answered in 190-400 ms whenever it arrived -
+		 * the switch spent its seconds with nothing in flight. Asking here takes the
+		 * request off that queue; the pane adopts the connection when it commits
+		 * (`subscribeDesktopStream`), and paints nothing itself.
+		 *
+		 * The `request` stage is noted from HERE when a prewarm goes out, so the
+		 * trace line reports when the desktop plane was actually asked rather than
+		 * when the subscription was finally built.
+		 */
+		prewarmSessionStream(sessionId);
+		openTrace.note(sessionId, "request", traceId);
+	}
 	const store = useCanonicalSessionsStore.getState();
 	const pending = store.openSession(sessionId);
 	const written = `/chat/${sessionId}`;

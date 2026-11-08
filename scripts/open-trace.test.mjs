@@ -114,7 +114,7 @@ test("a full switch reports every stage in ms from the click and settles once", 
 	assert.equal(r.lines.length, 1);
 	assert.equal(
 		r.lines[0],
-		`[open-trace] t=${t} session=abc123 via=sidebar outcome=settled routed=4 snapshot=800 content=900 painted=916 sendable=810 settled=916`,
+		`[open-trace] t=${t} session=abc123 via=sidebar outcome=settled store=- routed=4 request=- snapshot=800 content=900 painted=916 sendable=810 settled=916`,
 	);
 	assert.equal(r.timerCount(), 0, "the timeout is cleared on settle");
 	// Late stages after settle write nothing.
@@ -259,7 +259,7 @@ test("fail ends only the matching trace", () => {
 
 test("no-content guard: the line is a fixed grammar of ids, labels and numbers", () => {
 	const shape =
-		/^\[open-trace\] t=\d+ session=([A-Za-z0-9_-]{1,80}|\?) via=(sidebar|open|native) outcome=(settled|superseded|missing|left|timeout) routed=(\d+|-) snapshot=(\d+|-) content=(\d+|-) painted=(\d+|-) sendable=(\d+|-) settled=(\d+|-)( by=t\d+)?$/;
+		/^\[open-trace\] t=\d+ session=([A-Za-z0-9_-]{1,80}|\?) via=(sidebar|open|native) outcome=(settled|superseded|missing|left|timeout) store=(\d+|-) routed=(\d+|-) request=(\d+|-) snapshot=(\d+|-) content=(\d+|-) painted=(\d+|-) sendable=(\d+|-) settled=(\d+|-)( by=t\d+)?$/;
 	const line = formatOpenTraceLine(
 		{
 			token: 7,
@@ -316,6 +316,15 @@ test("sendable waits for the switch's validation window to close (openSession pa
 	assert.equal(s.listenerCount(), 1, "still watching until the trace ends");
 	r.flushFrames(916);
 	assert.equal(fields(r.lines[0]).sendable, "900");
+	/*
+	 * The store's commit is its own stage, stamped where the store's own
+	 * subscriber first sees the target - NOT where `sendable` lands, which waits
+	 * for the validation window and is hundreds of milliseconds later. The two
+	 * numbers are the difference between "the write happened" and "the composer
+	 * would accept a send", and collapsing them is what made the old line unable
+	 * to say which part of the click was slow.
+	 */
+	assert.equal(fields(r.lines[0]).store, "5");
 	// N1: the watcher detaches the moment its trace ends, not on a later write.
 	assert.equal(s.listenerCount(), 0);
 });
@@ -557,11 +566,18 @@ test("wiring: every stage has its one hook and the entrances start traces", () =
 	const open = read("features/chat/open-conversation.ts");
 	assert.match(
 		open,
-		/beginOpenTrace\(sessionId, entrance\);\s*const store = useCanonicalSessionsStore\.getState\(\);/,
+		/*
+		 * The click's order, pinned: the trace starts, the STREAM IS ASKED FOR, and
+		 * only then does the store write happen. The prewarm between them is the fix
+		 * (`prewarmSessionStream`): a request issued after the store write is a
+		 * request that waits for React's passive effect, which is the 0.2-16.6 s
+		 * queue the operator's trace measured.
+		 */
+		/const traceId = beginOpenTrace\(sessionId, entrance\);\s*if \(traceId !== null\) \{[\s\S]{0,1600}?prewarmSessionStream\(sessionId\);\s*openTrace\.note\(sessionId, "request", traceId\);\s*\}\s*const store = useCanonicalSessionsStore\.getState\(\);/,
 	);
 	assert.match(
 		open,
-		/activeSessionId === sessionId && !state\.activeDraftKey\) return;/,
+		/activeSessionId === sessionId && !state\.activeDraftKey\) return null;/,
 	);
 	assert.match(
 		read("shared/components/navigation/sidebar-navigation.tsx"),
@@ -579,6 +595,16 @@ test("wiring: every stage has its one hook and the entrances start traces", () =
 	assert.match(
 		read("shared/hooks/use-canonical-session.ts"),
 		/if \(frame\.type === "snapshot"\) \{[\s\S]{0,200}openTrace\.note\(sessionId, "snapshot", openTraceToken\)/,
+	);
+	/*
+	 * The REQUEST stage: noted immediately before the transport call, so the line
+	 * separates the renderer's own overhead from the backend's service time. A
+	 * regex rather than "the string exists somewhere": the stage is only honest
+	 * if it sits on the one line that issues the request.
+	 */
+	assert.match(
+		read("shared/hooks/use-canonical-session.ts"),
+		/openTrace\.note\(sessionId, "request", openTraceToken\);\s*dispose = subscribeDesktopStream\(/,
 	);
 	// The token is captured per connection, at connect time.
 	assert.match(

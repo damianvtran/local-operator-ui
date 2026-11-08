@@ -21,7 +21,32 @@
  * so a reader can grep it, and stays English (not user copy, so not i18n).
  *
  * WHAT EACH STAGE MEANS (milliseconds from the trace's start, `-` = not reached):
+ *   - `store`    the store has committed the target as the active conversation.
+ *                `start`..`store` is the click handler plus every synchronous
+ *                store subscriber the write wakes (the persisted write, the
+ *                sidebar's own derived selectors), i.e. the part of the click
+ *                that runs before React is asked to render at all.
  *   - `routed`   the transcript pane committed with the target session id.
+ *                `store`..`routed` is React's render and commit for the switch:
+ *                unmounting the transcript being left and mounting the one being
+ *                opened. This is the stretch that grows with the conversation you
+ *                are leaving, and on the operator's data it is where the seconds
+ *                went.
+ *   - `request`  the target's stream subscription asked the transport for it - the
+ *                `events` request the daemon's access log shows. `start`..`request`
+ *                is therefore the whole stretch the renderer owns before any
+ *                network is involved, and `request`..`snapshot` is the backend's
+ *                own service time (measured 190-400 ms on a healthy daemon). The
+ *                split exists because those two were being read as one number: an
+ *                operator's correlation of the access log with this line showed a
+ *                **5.8 s** gap between the click and the request on the slow
+ *                switches and 0.25 s on the fast ones, with the daemon answering
+ *                in 248 ms either way - so the variance is ours, and without this
+ *                stage the line could not say which side of the transport it fell.
+ *                `routed`..`request` is the scheduler alone plus the effect's own
+ *                preamble: a passive effect cannot run until React commits, and it
+ *                is then flushed in a task of its own - so this segment is where a
+ *                main thread busy with the outgoing view shows up as silence.
  *   - `snapshot` the session stream's first `snapshot` frame for the target was
  *                received and parsed (before it is folded into state). Counted
  *                only from a stream connection opened under THIS trace (see
@@ -65,7 +90,9 @@
 
 export type OpenEntrance = "sidebar" | "open" | "native";
 export type OpenStage =
+	| "store"
 	| "routed"
+	| "request"
 	| "snapshot"
 	| "content"
 	| "painted"
@@ -79,7 +106,9 @@ export type OpenOutcome =
 
 /** Stage order as printed; `settled` is derived and appended. */
 export const OPEN_STAGES: readonly OpenStage[] = [
+	"store",
 	"routed",
+	"request",
 	"snapshot",
 	"content",
 	"painted",
@@ -347,6 +376,9 @@ export function watchSendable(
 			return;
 		}
 		sawTarget = true;
+		// The store's own write for this switch, observed from outside it: this
+		// listener runs synchronously inside `set`, so the stage is the commit.
+		tracer.note(target, "store");
 		// `openSession` commits the target and opens its window in ONE write, so
 		// the first observation of the target already sees the window and this
 		// waits for it to close. The native entrance's `setActiveSession` opens

@@ -5666,6 +5666,24 @@ export function useCanonicalSessionStream(
 			 * consult the stream ref - this is the subscription creating it.
 			 */
 			const peerDeclared = peerDeclarable();
+			/*
+			 * THE REQUEST GOES OUT HERE, and the trace times it here rather than
+			 * after the fact. Everything the renderer spends before this line - the
+			 * click's store write and every synchronous subscriber it wakes, the
+			 * render and commit of the new conversation, and the wait for this
+			 * passive effect to be flushed - is spent WITHOUT a request in flight,
+			 * so a switch can sit silent for seconds while the daemon is idle. That
+			 * is the operator's report of 2026-11-08 (5.8 s from click to request on
+			 * the slow switches, 0.25 s on the fast ones, with the daemon answering
+			 * in 248 ms either way), and the stage is what separates it from the
+			 * backend's own time in the same line.
+			 *
+			 * Noted immediately before the transport call, under the token this
+			 * connection captured, so a resync that opens a second connection for
+			 * the same conversation cannot stamp a newer trace with an older
+			 * request.
+			 */
+			openTrace.note(sessionId, "request", openTraceToken);
 			dispose = subscribeDesktopStream(
 				{
 					sessionId,
