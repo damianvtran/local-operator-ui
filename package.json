@@ -109,6 +109,8 @@
     "check-i18n:added-strings": "node scripts/i18n/check-added-strings.mjs",
     "//check-i18n:coverage": "The manifest-backed coverage gate. CI runs it with `--allowance-base \"$(git rev-parse HEAD^1)\"` so the shrink-only allowance is compared against the pull request's base; locally it resolves `origin/main` on its own.",
     "check-i18n:coverage": "node scripts/i18n/check-coverage.mjs",
+    "//check-i18n:clean-view": "The three gates above run against the WORKING TREE, which is the right answer for a developer and the wrong answer for a commit: twice in one day a gate was green because the local checkout was dirty in the helpful direction (an untracked receipt path, an untracked test probe), and both times CI disagreed. This runs them against `git archive HEAD` instead, in a temp export, so the verdict is the one a clean checkout gives. It is NOT wired into `.github/workflows` yet - that is a follow-up - so it is a deliberate manual/opt-in gate rather than a required check.",
+    "check-i18n:clean-view": "node scripts/i18n/check-clean-view.mjs",
     "gen-themes": "node scripts/generate-theme-css.mjs",
     "bundle-size": "node scripts/bundle-size.mjs",
     "startup-closure": "node scripts/startup-closure.mjs",

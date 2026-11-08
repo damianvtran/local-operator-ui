@@ -112,13 +112,25 @@
  *     `/`) with a REQUIRED reason; no globs (a glob silently spans
  *     directories; a directory is written as one, visibly).
  *   - `// i18n: ignore <reason>` (or the JSX-comment spelling
- *     `{/* i18n: ignore <reason> *​/}`) inside the flagged node's own span, or
- *     inside its enclosing JSX element, exempts it — the core's
- *     "within the call's first through last line" rule, translated: a JSX
- *     attribute cannot carry a comment of its own, so its enclosing element is
- *     the span that reads naturally (the fixture beside this file pins both).
- *     An object-literal property has no enclosing element, so its OWN line is
- *     the whole pragma surface — the trailing comment on the property.
+ *     `{/* i18n: ignore <reason> *​/}`) exempts a literal on its own line, and
+ *     the NEXT line when the pragma stands alone on its own line. That is ONE
+ *     rule, and it is stated in exactly one place — `pragmaCoveredLines` below,
+ *     which `check-added-strings.mjs` imports rather than keeping a second
+ *     reading.
+ *
+ *     ONE RULE BECAUSE TWO DISAGREED. The diff guard narrowed its reading to
+ *     the literal's own line and the ratchet kept the element-wide one, so the
+ *     same pragma exempted copy in one gate and charged it in the other:
+ *     `agent-detail.tsx`'s `"inherit"` is annotated by a JSX comment written
+ *     ABOVE the element, which the ratchet honoured and the narrowed diff guard
+ *     did not. Both shapes this tree actually writes are covered — the trailing
+ *     comment on the literal's line, and the annotation-above — while an
+ *     enclosing element's whole span is NOT, because that reading let one
+ *     glyph's reason silence its siblings: `slash-commands.tsx`'s `[x]` pragma
+ *     also covered the `[ ]` arm one line below it (review M1/Q-2 on #1767).
+ *
+ *     An object-literal property needs no special case: its own line is already
+ *     covered, which is the trailing comment on the property.
  *   - `i18n/literal-allowance.json` governs the data shapes INSTEAD of the
  *     baseline: one exact id per distinct `<kind> | <text>` (two identical
  *     sentences in one file share one id, which is what the writer emits), an
@@ -520,22 +532,6 @@ export function staticTextNodes(node) {
 	}
 }
 
-/** The nearest enclosing JSX element/fragment, if any. */
-export function enclosingElement(node) {
-	let current = node.parent;
-	while (current) {
-		if (
-			current.kind === SyntaxKind.JsxElement ||
-			current.kind === SyntaxKind.JsxSelfClosingElement ||
-			current.kind === SyntaxKind.JsxFragment
-		) {
-			return current;
-		}
-		current = current.parent;
-	}
-	return undefined;
-}
-
 /** Whether a node sits directly between JSX braces as a child, not as a value. */
 function isJsxChild(node) {
 	const parent = node.parent;
@@ -561,16 +557,71 @@ function propertyName(name) {
 	return undefined;
 }
 
-/** The lines carrying an `i18n: ignore` pragma, as a Set. */
-export function pragmaLines(sourceFile) {
-	const lines = new Set();
-	for (const match of sourceFile.text.matchAll(LINE_PRAGMA_RE)) {
-		lines.add(sourceFile.getLineAndCharacterOfPosition(match.index).line + 1);
+/**
+ * What a pragma stands between, once its own bytes are removed, to count as
+ * written on a line of its own: whitespace and the braces of the JSX spelling
+ * (`{` + a slash-star comment + `}`), nothing else.
+ */
+const STANDALONE_PRAGMA_SURROUNDINGS_RE = /^[\s{}]*$/;
+
+/**
+ * THE PRAGMA SCOPE RULE, stated once. Both gates call this: `findViolations`
+ * below, and `findAddedCopyViolations` in `check-added-strings.mjs` — which is
+ * why it is exported rather than duplicated. They disagreed once, and the copy
+ * the diff guard charged while the ratchet called it exempt was
+ * `agent-detail.tsx`'s `"inherit"`.
+ *
+ * A pragma covers:
+ *   1. the line it is written on — the inline shape, `"lop exec" /* i18n:
+ *      ignore … *\/`;
+ *   2. the NEXT line, when the pragma stands alone on its own line — the
+ *      annotation-above shape, `{/* i18n: ignore … *\/}` written on the line
+ *      whose next line opens the element it annotates.
+ *
+ * It stops there. It does NOT cover an enclosing JSX element's whole span: that
+ * reading let one glyph's reason silence its siblings, which in
+ * `slash-commands.tsx` meant the pragma written for the `[x]` mark also
+ * exempted the `[ ]` arm one line below it (review M1/Q-2 on #1767). Nor is the
+ * narrowing to "own line only" enough, which is how rule 2 came to exist: three
+ * of this tree's pragmas annotate the element under them instead of trailing
+ * their literal.
+ */
+export function pragmaCoveredLines(sourceFile) {
+	const covered = new Set();
+	/*
+	 * One pragma's contribution. `toEndOfLine` exists because the LINE form's
+	 * pattern stops at the FIRST character of its reason — it only has to prove
+	 * a reason exists — so `// i18n: ignore icon-only control` matches as
+	 * `// i18n: ignore i` and the rest of the comment would otherwise read as
+	 * code standing beside the pragma. The `//` form runs to end of line, so that
+	 * arm removes the tail; the block form's match carries both delimiters and is
+	 * exact.
+	 */
+	const addPragma = (index, length, toEndOfLine) => {
+		const { line, character } = sourceFile.getLineAndCharacterOfPosition(index);
+		covered.add(line + 1);
+		const lineStart = sourceFile.getPositionOfLineAndCharacter(line, 0);
+		const lineEnd = sourceFile.text.indexOf("\n", lineStart);
+		const text = sourceFile.text.slice(
+			lineStart,
+			lineEnd === -1 ? undefined : lineEnd,
+		);
+		const surroundings =
+			text.slice(0, character) +
+			(toEndOfLine ? "" : text.slice(character + length));
+		/* `line + 2` on the file's last line is past the end, which can never
+		 * match a node's span - harmless, and simpler than a bounds test. */
+		if (STANDALONE_PRAGMA_SURROUNDINGS_RE.test(surroundings)) {
+			covered.add(line + 2);
+		}
+	};
+	for (const pragma of sourceFile.text.matchAll(LINE_PRAGMA_RE)) {
+		addPragma(pragma.index, pragma[0].length, true);
 	}
-	for (const match of sourceFile.text.matchAll(BLOCK_PRAGMA_RE)) {
-		lines.add(sourceFile.getLineAndCharacterOfPosition(match.index).line + 1);
+	for (const pragma of sourceFile.text.matchAll(BLOCK_PRAGMA_RE)) {
+		addPragma(pragma.index, pragma[0].length, false);
 	}
-	return lines;
+	return covered;
 }
 
 export function inSpan([first, last], lines) {
@@ -592,16 +643,15 @@ export function collapse(text) {
  * `jsx-child-expression` or `object-literal:<key>` for the data shapes, whose
  * `kind` is also the id prefix the literal allowance records (see
  * `literalId`). `line` is where the report can point a reader. The pragma check
- * consults the node's own span AND its enclosing element's (see the module
- * docstring for why both); a property has no enclosing element, so it is its
- * own span.
+ * is the shared scope rule (`pragmaCoveredLines`), never this file's own
+ * reading.
  *
  * `dataShapes: false` reproduces the pre-widening walker exactly, which is how
  * the fixtures prove each new shape is genuinely new rather than incidentally
  * visible to the old rule.
  */
 export function findViolations(sourceFile, { dataShapes = true } = {}) {
-	const pragmas = pragmaLines(sourceFile);
+	const pragmas = pragmaCoveredLines(sourceFile);
 	const findings = [];
 	const push = (kind, node, text) => {
 		findings.push({
@@ -610,12 +660,7 @@ export function findViolations(sourceFile, { dataShapes = true } = {}) {
 			text: collapse(text),
 		});
 	};
-	const exempt = (node, { element = true } = {}) => {
-		if (inSpan(lineSpan(sourceFile, node), pragmas)) return true;
-		if (!element) return false;
-		const enclosing = enclosingElement(node);
-		return enclosing ? inSpan(lineSpan(sourceFile, enclosing), pragmas) : false;
-	};
+	const exempt = (node) => inSpan(lineSpan(sourceFile, node), pragmas);
 	const visit = (node) => {
 		if (node.kind === SyntaxKind.JsxText) {
 			if (LETTER_RE.test(node.text) && !exempt(node)) {
@@ -669,17 +714,11 @@ export function findViolations(sourceFile, { dataShapes = true } = {}) {
 			/* `{ label: "By turn" }`: the data half of the same defect. The key set
 			 * is what keeps tokens out - `{ status: "connecting" }`, `{ id: ... }`,
 			 * `{ kind: ... }` are data, and a machine position is a key, not a
-			 * value. A property has no enclosing element, so its own span (or the
-			 * value's) is the whole pragma surface. */
+			 * value. The pragma scope is the shared rule like everywhere else: the
+			 * property's own line (a trailing `// i18n: ignore <reason>`) and the
+			 * line after a pragma written above it. */
 			const key = propertyName(node.name);
-			if (
-				key !== undefined &&
-				OBJECT_COPY_KEYS.has(key) &&
-				/* A property has no enclosing element, so its own line is the whole
-				 * pragma surface — a trailing `// i18n: ignore <reason>` on the
-				 * property, or a comment line inside its span. */
-				!exempt(node, { element: false })
-			) {
+			if (key !== undefined && OBJECT_COPY_KEYS.has(key) && !exempt(node)) {
 				for (const text of copyTexts(node.initializer)) {
 					if (LETTER_RE.test(text) && !isCatalogueKey(text))
 						push(`object-literal:${key}`, node.initializer, text);
