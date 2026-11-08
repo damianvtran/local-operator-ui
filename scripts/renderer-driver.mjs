@@ -7187,6 +7187,15 @@ async function sceneBackgroundWork(cdp) {
 	const stateOf = (id) =>
 		`(() => { const row = document.querySelector('[data-session-row="${id}"]'); if (!row) return null; return { section: row.closest("[data-chat-section]")?.getAttribute("data-chat-section") ?? null, lane: row.querySelector("[data-background-work]") !== null, text: (row.textContent ?? "").replace(/\\s+/g, " ").trim() }; })()`;
 	const read = async (id) => cdp.evaluate(stateOf(id));
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
 	const booted = await waitForCondition(cdp, stateOf(TARGET), 20_000);
 	check("the target row is painted", booted.ok, JSON.stringify(booted.last));
 	const remoteSeen = await waitForCondition(cdp, stateOf(REMOTE), 20_000);

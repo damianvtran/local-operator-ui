@@ -3677,7 +3677,8 @@ const settleBackgroundWorkPeers = (active: boolean) => {
 
 /** The section a row is filed under, and whether it draws the lane. */
 const bgRowState = (title: string) => {
-	const row = screen.getByRole("button", { name: new RegExp(title) });
+	const row = screen.queryByRole("button", { name: new RegExp(title) });
+	if (row === null) return { section: null, lane: false, tooltip: "" };
 	return {
 		section: row
 			.closest("[data-chat-section]")
