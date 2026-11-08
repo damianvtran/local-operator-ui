@@ -255,6 +255,14 @@ The mechanics:
   cannot drift into two opinions about which jobs apply — the same ethos as
   `pnpm lint:scripts` above, and the same reason this repository states it. See
   *Change scope* below.
+- Targeted tests: never run the full desktop suite for a PR. Start from
+  `pnpm test:affected` (tests the diff reaches, plus the tree-wide guards),
+  then add callers and neighbours it missed by judgement, and run any exempt
+  `pnpm test:*` it names. Record `pnpm test:affected --run --evidence` under
+  the PR's `## Targeted test evidence`, fresh on the current head; cover or
+  state every UNREACHED and BROAD path. The full suite runs in `full-suite.yml`
+  on each `main` push and nightly, not on PRs; an open `ci-main-red` issue means
+  `main` is red: fix forward. See `scripts/affected-tests.mjs`.
 - Typecheck: `pnpm check-types`
 - Build: `pnpm build`
 - Theme gates: `pnpm check-themes` (freshness + contrast floors)
@@ -2107,9 +2115,9 @@ by that setting is said out loud. Full detail and the wiring's failure modes:
   uses, **serially**, because two concurrent `tsc` processes are what this host's
   memory budget cannot take. A prose-only diff, a committed-evidence-only diff and
   a version-only `package.json` bump run nothing at all.
-- **CI remains the authority.** The desktop suite (now 345 files), the build, the
-  pack/launch, the audit and the runtime-dependency allowlist are NOT run here —
-  none is delta-scoped. The gate prints which jobs it is leaving to CI on every
+- **CI remains the authority.** The build, the pack/launch, the audit and the
+  runtime-dependency allowlist are NOT run here — none is delta-scoped — and the
+  desktop suite runs in neither: only `full-suite.yml` on `main` runs it. The gate prints which jobs it is leaving to CI on every
   push, so a green push is never read as a green PR.
 - **The types leg is the one that costs the tree**, because TypeScript has no
   per-file mode; it therefore runs only when the diff touches a TypeScript file.
@@ -2949,7 +2957,9 @@ write access is silently ignored by an approval rule. Tagging a person in a
 
 ### Desktop CI capacity partitions
 
-The `test` job uses four deterministic file-count partitions of the desktop
+Pull-request CI no longer runs these shards: `full-suite.yml`'s `test` job does,
+on each `main` push and nightly (see *Targeted tests* under the commands). The
+`test` job uses four deterministic file-count partitions of the desktop
 inventory, which is DERIVED rather than listed: every `*.test.mjs` under
 `scripts/` (recursively) minus the explained `EXEMPT` table in
 `scripts/desktop-test-inventory.mjs` (`node scripts/desktop-test-inventory.mjs
@@ -2970,14 +2980,15 @@ run-to-run distribution of a three-shard lane at concurrency 3 — 7.9 GB (run
 40992181176) and 8.2 GB (run 40996898976) on the same 205-file inventory, both dying
 at `ok 1060` with zero failures — so each partition now carries ~25% fewer files.
 The budget, the concurrency guard, the 50-minute cap and the cancellation policy
-do not change. Tag-dialog tests and the existing native QA bundle are owned by
-shard 0 only.
+do not change. Tag-dialog tests are owned by shard 0 only; the native QA bundle
+moved to `ci.yml`'s own `qa-bundle` job, which still runs on every PR.
 
-The stable required result remains **Desktop Tests** (`desktop-tests-result`).
+The suite's aggregate is still **Desktop Tests** (`desktop-tests-result`), now
+in `full-suite.yml`, where `report` reads it; it is no longer a PR check.
 It consumes all four same-head/checkout/inventory receipts, rejects missing,
 failed or cancelled work, and reconstructs the disjoint complete file inventory.
 An explicit false unit scope skips the workers/result; unknown classification or
 failed workers cannot become a green aggregate. The result is a CI-only local
-exclusion because `check-changed` already runs the full desktop command once;
-adding a second local suite command would duplicate the most expensive gate.
+exclusion: locally the full desktop suite is not run at all, and
+`check-changed` runs the guards (`pnpm test:guards`) in its place.
 Queue demand rises by three runners and no completion-time guarantee is implied.

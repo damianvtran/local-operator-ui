@@ -585,6 +585,11 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 	const appRequire = createRequire(builderRequire.resolve("app-builder-lib"));
 	const { load } = appRequire("js-yaml");
 	const workflow = load(text);
+	// The desktop suite's `test` job moved verbatim to full-suite.yml when the
+	// unit suite left pull-request CI; the retired route is pinned where it runs.
+	const desktop = load(
+		readFileSync(".github/workflows/full-suite.yml", "utf8"),
+	);
 	assert.ok(
 		!Object.hasOwn(workflow.jobs, "onboarding-desktop-diagnostic"),
 		"the temporary CI job must remain retired",
@@ -632,7 +637,7 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 	);
 	// Extraction changed the location, not the retirement/inventory contract.
 	// Prove the real YAML route before counting the preserved shell's command.
-	const shell = assertRetiredDesktopRoute(workflow.jobs.test);
+	const shell = assertRetiredDesktopRoute(desktop.jobs.test);
 	for (const mutate of [
 		(job) => {
 			job.steps = job.steps.filter((s) => s.id !== "desktop_launch");
@@ -658,7 +663,7 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 			job.steps.find((s) => s.id === "desktop_suite").run = "true";
 		},
 	]) {
-		const bad = structuredClone(workflow.jobs.test);
+		const bad = structuredClone(desktop.jobs.test);
 		mutate(bad);
 		assert.throws(() => assertRetiredDesktopRoute(bad, shell));
 	}
@@ -668,7 +673,7 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 	// arm that no longer names the bound, and a fallback appended after the exit.
 	// Each mutant is first proved to have changed the run, so a no-op replacement
 	// cannot pass itself off as evidence that the check still bites.
-	const finalStep = workflow.jobs.test.steps.find(
+	const finalStep = desktop.jobs.test.steps.find(
 		(step) => step.id === "desktop_suite",
 	);
 	for (const [mutateRun, rejectedBy] of [
@@ -759,7 +764,7 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 		],
 		[(run) => `${run}true\n`, /block's last statement/u],
 	]) {
-		const bad = structuredClone(workflow.jobs.test);
+		const bad = structuredClone(desktop.jobs.test);
 		const step = bad.steps.find((s) => s.id === "desktop_suite");
 		step.run = mutateRun(finalStep.run);
 		assert.notEqual(
@@ -779,7 +784,7 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 		shell.replace(WIRED_SHARD_COMMAND, `# ${WIRED_SHARD_COMMAND}`),
 		shell.replace(WIRED_SHARD_COMMAND, `echo '${WIRED_SHARD_COMMAND}'`),
 	])
-		assert.throws(() => assertRetiredDesktopRoute(workflow.jobs.test, bad));
+		assert.throws(() => assertRetiredDesktopRoute(desktop.jobs.test, bad));
 	const shardSource = readFileSync("scripts/desktop-test-shards.mjs", "utf8");
 	assert.ok(shardSource.includes('pkg.scripts?.["test:desktop"]'));
 	assert.ok(shardSource.includes("[RUNNER, ...expected.shards[index]]"));
@@ -1258,7 +1263,7 @@ function runSupervisingBody({
 	bound = 3,
 	censusEvery = 1,
 } = {}) {
-	const text = readFileSync(".github/workflows/ci.yml", "utf8");
+	const text = readFileSync(".github/workflows/full-suite.yml", "utf8");
 	const require = createRequire(import.meta.url);
 	const builder = createRequire(
 		require.resolve("electron-builder/package.json"),
@@ -1472,7 +1477,7 @@ function collect(stream, ms) {
  * a kernel buffer nobody drained.
  */
 function runRealSupervisingStep({ withhold }) {
-	const text = readFileSync(".github/workflows/ci.yml", "utf8");
+	const text = readFileSync(".github/workflows/full-suite.yml", "utf8");
 	const require = createRequire(import.meta.url);
 	const builder = createRequire(
 		require.resolve("electron-builder/package.json"),

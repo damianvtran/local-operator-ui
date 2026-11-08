@@ -1254,7 +1254,7 @@ test("the always() upload glob matches where the census is actually written", as
 	// its artifact glob must name the same files.
 	const dir = dirname(fileURLToPath(import.meta.url));
 	const workflow = readFileSync(
-		join(dir, "..", ".github", "workflows", "ci.yml"),
+		join(dir, "..", ".github", "workflows", "full-suite.yml"),
 		"utf8",
 	);
 	const envPath =

@@ -77,6 +77,14 @@ const { load } = appRequire("js-yaml");
 const CI_YML = ".github/workflows/ci.yml";
 const workflow = load(readFileSync(join(repoRoot, CI_YML), "utf8"));
 const jobs = workflow.jobs;
+// The desktop suite's shard workers (`test`) and their aggregate
+// (`desktop-tests-result`) moved VERBATIM from ci.yml to full-suite.yml when the
+// unit suite left pull-request CI; every shape assertion below still binds them,
+// now in the workflow that runs them.
+const FULL_SUITE_YML = ".github/workflows/full-suite.yml";
+const desktopJobs = load(
+	readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8"),
+).jobs;
 const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 const MODULE = "scripts/ci-scope.mjs";
 
@@ -87,8 +95,8 @@ const jobNeeds = (job) => {
 	return Array.isArray(needs) ? needs : [needs];
 };
 /** Every `run:` body of one job, in order, with the empty ones dropped. */
-const runBlocks = (job) =>
-	(jobs[job]?.steps ?? [])
+const runBlocks = (job, set = jobs) =>
+	(set[job]?.steps ?? [])
 		.map((step) => step.run)
 		.filter((run) => typeof run === "string" && run.trim().length > 0);
 const gatedJobs = Object.keys(JOB_FLAGS);
@@ -161,9 +169,6 @@ test("A1: every job is gated on flags that exist, or is declared ungated", () =>
 test("A2: every gate escapes the implicit success() and names its dependencies", () => {
 	for (const job of Object.keys(jobs)) {
 		if (!flagged(job)) continue;
-		// The result consumer is separately pinned by A17e: always-run so failed
-		// or missing workers become a red required result, never a collateral skip.
-		if (job === "desktop-tests-result") continue;
 		assert.match(
 			jobIf(job),
 			/!\s*cancelled\(\)/,
@@ -178,7 +183,9 @@ test("A2: every gate escapes the implicit success() and names its dependencies",
 		}
 	}
 	for (const job of Object.keys(jobs)) {
-		if (job === "desktop-tests-result") continue; // A17e pins the sole consumer exception.
+		// `ci-gate` CONSUMES results, it starts no work over a skipped job's
+		// artifacts; A18 pins its shape.
+		if (job === "ci-gate") continue;
 		assert.doesNotMatch(
 			jobIf(job),
 			/always\(\)/,
@@ -248,7 +255,6 @@ test("A4: dependency clauses match the implication the module actually guarantee
 	const vectors = flagVectors();
 	const runs = (job, flags) => jobMatchesFlags(job, flags);
 	for (const job of gatedJobs) {
-		if (job === "desktop-tests-result") continue; // A17e requires failed-worker consumption.
 		for (const dependency of jobNeeds(job)) {
 			if (dependency === "changes") continue;
 			const implied = vectors.every(
@@ -788,7 +794,7 @@ test("A11 wiring mutants: extracted command remains reachable once with exact lo
 			job.env.DESKTOP_SHARD_INDEX = "0";
 		},
 	]) {
-		const bad = structuredClone(jobs.test);
+		const bad = structuredClone(desktopJobs.test);
 		mutate(bad);
 		assert.throws(() => desktopStepBody(bad, shell));
 	}
@@ -798,7 +804,7 @@ test("A11 wiring mutants: extracted command remains reachable once with exact lo
 		shell.replace(DESKTOP_SHARD_COMMAND, `# ${DESKTOP_SHARD_COMMAND}`),
 		shell.replace(DESKTOP_SHARD_COMMAND, `echo '${DESKTOP_SHARD_COMMAND}'`),
 	])
-		assert.throws(() => desktopStepBody(jobs.test, bad));
+		assert.throws(() => desktopStepBody(desktopJobs.test, bad));
 	const local = JOB_COMMANDS["check-types"];
 	assertCheckpointUnitParity(local, runBlocks("check-types"));
 	assert.throws(() =>
@@ -1178,7 +1184,7 @@ test("A16: docs/evidence/** keeps the suite and the evidence job, and nothing el
  * both). Neither is introduced here and neither is closed here.
  */
 test("A17: exactly one desktop-suite invocation, behind a failing-closed step", () => {
-	const invocations = [...runBlocks("test"), desktopStepBody()]
+	const invocations = [...runBlocks("test", desktopJobs), desktopStepBody()]
 		.join("\n")
 		.match(/node scripts\/desktop-test-shards\.mjs run\b/g);
 	assert.equal(
@@ -1186,7 +1192,7 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 		1,
 		`the 'test' job invokes \`pnpm test:desktop\` ${invocations?.length ?? 0} times; the suite is the job's dominant cost and one run plus the count assertions is the whole signal`,
 	);
-	const blocks = runBlocks("test");
+	const blocks = runBlocks("test", desktopJobs);
 	const suite = desktopStepBody();
 	assert.match(
 		suite,
@@ -1242,9 +1248,12 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 		blocks.some((block) => block.includes("git status --porcelain")),
 		"the 'the run left the tree clean' assertion is gone",
 	);
-	assert.ok(
-		JOB_COMMANDS.test.some((command) => command.includes("pnpm test:desktop")),
-		"the module's local command for the 'test' job no longer names the suite CI runs",
+	// The suite left ci.yml, so `pnpm check-changed` runs the guard list for the
+	// classified unit scope, never the whole suite.
+	assert.deepEqual(JOB_COMMANDS.guards, ["pnpm test:guards"]);
+	assert.equal(
+		pkg.scripts["test:desktop"],
+		"node scripts/desktop-test-inventory.mjs run",
 	);
 });
 
@@ -1272,7 +1281,7 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 const DESKTOP_SHARD_COMMAND =
 	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" > /tmp/desktop-tests.log 2>&1 || SUITE_RC=$?';
 function desktopStepBody(
-	job = jobs.test,
+	job = desktopJobs.test,
 	shell = readFileSync(join(repoRoot, "scripts/desktop-suite-step.sh"), "utf8"),
 ) {
 	assertCheckpointSteps(job);
@@ -1689,7 +1698,7 @@ test("A17e: checkpoint orchestration preserves shell bytes and fail-closed order
 		createHash("sha256").update(desktopStepBody()).digest("hex"),
 		"64523231536a4f11fb28489571435f56f5c8cb8233ebe9f27cd7eeacfa06d2a6",
 	);
-	assertCheckpointSteps(jobs.test);
+	assertCheckpointSteps(desktopJobs.test);
 	for (const mutate of [
 		(j) => {
 			j.steps = j.steps.filter(
@@ -1720,7 +1729,7 @@ test("A17e: checkpoint orchestration preserves shell bytes and fail-closed order
 			).with.path = "/tmp/desktop-tests.log";
 		},
 	]) {
-		const bad = structuredClone(jobs.test);
+		const bad = structuredClone(desktopJobs.test);
 		mutate(bad);
 		assert.throws(() => assertCheckpointSteps(bad));
 	}
@@ -2203,12 +2212,14 @@ function assertDesktopDiagnosticArtifactPaths(path) {
 }
 
 test("A17d: a desktop run keeps its full transcript as an artifact, green or red", () => {
-	const suite = jobs.test.steps.find((step) => step.id === "desktop_suite");
+	const suite = desktopJobs.test.steps.find(
+		(step) => step.id === "desktop_suite",
+	);
 	assert.ok(
 		suite,
 		"the artifact condition needs the actual suite step outcome",
 	);
-	const artifact = jobs.test.steps.find(
+	const artifact = desktopJobs.test.steps.find(
 		(step) => step.name === "Upload desktop suite transcript",
 	);
 	assert.ok(artifact, "the suite's transcript has no artifact");
@@ -2258,7 +2269,9 @@ test("A17d: a desktop run keeps its full transcript as an artifact, green or red
 	// Both diagnostic streams must survive convergence; the exact union above
 	// rejects omitted, duplicate or wildcarded receipts from either lineage.
 	assertDesktopDiagnosticArtifactPaths(artifact.with.path);
-	const launch = jobs.test.steps.find((step) => step.id === "desktop_launch");
+	const launch = desktopJobs.test.steps.find(
+		(step) => step.id === "desktop_launch",
+	);
 	assert.equal(String(launch.env.DESKTOP_TEST_DEADLINE_MS), "2400000");
 	assert.equal(
 		launch.env.DESKTOP_TEST_DIAGNOSTICS,
@@ -2271,7 +2284,10 @@ test("A17d: a desktop run keeps its full transcript as an artifact, green or red
 	);
 	assert.equal(artifact.with["retention-days"], 7);
 	assert.equal(artifact.with["if-no-files-found"], "error");
-	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));
+	assert.ok(
+		desktopJobs.test.steps.indexOf(artifact) >
+			desktopJobs.test.steps.indexOf(suite),
+	);
 	assert.match(artifact.with.name, /github\.run_id/);
 	assert.match(artifact.with.name, /github\.run_attempt/);
 	assert.match(artifact.with.name, /shard-\$\{\{ matrix\.shard \}\}/);
@@ -2302,12 +2318,12 @@ test("the desktop concurrency switch is honoured where it is set, or absent", ()
 	);
 	// The LIVE workflow is the subject first: whatever the diagnostic experiment
 	// does today has to pass its own gate.
-	assertDesktopConcurrencyOverride(jobs.test, shell);
+	assertDesktopConcurrencyOverride(desktopJobs.test, shell);
 
 	const launchEnv = (job) =>
 		job.steps.find((step) => step.id === "desktop_launch").env;
 	const withLaunchValue = (value) => {
-		const job = structuredClone(jobs.test);
+		const job = structuredClone(desktopJobs.test);
 		const env = launchEnv(job);
 		if (value === undefined) delete env[OVERRIDE_ENV];
 		else env[OVERRIDE_ENV] = value;
@@ -3100,8 +3116,8 @@ function runClassifier(args, cwd, module = join(repoRoot, MODULE)) {
 // A17e owns the one exception to A2/A4's dependency-success admission rule:
 // this job CONSUMES failures, rather than starting work that needs their artifacts.
 test("A17e: four protected workers feed one exact fail-closed Desktop Tests result", () => {
-	const worker = jobs.test;
-	const result = jobs["desktop-tests-result"];
+	const worker = desktopJobs.test;
+	const result = desktopJobs["desktop-tests-result"];
 	assert.deepEqual(worker.strategy, {
 		"fail-fast": false,
 		matrix: { shard: [0, 1, 2, 3] },
@@ -3124,22 +3140,26 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
 	assert.ok(reject.run.includes('test "$UNIT_SCOPE" = true'));
 	assert.ok(!result.steps.some((step) => step["continue-on-error"]));
 	assert.ok(
-		!runBlocks("desktop-tests-result").some((block) =>
+		!runBlocks("desktop-tests-result", desktopJobs).some((block) =>
 			/pnpm|npm install/.test(block),
 		),
 	);
 	assert.ok(
-		runBlocks("desktop-tests-result").some((block) =>
+		runBlocks("desktop-tests-result", desktopJobs).some((block) =>
 			block.includes("desktop-test-shards.mjs verify"),
 		),
 	);
-	assert.equal(
-		LOCAL_EXCLUSIONS["desktop-tests-result"].includes(
-			"no local suite execution",
-		),
-		true,
-	);
-	assert.equal(Object.hasOwn(JOB_COMMANDS, "desktop-tests-result"), false);
+	// Neither job is part of ci.yml's classified job set any more, so neither may
+	// claim a local spelling: `pnpm check-changed` must not run the whole suite.
+	for (const job of ["test", "desktop-tests-result"]) {
+		assert.equal(Object.hasOwn(JOB_COMMANDS, job), false);
+		assert.equal(Object.hasOwn(JOB_FLAGS, job), false);
+		assert.equal(
+			Object.hasOwn(jobs, job),
+			false,
+			`${job} is back in ${CI_YML}`,
+		);
+	}
 	const download = result.steps.find((step) =>
 		step.uses?.startsWith("actions/download-artifact@"),
 	);
@@ -3243,4 +3263,81 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
 	);
 	assert.equal(suiteStep["timeout-minutes"], 45);
 	assert.ok(suiteStep["timeout-minutes"] < worker["timeout-minutes"]);
+});
+
+// ---------------------------------------------------------------------------
+// A18 - the `CI Gate` aggregate and the full-suite safety net
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: a ruleset requires check NAMES, so the stable required check is one
+ * aggregate. A gate that misses a job lets that job go red unnoticed; a gate
+ * without `always()` is SKIPPED when a dependency fails, and a skipped required
+ * check is not a red one; a gate that counts `skipped` as failure reds every
+ * diff the classifier correctly narrowed. And the suite that left PR CI must
+ * still run where nothing can cancel the record of a `main` commit.
+ * And only `main` may write the `ci-main-red` record: a branch dispatch that
+ * reports would close a real main-red issue on a green branch, and a shared
+ * concurrency group would let it replace a queued `main` run.
+ * Mutation: drop a job from `ci-gate.needs`; remove `always()`; set
+ * `cancel-in-progress: true` in full-suite.yml; widen `issues: write` to the
+ * workflow; drop the `refs/heads/main` guard from `report`; key the
+ * concurrency group by a constant again.
+ */
+test("A18: CI Gate needs every job and reds only on failure or cancellation", () => {
+	const gate = jobs["ci-gate"];
+	assert.equal(gate.name, "CI Gate");
+	assert.equal(String(gate.if).trim(), "always()");
+	assert.deepEqual(
+		[...gate.needs].sort(),
+		Object.keys(jobs)
+			.filter((job) => job !== "ci-gate")
+			.sort(),
+	);
+	const body = gate.steps.map((step) => step.run ?? "").join("\n");
+	assert.ok(
+		gate.steps.some((step) => step.env?.NEEDS === "${{ toJSON(needs) }}"),
+	);
+	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/);
+	assert.match(body, /process\.exit\(1\)/);
+	// The existing required check keeps its exact name.
+	assert.equal(jobs["bytecode-build"].name, "Bytecode Build Check");
+	// The QA bundle survived the shard's removal, under the artifact name QA reads.
+	const upload = jobs["qa-bundle"].steps.find((step) =>
+		step.uses?.startsWith("actions/upload-artifact@"),
+	);
+	assert.equal(
+		upload.with.name,
+		"ui-qa-bundle-${{ github.event.pull_request.number }}-${{ github.run_id }}",
+	);
+});
+
+test("A18: the full suite runs on main, nightly and on demand, and only its reporter writes issues", () => {
+	const full = load(readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8"));
+	const on = full.on ?? full[true];
+	assert.deepEqual(on.push.branches, ["main"]);
+	assert.ok(on.schedule?.length >= 1);
+	assert.ok(Object.hasOwn(on, "workflow_dispatch"));
+	assert.equal(Object.hasOwn(on, "pull_request"), false);
+	assert.deepEqual(full.concurrency, {
+		group: "full-suite-${{ github.ref }}",
+		"cancel-in-progress": false,
+	});
+	assert.deepEqual(full.permissions, { contents: "read" });
+	for (const [id, job] of Object.entries(full.jobs))
+		if (id !== "report")
+			assert.equal(job.permissions, undefined, `${id} widens permissions`);
+	const report = full.jobs.report;
+	assert.deepEqual(report.permissions, { issues: "write" });
+	assert.equal(
+		String(report.if).trim(),
+		"always() && github.ref == 'refs/heads/main'",
+		"the ci-main-red reporter must run for main only, and still on failure",
+	);
+	assert.ok(report.needs.includes("desktop-tests-result"));
+	const run = report.steps.map((step) => step.run ?? "").join("\n");
+	assert.match(run, /label=ci-main-red/);
+	assert.match(run, /if \[ "\$RESULT" = success \]/);
+	assert.match(run, /gh issue close/);
+	assert.match(run, /gh issue create/);
 });

@@ -524,6 +524,18 @@ function cases(root) {
 			stderr: /^$/,
 		},
 		{
+			// `ci.yml`'s Guards job, through `pnpm test:guards`. `--json` lists rather
+			// than runs, and the guard list is checked against the inventory it derives
+			// from its own module URL, so a plain cwd still answers about THIS tree.
+			script: "affected-tests.mjs",
+			args: ["--guards", "--json"],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /"guards": \[\n\s+"scripts\/affected-tests\.test\.mjs"/,
+			stderr: /^$/,
+		},
+		{
 			// `ci.yml`'s release contracts step. Derives the workflows directory, the
 			// plugin's guard list and the script table from its own module URL, so the
 			// answer is the same summary whatever the working directory is.
