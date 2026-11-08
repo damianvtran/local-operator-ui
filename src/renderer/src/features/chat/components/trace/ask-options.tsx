@@ -187,6 +187,15 @@ export const AskOptions = ({
 	// which row is marked: an index that is absent, null, out of range or not an
 	// integer badges NOTHING rather than the wrong row.
 	const marked = recommendedIndex(recommended, options.length);
+	/*
+	 * Resolved ONCE per option, not once per field. `display` is a catalogue
+	 * lookup and the row reads both the label and the description, so calling it
+	 * at each site ran it twice per option per render for one value (review
+	 * round 1, N3). One array keeps the two readings identical as well - a
+	 * translator whose label and description are resolved separately cannot
+	 * disagree with itself.
+	 */
+	const shown = options.map((option) => display?.(option) ?? option);
 
 	return (
 		/*
@@ -354,7 +363,7 @@ export const AskOptions = ({
 									marked === index && "font-semibold",
 								)}
 							>
-								{(display?.(option) ?? option).label}
+								{shown[index].label}
 							</span>
 							{marked === index && (
 								/*
@@ -388,14 +397,14 @@ export const AskOptions = ({
 						 * synonyms — dropping it makes the user answer a thinner
 						 * question than the model asked.
 						 */}
-						{(display?.(option) ?? option).description && (
+						{shown[index].description && (
 							<span
 								className={cn(
 									"text-body-sm",
 									busy ? "text-ink-disabled" : "text-ink-muted",
 								)}
 							>
-								{(display?.(option) ?? option).description}
+								{shown[index].description}
 							</span>
 						)}
 					</span>

@@ -375,7 +375,7 @@ export const FAST_UNAVAILABLE_CODE = "fast_unavailable";
  * `sessions.draft` (the warm mint) and `sessions.create`. Dropping it at the
  * senders is the guard; the ROW is left alone, because the dial was the user's
  * choice and a capable backend restores it, and the pane says so in the same
- * breath (`FAST_UNAVAILABLE_SENTENCE`, surfaced by the chat page).
+ * breath (`fastUnavailableSentence`, surfaced by the chat page).
  *
  * A selection with no `fast_mode` is returned by IDENTITY: the ordinary body
  * must stay byte-for-byte what every caller sent before the field existed.

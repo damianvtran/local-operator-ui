@@ -14,6 +14,7 @@
  */
 
 // Relative, not `@shared/i18n`: bundled by node tests without an alias map.
+import { formatNumber } from "../../../../../i18n/format";
 import { t } from "../../../../../i18n/messages";
 import {
 	DESKTOP_MESSAGE_BUDGET_BYTES,
@@ -96,9 +97,17 @@ function formatByteSizePair(total: number, budget: number): [string, string] {
 	const inMb = base.endsWith("MB");
 	const divisor = inMb ? 1_000_000 : 1000;
 	const unit = inMb ? "MB" : "KB";
+	// The separator and the digits are the LOCALE's, not JavaScript's: `toFixed`
+	// writes "1.10" beside the sibling `{count}` that ICU formats as "1,10" in
+	// fr, so one sentence carried two decimal conventions (review round 1, m1).
+	// Fixed fraction digits, so the two operands are still comparable at a glance.
 	for (const decimals of [2, 3]) {
-		const totalText = (total / divisor).toFixed(decimals);
-		const budgetText = (budget / divisor).toFixed(decimals);
+		const digits = {
+			minimumFractionDigits: decimals,
+			maximumFractionDigits: decimals,
+		};
+		const totalText = formatNumber(total / divisor, digits);
+		const budgetText = formatNumber(budget / divisor, digits);
 		if (totalText !== budgetText) {
 			return [`${totalText} ${unit}`, `${budgetText} ${unit}`];
 		}
@@ -139,7 +148,7 @@ export function commandBudgetRefusal(
 	if (args.length > DESKTOP_MESSAGE_MAX_CHARS) {
 		return t("ui.chat.message_budget.command_chars", {
 			count: args.length,
-			limit: DESKTOP_MESSAGE_MAX_CHARS.toLocaleString(),
+			limit: formatNumber(DESKTOP_MESSAGE_MAX_CHARS),
 		});
 	}
 	const target = desktopEndpoint({
@@ -186,7 +195,7 @@ export function systemPromptBudgetRefusal(
 	if (systemPrompt.length > DESKTOP_SYSTEM_PROMPT_MAX_CHARS) {
 		return t("ui.chat.message_budget.prompt_chars", {
 			count: systemPrompt.length,
-			limit: DESKTOP_SYSTEM_PROMPT_MAX_CHARS.toLocaleString(),
+			limit: formatNumber(DESKTOP_SYSTEM_PROMPT_MAX_CHARS),
 		});
 	}
 	const total = new TextEncoder().encode(
@@ -219,7 +228,7 @@ export function forkBudgetRefusal(
 	if (message.length > DESKTOP_MESSAGE_MAX_CHARS) {
 		return t("ui.chat.message_budget.fork_chars", {
 			count: message.length,
-			limit: DESKTOP_MESSAGE_MAX_CHARS.toLocaleString(),
+			limit: formatNumber(DESKTOP_MESSAGE_MAX_CHARS),
 		});
 	}
 	const target = desktopEndpoint({
@@ -259,7 +268,7 @@ export function messageBudgetRefusal(
 	if (text.length > DESKTOP_MESSAGE_MAX_CHARS) {
 		return t("ui.chat.message_budget.message_chars", {
 			count: text.length,
-			limit: DESKTOP_MESSAGE_MAX_CHARS.toLocaleString(),
+			limit: formatNumber(DESKTOP_MESSAGE_MAX_CHARS),
 		});
 	}
 	const total = messageBodyBytes(text, images);

@@ -200,7 +200,9 @@ export function translate(
  * as a file name, sent to the backend or a model prompt — where an invisible
  * U+2066/2068/2069 would travel with it. (The audit of this PR found no such
  * call site today; `scripts/i18n/bidi-isolation.test.mjs` fails if a clipboard
- * write starts passing `t()` output, so the first one has to choose this.)
+ * write or an outbound send starts passing `t()` output — inline, or through a
+ * local binding initialised from it — so the first one has to choose this. That
+ * sweep is grep-shaped: one hop, not a data-flow analysis.)
  */
 export function translateRaw(
 	key: string,

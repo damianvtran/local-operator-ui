@@ -90,6 +90,11 @@ const UR = {
 	"fx.opens_with_dollar": "$name کی قدر درج کریں۔",
 	"fx.after_latin": "Enter /goal چلاتا ہے۔",
 	"fx.url": "دیکھیں https://example.com/a اور TCP/IP۔",
+	"fx.url_deep": "دیکھیں https://mcp.example.com/mcp/server اور TCP/IP۔",
+	// The shipped ur value of the insert-image dialog's example path, verbatim.
+	"fx.path_literal": "/Users/eren/Documents/image.png",
+	"fx.path_mid": "فائل /Users/eren/a.txt کھولیں۔",
+	"fx.at_scope": "@scope/pkg نصب کریں۔",
 	"fx.count": "{count, plural, one {# کام} other {# کام}} /stop",
 	"fx.plain": "یہ ماڈل {levels} پیش کرتا ہے۔",
 };
@@ -195,6 +200,47 @@ test("values and text that must not be marked are left alone", () => {
 	// A sigil after Latin text, a URL and TCP/IP already resolve left-to-right.
 	assert.equal(run("fx.after_latin", {}), "Enter /goal چلاتا ہے۔");
 	assert.equal(run("fx.url", {}), "دیکھیں https://example.com/a اور TCP/IP۔");
+});
+
+test("a multi-segment path or an @scope is ONE isolate, so RTL paints it in order", () => {
+	/*
+	 * THE DISCRIMINATING CASE (review round 1, M1). `LATIN_WORD` stopped at `/`,
+	 * so a literal path became four adjacent LRI runs - `/Users`, `/eren`,
+	 * `/Documents`, `/image.png` - and adjacent isolates in an RTL paragraph are
+	 * ordered right-to-left, so the four segments painted
+	 * `/image.png/Documents/eren/Users`. One isolate per token is the fix; the
+	 * count of LRI runs is what tells the two apart, so assert the whole token
+	 * sits inside a single run rather than merely that controls are present.
+	 */
+	assert.equal(
+		run("fx.path_literal", {}),
+		`${LRI}/Users/eren/Documents/image.png${PDI}`,
+	);
+	// After Urdu text, i.e. the mid-sentence case the editor's copy uses.
+	assert.equal(
+		run("fx.path_mid", {}),
+		`فائل ${LRI}/Users/eren/a.txt${PDI} کھولیں۔`,
+	);
+	// An `@` sigil keeps the same treatment: one run over the whole scope name.
+	assert.equal(run("fx.at_scope", {}), `${LRI}@scope/pkg${PDI} نصب کریں۔`);
+	// The single-segment cases the earlier tests pin are unchanged by the wider
+	// class: `/stop` and `$name` still take exactly one run each.
+	assert.equal(run("fx.stop", {}), `اسے ${LRI}/stop${PDI} ہی ختم کرتا ہے۔`);
+	assert.equal(
+		run("fx.opens_with_dollar", {}),
+		`${LRI}$name${PDI} کی قدر درج کریں۔`,
+	);
+	/*
+	 * NEGATIVE CONTROL: a URL must stay untouched. Its scheme's `https` is a
+	 * strong LTR character before the first `/`, so the `lastStrong !== "L"`
+	 * gate skips it - including a deep path whose slashes the wider class would
+	 * otherwise swallow.
+	 */
+	assert.equal(
+		run("fx.url_deep", {}),
+		"دیکھیں https://mcp.example.com/mcp/server اور TCP/IP۔",
+	);
+	assert.doesNotMatch(run("fx.url_deep", {}), CONTROLS);
 });
 
 test("LTR locales and the English fallback are byte-identical to the old output", () => {
@@ -332,10 +378,25 @@ test("no clipboard write or outbound send passes t() output (the exempt call sit
 	const offenders = [];
 	for (const file of sources(join(ROOT, "src/renderer/src"))) {
 		const text = readFileSync(file, "utf8");
+		/*
+		 * Identifiers bound from `t()` output in this file, so the guard also sees
+		 * `const notice = t(k); clipboard.writeText(notice)`. One hop only: this is
+		 * a grep-shaped sweep of the call sites, not a data-flow analysis, and
+		 * `messages.ts`'s `translateRaw` docstring states that limit rather than
+		 * claiming more than it checks (review round 1, N4).
+		 */
+		const translated = new Set(
+			[
+				...text.matchAll(
+					/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?=\s*[^;\n]*\bt\(/g,
+				),
+			].map((match) => match[1] ?? ""),
+		);
 		for (const match of text.matchAll(
 			/(?:writeText|\.send(?:Message|Prompt)?|submitMessage)\(([^)]*)\)/g,
 		)) {
-			if (/\bt\(\s*["`]/.test(match[1] ?? ""))
+			const argument = (match[1] ?? "").trim();
+			if (/\bt\(\s*["`]/.test(argument) || translated.has(argument))
 				offenders.push(`${file}: ${match[0]}`);
 		}
 	}
@@ -344,6 +405,36 @@ test("no clipboard write or outbound send passes t() output (the exempt call sit
 		[],
 		"a clipboard/send site now passes t() output: use translateRaw there",
 	);
+});
+
+/*
+ * The guard above is a detector, so the detector is checked: the two shapes the
+ * sweep claims to catch are fed to it as text. A guard that silently stopped
+ * matching is worse than no guard, because `translateRaw`'s docstring points a
+ * new caller at it (review round 1, N4).
+ */
+test("the clipboard/send detector catches an inline call and a one-hop binding", () => {
+	const flagged = (text) =>
+		[
+			...text.matchAll(
+				/(?:writeText|\.send(?:Message|Prompt)?|submitMessage)\(([^)]*)\)/g,
+			),
+		].some((match) => {
+			const argument = (match[1] ?? "").trim();
+			const translated = new Set(
+				[
+					...text.matchAll(
+						/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?=\s*[^;\n]*\bt\(/g,
+					),
+				].map((entry) => entry[1] ?? ""),
+			);
+			return /\bt\(\s*["`]/.test(argument) || translated.has(argument);
+		});
+	assert.ok(flagged('clipboard.writeText(t("ui.x"));'));
+	assert.ok(flagged('const notice = t("ui.x");\nclipboard.writeText(notice);'));
+	// Negative controls: raw output and an unrelated string are not offenders.
+	assert.ok(!flagged('clipboard.writeText(translateRaw("ui.x"));'));
+	assert.ok(!flagged('const notice = t("ui.x");\nclipboard.writeText(plain);'));
 });
 
 test("fribidi paints every isolated token in logical Latin order (skipped without fribidi)", (context) => {
@@ -360,6 +451,11 @@ test("fribidi paints every isolated token in logical Latin order (skipped withou
 		["fx.btw", {}, "/btw"],
 		["fx.opens_with_dollar", {}, "$name"],
 		["fx.move_hint", { example: "/move <path>" }, "/move <path>"],
+		// M1: the whole path in one run, so this is the row the old character
+		// class fails - four runs paint `/image.png/Documents/eren/Users`.
+		["fx.path_literal", {}, "/Users/eren/Documents/image.png"],
+		["fx.path_mid", {}, "/Users/eren/a.txt"],
+		["fx.at_scope", {}, "@scope/pkg"],
 	];
 	for (const [key, params, token] of cases) {
 		assert.ok(

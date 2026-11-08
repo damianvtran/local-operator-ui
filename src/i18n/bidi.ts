@@ -141,8 +141,20 @@ export function isolateArguments(
 /** A sigil that opens a Latin command/variable/mention token. */
 const SIGIL = /[/$@]/;
 
-/** A Latin word as a command or variable name: `goal`, `btw`, `export-all`, `a.b`. */
-const LATIN_WORD = /^[A-Za-z][A-Za-z0-9_]*(?:[.-][A-Za-z0-9_]+)*/;
+/**
+ * A Latin word as a command, variable name or PATH: `goal`, `btw`,
+ * `export-all`, `a.b`, `/Users/eren/Documents/image.png`, `@scope/pkg`.
+ *
+ * `/` and `:` belong in the separator class because ONE token must become ONE
+ * isolate. A separator left out of this class splits the token into several
+ * adjacent LRI runs, and adjacent isolates in an RTL paragraph are ordered
+ * right-to-left: `/Users`, `/eren`, `/Documents`, `/image.png` painted
+ * `/image.png/Documents/eren/Users` (review round 1, M1, on
+ * `ui.canvas.insert_image_dialog.users_eren_documents_image_png`). A URL is
+ * unaffected - `https` is a strong LTR character before the first `/`, so the
+ * `lastStrong !== "L"` gate already skips it.
+ */
+const LATIN_WORD = /^[A-Za-z][A-Za-z0-9_]*(?:[/.:-][A-Za-z0-9_]+)*/;
 
 /** A decimal digit, weak in the bidi algorithm even inside the Arabic block. */
 const DIGIT = /\p{Nd}/u;

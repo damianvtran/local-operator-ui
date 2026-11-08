@@ -390,3 +390,41 @@ test("no migrated module carries an English sentence outside the by-design list"
 		),
 	);
 });
+
+test("the character cap is formatted in the MESSAGE's locale, like the count beside it", () => {
+	/*
+	 * m1 (review round 1). `limit` came from `Number#toLocaleString()`, whose
+	 * locale is the RUNTIME's - en-US in CI and on most machines - while the
+	 * `{count}` in the same clause is ICU-formatted in the locale that ANSWERED.
+	 * A French refusal therefore read "200 001 caracteres, plus que les 200,000
+	 * caracteres": two grouping styles in one sentence, in every non-en locale.
+	 * Both halves now come from `formatNumber`, and U+202F is fr's own group
+	 * separator (`Intl.NumberFormat("fr").format(200000)`).
+	 */
+	setLocale("fr");
+	try {
+		const message = api.messageBudgetRefusal("x".repeat(200_001), []);
+		assert.ok(
+			message.includes("200\u202f001"),
+			`the count is ICU's: ${message}`,
+		);
+		assert.ok(
+			message.includes("200\u202f000"),
+			`the cap must use the message locale's digits: ${message}`,
+		);
+		assert.ok(
+			!message.includes("200,000"),
+			`the cap was formatted in the runtime's locale: ${message}`,
+		);
+		// The sibling arm, so a fix applied to one call site cannot leave the
+		// command refusal on the old spelling.
+		const command = api.commandBudgetRefusal("model", "x".repeat(200_001));
+		assert.ok(
+			!command.includes("200,000") && command.includes("200\u202f000"),
+			`command arm: ${command}`,
+		);
+	} finally {
+		// The rest of this file reads copy through the marker locale.
+		useMarkerLocale();
+	}
+});

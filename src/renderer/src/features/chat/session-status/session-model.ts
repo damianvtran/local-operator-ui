@@ -33,7 +33,7 @@
  * is what makes the segment's presence informative.
  */
 
-import { formatList, t } from "@shared/i18n";
+import { currentLocale, formatList, t } from "@shared/i18n";
 import type {
 	CanonicalEffectiveAccessState,
 	CanonicalFrontendState,
@@ -481,25 +481,43 @@ export function effortDisplay(level: string): string {
 }
 
 /**
+ * The display words for the levels this file knows, keyed by the ACTIVE locale.
+ *
+ * `t()` resolves at call time, so a module-level constant would freeze the
+ * language the app booted in - the frozen-copy defect `translate()`'s docstring
+ * names. Building the record on every call keeps that property but re-runs ten
+ * `t()` calls per rung per render, and `effortDisplay` runs once for every rung
+ * of the ladder on each status strip paint (review round 1, N2). Keying the
+ * cache by locale keeps the call-time property AND the cost: a locale change is
+ * a miss, so the next render rebuilds in the new language.
+ */
+const effortLabelsByLocale = new Map<string, Record<string, string>>();
+
+/**
  * The localized label of a level this file knows, or `undefined` for anything
  * else. These display words are copy, not wire values. Keep the shared
  * formatter as their owner so the status strip and both effort pickers agree;
  * the lowercase rung and raw `inherit` never go through this display lookup.
  */
 function knownEffortLabel(trimmed: string): string | undefined {
-	const known: Record<string, string> = {
-		auto: t("ui.chat.session_readout.effort.level.auto"),
-		none: t("ui.chat.session_readout.effort.level.none"),
-		minimal: t("ui.chat.session_readout.effort.level.minimal"),
-		low: t("ui.chat.session_status.effort_level.low"),
-		medium: t("ui.chat.session_status.effort_level.medium"),
-		high: t("ui.chat.session_status.effort_level.high"),
-		xhigh: t("ui.chat.session_readout.effort.level.xhigh"),
-		max: t("ui.chat.session_readout.effort.level.max"),
-		// `label` placeholders `effortState` hands back for a level it cannot name.
-		unknown: t("ui.chat.session_readout.effort.level.unknown"),
-		reasoning: t("ui.chat.session_readout.effort.level.reasoning"),
-	};
+	const locale = currentLocale();
+	let known = effortLabelsByLocale.get(locale);
+	if (known === undefined) {
+		known = {
+			auto: t("ui.chat.session_readout.effort.level.auto"),
+			none: t("ui.chat.session_readout.effort.level.none"),
+			minimal: t("ui.chat.session_readout.effort.level.minimal"),
+			low: t("ui.chat.session_status.effort_level.low"),
+			medium: t("ui.chat.session_status.effort_level.medium"),
+			high: t("ui.chat.session_status.effort_level.high"),
+			xhigh: t("ui.chat.session_readout.effort.level.xhigh"),
+			max: t("ui.chat.session_readout.effort.level.max"),
+			// `label` placeholders `effortState` hands back for a level it cannot name.
+			unknown: t("ui.chat.session_readout.effort.level.unknown"),
+			reasoning: t("ui.chat.session_readout.effort.level.reasoning"),
+		};
+		effortLabelsByLocale.set(locale, known);
+	}
 	return known[trimmed.toLowerCase()];
 }
 

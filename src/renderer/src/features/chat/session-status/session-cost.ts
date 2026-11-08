@@ -480,8 +480,9 @@ function capitalise(word: string): string {
  * `Tts` is not a word anyone writes; the backend's own channel names are
  * `tts`/`stt` and every surface that prints them prints the acronym. Kept
  * beside `capitalise` so a future channel word with the same problem has one
- * place to land — and consulted only without a published vocabulary, like
- * `BASIS_WORDS`: a registered channel now arrives with core's own label.
+ * place to land — and consulted only without a published vocabulary, the same
+ * rule `channelBasisLabel` keeps: a registered channel arrives with core's own
+ * label.
  */
 const CHANNEL_WORDS: Record<string, string> = { tts: "TTS", stt: "STT" };
 
