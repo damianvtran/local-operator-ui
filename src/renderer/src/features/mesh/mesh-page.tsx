@@ -894,11 +894,11 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 		desktopFeatureState(capabilities.data, "credential_approvals") ===
 		"enabled";
 	/*
-	 * THE PROFILE CARD'S OWN KEY. `profile_save` is not registered on shipping
-	 * backends today (a C5 decision is pending), so this reads false there and the
-	 * card states the record without offering a signature. Reading the capability
-	 * rather than a build flag is what keeps that honest: the day the kind is
-	 * registered, this surface needs no change.
+	 * THE PROFILE CARD'S OWN KEY. Core advertises `profile_approvals: 1` with
+	 * `profile_save` registered in production (as of core `7c44dfbb3b9` (PR #3449)), so this
+	 * reads true there; an older backend omits it, reads false, and the card states
+	 * the record without offering a signature. Reading the capability rather than a
+	 * build flag keeps both honest with no change here.
 	 */
 	const profileApprovals =
 		desktopFeatureState(capabilities.data, "profile_approvals") === "enabled";

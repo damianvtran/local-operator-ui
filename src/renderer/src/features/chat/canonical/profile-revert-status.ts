@@ -16,11 +16,14 @@
  * below. Anything else — an extra field, a missing id, an unknown state — is a
  * REFUSAL, and a refusal is `unavailable` (never a guess in either direction).
  *
- * NO LIVE CLAIM: core's route and the `profile_save` kind's revert registration are
- * not committed yet, so every read below goes through the ordinary desktop
- * transport and will be refused by this build's own validation or by a backend
- * that does not serve it. The control therefore renders `unavailable` with its
- * reason, and nothing here asserts a working revert.
+ * LIVE ROUTE, FAIL-CLOSED: core serves this read at
+ * `POST /v1/desktop/sessions/{id}/profile-action-status` (`ProfileActionStatus`,
+ * `local_operator/server/routes/desktop_sessions.py`, as of core `7c44dfbb3b9` (PR #3449)) and
+ * registers `profile_save` in production (`network/approval_ops._PROVIDERS`). The
+ * route existing is still not permission: an older backend 404s, a session whose
+ * runtime never bound the action answers `unavailable`, and every one of those
+ * collapses to a disabled control with its reason. Only a fresh `available` for this
+ * exact identity enables a press.
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";

@@ -12,18 +12,19 @@
  * PROVENANCE (verbatim from the artifact's own `meta`). The artifact is a fresh
  * export each run - the synthetic ids and digests move between exports, the SHAPE and
  * `source_sha` do not - so the parity test pins provenance and shape, never an id:
- *   source_sha:         b4f879399b577764de1939e955457d71aecbe1b9
- *   uncommitted_source: true — the action layer was still finishing at export time;
- *                       the data-API shape is already actual and the frozen-commit
- *                       version will be regenerated.
- *   generator_command:  PYTHONPATH=. <primary-python> -m pytest -n0 -q
+ *   source_sha:         7c44dfbb3b9e9cfee86c55fc4a1437717cdf1439 (core PR #3449 head)
+ *   uncommitted_source: false — exported from a clean checkout of that commit.
+ *   generator_command:  PYTHONPATH=. <primary-python> -m pytest -n0 -q -p no:cacheprovider
  *                       tests/unit/session/test_profile_actions.py -k export_golden_profile_wires
+ *                       (run with LOCAL_OPERATOR_SCRATCHPAD=<out dir>; `<primary-python>`
+ *                       replaces the exporting machine's interpreter path, the one
+ *                       value changed from the export)
  *   assurance:          synthetic ES256 signatures; test-only presence stand-in; no OS signing
  *   list_row_proof:     actual approval_rows(root), function serialization only; not HTTP
  *
- * WHAT IT IS NOT: a product action-success claim. Core's status route and the
- * `profile_save` revert registration are uncommitted, so nothing here proves a live
- * approve, apply or revert. The fixtures exist so the parsers and the stories are
+ * WHAT IT IS NOT: a product action-success claim. Core ships the status route and
+ * registers `profile_save` at that commit, but these are function serialisations
+ * with synthetic signatures, so nothing here proves a live approve, apply or revert. The fixtures exist so the parsers and the stories are
  * exercised against the real serialisation instead of a hand-built prop bag - which
  * is how the previous fixture photographed a shape no daemon serves.
  */
@@ -47,5 +48,5 @@ export const GOLDEN_SAVED_AGENT_TOOL_RESULT = artifact.saved_agent_tool_result;
 /** A saved TEAM ToolResult: the other family, whose saved details carry no `kind`. */
 export const GOLDEN_SAVED_TEAM_TOOL_RESULT = artifact.saved_team_tool_result;
 
-/** The signed applied receipt, carrying the agreed (uncommitted) `profile_action`. */
+/** The signed applied receipt, carrying its verified `profile_action` descriptor. */
 export const GOLDEN_SIGNED_APPLIED_RECEIPT = artifact.signed_applied_receipt;

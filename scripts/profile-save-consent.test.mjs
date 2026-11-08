@@ -17,9 +17,9 @@ import { build } from "esbuild";
  *     latch while a press is in flight, and must never enable a duplicate;
  *   - the absent descriptor is the kill-switch: no control, and no enabled state.
  *
- * WHAT IT CANNOT PROVE. That a live backend serves these rows — `profile_save` is
- * removed from production registration pending a C5 decision, so nothing here is
- * an end-to-end approval. Layout and focus order are the design round's and the
+ * WHAT IT CANNOT PROVE. That a live backend answers these rows — core registers
+ * `profile_save` in production (core PR #3449), but nothing here runs a daemon, so
+ * nothing here is an end-to-end approval. Layout and focus order are the design round's and the
  * native probe's business, not jsdom's.
  *
  * HOW IT IS DRIVEN. Both modules are bundled from the shipped TS with the same
@@ -532,7 +532,7 @@ const SEAM_READ = /const revertStatus = useProfileRevertStatus\(/;
 const NO_SECOND_AUTHORITY = /revertRegistered/;
 const SEAM_NESTED = /profile_action/;
 const SEAM_CALL = /sessions\.profileActionStatus/;
-const SEAM_TODO_LIVE = /NO LIVE CLAIM/;
+const SEAM_FAIL_CLOSED = /LIVE ROUTE, FAIL-CLOSED/;
 const TRAY_PROFILE_VIEW = /const profile =[\s\S]{0,200}profileCardView\(row/;
 const CARD_DISABLED = /disabled=\{revertDisabled\}/;
 const CONTRACT_STATUS_ROUTE = /profile-action-status/;
@@ -977,7 +977,7 @@ test("the app's own transport call is the allowlisted, session-scoped op", () =>
 	const seam = source(
 		"src/renderer/src/features/chat/canonical/profile-revert-status.ts",
 	);
-	assert.match(seam, SEAM_TODO_LIVE);
+	assert.match(seam, SEAM_FAIL_CLOSED);
 	assert.match(seam, /sessions\.profileActionStatus/);
 });
 
@@ -1113,8 +1113,11 @@ test("the golden artifact is the one vendored here, and a real row still binds",
 	 */
 	assert.equal(
 		api.PROFILE_ACTION_GOLDEN_META.source_sha,
-		"b4f879399b577764de1939e955457d71aecbe1b9",
+		"7c44dfbb3b9e9cfee86c55fc4a1437717cdf1439",
 	);
+	// Exported from COMMITTED core source: a dirty-tree export can describe code
+	// that never shipped, which is what the previous vendoring carried.
+	assert.equal(api.PROFILE_ACTION_GOLDEN_META.uncommitted_source, false);
 	const row = api.GOLDEN_APPROVAL_ROWS[0];
 	const typed = api.profileTypedApproval(row.typed_approval);
 	assert.ok(typed, "the real typed block must parse");
@@ -2050,6 +2053,12 @@ test("actual correlated continuation replaces the queued row live and cold", () 
 	const applied = fixture.applied_tool_result;
 	const event = fixture.tool_execution_end_event;
 	const message = fixture.cold_history_message;
+	// Re-vendored from committed core (PR #3449 head), not a dirty-tree export.
+	assert.equal(
+		fixture.meta.source_sha,
+		"7c44dfbb3b9e9cfee86c55fc4a1437717cdf1439",
+	);
+	assert.equal(fixture.meta.uncommitted_source, false);
 	assert.equal(queued.tool_call_id, applied.tool_call_id);
 	assert.equal(event.tool_call_id, queued.tool_call_id);
 	assert.equal(message.tool_call_id, queued.tool_call_id);

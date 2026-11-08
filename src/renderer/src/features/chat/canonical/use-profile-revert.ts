@@ -120,8 +120,9 @@ export function useProfileRevertAnswer(): {
  * Read the status seam for one action, and keep the answer in the process cache.
  *
  * The effect is deliberately tiny: one read per action id, no polling. A control
- * whose status has not been read is `unavailable`, which is exactly what the
- * contract point in `profile-revert-status.ts` returns until core ships the read.
+ * whose status has not been read is `unavailable` - the same fail-closed answer the
+ * contract point in `profile-revert-status.ts` gives an older backend without the
+ * route or an action this runtime never bound.
  */
 export function useProfileRevertStatus(
 	sessionId: string | null,

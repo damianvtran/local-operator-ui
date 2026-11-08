@@ -338,7 +338,7 @@ export const profileSavedRecordSchema = z
 		revision: z.string().max(200).optional(),
 		authorized_by: z.string().max(160).optional(),
 		class: z.string().max(64).optional(),
-		/** The agreed (uncommitted) verified descriptor. */
+		/** The verified `profile_revert` descriptor (`local_operator/profile_actions.py`). */
 		profile_action: z.unknown().optional(),
 		/** The legacy `{op: "revert", backup_id}` hint — prose, never a control. */
 		revert: z.unknown().optional(),

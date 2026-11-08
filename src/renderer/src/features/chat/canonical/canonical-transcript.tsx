@@ -2491,9 +2491,9 @@ const ToolRow = memo(function ToolRow({
 	/*
 	 * THE STATUS SEAM IS THE ONLY AUTHORITY (core's revert gate is a live
 	 * action-registration/status read; a persisted `revert_verified` is proof of
-	 * nothing). Until core ships that read, `profile-revert-status.ts` answers
-	 * `unavailable` for every action, so the control renders disabled with its
-	 * reason — never enabled off the payload's flag and never off a guessed route.
+	 * nothing). `profile-revert-status.ts` answers `unavailable` for anything but a
+	 * fresh, identity-bound read (an older backend without the route included), so the
+	 * control renders disabled with its reason — never enabled off the payload's flag.
 	 */
 	const revertIdentity =
 		profileCall?.descriptor && record.toolCallId

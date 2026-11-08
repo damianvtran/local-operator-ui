@@ -11,9 +11,9 @@
  *
  * THE FIXTURES ARE THE FROZEN v1 SHAPES: the disclosure from
  * `local_operator/profile_approval.py::disclosure`, the queued receipt from the
- * tool's own answer, and the `profile_revert` descriptor the backend agreed. The
- * `profile_save` kind is NOT registered on shipping backends (a C5 decision is
- * pending), so these are proof-of-shape, not a live approval.
+ * tool's own answer, and the `profile_revert` descriptor the backend mints. Core
+ * registers the `profile_save` kind in production (as of core `7c44dfbb3b9` (PR #3449)), but a
+ * story has no daemon behind it, so these are proof-of-shape, not a live approval.
  *
  * NO CONTROL IS CLICKABLE HERE. The revert press belongs to the conversation that
  * answers the gate (`sessions.answer` with the row's epoch), so a story draws the

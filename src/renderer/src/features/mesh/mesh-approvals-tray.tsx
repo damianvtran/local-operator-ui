@@ -249,8 +249,8 @@ export interface MeshApprovalsTrayProps {
 	 * `features.profile_approvals >= 1`: the backend serves the typed
 	 * `profile_save` card and its allowlisted decision routes. Absent or false, a
 	 * profile row STILL renders - the store is the authority for what was proposed,
-	 * so its disclosure is not withheld - but offers no signature, which is the
-	 * kill-switch the unregistered kind depends on.
+	 * so its disclosure is not withheld - but offers no signature: the kill-switch
+	 * for a backend that predates the kind's registration.
 	 */
 	profileApprovals?: boolean;
 	/** The read's own stamp, for the expiry lines (the page owns the clock reading). */

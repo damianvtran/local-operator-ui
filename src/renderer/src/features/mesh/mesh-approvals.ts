@@ -264,7 +264,7 @@ export type ApprovalCapabilities = {
 	 * `features.profile_approvals >= 1`: the backend serves the typed
 	 * `profile_save` card and its `profile_revert` descriptor. Absent or false, a
 	 * profile row keeps its opaque shape and offers no signature — the
-	 * kill-switch the backend's removal from production registration relies on.
+	 * kill-switch for a backend that predates the kind's registration.
 	 */
 	profileApprovals?: boolean;
 };

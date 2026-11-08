@@ -9,9 +9,11 @@
  * "cleared" means. Everything that is not JSX lives here, so the states are
  * testable and no rendering path can invent a fifteenth one.
  *
- * THE BACKEND IS NOT SHIPPING THIS KIND YET (`profile_save` is removed from
- * production registration pending a C5 decision), so every function here must be
- * safe with a row that carries NO typed block at all: that is the kill-switch the
+ * CORE SHIPS THIS KIND: `profile_save` is registered in production
+ * (`network/approval_ops._PROVIDERS` lists `local_operator.profile_approval`) and
+ * `features.profile_approvals` is advertised, as of core `7c44dfbb3b9` (PR #3449). Every function
+ * here must STILL be safe with a row that carries NO typed block at all - an older
+ * backend, or a row the store could not type - and that is the kill-switch the
  * surfaces render as an honest sentence, never as a disabled guess.
  */
 

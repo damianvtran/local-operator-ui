@@ -10,10 +10,9 @@
  *
  * The wire payloads follow the FROZEN v1 shapes: the disclosure from
  * `local_operator/profile_approval.py::disclosure` and the revert descriptor from
- * the backend's `profile_revert` action. `profile_save` is REMOVED from production
- * registration pending a C5 decision, so no enabled backend serves these rows
- * today: these stories are the surface's proof-of-shape, not evidence that a live
- * approval can be answered.
+ * the backend's `profile_revert` action. Core registers `profile_save` in
+ * production (as of core `7c44dfbb3b9` (PR #3449)), but a story has no daemon behind it: these
+ * are the surface's proof-of-shape, not evidence that a live approval was answered.
  *
  * ## Why every state has a story
  *

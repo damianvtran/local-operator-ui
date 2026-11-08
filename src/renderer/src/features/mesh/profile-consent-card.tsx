@@ -13,8 +13,8 @@
  * the other, and the rows come from the disclosure's own images
  * (`profileFieldRows`) - never from a diff this app computed. It never draws a
  * press it cannot honour: the revert control renders disabled with its reason
- * unless a VERIFIED descriptor reached it, which is the kill-switch the
- * backend's unregistered kind relies on.
+ * unless a VERIFIED descriptor and a live `available` status reached it - the
+ * kill-switch for an older backend or an action this runtime never bound.
  *
  * FIELD NAMES ARE THE WIRE'S OWN SPELLING, in the machine face. They are keys the
  * backend authors (`model`, `instructions`, `members`), not copy this build
