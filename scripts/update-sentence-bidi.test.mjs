@@ -86,9 +86,11 @@ const AUTO_BDI = /<bdi(?![^>]*\bdir=)/g;
  *
  * A `<span>` is inline with `unicode-bidi: normal`, so the sentence resolves in the
  * paragraph's direction; the closing tag is asserted too, because a stray `</span>`
- * would mean the wrapper is not the element this guard thinks it is.
+ * would mean the wrapper is not the element this guard thinks it is. Attributes are
+ * allowed: `<span className="...">` is still the element with no direction of its own,
+ * and a guard that only accepted the bare tag failed a legitimate refactor.
  */
-const SPAN_WRAPPER = /<span>/;
+const SPAN_WRAPPER = /<span[^>]*>/;
 const SPAN_WRAPPER_END = /<\/span>\s*$/;
 
 const urCatalogue = JSON.parse(
@@ -237,8 +239,8 @@ test("REGRESSION (review round 1, M1): the wrapper inherits direction, it never 
 	 * `dir` on a `bdi` DEFAULTS TO THE AUTO STATE, so a bare `<bdi>` is an isolate whose
 	 * direction comes from the sentence's own FIRST STRONG character rather than the
 	 * paragraph's. That is invisible for today's value and wrong the moment a sentence
-	 * opens with a strong-L run - `not_effective` opens with `{target}`, `exited` with an
-	 * exit code - which is the defect review round 1 M1 measured.
+	 * opens with a strong-L run - `not_effective` opens with `{target}`, a release number
+	 * unless the fallback phrase is used - which is the defect review round 1 M1 measured.
 	 */
 	assert.deepEqual(
 		sentenceWrapper.match(AUTO_BDI) ?? [],

@@ -713,9 +713,11 @@ const isolatedTokenNodes = (text: string) => (
 	 * the sentence's own FIRST STRONG CHARACTER. That is nil for today's
 	 * `rebuild_unchanged` value only because the Urdu is strong-RTL from its first
 	 * letter. A sentence that LEADS with a strong-L run takes LTR direction instead and
-	 * re-orders the Urdu around it: `not_effective` opens with `{target}` (`v0.4.84 ...`)
-	 * and `exited` opens with an exit code, and 796 of the 8142 shipped `ur` values
-	 * already start strong-L, so this is one translation away from a real RTL defect.
+	 * re-orders the Urdu around it. `not_effective` is the one arm of this panel that can
+	 * lead strong-L - it opens with `{target}`, a release number unless the fallback phrase
+	 * is used - and every other `server_failure` value leads strong-R. Many shipped `ur`
+	 * values already lead with a strong-L run, so this is one translation away from a real
+	 * RTL defect.
 	 *
 	 * A `<span>` is inline with `unicode-bidi: normal`, so it carries NO direction of its
 	 * own: its content resolves in the paragraph's direction and joins the paragraph's
