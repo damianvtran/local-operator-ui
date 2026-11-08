@@ -28,10 +28,11 @@
  * 4. TECHNICAL TOKENS TRAVEL AS VALUES: versions, process groups, commands and
  *    exit codes are placeholders, so a translator cannot alter them.
  *
- * NOT PROVEN HERE: a real translation. The seven shipped locales do not carry
- * these keys yet (translation lands in the paired PR), and the runtime falls
- * back to English per key BY DESIGN, so a `fr` fixture would only re-read the
- * English source. The marker locale is the honest probe until then.
+ * NOT PROVEN HERE: a real translation. This file probes with a marker locale so a
+ * wired-but-untranslated key cannot look translated. The seven shipped locales
+ * carry the translations in the same PR (audit trail: docs/i18n/update-flow-
+ * provenance.md), and `scripts/i18n/update-flow-translation.test.mjs` pins that
+ * each of the 48 values differs from English in every shipped locale.
  */
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
