@@ -89345,8 +89345,8 @@
 					},
 					"receipt": "i18n/receipts/470ac3a7-hub-hi-r2-pages-v2.json",
 					"receipt_sha256": "32ef232c7a03cc5888b860a6d8ea37578bcbe2bfcbc6cd958c3206dd627f5792",
-					"scope": "the 16 key(s) this PR adds to ui.hub.pages for hi; every other key in the namespace is byte-identical to the base and was not re-audited; a round-2 delta re-audit covers the five corrected strings",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+					"scope": "round-2 delta re-audit of the 1 corrected string(s) in ui.hub.pages for hi, closing round 1 (i18n/receipts/hi-hub-pages-r1-7c948004.json); the rest of the namespace is byte-identical to the base and was not re-audited in this round",
+					"note": "round 1 (i18n/receipts/hi-hub-pages-r1-7c948004.json) found the defects this round closes; corrections landed in 8d0b4e66f38"
 				}
 			],
 			"status": "audited",
@@ -89550,8 +89550,8 @@
 					},
 					"receipt": "i18n/receipts/8e74cbf9-pages-v2.json",
 					"receipt_sha256": "d0e5e9cd115cd42f6caf09b888a76ae76c2688819bb584eda2f6088b87dd9be4",
-					"scope": "the 16 keys this PR adds to ui.hub.pages for ru; every other key byte-identical to the base and not re-audited; round 1 on these keys was changes_requested on two MAJORs (receipt ru-hub-pages-r1-88dcbe8a.json) and this round-2 receipt closes it",
-					"note": "round 1 (ru-hub-pages-r1-88dcbe8a.json) was changes_requested with two MAJORs; the corrections landed in 8d0b4e66f38 and this receipt records the clean-with-findings delta re-audit of those bytes"
+					"scope": "round-2 delta re-audit of the 2 corrected string(s) in ui.hub.pages for ru, closing round 1 (i18n/receipts/ru-hub-pages-r1-88dcbe8a.json); the rest of the namespace is byte-identical to the base and was not re-audited in this round",
+					"note": "round 1 (i18n/receipts/ru-hub-pages-r1-88dcbe8a.json) found the defects this round closes; corrections landed in 8d0b4e66f38"
 				}
 			],
 			"status": "audited",
@@ -89961,8 +89961,8 @@
 					},
 					"receipt": "i18n/receipts/fd16ff0a-hub-pages-r2-pages-v2.json",
 					"receipt_sha256": "30a2f09c7337f9a91d199f778b7e88d415a41746ad213d75f3cd0b627eef9c35",
-					"scope": "the 16 key(s) this PR adds to ui.hub.pages for vi; every other key in the namespace is byte-identical to the base and was not re-audited; a round-2 delta re-audit covers the five corrected strings",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+					"scope": "round-2 delta re-audit of the 1 corrected string(s) in ui.hub.pages for vi, closing round 1 (i18n/receipts/vi-hub-pages-r1-0f28bdfc.json); the rest of the namespace is byte-identical to the base and was not re-audited in this round",
+					"note": "round 1 (i18n/receipts/vi-hub-pages-r1-0f28bdfc.json) found the defects this round closes; corrections landed in 8d0b4e66f38"
 				}
 			],
 			"status": "audited",
@@ -90184,8 +90184,8 @@
 					},
 					"receipt": "i18n/receipts/0188cd92-hub-pages-r2-pages-v2.json",
 					"receipt_sha256": "9fa21e54f0baf28009f799c23270cf43517f1e53627d6666658d4c61eb9de0a4",
-					"scope": "the 16 key(s) this PR adds to ui.hub.pages for zh-CN; every other key in the namespace is byte-identical to the base and was not re-audited; a round-2 delta re-audit covers the five corrected strings",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+					"scope": "round-2 delta re-audit of the 1 corrected string(s) in ui.hub.pages for zh-CN, closing round 1 (i18n/receipts/zh-cn-hub-pages-r1-ba884773.json); the rest of the namespace is byte-identical to the base and was not re-audited in this round",
+					"note": "round 1 (i18n/receipts/zh-cn-hub-pages-r1-ba884773.json) found the defects this round closes; corrections landed in 8d0b4e66f38"
 				}
 			],
 			"status": "audited",
