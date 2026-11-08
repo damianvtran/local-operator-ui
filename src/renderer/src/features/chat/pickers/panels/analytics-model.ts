@@ -1,4 +1,4 @@
-import { t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import type {
 	DesktopModelRate,
 	DesktopUsageAggregate,
@@ -610,7 +610,7 @@ export function chartSummary(
 			}),
 		);
 	}
-	return `${parts.join(", ")}.`;
+	return `${formatList(parts)}.`;
 }
 
 export type ProviderRow = {

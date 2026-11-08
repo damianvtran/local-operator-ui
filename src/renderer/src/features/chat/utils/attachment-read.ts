@@ -32,6 +32,7 @@
  */
 
 // Relative, not `@shared/i18n`: bundled by node tests without an alias map.
+import { formatClauses, formatList } from "../../../../../i18n/format";
 import { t } from "../../../../../i18n/messages";
 import { DESKTOP_MESSAGE_MAX_FILES } from "../../../../../shared/attachment-upload";
 import { DESKTOP_MESSAGE_MAX_IMAGES } from "../../../../../shared/desktop-contract";
@@ -115,11 +116,11 @@ export function unreadableAttachmentRefusal(
 	 * form, because there no single reason can be stated once truthfully.
 	 */
 	if (allRead) {
-		// Names are joined with ", " and clauses with "; ": list punctuation, not copy.
+		// Names and clauses are joined with the locale's own list punctuation (`formatList`, `formatClauses`): an ASCII ", " / "; " inside a zh-CN or ur sentence is a defect.
 		if (names.length === 1)
 			return t("ui.chat.attachment_refusal.read_one", { name: names[0] ?? "" });
 		return t("ui.chat.attachment_refusal.read_many", {
-			names: names.join(", "),
+			names: formatList(names),
 		});
 	}
 	if (allRemote) {
@@ -128,7 +129,7 @@ export function unreadableAttachmentRefusal(
 		return names.length === 1
 			? t("ui.chat.attachment_refusal.remote_one", { name: names[0] ?? "" })
 			: t("ui.chat.attachment_refusal.remote_many", {
-					names: names.join(", "),
+					names: formatList(names),
 				});
 	}
 	const clauses = files.map((failure) => {
@@ -141,7 +142,7 @@ export function unreadableAttachmentRefusal(
 		names.length === 1
 			? "ui.chat.attachment_refusal.mixed_one"
 			: "ui.chat.attachment_refusal.mixed_many",
-		{ clauses: clauses.join("; ") },
+		{ clauses: formatClauses(clauses) },
 	);
 }
 

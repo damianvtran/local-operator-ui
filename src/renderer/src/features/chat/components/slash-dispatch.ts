@@ -57,7 +57,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
-import { t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
@@ -690,7 +690,7 @@ export function useSlashDispatch({
 					suggestions.length > 0
 						? t("ui.chat.pickers.slash.unknown_command_suggest", {
 								command: word,
-								suggestions: suggestions.join(", "),
+								suggestions: formatList(suggestions),
 							})
 						: t("ui.chat.pickers.slash.unknown_command", { command: word }),
 					true,

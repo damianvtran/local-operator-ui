@@ -16,7 +16,7 @@
  * what this thing IS versus where it stands right now.
  */
 
-import { t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import type { MessageKey } from "@shared/i18n";
 
 import type {
@@ -1078,22 +1078,22 @@ export function argumentRows(
 				 * the per-row `connected` this route does send is already
 				 * resolved on the store's own thread.
 				 */
-				const description = [
-					asText(row.provider),
-					row.aggregated ? t("ui.chat.slash.arg.model_aggregated") : "",
-					/*
-					 * THE SHARED VOCABULARY (design review round 1, D5; UX round 1, U3): the
-					 * dialog's row, its group heading and its count all say `sign-in`; this
-					 * list's rows carried a different word for the same fact, the one
-					 * register outside the family. The fact itself is unchanged — only the
-					 * word for it.
-					 */
-					row.connected === false
-						? t("ui.chat.slash.arg.model_needs_sign_in")
-						: "",
-				]
-					.filter(Boolean)
-					.join(", ");
+				const description = formatList(
+					[
+						asText(row.provider),
+						row.aggregated ? t("ui.chat.slash.arg.model_aggregated") : "",
+						/*
+						 * THE SHARED VOCABULARY (design review round 1, D5; UX round 1, U3): the
+						 * dialog's row, its group heading and its count all say `sign-in`; this
+						 * list's rows carried a different word for the same fact, the one
+						 * register outside the family. The fact itself is unchanged — only the
+						 * word for it.
+						 */
+						row.connected === false
+							? t("ui.chat.slash.arg.model_needs_sign_in")
+							: "",
+					].filter(Boolean),
+				);
 				const detail = [
 					formatWindow(asNumber(row.context_window)),
 					formatPricePair(

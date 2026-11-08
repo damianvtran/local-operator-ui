@@ -136,7 +136,7 @@ export const MASK_CELL = "\u2022";
  * module is bundled from source by `scripts/soft-breaks.test.mjs` with no alias
  * map, and `ask-answer.ts` reads `@shared`.
  */
-import { t } from "../../../../../i18n";
+import { formatList, t } from "../../../../../i18n";
 import { approvalAnswerValue } from "../approval-words";
 import { SEPARATOR, SEPARATOR_CLASS, pyTrim } from "./slash-token";
 
@@ -2194,7 +2194,7 @@ export function restoreClearedCredential(args: {
  * verb that stored them, so this is the operator's half.
  */
 export const storedNotice = (keys: readonly string[]): string =>
-	t("ui.notices.credentials.stored", { keys: keys.join(", ") });
+	t("ui.notices.credentials.stored", { keys: formatList(keys) });
 
 /**
  * The notice for a store that ANSWERED and refused the write (§9.4), naming
@@ -2214,7 +2214,7 @@ export const storedNotice = (keys: readonly string[]): string =>
 export function unstoredNotice(keys: readonly string[]): string {
 	return t("ui.notices.credentials.unstored", {
 		count: keys.length,
-		keys: [...keys].sort().join(", "),
+		keys: formatList([...keys].sort()),
 	});
 }
 
@@ -2301,7 +2301,7 @@ export const unconfirmedHover = (citation: string): string =>
 export function unconfirmedNotice(keys: readonly string[]): string {
 	return t("ui.notices.credentials.unconfirmed", {
 		count: keys.length,
-		keys: [...keys].sort().join(", "),
+		keys: formatList([...keys].sort()),
 	});
 }
 

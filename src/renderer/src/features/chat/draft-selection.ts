@@ -37,6 +37,7 @@ import type {
 	CanonicalFrontendSync,
 	CanonicalModel,
 } from "../../../../shared/desktop-session-contract";
+import { effortWordOrRaw } from "./session-status/session-model";
 
 /** What a draft pane is asking about: where it runs, as whom, and on what. */
 export type DraftSelectionTarget = {
@@ -281,7 +282,7 @@ export function effortCarry(
 			confirmation: (selector) =>
 				t("ui.chat.session_readout.draft.confirm_model_effort", {
 					selector,
-					effort: offered,
+					effort: effortWordOrRaw(offered),
 				}),
 		};
 	return {
@@ -291,12 +292,12 @@ export function effortCarry(
 			target.level
 				? t("ui.chat.session_readout.draft.confirm_effort_changed", {
 						selector,
-						level: target.level,
-						wanted,
+						level: effortWordOrRaw(target.level),
+						wanted: effortWordOrRaw(wanted),
 					})
 				: t("ui.chat.session_readout.draft.confirm_effort_unset", {
 						selector,
-						wanted,
+						wanted: effortWordOrRaw(wanted),
 					}),
 	};
 }

@@ -33,7 +33,7 @@
  * is what makes the segment's presence informative.
  */
 
-import { t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import type {
 	CanonicalEffectiveAccessState,
 	CanonicalFrontendState,
@@ -475,9 +475,18 @@ export function effortChosenRung(
 export function effortDisplay(level: string): string {
 	const trimmed = level.trim();
 	if (!trimmed) return trimmed;
-	// These display words are copy, not wire values. Keep the shared formatter
-	// as their owner so the status strip and both effort pickers agree; the
-	// lowercase rung and raw `inherit` never go through this display lookup.
+	// A non-level word (`unknown`, `reasoning`, or a rung this file does not
+	// know) is returned as-is: it is a state or an unfamiliar token, not a level.
+	return knownEffortLabel(trimmed) ?? trimmed;
+}
+
+/**
+ * The localized label of a level this file knows, or `undefined` for anything
+ * else. These display words are copy, not wire values. Keep the shared
+ * formatter as their owner so the status strip and both effort pickers agree;
+ * the lowercase rung and raw `inherit` never go through this display lookup.
+ */
+function knownEffortLabel(trimmed: string): string | undefined {
 	const known: Record<string, string> = {
 		auto: t("ui.chat.session_readout.effort.level.auto"),
 		none: t("ui.chat.session_readout.effort.level.none"),
@@ -491,14 +500,28 @@ export function effortDisplay(level: string): string {
 		unknown: t("ui.chat.session_readout.effort.level.unknown"),
 		reasoning: t("ui.chat.session_readout.effort.level.reasoning"),
 	};
-	// A non-level word (`unknown`, `reasoning`, or a rung this file does not
-	// know) is returned as-is: it is a state or an unfamiliar token, not a level.
-	return known[trimmed.toLowerCase()] ?? trimmed;
+	return known[trimmed.toLowerCase()];
 }
 
 /** A level spelled mid-sentence: the localized word, lowercased as the English was. */
 const effortWord = (level: string): string =>
 	effortDisplay(level).toLowerCase();
+
+/**
+ * A level spelled mid-sentence like `effortWord`, but a word this file does
+ * not know as a level comes back EXACTLY as given (no trim, no lowercasing).
+ *
+ * For sentences that quote a raw rung the backend or the user's earlier pick
+ * supplied (`ui.chat.session_readout.draft.confirm_*`): handing the wire token
+ * `none` to a ru/zh-CN sentence printed an English word inside it, and the
+ * level's localized label is what the same screen's chip already shows. English
+ * output is byte-identical for every rung the ladder carries, which are
+ * lowercase wire tokens and so equal their lowercased English labels.
+ */
+export const effortWordOrRaw = (level: string): string => {
+	const label = knownEffortLabel(level.trim());
+	return label === undefined ? level : label.toLowerCase();
+};
 
 export type EffortState = {
 	/** The word the chip prints. */
@@ -671,7 +694,7 @@ export function effortState(
 			detail:
 				ladder && ladder.length > 0
 					? t("ui.chat.session_readout.effort.detail.offers", {
-							levels: ladder.map(effortWord).join(", "),
+							levels: formatList(ladder.map(effortWord)),
 						})
 					: t("ui.chat.session_readout.effort.detail.session"),
 		};
@@ -689,10 +712,10 @@ export function effortState(
 			detail: fallbackDefault
 				? t("ui.chat.session_readout.effort.detail.auto_with_default", {
 						default: effortWord(fallbackDefault),
-						levels: ladder.map(effortWord).join(", "),
+						levels: formatList(ladder.map(effortWord)),
 					})
 				: t("ui.chat.session_readout.effort.detail.auto", {
-						levels: ladder.map(effortWord).join(", "),
+						levels: formatList(ladder.map(effortWord)),
 					}),
 		};
 
@@ -834,7 +857,7 @@ export function reconcileEffort(
 		...state,
 		adjustable: true,
 		detail: t("ui.chat.session_readout.effort.detail.offers", {
-			levels: rungs.map(effortWord).join(", "),
+			levels: formatList(rungs.map(effortWord)),
 		}),
 	};
 }

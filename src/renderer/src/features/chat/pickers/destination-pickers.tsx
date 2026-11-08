@@ -44,7 +44,7 @@ import {
 	resyncCanonicalSession,
 } from "@shared/hooks/use-canonical-session";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
-import { t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	type ModelAuthorityReceipt,
@@ -5087,9 +5087,9 @@ export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
 		return (providers.data ?? []).map((provider: DesktopProvider) => ({
 			value: provider.id,
 			label: provider.name,
-			description: provider.auth_methods
-				.map((method) => method.label)
-				.join(", "),
+			description: formatList(
+				provider.auth_methods.map((method) => method.label),
+			),
 			meta: provider.configured
 				? t("ui.chat.pickers.destination_pickers.stored54112c", {
 						stored_credentials: provider.stored_credentials,
@@ -5285,7 +5285,7 @@ export const HelpPalette: FC<PickerContext> = ({
 		void locale;
 		return commands.map((command) => ({
 			value: command.name,
-			label: `/${command.name}${command.aliases.length ? `  (${command.aliases.map((a) => `/${a}`).join(", ")})` : ""}`,
+			label: `/${command.name}${command.aliases.length ? `  (${formatList(command.aliases.map((a) => `/${a}`))})` : ""}`,
 			description: command.description,
 			// The right-hand column used to print the routing id
 			// (`transcript.clear`, `radient.mobile`) as the most prominent

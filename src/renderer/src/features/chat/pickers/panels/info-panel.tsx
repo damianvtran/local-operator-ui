@@ -5,7 +5,7 @@ import {
 import { useTeamLabelFor } from "@shared/api/local-operator/profile-hooks";
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
-import { t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -86,7 +86,7 @@ export const factValue = (
 	row: InfoRow,
 ): { kind: "names" | "value"; text: string } =>
 	row.names?.length
-		? { kind: "names", text: row.names.join(", ") }
+		? { kind: "names", text: formatList(row.names) }
 		: { kind: "value", text: row.value };
 
 /** Two columns, label and value. The shape every facts table here shares. */
