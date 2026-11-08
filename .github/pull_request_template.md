@@ -45,6 +45,11 @@ Paste the `pnpm test:affected --run --evidence` block, re-run on the current hea
 - Command(s): the exact commands, including any extra tests and any exempt `pnpm test:*` the helper named
 - Result: the actual pass/fail counts and wall time for each command
 - Not run, and why: UNREACHED or BROAD paths, and exempt tests you skipped
+- Merge gate: `Merge gate (full suite)` — the full suite's one run — is green on the
+  head this PR merges at, or this line names why it is not armed yet. It starts
+  when `ready-to-merge` is added to a clean, final head (`pnpm merge-gate <n>`);
+  a push after it ran strands the check on the old SHA, so re-arm. Do not paste a
+  local full-suite run here: that suite is not run locally.
 
 ## Checklist
 
@@ -52,7 +57,8 @@ Paste the `pnpm test:affected --run --evidence` block, re-run on the current hea
 - [ ] I have performed a self-review of my code.
 - [ ] I have added tests that prove my changes work as intended.
 - [ ] The gates pass: `pnpm lint`, `pnpm check-types`, `pnpm check-themes`.
-- [ ] Targeted tests pass, recorded below on the current head: `pnpm test:affected --run --evidence` plus the callers and neighbours I judged it missed. I did not run the full desktop suite; it runs on `main` and nightly.
+- [ ] Targeted tests pass, recorded below on the current head: `pnpm test:affected --run --evidence` plus the callers and neighbours I judged it missed. I did not run the full desktop suite locally; it runs on `main`, nightly, and once at this PR's merge gate.
+- [ ] The merge gate is armed on the FINAL head: review rounds clean, then `pnpm merge-gate <n>` added `ready-to-merge` and `Merge gate (full suite)` is green there. Any later push needs the ritual again (see AGENTS.md, "The merge gate (full suite)").
 - [ ] This PR does not change the `version` line in `package.json` — only a `chore(release):` PR may, and the release owner cuts that one.
 - [ ] If this PR touches `docs/evidence/manifest.json` or changes files under `src/` or `scripts/`, it joins the serialized fold window (see AGENTS.md).
 - [ ] I have updated the documentation when required.

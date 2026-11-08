@@ -12,10 +12,56 @@ name: Full Test Suite
 # WHAT THIS RUN STILL CATCHES that a targeted run cannot: cross-file state leaks
 # that only show with the whole inventory sharded together, a change whose reach
 # the helper's import/mention graph under-approximates, and drift on `main` that
-# no single pull request introduced. It does not BLOCK anything - it reports:
-# the `report` job opens (or comments on) one `ci-main-red` issue when the suite
-# goes red and closes it when it is green again, so a red `main` is a tracked
-# item rather than a check nobody reads.
+# no single pull request introduced.
+#
+# IT BLOCKS, ONCE, AT THE MERGE GATE (2026-11-08) - that is what the `labeled`
+# trigger below is for. The slimming above overshot in one direction: a pull
+# request could merge on TARGETED local evidence alone, so a red pipeline could
+# still reach `main`. The suite was not wrong; it was never asked inside the
+# merge gate, and no check was fatal. Running it on every push would put the
+# whole cost straight back, so the run happens ONCE per ready head: adding a
+# label to the pull request starts exactly one full run for that head, the
+# `merge-gate` job below aggregates it, and `Merge gate (full suite)` is the one
+# check NAME the ruleset requires. Cheap review rounds, one terminal run, and no
+# merge while it is red.
+#
+# GitHub's merge queue is NOT the mechanism, and this was measured rather than
+# assumed: `repository.mergeQueue` is null on this repository and the
+# `enableMergeQueue` mutation does not exist there - the docs limit merge queue
+# to organisation-owned public repositories (or private organisation
+# repositories on Enterprise Cloud), and this one is owned by a user account. A
+# label event is what replaces it.
+#
+# THREE HOSTILE CASES shape the design. Each is a way a required check reads
+# green while the suite did not actually run:
+#
+#  1. A JOB THAT CAN BE SKIPPED MUST NEVER OWN A REQUIRED CHECK NAME. GitHub
+#     counts a `skipped` check as SATISFYING a required status check, so a job
+#     behind `if: contains(github.event.pull_request.labels.*.name,
+#     'ready-to-merge')` would report `skipped` - a pass - on any run some OTHER
+#     label started (`pull_request: [labeled]` fires for every label; there is
+#     no per-label trigger filter), and a red pull request would merge. So NO
+#     job in this file carries a label-name condition: any label costs one full
+#     run for that head, and that is the accepted trade. The required check is
+#     therefore a job that always runs whenever this workflow runs at all, with
+#     NO event guard: a run that is not the merge-gate intent (`main`'s own
+#     record, a branch dispatch) publishes that run's REAL verdict from its own
+#     `needs`, never a skip - because a skip published on a pull request's head
+#     branch is the pass above (round-1 review B1, round-1 QA Q-1).
+#  2. A REQUIRED CHECK THAT NEVER REPORTS IS "Expected" AND BLOCKS. That is the
+#     intended block, but it must never be a state an agent cannot leave - hence
+#     the re-arm ritual (the `merge-gate` package script, AGENTS.md *The merge
+#     gate (full suite)*): a label event is the only trigger, so the ritual
+#     removes and re-adds the label, and that ALWAYS produces a run.
+#  3. A PUSH AFTER THE GATE RAN STRANDS THE CHECK ON THE OLD SHA. The new head
+#     has no `Merge gate (full suite)` and the pull request is blocked (rightly).
+#     Re-arm on the FINAL head with the same ritual; never retry one job, because
+#     the gate is the whole suite or it is nothing.
+#
+# A red `main` is reported SEPARATELY from that gate: the `report` job below
+# opens (or comments on) one `ci-main-red` issue when the suite goes red on
+# `main` and closes it when it is green again, so a red default branch is a
+# tracked item rather than a check nobody reads.
 #
 # The `test` and `desktop-tests-result` jobs are moved from `ci.yml` VERBATIM,
 # steps, ceilings and comments included; their measured history is in their
@@ -27,6 +73,20 @@ on:
   push:
     branches:
       - main
+  # THE MERGE GATE'S TRIGGER: `labeled`, and nothing else from a pull request.
+  #
+  # NOT `opened`/`synchronize`/`reopened`: those fire on every push of every pull
+  # request, which is exactly the cost the 2026-11-07 change removed. The label
+  # is the statement "the rounds are clean and this head is final - run the
+  # gate", so it is the event that starts the one terminal run.
+  #
+  # IT FIRES FOR EVERY LABEL, not just `ready-to-merge`. GitHub has no per-label
+  # filter on a trigger, and the only way to narrow it is a label-name `if:` on
+  # the jobs - which is hostile case 1 in the header: a skipped job satisfies a
+  # required check. One full run per label event is the accepted price of not
+  # having that hole.
+  pull_request:
+    types: [labeled]
   schedule:
     # Nightly, off the hour so it does not land with every other scheduled job.
     # A quiet day still gets one run, which is what catches drift from outside
@@ -53,7 +113,10 @@ jobs:
   # The shard workers and their aggregate read `needs.changes.outputs.unit` and
   # the classifier's result, exactly as they did in `ci.yml`, so the receipts
   # `desktop-test-shards.mjs verify` checks keep the same meaning. There is no
-  # diff to classify on `main`: `--all` is the honest answer, every flag true.
+  # diff to classify on `main`, and on a merge-gate label event the whole
+  # inventory is the point rather than a narrowed set: `--all` is the honest
+  # answer in both cases, every flag true. A label event therefore cannot narrow
+  # the suite it is asking for.
   changes:
     name: Change Scope
     runs-on: ubuntu-latest
@@ -78,7 +141,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Classify (every job runs on main)
+      - name: Classify (every job runs - main, or a merge-gate label event)
         id: classify
         run: |
           node scripts/ci-scope.mjs --all --root "$GITHUB_WORKSPACE" \
@@ -673,6 +736,67 @@ jobs:
       - name: Prove exact complete shard coverage
         run: |
           node scripts/desktop-test-shards.mjs verify --head "$DESKTOP_REQUESTED_HEAD" --checkout "$(git rev-parse HEAD)" --unit "$UNIT_SCOPE" --classifier "$CLASSIFIER_RESULT" --workers "$WORKER_RESULT" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --receipts "$RUNNER_TEMP/desktop-shard-receipts"
+
+  # THE REQUIRED CHECK: `Merge gate (full suite)`. ONE stable name for the whole
+  # suite, so renaming or re-sharding a job never becomes a ruleset edit that
+  # strands in-flight pull requests on a check that will never report again - the
+  # same reason `ci.yml` has `CI Gate`.
+  #
+  # `needs:` EVERY suite producer in this file: `changes` (the classifier every
+  # shard receipt is checked against), `test` (all four shards - a matrix job
+  # reports one result, and `cancelled` is how a shard past its ceiling reports),
+  # and `desktop-tests-result` (the fail-closed reconstruction of the inventory).
+  # `report` is deliberately ABSENT: it is the `main`-only `ci-main-red` writer,
+  # not a suite producer, and it is skipped on every pull request, so depending
+  # on it would make this verdict rest on a job that never runs here. The guard
+  # in scripts/ci-scope.test.mjs pins `needs` to exactly those three, so a job
+  # added to this file without being added here fails a test instead of silently
+  # escaping the gate.
+  merge-gate:
+    name: Merge gate (full suite)
+    needs: [changes, test, desktop-tests-result]
+    # NO LABEL CONDITION - hostile case 1 in this file's header. This job always
+    # runs whenever the workflow runs, whatever label started it, and `always()`
+    # keeps it running when a dependency failed so the required check goes RED
+    # rather than disappearing from the head.
+    #
+    # NO EVENT GUARD EITHER (round-1 review B1, round-1 QA Q-1). An `if:` that
+    # excluded non-pull-request runs made this job SKIP - and a skipped job still
+    # publishes its check NAME on that ref's tip, which a ruleset counts as a
+    # PASS. `workflow_dispatch` is allowed on any branch (that is what the
+    # concurrency comment above records), so `gh workflow run full-suite.yml
+    # --ref <pr-branch>` would hand a pull request's head a `skipped` `Merge gate
+    # (full suite)`: the exact false pass this job exists to prevent. `always()`
+    # with no guard - the same shape as `CI Gate` in ci.yml - makes EVERY run of
+    # this workflow publish a verdict computed from its OWN `needs`: on `main`
+    # that is main's record, on a branch dispatch it is that branch tip's real
+    # result. Publishing everywhere costs nothing here because this job has no
+    # side effect; `issues: write` stays on `report`, which keeps its main-only
+    # guard so a branch dispatch can never write the `ci-main-red` record.
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail on any failed or cancelled suite job
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module <<'NODE'
+          const needs = JSON.parse(process.env.NEEDS);
+          // A `skipped` need is a PASS by design: the classifier decided this
+          // diff cannot affect the unit suite, and reddening that would fail
+          // every pull request the classifier correctly narrowed. `failure` and
+          // `cancelled` are not - a job past `timeout-minutes` reports as
+          // `cancelled`. Nothing here can be skipped by a LABEL (hostile case 1
+          // in this file's header), so a `skipped` verdict is never a label.
+          const bad = Object.entries(needs).filter(([, v]) => v.result !== 'success' && v.result !== 'skipped');
+          for (const [job, v] of Object.entries(needs)) console.log(`${job}: ${v.result}`);
+          if (bad.length) {
+            console.log(`::error title=Merge gate::${bad.map(([job, v]) => `${job}=${v.result}`).join(', ')}`);
+            process.exit(1);
+          }
+          console.log('Full suite green on this head.');
+          NODE
 
   # Opens, updates or closes the ONE tracking issue for a red `main`. The only
   # job with `issues: write`. Anything but `success` from the aggregate counts as

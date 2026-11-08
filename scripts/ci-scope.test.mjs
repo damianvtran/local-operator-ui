@@ -3422,7 +3422,9 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
  * without `always()` is SKIPPED when a dependency fails, and a skipped required
  * check is not a red one; a gate that counts `skipped` as failure reds every
  * diff the classifier correctly narrowed. And the suite that left PR CI must
- * still run where nothing can cancel the record of a `main` commit.
+ * still run where nothing can cancel the record of a `main` commit - it does,
+ * and since 2026-11-08 it ALSO runs on pull requests at the merge gate (the
+ * second test below), which is why `pull_request` is no longer absent here.
  * And only `main` may write the `ci-main-red` record: a branch dispatch that
  * reports would close a real main-red issue on a green branch, and a shared
  * concurrency group would let it replace a queued `main` run.
@@ -3465,7 +3467,10 @@ test("A18: the full suite runs on main, nightly and on demand, and only its repo
 	assert.deepEqual(on.push.branches, ["main"]);
 	assert.ok(on.schedule?.length >= 1);
 	assert.ok(Object.hasOwn(on, "workflow_dispatch"));
-	assert.equal(Object.hasOwn(on, "pull_request"), false);
+	// The merge gate's trigger, and the ONLY pull-request event this workflow
+	// listens for: `opened`/`synchronize` would run the suite on every push of
+	// every PR again, which is the cost that moved it here.
+	assert.deepEqual(on.pull_request, { types: ["labeled"] });
 	assert.deepEqual(full.concurrency, {
 		group: "full-suite-${{ github.ref }}",
 		"cancel-in-progress": false,
@@ -3487,4 +3492,295 @@ test("A18: the full suite runs on main, nightly and on demand, and only its repo
 	assert.match(run, /if \[ "\$RESULT" = success \]/);
 	assert.match(run, /gh issue close/);
 	assert.match(run, /gh issue create/);
+});
+
+/*
+ * Defect: the merge gate is the ONE check whose absence a merge cannot survive,
+ * so every way it can report a false PASS is a way a red pipeline reaches
+ * `main`. GitHub counts a `skipped` check as SATISFYING a required status
+ * check, so a label-name `if:` on the gate - the obvious way to narrow
+ * `pull_request: [labeled]`, which fires for EVERY label - would report
+ * `skipped` on a run some other label started and let a red pull request merge.
+ * A gate that does not need every suite job ignores a red one. A gate without
+ * `always()` disappears when a dependency fails, and a check that never reports
+ * is `Expected`, not red. An EVENT GUARD has the same hole from the other side
+ * (round-1 review B1 / QA Q-1): `github.event_name == 'pull_request'` makes the
+ * job SKIP on a `workflow_dispatch` of a pull request's head branch, and the
+ * skipped job still publishes its check NAME on that tip - a pass. So the gate
+ * runs on EVERY run of the workflow and derives its verdict from its own
+ * `needs`, whatever the event. And the ritual has to keep working: a label event
+ * is the only trigger, so re-arming means REMOVE then ADD - `--add-label` on a
+ * label that is already present delivers no event at all, which would leave the
+ * head permanently `Expected` with no way out.
+ * Mutation: add `if: contains(github.event.pull_request.labels.*.name, ...)` to
+ * the gate or to a shard; add `github.event.label.name == 'ready-to-merge'` or
+ * `github.event.action == 'labeled'` to any `if:`; drop a job from
+ * `merge-gate.needs`; replace `always()` with nothing; add any event guard to
+ * the gate; make `report` run on a branch; delete the `--remove-label` call or
+ * swap the ritual's two edits; point `pull_request` at `[opened, synchronize]`.
+ */
+test("A18: the merge gate always runs, needs every suite job, and no `if:` is gated on a label", () => {
+	const full = load(readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8"));
+	const on = full.on ?? full[true];
+	const suite = full.jobs;
+	// `labeled` and nothing else: no `opened`, no `synchronize`, no `reopened`.
+	assert.deepEqual(on.pull_request, { types: ["labeled"] });
+
+	const gate = suite["merge-gate"];
+	assert.ok(gate, "full-suite.yml must carry the required merge-gate job");
+	assert.equal(gate.name, "Merge gate (full suite)");
+	// The exact string pins both properties at once: it runs on a FAILED
+	// dependency, and it is the SAME expression on every event - no guard that
+	// could skip the job and publish `skipped` under the required name on some
+	// branch tip (round-1 review B1: a dispatch on a PR head did exactly that).
+	assert.equal(String(gate.if).trim(), "always()");
+	assert.equal(gate["timeout-minutes"], 5);
+	assert.equal(
+		gate.permissions,
+		undefined,
+		"the gate needs contents: read only",
+	);
+	// Every job that produces a suite verdict, and `report` deliberately absent:
+	// it is the main-only `ci-main-red` writer and is skipped on every PR.
+	assert.deepEqual(
+		[...gate.needs].sort(),
+		Object.keys(suite)
+			.filter((job) => job !== "merge-gate" && job !== "report")
+			.sort(),
+		"a suite job missing from needs is a red suite that cannot red the gate",
+	);
+	assert.ok(
+		!gate.needs.includes("report"),
+		"report is the main-only ci-main-red writer, not a suite producer",
+	);
+
+	// No `if:` anywhere in this file is gated on a label. The invariant is the
+	// ABSENCE of a label condition, not one spelling of it: `labels.*.name`,
+	// `github.event.label.name` (singular) and `github.event.action == 'labeled'`
+	// are the same hole in three forms, and the first spelling alone would let the
+	// other two through green (round-1 review M2 - both escaped the old pin).
+	// `contains(` stays pinned as the array-membership form of the same thing.
+	for (const [id, job] of Object.entries(suite))
+		assert.doesNotMatch(
+			String(job.if ?? ""),
+			/label|contains\(/iu,
+			`${id} must not be gated on a label - a skipped required check is a pass`,
+		);
+	// `contains(` is only hostile on a JOB (a step cannot skip its own job's
+	// verdict), so the file-wide sweep pins the label half at every depth.
+	const labelConditions = [];
+	const sweep = (node, path) => {
+		if (Array.isArray(node))
+			return node.forEach((child, index) => sweep(child, `${path}[${index}]`));
+		if (!node || typeof node !== "object") return undefined;
+		for (const [key, value] of Object.entries(node)) {
+			if (key === "if" && /label/iu.test(String(value)))
+				labelConditions.push(`${path}.if = ${value}`);
+			sweep(value, `${path}.${key}`);
+		}
+		return undefined;
+	};
+	sweep(suite, "jobs");
+	assert.deepEqual(
+		labelConditions,
+		[],
+		"no `if:` in this file may mention a label - a skipped required check is a pass",
+	);
+
+	// The aggregate body: skipped passes, failed/cancelled reds.
+	assert.ok(
+		gate.steps.some((step) => step.env?.NEEDS === "${{ toJSON(needs) }}"),
+	);
+	const body = gate.steps.map((step) => step.run ?? "").join("\n");
+	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/u);
+	assert.match(body, /process\.exit\(1\)/u);
+
+	// The `main` record keeps its own job, main-only, so a branch dispatch can
+	// never close a real main-red issue.
+	assert.equal(
+		String(suite.report.if).trim(),
+		"always() && github.ref == 'refs/heads/main'",
+	);
+
+	// The ritual is the only way to EXIT the `Expected` state, so it is pinned
+	// here with the workflow: both edits (remove, then add) and the label name.
+	assert.equal(pkg.scripts["merge-gate"], "node scripts/merge-gate.mjs");
+	const ritual = readFileSync(join(repoRoot, "scripts/merge-gate.mjs"), "utf8");
+	assert.match(ritual, /ready-to-merge/u);
+	assert.match(ritual, /"--remove-label"/u);
+	assert.match(ritual, /"--add-label"/u);
+	// ORDER, not just presence (round-1 review M3): on a label that is already
+	// present the add delivers NO event, so an add-first ritual followed by the
+	// remove delivers `unlabeled` - not a trigger - and leaves the head `Expected`
+	// with the label gone. A stranded head is worse than an unarmed one.
+	assert.ok(
+		ritual.indexOf('"--remove-label"') < ritual.indexOf('"--add-label"'),
+		"the ritual must remove BEFORE it adds: an add on a present label starts nothing",
+	);
+	assert.match(ritual, /"label",\s*"create"/u);
+	assert.match(ritual, /full-suite\.yml/u);
+});
+
+/*
+ * The ritual is a COMMAND, so the three ways it can strand a head are STATES, not
+ * strings: a number that names no pull request, a pull request that is not open,
+ * and a label event that starts NO run. Reported as success, each leaves the
+ * operator believing a gate was armed while the head carries no verdict - and
+ * `Expected` (never armed) renders exactly like `Expected` (queued), so there is
+ * nothing to notice. This drives the SHIPPED script against a stub `gh` that
+ * records every call, so "fails loudly" and "failed before mutating" are both
+ * observed rather than read off the source - the core repository's copy of this
+ * ritual shipped a silent success on the no-run path, which is exactly the class
+ * of defect a source-string pin does not catch.
+ * Mutation: return the no-run case to a console.log (status 0); swallow the
+ * `pr view` failure; drop the `state !== "OPEN"` refusal; add before removing.
+ */
+test("A18: the merge-gate ritual fails loudly when nothing was armed", () => {
+	const dir = realpathSync(mkdtempSync(join(tmpdir(), "ci-scope-merge-gate-")));
+	const bin = join(dir, "bin");
+	mkdirSync(bin, { recursive: true });
+	const log = join(dir, "gh-calls.log");
+	const stub = join(bin, "gh");
+	// Records argv, then answers from the environment: the view is a fixture, the
+	// run list is stamped at CALL time so it is always newer than the label event.
+	writeFileSync(
+		stub,
+		[
+			"#!/usr/bin/env bash",
+			'printf "%s\\n" "$*" >> "$MERGE_GATE_STUB_LOG"',
+			'case "$1 $2" in',
+			"  'pr view')",
+			'    if [ "$MERGE_GATE_STUB_VIEW_RC" != "0" ]; then',
+			'      printf "%s\\n" "$MERGE_GATE_STUB_VIEW_STDERR" >&2',
+			'      exit "$MERGE_GATE_STUB_VIEW_RC"',
+			"    fi",
+			'    printf "%s\\n" "$MERGE_GATE_STUB_VIEW_JSON"',
+			"    ;;",
+			"  'run list')",
+			'    if [ "$MERGE_GATE_STUB_RUNS" = none ]; then',
+			'      printf "%s\\n" "[]"',
+			"    else",
+			'      printf \'[{"databaseId":909001,"url":"https://example.test/runs/909001","status":"queued","conclusion":null,"createdAt":"%s"}]\\n\' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"',
+			"    fi",
+			"    ;;",
+			"  *) exit 0 ;;",
+			"esac",
+			"",
+		].join("\n"),
+	);
+	chmodSync(stub, 0o755);
+
+	// The label is PRESENT, which is the state that needs the remove: an add on a
+	// present label delivers no event, so every case below also has to show the
+	// two edits in the right ORDER when they happen at all.
+	const open = {
+		number: 1771,
+		url: "https://github.com/damianvtran/local-operator-ui/pull/1771",
+		state: "OPEN",
+		isDraft: false,
+		headRefName: "ci/merge-gate",
+		headRefOid: "c".repeat(40),
+		labels: [{ name: "ready-to-merge" }],
+	};
+	const runRitual = (args, extra = {}) => {
+		writeFileSync(log, "");
+		const environment = {};
+		for (const [key, value] of Object.entries(process.env)) {
+			// A `CMUX_*` variable would leak this suite's host into the child, and
+			// nothing in the child may answer for GitHub but the stub below.
+			if (key.startsWith("CMUX_")) continue;
+			environment[key] = value;
+		}
+		const result = spawnSync(
+			"node",
+			[join(repoRoot, "scripts/merge-gate.mjs"), ...args],
+			{
+				cwd: dir,
+				encoding: "utf8",
+				env: {
+					...environment,
+					PATH: `${bin}:${process.env.PATH}`,
+					MERGE_GATE_STUB_LOG: log,
+					MERGE_GATE_STUB_VIEW_JSON: JSON.stringify(open),
+					MERGE_GATE_STUB_VIEW_RC: "0",
+					MERGE_GATE_STUB_VIEW_STDERR: "",
+					MERGE_GATE_STUB_RUNS: "one",
+					// The bound is the WAIT, never the acknowledgement: one attempt
+					// makes the failure path observable in a second, not half a minute.
+					MERGE_GATE_POLL_ATTEMPTS: "1",
+					MERGE_GATE_POLL_INTERVAL_MS: "0",
+					...extra,
+				},
+			},
+		);
+		return {
+			status: result.status,
+			stdout: result.stdout ?? "",
+			stderr: result.stderr ?? "",
+			calls: readFileSync(log, "utf8"),
+		};
+	};
+
+	// 1. No such pull request: loud, and nothing was mutated on the way out.
+	const missing = runRitual(["4242"], {
+		MERGE_GATE_STUB_VIEW_RC: "1",
+		MERGE_GATE_STUB_VIEW_STDERR:
+			"no pull requests found for branch ci/merge-gate",
+	});
+	assert.equal(
+		missing.status,
+		1,
+		"a number that names no pull request must exit non-zero",
+	);
+	assert.match(missing.stderr, /no pull request #4242 to arm/u);
+	assert.match(missing.stderr, /no pull requests found/u);
+	assert.doesNotMatch(
+		missing.calls,
+		/--add-label|--remove-label|label create/u,
+	);
+	assert.doesNotMatch(missing.stdout, /Run \d+/u);
+
+	// 2. Present but not OPEN: refused before any label edit.
+	const closed = runRitual(["1771"], {
+		MERGE_GATE_STUB_VIEW_JSON: JSON.stringify({ ...open, state: "MERGED" }),
+	});
+	assert.equal(closed.status, 1, "a merged pull request must exit non-zero");
+	assert.match(closed.stderr, /#1771 is MERGED/u);
+	assert.doesNotMatch(closed.calls, /--add-label|--remove-label|label create/u);
+
+	// 3. The delivered event started no run: this is the defect the core copy had.
+	const stranded = runRitual(["1771"], { MERGE_GATE_STUB_RUNS: "none" });
+	assert.equal(
+		stranded.status,
+		1,
+		"an armed label that starts no run must exit non-zero, not report success",
+	);
+	assert.match(
+		stranded.stderr,
+		/no `full-suite\.yml` pull_request run appeared/u,
+	);
+	assert.match(stranded.stderr, /is now ON #1771/u);
+	assert.doesNotMatch(stranded.stdout, /Run \d+/u);
+
+	// 4. Positive control: the same stub, with a run, still arms and reports it -
+	// a stub that always failed would satisfy rows 1-3 without proving anything.
+	const armed = runRitual(["1771"]);
+	assert.equal(armed.status, 0, armed.stderr);
+	assert.match(
+		armed.stdout,
+		/Run 909001 is queued: https:\/\/example\.test\/runs\/909001/u,
+	);
+	assert.match(armed.stdout, /Merge gate \(full suite\)/u);
+
+	// The order the ritual actually CALLS, in both the failing and the arming
+	// case: remove first, add second, label left ON.
+	for (const scenario of [stranded, armed]) {
+		const remove = scenario.calls.indexOf("--remove-label");
+		const add = scenario.calls.indexOf("--add-label");
+		assert.ok(remove >= 0, "a present label must be removed before re-adding");
+		assert.ok(
+			remove < add,
+			"remove must come BEFORE add: an add on a present label starts nothing",
+		);
+	}
 });

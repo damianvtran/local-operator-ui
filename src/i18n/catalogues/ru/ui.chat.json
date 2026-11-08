@@ -107,7 +107,7 @@
 	"ui.chat.error_block.schema.after_before": "Смените модель: перейдите на",
 	"ui.chat.error_block.schema.after": "— это исправит ошибку. Рекомендуем Radient Automatic: этот режим сам подберёт под ваши запросы оптимальное сочетание цены и качества (обычно дешевле, чем со своим ключом), либо выберите одну из рекомендованных моделей со значком звезды.",
 	"ui.chat.approval.reply_required": "Чтобы ответить на запрос одобрения, напишите yes или no.",
-	"ui.chat.question_dock.hint.approval": "Выберите «Approve» или «Deny» выше, введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход.",
+	"ui.chat.question_dock.hint.approval": "Выберите «Одобрить» или «Отклонить» выше, введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход.",
 	"ui.chat.question_dock.hint.approval_held": "Ответьте через поле ввода: введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход.",
 	"ui.chat.question_dock.hint.prefix": "Вопрос {index} из {total}. ",
 	"ui.chat.question_dock.hint.secret": "{prefix}Введите или вставьте секрет выше · Enter отправляет · Esc скрывает",
