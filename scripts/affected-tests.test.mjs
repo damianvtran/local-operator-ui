@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
 import {
+	ALIASES,
 	GUARD_TESTS,
 	buildGraph,
 	evidenceMarkdown,
@@ -21,6 +24,7 @@ import {
 	parseCounts,
 	resolveSpecifier,
 	selectTests,
+	stripComments,
 } from "./affected-tests.mjs";
 import { discoverDesktopTests } from "./desktop-test-inventory.mjs";
 
@@ -268,6 +272,123 @@ test("specifier and mention parsing", () => {
 		].sort(),
 		["src/main/x.ts", "src/renderer/y.tsx"],
 	);
+});
+
+test("a bundle entry written relative to the repository root reaches the test", () => {
+	// THE SHAPE THAT ESCAPED (#1761). An esbuild `stdin` bundle sets
+	// `resolveDir: process.cwd()`, so the specifier inside its `contents` is
+	// ROOT-relative: `'export * from "./src/renderer/src/shared/store/store"'`.
+	// Reading that as file-relative looked for `scripts/src/...`, which is absent,
+	// so the graph carried no edge from the test to the store at all - and 19
+	// tests over 13 files went red on `main` under a green pull request.
+	const root = tree({
+		"src/renderer/src/features/x.ts": "export const x = 1;\n",
+		"src/renderer/src/shared/store/store.ts":
+			'export * from "../../features/x";\n',
+		"scripts/store-bundle.test.mjs":
+			"build({ stdin: { contents: 'export * from \"./src/renderer/src/shared/store/store\";', resolveDir: process.cwd() } });\n",
+		// A file-relative spelling still WINS over the root-relative reading: the
+		// adjacent file is what `./adjacent` really names.
+		"scripts/adjacent.ts": "export {};\n",
+		"scripts/adjacent.test.mjs": 'import "./adjacent";\n',
+	});
+	const graph = buildGraph(root);
+	const inventory = [
+		"scripts/adjacent.test.mjs",
+		"scripts/store-bundle.test.mjs",
+	];
+	const pick = (path) =>
+		selectTests([path], { graph, inventory, exempt: {} }).affected;
+	assert.deepEqual(pick("src/renderer/src/features/x.ts"), [
+		"scripts/store-bundle.test.mjs",
+	]);
+	assert.deepEqual(pick("scripts/adjacent.ts"), ["scripts/adjacent.test.mjs"]);
+	// `../` is never retried as a root-relative path: above the repository is not
+	// a spelling to rescue, so a failure there stays UNREACHED rather than being
+	// widened to whatever happens to exist. If this control ever returns
+	// `src/present.ts` the retry has been widened to `../` and the check below is
+	// no longer guarding anything.
+	assert.equal(
+		resolveSpecifier(
+			"scripts/sub/a.test.mjs",
+			"../src/present.ts",
+			(path) => path === "src/present.ts",
+		),
+		null,
+	);
+	// ...and a `./` spelling that names nothing still resolves to nothing: the
+	// root-relative reading is a second PLACE to look, never a guess.
+	assert.equal(
+		resolveSpecifier("scripts/a.test.mjs", "./src/absent.ts", () => false),
+		null,
+	);
+});
+
+test("ALIASES equals the build's alias block and covers every tsconfig path alias", () => {
+	// The durable half of the #1761 repair, and the reason it is an equality
+	// rather than a spot check: an alias added to the BUILD's resolver without an
+	// `ALIASES` entry is invisible to the graph, so every test that reaches a
+	// module through it silently leaves the selection while the build resolves it
+	// fine. That is a green pull request over a red `main`, which is the defect.
+	const config = readFileSync("electron.vite.config.js", "utf8");
+	const block = /alias:\s*\{([\s\S]*?)\n\s*\},/.exec(config);
+	assert.ok(block, "electron.vite.config.js has no alias block to compare");
+	const fromBuild = {};
+	for (const match of block[1].matchAll(/"([^"]+)":\s*resolve\("([^"]+)"\)/g))
+		fromBuild[match[1]] = match[2];
+	assert.deepEqual(
+		fromBuild,
+		{ ...ALIASES },
+		"the build resolves an alias the selector's graph does not have",
+	);
+
+	// `tsconfigPaths()` is in the same plugin list, so tsconfig's `paths` are the
+	// OTHER half of the renderer's resolver. An alias that exists only there is
+	// the same blind spot. The `node_modules` entry is a type shim, not a source
+	// alias, so it is not the selector's business.
+	const tsconfig = JSON.parse(
+		readFileSync("tsconfig.app.json", "utf8").replace(/^\s*\/\/.*$/gm, ""),
+	);
+	for (const [key, [value]] of Object.entries(tsconfig.compilerOptions.paths))
+		if (!value.includes("node_modules"))
+			assert.equal(
+				ALIASES[key.replace(/\/\*$/, "")],
+				value.replace(/^\.\//, "").replace(/\/\*$/, ""),
+				`tsconfig path ${key} has no matching ALIASES entry`,
+			);
+});
+
+test("every root-relative entry this tree's tests bundle is one the graph can follow", () => {
+	// The CLASS guard, not the one incident: any test that names `./src/...` and a
+	// selector that cannot resolve it is #1761 in general form. Directories are
+	// skipped - `resolvePath` probes files only, and a directory mention is
+	// handled as a tree walk (`dirMentions`), not as an entry resolve.
+	const entries = /["'](\.\/(?:src|scripts|bin|i18n|docs)\/[\w@./-]+)["']/g;
+	const unread = [];
+	for (const file of discoverDesktopTests()) {
+		const raw = readFileSync(file, "utf8");
+		// Cheap pre-filter: this test runs in CI's `Guards` job over the whole
+		// inventory, and stripping comments from ~780 test files costs more than
+		// the check does. A file that does not carry the spelling at all cannot
+		// contain an entry to resolve.
+		if (
+			!["./src/", "./scripts/", "./bin/", "./i18n/", "./docs/"].some((prefix) =>
+				raw.includes(prefix),
+			)
+		)
+			continue;
+		const text = stripComments(raw);
+		for (const match of text.matchAll(entries)) {
+			const target = match[1].slice(2);
+			if (!existsSync(target) || !statSync(target).isFile()) continue;
+			const resolved = resolveSpecifier(file, match[1], (path) =>
+				existsSync(path),
+			);
+			if (!resolved?.startsWith(target))
+				unread.push(`${file}: ${match[1]} -> ${resolved}`);
+		}
+	}
+	assert.deepEqual(unread, []);
 });
 
 test("counts parse from both TAP and spec summaries", () => {
