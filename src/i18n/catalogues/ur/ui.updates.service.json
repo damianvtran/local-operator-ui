@@ -16,7 +16,7 @@
 	"ui.updates.service.install_in_flight.message": "ورژن {version} اس وقت تک نصب نہیں ہو سکتا جب تک Local Operator کھلا ہے — اسے کھلا رکھنے سے تنصیب منسوخ ہو جاتی ہے۔ اسے بند کریں اور اس وقت تک بند رہنے دیں جب تک ایپ خود دوبارہ نہ کھل جائے۔",
 	"ui.updates.service.server_failure.not_run": "سرور اپ ڈیٹ مکمل نہیں ہوئی: انسٹالر کو اس حد تک چلایا نہ جا سکا کہ کوئی نتیجہ نکلے۔",
 	"ui.updates.service.server_failure.exited": "سرور اپ ڈیٹ نصب نہیں ہوئی: `{command}` کوڈ {code} کے ساتھ ختم ہوا۔",
-	"ui.updates.service.server_failure.rebuild_unchanged": "دوبارہ تعمیر مکمل ہو گئی لیکن اس تنصیب میں کوئی تبدیلی نہیں آئی: اس کی ‎`.lop-source`‎ اب بھی وہی ریویژن بتاتی ہے۔",
+	"ui.updates.service.server_failure.rebuild_unchanged": "دوبارہ تعمیر مکمل ہو گئی لیکن اس تنصیب میں کوئی تبدیلی نہیں آئی: اس کی `.lop-source` اب بھی وہی ریویژن بتاتی ہے۔",
 	"ui.updates.service.server_failure.not_effective": "{target} کی سرور اپ ڈیٹ مؤثر نہیں ہوئی: تنصیب اب بھی {installed} بتا رہی ہے۔",
 	"ui.updates.service.server_failure.target_fallback": "نئی ریلیز",
 	"ui.updates.service.server_failure.installed_fallback": "اپنا پچھلا ورژن",

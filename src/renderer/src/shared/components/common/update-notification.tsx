@@ -16,6 +16,7 @@ import {
 } from "@shared/store/update-notice-store";
 import { notesForOffer } from "@shared/utils/server-release-notes";
 import {
+	isolatedTokenParts,
 	serverUpdateFailureReason,
 	updateMessageFate,
 	updateMessageOf,
@@ -29,6 +30,7 @@ import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { AlertTriangle, Check, Copy, X } from "lucide-react";
 import {
+	Fragment,
 	type HTMLAttributes,
 	type ReactNode,
 	useCallback,
@@ -680,6 +682,42 @@ export const UpdateHeading = ({
 		)}
 		{children}
 	</h2>
+);
+
+/**
+ * A composed failure sentence, with each backtick token in its own bidi isolate.
+ *
+ * WHY IT IS NOT PLAIN TEXT (issue #1762). `failure.sentence` is composed in the main
+ * process and arrives as ONE string, and the values its copy backticks are LTR runs -
+ * `.lop-source`, `lop-update`. In `ur` this paragraph is RTL (the document root carries
+ * `dir="rtl"` from the locale store), so a token's leading full stop is a neutral
+ * between RTL text and an LTR letter: UAX #9 N1 resolves it to the paragraph's own
+ * direction and draws it on the far side, so `.lop-source` printed as `lop-source.`.
+ * A stored LRM used to paper over that and the `ur` activation guard (rightly) fails the
+ * build on one, so the isolation moved here: storage keeps logical order, and the surface
+ * that knows it is rendering RTL owns the isolate. `dir="ltr"` is the tokens' own truth -
+ * the copy uses backticks for commands and paths, never for prose.
+ */
+const isolatedTokenNodes = (text: string) => (
+	/*
+	 * THE SENTENCE IS ONE ELEMENT AND NOT THREE SIBLINGS. A paragraph is one LINE to
+	 * every reader of this panel - the copy assertions, the tab path, and the
+	 * stand-in renderer the update cases mount all walk one child element per line -
+	 * so text either side of the token exposed as siblings would read as a line
+	 * ending before the token plus a second line holding the rest. `<bdi>` with no
+	 * `dir` takes the sentence's own direction, which is the paragraph's.
+	 */
+	<bdi>
+		{isolatedTokenParts(text).map((part) =>
+			part.kind === "token" ? (
+				<bdi key={part.at} dir="ltr">
+					{part.text}
+				</bdi>
+			) : (
+				<Fragment key={part.at}>{part.text}</Fragment>
+			),
+		)}
+	</bdi>
 );
 
 /**
@@ -3848,7 +3886,9 @@ export const UpdateNotification = ({
 					 * `text-ink`; the explanation below it stays muted, because it is context
 					 * rather than something a reader can act on.
 					 */}
-					<p className="mb-2 text-body text-ink">{failure.sentence}</p>
+					<p className="mb-2 text-body text-ink">
+						{isolatedTokenNodes(failure.sentence)}
+					</p>
 					{failure.output && (
 						<p className="text-body-sm text-ink-muted">{failure.output}</p>
 					)}
@@ -4061,7 +4101,9 @@ export const UpdateNotification = ({
 						"ui.common.updates.update_notification.the_server_update_didn_t_finish",
 					)}
 				</UpdateHeading>
-				<p className="mb-2 text-body text-ink-muted">{failure.sentence}</p>
+				<p className="mb-2 text-body text-ink-muted">
+					{isolatedTokenNodes(failure.sentence)}
+				</p>
 				{/*
 				 * The installer's own words as their own block, not welded onto the
 				 * sentence above: the producer separates them with a blank line and the
