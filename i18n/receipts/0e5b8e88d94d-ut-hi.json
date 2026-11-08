@@ -1,0 +1,58 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "translation-auditor",
+  "instance": "0e5b8e88d94d-ut-hi",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "Model identity taken from this session's header (anthropic/claude-sonnet-5-5); no fallback model was reported or used.",
+  "independence": "Separate lopdev session (0e5b8e88d94d) from the PR coder, the hi translator, the colon-label remediation author and the earlier hi audits; I wrote none of these bytes. The verdict was rebuilt from the English source, its context sidecar, the formatter's real output and shipped hi precedent; prior audit passes were not relied on.",
+  "description": "translation-auditor (lopdev session 0e5b8e88d94d, final independent ui.chat.user_turn audit, hi)"
+ },
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Model identity taken from this session's header (anthropic/claude-sonnet-5-5); no fallback model was reported or used.",
+ "fallback": "none reported",
+ "instance": "0e5b8e88d94d-ut-hi",
+ "session": "0e5b8e88d94d",
+ "session_id_provenance": "read from LOCAL_OPERATOR_SESSION_ID in the audit session's environment",
+ "locale": "hi",
+ "branch": "i18n/key-census-literals",
+ "head": "90ebc747456ea18976615a2b84d89f09c57ecd80",
+ "pr": "damianvtran/local-operator-ui#1753",
+ "date": "2026-11-08",
+ "status": "passed",
+ "result": "clean",
+ "scope": "Whole namespace ui.chat.user_turn (5 keys) of the UNCOMMITTED working-tree hi catalogue (colon-label stamp keys) against English and the .context.json sidecar; worktree HEAD 90ebc747 (two renderer commits above pushed a22ade5d6b43).",
+ "inputs_sha256": {
+  "en_context (ui.chat.user_turn.context.json)": "83dc1782e60b76208d1baacc6bbfbcc49acb8ea10421ae17ff7acd5f44c9637f"
+ },
+ "verified": [
+  "formatter output reproduced in node: Intl.DateTimeFormat('hi',{year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'}) for 2026-11-08 15:44 = '8 नवंबर 2026 को 3:44 pm बजे' (own 'को ... बजे' connector); the three stamp keys, rendered, give 'भेजा गया: 8 नवंबर 2026 को 3:44 pm बजे', 'जवाब दिया गया: …', 'चलाया गया: …' - one connector, no doubling",
+  "meaning: Sent/Answered/Ran map to past-passive भेजा गया / जवाब दिया गया / चलाया गया; each is a label naming the fact followed by the date, which is what the accessible-name sidecar asks for",
+  "precedent for the colon-label + date form in shipped hi: ui.hub.detail.json:ui.hub.detail.created 'बनाया गया: {ago} पहले ({date})' (date = formatCalendarDate), ui.hub.json:ui.hub.links.last_success 'पिछली सफल कार्रवाई: {time}' and ui.hub.status.next_retry 'अगली कोशिश: {time}' (time = formatDateTime), ui.agents.models.json 'मॉडल: {value}'; show_less precedent कम दिखाएँ in ui.agents.skills.detail.show_less / ui.chat.canonical.supplement.show_fewer; ज़्यादा with nukta per style guide L17 and ~46 shipped uses",
+  "ICU: @formatjs/icu-messageformat-parser from the worktree - key sets identical, argument set of every key equals English ({date} on the three stamp keys, none on the two buttons), no plural/select in the namespace",
+  "NFC true on all five values, no Cf characters, no edge/double spaces; register आप-neutral polite imperatives; no trailing punctuation as the sidecar tone asks",
+  "node scripts/i18n/check-coverage.mjs: ok - 7 gated language(s) over 129 namespace(s); 0 allowed key(s) remain"
+ ],
+ "observations": [
+  "the visible 'pm' in the hi stamp is emitted by the date formatter (Intl hi-IN), not by this catalogue; out of scope of this namespace and not a finding"
+ ],
+ "namespaces": {
+  "ui.chat.user_turn": {
+   "namespace": "ui.chat.user_turn",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 5,
+   "sha256": {
+    "hi": "98bdec3c4b098ef22fccb928fee916e07d7d6d29d25ae32e88d116c8925e8f67",
+    "en": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.user_turn.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.user_turn.json",
+    "context": "src/i18n/catalogues/en/ui.chat.user_turn.context.json"
+   },
+   "findings": []
+  }
+ }
+}

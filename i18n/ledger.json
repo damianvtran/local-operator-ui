@@ -82829,7 +82829,7 @@
 			"locale": "vi",
 			"namespace": "ui.chat.user_turn",
 			"source_sha256": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8",
-			"target_sha256": "1b00acfceb5aea98350cc517cc9e2c2be426ca9e275d9abd080244dcfe0420ab",
+			"target_sha256": "f44e94f820f3620065d7a979a28b347a257e20cb09347dca942a6b9903b6027e",
 			"translator": {
 				"agent": "ui1549-coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -82841,17 +82841,16 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-08",
 					"result": "clean",
-					"instance": "200a953fa085-ui1753-vi",
+					"instance": "d72e2ab29486-ut2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/200a953fa085-ui1753-vi.json",
-					"receipt_sha256": "2610b82de42cf1e20231b2fffb3035497cbe6f19b70864b19e41b5f328c61243",
-					"scope": "the 3 keys this PR added to ui.chat.user_turn (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/d72e2ab29486-ut2-vi.json",
+					"receipt_sha256": "b01d050c11d8a2a35f44c60ca68684f6d26bb33a1486d7dd73a0055067466823",
+					"scope": "Whole 5-key ui.chat.user_turn namespace audit after the stamp wording fix (doubled date connector removed); earlier audits and the interim colon-label audit are relayed history"
 				}
 			],
 			"status": "audited",
@@ -82875,6 +82874,30 @@
 							"receipt": "i18n/receipts/d9ff5be208f1-ui1549-vi-20261031-r1.json",
 							"receipt_sha256": "dcf55713ccb2c4488e0a022a488ddfa521e0ba7ee086325cc526a1af53688add",
 							"scope": "Two user-turn disclosure labels; linguistic audit only, rendered fit pending"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8",
+					"target_sha256": "1b00acfceb5aea98350cc517cc9e2c2be426ca9e275d9abd080244dcfe0420ab",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "200a953fa085-ui1753-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/200a953fa085-ui1753-vi.json",
+							"receipt_sha256": "2610b82de42cf1e20231b2fffb3035497cbe6f19b70864b19e41b5f328c61243",
+							"scope": "the 3 keys this PR added to ui.chat.user_turn (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -82941,7 +82964,7 @@
 			"locale": "hi",
 			"namespace": "ui.chat.user_turn",
 			"source_sha256": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8",
-			"target_sha256": "5f087955136d7c85679fe926eb61c90854f95cb3c53bc426a47ff04c17138764",
+			"target_sha256": "98bdec3c4b098ef22fccb928fee916e07d7d6d29d25ae32e88d116c8925e8f67",
 			"translator": {
 				"agent": "ui1549-coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -82953,17 +82976,16 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-08",
 					"result": "clean",
-					"instance": "050f568ab597",
+					"instance": "0e5b8e88d94d-ut-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/050f568ab597.json",
-					"receipt_sha256": "2e140f685e9a147aceb472be77294577a1336adf8b65d80e867cb4710e9b4775",
-					"scope": "the 3 keys this PR added to ui.chat.user_turn (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/0e5b8e88d94d-ut-hi.json",
+					"receipt_sha256": "950395f71d427a5872bba36a1fb16e15037e3a6293e637cf2b7990f5fcfb6458",
+					"scope": "Whole 5-key ui.chat.user_turn namespace audit after the stamp wording fix (doubled date connector removed); earlier audits and the interim colon-label audit are relayed history"
 				}
 			],
 			"status": "audited",
@@ -82987,6 +83009,30 @@
 							"receipt": "i18n/receipts/d9ff5be208f1-ui1549-hi-20261031-r1.json",
 							"receipt_sha256": "6689059fc7632337462af2e8df4c7ee8f03006d266072497a675a16a492979bd",
 							"scope": "Two user-turn disclosure labels; linguistic audit only, rendered fit pending"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8",
+					"target_sha256": "5f087955136d7c85679fe926eb61c90854f95cb3c53bc426a47ff04c17138764",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "050f568ab597",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/050f568ab597.json",
+							"receipt_sha256": "2e140f685e9a147aceb472be77294577a1336adf8b65d80e867cb4710e9b4775",
+							"scope": "the 3 keys this PR added to ui.chat.user_turn (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
