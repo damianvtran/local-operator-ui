@@ -318,7 +318,7 @@ const bundle = await build({
 			export { CredentialChipLayer } from "./src/renderer/src/features/chat/components/credential-chip-layer.tsx";
 			export { CHAT_MEASURE } from "./src/renderer/src/features/chat/chat-measure";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
+			export { useConversationInputStore, flushComposerDraftPersist } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { ASK_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export { t } from "@shared/i18n";
 			export {
@@ -365,6 +365,7 @@ const {
 	QueryClient,
 	QueryClientProvider,
 	useConversationInputStore,
+	flushComposerDraftPersist,
 	useRadientCredentialProbe,
 	credentialArmedNotice,
 	credentialEmptySpanDraftNotice,
@@ -596,6 +597,14 @@ async function mount({
 		 * it does not describe is visible here and nowhere else.
 		 */
 		disclosure: () => {
+			/*
+			 * DRAFT WRITES ARE COALESCED on a 300 ms window
+			 * (`conversation-input-store.ts`), so reading the PERSISTED copy means
+			 * landing the queue first - the seam the app itself uses on a send, a
+			 * conversation switch and the page being hidden. Without it this reads
+			 * whatever the last coalesced write left, not what the box holds now.
+			 */
+			flushComposerDraftPersist();
 			const raw = window.localStorage.getItem("conversation-input-store");
 			if (!raw) return undefined;
 			const parsed = JSON.parse(raw);
@@ -608,6 +617,8 @@ async function mount({
 			return { start: field.selectionStart, end: field.selectionEnd };
 		},
 		draft: () => {
+			/* Coalesced writes: land the queue, then read (see `disclosure` above). */
+			flushComposerDraftPersist();
 			const raw = window.localStorage.getItem("conversation-input-store");
 			if (!raw) return undefined;
 			const parsed = JSON.parse(raw);
@@ -2594,8 +2605,63 @@ test("a draft persisted by the pre-fix unredact still discloses its characters o
 const DUMMY_SECRET = "dummy-not-a-secret-123";
 const HELD_NOTICE = /^Esc again discards it — still masked/;
 
-const persistedRaw = () =>
-	window.localStorage.getItem("conversation-input-store") ?? "";
+const persistedRaw = () => {
+	/*
+	 * LAND THE QUEUE BEFORE READING, and note that this is not optional for a
+	 * NEGATIVE assertion (agent review round 1, R1-2). Draft writes are coalesced on
+	 * a 300 ms window (`conversation-input-store.ts`), so a bare read here returns
+	 * whatever the last timer happened to leave - usually nothing - and
+	 * `!persistedRaw().includes(DUMMY_SECRET)` would hold because the write never
+	 * happened, not because `partialize` blanked the secret. The flush is the seam
+	 * the app itself uses on a send, a switch and a hidden page; with it this read
+	 * sees what the app actually persists.
+	 */
+	flushComposerDraftPersist();
+	return window.localStorage.getItem("conversation-input-store") ?? "";
+};
+
+/*
+ * THE GATE'S OWN PROOF, which the Esc cases below do not provide.
+ *
+ * Agent review round 1 (R1-2) showed the negative assertions below could not fail:
+ * with the write deferred, `persistedRaw()` read a disk that had not been written
+ * yet. Flushing in the helper fixes that - but a flush is only half of a proof. The
+ * Esc cases keep the captured characters in the HOOK (the `draftHeld` keystroke
+ * gate), so they never put the value in this store at all and their assertion holds
+ * whether or not `partialize` blanks anything; removing all four volatile gates
+ * leaves every one of them green.
+ *
+ * So the gate needs a case that carries a secret INTO the store and asserts what
+ * reaches the disk: the in-flight return path, where the payload the composer gets
+ * back is volatile by construction (`foldReturn` sets `volatilePendingText`), which
+ * is the state `partialize`'s `returned` and `pendingText` lines exist for. Remove
+ * either of those lines and this case fails.
+ */
+test("a volatile payload handed back to the composer stays off the disk (agent review round 1, R1-2)", () => {
+	const id = "conv-volatile-gate";
+	const store = useConversationInputStore.getState();
+	store.beginInFlight(id, {
+		text: DUMMY_SECRET,
+		attachments: [],
+		replies: [],
+		volatileText: true,
+	});
+	store.returnInFlight(id, id);
+
+	/* CONTROL: the secret really is in the store, in memory, at this point. */
+	const row = useConversationInputStore.getState().inputByConversation[id];
+	assert.equal(
+		row?.pendingText,
+		DUMMY_SECRET,
+		"the returned payload is back in the composer's hands",
+	);
+	assert.equal(row?.volatilePendingText, true, "and it is flagged volatile");
+
+	assert.ok(
+		!persistedRaw().includes(DUMMY_SECRET),
+		"no plaintext reached the persisted draft store",
+	);
+});
 
 test("Esc during capture keeps the mask and the value, and writes no plaintext to the draft", async () => {
 	const frame = await mount({ conversationId: "conv-esc-masked" });

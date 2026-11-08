@@ -61,6 +61,7 @@ import { t } from "../../../../i18n/messages";
 import {
 	type Attachment,
 	type Reply,
+	flushComposerDraftPersist,
 	useConversationInputStore,
 } from "../store/conversation-input-store";
 
@@ -775,6 +776,14 @@ export const useMessageInput = ({
 			)
 		)
 			return;
+		/*
+		 * THE OUTGOING CONVERSATION'S DRAFT LANDS BEFORE THE BOX MOVES. Draft writes
+		 * are coalesced on a 300 ms window (`conversation-input-store.ts`), so a
+		 * switch is the one ordinary moment where the row the user just left could
+		 * still be queued - and the row is about to stop being on screen, which makes
+		 * "it will be written shortly" the wrong answer for it.
+		 */
+		flushComposerDraftPersist();
 		lastInitialisedRef.current = conversationId;
 		if (conversationId) {
 			const draft = getCurrentInput(conversationId);
@@ -946,6 +955,27 @@ export const useMessageInput = ({
 			draftUnredacted,
 		],
 	);
+
+	/*
+	 * NO CAPTURE-EDGE FLUSH, AND THAT IS A MEASURED DECISION RATHER THAN AN OMISSION.
+	 *
+	 * Draft writes are coalesced on a 300 ms window (`conversation-input-store.ts`), so
+	 * the window this hook must answer for is "a queued payload when a masked capture
+	 * opens". It needs no seam here, because the credential gate runs at SCHEDULE
+	 * time, not at fire time: `partialize` blanks a volatile payload before it is ever
+	 * queued, and a capture's own text never reaches `currentInput` at all -
+	 * `handleChange` returns early while `draftHeld`. So a payload queued before the
+	 * capture holds pre-capture text (the user's own draft, which belongs on disk) and
+	 * nothing queued during the capture can carry the secret.
+	 *
+	 * A flush at this edge WAS written first, and it was wrong: landing the queue
+	 * synchronously inside an effect at the capture boundary broke the mask's own DOM
+	 * sync - measured in `credential-composer.test.mjs` as the minted pill never
+	 * reaching the box ("a minted pill is persisted" failed on the box value). The
+	 * record of the gate itself is `scripts/composer-typing-perf.test.mjs` B4: an
+	 * in-flight and a returned volatile payload never put their text on disk, while
+	 * ordinary typing does.
+	 */
 
 	const submittingRef = useRef(false);
 	/*
@@ -1248,6 +1278,14 @@ export const useMessageInput = ({
 			lastPushedRef.current = "";
 			setCurrentInput(conversationId, "");
 			resetCurrentHistoryIndex(conversationId);
+			/*
+			 * THE SENT DRAFT LANDS NOW, not 300 ms from now. A retire that is still
+			 * queued behind a coalescing window is a restart restoring the message the
+			 * user just sent into the box it was sent from - the one draft resurrection
+			 * this store must never allow. The write is the retire's own empty draft, so
+			 * flushing here is what makes "the send emptied it" durable.
+			 */
+			flushComposerDraftPersist();
 			draftMessageRef.current = "";
 		};
 		try {

@@ -84,7 +84,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {caughtFailureNotice, composerNoticeFor, lockAnswerOutlived, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {FAST_UNAVAILABLE_CODE} from "./src/renderer/src/features/chat/draft-selection"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, flushComposerDraftPersist, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {caughtFailureNotice, composerNoticeFor, lockAnswerOutlived, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {FAST_UNAVAILABLE_CODE} from "./src/renderer/src/features/chat/draft-selection"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -221,6 +221,7 @@ const module = await import(
 const {
 	admitChatDraft,
 	composerHoldsExactly,
+	flushComposerDraftPersist,
 	composerIdentityFor,
 	caughtFailureNotice,
 	composerNoticeFor,
@@ -1156,6 +1157,13 @@ test("a returned payload does not duplicate the image bytes, so a large one stil
 	 * And the persistence the app performs after that write: one copy of the bytes,
 	 * under a quota that a second copy would breach.
 	 */
+	/*
+	 * DRAFT WRITES ARE COALESCED on a 300 ms window (`conversation-input-store.ts`), so
+	 * reading what the app actually persisted means landing the queue first - the seam
+	 * the app uses on a send, a switch and a hidden page. What is asserted below (one
+	 * copy of the bytes, under the browser's quota) is unchanged.
+	 */
+	flushComposerDraftPersist();
 	const persisted = values.get("conversation-input-store") ?? "";
 	assert.ok(persisted.length > 0, "the row was persisted at all");
 	assert.equal(
@@ -1193,6 +1201,13 @@ test("a payload typed inside a masked capture never reaches disk when it comes b
 		volatileText: true,
 	});
 	store.returnInFlight(identity, identity);
+	/*
+	 * DRAFT WRITES ARE COALESCED on a 300 ms window (`conversation-input-store.ts`), so
+	 * reading what the app actually persisted means landing the queue first - the seam
+	 * the app uses on a send, a switch and a hidden page. What is asserted below (one
+	 * copy of the bytes, under the browser's quota) is unchanged.
+	 */
+	flushComposerDraftPersist();
 	const persisted = values.get("conversation-input-store") ?? "";
 	assert.equal(
 		persisted.includes("LOP_SECRET_ABCDEFGH"),
