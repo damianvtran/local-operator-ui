@@ -1687,6 +1687,41 @@ test("a check-time failure does not end the check or claim an attempt", () => {
 });
 
 /**
+ * A keyed update-service sentence reaches the toast AS the sentence, in a
+ * language the English-tuned classifier cannot read (PR #1760, design round 1,
+ * D1). The zh-CN refusal below has no space-separated words, so
+ * `isAuthoredSentence` called it machine output and the toast headlined "the
+ * update check could not finish" over a refusal that was no check. The producer
+ * now says the message is its own (`authored`), and the toast carries that flag
+ * from the report to `updateErrorCopy`. The unmarked twin is the negative
+ * control: the same text without the mark is still demoted, so this case fails
+ * if the wiring (not just the copy function, which
+ * `update-authored-copy.test.mjs` covers) is dropped.
+ */
+test("a producer-marked sentence is the toast's sentence even when the classifier cannot read the language", () => {
+	const zh = "服务器更新已在运行。请等待其完成后再开始新的更新。";
+	const incomplete = /could not finish/i;
+
+	const marked = mountNotification();
+	updater.emit("backend-update-error", {
+		...checkReport(zh),
+		authored: "message",
+	});
+	marked.render();
+	const [toast] = dangerToasts(marked);
+	assert.ok(toast, JSON.stringify(visible(marked)));
+	assert.ok(toast.text.includes(zh), toast.text);
+	assert.equal(incomplete.test(toast.text), false, toast.text);
+
+	const unmarked = mountNotification();
+	updater.emit("backend-update-error", checkReport(zh));
+	unmarked.render();
+	const [demoted] = dangerToasts(unmarked);
+	assert.ok(demoted, JSON.stringify(visible(unmarked)));
+	assert.match(demoted.text, incomplete, "control: unmarked is demoted");
+});
+
+/**
  * THE OPERATOR'S STALL, at the surface they watched: the checking frame must
  * clear when the check is ANSWERED, and the answer the deadline produces is a
  * failure - so it clears into the sentence the copy already has, not into

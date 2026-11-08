@@ -43,6 +43,7 @@
  */
 
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import { backendUpdateUnexplained } from "@shared/components/common/backend-compatibility-banner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -70,18 +71,6 @@ import type { McpRemedyControls } from "./use-mcp-remedy";
 import type { MonitorControls } from "./use-monitor-controls";
 import type { WakeControls } from "./use-wake-controls";
 import type { AidaWakeIdentity } from "./wake-controls-model";
-
-/**
- * What the pane says when the updater refused and said nothing else.
- *
- * The main process names a reason on `backend-update-error` for every failing
- * branch of `update-backend`, so this is the backstop for a bridge that answered
- * without one - and it names the next step rather than only the outcome: this row
- * is where the user's own action lives, and "could not start" on its own told them
- * nothing they could do (design D4, UX U4).
- */
-const BACKEND_UPDATE_UNEXPLAINED =
-	"The backend update could not start. Retry, or update from Settings, under Application updates.";
 
 export type RunPanelProps = {
 	details: RunDetails;
@@ -264,12 +253,12 @@ export const RunPanel = ({
 			// run" as "the update ran" and left the reader with a backend that never
 			// changed and nothing to explain it.
 			if (started === false) {
-				setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
+				setUpdateBackendError(reason ?? backendUpdateUnexplained());
 				return;
 			}
 			retryCapabilities();
 		} catch {
-			setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
+			setUpdateBackendError(reason ?? backendUpdateUnexplained());
 		} finally {
 			removeBackendUpdateErrorListener();
 			setUpdatingBackend(false);

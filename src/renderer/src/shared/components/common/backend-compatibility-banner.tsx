@@ -71,10 +71,14 @@ const REQUIRED_FEATURES = REQUIRED_BACKEND_FEATURES;
  * EXPORTED so the story that photographs the update-failed suffix renders the
  * SAME string the container sets, rather than a second copy of it drifting in a
  * story file (`backend-compatibility-banner.stories.tsx`, `UpdateFailed`).
+ *
+ * A FUNCTION, NOT A CONSTANT: `t()` evaluated at import time froze the boot
+ * locale, so the backstop stayed English after the backend named another.
  */
-export const BACKEND_UPDATE_UNEXPLAINED = t(
-	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_",
-);
+export const backendUpdateUnexplained = (): string =>
+	t(
+		"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_",
+	);
 
 export type BackendCompatibilityBannerViewProps = {
 	message: string;
@@ -319,7 +323,7 @@ export const BackendCompatibilityBanner = () => {
 			// resolved promise is not success: taking it for one told the user the
 			// update had been started and left them on a server that never moved.
 			if (started === false) {
-				setUpdateError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
+				setUpdateError(reason ?? backendUpdateUnexplained());
 				return;
 			}
 			retry();
@@ -330,7 +334,7 @@ export const BackendCompatibilityBanner = () => {
 				// check rather than the update the user pressed.
 				error instanceof Error
 					? updateMessageOf(error)
-					: BACKEND_UPDATE_UNEXPLAINED,
+					: backendUpdateUnexplained(),
 			);
 		} finally {
 			removeBackendUpdateErrorListener();

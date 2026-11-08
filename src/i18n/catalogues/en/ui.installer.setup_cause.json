@@ -1,0 +1,9 @@
+{
+	"ui.installer.setup_cause.disk_full": "This Mac ran out of disk space while setting up the backend. Free some space and retry.",
+	"ui.installer.setup_cause.clock_or_expired": "Local Operator read the package index's certificate as expired or not yet valid. A wrong clock is the usual cause - check this machine's date and time and retry; if the clock is right, the certificate itself has expired and the index's operator has to renew it.",
+	"ui.installer.setup_cause.tls_interception": "Local Operator could not verify the package index's secure connection, which is usually a network that inspects it (a corporate proxy or firewall). Ask IT for the root certificate and add it to your system certificate store - this app already trusts that store - then retry.",
+	"ui.installer.setup_cause.unreachable": "Local Operator could not reach the package index, which is usually the network or a proxy. Check the connection and retry.",
+	"ui.installer.setup_cause.locked": "Another copy of Local Operator is setting up its backend right now. Retry in a moment.",
+	"ui.installer.setup_cause.not_started": "The backend was installed but did not start correctly.",
+	"ui.installer.setup_cause.file_missing": "A file the setup needed was missing, which usually means the download or the copy did not finish."
+}

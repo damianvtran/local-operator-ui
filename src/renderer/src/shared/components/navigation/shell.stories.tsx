@@ -71,8 +71,8 @@ import {
 	useState,
 } from "react";
 import {
-	UP_TO_DATE_AFFIRMATION,
 	type UpdateCheckVerdict,
+	upToDateAffirmation,
 } from "../../../../../main/update-check-verdict";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import type { PendingAsk } from "../../../../../shared/desktop-session-contract";
@@ -444,7 +444,7 @@ const noopUnsubscribe = () => () => {};
 const UP_TO_DATE_VERDICT: UpdateCheckVerdict = {
 	app: "current",
 	server: "current",
-	affirmation: UP_TO_DATE_AFFIRMATION,
+	affirmation: upToDateAffirmation(),
 };
 
 const UPDATER_STUB = {

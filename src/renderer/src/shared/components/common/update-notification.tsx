@@ -37,6 +37,7 @@ import {
 	useState,
 } from "react";
 import { t } from "../../../../../i18n/messages";
+import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
 import { PanelDetails } from "./panel-details";
 import { UpdateErrorAlert } from "./update-error-alert";
 import {
@@ -1360,6 +1361,23 @@ export const UpdateNotification = ({
 	);
 	const [updateDownloaded, setUpdateDownloaded] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	/*
+	 * WHICH MESSAGE the producer marked as its own copy (`authored` on a
+	 * `backend-update-error` report, design round 1, D1). It is kept beside `error`
+	 * rather than inside it because `setError` has a dozen other callers and a
+	 * plain state setter is what the hook-dependency rule expects of them. The flag
+	 * is keyed by the message it was reported with, so a later `setError(other)`
+	 * from any other producer cannot inherit it: `authoredError` only applies
+	 * while `error` is still that exact string.
+	 */
+	const [authoredError, setAuthoredError] = useState<{
+		message: string;
+		authored: BackendUpdateErrorReport["authored"];
+	} | null>(null);
+	const errorAuthored =
+		authoredError !== null && authoredError.message === error
+			? authoredError.authored
+			: undefined;
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [appVersion, setAppVersion] = useState<string>("unknown");
 	/*
@@ -2912,7 +2930,9 @@ export const UpdateNotification = ({
 					setUpdatingBackend(false);
 					return;
 				}
-				setError(updateMessageOf(report.message));
+				const message = updateMessageOf(report.message);
+				setAuthoredError({ message, authored: report.authored });
+				setError(message);
 				setSnackbarOpen(true);
 			});
 
@@ -3011,6 +3031,7 @@ export const UpdateNotification = ({
 				<UpdateErrorAlert
 					open={snackbarOpen}
 					message={error}
+					authored={errorAuthored}
 					onClose={closeSnackbar}
 					onRetry={() =>
 						void checkForUpdates({ manual: true, keepFailure: true })

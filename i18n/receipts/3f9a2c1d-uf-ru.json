@@ -1,0 +1,123 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "3f9a2c1d-uf-ru",
+	"locale": "ru",
+	"status": "passed",
+	"scope": "ru working-tree files (uncommitted) for ui.updates.service, ui.updates.status, ui.installer.setup_cause audited against en + .context.json sidecars and shipped ru voice/glossary (ui.updates.panel, ui.installer, ui.common.updates); ICU rendered with intl-messageformat (ru) for plural values 0,1,2,5,11,21,22,100,101; check-coverage ok, locale-parity 44 pass (6 ru), context-parity ok; tokens and placeholders verified by script; no BLOCKER/MAJOR",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"keys_read": 38,
+			"sha256": {
+				"en": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+				"ru": "370b3cc1ac4160f216859543f5c2833f1743ee3f109dd6ed1747cf06b529cf7c"
+			},
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.attempt_running.message_unknown_age",
+					"current": "…в неизвестный момент времени… поэтому второе рядом с ним не запускается. Если это обновление не отвечает, чем оно занималось, можно узнать из журнала службы обновлений.",
+					"proposed": "Обновление сервера, запущенное этим приложением в момент, который не удалось определить, всё ещё выполняется (группа процессов {group}), поэтому второе параллельно запускаться не будет. Если это обновление не отвечает, из журнала службы обновлений можно узнать, чем оно занималось.",
+					"reason": "'рядом с ним' is a calque of 'beside it' (a concurrent second run is 'параллельно'); 'в неизвестный момент времени' states the time is unknown rather than that it could not be read; the last sentence has an awkward stacked-clause order."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.attempt_running.message_moments",
+					"current": "…поэтому второе рядом с ним не запускается. Если это обновление не отвечает, чем оно занималось, можно узнать из журнала службы обновлений.",
+					"proposed": "…поэтому второе параллельно запускаться не будет. Если это обновление не отвечает, из журнала службы обновлений можно узнать, чем оно занималось.",
+					"reason": "Same calque of 'beside it' and same clumsy last-sentence order; placeholders and meaning otherwise intact."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.attempt_running.message_minutes",
+					"current": "…поэтому второе рядом с ним не запускается. Если это обновление не отвечает, чем оно занималось, можно узнать из журнала службы обновлений.",
+					"proposed": "…поэтому второе параллельно запускаться не будет. Если это обновление не отвечает, из журнала службы обновлений можно узнать, чем оно занималось.",
+					"reason": "Same calque; plural branches one/few/many/other are correct (rendered 0,1,2,5,11,21,22,100,101 correctly) and unchanged."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.disk_space.message",
+					"current": "…около {needed, number, ::group-off} MB … свободно {free, number, ::group-off} MB, поэтому приложение не тронуло окружение, на котором само работает.",
+					"proposed": "Для обновления сервера нужно около {needed, number, ::group-off} МБ свободного места на диске, а свободно {free, number, ::group-off} МБ, поэтому приложение не тронуло окружение, обслуживающее это приложение. Освободите место и попробуйте снова.",
+					"reason": "'MB' is Latin in a Cyrillic sentence (shipped ru is mixed: MB in ui.agents.avatar/settings, МБ in ui.settings.notifications; МБ is the Russian unit); 'окружение, на котором само работает' inverts the source (the environment SERVES the app, the app does not run on it) - shipped copy says 'сервер, обслуживающий приложение'."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.not_installed.message",
+					"current": "…окружение, на котором работает приложение, осталось прежним.",
+					"proposed": "Обновление сервера не установилось, поэтому окружение, обслуживающее это приложение, осталось прежним.",
+					"reason": "Same inversion of 'the environment serving this app'."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.fleet.busy.body",
+					"current": "Приложение ждало их завершения {minutes…}, а затем остановилось, чтобы не прерывать ход. {closing}",
+					"proposed": "Приложение ждало {minutes, plural, one {# минуту} few {# минуты} many {# минут} other {# минуты}}, пока всё завершится, а затем остановилось, чтобы не прерывать ход. {closing}",
+					"reason": "'их' is plural but the lead sentence renders count=1 ('в 1 сессии'), so the pronoun disagrees with the sentence before it (rendered: 'Ход ещё выполняется в 1 сессии… Приложение ждало их завершения 1 минуту'); also 'ждало их завершения 5 минут' strains the duration/genitive pairing."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.global.legacy_installer.remedy",
+					"current": "Эта установка появилась раньше неразрушающего установщика, поэтому обновите её один раз из терминала: это обновление перезаписывает общее окружение на месте…",
+					"proposed": "Эта установка создана до появления установщика, не прерывающего работу сессий, поэтому обновите её один раз из терминала: программа обновления перезаписывает общее окружение на месте и может прервать сессии посреди хода. Дальше обновлениями занимается приложение.",
+					"reason": "'non-disruptive' (does not interrupt sessions) is rendered 'неразрушающий' (non-destructive), which reads as a data-safety claim and sits oddly next to 'может прервать сессии'; 'that updater' became 'это обновление', blurring updater vs update."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.fleet.closing",
+					"current": "…сервер продолжает работать на загруженной сборке…",
+					"proposed": "…сервер продолжает работать на уже запущенной сборке…",
+					"reason": "'загруженной' also reads as 'downloaded'; the source means the build the server loaded into memory."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.global.source_build.remedy",
+					"current": "…после слияния ваших изменений.",
+					"proposed": "…после слияния вашего изменения.",
+					"reason": "Source is singular ('your change is merged'); plural is acceptable but drifts."
+				}
+			]
+		},
+		"ui.updates.status": {
+			"status": "passed",
+			"keys_read": 3,
+			"sha256": {
+				"en": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+				"ru": "0d6b67ab6b8c6dd43ed9af4902400033d7e90ff0afb9ca6334ba8bbb4fe59850"
+			},
+			"findings": []
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"keys_read": 7,
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"ru": "d91306c19ea6bf60411010e634de2468077406486abc5f20a22b4738d3f2f3fd"
+			},
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.installer.setup_cause.tls_interception",
+					"current": "…как правило, сеть его проверяет (корпоративный прокси или брандмауэр).",
+					"proposed": "Приложению Local Operator не удалось проверить защищённое соединение с индексом пакетов — как правило, сеть перехватывает и проверяет такие соединения (корпоративный прокси или брандмауэр). Попросите в ИТ-отделе корневой сертификат и добавьте его в системное хранилище сертификатов — приложение уже доверяет этому хранилищу — затем повторите попытку.",
+					"reason": "'не удалось проверить соединение… сеть его проверяет' reuses one verb for two different acts (verify vs inspect), so the cause reads as a contradiction; name the interception."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.installer.setup_cause.clock_or_expired",
+					"current": "…и его должен продлить оператор индекса.",
+					"proposed": "…и его должен продлить владелец индекса.",
+					"reason": "'оператор индекса' is a calque of 'the index's operator'; 'владелец'/'тот, кто ведёт индекс' is the usual Russian."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.installer.setup_cause.file_missing",
+					"current": "Не хватило файла, нужного для настройки, — …",
+					"proposed": "Отсутствовал файл, необходимый для настройки, — обычно это значит, что загрузка или копирование не завершились.",
+					"reason": "'Не хватило файла' is colloquial next to the calm technical register of the other causes."
+				}
+			]
+		}
+	}
+}

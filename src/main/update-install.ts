@@ -2565,7 +2565,9 @@ export function installInFlightPayload(
 ): InstallInFlightPayload {
 	return {
 		targetVersion: marker.targetVersion,
-		message: `Version ${marker.targetVersion} can't finish installing while Local Operator is open — keeping it open cancels the install. Quit and leave it closed until the app opens again by itself.`,
+		message: t("ui.updates.service.install_in_flight.message", {
+			version: marker.targetVersion,
+		}),
 		detail: `Install started ${installStartedText(marker)} from ${marker.artifactPath || "an unknown artifact"}, while version ${runningVersion} was running.`,
 	};
 }
@@ -4908,8 +4910,7 @@ export function resolveGlobalInstallPlan(input: {
 		return {
 			canManageUpdate: false,
 			updateCommand: "",
-			remedy:
-				"The server is running from a source checkout on this machine rather than an installed copy, so update it with lop-update after your change is merged.",
+			remedy: t("ui.updates.service.global.source_build.remedy"),
 			detail,
 			sourceBuild: true,
 			managedRoute: null,
@@ -4997,8 +4998,8 @@ export function resolveGlobalInstallPlan(input: {
 			remedy: managed
 				? t("ui.common.updates.update_notification.remedy_managed_global")
 				: sourceRebuildRoute
-					? "Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered."
-					: "This install predates the non-disruptive installer, so update it once from your terminal; that updater rewrites the shared environment in place, which can interrupt sessions mid-turn. The app manages updates after that.",
+					? t("ui.updates.service.global.source_rebuild.remedy")
+					: t("ui.updates.service.global.legacy_installer.remedy"),
 			detail: `${detail}${
 				managed
 					? provenance
@@ -5019,7 +5020,7 @@ export function resolveGlobalInstallPlan(input: {
 		return {
 			canManageUpdate: false,
 			updateCommand: "pipx upgrade local-operator",
-			remedy: "The server is a pipx install, so update it from your terminal",
+			remedy: t("ui.updates.service.global.pipx.remedy"),
 			detail,
 			sourceBuild: false,
 			managedRoute: null,
@@ -5030,7 +5031,7 @@ export function resolveGlobalInstallPlan(input: {
 		return {
 			canManageUpdate: false,
 			updateCommand: "pip install --upgrade local-operator",
-			remedy: "The server is a pip install, so update it from your terminal",
+			remedy: t("ui.updates.service.global.pip.remedy"),
 			detail,
 			sourceBuild: false,
 			managedRoute: null,
@@ -5040,8 +5041,7 @@ export function resolveGlobalInstallPlan(input: {
 	return {
 		canManageUpdate: false,
 		updateCommand: "",
-		remedy:
-			"The app could not tell how this server was installed, so update it with the tool you installed it with - uv, pipx or pip",
+		remedy: t("ui.updates.service.global.unknown.remedy"),
 		detail,
 		sourceBuild: false,
 		managedRoute: null,

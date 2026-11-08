@@ -1,0 +1,9 @@
+{
+	"ui.installer.setup_cause.disk_full": "Máy Mac này hết dung lượng đĩa trong lúc thiết lập backend. Hãy giải phóng bớt dung lượng rồi thử lại.",
+	"ui.installer.setup_cause.clock_or_expired": "Local Operator đọc thấy chứng chỉ của chỉ mục gói đã hết hạn hoặc chưa có hiệu lực. Nguyên nhân thường là đồng hồ sai - hãy kiểm tra ngày giờ của máy này rồi thử lại; nếu đồng hồ đúng thì chính chứng chỉ đã hết hạn và bên vận hành chỉ mục phải gia hạn.",
+	"ui.installer.setup_cause.tls_interception": "Local Operator không xác minh được kết nối bảo mật đến chỉ mục gói, thường do mạng có kiểm tra kết nối đó (proxy hoặc tường lửa của doanh nghiệp). Hãy xin bộ phận CNTT chứng chỉ gốc và thêm vào kho chứng chỉ hệ thống của bạn - ứng dụng này vốn đã tin cậy kho đó - rồi thử lại.",
+	"ui.installer.setup_cause.unreachable": "Local Operator không kết nối được đến chỉ mục gói, thường do mạng hoặc proxy. Hãy kiểm tra kết nối rồi thử lại.",
+	"ui.installer.setup_cause.locked": "Một bản Local Operator khác đang thiết lập backend. Hãy thử lại sau giây lát.",
+	"ui.installer.setup_cause.not_started": "Backend đã được cài nhưng không khởi động đúng cách.",
+	"ui.installer.setup_cause.file_missing": "Thiếu một tệp mà quá trình thiết lập cần, thường nghĩa là việc tải xuống hoặc sao chép chưa hoàn tất."
+}

@@ -84452,6 +84452,1016 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.updates.service",
+			"source_sha256": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+			"target_sha256": "91f712b7c4fcb68ee54fe96e48d97ba54097a9ab88b3f71a16551b184bc62d76",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "a7c41e29-uf4-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/a7c41e29-uf4-fr.json",
+					"receipt_sha256": "98000ea18e1fbfb5b17d83e3c466ccfb59ea7b31eb5f85a3aae6b60a3393d905",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+					"target_sha256": "f1bfc4222c628ca99adf2cc872eac0069cf4ad85728b0129d35829598087902b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "fd05d0c1-uf-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 11,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/fd05d0c1-uf-fr.json",
+							"receipt_sha256": "4d7823cd3f25e6ac4b6f4d29718f6c7d8323647fc67ce8a81fbc9acf9fa841a9",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.updates.status",
+			"source_sha256": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+			"target_sha256": "05ee1d827b0f29f766192e99634357c047cd2abaafc77c52df1af39933d13981",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "fd05d0c1-uf-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/fd05d0c1-uf-fr.json",
+					"receipt_sha256": "4d7823cd3f25e6ac4b6f4d29718f6c7d8323647fc67ce8a81fbc9acf9fa841a9",
+					"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+					"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.installer.setup_cause",
+			"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+			"target_sha256": "64a2e8f0a86610568df694b0a658aae3a5c3fd7b9022d470b5ececec64fafe1c",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "a7c41e29-uf4-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/a7c41e29-uf4-fr.json",
+					"receipt_sha256": "98000ea18e1fbfb5b17d83e3c466ccfb59ea7b31eb5f85a3aae6b60a3393d905",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+					"target_sha256": "8024348d75f8060e0658771d6ec76bd1a03d4a0f9c5ea15059306aa489a0764c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "fd05d0c1-uf-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/fd05d0c1-uf-fr.json",
+							"receipt_sha256": "4d7823cd3f25e6ac4b6f4d29718f6c7d8323647fc67ce8a81fbc9acf9fa841a9",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.updates.service",
+			"source_sha256": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+			"target_sha256": "ab251ac509f8a873873a5b688f5330fa81e296746a7339c1f7ed276d03ab9f79",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "3b8c5a1e-uf3-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/3b8c5a1e-uf3-es.json",
+					"receipt_sha256": "118a7ea510f4caff1d44d7200b0fd254d2dc12b1e533043750e8972d8e9599f7",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+					"target_sha256": "65fe7aa9002d5dc73033614b98a18e6e87e1c73e683ce64dd8bf376a8b49d9c8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "8048eb56-uf-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/8048eb56-uf-es.json",
+							"receipt_sha256": "ed19717837e77c49cbb15843898a4402496e0da87fc6a6678fc3711a607ef498",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.installer.setup_cause",
+			"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+			"target_sha256": "0a8b9d249c865ffcd3a4fdb4b2f564410c350134e47b45bcc413c96f77bb04eb",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "3b8c5a1e-uf3-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3b8c5a1e-uf3-es.json",
+					"receipt_sha256": "118a7ea510f4caff1d44d7200b0fd254d2dc12b1e533043750e8972d8e9599f7",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+					"target_sha256": "60b9b1e4fb3e568c334d8665d67f3088c8aadfc91a0138ac168178e39d9fafab",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "8048eb56-uf-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8048eb56-uf-es.json",
+							"receipt_sha256": "ed19717837e77c49cbb15843898a4402496e0da87fc6a6678fc3711a607ef498",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.updates.service",
+			"source_sha256": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+			"target_sha256": "65d40c366e2d89625a8222390363fcecaced622d179e5582bb331a011a79bab1",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "e5a8b3d1-uf3-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e5a8b3d1-uf3-ru.json",
+					"receipt_sha256": "306e4a1f990fc78d79948270c773cc01cfe9e87f1364e8e9a72dfa20a3f0d2e1",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+					"target_sha256": "370b3cc1ac4160f216859543f5c2833f1743ee3f109dd6ed1747cf06b529cf7c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "3f9a2c1d-uf-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 7,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3f9a2c1d-uf-ru.json",
+							"receipt_sha256": "4804e7ebd49579bc2393500bdf3f189ff85b20b4d206866a91ff580257b61ab4",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.installer.setup_cause",
+			"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+			"target_sha256": "53a42e2e498c5063688d26c5ab79ca49c2985aa02c47a5fc831d8c7e361cd902",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "e5a8b3d1-uf3-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e5a8b3d1-uf3-ru.json",
+					"receipt_sha256": "306e4a1f990fc78d79948270c773cc01cfe9e87f1364e8e9a72dfa20a3f0d2e1",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+					"target_sha256": "d91306c19ea6bf60411010e634de2468077406486abc5f20a22b4738d3f2f3fd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "3f9a2c1d-uf-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3f9a2c1d-uf-ru.json",
+							"receipt_sha256": "4804e7ebd49579bc2393500bdf3f189ff85b20b4d206866a91ff580257b61ab4",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.updates.service",
+			"source_sha256": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+			"target_sha256": "6a018f8742380354a57f886f66e98481b6355f7dd3479dbc702ea1ae79aa16ab",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "e3a85f17-uf3-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/e3a85f17-uf3-vi.json",
+					"receipt_sha256": "7dfdd977b3c7bd608cd286bd778dd8176e9bc68ce6bd86160f4f4994c449a5fc",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+					"target_sha256": "7d0240806b98735e94d4f71a7224735fa8613ed8f8a52bb92ef8c4867c8a3707",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "b7e41c09-uf-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/b7e41c09-uf-vi.json",
+							"receipt_sha256": "eb5c2d3b346bf33b4ee00ef794aa8cb9827ef629930c31f2569eed7f3fde2046",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.updates.service",
+			"source_sha256": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+			"target_sha256": "22aa5235a6a44d518d5d96b743465bf3696b58e68d6f4ebc0f0203cea4f0936d",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "9e4b2d71-uf3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/9e4b2d71-uf3-ur.json",
+					"receipt_sha256": "ceaee4b6201f38edddfe0c36957f28abc51c881ec9c8f8dde3917fc59877b562",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+					"target_sha256": "1cf8c9cd3ab20b6242cc8d777f18a32192968e3a5e616324fece1c12a10c0a51",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "6f522c60-uf-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/6f522c60-uf-ur.json",
+							"receipt_sha256": "7fb585e4e03e3e9cbbb399d2d32352788f2776e7b99d0adb0ab1b78cc08ccdd1",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.installer.setup_cause",
+			"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+			"target_sha256": "07a2a099acf5fe417395951eb3984ecfaf0ff7b141a4f2f3ecab135c2b48b91e",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "9e4b2d71-uf3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/9e4b2d71-uf3-ur.json",
+					"receipt_sha256": "ceaee4b6201f38edddfe0c36957f28abc51c881ec9c8f8dde3917fc59877b562",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+					"target_sha256": "4376176e2ca5aa25963b739d514ce7906e3d8ca24d49cf86033835b85994b1ac",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "6f522c60-uf-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6f522c60-uf-ur.json",
+							"receipt_sha256": "7fb585e4e03e3e9cbbb399d2d32352788f2776e7b99d0adb0ab1b78cc08ccdd1",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.updates.service",
+			"source_sha256": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+			"target_sha256": "c66c889abad341e9f930dfd9ad3ac5418cc6dc5314cb0e0e421467b2dc35d3c7",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "9e4a3b17-uf3-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/9e4a3b17-uf3-hi.json",
+					"receipt_sha256": "c1c844ed717ad8d528273c1f715a68b129e08b0ebb55dde37335a1c3a6e3047a",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+					"target_sha256": "8ff779bb191a0835e3c25c2b60f2caf4b520b9b85248b093e23fe267769b7180",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "5d1b7e42-uf2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/5d1b7e42-uf2-hi.json",
+							"receipt_sha256": "3274c0aa1151e5bf925f7f8406366810f2525248b3f1c92960f4ec50d4a63db4",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.installer.setup_cause",
+			"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+			"target_sha256": "db78133d7676c007476f34586c16abb9c282eb0618ab92b7ecd81737977ef97f",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "9e4a3b17-uf3-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/9e4a3b17-uf3-hi.json",
+					"receipt_sha256": "c1c844ed717ad8d528273c1f715a68b129e08b0ebb55dde37335a1c3a6e3047a",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+					"target_sha256": "e390fa29fefc87662e0ea806603739787dbcabc2b426dec583227113fcc4adce",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "5d1b7e42-uf2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/5d1b7e42-uf2-hi.json",
+							"receipt_sha256": "3274c0aa1151e5bf925f7f8406366810f2525248b3f1c92960f4ec50d4a63db4",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.updates.status",
+			"source_sha256": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+			"target_sha256": "cd2c1bb0ea69a16663c27d48b05ae1127c08cffb72c2630c1c3ff081768b8ee1",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "8048eb56-uf-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8048eb56-uf-es.json",
+					"receipt_sha256": "ed19717837e77c49cbb15843898a4402496e0da87fc6a6678fc3711a607ef498",
+					"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+					"note": "Update-flow keying PR: any minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.updates.status",
+			"source_sha256": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+			"target_sha256": "0d6b67ab6b8c6dd43ed9af4902400033d7e90ff0afb9ca6334ba8bbb4fe59850",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "3f9a2c1d-uf-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3f9a2c1d-uf-ru.json",
+					"receipt_sha256": "4804e7ebd49579bc2393500bdf3f189ff85b20b4d206866a91ff580257b61ab4",
+					"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+					"note": "Update-flow keying PR: any minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.updates.status",
+			"source_sha256": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+			"target_sha256": "3c138fe6347e6b2bfcb203e4f6ee12bf9729dc8e7766228c377d9925f2055af4",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "b7e41c09-uf-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b7e41c09-uf-vi.json",
+					"receipt_sha256": "eb5c2d3b346bf33b4ee00ef794aa8cb9827ef629930c31f2569eed7f3fde2046",
+					"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+					"note": "Update-flow keying PR: any minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.installer.setup_cause",
+			"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+			"target_sha256": "9f92db8a0fab634522a7dff1f8154fa7205a9a4f09a7f5d4113b5252333628f0",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "b7e41c09-uf-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b7e41c09-uf-vi.json",
+					"receipt_sha256": "eb5c2d3b346bf33b4ee00ef794aa8cb9827ef629930c31f2569eed7f3fde2046",
+					"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+					"note": "Update-flow keying PR: any minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.updates.status",
+			"source_sha256": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+			"target_sha256": "414d617e99ee4e22d0221a43c83cd538d253f8c30f311242cd4dae9a99dace32",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "6f522c60-uf-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f522c60-uf-ur.json",
+					"receipt_sha256": "7fb585e4e03e3e9cbbb399d2d32352788f2776e7b99d0adb0ab1b78cc08ccdd1",
+					"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+					"note": "Update-flow keying PR: any minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.updates.status",
+			"source_sha256": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+			"target_sha256": "93aed0c766e9cc922b67f5bbbb4d26ae0ca9b6c5f8dc99327a0672341fa917a6",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "5d1b7e42-uf2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5d1b7e42-uf2-hi.json",
+					"receipt_sha256": "3274c0aa1151e5bf925f7f8406366810f2525248b3f1c92960f4ec50d4a63db4",
+					"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+					"note": "Update-flow keying PR: any minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.updates.service",
+			"source_sha256": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+			"target_sha256": "c1937b4648321d61b27b89f09035620c1b9bbe46e8c0669e128081246c2cc7ca",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean-with-findings",
+					"instance": "e91b3d6f-uf3-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e91b3d6f-uf3-zh-cn.json",
+					"receipt_sha256": "c6add48d7f99bf19ab04eff9a119bce68350d7ff080f1de7f8b5d5f7ad745973",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+					"target_sha256": "a7c7e0f16844db7d196dcc9845000275af5d85fb7a004581ac4ee4d699976060",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "a4d27c58-uf2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 8,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a4d27c58-uf2-zh-cn.json",
+							"receipt_sha256": "bed335e388a5f52682c79a0ea1e37bfe03c13024d64c6cc05f665fff10859bbb",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: any minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.updates.status",
+			"source_sha256": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+			"target_sha256": "697abf085e9b3cade7f48222192460078b9ddb9ef6acf806fd78f01eec32bbd1",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "a4d27c58-uf2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a4d27c58-uf2-zh-cn.json",
+					"receipt_sha256": "bed335e388a5f52682c79a0ea1e37bfe03c13024d64c6cc05f665fff10859bbb",
+					"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+					"note": "Update-flow keying PR: any minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.installer.setup_cause",
+			"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+			"target_sha256": "7db85907e836b1b2cec72cabcbbd48e294e6ac409107f14d7d664954da2acac0",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-08",
+				"note": "PR #1760 keyed the update flow's remaining English (ui.updates.service, ui.updates.status, ui.installer.setup_cause) and translated it in the same PR. The translator is recorded locale-wide and relayed, not verified, and is not attributed per key; see docs/i18n/update-flow-provenance.md."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-08",
+					"result": "clean",
+					"instance": "e91b3d6f-uf3-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e91b3d6f-uf3-zh-cn.json",
+					"receipt_sha256": "c6add48d7f99bf19ab04eff9a119bce68350d7ff080f1de7f8b5d5f7ad745973",
+					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+					"target_sha256": "8062a7037b2a0158ff22c504b67082ef8a8e39ed99711ed0449e1eb9c27c1e80",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "a4d27c58-uf2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a4d27c58-uf2-zh-cn.json",
+							"receipt_sha256": "bed335e388a5f52682c79a0ea1e37bfe03c13024d64c6cc05f665fff10859bbb",
+							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
+							"note": "Update-flow keying PR: any minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

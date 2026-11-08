@@ -1,0 +1,5 @@
+{
+	"ui.updates.status.dev_mode.app": "Приложение работает в режиме разработки. Обновления отключены.",
+	"ui.updates.status.dev_mode.backend": "Обновления бэкенда отключены в режиме разработки.",
+	"ui.updates.status.up_to_date": "Приложение и сервер обновлены"
+}

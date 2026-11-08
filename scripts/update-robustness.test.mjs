@@ -8578,6 +8578,28 @@ const loadVerdictRule = async () => {
 		format: "esm",
 		platform: "node",
 		write: false,
+		/*
+		 * The rule now resolves its sentence through `t()`, so the graph reaches
+		 * `src/i18n/keys.gen.ts` and every locale's catalogue. Emptied here for the
+		 * reason `loadUpdateServiceModule` empties them (resident-heap budget of this
+		 * file); nothing in this loader asserts on a translation.
+		 */
+		plugins: [
+			{
+				name: "english-only-catalogues",
+				setup(builder) {
+					builder.onLoad(
+						{
+							filter: /[\\/]i18n[\\/]catalogues[\\/][^\\/]+[\\/][^\\/]+\.json$/,
+						},
+						(args) =>
+							/[\\/]catalogues[\\/]en[\\/]/.test(args.path)
+								? undefined
+								: { contents: "{}", loader: "json" },
+					);
+				},
+			},
+		],
 	});
 	const dir = mkdtempSync(join(tmpdir(), "lo-verdict-rule-"));
 	const file = join(dir, "update-check-verdict.mjs");
@@ -8661,7 +8683,7 @@ test("a check that proved both channels current earns the affirmation", async ()
 
 		assert.equal(verdict.app, "current");
 		assert.equal(verdict.server, "current");
-		assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		assert.equal(verdict.affirmation, rule.upToDateAffirmation());
 		// Both channels' own "nothing newer" events are still emitted (the
 		// notification panel clears a stale offer on them), so the sentence and
 		// the events cannot have been the same mechanism by accident.
@@ -9448,7 +9470,7 @@ test("an invoke through the aggregate handler emits both channels' events unless
 				channels.includes("backend-update-not-available"),
 				`options=${JSON.stringify(options)}: ${JSON.stringify(channels)}`,
 			);
-			assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+			assert.equal(verdict.affirmation, rule.upToDateAffirmation());
 		}
 
 		const { verdict, sent } = await loAggregateCheck({
@@ -9469,7 +9491,7 @@ test("an invoke through the aggregate handler emits both channels' events unless
 		// Silence is about the EVENTS, not the answer: the check still proved both
 		// channels current, so the invoke that asked for it still resolves the one
 		// sentence such a check earns.
-		assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		assert.equal(verdict.affirmation, rule.upToDateAffirmation());
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -9582,7 +9604,7 @@ test("an unreadable server version reading cannot earn the affirmation", async (
 			publishedVersion: "0.54.44",
 		});
 		assert.equal(npxCurrent.verdict.app, "current");
-		assert.equal(npxCurrent.verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		assert.equal(npxCurrent.verdict.affirmation, rule.upToDateAffirmation());
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -9875,7 +9897,7 @@ test("the check judges the install that serves the app, not the one the shim nam
 	});
 	assert.equal(serving.verdict.server, "current");
 	/*
-	 * The literal rather than `UP_TO_DATE_AFFIRMATION`: this case never loads the
+	 * The literal rather than `upToDateAffirmation()`: this case never loads the
 	 * rule module, and the sentence is the thing on screen - a value import here
 	 * would make the assertion a comparison of the module with itself.
 	 */
@@ -11261,7 +11283,7 @@ test("the readable-version grammar keeps every comparison it always made", async
 			publishedVersion: "0.54.44",
 		});
 		assert.equal(equal.verdict.server, "current");
-		assert.equal(equal.verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		assert.equal(equal.verdict.affirmation, rule.upToDateAffirmation());
 
 		const newer = await loAggregateCheck({
 			appCheck: loAppCurrent,
@@ -11431,9 +11453,10 @@ test("the affirmation is earned by both channels current and by nothing else", a
 		const {
 			updateCheckVerdict: verdictFor,
 			updateCheckAffirmation: affirmationFor,
-			UP_TO_DATE_AFFIRMATION: sentence,
+			upToDateAffirmation,
 		} = rule;
 
+		const sentence = upToDateAffirmation();
 		const statuses = ["available", "current", "unavailable"];
 		let earned = 0;
 		for (const app of statuses) {

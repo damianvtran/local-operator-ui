@@ -1,0 +1,5 @@
+{
+	"ui.updates.status.dev_mode.app": "ऐप डेवलपमेंट मोड में चल रहा है। अपडेट बंद हैं।",
+	"ui.updates.status.dev_mode.backend": "डेवलपमेंट मोड में बैकएंड अपडेट बंद हैं।",
+	"ui.updates.status.up_to_date": "ऐप और सर्वर अप-टू-डेट हैं"
+}
