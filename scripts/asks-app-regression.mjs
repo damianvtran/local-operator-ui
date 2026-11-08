@@ -1147,7 +1147,31 @@ async function runCase(
 		save();
 		rc = 0;
 	} catch (error) {
-		failures.push(error.stack);
+		/*
+		 * THE STACK GOES TO THE LOG AS WELL AS THE ARTIFACT. `rc` stays 1 here, so
+		 * this catch is the only place a failing case can say why, and it used to
+		 * say nothing: the stacks went into `measurements.json`, the process exited
+		 * 1 from `reapLiveBoots`, and CI kept only whatever the caller printed. For
+		 * the model-uncertainty case that caller is `runOwnedModelCase`, which
+		 * re-throws the exit status as a bare `model case failed (1)`
+		 * (`scripts/model-uncertainty-native.mjs:57-63`), so the real cause - an
+		 * `AssertionError: required genuine carrier not captured` - had to be
+		 * recovered by downloading the artifact and diffing two runs. Reading it
+		 * off the CI log is the whole point of this line.
+		 *
+		 * STDERR, NEVER STDOUT. `scripts/entry-point.test.mjs` pins `stdout: /^$/`
+		 * for this script's refusal, and stdout is the channel a case's own
+		 * acceptance reading could be mistaken for. The artifact keeps the stacks
+		 * unchanged: it is the durable evidence, and this only makes the log
+		 * self-sufficient. Nothing parses this script's stderr - `ci.yml` runs it
+		 * with no redirection - so the emission cannot move a verdict elsewhere.
+		 */
+		const stack = error?.stack ?? String(error);
+		// Before `save()`: a failing artifact write must not swallow the reason.
+		console.error(
+			`asks-app-regression: runCase ${scenarioName} ${kind} failed; the stack below is also saved in ${join(output, "measurements.json")}\n${stack}`,
+		);
+		failures.push(stack);
 		save();
 	} finally {
 		const why = `CI ${scenarioName} ${kind} case complete`;

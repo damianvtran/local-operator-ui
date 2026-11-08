@@ -1024,3 +1024,49 @@ test("existing job performs real native capture and always uploads measurements"
 		);
 	}
 });
+
+/*
+ * THE LOG MUST CARRY THE REASON. `rc` stays 1 unless a case passes end to end,
+ * so `runCase`'s catch is the only place a failure can say anything - and it
+ * said nothing: CI reported just `model case failed (1)`, re-thrown by
+ * `runOwnedModelCase` from that exit status, while the actual cause
+ * (`AssertionError: required genuine carrier not captured`) sat in
+ * `measurements.json` and cost an artifact download plus a two-run diff to read.
+ *
+ * Only the source is asserted here: reaching that catch needs a compiled app, a
+ * fixture and Electron, none of which this suite launches. What is pinned is the
+ * CHANNEL - stderr - because `entry-point.test.mjs` holds `stdout: /^$/` for this
+ * script, and a diagnostic written to stdout has already red-ed a required check
+ * in a sibling change.
+ */
+test("a failing case narrates its stack on stderr, not only into the artifact", () => {
+	const source = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	const pushAt = source.indexOf("failures.push(stack);");
+	assert(pushAt > 0, "the failing case must still record its stack");
+	const catchBlock = source.slice(
+		source.lastIndexOf("} catch (error) {", pushAt),
+		pushAt,
+	);
+	assert(
+		catchBlock.includes("console.error("),
+		"the stack must reach the CI log on stderr",
+	);
+	assert(
+		catchBlock.includes(
+			"asks-app-regression: runCase ${scenarioName} ${kind} failed",
+		),
+		"the log line must name runCase and the case under test it failed",
+	);
+	assert(
+		catchBlock.includes("error?.stack ?? String(error)"),
+		"a non-Error throw must still print something diagnostic",
+	);
+	assert(
+		!catchBlock.includes("console.log(") &&
+			!catchBlock.includes("process.stdout"),
+		"stdout is contract-pinned (entry-point.test.mjs): the narration belongs on stderr",
+	);
+});
