@@ -107,7 +107,7 @@
 	"ui.chat.error_block.schema.after_before": "Changez de modèle dans la",
 	"ui.chat.error_block.schema.after": "pour corriger cela. Nous recommandons Radient Automatic, qui choisit pour vous le meilleur équilibre entre économie et intelligence selon vos requêtes (généralement moins cher qu’une clé personnelle), ou utilisez l’un des modèles recommandés signalés par une étoile.",
 	"ui.chat.approval.reply_required": "Tapez yes ou no pour répondre à la demande d’approbation.",
-	"ui.chat.question_dock.hint.approval": "Choisissez Approve ou Deny ci-dessus, tapez yes, no, 1 ou 2 puis envoyez, ou appuyez sur Échap dans le champ de saisie pour arrêter le tour.",
+	"ui.chat.question_dock.hint.approval": "Choisissez Approuver ou Refuser ci-dessus, tapez yes, no, 1 ou 2 puis envoyez, ou appuyez sur Échap dans le champ de saisie pour arrêter le tour.",
 	"ui.chat.question_dock.hint.approval_held": "Répondez plutôt dans le champ de saisie : tapez yes, no, 1 ou 2 puis envoyez, ou appuyez sur Échap dans ce champ pour arrêter le tour.",
 	"ui.chat.question_dock.hint.prefix": "Question {index} sur {total}. ",
 	"ui.chat.question_dock.hint.secret": "{prefix}Saisissez ou collez le secret ci-dessus · Entrée envoie · Échap masque",

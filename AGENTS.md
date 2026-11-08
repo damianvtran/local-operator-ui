@@ -261,8 +261,14 @@ The mechanics:
   `pnpm test:*` it names. Record `pnpm test:affected --run --evidence` under
   the PR's `## Targeted test evidence`, fresh on the current head; cover or
   state every UNREACHED and BROAD path. The full suite runs in `full-suite.yml`
-  on each `main` push and nightly, not on PRs; an open `ci-main-red` issue means
-  `main` is red: fix forward. See `scripts/affected-tests.mjs`.
+  on each `main` push and nightly, and ONCE on a pull request: at the merge gate,
+  from a `ready-to-merge` label event (*The merge gate (full suite)*). It never
+  runs per push on a PR; an open `ci-main-red` issue means `main` is red: fix
+  forward. See `scripts/affected-tests.mjs`.
+- The merge gate: `pnpm merge-gate <n>` removes and re-adds the `ready-to-merge`
+  label - the only trigger the full suite has on a pull request - and prints the
+  run it started. Run it when the review rounds are clean and the head is final,
+  and again after any later push. See *The merge gate (full suite)*.
 - Typecheck: `pnpm check-types`
 - Build: `pnpm build`
 - Theme gates: `pnpm check-themes` (freshness + contrast floors)
@@ -2221,10 +2227,14 @@ scope*). Do not read those two green checks as a matrix: the review round on the
 one-line diff is the rest of the assurance.
 
 It makes the violation loud; it does not make it impossible. This repository's
-`main` configures **no required status checks** — so no red check is mechanically
-fatal — but that is not "nothing is required": the same `Main Protection` ruleset
-carries a `pull_request` rule with `required_approving_review_count: 1` (*Who may
-merge: two tiers*). Measured 2026-09-24 on the v0.30.24 bump PR #492: a merge
+`main` DOES configure required status checks - `Main Protection` (ruleset
+`23841604`) requires the `Bytecode Build Check` and `CI Gate` contexts, measured
+2026-11-08 with `gh api repos/<owner>/<repo>/rules/branches/main` - so a red
+required check is mechanically fatal rather than merely loud, and
+`Merge gate (full suite)` joins that list once it is bound (*The merge gate (full
+suite)*). Required checks are not "nothing else is required" either: the same
+ruleset carries a `pull_request` rule with
+`required_approving_review_count: 1` (*Who may merge: two tiers*). Measured 2026-09-24 on the v0.30.24 bump PR #492: a merge
 without `--admin` was refused with `is not mergeable: the base branch policy
 prohibits the merge`, and it completed only through the owner's `always` bypass
 actor with `--admin`, disclosed on the PR. Read a refusal for what it is — **a
@@ -2257,6 +2267,59 @@ Release or artifact had ever been built from, two numbers were consumed without
 ever being published, and the next window had to skip them because a published
 version cannot be reused. A rule that depends on every reviewer remembering to
 look is a rule that fails on the day someone does not.
+
+### The merge gate (full suite)
+
+**The full desktop suite runs for a pull request EXACTLY ONCE, at the merge gate,
+and a red gate blocks the merge.** Review rounds stay cheap: nothing here runs
+the suite per push (*Targeted tests* above). The trigger is a LABEL EVENT -
+`pull_request: [labeled]` in `.github/workflows/full-suite.yml` - and the check
+carrying the verdict is `Merge gate (full suite)`, reported by that workflow's
+`merge-gate` job from the `changes`, `test` and `desktop-tests-result` results.
+
+**The procedure.** When the code, QA, design and UX rounds are clean and the head
+is FINAL, run `pnpm merge-gate <n>` (`scripts/merge-gate.mjs`). It creates
+`ready-to-merge` if the repository has never had one, removes and re-adds it - an
+add on a label that is already present delivers NO event and starts nothing - and
+prints the run URL plus how to follow it. Then read `Merge gate (full suite)`.
+Do not run the desktop suite locally for this: locally it is not run at all, and
+`check-changed` runs the guards in its place.
+
+**A push after the gate ran strands the check on the OLD SHA**, so the new head
+carries no `Merge gate (full suite)` and the pull request is blocked (GitHub shows
+`Expected`). That is the intended block, not a dead end: run the ritual again on
+the final head. Never retry a single job - the gate is the whole suite or it is
+nothing.
+
+**A green gate is a verdict about the PR head, not a promise about `main`.** The
+gate certifies this pull request's head with the base as it stood when it ran
+(`Main Protection` has `strict_required_status_checks_policy: false`, so the
+branch is never forced up to date), and two individually-green pull requests can
+still compose red on `main`. `main`'s own full-suite run after the merge is the
+backstop for that - semantic conflicts between two green diffs are the one thing
+this check cannot see.
+
+**Why a label, and why no label CONDITION on the jobs.** GitHub counts a
+`skipped` check as SATISFYING a required status check, and `pull_request:
+[labeled]` fires for EVERY label. A suite job behind `if: contains(...
+'ready-to-merge')` would therefore report `skipped` - a pass - on a run some
+OTHER label started, and a red pull request would merge. So no job in that
+workflow carries a label condition: any label on a pull request costs one full
+run, and that is the accepted trade.
+
+**Why not the merge queue.** `repository.mergeQueue` is null on this repository
+and the `enableMergeQueue` mutation does not exist there - GitHub limits merge
+queue to organisation-owned public repositories (or private organisation
+repositories on Enterprise Cloud) and this one is owned by a user account.
+Measured, not assumed: the label event is what replaces it.
+
+**The one activation step is not a code change.** `Main Protection` requires the
+`Bytecode Build Check` and `CI Gate` contexts today; `Merge gate (full suite)`
+becomes mechanically blocking once it is added to that list (Settings -> Rules ->
+`Main Protection`, or `gh api -X PUT` on `repos/<owner>/<repo>/rulesets/23841604`
+with the ruleset's full body). Until it is bound the check still runs and still
+reports, but nothing refuses the merge on it - so bind it before treating a red
+gate as fatal.
 
 ### The PR owner merges; nobody queues for a number
 
@@ -2727,12 +2790,14 @@ derivation to guard. What remains:
   Read the classification summary (see *Change scope*) before treating either
   shape as evidence.
 - **Never force-push, and never merge on a red required job.** The `Main
-  Protection` ruleset (ruleset `23841604`, attached 2026-09-22) configures **no
-  required status checks** —
-  its rules are `non_fast_forward` and the approval count — so nothing makes a red
-  check fatal: `version-bump-guard` and CI make it *loud*, and the merge is still
-  the agent's to refuse. `non_fast_forward` does then refuse a force-push
-  mechanically, the one violation that stopped being merely loud.
+  Protection` ruleset (ruleset `23841604`, attached 2026-09-22) requires the
+  `Bytecode Build Check` and `CI Gate` contexts and carries `non_fast_forward`
+  and the approval count (measured 2026-11-08 with `gh api
+  repos/<owner>/<repo>/rules/branches/main`), so a red required check refuses the
+  merge mechanically and `non_fast_forward` refuses a force-push the same way.
+  `Merge gate (full suite)` is the merge gate's context once it is bound (*The
+  merge gate (full suite)*). A green check list is still not proof on its own -
+  read the classification, and the stale-head shot above.
 - **Write access to `main` is release authority, and it is the widest control this
   repository has.** `main` is governed by the `Main Protection` ruleset —
   `gh api repos/<owner>/<repo>/rules/branches/main`, the check this file already
@@ -2984,7 +3049,8 @@ do not change. Tag-dialog tests are owned by shard 0 only; the native QA bundle
 moved to `ci.yml`'s own `qa-bundle` job, which still runs on every PR.
 
 The suite's aggregate is still **Desktop Tests** (`desktop-tests-result`), now
-in `full-suite.yml`, where `report` reads it; it is no longer a PR check.
+in `full-suite.yml`, where `report` reads it; it is no longer a per-push PR check,
+though the merge gate runs it once per ready head (*The merge gate (full suite)*).
 It consumes all four same-head/checkout/inventory receipts, rejects missing,
 failed or cancelled work, and reconstructs the disjoint complete file inventory.
 An explicit false unit scope skips the workers/result; unknown classification or
