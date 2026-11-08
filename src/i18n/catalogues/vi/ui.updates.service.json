@@ -11,7 +11,7 @@
 	"ui.updates.service.start_mode_unknown.message": "Ứng dụng không xác định được máy chủ này được khởi chạy theo cách nào nên đã không cập nhật nó. Xem nhật ký dịch vụ cập nhật.",
 	"ui.updates.service.no_server_reference.message": "Hiện ứng dụng không có máy chủ nào để cập nhật. Hãy khởi động lại Local Operator rồi thử lại.",
 	"ui.updates.service.release_unreadable.message": "Ứng dụng không đọc được bản phát hành cần cài nên đã giữ nguyên môi trường máy chủ. Hãy kiểm tra kết nối rồi thử lại.",
-	"ui.updates.service.disk_space.message": "Bản cập nhật máy chủ cần khoảng {needed, number, ::group-off} MB dung lượng trống trên ổ đĩa này, mà hiện chỉ còn {free, number, ::group-off} MB, nên ứng dụng đã giữ nguyên môi trường đang phục vụ ứng dụng này. Hãy giải phóng bớt dung lượng rồi thử lại.",
+	"ui.updates.service.disk_space.message": "Bản cập nhật máy chủ cần khoảng {needed, number, ::group-off} MB dung lượng trống trên ổ đĩa này, và hiện còn {free, number, ::group-off} MB, nên ứng dụng đã giữ nguyên môi trường đang phục vụ ứng dụng này. Hãy giải phóng bớt dung lượng rồi thử lại.",
 	"ui.updates.service.not_installed.message": "Bản cập nhật máy chủ chưa được cài, nên môi trường đang phục vụ ứng dụng này được giữ nguyên.",
 	"ui.updates.service.install_in_flight.message": "Phiên bản {version} không thể cài xong khi Local Operator đang mở — để ứng dụng mở sẽ hủy quá trình cài. Hãy thoát và để ứng dụng đóng cho đến khi nó tự mở lại.",
 	"ui.updates.service.server_failure.not_run": "Bản cập nhật máy chủ chưa hoàn tất: không thể chạy trình cài đặt đến khi có kết quả.",
@@ -36,5 +36,6 @@
 	"ui.updates.service.global.pip.remedy": "Máy chủ là bản cài pip, nên hãy cập nhật từ terminal của bạn",
 	"ui.updates.service.global.unknown.remedy": "Ứng dụng không xác định được máy chủ này được cài bằng cách nào, nên hãy cập nhật bằng công cụ bạn đã dùng để cài - uv, pipx hoặc pip",
 	"ui.updates.service.global.source_rebuild.remedy": "Dựng lại bản checkout này bằng `lop-update`. Ứng dụng sẽ chờ các lượt đang chạy trên máy này hoàn tất trước, rồi việc dựng lại sẽ cài lại ngay trên bản cài hiện tại - nên một lượt bắt đầu trong lúc đó vẫn có thể bị gián đoạn - và có thể mất đến nửa giờ. Bản cài này sẽ tiếp tục báo phiên bản của bản checkout, không phải bản phát hành mà ứng dụng đã đề xuất.",
-	"ui.updates.service.global.legacy_installer.remedy": "Bản cài này có trước trình cài đặt không gây gián đoạn, nên hãy cập nhật một lần từ terminal; trình cập nhật đó ghi lại môi trường dùng chung ngay tại chỗ, có thể làm gián đoạn các phiên giữa chừng một lượt. Sau đó ứng dụng sẽ quản lý việc cập nhật."
+	"ui.updates.service.global.legacy_installer.remedy": "Bản cài này có trước trình cài đặt không gây gián đoạn, nên hãy cập nhật một lần từ terminal; trình cập nhật đó ghi đè lên môi trường dùng chung ngay tại chỗ, có thể làm gián đoạn các phiên đang giữa một lượt. Sau đó ứng dụng sẽ quản lý việc cập nhật.",
+	"ui.updates.service.global.app_owned.remedy": "Máy chủ này đang chạy từ môi trường được quản lý của chính Local Operator, không thuộc trình quản lý gói nào - nên không có lệnh terminal nào cập nhật được nó đúng cách. Ứng dụng chỉ cập nhật được máy chủ do chính nó khởi chạy: hãy dừng máy chủ này, rồi khởi động lại Local Operator để ứng dụng tự khởi chạy máy chủ của mình."
 }

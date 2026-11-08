@@ -1,7 +1,7 @@
 {
 	"ui.installer.setup_cause.disk_full": "Este Mac se quedó sin espacio en disco al configurar el backend. Libera espacio y vuelve a intentarlo.",
 	"ui.installer.setup_cause.clock_or_expired": "Local Operator interpretó el certificado del índice de paquetes como caducado o aún no válido. Lo más habitual es que el reloj esté mal: revisa la fecha y la hora de este equipo y vuelve a intentarlo; si el reloj es correcto, el certificado ha caducado de verdad y quien administra el índice tiene que renovarlo.",
-	"ui.installer.setup_cause.tls_interception": "Local Operator no pudo verificar la conexión segura con el índice de paquetes, algo que suele deberse a una red que la inspecciona (un proxy o firewall corporativo). Pide a TI el certificado raíz y añádelo al almacén de certificados del sistema, que esta app ya considera de confianza, y vuelve a intentarlo.",
+	"ui.installer.setup_cause.tls_interception": "Local Operator no pudo verificar la conexión segura con el índice de paquetes, algo que suele deberse a una red que la inspecciona (un proxy o firewall corporativo). Pide al departamento de TI el certificado raíz y añádelo al almacén de certificados del sistema, que esta app ya considera de confianza, y vuelve a intentarlo.",
 	"ui.installer.setup_cause.unreachable": "Local Operator no pudo acceder al índice de paquetes, algo que suele deberse a la red o a un proxy. Revisa la conexión y vuelve a intentarlo.",
 	"ui.installer.setup_cause.locked": "Otra copia de Local Operator está configurando su backend en este momento. Inténtalo de nuevo en unos instantes.",
 	"ui.installer.setup_cause.not_started": "El backend se instaló, pero no se inició correctamente.",

@@ -1,9 +1,9 @@
 {
 	"ui.updates.service.release_publishing.message": "Aún se está publicando una versión nueva del servidor ({version}), así que todavía no se ofreció ninguna actualización. Vuelve a comprobarlo en unos minutos.",
 	"ui.updates.service.version_unknown.message": "No se pudo determinar la versión instalada del servidor, así que no se ofreció ninguna actualización. Reinicia la app para volver a intentarlo.",
-	"ui.updates.service.attempt_running.message_unknown_age": "Sigue en curso una actualización del servidor que inició esta app en un momento que no se pudo leer (grupo de procesos {group}), así que no se iniciará otra a su lado. Si esa actualización ya no responde, el registro del servicio de actualización indica qué estaba haciendo.",
-	"ui.updates.service.attempt_running.message_moments": "Sigue en curso una actualización del servidor que inició esta app hace un momento (grupo de procesos {group}), así que no se iniciará otra a su lado. Si esa actualización ya no responde, el registro del servicio de actualización indica qué estaba haciendo.",
-	"ui.updates.service.attempt_running.message_minutes": "Sigue en curso una actualización del servidor que inició esta app hace {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}} (grupo de procesos {group}), así que no se iniciará otra a su lado. Si esa actualización ya no responde, el registro del servicio de actualización indica qué estaba haciendo.",
+	"ui.updates.service.attempt_running.message_unknown_age": "Sigue en curso una actualización del servidor que inició esta app en un momento que no se pudo leer (grupo de procesos {group}), así que no se iniciará otra en paralelo. Si esa actualización ya no responde, el registro del servicio de actualización indica qué estaba haciendo.",
+	"ui.updates.service.attempt_running.message_moments": "Sigue en curso una actualización del servidor que inició esta app hace un momento (grupo de procesos {group}), así que no se iniciará otra en paralelo. Si esa actualización ya no responde, el registro del servicio de actualización indica qué estaba haciendo.",
+	"ui.updates.service.attempt_running.message_minutes": "Sigue en curso una actualización del servidor que inició esta app hace {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}} (grupo de procesos {group}), así que no se iniciará otra en paralelo. Si esa actualización ya no responde, el registro del servicio de actualización indica qué estaba haciendo.",
 	"ui.updates.service.already_running.message": "Ya hay una actualización del servidor en curso. Deja que termine antes de iniciar otra.",
 	"ui.updates.service.install_not_found.message": "No se encontró la instalación global en este equipo, así que la actualización no se ejecutó. Consulta el registro del servicio de actualización.",
 	"ui.updates.service.no_restart.message": "El servidor se actualizó, pero el backend no se reinició. Reinicia Local Operator para usar la versión nueva.",
@@ -11,7 +11,7 @@
 	"ui.updates.service.start_mode_unknown.message": "La app no pudo saber cómo se inició este servidor, así que no lo actualizó. Consulta el registro del servicio de actualización.",
 	"ui.updates.service.no_server_reference.message": "La app no tiene ningún servidor que actualizar ahora mismo. Reinicia Local Operator e inténtalo de nuevo.",
 	"ui.updates.service.release_unreadable.message": "La app no pudo leer qué versión instalar, así que dejó intacto el entorno de su servidor. Revisa la conexión e inténtalo de nuevo.",
-	"ui.updates.service.disk_space.message": "La actualización del servidor necesita unos {needed, number, ::group-off} MB de espacio libre en este disco y hay {free, number, ::group-off} MB libres, así que la app dejó intacto el entorno que sirve a esta app. Libera espacio e inténtalo de nuevo.",
+	"ui.updates.service.disk_space.message": "La actualización del servidor necesita unos {needed, number, ::group-off} MB de espacio libre en este disco y hay {free, number, ::group-off} MB libres, así que la app dejó intacto el entorno que da servicio a esta app. Libera espacio e inténtalo de nuevo.",
 	"ui.updates.service.not_installed.message": "La actualización del servidor no se instaló, así que el entorno que sirve a esta app quedó como estaba.",
 	"ui.updates.service.install_in_flight.message": "La versión {version} no puede terminar de instalarse mientras Local Operator esté abierto: si sigue abierto, la instalación se cancela. Sal de la app y déjala cerrada hasta que se abra sola de nuevo.",
 	"ui.updates.service.server_failure.not_run": "La actualización del servidor no terminó: no se pudo ejecutar el instalador hasta obtener un resultado.",
@@ -23,7 +23,7 @@
 	"ui.updates.service.server_failure.stopped": "El actualizador se detuvo; es posible que algo que inició siga sustituyendo la instalación.",
 	"ui.updates.service.server_failure.pointer_below": "La salida del propio instalador aparece debajo.",
 	"ui.updates.service.server_failure.pointer_log": "La salida del propio instalador está en el registro del servicio de actualización.",
-	"ui.updates.service.server_failure.run_yourself": "También puedes ejecutar `{command}` tú mismo en una terminal.",
+	"ui.updates.service.server_failure.run_yourself": "También puedes ejecutar `{command}` por tu cuenta en una terminal.",
 	"ui.updates.service.fleet.closing": "No se instaló nada y el servidor sigue ejecutando la compilación que cargó; la app volverá a ofrecer esta actualización.",
 	"ui.updates.service.fleet.unknown.credentials_refused": "El servidor rechazó las credenciales de esta app, así que no pudo leer qué sesiones se están ejecutando en este equipo.",
 	"ui.updates.service.fleet.unknown.unreadable": "La app no pudo leer qué sesiones se están ejecutando en este equipo, así que no actualizó el servidor.",
@@ -36,5 +36,6 @@
 	"ui.updates.service.global.pip.remedy": "El servidor es una instalación de pip, así que actualízalo desde tu terminal",
 	"ui.updates.service.global.unknown.remedy": "La app no pudo saber cómo se instaló este servidor, así que actualízalo con la herramienta con la que lo instalaste: uv, pipx o pip",
 	"ui.updates.service.global.source_rebuild.remedy": "Recompila esta copia de trabajo con `lop-update`. Primero la app espera a que terminen los turnos que se ejecutan en este equipo y luego la recompilación reinstala esta instalación en su sitio, así que un turno iniciado mientras tanto aún puede interrumpirse; puede tardar hasta media hora. Esta instalación sigue indicando la versión de la copia de trabajo, no la que ofreció la app.",
-	"ui.updates.service.global.legacy_installer.remedy": "Esta instalación es anterior al instalador no disruptivo, así que actualízala una vez desde tu terminal; ese actualizador reescribe el entorno compartido en su sitio y puede interrumpir sesiones a mitad de un turno. Después, la app se encarga de las actualizaciones."
+	"ui.updates.service.global.legacy_installer.remedy": "Esta instalación es anterior al instalador sin interrupciones, así que actualízala una vez desde tu terminal; ese actualizador reescribe el entorno compartido en su sitio y puede interrumpir sesiones a mitad de un turno. Después, la app se encarga de las actualizaciones.",
+	"ui.updates.service.global.app_owned.remedy": "Este servidor se ejecuta desde el propio entorno gestionado de Local Operator, que no pertenece a ningún gestor de paquetes, así que no hay ningún comando de terminal que pueda actualizarlo correctamente. La app solo puede actualizar un servidor que ella misma inició: detén este, inicia Local Operator de nuevo y deja que la app inicie el suyo."
 }
