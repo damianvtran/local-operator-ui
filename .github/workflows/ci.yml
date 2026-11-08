@@ -541,14 +541,14 @@ jobs:
   # A GENERATED FIXTURE GOES STALE IN A PULL REQUEST, NOT IN A RELEASE. #1758 is
   # the measured case: a pull request edited
   # `src/renderer/src/features/chat/canonical/trace-fold-model.ts`, which is one
-  # of the pin's 32 declared `modelSources`, without regenerating
+  # of the pin's 35 declared `modelSources`, without regenerating
   # `scripts/fixtures/condense.parity.json`. Nothing on the pull request read the
   # fixture, so the stale bytes reached `main` and reded the desktop suite there
   # - a fix-forward for a defect a one-second comparison would have stopped.
   #
   # WHY THE FILTER IS THIS NARROW, AND WHY IT CANNOT DRIFT SILENTLY. `esbuild`'s
   # own `metafile.inputs` decides what the pin covers, so the covered set is
-  # those 32 files plus the generator's own inputs; the list lives in
+  # those 35 files plus the generator's own inputs; the list lives in
   # `scripts/ci-scope.mjs` (`PARITY_MODEL_SOURCES`) and
   # `scripts/ci-scope.test.mjs` asserts it EQUALS the fixture's
   # `desktop.modelSources`. A regenerated pin that names a file the filter does
