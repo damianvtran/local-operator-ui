@@ -48,6 +48,7 @@ const ECHO_HOOK_IMPORT_RE = /@shared\/hooks\/use-canonical-session/;
 const CONVERSATION_INPUT_STORE_RE =
 	/^@shared\/store\/conversation-input-store$/;
 const OPTIONAL_QUERY_CLIENT_RE = /^@shared\/hooks\/use-optional-query-client$/;
+const I18N_ENTRY = /^@shared\/i18n$/;
 const ANY_MODULE_RE = /.*/;
 
 const bundle = await build({
@@ -77,6 +78,18 @@ const bundle = await build({
 				}));
 				builder.onResolve({ filter: OPTIONAL_QUERY_CLIENT_RE }, () => ({
 					path: `${process.cwd()}/src/renderer/src/shared/hooks/use-optional-query-client.ts`,
+				}));
+				/*
+				 * THE I18N CORE, resolved to its REAL file and to the CORE rather than the
+				 * renderer door: the store's draft-selection model paints catalogue copy now,
+				 * so this bundle reaches `@shared/i18n` where it never did before, and the door
+				 * pulls `desktop-hooks` - a query client this node harness has no use for -
+				 * while `t`, `currentLocale` and `formatList` are the framework-free module's
+				 * own exports. Same seam `chat-sidebar-scope-paging.test.mjs` uses, and for the
+				 * same reason.
+				 */
+				builder.onResolve({ filter: I18N_ENTRY }, () => ({
+					path: `${process.cwd()}/src/i18n/index.ts`,
 				}));
 				builder.onLoad(
 					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
