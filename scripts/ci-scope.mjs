@@ -347,8 +347,8 @@ const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
  *
  * THE LIST IS THE FIXTURE'S CLAIM, NOT A SECOND OPINION ABOUT IT. A regenerated
  * pin that names a file this set does not is a FAILING TEST (`ci-scope.test.mjs`
- * asserts the two are equal), so the job cannot silently skip the pull request
- * that staled the fixture - the exact drift that shipped a stale
+ * A27 asserts SET EQUALITY, in both directions), so the job cannot silently skip
+ * the pull request that staled the fixture - the exact drift that shipped a stale
  * `scripts/fixtures/condense.parity.json` to `main` in #1758.
  *
  * STATIC RATHER THAN READ FROM THE FIXTURE, for the reason A13 exists: this
@@ -357,7 +357,7 @@ const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
  * the DEFAULT branch's copy would let a pull request disarm the gate that judges
  * it. Equality with the pin is proved by the test instead.
  */
-const PARITY_MODEL_SOURCES = new Set([
+export const PARITY_MODEL_SOURCES = new Set([
 	"src/i18n/catalogue-locale.ts",
 	"src/i18n/format.ts",
 	"src/i18n/index.ts",
@@ -393,6 +393,29 @@ const PARITY_MODEL_SOURCES = new Set([
 ]);
 
 /**
+ * The SHAPE SOURCES the pin harvests its case list FROM, copied from its own
+ * `desktop.sources`.
+ *
+ * THE CASE LIST IS NOT ONLY THE MODEL. `harvestShapes()` regexes shape literals
+ * out of these suites and `generate()` emits one case per harvested shape per
+ * option permutation, so an edit to a shape literal regrows the fixture's bytes
+ * with no model source touched. Leaving them out is #1758 one input class over:
+ * a pull request that edits a shape literal skips the job, and `main` reds. At
+ * the fixture this list was copied from, `turn-segments.test.mjs` alone supplies
+ * 63 of the 116 harvested shapes - 315 of the 700 committed cases.
+ *
+ * A SEPARATE SET FROM `PARITY_MODEL_SOURCES` because it is a separate claim in
+ * the fixture (`desktop.sources`), and A27 asserts each against its own list:
+ * one equality check over a union of the two would let a file move from one list
+ * to the other unnoticed.
+ */
+export const PARITY_SHAPE_SOURCES = new Set([
+	"scripts/trace-fold-model.test.mjs",
+	"scripts/turn-collapse-model.test.mjs",
+	"scripts/turn-segments.test.mjs",
+]);
+
+/**
  * The pin's own files and the inputs of its GENERATOR: change any of these and
  * the committed fixture's bytes can move without a single model source being
  * touched. `record-tokens.mjs` is the token grammar every case is driven over and
@@ -410,7 +433,7 @@ const PARITY_PIN_FILES = new Set([
  * The directory the model itself lives in. A module ADDED beside the model is a
  * file the next regeneration will name in `modelSources`, and the pull request
  * that adds it is exactly the one that must run the pin - before any list can
- * know its name. Cheap: 15 of the 27 declared sources live here.
+ * know its name. Cheap: 14 of the 32 declared sources live here.
  */
 const PARITY_MODEL_PREFIX = "src/renderer/src/features/chat/canonical/";
 
@@ -678,7 +701,7 @@ export const FLAG_REASONS = {
 	audit: "`package.json` or a lockfile change",
 	pack: "a changed path that is neither prose nor committed evidence",
 	parity:
-		"a source the condense parity pin declares in its own `modelSources`, the pin's fixture, manifest and generator inputs, or a file in the model's own directory `src/renderer/src/features/chat/canonical/` (a module added beside the model is a source the next regeneration names)",
+		"a source the condense parity pin declares in its own `modelSources` or `sources` (the model files it bundles and the suites it harvests shape literals from), the pin's fixture, manifest and generator inputs, or a file in the model's own directory `src/renderer/src/features/chat/canonical/` (a module added beside the model is a source the next regeneration names)",
 };
 
 /** A flag could not be rendered as `true`/`false`. See `flagValue`. */
@@ -849,6 +872,7 @@ export function flagsFor(categories, paths, releaseBump) {
 	const parityPaths = [...pathSet].some(
 		(path) =>
 			PARITY_MODEL_SOURCES.has(path) ||
+			PARITY_SHAPE_SOURCES.has(path) ||
 			PARITY_PIN_FILES.has(path) ||
 			path.startsWith(PARITY_MODEL_PREFIX),
 	);

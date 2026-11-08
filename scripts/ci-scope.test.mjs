@@ -24,6 +24,8 @@ import {
 	JOB_FLAGS,
 	KNOWN_LIVE_PREFIXES,
 	LOCAL_EXCLUSIONS,
+	PARITY_MODEL_SOURCES,
+	PARITY_SHAPE_SOURCES,
 	PERMISSIVE_DEPS,
 	ScopeError,
 	UNGATED_JOBS,
@@ -710,13 +712,24 @@ test("A11: every job's local commands exist and match the workflow's own steps",
 		const blocks = runBlocks(job);
 		if (job === "check-types") assertCheckpointUnitParity(commands, blocks);
 		for (const command of commands) {
-			// The FIRST TWO TOKENS rather than the whole string: the local spelling
-			// of a step may carry a prefix CI does not (`pnpm lint:scripts` is run
-			// in CI with `LINT_SINCE=... ` in front of it), which is exactly the
-			// point of the shared module. Comparing the pair is what catches a
-			// command drifting to a different tool, and two tokens is the
-			// strongest check that the prefix cannot defeat.
-			const [tool, argument] = command.split(/\s+/);
+			/*
+			 * THE WHOLE COMMAND, not its first two tokens (agent review round 1,
+			 * MINOR-2). Two tokens caught a command drifting to a different tool and
+			 * nothing else: the locale job's ten-file `node --test` list is duplicated
+			 * between `JOB_COMMANDS` and `ci.yml`, and `node --test` matched both sides
+			 * while either list could gain or lose a file silently. Containment of the
+			 * whole whitespace-collapsed string is the drift check, and it tolerates
+			 * the one difference the local spelling is allowed to have - a PREFIX CI
+			 * adds (`LINT_SINCE=... pnpm lint:scripts`) - because the command is
+			 * matched inside the block rather than at its start.
+			 *
+			 * THE CONTINUATION CHECK closes the direction containment cannot see: a
+			 * list APPENDED to in `ci.yml` still contains the local string as a
+			 * prefix, so the character following the match must not be another file
+			 * path. A file inserted mid-list already breaks containment.
+			 */
+			const collapsed = (text) => text.replace(/\s+/g, " ").trim();
+			const wanted = collapsed(command);
 			if (job === "test" && command === "pnpm test:desktop") {
 				// The real command moved intact, not out of CI: validate the
 				// supervisor's wired shell and final await before reading it.
@@ -732,11 +745,16 @@ test("A11: every job's local commands exist and match the workflow's own steps",
 				);
 				continue;
 			}
+			const block = blocks.map(collapsed).find((text) => text.includes(wanted));
 			assert.ok(
-				blocks.some(
-					(block) => block.includes(tool) && block.includes(argument),
-				),
-				`'${job}' claims the local command \`${command}\`, and no \`run:\` block of that job in ${CI_YML} invokes both \`${tool}\` and \`${argument}\`: the local gate and CI have drifted into two opinions`,
+				block !== undefined,
+				`'${job}' claims the local command \`${command}\`, and no \`run:\` block of that job in ${CI_YML} contains it: the local gate and CI have drifted into two opinions`,
+			);
+			const rest = block.slice(block.indexOf(wanted) + wanted.length);
+			assert.doesNotMatch(
+				rest,
+				/^\s+[\w./-]+\.(?:mjs|js|ts|tsx)\b/,
+				`'${job}' claims the local command \`${command}\`, and the \`run:\` block of that job in ${CI_YML} that runs it continues with another file (\`${rest.trim().slice(0, 60)}\`): CI runs a longer list than the local gate, so the local gate is green about a subset of what gates the merge`,
 			);
 		}
 	}
@@ -2824,15 +2842,20 @@ test("A26: the language-coverage gate is selected by every path it reads", () =>
 // ---------------------------------------------------------------------------
 
 /*
- * Defect: a filter that names yesterday's model sources. The pin's own claim -
- * `desktop.modelSources`, emitted by esbuild's `metafile.inputs` - is the only
- * authority on which files the fixture was generated from, so a hand-written
- * filter that drifts from it SKIPS the job on exactly the pull request whose
- * change stalened the fixture. That is #1758's shape: `trace-fold-model.ts` was
- * a model source, no pull-request job read the fixture, and the stale bytes
- * reached `main`.
- * Mutation: drop a model source from `PARITY_MODEL_SOURCES`; drop the pin files
- * or the model directory from the predicate; widen the predicate to prose.
+ * Defect: a filter that names yesterday's model sources - or yesterday's SHAPE
+ * sources. The pin's own claims - `desktop.modelSources`, emitted by esbuild's
+ * `metafile.inputs`, and `desktop.sources`, the suites `harvestShapes()` regexes
+ * shape literals out of - are the only authority on which files the fixture was
+ * generated from, so a hand-written filter that drifts from either SKIPS the job
+ * on exactly the pull request whose change stalened the fixture. That is #1758's
+ * shape: `trace-fold-model.ts` was a model source, no pull-request job read the
+ * fixture, and the stale bytes reached `main`. The shape half is the same defect
+ * one input class over: `turn-segments.test.mjs` supplies 63 of the 116
+ * harvested shapes on its own.
+ * Mutation: drop a model source from `PARITY_MODEL_SOURCES`; drop a shape source
+ * from `PARITY_SHAPE_SOURCES`; add either kind to the pin without the filter
+ * covering it; drop the pin files or the model directory from the predicate;
+ * widen the predicate to prose.
  */
 test("A27: the condense parity filter covers every source the pin declares", () => {
 	const fixture = JSON.parse(
@@ -2841,17 +2864,38 @@ test("A27: the condense parity filter covers every source the pin declares", () 
 			"utf8",
 		),
 	);
-	const modelSources = fixture.desktop.modelSources;
-	assert.ok(
-		Array.isArray(modelSources) && modelSources.length > 0,
-		"the pin declares no model sources, so this assertion proves nothing",
-	);
-	for (const path of modelSources) {
-		assert.equal(
-			classify([path]).parity,
-			true,
-			`'${path}' is one of the pin's modelSources, so a pull request that changes it must run the Condense Parity Fixture job`,
+	/*
+	 * EQUALITY, not coverage, and in BOTH directions. Coverage alone passes while
+	 * the module carries a source the pin has stopped declaring (a rename leaves
+	 * the old name behind) and while the pin carries one the module lacks the
+	 * moment the two lists happen to agree on a subset; the reverse check is what
+	 * fails when the fixture is regenerated over a NEW input. The static sets are
+	 * what the predicate reads, so comparing them to the pin IS comparing the
+	 * predicate to the pin.
+	 */
+	const sorted = (paths) => [...paths].sort();
+	for (const [declared, guarded, name] of [
+		[fixture.desktop.modelSources, PARITY_MODEL_SOURCES, "modelSources"],
+		[fixture.desktop.sources, PARITY_SHAPE_SOURCES, "sources"],
+	]) {
+		assert.ok(
+			Array.isArray(declared) && declared.length > 0,
+			`the pin declares no \`${name}\`, so this assertion proves nothing`,
 		);
+		assert.deepEqual(
+			sorted(guarded),
+			sorted(declared),
+			`\`ci-scope.mjs\` and the pin's \`desktop.${name}\` disagree: a pull request that changes a file only one of them names either skips the Condense Parity Fixture job or runs it for nothing`,
+		);
+		// The sets are only authoritative if the PREDICATE actually reads them, so
+		// every declared path is also driven through `classify`.
+		for (const path of declared) {
+			assert.equal(
+				classify([path]).parity,
+				true,
+				`'${path}' is one of the pin's ${name}, so a pull request that changes it must run the Condense Parity Fixture job`,
+			);
+		}
 	}
 	// The pin's own bytes, the generator's inputs, and a module ADDED beside the
 	// model - the change that makes the fixture stale is not always a file the
