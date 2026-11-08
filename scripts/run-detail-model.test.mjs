@@ -2261,12 +2261,25 @@ test("a busy child's launch row is point-read and painted first (R1)", () => {
 	assert.deepEqual(standInLaunchRecord(id, clipped, 3), {
 		kind: "user",
 		id,
-		ts: 3,
+		ts: 3000,
 		text: clipped,
 		images: [],
 	});
 	assert.equal(standInLaunchRecord(id, null, 3), null);
 	assert.equal(standInLaunchRecord("", clipped, 3), null);
+});
+
+test("the stand-in launch turn is stamped in ms, like every transcript record (Q2)", () => {
+	// `startSeconds` is the job's wire `start_time` — epoch SECONDS — while a
+	// transcript record's `ts` is epoch MS (`transcript-reducer.ts` scales
+	// `entry.ts * 1000`). Passing seconds through painted the bubble's stamp as
+	// "Jan 21, 1970". A real launch clock must land in the record's own unit.
+	const startSeconds = 1_762_600_000.25; // 2025-11-08, fractional like the wire
+	const record = standInLaunchRecord("launch-1", "brief", startSeconds);
+	assert.equal(record.ts, Math.round(startSeconds * 1000));
+	assert.equal(new Date(record.ts).getUTCFullYear(), 2025);
+	// No clock at all stays 0, the reducer's own fallback for a missing `ts`.
+	assert.equal(standInLaunchRecord("launch-1", "brief", null).ts, 0);
 });
 
 test("an elided launch_message_id is derived from the job id (R1)", () => {
