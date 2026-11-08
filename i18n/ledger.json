@@ -45068,7 +45068,7 @@
 			"locale": "ur",
 			"namespace": "ui.chat",
 			"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
-			"target_sha256": "dd452057c2f97bb3b88d050a21a4dae71c80beec9db71cfa55d3cf97ee144343",
+			"target_sha256": "ff3a28460b5027d6067b39aa75463e85f2996ce597e3b6c88e1e1a1fbaa63580",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb; remediation of the audited keys at 011c0f4f4ca, session 634c73fee13a job 70c2d5eecc5d)",
@@ -45077,19 +45077,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-08",
 					"result": "clean",
-					"instance": "1350b32a",
+					"instance": "60ec7437",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
-					"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
+					"receipt": "i18n/receipts/60ec7437.json",
+					"receipt_sha256": "3b813c276e7c92bf876ef244ab46927c03866cbbd0233f4b6e98f513fccb2263",
+					"scope": "one value: ui.chat.question_dock.hint.approval for ur, rewritten so the verb-phrase button labels are not followed by a second 'select' verb; every other key in ur/ui.chat byte-identical to the base",
+					"note": "operator policy allows agent copy review; the auditor is independent of the translator"
 				}
 			],
 			"status": "audited",
@@ -45323,6 +45325,28 @@
 							"receipt": "i18n/receipts/25304c88781e-ur-census-second.json",
 							"receipt_sha256": "11d6d32d6c51defc436d60d24ba69d1d83173122d2b33f394125aacaf6d69177",
 							"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+					"target_sha256": "dd452057c2f97bb3b88d050a21a4dae71c80beec9db71cfa55d3cf97ee144343",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "1350b32a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
+							"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
 						}
 					],
 					"status": "audited"
