@@ -39,6 +39,28 @@ import { isEntryPoint } from "./entry-point.mjs";
 // so fewer files per process group is what buys headroom; the budget and the
 // concurrency guard are deliberately untouched.
 export const SHARD_COUNT = 4;
+
+/**
+ * Hard ceiling on the files one shard may hold. A lane over it is refused, not
+ * warned about.
+ *
+ * Derived from the only measurement there is, not picked round: the single
+ * measured failing lane is 205 files, which exhausted the 7.8 GB process-group
+ * budget twice at concurrency 3 (runs 40992181176 and 40996898976, both after
+ * `ok 1060` with zero failures) - the measurement that produced the four-way
+ * split in SHARD_COUNT. The only measured passing lane is 199 files (salt "60",
+ * 786-file inventory). 204 is therefore the largest value the evidence permits:
+ * one file below the lane known to fail. It is NOT a claim that 204 is safe -
+ * nothing between 199 and 205 has been measured - it is the point where growth
+ * must be answered with the design's own levers (re-pick SHARD_SALT, which deals
+ * every file afresh, or add a shard) instead of with a bigger number here.
+ *
+ * Why it cannot be left to the balance tolerance: the planner's 10% guard allows
+ * ceil(786/4 * 1.1) = 217 files, which is ABOVE the lane that died. That guard
+ * measures balance; this one measures the memory that has already been spent.
+ */
+export const SHARD_FILE_CEILING = 204;
+
 const RUNNER = "scripts/run-desktop-tests.mjs";
 const SHA = /^[a-f0-9]{40}$/;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -119,6 +141,23 @@ export function shardIndexOf(file, count = SHARD_COUNT) {
 	return shardHash(file) % count;
 }
 
+/**
+ * Refuses a partition whose largest shard is over SHARD_FILE_CEILING.
+ *
+ * Hard failure, never a warning: nothing downstream re-measures a lane's size,
+ * so a lane that grew past the ceiling would simply be launched into the memory
+ * distribution that has already killed the suite. The message names the shard,
+ * its file count, the ceiling and the runs behind it, so the person who trips it
+ * can see what the number protects before touching it.
+ */
+export function assertShardCeiling(groups) {
+	const largest = groups.reduce((a, b) => (b.length > a.length ? b : a));
+	if (largest.length <= SHARD_FILE_CEILING) return groups;
+	throw new Error(
+		`Desktop shard ${groups.indexOf(largest) + 1}/${groups.length} holds ${largest.length} files, over the ${SHARD_FILE_CEILING}-file memory ceiling: a 205-file shard exhausted the 7.8 GB process-group budget at concurrency 3 twice (runs 40992181176 and 40996898976, both after ok 1060 with zero failures), which is why the suite is split ${groups.length} ways at all. Re-pick SHARD_SALT (currently ${JSON.stringify(SHARD_SALT)}) in a reviewed change so every path is dealt again, or add a shard; if no salt keeps every lane under ${SHARD_FILE_CEILING} the split itself has to change. Do not raise this ceiling without a measured run at that shard size.`,
+	);
+}
+
 export function partition(files, count = SHARD_COUNT) {
 	// The floor of 2 keeps a single-shard "partition" from masquerading as
 	// capacity work; the ceiling is whatever the CI matrix advertises, so a count
@@ -131,10 +170,27 @@ export function partition(files, count = SHARD_COUNT) {
 	for (const file of files) groups[shardIndexOf(file, count)].push(file);
 	// A lane holding no file cannot produce a receipt — a zero-file run has no
 	// guarded-runner count to prove — so an empty group is refilled from the
-	// largest one by stable hash priority. Adding a file never reaches this
-	// branch, because shards only grow: it therefore cannot move a file between a
-	// PR head and the main head it lands on. Only an inventory that shrinks below
-	// `count` (the small trees the planner's own tests build) does.
+	// largest one by stable hash priority: lowest hash, lexicographic tiebreak.
+	//
+	// This branch is a NAMED, BOUNDED EXCEPTION to the path-determinism the rest
+	// of this module guarantees, and it is reachable with MORE files than lanes:
+	// the comment here used to claim it needed "an inventory smaller than the shard
+	// count", which is false and is pinned as false by the planner's own test —
+	// five paths over four lanes deal [3,1,0,1], so lane 2 is empty with five >
+	// four. Refill is not POSITION dependent (reordering the inventory changes
+	// nothing: it reads hashes, then a lexicographic tiebreak), but it IS
+	// INVENTORY dependent: whether a file moves depends on which other files
+	// exist, so adding the file that fills the empty lane moves one file back.
+	// That is acceptable because of two bounds, both arithmetic rather than hope.
+	// First, it cannot hide a memory violation: `plan` asserts the ceiling on the
+	// partition that is actually dispatched, i.e. AFTER this loop, and refill can
+	// only take files out of a lane and give them to a one-file lane, so it can
+	// never enlarge the largest one. Second, it cannot reach a suite this size:
+	// with an empty lane, passing the ceiling needs the two other lanes at 204 or
+	// less and the largest at 205 or less, so at most 613 (3 x the ceiling, + 1)
+	// files can be refilled and dispatched - well under the 786-file inventory,
+	// whose deal leaves no lane empty at all. Its reach is the small fixture trees
+	// the planner's own tests build.
 	for (
 		let empty = groups.findIndex((group) => !group.length);
 		empty !== -1;
@@ -228,6 +284,14 @@ export function plan(root, head, checkout, metadataPackage, metadataGitTree) {
 	const digest = createHash("sha256")
 		.update(`${files.join("\n")}\n`)
 		.digest("hex");
+	// The memory ceiling is asserted here, on the partition that will actually be
+	// dispatched, and not inside `partition` itself: this is the single production
+	// path from a derived inventory to a CI lane (plan, run, receipt and verify all
+	// come through `plan`), while `partition` is also the deal the planner's own
+	// fixtures shape at synthetic sizes no CI lane will ever carry. Hard failure:
+	// a lane over the ceiling has already killed the suite twice, so a warning
+	// here would be a warning about a dead run.
+	const shards = assertShardCeiling(partition(files));
 	return {
 		schema: 1,
 		mode:
@@ -242,7 +306,7 @@ export function plan(root, head, checkout, metadataPackage, metadataGitTree) {
 		digest,
 		total: files.length,
 		files,
-		shards: partition(files),
+		shards,
 	};
 }
 

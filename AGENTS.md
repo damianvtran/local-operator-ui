@@ -2980,8 +2980,15 @@ run-to-run distribution of a three-shard lane at concurrency 3 — 7.9 GB (run
 40992181176) and 8.2 GB (run 40996898976) on the same 205-file inventory, both dying
 at `ok 1060` with zero failures — so each partition now carries ~25% fewer files.
 The budget, the concurrency guard, the 50-minute cap and the cancellation policy
-do not change. Tag-dialog tests are owned by shard 0 only; the native QA bundle
-moved to `ci.yml`'s own `qa-bundle` job, which still runs on every PR.
+do not change. `scripts/desktop-test-shards.mjs` refuses a plan whose largest
+shard would hold more than `SHARD_FILE_CEILING` (204 files, one below the
+205-file lane that exhausted the budget), naming the shard, its size, the
+ceiling and those two runs, so growth is answered with `SHARD_SALT` or another
+shard instead of silently rebuilding a lane that already died; the planner's
+own test is in `GUARD_TESTS`, so that ceiling fails a pull request rather than
+waiting for a main run to find it. Tag-dialog tests are owned by shard 0
+only; the native QA bundle moved to `ci.yml`'s own `qa-bundle` job, which still
+runs on every PR.
 
 The suite's aggregate is still **Desktop Tests** (`desktop-tests-result`), now
 in `full-suite.yml`, where `report` reads it; it is no longer a PR check.
