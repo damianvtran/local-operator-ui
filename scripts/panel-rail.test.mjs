@@ -153,6 +153,19 @@ const {
 
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
 
+/*
+ * The `...` menu's rows are KEYED since #1761 (the i18n keying): the toggle
+ * sentences these pins used to find as literals in `chat-header.tsx` now live in
+ * the English catalogue, and the header holds `t("ui.chat.header_menu.…")`. The
+ * whitespace-tolerant forms follow the run-details row below, and for the same
+ * reason - the ternary's SHAPE is the pin, not the indentation Biome leaves it
+ * at.
+ */
+const RE_ASKS_TOGGLE =
+	/\{asksOpen\s*\?\s*t\("ui\.chat\.header_menu\.close_asks"\)\s*:\s*t\("ui\.chat\.header_menu\.open_asks"\)\}/;
+const RE_BROWSER_TOGGLE =
+	/\{isBrowserPaneOpen\s*\?\s*t\("ui\.chat\.header_menu\.close_browser"\)\s*:\s*t\("ui\.chat\.header_menu\.open_browser"\)\}/;
+
 // An arbitrary ACTIVE binding, not a browser-owned gesture. A future reserved
 // set expansion must fail at this guard instead of as a misleading tooltip diff.
 const ASK_SAMPLE_CHORD = "primary+shift+u";
@@ -1810,19 +1823,44 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 		railSource.includes('data-tour-tag="ask-pane-trigger"'),
 		"the asks item's tag must live on the rail item: it is the drawer's anchor",
 	);
-	for (const label of [
-		't("ui.chat.header.open_run_details")',
-		"Close asks",
-		"Open browser",
-		"Open console",
-		"Open canvas",
+	for (const [key, sentence] of [
+		["ui.chat.header.open_run_details", "Open run details"],
+		["ui.chat.header_menu.open_asks", "Open asks"],
+		["ui.chat.header_menu.open_browser", "Open browser"],
+		["ui.chat.header_menu.open_console", "Open console"],
+		["ui.chat.header_menu.open_canvas", "Open canvas"],
 	]) {
-		assert.ok(header.includes(label), `the ... menu lost its "${label}" entry`);
+		assert.ok(
+			header.includes(`t("${key}")`),
+			`the ... menu lost its "${sentence}" entry (${key})`,
+		);
+	}
+	/*
+	 * And the four menu rows still SAY their sentences: the binding alone would
+	 * pass over a catalogue whose value was emptied, which is a menu entry a
+	 * reader cannot read. The run-details pair is pinned the same way at the top
+	 * of this case, against `ui.chat.header.json`.
+	 */
+	const menuCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.header_menu.json", "utf8"),
+	);
+	for (const [key, sentence] of [
+		["ui.chat.header_menu.open_asks", "Open asks"],
+		["ui.chat.header_menu.open_browser", "Open browser"],
+		["ui.chat.header_menu.open_console", "Open console"],
+		["ui.chat.header_menu.open_canvas", "Open canvas"],
+	]) {
+		assert.equal(
+			menuCopy[key],
+			sentence,
+			`${key} must still read "${sentence}": the row is bound, its copy is what the entry says`,
+		);
 	}
 	/* The asks row's label is the sibling toggle spelling, and its PLACEMENT mirrors
 	   the rail's order (between Run details and Open browser). */
-	assert.ok(
-		header.includes('{asksOpen ? "Close asks" : "Open asks"}'),
+	assert.match(
+		header,
+		RE_ASKS_TOGGLE,
 		"the asks row must be the same toggle sentence as the browser row's",
 	);
 	/* The run row's label is keyed now (close/open) and its ternary can wrap:
@@ -1831,10 +1869,8 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 	const runAt = header.search(
 		/\{isRunPanelOpen\s*\?\s*t\("ui\.chat\.header\.close_run_details"\)\s*:\s*t\("ui\.chat\.header\.open_run_details"\)\}/,
 	);
-	const asksAt = header.indexOf('{asksOpen ? "Close asks" : "Open asks"}');
-	const browserAt = header.indexOf(
-		'{isBrowserPaneOpen ? "Close browser" : "Open browser"}',
-	);
+	const asksAt = header.search(RE_ASKS_TOGGLE);
+	const browserAt = header.search(RE_BROWSER_TOGGLE);
 	assert.ok(
 		runAt >= 0 && asksAt > runAt && browserAt > asksAt,
 		"the asks row sits between Run details and Open browser, mirroring the rail (#896)",
