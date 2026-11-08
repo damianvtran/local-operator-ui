@@ -44,6 +44,7 @@
  */
 
 import { t } from "../../../../i18n/messages";
+import type { BackendUpdateErrorReport } from "../../../../main/update-service";
 import {
 	type TransportFragment,
 	stripErrorPrefixes,
@@ -248,7 +249,32 @@ const LEADING_SEPARATOR = /^[:\uff1a\s]+/;
  * `Error: Error: net::ERR_X` shape a nested failure produces is classified and
  * shown cleanly rather than travelling to the reader as-is.
  */
-export function updateErrorCopy(message: string): UpdateErrorCopy {
+export function updateErrorCopy(
+	message: string,
+	options?: { authored?: BackendUpdateErrorReport["authored"] },
+): UpdateErrorCopy {
+	/*
+	 * THE PRODUCER SAID THIS IS ITS OWN COPY (`BackendUpdateErrorReport.authored`),
+	 * so nothing below is asked: the stage and transport matchers read English
+	 * machine vocabulary and `isAuthoredSentence` counts space-separated words,
+	 * none of which can be trusted to judge a translation (zh-CN has no spaces,
+	 * fr "450 Mo" looks like an HTTP status, fr refusals run past the length cap -
+	 * design round 1, D1). `"sentence"` is the one producer (`not_installed`) that appends
+	 * the installer's own error after a blank line: that tail belongs on the monospace
+	 * line. `"message"` is whole, because the fleet refusals have a blank line
+	 * between two authored paragraphs.
+	 */
+	if (options?.authored !== undefined) {
+		const authored = message.trim();
+		const split =
+			options.authored === "sentence" ? authored.indexOf("\n\n") : -1;
+		const tail = split === -1 ? "" : authored.slice(split + 2).trim();
+		return {
+			sentence: split === -1 ? authored : authored.slice(0, split).trim(),
+			detail: tail === "" ? null : tail,
+			action: null,
+		};
+	}
 	const cleaned = stripErrorPrefixes(message).trim();
 	const stage = updateStageOf(cleaned);
 	const fragment = transientTransportFragment(cleaned);
@@ -422,20 +448,26 @@ export function serverUpdateFailureCopy(message: string): string {
  *
  * - an ATTEMPT's report is the app's own composed sentence and is trusted verbatim;
  * - a CHECK's report is written around a caught value - errno forms like
- *   `getaddrinfo ENOTFOUND pypi.org` - and keeps the classifier, which is what it is for.
+ *   `getaddrinfo ENOTFOUND pypi.org` - and keeps the classifier, which is what it is for;
+ * - unless the producer marked it `authored` (a keyed catalogue sentence, such as
+ *   "version unknown"), which skips the classifier in every locale.
  */
 export function serverUpdateFailureReason(report: {
 	message: string;
 	phase: "check" | "update";
+	authored?: BackendUpdateErrorReport["authored"];
 }): string {
 	return report.phase === "update"
 		? serverUpdateFailureCopy(report.message)
-		: updateErrorMessage(report.message);
+		: updateErrorMessage(report.message, report.authored);
 }
 
 /** Just the sentence, for a surface that has nowhere to put a machine line. */
-export function updateErrorMessage(message: string): string {
-	return updateErrorCopy(message).sentence;
+export function updateErrorMessage(
+	message: string,
+	authored?: BackendUpdateErrorReport["authored"],
+): string {
+	return updateErrorCopy(message, { authored }).sentence;
 }
 
 /**

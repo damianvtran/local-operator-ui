@@ -1179,6 +1179,31 @@ export type BackendUpdateErrorReport = {
 	 */
 	phase: "check" | "update";
 	/**
+	 * The producer wrote `message` itself, from the catalogue, so it is copy and
+	 * not a caught value. The renderer must take it as the sentence and must not
+	 * guess.
+	 *
+	 * WHY THE PRODUCER SAYS SO. The renderer's only other way to tell the app's
+	 * words from a library's is `isAuthoredSentence`, a heuristic tuned to
+	 * English (at least four space-separated words, at most 400 characters, no
+	 * status-code-shaped number). Translated copy fails it for reasons that have
+	 * nothing to do with who wrote it: zh-CN has no spaces between words, fr
+	 * "450 Mo" reads as an HTTP 450, and the fr fleet refusals run past the
+	 * length cap. The toast then showed "the update check could not complete; the
+	 * app will retry" over a refusal that was no check and would not retry, with
+	 * the real reason in the monospace Details block (design round 1, D1 on
+	 * PR #1760). The service already knows which of its payloads are keyed
+	 * copy, so it marks them rather than leaving the renderer to infer it.
+	 *
+	 * ABSENT means a caught value (`stripErrorPrefixes(error.message)`, an errno
+	 * form such as `getaddrinfo ENOTFOUND pypi.org`) and keeps the classifier.
+	 * `"message"`: the whole string is copy (the fleet refusals are two authored
+	 * paragraphs with a blank line between them). `"sentence"`: only the first
+	 * paragraph is, and what follows a blank line is the installer's own error
+	 * (`not_installed` appends it), which belongs on the monospace line.
+	 */
+	authored?: "message" | "sentence";
+	/**
 	 * The update service log the failing branch wrote its detail to, when it has
 	 * one.
 	 *
@@ -7291,6 +7316,7 @@ export class UpdateService {
 									})
 								: t("ui.updates.panel.service.check_unavailable.message"),
 						phase: "check",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 				}
@@ -7309,6 +7335,7 @@ export class UpdateService {
 					this.sendToRenderer("backend-update-error", {
 						message: t("ui.updates.service.version_unknown.message"),
 						phase: "check",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 				}
@@ -7349,6 +7376,7 @@ export class UpdateService {
 					this.sendToRenderer("backend-update-error", {
 						message: t("ui.updates.panel.service.check_unavailable.message"),
 						phase: "check",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 				}
@@ -8113,6 +8141,7 @@ export class UpdateService {
 		this.sendToRenderer("backend-update-error", {
 			message,
 			phase: "update",
+			authored: "message",
 			logPath: serverUpdateLogPath(),
 			/*
 			 * WHAT WAS WAITED FOR, and the choice made instead of forcing: this is
@@ -9017,6 +9046,7 @@ export class UpdateService {
 			this.sendToRenderer("backend-update-error", {
 				message: attemptRunning,
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9029,6 +9059,7 @@ export class UpdateService {
 			this.sendToRenderer("backend-update-error", {
 				message: t("ui.updates.service.already_running.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9178,6 +9209,7 @@ export class UpdateService {
 			this.sendToRenderer("backend-update-error", {
 				message: t("ui.updates.service.install_not_found.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9457,6 +9489,7 @@ export class UpdateService {
 						}
 					: undefined,
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9687,6 +9720,7 @@ export class UpdateService {
 			this.sendToRenderer("backend-update-error", {
 				message: t("ui.updates.service.no_restart.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9702,6 +9736,7 @@ export class UpdateService {
 				this.sendToRenderer("backend-update-error", {
 					message: t("ui.updates.service.no_restart_properly.message"),
 					phase: "update",
+					authored: "message",
 					logPath: serverUpdateLogPath(),
 				});
 				return false;
@@ -9727,6 +9762,7 @@ export class UpdateService {
 						})
 					: t("ui.updates.panel.service.restart.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9999,6 +10035,7 @@ export class UpdateService {
 					this.mainWindow.webContents.send("backend-update-error", {
 						message: t("ui.updates.panel.service.no_backend.message"),
 						phase: "update",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 				}
@@ -10034,6 +10071,7 @@ export class UpdateService {
 						this.mainWindow.webContents.send("backend-update-error", {
 							message: t("ui.updates.panel.service.no_server.message"),
 							phase: "update",
+							authored: "message",
 							logPath: serverUpdateLogPath(),
 						});
 					}
@@ -10159,6 +10197,7 @@ export class UpdateService {
 					this.sendToRenderer("backend-update-error", {
 						message: t("ui.updates.service.start_mode_unknown.message"),
 						phase: "update",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 					return false;
@@ -10260,6 +10299,7 @@ export class UpdateService {
 			this.sendToRenderer("backend-update-error", {
 				message: t("ui.updates.service.already_running.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -10289,6 +10329,7 @@ export class UpdateService {
 			this.sendToRenderer("backend-update-error", {
 				message: t("ui.updates.service.no_server_reference.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -10315,6 +10356,7 @@ export class UpdateService {
 			this.sendToRenderer("backend-update-error", {
 				message: t("ui.updates.service.release_unreadable.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -10396,6 +10438,7 @@ export class UpdateService {
 						free: freeMb,
 					}),
 					phase: "update",
+					authored: "message",
 					logPath: serverUpdateLogPath(),
 				});
 				return false;
@@ -10455,6 +10498,7 @@ export class UpdateService {
 			this.sendToRenderer("backend-update-error", {
 				message: `${t("ui.updates.service.not_installed.message")}${cause ? ` ${cause}` : ""}${reason ? `\n\n${reason}` : ""}`,
 				phase: "update",
+				authored: "sentence",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
