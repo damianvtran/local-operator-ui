@@ -66,6 +66,59 @@ export function assertDesktopCommand(command) {
 		);
 }
 
+/**
+ * Reshard generation. Changing this constant re-shards every file; nothing else
+ * does. It carries no meaning beyond being pinned, and it exists so the
+ * partition can be moved deliberately, in one reviewed edit, when hash variance
+ * has pushed a shard past the size that memory allows.
+ *
+ * The value is measured, not decorative: `shardIndexOf` deals each path to
+ * `sha256(salt\0path) % count`, so shard sizes are hash variance rather than an
+ * exact deal. At the 786-file inventory this landed on, an unpinned salt put
+ * 223 files on the largest shard — more than the 205-file shard that exhausted
+ * the 7.8 GB budget at concurrency 3 (runs 40992181176 and 40996898976, see
+ * SHARD_COUNT). Salt "60" gives [199, 198, 190, 199]: a largest shard within one
+ * file of the previous deal's 197, so stability below costs no memory headroom
+ * today. It will drift as the inventory grows; a shard visibly larger than the
+ * others in the per-shard `desktop tests: N files` line means it is time to
+ * re-pick this value in its own reviewed change.
+ */
+export const SHARD_SALT = "60";
+
+/**
+ * Shard assignment is a pure function of the file PATH — never of the file's
+ * position in the inventory.
+ *
+ * Round-robin over a sorted list (`groups[i % count]`) is a function of
+ * position: one added or removed inventory file shifted every later file by a
+ * slot and rotated it to another shard. Measured on the 786-file inventory of
+ * 2026-11-08, adding one file that sorts early moved 786/786 existing files
+ * (100%), adding five moved 384/786 (49%), and removing one moved 485/785
+ * (62%). A PR head and the main head it merges into differ by exactly those
+ * edits, which is how one test was filed as node 1244 in shard 3/4 on main
+ * push 4d51e254 (run 42506540162) and node 1484 in shard 1/4 on the next main
+ * push c9a87f7e (run 42508422068) with no change to its own bytes — a suite
+ * that can pass on a branch and fail on main because the buckets moved is not
+ * a merge gate.
+ *
+ * Hashing the path alone means a file's shard changes only when SHARD_COUNT or
+ * SHARD_SALT changes: the two deliberate, whole-file, reviewer-visible levers.
+ * Within a shard files are dispatched in sorted order, so a shard's run order
+ * is deterministic too. A file's node index still shifts when a new file in the
+ * SAME shard sorts before it, which renumbers the tail of that one shard and
+ * leaves every other shard's numbering untouched.
+ */
+export function shardHash(file) {
+	return createHash("sha256")
+		.update(`${SHARD_SALT}\u0000${file}`)
+		.digest()
+		.readUInt32BE(0);
+}
+
+export function shardIndexOf(file, count = SHARD_COUNT) {
+	return shardHash(file) % count;
+}
+
 export function partition(files, count = SHARD_COUNT) {
 	// The floor of 2 keeps a single-shard "partition" from masquerading as
 	// capacity work; the ceiling is whatever the CI matrix advertises, so a count
@@ -75,8 +128,31 @@ export function partition(files, count = SHARD_COUNT) {
 	if (!files.length || new Set(files).size !== files.length)
 		throw new Error("Empty or duplicate inventory");
 	const groups = Array.from({ length: count }, () => []);
-	[...files].sort().forEach((file, i) => groups[i % count].push(file));
-	if (groups.some((g) => !g.length)) throw new Error("Empty shard");
+	for (const file of files) groups[shardIndexOf(file, count)].push(file);
+	// A lane holding no file cannot produce a receipt — a zero-file run has no
+	// guarded-runner count to prove — so an empty group is refilled from the
+	// largest one by stable hash priority. Adding a file never reaches this
+	// branch, because shards only grow: it therefore cannot move a file between a
+	// PR head and the main head it lands on. Only an inventory that shrinks below
+	// `count` (the small trees the planner's own tests build) does.
+	for (
+		let empty = groups.findIndex((group) => !group.length);
+		empty !== -1;
+		empty = groups.findIndex((group) => !group.length)
+	) {
+		const largest = groups.reduce((a, b) => (b.length > a.length ? b : a));
+		if (largest.length < 2) throw new Error("Empty shard");
+		let pick = 0;
+		for (let i = 1; i < largest.length; i++) {
+			const order =
+				shardHash(largest[i]) - shardHash(largest[pick]) ||
+				(largest[i] < largest[pick] ? -1 : 1);
+			if (order < 0) pick = i;
+		}
+		groups[empty].push(largest.splice(pick, 1)[0]);
+	}
+	if (groups.some((group) => !group.length)) throw new Error("Empty shard");
+	for (const group of groups) group.sort();
 	return groups;
 }
 
