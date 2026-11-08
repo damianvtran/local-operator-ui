@@ -120,11 +120,15 @@ import {
 	deriveChildWorkingLine,
 	foldBrief,
 	reconcileLaunchTurns,
+	standInLaunchRecord,
+	wantsLaunchRow,
+	withLaunchRecord,
 } from "./run-detail-model";
 import { NumberRun, SubagentStateIcon } from "./run-detail-row-parts";
 import { useChildRowClock } from "./run-details-clock";
 import {
 	type ChildTranscriptState,
+	useChildLaunchRow,
 	useChildTranscript,
 } from "./use-child-transcript";
 
@@ -550,12 +554,48 @@ export const RunChildReader = ({
 	 * conversation in the app takes. `index` stays valid because records are
 	 * replaced in place, never inserted or removed.
 	 */
+	/*
+	 * A busy child's launch row sits above the tail page, so it is point-read
+	 * once (review round 1, R1) and placed first; until it lands, or when the
+	 * runtime cannot serve it, the roster's longest brief stands in. Either way
+	 * the brief paints through the shared user bubble rather than the clipped
+	 * mono block. `withLaunchRecord` rebuilds `index` for the one insertion.
+	 */
+	const launchWanted =
+		!usingPreview &&
+		state === "ready" &&
+		wantsLaunchRow(transcript, row.launchMessageId);
+	const launchRow = useChildLaunchRow({
+		sessionId,
+		childId: usingPreview ? null : row.childSessionId,
+		launchMessageId: row.launchMessageId,
+		wanted: launchWanted,
+	});
 	const painted = useMemo(() => {
-		const records = reconcileLaunchTurns(transcript.records, row.launchPrompts);
-		return records === transcript.records
-			? transcript
-			: { ...transcript, records };
-	}, [row.launchPrompts, transcript]);
+		const withLaunch = launchWanted
+			? withLaunchRecord(
+					transcript,
+					launchRow ??
+						standInLaunchRecord(
+							row.launchMessageId,
+							row.brief,
+							row.startSeconds,
+						),
+				)
+			: transcript;
+		const records = reconcileLaunchTurns(withLaunch.records, row.launchPrompts);
+		return records === withLaunch.records
+			? withLaunch
+			: { ...withLaunch, records };
+	}, [
+		launchRow,
+		launchWanted,
+		row.brief,
+		row.launchMessageId,
+		row.launchPrompts,
+		row.startSeconds,
+		transcript,
+	]);
 
 	/*
 	 * The foot of the page: what this child is doing, as the wire last said it.

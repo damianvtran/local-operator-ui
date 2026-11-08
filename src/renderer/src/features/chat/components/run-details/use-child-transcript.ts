@@ -38,9 +38,11 @@ import type { DesktopChildTranscriptPage } from "../../../../../../shared/deskto
 import type { LoadOlderOutcome } from "../../canonical/load-older";
 import {
 	EMPTY_TRANSCRIPT,
+	type TranscriptRecord,
 	type TranscriptState,
 	applyHistoryPage,
 } from "../../canonical/transcript-reducer";
+import { launchRecordFrom } from "./run-detail-model";
 
 /** At most one pulse-driven read per second, whatever the pulse's own rate. */
 const PULSE_MIN_INTERVAL_MS = 1_000;
@@ -361,4 +363,67 @@ export function useChildTranscript({
 		loadOlder,
 		loadOlderDetailed,
 	};
+}
+
+/**
+ * The child's launch row, point-read once per reader visit (review round 1, R1).
+ *
+ * WHY: the tail page above does not reach a busy child's launch row, and that
+ * row is the only place the WHOLE brief lives (the roster carries a 200-char
+ * clip). Paging the whole history in to read one row would cost a full scan
+ * per page; the route's `entry_id` answers that one row instead.
+ *
+ * CONSTRAINTS:
+ * - Lazy: asked only while the reader is open and `wanted` holds (the loaded
+ *   pages are partial and lack the row, `wantsLaunchRow`), never for the list.
+ * - At most ONE request per child + launch id: the row is durable, so a
+ *   second read could only return the same text. A failure is not retried;
+ *   the reader keeps its stand-in (the roster's longest brief).
+ * - An older runtime ignores `entryId` and answers its newest row; that page is
+ *   matched by id (`launchRecordFrom`) and yields `null`, so the stand-in stays.
+ */
+export function useChildLaunchRow({
+	sessionId,
+	childId,
+	launchMessageId,
+	wanted,
+}: {
+	sessionId: string | null;
+	childId: string | null;
+	launchMessageId: string;
+	wanted: boolean;
+}): Extract<TranscriptRecord, { kind: "user" }> | null {
+	const key = `${sessionId ?? ""}:${childId ?? ""}:${launchMessageId}`;
+	const [found, setFound] = useState<{
+		key: string;
+		record: Extract<TranscriptRecord, { kind: "user" }> | null;
+	} | null>(null);
+	const askedRef = useRef<string | null>(null);
+	const keyRef = useRef(key);
+	keyRef.current = key;
+
+	useEffect(() => {
+		if (!wanted || !sessionId || !childId || !launchMessageId) return;
+		if (askedRef.current === key) return;
+		askedRef.current = key;
+		void (async () => {
+			try {
+				const page = await desktopResult<DesktopChildTranscriptPage>({
+					op: "subagents.transcript",
+					sessionId,
+					childId,
+					entryId: launchMessageId,
+					// Bounds an older runtime's answer to one tail row.
+					limit: 1,
+				});
+				if (keyRef.current !== key) return;
+				const records = applyHistoryPage(EMPTY_TRANSCRIPT, page).records;
+				setFound({ key, record: launchRecordFrom(records, launchMessageId) });
+			} catch {
+				// Degrade to the stand-in: the brief is still on screen, clipped.
+			}
+		})();
+	}, [childId, key, launchMessageId, sessionId, wanted]);
+
+	return found?.key === key ? found.record : null;
 }

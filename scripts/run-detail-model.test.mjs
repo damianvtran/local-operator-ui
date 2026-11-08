@@ -87,8 +87,12 @@ const {
 	visibleWakes,
 	MONITOR_ROW_CAP,
 	WAKE_ROW_CAP,
+	launchRecordFrom,
 	reconcileLaunchTurns,
 	recoverClippedBrief,
+	standInLaunchRecord,
+	wantsLaunchRow,
+	withLaunchRecord,
 	retimeChildRow,
 	retimeRunDetails,
 	tallyBudget,
@@ -2149,7 +2153,7 @@ test("a wire-clipped launch prompt is recovered whole from the durable row", () 
 			kind: "user",
 			id: "subagent-launch:job-1",
 			ts: 1,
-			// The preamble quotes the opening words, which is why the LAST match wins.
+			// The preamble quotes the opening words (37 chars, under the 200-char head).
 			text: `[team: lopdev]\nYou are coder. Operator request (verbatim core): fix\n\n${brief}`,
 			images: [],
 		},
@@ -2178,6 +2182,138 @@ test("a wire-clipped launch prompt is recovered whole from the durable row", () 
 	assert.equal(recoverClippedBrief("Operator…", records[0].text), "Operator…");
 	const foreign = `${"Something the row never said ".repeat(3)}…`;
 	assert.equal(recoverClippedBrief(foreign, records[0].text), foreign);
+});
+
+test("a brief that repeats its own opening is recovered from the FIRST match (R2)", () => {
+	// Review round 1, R2: `lastIndexOf` cut this to the restatement (224/486 chars)
+	// and the result no longer ended in `…`, so it looked complete.
+	const opening = `Operator request (verbatim core): ${"keep the brief whole ".repeat(9)}`;
+	const brief = `${opening}\n\nMiddle of the brief.\n\nRestated: ${opening}\nEND`;
+	const clipped = `${brief.slice(0, 200)}…`;
+	const durable = `[team: lopdev]\nYou are coder.\n\n${brief}`;
+	assert.equal(recoverClippedBrief(clipped, durable), brief);
+});
+
+test("a busy child's launch row is point-read and painted first (R1)", () => {
+	const id = "subagent-launch:job-busy";
+	const tail = {
+		hasMore: true,
+		index: new Map([
+			["r1", 0],
+			["r2", 1],
+		]),
+		records: [
+			{ kind: "assistant", id: "r1", ts: 5 },
+			{ kind: "assistant", id: "r2", ts: 6 },
+		],
+	};
+	// Asked only for a partial tail that lacks the row.
+	assert.equal(wantsLaunchRow(tail, id), true);
+	assert.equal(wantsLaunchRow({ ...tail, hasMore: false }, id), false);
+	assert.equal(wantsLaunchRow(tail, ""), false);
+	assert.equal(
+		wantsLaunchRow({ ...tail, index: new Map([[id, 0]]) }, id),
+		false,
+	);
+
+	// An older runtime ignores `entry_id` and answers its newest row: matched by
+	// id, that page yields nothing, so the stand-in stays.
+	assert.equal(
+		launchRecordFrom(
+			[{ kind: "user", id: "r9", ts: 9, text: "x", images: [] }],
+			id,
+		),
+		null,
+	);
+	const brief = `# Brief\n\n${"- a markdown step\n".repeat(40)}TAIL-MARKER`;
+	const launch = {
+		kind: "user",
+		id,
+		ts: 1,
+		text: `You are coder.\n\n${brief}`,
+		images: [],
+	};
+	assert.equal(launchRecordFrom([tail.records[0], launch], id), launch);
+
+	// Placed first with the index rebuilt, then reconciled to the whole brief.
+	const painted = withLaunchRecord(tail, launch);
+	assert.deepEqual(
+		painted.records.map((record) => record.id),
+		[id, "r1", "r2"],
+	);
+	assert.deepEqual(
+		[...painted.index],
+		[
+			[id, 0],
+			["r1", 1],
+			["r2", 2],
+		],
+	);
+	const clipped = `${brief.slice(0, 200)}…`;
+	const reconciled = reconcileLaunchTurns(painted.records, { [id]: clipped });
+	assert.equal(reconciled[0].text, brief, "the whole brief, preamble dropped");
+	assert.equal(briefIsInTranscript(reconciled, clipped), true);
+	// Already loaded (paging reached it): untouched, same identity.
+	assert.equal(withLaunchRecord(painted, launch), painted);
+	assert.equal(withLaunchRecord(tail, null), tail);
+
+	// The stand-in: the roster's longest brief, else nothing.
+	assert.deepEqual(standInLaunchRecord(id, clipped, 3), {
+		kind: "user",
+		id,
+		ts: 3,
+		text: clipped,
+		images: [],
+	});
+	assert.equal(standInLaunchRecord(id, null, 3), null);
+	assert.equal(standInLaunchRecord("", clipped, 3), null);
+});
+
+test("an elided launch_message_id is derived from the job id (R1)", () => {
+	// Measured on the rig: a settled task child's snapshot row carried
+	// `launch_message_id: ""` (the runtime elides it when the job id implies it)
+	// while `launch_prompts` held `subagent-launch:<job id>`. Read as launch-less,
+	// the reader never asked for the launch row.
+	const clip = `${"x".repeat(200)}…`;
+	const row = derive([
+		job({
+			id: "868413d2d7c3",
+			prompt: "short",
+			launch_prompts: { "subagent-launch:868413d2d7c3": clip },
+		}),
+	]).subagents[0];
+	assert.equal(row.launchMessageId, "subagent-launch:868413d2d7c3");
+	assert.equal(row.brief, clip);
+	// No map entry for it: nothing to derive, the old fallback holds.
+	const bare = derive([job({ id: "job-bare", prompt: "Read it" })])
+		.subagents[0];
+	assert.equal(bare.launchMessageId, "");
+	assert.equal(bare.brief, "Read it");
+});
+
+test("against an older runtime the brief degrades to job.prompt's longer preview (R1)", () => {
+	const brief = `Do the thing. ${"word ".repeat(300)}`.trim();
+	const row = derive([
+		job({
+			id: "job-old",
+			prompt: `${brief.slice(0, 1000)}…`,
+			launch_message_id: "subagent-launch:job-old",
+			launch_prompts: { "subagent-launch:job-old": `${brief.slice(0, 200)}…` },
+		}),
+	]).subagents[0];
+	assert.equal(row.brief, `${brief.slice(0, 1000)}…`);
+	// A `prompt` that does not extend the clip keeps the clip.
+	const other = derive([
+		job({
+			id: "job-other",
+			prompt: "Unrelated preamble text only",
+			launch_message_id: "subagent-launch:job-other",
+			launch_prompts: {
+				"subagent-launch:job-other": `${brief.slice(0, 200)}…`,
+			},
+		}),
+	]).subagents[0];
+	assert.equal(other.brief, `${brief.slice(0, 200)}…`);
 });
 
 test("the brief folds to a summary that states what expanding costs", () => {
