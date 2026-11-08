@@ -281,7 +281,72 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
+      # ONE DOWNLOAD PER RUN, NOT FOUR, and it has to be the ARCHIVE rather than
+      # node_modules/electron/dist. `pnpm install` re-creates node_modules on every
+      # job, so a cached dist/ would be restored into a tree that does not exist
+      # yet and would still leave the install-time fetch on the network. The
+      # archive @electron/get saves is outside the repo, and electron's install.js
+      # consults it before any request, so restoring it here also makes the
+      # postinstall fetch (bin/postinstall.js -> ensureElectronDist) a cache hit.
+      # The assertion step after install then takes its dist/version fast path.
+      #
+      # THE KEY'S VERSION IS READ FROM THE LOCKFILE, never written literally: an
+      # electron upgrade moves the key, and a stale archive can never satisfy the
+      # new version because @electron/get's cache path is a hash of the download
+      # URL. That is also why there are no restore-keys -- an older version's
+      # archive is not a partial hit, it is unusable, so matching it would only
+      # buy restore time.
+      #
+      # A COLD CACHE IS STILL FOUR FETCHES, and that is GitHub's cache model
+      # rather than a miss here: the four shards start together, so on a cold key
+      # all four miss and fetch, and whichever saves first wins (the rest log
+      # "another job may be creating it" -- a warning). It settles on the second
+      # run and holds until the version changes. A prewarm job all shards `needs:`
+      # would fetch exactly once even cold, at the cost of putting a ~30 s
+      # serialised job in front of every shard; not worth paying until cold-cache
+      # runs are measured to matter.
+      - name: Resolve the Electron runtime version for the download cache
+        id: electron_runtime
+        run: |
+          set -euo pipefail
+          version="$(
+            node -e '
+              const fs = require("node:fs");
+              // The RESOLVED lockfile entry is what the installer fetches. The
+              // declared pin (optionalDependencies.electron) is exact today;
+              // reading the resolved entry is what keeps that true of a range.
+              const lock = fs.readFileSync("pnpm-lock.yaml", "utf8");
+              const entry = /^ {6}electron:\n {8}specifier: \S+\n {8}version: (\S+)$/m.exec(lock);
+              if (!entry) {
+                console.error("local-operator-ui: no resolved electron entry in pnpm-lock.yaml. The download cache key cannot be built, and guessing one would cache a runtime the installer will not use.");
+                process.exit(1);
+              }
+              process.stdout.write(entry[1].replace(/\(.*$/, ""));
+            '
+          )"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Electron runtime the download cache is keyed on: $version"
+
+      - name: Restore the Electron runtime download cache
+        uses: actions/cache@v4
+        with:
+          # The one directory the two steps below also name. It is
+          # $RUNNER_TEMP/electron-runtime-downloads, outside the checkout, so the
+          # final "tree is clean" assertion never sees it.
+          path: ${{ runner.temp }}/electron-runtime-downloads
+          key: electron-runtime-${{ runner.os }}-${{ runner.arch }}-${{ steps.electron_runtime.outputs.version }}
+
       - name: Install dependencies
+        env:
+          # WHERE THE ELECTRON DOWNLOAD IS CACHED, named rather than left to
+          # @electron/get's default (`env-paths('electron').cache`, i.e. ~/.cache
+          # on a Linux runner). electron's own install.js passes `cacheRoot:
+          # process.env.electron_config_cache` straight to @electron/get, so this
+          # one directory is what the postinstall fetch inside this install AND
+          # the assertion step below both read -- which is what makes one cached
+          # copy serve both, and lets the cache step name a path, not a guess.
+          # Must stay identical to the path the cache step above restores.
+          electron_config_cache: ${{ runner.temp }}/electron-runtime-downloads
         run: pnpm install --frozen-lockfile
 
       # THE INSTALL CANNOT REPORT THIS FAILURE ITSELF. bin/postinstall.js fetches
@@ -297,8 +362,44 @@ jobs:
       # This step performs the same fetch but LOUDLY: bin/ensure-electron.js
       # exits 1 naming the runtime and the command that fixes it, and its
       # dist/version fast path makes it a sub-second no-op on a healthy runner.
+      #
+      # AND IT IS BOUNDED, because a fetch that fails SLOWLY is the cost this step
+      # was added to remove. First real execution (run 42480901689, job
+      # 128732465257, shard 3/4) took 7m23s, 12:35:19 -> 12:42:42, exiting 1 only
+      # after the download timed out. Electron's zip is ~110-140 MB and a healthy
+      # runner fetch is seconds, so 180 s is several times a healthy fetch and 16x
+      # below this job's 50-minute ceiling. The installer's own bound is 10 minutes
+      # (bin/linux-sandbox.js, where it is deliberately generous for a slow link),
+      # which is the near-unbounded wait this replaces at this call site.
+      #
+      # `timeout` reports SIGTERM as 124 and --kill-after's SIGKILL as 137, and
+      # neither says what was killed, so both become a named failure carrying the
+      # runtime, the bound and the fix. Any other non-zero exit is
+      # bin/ensure-electron.js failing on its own -- its message is already the
+      # loud one -- and is passed through with the bound named beside it. An
+      # installer orphaned by SIGTERM cannot outlive this step: it holds its own
+      # 10-minute spawn bound, and the runner reaps the step's process group.
       - name: Assert the Electron runtime is installed
-        run: node bin/ensure-electron.js
+        env:
+          ELECTRON_RUNTIME_FETCH_BOUND_SECONDS: '180'
+          # Same directory again: when the install-time fetch failed and left no
+          # dist/, this step must read the restored archive rather than start
+          # from an empty ~/.cache and go back to the network.
+          electron_config_cache: ${{ runner.temp }}/electron-runtime-downloads
+        run: |
+          set -euo pipefail
+          bound="$ELECTRON_RUNTIME_FETCH_BOUND_SECONDS"
+          status=0
+          timeout --kill-after=10 "$bound" node bin/ensure-electron.js || status=$?
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+            echo "::error::The Electron runtime did not finish installing within ${bound}s: \`timeout\` killed \`node bin/ensure-electron.js\` (exit ${status}) while it was fetching node_modules/electron/dist, so this shard would otherwise have spent that wait inside the suite. Fetch it explicitly to see the download: npx install-electron --no"
+            exit "$status"
+          fi
+          echo "::error::The Electron runtime is absent and could not be fetched: \`node bin/ensure-electron.js\` exited ${status} within the ${bound}s bound."
+          exit "$status"
 
       # Lock intent alone cannot identify the modules used on a dead runner.
       - name: Record installed desktop selector engine identity
