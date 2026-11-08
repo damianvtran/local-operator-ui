@@ -198,6 +198,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # THE INSTALL CANNOT REPORT THIS FAILURE ITSELF. bin/postinstall.js fetches
+      # the runtime and must never fail an install ("THIS SCRIPT MUST NEVER FAIL
+      # THE INSTALL"), and it runs that fetch with its stdio ignored, so a runner
+      # whose download went wrong still finishes `pnpm install` with no
+      # node_modules/electron/dist on disk. The failure then surfaces inside the
+      # suite, in whichever test first requires `electron`, because electron 45's
+      # index runs its own installer at that moment: run 42474269773 shard 3
+      # spent 124 s in the postinstall fetch, kept nothing, and two probe tests
+      # burned their whole spawn bound downloading instead of asserting about the
+      # probe ("Downloading Electron binary...", ETIMEDOUT at 60 s and 30 s).
+      # This step performs the same fetch but LOUDLY: bin/ensure-electron.js
+      # exits 1 naming the runtime and the command that fixes it, and its
+      # dist/version fast path makes it a sub-second no-op on a healthy runner.
+      - name: Assert the Electron runtime is installed
+        run: node bin/ensure-electron.js
+
       # Lock intent alone cannot identify the modules used on a dead runner.
       - name: Record installed desktop selector engine identity
         run: node scripts/desktop-test-lane-bound.mjs --identity scripts/onboarding-tour-i18n.test.mjs

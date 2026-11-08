@@ -84895,7 +84895,7 @@
 			"locale": "ur",
 			"namespace": "ui.updates.service",
 			"source_sha256": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
-			"target_sha256": "22aa5235a6a44d518d5d96b743465bf3696b58e68d6f4ebc0f0203cea4f0936d",
+			"target_sha256": "36741a3ca655e410d5804a786f9a20e6877a829f0b4d8392ff8b429a4320cc26",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -84904,21 +84904,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "9e4b2d71-uf3-ur",
+					"result": "clean",
+					"instance": "4ef64bfa8a64-ui1764-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/9e4b2d71-uf3-ur.json",
-					"receipt_sha256": "ceaee4b6201f38edddfe0c36957f28abc51c881ec9c8f8dde3917fc59877b562",
-					"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
-					"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+					"receipt": "i18n/receipts/4ef64bfa8a64-ui1764-ur.json",
+					"receipt_sha256": "e599cb86fa5a5fe9dabb4c2c67dbcb37ecb01692f9b9e9a9ab87c49dfe8b4e3c",
+					"scope": "issue #1762 delta: rebuild_unchanged at the post-fix bytes (two U+200E removed, no lexical change, byte-identity proved for the other 38 keys); independent audit by translation-auditor",
+					"note": "LRM pair removed from storage; token isolated with <bdi dir=\"ltr\"> at the update panel; fribidi shows the new bytes render glyph-identical to the audited LRM version only with that isolate"
 				}
 			],
 			"status": "audited",
@@ -84943,6 +84943,30 @@
 							"receipt_sha256": "7fb585e4e03e3e9cbbb399d2d32352788f2776e7b99d0adb0ab1b78cc08ccdd1",
 							"scope": "update-flow namespaces (ui.updates.service, ui.updates.status, ui.installer.setup_cause; 48 keys); multi-namespace receipt",
 							"note": "Update-flow keying PR: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+					"target_sha256": "22aa5235a6a44d518d5d96b743465bf3696b58e68d6f4ebc0f0203cea4f0936d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "9e4b2d71-uf3-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/9e4b2d71-uf3-ur.json",
+							"receipt_sha256": "ceaee4b6201f38edddfe0c36957f28abc51c881ec9c8f8dde3917fc59877b562",
+							"scope": "wave 2: app_owned.remedy added; wave-1 audit polish folded in; fr disk_space ICU skeleton defect found by the wave-2 audit and fixed (U+202F inside argument header)",
+							"note": "Update-flow keying PR wave 2: minor/nit findings deferred, recorded in this receipt; see docs/i18n/update-flow-provenance.md."
 						}
 					],
 					"status": "audited"

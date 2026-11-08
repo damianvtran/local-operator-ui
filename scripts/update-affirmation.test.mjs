@@ -262,9 +262,23 @@ export const createElement = (type, props, ...children) => ({
 			: {}),
 	},
 });
-export const jsx = createElement;
-export const jsxs = createElement;
-export const jsxDEV = createElement;
+/*
+ * THE THIRD ARGUMENT OF THE AUTOMATIC RUNTIME IS THE KEY, NOT A CHILD (issue
+ * #1762). jsx(type, props, key) and createElement(type, props, ...children) are
+ * different contracts, and aliasing the second as the first made every keyed
+ * element render its KEY as its only child: a sentence that wrapped a token in
+ * <bdi key={part.at}> read "0" instead of the token's text, and the cases below
+ * called a correct panel blank. The key is recorded on the element the way React
+ * records it, and children stay wherever the runtime put them.
+ */
+const automatic = (type, props, key) => {
+	const element = createElement(type, props);
+	if (key !== undefined) element.key = key;
+	return element;
+};
+export const jsx = automatic;
+export const jsxs = automatic;
+export const jsxDEV = automatic;
 export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRef, useCallback, useMemo, useSyncExternalStore, useDebugValue, createElement, Fragment, version, jsx, jsxs, jsxDEV, forwardRef, memo, createContext, useContext, createRef, cloneElement, isValidElement, Children, useId, useImperativeHandle, startTransition, useDeferredValue, useTransition };`;
 
 const jsxRuntimeStandIn = `export { createElement, jsx, jsxs, jsxDEV, Fragment } from "react";`;
@@ -745,17 +759,25 @@ function linesOf(value) {
 }
 
 /**
- * Every string under a subtree, joined - what a message actually says.
+ * Every string under a subtree, concatenated - what a message actually says.
  *
  * The failure alert renders two lines (a sentence and the machine's own words),
  * so a message is a subtree rather than one string child.
+ *
+ * WHY THE JOIN IS `""` AND NOT `" "` (issue #1762). A DOM concatenates sibling
+ * text nodes with NOTHING between them: `<p>its <bdi>.lop-source</bdi> still</p>`
+ * says "its .lop-source still", not "its  .lop-source  still". Joining with a
+ * space put a separator between siblings that no reader ever sees, so the harness
+ * reported a double space the moment a sentence gained an inline element - the
+ * isolate this fix adds around a backticked token - and passed only for
+ * sentences that happened to be one text node.
  */
 function textOf(value) {
 	if (typeof value === "string" || typeof value === "number") {
 		return String(value);
 	}
 	if (Array.isArray(value)) {
-		return value.map(textOf).filter(Boolean).join(" ");
+		return value.map(textOf).filter(Boolean).join("");
 	}
 	if (value && typeof value === "object" && value.props) {
 		return textOf(value.props.children);
@@ -950,9 +972,18 @@ function mountNotification({ autoCheck = false, slowWaitHintMs } = {}) {
 	return handle;
 }
 
-/** Whether the panel is carrying this exact line of copy. */
+/**
+ * Whether the panel is carrying this exact line of copy.
+ *
+ * Read as a DOM reads it (issue #1762): the sentence is no longer always one
+ * string child. Since the bidi fix it can hold a token inside an inline isolate
+ * (`<bdi dir="ltr">`), so "this line" has to mean the subtree's text, which is
+ * what a reader sees - still an EXACT match, never a substring.
+ */
 function showsText(handle, text) {
-	return walk(handle.tree).some((node) => node.props?.children === text);
+	return walk(handle.tree).some(
+		(node) => textOf(node.props?.children) === text,
+	);
 }
 
 /**
@@ -963,9 +994,15 @@ function showsText(handle, text) {
  * part of a longer paragraph", which is what the R3-2 assertions need.
  */
 function allCopy(handle) {
+	/*
+	 * TEXT per node rather than "children that are a string" (issue #1762): a
+	 * sentence with an inline isolate is children of mixed kinds, and a helper that
+	 * skipped it would make every "the panel does not say X" case below pass by
+	 * reading nothing.
+	 */
 	return walk(handle.tree)
-		.filter((node) => typeof node.props?.children === "string")
-		.map((node) => node.props.children);
+		.map((node) => textOf(node.props?.children))
+		.filter((value) => value !== "");
 }
 
 /**
@@ -1029,10 +1066,16 @@ function failurePanelReason(handle) {
 		(node) => node.type === UpdateContainer && node.props?.tone === "failed",
 	);
 	if (!failed) return null;
+	/*
+	 * The sentence paragraph is the first `<p>` in the container, and its words may
+	 * sit inside an inline isolate rather than directly as a string child (issue
+	 * #1762), so the paragraph is found by having text at all - not by the shape of
+	 * its children.
+	 */
 	const paragraph = walk(failed.props.children).find(
-		(node) => node.type === "p" && typeof node.props?.children === "string",
+		(node) => node.type === "p" && textOf(node.props?.children) !== "",
 	);
-	return paragraph?.props.children ?? null;
+	return paragraph ? textOf(paragraph.props.children) : null;
 }
 
 /**
@@ -1048,9 +1091,10 @@ function failedPanelCopy(handle) {
 		(node) => node.type === UpdateContainer && node.props?.tone === "failed",
 	);
 	if (!failed) return null;
+	// Text per node, for the same reason `allCopy` reads it that way (issue #1762).
 	return walk(failed.props.children)
-		.filter((node) => typeof node.props?.children === "string")
-		.map((node) => node.props.children)
+		.map((node) => textOf(node.props?.children))
+		.filter((value) => value !== "")
 		.join(" ");
 }
 

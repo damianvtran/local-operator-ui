@@ -462,6 +462,67 @@ export function serverUpdateFailureReason(report: {
 		: updateErrorMessage(report.message, report.authored);
 }
 
+/**
+ * One piece of a composed sentence: running text, or one backtick token.
+ *
+ * `at` is the part's character offset in the sentence. It is the token's own
+ * position rather than a list index, which is what React needs for a stable key -
+ * an index key reorders the isolate when the sentence before it changes length.
+ */
+export type SentencePart = { kind: "text" | "token"; text: string; at: number };
+
+/**
+ * A backtick-delimited run, backticks INCLUDED. The copy marks a literal value
+ * (`.lop-source`, `lop-update`) by wrapping it in backticks, and every shipped
+ * locale keeps them: the panel shows the characters as written, so the token is
+ * rendered as one unit rather than re-styled here.
+ */
+const BACKTICK_TOKEN = /`[^`]+`/g;
+
+/**
+ * Split a composed sentence at the tokens its own copy marks, so each can be its
+ * own bidi isolate at the render site.
+ *
+ * WHY THIS EXISTS (issue #1762). `ui.updates.service.server_failure.rebuild_unchanged`
+ * names a dotfile - "its `.lop-source` still names the same revision" - and the
+ * character that misbehaves is the token's LEADING FULL STOP. The stored value is
+ * logical order and, per the i18n policy, must carry no manual bidi control: the
+ * `ur` activation guard fails the build on one. In an RTL paragraph that full stop
+ * is a neutral between RTL text and an `l` (class L), so UAX #9 rule N1 resolves it
+ * to the paragraph's own direction and it is drawn to the RIGHT of the token -
+ * `lop-source.` instead of `.lop-source`. A translator closed that by storing LRMs
+ * around the token, which is exactly what the policy forbids.
+ *
+ * The fix belongs here, not in the string: storage stays logical order, and the
+ * surface that renders it - the only place that knows the paragraph runs RTL -
+ * wraps the token in `<bdi dir="ltr">`. This module only finds the tokens; the
+ * component decides the isolate, because `update-error-copy` has no DOM.
+ *
+ * A sentence with an unmatched backtick yields no token at all and renders as it
+ * does today, so malformed copy degrades to the current behaviour rather than to
+ * a half-isolated sentence.
+ */
+export function isolatedTokenParts(sentence: string): SentencePart[] {
+	const parts: SentencePart[] = [];
+	let cursor = 0;
+	for (const match of sentence.matchAll(BACKTICK_TOKEN)) {
+		const at = match.index ?? 0;
+		if (at > cursor) {
+			parts.push({
+				kind: "text",
+				text: sentence.slice(cursor, at),
+				at: cursor,
+			});
+		}
+		parts.push({ kind: "token", text: match[0], at });
+		cursor = at + match[0].length;
+	}
+	if (cursor < sentence.length) {
+		parts.push({ kind: "text", text: sentence.slice(cursor), at: cursor });
+	}
+	return parts;
+}
+
 /** Just the sentence, for a surface that has nowhere to put a machine line. */
 export function updateErrorMessage(
 	message: string,
