@@ -2413,11 +2413,48 @@ export function reconcileLaunchTurns(
 	const next = records.map((record) => {
 		if (record.kind !== "user") return record;
 		const concise = launchPrompts[record.id];
-		if (concise === undefined || concise === record.text) return record;
+		if (concise === undefined) return record;
+		const text = recoverClippedBrief(concise, record.text);
+		if (text === record.text) return record;
 		changed = true;
-		return { ...record, text: concise };
+		return { ...record, text };
 	});
 	return changed ? next : records;
+}
+
+/**
+ * The whole authored brief, recovered from the durable launch row when the
+ * wire clipped the concise copy.
+ *
+ * WHY: `launch_prompts` is bounded at the wire (`JOB_LAUNCH_PROMPT_WIRE_CHARS =
+ * 200`, cut as `text[:200] + "…"` by `frontend_state._wire_launch_prompts`), so
+ * reconciling the launch row with it alone left the reader's opening bubble at
+ * ~3 lines ending `…` — under the user bubble's 8-line clamp, so no Show more
+ * ever appeared and the rest of the brief was unreachable (and Copy copied the
+ * prefix). The list frame must stay cheap, so raising that bound is the wrong
+ * fix; the full text already arrives LAZILY, in the child transcript page the
+ * reader fetches anyway: the durable launch row is `preamble + prompt`, and
+ * every branch of `harness/subagent.py::_effective_prompt` (and the resume path
+ * that prepends `effective_resume`) APPENDS the authored prompt last. So the
+ * brief is the suffix of the row starting at the clipped head.
+ *
+ * CONSTRAINTS: only a value carrying the wire's marker is treated as clipped; a
+ * bare `…` is the budget-elided placeholder (`LAUNCH_PROMPT_ELIDED_PLACEHOLDER`)
+ * and has no head to match, so it — like a head under `BRIEF_PREFIX_FLOOR`, or
+ * one the row does not contain — keeps the concise value exactly as before
+ * (never the preamble). The LAST occurrence is used because the head is the
+ * start of the suffix; an earlier match could only be the preamble quoting it.
+ */
+export function recoverClippedBrief(concise: string, durable: string): string {
+	if (!BRIEF_TRAILING_ELLIPSIS.test(concise)) return concise;
+	const head = concise.replace(BRIEF_TRAILING_ELLIPSIS, "");
+	if (head.trim().length < BRIEF_PREFIX_FLOOR) return concise;
+	const at = durable.lastIndexOf(head);
+	if (at < 0) return concise;
+	const full = durable.slice(at);
+	// Recovery must only ever ADD text: a suffix no longer than the head means
+	// the row held nothing past what the wire already sent.
+	return full.length > head.length ? full : concise;
 }
 
 /**
@@ -2466,7 +2503,18 @@ export function briefIsInTranscript(
 		// A short prefix is a coincidence (`Run`, `Check the`), not a copy of the
 		// same instruction: the floor is what stops a two-word record from
 		// silencing a paragraph the reader still needs.
-		return head.length >= BRIEF_PREFIX_FLOOR && wanted.startsWith(head);
+		if (head.length >= BRIEF_PREFIX_FLOOR && wanted.startsWith(head)) {
+			return true;
+		}
+		// The converse: `recoverClippedBrief` now paints the WHOLE brief while
+		// `row.brief` is still the wire's clipped copy, so the painted row is
+		// the longer of the two and the clipped brief is its prefix.
+		const wantedHead = wanted.replace(BRIEF_TRAILING_ELLIPSIS, "").trim();
+		return (
+			wantedHead !== wanted &&
+			wantedHead.length >= BRIEF_PREFIX_FLOOR &&
+			painted.startsWith(wantedHead)
+		);
 	});
 }
 

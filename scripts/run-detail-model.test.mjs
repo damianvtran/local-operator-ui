@@ -88,6 +88,7 @@ const {
 	MONITOR_ROW_CAP,
 	WAKE_ROW_CAP,
 	reconcileLaunchTurns,
+	recoverClippedBrief,
 	retimeChildRow,
 	retimeRunDetails,
 	tallyBudget,
@@ -2123,6 +2124,60 @@ test("the launch turn is reconciled, and only the ids the map vouches for", () =
 		}),
 		reconciled,
 	);
+});
+
+/*
+ * The operator's report: a reader opened on a ~3-line bubble ending `…` with no
+ * Show more, because the wire clips `launch_prompts` to 200 characters and the
+ * reconciler painted that clip over a durable row that held the whole brief.
+ * The durable row is `preamble + prompt` (`_effective_prompt` appends the
+ * authored prompt last), so the full brief is recovered from it — lazily, from
+ * the transcript page the reader already fetches — and the user bubble's own
+ * clamp and Show more then apply to the real text.
+ */
+test("a wire-clipped launch prompt is recovered whole from the durable row", () => {
+	const brief = [
+		"Operator request (verbatim core): fix the run details prompt.",
+		"",
+		...Array.from({ length: 20 }, (_, i) => `- step ${i + 1}: do the thing`),
+		"",
+		"Deliver: **a PR** with frames.",
+	].join("\n");
+	const clipped = `${brief.slice(0, 200)}…`;
+	const records = [
+		{
+			kind: "user",
+			id: "subagent-launch:job-1",
+			ts: 1,
+			// The preamble quotes the opening words, which is why the LAST match wins.
+			text: `[team: lopdev]\nYou are coder. Operator request (verbatim core): fix\n\n${brief}`,
+			images: [],
+		},
+	];
+	const reconciled = reconcileLaunchTurns(records, {
+		"subagent-launch:job-1": clipped,
+	});
+	assert.equal(reconciled[0].text, brief, "the whole brief, preamble dropped");
+	assert.equal(recoverClippedBrief(clipped, records[0].text), brief);
+	// The brief block must not reappear: `row.brief` is still the clipped copy.
+	assert.equal(briefIsInTranscript(reconciled, clipped), true);
+	// Stable identity once recovered, so the memoised transcript does not repaint.
+	assert.equal(
+		reconcileLaunchTurns(reconciled, { "subagent-launch:job-1": clipped }),
+		reconciled,
+	);
+
+	// Fallbacks keep the concise value exactly as before — never the preamble:
+	// an unclipped value, the bare elided placeholder, a head under the floor,
+	// and a head the row does not contain.
+	assert.equal(
+		recoverClippedBrief("Check the ledger", "P\n\nCheck the ledger and more"),
+		"Check the ledger",
+	);
+	assert.equal(recoverClippedBrief("…", records[0].text), "…");
+	assert.equal(recoverClippedBrief("Operator…", records[0].text), "Operator…");
+	const foreign = `${"Something the row never said ".repeat(3)}…`;
+	assert.equal(recoverClippedBrief(foreign, records[0].text), foreign);
 });
 
 test("the brief folds to a summary that states what expanding costs", () => {
