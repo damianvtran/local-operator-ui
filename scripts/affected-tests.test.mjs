@@ -14,6 +14,7 @@ import {
 	GUARD_TESTS,
 	buildGraph,
 	evidenceMarkdown,
+	literalPins,
 	mentionedPaths,
 	parseArgs,
 	parseCounts,
@@ -86,6 +87,44 @@ test("an import chain, an alias and a join() mention each reach the test", () =>
 	assert.deepEqual(orphan.affected, []);
 	assert.deepEqual(orphan.unreached, ["src/renderer/src/orphan.ts"]);
 	assert.ok(!orphan.files.includes("scripts/widget.test.mjs"));
+});
+
+test("a test that pins a file's text by path, suffix or name is selected without an import", () => {
+	// The shapes of the real escapes: shell-path.test.mjs read src/main/index.ts
+	// as text; default-on-banner.test.mjs pinned team-bridge-page.tsx by a
+	// partial path; picker tests named session-model by its bare stem.
+	const root = tree({
+		"src/main/index.ts": "export {};\n",
+		"src/renderer/src/features/team-bridge/team-bridge-page.tsx":
+			"export {};\n",
+		"src/renderer/src/features/chat/session-model.ts": "export {};\n",
+		"src/renderer/src/features/chat/index.ts": "export {};\n",
+		"scripts/shell-path.test.mjs":
+			'const src = readFileSync(join(root, "src/main/index.ts"), "utf8");\n',
+		"scripts/banner.test.mjs": "read(`team-bridge/team-bridge-page.tsx`);\n",
+		"scripts/picker.test.mjs": 'const owner = "session-model";\n',
+		"scripts/generic.test.mjs": 'const name = "index";\n',
+	});
+	const graph = buildGraph(root);
+	const inventory = [
+		"scripts/banner.test.mjs",
+		"scripts/generic.test.mjs",
+		"scripts/picker.test.mjs",
+		"scripts/shell-path.test.mjs",
+	];
+	const pick = (path) =>
+		selectTests([path], { graph, inventory, exempt: {} }).affected;
+	assert.deepEqual(pick("src/main/index.ts"), ["scripts/shell-path.test.mjs"]);
+	assert.deepEqual(
+		pick("src/renderer/src/features/team-bridge/team-bridge-page.tsx"),
+		["scripts/banner.test.mjs"],
+	);
+	assert.deepEqual(pick("src/renderer/src/features/chat/session-model.ts"), [
+		"scripts/picker.test.mjs",
+	]);
+	// A generic stem is not a pin: `"index"` names no file in particular.
+	assert.deepEqual(pick("src/renderer/src/features/chat/index.ts"), []);
+	assert.deepEqual(literalPins("src/main/index.ts", new Map()), []);
 });
 
 test("guards are always selected; broad and inert paths are classified, not mapped", () => {

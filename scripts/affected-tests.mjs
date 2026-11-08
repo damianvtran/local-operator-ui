@@ -32,7 +32,11 @@
  *     `join(root, "src", "main", ...)` of literals, or a bare sibling file name
  *     (`join(import.meta.dirname, "x.mjs")`). A mentioned DIRECTORY covers
  *     everything under it - that is how tree walks (i18n literal guards and the
- *     like) say what they read.
+ *     like) say what they read;
+ *   - LITERAL PINS (`literalPins`): a test whose own text carries the changed
+ *     file's path, path without extension, trailing path segments or
+ *     non-generic basename as a string literal - the "reads src as text and
+ *     pins a literal" class, 7 of 13 real red UI PR runs.
  *
  * WHAT IT REFUSES TO DO: fall back to the whole suite silently. The graph is an
  * under-approximation (a path built at runtime is invisible to it), so it says
@@ -67,11 +71,23 @@ const RUNNER = "scripts/run-desktop-tests.mjs";
  */
 export const GUARD_TESTS = Object.freeze([
 	"scripts/affected-tests.test.mjs",
+	// Tree-wide row-state source audit ("no template literal builds a row state
+	// or a rung beside a substitution", ~line 2875): it red fix/prompt-markdown-
+	// fidelity (run 42057109287) over a canvas file the PR's own tests never
+	// named. It shares its file with 26 unit tests; the whole file is the guard
+	// until that audit is split out (59 s alone at load ~260, 2026-11-07).
+	"scripts/chat-sidebar-selection.test.mjs",
 	"scripts/ci-log-guard.test.mjs",
 	"scripts/desktop-test-memory-guard.test.mjs",
 	"scripts/focus-stability-ci-policy.test.mjs",
 	"scripts/lane-registration.test.mjs",
+	// Spawn-site inventories: every new Electron/evidence rig must register.
+	// Three of 13 real red UI PR runs (browser-google-signin-trust,
+	// browser-clipboard-write, notifications-glass-composition) were this
+	// class, and a diff-scoped selection cannot see a NEW file's absence.
+	"scripts/notification-spawn-sites.test.mjs",
 	"scripts/run-desktop-tests.test.mjs",
+	"scripts/telemetry-spawn-sites.test.mjs",
 	"scripts/test-inventory.test.mjs",
 ]);
 
@@ -135,6 +151,8 @@ const SPECIFIER =
 	/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*|\bnew URL\s*\(\s*)["'`]([^"'`\n]+)["'`]/g;
 const PATH_LITERAL =
 	/["'`]((?:\.\.\/)*(?:src|scripts|bin|i18n|docs|resources|build|\.github)\/[\w@./-]+)["'`]/g;
+// Plain string literals (no escapes, no `${}`), the unit `literalPins` reads.
+const STRING_LITERAL = /(["'`])([^"'`\\\n$]{1,300})\1/g;
 const SIBLING_LITERAL =
 	/["'`]([\w.-]+\.(?:mjs|cjs|js|sh|json|html|tsx?))["'`]/g;
 const JOIN_CALL =
@@ -236,9 +254,15 @@ export function buildGraph(root = ROOT) {
 		if (!map.has(key)) map.set(key, new Set());
 		map.get(key).add(value);
 	};
+	const testLiterals = new Map();
 	for (const file of files) {
 		if (!PARSED.test(file)) continue;
 		const text = stripComments(readFileSync(join(root, file), "utf8"));
+		if (TEST_FILE.test(file))
+			testLiterals.set(
+				file,
+				new Set([...text.matchAll(STRING_LITERAL)].map((m) => m[2])),
+			);
 		for (const match of text.matchAll(SPECIFIER)) {
 			const target = resolveSpecifier(file, match[1], exists);
 			if (target && target !== file) add(importers, target, file);
@@ -266,7 +290,7 @@ export function buildGraph(root = ROOT) {
 				add(dirMentions, path, file);
 		}
 	}
-	return { importers, dirMentions };
+	return { importers, dirMentions, testLiterals };
 }
 
 /**
@@ -289,6 +313,64 @@ const COARSE_DIRS = new Set([
 	"src/shared",
 	...Object.values(ALIASES),
 ]);
+
+/**
+ * Stems too common to mean one file: `"index"` or `"types"` written in a test
+ * names nothing in particular, so only their full paths count as a pin.
+ */
+const GENERIC_STEMS = new Set([
+	"index",
+	"main",
+	"types",
+	"utils",
+	"constants",
+	"styles",
+	"config",
+	"preload",
+	"app",
+	"test",
+]);
+
+/**
+ * The tests whose OWN source text pins `path` with a string literal: the full
+ * repository path, the path without its extension, its last segments
+ * (`"team-bridge/team-bridge-page.tsx"`), or - for a non-generic name - the bare
+ * basename with or without extension.
+ *
+ * WHY, measured rather than assumed: of 13 real red UI pull-request runs
+ * (2026-10..11), 7 were caught by a test that READS a source file as text and
+ * pins literals in it (`shell-path.test.mjs` over `src/main/index.ts`,
+ * `default-on-banner.test.mjs` over `team-bridge-page.tsx`, ...). No import
+ * edge connects those tests to the file, and their names say nothing about it,
+ * so an import graph alone misses every one. Direct only: a pin is a statement
+ * about THAT file's text, which a change to one of its importers cannot break.
+ */
+export function literalPins(path, testLiterals) {
+	if (!testLiterals) return [];
+	const base = posix.basename(path);
+	const stem = base.replace(/\.[^.]+$/, "");
+	const noExt = path.replace(/\.[^./]+$/, "");
+	const bare =
+		stem.length >= 4 && !GENERIC_STEMS.has(stem) ? new Set([base, stem]) : null;
+	const hits = [];
+	for (const [test, literals] of testLiterals) {
+		if (test === path) continue;
+		for (const raw of literals) {
+			const literal = raw.replace(/^(?:\.\.?\/)+/, "");
+			if (
+				literal === path ||
+				literal === noExt ||
+				(literal.includes("/") &&
+					(path.endsWith(`/${literal}`) || noExt.endsWith(`/${literal}`))) ||
+				bare?.has(literal)
+			) {
+				hits.push(test);
+				break;
+			}
+		}
+	}
+	return hits;
+}
 
 /** The changed paths that are reachable from each test; see the module docstring. */
 export function selectTests(changed, { graph, inventory, exempt = EXEMPT }) {
@@ -326,6 +408,7 @@ export function selectTests(changed, { graph, inventory, exempt = EXEMPT }) {
 					queue.push(file);
 				}
 		}
+		for (const test of literalPins(path, graph.testLiterals)) seen.add(test);
 		let reached = false;
 		for (const node of seen) {
 			const into = tests.has(node)
