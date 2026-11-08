@@ -1961,7 +1961,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -2361,7 +2361,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -3368,7 +3368,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -3648,7 +3648,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -3832,7 +3832,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -6393,7 +6393,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -12602,7 +12603,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -13026,7 +13027,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -14080,7 +14081,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -14431,7 +14432,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -14615,7 +14616,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -17209,7 +17210,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -23699,7 +23701,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -24123,7 +24125,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -25154,7 +25156,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -25505,7 +25507,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -25689,7 +25691,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -28284,7 +28286,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -34490,7 +34493,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a; remediation of the audited keys at 011c0f4f4ca, session 2a835d4a8c42 job bf4831b9c2ca)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -34867,7 +34870,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -35901,7 +35904,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -36254,7 +36257,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -36438,7 +36441,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -39018,7 +39021,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -45207,7 +45211,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -45608,7 +45612,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb; remediation of the audited keys at 011c0f4f4ca, session 634c73fee13a job 70c2d5eecc5d)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb; remediation of the audited keys at 011c0f4f4ca, session 634c73fee13a job 70c2d5eecc5d)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -46640,7 +46644,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -46993,7 +46997,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -47177,7 +47181,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -49786,7 +49790,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -55827,7 +55832,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -56238,7 +56243,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -57304,7 +57309,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -57691,7 +57696,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -57875,7 +57880,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -60588,7 +60593,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -67256,7 +67262,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -67667,7 +67673,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc; remediation of the audited keys at 011c0f4f4ca, session 969fd4e90925 job bdffc4284eb8)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc; remediation of the audited keys at 011c0f4f4ca, session 969fd4e90925 job bdffc4284eb8)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -68735,7 +68741,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -69104,7 +69110,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
 				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -69288,7 +69294,7 @@
 				"agent": "task",
 				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
 				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}."
+				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -72162,7 +72168,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -82609,7 +82616,8 @@
 			"translator": {
 				"agent": "ui1549-coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-10-31"
+				"date": "2026-10-31",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -82665,7 +82673,8 @@
 			"translator": {
 				"agent": "ui1549-coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-10-31"
+				"date": "2026-10-31",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -82721,7 +82730,8 @@
 			"translator": {
 				"agent": "ui1549-coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-10-31"
+				"date": "2026-10-31",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -82777,7 +82787,8 @@
 			"translator": {
 				"agent": "ui1549-coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-10-31"
+				"date": "2026-10-31",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -82833,7 +82844,8 @@
 			"translator": {
 				"agent": "ui1549-coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-10-31"
+				"date": "2026-10-31",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -82912,7 +82924,8 @@
 			"translator": {
 				"agent": "ui1549-coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-10-31"
+				"date": "2026-10-31",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
@@ -82968,7 +82981,8 @@
 			"translator": {
 				"agent": "ui1549-coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-10-31"
+				"date": "2026-10-31",
+				"note": "PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
 			},
 			"auditors": [
 				{
