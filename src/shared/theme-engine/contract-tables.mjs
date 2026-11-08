@@ -2415,33 +2415,25 @@ export const GRAPHICS = [
 	},
 	{
 		/*
-		 * THE RUNNING-SUBAGENT MARK (`chat-session-status.tsx`'s
-		 * `SubagentRunningMark`, issue #840; the operator-ACKed trio since 2026-10-06):
-		 * the row's three equal accent beads, drawn on the `delegating` rung's primary
-		 * slot and on every sidebar row whose own children are at work. It replaced a
-		 * `Share2` glyph - and then its own first shape, a single filled disc, which
-		 * read as a generic "record" dot rather than as children - and it is HERE
-		 * rather than in `CONTROLS` for this table's own reason: a cluster of beads is
-		 * a graphic object - read at a glance, never operated - so what it owes is the
-		 * 3:1 non-text floor against what is behind it, not a control's edge.
+		 * THE RUNNING LANE (`chat-session-status.tsx`'s `BackgroundWorkLane`,
+		 * 2026-11-07), which replaced the running-subagent trio of #840: a static
+		 * 10x2px accent bar under the status cell (or the avatar) of every sidebar
+		 * row whose session still has background work - a subagent, a job, a wait.
+		 * It is a graphic object, read at a glance and never operated, so it owes the
+		 * SC 1.4.11 3:1 non-text floor against what is behind it.
 		 *
-		 * THE GROUNDS ARE THE ONES THE MARK CAN BE PAINTED ON, and they are the same
-		 * three the session row's ask mark lists: the sidebar panel's `surface`, and the
-		 * two STATE grounds its rows paint - `rowSelected` on the current conversation
-		 * and `rowHover` under the pointer (`chat-sidebar.tsx`'s `rowStyle`/`rowCurrent`).
-		 * The `delegating` rung draws it inside the row's status slot, on the same three.
-		 * Nothing paints this mark on `canvas` or `elevated`.
+		 * THE GROUNDS are the three a sidebar row paints: the panel's `surface`, and
+		 * `rowSelected` / `rowHover` (`chat-sidebar.tsx`'s `rowStyle`/`rowCurrent`).
+		 * Nothing paints the lane on `canvas` or `elevated`.
 		 *
-		 * THE INK IS `accent`, which is the liveness role the `busy` spinner already
-		 * spends and the role the mark wore as a glyph, so this row changes nothing about
-		 * the colour - what it pins is that the MARK (small solid shapes, no stroke to
-		 * help them, and in three palettes at ΔE00 0.00 against `success`, so separated
-		 * from the unread mark by SILHOUETTE alone) still clears the floor where the
-		 * glyph did: 4.24:1 at worst (`tokyoNight` on `rowSelected`), the figure the ask
-		 * mark's row above quotes. A mark with no stroke has less to read by than a
-		 * glyph, which is why the pair is stated rather than inherited.
+		 * THE INK IS `accent`, the liveness role the `busy` spinner spends and the
+		 * trio wore, so the pair is unchanged; it is stated rather than inherited
+		 * because a 2px bar has even less to read by than the beads did. Designer's
+		 * measurement: localOperatorLight 5.14 / 4.74 / 4.53, localOperatorDark
+		 * 7.33 / 6.91 / 6.61 (surface / hover / selected), worst palette duskfox on
+		 * rowSelected 4.43:1 - all above the floor.
 		 */
-		name: "session row running-subagent mark",
+		name: "session row running lane",
 		on: ["surface", "rowSelected", "rowHover"],
 		fg: "accent",
 	},

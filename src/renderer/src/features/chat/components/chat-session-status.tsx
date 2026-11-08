@@ -17,7 +17,6 @@ import {
 	MessageCircleQuestion,
 	MessageSquare,
 	Pause,
-	Timer,
 	WifiOff,
 } from "lucide-react";
 import {
@@ -25,10 +24,17 @@ import {
 	peerUncertainLabel,
 } from "../../mesh/peer-presence";
 import { asksOutstandingLabel } from "../ask-queue";
-import { hasWork, subagentMarks } from "../chat-session-subagents";
+import {
+	RESTING_CODES,
+	backgroundWorkClause,
+	clauseReplacesLabel,
+	hasBackgroundWork,
+} from "../chat-session-subagents";
 
-/** Resting codes that legitimately render as a plain ring. */
-const KNOWN_RESTING = new Set(["idle", "recent"]);
+/** Resting codes that legitimately render as a plain ring. One set with the
+ * one that decides when the background-work clause replaces the label, so the
+ * ring and the sentence agree on what "resting" means. */
+const KNOWN_RESTING = RESTING_CODES;
 
 /**
  * The OUTSTANDING-ASKS mark for a conversation row (design §5.0).
@@ -154,154 +160,48 @@ export function ChatAsksOutstanding({
 }
 
 /**
- * THE RUNNING-SUBAGENT MARK: three equal beads in the liveness ink - the
- * "trio" (issue #840; the trio itself operator-ACKed 2026-10-06).
+ * The RUNNING LANE: "this session still has work running" (a subagent, a
+ * background job or a wait), drawn UNDER the status cell rather than in it.
  *
- * WHY IT MOVED OFF THE GLYPH. It used to be `Share2` in `text-accent`, at BOTH
- * this component's `delegating` rung and the sidebar row's own running mark, so
- * one glyph meant "delegated work" on two surfaces. The operator's report is
- * that it does not read as a state where it is drawn: a share glyph in the row
- * beside the row's OWN act buttons reads as AN ACTION, and a reader can click a
- * control they think exists and get nothing. The fix is to leave the icon
- * vocabulary entirely - the mark is a SHAPE now, not a glyph, so there is no
- * control for it to be mistaken for.
+ * WHY (operator report, 2026-11-07): a session whose turn had ended with a
+ * subagent and a job still at work read as idle. The lane is ADDED under every
+ * status glyph and never replaces it: the code says what the TURN did (a check,
+ * an approval bubble, a spinner), the lane says children are still busy - two
+ * facts, two channels. It retires the three-bead trio, which only one code
+ * could draw (#840/#1503) and which the operator ruled out as a bead cluster.
  *
- * WHY IT IS A TRIO AND NOT A DOT. The shape shipped as a single filled disc
- * (`size-2 rounded-full bg-current`) and the operator's report on THAT is the
- * change this docstring now records: one disc at 8px states "something is here"
- * and not "CHILDREN are here", and it sits in a family the app already spends
- * on unrelated facts (unread, device presence, recording). Three equal beads
- * state plurality - the mark is about the row's subagents - without inventing a
- * parent figure: the ROW is the parent, so a centred larger apex over a pair
- * (the head-and-shoulders read) would draw a parent that is already on screen as
- * the row itself. `Users`, the collision the design round named, is exactly that
- * figure, and three equal beads share no silhouette with it.
- *
- * THE GEOMETRY, AND THE LESSON THAT FIXED IT. Three equal filled circles on the
- * 24-unit grid - `c(12,6.8) r3.9`, `c(7,17.4) r3.9`, `c(17,17.4) r3.9` - in the
- * ink they inherit (`currentColor`), inside an `svg viewBox="0 0 24 24"` that
- * fills the caller's box. THE SPACING IS THE DESIGN, NOT A DETAIL: the round-1
- * candidate was the same beads with a larger apex and 4.43px between the lower
- * centres against radii summing to 4.32px, so the children OVERLAPPED by 0.12px
- * at 14px - they fused into one mass whose component count flipped between 1 and
- * 2 with the box's sub-pixel phase, which is not a property a shipped indicator
- * can carry. These three measure n=3 at every one of the 25 phases and at every
- * real x the app can place the box (measured on captured frames: x159 at the
- * 240px floor, x177, x199 and x36 in the leading slot). Count stability across
- * phases is the acceptance property; closing the gap to buy mass breaks it.
- *
- * THE INK IS `currentColor`, the way the disc took `bg-current`: the caller
- * states `text-accent` (the liveness ink `busy` uses), so the ink chain above
- * stays the single place a code's colour is decided, and the mark wears whatever
- * the family of codes paints there. THE SILHOUETTE IS WHAT SEPARATES IT FROM THE
- * UNREAD MARK, not the colour: `accent` and `success` are ΔE00 0.00 in three
- * palettes (`monokai`, `everforest`, `everforestLight` - re-derived over all
- * fifty-nine), so on those grounds a three-bead cluster and the `Check` beside
- * it are told apart by shape alone, which they are.
- *
- * THE BOX IS THE CALLER'S; THE MARK FILLS IT. `size-full` on the svg against the
- * caller's box gives ink of about 10x10px in the sidebar row's `size-3.5` (the
- * icon ramp's `sm` step the mark already occupied, so the row's footprint and
- * the mark's NOTICEABILITY - the 2026-09-29 fix that made running subagents
- * visible at all - are both unchanged), and about 12x12px in the `delegating`
- * rung's `size-4`, which fills the status slot every other code's glyph occupies
- * (agent review round 1, N2: this note used to claim the `size-3.5` box
- * unconditionally, which is true of one call site and not the other). Coverage
- * mass is 91-94% of the discarded dot's on the same ground, so noticeability is
- * held rather than traded.
- *
- * THE TWO SLOTS, AND WHY THEY DIFFER (design round 1's D7). The same mark is the
- * `delegating` rung's PRIMARY mark, drawn in the LEADING status slot where every
- * status code's glyph goes, and the sidebar row's running mark, drawn in the
- * TRAILING slot after the title. That is deliberate and the frames show it
- * working: in the rung it says what the PARENT's own turn is doing (delegated
- * work, none of it the row's), and in the row it says what the row's CHILDREN
- * are doing beside the row's own act buttons. One vocabulary, two meanings that
- * a reader never has to tell apart, because a row is in one state or the other.
- * The position is the only thing separating them, so the local text is the
- * caller's `sr-only` name (`delegating`, or the count sentence) - recorded here
- * so the next reader does not re-litigate the slot.
- *
- * IT IS STATIC, and that is a rule rather than an omission: `busy` owns the
- * spinner in the leading slot, and two animated marks in one column would make
- * two different states read as one motion. A running child is a fact, not a
- * progress bar.
- *
- * THE COLLISION CHECK, against the status family this slot draws (SC 1.4.11 - the
- * mark's ink is `accent` inside the sidebar row's 14px box, on
- * `surface`/`row-hover`/`row-selected`, which is the pair the contract's
- * GRAPHICS row is derived from; worst case 4.24:1, `tokyoNight` on
- * `row-selected`, clearing the 3:1 graphic floor):
- *
- *  - `Circle` (the resting ring) and `LoaderCircle` (`busy`) are RINGS - outlined,
- *    1.5px of `ink-dim`/`accent` with an interior the ground shows through. Three
- *    SOLID beads share no silhouette with either, at 14px or at 16px.
- *  - `Check`, `Clock`, `MessageSquare`, `Hourglass`, `Pause` and
- *    `EqualApproximately` are all angular or stroke-built; none is a cluster of
- *    discs.
- *  - `Users` is stroked, muted and a two-figure glyph, and the trio is three
- *    equal solid beads with no apex - the figure read the design round refused.
- *  - the amber class (`CircleAlert`, `Clock`) is where the module's own
- *    `wedged` note already forbids a second RING; the trio is not one.
- *
- * THE ONE RESIDUAL PUT ON THE RECORD, not argued away: three accent beads is also
- * the arrangement of a decorative cluster (a sparkle, a "∴"). It does not appear
- * at 1x in the two frames where the read is actually made (the list, and the
- * status matrix), and no motif in this family escapes it; it is accepted given
- * the brief's "subtle".
- *
- * IT IS DIGIT-FREE. The count lives in `status.label` (the backend's
- * "2 subagents running - 1 queued"), which this component renders into its
- * `sr-only` name and the row's button reads for its tooltip; a numeral beside
- * the mark would be read text on a 12px step that `accent` cannot carry on every
- * ground the row can sit on, and it would reflow the row as children start and
- * finish (see `ChatAsksOutstanding`'s D1 note). The count's home is the tooltip
- * and the `sr-only` sentence, where the exact numbers already are.
- *
- * KEEPING IT STRUCTURED. Both call sites render THIS component, so the design
- * round can iterate one place and the two surfaces cannot drift apart again.
+ * DESIGN CONSTRAINTS (designer spec "running lane", candidate A):
+ *  - 10x2 CSS px, 1px radius, centred under the 16px cell, `absolute` inside it,
+ *    so the cell box, the row height and the title edge never move when work
+ *    starts or ends (sidebar-row-space s2);
+ *  - `currentColor` in `text-accent` (the liveness role `busy` uses), drawn as
+ *    an SVG rect because a `background-color` span vanishes in forced-colors;
+ *  - `forced-colors:text-[CanvasText]`, the notification dot's convention:
+ *    Chromium does NOT force `color` inside an SVG, so without it the lane
+ *    kept the theme's accent on the system Canvas - measured in the D2 frame
+ *    (design review round 1), where dark's #38c96a on a light Canvas would sit
+ *    near 2:1. CanvasText is the system's own ink against that Canvas;
+ *  - static: `busy` owns motion in this column, and a fade would be a frame
+ *    where the row has re-filed but its lane has not.
+ *  - `aria-hidden`: the row's sentence carries the clause once
+ *    (`backgroundWorkClause`).
+ * `data-background-work` is the rig/story hook that counts it.
  */
-export function SubagentRunningMark({
-	className,
-	mark,
-}: {
-	/**
-	 * REQUIRED, because the box is load-bearing rather than decorative (agent review round 1, NIT 1). The
-	 * mark is an `size-full` svg now, so `width/height: 100%` needs a definite box to resolve against -
-	 * the disc it replaced was `size-2` and sized itself. Both call sites pass one (the sidebar row's
-	 * `size-3.5`, the `delegating` rung's `size-4`), and `cn` keeps the caller's class authoritative; the
-	 * type says so rather than leaving the next call site to discover an invisible mark at runtime.
-	 */
-	className: string;
-	/** The rig/test hook (`data-subagent-mark`): "this mark stands for the ROW's own running children". The one call site that draws the mark - the row's status cell - passes it, which is what its readers (`scripts/session-switch.tsx`, the sidebar rigs) count. */
-	mark?: string;
-}) {
+export function BackgroundWorkLane({ className }: { className?: string }) {
 	return (
-		<span
+		<svg
 			aria-hidden="true"
-			data-subagent-mark={mark}
-			className={cn("flex shrink-0 items-center justify-center", className)}
+			data-background-work=""
+			viewBox="0 0 10 2"
+			width="10"
+			height="2"
+			className={cn(
+				"pointer-events-none absolute start-[3px] top-[calc(100%+3px)] text-accent forced-colors:text-[CanvasText]",
+				className,
+			)}
 		>
-			{/*
-			 * `currentColor`, not a `bg-*`/`fill-*` role: the beads wear the INK their
-			 * caller states (`text-accent` - the liveness ink, the one `busy` uses), so
-			 * the ink chain above stays the single place a code's colour is decided.
-			 * `size-full` hands the box's size straight to the viewBox, so the caller's
-			 * class alone decides how big the mark is drawn (see the docstring).
-			 */}
-			<svg aria-hidden="true" viewBox="0 0 24 24" className="size-full">
-				{/*
-				 * THE THREE BEADS, AND THE SPACING IS THE DESIGN: equal radii, 24-grid
-				 * units, centre distances kept above the radii sum so the children never
-				 * fuse (the round-1 defect - see the docstring). Do not close the gap to
-				 * make the mark heavier, and do not give the apex a larger radius: the
-				 * equal triad IS the statement that these are the children.
-				 */}
-				<circle cx="12" cy="6.8" r="3.9" fill="currentColor" />
-				<circle cx="7" cy="17.4" r="3.9" fill="currentColor" />
-				<circle cx="17" cy="17.4" r="3.9" fill="currentColor" />
-			</svg>
-		</span>
+			<rect width="10" height="2" rx="1" fill="currentColor" />
+		</svg>
 	);
 }
 
@@ -366,9 +266,18 @@ export function statusSpokenText(
 	nowSeconds: number,
 	mark: ReturnType<typeof sessionStatusMark>,
 ): string {
+	/*
+	 * A RESTING LABEL YIELDS TO THE CLAUSE (design review round 1, D1): the
+	 * name says "1 subagent, 1 job running", not "Idle ... · 1 subagent, 1 job
+	 * running", in the same slot the tooltip's status line uses. The row's own
+	 * `sr-only` tail then stays silent (`clauseReplacesLabel` there too), so the
+	 * clause is heard once.
+	 */
+	const clause = backgroundWorkClause(row);
 	const label = mark.linkDown
 		? peerLinkDownLabel(row, nowSeconds)
 		: (mark.uncertainLabel ??
+			(clauseReplacesLabel(row, clause) ? clause : undefined) ??
 			statusLabelText(row) ??
 			t("ui.chat.sidebar.row.recent"));
 	return `${label}${mark.unreadMark !== null ? t("ui.chat.sidebar.row.unread_suffix") : ""}`;
@@ -391,9 +300,11 @@ export function sessionStatusMark(row: CanonicalSessionRow) {
 	const linkDown = row.locality === "remote" && row.link_down === true;
 	const reconnecting = linkDown && row.link_reconnecting === true;
 	const uncertainLabel = peerUncertainLabel(row);
-	const delegating = !uncertainLabel && !linkDown && code === "delegating";
-	const subagents = subagentMarks(row);
-	const queuedOnly = subagents.queued && !hasWork(row.subagents_running);
+	/*
+	 * Whether the lane is drawn under this row's glyph. Stale remote counts
+	 * (link down, reach unknown) answer false inside the predicate itself.
+	 */
+	const backgroundWork = hasBackgroundWork(row);
 	const unreadMark = unreadMarkKind(row);
 	// Completion is still the outcome after reading it; only its attention
 	// mark rests. Keep failures, work and pending gates independent of receipts.
@@ -450,11 +361,10 @@ export function sessionStatusMark(row: CanonicalSessionRow) {
 											? Clock
 											: code === "attached"
 												? MessageSquare
-												: // A `delegating` row never reads this chain: its glyph slot draws
-													// the RUNNING MARK instead (`SubagentRunningMark` below), because the
-													// share glyph read as an action on a row whose mark is a state
-													// (issue #840).
-													KNOWN_RESTING.has(code ?? "recent")
+												: // `delegating` rests on the ring: the running lane under the
+													// cell now says children are at work (the trio is retired).
+													code === "delegating" ||
+														KNOWN_RESTING.has(code ?? "recent")
 													? Circle
 													: HelpCircle;
 	const ink = uncertainLabel
@@ -500,20 +410,15 @@ export function sessionStatusMark(row: CanonicalSessionRow) {
 								? "text-warning"
 								: unseenCompletion
 									? "text-success"
-									: // The accent role, and STATIC on purpose: `busy` owns the spinner in
-										// this slot, and a second animated mark would make two different
-										// states read as one. Delegating is a state of the session, not
-										// activity within it, so it holds still.
-										code === "delegating"
-										? "text-accent"
-										: "text-ink-dim";
+									: // `delegating` rests in `ink-dim` like every resting ring: the
+										// accent liveness is carried by the running lane under the cell.
+										"text-ink-dim";
 	return {
 		code,
 		linkDown,
 		reconnecting,
 		uncertainLabel,
-		delegating,
-		queuedOnly,
+		backgroundWork,
 		unreadMark,
 		Icon,
 		ink,
@@ -525,55 +430,16 @@ export function ChatSessionStatus({
 	nowSeconds = Date.now() / 1000,
 }: { row: CanonicalSessionRow; nowSeconds?: number }) {
 	/*
-	 * THE ROW'S OWN CHILDREN, DRAWN IN THIS CELL RATHER THAN BESIDE THE TITLE
-	 * (first-paint completeness, 2026-10-30).
-	 *
-	 * WHY THEY MOVED HERE AT ALL. Both counts are optional on the wire and absent
-	 * means UNKNOWN, not zero, so a row can paint without them and gain them on the
-	 * next read. The trailing glyphs were `shrink-0` and the title is the row's only
-	 * `flex-1`, so a mark arriving late took its width out of the title and re-cut
-	 * the ellipsis under the reader: measured at a 264px panel, the title's clip went
-	 * 152 -> 130px and its cut column 24 -> 21 characters 1.6 s after the first
-	 * contentful frame. This box is `size-4` and drawn on every row whether or not it
-	 * holds a glyph, so a fact that arrives later changes what is IN the row and
-	 * never how much of the title is cut. Two alternatives were measured and refused:
-	 * a trailing lane reserved on every row cost 36px of every title (two titles that
-	 * had rendered whole went into ellipsis at 264), and a lane reserved only while
-	 * the counts were unknown merely turned the shrink into a regrow.
-	 *
-	 * WHICH GLYPH, AND WHY ONLY ONE CODE QUALIFIES (design round 1, D1 - BLOCKER).
-	 * The runtime already orders the facts a row can carry, and it puts child
-	 * activity near the BOTTOM: `catalog.py` ranks wedged, a parked gate, a busy or
-	 * silent runtime and an unread outcome all above `delegating`, in its own words
-	 * "the rungs above it are all LOUDER facts about the row rather than about its
-	 * children". `resume.SessionRow.delegating` is non-None whenever any child runs or
-	 * queues, so a live count only ever coexists with a LOUDER code - and a first cut
-	 * of this change asked the counts first, which meant it never ADDED a mark, it
-	 * only HID the louder one: an approval row lost its parked-gate bubble, an error
-	 * row lost its alert, an unread completion lost its check (while the bulk control
-	 * still counted it as unread), and the one animated busy row stopped animating.
-	 *
-	 * So the cell asks the CODE, not the counts: `delegating` is the one rung where
-	 * child activity IS the row's top fact, and it is the rung that already drew this
-	 * mark before the change. Every louder code keeps its own glyph, and the counts it
-	 * carries stay in the name channel (below). Under that rule the trio also stops
-	 * being ambiguous between `delegating` and "children running under another code"
-	 * (D3): only `delegating` can draw it.
-	 *
-	 * THE QUEUED STATE HAS ITS OWN SILHOUETTE (D2). It used to be an `Hourglass`,
-	 * which is the glyph of `waiting` in this same cell and was told apart by ink
-	 * alone - two states, one picture. It is a `Timer` now: still "not started yet",
-	 * and a silhouette nothing else in this cell wears.
-	 */
-	/*
-	 * THE CELL'S FACTS COME FROM THE ONE PREDICATE (see `sessionStatusMark`).
-	 * The long reasons for what each rung draws - the child counts' box, the
-	 * `delegating`-only trio, the queued silhouette, the unread level - live
-	 * there, beside the chains themselves, so this component cannot drift from
-	 * the badge that draws the same state at 10px.
+	 * ONE GLYPH PER CODE, PLUS THE LANE (2026-11-07). The cell is `size-4` on
+	 * every row whether or not work is running, so a count that arrives late
+	 * changes what is drawn and never how much of the title is cut (the
+	 * first-paint fix of 2026-10-30). Every code keeps its own glyph (#1503 D1);
+	 * background work adds `BackgroundWorkLane` under it, absolutely positioned
+	 * so the cell's box does not grow. The facts come from `sessionStatusMark`,
+	 * which the 10px badge reads too, so the two cannot drift.
 	 */
 	const mark = sessionStatusMark(row);
-	const { Icon, ink, delegating, queuedOnly } = mark;
+	const { Icon, ink, backgroundWork } = mark;
 
 	return (
 		/*
@@ -587,45 +453,15 @@ export function ChatSessionStatus({
 		 * the whole row (including the mark), and the `sr-only` span below carries the
 		 * same words to the accessibility tree.
 		 */
-		<span className="flex size-4 shrink-0">
-			{delegating ? (
-				queuedOnly ? (
-					/*
-					 * A QUEUE WITH NOTHING RUNNING is the one child fact the trio cannot
-					 * carry, so it takes the cell - and it takes it by the same rule as the
-					 * trio: only on the rung whose top fact is what its children are doing.
-					 */
-					<Timer
-						aria-hidden="true"
-						data-subagent-mark="queued"
-						className="size-4 text-ink-muted"
-					/>
-				) : (
-					<SubagentRunningMark
-						className={cn("size-4", ink)}
-						/*
-						 * THE HOOK IS PASSED HERE (agent review round 1, R1-1). Its own rule used to
-						 * withhold it on this rung, because the rung shared the component with the
-						 * row's trailing indicator and the hook had to mean "the ROW's own running
-						 * children" rather than "this row's status rung". The fusion leaves ONE place
-						 * the mark can be drawn, and there it always means exactly that, so the
-						 * attribute belongs on it - `scripts/session-switch.tsx` counts the cue by
-						 * it, and a hook the product never renders is a reader that reports zero.
-						 */
-						mark="running"
-					/>
-				)
-			) : (
-				/*
-				 * EVERY OTHER CODE KEEPS ITS OWN GLYPH (D1). A row can carry a live child
-				 * count under an approval, an error, an unread completion or a spinner, and
-				 * in every one of those the child count is the quieter fact: the runtime
-				 * ranks it below them, the row's own sentence still carries it, and hiding
-				 * the louder glyph to show it turns "waiting for you" into "work in
-				 * progress".
-				 */
-				<Icon className={cn("size-4", ink)} aria-hidden="true" />
-			)}
+		<span className="relative flex size-4 shrink-0">
+			{/*
+			 * EVERY CODE KEEPS ITS OWN GLYPH (#1503 D1), and background work ADDS the
+			 * lane beneath it rather than taking the cell: an approval, an error or an
+			 * unread completion is the louder fact, and the lane is the quieter one
+			 * that must not hide it.
+			 */}
+			<Icon className={cn("size-4", ink)} aria-hidden="true" />
+			{backgroundWork && <BackgroundWorkLane />}
 			<span className="sr-only">{statusSpokenText(row, nowSeconds, mark)}</span>
 		</span>
 	);
@@ -660,7 +496,7 @@ export function ChatSessionStatusBadge({
 	row: CanonicalSessionRow;
 	className?: string;
 }) {
-	const { Icon, ink, delegating, queuedOnly } = sessionStatusMark(row);
+	const { Icon, ink } = sessionStatusMark(row);
 	return (
 		<span
 			aria-hidden="true"
@@ -670,11 +506,8 @@ export function ChatSessionStatusBadge({
 				className,
 			)}
 		>
-			{delegating && !queuedOnly ? (
-				<SubagentRunningMark className="size-2" />
-			) : (
-				<Icon className={cn("size-2", ink)} />
-			)}
+			{/* The lane for a picture row sits under the avatar (chat-sidebar), not on this 10px plate. */}
+			<Icon className={cn("size-2", ink)} />
 		</span>
 	);
 }

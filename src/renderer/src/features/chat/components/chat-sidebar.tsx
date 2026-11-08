@@ -237,7 +237,10 @@ import {
 	searchChats,
 } from "../chat-search";
 import { pinnedRows, unpinnedRows } from "../chat-sections";
-import { subagentClause } from "../chat-session-subagents";
+import {
+	backgroundWorkClause,
+	clauseReplacesLabel,
+} from "../chat-session-subagents";
 import {
 	agentRecencyMs,
 	filterAgentRows,
@@ -4726,7 +4729,19 @@ export function ChatSidebar({
 		 * in a list that re-renders on every feed frame. One value, so the three
 		 * cannot disagree about whether a row has anything to say.
 		 */
-		const subagentSentence = subagentClause(row);
+		const backgroundClause = backgroundWorkClause(row);
+		/*
+		 * On a RESTING code the clause takes the status label's place rather than
+		 * following it (design review round 1, D1): "1 subagent, 1 job running",
+		 * never "Idle · 1 subagent, 1 job running" on a row filed under Running.
+		 * `statusSpokenText` reads the same predicate for the name's status slot,
+		 * so the tail below stays empty and the clause is heard once.
+		 */
+		const clauseIsStatus = clauseReplacesLabel(row, backgroundClause);
+		// Otherwise joined with the wire label's own `·`, which is how the tooltip
+		// line and the `sr-only` sentence both append it after what precedes them.
+		const subagentSentence =
+			backgroundClause === "" || clauseIsStatus ? "" : ` · ${backgroundClause}`;
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
@@ -4927,6 +4942,7 @@ export function ChatSidebar({
 					{row.link_down === true
 						? peerLinkDownLabel(row, listNow / 1000)
 						: (peerUncertainLabel(row) ??
+							(clauseIsStatus ? backgroundClause : undefined) ??
 							statusLabelText(row) ??
 							(synthesized.has(row.session_id)
 								? t("ui.chat.sidebar.row.search_beyond")
@@ -4941,9 +4957,10 @@ export function ChatSidebar({
 						: ""}
 					{archived ? t("ui.chat.sidebar.row.archived_suffix") : ""}
 					{/*
-					 * THE SUBAGENT CLAUSE, from the SAME helper the row's `sr-only` sentence
-					 * reads, and gated by it in exactly the same way: empty on a `delegating`
-					 * row (whose label already spells the counts) and empty with no counts.
+					 * THE BACKGROUND-WORK CLAUSE, from the SAME helper the row's `sr-only`
+					 * sentence reads, and gated by it in exactly the same way ("1 subagent,
+					 * 1 job running"; subagent counts omitted on `delegating`, whose label
+					 * already spells them; empty with no counts or a stale remote link).
 					 * The pointer channel may never be narrower than the name channel, and
 					 * this is the line that keeps it that way - the mark itself is
 					 * `aria-hidden` and carries no `title` (a nested `title` inside the row's
@@ -5198,7 +5215,7 @@ export function ChatSidebar({
 				 * clip is the one thing that pays for one of them.
 				 *
 				 * THE SUBAGENT INDICATOR USED TO SIT HERE, as two independently drawn
-				 * `shrink-0` glyphs (the three-bead `SubagentRunningMark` for a child at work,
+				 * `shrink-0` glyphs (the three-bead trio for a child at work,
 				 * a muted `Hourglass` for a child waiting for capacity). Both counts are
 				 * optional on the wire and absent means UNKNOWN rather than zero, so a row
 				 * could be painted without them and gain them on the next read - and the glyph
@@ -5217,9 +5234,9 @@ export function ChatSidebar({
 				 * 264px panel.
 				 *
 				 * THE WORDS WERE NEVER HERE: they ride the row's `sr-only` sentence and its
-				 * tooltip through `subagentClause` (below), which is the repo's "one
-				 * predicate, several channels" rule. `SubagentRunningMark` still carries the
-				 * geometry of the trio and the reasoning for its shape (issue #840).
+				 * tooltip through `backgroundWorkClause` (below), which is the repo's "one
+				 * predicate, several channels" rule; the pixels are `BackgroundWorkLane`
+				 * under the status cell (the trio of #840 is retired).
 				 */}
 				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
@@ -5345,8 +5362,8 @@ export function ChatSidebar({
 				 * screen, the attribution, then this - with the time last. The glyphs are a
 				 * second channel for the same fact, not a second fact.
 				 *
-				 * `subagentClause` returns "" on a `delegating` row, whose `status.label`
-				 * already spells the counts (the backend folds them in, and the status
+				 * `backgroundWorkClause` omits the subagent counts on a `delegating` row,
+				 * whose `status.label` already spells them (the backend folds them in, and the status
 				 * `sr-only` renders that label verbatim) - so the presence is announced
 				 * exactly once on every row, whichever channel owns it.
 				 */}

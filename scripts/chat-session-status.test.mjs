@@ -124,13 +124,10 @@ for (const [code, icon, ink] of [
 	["scheduled", "clock", "ink-dim"],
 	["attached", "message-square", "ink-dim"],
 	/*
-	 * `delegating` IS THE ONE CODE WHOSE MARK IS NOT A LUCID GLYPH (issue #840): it is
-	 * `SubagentRunningMark`, the shared three-bead mark, so its icon slot is `null` and
-	 * the assertion below reads the mark's own markup instead. The ink column is
-	 * unchanged - `accent` is the liveness ink, which the beads inherit through
-	 * `currentColor`.
+	 * `delegating` rests on the ring since the running lane (2026-11-07): the
+	 * trio of #840 is retired, and the lane under the cell carries the liveness.
 	 */
-	["delegating", null, "accent"],
+	["delegating", "circle", "ink-dim"],
 	["idle", "circle", "ink-dim"],
 	["dormant", "pause", "ink-dim"],
 	["unknown", "circle-help", "ink-dim"],
@@ -140,126 +137,26 @@ for (const [code, icon, ink] of [
 		const after = render(code, false);
 		assert.equal(after, before);
 		assert.match(after, new RegExp(`text-${ink}`));
-		if (icon === null) {
-			assert.match(after, /viewBox="0 0 24 24"/);
-			assert.equal(
-				(after.match(/fill="currentColor"/g) ?? []).length,
-				3,
-				"the mark is the three-bead trio",
-			);
-			assert.doesNotMatch(after, /lucide-/);
-		} else {
-			assert.match(after, new RegExp(`lucide-${icon}`));
-		}
+		assert.match(after, new RegExp(`lucide-${icon}`));
 	});
 }
 
 /*
  * `delegating` is the arm for a parent whose own turn is NOT running while its
- * subagents are, and the label is the whole of what it says: the backend folds
- * the counts INTO `status.label` ("2 subagents running · 1 queued") rather than
- * shipping them as a field of their own, because the count moves on the same
- * clock as the code and a count read from a slower projection could contradict
- * the glyph beside it. So the words must be the label VERBATIM, at whatever
- * count it carries - which is the only thing separating this state from the
- * unknown-code fallback a build without the arm would draw.
+ * subagents are; core folds the counts into `status.label`, so the words are
+ * the label VERBATIM. Its mark is the resting ring plus the running lane (the
+ * trio is retired), and even on an older backend with no `background_work`
+ * flag the lane is drawn, because `delegating` always implied children.
  */
-test("delegating draws the delegated-work mark and names its counts", () => {
+test("delegating draws the ring and the lane and names its counts", () => {
 	const label = "2 subagents running \u00b7 1 queued";
 	const markup = render("delegating", false, label);
-	// Its own mark, in the accent role, and NOT the unknown-code fallback: a
-	// build that had the backend's code but not this arm would draw HelpCircle.
-	// The mark is the shared three-bead trio, not a glyph, since issue #840.
-	assert.match(markup, /viewBox="0 0 24 24"/);
-	assert.doesNotMatch(markup, /lucide-/);
-	assert.match(markup, /text-accent/);
-	assert.doesNotMatch(markup, /lucide-circle-help|lucide-circle /);
-	/*
-	 * THE ACKED GEOMETRY, pinned so a future edit cannot quietly re-break it. These
-	 * three circles ARE the design: three EQUAL beads (no larger apex - that is the
-	 * `Users` figure the design round refused), and centres far enough apart that
-	 * the children never fuse. Round 1 fused: an apex-plus-pair whose lower centres
-	 * sat 4.43px apart against radii summing to 4.32px overlapped by 0.12px at 14px,
-	 * and its component count flipped between 1 and 2 with the box's sub-pixel
-	 * phase. So the radii are asserted equal and each centre distance is asserted
-	 * to exceed the radii sum, which is the property the frames measure as n=3 at
-	 * every phase and every real x.
-	 */
-	const beads = [
-		...markup.matchAll(/<circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"/g),
-	].map(([, x, y, r]) => ({ x: Number(x), y: Number(y), r: Number(r) }));
-	assert.equal(
-		beads.length,
-		3,
-		"the triad is three beads, not a badge or a pair",
-	);
-	assert.deepEqual(
-		beads.map((b) => b.r),
-		[3.9, 3.9, 3.9],
-		"equal radii: a larger apex is the head-and-shoulders figure",
-	);
-	for (let i = 0; i < beads.length; i++)
-		for (let j = i + 1; j < beads.length; j++) {
-			const d = Math.hypot(beads[i].x - beads[j].x, beads[i].y - beads[j].y);
-			assert.ok(
-				d > beads[i].r + beads[j].r,
-				`beads ${i} and ${j} clear each other (${d.toFixed(2)}px apart, radii sum ${(beads[i].r + beads[j].r).toFixed(2)}px) - fusion is the round-1 defect`,
-			);
-		}
-	assert.deepEqual(
-		beads.map((b) => [b.x, b.y]),
-		[
-			[12, 6.8],
-			[7, 17.4],
-			[17, 17.4],
-		],
-		"the operator-ACKed trio geometry",
-	);
-	// STATIC: `busy` owns the spinner in this slot, and two animated marks would
-	// make two different states read as one.
-	assert.doesNotMatch(markup, /animate-spin/);
-	// The counts ride the label, all the way into the name a screen reader hears,
-	// with no separate field for the row to fall out of step with.
-	assert.match(markup, new RegExp(`sr-only">${label}<`));
-	/*
-	 * AND NO NESTED `title`, which is the half of the label this mark must NOT
-	 * carry. The row's own button owns the tooltip for the whole row, including
-	 * this 16px square (review round 1, MINOR 1, on this very span), and the
-	 * row composes it from `row.status?.label` - so a mark that also carried the
-	 * sentence would win the nested-title rule and shadow the row's, which is
-	 * what makes the count's SECOND surface the row's tooltip and not a copy
-	 * here. Asserted on the new arm because it is the arm whose label is a
-	 * sentence rather than a token, and so the one that would tempt a title.
-	 */
-	assert.doesNotMatch(markup, /title=/);
-	// And the resting ring is NOT what it draws: `delegating` must not be
-	// normalised into `idle`/`recent` by the fallback below.
-	assert.doesNotMatch(markup, /text-ink-dim/);
+	assert.match(markup, /lucide-circle /);
+	assert.match(markup, /data-background-work=""/);
+	assert.match(markup, new RegExp(label));
+	assert.doesNotMatch(markup, /lucide-circle-help|<circle cx="12" cy="6.8"/);
 });
 
-/*
- * The separation itself, asserted as a RELATION between two rows.
- *
- * A table row proves what `wedged` draws; it cannot prove that what it draws is
- * different from `error`, and sameness is exactly what the defect was. So this
- * case renders the pair and compares them, on both channels that carry the mark:
- * the glyph and the ink. The ink half is checked as inequality rather than as two
- * literals because this product's own measurement records the two inks CONVERGING
- * under deuteranopia — the silhouettes have to differ on their own, and a test
- * that only pinned the two class names would pass with two identical marks in two
- * colours.
- *
- * WHICH OF THESE ASSERTIONS DISCRIMINATES, because one of them does not on its
- * own (QA round 1, Q-1). `notEqual` is a smoke assertion: the two rows differ in
- * their LABELS as well as their marks, so it passes for the exact regression this
- * case exists to catch — a `wedged` row wearing `error`'s silhouette in the
- * warning ink — and both reviewers had to mutate the component to establish that.
- * The discriminating pair is `match(/lucide-equal-approximately/)` with
- * `doesNotMatch(/lucide-circle-alert/)`: those two fail on such a mutant while
- * `notEqual` still passes. They are kept TOGETHER and after it, so the shape is
- * named rather than left to be inferred from a case that reads like an
- * inequality test.
- */
 test("a not-answering row is not drawn like a failed one", () => {
 	const failed = render("error", false);
 	const silent = render("wedged", false);
@@ -642,7 +539,7 @@ for (const [code, icon] of [
 		assert.equal(
 			(html.match(/fill="currentColor"/g) ?? []).length,
 			0,
-			`${code}: the three-bead trio belongs to delegating alone`,
+			`${code}: no lane without core's background_work flag`,
 		);
 		assert.doesNotMatch(html, /data-subagent-mark/);
 	});
@@ -659,72 +556,84 @@ test("an unread completion keeps its check while children run", () => {
 	assert.equal(
 		(html.match(/fill="currentColor"/g) ?? []).length,
 		0,
-		"the bulk control counted this row as unread: the check cannot be the trio",
+		"no lane without core's background_work flag; the check stays",
 	);
 });
 
-test("a running child draws the trio in the cell and carries the hook", () => {
-	const html = renderRow({
-		status: { code: "delegating", label: "2 subagents running" },
-		subagents_running: 2,
+/*
+ * THE RUNNING LANE (2026-11-07): drawn UNDER every glyph while core says
+ * `background_work`, never in place of it - geometry pinned so an edit cannot
+ * quietly grow it into the cell or move the row: 10x2, radius 1, absolute,
+ * accent ink through currentColor on an SVG rect (forced-colors survives).
+ */
+const LANE =
+	/<svg aria-hidden="true" data-background-work="" viewBox="0 0 10 2" width="10" height="2" class="[^"]*absolute[^"]*text-accent[^"]*"><rect width="10" height="2" rx="1" fill="currentColor"><\/rect><\/svg>/;
+
+for (const [code, icon] of [
+	["idle", "lucide-circle "],
+	["complete", "lucide-circle "],
+	["approval", "lucide-message-circle-question"],
+	["error", "lucide-circle-alert"],
+	["busy", "lucide-loader-circle"],
+	["attached", "lucide-message-square"],
+	["interrupted", "lucide-pause"],
+]) {
+	test(`${code} keeps its glyph and gains the lane while background work runs`, () => {
+		const html = renderRow({
+			status: { code, label: code },
+			background_work: true,
+			subagents_running: 1,
+			jobs_running: 1,
+		});
+		assert.match(html, new RegExp(icon));
+		assert.match(html, LANE);
+		assert.match(html, /relative flex size-4 shrink-0/);
 	});
-	assert.equal((html.match(/fill="currentColor"/g) ?? []).length, 3);
-	/*
-	 * THE HOOK IS THE READER'S ANCHOR (agent review round 1, R1-1): the evidence
-	 * rigs and `scripts/session-switch.tsx` count the row's children by
-	 * `[data-subagent-mark="running"]`, so a build that draws the mark without it
-	 * reads as zero everywhere.
-	 */
-	assert.match(html, /data-subagent-mark="running"/);
-	assert.doesNotMatch(html, /lucide-/);
+}
+
+test("the lane leaves with the work, in the same render", () => {
+	const html = renderRow({
+		status: { code: "idle", label: "Idle" },
+		background_work: false,
+		subagents_running: 0,
+		jobs_running: 0,
+	});
+	assert.doesNotMatch(html, /data-background-work/);
 });
 
-test("a queue with nothing running takes the cell in a shape of its own", () => {
+test("queued-only rests on the ring plus the lane (the Timer is retired)", () => {
 	const html = renderRow({
 		status: { code: "delegating", label: "1 subagent queued" },
+		background_work: true,
 		subagents_queued: 1,
 	});
-	assert.match(html, /lucide-timer/);
-	assert.match(html, /data-subagent-mark="queued"/);
-	/*
-	 * NOT `waiting`'s SILHOUETTE (design round 1, D2): the shape has to carry the
-	 * difference on its own, because the ink alone separates two states that read
-	 * alike in a 16px box.
-	 */
-	assert.doesNotMatch(html, /lucide-hourglass/);
-	assert.equal((html.match(/fill="currentColor"/g) ?? []).length, 0);
-});
-
-test("running children win the cell over a queue", () => {
-	const html = renderRow({
-		status: {
-			code: "delegating",
-			label: "2 subagents running \u00b7 1 queued",
-		},
-		subagents_running: 2,
-		subagents_queued: 1,
-	});
-	assert.equal((html.match(/fill="currentColor"/g) ?? []).length, 3);
+	assert.match(html, /lucide-circle /);
+	assert.match(html, LANE);
 	assert.doesNotMatch(html, /lucide-timer/);
-	assert.match(html, /data-subagent-mark="running"/);
 });
 
-test("a remote delegating row renders the same three-bead primary mark", () => {
-	const html = renderToStaticMarkup(
-		createElement(ChatSessionStatus, {
-			row: {
-				session_id: "remote-delegating-fixture",
-				locality: "remote",
-				owner_device: "synthetic-peer",
-				status: { code: "delegating", label: "1 subagent running" },
-				subagents_running: 1,
-			},
-		}),
+test("a remote row draws the lane; a link-down or uncertain one does not", () => {
+	const remote = {
+		session_id: "remote-fixture",
+		locality: "remote",
+		owner_device: "synthetic-peer",
+		status: { code: "idle", label: "Idle" },
+		background_work: true,
+		subagents_running: 1,
+	};
+	assert.match(
+		renderToStaticMarkup(createElement(ChatSessionStatus, { row: remote })),
+		LANE,
 	);
-	assert.equal((html.match(/<circle /g) ?? []).length, 3);
-	assert.match(html, /1 subagent running/);
-	assert.match(html, /text-accent/);
-	assert.doesNotMatch(html, /animate-spin|lucide-circle/);
+	for (const stale of [{ link_down: true }, { peer_reach: "unknown" }]) {
+		const html = renderToStaticMarkup(
+			createElement(ChatSessionStatus, {
+				row: { ...remote, ...stale },
+				nowSeconds: 340,
+			}),
+		);
+		assert.doesNotMatch(html, /data-background-work/, JSON.stringify(stale));
+	}
 });
 
 test("not-attempted remote reach does not claim idle or link loss", () => {

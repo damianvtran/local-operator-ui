@@ -487,6 +487,8 @@ export type MeshSessionRow = {
 	jobs_running?: number | null;
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
+	/** Core's derived "work still running" flag; absent on an older peer. */
+	background_work?: boolean;
 };
 
 /**
@@ -589,6 +591,9 @@ export function sessionRows(value: unknown): MeshSessionRow[] {
 			jobs_running: nullableCount(raw.jobs_running),
 			subagents_running: nullableCount(raw.subagents_running),
 			subagents_queued: nullableCount(raw.subagents_queued),
+			...(typeof raw.background_work === "boolean"
+				? { background_work: raw.background_work }
+				: {}),
 			...(status ? { status } : {}),
 			...(binding ? { binding } : {}),
 			...(openedBy ? { opened_by: openedBy } : {}),

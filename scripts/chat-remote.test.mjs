@@ -179,7 +179,7 @@ test("the sidebar draws the reserved cell, the split lines, and no separate sect
 	 */
 	const remoteClauseStart = SIDEBAR.indexOf("const remoteHost = remote");
 	const remoteClauseEnd = SIDEBAR.indexOf(
-		"const subagentSentence = subagentClause(row)",
+		"const backgroundClause = backgroundWorkClause(row)",
 	);
 	assert.ok(
 		remoteClauseStart >= 0,

@@ -150,7 +150,7 @@ export const TeamAvatarBubble: FC<TeamAvatarBubbleProps> = ({
 			/*
 			 * The hooks this change's own tests and the evidence rigs address the
 			 * bubble by, following the row's convention (`data-session-title`,
-			 * `data-subagent-mark`). The slug is the stable identity; the initials
+			 * `data-background-work`). The slug is the stable identity; the initials
 			 * are in the element's text for a DOM assertion to read.
 			 */
 			data-team-bubble

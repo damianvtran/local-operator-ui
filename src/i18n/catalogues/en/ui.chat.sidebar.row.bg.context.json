@@ -1,0 +1,54 @@
+{
+	"ui.chat.sidebar.row.bg.subagents": {
+		"role": "counted noun phrase inside the running clause",
+		"tone": "plain noun phrase, lower case, no verb",
+		"length": "Two words.",
+		"note": "Sidebar conversation row: appended once, after a ' · ' separator, to the row's hover tooltip and its screen-reader sentence when the session's own turn has ended (or is live) but it still has subagents, background jobs or waits running. Never a standalone heading. Joined with the jobs phrase by the locale's list formatter (Intl.ListFormat unit/short) and then placed into {items} of ui.chat.sidebar.row.bg.running; must read as a noun phrase, without a verb.",
+		"placeholders": {
+			"count": "number of subagents, >= 1"
+		}
+	},
+	"ui.chat.sidebar.row.bg.jobs": {
+		"role": "counted noun phrase inside the running clause",
+		"tone": "plain noun phrase, lower case, no verb",
+		"length": "Two words.",
+		"note": "Sidebar conversation row: appended once, after a ' · ' separator, to the row's hover tooltip and its screen-reader sentence when the session's own turn has ended (or is live) but it still has subagents, background jobs or waits running. Never a standalone heading. A job is a background shell/process job the agent started. Joined with the subagents phrase by the locale's list formatter and placed into {items} of ui.chat.sidebar.row.bg.running; must read as a noun phrase, without a verb.",
+		"placeholders": {
+			"count": "number of background jobs, >= 1"
+		}
+	},
+	"ui.chat.sidebar.row.bg.running": {
+		"role": "clause saying listed work is still running",
+		"tone": "status phrase, sentence fragment, no trailing punctuation",
+		"length": "One word plus the list.",
+		"note": "Sidebar conversation row: appended once, after a ' · ' separator, to the row's hover tooltip and its screen-reader sentence when the session's own turn has ended (or is live) but it still has subagents, background jobs or waits running. Never a standalone heading. English example: '1 subagent, 1 job running'. {items} is an already-localized list of counted noun phrases; word order may move it.",
+		"placeholders": {
+			"items": "localized list such as '1 subagent, 1 job'"
+		}
+	},
+	"ui.chat.sidebar.row.bg.queued": {
+		"role": "count of queued subagents after a running clause",
+		"tone": "status fragment, lower case",
+		"length": "Two words.",
+		"note": "Sidebar conversation row: appended once, after a ' · ' separator, to the row's hover tooltip and its screen-reader sentence when the session's own turn has ended (or is live) but it still has subagents, background jobs or waits running. Never a standalone heading. Follows a running clause after ' · ', so the noun is elided as in English '2 subagents running · 1 queued'.",
+		"placeholders": {
+			"count": "number of queued subagents, >= 1"
+		}
+	},
+	"ui.chat.sidebar.row.bg.subagents_queued": {
+		"role": "count of queued subagents when nothing is running",
+		"tone": "status phrase, sentence fragment",
+		"length": "Three words.",
+		"note": "Sidebar conversation row: appended once, after a ' · ' separator, to the row's hover tooltip and its screen-reader sentence when the session's own turn has ended (or is live) but it still has subagents, background jobs or waits running. Never a standalone heading. Used alone when no subagent or job is running yet: '2 subagents queued'.",
+		"placeholders": {
+			"count": "number of queued subagents, >= 1"
+		}
+	},
+	"ui.chat.sidebar.row.bg.waiting": {
+		"role": "clause when the only background fact is an armed wait",
+		"tone": "status phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Sidebar conversation row: appended once, after a ' · ' separator, to the row's hover tooltip and its screen-reader sentence when the session's own turn has ended (or is live) but it still has subagents, background jobs or waits running. Never a standalone heading. Used only when the session is waiting on background work and nothing is counted as running or queued.",
+		"placeholders": {}
+	}
+}

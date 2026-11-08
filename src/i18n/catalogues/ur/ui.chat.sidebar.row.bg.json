@@ -1,0 +1,8 @@
+{
+	"ui.chat.sidebar.row.bg.subagents": "{count, plural, one {{count, number, ::group-off} ذیلی ایجنٹ} other {{count, number, ::group-off} ذیلی ایجنٹ}}",
+	"ui.chat.sidebar.row.bg.jobs": "{count, plural, one {{count, number, ::group-off} جاب} other {{count, number, ::group-off} جابز}}",
+	"ui.chat.sidebar.row.bg.running": "{items} جاری",
+	"ui.chat.sidebar.row.bg.queued": "{count, plural, one {{count, number, ::group-off} قطار میں} other {{count, number, ::group-off} قطار میں}}",
+	"ui.chat.sidebar.row.bg.subagents_queued": "{count, plural, one {{count, number, ::group-off} ذیلی ایجنٹ قطار میں} other {{count, number, ::group-off} ذیلی ایجنٹ قطار میں}}",
+	"ui.chat.sidebar.row.bg.waiting": "پس منظر کے کام کا انتظار"
+}

@@ -7161,6 +7161,194 @@ const rowSpaceBudget = (reading) =>
  *     --backend http://127.0.0.1:18234 --backend-records /tmp/row-space-stub-records \
  *     --seed-onboarding-complete --theme localOperatorDark --out /tmp/row-space-dark
  */
+/**
+ * `--scene background-work` (evidence set `sidebar-background-work`, 2026-11-07).
+ *
+ * THE OPERATOR'S REPORT: a session whose turn had ended while a subagent and a
+ * background job still ran looked idle in the sidebar. Run against
+ * `docs/evidence/sidebar-row-space/harness/stub-daemon.mjs --late background-work
+ * --peers --late-ms <n>`: the target row boots `idle` with core's
+ * `background_work` and counts (1 subagent, 1 job), two remote rows sit on a
+ * reachable and a link-down peer, and after `--late-ms` ONE `session_status`
+ * frame zeroes the counts.
+ *
+ * `--bg-expect before` is the origin/main build: the row files by its code
+ * alone (not Running, no lane), and the scene stops after the resting frames.
+ * `--bg-expect after` also reads the 1->0 transition with an in-page
+ * per-animation-frame recorder - every (section, lane) pair the row passes
+ * through - so "no flicker" is a reading of every painted frame rather than a
+ * guess from two stills, and captures consecutive frames across it.
+ */
+async function sceneBackgroundWork(cdp) {
+	const EXPECT = argValue("--bg-expect", "after");
+	const TARGET = "b3f1a09c7d52";
+	const REMOTE = "c0ffee0a0b01";
+	const REMOTE_DOWN = "c0ffee0a0b02";
+	const stateOf = (id) =>
+		`(() => { const row = document.querySelector('[data-session-row="${id}"]'); if (!row) return null; return { section: row.closest("[data-chat-section]")?.getAttribute("data-chat-section") ?? null, lane: row.querySelector("[data-background-work]") !== null, text: (row.textContent ?? "").replace(/\\s+/g, " ").trim() }; })()`;
+	const read = async (id) => cdp.evaluate(stateOf(id));
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
+	const booted = await waitForCondition(cdp, stateOf(TARGET), 20_000);
+	check("the target row is painted", booted.ok, JSON.stringify(booted.last));
+	const remoteSeen = await waitForCondition(cdp, stateOf(REMOTE), 20_000);
+	note("remote row", JSON.stringify(remoteSeen.last));
+	await parkPointer(cdp);
+	await wait(600);
+	const rest = {
+		target: await read(TARGET),
+		remote: await read(REMOTE),
+		remoteDown: await read(REMOTE_DOWN),
+	};
+	note("resting states", JSON.stringify(rest));
+	if (EXPECT === "before") {
+		check(
+			"BEFORE: the row with background work files by its code alone",
+			rest.target?.section !== "running" && rest.target?.lane === false,
+			JSON.stringify(rest.target),
+		);
+		await captureSettled(cdp, "bg-before");
+		await hoverOver(cdp, `[data-session-row="${TARGET}"]`);
+		await wait(1200);
+		await capture(cdp, "bg-before-hover");
+		await parkPointer(cdp);
+		return;
+	}
+	check(
+		"AFTER: the idle row with 1 subagent + 1 job is under Running with the lane",
+		rest.target?.section === "running" && rest.target?.lane === true,
+		JSON.stringify(rest.target),
+	);
+	check(
+		"AFTER: the clause names the work",
+		rest.target?.text.includes("1 subagent, 1 job running") === true,
+		rest.target?.text,
+	);
+	check(
+		"AFTER: the reachable remote row is Running with the lane",
+		rest.remote?.section === "running" && rest.remote?.lane === true,
+		JSON.stringify(rest.remote),
+	);
+	check(
+		"AFTER: the link-down remote row claims no work",
+		rest.remoteDown === null ||
+			(rest.remoteDown.section !== "running" && rest.remoteDown.lane === false),
+		JSON.stringify(rest.remoteDown),
+	);
+	const laneBox = await cdp.evaluate(
+		`(() => { const row = document.querySelector('[data-session-row="${TARGET}"]'); const lane = row?.querySelector("[data-background-work]"); const cell = lane?.parentElement; const b = row?.querySelector("[data-chat-row]") ?? row; if (!lane || !cell) return null; const r = (e) => { const x = e.getBoundingClientRect(); return { x: x.x, y: x.y, w: x.width, h: x.height }; }; return { lane: r(lane), cell: r(cell), row: r(b), fill: getComputedStyle(lane).color }; })()`,
+	);
+	note("lane geometry (CSS px)", JSON.stringify(laneBox));
+	check(
+		"the lane is 10x2 under the 16px cell, inside the row",
+		laneBox !== null &&
+			laneBox.lane.w === 10 &&
+			laneBox.lane.h === 2 &&
+			laneBox.cell.w === 16 &&
+			laneBox.lane.y >= laneBox.cell.y + laneBox.cell.h &&
+			laneBox.lane.y + laneBox.lane.h <= laneBox.row.y + laneBox.row.h,
+		JSON.stringify(laneBox),
+	);
+	await captureSettled(cdp, "bg-running");
+	await hoverOver(cdp, `[data-session-row="${TARGET}"]`);
+	await wait(1200);
+	const tooltip = await cdp.evaluate(
+		`[...document.querySelectorAll('[role="tooltip"]')].map((e) => e.textContent).join(" | ")`,
+	);
+	note("tooltip under the pointer", tooltip);
+	/*
+	 * Design review round 1, D1: on a resting code the clause IS the status line,
+	 * so the tooltip never reads "Idle · 1 subagent, 1 job running" on a row the
+	 * list files under Running.
+	 */
+	check(
+		"AFTER: the resting row's tooltip states the clause alone, not 'Idle · …'",
+		tooltip.includes("1 subagent, 1 job running") &&
+			!/\b(Idle|Recent) · /u.test(tooltip),
+		tooltip,
+	);
+	await capture(cdp, "bg-running-hover");
+	await parkPointer(cdp);
+	/*
+	 * FORCED COLORS (design review round 1, D2). The lane is an SVG rect with
+	 * `fill=currentColor` precisely because a `background-color` span is erased
+	 * in forced-colors mode while `color` is forced to a system colour; this is
+	 * the frame that shows it, emulated through CDP the way the reduced-motion
+	 * legs above emulate theirs, and reset before the transition is recorded.
+	 */
+	await cdp.send("Emulation.setEmulatedMedia", {
+		features: [{ name: "forced-colors", value: "active" }],
+	});
+	await wait(400);
+	const forced = await cdp.evaluate(
+		`(() => { const lane = document.querySelector('[data-session-row="${TARGET}"] [data-background-work]'); if (!lane) return null; const r = lane.getBoundingClientRect(); const probe = document.createElement("span"); probe.style.color = "CanvasText"; document.body.append(probe); const canvasText = getComputedStyle(probe).color; probe.remove(); return { active: matchMedia("(forced-colors: active)").matches, w: r.width, h: r.height, canvasText, rectFill: getComputedStyle(lane.querySelector("rect")).fill }; })()`,
+	);
+	note("lane under forced-colors", JSON.stringify(forced));
+	check(
+		"forced-colors: the lane still paints, 10x2, in the system's CanvasText",
+		forced !== null &&
+			forced.active === true &&
+			forced.w === 10 &&
+			forced.h === 2 &&
+			forced.rectFill === forced.canvasText,
+		JSON.stringify(forced),
+	);
+	await capture(cdp, "bg-running-forced-colors");
+	await cdp.send("Emulation.setEmulatedMedia", { features: [] });
+	await wait(250);
+	/* The recorder: one sample per painted frame until the row has re-filed. */
+	await cdp.evaluate(
+		`(() => { window.__bgSamples = []; const tick = () => { const s = ${stateOf(TARGET)}; const last = window.__bgSamples.at(-1); const key = s ? s.section + "|" + s.lane : "absent"; if (!last || last.key !== key) window.__bgSamples.push({ key, at: performance.now() }); window.__bgRaf = requestAnimationFrame(tick); }; tick(); return true; })()`,
+	);
+	const left = await waitForCondition(
+		cdp,
+		`(() => { const s = ${stateOf(TARGET)}; return s !== null && s.section !== "running" && !s.lane; })()`,
+		90_000,
+		40,
+	);
+	for (let index = 0; index < 4; index += 1) {
+		await capture(cdp, `bg-transition-${index}`);
+		await wait(120);
+	}
+	await cdp.evaluate("cancelAnimationFrame(window.__bgRaf)");
+	const samples = await cdp.evaluate("window.__bgSamples");
+	note(
+		"per-frame (section|lane) sequence for the target",
+		JSON.stringify(samples),
+	);
+	const keys = samples.map((sample) => sample.key);
+	check(
+		"the 1->0 transition is ONE step: running|true straight to <time section>|false",
+		left.ok &&
+			keys.length === 2 &&
+			keys[0] === "running|true" &&
+			keys[1].endsWith("|false") &&
+			!keys[1].startsWith("running"),
+		JSON.stringify(keys),
+	);
+	await captureSettled(cdp, "bg-finished");
+	/* The remote row settles on the mesh read's own 30 s poll, not the feed. */
+	const remoteLeft = await waitForCondition(
+		cdp,
+		`(() => { const s = ${stateOf(REMOTE)}; return s !== null && s.section !== "running" && !s.lane; })()`,
+		45_000,
+		250,
+	);
+	check(
+		"the remote row leaves Running once its peer's read reports no work",
+		remoteLeft.ok,
+		JSON.stringify(remoteLeft.last),
+	);
+	await captureSettled(cdp, "bg-remote-finished");
+}
+
 async function sceneRowSpace(cdp) {
 	const frames = [];
 	/*
@@ -17260,10 +17448,13 @@ async function scenePinnedReorder(cdp) {
 				panel: (() => { const el = document.querySelector('[data-sidebar-region="scroller"]'); return el ? box(el) : null; })(),
 				indicator: indicator ? { y: Math.round(indicator.getBoundingClientRect().top), h: Math.round(indicator.getBoundingClientRect().height) } : null,
 				dragging: rows.filter((node) => node.hasAttribute("data-dragging")).map((node) => node.getAttribute("data-session-row")),
-				/* #691's per-row mark (main's subagentMarks), counted here because this
-				   branch folds main's row render into the same sessionRow: the count is
-				   what says whether the fold can have moved these frames' pixels at all. */
-				subagentMarks: section.querySelectorAll("[data-subagent-mark]").length,
+				/* The row's background-work mark, counted here because these frames
+				   are validated by byte comparison: the count is what says whether a
+				   row mark can have moved these frames' pixels at all. It was #691's
+				   trio ([data-subagent-mark]) until the running lane retired it; the
+				   lane's hook is [data-background-work] (agent review round 1, R2) -
+				   counting the retired hook would read a constant 0 and pass blind. */
+				backgroundLanes: section.querySelectorAll("[data-background-work]").length,
 				announcement: live ? live.textContent : null,
 				stored: stored,
 				storedView: storedView,
@@ -17504,18 +17695,19 @@ async function scenePinnedReorder(cdp) {
 			JSON.stringify(boot.order),
 		);
 		/*
-		 * AND MAIN'S OWN ROW MARK HAS NOTHING TO DRAW IN THIS FIXTURE (#691, folded in
-		 * after these frames were first taken). The stand-in's rows carry no subagent
-		 * counts, so `subagentMarks` returns nothing for any of them - which is the fact
+		 * AND THE ROW'S BACKGROUND-WORK MARK HAS NOTHING TO DRAW IN THIS FIXTURE (#691's
+		 * trio, folded in after these frames were first taken, now the running lane).
+		 * The stand-in's rows carry no background work, so `hasBackgroundWork` draws
+		 * the lane under none of them - which is the fact
 		 * that lets the fold be validated as a BYTE COMPARISON rather than a re-shoot of
 		 * the whole set. Stated as a check rather than a note because a fixture that grew
 		 * a subagent count would start moving the row's layout, and this is where that
 		 * would be caught.
 		 */
 		check(
-			"the folded-in subagent mark draws nothing on the stand-in's rows",
-			boot.subagentMarks === 0,
-			`${boot.subagentMarks} marker(s) in the pinned section`,
+			"the background-work lane draws nothing on the stand-in's rows",
+			boot.backgroundLanes === 0,
+			`${boot.backgroundLanes} lane(s) in the pinned section`,
 		);
 		check(
 			"no move control is painted at rest",
@@ -50698,6 +50890,7 @@ async function main() {
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
 			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
+			else if (SCENE === "background-work") await sceneBackgroundWork(cdp);
 			else if (SCENE === "sidebar-bottom") await sceneSidebarBottom(cdp);
 			else if (SCENE === "sidebar-docking")
 				await sceneSidebarDocking({

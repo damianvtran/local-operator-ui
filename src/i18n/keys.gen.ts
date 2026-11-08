@@ -66,6 +66,7 @@ import enUiChatRadientSession from "./catalogues/en/ui.chat.radient_session.json
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
 import enUiChatSidebar from "./catalogues/en/ui.chat.sidebar.json";
+import enUiChatSidebarRowBg from "./catalogues/en/ui.chat.sidebar.row.bg.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiChatStatus from "./catalogues/en/ui.chat.status.json";
 import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
@@ -195,6 +196,7 @@ import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
 import esUiChatSidebar from "./catalogues/es/ui.chat.sidebar.json";
+import esUiChatSidebarRowBg from "./catalogues/es/ui.chat.sidebar.row.bg.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
 import esUiChatStatus from "./catalogues/es/ui.chat.status.json";
 import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
@@ -324,6 +326,7 @@ import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
 import frUiChatSidebar from "./catalogues/fr/ui.chat.sidebar.json";
+import frUiChatSidebarRowBg from "./catalogues/fr/ui.chat.sidebar.row.bg.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
 import frUiChatStatus from "./catalogues/fr/ui.chat.status.json";
 import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
@@ -453,6 +456,7 @@ import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
 import hiUiChatSidebar from "./catalogues/hi/ui.chat.sidebar.json";
+import hiUiChatSidebarRowBg from "./catalogues/hi/ui.chat.sidebar.row.bg.json";
 import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
 import hiUiChatStatus from "./catalogues/hi/ui.chat.status.json";
 import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
@@ -582,6 +586,7 @@ import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
 import ruUiChatSidebar from "./catalogues/ru/ui.chat.sidebar.json";
+import ruUiChatSidebarRowBg from "./catalogues/ru/ui.chat.sidebar.row.bg.json";
 import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
 import ruUiChatStatus from "./catalogues/ru/ui.chat.status.json";
 import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
@@ -711,6 +716,7 @@ import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
 import urUiChatSidebar from "./catalogues/ur/ui.chat.sidebar.json";
+import urUiChatSidebarRowBg from "./catalogues/ur/ui.chat.sidebar.row.bg.json";
 import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
 import urUiChatStatus from "./catalogues/ur/ui.chat.status.json";
 import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
@@ -840,6 +846,7 @@ import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
 import viUiChatSidebar from "./catalogues/vi/ui.chat.sidebar.json";
+import viUiChatSidebarRowBg from "./catalogues/vi/ui.chat.sidebar.row.bg.json";
 import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
 import viUiChatStatus from "./catalogues/vi/ui.chat.status.json";
 import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
@@ -969,6 +976,7 @@ import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
 import zhCNUiChatSidebar from "./catalogues/zh-CN/ui.chat.sidebar.json";
+import zhCNUiChatSidebarRowBg from "./catalogues/zh-CN/ui.chat.sidebar.row.bg.json";
 import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
 import zhCNUiChatStatus from "./catalogues/zh-CN/ui.chat.status.json";
 import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
@@ -1101,6 +1109,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatResponseActions,
 	...enUiChatRunDetails,
 	...enUiChatSidebar,
+	...enUiChatSidebarRowBg,
 	...enUiChatSidebarView,
 	...enUiChatStatus,
 	...enUiChatTagDialogs,
@@ -1238,6 +1247,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatResponseActions,
 		...esUiChatRunDetails,
 		...esUiChatSidebar,
+		...esUiChatSidebarRowBg,
 		...esUiChatSidebarView,
 		...esUiChatStatus,
 		...esUiChatTagDialogs,
@@ -1369,6 +1379,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatResponseActions,
 		...frUiChatRunDetails,
 		...frUiChatSidebar,
+		...frUiChatSidebarRowBg,
 		...frUiChatSidebarView,
 		...frUiChatStatus,
 		...frUiChatTagDialogs,
@@ -1500,6 +1511,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatResponseActions,
 		...hiUiChatRunDetails,
 		...hiUiChatSidebar,
+		...hiUiChatSidebarRowBg,
 		...hiUiChatSidebarView,
 		...hiUiChatStatus,
 		...hiUiChatTagDialogs,
@@ -1631,6 +1643,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatResponseActions,
 		...ruUiChatRunDetails,
 		...ruUiChatSidebar,
+		...ruUiChatSidebarRowBg,
 		...ruUiChatSidebarView,
 		...ruUiChatStatus,
 		...ruUiChatTagDialogs,
@@ -1762,6 +1775,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatResponseActions,
 		...urUiChatRunDetails,
 		...urUiChatSidebar,
+		...urUiChatSidebarRowBg,
 		...urUiChatSidebarView,
 		...urUiChatStatus,
 		...urUiChatTagDialogs,
@@ -1893,6 +1907,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatResponseActions,
 		...viUiChatRunDetails,
 		...viUiChatSidebar,
+		...viUiChatSidebarRowBg,
 		...viUiChatSidebarView,
 		...viUiChatStatus,
 		...viUiChatTagDialogs,
@@ -2024,6 +2039,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatResponseActions,
 		...zhCNUiChatRunDetails,
 		...zhCNUiChatSidebar,
+		...zhCNUiChatSidebarRowBg,
 		...zhCNUiChatSidebarView,
 		...zhCNUiChatStatus,
 		...zhCNUiChatTagDialogs,
@@ -5578,6 +5594,12 @@ export type MessageParams = {
 	"ui.chat.sidebar.section.current_chat": undefined;
 	"ui.chat.sidebar.teams.create": undefined;
 	"ui.chat.sidebar.teams.loading": undefined;
+	"ui.chat.sidebar.row.bg.jobs": { count: number };
+	"ui.chat.sidebar.row.bg.queued": { count: number };
+	"ui.chat.sidebar.row.bg.running": { items: string };
+	"ui.chat.sidebar.row.bg.subagents": { count: number };
+	"ui.chat.sidebar.row.bg.subagents_queued": { count: number };
+	"ui.chat.sidebar.row.bg.waiting": undefined;
 	"ui.chat.sidebar_view.active_first": undefined;
 	"ui.chat.sidebar_view.agent_team": undefined;
 	"ui.chat.sidebar_view.clock_hint": undefined;

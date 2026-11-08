@@ -75,6 +75,7 @@ import {
 	type SessionBinding,
 	type SessionCatalogueStatus,
 	type SessionOpenedBy,
+	type SessionStatusFrameCounts,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
 import type { LaunchTarget } from "../../../../shared/open-session";
@@ -235,6 +236,14 @@ export type CanonicalSessionRow = {
 	 */
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
+	/**
+	 * Whether the session still has work running beside or after its own turn
+	 * (a subagent running or queued, a background job, an armed wait). Core
+	 * derives it from the counts on this row, independent of `status.code` and
+	 * not suppressed by a build drain; absent on a backend older than the
+	 * field, which `hasBackgroundWork` reads as "fall back to the code".
+	 */
+	background_work?: boolean;
 	binding?: SessionBinding;
 	/**
 	 * Who opened this conversation, when an agent rather than the operator did.
@@ -4670,6 +4679,14 @@ type CanonicalSessionsState = {
 		status: SessionCatalogueStatus,
 		revision: number,
 		epoch: string,
+		/**
+		 * The frame's background-work counts, written in the SAME update as the
+		 * code so the row's Running membership (code OR `background_work`) never
+		 * passes through a state where one has moved and the other has not.
+		 * Omitted by an older backend's frame, which leaves the row's counts as
+		 * the last list read set them.
+		 */
+		counts?: SessionStatusFrameCounts,
 	) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
@@ -5157,6 +5174,24 @@ function heldStatusOver(
 		status: current?.status,
 		status_revision: current?.status_revision,
 		status_epoch: current?.status_epoch,
+		/*
+		 * THE COUNTS ARE HELD WITH THE CODE they arrived beside. A backend that
+		 * publishes `background_work` sends the counts on every status frame
+		 * (they are in its dedupe key), so a row holding the fresher frame holds
+		 * the fresher counts too; letting a staler list response replace only
+		 * the counts would put a row in Running by its code and out of it by its
+		 * counts in one frame - the flicker the frame was made atomic to avoid.
+		 * An older backend's row carries no flag, and its counts follow the list.
+		 */
+		...(typeof current?.background_work === "boolean"
+			? {
+					background_work: current.background_work,
+					subagents_running: current.subagents_running,
+					subagents_queued: current.subagents_queued,
+					jobs_running: current.jobs_running,
+					waiting_on: current.waiting_on,
+				}
+			: {}),
 	};
 }
 /**
@@ -7345,7 +7380,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					deferred,
 				};
 			},
-			applySessionStatus: (sessionId, status, revision, epoch) => {
+			applySessionStatus: (sessionId, status, revision, epoch, counts) => {
 				set((state) => {
 					const index = state.sessions.findIndex(
 						(row) => row.session_id === sessionId,
@@ -7379,7 +7414,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					const row = sessions[index];
 					// Identity, not equality: an unchanged frame must not re-render every
 					// row of a 500-row sidebar for a level that carried nothing new.
+					const countsMoved =
+						counts !== undefined &&
+						(Object.keys(counts) as (keyof SessionStatusFrameCounts)[]).some(
+							(key) => row[key] !== counts[key],
+						);
 					const unchanged =
+						!countsMoved &&
 						row.status?.code === status.code &&
 						row.status?.label === status.label &&
 						row.status_revision === revision &&
@@ -7388,6 +7429,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					if (!unchanged)
 						sessions[index] = {
 							...row,
+							...counts,
 							status,
 							status_revision: revision,
 							status_epoch: epoch,
