@@ -31,5 +31,13 @@
 	"ui.chat.asks.status.withdrawn_label": "Retirée",
 	"ui.chat.asks.outstanding_count": "{count, plural, one {{count_display} demande} many {{count_display} de demandes} other {{count_display} demandes}}",
 	"ui.chat.asks.outstanding_aria": "{label} en attente. L’agent n’est pas bloqué en attendant votre réponse.",
-	"ui.chat.asks.answer_aria": "Votre réponse à : {question}"
+	"ui.chat.asks.answer_aria": "Votre réponse à : {question}",
+	"ui.chat.asks.scope.session": "Cette conversation",
+	"ui.chat.asks.scope.fleet": "Toutes les conversations",
+	"ui.chat.asks.scope_line": "{scope} · {clause}",
+	"ui.chat.asks.clause.settled": "Toutes les demandes réglées",
+	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} en attente} many {{count, number, ::group-off} en attente} other {{count, number, ::group-off} en attente}}",
+	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} question en attente} many {{count, number, ::group-off} de questions en attente} other {{count, number, ::group-off} questions en attente}}",
+	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} réponse pas encore remise — vous pouvez encore la modifier} many {{count, number, ::group-off} de réponses pas encore remises — vous pouvez encore les modifier} other {{count, number, ::group-off} réponses pas encore remises — vous pouvez encore les modifier}}",
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} question expirée} many {{count, number, ::group-off} de questions expirées} other {{count, number, ::group-off} questions expirées}}"
 }

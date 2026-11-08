@@ -38,5 +38,8 @@
 	"ui.hub.pages.tab.agents": "Tác nhân",
 	"ui.hub.pages.tab.teams": "Nhóm",
 	"ui.hub.pages.updating": "Đang cập nhật…",
-	"ui.hub.pages.viewer_unknown": "Không đọc được lượt thích và mục yêu thích nên không thẻ nào hiển thị trạng thái của bạn."
+	"ui.hub.pages.viewer_unknown": "Không đọc được lượt thích và mục yêu thích nên không thẻ nào hiển thị trạng thái của bạn.",
+	"ui.hub.pages.signed_out.title": "Đăng nhập để dùng trung tâm",
+	"ui.hub.pages.signed_out.body": "Bạn chưa đăng nhập vào Radient nên trung tâm không có thông tin xác thực để đọc danh sách tác nhân. Hãy đăng nhập ở trang cài đặt, rồi thử lại.",
+	"ui.hub.pages.load_failed.title": "Không tải được trung tâm"
 }

@@ -750,5 +750,13 @@
 	"ui.chat.pickers.slash.source.mcp": "Servidores",
 	"ui.chat.pickers.slash.source.theme": "Temas",
 	"ui.chat.pickers.slash.source.title_refresh": "Opciones",
-	"ui.chat.pickers.slash.source.session_tags": "Etiquetas"
+	"ui.chat.pickers.slash.source.session_tags": "Etiquetas",
+	"ui.chat.pickers.at_menu.footer.nothing": "Nada que insertar · Esc cierra",
+	"ui.chat.pickers.at_menu.footer.inserts": "Intro inserta {reference} · Esc cierra",
+	"ui.chat.pickers.at_menu.footer.opens": "Intro abre {path} · Esc cierra",
+	"ui.chat.pickers.slash.row_slot.fast_on": "actualmente activado",
+	"ui.chat.pickers.slash.row_slot.fast_off": "actualmente desactivado",
+	"ui.chat.pickers.slash.row_slot.needs_value": "necesita un valor",
+	"ui.chat.pickers.slash.unknown_command": "Comando desconocido /{command}. Escribe / para ver la lista completa.",
+	"ui.chat.pickers.slash.unknown_command_suggest": "Comando desconocido /{command}. ¿Querías decir {suggestions}? Escribe / para ver la lista completa."
 }

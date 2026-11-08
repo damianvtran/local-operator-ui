@@ -31,5 +31,13 @@
 	"ui.chat.asks.status.withdrawn_label": "Đã rút lại",
 	"ui.chat.asks.outstanding_count": "{count, plural, other {{count_display} câu hỏi}}",
 	"ui.chat.asks.outstanding_aria": "{label} chưa trả lời. Tác nhân không phải chờ bạn.",
-	"ui.chat.asks.answer_aria": "Trả lời cho: {question}"
+	"ui.chat.asks.answer_aria": "Trả lời cho: {question}",
+	"ui.chat.asks.scope.session": "Cuộc trò chuyện này",
+	"ui.chat.asks.scope.fleet": "Mọi cuộc trò chuyện",
+	"ui.chat.asks.scope_line": "{scope} · {clause}",
+	"ui.chat.asks.clause.settled": "Mọi câu hỏi đã được giải quyết",
+	"ui.chat.asks.clause.outstanding": "{count, plural, other {{count, number, ::group-off} chưa trả lời}}",
+	"ui.chat.asks.clause.waiting": "{count, plural, other {{count, number, ::group-off} câu hỏi đang chờ}}",
+	"ui.chat.asks.clause.delivering": "{count, plural, other {{count, number, ::group-off} câu trả lời chưa được chuyển đi — bạn vẫn có thể sửa}}",
+	"ui.chat.asks.clause.timed_out": "{count, plural, other {{count, number, ::group-off} câu hỏi hết thời gian chờ}}"
 }

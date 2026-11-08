@@ -89,5 +89,7 @@
 	"ui.chat.run_details.monitors.more": "{count, plural, one {{count_display} autre surveillance} many {{count_display} d’autres surveillances} other {{count_display} autres surveillances}}",
 	"ui.chat.run_details.wake.more": "{count, plural, one {{count_display} autre réveil} many {{count_display} d’autres réveils} other {{count_display} autres réveils}}",
 	"ui.chat.run_details.wake.armed_count": "{count, plural, one {{count_display} réveil activé} many {{count_display} de réveils activés} other {{count_display} réveils activés}}",
-	"ui.chat.run_details.wake.cadence_once": "une fois"
+	"ui.chat.run_details.wake.cadence_once": "une fois",
+	"ui.chat.run_details.wake.managed_by": "géré par {name}",
+	"ui.chat.run_details.wake.managed_note": "Ce réveil relève de la planification propre à {name} ; il ne peut donc pas être annulé ici. Pour arrêter ces points de suivi, utilisez /aida pause."
 }

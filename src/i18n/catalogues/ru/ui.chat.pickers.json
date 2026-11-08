@@ -750,5 +750,13 @@
 	"ui.chat.pickers.slash.source.mcp": "Серверы",
 	"ui.chat.pickers.slash.source.theme": "Темы",
 	"ui.chat.pickers.slash.source.title_refresh": "Параметры",
-	"ui.chat.pickers.slash.source.session_tags": "Теги"
+	"ui.chat.pickers.slash.source.session_tags": "Теги",
+	"ui.chat.pickers.at_menu.footer.nothing": "Нечего вставить · Esc — закрытие",
+	"ui.chat.pickers.at_menu.footer.inserts": "Enter — вставка {reference} · Esc — закрытие",
+	"ui.chat.pickers.at_menu.footer.opens": "Enter — открытие {path} · Esc — закрытие",
+	"ui.chat.pickers.slash.row_slot.fast_on": "сейчас включён",
+	"ui.chat.pickers.slash.row_slot.fast_off": "сейчас выключен",
+	"ui.chat.pickers.slash.row_slot.needs_value": "нужно значение",
+	"ui.chat.pickers.slash.unknown_command": "Неизвестная команда /{command}. Введите /, чтобы увидеть полный список.",
+	"ui.chat.pickers.slash.unknown_command_suggest": "Неизвестная команда /{command}. Возможно, вы имели в виду {suggestions}? Введите /, чтобы увидеть полный список."
 }

@@ -38,5 +38,8 @@
 	"ui.hub.pages.tab.agents": "Agents",
 	"ui.hub.pages.tab.teams": "Équipes",
 	"ui.hub.pages.updating": "Actualisation…",
-	"ui.hub.pages.viewer_unknown": "Vos j’aime et vos favoris n’ont pas pu être lus ; aucune carte n’affiche donc d’état vous concernant."
+	"ui.hub.pages.viewer_unknown": "Vos j’aime et vos favoris n’ont pas pu être lus ; aucune carte n’affiche donc d’état vous concernant.",
+	"ui.hub.pages.signed_out.title": "Connectez-vous pour utiliser le hub",
+	"ui.hub.pages.signed_out.body": "Vous n’êtes pas connecté à Radient : le hub n’a donc aucun identifiant pour lire la liste des agents. Connectez-vous depuis la page des paramètres, puis réessayez.",
+	"ui.hub.pages.load_failed.title": "Le hub n’a pas pu être chargé"
 }

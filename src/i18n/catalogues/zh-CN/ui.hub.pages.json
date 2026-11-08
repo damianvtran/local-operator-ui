@@ -38,5 +38,8 @@
 	"ui.hub.pages.tab.agents": "智能体",
 	"ui.hub.pages.tab.teams": "团队",
 	"ui.hub.pages.updating": "正在更新……",
-	"ui.hub.pages.viewer_unknown": "无法读取你的点赞和收藏，因此卡片上不会显示你是否已点赞或收藏。"
+	"ui.hub.pages.viewer_unknown": "无法读取你的点赞和收藏，因此卡片上不会显示你是否已点赞或收藏。",
+	"ui.hub.pages.signed_out.title": "登录后才能使用中心",
+	"ui.hub.pages.signed_out.body": "你尚未登录Radient，中心没有可用来读取智能体列表的凭据。请在设置页登录，然后重试。",
+	"ui.hub.pages.load_failed.title": "无法加载中心"
 }

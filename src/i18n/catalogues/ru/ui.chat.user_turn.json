@@ -1,4 +1,7 @@
 {
 	"ui.chat.user_turn.show_more": "Показать больше",
-	"ui.chat.user_turn.show_less": "Показать меньше"
+	"ui.chat.user_turn.show_less": "Показать меньше",
+	"ui.chat.user_turn.stamp.sent": "Отправлено {date}",
+	"ui.chat.user_turn.stamp.answered": "Ответ дан {date}",
+	"ui.chat.user_turn.stamp.ran": "Выполнено {date}"
 }

@@ -750,5 +750,13 @@
 	"ui.chat.pickers.slash.source.mcp": "Máy chủ",
 	"ui.chat.pickers.slash.source.theme": "Giao diện",
 	"ui.chat.pickers.slash.source.title_refresh": "Tùy chọn",
-	"ui.chat.pickers.slash.source.session_tags": "Nhãn"
+	"ui.chat.pickers.slash.source.session_tags": "Nhãn",
+	"ui.chat.pickers.at_menu.footer.nothing": "Không có gì để chèn · Esc đóng",
+	"ui.chat.pickers.at_menu.footer.inserts": "Enter chèn {reference} · Esc đóng",
+	"ui.chat.pickers.at_menu.footer.opens": "Enter mở {path} · Esc đóng",
+	"ui.chat.pickers.slash.row_slot.fast_on": "hiện đang bật",
+	"ui.chat.pickers.slash.row_slot.fast_off": "hiện đang tắt",
+	"ui.chat.pickers.slash.row_slot.needs_value": "cần một giá trị",
+	"ui.chat.pickers.slash.unknown_command": "Lệnh /{command} không xác định. Nhập / để xem đầy đủ danh sách.",
+	"ui.chat.pickers.slash.unknown_command_suggest": "Lệnh /{command} không xác định. Ý bạn là {suggestions}? Nhập / để xem đầy đủ danh sách."
 }
