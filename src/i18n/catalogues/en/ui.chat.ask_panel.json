@@ -1,0 +1,22 @@
+{
+	"ui.chat.ask_panel.answer.attachment_refusal": "Files and images can't be attached to an answer yet. Type your answer here, or send the file in the chat.",
+	"ui.chat.ask_panel.answer.limit_notice": "Answers stop at {max, number} characters; anything past that is not kept.",
+	"ui.chat.ask_panel.dock.asking": "The agent is asking",
+	"ui.chat.ask_panel.dock.keys_one": "1 to answer",
+	"ui.chat.ask_panel.dock.keys_range": "1-{max, number} to answer",
+	"ui.chat.ask_panel.dock.sending": "Sending your answer…",
+	"ui.chat.ask_panel.empty.details_missing": "The details for these asks could not be loaded.",
+	"ui.chat.ask_panel.empty.none_outstanding": "No asks outstanding. The agent is not waiting on anything.",
+	"ui.chat.ask_panel.empty.none_pending": "No asks are pending. They have all settled — see Settled.",
+	"ui.chat.ask_panel.empty.none_settled": "No asks have settled yet. They are all still pending.",
+	"ui.chat.ask_panel.filter.all": "All",
+	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
+	"ui.chat.ask_panel.filter.pending": "Pending",
+	"ui.chat.ask_panel.filter.settled": "Settled",
+	"ui.chat.ask_panel.landing.many": "{count, plural, one {# question timed out} other {# questions timed out}}",
+	"ui.chat.ask_panel.landing.one": "Question timed out",
+	"ui.chat.ask_panel.lapse.many": "{count, plural, one {# question timed out; your answer was not sent.} other {# questions timed out; your answers were not sent.}}",
+	"ui.chat.ask_panel.lapse.one": "That question timed out; your answer was not sent.",
+	"ui.chat.ask_panel.no_question_text": "No question text",
+	"ui.chat.ask_panel.other_prompt": "Type your answer"
+}

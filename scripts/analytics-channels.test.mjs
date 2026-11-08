@@ -18,7 +18,7 @@ import { build } from "esbuild";
  * - the total is READ (`total_micro`) and printed through THIS panel's ladder
  *   (`formatMicroUsd`), with `+` for a lower bound — never re-summed;
  * - a `null` amount is the words `price unknown`, shared with the strip
- *   (`PRICE_UNKNOWN_TEXT`): `—` blames the read, "not tracked" is the
+ *   (`priceUnknownText`): `—` blames the read, "not tracked" is the
  *   session-level state, and one record must not grow two descriptions;
  * - a null ROW is refused rather than thrown on (the reading filters it, so
  *   `rows: [null]` renders as no rows and the section stands);
@@ -61,7 +61,7 @@ const bundle = await build({
 	},
 	write: false,
 });
-const { channelsView, sessionCost, PRICE_UNKNOWN_TEXT } = await import(
+const { channelsView, sessionCost, priceUnknownText } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -153,7 +153,7 @@ test("a null amount and an unstately zero are words, never fabricated zeros", ()
 	// The words are the strip's own for the same record — one constant, so the
 	// two surfaces cannot describe one record two ways (D2) — and the panel's
 	// own `—` stands in the Basis cell where a record has none (D5).
-	assert.equal(view.rows[0].spend, PRICE_UNKNOWN_TEXT);
+	assert.equal(view.rows[0].spend, priceUnknownText());
 	assert.equal(view.rows[0].basis, "—");
 	assert.equal(
 		view.basisLine,

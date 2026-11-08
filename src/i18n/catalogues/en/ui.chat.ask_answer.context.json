@@ -1,0 +1,77 @@
+{
+	"ui.chat.ask_answer.eyebrow_waiting": {
+		"length": "",
+		"note": "The agent's question is shown below this label.",
+		"placeholders": {},
+		"role": "eyebrow label on the agent-question card while it awaits the user's reply",
+		"tone": "short status, no trailing period"
+	},
+	"ui.chat.ask_answer.lost_to_reconnect": {
+		"length": "",
+		"note": "Runtime instance means the backend process the app talks to.",
+		"placeholders": {},
+		"role": "error on the composer when the app reconnected to a different backend instance before the answer was sent",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.ask_answer.moved_on": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "error on the composer when the user answers an ask that is no longer open",
+		"tone": "two-clause sentence, ends with a full stop"
+	},
+	"ui.chat.ask_answer.not_sent": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"reason": "why the send failed; the backend's message verbatim, or the localized fallback request_failed"
+		},
+		"role": "error on the composer when an answer failed to send",
+		"tone": "short sentence then reason"
+	},
+	"ui.chat.ask_answer.request_failed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "fallback reason used when an answer failed with no message of its own",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.ask_answer.secret_docked": {
+		"length": "",
+		"note": "A secret request asks for a password or key and has its own masked field.",
+		"placeholders": {},
+		"role": "error on the composer when the user types an answer to a secret request into the main message box",
+		"tone": "one sentence with an em dash, ends with a full stop"
+	},
+	"ui.chat.ask_answer.session_unreachable": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "reason sentence appended to the not-knowable lead when the session could not be reached",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.ask_answer.settled_elsewhere": {
+		"length": "",
+		"note": "An ask is a question the AI agent put to the user.",
+		"placeholders": {},
+		"role": "error on the composer when the user answers an ask that another device or surface already settled",
+		"tone": "two-clause sentence, ends with a full stop"
+	},
+	"ui.chat.ask_answer.unconfirmed": {
+		"length": "",
+		"note": "Keep the order.",
+		"placeholders": {
+			"lead": "the localized unconfirmed_lead sentence",
+			"reason": "the reason sentence; either the backend's message verbatim or the localized fallback request_failed"
+		},
+		"role": "error joining the not-knowable sentence to the reason",
+		"tone": "two sentences joined by a space"
+	},
+	"ui.chat.ask_answer.unconfirmed_lead": {
+		"length": "",
+		"note": "Followed by a space and a second sentence explaining why.",
+		"placeholders": {},
+		"role": "first sentence of an error when the app cannot tell whether an answer reached the agent",
+		"tone": "short sentence, ends with a full stop"
+	}
+}

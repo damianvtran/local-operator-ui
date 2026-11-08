@@ -75,7 +75,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export {
-				FAST_UNAVAILABLE_SENTENCE,
+				fastUnavailableSentence,
 				NO_DRAFT_TARGET,
 				draftModelForWire,
 				draftPreviewKey,
@@ -151,7 +151,7 @@ new Function("require", "module", "exports", bundle.outputFiles[0].text)(
 const {
 	NO_DRAFT_TARGET,
 	DesktopControlError,
-	FAST_UNAVAILABLE_SENTENCE,
+	fastUnavailableSentence,
 	admitChatDraft,
 	bandReadings,
 	draftModelForWire,
@@ -440,7 +440,7 @@ test("a fast pick rides the create, and a pane that never picked one sends no di
 	// And the sentence the pane shows for it is the exported one, not a literal
 	// somewhere else: the strip and the pick cannot name two different facts.
 	assert.equal(
-		FAST_UNAVAILABLE_SENTENCE,
+		fastUnavailableSentence(),
 		"Fast mode is off: this version of the Local Operator service cannot carry it.",
 	);
 	// Back to the fail-closed default the store ships with, for the tests below.

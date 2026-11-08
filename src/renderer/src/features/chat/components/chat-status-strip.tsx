@@ -126,7 +126,9 @@ export const ChatStatusStripView = ({
 							display.dot === "danger" ? "bg-danger" : "bg-warning",
 						)}
 					/>
-					{display.kind === "internet-offline" ? "Offline" : "Connection"}
+					{display.kind === "internet-offline"
+						? t("ui.chat.page_chrome.status_strip.offline")
+						: t("ui.chat.page_chrome.status_strip.connection")}
 				</button>
 			</div>
 		);
@@ -181,7 +183,10 @@ export const ChatStatusStripView = ({
 								{retrying ? (
 									<Loader2 aria-hidden="true" className="animate-spin" />
 								) : null}
-								{retrying ? "Retrying…" : (display.actionLabel ?? "Retry")}
+								{retrying
+									? t("ui.chat.page_chrome.status_strip.retrying")
+									: (display.actionLabel ??
+										t("ui.chat.page_chrome.status_strip.retry"))}
 							</Button>
 							<button
 								type="button"
@@ -345,8 +350,8 @@ export const ChatStatusStrip = () => {
 			 */
 			setOutcome(
 				key?.startsWith("credential-refused")
-					? "The server is running, but this app's credential is still refused."
-					: "Still unreachable.",
+					? t("ui.chat.page_chrome.status_strip.outcome_refused")
+					: t("ui.chat.page_chrome.status_strip.outcome_unreachable"),
 			);
 			void refetchServerStatus();
 		}

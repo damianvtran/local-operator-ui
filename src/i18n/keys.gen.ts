@@ -48,26 +48,47 @@ import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
+import enUiChatApproval from "./catalogues/en/ui.chat.approval.json";
+import enUiChatAside from "./catalogues/en/ui.chat.aside.json";
+import enUiChatAskAnswer from "./catalogues/en/ui.chat.ask_answer.json";
+import enUiChatAskPanel from "./catalogues/en/ui.chat.ask_panel.json";
+import enUiChatAskQueue from "./catalogues/en/ui.chat.ask_queue.json";
 import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
+import enUiChatAttachmentRefusal from "./catalogues/en/ui.chat.attachment_refusal.json";
 import enUiChatAttachments from "./catalogues/en/ui.chat.attachments.json";
 import enUiChatBridgeReceipt from "./catalogues/en/ui.chat.bridgeReceipt.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
 import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
+import enUiChatComposerNotes from "./catalogues/en/ui.chat.composer_notes.json";
+import enUiChatCredentialNotice from "./catalogues/en/ui.chat.credential_notice.json";
 import enUiChatDevice from "./catalogues/en/ui.chat.device.json";
+import enUiChatDeviceMove from "./catalogues/en/ui.chat.device_move.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChatDirectory from "./catalogues/en/ui.chat.directory.json";
+import enUiChatFastMode from "./catalogues/en/ui.chat.fast_mode.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
+import enUiChatHeaderMenu from "./catalogues/en/ui.chat.header_menu.json";
+import enUiChatInterrupt from "./catalogues/en/ui.chat.interrupt.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatLiveUpdates from "./catalogues/en/ui.chat.live_updates.json";
+import enUiChatMessageBudget from "./catalogues/en/ui.chat.message_budget.json";
+import enUiChatMoveCwd from "./catalogues/en/ui.chat.move_cwd.json";
+import enUiChatPageChrome from "./catalogues/en/ui.chat.page_chrome.json";
 import enUiChatPickers from "./catalogues/en/ui.chat.pickers.json";
+import enUiChatQuotaResend from "./catalogues/en/ui.chat.quota_resend.json";
 import enUiChatRadientSession from "./catalogues/en/ui.chat.radient_session.json";
+import enUiChatReadAck from "./catalogues/en/ui.chat.read_ack.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
+import enUiChatSessionReadout from "./catalogues/en/ui.chat.session_readout.json";
+import enUiChatSessionSpend from "./catalogues/en/ui.chat.session_spend.json";
 import enUiChatSidebar from "./catalogues/en/ui.chat.sidebar.json";
 import enUiChatSidebarRowBg from "./catalogues/en/ui.chat.sidebar.row.bg.json";
+import enUiChatSidebarNotes from "./catalogues/en/ui.chat.sidebar_notes.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
+import enUiChatSlash from "./catalogues/en/ui.chat.slash.json";
 import enUiChatStatus from "./catalogues/en/ui.chat.status.json";
 import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTagGroups from "./catalogues/en/ui.chat.tag_groups.json";
@@ -1115,26 +1136,47 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowser,
 	...enUiCanvas,
 	...enUiChatAnalytics,
+	...enUiChatApproval,
+	...enUiChatAside,
+	...enUiChatAskAnswer,
+	...enUiChatAskPanel,
+	...enUiChatAskQueue,
 	...enUiChatAsks,
+	...enUiChatAttachmentRefusal,
 	...enUiChatAttachments,
 	...enUiChatBridgeReceipt,
 	...enUiChatCanonical,
 	...enUiChatCommentaryActions,
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
+	...enUiChatComposerNotes,
+	...enUiChatCredentialNotice,
 	...enUiChatDevice,
+	...enUiChatDeviceMove,
 	...enUiChatDialogs,
 	...enUiChatDirectory,
+	...enUiChatFastMode,
 	...enUiChatHeader,
+	...enUiChatHeaderMenu,
+	...enUiChatInterrupt,
 	...enUiChat,
 	...enUiChatLiveUpdates,
+	...enUiChatMessageBudget,
+	...enUiChatMoveCwd,
+	...enUiChatPageChrome,
 	...enUiChatPickers,
+	...enUiChatQuotaResend,
 	...enUiChatRadientSession,
+	...enUiChatReadAck,
 	...enUiChatResponseActions,
 	...enUiChatRunDetails,
+	...enUiChatSessionReadout,
+	...enUiChatSessionSpend,
 	...enUiChatSidebar,
 	...enUiChatSidebarRowBg,
+	...enUiChatSidebarNotes,
 	...enUiChatSidebarView,
+	...enUiChatSlash,
 	...enUiChatStatus,
 	...enUiChatTagDialogs,
 	...enUiChatTagGroups,
@@ -3704,6 +3746,142 @@ export type MessageParams = {
 	"ui.chat.analytics.title": undefined;
 	"ui.chat.analytics.toolbar.refreshing": undefined;
 	"ui.chat.analytics.toolbar.this_session_only": undefined;
+	"ui.chat.approval.escape.default_saved": undefined;
+	"ui.chat.approval.escape.default_saved_session_failed": { detail: string };
+	"ui.chat.approval.escape.global_default": { mode: string };
+	"ui.chat.approval.escape.not_changed": undefined;
+	"ui.chat.approval.escape.pinned_run": { mode: string };
+	"ui.chat.approval.escape.session_override": { mode: string };
+	"ui.chat.approval.escape.session_override_of": {
+		mode: string;
+		globalMode: string;
+	};
+	"ui.chat.approval.escape.session_saved": undefined;
+	"ui.chat.approval.escape.set_all": undefined;
+	"ui.chat.approval.escape.set_session": undefined;
+	"ui.chat.approval.escape.unchanged": { detail: string };
+	"ui.chat.approval.mode.ask": undefined;
+	"ui.chat.approval.mode.auto": undefined;
+	"ui.chat.approval.option.approve": undefined;
+	"ui.chat.approval.option.approve_description": undefined;
+	"ui.chat.approval.option.deny": undefined;
+	"ui.chat.approval.option.deny_description": undefined;
+	"ui.chat.aside.adopt.confirm": { cap: string };
+	"ui.chat.aside.adopt.failed": undefined;
+	"ui.chat.aside.adopt.not_landed": undefined;
+	"ui.chat.aside.adopt.queued": undefined;
+	"ui.chat.aside.adopt.refused.open_tool_batch": undefined;
+	"ui.chat.aside.adopt.refused.session_closed": undefined;
+	"ui.chat.aside.adopt.refused.turn_running": undefined;
+	"ui.chat.aside.adopt.unconfirmed": undefined;
+	"ui.chat.aside.announce.answered": undefined;
+	"ui.chat.aside.announce.answered_truncated": { text: string };
+	"ui.chat.aside.announce.answered_with": { text: string };
+	"ui.chat.aside.announce.asking": undefined;
+	"ui.chat.aside.announce.not_answered": undefined;
+	"ui.chat.aside.ask_busy": undefined;
+	"ui.chat.aside.ask_queued": undefined;
+	"ui.chat.aside.blocked.nothing": undefined;
+	"ui.chat.aside.blocked.nothing_yet": undefined;
+	"ui.chat.aside.blocked.settling": undefined;
+	"ui.chat.aside.blocked.working": undefined;
+	"ui.chat.aside.continuation_escape": undefined;
+	"ui.chat.aside.declined_options": undefined;
+	"ui.chat.aside.model_no_text": undefined;
+	"ui.chat.aside.not_answered": undefined;
+	"ui.chat.aside.off_panel_refusal": { question: string; cause: string };
+	"ui.chat.ask_answer.eyebrow_waiting": undefined;
+	"ui.chat.ask_answer.lost_to_reconnect": undefined;
+	"ui.chat.ask_answer.moved_on": undefined;
+	"ui.chat.ask_answer.not_sent": { reason: string };
+	"ui.chat.ask_answer.request_failed": undefined;
+	"ui.chat.ask_answer.secret_docked": undefined;
+	"ui.chat.ask_answer.session_unreachable": undefined;
+	"ui.chat.ask_answer.settled_elsewhere": undefined;
+	"ui.chat.ask_answer.unconfirmed": { lead: string; reason: string };
+	"ui.chat.ask_answer.unconfirmed_lead": undefined;
+	"ui.chat.ask_panel.answer.attachment_refusal": undefined;
+	"ui.chat.ask_panel.answer.limit_notice": { max: number };
+	"ui.chat.ask_panel.dock.asking": undefined;
+	"ui.chat.ask_panel.dock.keys_one": undefined;
+	"ui.chat.ask_panel.dock.keys_range": { max: number };
+	"ui.chat.ask_panel.dock.sending": undefined;
+	"ui.chat.ask_panel.empty.details_missing": undefined;
+	"ui.chat.ask_panel.empty.none_outstanding": undefined;
+	"ui.chat.ask_panel.empty.none_pending": undefined;
+	"ui.chat.ask_panel.empty.none_settled": undefined;
+	"ui.chat.ask_panel.filter.all": undefined;
+	"ui.chat.ask_panel.filter.chip": { label: string; count: number };
+	"ui.chat.ask_panel.filter.pending": undefined;
+	"ui.chat.ask_panel.filter.settled": undefined;
+	"ui.chat.ask_panel.landing.many": { count: number };
+	"ui.chat.ask_panel.landing.one": undefined;
+	"ui.chat.ask_panel.lapse.many": { count: number };
+	"ui.chat.ask_panel.lapse.one": undefined;
+	"ui.chat.ask_panel.no_question_text": undefined;
+	"ui.chat.ask_panel.other_prompt": undefined;
+	"ui.chat.ask_queue.change_window_hint": undefined;
+	"ui.chat.ask_queue.chip.label_collapse": { clause: string; urgent: string };
+	"ui.chat.ask_queue.chip.label_expand": { clause: string; urgent: string };
+	"ui.chat.ask_queue.chip.moved_on": { clause: string; count: number };
+	"ui.chat.ask_queue.deadline.soonest_subject": undefined;
+	"ui.chat.ask_queue.deadline.with_subject": {
+		subject: string;
+		deadline: string;
+	};
+	"ui.chat.ask_queue.drawer.unavailable_clause": undefined;
+	"ui.chat.ask_queue.drawer.unavailable_line": undefined;
+	"ui.chat.ask_queue.drawer.unread_line": undefined;
+	"ui.chat.ask_queue.duration.days": { count: number };
+	"ui.chat.ask_queue.duration.hours": { count: number };
+	"ui.chat.ask_queue.duration.minutes": { count: number };
+	"ui.chat.ask_queue.duration.seconds": { count: number };
+	"ui.chat.ask_queue.duration.unknown": undefined;
+	"ui.chat.ask_queue.expiry.in": { time: string };
+	"ui.chat.ask_queue.expiry.now_long": undefined;
+	"ui.chat.ask_queue.expiry.now_short": undefined;
+	"ui.chat.ask_queue.late_undelivered": undefined;
+	"ui.chat.ask_queue.open_announcement": { clause: string };
+	"ui.chat.ask_queue.rail.close": {
+		hasCap: string;
+		cap: string;
+		subject: string;
+		count: number;
+	};
+	"ui.chat.ask_queue.rail.open": {
+		hasCap: string;
+		cap: string;
+		subject: string;
+		count: number;
+	};
+	"ui.chat.ask_queue.refusal.already_settled": undefined;
+	"ui.chat.ask_queue.refusal.busy": undefined;
+	"ui.chat.ask_queue.refusal.expired": undefined;
+	"ui.chat.ask_queue.response.answered": { askId: string };
+	"ui.chat.ask_queue.response.declined": { askId: string };
+	"ui.chat.ask_queue.response.dismissed": {
+		hasVia: string;
+		via: string;
+		reason: string;
+		askId: string;
+	};
+	"ui.chat.ask_queue.response.late": { askId: string };
+	"ui.chat.ask_queue.response.reason_answered_in_chat": undefined;
+	"ui.chat.ask_queue.response.reason_moot": undefined;
+	"ui.chat.ask_queue.response.surface_phone": undefined;
+	"ui.chat.ask_queue.response.surface_terminal": undefined;
+	"ui.chat.ask_queue.response.timed_out": { waited: string; askId: string };
+	"ui.chat.ask_queue.secret.placeholder_plain": undefined;
+	"ui.chat.ask_queue.secret.placeholder_retype": undefined;
+	"ui.chat.ask_queue.secret.placeholder_skip": undefined;
+	"ui.chat.ask_queue.status.answered": undefined;
+	"ui.chat.ask_queue.status.declined": undefined;
+	"ui.chat.ask_queue.status.dismissed": undefined;
+	"ui.chat.ask_queue.status.expired": undefined;
+	"ui.chat.ask_queue.status.late": undefined;
+	"ui.chat.ask_queue.status.open": undefined;
+	"ui.chat.ask_queue.status.timed_out": undefined;
+	"ui.chat.ask_queue.status.unknown": undefined;
 	"ui.chat.asks.all_asks": undefined;
 	"ui.chat.asks.answer_aria": { question: string };
 	"ui.chat.asks.answer_options": undefined;
@@ -3745,6 +3923,32 @@ export type MessageParams = {
 	"ui.chat.asks.status.withdrawn_label": undefined;
 	"ui.chat.asks.update_answer": undefined;
 	"ui.chat.asks.urgent": undefined;
+	"ui.chat.attachment_refusal.cannot_upload": undefined;
+	"ui.chat.attachment_refusal.clause.read": { name: string };
+	"ui.chat.attachment_refusal.clause.remote": { name: string };
+	"ui.chat.attachment_refusal.clause.upload": { name: string };
+	"ui.chat.attachment_refusal.clause.upload_reason": {
+		name: string;
+		reason: string;
+	};
+	"ui.chat.attachment_refusal.files_many": {
+		total: number;
+		cap: number;
+		dropped: number;
+	};
+	"ui.chat.attachment_refusal.files_one": { total: number; cap: number };
+	"ui.chat.attachment_refusal.images_many": {
+		total: number;
+		cap: number;
+		dropped: number;
+	};
+	"ui.chat.attachment_refusal.images_one": { total: number; cap: number };
+	"ui.chat.attachment_refusal.mixed_many": { clauses: string };
+	"ui.chat.attachment_refusal.mixed_one": { clauses: string };
+	"ui.chat.attachment_refusal.read_many": { names: string };
+	"ui.chat.attachment_refusal.read_one": { name: string };
+	"ui.chat.attachment_refusal.remote_many": { names: string };
+	"ui.chat.attachment_refusal.remote_one": { name: string };
 	"ui.chat.attachments.copy_path": undefined;
 	"ui.chat.attachments.copy_saved_path": undefined;
 	"ui.chat.attachments.expand_aria": { name: string };
@@ -4125,6 +4329,39 @@ export type MessageParams = {
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
 	"ui.chat.composer_media.sends_now": undefined;
+	"ui.chat.composer_notes.default_not_saved": { reason: string };
+	"ui.chat.composer_notes.default_not_saved_fallback": undefined;
+	"ui.chat.composer_notes.default_saved": { model: string };
+	"ui.chat.composer_notes.goal.done_tag": undefined;
+	"ui.chat.composer_notes.goal.stalled.breaker": undefined;
+	"ui.chat.composer_notes.goal.stalled.cap": { count: number };
+	"ui.chat.composer_notes.goal.stalled.cap_fallback": undefined;
+	"ui.chat.composer_notes.goal.stalled.unknown": undefined;
+	"ui.chat.composer_notes.hint.choose_model": undefined;
+	"ui.chat.composer_notes.hint.connect_provider": undefined;
+	"ui.chat.composer_notes.outside_mentions": { count: number };
+	"ui.chat.composer_notes.skill_empty_body": { name: string };
+	"ui.chat.composer_notes.skill_load_failed": { name: string };
+	"ui.chat.composer_notes.slash_needs_name": { command: string };
+	"ui.chat.credential_notice.armed": undefined;
+	"ui.chat.credential_notice.chip_title": { index: number; chars: number };
+	"ui.chat.credential_notice.clear_label": { index: number };
+	"ui.chat.credential_notice.cleared": {
+		key: string;
+		index: number;
+		undoCap: string;
+	};
+	"ui.chat.credential_notice.discarded": undefined;
+	"ui.chat.credential_notice.empty_span": undefined;
+	"ui.chat.credential_notice.empty_span_draft": undefined;
+	"ui.chat.credential_notice.escape_held": undefined;
+	"ui.chat.credential_notice.operator_move": undefined;
+	"ui.chat.credential_notice.typing": undefined;
+	"ui.chat.credential_notice.unconfirmed_alone": undefined;
+	"ui.chat.credential_notice.unconfirmed_labelled": { key: string };
+	"ui.chat.credential_notice.unconfirmed_words": undefined;
+	"ui.chat.credential_notice.undo": undefined;
+	"ui.chat.credential_notice.unredacted": { length: number };
 	"ui.chat.device.check_again": undefined;
 	"ui.chat.device.fact.this_device": undefined;
 	"ui.chat.device.footer.move_deletes_copy": undefined;
@@ -4154,6 +4391,30 @@ export type MessageParams = {
 		name: string;
 		reason: string;
 	};
+	"ui.chat.device_move.another_device": undefined;
+	"ui.chat.device_move.gate.below_version": undefined;
+	"ui.chat.device_move.gate.checking": undefined;
+	"ui.chat.device_move.gate.unpaired": undefined;
+	"ui.chat.device_move.ineligible.cannot_receive": undefined;
+	"ui.chat.device_move.ineligible.no_answer": undefined;
+	"ui.chat.device_move.ineligible.no_transfer": undefined;
+	"ui.chat.device_move.moving": { name: string };
+	"ui.chat.device_move.other_device": undefined;
+	"ui.chat.device_move.plan.copy": { name: string };
+	"ui.chat.device_move.plan.copy_here": undefined;
+	"ui.chat.device_move.plan.move": { name: string };
+	"ui.chat.device_move.plan.recall": undefined;
+	"ui.chat.device_move.result.back.detail": undefined;
+	"ui.chat.device_move.result.back.detail_deleted": { from: string };
+	"ui.chat.device_move.result.back.verb": undefined;
+	"ui.chat.device_move.result.copied.detail": { name: string; id: string };
+	"ui.chat.device_move.result.copied.second": { name: string };
+	"ui.chat.device_move.result.copied.verb": { name: string };
+	"ui.chat.device_move.result.moved.detail_running": undefined;
+	"ui.chat.device_move.result.moved.detail_there": undefined;
+	"ui.chat.device_move.result.moved.second": { name: string };
+	"ui.chat.device_move.result.moved.verb": { name: string };
+	"ui.chat.device_move.result.source_retired": undefined;
 	"ui.chat.dialogs.archive_action": undefined;
 	"ui.chat.dialogs.cancel": undefined;
 	"ui.chat.dialogs.delete_action": undefined;
@@ -4207,6 +4468,16 @@ export type MessageParams = {
 	"ui.chat.directory.tooltip.pending_move": { path: string };
 	"ui.chat.directory.tooltip.set": undefined;
 	"ui.chat.directory.tooltip.truncated_move_cost": { path: string };
+	"ui.chat.fast_mode.dial_differs": { dial: string; requested: string };
+	"ui.chat.fast_mode.first_message_off": undefined;
+	"ui.chat.fast_mode.first_message_on": undefined;
+	"ui.chat.fast_mode.not_changed": undefined;
+	"ui.chat.fast_mode.pick_unsupported": undefined;
+	"ui.chat.fast_mode.service_cannot_carry": undefined;
+	"ui.chat.fast_mode.service_unavailable": undefined;
+	"ui.chat.fast_mode.stays_on": undefined;
+	"ui.chat.fast_mode.turned_off": undefined;
+	"ui.chat.fast_mode.unsupported_stays_off": undefined;
 	"ui.chat.header.actions": undefined;
 	"ui.chat.header.archive_conversation": undefined;
 	"ui.chat.header.archived": undefined;
@@ -4228,6 +4499,24 @@ export type MessageParams = {
 	"ui.chat.header.session_model_switch": undefined;
 	"ui.chat.header.starting_session": undefined;
 	"ui.chat.header.transcript_display": undefined;
+	"ui.chat.header_menu.close_asks": undefined;
+	"ui.chat.header_menu.close_browser": undefined;
+	"ui.chat.header_menu.close_canvas": undefined;
+	"ui.chat.header_menu.close_code_review": undefined;
+	"ui.chat.header_menu.close_console": undefined;
+	"ui.chat.header_menu.default_description": undefined;
+	"ui.chat.header_menu.open_asks": undefined;
+	"ui.chat.header_menu.open_browser": undefined;
+	"ui.chat.header_menu.open_canvas": undefined;
+	"ui.chat.header_menu.open_code_review": undefined;
+	"ui.chat.header_menu.open_console": undefined;
+	"ui.chat.header_menu.rename_failed": undefined;
+	"ui.chat.interrupt.idle": undefined;
+	"ui.chat.interrupt.idle_disputed": undefined;
+	"ui.chat.interrupt.stopped_both": { children: number; jobs: number };
+	"ui.chat.interrupt.stopped_children": { count: number };
+	"ui.chat.interrupt.stopped_jobs": { count: number };
+	"ui.chat.interrupt.unavailable": undefined;
 	"ui.chat.action.stopped": undefined;
 	"ui.chat.approval.reply_required": undefined;
 	"ui.chat.aside.add_to_conversation": undefined;
@@ -4472,6 +4761,52 @@ export type MessageParams = {
 	"ui.chat.live_updates.reload": undefined;
 	"ui.chat.live_updates.reload_failed": undefined;
 	"ui.chat.live_updates.reloading": undefined;
+	"ui.chat.message_budget.bytes": { count: number };
+	"ui.chat.message_budget.command_chars": { count: number; limit: string };
+	"ui.chat.message_budget.command_size": { size: string; limit: string };
+	"ui.chat.message_budget.fork_chars": { count: number; limit: string };
+	"ui.chat.message_budget.fork_size": { size: string; limit: string };
+	"ui.chat.message_budget.images_size": { size: string; limit: string };
+	"ui.chat.message_budget.message_chars": { count: number; limit: string };
+	"ui.chat.message_budget.prompt_chars": { count: number; limit: string };
+	"ui.chat.message_budget.prompt_size": { size: string; limit: string };
+	"ui.chat.message_budget.text_size": { size: string; limit: string };
+	"ui.chat.move_cwd.already_in": { label: string };
+	"ui.chat.move_cwd.failed": undefined;
+	"ui.chat.move_cwd.in_flight": undefined;
+	"ui.chat.move_cwd.moved": { label: string };
+	"ui.chat.move_cwd.moved_restarting": { label: string };
+	"ui.chat.move_cwd.moved_restarting_lost": { label: string };
+	"ui.chat.move_cwd.not_ready": undefined;
+	"ui.chat.move_cwd.unavailable": undefined;
+	"ui.chat.page_chrome.aside_text_only": undefined;
+	"ui.chat.page_chrome.backend.connecting": undefined;
+	"ui.chat.page_chrome.backend.no_answer": undefined;
+	"ui.chat.page_chrome.backend.update_needed": undefined;
+	"ui.chat.page_chrome.credential_not_stored": undefined;
+	"ui.chat.page_chrome.error_view.failed": undefined;
+	"ui.chat.page_chrome.error_view.failed_with_message": { message: string };
+	"ui.chat.page_chrome.error_view.unreachable": undefined;
+	"ui.chat.page_chrome.error_view.unreachable_with_message": {
+		message: string;
+	};
+	"ui.chat.page_chrome.legacy_link": undefined;
+	"ui.chat.page_chrome.options.choose_agent": undefined;
+	"ui.chat.page_chrome.options.choose_team": undefined;
+	"ui.chat.page_chrome.options.fork": undefined;
+	"ui.chat.page_chrome.options.model": undefined;
+	"ui.chat.page_chrome.options.new": undefined;
+	"ui.chat.page_chrome.options.rename": undefined;
+	"ui.chat.page_chrome.options.resume": undefined;
+	"ui.chat.page_chrome.options.settings": undefined;
+	"ui.chat.page_chrome.scroll_to_bottom.new_activity": undefined;
+	"ui.chat.page_chrome.status_strip.connection": undefined;
+	"ui.chat.page_chrome.status_strip.offline": undefined;
+	"ui.chat.page_chrome.status_strip.outcome_refused": undefined;
+	"ui.chat.page_chrome.status_strip.outcome_unreachable": undefined;
+	"ui.chat.page_chrome.status_strip.retry": undefined;
+	"ui.chat.page_chrome.status_strip.retrying": undefined;
+	"ui.chat.page_chrome.stop_unconfirmed": undefined;
 	"ui.chat.pickers.analytics_model.all_sessions": { base: string };
 	"ui.chat.pickers.analytics_model.as_of": {
 		base: string;
@@ -5525,6 +5860,13 @@ export type MessageParams = {
 		destination: string;
 	};
 	"ui.chat.pickers.use_picker_backend.the_backend_refused_it": undefined;
+	"ui.chat.quota_resend.failed": undefined;
+	"ui.chat.quota_resend.rate_limited": undefined;
+	"ui.chat.quota_resend.refresh_checking": undefined;
+	"ui.chat.quota_resend.refresh_failed": undefined;
+	"ui.chat.quota_resend.refresh_unchanged": undefined;
+	"ui.chat.quota_resend.sending": undefined;
+	"ui.chat.quota_resend.sent": undefined;
 	"ui.chat.radient_session.action.sign_in": undefined;
 	"ui.chat.radient_session.pointer.sign_in_active": undefined;
 	"ui.chat.radient_session.prose.input_required": { message: string };
@@ -5533,6 +5875,22 @@ export type MessageParams = {
 	"ui.chat.radient_session.title.input_required": undefined;
 	"ui.chat.radient_session.title.needs_sign_in": undefined;
 	"ui.chat.radient_session.title.signing_in": undefined;
+	"ui.chat.read_ack.clause.offscreen": undefined;
+	"ui.chat.read_ack.clause.pending": undefined;
+	"ui.chat.read_ack.clause.remote": undefined;
+	"ui.chat.read_ack.clause.remote_named": { device: string };
+	"ui.chat.read_ack.description.offscreen": undefined;
+	"ui.chat.read_ack.description.pending": undefined;
+	"ui.chat.read_ack.description.remote": undefined;
+	"ui.chat.read_ack.description.remote_named": { device: string };
+	"ui.chat.read_ack.description.unsettled": { remedy: string };
+	"ui.chat.read_ack.refusal.busy": { remedy: string };
+	"ui.chat.read_ack.refusal.refused": { remedy: string };
+	"ui.chat.read_ack.refusal.unreachable": { reason: string; remedy: string };
+	"ui.chat.read_ack.refusal.unreported": { remedy: string };
+	"ui.chat.read_ack.retry_remedy": undefined;
+	"ui.chat.read_ack.retry_remedy_sentence": undefined;
+	"ui.chat.read_ack.unreachable_fallback": undefined;
 	"ui.chat.response_actions.answer_label": undefined;
 	"ui.chat.response_actions.copied": undefined;
 	"ui.chat.response_actions.copy": undefined;
@@ -5634,6 +5992,129 @@ export type MessageParams = {
 	"ui.chat.run_details.wake_cancel.cancelling": undefined;
 	"ui.chat.run_details.wake_cancel.keep": undefined;
 	"ui.chat.run_details.wakes.title": undefined;
+	"ui.chat.session_readout.access.absent.description_connect": undefined;
+	"ui.chat.session_readout.access.absent.description_remote": undefined;
+	"ui.chat.session_readout.access.absent.title": { label: string };
+	"ui.chat.session_readout.access.device_bound.description": undefined;
+	"ui.chat.session_readout.access.device_bound.title": { label: string };
+	"ui.chat.session_readout.access.effective_borrow.description": undefined;
+	"ui.chat.session_readout.access.effective_borrow.title": {
+		label: string;
+		owner: string;
+	};
+	"ui.chat.session_readout.access.eligible_borrow_unverified.description": {
+		label: string;
+		owner: string;
+	};
+	"ui.chat.session_readout.access.eligible_borrow_unverified.title": {
+		owner: string;
+	};
+	"ui.chat.session_readout.access.expired.description": { owner: string };
+	"ui.chat.session_readout.access.expired.title": { label: string };
+	"ui.chat.session_readout.access.history.grant_expiry": { time: string };
+	"ui.chat.session_readout.access.history.last_checked": { time: string };
+	"ui.chat.session_readout.access.history.last_resolved": { time: string };
+	"ui.chat.session_readout.access.history.only": undefined;
+	"ui.chat.session_readout.access.local.description": undefined;
+	"ui.chat.session_readout.access.local.title": { label: string };
+	"ui.chat.session_readout.access.owner_fallback": undefined;
+	"ui.chat.session_readout.access.owner_unavailable.description": {
+		label: string;
+		owner: string;
+	};
+	"ui.chat.session_readout.access.owner_unavailable.title": { owner: string };
+	"ui.chat.session_readout.access.pending.description": undefined;
+	"ui.chat.session_readout.access.pending.title": { label: string };
+	"ui.chat.session_readout.access.withdrawn.description": undefined;
+	"ui.chat.session_readout.access.withdrawn.title": { label: string };
+	"ui.chat.session_readout.draft.confirm_effort_changed": {
+		selector: string;
+		level: string;
+		wanted: string;
+	};
+	"ui.chat.session_readout.draft.confirm_effort_unset": {
+		selector: string;
+		wanted: string;
+	};
+	"ui.chat.session_readout.draft.confirm_model": { selector: string };
+	"ui.chat.session_readout.draft.confirm_model_effort": {
+		selector: string;
+		effort: string;
+	};
+	"ui.chat.session_readout.draft.refusal_ladder_unread": undefined;
+	"ui.chat.session_readout.effort.detail.auto": { levels: string };
+	"ui.chat.session_readout.effort.detail.auto_with_default": {
+		default: string;
+		levels: string;
+	};
+	"ui.chat.session_readout.effort.detail.default_only": undefined;
+	"ui.chat.session_readout.effort.detail.no_levels": undefined;
+	"ui.chat.session_readout.effort.detail.not_reported": { command: string };
+	"ui.chat.session_readout.effort.detail.offers": { levels: string };
+	"ui.chat.session_readout.effort.detail.session": undefined;
+	"ui.chat.session_readout.effort.level.auto": undefined;
+	"ui.chat.session_readout.effort.level.max": undefined;
+	"ui.chat.session_readout.effort.level.minimal": undefined;
+	"ui.chat.session_readout.effort.level.none": undefined;
+	"ui.chat.session_readout.effort.level.reasoning": undefined;
+	"ui.chat.session_readout.effort.level.unknown": undefined;
+	"ui.chat.session_readout.effort.level.xhigh": undefined;
+	"ui.chat.session_readout.model.router_auto": undefined;
+	"ui.chat.session_readout.strip.draft_failed.detail": undefined;
+	"ui.chat.session_readout.strip.draft_failed.retry": undefined;
+	"ui.chat.session_readout.strip.draft_failed.title": undefined;
+	"ui.chat.session_readout.strip.draft_pending.detail": undefined;
+	"ui.chat.session_readout.strip.draft_pending.label": undefined;
+	"ui.chat.session_readout.strip.draft_pending.title": undefined;
+	"ui.chat.session_readout.strip.effort_aria": { level: string };
+	"ui.chat.session_readout.strip.fast_mode_on": undefined;
+	"ui.chat.session_readout.strip.model_switching": undefined;
+	"ui.chat.session_readout.strip.readings_dropped": undefined;
+	"ui.chat.session_spend.api_equivalent_labelled": { label: string };
+	"ui.chat.session_spend.basis.billed": undefined;
+	"ui.chat.session_spend.basis.estimated": undefined;
+	"ui.chat.session_spend.basis.included": undefined;
+	"ui.chat.session_spend.basis.not_tracked": undefined;
+	"ui.chat.session_spend.basis_unavailable": undefined;
+	"ui.chat.session_spend.child_line": { amount: string; bases: string };
+	"ui.chat.session_spend.context.estimate": undefined;
+	"ui.chat.session_spend.context.model_maximum": { window: string };
+	"ui.chat.session_spend.context.no_reading": undefined;
+	"ui.chat.session_spend.context.title": undefined;
+	"ui.chat.session_spend.context.tokens_of_window": {
+		tokens: number;
+		window: number;
+		windowLabel: string;
+	};
+	"ui.chat.session_spend.context.window_unknown": { tokens: string };
+	"ui.chat.session_spend.duration_explanation": undefined;
+	"ui.chat.session_spend.included_api_equivalent": undefined;
+	"ui.chat.session_spend.plan_clause": { amount: string };
+	"ui.chat.session_spend.price_unknown": undefined;
+	"ui.chat.session_spend.summary.basis_amount": {
+		label: string;
+		amount: string;
+	};
+	"ui.chat.session_spend.summary.basis_amount_api_equivalent": {
+		label: string;
+		amount: string;
+	};
+	"ui.chat.session_spend.summary.records_unpriced": { count: number };
+	"ui.chat.session_spend.summary.subagent_part": { amount: string };
+	"ui.chat.session_spend.summary.total": { total: string };
+	"ui.chat.session_spend.summary.untracked": {
+		amount: string;
+		children: string;
+	};
+	"ui.chat.session_spend.tooltip.channels_untracked": undefined;
+	"ui.chat.session_spend.tooltip.nothing_spent": undefined;
+	"ui.chat.session_spend.tooltip.part_unpriced": undefined;
+	"ui.chat.session_spend.tooltip.some_unpriced": undefined;
+	"ui.chat.session_spend.tooltip.spend_at_least": { amount: string };
+	"ui.chat.session_spend.tooltip.spend_at_least_untracked": { amount: string };
+	"ui.chat.session_spend.tooltip.spend_so_far": { amount: string };
+	"ui.chat.session_spend.tooltip.unpriced_model": undefined;
+	"ui.chat.session_spend.untracked_basis": undefined;
 	"ui.chat.sidebar.agents.builtin_offer": { count: number; list: string };
 	"ui.chat.sidebar.agents.clear_filter": undefined;
 	"ui.chat.sidebar.agents.create": undefined;
@@ -5731,6 +6212,14 @@ export type MessageParams = {
 	"ui.chat.sidebar.row.bg.subagents": { count: number };
 	"ui.chat.sidebar.row.bg.subagents_queued": { count: number };
 	"ui.chat.sidebar.row.bg.waiting": undefined;
+	"ui.chat.sidebar_notes.clear_all_why": undefined;
+	"ui.chat.sidebar_notes.draft_sending_why": undefined;
+	"ui.chat.sidebar_notes.loading_more": undefined;
+	"ui.chat.sidebar_notes.opened_by_anonymous": undefined;
+	"ui.chat.sidebar_notes.opened_by_named": { agent: string };
+	"ui.chat.sidebar_notes.running_none": undefined;
+	"ui.chat.sidebar_notes.running_unread": undefined;
+	"ui.chat.sidebar_notes.stale_list": { message: string };
 	"ui.chat.sidebar_view.active_first": undefined;
 	"ui.chat.sidebar_view.agent_team": undefined;
 	"ui.chat.sidebar_view.clock_hint": undefined;
@@ -5757,6 +6246,95 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.tag": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
+	"ui.chat.slash.arg.credential_api_key": undefined;
+	"ui.chat.slash.arg.mcp_detail.reauthorize": undefined;
+	"ui.chat.slash.arg.mcp_detail.reuse": undefined;
+	"ui.chat.slash.arg.mcp_detail.stored": undefined;
+	"ui.chat.slash.arg.mcp_detail.stored_connected": undefined;
+	"ui.chat.slash.arg.mcp_status.connected": undefined;
+	"ui.chat.slash.arg.mcp_status.connecting": undefined;
+	"ui.chat.slash.arg.mcp_status.error": undefined;
+	"ui.chat.slash.arg.mcp_status.needs_sign_in": undefined;
+	"ui.chat.slash.arg.mcp_status.not_started": undefined;
+	"ui.chat.slash.arg.model_aggregated": undefined;
+	"ui.chat.slash.arg.model_needs_sign_in": undefined;
+	"ui.chat.slash.arg.price_free": undefined;
+	"ui.chat.slash.arg.price_usage_based": undefined;
+	"ui.chat.slash.arg.provider_state.env_key": undefined;
+	"ui.chat.slash.arg.provider_state.local_ready": undefined;
+	"ui.chat.slash.arg.provider_state.local_unconfigured": undefined;
+	"ui.chat.slash.arg.provider_state.logged_in": undefined;
+	"ui.chat.slash.arg.provider_state.needs_login": undefined;
+	"ui.chat.slash.arg.removal_many": { count: number };
+	"ui.chat.slash.arg.removal_one": { kind: string };
+	"ui.chat.slash.at.empty": undefined;
+	"ui.chat.slash.at.no_match_files": { query: string; scope: string };
+	"ui.chat.slash.at.no_match_projects": { query: string; scope: string };
+	"ui.chat.slash.at.reading": undefined;
+	"ui.chat.slash.at.unavailable": undefined;
+	"ui.chat.slash.at.unreadable_generic": undefined;
+	"ui.chat.slash.at.unreadable_permission": undefined;
+	"ui.chat.slash.click.verb": { verb: string };
+	"ui.chat.slash.dispatch.backend_incomplete": undefined;
+	"ui.chat.slash.dispatch.below_version": { name: string };
+	"ui.chat.slash.dispatch.could_not_run": { name: string; reason: string };
+	"ui.chat.slash.dispatch.dialog_missing": { name: string };
+	"ui.chat.slash.dispatch.model_resolving": { name: string };
+	"ui.chat.slash.dispatch.model_unresolved": { name: string };
+	"ui.chat.slash.dispatch.move_hint": { example: string };
+	"ui.chat.slash.dispatch.needs_conversation": { name: string };
+	"ui.chat.slash.dispatch.needs_newer_backend": { name: string };
+	"ui.chat.slash.dispatch.no_argument_on_draft": { name: string };
+	"ui.chat.slash.dispatch.not_in_desktop": { name: string };
+	"ui.chat.slash.dispatch.quit_hint": undefined;
+	"ui.chat.slash.dispatch.refreshing_title": undefined;
+	"ui.chat.slash.dispatch.refused": undefined;
+	"ui.chat.slash.dispatch.service_waiting": { name: string };
+	"ui.chat.slash.dispatch.unpaired": { name: string };
+	"ui.chat.slash.empty.loading": undefined;
+	"ui.chat.slash.empty.needs_conversation": undefined;
+	"ui.chat.slash.empty.no_commands": undefined;
+	"ui.chat.slash.empty.no_matches": undefined;
+	"ui.chat.slash.empty.no_servers": undefined;
+	"ui.chat.slash.empty.not_reported": undefined;
+	"ui.chat.slash.enter.chooses_name": undefined;
+	"ui.chat.slash.enter.closes_list": undefined;
+	"ui.chat.slash.enter.completes": { label: string };
+	"ui.chat.slash.enter.completes_then_connects": { name: string };
+	"ui.chat.slash.enter.completes_then_runs": { label: string };
+	"ui.chat.slash.enter.completes_then_runs_value": undefined;
+	"ui.chat.slash.enter.completes_to": { prefix: string };
+	"ui.chat.slash.enter.completes_value": undefined;
+	"ui.chat.slash.enter.connects": { name: string };
+	"ui.chat.slash.enter.runs": { label: string };
+	"ui.chat.slash.enter.runs_target": { target: string };
+	"ui.chat.slash.enter.stages": { label: string };
+	"ui.chat.slash.enter.stages_no_conversation": { label: string };
+	"ui.chat.slash.enter.verb": { verb: string };
+	"ui.chat.slash.footer.default_needs_model": undefined;
+	"ui.chat.slash.footer.default_sets": undefined;
+	"ui.chat.slash.list.load_failed": undefined;
+	"ui.chat.slash.list.no_profiles": undefined;
+	"ui.chat.slash.list.no_stored_credential": undefined;
+	"ui.chat.slash.list.no_teams": undefined;
+	"ui.chat.slash.locked.fields": undefined;
+	"ui.chat.slash.locked.taken": { word: string };
+	"ui.chat.slash.locked.undo": { cap: string };
+	"ui.chat.slash.needs_conversation_clause": undefined;
+	"ui.chat.slash.skill.click_footer": { name: string };
+	"ui.chat.slash.skill.empty_attached": undefined;
+	"ui.chat.slash.skill.empty_draft": undefined;
+	"ui.chat.slash.skill.enter_footer": { name: string };
+	"ui.chat.slash.skill.loading": undefined;
+	"ui.chat.slash.skill.miss": undefined;
+	"ui.chat.slash.skill.phase_label": undefined;
+	"ui.chat.slash.skill.transient": undefined;
+	"ui.chat.slash.skill.unavailable": undefined;
+	"ui.chat.slash.staged.refused": { sentence: string; clause: string };
+	"ui.chat.slash.staged.runs": { sentence: string };
+	"ui.chat.slash.staged.runs_again": { sentence: string };
+	"ui.chat.slash.staged.sets_goal": { sentence: string };
+	"ui.chat.slash.tag.add_named": { name: string };
 	"ui.chat.status.credential_refused": undefined;
 	"ui.chat.status.degraded": undefined;
 	"ui.chat.status.internet_offline": undefined;

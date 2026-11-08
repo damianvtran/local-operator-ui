@@ -1,0 +1,51 @@
+{
+	"ui.chat.quota_resend.failed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "error when the verification email could not be requested",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.quota_resend.rate_limited": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "message when the verification email was requested too recently",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.quota_resend.refresh_checking": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "status while the quota is being re-read",
+		"tone": "one gerund and an ellipsis"
+	},
+	"ui.chat.quota_resend.refresh_failed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "error when the quota could not be re-read",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.quota_resend.refresh_unchanged": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "status after re-reading the quota found no change",
+		"tone": "clause with an em dash, ends with a full stop"
+	},
+	"ui.chat.quota_resend.sending": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "status while the verification email is being requested",
+		"tone": "one gerund and an ellipsis"
+	},
+	"ui.chat.quota_resend.sent": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "confirmation after the verification email was requested again",
+		"tone": "two short sentences, ends with a full stop"
+	}
+}

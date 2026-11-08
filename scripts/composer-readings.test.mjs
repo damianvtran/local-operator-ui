@@ -36,7 +36,7 @@ const bundle = await build({
 			import { createElement } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { SessionStatusStrip } from "./src/renderer/src/features/chat/session-status/session-status-strip";
-			export { LAST_READING_NOTE, READINGS_DROPPED_NOTE, FAST_MODE_ON_NOTE } from "./src/renderer/src/features/chat/session-status/session-status-strip";
+			export { LAST_READING_NOTE, readingsDroppedNote, fastModeOnNote } from "./src/renderer/src/features/chat/session-status/session-status-strip";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 
 			export const renderStrip = (props) =>
@@ -78,8 +78,8 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	renderStrip,
 	LAST_READING_NOTE,
-	READINGS_DROPPED_NOTE,
-	FAST_MODE_ON_NOTE,
+	readingsDroppedNote,
+	fastModeOnNote,
 	desktopEndpoint,
 	desktopRequestSchema,
 } = await import(bundlePath.href);
@@ -605,7 +605,7 @@ test("a dial this backend cannot carry is SAID on this composer, not only filter
 	);
 	assert.match(
 		page,
-		/setSendError\(FAST_UNAVAILABLE_SENTENCE\);[\s\S]{0,160}setSendErrorMuted\(true\);/,
+		/setSendError\(fastUnavailableSentence\(\)\);[\s\S]{0,160}setSendErrorMuted\(true\);/,
 		"the sentence is said on the composer's muted line, the register for a statement of fact",
 	);
 	/*
@@ -616,7 +616,7 @@ test("a dial this backend cannot carry is SAID on this composer, not only filter
 	 */
 	assert.match(
 		page,
-		/setSendError\(FAST_UNAVAILABLE_SENTENCE\);[\s\S]{0,160}setSendErrorCode\(FAST_UNAVAILABLE_CODE\);/,
+		/setSendError\(fastUnavailableSentence\(\)\);[\s\S]{0,160}setSendErrorCode\(FAST_UNAVAILABLE_CODE\);/,
 		"the fast-unavailable line carries its own code, not the lock answer's silence",
 	);
 	assert.match(
@@ -640,7 +640,7 @@ test("a session whose readings were dropped leaves one sentence where they were"
 	// The flag is TOLD by the pane (which remembers the session once painted
 	// readings), never inferred here.
 	const html = renderStrip({ readingsDropped: true });
-	assert.equal(text(html), READINGS_DROPPED_NOTE);
+	assert.equal(text(html), readingsDroppedNote());
 	assert.match(html, /data-lo-readings-dropped/);
 	assert.match(html, /role="status"/);
 
@@ -662,7 +662,7 @@ test("the dropped sentence never outranks readings that exist", () => {
 		/aria-label="Model:/,
 		"the readings still paint when there are readings to paint",
 	);
-	assert.ok(!html.includes(READINGS_DROPPED_NOTE));
+	assert.ok(!html.includes(readingsDroppedNote()));
 });
 
 test("a ladderless draft offers no effort control even where the model can be picked", () => {
@@ -1857,7 +1857,7 @@ test("the fast badge marks an on spec, and only an on spec", () => {
 	);
 	// The tooltip's line is the component's own constant; a reworded sentence
 	// must move this test rather than silently leave the PR notes behind.
-	assert.equal(FAST_MODE_ON_NOTE, "Fast mode on");
+	assert.equal(fastModeOnNote(), "Fast mode on");
 
 	// OFF IS NOT MARKED, and it makes no claim either: no bolt, no clause.
 	assert.doesNotMatch(OFF, /lucide-zap/, "a supported off dial shows no bolt");

@@ -1,0 +1,114 @@
+{
+	"ui.chat.composer_notes.default_not_saved": {
+		"length": "",
+		"note": "The reason is either the backend's own error text (untranslated, arrives verbatim) or the fallback sentence in default_not_saved_fallback.",
+		"placeholders": {
+			"reason": "why the save failed: the backend's message verbatim, or the localized fallback phrase"
+		},
+		"role": "composer note shown when saving the default model for new sessions failed",
+		"tone": "short factual sentence then the reason, no trailing period"
+	},
+	"ui.chat.composer_notes.default_not_saved_fallback": {
+		"length": "",
+		"note": "Reads as the end of the sentence 'The default was not saved: ...'. Keep it a fragment.",
+		"placeholders": {},
+		"role": "fallback reason spliced into the 'default was not saved' note when the failure carried no message",
+		"tone": "lowercase fragment, no trailing period"
+	},
+	"ui.chat.composer_notes.default_saved": {
+		"length": "",
+		"note": "The value is a provider/model identifier and is shown verbatim.",
+		"placeholders": {
+			"model": "provider and model id joined by a slash (for example anthropic/claude-opus); a technical identifier, never translated"
+		},
+		"role": "composer note confirming the saved default model for new sessions after a slash command",
+		"tone": "short factual label then value, no trailing period"
+	},
+	"ui.chat.composer_notes.goal.done_tag": {
+		"length": "",
+		"note": "Sits to the right of the goal text and is the first thing the row gives up when narrow, so keep it as short as the English. Keep the leading dash.",
+		"placeholders": {},
+		"role": "small tag after a finished goal's struck-through text in the composer status row",
+		"tone": "very short lowercase tag led by an em dash"
+	},
+	"ui.chat.composer_notes.goal.stalled.breaker": {
+		"length": "",
+		"note": "Names the cause (the judge, not the provider) and the next move (send a message). The English mirrors the backend's own wording for the same event.",
+		"placeholders": {},
+		"role": "one-shot note written into the transcript when a goal stops because the judge could not read a verdict",
+		"tone": "plain lowercase status clause with an em-dash instruction, no trailing period"
+	},
+	"ui.chat.composer_notes.goal.stalled.cap": {
+		"length": "",
+		"note": "The count is the backend's continuation budget and renders as #. The English mirrors the backend's own wording.",
+		"placeholders": {
+			"count": "how many automatic continuations ran before the stop; drives the plural branch and renders as #"
+		},
+		"role": "one-shot note written into the transcript when a goal stopped after using its automatic continuations",
+		"tone": "plain lowercase status clause with an em-dash instruction, no trailing period"
+	},
+	"ui.chat.composer_notes.goal.stalled.cap_fallback": {
+		"length": "",
+		"note": "Same event as goal.stalled.cap without a number. The English mirrors the backend's own wording.",
+		"placeholders": {},
+		"role": "one-shot note written into the transcript when a goal hit its automatic-continuation limit and the count is unreadable",
+		"tone": "plain lowercase status clause with an em-dash instruction, no trailing period"
+	},
+	"ui.chat.composer_notes.goal.stalled.unknown": {
+		"length": "",
+		"note": "Deliberately names no bound; it says only that automatic continuation stopped. The English mirrors the backend's fallback wording.",
+		"placeholders": {},
+		"role": "one-shot note written into the transcript when a goal stopped for a cause this build cannot name",
+		"tone": "plain lowercase status clause with an em-dash instruction, no trailing period"
+	},
+	"ui.chat.composer_notes.hint.choose_model": {
+		"length": "",
+		"note": "Shown in place of the send affordance's explanation; the model picker sits just above.",
+		"placeholders": {},
+		"role": "hint line under the composer when the conversation has no model chosen",
+		"tone": "short instruction, sentence case, ends with a full stop"
+	},
+	"ui.chat.composer_notes.hint.connect_provider": {
+		"length": "",
+		"note": "A provider is an AI model vendor account (for example Anthropic or OpenAI).",
+		"placeholders": {},
+		"role": "hint line under the composer when no provider is connected",
+		"tone": "short instruction, sentence case, ends with a full stop"
+	},
+	"ui.chat.composer_notes.outside_mentions": {
+		"length": "",
+		"note": "Read aloud by assistive technology only, never drawn. The count leads the sentence; use the locale's plural forms for reference/references and it/them.",
+		"placeholders": {
+			"count": "how many @-mentions point outside the session's working directory; at least 1; drives the plural branch and renders as #"
+		},
+		"role": "screen-reader-only description of the composer box when @-mentioned files sit outside the working directory",
+		"tone": "one full sentence, sentence case, ends with a full stop"
+	},
+	"ui.chat.composer_notes.skill_empty_body": {
+		"length": "",
+		"note": "The message is still sent; the note only explains that the mentioned skill contributed nothing. Keep the backticks around the skill name.",
+		"placeholders": {
+			"name": "the skill's name exactly as typed after the slash; a technical identifier, never translated"
+		},
+		"role": "composer note shown above the box when a typed /skill mention resolves to a skill whose file is empty",
+		"tone": "plain lowercase status clause, no trailing period; names what happens next"
+	},
+	"ui.chat.composer_notes.skill_load_failed": {
+		"length": "",
+		"note": "The message is still sent without the skill. Keep the backticks around the skill name.",
+		"placeholders": {
+			"name": "the skill's name exactly as typed after the slash; a technical identifier, never translated"
+		},
+		"role": "composer note shown above the box when a typed /skill mention could not be read from disk",
+		"tone": "plain lowercase status clause, no trailing period; names what happens next"
+	},
+	"ui.chat.composer_notes.slash_needs_name": {
+		"length": "",
+		"note": "Explains why Enter did nothing. The slash and the command name are literal command syntax.",
+		"placeholders": {
+			"command": "the slash command's name without the leading slash (for example model); a technical token, never translated"
+		},
+		"role": "composer note shown when Enter is pressed on a slash command that needs an argument and none was typed",
+		"tone": "short instruction, sentence case, ends with a full stop"
+	}
+}

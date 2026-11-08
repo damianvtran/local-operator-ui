@@ -4444,7 +4444,7 @@ export function draftFastReading(
 	if (dial === null) {
 		return {
 			applied: requested === "off",
-			sentence: "This model does not support fast mode, so it stays off.",
+			sentence: t("ui.chat.fast_mode.unsupported_stays_off"),
 		};
 	}
 	if (dial === requested) {
@@ -4452,8 +4452,8 @@ export function draftFastReading(
 			applied: true,
 			sentence:
 				dial === "on"
-					? "Fast mode is on for the first message."
-					: "Fast mode is off for the first message.",
+					? t("ui.chat.fast_mode.first_message_on")
+					: t("ui.chat.fast_mode.first_message_off"),
 		};
 	}
 	return {
@@ -4463,9 +4463,7 @@ export function draftFastReading(
 		 * both: a resolution that did not apply `on` names the off it got, and one
 		 * that did not apply `off` must not be told it "was not turned on".
 		 */
-		sentence: `Fast mode is ${dial} for this model, so it was not turned ${
-			requested === "on" ? "on" : "off"
-		}.`,
+		sentence: t("ui.chat.fast_mode.dial_differs", { dial, requested }),
 	};
 }
 

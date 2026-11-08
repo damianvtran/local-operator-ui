@@ -505,15 +505,15 @@ test("unread, unavailable and empty are named apart, and none borrows another's 
 	assert.equal(queue.askDrawerCountClause(unread), "");
 	assert.equal(
 		queue.askDrawerCountClause(unavailable),
-		queue.ASK_DRAWER_UNAVAILABLE_CLAUSE,
+		queue.askDrawerUnavailableClause(),
 	);
 	assert.equal(queue.askDrawerCountClause(empty), "All asks settled");
 
 	// The two unpublishable frames must not share a word: the first is a read in flight,
 	// the second is a terminal answer about the runtime.
 	assert.notEqual(
-		queue.ASK_DRAWER_UNAVAILABLE_LINE,
-		queue.ASK_DRAWER_UNREAD_LINE,
+		queue.askDrawerUnavailableLine(),
+		queue.askDrawerUnreadLine(),
 	);
 	assert.equal(
 		queue.askScopeLine("fleet", unavailable),
@@ -635,20 +635,20 @@ test("the secret field offers a skip only where leaving it empty could still sen
 	const choice = { id: "env", question: "Which environment?" };
 	const placeholder = (questions, recorded) =>
 		queue.askSecretPlaceholder(ask({ questions }), key, recorded);
-	assert.equal(placeholder([choice, key]), queue.ASK_SECRET_SKIP_PLACEHOLDER);
+	assert.equal(placeholder([choice, key]), queue.askSecretSkipPlaceholder());
 	// Another SECRET can carry the one real answer, so this one may be skipped.
-	assert.equal(placeholder([key, other]), queue.ASK_SECRET_SKIP_PLACEHOLDER);
+	assert.equal(placeholder([key, other]), queue.askSecretSkipPlaceholder());
 	// Alone, an empty field can never send: main's copy, and Decline is the way out.
-	assert.equal(placeholder([key]), queue.ASK_SECRET_PLAIN_PLACEHOLDER);
+	assert.equal(placeholder([key]), queue.askSecretPlainPlaceholder());
 	assert.equal(
 		placeholder([key], { K: ["<not provided>"] }),
-		queue.ASK_SECRET_PLAIN_PLACEHOLDER,
+		queue.askSecretPlainPlaceholder(),
 		"the change form of a secret-only ask recorded as a skip",
 	);
 	// Over a stored key the requirement wins, whatever else is on the ask.
 	assert.equal(
 		placeholder([choice, key], { env: ["staging"], K: ["K"] }),
-		queue.ASK_SECRET_RETYPE_PLACEHOLDER,
+		queue.askSecretRetypePlaceholder(),
 	);
 });
 
@@ -1041,15 +1041,15 @@ test("the app's own refusal sentence is chosen by the state, and both constants 
 	// assertions are the rig that names them.
 	assert.equal(
 		queue.askRefusalFallback({ status: 410 }),
-		queue.ASK_EXPIRED_MESSAGE,
+		queue.askExpiredMessage(),
 	);
 	assert.equal(
 		queue.askRefusalFallback({ code: "expired" }),
-		queue.ASK_EXPIRED_MESSAGE,
+		queue.askExpiredMessage(),
 	);
 	assert.equal(
 		queue.askRefusalFallback({ status: 409 }),
-		queue.ASK_ALREADY_SETTLED_MESSAGE,
+		queue.askAlreadySettledMessage(),
 	);
 	// NULL is a real answer: a transport failure (no status) and a 404 ("no ask
 	// with that id") are states neither constant describes, and inventing one would
@@ -1084,13 +1084,13 @@ test("a refusal WITH the owner's sentence keeps it; without one, the app says th
 	);
 	assert.equal(
 		queue.askRefusalSentence(bare),
-		queue.ASK_ALREADY_SETTLED_MESSAGE,
+		queue.askAlreadySettledMessage(),
 	);
 	const expired = new queue.DesktopControlError(
 		410,
 		"This server did not answer the request for its desktop controls.",
 	);
-	assert.equal(queue.askRefusalSentence(expired), queue.ASK_EXPIRED_MESSAGE);
+	assert.equal(queue.askRefusalSentence(expired), queue.askExpiredMessage());
 	// And an error the app cannot classify keeps the transport's own sentence
 	// rather than borrowing one.
 	assert.equal(
@@ -1328,7 +1328,7 @@ test("an owner's sentence survives when the wire sends it as a STRING detail", (
 	);
 	assert.equal(
 		queue.askRefusalSentence(placeholder),
-		queue.ASK_ALREADY_SETTLED_MESSAGE,
+		queue.askAlreadySettledMessage(),
 	);
 	// A plain Error is a transport failure, not the backend's prose: its own message
 	// is kept, never attributed to the server.

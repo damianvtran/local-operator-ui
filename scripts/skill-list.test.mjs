@@ -33,13 +33,13 @@ const bundle = await build({
 			} from "./src/renderer/src/features/chat/components/skill-rank";
 			export { skillCompletionFor } from "./src/renderer/src/features/chat/components/skill-completion";
 			export {
-				SKILL_EMPTY_ATTACHED,
-				SKILL_EMPTY_DRAFT,
-				SKILL_LOADING_LINE,
-				SKILL_MISS_LINE,
-				SKILL_PHASE_LABEL,
-				SKILL_TRANSIENT_REASON,
-				SKILL_UNAVAILABLE_REASON,
+				skillEmptyAttached,
+				skillEmptyDraft,
+				skillLoadingLine,
+				skillMissLine,
+				skillPhaseLabel,
+				skillTransientReason,
+				skillUnavailableReason,
 				skillClickFooter,
 				skillEnterFooter,
 				skillKeyIntent,
@@ -57,13 +57,13 @@ const bundle = await build({
 const bundlePath = new URL(`./_skill-list-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
-	SKILL_EMPTY_ATTACHED,
-	SKILL_EMPTY_DRAFT,
-	SKILL_LOADING_LINE,
-	SKILL_MISS_LINE,
-	SKILL_PHASE_LABEL,
-	SKILL_TRANSIENT_REASON,
-	SKILL_UNAVAILABLE_REASON,
+	skillEmptyAttached,
+	skillEmptyDraft,
+	skillLoadingLine,
+	skillMissLine,
+	skillPhaseLabel,
+	skillTransientReason,
+	skillUnavailableReason,
 	hasLowercaseEvidence,
 	skillClickFooter,
 	skillCompletionFor,
@@ -335,7 +335,7 @@ test("Enter and Tab both complete, never run; Escape closes; nothing else is cla
 });
 
 test("the popup's copy and ids are the contract's own", () => {
-	assert.equal(SKILL_PHASE_LABEL, "Skills");
+	assert.equal(skillPhaseLabel(), "Skills");
 	assert.equal(skillRowId("language-tutor"), "skill-language-tutor");
 	assert.equal(skillRowId("a b"), "skill-a_b");
 	assert.equal(
@@ -366,34 +366,34 @@ const noticeOf = (over = {}) =>
 
 test("the notice copy, one ratified string per state", () => {
 	assert.equal(
-		SKILL_UNAVAILABLE_REASON,
+		skillUnavailableReason(),
 		"This backend cannot serve the skill catalogue. Update the backend and try again.",
 	);
-	assert.equal(SKILL_TRANSIENT_REASON, "Skills aren't available right now.");
+	assert.equal(skillTransientReason(), "Skills aren't available right now.");
 	// The loading line is the `/` sibling's own word verbatim — family parity
 	// costs a state, not a new vocabulary (design round 1, D1).
-	assert.equal(SKILL_LOADING_LINE, "Loading…");
-	assert.equal(SKILL_EMPTY_ATTACHED, "No skills found — see /skills");
-	assert.equal(SKILL_EMPTY_DRAFT, "No skills found.");
-	assert.equal(SKILL_MISS_LINE, "No skills match.");
+	assert.equal(skillLoadingLine(), "Loading…");
+	assert.equal(skillEmptyAttached(), "No skills found — see /skills");
+	assert.equal(skillEmptyDraft(), "No skills found.");
+	assert.equal(skillMissLine(), "No skills match.");
 });
 
 test("a bare leading `$` always opens SOMETHING: rows, or one stated line", () => {
 	// Available: rows answer for themselves.
 	assert.equal(noticeOf({ rowsCount: 3 }), null);
 	// Settled-empty vocabulary, attached: the pointer may be followed.
-	assert.deepEqual(noticeOf(), { kind: "empty", text: SKILL_EMPTY_ATTACHED });
+	assert.deepEqual(noticeOf(), { kind: "empty", text: skillEmptyAttached() });
 	// The same state on a draft drops the pointer clause — `/skills` is refused
 	// without a conversation, and a dead end is worse than a shorter sentence.
 	assert.deepEqual(noticeOf({ attached: false }), {
 		kind: "empty",
-		text: SKILL_EMPTY_DRAFT,
+		text: skillEmptyDraft(),
 	});
 	// A TYPED query against an empty vocabulary takes the same empty state
 	// (one state, not two: there is no vocabulary for "match" to lack).
 	assert.deepEqual(noticeOf({ hasQuery: true }), {
 		kind: "empty",
-		text: SKILL_EMPTY_ATTACHED,
+		text: skillEmptyAttached(),
 	});
 	/*
 	 * AND THE EMPTY ARM IS A LEADING-TOKEN NOTICE (review round 1, R1-1):
@@ -407,7 +407,7 @@ test("a bare leading `$` always opens SOMETHING: rows, or one stated line", () =
 test("durable outranks everything and fires with no query at all", () => {
 	assert.deepEqual(noticeOf({ feature: "below-version" }), {
 		kind: "durable",
-		text: SKILL_UNAVAILABLE_REASON,
+		text: skillUnavailableReason(),
 	});
 	// It outranks the states it can coexist with: a fired query's error, an
 	// empty vocabulary, a typed miss.
@@ -437,7 +437,7 @@ test("durable outranks everything and fires with no query at all", () => {
 test("transient covers unpaired, main's pairing cause, and a fired query's error; everything else is quiet", () => {
 	assert.deepEqual(noticeOf({ feature: "unpaired" }), {
 		kind: "transient",
-		text: SKILL_TRANSIENT_REASON,
+		text: skillTransientReason(),
 	});
 	/*
 	 * MAIN'S PAIRING CAUSE IS THE SAME FACT LEARNED EARLIER (QA round 1, Q-2):
@@ -446,11 +446,11 @@ test("transient covers unpaired, main's pairing cause, and a fired query's error
 	 */
 	assert.deepEqual(noticeOf({ pairingRefused: true }), {
 		kind: "transient",
-		text: SKILL_TRANSIENT_REASON,
+		text: skillTransientReason(),
 	});
 	assert.deepEqual(noticeOf({ query: "error" }), {
 		kind: "transient",
-		text: SKILL_TRANSIENT_REASON,
+		text: skillTransientReason(),
 	});
 	// Transient outranks empty and miss.
 	assert.equal(
@@ -486,7 +486,7 @@ test("loading speaks one line, and only on a leading token", () => {
 	 */
 	assert.deepEqual(noticeOf({ query: "loading" }), {
 		kind: "loading",
-		text: SKILL_LOADING_LINE,
+		text: skillLoadingLine(),
 	});
 	// The money guard is unchanged: an inline `$` never gets a consultation
 	// line, loading included.
@@ -505,14 +505,14 @@ test("loading speaks one line, and only on a leading token", () => {
 test("the miss is unchanged, and it keeps the evidence it always had", () => {
 	assert.deepEqual(noticeOf({ vocabularyNonEmpty: true, hasQuery: true }), {
 		kind: "miss",
-		text: SKILL_MISS_LINE,
+		text: skillMissLine(),
 	});
 	// The miss may attach to an INLINE token — a settled non-empty vocabulary
 	// and a typed query are positive evidence the user meant a skill, wherever
 	// the token sits (#690's behaviour, unchanged).
 	assert.deepEqual(
 		noticeOf({ vocabularyNonEmpty: true, hasQuery: true, leading: false }),
-		{ kind: "miss", text: SKILL_MISS_LINE },
+		{ kind: "miss", text: skillMissLine() },
 	);
 	// A settled non-empty vocabulary with NO typed query and no rows cannot
 	// arise (the empty query lists the catalogue); the selector stays quiet.

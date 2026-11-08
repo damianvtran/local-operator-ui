@@ -122,6 +122,7 @@
  * view rather than a check somebody has to remember.
  */
 
+import { t } from "@shared/i18n";
 import { type AskQueueView, askChipCountClause } from "./ask-queue";
 
 /**
@@ -580,7 +581,9 @@ export type AskOutstandingReading = {
  * clears it when the drawer closes, so a later open re-announces.
  */
 export const askOpenAnnouncement = (view: AskQueueView): string =>
-	`Opened your questions: ${askChipCountClause(view)}.`;
+	t("ui.chat.ask_queue.open_announcement", {
+		clause: askChipCountClause(view),
+	});
 
 /**
  * THE ONE OTHER SENTENCE THE SAME LIVE REGION SPEAKS (UX round 1, U8): what the

@@ -31,6 +31,8 @@
  * the composer showed and the send would omit.
  */
 
+// Relative, not `@shared/i18n`: bundled by node tests without an alias map.
+import { t } from "../../../../../i18n/messages";
 import { DESKTOP_MESSAGE_MAX_FILES } from "../../../../../shared/attachment-upload";
 import { DESKTOP_MESSAGE_MAX_IMAGES } from "../../../../../shared/desktop-contract";
 import { getFileName } from "./get-file-name";
@@ -62,17 +64,17 @@ const clauseOf = (detail: string | undefined): string =>
 	detail?.trim().replace(TRAILING_STOPS, "") ?? "";
 
 const readClause = (name: string): string =>
-	`${name} could not be read (it may have been moved or deleted)`;
+	t("ui.chat.attachment_refusal.clause.read", { name });
 
 const uploadClause = (name: string, detail: string | undefined): string => {
 	const reason = clauseOf(detail);
 	return reason
-		? `${name} could not be attached (${reason})`
-		: `${name} could not be attached`;
+		? t("ui.chat.attachment_refusal.clause.upload_reason", { name, reason })
+		: t("ui.chat.attachment_refusal.clause.upload", { name });
 };
 
 const remoteClause = (name: string): string =>
-	`${name} cannot be attached because this conversation is owned by another device, and files are only attachable to conversations on this one`;
+	t("ui.chat.attachment_refusal.clause.remote", { name });
 
 /**
  * The refusal sentence for the attachments a send could not carry, or null when
@@ -113,20 +115,21 @@ export function unreadableAttachmentRefusal(
 	 * form, because there no single reason can be stated once truthfully.
 	 */
 	if (allRead) {
+		// Names are joined with ", " and clauses with "; ": list punctuation, not copy.
 		if (names.length === 1)
-			return `${names[0]} could not be read (it may have been moved or deleted), so this message was not sent. Attach it again, or remove it from the draft.`;
-		return `${names.join(", ")} could not be read (they may have been moved or deleted), so this message was not sent. Attach them again, or remove them from the draft.`;
+			return t("ui.chat.attachment_refusal.read_one", { name: names[0] ?? "" });
+		return t("ui.chat.attachment_refusal.read_many", {
+			names: names.join(", "),
+		});
 	}
 	if (allRemote) {
 		// One cause for every name, so the sentence states it once rather than
 		// repeating "owned by another device" per file.
-		const subject =
-			names.length === 1
-				? `${names[0]} cannot be attached`
-				: `${names.join(", ")} cannot be attached`;
-		return `${subject} because this conversation is owned by another device, and files are only attachable to conversations on this one. Send the message without ${
-			names.length === 1 ? "it" : "them"
-		}, or start the conversation here.`;
+		return names.length === 1
+			? t("ui.chat.attachment_refusal.remote_one", { name: names[0] ?? "" })
+			: t("ui.chat.attachment_refusal.remote_many", {
+					names: names.join(", "),
+				});
 	}
 	const clauses = files.map((failure) => {
 		if (typeof failure === "string" || failure.kind === "read")
@@ -134,8 +137,12 @@ export function unreadableAttachmentRefusal(
 		if (failure.kind === "remote") return remoteClause(failure.name);
 		return uploadClause(failure.name, failure.detail);
 	});
-	const pronoun = names.length === 1 ? "it" : "them";
-	return `${clauses.join("; ")}, so this message was not sent. Attach ${pronoun} again, or remove ${pronoun} from the draft.`;
+	return t(
+		names.length === 1
+			? "ui.chat.attachment_refusal.mixed_one"
+			: "ui.chat.attachment_refusal.mixed_many",
+		{ clauses: clauses.join("; ") },
+	);
 }
 
 /**
@@ -156,8 +163,8 @@ export function imageOverflowRefusal(dropped: number): string | null {
 	const cap = DESKTOP_MESSAGE_MAX_IMAGES;
 	const total = cap + dropped;
 	if (dropped === 1)
-		return `This draft carries ${total} images and one message carries up to ${cap}, so this message was not sent. Remove the extra image, or send it in a second message.`;
-	return `This draft carries ${total} images and one message carries up to ${cap}, so this message was not sent. Remove ${dropped} of them, or send them in a second message.`;
+		return t("ui.chat.attachment_refusal.images_one", { total, cap });
+	return t("ui.chat.attachment_refusal.images_many", { total, cap, dropped });
 }
 
 /**
@@ -170,6 +177,6 @@ export function fileOverflowRefusal(dropped: number): string | null {
 	const cap = DESKTOP_MESSAGE_MAX_FILES;
 	const total = cap + dropped;
 	if (dropped === 1)
-		return `This draft carries ${total} files and one message carries up to ${cap}, so this message was not sent. Remove the extra file, or send it in a second message.`;
-	return `This draft carries ${total} files and one message carries up to ${cap}, so this message was not sent. Remove ${dropped} of them, or send them in a second message.`;
+		return t("ui.chat.attachment_refusal.files_one", { total, cap });
+	return t("ui.chat.attachment_refusal.files_many", { total, cap, dropped });
 }

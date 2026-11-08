@@ -35,8 +35,8 @@ const bundle = await build({
 				interruptTurn,
 				interruptUnavailableNotice,
 				sessionInterruptEnabled,
-				IDLE_STOP_NOTICE,
-				IDLE_STOP_DISPUTED_NOTICE,
+				idleStopNotice,
+				idleStopDisputedNotice,
 				INTERRUPT_ACK_TIMEOUT_MS,
 			} from "./src/renderer/src/features/chat/interrupt-turn";
 			import { userFacingMessage } from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -52,8 +52,8 @@ const bundle = await build({
 				interruptTurn,
 				interruptUnavailableNotice,
 				sessionInterruptEnabled,
-				IDLE_STOP_NOTICE,
-				IDLE_STOP_DISPUTED_NOTICE,
+				idleStopNotice,
+				idleStopDisputedNotice,
 				INTERRUPT_ACK_TIMEOUT_MS,
 				userFacingMessage,
 				dispatchInterruptOnEscape,
@@ -113,8 +113,8 @@ const {
 	interruptTurn,
 	interruptUnavailableNotice,
 	sessionInterruptEnabled,
-	IDLE_STOP_NOTICE,
-	IDLE_STOP_DISPUTED_NOTICE,
+	idleStopNotice,
+	idleStopDisputedNotice,
 	INTERRUPT_ACK_TIMEOUT_MS,
 	userFacingMessage,
 	dispatchInterruptOnEscape,
@@ -215,24 +215,24 @@ test("a press that found nothing gets an answer, not silence (operator incident,
 		replayed: false,
 	};
 	// The pane agrees: the plain state sentence.
-	assert.equal(interruptNotice(idleReceipt), IDLE_STOP_NOTICE);
+	assert.equal(interruptNotice(idleReceipt), idleStopNotice());
 	assert.equal(
 		interruptNotice(idleReceipt, { turnClaimed: false }),
-		IDLE_STOP_NOTICE,
+		idleStopNotice(),
 	);
 	// The pane still claims a live turn: the attributed sentence, not the flat one.
 	assert.equal(
 		interruptNotice(idleReceipt, { turnClaimed: true }),
-		IDLE_STOP_DISPUTED_NOTICE,
+		idleStopDisputedNotice(),
 	);
-	assert.notEqual(IDLE_STOP_NOTICE, IDLE_STOP_DISPUTED_NOTICE);
+	assert.notEqual(idleStopNotice(), idleStopDisputedNotice());
 	assert.equal(
-		IDLE_STOP_NOTICE,
+		idleStopNotice(),
 		"No turn was running, so there was nothing to stop.",
 		"the copy is the provisional sentence the PR body flags for the design round",
 	);
 	assert.equal(
-		IDLE_STOP_DISPUTED_NOTICE,
+		idleStopDisputedNotice(),
 		"The runtime says no turn is running, so nothing was stopped. This view may be out of date.",
 		"the disputed copy is attributed to the runtime and admits the view may be the stale half",
 	);

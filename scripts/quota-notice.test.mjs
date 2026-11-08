@@ -220,14 +220,14 @@ const bundle = await build({
 			export {
 				QUOTA_NOTICE_DISMISSAL_KEY,
 				QUOTA_NOTICE_SHOWN_STATES,
-				QUOTA_REFRESH_CHECKING_SENTENCE,
-				QUOTA_REFRESH_FAILED_SENTENCE,
-				QUOTA_REFRESH_UNCHANGED_SENTENCE,
+				quotaRefreshCheckingSentence,
+				quotaRefreshFailedSentence,
+				quotaRefreshUnchangedSentence,
 				QUOTA_RESEND_COOLDOWN_MS,
-				QUOTA_RESEND_FAILED_SENTENCE,
-				QUOTA_RESEND_RATE_LIMITED_SENTENCE,
-				QUOTA_RESEND_SENDING_SENTENCE,
-				QUOTA_RESEND_SENT_SENTENCE,
+				quotaResendFailedSentence,
+				quotaResendRateLimitedSentence,
+				quotaResendSendingSentence,
+				quotaResendSentSentence,
 				__resetQuotaResendEpisodes,
 				advanceQuotaNoticeDismissals,
 				classifyResendFailure,
@@ -280,13 +280,13 @@ const {
 	QUOTA_NOTICE_DISMISSAL_KEY,
 	QUOTA_NOTICE_SCHEMA,
 	QUOTA_NOTICE_SHOWN_STATES,
-	QUOTA_REFRESH_CHECKING_SENTENCE,
-	QUOTA_REFRESH_FAILED_SENTENCE,
-	QUOTA_REFRESH_UNCHANGED_SENTENCE,
-	QUOTA_RESEND_FAILED_SENTENCE,
-	QUOTA_RESEND_RATE_LIMITED_SENTENCE,
-	QUOTA_RESEND_SENDING_SENTENCE,
-	QUOTA_RESEND_SENT_SENTENCE,
+	quotaRefreshCheckingSentence,
+	quotaRefreshFailedSentence,
+	quotaRefreshUnchangedSentence,
+	quotaResendFailedSentence,
+	quotaResendRateLimitedSentence,
+	quotaResendSendingSentence,
+	quotaResendSentSentence,
 	QuotaNoticeLine,
 	DesktopControlError,
 	MessageInput,
@@ -579,26 +579,26 @@ test("the resend phases show their own sentences, and expire on their own clock"
 	// In flight says so (U8/N2): the disabled control is not silent.
 	assert.deepEqual(quotaResendView({ kind: "sending" }, now), {
 		disabled: true,
-		sentence: QUOTA_RESEND_SENDING_SENTENCE,
+		sentence: quotaResendSendingSentence(),
 		offered: true,
 	});
 	assert.deepEqual(quotaResendView({ kind: "sent", until: now + 1 }, now), {
 		disabled: true,
-		sentence: QUOTA_RESEND_SENT_SENTENCE,
+		sentence: quotaResendSentSentence(),
 		offered: true,
 	});
 	assert.deepEqual(
 		quotaResendView({ kind: "rate_limited", until: now + 1 }, now),
 		{
 			disabled: true,
-			sentence: QUOTA_RESEND_RATE_LIMITED_SENTENCE,
+			sentence: quotaResendRateLimitedSentence(),
 			offered: true,
 		},
 	);
 	// The retryable failure stays offered WITH its sentence (U1).
 	assert.deepEqual(quotaResendView({ kind: "failed" }, now), {
 		disabled: false,
-		sentence: QUOTA_RESEND_FAILED_SENTENCE,
+		sentence: quotaResendFailedSentence(),
 		offered: true,
 	});
 	// An expired deadline reads exactly as idle, without a second transition.
@@ -618,13 +618,13 @@ test("the refresh cues are their own sentences, and idle says nothing (U2)", () 
 	assert.equal(quotaRefreshSentence("idle"), null);
 	assert.equal(
 		quotaRefreshSentence("checking"),
-		QUOTA_REFRESH_CHECKING_SENTENCE,
+		quotaRefreshCheckingSentence(),
 	);
 	assert.equal(
 		quotaRefreshSentence("unchanged"),
-		QUOTA_REFRESH_UNCHANGED_SENTENCE,
+		quotaRefreshUnchangedSentence(),
 	);
-	assert.equal(quotaRefreshSentence("failed"), QUOTA_REFRESH_FAILED_SENTENCE);
+	assert.equal(quotaRefreshSentence("failed"), quotaRefreshFailedSentence());
 });
 
 test("the resend episode survives the mount and expires on its own clock (U8)", () => {

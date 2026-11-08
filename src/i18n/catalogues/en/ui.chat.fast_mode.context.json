@@ -1,0 +1,75 @@
+{
+	"ui.chat.fast_mode.dial_differs": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"dial": "the model's current fast-mode state: on or off",
+			"requested": "the state the user asked for: on or off"
+		},
+		"role": "explanation when the requested fast-mode state differs from what the model allows",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.fast_mode.first_message_off": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "confirmation in the new-chat fast picker",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.fast_mode.first_message_on": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "confirmation in the new-chat fast picker",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.fast_mode.not_changed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "fallback refusal when changing fast mode failed",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.fast_mode.pick_unsupported": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "refusal when fast mode was requested for an unsupported model",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.fast_mode.service_cannot_carry": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "error on the composer when the backend is too old to carry the fast-mode setting",
+		"tone": "one sentence with a colon, ends with a full stop"
+	},
+	"ui.chat.fast_mode.service_unavailable": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "refusal when the backend does not support fast mode",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.fast_mode.stays_on": {
+		"length": "",
+		"note": "Fast mode trades cost for speed.",
+		"placeholders": {},
+		"role": "notice after picking a model that keeps fast mode on",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.fast_mode.turned_off": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "notice after picking a model that turned fast mode off",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.fast_mode.unsupported_stays_off": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "notice after picking a model without fast mode",
+		"tone": "one sentence, ends with a full stop"
+	}
+}

@@ -291,7 +291,7 @@ import { SubagentStateIcon } from "./run-details/run-detail-row-parts";
  * the control that states it, which is the chrome-for-its-own-sake the row's own ink
  * law refuses.
  */
-const GOAL_DONE_TAG = "— done";
+const goalDoneTag = (): string => t("ui.chat.composer_notes.goal.done_tag");
 
 /**
  * The ONE-SHOT notes the row writes when the judge ENTERS `stalled` — ONE SENTENCE
@@ -341,19 +341,19 @@ const GOAL_DONE_TAG = "— done";
  * so the two hosts state an unnamed stall in the same words: it names no bound, and
  * it says what is true of any stall — the auto-continuation stopped.
  */
-const GOAL_STALLED_BREAKER_NOTE =
-	"goal stalled: judge could not decide — send a message to continue";
+const goalStalledBreakerNote = (): string =>
+	t("ui.chat.composer_notes.goal.stalled.breaker");
 /*
  * Only for a reason that has the cap's head and tail but no readable count between
  * them — a shape the backend does not publish today (QA round 2, Q-3). It still
  * names the right bound, and it does not echo an unparsed middle into the transcript.
  */
-const GOAL_STALLED_CAP_FALLBACK_NOTE =
-	"goal stalled: reached the continuation limit — send a message to continue";
+const goalStalledCapFallbackNote = (): string =>
+	t("ui.chat.composer_notes.goal.stalled.cap_fallback");
 const goalStalledCapNote = (count: string): string =>
-	`goal stalled: stopped after ${count} continuations — send a message to continue`;
-const GOAL_STALLED_UNKNOWN_NOTE =
-	"goal stalled: auto-continuation stopped — send a message to continue";
+	t("ui.chat.composer_notes.goal.stalled.cap", { count: Number(count) });
+const goalStalledUnknownNote = (): string =>
+	t("ui.chat.composer_notes.goal.stalled.unknown");
 
 /*
  * The wire's two stall causes are CLASSIFIED in `shared/goal-judge-stall.ts`,
@@ -376,13 +376,13 @@ export const goalStalledNote = (reason: string | undefined): string => {
 	const stall = goalJudgeStall(reason);
 	switch (stall.code) {
 		case "judge_could_not_decide":
-			return GOAL_STALLED_BREAKER_NOTE;
+			return goalStalledBreakerNote();
 		case "continuation_cap":
 			return stall.count === null
-				? GOAL_STALLED_CAP_FALLBACK_NOTE
+				? goalStalledCapFallbackNote()
 				: goalStalledCapNote(stall.count);
 		case "unnamed":
-			return GOAL_STALLED_UNKNOWN_NOTE;
+			return goalStalledUnknownNote();
 	}
 };
 
@@ -2643,7 +2643,7 @@ export const ComposerStatusRow = ({
 												GOAL_TAG_NARROW,
 											)}
 										>
-											{GOAL_DONE_TAG}
+											{goalDoneTag()}
 										</span>
 									)}
 								</span>

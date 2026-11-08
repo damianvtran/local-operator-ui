@@ -77,7 +77,7 @@ const {
 	atProjectName,
 	AT_ROW_PITCH,
 	AT_SECTION_HEADER_PITCH,
-	AT_UNAVAILABLE_REASON,
+	atUnavailableReason,
 } = contract;
 
 /* ---------------------------------------------------------------- grammar -- */
@@ -753,7 +753,7 @@ test("the harness's own refusal names the remedy and never the gesture", () => {
 	// whenever `at_references_enabled()` — so the offer is one a newer backend keeps,
 	// and a sentence that names the backend as the reason with no way out of the
 	// state is the dead end the sibling gate in the same band already refuses
-	// (`MOVE_UNAVAILABLE_REASON`).
+	// (`moveUnavailableReason`).
 	//
 	// AND IT IS AN OFFER, NOT THE WORD. The first version of this assertion was
 	// `/update the backend/i`, which review falsified in one line: "This backend
@@ -766,9 +766,9 @@ test("the harness's own refusal names the remedy and never the gesture", () => {
 	// sentence boundary, an `Update`/`Updating` verb, the word "backend" before the
 	// next full stop. Both reviewers' counterexamples fail it; every reword tried
 	// against it passes.
-	assert.match(AT_UNAVAILABLE_REASON, /^This backend cannot /);
-	assert.ok(!AT_UNAVAILABLE_REASON.includes("@"));
-	assert.match(AT_UNAVAILABLE_REASON, /\.\s*(Update|Updating)[^.]*backend/i);
+	assert.match(atUnavailableReason(), /^This backend cannot /);
+	assert.ok(!atUnavailableReason().includes("@"));
+	assert.match(atUnavailableReason(), /\.\s*(Update|Updating)[^.]*backend/i);
 });
 
 test("the count appears only when it adds something", () => {

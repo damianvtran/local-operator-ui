@@ -115,6 +115,15 @@ export type AskOptionsProps = {
 	busy?: boolean;
 	/** Submit this option's label as the answer. */
 	onAnswer: (label: string) => void;
+	/**
+	 * What to DRAW for an option when it differs from what is SUBMITTED. The
+	 * submitted `label` is the wire/protocol token; the client's own approval pair
+	 * uses this to show localized words while still submitting `label` verbatim.
+	 */
+	display?: (option: PendingDesktopGate["options"][number]) => {
+		label: string;
+		description?: string;
+	};
 	/** Stable prefix for option keys, so two gates never share a key. */
 	requestId: string;
 };
@@ -163,6 +172,7 @@ export const AskOptions = ({
 	busy = false,
 	onAnswer,
 	requestId,
+	display,
 }: AskOptionsProps) => {
 	useI18nLocale();
 	if (options.length === 0) return null;
@@ -344,7 +354,7 @@ export const AskOptions = ({
 									marked === index && "font-semibold",
 								)}
 							>
-								{option.label}
+								{(display?.(option) ?? option).label}
 							</span>
 							{marked === index && (
 								/*
@@ -378,14 +388,14 @@ export const AskOptions = ({
 						 * synonyms — dropping it makes the user answer a thinner
 						 * question than the model asked.
 						 */}
-						{option.description && (
+						{(display?.(option) ?? option).description && (
 							<span
 								className={cn(
 									"text-body-sm",
 									busy ? "text-ink-disabled" : "text-ink-muted",
 								)}
 							>
-								{option.description}
+								{(display?.(option) ?? option).description}
 							</span>
 						)}
 					</span>

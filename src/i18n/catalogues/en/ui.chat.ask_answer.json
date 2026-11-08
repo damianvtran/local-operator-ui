@@ -1,0 +1,12 @@
+{
+	"ui.chat.ask_answer.eyebrow_waiting": "Waiting for your answer",
+	"ui.chat.ask_answer.lost_to_reconnect": "Your answer was not sent. The app reconnected to a new runtime instance, so the question was not answered here.",
+	"ui.chat.ask_answer.moved_on": "That question had already been settled or moved on, so your answer was not sent.",
+	"ui.chat.ask_answer.not_sent": "Your answer was not sent. {reason}",
+	"ui.chat.ask_answer.request_failed": "The request could not be completed.",
+	"ui.chat.ask_answer.secret_docked": "Your answer was not sent — a secret request is answered in the field above the composer.",
+	"ui.chat.ask_answer.session_unreachable": "The app could not reach this chat's session at all.",
+	"ui.chat.ask_answer.settled_elsewhere": "That question was already answered somewhere else, so your answer was not sent.",
+	"ui.chat.ask_answer.unconfirmed": "{lead} {reason}",
+	"ui.chat.ask_answer.unconfirmed_lead": "Whether your answer landed is not knowable."
+}

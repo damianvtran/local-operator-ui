@@ -102,7 +102,6 @@ import {
 	type ArgumentSource,
 	FLAG_LIST_SOURCES,
 	type FrozenTagOrder,
-	MCP_EMPTY_SLOT_COPY,
 	argumentRows,
 	effectiveInlineArgument,
 	flagTokenDraws,
@@ -110,6 +109,7 @@ import {
 	freezeTagOrder,
 	isRendererLocalSource,
 	isSessionlessBackendSource,
+	mcpEmptySlotCopy,
 	mcpInServerSlot,
 	modelDefaultActionRow,
 	shouldRunArgumentAction,
@@ -717,9 +717,7 @@ function useArgumentRows(
 			return {
 				rows: argumentRows("providers", providers.data ?? [], null),
 				loading: providers.isLoading,
-				error: providers.isError
-					? "The list could not be loaded. Try again."
-					: null,
+				error: providers.isError ? t("ui.chat.slash.list.load_failed") : null,
 				needsSession: false,
 			};
 		}
@@ -762,7 +760,7 @@ function useArgumentRows(
 					argumentRows("providers", providers.data, null),
 				)[0]?.choice.value;
 				if (named && (storedById.get(named) ?? 0) <= 0) {
-					emptyCopy = "No stored credential to remove.";
+					emptyCopy = t("ui.chat.slash.list.no_stored_credential");
 				}
 			}
 			return {
@@ -775,9 +773,7 @@ function useArgumentRows(
 				 * whichever of the two is still in flight, not just the first.
 				 */
 				loading: accounts.isLoading || providers.isLoading,
-				error: accounts.isError
-					? "The list could not be loaded. Try again."
-					: null,
+				error: accounts.isError ? t("ui.chat.slash.list.load_failed") : null,
 				needsSession: false,
 			};
 		}
@@ -797,10 +793,10 @@ function useArgumentRows(
 				 */
 				emptyCopy:
 					rows.length === 0 && mcpInServerSlot(argument)
-						? MCP_EMPTY_SLOT_COPY
+						? mcpEmptySlotCopy()
 						: undefined,
 				loading: mcp.isLoading,
-				error: mcp.isError ? "The list could not be loaded. Try again." : null,
+				error: mcp.isError ? t("ui.chat.slash.list.load_failed") : null,
 				needsSession: false,
 			};
 		}
@@ -832,11 +828,11 @@ function useArgumentRows(
 				emptyCopy:
 					rows.length === 0
 						? draftRosterSource === "team"
-							? "No teams are registered."
-							: "No profiles found."
+							? t("ui.chat.slash.list.no_teams")
+							: t("ui.chat.slash.list.no_profiles")
 						: undefined,
 				loading: list.isLoading,
-				error: list.isError ? "The list could not be loaded. Try again." : null,
+				error: list.isError ? t("ui.chat.slash.list.load_failed") : null,
 				needsSession: false,
 			};
 		}
@@ -897,9 +893,7 @@ function useArgumentRows(
 		return {
 			rows: argumentRows(source, entities.data?.entities ?? [], current),
 			loading: entities.isLoading,
-			error: entities.isError
-				? "The list could not be loaded. Try again."
-				: null,
+			error: entities.isError ? t("ui.chat.slash.list.load_failed") : null,
 			needsSession: false,
 		};
 	}, [
@@ -1969,8 +1963,8 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const footer = activeAction
 		? {
 				text: activeAction.disabled
-					? "A current model is needed to set a default."
-					: "Enter sets the current model as the default for new sessions.",
+					? t("ui.chat.slash.footer.default_needs_model")
+					: t("ui.chat.slash.footer.default_sets"),
 				key: activeAction.disabled ? null : "Enter",
 			}
 		: enterFooter({
@@ -2091,7 +2085,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				? t("ui.chat.tags.create_name", { name: activeArgument.value })
 				: activeArgument.applied
 					? t("ui.chat.tags.remove_named", { name: activeArgument.value })
-					: `Add “${activeArgument.value}”`;
+					: t("ui.chat.slash.tag.add_named", { name: activeArgument.value });
 	const baseFooter =
 		typeof footer === "string" ? footer : (footer?.text ?? null);
 	const footerText =
@@ -2099,12 +2093,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			? state.tagPending
 				? t("ui.chat.tags.applying")
 				: unambiguousActive
-					? `Enter ${tagVerb}`
+					? t("ui.chat.slash.enter.verb", { verb: tagVerb })
 					: baseFooter
 			: baseFooter;
 	const clickText =
 		tagListShown && activeArgument && !state.tagPending
-			? `Click ${tagVerb}`
+			? t("ui.chat.slash.click.verb", { verb: tagVerb })
 			: click;
 	/*
 	 * ONE OWNER FOR A REGISTRY LOAD FAILURE. `argumentEmptyCopy` already prints
@@ -2209,7 +2203,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			>
 				{state.matches.length === 0 ? (
 					<div className="px-3 py-2 text-body-sm text-ink-muted">
-						{argument ? emptyArgumentCopy : "No commands match."}
+						{argument
+							? emptyArgumentCopy
+							: t("ui.chat.slash.empty.no_commands")}
 					</div>
 				) : (
 					<ul>

@@ -5,10 +5,10 @@ import type {
 	DesktopUsagePeriod,
 } from "../../../../../../shared/desktop-contract";
 import {
-	PRICE_UNKNOWN_TEXT,
 	channelPlanClause,
 	channelSummaryLine,
 	channelsReading,
+	priceUnknownText,
 } from "../../session-status/session-cost";
 import {
 	UNKNOWN,
@@ -752,7 +752,7 @@ export type ChannelTableRow = {
 	name: string;
 	/**
 	 * `$0.053` / `$0.053+` / `price unknown` — never a fabricated `$0.0000`.
-	 * The words are `PRICE_UNKNOWN_TEXT`, the strip's own answer for the same
+	 * The words are `priceUnknownText`, the strip's own answer for the same
 	 * record, so one row cannot be described two ways across the surfaces.
 	 */
 	spend: string;
@@ -832,7 +832,7 @@ export function channelsView(value: unknown): ChannelsView | null {
 			name: row.name,
 			spend:
 				row.amountMicro === null
-					? PRICE_UNKNOWN_TEXT
+					? priceUnknownText()
 					: formatMicroUsd(row.amountMicro, 1, row.floor ? 2 : 1),
 			basis: row.basis || UNKNOWN,
 		})),

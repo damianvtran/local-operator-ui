@@ -89,6 +89,7 @@
  * failure direction is legacy, never the channel branch.
  */
 
+import { t } from "@shared/i18n";
 import type {
 	CanonicalFrontendState,
 	CanonicalSpendBreakdownEntry,
@@ -393,11 +394,19 @@ function microUsdText(micro: number): string {
  * plan funded, and "subscription" alone would read as money charged to the
  * plan.
  */
-const BASIS_WORDS: Record<string, string> = {
-	billed: "billed",
-	subscription_api_equivalent: "Included",
-	estimated: "estimated",
-	not_tracked: "not tracked",
+const basisWord = (basis: string): string | undefined => {
+	switch (basis) {
+		case "billed":
+			return t("ui.chat.session_spend.basis.billed");
+		case "subscription_api_equivalent":
+			return t("ui.chat.session_spend.basis.included");
+		case "estimated":
+			return t("ui.chat.session_spend.basis.estimated");
+		case "not_tracked":
+			return t("ui.chat.session_spend.basis.not_tracked");
+		default:
+			return undefined;
+	}
 };
 
 /**
@@ -457,7 +466,7 @@ export function channelBasisLabel(
 	const published = publishedBasisLabel(vocabulary, basis);
 	if (published) return published;
 	if (vocabulary) return basis;
-	return BASIS_WORDS[basis] ?? basis;
+	return basisWord(basis) ?? basis;
 }
 
 /** Capitalise a wire word for the start of a label (`inference` -> `Inference`). */
@@ -550,7 +559,8 @@ export function channelRowName(
  * panel and the strip print the same two words rather than each inventing
  * one.
  */
-export const PRICE_UNKNOWN_TEXT = "price unknown";
+export const priceUnknownText = (): string =>
+	t("ui.chat.session_spend.price_unknown");
 
 /**
  * One row's amount, mark included: `$0.90`, `≥$0.053`, or the words `price
@@ -572,7 +582,7 @@ function rowAmountText(row: CanonicalSpendChannelRow): {
 		typeof row.amount_micro === "number" && Number.isFinite(row.amount_micro)
 			? row.amount_micro
 			: null;
-	if (amount === null) return { text: PRICE_UNKNOWN_TEXT, unknown: true };
+	if (amount === null) return { text: priceUnknownText(), unknown: true };
 	const floor = isFloorKnowledge(rung(row.knowledge));
 	return {
 		text: `${floor ? FLOOR_MARK : ""}${microUsdText(amount)}`,
@@ -616,10 +626,22 @@ export function childBasisLine(reading: SpendChannelsReading): string | null {
 	const bases = reading.childrenByBasis;
 	const words = bases?.map(({ basis }) =>
 		basis === "not_tracked_micro" || basis === "not_tracked"
-			? "without a tracked basis yet"
-			: `${capitalise(channelBasisLabel(basis, reading.vocabulary))}${basis === "subscription_api_equivalent" && !/api-equivalent/i.test(channelBasisLabel(basis, reading.vocabulary)) ? " (API-equivalent)" : ""}`,
+			? t("ui.chat.session_spend.untracked_basis")
+			: basis === "subscription_api_equivalent" &&
+					!/api-equivalent/i.test(channelBasisLabel(basis, reading.vocabulary))
+				? t("ui.chat.session_spend.api_equivalent_labelled", {
+						label: capitalise(channelBasisLabel(basis, reading.vocabulary)),
+					})
+				: capitalise(channelBasisLabel(basis, reading.vocabulary)),
 	);
-	return `Subagents ${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)} · ${words?.length ? words.join(" · ") : bases === null ? "without a tracked basis yet" : "basis unavailable"}`;
+	return t("ui.chat.session_spend.child_line", {
+		amount: `${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)}`,
+		bases: words?.length
+			? words.join(" · ")
+			: bases === null
+				? t("ui.chat.session_spend.untracked_basis")
+				: t("ui.chat.session_spend.basis_unavailable"),
+	});
 }
 
 /** One published row as a `ChannelBreakdownRow`. */
@@ -678,7 +700,7 @@ function channelBasisMarkers(
 					(basis) =>
 						publishedBasisMarker(vocabulary, basis) ??
 						(basis === "subscription_api_equivalent" && !vocabulary
-							? "Included · API-equivalent"
+							? t("ui.chat.session_spend.included_api_equivalent")
 							: channelBasisLabel(basis, vocabulary)),
 				),
 		),
@@ -715,7 +737,7 @@ function breakdownRow(
 		name: entry.label,
 		amount:
 			amountMicro === null
-				? PRICE_UNKNOWN_TEXT
+				? priceUnknownText()
 				: `${floor ? FLOOR_MARK : ""}${money(amountMicro)}`,
 		basis: markers,
 		markers,
@@ -934,15 +956,27 @@ export function channelSummaryLine(
 		reading.knowledge === "unknown" ||
 		(reading.totalMicro === 0 && reading.knowledge !== "exact");
 	const total = unstated
-		? PRICE_UNKNOWN_TEXT
+		? priceUnknownText()
 		: reading.knowledge === "exact"
 			? money(reading.totalMicro)
 			: markFloor(money(reading.totalMicro));
 	const parts = [
-		`Total ${total}`,
-		...reading.byBasis.map(
-			(bucket) =>
-				`${capitalise(channelBasisLabel(bucket.basis, reading.vocabulary))} ${money(bucket.micro)}${bucket.basis === "subscription_api_equivalent" && !/api-equivalent/i.test(channelBasisLabel(bucket.basis, reading.vocabulary)) ? " (API-equivalent)" : ""}`,
+		t("ui.chat.session_spend.summary.total", { total }),
+		...reading.byBasis.map((bucket) =>
+			t(
+				bucket.basis === "subscription_api_equivalent" &&
+					!/api-equivalent/i.test(
+						channelBasisLabel(bucket.basis, reading.vocabulary),
+					)
+					? "ui.chat.session_spend.summary.basis_amount_api_equivalent"
+					: "ui.chat.session_spend.summary.basis_amount",
+				{
+					label: capitalise(
+						channelBasisLabel(bucket.basis, reading.vocabulary),
+					),
+					amount: money(bucket.micro),
+				},
+			),
 		),
 	];
 	const remainder = reading.notTrackedMicro;
@@ -957,7 +991,9 @@ export function channelSummaryLine(
 					)?.micro;
 		const children =
 			untrackedChildren != null && untrackedChildren > 0
-				? ` (${money(untrackedChildren)} subagent sessions)`
+				? t("ui.chat.session_spend.summary.subagent_part", {
+						amount: money(untrackedChildren),
+					})
 				: "";
 		/*
 		 * The mark lands on the MONEY, not the sentence: the panel's register is
@@ -966,13 +1002,16 @@ export function channelSummaryLine(
 		 */
 		const moneyText = money(remainder);
 		const marked = remainderIsFloor(reading) ? markFloor(moneyText) : moneyText;
-		parts.push(`${marked} without a tracked basis yet${children}`);
+		parts.push(
+			t("ui.chat.session_spend.summary.untracked", {
+				amount: marked,
+				children,
+			}),
+		);
 	}
 	if (reading.tracked && reading.notTrackedCalls > 0) {
 		const count = reading.notTrackedCalls;
-		parts.push(
-			`${count} ${count === 1 ? "record" : "records"} without a price`,
-		);
+		parts.push(t("ui.chat.session_spend.summary.records_unpriced", { count }));
 	}
 	return parts.length > 0 ? parts.join(" · ") : null;
 }
@@ -1014,7 +1053,7 @@ export function channelPlanClause(
 		(bucket) => bucket.basis === "subscription_api_equivalent",
 	);
 	if (!plan) return null;
-	return `Includes ${money(plan.micro)} plan-covered (API-equivalent, not charged).`;
+	return t("ui.chat.session_spend.plan_clause", { amount: money(plan.micro) });
 }
 
 /** The strip-ladder breakdown the tooltip renders. */
@@ -1229,13 +1268,17 @@ export function costTooltip(cost: SessionCost): string {
 	if (cost.channels) return channelsCostTooltip(cost);
 	if (cost.total === null) {
 		return cost.text === UNPRICEABLE_TEXT
-			? "This session billed tokens on a model with no published price, so the spend cannot be calculated."
-			: "Nothing has been spent in this session yet.";
+			? t("ui.chat.session_spend.tooltip.unpriced_model")
+			: t("ui.chat.session_spend.tooltip.nothing_spent");
 	}
-	if (!cost.total) return "Nothing has been spent in this session yet.";
-	const exact = `Session spend so far: ${formatCost(cost.total)}.`;
+	if (!cost.total) return t("ui.chat.session_spend.tooltip.nothing_spent");
+	const exact = t("ui.chat.session_spend.tooltip.spend_so_far", {
+		amount: formatCost(cost.total),
+	});
 	if (!cost.isFloor) return exact;
-	return `Session spend is at least ${formatCost(cost.total)}. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.`;
+	return t("ui.chat.session_spend.tooltip.spend_at_least_untracked", {
+		amount: formatCost(cost.total),
+	});
 }
 
 /**
@@ -1248,8 +1291,8 @@ export function costTooltip(cost: SessionCost): string {
  * tooltip and the analytics panel's legend must not describe one session
  * differently.
  */
-export const CHANNELS_UNTRACKED_NOTE =
-	"Channels are not tracked for this conversation, so this covers model spend only.";
+export const channelsUntrackedNote = (): string =>
+	t("ui.chat.session_spend.tooltip.channels_untracked");
 
 /**
  * The tooltip under the CHANNEL branch's figure.
@@ -1263,26 +1306,30 @@ export const CHANNELS_UNTRACKED_NOTE =
  */
 function channelsCostTooltip(cost: SessionCost): string {
 	const reading = cost.channels;
-	if (!reading) return "Nothing has been spent in this session yet.";
+	if (!reading) return t("ui.chat.session_spend.tooltip.nothing_spent");
 	const sentences: string[] = [];
 	if (!cost.total) {
 		sentences.push(
 			cost.text.startsWith(UNPRICEABLE_TEXT)
-				? "Some spend in this conversation could not be priced, so the spend cannot be calculated."
-				: "Nothing has been spent in this session yet.",
+				? t("ui.chat.session_spend.tooltip.some_unpriced")
+				: t("ui.chat.session_spend.tooltip.nothing_spent"),
 		);
 	} else {
 		sentences.push(
 			cost.isFloor
-				? `Session spend is at least ${formatCost(cost.total)}.`
-				: `Session spend so far: ${formatCost(cost.total)}.`,
+				? t("ui.chat.session_spend.tooltip.spend_at_least", {
+						amount: formatCost(cost.total),
+					})
+				: t("ui.chat.session_spend.tooltip.spend_so_far", {
+						amount: formatCost(cost.total),
+					}),
 		);
 		if (cost.isFloor) {
-			sentences.push("Part of this conversation's spend could not be priced.");
+			sentences.push(t("ui.chat.session_spend.tooltip.part_unpriced"));
 		}
 	}
 	if (!reading.tracked) {
-		sentences.push(CHANNELS_UNTRACKED_NOTE);
+		sentences.push(channelsUntrackedNote());
 	}
 	return sentences.join(" ");
 }

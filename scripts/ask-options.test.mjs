@@ -69,7 +69,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerOwnerIsBusy, answerSessionUnreachable, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_BUSY_MESSAGE, ANSWER_SESSION_UNREACHABLE_MESSAGE, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, APPROVAL_OPTIONS, approvalVerdict, approvalAnswerValue, answerGateOption, answerGateSecret, SECRET_ANSWER_DOCKED_MESSAGE, errorCodeOf, ANSWER_UNCONFIRMED_CODE, gateIsSecret } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerOwnerIsBusy, answerSessionUnreachable, answerUnconfirmedMessage, settledElsewhereMessage, questionMovedOnMessage, answerUnconfirmedLead, answerBusyMessage, answerSessionUnreachableMessage, answerLostToReconnectMessage, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, APPROVAL_OPTIONS, approvalVerdict, approvalAnswerValue, answerGateOption, answerGateSecret, secretAnswerDockedMessage, errorCodeOf, ANSWER_UNCONFIRMED_CODE, gateIsSecret } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { DesktopControlError, UserFacingError, userFacingMessage } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 			'export { buildSendPayload, sendFailureCopy, ANSWER_NOT_SENT_CODE, withBusyResends, withholdsRetryHint } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { DESKTOP_LOST_SIGHT_CODE, RUNTIME_BUSY_CODE } from "./src/shared/desktop-contract";',
@@ -186,13 +186,13 @@ const {
 	answerReport,
 	answerRefusedWithoutACode,
 	answerOutcomeIsUnknown,
-	SETTLED_ELSEWHERE_MESSAGE,
-	QUESTION_MOVED_ON_MESSAGE,
+	settledElsewhereMessage,
+	questionMovedOnMessage,
 	answerUnconfirmedMessage,
-	ANSWER_UNCONFIRMED_LEAD,
-	ANSWER_LOST_TO_RECONNECT_MESSAGE,
-	ANSWER_BUSY_MESSAGE,
-	ANSWER_SESSION_UNREACHABLE_MESSAGE,
+	answerUnconfirmedLead,
+	answerLostToReconnectMessage,
+	answerBusyMessage,
+	answerSessionUnreachableMessage,
 	unsentAnswerMessage,
 	shouldTabIntoAnswerOptions,
 	composerFocusIsOurs,
@@ -204,7 +204,7 @@ const {
 	answerGateSecret,
 	answerOwnerIsBusy,
 	answerSessionUnreachable,
-	SECRET_ANSWER_DOCKED_MESSAGE,
+	secretAnswerDockedMessage,
 	errorCodeOf,
 	DesktopControlError,
 	UserFacingError,
@@ -1079,7 +1079,7 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 	);
 	assert.doesNotMatch(
 		code,
-		/setSendError\(\s*(?:QUESTION_MOVED_ON_MESSAGE|SETTLED_ELSEWHERE_MESSAGE|ANSWER_UNCONFIRMED_LEAD)/,
+		/setSendError\(\s*(?:questionMovedOnMessage|settledElsewhereMessage|answerUnconfirmedLead)/,
 		"the sentence is chosen by `answerReport`, never written by the call site",
 	);
 });
@@ -1264,7 +1264,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		answerReport({ status: "failed", error: settled }, frame()),
 		{
 			to: "composer",
-			message: SETTLED_ELSEWHERE_MESSAGE,
+			message: settledElsewhereMessage(),
 			code: ANSWER_NOT_SENT_CODE,
 			/*
 			 * The register and the retry verdict travel WITH the sentence, because the
@@ -1285,7 +1285,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		),
 		{
 			to: "composer",
-			message: QUESTION_MOVED_ON_MESSAGE,
+			message: questionMovedOnMessage(),
 			code: ANSWER_NOT_SENT_CODE,
 			muted: false,
 			retry: false,
@@ -1303,7 +1303,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		),
 		{
 			to: "composer",
-			message: ANSWER_LOST_TO_RECONNECT_MESSAGE,
+			message: answerLostToReconnectMessage(),
 			code: ANSWER_NOT_SENT_CODE,
 			muted: false,
 			retry: false,
@@ -1323,7 +1323,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		),
 		{
 			to: "composer",
-			message: ANSWER_LOST_TO_RECONNECT_MESSAGE,
+			message: answerLostToReconnectMessage(),
 			code: ANSWER_NOT_SENT_CODE,
 			muted: false,
 			retry: false,
@@ -1398,7 +1398,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		}),
 		{
 			to: "card",
-			refused: ANSWER_LOST_TO_RECONNECT_MESSAGE,
+			refused: answerLostToReconnectMessage(),
 			// A DEFINITE not-sent refusal is retryable: the same question is
 			// still live and a retry carries the live epoch.
 			retryable: true,
@@ -1410,15 +1410,15 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			{ status: "failed", error: rolledOver },
 			frame({ liveEpoch: "ffffffffffffffffffffffffffffffff" }),
 		).message,
-		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		answerLostToReconnectMessage(),
 	);
 	assert.doesNotMatch(
-		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		answerLostToReconnectMessage(),
 		/earlier session owner|session owner/i,
 		"the rollover sentence must not carry the backend's own vocabulary",
 	);
 	assert.match(
-		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		answerLostToReconnectMessage(),
 		/\.$/,
 		"the family's sentences end in a full stop, and this one did not",
 	);
@@ -1536,12 +1536,12 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		"the daemon could not hand the answer over, so nothing is established about it",
 	);
 	assert.equal(
-		ANSWER_SESSION_UNREACHABLE_MESSAGE.startsWith(ANSWER_UNCONFIRMED_LEAD),
+		answerSessionUnreachableMessage().startsWith(answerUnconfirmedLead()),
 		true,
 		"the dead-owner arm keeps the lead the committed frames photograph",
 	);
 	assert.equal(
-		ANSWER_SESSION_UNREACHABLE_MESSAGE.includes("Session owner"),
+		answerSessionUnreachableMessage().includes("Session owner"),
 		false,
 		"the app's wire noun must not reach the screen",
 	);
@@ -1552,7 +1552,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		),
 		{
 			to: "card",
-			refused: ANSWER_SESSION_UNREACHABLE_MESSAGE,
+			refused: answerSessionUnreachableMessage(),
 			// The card keeps its options disabled: nothing about this refusal
 			// establishes that the answer did not land (design round 1, arm 2).
 			retryable: false,
@@ -1564,7 +1564,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		answerReport({ status: "failed", error: unreachable }, frame()),
 		{
 			to: "composer",
-			message: ANSWER_SESSION_UNREACHABLE_MESSAGE,
+			message: answerSessionUnreachableMessage(),
 			code: ANSWER_UNCONFIRMED_CODE,
 			muted: false,
 			retry: false,
@@ -1620,13 +1620,13 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		"503",
 	]) {
 		assert.equal(
-			ANSWER_BUSY_MESSAGE.toLowerCase().includes(forbidden),
+			answerBusyMessage().toLowerCase().includes(forbidden),
 			false,
 			`the busy arm's copy may not say "${forbidden}"`,
 		);
 	}
 	assert.equal(
-		ANSWER_BUSY_MESSAGE.startsWith("Your answer isn't confirmed yet."),
+		answerBusyMessage().startsWith("Your answer isn't confirmed yet."),
 		true,
 		"the busy arm leads with what is knowable and claims nothing about arrival",
 	);
@@ -1637,7 +1637,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		),
 		{
 			to: "card",
-			refused: ANSWER_BUSY_MESSAGE,
+			refused: answerBusyMessage(),
 			// The hold STAYS: the answer may have landed, so the secret field must
 			// not reopen over it (D5's "resolve it in the direction of withholding").
 			retryable: false,
@@ -1648,7 +1648,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	);
 	assert.deepEqual(answerReport({ status: "failed", error: busy }, frame()), {
 		to: "composer",
-		message: ANSWER_BUSY_MESSAGE,
+		message: answerBusyMessage(),
 		code: ANSWER_UNCONFIRMED_CODE,
 		muted: true,
 		retry: false,
@@ -1771,7 +1771,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			{ status: "failed", error: rolledOver },
 			frame({ liveEpoch: "ffffffffffffffffffffffffffffffff" }),
 		).message,
-		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		answerLostToReconnectMessage(),
 		"the settled sentence must not be reached when the epoch moved",
 	);
 	/*
@@ -1786,12 +1786,12 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	 *     whole reason it exists (UX round 1, U1).
 	 */
 	assert.doesNotMatch(
-		QUESTION_MOVED_ON_MESSAGE,
+		questionMovedOnMessage(),
 		/somewhere else|another front end|other (?:device|window|tab)/i,
 		"the moved-on sentence must not name a cause the ask advancing cannot establish",
 	);
 	assert.doesNotMatch(
-		ANSWER_UNCONFIRMED_LEAD,
+		answerUnconfirmedLead(),
 		/your answer was not sent/i,
 		"the unknown-outcome sentence must not assert a loss the app cannot know",
 	);
@@ -1904,7 +1904,7 @@ test("a busy owner is waited out, and only the refusal that survives is reported
 		answerReport(refused.outcome, frame),
 		{
 			to: "composer",
-			message: ANSWER_BUSY_MESSAGE,
+			message: answerBusyMessage(),
 			code: ANSWER_UNCONFIRMED_CODE,
 			muted: true,
 			retry: false,
@@ -2615,7 +2615,7 @@ test("the pane refuses a typed send while a secret question waits, before any an
 	);
 	assert.match(
 		body.slice(refusal, refusal + 400),
-		/throw new UserFacingError\(\s*SECRET_ANSWER_DOCKED_MESSAGE,\s*ANSWER_NOT_SENT_CODE,\s*\)/,
+		/throw new UserFacingError\(\s*secretAnswerDockedMessage\(\),\s*ANSWER_NOT_SENT_CODE,\s*\)/,
 		"the refusal is the authored sentence with the not-sent code, so the alert offers no press that cannot work",
 	);
 });
