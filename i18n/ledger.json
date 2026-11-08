@@ -89550,8 +89550,8 @@
 					},
 					"receipt": "i18n/receipts/8e74cbf9-pages-v2.json",
 					"receipt_sha256": "d0e5e9cd115cd42f6caf09b888a76ae76c2688819bb584eda2f6088b87dd9be4",
-					"scope": "the 16 key(s) this PR adds to ui.hub.pages for ru; every other key in the namespace is byte-identical to the base and was not re-audited; a round-2 delta re-audit covers the five corrected strings",
-					"note": "translated by a per-locale lane; lanes that hit provider quota served on deepseek/deepseek-flash, disclosed in the PR"
+					"scope": "the 16 keys this PR adds to ui.hub.pages for ru; every other key byte-identical to the base and not re-audited; round 1 on these keys was changes_requested on two MAJORs (receipt ru-hub-pages-r1-88dcbe8a.json) and this round-2 receipt closes it",
+					"note": "round 1 (ru-hub-pages-r1-88dcbe8a.json) was changes_requested with two MAJORs; the corrections landed in 8d0b4e66f38 and this receipt records the clean-with-findings delta re-audit of those bytes"
 				}
 			],
 			"status": "audited",
