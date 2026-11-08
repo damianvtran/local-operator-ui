@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { installedElectronBinary } from "./electron-runtime-path.mjs";
 
 const ROOT = process.cwd();
 const SOURCE = readFileSync(
@@ -25,6 +26,18 @@ const PENDING_HISTORY_ROW = /\| (?:H\d+|R2-notices) \|[^\n]*\| pending \|/;
 const VISUAL_STATES_ERROR = /visual-states-error/;
 
 test("a forced H2 raise failure exits nonzero without a pending history matrix", () => {
+	/*
+	 * HERMETIC PRECONDITION. The probe imports `electron` at module scope
+	 * (scripts/browser-chrome-s4b-probe.mjs:48) and Electron 45's index runs the
+	 * installer when dist/ is missing, so a runner without the runtime spends
+	 * this test's whole 30 s spawn bound downloading it and reports ETIMEDOUT
+	 * instead of the matrix verdict (run 42474269773, shard 3). Resolve what the
+	 * probe will resolve -- without executing the package -- and fail here, by
+	 * name, in milliseconds. Never a skip: an absent runtime is an environment
+	 * defect this test has to report.
+	 */
+	installedElectronBinary(ROOT);
+
 	/*
 	 * Execute the probe's REAL visual-states catch, outer catch and matrix writer,
 	 * with only the expensive boot/scene prefix replaced by a deterministic throw.
