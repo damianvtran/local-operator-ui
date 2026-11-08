@@ -121,15 +121,34 @@ export function serverUpdateFailureSentence(input: {
 	before: string | null;
 	updateCommand: string | null;
 }): string {
+	/*
+	 * EVERY SENTENCE IS ITS OWN KEY, joined by a space. The arms are independent
+	 * facts (what failed, whether the updater was stopped, where the output is,
+	 * what the reader can run), so a translator gets whole sentences with their
+	 * own punctuation rather than fragments spliced around English word order.
+	 * The commands (`lop-update`, `lop update`) and the exit code are values, not
+	 * copy: they pass through as placeholders and stay verbatim in every locale.
+	 */
 	const headline = !input.ran
-		? "The server update did not finish: the installer could not be run to a verdict."
+		? t("ui.updates.service.server_failure.not_run")
 		: input.exitCode !== 0
-			? `The server update did not install: \`${input.rebuildRoute ? "lop-update" : "lop update"}\` exited ${input.exitCode}.`
+			? t("ui.updates.service.server_failure.exited", {
+					command: input.rebuildRoute ? "lop-update" : "lop update",
+					code: String(input.exitCode),
+				})
 			: input.rebuildRoute
-				? "The rebuild finished but did not change this install: its `.lop-source` still names the same revision."
-				: `The server update to ${input.target ?? "the new release"} did not take effect: the install still reports ${input.after ?? input.before ?? "its previous version"}.`;
+				? t("ui.updates.service.server_failure.rebuild_unchanged")
+				: t("ui.updates.service.server_failure.not_effective", {
+						target:
+							input.target ??
+							t("ui.updates.service.server_failure.target_fallback"),
+						installed:
+							input.after ??
+							input.before ??
+							t("ui.updates.service.server_failure.installed_fallback"),
+					});
 	const stopped = input.groupSurvived
-		? " The updater was stopped; something it started may still be replacing the install."
+		? ` ${t("ui.updates.service.server_failure.stopped")}`
 		: "";
 	/*
 	 * THE POINTER IS CONDITIONAL ON THE BLOCK EXISTING (reviewer m2): the sentence used
@@ -137,15 +156,17 @@ export function serverUpdateFailureSentence(input: {
 	 * so a run with nothing to show pointed at an empty space under the sentence.
 	 */
 	const pointer = input.diagnosis
-		? " The installer's own output is below."
-		: " The installer's own output is in the update service log.";
+		? ` ${t("ui.updates.service.server_failure.pointer_below")}`
+		: ` ${t("ui.updates.service.server_failure.pointer_log")}`;
 	/*
 	 * NOT NAMED `escape`: that identifier shadows the deprecated global of the same name,
 	 * which the repo's lint treats as an error - found by running the gate rather than
 	 * assuming it, and worth the rename for the name alone.
 	 */
 	const escapeHatch = input.rebuildRoute
-		? ` You can also run \`${input.updateCommand || "lop-update"}\` yourself in a terminal.`
+		? ` ${t("ui.updates.service.server_failure.run_yourself", {
+				command: input.updateCommand || "lop-update",
+			})}`
 		: "";
 	return `${headline}${stopped} ${serverUpdateFailureRemedy(input)}${pointer}${escapeHatch}`;
 }

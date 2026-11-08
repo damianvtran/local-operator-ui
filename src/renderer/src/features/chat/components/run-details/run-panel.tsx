@@ -80,8 +80,16 @@ import type { AidaWakeIdentity } from "./wake-controls-model";
  * is where the user's own action lives, and "could not start" on its own told them
  * nothing they could do (design D4, UX U4).
  */
-const BACKEND_UPDATE_UNEXPLAINED =
-	"The backend update could not start. Retry, or update from Settings, under Application updates.";
+/*
+ * A function and not a module-level constant: `t()` read at import time freezes
+ * the locale the renderer booted with, before the backend's language is known,
+ * so the sentence stayed English after a switch. Same key as the banner's backstop
+ * (one sentence, one translation).
+ */
+const backendUpdateUnexplained = (): string =>
+	t(
+		"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_",
+	);
 
 export type RunPanelProps = {
 	details: RunDetails;
@@ -264,12 +272,12 @@ export const RunPanel = ({
 			// run" as "the update ran" and left the reader with a backend that never
 			// changed and nothing to explain it.
 			if (started === false) {
-				setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
+				setUpdateBackendError(reason ?? backendUpdateUnexplained());
 				return;
 			}
 			retryCapabilities();
 		} catch {
-			setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
+			setUpdateBackendError(reason ?? backendUpdateUnexplained());
 		} finally {
 			removeBackendUpdateErrorListener();
 			setUpdatingBackend(false);

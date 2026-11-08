@@ -106,6 +106,7 @@ import enUiHubTeams from "./catalogues/en/ui.hub.teams.json";
 import enUiHubUpdates from "./catalogues/en/ui.hub.updates.json";
 import enUiHubViewer from "./catalogues/en/ui.hub.viewer.json";
 import enUiInstaller from "./catalogues/en/ui.installer.json";
+import enUiInstallerSetupCause from "./catalogues/en/ui.installer.setup_cause.json";
 import enUiLibraryErrors from "./catalogues/en/ui.library.errors.json";
 import enUiLibrary from "./catalogues/en/ui.library.json";
 import enUiMeshErrors from "./catalogues/en/ui.mesh.errors.json";
@@ -151,6 +152,8 @@ import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
 import enUiTeamBridgeThreadRow from "./catalogues/en/ui.teamBridge.threadRow.json";
 import enUiTeamBridgeTrial from "./catalogues/en/ui.teamBridgeTrial.json";
 import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
+import enUiUpdatesService from "./catalogues/en/ui.updates.service.json";
+import enUiUpdatesStatus from "./catalogues/en/ui.updates.status.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
 import esUiAgentsAvatar from "./catalogues/es/ui.agents.avatar.json";
@@ -1149,6 +1152,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiHubUpdates,
 	...enUiHubViewer,
 	...enUiInstaller,
+	...enUiInstallerSetupCause,
 	...enUiLibraryErrors,
 	...enUiLibrary,
 	...enUiMeshErrors,
@@ -1194,6 +1198,8 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiTeamBridgeThreadRow,
 	...enUiTeamBridgeTrial,
 	...enUiUpdatesPanel,
+	...enUiUpdatesService,
+	...enUiUpdatesStatus,
 };
 
 /** The client's own messages per locale; `en` is `bundledEnglish` itself. */
@@ -7319,6 +7325,13 @@ export type MessageParams = {
 	"ui.installer.phase.state.waiting": undefined;
 	"ui.installer.status.elapsed": { step: string; elapsed: string; eta: string };
 	"ui.installer.status.step": { step: string; total: string };
+	"ui.installer.setup_cause.clock_or_expired": undefined;
+	"ui.installer.setup_cause.disk_full": undefined;
+	"ui.installer.setup_cause.file_missing": undefined;
+	"ui.installer.setup_cause.locked": undefined;
+	"ui.installer.setup_cause.not_started": undefined;
+	"ui.installer.setup_cause.tls_interception": undefined;
+	"ui.installer.setup_cause.unreachable": undefined;
 	"ui.library.errors.asset_read": undefined;
 	"ui.library.errors.empty_bytes": undefined;
 	"ui.library.errors.preview_load": undefined;
@@ -11341,6 +11354,57 @@ export type MessageParams = {
 	"ui.updates.panel.service.no_server.message": undefined;
 	"ui.updates.panel.service.restart.message": undefined;
 	"ui.updates.panel.service.restart.message_version": { version: string };
+	"ui.updates.service.already_running.message": undefined;
+	"ui.updates.service.attempt_running.message_minutes": {
+		minutes: number;
+		group: string;
+	};
+	"ui.updates.service.attempt_running.message_moments": { group: string };
+	"ui.updates.service.attempt_running.message_unknown_age": { group: string };
+	"ui.updates.service.disk_space.message": { needed: number; free: number };
+	"ui.updates.service.fleet.busy.body": { minutes: number; closing: string };
+	"ui.updates.service.fleet.busy.lead": {
+		count: number;
+		names: string;
+		extra: number;
+	};
+	"ui.updates.service.fleet.busy.none_named": undefined;
+	"ui.updates.service.fleet.closing": undefined;
+	"ui.updates.service.fleet.unknown.body": { minutes: number; closing: string };
+	"ui.updates.service.fleet.unknown.credentials_refused": undefined;
+	"ui.updates.service.fleet.unknown.unreadable": undefined;
+	"ui.updates.service.global.legacy_installer.remedy": undefined;
+	"ui.updates.service.global.pip.remedy": undefined;
+	"ui.updates.service.global.pipx.remedy": undefined;
+	"ui.updates.service.global.source_build.remedy": undefined;
+	"ui.updates.service.global.source_rebuild.remedy": undefined;
+	"ui.updates.service.global.unknown.remedy": undefined;
+	"ui.updates.service.install_in_flight.message": { version: string };
+	"ui.updates.service.install_not_found.message": undefined;
+	"ui.updates.service.no_restart.message": undefined;
+	"ui.updates.service.no_restart_properly.message": undefined;
+	"ui.updates.service.no_server_reference.message": undefined;
+	"ui.updates.service.not_installed.message": undefined;
+	"ui.updates.service.release_publishing.message": { version: string };
+	"ui.updates.service.release_unreadable.message": undefined;
+	"ui.updates.service.server_failure.exited": { command: string; code: string };
+	"ui.updates.service.server_failure.installed_fallback": undefined;
+	"ui.updates.service.server_failure.not_effective": {
+		target: string;
+		installed: string;
+	};
+	"ui.updates.service.server_failure.not_run": undefined;
+	"ui.updates.service.server_failure.pointer_below": undefined;
+	"ui.updates.service.server_failure.pointer_log": undefined;
+	"ui.updates.service.server_failure.rebuild_unchanged": undefined;
+	"ui.updates.service.server_failure.run_yourself": { command: string };
+	"ui.updates.service.server_failure.stopped": undefined;
+	"ui.updates.service.server_failure.target_fallback": undefined;
+	"ui.updates.service.start_mode_unknown.message": undefined;
+	"ui.updates.service.version_unknown.message": undefined;
+	"ui.updates.status.dev_mode.app": undefined;
+	"ui.updates.status.dev_mode.backend": undefined;
+	"ui.updates.status.up_to_date": undefined;
 };
 
 export type MessageKey = keyof MessageParams;

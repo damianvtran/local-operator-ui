@@ -5835,7 +5835,7 @@ export class UpdateService {
 				) {
 					this.mainWindow.webContents.send(
 						"update-dev-mode",
-						"Application is running in development mode. Updates are disabled.",
+						t("ui.updates.status.dev_mode.app"),
 					);
 				}
 				// Development mode does not find out nothing: it does not find out
@@ -7072,7 +7072,7 @@ export class UpdateService {
 				) {
 					this.mainWindow.webContents.send(
 						"backend-update-dev-mode",
-						"Backend updates are disabled in development mode.",
+						t("ui.updates.status.dev_mode.backend"),
 					);
 				}
 				return { status: "unavailable", info: null };
@@ -7287,7 +7287,9 @@ export class UpdateService {
 						 */
 						message:
 							installedVersion && this.pendingPypiVersion
-								? `A new server release (${this.pendingPypiVersion}) is still publishing, so no update was offered yet. Check again in a few minutes.`
+								? t("ui.updates.service.release_publishing.message", {
+										version: this.pendingPypiVersion,
+									})
 								: t("ui.updates.panel.service.check_unavailable.message"),
 						phase: "check",
 						logPath: serverUpdateLogPath(),
@@ -7306,8 +7308,7 @@ export class UpdateService {
 				);
 				if (reportFailure) {
 					this.sendToRenderer("backend-update-error", {
-						message:
-							"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
+						message: t("ui.updates.service.version_unknown.message"),
 						phase: "check",
 						logPath: serverUpdateLogPath(),
 					});
@@ -8993,14 +8994,29 @@ export class UpdateService {
 			const ageMinutes = Number.isFinite(startedAtMs)
 				? Math.max(0, Math.round((Date.now() - startedAtMs) / 60_000))
 				: null;
-			const age =
+			/*
+			 * THREE WHOLE SENTENCES, NOT A SPLICED AGE FRAGMENT: "moments ago" and "N
+			 * minutes ago" cannot be concatenated into a sentence in a language whose
+			 * word order differs, so each age earns its own key and the minutes use the
+			 * locale's plural rules. The process group is a machine id and travels as
+			 * a value.
+			 */
+			const group = String(outcome.marker.groupPid);
+			const attemptRunning =
 				ageMinutes === null
-					? "at a time that could not be read"
+					? t("ui.updates.service.attempt_running.message_unknown_age", {
+							group,
+						})
 					: ageMinutes < 1
-						? "moments ago"
-						: `${ageMinutes} minute${ageMinutes === 1 ? "" : "s"} ago`;
+						? t("ui.updates.service.attempt_running.message_moments", {
+								group,
+							})
+						: t("ui.updates.service.attempt_running.message_minutes", {
+								minutes: ageMinutes,
+								group,
+							});
 			this.sendToRenderer("backend-update-error", {
-				message: `A server update this app started ${age} is still running (process group ${outcome.marker.groupPid}), so a second one will not be started beside it. If that update is no longer responding, the update service log says what it was doing.`,
+				message: attemptRunning,
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -9012,8 +9028,7 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"A server update is already running. Let it finish before starting another.",
+				message: t("ui.updates.service.already_running.message"),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -9162,8 +9177,7 @@ export class UpdateService {
 		const generationInstall = freshPlan.managedRoute === "entry-point";
 		if (!consolePath && !rebuildRoute) {
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"The global install could not be found on this machine, so the update did not run. See the update service log.",
+				message: t("ui.updates.service.install_not_found.message"),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -9672,8 +9686,7 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"The server was updated but the backend did not restart. Restart Local Operator to run the new version.",
+				message: t("ui.updates.service.no_restart.message"),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -9688,8 +9701,7 @@ export class UpdateService {
 			await backend.start();
 			if (!(await this.checkBackendHealth())) {
 				this.sendToRenderer("backend-update-error", {
-					message:
-						"The server was updated but the backend did not restart properly. Restart Local Operator to run the new version.",
+					message: t("ui.updates.service.no_restart_properly.message"),
 					phase: "update",
 					logPath: serverUpdateLogPath(),
 				});
@@ -10146,8 +10158,7 @@ export class UpdateService {
 					 * the rule this branch was the exception to.
 					 */
 					this.sendToRenderer("backend-update-error", {
-						message:
-							"The app could not tell how this server was started, so it did not update it. See the update service log.",
+						message: t("ui.updates.service.start_mode_unknown.message"),
 						phase: "update",
 						logPath: serverUpdateLogPath(),
 					});
@@ -10248,8 +10259,7 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"A server update is already running. Let it finish before starting another.",
+				message: t("ui.updates.service.already_running.message"),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -10278,8 +10288,7 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"The app has no server to update right now. Restart Local Operator and try again.",
+				message: t("ui.updates.service.no_server_reference.message"),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -10305,8 +10314,7 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"The app could not read which release to install, so it left its server environment alone. Check the connection and try again.",
+				message: t("ui.updates.service.release_unreadable.message"),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -10384,7 +10392,10 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 				this.sendToRenderer("backend-update-error", {
-					message: `The server update needs about ${neededMb} MB of free space on this disk, and ${freeMb} MB is free, so the app left the environment serving this app alone. Free some space and try again.`,
+					message: t("ui.updates.service.disk_space.message", {
+						needed: neededMb,
+						free: freeMb,
+					}),
 					phase: "update",
 					logPath: serverUpdateLogPath(),
 				});
@@ -10443,7 +10454,7 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message: `The server update did not install, so the environment serving this app was left as it was.${cause ? ` ${cause}` : ""}${reason ? `\n\n${reason}` : ""}`,
+				message: `${t("ui.updates.service.not_installed.message")}${cause ? ` ${cause}` : ""}${reason ? `\n\n${reason}` : ""}`,
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
