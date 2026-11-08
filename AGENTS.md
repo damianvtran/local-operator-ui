@@ -2981,18 +2981,41 @@ run-to-run distribution of a three-shard lane at concurrency 3 — 7.9 GB (run
 at `ok 1060` with zero failures — so each partition now carries ~25% fewer files.
 The budget, the concurrency guard, the 50-minute cap and the cancellation policy
 do not change. `scripts/desktop-test-shards.mjs` refuses a plan whose largest
-shard would hold more than `SHARD_FILE_CEILING` (204 files, one below the
-205-file lane that exhausted the budget), naming the shard, its size, the
-ceiling and those two runs, so growth is answered with `SHARD_SALT` or another
-shard instead of silently rebuilding a lane that already died; the planner's
-own test is in `GUARD_TESTS`, so that ceiling fails a pull request rather than
-waiting for a main run to find it. Tag-dialog tests are owned by shard 0
+shard would hold more than `SHARD_FILE_CEILING` (210 files), naming the shard,
+its size, the ceiling, the runway at measured growth and those two runs, so
+growth is answered with another lane instead of silently rebuilding a lane that
+already died; the planner's own test is in `GUARD_TESTS`, so that ceiling fails
+a pull request rather than waiting for a main run to find it.
+
+210 is a PRECAUTION, not a measured threshold, and the comment beside it says
+so in as many words: in both runs cited above the deal was 206 / 206 / 205,
+both 206-file shards PASSED and only the 205-file lane died, and those deaths
+ran under a 7.8 GB budget while `_BUDGET_FLOOR_MB` is 9728 MB (9.5 GB) today —
+22% more headroom than the runs that failed had. An earlier version of that
+comment claimed 199 was "the only measured passing lane" and 204 "the largest
+value the evidence permits"; both were false. The ceiling's blind spot is
+named rather than hidden: 207 through 210 have never been measured at all, and
+the guard permits them — above a size that has already failed twice — so the
+first evidence about that range will be a shard OOM. A lane at or above 200
+warns on stderr without failing — every plan, every lane's log — which is
+additive to the hard failure at ceiling + 1 and never a substitute for it.
+
+The lane count lives only in `SHARD_COUNT`: `partition`, all four modes and
+CI's matrix derive from it (`full-suite.yml` expands
+`fromJSON(needs.changes.outputs.shards)`, emitted by the planner's `matrix`
+mode), so a fifth lane is a one-line change and the planner's test fails if the
+workflow ever lists lanes again — a matrix and a constant that disagree would
+dispatch a partial suite and read green, which is why `run`/`receipt` reject an
+index outside the count and `verify` demands exactly one receipt per lane. The
+other lever, re-picking `SHARD_SALT`, is worth at most 2 files: a 20,000-salt
+sweep over the 786-file inventory bottoms out at 197, the arithmetic floor
+`ceil(786/4)`. Tag-dialog tests are owned by shard 0
 only; the native QA bundle moved to `ci.yml`'s own `qa-bundle` job, which still
 runs on every PR.
 
 The suite's aggregate is still **Desktop Tests** (`desktop-tests-result`), now
 in `full-suite.yml`, where `report` reads it; it is no longer a PR check.
-It consumes all four same-head/checkout/inventory receipts, rejects missing,
+It consumes every same-head/checkout/inventory receipt, rejects missing,
 failed or cancelled work, and reconstructs the disjoint complete file inventory.
 An explicit false unit scope skips the workers/result; unknown classification or
 failed workers cannot become a green aggregate. The result is a CI-only local

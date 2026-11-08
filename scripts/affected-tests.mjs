@@ -89,10 +89,12 @@ export const GUARD_TESTS = Object.freeze([
 	"scripts/desktop-test-memory-guard.test.mjs",
 	// The shard memory ceiling is a property of the whole tree: every test file a
 	// PR adds grows one lane by hash, so no diff-scoped selection can see the lane
-	// cross 204 files (the size that exhausted the 7.8 GB budget twice). The whole
-	// planner file is the guard because it is cheap (0.5 s incl. the real 786-file
-	// walk) and because the ceiling assertion must fail on a pull request, not only
-	// in main's full-suite run where the shards actually execute.
+	// cross the ceiling (210 files, itself a precaution above the only size ever
+	// measured failing - a 205-file lane died twice under a 7.8 GB budget while
+	// 206-file lanes passed in those same runs). The whole planner file is the
+	// guard because it is cheap (~1 s incl. the real 786-file walk) and because the
+	// ceiling assertion must fail on a pull request, not only in main's full-suite
+	// run where the shards actually execute.
 	"scripts/desktop-test-shards.test.mjs",
 	"scripts/focus-stability-ci-policy.test.mjs",
 	"scripts/lane-registration.test.mjs",

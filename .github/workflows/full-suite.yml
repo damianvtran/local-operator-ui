@@ -60,6 +60,15 @@ jobs:
     timeout-minutes: 5
     outputs:
       unit: ${{ steps.classify.outputs.unit }}
+      # The lane list, from scripts/desktop-test-shards.mjs's `matrix` mode, which
+      # derives it from SHARD_COUNT. It is emitted here rather than as a literal
+      # matrix below because a literal is a SECOND place to change the lane count,
+      # and a literal that drifts dispatches fewer lanes than
+      # `desktop-tests-result` can verify - a partial suite that reads green. This
+      # job already checks out and sets up node, so the emission costs no extra
+      # runner; the planner is builtin-only and needs no install.
+      shards: ${{ steps.shards.outputs.shards }}
+      shardcount: ${{ steps.shards.outputs.shardcount }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -74,6 +83,10 @@ jobs:
         run: |
           node scripts/ci-scope.mjs --all --root "$GITHUB_WORKSPACE" \
             --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Emit the shard matrix (the lane count lives in SHARD_COUNT)
+        id: shards
+        run: node scripts/desktop-test-shards.mjs matrix --github-output "$GITHUB_OUTPUT"
 
   test:
     # The desktop test suite -- the regression guards for issues 87, 92 and 93,
@@ -138,7 +151,17 @@ jobs:
     # distribution, so a quarter fewer files per process group is what buys
     # headroom. Raising the budget or lowering concurrency was rejected: the
     # first hides a narrowing margin, the second lengthens every lane.
-    name: Desktop Tests shard (${{ matrix.shard }}/4)
+    #
+    # Those deaths ran under a 7.8 GB budget; the floor in force now is 9.5 GB
+    # (`_BUDGET_FLOOR_MB` = 9728 MB, 22% more), and both 206-file lanes in those
+    # two runs PASSED while the 205-file lane beside them died - so the memory
+    # ceiling in the planner is a precaution, not a measured line.
+    #
+    # THE LANE COUNT IS NOT HERE: `shard` comes from `needs.changes.outputs.shards`,
+    # which the planner's `matrix` mode derives from SHARD_COUNT, so adding a
+    # fifth lane is one edit in scripts/desktop-test-shards.mjs. The planner's own
+    # test fails if this matrix ever becomes a literal list again.
+    name: Desktop Tests shard (${{ matrix.shard }}/${{ needs.changes.outputs.shardcount }})
     needs: [changes]
     if: >-
       !cancelled() &&
@@ -172,7 +195,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: ${{ fromJSON(needs.changes.outputs.shards) }}
     env:
       DESKTOP_SHARD_INDEX: ${{ matrix.shard }}
       DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}

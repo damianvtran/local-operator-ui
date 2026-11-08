@@ -3242,8 +3242,33 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
 	const result = desktopJobs["desktop-tests-result"];
 	assert.deepEqual(worker.strategy, {
 		"fail-fast": false,
-		matrix: { shard: [0, 1, 2, 3] },
+		// The lane list is DERIVED from the planner's SHARD_COUNT rather than listed
+		// here, so a fifth lane is one edit in scripts/desktop-test-shards.mjs and
+		// this matrix cannot drift from it. The assertion that keeps the derivation
+		// honest lives in scripts/desktop-test-shards.test.mjs (it is in
+		// GUARD_TESTS, so it runs on every pull request).
+		matrix: { shard: "${{ fromJSON(needs.changes.outputs.shards) }}" },
 	});
+	// ...and the value it expands comes from the planner, not from a second count:
+	// the `changes` job emits `shards`/`shardcount` in the planner's `matrix` mode,
+	// which derives both from SHARD_COUNT. A matrix that disagreed with that
+	// constant would dispatch a partial suite, which the aggregate reads as green.
+	assert.equal(
+		desktopJobs.changes.outputs.shards,
+		"${{ steps.shards.outputs.shards }}",
+	);
+	assert.equal(
+		desktopJobs.changes.outputs.shardcount,
+		"${{ steps.shards.outputs.shardcount }}",
+	);
+	const emitShards = desktopJobs.changes.steps.find(
+		(step) => step.id === "shards",
+	);
+	assert.ok(emitShards, "the changes job must emit the shard matrix");
+	assert.match(
+		emitShards.run,
+		/desktop-test-shards\.mjs matrix --github-output/,
+	);
 	assert.equal(worker["timeout-minutes"], 50);
 	assert.equal(result.name, "Desktop Tests");
 	assert.deepEqual(result.needs, ["changes", "test"]);

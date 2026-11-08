@@ -14,6 +14,7 @@
  */
 import { createHash } from "node:crypto";
 import {
+	appendFileSync,
 	lstatSync,
 	readFileSync,
 	readdirSync,
@@ -33,33 +34,114 @@ import {
 import { isEntryPoint } from "./entry-point.mjs";
 
 // FOUR, NOT THREE, on measured memory headroom rather than balance: at
-// concurrency 3 the guarded runner's process group was killed by the 7.8 GB
-// budget at 7.9 GB (run 40992181176) and again at 8.2 GB (run 40996898976) on the
-// SAME 205-file shard inventory, both after `ok 1060` with zero failures. The ceiling therefore sits inside the run-to-run distribution,
+// concurrency 3 the guarded runner's process group was killed by the then-current
+// 7.8 GB budget at 7.9 GB (run 40992181176) and again at 8.2 GB (run
+// 40996898976) on the SAME 205-file shard inventory, both after `ok 1060` with
+// zero failures. The ceiling therefore sits inside the run-to-run distribution,
 // so fewer files per process group is what buys headroom; the budget and the
-// concurrency guard are deliberately untouched.
+// concurrency guard are deliberately untouched. That budget has since risen to
+// 9.5 GB (`_BUDGET_FLOOR_MB` = 9728 MB), so both deaths predate the budget in
+// force today.
+//
+// THIS CONSTANT IS THE ONLY PLACE THE LANE COUNT LIVES. `partition`,
+// `shardMatrix`, the receipt/verify index bounds, `shardIndexOf`'s default and
+// CI's matrix all derive from it (the `test` job in `full-suite.yml` takes
+// `fromJSON(needs.changes.outputs.shards)`, which is this constant's `matrix`
+// mode), so going to five lanes is a one-line edit here plus nothing else. The
+// planner's own test asserts the workflow still DERIVES rather than lists the
+// lanes: a matrix and a constant that disagree dispatch a partial suite, which
+// reads as green. At runtime the same disagreement fails loudly instead -
+// `run`/`receipt` reject an index outside `0..SHARD_COUNT-1` and `verify`
+// demands exactly SHARD_COUNT receipts.
 export const SHARD_COUNT = 4;
 
 /**
  * Hard ceiling on the files one shard may hold. A lane over it is refused, not
  * warned about.
  *
- * Derived from the only measurement there is, not picked round: the single
- * measured failing lane is 205 files, which exhausted the 7.8 GB process-group
- * budget twice at concurrency 3 (runs 40992181176 and 40996898976, both after
- * `ok 1060` with zero failures) - the measurement that produced the four-way
- * split in SHARD_COUNT. The only measured passing lane is 199 files (salt "60",
- * 786-file inventory). 204 is therefore the largest value the evidence permits:
- * one file below the lane known to fail. It is NOT a claim that 204 is safe -
- * nothing between 199 and 205 has been measured - it is the point where growth
- * must be answered with the design's own levers (re-pick SHARD_SALT, which deals
- * every file afresh, or add a shard) instead of with a bigger number here.
+ * 210 is a PRECAUTION, not a measured threshold. Read the evidence before
+ * treating it as a boundary:
+ *
+ * - The two runs that forced the split (40992181176 and 40996898976, three
+ *   lanes, concurrency 3) each dealt 206 / 206 / 205, and BOTH 206-file lanes
+ *   PASSED in both runs. So 206 is measured passing at this concurrency, on this
+ *   runner, under the budget; this file previously claimed 199 was "the only
+ *   measured passing lane", which was false.
+ * - The 205-file lane died in both, at 7.9 GB and 8.2 GB against a 7.8 GB
+ *   process-group budget, after `ok 1060` with zero failures. 205 is measured
+ *   failing - twice, so it is not one noisy sample.
+ * - That 7.8 GB budget is 22% below the 9.5 GB in force today
+ *   (`_BUDGET_FLOOR_MB` = 9728 MB), so the deaths this guard derives from
+ *   happened with LESS headroom than a lane gets now. The previous value here
+ *   said 204 was "the largest value the evidence permits"; it was not, and being
+ *   that close to a boundary measured under a smaller budget forced a raise
+ *   after about a day of ordinary growth.
+ *
+ * THE NAMED BLIND SPOT, STATED PLAINLY: 210 is above every lane size ever
+ * measured, including the only size ever seen to fail. A 205-file lane has died
+ * twice and 206 has passed twice; 207 through 210 have never been run at all,
+ * and this ceiling permits all four. So the guard deliberately allows a lane
+ * larger than one that has already been killed twice, and the first evidence
+ * about that range will be a shard OOM - exactly the flaky-red class this work
+ * exists to remove. At the growth measured in CEILING_RUNWAY this number buys a
+ * median of 38 added test files (~2.5 to 3.4 days), so it is a delay with a named
+ * cost, not a safety proof: the lever that actually lowers every lane is
+ * SHARD_COUNT (a fifth lane), and until that lands this constant is the only
+ * thing between the suite and a repeat of 40992181176.
  *
  * Why it cannot be left to the balance tolerance: the planner's 10% guard allows
- * ceil(786/4 * 1.1) = 217 files, which is ABOVE the lane that died. That guard
- * measures balance; this one measures the memory that has already been spent.
+ * ceil(786/4 * 1.1) = 217 files, which is above anything measured here. That
+ * guard measures balance; this one bounds the memory that has already been
+ * spent.
  */
-export const SHARD_FILE_CEILING = 204;
+export const SHARD_FILE_CEILING = 210;
+
+/**
+ * Lane size at which the planner WARNS without failing. Additive to the hard
+ * failure above, never a substitute for it: 200 is where less than a week of
+ * measured growth remains, so the warning appears in every plan and every lane's
+ * log days BEFORE the red, rather than arriving with it.
+ */
+export const SHARD_WARNING_LANE = 200;
+
+/**
+ * The ceiling's runway arithmetic, as measured inputs - so the failure message
+ * answers "how long have I got", not only "you are over".
+ *
+ * Measured 2026-11-08 on the 786-file inventory, salt "60", lanes
+ * [199, 198, 190, 199]: a path hash sends each added test file to one lane, so
+ * the largest lane climbs about one file per four additions. Simulating exactly
+ * that (40,000 trials, uniform lane assignment - the real hash measured uniform
+ * to within 0.0008 over 200,000 synthetic paths) from those sizes until a lane
+ * holds 211: median 38 additions, p10 30, p90 46. Growth measured on
+ * `origin/main`: +79 to +107 added `*.test.mjs` files per week (the 7 days to
+ * 2026-11-08 added 112; the 14 days added 205, ~103/week), so the median runway
+ * is 38 / 107 x 7 = 2.5 days at the fast end and 38 / 79 x 7 = 3.4 days at the
+ * slow end.
+ *
+ * Re-measure these rather than adjusting them to taste: both messages date them,
+ * and a stale number here is worse than no number.
+ */
+const CEILING_RUNWAY = Object.freeze({
+	addedFilesMedian: 38,
+	addedFilesP10: 30,
+	addedFilesP90: 46,
+	addedFilesPerWeekFast: 107,
+	addedFilesPerWeekSlow: 79,
+	measuredOn: "2026-11-08",
+});
+
+/** How much growth is left before this lane trips, in files and in days. */
+function runwaySentence() {
+	const day = (perWeek) =>
+		((CEILING_RUNWAY.addedFilesMedian / perWeek) * 7).toFixed(1);
+	return `At the growth measured on ${CEILING_RUNWAY.measuredOn} this trips after a median ${CEILING_RUNWAY.addedFilesMedian} added test files (p10 ${CEILING_RUNWAY.addedFilesP10}, p90 ${CEILING_RUNWAY.addedFilesP90}) - ${day(CEILING_RUNWAY.addedFilesPerWeekFast)} to ${day(CEILING_RUNWAY.addedFilesPerWeekSlow)} days, because main adds ${CEILING_RUNWAY.addedFilesPerWeekSlow} to ${CEILING_RUNWAY.addedFilesPerWeekFast} test files per week.`;
+}
+
+/** Which lever actually lowers a lane, and what the other one is worth. */
+function leverSentence() {
+	return "The lever that works is another lane: raise SHARD_COUNT in this file, which partition, all four modes and CI's matrix derive from, so five lanes is one line plus the test that keeps the matrix in step. Re-picking SHARD_SALT is worth at most 2 files - a 20,000-salt sweep over the 786-file inventory bottoms out at 197, the arithmetic floor ceil(786/4) - so it is not an answer to a lane that is already near the ceiling.";
+}
 
 const RUNNER = "scripts/run-desktop-tests.mjs";
 const SHA = /^[a-f0-9]{40}$/;
@@ -146,24 +228,55 @@ export function shardIndexOf(file, count = SHARD_COUNT) {
  *
  * Hard failure, never a warning: nothing downstream re-measures a lane's size,
  * so a lane that grew past the ceiling would simply be launched into the memory
- * distribution that has already killed the suite. The message names the shard,
- * its file count, the ceiling and the runs behind it, so the person who trips it
- * can see what the number protects before touching it.
+ * distribution that has already killed the suite. The message leads with which
+ * lane, how big and the ceiling, then the runway arithmetic (how many added test
+ * files and days are left at measured growth) and the lever that actually works
+ * - a lane, not a salt re-pick worth two files - so the person who trips it
+ * reads the answer first instead of a rounding error.
  */
 export function assertShardCeiling(groups) {
 	const largest = groups.reduce((a, b) => (b.length > a.length ? b : a));
 	if (largest.length <= SHARD_FILE_CEILING) return groups;
 	throw new Error(
-		`Desktop shard ${groups.indexOf(largest) + 1}/${groups.length} holds ${largest.length} files, over the ${SHARD_FILE_CEILING}-file memory ceiling: a 205-file shard exhausted the 7.8 GB process-group budget at concurrency 3 twice (runs 40992181176 and 40996898976, both after ok 1060 with zero failures), which is why the suite is split ${groups.length} ways at all. Re-pick SHARD_SALT (currently ${JSON.stringify(SHARD_SALT)}) in a reviewed change so every path is dealt again, or add a shard; if no salt keeps every lane under ${SHARD_FILE_CEILING} the split itself has to change. Do not raise this ceiling without a measured run at that shard size.`,
+		`Desktop shard ${groups.indexOf(largest) + 1}/${groups.length} holds ${largest.length} files, over the ${SHARD_FILE_CEILING}-file memory ceiling. ${runwaySentence()} ${leverSentence()} The ceiling itself is a precaution, and it is above the only measured failure size: a 205-file lane was killed by a 7.8 GB process-group budget twice at concurrency 3 (runs 40992181176 and 40996898976, both after ok 1060 with zero failures), while both 206-file lanes in those same runs PASSED - and today's budget is 9.5 GB (9728 MB), 22% more headroom than the runs that died had. Do not raise this number without a measured run at that lane size.`,
 	);
+}
+
+/**
+ * Non-failing headroom warning, emitted on stderr by `plan` so every mode and
+ * every lane's log carries it. Returns null while the largest lane is under
+ * SHARD_WARNING_LANE.
+ *
+ * Deliberately additive: the hard failure above still fires at
+ * SHARD_FILE_CEILING + 1, and this never replaces it. Its job is the days of
+ * warning a red cannot give - a log line that says the runway is nearly spent
+ * while the suite is still green.
+ */
+export function shardHeadroomWarning(groups) {
+	const largest = groups.reduce((a, b) => (b.length > a.length ? b : a));
+	if (largest.length < SHARD_WARNING_LANE) return null;
+	return `Desktop shard ${groups.indexOf(largest) + 1}/${groups.length} holds ${largest.length} files, ${SHARD_FILE_CEILING - largest.length} under the ${SHARD_FILE_CEILING}-file memory ceiling. ${runwaySentence()} ${leverSentence()} Warning only: this run continues, and ${SHARD_FILE_CEILING + 1} files still fails the plan.\n`;
+}
+
+/**
+ * The lane indices CI runs, derived from SHARD_COUNT and nothing else.
+ * `full-suite.yml`'s `test` job takes its matrix from this mode, so the count is
+ * one edit and the guard test fails if the workflow ever lists lanes again.
+ */
+export function shardMatrix() {
+	return Array.from({ length: SHARD_COUNT }, (_, index) => index);
 }
 
 export function partition(files, count = SHARD_COUNT) {
 	// The floor of 2 keeps a single-shard "partition" from masquerading as
-	// capacity work; the ceiling is whatever the CI matrix advertises, so a count
-	// nobody runs cannot silently pass here.
-	if (![2, 3, 4].includes(count))
-		throw new Error("Partition count must be 2, 3 or 4");
+	// capacity work; the ceiling is SHARD_COUNT, the only lane count CI
+	// dispatches (`shardMatrix` gives the matrix its length), so a count nobody
+	// runs cannot silently pass here - and going to five lanes needs no edit in
+	// this function, which is the point of deriving it rather than listing it.
+	if (!Number.isInteger(count) || count < 2 || count > SHARD_COUNT)
+		throw new Error(
+			`Partition count must be an integer from 2 to SHARD_COUNT (${SHARD_COUNT})`,
+		);
 	if (!files.length || new Set(files).size !== files.length)
 		throw new Error("Empty or duplicate inventory");
 	const groups = Array.from({ length: count }, () => []);
@@ -186,9 +299,10 @@ export function partition(files, count = SHARD_COUNT) {
 	// partition that is actually dispatched, i.e. AFTER this loop, and refill can
 	// only take files out of a lane and give them to a one-file lane, so it can
 	// never enlarge the largest one. Second, it cannot reach a suite this size:
-	// with an empty lane, passing the ceiling needs the two other lanes at 204 or
-	// less and the largest at 205 or less, so at most 613 (3 x the ceiling, + 1)
-	// files can be refilled and dispatched - well under the 786-file inventory,
+	// with an empty lane, passing the ceiling needs the two other lanes at
+	// SHARD_FILE_CEILING or less and the largest at SHARD_FILE_CEILING + 1 or
+	// less, so at most 3 x SHARD_FILE_CEILING + 1 files (631 at 210) can be
+	// refilled and dispatched - well under the 786-file inventory,
 	// whose deal leaves no lane empty at all. Its reach is the small fixture trees
 	// the planner's own tests build.
 	for (
@@ -290,8 +404,12 @@ export function plan(root, head, checkout, metadataPackage, metadataGitTree) {
 	// come through `plan`), while `partition` is also the deal the planner's own
 	// fixtures shape at synthetic sizes no CI lane will ever carry. Hard failure:
 	// a lane over the ceiling has already killed the suite twice, so a warning
-	// here would be a warning about a dead run.
+	// there would be a warning about a dead run. The headroom warning below is
+	// additive to that failure and never a substitute for it: it is emitted here,
+	// on every mode, every run, while the suite is still green.
 	const shards = assertShardCeiling(partition(files));
+	const headroom = shardHeadroomWarning(shards);
+	if (headroom) process.stderr.write(headroom);
 	return {
 		schema: 1,
 		mode:
@@ -511,7 +629,7 @@ function options(args) {
 	for (let i = 0; i < args.length; i += 2) {
 		const flag = args[i];
 		if (
-			!/^--(?:root|head|checkout|index|output|log|rc|elapsed|receipts|unit|classifier|workers|run-id|attempt|metadata-package|metadata-git-tree)$/.test(
+			!/^--(?:root|head|checkout|index|output|log|rc|elapsed|receipts|unit|classifier|workers|run-id|attempt|metadata-package|metadata-git-tree|github-output)$/.test(
 				flag,
 			) ||
 			!args[i + 1] ||
@@ -526,7 +644,7 @@ function options(args) {
 
 export async function main(args) {
 	const [mode, ...rest] = args;
-	if (!["plan", "run", "receipt", "verify"].includes(mode))
+	if (!["plan", "run", "receipt", "verify", "matrix"].includes(mode))
 		throw new Error(
 			"Expected explicit plan (metadata-only), run, receipt or verify mode",
 		);
@@ -562,10 +680,26 @@ export async function main(args) {
 			"run-id",
 			"attempt",
 		],
+		matrix: ["github-output"],
 	};
 	for (const key of Object.keys(o))
 		if (!allowed[mode].includes(key))
 			throw new Error(`Unsupported ${mode} argument --${key}`);
+	// The lane list CI expands its matrix from, so the count lives in SHARD_COUNT
+	// only. Builtin-only like plan/verify: no inventory walk, no install. The
+	// `--github-output` form writes both numbers the workflow needs (the lane list
+	// for `fromJSON`, its length for the job's display name) in the same shape
+	// `scripts/ci-scope.mjs` already writes scope flags, so the YAML stays one
+	// command with no second derivation of the count in shell.
+	if (mode === "matrix") {
+		if (o["github-output"])
+			appendFileSync(
+				o["github-output"],
+				`shards=${JSON.stringify(shardMatrix())}\nshardcount=${SHARD_COUNT}\n`,
+			);
+		else console.log(JSON.stringify(shardMatrix()));
+		return 0;
+	}
 	// A metadata-only dry run may read an immutable Git-exported package file
 	// while checking paths against a real tree. Execution/receipt/verify modes
 	// reject this override, so it cannot replace their checkout's inventory.
