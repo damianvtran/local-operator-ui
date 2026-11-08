@@ -2,7 +2,13 @@
  * this suite never launches Electron or claims rendered evidence. */
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,10 +31,12 @@ import {
 	CASES,
 	CONTROL_BUILD_NODE_ARGS,
 	CONTROL_REUSE_PARTS,
+	assertControlPresent,
 	controlReusePlan,
 	describeMainPreloadReuse,
 	describePressRead,
 	pressWhenActionable,
+	probeCommit,
 	railCloseAssertion,
 	railCloseReading,
 	resolveAsksControl,
@@ -1022,5 +1030,195 @@ test("existing job performs real native capture and always uploads measurements"
 		console.log(
 			"asks-app-regression: pinned control commit not in this clone (shallow checkout); the fallback is asserted from source only",
 		);
+	}
+});
+
+/*
+ * THE CONTROL RESOLVER ASKS THE REPOSITORY, AND NAMES THE ANSWER IT TOOK.
+ *
+ * `resolveAsksControl` used to ask with `execFileSync`, which THROWS on git's exit
+ * 128 and also INHERITS stderr: a clone with no `origin/main` therefore printed
+ * `fatal: Not a valid object name origin/main` into the CI log while the catch
+ * swapped in the pinned revision, saying nothing about it. Both halves were measured
+ * on real runs - 42509070327 (job 128818578250, GREEN) and 42512944112 (job
+ * 128830450208, RED) carry the identical `fatal:` line, so it is a log defect and a
+ * SILENT degraded baseline, not what fails a step.
+ *
+ * Driven against repositories built here, so the four shapes cannot pass by stub: a
+ * depth-1 PR checkout (merge commit, no `origin/main`), a branch clone that can fetch
+ * the ref, a developer clone that has it, and an offline tree that must degrade LOUDLY
+ * to the pin. `ASKS_CONTROL_NO_FETCH` is set throughout except in the fetch case: a
+ * unit test has no business talking to a remote, and the fetch branch is driven
+ * against a local one.
+ */
+const controlGitEnv = {
+	...process.env,
+	GIT_AUTHOR_NAME: "asks control test",
+	GIT_AUTHOR_EMAIL: "asks-control@test.invalid",
+	GIT_COMMITTER_NAME: "asks control test",
+	GIT_COMMITTER_EMAIL: "asks-control@test.invalid",
+	// No credential helper from this machine's system config, and no prompt: the
+	// repositories below are local files, but the system gitconfig's osxkeychain
+	// helper would still be consulted for anything that looks like a URL.
+	GIT_CONFIG_SYSTEM: "/dev/null",
+	GIT_TERMINAL_PROMPT: "0",
+};
+const controlGit = (cwd, ...args) =>
+	execFileSync("git", args, {
+		encoding: "utf8",
+		cwd,
+		env: controlGitEnv,
+	}).trim();
+
+/** A "remote" and a clone of it, shaped per case; returns the expected base too. */
+function buildControlRepo(
+	root,
+	{ merge = false, keepOriginMain = false } = {},
+) {
+	const origin = join(root, "origin");
+	const work = join(root, "work");
+	execFileSync("git", ["init", "-q", "-b", "main", origin], {
+		env: controlGitEnv,
+	});
+	const write = (dir, name, body) => {
+		writeFileSync(join(dir, name), body);
+		controlGit(dir, "add", ".");
+		controlGit(dir, "commit", "-qm", name);
+	};
+	write(origin, "a.txt", "a");
+	write(origin, "b.txt", "b");
+	controlGit(root, "clone", "-q", origin, work);
+	if (merge) {
+		controlGit(work, "checkout", "-q", "-b", "feat");
+		write(work, "f.txt", "f");
+		controlGit(work, "checkout", "-q", "main");
+		controlGit(work, "merge", "-q", "--no-ff", "feat", "-m", "merge ref");
+	}
+	if (!keepOriginMain)
+		controlGit(work, "update-ref", "-d", "refs/remotes/origin/main");
+	return { work, origin };
+}
+
+/** `resolveAsksControl()` asked IN `dir`, with its provenance lines captured. */
+function resolveControlIn(dir, env = {}) {
+	const saved = {
+		cwd: process.cwd(),
+		override: process.env.ASKS_CONTROL_OVERRIDE,
+		noFetch: process.env.ASKS_CONTROL_NO_FETCH,
+		allowFetch: process.env.ASKS_CONTROL_ALLOW_FETCH,
+		log: console.log,
+	};
+	const logs = [];
+	console.log = (...args) => logs.push(args.join(" "));
+	try {
+		Reflect.deleteProperty(process.env, "ASKS_CONTROL_OVERRIDE");
+		process.env.ASKS_CONTROL_NO_FETCH = "1";
+		Reflect.deleteProperty(process.env, "ASKS_CONTROL_ALLOW_FETCH");
+		// An explicit `undefined` means "unset": assigning it would store the string
+		// "undefined", which is truthy and would silently disable the fetch branch.
+		for (const [key, value] of Object.entries(env)) {
+			if (value === undefined) Reflect.deleteProperty(process.env, key);
+			else process.env[key] = value;
+		}
+		process.chdir(dir);
+		return { value: resolveAsksControl(), logs };
+	} finally {
+		console.log = saved.log;
+		process.chdir(saved.cwd);
+		for (const [key, value] of [
+			["ASKS_CONTROL_OVERRIDE", saved.override],
+			["ASKS_CONTROL_NO_FETCH", saved.noFetch],
+			["ASKS_CONTROL_ALLOW_FETCH", saved.allowFetch],
+		]) {
+			if (value === undefined) Reflect.deleteProperty(process.env, key);
+			else process.env[key] = value;
+		}
+	}
+}
+
+test("the control resolver probes, fetches once, and names the branch it took", () => {
+	const root = mkdtempSync(
+		join(process.env.LOCAL_OPERATOR_SCRATCHPAD || tmpdir(), "asks-control-"),
+	);
+	try {
+		/*
+		 * 1. THE SHAPE CI ACTUALLY CHECKS OUT: GitHub's merge ref at depth 1. The
+		 * first parent IS main as of that run, so that - not a fetch, and certainly
+		 * not `origin/main` on a fork PR's remote - is the base it must use.
+		 */
+		const merged = buildControlRepo(join(root, "merge"), { merge: true });
+		const expectedParent = controlGit(merged.work, "rev-parse", "HEAD^1");
+		const fromMergeRef = resolveControlIn(merged.work);
+		assert.equal(fromMergeRef.value, expectedParent);
+		assert.match(
+			fromMergeRef.logs.join("\n"),
+			new RegExp(`merge ref's first parent ${expectedParent}`),
+		);
+
+		/* 2. A developer clone that HAS the ref keeps the merge-base answer. */
+		const full = buildControlRepo(join(root, "full"), { keepOriginMain: true });
+		const expectedBase = controlGit(full.work, "rev-parse", "origin/main");
+		const fromFull = resolveControlIn(full.work);
+		assert.equal(fromFull.value, expectedBase);
+		assert.match(
+			fromFull.logs.join("\n"),
+			new RegExp(`merge base of origin/main and HEAD \\(${expectedBase}\\)`),
+		);
+
+		/*
+		 * 3. OFFLINE AND UNDEGRADED BY DEFAULT: no `origin/main`, no merge parent, no
+		 * fetch allowed. It must still answer, and it must SAY it degraded - the
+		 * silence is the defect this test exists for.
+		 */
+		const offline = buildControlRepo(join(root, "offline"));
+		const degraded = resolveControlIn(offline.work);
+		assert.equal(degraded.value, ASKS_CONTROL_PINNED);
+		assert.match(degraded.logs.join("\n"), /DEGRADED/);
+		assert.ok(
+			degraded.logs.join("\n").includes(ASKS_CONTROL_PINNED),
+			"the degraded line must name the revision it is comparing against",
+		);
+
+		/*
+		 * 4. ONE BOUNDED FETCH MAKES THE COMPARISON REAL when the ref is absent but
+		 * reachable. Asked against a local remote, so no test reaches the network.
+		 */
+		const fetchable = buildControlRepo(join(root, "fetchable"));
+		const fetched = resolveControlIn(fetchable.work, {
+			ASKS_CONTROL_ALLOW_FETCH: "1",
+			ASKS_CONTROL_NO_FETCH: undefined,
+		});
+		assert.equal(
+			fetched.value,
+			controlGit(fetchable.work, "rev-parse", "origin/main"),
+		);
+		assert.match(fetched.logs.join("\n"), /fetched it once/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("a control revision that is not in the clone fails with the reason, not with git's fatal", () => {
+	const root = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD || tmpdir(),
+			"asks-control-missing-",
+		),
+	);
+	const saved = process.cwd();
+	try {
+		const { work } = buildControlRepo(root);
+		process.chdir(work);
+		// The probe answers ABSENCE as a value: exit 1, no output, no exception.
+		assert.equal(probeCommit("1111111111111111111111111111111111111111"), null);
+		assert.match(probeCommit("HEAD") || "", /^[0-9a-f]{40}$/);
+		assert.equal(assertControlPresent("HEAD"), "HEAD");
+		assert.throws(
+			() => assertControlPresent(ASKS_CONTROL_PINNED),
+			/asks-app-regression: the control revision 2461cfa3.* is not in this clone.*ASKS_CONTROL_OVERRIDE/s,
+		);
+	} finally {
+		process.chdir(saved);
+		rmSync(root, { recursive: true, force: true });
 	}
 });

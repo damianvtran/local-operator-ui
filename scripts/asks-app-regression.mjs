@@ -4,7 +4,7 @@
  * Only the backend's synthetic HTTP data is a fixture; no injected UI/bridge.
  */
 import assert from "node:assert/strict";
-import { execFile, execFileSync } from "node:child_process";
+import { execFile, execFileSync, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
 	cpSync,
@@ -72,19 +72,163 @@ export const CONTROL_BUILD_NODE_ARGS = [
 export const ASKS_CONTROL_PINNED = "2461cfa3f3beaa1124727a9de93dfe01c4381b0d";
 
 /**
- * The control revision this run will boot: `ASKS_CONTROL_OVERRIDE` when CI passes
- * one, else the merge-base of `origin/main` and `HEAD`, else - when neither can be
- * resolved, as in a clone with no `origin/main` - the pinned revision, so a shallow
- * or detached tree degrades to the old behaviour instead of failing.
+ * The single fetch `resolveAsksControl` may make, bounded so a stalled or slow
+ * remote degrades to the pinned revision instead of hanging the producer. It is a
+ * FALLBACK on a path that must also work offline, never a requirement.
+ */
+const CONTROL_FETCH_TIMEOUT_MS = 20000;
+
+/**
+ * The control revision this run will boot, derived in an EXPLICIT order where every
+ * branch is named in the log - including the degraded one.
+ *
+ * WHY THE PROBE AND NOT A TRY/CATCH. `git()` is `execFileSync`, which throws on git's
+ * non-zero exit, and the catch here used to turn that into the pin. Two consequences,
+ * both measured: (1) `execFileSync` INHERITS stderr, so a shallow checkout still
+ * printed `fatal: Not a valid object name origin/main` into the CI log while the run
+ * went on to succeed - run 42509070327 (job 128818578250, GREEN, 18:26:05Z) and run
+ * 42512944112 (job 128830450208, RED, 19:14:16Z) both carry that exact line, so it is
+ * a log defect and NOT what fails a step; (2) the degraded pin was swapped in
+ * SILENTLY, so nothing in the log said which baseline was compared against. Asking
+ * `rev-parse --verify --quiet` makes absence an ANSWER (exit 1, no output) instead of
+ * an exception, and every branch below reports itself.
+ *
+ * WHY THE MERGE PARENT COMES BEFORE ANY FETCH. In CI this job checks out GitHub's
+ * recomputed `refs/pull/N/merge` at depth 1, where `origin/main` is absent but the
+ * merge commit's FIRST PARENT is main as of that run - the base the candidate was
+ * built from, and the one baseline a fork PR cannot mislead: on a fork PR the
+ * remote's `main` is the FORK's, which is why the sibling asks step in ci.yml
+ * derives `HEAD^1` rather than consulting `origin/main`. Same rule here, no network.
+ * A network fetch stays a LAST-RESORT fallback (see below) rather than a requirement,
+ * so an offline tree still resolves.
  */
 export function resolveAsksControl() {
 	const override = process.env.ASKS_CONTROL_OVERRIDE;
 	if (override) return override;
-	try {
-		return git("merge-base", "origin/main", "HEAD");
-	} catch {
-		return ASKS_CONTROL_PINNED;
+
+	const onMain = probeCommit("origin/main");
+	if (onMain) {
+		const merged = probeMergeBase("origin/main", "HEAD");
+		if (merged) {
+			console.log(
+				`asks-app-regression: control derived from the merge base of origin/main and HEAD (${merged})`,
+			);
+			return merged;
+		}
+		console.log(
+			`asks-app-regression: origin/main (${onMain}) shares no history with HEAD; falling through to the next control source`,
+		);
 	}
+
+	/*
+	 * The merge ref's first parent. Only when HEAD really is a MERGE COMMIT (`HEAD^2`
+	 * exists): on a developer's ordinary branch `HEAD^1` is the previous commit, not
+	 * main, so accepting it there would compare the change against itself.
+	 */
+	if (probeCommit("HEAD^2")) {
+		const parent = probeCommit("HEAD^1");
+		if (parent) {
+			console.log(
+				`asks-app-regression: origin/main unavailable in this clone; comparing against the merge ref's first parent ${parent}`,
+			);
+			return parent;
+		}
+	}
+
+	/*
+	 * One bounded, best-effort fetch of the remote-tracking ref, for a bare depth-1
+	 * branch clone that has neither `origin/main` nor a merge parent. Never mandatory:
+	 * `ASKS_CONTROL_NO_FETCH` opts out, a tree with no `origin` remote skips it, and a
+	 * failure falls through to the pinned revision below. Only the PRODUCER fetches -
+	 * `isEntryPoint` (or an explicit `ASKS_CONTROL_ALLOW_FETCH=1`, which the tests use
+	 * to drive this branch against a local remote) keeps an importing suite off the
+	 * network.
+	 */
+	if (
+		(process.env.ASKS_CONTROL_ALLOW_FETCH === "1" ||
+			isEntryPoint(import.meta.url)) &&
+		fetchMainOnce()
+	) {
+		const merged = probeMergeBase("origin/main", "HEAD");
+		if (merged) {
+			console.log(
+				`asks-app-regression: origin/main was absent; fetched it once and comparing against the merge base ${merged}`,
+			);
+			return merged;
+		}
+	}
+
+	console.log(
+		`asks-app-regression: origin/main unavailable; comparing against pinned ${ASKS_CONTROL_PINNED} (DEGRADED: this clone has no origin/main, no merge parent and no usable fetch, so the control is the historical pin rather than this PR's base)`,
+	);
+	return ASKS_CONTROL_PINNED;
+}
+
+/**
+ * The commit `rev` names in this clone, or null when it names none.
+ *
+ * `--verify --quiet` exits 1 and prints NOTHING for an absent revision, so this is
+ * the probe the resolution above asks its questions with: a missing ref is an answer
+ * here, never an exception to be caught (see `resolveAsksControl`).
+ */
+export function probeCommit(rev) {
+	const out = spawnSync(
+		"git",
+		["rev-parse", "--verify", "--quiet", `${rev}^{commit}`],
+		{
+			encoding: "utf8",
+		},
+	);
+	return out.status === 0 ? out.stdout.trim() || null : null;
+}
+
+/** The merge base of two revisions, or null when they have none (unrelated history). */
+function probeMergeBase(left, right) {
+	const out = spawnSync("git", ["merge-base", left, right], {
+		encoding: "utf8",
+	});
+	return out.status === 0 ? out.stdout.trim() || null : null;
+}
+
+/**
+ * Bounded, single, best-effort fetch of `origin`'s main into the remote-tracking ref.
+ * Returns whether the ref resolves afterwards. Never throws and never hangs: a
+ * missing remote, an offline tree or `ASKS_CONTROL_NO_FETCH` all answer false.
+ */
+function fetchMainOnce() {
+	if (process.env.ASKS_CONTROL_NO_FETCH) return false;
+	if (
+		spawnSync("git", ["remote", "get-url", "origin"], { encoding: "utf8" })
+			.status !== 0
+	)
+		return false;
+	const fetched = spawnSync(
+		"git",
+		[
+			"fetch",
+			"--no-tags",
+			"--depth=1",
+			"origin",
+			"+refs/heads/main:refs/remotes/origin/main",
+		],
+		{ encoding: "utf8", timeout: CONTROL_FETCH_TIMEOUT_MS },
+	);
+	return fetched.status === 0 && Boolean(probeCommit("origin/main"));
+}
+
+/**
+ * Fail with the REASON when the control revision is not this clone, instead of the
+ * bare `fatal: Not a valid object name <sha>` the caller would otherwise get from the
+ * `rev-parse`/`archive` calls that consume `ASKS_CONTROL`. A shallow clone can hold
+ * the merge base's commit object and still lack the pinned historical revision - and
+ * a mis-spelled `ASKS_CONTROL_OVERRIDE` lands here too - so the message names the
+ * revision and the two ways to supply it.
+ */
+export function assertControlPresent(control) {
+	if (probeCommit(control)) return control;
+	throw new Error(
+		`asks-app-regression: the control revision ${control} is not in this clone, so its source cannot be read. Fetch it (git fetch --depth=1 origin ${control}) or name one with ASKS_CONTROL_OVERRIDE.`,
+	);
 }
 
 const sha = (value) => createHash("sha256").update(value).digest("hex");
@@ -281,6 +425,10 @@ export function describeMainPreloadReuse(plan) {
 	return `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
 }
 async function prepareControl(root, output) {
+	// The control's source is read from its own revision; ask for it up front so a
+	// clone that does not hold it fails with the reason instead of a bare
+	// `fatal: Not a valid object name` out of the rev-parse/archive calls below.
+	assertControlPresent(ASKS_CONTROL);
 	// Real historical source, not a callback mutation. Main/preload are reused
 	// from the candidate only when the source identities agree (`controlReusePlan`);
 	// otherwise they are built from the control's own source below.
