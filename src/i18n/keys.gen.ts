@@ -239,6 +239,7 @@ import esUiHubTeams from "./catalogues/es/ui.hub.teams.json";
 import esUiHubUpdates from "./catalogues/es/ui.hub.updates.json";
 import esUiHubViewer from "./catalogues/es/ui.hub.viewer.json";
 import esUiInstaller from "./catalogues/es/ui.installer.json";
+import esUiInstallerSetupCause from "./catalogues/es/ui.installer.setup_cause.json";
 import esUiLibraryErrors from "./catalogues/es/ui.library.errors.json";
 import esUiLibrary from "./catalogues/es/ui.library.json";
 import esUiMeshErrors from "./catalogues/es/ui.mesh.errors.json";
@@ -284,6 +285,8 @@ import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
 import esUiTeamBridgeThreadRow from "./catalogues/es/ui.teamBridge.threadRow.json";
 import esUiTeamBridgeTrial from "./catalogues/es/ui.teamBridgeTrial.json";
 import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
+import esUiUpdatesService from "./catalogues/es/ui.updates.service.json";
+import esUiUpdatesStatus from "./catalogues/es/ui.updates.status.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
 import frUiAgentsAvatar from "./catalogues/fr/ui.agents.avatar.json";
@@ -369,6 +372,7 @@ import frUiHubTeams from "./catalogues/fr/ui.hub.teams.json";
 import frUiHubUpdates from "./catalogues/fr/ui.hub.updates.json";
 import frUiHubViewer from "./catalogues/fr/ui.hub.viewer.json";
 import frUiInstaller from "./catalogues/fr/ui.installer.json";
+import frUiInstallerSetupCause from "./catalogues/fr/ui.installer.setup_cause.json";
 import frUiLibraryErrors from "./catalogues/fr/ui.library.errors.json";
 import frUiLibrary from "./catalogues/fr/ui.library.json";
 import frUiMeshErrors from "./catalogues/fr/ui.mesh.errors.json";
@@ -414,6 +418,8 @@ import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
 import frUiTeamBridgeThreadRow from "./catalogues/fr/ui.teamBridge.threadRow.json";
 import frUiTeamBridgeTrial from "./catalogues/fr/ui.teamBridgeTrial.json";
 import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
+import frUiUpdatesService from "./catalogues/fr/ui.updates.service.json";
+import frUiUpdatesStatus from "./catalogues/fr/ui.updates.status.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
 import hiUiAgentsAvatar from "./catalogues/hi/ui.agents.avatar.json";
@@ -499,6 +505,7 @@ import hiUiHubTeams from "./catalogues/hi/ui.hub.teams.json";
 import hiUiHubUpdates from "./catalogues/hi/ui.hub.updates.json";
 import hiUiHubViewer from "./catalogues/hi/ui.hub.viewer.json";
 import hiUiInstaller from "./catalogues/hi/ui.installer.json";
+import hiUiInstallerSetupCause from "./catalogues/hi/ui.installer.setup_cause.json";
 import hiUiLibraryErrors from "./catalogues/hi/ui.library.errors.json";
 import hiUiLibrary from "./catalogues/hi/ui.library.json";
 import hiUiMeshErrors from "./catalogues/hi/ui.mesh.errors.json";
@@ -544,6 +551,8 @@ import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
 import hiUiTeamBridgeThreadRow from "./catalogues/hi/ui.teamBridge.threadRow.json";
 import hiUiTeamBridgeTrial from "./catalogues/hi/ui.teamBridgeTrial.json";
 import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
+import hiUiUpdatesService from "./catalogues/hi/ui.updates.service.json";
+import hiUiUpdatesStatus from "./catalogues/hi/ui.updates.status.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
 import ruUiAgentsAvatar from "./catalogues/ru/ui.agents.avatar.json";
@@ -629,6 +638,7 @@ import ruUiHubTeams from "./catalogues/ru/ui.hub.teams.json";
 import ruUiHubUpdates from "./catalogues/ru/ui.hub.updates.json";
 import ruUiHubViewer from "./catalogues/ru/ui.hub.viewer.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
+import ruUiInstallerSetupCause from "./catalogues/ru/ui.installer.setup_cause.json";
 import ruUiLibraryErrors from "./catalogues/ru/ui.library.errors.json";
 import ruUiLibrary from "./catalogues/ru/ui.library.json";
 import ruUiMeshErrors from "./catalogues/ru/ui.mesh.errors.json";
@@ -674,6 +684,8 @@ import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
 import ruUiTeamBridgeThreadRow from "./catalogues/ru/ui.teamBridge.threadRow.json";
 import ruUiTeamBridgeTrial from "./catalogues/ru/ui.teamBridgeTrial.json";
 import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
+import ruUiUpdatesService from "./catalogues/ru/ui.updates.service.json";
+import ruUiUpdatesStatus from "./catalogues/ru/ui.updates.status.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
 import urUiAgentsAvatar from "./catalogues/ur/ui.agents.avatar.json";
@@ -759,6 +771,7 @@ import urUiHubTeams from "./catalogues/ur/ui.hub.teams.json";
 import urUiHubUpdates from "./catalogues/ur/ui.hub.updates.json";
 import urUiHubViewer from "./catalogues/ur/ui.hub.viewer.json";
 import urUiInstaller from "./catalogues/ur/ui.installer.json";
+import urUiInstallerSetupCause from "./catalogues/ur/ui.installer.setup_cause.json";
 import urUiLibraryErrors from "./catalogues/ur/ui.library.errors.json";
 import urUiLibrary from "./catalogues/ur/ui.library.json";
 import urUiMeshErrors from "./catalogues/ur/ui.mesh.errors.json";
@@ -804,6 +817,8 @@ import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
 import urUiTeamBridgeThreadRow from "./catalogues/ur/ui.teamBridge.threadRow.json";
 import urUiTeamBridgeTrial from "./catalogues/ur/ui.teamBridgeTrial.json";
 import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
+import urUiUpdatesService from "./catalogues/ur/ui.updates.service.json";
+import urUiUpdatesStatus from "./catalogues/ur/ui.updates.status.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
 import viUiAgentsAvatar from "./catalogues/vi/ui.agents.avatar.json";
@@ -889,6 +904,7 @@ import viUiHubTeams from "./catalogues/vi/ui.hub.teams.json";
 import viUiHubUpdates from "./catalogues/vi/ui.hub.updates.json";
 import viUiHubViewer from "./catalogues/vi/ui.hub.viewer.json";
 import viUiInstaller from "./catalogues/vi/ui.installer.json";
+import viUiInstallerSetupCause from "./catalogues/vi/ui.installer.setup_cause.json";
 import viUiLibraryErrors from "./catalogues/vi/ui.library.errors.json";
 import viUiLibrary from "./catalogues/vi/ui.library.json";
 import viUiMeshErrors from "./catalogues/vi/ui.mesh.errors.json";
@@ -934,6 +950,8 @@ import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
 import viUiTeamBridgeThreadRow from "./catalogues/vi/ui.teamBridge.threadRow.json";
 import viUiTeamBridgeTrial from "./catalogues/vi/ui.teamBridgeTrial.json";
 import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
+import viUiUpdatesService from "./catalogues/vi/ui.updates.service.json";
+import viUiUpdatesStatus from "./catalogues/vi/ui.updates.status.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
 import zhCNUiAgentsAvatar from "./catalogues/zh-CN/ui.agents.avatar.json";
@@ -1019,6 +1037,7 @@ import zhCNUiHubTeams from "./catalogues/zh-CN/ui.hub.teams.json";
 import zhCNUiHubUpdates from "./catalogues/zh-CN/ui.hub.updates.json";
 import zhCNUiHubViewer from "./catalogues/zh-CN/ui.hub.viewer.json";
 import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
+import zhCNUiInstallerSetupCause from "./catalogues/zh-CN/ui.installer.setup_cause.json";
 import zhCNUiLibraryErrors from "./catalogues/zh-CN/ui.library.errors.json";
 import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
 import zhCNUiMeshErrors from "./catalogues/zh-CN/ui.mesh.errors.json";
@@ -1064,6 +1083,8 @@ import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
 import zhCNUiTeamBridgeThreadRow from "./catalogues/zh-CN/ui.teamBridge.threadRow.json";
 import zhCNUiTeamBridgeTrial from "./catalogues/zh-CN/ui.teamBridgeTrial.json";
 import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
+import zhCNUiUpdatesService from "./catalogues/zh-CN/ui.updates.service.json";
+import zhCNUiUpdatesStatus from "./catalogues/zh-CN/ui.updates.status.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -1293,6 +1314,7 @@ export const bundledCatalogues: Readonly<
 		...esUiHubUpdates,
 		...esUiHubViewer,
 		...esUiInstaller,
+		...esUiInstallerSetupCause,
 		...esUiLibraryErrors,
 		...esUiLibrary,
 		...esUiMeshErrors,
@@ -1338,6 +1360,8 @@ export const bundledCatalogues: Readonly<
 		...esUiTeamBridgeThreadRow,
 		...esUiTeamBridgeTrial,
 		...esUiUpdatesPanel,
+		...esUiUpdatesService,
+		...esUiUpdatesStatus,
 	},
 	fr: {
 		...frUiAgentMessages,
@@ -1425,6 +1449,7 @@ export const bundledCatalogues: Readonly<
 		...frUiHubUpdates,
 		...frUiHubViewer,
 		...frUiInstaller,
+		...frUiInstallerSetupCause,
 		...frUiLibraryErrors,
 		...frUiLibrary,
 		...frUiMeshErrors,
@@ -1470,6 +1495,8 @@ export const bundledCatalogues: Readonly<
 		...frUiTeamBridgeThreadRow,
 		...frUiTeamBridgeTrial,
 		...frUiUpdatesPanel,
+		...frUiUpdatesService,
+		...frUiUpdatesStatus,
 	},
 	hi: {
 		...hiUiAgentMessages,
@@ -1557,6 +1584,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiHubUpdates,
 		...hiUiHubViewer,
 		...hiUiInstaller,
+		...hiUiInstallerSetupCause,
 		...hiUiLibraryErrors,
 		...hiUiLibrary,
 		...hiUiMeshErrors,
@@ -1602,6 +1630,8 @@ export const bundledCatalogues: Readonly<
 		...hiUiTeamBridgeThreadRow,
 		...hiUiTeamBridgeTrial,
 		...hiUiUpdatesPanel,
+		...hiUiUpdatesService,
+		...hiUiUpdatesStatus,
 	},
 	ru: {
 		...ruUiAgentMessages,
@@ -1689,6 +1719,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiHubUpdates,
 		...ruUiHubViewer,
 		...ruUiInstaller,
+		...ruUiInstallerSetupCause,
 		...ruUiLibraryErrors,
 		...ruUiLibrary,
 		...ruUiMeshErrors,
@@ -1734,6 +1765,8 @@ export const bundledCatalogues: Readonly<
 		...ruUiTeamBridgeThreadRow,
 		...ruUiTeamBridgeTrial,
 		...ruUiUpdatesPanel,
+		...ruUiUpdatesService,
+		...ruUiUpdatesStatus,
 	},
 	ur: {
 		...urUiAgentMessages,
@@ -1821,6 +1854,7 @@ export const bundledCatalogues: Readonly<
 		...urUiHubUpdates,
 		...urUiHubViewer,
 		...urUiInstaller,
+		...urUiInstallerSetupCause,
 		...urUiLibraryErrors,
 		...urUiLibrary,
 		...urUiMeshErrors,
@@ -1866,6 +1900,8 @@ export const bundledCatalogues: Readonly<
 		...urUiTeamBridgeThreadRow,
 		...urUiTeamBridgeTrial,
 		...urUiUpdatesPanel,
+		...urUiUpdatesService,
+		...urUiUpdatesStatus,
 	},
 	vi: {
 		...viUiAgentMessages,
@@ -1953,6 +1989,7 @@ export const bundledCatalogues: Readonly<
 		...viUiHubUpdates,
 		...viUiHubViewer,
 		...viUiInstaller,
+		...viUiInstallerSetupCause,
 		...viUiLibraryErrors,
 		...viUiLibrary,
 		...viUiMeshErrors,
@@ -1998,6 +2035,8 @@ export const bundledCatalogues: Readonly<
 		...viUiTeamBridgeThreadRow,
 		...viUiTeamBridgeTrial,
 		...viUiUpdatesPanel,
+		...viUiUpdatesService,
+		...viUiUpdatesStatus,
 	},
 	"zh-CN": {
 		...zhCNUiAgentMessages,
@@ -2085,6 +2124,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiHubUpdates,
 		...zhCNUiHubViewer,
 		...zhCNUiInstaller,
+		...zhCNUiInstallerSetupCause,
 		...zhCNUiLibraryErrors,
 		...zhCNUiLibrary,
 		...zhCNUiMeshErrors,
@@ -2130,6 +2170,8 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiTeamBridgeThreadRow,
 		...zhCNUiTeamBridgeTrial,
 		...zhCNUiUpdatesPanel,
+		...zhCNUiUpdatesService,
+		...zhCNUiUpdatesStatus,
 	},
 };
 
