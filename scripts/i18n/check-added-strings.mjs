@@ -15,25 +15,33 @@
  * base tree proves the literal already existed, by either source:
  *   A. the same path, verbatim: `git show <base>:<path>` contains the finding's
  *      exact source span, quotes included;
- *   B. an already authored English message: a string value in
- *      `src/i18n/catalogues/en/**` at base contains the finding's normalized
- *      words as a bounded run, so punctuation, wrapping and interpolated values
- *      may drift between the message and the re-added literal.
+ *   B. the de-keying move in the SAME file: this very diff removes a
+ *      `t("<key>")` call from the file the finding sits in, and the base English
+ *      catalogue message for that key carries the finding's normalized words as
+ *      a bounded run. The proof is the removal, so source B reaches copy this
+ *      change stopped translating and nothing wider: punctuation, line wrapping
+ *      and the rendered value of a leading count may drift between the message
+ *      and the re-added literal, while a file the change never un-keyed - and a
+ *      new file, which carries no removed call at all - can never qualify.
  * Anything neither source proves is NOT restored and still fails. Absence of
  * evidence, an ambiguous lookup, an unreadable base tree or an unparseable base
  * catalogue is a failure, never a silent pass.
  *
  * Two boundaries are stated rather than left implied:
- *   (a) source B accepts a newly written un-keyed sink that reuses an English
- *       message already in the base tree. That is a known, visible residue of
- *       the revert allowance rather than a silent pass: every acceptance prints
- *       its own `RESTORED:` line with the catalogue it came from. The haystack
- *       is English MESSAGE values only. The `*.context.json` sidecars beside
- *       those messages are translator notes (register, style and width prose
- *       about a key), and a note is not evidence that the UI ever shipped that
- *       string, so they are filtered out of the base listing: a literal lifted
- *       out of a note is newly authored copy and still fails. A whole-value
- *       message match is preferred for the evidence line;
+ *   (a) source B's residue is the de-keying move itself: a file that un-keys a
+ *       message and re-adds that message's words is accepted, because that is
+ *       exactly the revert the allowance exists to permit. A literal whose words
+ *       merely appear somewhere in the English catalogue is NOT accepted - that
+ *       was a vocabulary-wide allowance rather than a revert allowance, and it
+ *       vouched for short new labels such as `Retry` and `Search` that any
+ *       unrelated catalogue happens to carry. Every acceptance prints its own
+ *       `RESTORED:` line naming the un-keyed key and the catalogue file that
+ *       holds the message. The haystack is English MESSAGE values only. The
+ *       `*.context.json` sidecars beside those messages are translator notes
+ *       (register, style and width prose about a key), and a note is not
+ *       evidence that the UI ever shipped that string, so they are filtered out
+ *       of the base listing: a literal lifted out of a note is newly authored
+ *       copy and still fails;
  *   (b) git history is deliberately NOT consulted. CI checks the merge out with
  *       `fetch-depth: 2`, and the versions a revert restores can sit thousands
  *       of commits behind base, so a restore whose base-tree counterpart drifted
@@ -148,28 +156,39 @@ export function resolveComparisonBase(repo, requestedBase) {
 }
 
 /**
- * Comparison form: whitespace collapsed, digit runs and ICU braces flattened.
+ * Comparison form: whitespace collapsed, and nothing else.
  *
- * Why flatten at all: a re-added literal and the catalogue message behind it
- * legitimately differ in the interpolated value (a `{count}` placeholder where
- * the literal baked a digit in) and in line wrapping. Normalizing both sides is
- * what lets source B compare copy rather than formatting.
+ * Deliberately minimal. Flattening digit runs made "Max 3 attachments allowed."
+ * and "Max 8 attachments allowed." compare equal, and flattening ICU braces made
+ * unrelated placeholder shapes equal too - both are different copy, not
+ * formatting differences. The one drift the evidence genuinely needs (a count the
+ * message interpolates where the literal bakes the number in) is handled by
+ * dropping ONE leading count token from the needle instead, in `copyNeedle`.
  */
 function normalizeCopy(text) {
-	return text
-		.replace(/\s+/g, " ")
-		.replace(/\d+/g, "#")
-		.replace(/[{}]/g, " ")
-		.replace(/\s+/g, " ")
-		.trim();
+	return text.replace(/\s+/g, " ").trim();
 }
 
 /**
- * A needle keeps its words but drops edge punctuation, so "Done." matches
- * "Done..." - the trailing mark is a rendering difference, not other copy.
+ * A needle keeps its words but drops one leading count token and edge
+ * punctuation.
+ *
+ * Leading count: an ICU message renders `#` for the count where a restored
+ * literal bakes the number in, so `1 reference points outside this session's
+ * working directory.` restores a message `{# reference points outside this
+ * session's working directory.}`. Exactly ONE token, and only at the start: a
+ * count anywhere else is a different sentence and must stay different copy.
+ *
+ * Edge punctuation: "Done." matches "Done..." - the trailing mark is a
+ * rendering difference, not other copy.
  */
+const LEADING_COUNT_RE = /^[#\d]+\s+/;
+const EDGE_PUNCTUATION_RE = /^[\s.,;:!?…—–-]+|[\s.,;:!?…—–-]+$/g;
+
 function copyNeedle(text) {
-	return normalizeCopy(text).replace(/^[\s.,;:!?…—–-]+|[\s.,;:!?…—–-]+$/g, "");
+	return normalizeCopy(text)
+		.replace(LEADING_COUNT_RE, "")
+		.replace(EDGE_PUNCTUATION_RE, "");
 }
 
 const BOUNDED_ALNUM_RE = /[\p{L}\p{N}]/u;
@@ -221,6 +240,11 @@ const RESTORE_CATALOGUE_PREFIX = "src/i18n/catalogues/en";
  */
 const RESTORE_SIDECAR_RE = /\.context\.json$/;
 const BATCH_HEADER_END = 0x0a;
+/** A found object is `<oid> blob <size>`; a lookup git cannot resolve echoes
+ * `<requested name> missing`. Both are matched by shape, never by field position,
+ * because the requested name is a `<base>:<path>` pair that may contain spaces. */
+const BLOB_RECORD_RE = /^[0-9a-f]{40,64} blob (\d+)$/;
+const MISSING_RECORD_RE = / missing$/;
 
 /**
  * Read blobs by object name through ONE `git cat-file --batch` process.
@@ -262,35 +286,46 @@ function readBatchObjects(repo, names) {
 		}
 		const header = buffer.subarray(offset, headerEnd).toString("utf8");
 		offset = headerEnd + 1;
-		const [, type, sizeText] = header.split(" ");
-		if (type === "missing") {
-			objects.set(name, { type, content: null });
+		if (MISSING_RECORD_RE.test(header)) {
+			objects.set(name, { type: "missing", content: null });
 			continue;
 		}
-		const size = Number(sizeText);
-		if (type !== "blob" || !Number.isFinite(size)) {
+		const blobRecord = BLOB_RECORD_RE.exec(header);
+		if (blobRecord === null) {
 			throw new Error(`git cat-file --batch returned "${header}" for ${name}`);
 		}
+		const size = Number(blobRecord[1]);
 		const content = buffer.subarray(offset, offset + size).toString("utf8");
 		offset += size + 1;
-		objects.set(name, { type, content });
+		objects.set(name, { type: "blob", content });
 	}
 	return objects;
 }
 
-/** Every string value under one parsed catalogue message tree. */
-function collectMessageStrings(value, out) {
+/**
+ * Every string value under one parsed catalogue message tree, with the dotted
+ * key it belongs to.
+ *
+ * The key is what source B compares against: a de-keyed `t("<key>")` call names
+ * one message, and matching its words against THAT message is the whole proof.
+ * Message files are flat `"<key>": "<value>"` maps today; the recursion keeps a
+ * nested object honest by prefixing its path rather than silently flattening two
+ * different keys onto one another.
+ */
+function collectMessageStrings(value, key, out) {
 	if (typeof value === "string") {
-		out.push(value);
+		out.push({ key, value });
 	} else if (Array.isArray(value)) {
-		for (const item of value) collectMessageStrings(item, out);
+		for (const item of value) collectMessageStrings(item, key, out);
 	} else if (value !== null && typeof value === "object") {
-		for (const item of Object.values(value)) collectMessageStrings(item, out);
+		for (const [childKey, item] of Object.entries(value)) {
+			collectMessageStrings(item, key ? `${key}.${childKey}` : childKey, out);
+		}
 	}
 }
 
 /**
- * Every English MESSAGE string at `base`, as `{ path, value }`.
+ * Every English MESSAGE string at `base`, as `{ path, key, value }`.
  *
  * Read from the BASE tree, not the working tree: the question is what the branch
  * this diff is compared against already shipped, and a revert deletes the very
@@ -353,10 +388,31 @@ function readBaseCatalogue(repo, base) {
 			);
 		}
 		const values = [];
-		collectMessageStrings(parsed, values);
-		for (const value of values) entries.push({ path: blob.path, value });
+		collectMessageStrings(parsed, "", values);
+		for (const value of values) entries.push({ path: blob.path, ...value });
 	}
 	return entries;
+}
+
+/**
+ * Catalogue keys whose `t("<key>")` call this diff REMOVES from one file.
+ *
+ * This is the whole of source B's proof, and it is deliberately textual and
+ * same-line: `t(` is this codebase's translate helper, so a removed line holding
+ * `t("ui.…")` is exactly the de-keying move a revert inverts. A call that wraps
+ * its key onto the next line is not parsed here, which fails closed (no evidence,
+ * so the literal is new) rather than guessing. `---` is the diff's own file
+ * header, not a removed line.
+ */
+const TRANSLATE_CALL_RE = /\bt\(\s*["'](ui(?:\.[A-Za-z0-9_]+)+)["']/g;
+
+export function unKeyedCatalogueKeys(diff) {
+	const keys = new Set();
+	for (const line of diff.split("\n")) {
+		if (!line.startsWith("-") || line.startsWith("---")) continue;
+		for (const match of line.matchAll(TRANSLATE_CALL_RE)) keys.add(match[1]);
+	}
+	return keys;
 }
 
 /**
@@ -366,18 +422,18 @@ function readBaseCatalogue(repo, base) {
  *
  * `tester(absolutePath, raw, text)` answers the evidence line for a restored
  * finding, or `undefined` meaning "not restored, still a failure": an absent
- * same-path blob, a needle no base catalogue carries, or an empty needle.
+ * same-path blob, no key this diff un-keyed from that file, a key whose message
+ * does not carry the words, or an empty needle.
  *
  * `raw` is the literal's exact source span (quotes included) because that is
  * what "the base file contains this literal" has to mean; `text` is the
- * collapsed literal the report shows, which source B compares against English
- * MESSAGE values only - the `*.context.json` translator notes are filtered out
- * of the base listing, so the evidence can never name a note.
+ * collapsed literal the report shows, which source B compares against the words
+ * of the one base English MESSAGE its de-keyed call named.
  */
-function createRestoreTester(repo, base) {
+function createRestoreTester(repo, base, unKeyedByFile) {
 	const shortBase = shortSha(base);
 	const baseBlobs = new Map();
-	let catalogue;
+	let index;
 
 	const samePathBlob = (rel) => {
 		if (!baseBlobs.has(rel)) {
@@ -390,9 +446,27 @@ function createRestoreTester(repo, base) {
 		return baseBlobs.get(rel);
 	};
 
-	const catalogueEntries = () => {
-		if (catalogue === undefined) catalogue = readBaseCatalogue(repo, base);
-		return catalogue;
+	/**
+	 * Base key -> the message file and value that define it.
+	 *
+	 * Two files carrying one key with different English is an ambiguous lookup -
+	 * which message a literal "restores" would be undefined - so it throws instead
+	 * of picking one.
+	 */
+	const catalogueIndex = () => {
+		if (index === undefined) {
+			index = new Map();
+			for (const entry of readBaseCatalogue(repo, base)) {
+				const seen = index.get(entry.key);
+				if (seen !== undefined && seen.value !== entry.value) {
+					throw new Error(
+						`Base English catalogue carries ${entry.key} twice with different text: ${seen.path} and ${entry.path} at ${shortBase}`,
+					);
+				}
+				if (seen === undefined) index.set(entry.key, entry);
+			}
+		}
+		return index;
 	};
 
 	return (absPath, raw, text) => {
@@ -403,18 +477,20 @@ function createRestoreTester(repo, base) {
 		}
 		const needle = copyNeedle(text);
 		if (needle.length === 0) return undefined;
-		const entries = catalogueEntries();
-		/* Prefer a message whose WHOLE value is the needle, so the evidence names the
-		 * message a revert restores rather than a longer message that merely contains
-		 * it. Preference only: it changes which evidence is reported, never whether a
-		 * finding is accepted. */
-		const exact = entries.find((entry) => copyNeedle(entry.value) === needle);
-		if (exact !== undefined) {
-			return `present in ${exact.path} at ${shortBase}`;
-		}
-		for (const entry of entries) {
+		const messages = catalogueIndex();
+		/* Source B asks only about keys THIS diff un-keyed from THIS file, so a new
+		 * file (no removed call) and copy that stayed keyed can never be vouched for.
+		 * The catalogue is deliberately read above for every candidate with words,
+		 * before the key test: an unreadable base catalogue must keep failing closed
+		 * instead of being skipped whenever no de-keyed call happens to explain the
+		 * literal. */
+		const keys = unKeyedByFile.get(rel);
+		if (keys === undefined) return undefined;
+		for (const key of keys) {
+			const entry = messages.get(key);
+			if (entry === undefined) continue;
 			if (containsBounded(normalizeCopy(entry.value), needle)) {
-				return `present in ${entry.path} at ${shortBase}`;
+				return `un-keyed ${key} in ${entry.path} at ${shortBase}`;
 			}
 		}
 		return undefined;
@@ -503,6 +579,13 @@ function nearestCopyDeclaration(identifier) {
 /**
  * Find the additional copy shapes in one parsed file. `addedLines === null`
  * means a new/untracked file, for which every finding is new by construction.
+ *
+ * `options.restore` is the optional restore tester built by
+ * `createRestoreTester`. It is an OPTIONS BAG rather than a third positional
+ * argument deliberately: the template-sink coverage lands its own
+ * `templateSinks` option on this same call, and a second positional addition to
+ * one signature is silently dropped the first time the two are merged. Named
+ * options cannot shadow each other.
  */
 export function findAddedCopyViolations(
 	sourceFile,
@@ -739,6 +822,10 @@ export function runAddedCheck({
 	const { tracked, untracked } = changedFiles(repo, comparisonBase);
 	const allowlist = loadAllowlist(join(repo, "i18n", "allowlist.json"));
 	const additions = new Map();
+	/* rel -> the catalogue keys this file's own diff stopped calling t() for. Only
+	 * a same-file de-keying can vouch for a restored literal, so this map is the
+	 * whole input source B gets. */
+	const unKeyed = new Map();
 	for (const rel of tracked) {
 		if (allowlistReason(rel, allowlist)) continue;
 		const diff = git(repo, [
@@ -750,7 +837,11 @@ export function runAddedCheck({
 			rel,
 		]);
 		const { added } = parseAddedLines(diff);
-		if (added.size > 0) additions.set(rel, added);
+		if (added.size > 0) {
+			additions.set(rel, added);
+			const keys = unKeyedCatalogueKeys(diff);
+			if (keys.size > 0) unKeyed.set(rel, keys);
+		}
 	}
 	for (const rel of untracked) {
 		if (!allowlistReason(rel, allowlist)) additions.set(rel, null);
@@ -763,7 +854,7 @@ export function runAddedCheck({
 
 	/* One oracle per run, built before any file is parsed but lazy inside: it
 	 * reads the base tree only when a candidate finding asks it to. */
-	const restoreTester = createRestoreTester(repo, comparisonBase);
+	const restoreTester = createRestoreTester(repo, comparisonBase, unKeyed);
 	const { api, snapshot } = openSnapshot(
 		repo,
 		files.map((rel) => join(repo, rel)),
@@ -839,7 +930,7 @@ export function formatReport(result) {
 	const error = [];
 	if (result.restored.length > 0) {
 		error.push(
-			`WARN: ${result.restored.length} restored literal(s) already existed at ${shortSha(result.base)}; listed above as RESTORED and not counted as new.`,
+			`WARN: ${result.restored.length} restored literal(s) the base tree already carried at ${shortSha(result.base)}; listed above as RESTORED and not counted as new.`,
 		);
 	}
 	if (result.findings.length > 0) {
