@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -10,17 +17,32 @@ import {
 	BASELINE,
 	BASELINE_NOTE,
 	COPY_ATTRIBUTES,
+	LITERAL_ALLOWANCE,
+	OBJECT_COPY_KEYS,
+	allowanceBaseReport,
+	allowanceSummary,
 	allowlistReason,
+	checkAllowanceGrowth,
+	copyTexts,
 	countsOf,
 	failureSummary,
+	findViolations,
+	governedByAllowance,
+	literalAllowanceFindings,
 	loadAllowlist,
 	loadBaseline,
+	loadLiteralAllowance,
 	main,
+	onDataShapeSurface,
 	openSnapshot,
+	pruneLiteralAllowance,
 	ratchetFindings,
+	renderAllowance,
+	resolveAllowanceBase,
 	runCheck,
 	saveBaseline,
 	scanSnapshot,
+	validateLiteralAllowance,
 } from "./check-strings.mjs";
 
 /*
@@ -38,13 +60,25 @@ import {
  */
 
 const REPO = new URL("../..", import.meta.url).pathname;
+
+/* The assertions below name their regexes: an inline literal is a lint warning
+ * in this repository (`useTopLevelRegex`), and the reading is clearer anyway. */
+const DID_NOT_RUN_RE = /DID NOT RUN/;
+const CANNOT_SKIP_RE = /cannot be skipped silently/;
+const PRUNE_RE = /--prune-allowance/;
+const EXTRACT_UNLISTED_RE = /extract the unlisted/;
+const REVERT_RE = /revert/;
+const GREW_RE = /allowance grew by/;
 const FIXTURE = "scripts/i18n/fixtures/scan/violations.tsx";
 
 const PROPS_FIXTURE = "scripts/i18n/fixtures/scan/props.tsx";
 
+const SHAPES_FIXTURE = "scripts/i18n/fixtures/scan/shapes.tsx";
+
 const fixtureApi = openSnapshot(REPO, [
 	join(REPO, FIXTURE),
 	join(REPO, PROPS_FIXTURE),
+	join(REPO, SHAPES_FIXTURE),
 ]);
 after(() => {
 	fixtureApi.api.close();
@@ -931,7 +965,6 @@ const PLAN_KEYS = {
 
 const astFiles = [...new Set(BINDING.map(([, , file]) => file))];
 
-const bval = (key) => BINDING.find(([k]) => k === key)[1];
 const slug = (s) => s.replace(/\s+/g, "").replace(/,}/g, "}");
 
 const bslice = (sf, node) => sf.text.slice(node.getStart(sf), node.getEnd());
@@ -1218,3 +1251,546 @@ function tCallsIn(node) {
 	});
 	return keys;
 }
+
+// ---------------------------------------------------------------------------
+// The data shapes: object-literal copy, JSX child expressions, templates
+// ---------------------------------------------------------------------------
+
+function shapesFindings({ dataShapes = true } = {}) {
+	const scanned = scanSnapshot(fixtureApi.snapshot, REPO, {
+		extraScan: [SHAPES_FIXTURE],
+	});
+	const sourceFile = scanned.get(SHAPES_FIXTURE);
+	if (dataShapes) return sourceFile ?? [];
+	const project = fixtureApi.snapshot.getDefaultProjectForFile(
+		join(REPO, SHAPES_FIXTURE),
+	);
+	return findViolations(
+		project.program.getSourceFile(join(REPO, SHAPES_FIXTURE)),
+		{
+			dataShapes,
+		},
+	);
+}
+
+const governedShapes = (findings) =>
+	findings.filter((finding) => governedByAllowance(finding.kind));
+
+test("the data shapes see object-literal copy, JSX children and templates", () => {
+	const found = governedShapes(shapesFindings()).map(
+		(finding) => `${finding.kind} ${JSON.stringify(finding.text)}`,
+	);
+	assert.deepEqual(found, [
+		'object-literal:label "Flagged label"',
+		'object-literal:title "Flagged title"',
+		'object-literal:description "Flagged description"',
+		'object-literal:text "Flagged text"',
+		'object-literal:message "Flagged ${…} message"',
+		'object-literal:detail "Flagged detail"',
+		'object-literal:cancel "Flagged cancel"',
+		'object-literal:summary "Flagged summary A"',
+		'object-literal:summary "Flagged summary B"',
+		// `"Flagged" + NAME` yields only its literal side: a bare identifier
+		// exposes no static text, and the concatenation's prose is what it holds.
+		'object-literal:caption "Flagged"',
+		'object-literal:title "Flagged beside the pragma"',
+		'jsx-child-expression "Flagged arm A"',
+		'jsx-child-expression "Flagged arm B"',
+		'jsx-child-expression "Flagged ${…} children"',
+		'jsx-child-expression "Flagged braced literal"',
+		'jsx-child-expression "${…} Flagged template"',
+		'jsx-child-expression "Flagged and-right"',
+		'jsx-child-expression "Flagged"',
+	]);
+});
+
+test("the data shapes are a surface, not the tree", () => {
+	// `dataShapes: false` is the pre-widening walker — the SAME function with the
+	// new branches off, not a second copy that could drift from it. Every fixture
+	// case above must be invisible to it: that is the proof these tests fail on
+	// the old walker rather than passing by accident.
+	assert.deepEqual(governedShapes(shapesFindings({ dataShapes: false })), []);
+	assert.ok(onDataShapeSurface("src/renderer/src/app.tsx"));
+	assert.ok(!onDataShapeSurface("src/main/index.ts"));
+	assert.ok(!onDataShapeSurface("src/shared/desktop-contract.ts"));
+	// The prose keys are a measured set, and the token keys are not in it.
+	assert.ok(OBJECT_COPY_KEYS.has("label"));
+	assert.ok(!OBJECT_COPY_KEYS.has("name"));
+	assert.ok(!OBJECT_COPY_KEYS.has("action"));
+});
+
+test("a machine position is never a copy position", () => {
+	const texts = shapesFindings().map((finding) => finding.text);
+	for (const machine of [
+		"copy-shapes",
+		"text-ink-muted",
+		"npm run build",
+		"ui.chat.page_chrome.aside_text_only",
+		"ui.settings.section.interface_language.label",
+		"never",
+		"agent-messages-onboarding",
+		"connecting",
+		"Logged ${…} rows",
+		"Thrown ${…} error",
+		"css-${…}-flag",
+	]) {
+		assert.ok(
+			!texts.some((text) => text === machine || text.includes(machine)),
+			`${JSON.stringify(machine)} is machine text and must not be a finding`,
+		);
+	}
+});
+
+test("a plain assignment, return or array template is the ratchet's stated gap", () => {
+	// Pinned on purpose, and pinned through the walker: `check-strings.mjs` does
+	// NOT count a template in a `const`, a `return` or an array literal (234 such
+	// templates live in the renderer at this head, most of them machine text),
+	// and `check-added-strings.mjs` is where an ADDED one fails. A future
+	// widening has to change this assertion and the module docstring together.
+	const texts = shapesFindings().map((finding) => finding.text);
+	for (const text of [
+		"Unlisted plain ${…} rows",
+		"Unlisted array ${…} rows",
+		"${…} over ${…} rows",
+	])
+		assert.ok(!texts.includes(text), `${text} must not be a ratchet finding`);
+});
+
+test("an interpolated sentence is ONE finding with its substitution elided", () => {
+	const child = governedShapes(shapesFindings()).filter(
+		(finding) => finding.kind === "jsx-child-expression",
+	);
+	const template = child.filter((finding) => finding.text.includes("children"));
+	assert.equal(template.length, 1);
+	assert.equal(template[0].text, "Flagged ${…} children");
+	// The letter test runs on the text WITH the substitution removed, so a
+	// template whose only letters live in the substitution is not copy. Asserted
+	// through the walker on the fixture's `${count}` child rather than on a
+	// hand-built Map with a test-local regex — the previous spelling exercised no
+	// product code at all (agent review round 1, N3).
+	assert.ok(
+		child.every((finding) => finding.text !== "${…}"),
+		"a substitution-only template is not a finding",
+	);
+});
+
+test("a copy key holding a catalogue key is the keyed spelling", () => {
+	const texts = shapesFindings().map((finding) => finding.text);
+	assert.ok(!texts.some((text) => text.startsWith("ui.")));
+});
+
+test("copyTexts gives one entry per sentence and staticTextNodes per piece", () => {
+	const scanned = scanSnapshot(fixtureApi.snapshot, REPO, {
+		extraScan: [SHAPES_FIXTURE],
+	});
+	const project = fixtureApi.snapshot.getDefaultProjectForFile(
+		join(REPO, SHAPES_FIXTURE),
+	);
+	const sourceFile = project.program.getSourceFile(join(REPO, SHAPES_FIXTURE));
+	const texts = [];
+	const bwalk = (node, visit) => {
+		visit(node);
+		node.forEachChild((child) => bwalk(child, visit));
+	};
+	bwalk(sourceFile, (node) => {
+		if (
+			node.kind === SyntaxKind.TemplateExpression &&
+			node.templateSpans.length > 0
+		)
+			texts.push(copyTexts(node)[0]);
+	});
+	assert.ok(scanned.get(SHAPES_FIXTURE) !== undefined);
+	for (const text of texts)
+		assert.equal((text.match(/\$\{…\}/g) ?? []).length >= 1, true);
+});
+
+// ---------------------------------------------------------------------------
+// The literal allowance: shrink-only, attributed, refuses to grow
+// ---------------------------------------------------------------------------
+
+const ALLOWANCE_ENTRY = {
+	file: "src/renderer/src/a.tsx",
+	ids: ["jsx-child-expression | Mark all ${…} read"],
+	owner: "the i18n renderer-keying lane",
+	payoff: "2027-01-31",
+	reason: "fixture",
+};
+
+function allowanceWith(entries) {
+	return { schema: 1, note: "", entries };
+}
+
+/*
+ * A scratch git repo for the growth check's REAL read path. The tests below are
+ * the ones the first round was missing: the growth test injected `base` through
+ * the seam, so `git cat-file`/`git show` and the base resolution were exercised
+ * nowhere (agent review round 1, M1).
+ *
+ * The first commit carries no allowance file — that is the pull request that
+ * INTRODUCES it — and the second adds it, so both sides of the `cat-file` branch
+ * are reachable from one repo.
+ */
+function allowanceRepo() {
+	const dir = mkdtempSync(join(tmpdir(), "i18n-growth-"));
+	/* An inherited GIT_DIR would aim the setup commands (and the checker's own git
+	 * calls) at the caller's repository instead of the scratch one. */
+	const env = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+	);
+	for (const key of Object.keys(process.env)) {
+		if (key.startsWith("GIT_")) delete process.env[key];
+	}
+	const run = (...args) =>
+		spawnSync("git", args, { cwd: dir, env, encoding: "utf8" });
+	run("init", "-q");
+	writeFileSync(join(dir, "README.md"), "scratch\n");
+	run("add", ".");
+	run(
+		"-c",
+		"user.name=t",
+		"-c",
+		"user.email=t@t",
+		"commit",
+		"-qm",
+		"no allowance yet",
+	);
+	mkdirSync(join(dir, "i18n"), { recursive: true });
+	writeFileSync(
+		join(dir, "i18n", "literal-allowance.json"),
+		`${JSON.stringify(allowanceWith([ALLOWANCE_ENTRY]), null, "\t")}\n`,
+	);
+	run("add", ".");
+	run(
+		"-c",
+		"user.name=t",
+		"-c",
+		"user.email=t@t",
+		"commit",
+		"-qm",
+		"allowance",
+	);
+	return { dir, run };
+}
+
+/** Run `body` with no CI pull-request event in the environment. */
+function withoutCiEvent(body) {
+	const saved = {
+		name: process.env.GITHUB_EVENT_NAME,
+		path: process.env.GITHUB_EVENT_PATH,
+	};
+	Reflect.deleteProperty(process.env, "GITHUB_EVENT_NAME");
+	Reflect.deleteProperty(process.env, "GITHUB_EVENT_PATH");
+	try {
+		return body();
+	} finally {
+		for (const [key, value] of [
+			["GITHUB_EVENT_NAME", saved.name],
+			["GITHUB_EVENT_PATH", saved.path],
+		]) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+	}
+}
+
+test("the growth check states an unresolved base and fails closed when required", () => {
+	assert.deepEqual(
+		allowanceBaseReport({ ref: "origin/main", required: false }),
+		{
+			lines: [],
+			failed: false,
+		},
+	);
+	// A local checkout with no base is the ONE skip — and it says so, in words a
+	// reader cannot mistake for a comparison that ran.
+	const gap = allowanceBaseReport({ ref: null, required: false });
+	assert.equal(gap.failed, false);
+	assert.match(gap.lines[0], DID_NOT_RUN_RE);
+	// A base that was REQUIRED and did not resolve is a failure, not a skip.
+	const required = allowanceBaseReport({ ref: null, required: true });
+	assert.equal(required.failed, true);
+	assert.match(required.lines[0], CANNOT_SKIP_RE);
+});
+
+test("resolveAllowanceBase reads the real ref graph, with and without origin/main", () => {
+	const { dir, run } = allowanceRepo();
+	try {
+		const noBase = withoutCiEvent(() =>
+			resolveAllowanceBase(undefined, { repo: dir }),
+		);
+		assert.deepEqual(noBase, { ref: null, required: false });
+		// An EXPLICIT ref that does not resolve is required and fails closed: the
+		// caller asked for a comparison, so a missing base cannot become a pass.
+		assert.deepEqual(resolveAllowanceBase("deadbeefdeadbeef", { repo: dir }), {
+			ref: null,
+			required: true,
+		});
+		// The same call resolves `origin/main` once the ref exists.
+		assert.equal(
+			run("update-ref", "refs/remotes/origin/main", "HEAD").status,
+			0,
+		);
+		const withOrigin = withoutCiEvent(() =>
+			resolveAllowanceBase(undefined, { repo: dir }),
+		);
+		assert.deepEqual(withOrigin, { ref: "origin/main", required: false });
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("the CI pull-request base is read from the event and is REQUIRED", () => {
+	const { dir, run } = allowanceRepo();
+	const eventPath = join(dir, "event.json");
+	const saved = process.env.GITHUB_EVENT_PATH;
+	try {
+		const sha = run("rev-parse", "HEAD").stdout.trim();
+		writeFileSync(
+			eventPath,
+			JSON.stringify({ pull_request: { base: { sha, ref: "main" } } }),
+		);
+		process.env.GITHUB_EVENT_NAME = "pull_request";
+		process.env.GITHUB_EVENT_PATH = eventPath;
+		assert.deepEqual(resolveAllowanceBase(undefined, { repo: dir }), {
+			ref: sha,
+			required: true,
+		});
+		// A CI base that is not in the checkout fails closed rather than falling
+		// back to the local skip — the event is the job's evidence that there IS a
+		// base to compare against.
+		writeFileSync(
+			eventPath,
+			JSON.stringify({
+				pull_request: { base: { sha: "0".repeat(40), ref: "main" } },
+			}),
+		);
+		assert.deepEqual(resolveAllowanceBase(undefined, { repo: dir }), {
+			ref: null,
+			required: true,
+		});
+	} finally {
+		Reflect.deleteProperty(process.env, "GITHUB_EVENT_NAME");
+		if (saved === undefined)
+			Reflect.deleteProperty(process.env, "GITHUB_EVENT_PATH");
+		else process.env.GITHUB_EVENT_PATH = saved;
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("the growth check reads the base allowance out of git", () => {
+	const { dir } = allowanceRepo();
+	try {
+		const identical = withoutCiEvent(() =>
+			checkAllowanceGrowth("HEAD", {
+				repo: dir,
+				allowance: allowanceWith([ALLOWANCE_ENTRY]),
+			}),
+		);
+		assert.deepEqual(identical, []);
+		// One id added relative to the base is growth, named with its own line.
+		const grown = allowanceWith([
+			{
+				...ALLOWANCE_ENTRY,
+				ids: [
+					"jsx-child-expression | Mark all ${…} read",
+					"object-literal:label | By turn",
+				],
+			},
+		]);
+		const lines = withoutCiEvent(() =>
+			checkAllowanceGrowth("HEAD", { repo: dir, allowance: grown }),
+		);
+		assert.equal(lines.length, 1);
+		assert.match(lines[0], GREW_RE);
+		// A base that does not carry the file yet is the PR that introduces the
+		// allowance: nothing to compare, and nothing to report as growth.
+		const introducing = withoutCiEvent(() =>
+			checkAllowanceGrowth("HEAD~1", { repo: dir, allowance: grown }),
+		);
+		assert.deepEqual(introducing, []);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("the allowance sentence is silent unless an allowance failure applies", () => {
+	// A baseline breach, an unresolved base and a prune problem each print their
+	// OWN line above; this sentence used to appear over all of them with an empty
+	// pair of parentheses and the wrong remedy (agent review round 1, N1 / QA
+	// Q-1).
+	assert.equal(
+		allowanceSummary({ unlisted: [], stale: [], allowanceProblems: [] }),
+		"",
+	);
+	const staleOnly = allowanceSummary({
+		unlisted: [],
+		stale: [{ file: "src/renderer/src/a.tsx", ids: ["x"] }],
+		allowanceProblems: [],
+	});
+	assert.match(staleOnly, PRUNE_RE);
+	assert.doesNotMatch(staleOnly, EXTRACT_UNLISTED_RE);
+	const grown = allowanceSummary({
+		unlisted: [],
+		stale: [],
+		allowanceProblems: [],
+		growth: ["allowance grew by …"],
+	});
+	assert.match(grown, REVERT_RE);
+});
+
+test("the allowance validates its shape and its payoffs", () => {
+	const ok = validateLiteralAllowance(allowanceWith([ALLOWANCE_ENTRY]));
+	assert.deepEqual(ok.problems, []);
+	assert.ok(ok.allowed.get(ALLOWANCE_ENTRY.file).has(ALLOWANCE_ENTRY.ids[0]));
+
+	const bad = validateLiteralAllowance(
+		allowanceWith([
+			{ ...ALLOWANCE_ENTRY, payoff: "eventually" },
+			{ ...ALLOWANCE_ENTRY, file: "src/renderer/src/b.tsx", ids: [] },
+			{
+				...ALLOWANCE_ENTRY,
+				file: "src/renderer/src/c.tsx",
+				ids: ["jsx-text | not a governed shape"],
+			},
+			{
+				...ALLOWANCE_ENTRY,
+				file: "src/renderer/src/d.tsx",
+				ids: ["jsx-child-expression | B", "jsx-child-expression | A"],
+			},
+			{ ...ALLOWANCE_ENTRY, file: "src/renderer/src/e.tsx", owner: "" },
+			{ ...ALLOWANCE_ENTRY, file: "src/renderer/src/f.tsx", surprise: 1 },
+		]),
+	);
+	assert.ok(bad.problems.some((p) => p.includes("is not a payoff")));
+	assert.ok(bad.problems.some((p) => p.includes("lists no ids")));
+	assert.ok(
+		bad.problems.some((p) => p.includes("not a shape this allowance governs")),
+	);
+	assert.ok(bad.problems.some((p) => p.includes("is not sorted")));
+	assert.ok(bad.problems.some((p) => p.includes("must be a non-empty string")));
+	assert.ok(bad.problems.some((p) => p.includes("unknown field")));
+});
+
+test("an unlisted finding FAILS, and a paid-off id must be pruned", () => {
+	const findings = [
+		{ kind: "jsx-child-expression", line: 4, text: "Mark all ${…} read" },
+		{ kind: "object-literal:label", line: 9, text: "By turn" },
+	];
+	const scanned = new Map([[ALLOWANCE_ENTRY.file, findings]]);
+	const partial = validateLiteralAllowance(allowanceWith([ALLOWANCE_ENTRY]));
+	const { unlisted, stale } = literalAllowanceFindings(
+		scanned,
+		partial.allowed,
+	);
+	assert.deepEqual(unlisted, [
+		{
+			path: ALLOWANCE_ENTRY.file,
+			kind: "object-literal:label",
+			line: 9,
+			text: "By turn",
+		},
+	]);
+	assert.deepEqual(stale, []);
+
+	// The listed id is paid off: the entry now lists something absent, which is a
+	// failure of its own (the file may only shrink, never linger).
+	const { stale: nowStale } = literalAllowanceFindings(
+		new Map([[ALLOWANCE_ENTRY.file, findings.slice(1)]]),
+		partial.allowed,
+	);
+	assert.deepEqual(nowStale, [
+		{ file: ALLOWANCE_ENTRY.file, ids: ALLOWANCE_ENTRY.ids },
+	]);
+});
+
+test("the allowance refuses to grow relative to a base ref", () => {
+	const base = allowanceWith([
+		{ ...ALLOWANCE_ENTRY, ids: ["jsx-child-expression | Mark all ${…} read"] },
+	]);
+	const grown = allowanceWith([
+		{
+			...ALLOWANCE_ENTRY,
+			ids: [
+				"jsx-child-expression | Mark all ${…} read",
+				"object-literal:label | By turn",
+			],
+		},
+	]);
+	const lines = checkAllowanceGrowth("origin/main", { base, allowance: grown });
+	assert.equal(lines.length, 1);
+	assert.ok(lines[0].includes("allowance grew by"));
+	assert.deepEqual(
+		checkAllowanceGrowth("origin/main", { base, allowance: base }),
+		[],
+	);
+});
+
+test("pruning removes a paid-off id and an emptied entry, and never adds", () => {
+	const dir = mkdtempSync(join(tmpdir(), "i18n-literal-allowance-"));
+	const path = join(dir, "literal-allowance.json");
+	try {
+		writeFileSync(
+			path,
+			`${JSON.stringify(
+				allowanceWith([
+					{
+						...ALLOWANCE_ENTRY,
+						ids: [
+							"jsx-child-expression | Mark all ${…} read",
+							"object-literal:label | By turn",
+						],
+					},
+					{ ...ALLOWANCE_ENTRY, file: "src/renderer/src/gone.tsx" },
+				]),
+				null,
+				"\t",
+			)}\n`,
+		);
+		const scanned = new Map([
+			[
+				ALLOWANCE_ENTRY.file,
+				[{ kind: "object-literal:label", line: 9, text: "By turn" }],
+			],
+		]);
+		const result = pruneLiteralAllowance(scanned, { allowancePath: path });
+		// One id paid off in the surviving entry, one in the entry that is now empty.
+		assert.equal(result.removed, 2);
+		assert.equal(result.removedEntries, 1);
+		const after = loadLiteralAllowance(path);
+		assert.deepEqual(
+			after.entries.map((entry) => entry.file),
+			[ALLOWANCE_ENTRY.file],
+		);
+		assert.deepEqual(after.entries[0].ids, ["object-literal:label | By turn"]);
+		// Pruning cannot introduce an id: running it again removes nothing and
+		// leaves the file alone.
+		const again = pruneLiteralAllowance(scanned, { allowancePath: path });
+		assert.deepEqual(again, { removed: 0, removedEntries: 0, problems: [] });
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("the committed tree's data-shape debt is exactly what the allowance lists", () => {
+	const { unlisted, stale, allowanceProblems } = runCheck();
+	assert.deepEqual(allowanceProblems, []);
+	assert.deepEqual(stale, []);
+	assert.deepEqual(unlisted, []);
+	assert.ok(loadLiteralAllowance(LITERAL_ALLOWANCE).entries.length > 0);
+	// The baseline was not raised to absorb any of it.
+	assert.deepEqual(loadBaseline(BASELINE).files, {});
+	// The writer and the committed file agree byte for byte: `--prune-allowance`
+	// must not churn a file it did not mean to change, and the repository's
+	// formatter collapses the arrays the same way (see `renderAllowance`).
+	assert.equal(
+		renderAllowance(loadLiteralAllowance(LITERAL_ALLOWANCE)),
+		readFileSync(LITERAL_ALLOWANCE, "utf8"),
+	);
+	assert.ok(
+		allowanceSummary({
+			unlisted: [1],
+			stale: [],
+			allowanceProblems: [],
+		}).includes("extract"),
+	);
+});

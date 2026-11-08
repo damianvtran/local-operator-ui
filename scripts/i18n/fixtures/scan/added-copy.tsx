@@ -63,3 +63,45 @@ export const AddedCopyFixture = ({ enabled, count, kind, serverText, t }) => {
 		</div>
 	);
 };
+
+/*
+ * The shape the RATCHET leaves to this guard (agent review round 1, QA Q-3): a
+ * template in a `const`, a `return` or an array literal. `check-strings.mjs`
+ * cannot separate prose from ids, URLs and units in that position (234 such
+ * templates in the renderer), so an ADDED one is caught here, where it costs a
+ * pragma on the line rather than a permanent debt entry.
+ *
+ * Module scope on purpose: no identifier is referenced, so the fixture stays
+ * parse-only the way the rest of this file is.
+ */
+// biome-ignore lint/style/noUnusedTemplateLiteral: pins a no-substitution template in a const
+const ADDED_PLAIN_TEMPLATE = `Added plain const sentence`;
+export const ADDED_TEMPLATE_TABLE = [
+	// biome-ignore lint/style/noUnusedTemplateLiteral: pins array-element templates
+	`Added array sentence`,
+	// biome-ignore lint/style/noUnusedTemplateLiteral: pins array-element templates
+	`Added second array sentence`,
+];
+
+export const AddedTemplateFixture = ({ count }: { count: number }) => {
+	// biome-ignore lint/style/noUnusedTemplateLiteral: pins a no-substitution template in a return
+	if (count > 0) return `Added returned sentence`;
+	return ADDED_PLAIN_TEMPLATE;
+};
+
+export const AddedTemplateToken = () => {
+	// biome-ignore lint/style/noUnusedTemplateLiteral: pins a token that takes the pragma
+	const machine = `template-token`; /* i18n: ignore a machine token, not copy */
+	return machine;
+};
+
+/* The same machine shape WITHOUT a pragma: the rule fires on it, which is why
+ * the token above needs the pragma rather than being invisible. */
+// biome-ignore lint/style/noUnusedTemplateLiteral: pins a machine token that the rule still flags
+export const ADDED_MACHINE_TOKEN = `machine-token`;
+
+/* A SUBSTITUTING template with a single word and no space. It is copy — the
+ * reason the sink rule may not demand a space before it fires, and the case
+ * that would slip through if it did. */
+declare const addedMachineCount: number;
+export const ADDED_SUBSTITUTING_TEMPLATE = `${addedMachineCount}online`;

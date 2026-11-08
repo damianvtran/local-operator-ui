@@ -83,7 +83,7 @@ const SLOT: Record<BackendSetting["kind"], string> = {
 	int: "w-28",
 	float: "w-28",
 	enum: "w-64",
-	text: "w-96",
+	text: "w-96", // i18n: ignore Tailwind width class, not interface copy
 	hotkey: "w-56",
 	list: "w-full min-w-0",
 	cascade: "w-full min-w-0",

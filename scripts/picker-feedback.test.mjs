@@ -2180,8 +2180,20 @@ test("the handle reconciles the paint against the owner's own frames", () => {
 		/effortState\(model\)/,
 		"the effort reading cannot be taken off the paint",
 	);
-	// The pending state is no longer colour-and-tooltip only (U3).
-	assert.match(strip, /Switching the model/);
+	/*
+	 * The pending state is no longer colour-and-tooltip only (U3), and its words
+	 * are KEYED since #1761: the strip binds
+	 * `t("ui.chat.session_status.switching_model")`. The copy is pinned beside the
+	 * binding, because a status row bound over an emptied value is a pending state
+	 * with no words again - the exact regression U3 removed.
+	 */
+	assert.match(strip, /t\("ui\.chat\.session_status\.switching_model"\)/);
+	assert.equal(
+		JSON.parse(readFileSync("src/i18n/catalogues/en/ui.chat.json", "utf8"))[
+			"ui.chat.session_status.switching_model"
+		],
+		"Switching the model",
+	);
 });
 
 test("the band does not take a reading off the optimistic paint", async () => {

@@ -14,6 +14,17 @@ const RE_FOLD_SUMMARY_BINDING = /summary=\{group\.summary\}/;
 const RE_FOLD_DEAD_ACTION_COUNT = /actionCount=\{group\.actions\.length\}/;
 
 /*
+ * The pane's unavailable sentence, keyed by #1761. Asserted as the BINDING here
+ * and as the copy in the page-chrome catalogue where the case reads it, because
+ * the claim this pin carries is "the sentence is still the one the state owes" -
+ * and that survives neither an emptied value nor a swapped key.
+ */
+const RE_BACKEND_UPDATE_NEEDED_BINDING =
+	/t\("ui\.chat\.page_chrome\.backend\.update_needed"\)/;
+const RE_BACKEND_UPDATE_NEEDED_COPY =
+	/^Update the backend to use canonical chats\. Your existing histories are unchanged\.$/;
+
+/*
  * The fold's header is bound to the GROUP SUMMARY, the units the collapsed line
  * paints - no second `actionCount` prop for a tooltip to compose a claim from.
  * The old pin existed because a tooltip said `${actionCount} actions`; removing
@@ -33,8 +44,16 @@ test("the fold header is bound to the group summary, not a member count", () => 
 
 const RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS =
 	/statusUnavailable\.includes\("liveness"\)/;
+/*
+ * #1761 keyed this sentence, so the branch is asserted on the KEYS it now
+ * selects between - and the two sentences are pinned where they moved, in the
+ * notes catalogue below. A binding over an emptied value would still be a
+ * sidebar that says nothing, which is what this case exists to prevent.
+ */
 const RE_LIVENESS_UNREAD_SENTENCE =
-	/livenessUnread\s*\?\s*"The daemon could not read which chats are running[^"]*"\s*:\s*"Nothing running right now\."/;
+	/livenessUnread\s*\?\s*t\("ui\.chat\.sidebar_notes\.running_unread"\)\s*:\s*t\("ui\.chat\.sidebar_notes\.running_none"\)/;
+const RE_LIVENESS_UNREAD_COPY =
+	/The daemon could not read which chats are running/;
 
 // Exercise the shipped store and closed IPC schema in memory. The transport
 // fixture records effects; this is deterministic state evidence, not a browser.
@@ -592,6 +611,19 @@ test("Active chats stops claiming nothing is running when liveness went unread",
 		rendered,
 		RE_LIVENESS_UNREAD_SENTENCE,
 		"the Active chats section claims nothing is running even when the read that would know did not answer",
+	);
+	const notesCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar_notes.json", "utf8"),
+	);
+	assert.match(
+		notesCopy["ui.chat.sidebar_notes.running_unread"],
+		RE_LIVENESS_UNREAD_COPY,
+		"the unread sentence is what tells the reader the list may be incomplete: an emptied value leaves the state silent",
+	);
+	assert.equal(
+		notesCopy["ui.chat.sidebar_notes.running_none"],
+		"Nothing running right now.",
+		"and the claim it replaces is still the plain one, which is the pair D2 turns on",
 	);
 });
 
@@ -3354,8 +3386,15 @@ test("the pane's unavailable state is centred, clear of the full-bleed bands", (
 	);
 	assert.match(
 		rung[1],
-		/Update the backend to use canonical chats/,
+		RE_BACKEND_UPDATE_NEEDED_BINDING,
 		"and the sentence itself is still the one the state owes",
+	);
+	assert.match(
+		JSON.parse(
+			readFileSync("src/i18n/catalogues/en/ui.chat.page_chrome.json", "utf8"),
+		)["ui.chat.page_chrome.backend.update_needed"],
+		RE_BACKEND_UPDATE_NEEDED_COPY,
+		"the copy behind that binding is what the reader actually owes: a missing sentence leaves the state mute, which is the defect D2 names",
 	);
 });
 

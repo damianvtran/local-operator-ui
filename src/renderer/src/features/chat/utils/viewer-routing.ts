@@ -103,7 +103,7 @@ const TYPE_KINDS: Partial<Record<CanvasDocumentType, ViewerKind>> = {
 	html: "html",
 	spreadsheet: "spreadsheet",
 	code: "code",
-	text: "code",
+	text: "code", // i18n: ignore file-kind token, the viewer label is keyed at the call site
 };
 
 /**

@@ -33,8 +33,8 @@ function lineFor(text) {
 	return sourceFile.getLineAndCharacterOfPosition(position).line + 1;
 }
 
-function findings(lines) {
-	return findAddedCopyViolations(sourceFile, lines);
+function findings(lines, options) {
+	return findAddedCopyViolations(sourceFile, lines, options);
 }
 
 test("a newly added object literal is a counterfactual guard failure", () => {
@@ -109,6 +109,61 @@ test("keyed, dynamic, technical and explicitly exempt copy passes", () => {
 test("unchanged existing debt does not become a new-diff failure", () => {
 	assert.deepEqual(findings(new Set()), []);
 	assert.deepEqual(findings(new Set([lineFor('"technical-identifier"')])), []);
+});
+
+test("the template sinks catch the shape the ratchet leaves out", () => {
+	const found = findings(null, { templateSinks: true });
+	const textsOf = (kind) =>
+		found.filter((finding) => finding.kind === kind).map((f) => f.text);
+	/*
+	 * Two const sinks fire and one does not, ordered by line as the walker
+	 * emits: the plain sentence, and the unpragma'd token. The token fires
+	 * because the rule is fail-closed — a letter is enough — and the pragma on
+	 * its sibling is the only thing that silences a machine string.
+	 */
+	assert.deepEqual(textsOf("template:const"), [
+		"Added plain const sentence",
+		"machine-token",
+		/* A substituting template with one word and NO space: copy, and the
+		   reason the rule may not require a space before it fires. */
+		"${…}online",
+	]);
+	assert.deepEqual(textsOf("template:array"), [
+		"Added array sentence",
+		"Added second array sentence",
+	]);
+	assert.deepEqual(textsOf("template:return"), ["Added returned sentence"]);
+});
+
+test("the template sinks are off where the ratchet does not count the shape", () => {
+	// Same fixture text, no surface: the guard's default report is unchanged.
+	assert.deepEqual(
+		findings(null).filter((finding) => finding.kind.startsWith("template:")),
+		[],
+	);
+	// Unchanged lines are not added lines, so even on the surface nothing fires.
+	assert.deepEqual(findings(new Set(), { templateSinks: true }), []);
+});
+
+test("a machine template fires, and an `i18n: ignore` pragma is what silences it", () => {
+	const found = findings(null, { templateSinks: true });
+	/*
+	 * Both fixtures are the same shape and the same kind of string, so the ONLY
+	 * variable between them is the pragma: one fires, one does not. That is the
+	 * gate's whole escape hatch — a rule that guessed from the text instead
+	 * would have to let `${count}online` through as well, which is copy.
+	 */
+	assert.ok(
+		found.some(
+			(finding) =>
+				finding.kind === "template:const" && finding.text === "machine-token",
+		),
+		"a machine template on an added line must be flagged",
+	);
+	assert.deepEqual(
+		found.filter((finding) => finding.text === "template-token"),
+		[],
+	);
 });
 
 test("diff hunks cover added and new-file lines, including empty ranges", () => {
@@ -248,6 +303,32 @@ function scratchRepo() {
 	run("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init");
 	return dir;
 }
+
+test("the template sinks follow the ratchet's surface: renderer yes, main no", () => {
+	const dir = scratchRepo();
+	try {
+		mkdirSync(join(dir, "src/renderer/src"), { recursive: true });
+		mkdirSync(join(dir, "src/main"), { recursive: true });
+		writeFileSync(
+			join(dir, "src/renderer/src/new.tsx"),
+			"export const sentence = `Added renderer sentence`;\n",
+		);
+		writeFileSync(
+			join(dir, "src/main/new.ts"),
+			"export const sentence = `Added main-process sentence`;\n",
+		);
+		// `runAddedCheck` derives the flag from the path, so this is the wiring the
+		// unit cases above cannot prove: the SAME text is guarded under
+		// `src/renderer` and left to the main-process gap everywhere else.
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.deepEqual(
+			result.findings.map((f) => `${f.path} ${f.kind} ${f.text}`),
+			["src/renderer/src/new.tsx template:const Added renderer sentence"],
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
 
 test("an untracked file deleted after listing is skipped, not an error", () => {
 	const dir = scratchRepo();

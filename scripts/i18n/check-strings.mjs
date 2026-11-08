@@ -2,8 +2,11 @@
 /**
  * The i18n ratchet for hardcoded user-facing strings (RFC §2.7, TS half).
  *
- * WHAT IT FLAGS, precisely — JSX text and the copy-bearing JSX attributes,
- * found through the REAL TypeScript compiler rather than a regex:
+ * WHAT IT FLAGS, precisely — JSX text, the copy-bearing JSX attributes, and
+ * (on the renderer surface, see below) the two data-object shapes that reach
+ * the screen without ever being a JSX attribute: a copy-keyed object literal
+ * and a JSX child expression. All found through the REAL TypeScript compiler
+ * rather than a regex:
  *
  *   - `JsxText` nodes whose text contains a letter (whitespace-only,
  *     punctuation-only — `·`, `—` — and digit-only texts are ignored);
@@ -13,7 +16,32 @@
  *     "B"}`, `label={`Open ${name}`}`, `label={a ?? "B"}`, `label={"A" + b}`).
  *     Only the literal pieces count — a call such as `t("ui.x")` or a bare
  *     identifier exposes no static text, which is exactly what a keyed site
- *     looks like.
+ *     looks like;
+ *   - an OBJECT LITERAL property whose name is in `OBJECT_COPY_KEYS` and whose
+ *     value is static text (`{ label: "By turn" }`, a menu/command/tour table,
+ *     `{ title: cond ? "A" : "B" }`). This is the shape that hid a whole
+ *     display vocabulary from the attribute rule: nothing in `{ running:
+ *     "Running" }` is a JSX prop, so nothing looked;
+ *   - a JSX CHILD expression whose static text renders (`{cond ? "A" : "B"}`,
+ *     `{`Mark all ${n} read`}`, `{"A" + n}`). `JsxText` could never see it:
+ *     the text lives inside braces, in an expression, not in a text node.
+ *
+ * WHERE THE DATA SHAPES APPLY, and why it is a surface rather than the whole
+ * tree: `OBJECT_COPY_KEYS`/JSX-child are enabled under `src/renderer/` only.
+ * Measured on the tree this landed against, the same rules over `src/main` and
+ * `src/shared` add ~330 findings that are protocol validation messages, log
+ * lines and IPC error strings — the main process's own vocabulary, not UI copy
+ * — and a debt file three times its real size is a debt nobody pays. The gap
+ * that leaves is stated in KNOWN BOUNDARIES, not implied.
+ *
+ * A TEMPLATE IS ONE SENTENCE, so the data shapes report it as ONE finding with
+ * its substitutions elided (`Mark all ${…} read`), while a conditional's arms
+ * are separate sentences and report one finding each. `staticTextNodes` (shared
+ * with `check-added-strings.mjs`) keeps its per-piece contract for attributes;
+ * `copyTexts` below is the finding-level renderer for these shapes. Two
+ * functions rather than one flag, because the added-line guard counts pieces
+ * and this counts sentences — the difference IS the fix, so it should not be
+ * hidden behind a boolean.
  *
  * `COPY_ATTRIBUTES` is the measured list of props that carry prose (the
  * native four — `aria-label`, `placeholder`, `title`, `alt` — plus the design
@@ -29,10 +57,35 @@
  * docstring has the same section, and for the same reason — a false negative
  * nothing reports is the one outcome this file must not quietly produce):
  *
- *   - Strings in plain object literals (`{ title: "New chat" }`, menu data,
- *     command definitions) are NOT counted by this ratchet; the base-aware
- *     `check-added-strings.mjs` covers NEW ones on added lines only, and the
- *     historical ones are listed in the PR that widened this scanner.
+ *   - Plain object literals and JSX child expressions ARE counted now, but only
+ *     under `src/renderer/`. `src/main/` and `src/shared/` keep their object
+ *     literals invisible (protocol validation text, IPC errors, log lines); a
+ *     main-process dialog or notification string is still caught by nothing in
+ *     this file. `src/shared/backend-status.ts` is the sharpest example: its
+ *     `title`/`detail` prose IS rendered in the renderer, and it sits outside
+ *     this ratchet's data shapes. Fixing that means widening the surface, which
+ *     is a measured decision (see the ~330 finding figure above), not a patch.
+ *   - A copy key that is prose in a component and a token in data (this tree's
+ *     `tooltip: "never"`, `empty: "text-ink-muted"`, `content: "min-w-0"`,
+ *     `name: <id>`, `action: <enum>`) is listed in `OBJECT_COPY_KEYS` only if
+ *     its measured uses are prose. The key set is the prose vocabulary of the
+ *     DATA, not the union of every prose-named prop — the two vocabularies
+ *     overlap and are not the same.
+ *   - A TEMPLATE in a plain `const X = …`, `return …` or array-literal element
+ *     is NOT counted by this file, on either surface. Measured at this head,
+ *     `src/renderer` carries 234 such templates with a letter in 108 files, and
+ *     169 of them also hold two alphabetic words separated by whitespace — and
+ *     most of both sets is machine text (`tool:${…}`, `/v1/agents/${…}/avatar`,
+ *     `${…} KB`, `calc(…)`, `@keyframes …`). Listing them would put machine
+ *     text in a debt ledger whose whole design (`OBJECT_COPY_KEYS`, below) is
+ *     to keep machine text out of it, and no predicate this scanner owns
+ *     separates the two classes in that position: there is no key vocabulary
+ *     to appeal to. That shape is therefore the ONE the ratchet leaves to the
+ *     diff guard: `check-added-strings.mjs` counts a template in
+ *     `const`/`return`/array position on an ADDED line under `src/renderer`
+ *     (the `template:` sinks), so new copy of that shape cannot land, and the
+ *     historical 234 stay outside the allowance — a stated gap rather than a
+ *     silent one.
  *   - A prop that is not in `COPY_ATTRIBUTES` is invisible. Adding a prose
  *     prop to a component is a reason to add its name here.
  *   - Prose assembled by a function and passed through (`label={describe(x)}`)
@@ -64,6 +117,16 @@
  *     "within the call's first through last line" rule, translated: a JSX
  *     attribute cannot carry a comment of its own, so its enclosing element is
  *     the span that reads naturally (the fixture beside this file pins both).
+ *     An object-literal property has no enclosing element, so its OWN line is
+ *     the whole pragma surface — the trailing comment on the property.
+ *   - `i18n/literal-allowance.json` governs the data shapes INSTEAD of the
+ *     baseline: one exact id per distinct `<kind> | <text>` (two identical
+ *     sentences in one file share one id, which is what the writer emits), an
+ *     owner, a
+ *     payoff, and a base-ref growth check. A finding not listed FAILS and a
+ *     listed id that is gone FAILS, so the file can only shrink — the debt is
+ *     named and owed, never exempt. `--prune-allowance` is its one writing
+ *     mode. See `docs/i18n/literal-allowance.md`.
  *   - Those two exemptions are the whole exemption surface: there is no scope
  *     list, no glob, and no severity that reports a breach without blocking it.
  *
@@ -80,16 +143,24 @@
  *   node scripts/i18n/check-strings.mjs --update <path>…   # lower ceilings
  */
 
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SyntaxKind } from "typescript/unstable/ast";
 import { API } from "typescript/unstable/sync";
 
+/* The payoff contract (an ISO date or a tracker key) is already enforced for
+ * the coverage allowance; a second copy of the regex pair is a second thing to
+ * get wrong, and the two gates must agree on what a promised payoff looks like.
+ * `check-coverage.mjs` exports it and does nothing at import time. */
+import { isPayoff } from "./check-coverage.mjs";
+
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 export const BASELINE = join(REPO, "i18n", "baseline.json");
 export const ALLOWLIST = join(REPO, "i18n", "allowlist.json");
+export const LITERAL_ALLOWANCE = join(REPO, "i18n", "literal-allowance.json");
 
 /**
  * The scanned corpus, repo-relative. `scripts/i18n/` is scanned because the
@@ -155,6 +226,178 @@ export const COPY_ATTRIBUTES = new Set([
 	"triggerLabel",
 ]);
 
+/**
+ * The copy-bearing property names of DATA objects — the object-literal half.
+ *
+ * DERIVED FROM THIS TREE, not copied from `COPY_ATTRIBUTES`, because the two
+ * vocabularies only overlap. Measured over `src/renderer` (the shape's surface,
+ * see the module docstring) at the commit that introduced this set. Each key
+ * below was read at its uses, and the count is FINDINGS — one per rendered
+ * sentence, which is what the allowance lists — not occurrences of the
+ * property name:
+ *
+ *   - `label` 16, `text` 11, `message` 9, `description` 4, `detail` 4,
+ *     `title` 1, `cancel` 1 — prose in every measured use;
+ *   - `confirm`, `heading`, `placeholder`, `caption`, `summary`, `ariaLabel`,
+ *     `hint` — 0 findings on this tree today, listed because a data key
+ *     with that name is prose by definition; a token under one of them is the
+ *     case the `i18n: ignore <reason>` pragma exists for.
+ *
+ * DELIBERATELY ABSENT, each measured as what adding the key would report at
+ * this head: `action` 106 (enums such as `reauth`/`none`), `name` 99 (ids and
+ * storage keys such as `agent-messages-onboarding`/
+ * `canonical-sessions-storage`), `content` 2 (class names), `tooltip` 1
+ * (`never`), `empty` 1 (`text-ink-muted`), `noun` 0 — tokens in the uses that
+ * matter, so they stay in `COPY_ATTRIBUTES` (as a component PROP each renders
+ * the value) and out of this set, because as a data KEY each names a token
+ * here. A prop that becomes prose in data is a reason to add its name here,
+ * exactly as a new prose prop is a reason to add it above.
+ *
+ * `verb` is the one key whose absence is a GAP rather than a token judgement,
+ * and it is named rather than rounded away: it would add 27 findings, 25 of
+ * them the trace-verb table in `trace-labels.ts` (`Read`, `Wrote`, `Ran code`,
+ * `Delegated work`). That table is real copy and keying it is its own slice of
+ * the lane; in the meantime it is invisible to BOTH gates, because `verb` is in
+ * neither this set nor `COPY_PROPERTIES` in `check-added-strings.mjs`.
+ *
+ * The measurement behind every number above, run from the repository root:
+ *
+ *   node --input-type=module -e 'import("./scripts/i18n/check-strings.mjs").then(m=>{const r=m.runCheck();const n=new Map();for(const fs of r.scanned.values())for(const f of fs)if(m.governedByAllowance(f.kind))n.set(f.kind,(n.get(f.kind)??0)+1);console.log([...n].sort().join("\n"))})'
+ *
+ * — one `<count>\t<shape>` line per key. The "would add" counts for the absent
+ * keys are that command with `m.OBJECT_COPY_KEYS.add("name")` in front of
+ * `runCheck()` (one key per scratch run; adding several at once would count the
+ * shared files, not each key).
+ */
+export const OBJECT_COPY_KEYS = new Set([
+	"label",
+	"title",
+	"message",
+	"description",
+	"detail",
+	"text",
+	"cancel",
+	"confirm",
+	"heading",
+	"placeholder",
+	"caption",
+	"summary",
+	"ariaLabel",
+	"hint",
+]);
+
+/**
+ * The surface the data shapes (object literal, JSX child) are enabled on.
+ *
+ * `src/renderer/` is where copy is painted. The main process has prose too, but
+ * it is interleaved with protocol/log/IPC text that no extractor will ever key,
+ * and the measured ratio (~330 extra findings, most of them machine text) is
+ * what makes a renderer-scoped rule the honest one. See KNOWN BOUNDARIES for
+ * the gap this leaves.
+ */
+const DATA_SHAPE_ROOT = "src/renderer/";
+
+/** Whether `rel` sits on the surface the data shapes are counted on. */
+export function onDataShapeSurface(rel) {
+	return rel.startsWith(DATA_SHAPE_ROOT);
+}
+
+/**
+ * The English catalogue's key ids, read once.
+ *
+ * A data object may hold the KEY, not the sentence: `{ label:
+ * "ui.hub.pages.sort.newest" }` is the keyed spelling, and the component calls
+ * `t(entry.label)` on it. Flagging such a value would report keyed copy as
+ * debt — the exact inversion this gate must not do — so a value that IS a
+ * catalogue key is not a literal. Membership is checked against the real
+ * catalogue rather than by matching the `ui.` shape, because a shape match would
+ * also hide a typo'd key that translates to nothing.
+ */
+let englishKeys;
+function englishCatalogueKeys() {
+	if (englishKeys !== undefined) return englishKeys;
+	const keys = new Set();
+	const dir = join(REPO, "src", "i18n", "catalogues", "en");
+	let names = [];
+	try {
+		names = readdirSync(dir);
+	} catch {
+		englishKeys = keys;
+		return keys;
+	}
+	for (const name of names) {
+		if (!name.endsWith(".json") || name.endsWith(".context.json")) continue;
+		try {
+			const data = JSON.parse(readFileSync(join(dir, name), "utf8"));
+			for (const key of Object.keys(data)) keys.add(key);
+		} catch {
+			/* A catalogue the content gate will reject on its own terms must not
+			 * stop this one; an unreadable file simply contributes no keys. */
+		}
+	}
+	englishKeys = keys;
+	return keys;
+}
+
+/** The data shapes never count a value that is a catalogue key (see above). */
+function isCatalogueKey(text) {
+	return englishCatalogueKeys().has(text);
+}
+
+/**
+ * A template with its substitutions elided: `Mark all ${…} read`.
+ *
+ * The elision is what makes the LETTER test meaningful — a substitution carries
+ * no prose — and what makes one interpolated sentence one finding instead of
+ * two fragments around a hole.
+ */
+function renderTemplate(node) {
+	let out = node.head.text;
+	for (const span of node.templateSpans) out += `\${…}${span.literal.text}`;
+	return out;
+}
+
+/**
+ * The static texts an expression renders as copy, one entry per SENTENCE.
+ *
+ * Deliberately distinct from `staticTextNodes` (which returns one entry per
+ * literal PIECE and is what the attribute rule and `check-added-strings.mjs`
+ * count): here a template is one sentence, so it is one finding, while a
+ * conditional's two arms are two sentences and stay two. Calls, identifiers and
+ * member accesses expose nothing — a `t("ui.key")` site yields nothing, which
+ * is what a keyed site must look like.
+ */
+export function copyTexts(node) {
+	switch (node.kind) {
+		case SyntaxKind.StringLiteral:
+		case SyntaxKind.NoSubstitutionTemplateLiteral:
+			return [node.text];
+		case SyntaxKind.TemplateExpression:
+			return [renderTemplate(node)];
+		case SyntaxKind.ConditionalExpression:
+			return [...copyTexts(node.whenTrue), ...copyTexts(node.whenFalse)];
+		case SyntaxKind.BinaryExpression: {
+			const operator = node.operatorToken.kind;
+			if (operator === SyntaxKind.AmpersandAmpersandToken)
+				return copyTexts(node.right);
+			if (
+				operator === SyntaxKind.PlusToken ||
+				operator === SyntaxKind.BarBarToken ||
+				operator === SyntaxKind.QuestionQuestionToken
+			)
+				return [...copyTexts(node.left), ...copyTexts(node.right)];
+			return [];
+		}
+		case SyntaxKind.ParenthesizedExpression:
+		case SyntaxKind.AsExpression:
+		case SyntaxKind.SatisfiesExpression:
+		case SyntaxKind.NonNullExpression:
+			return copyTexts(node.expression);
+		default:
+			return [];
+	}
+}
+
 /** Any Unicode letter — the line between prose and punctuation/format tokens. */
 const LETTER_RE = /\p{L}/u;
 
@@ -178,6 +421,12 @@ const BLOCK_PRAGMA_RE =
 
 const SCRIPT_RE = /\.(ts|tsx|mjs)$/;
 
+/* Fixture files, in both spellings this tree uses: `x.fixtures.ts` and
+ * `x-fixtures.ts`. Matched on a filename COMPONENT, so `my-fixtures-helper.ts`
+ * (a helper FOR fixtures) is not silently exempt — only a file whose own name
+ * ends in `fixtures`. */
+const FIXTURE_FILE_RE = /(?:^|[.-])fixtures?\.[^/]+$/;
+
 function toPosix(path) {
 	return path.split(sep).join("/");
 }
@@ -197,6 +446,13 @@ export function isScanned(rel) {
 	 * lowers. A story that grows product copy is a story that should render a
 	 * real translated component instead. */
 	if (rel.includes(".stories.")) return false;
+	/* Fixtures are the same class as stories, measured the same way: the five
+	 * `.fixtures.ts` files under `src/renderer` carried 96 of this scanner's
+	 * first 263 data-shape findings — 37% of the debt would have been sample
+	 * data rendered by tests and the gallery, which nobody translates. They
+	 * exist to drive a component into a state; product copy is what the
+	 * component renders when a real session feeds it. */
+	if (FIXTURE_FILE_RE.test(rel)) return false;
 	if (SCAN_EXCLUDED.some((prefix) => rel.startsWith(prefix))) return false;
 	return SCAN_ROOTS.some((root) => rel === root || rel.startsWith(`${root}/`));
 }
@@ -280,6 +536,31 @@ export function enclosingElement(node) {
 	return undefined;
 }
 
+/** Whether a node sits directly between JSX braces as a child, not as a value. */
+function isJsxChild(node) {
+	const parent = node.parent;
+	return (
+		parent !== undefined &&
+		(parent.kind === SyntaxKind.JsxElement ||
+			parent.kind === SyntaxKind.JsxFragment)
+	);
+}
+
+/**
+ * An object-literal property's name as written, or undefined.
+ *
+ * Both spellings name the same key: `{ label: … }` (an Identifier) and
+ * `{ "label": … }` (a StringLiteral, which the formatter keeps when a key has
+ * to be quoted). A computed key (`{ [k]: … }`) discloses nothing statically and
+ * is skipped rather than guessed at.
+ */
+function propertyName(name) {
+	if (name === undefined) return undefined;
+	if (name.kind === SyntaxKind.Identifier) return name.text;
+	if (name.kind === SyntaxKind.StringLiteral) return name.text;
+	return undefined;
+}
+
 /** The lines carrying an `i18n: ignore` pragma, as a Set. */
 export function pragmaLines(sourceFile) {
 	const lines = new Set();
@@ -307,28 +588,38 @@ export function collapse(text) {
 /**
  * The findings of one parsed file: `{ kind, line, text }`, in source order.
  *
- * `kind` is `jsx-text` or `attribute:<name>`; `line` is where the report can
- * point a reader. The pragma check consults the node's own span AND its
- * enclosing element's (see the module docstring for why both).
+ * `kind` is `jsx-text` or `attribute:<name>` for the original shapes, and
+ * `jsx-child-expression` or `object-literal:<key>` for the data shapes, whose
+ * `kind` is also the id prefix the literal allowance records (see
+ * `literalId`). `line` is where the report can point a reader. The pragma check
+ * consults the node's own span AND its enclosing element's (see the module
+ * docstring for why both); a property has no enclosing element, so it is its
+ * own span.
+ *
+ * `dataShapes: false` reproduces the pre-widening walker exactly, which is how
+ * the fixtures prove each new shape is genuinely new rather than incidentally
+ * visible to the old rule.
  */
-export function findViolations(sourceFile) {
+export function findViolations(sourceFile, { dataShapes = true } = {}) {
 	const pragmas = pragmaLines(sourceFile);
 	const findings = [];
+	const push = (kind, node, text) => {
+		findings.push({
+			kind,
+			line: lineOf(sourceFile, node.getStart(sourceFile)),
+			text: collapse(text),
+		});
+	};
+	const exempt = (node, { element = true } = {}) => {
+		if (inSpan(lineSpan(sourceFile, node), pragmas)) return true;
+		if (!element) return false;
+		const enclosing = enclosingElement(node);
+		return enclosing ? inSpan(lineSpan(sourceFile, enclosing), pragmas) : false;
+	};
 	const visit = (node) => {
 		if (node.kind === SyntaxKind.JsxText) {
-			if (LETTER_RE.test(node.text)) {
-				const exempt =
-					inSpan(lineSpan(sourceFile, node), pragmas) ||
-					(enclosingElement(node)
-						? inSpan(lineSpan(sourceFile, enclosingElement(node)), pragmas)
-						: false);
-				if (!exempt) {
-					findings.push({
-						kind: "jsx-text",
-						line: lineOf(sourceFile, node.getStart(sourceFile)),
-						text: collapse(node.text),
-					});
-				}
+			if (LETTER_RE.test(node.text) && !exempt(node)) {
+				push("jsx-text", node, node.text);
 			}
 		} else if (node.kind === SyntaxKind.JsxAttribute) {
 			const name = node.name?.text;
@@ -347,20 +638,51 @@ export function findViolations(sourceFile) {
 								initializer.expression
 							? staticTextNodes(initializer.expression)
 							: [];
-				const exempt =
-					inSpan(lineSpan(sourceFile, node), pragmas) ||
-					(enclosingElement(node)
-						? inSpan(lineSpan(sourceFile, enclosingElement(node)), pragmas)
-						: false);
-				if (!exempt) {
+				if (!exempt(node)) {
 					for (const piece of pieces) {
 						if (!LETTER_RE.test(piece.text)) continue;
-						findings.push({
-							kind: `attribute:${name}`,
-							line: lineOf(sourceFile, piece.getStart(sourceFile)),
-							text: collapse(piece.text),
-						});
+						push(`attribute:${name}`, piece, piece.text);
 					}
+				}
+			}
+		} else if (
+			dataShapes &&
+			node.kind === SyntaxKind.JsxExpression &&
+			node.expression &&
+			isJsxChild(node)
+		) {
+			/* `{cond ? "A" : "B"}` and ``{`Mark all ${n} read`}`` render prose that
+			 * no `JsxText` node ever carries: the text sits inside braces. The
+			 * expression is unchanged whether it is a child or an attribute value,
+			 * so the SAME `copyTexts` decides what is static; only the position
+			 * differs, and an attribute value has already been counted above. */
+			if (!exempt(node)) {
+				for (const text of copyTexts(node.expression)) {
+					if (LETTER_RE.test(text)) push("jsx-child-expression", node, text);
+				}
+			}
+		} else if (
+			dataShapes &&
+			node.kind === SyntaxKind.PropertyAssignment &&
+			node.initializer
+		) {
+			/* `{ label: "By turn" }`: the data half of the same defect. The key set
+			 * is what keeps tokens out - `{ status: "connecting" }`, `{ id: ... }`,
+			 * `{ kind: ... }` are data, and a machine position is a key, not a
+			 * value. A property has no enclosing element, so its own span (or the
+			 * value's) is the whole pragma surface. */
+			const key = propertyName(node.name);
+			if (
+				key !== undefined &&
+				OBJECT_COPY_KEYS.has(key) &&
+				/* A property has no enclosing element, so its own line is the whole
+				 * pragma surface — a trailing `// i18n: ignore <reason>` on the
+				 * property, or a comment line inside its span. */
+				!exempt(node, { element: false })
+			) {
+				for (const text of copyTexts(node.initializer)) {
+					if (LETTER_RE.test(text) && !isCatalogueKey(text))
+						push(`object-literal:${key}`, node.initializer, text);
 				}
 			}
 		}
@@ -540,7 +862,13 @@ export function scanSnapshot(snapshot, repo, { extraScan = [] } = {}) {
 	const scanned = new Map();
 	const add = (rel, sourceFile) => {
 		if (sourceFile && !scanned.has(rel)) {
-			scanned.set(rel, findViolations(sourceFile));
+			/* The data shapes are on for the renderer surface. A fixture corpus
+			 * (`extraScan`) has them on wherever it lives: a fixture exists to
+			 * exercise the rule, and the surface boundary itself is asserted
+			 * against `findViolations` directly (see "the data shapes are a
+			 * surface, not the tree" in check-strings.test.mjs). */
+			const dataShapes = extraScan.length > 0 || onDataShapeSurface(rel);
+			scanned.set(rel, findViolations(sourceFile, { dataShapes }));
 		}
 	};
 	if (extraScan.length > 0) {
@@ -567,12 +895,24 @@ export function scanSnapshot(snapshot, repo, { extraScan = [] } = {}) {
 	return scanned;
 }
 
-/** Per-file counts after the allowlist, files with none omitted. */
+/**
+ * Per-file counts after the allowlist, files with none omitted.
+ *
+ * The data shapes are NOT counted here: they are governed by
+ * `i18n/literal-allowance.json`, which is stricter than a ceiling (one exact id
+ * per finding, an owner, a payoff and a base-ref growth check). Counting them in
+ * both places would make the allowance pointless — every renderer file with a
+ * payable finding would need a raised baseline entry, which is precisely the
+ * baseline edit this design exists to avoid.
+ */
 export function countsOf(scanned, allowlist) {
 	const counts = {};
 	for (const [rel, violations] of scanned) {
 		if (allowlistReason(rel, allowlist) !== undefined) continue;
-		if (violations.length > 0) counts[rel] = violations.length;
+		const counted = violations.filter(
+			(finding) => !governedByAllowance(finding.kind),
+		);
+		if (counted.length > 0) counts[rel] = counted.length;
 	}
 	return counts;
 }
@@ -603,6 +943,440 @@ export function ratchetFindings(counts, files) {
 }
 
 // ---------------------------------------------------------------------------
+// The literal allowance: the data shapes' named, owned, shrink-only debt
+// ---------------------------------------------------------------------------
+
+/**
+ * The shapes `i18n/literal-allowance.json` governs.
+ *
+ * These are the shapes the widened walker added. The original ones stay on the
+ * baseline ratchet, unchanged — a shape does not migrate gates, because the
+ * baseline's per-file ceiling and the allowance's per-finding id answer
+ * different questions and a finding counted by both is a finding nobody can
+ * reason about.
+ */
+export function governedByAllowance(kind) {
+	return kind === "jsx-child-expression" || kind.startsWith("object-literal:");
+}
+
+/**
+ * The exact identity an entry lists: `<kind> | <text>`.
+ *
+ * The text is part of the id on purpose. A count would let one literal be
+ * replaced by a different one of the same shape and still "fit" — the debt would
+ * look unchanged while its content drifted. Paying a finding down REMOVES its
+ * id, and the id that replacing it introduces is unlisted, which fails.
+ *
+ * ` | ` is the separator and the reader splits on the FIRST occurrence: a text
+ * may itself contain ` | ` (prose often does), a kind never does.
+ */
+export function literalId(finding) {
+	return `${finding.kind} | ${finding.text}`;
+}
+
+/** The kind prefix of an id; undefined when the id has no separator. */
+export function literalIdKind(id) {
+	const at = id.indexOf(" | ");
+	return at === -1 ? undefined : id.slice(0, at);
+}
+
+const ALLOWANCE_FIELDS = ["file", "ids", "owner", "payoff", "reason"];
+
+/**
+ * Read `i18n/literal-allowance.json`. A missing file is an EMPTY allowance, not
+ * an error: with no entries every governed finding is unlisted, so the check
+ * fails closed on exactly the tree that has debt. A damaged file throws, because
+ * "we could not read the reason this string is allowed" must not read as
+ * "nothing is allowed" any more than as "everything is".
+ */
+export function loadLiteralAllowance(path = LITERAL_ALLOWANCE) {
+	let raw;
+	try {
+		raw = readFileSync(path, "utf8");
+	} catch (error) {
+		if (error.code === "ENOENT") return { schema: 1, note: "", entries: [] };
+		throw new Error(`${path}: ${error.message}`);
+	}
+	try {
+		return JSON.parse(raw);
+	} catch (error) {
+		throw new Error(`${path}: ${error.message}`);
+	}
+}
+
+/**
+ * Validate the allowance's shape and return `file -> Set(id)` plus the problems.
+ *
+ * Shape rules, each mirroring `check-coverage.mjs`'s `validateAllowance` so the
+ * two debt files cannot drift: schema 1, a known exact field set, a non-empty
+ * `file`/`owner`/`reason`, a payoff that is a real ISO date or a tracker key, a
+ * non-empty duplicate-free SORTED id list, ids that name a governed shape, and
+ * one entry per file. An empty id list is a problem rather than a no-op: an
+ * entry that no longer allows anything must be deleted, or the file cannot be
+ * read as a ledger of what is still owed.
+ */
+export function validateLiteralAllowance(allowance) {
+	const problems = [];
+	const allowed = new Map();
+	if (
+		allowance === null ||
+		typeof allowance !== "object" ||
+		Array.isArray(allowance)
+	) {
+		return { allowed, problems: ["allowance must be an object"] };
+	}
+	if (allowance.schema !== 1) problems.push("`schema` must be 1");
+	if (!Array.isArray(allowance.entries)) {
+		problems.push("`entries` must be an array");
+		return { allowed, problems };
+	}
+	for (const [index, entry] of allowance.entries.entries()) {
+		const where = `entries[${index}]`;
+		if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+			problems.push(`${where} must be an object`);
+			continue;
+		}
+		const missingFields = ALLOWANCE_FIELDS.filter((field) => !(field in entry));
+		const extraFields = Object.keys(entry).filter(
+			(field) => !ALLOWANCE_FIELDS.includes(field),
+		);
+		if (missingFields.length > 0)
+			problems.push(
+				`${where} is missing field(s): ${missingFields.join(", ")}`,
+			);
+		if (extraFields.length > 0)
+			problems.push(`${where} has unknown field(s): ${extraFields.join(", ")}`);
+		for (const field of ["file", "owner", "reason"]) {
+			if (typeof entry[field] !== "string" || entry[field].trim() === "")
+				problems.push(`${where}.${field} must be a non-empty string`);
+		}
+		if (!isPayoff(entry.payoff))
+			problems.push(
+				`${where}.payoff ${JSON.stringify(entry.payoff) ?? "undefined"} is not a payoff: use an ISO date (YYYY-MM-DD) or a ticket reference such as MIN-1234`,
+			);
+		const file = entry.file;
+		if (typeof file !== "string" || file.trim() === "") continue;
+		if (allowed.has(file)) {
+			problems.push(`${where} duplicates ${file}`);
+			continue;
+		}
+		const ids = entry.ids;
+		let idsValid = true;
+		if (!Array.isArray(ids)) {
+			problems.push(`${where}.ids must be an array`);
+			idsValid = false;
+		} else if (ids.length === 0) {
+			problems.push(
+				`${where} (${file}) lists no ids; remove the complete entry`,
+			);
+			idsValid = false;
+		} else {
+			for (const id of ids) {
+				if (typeof id !== "string" || id.length === 0) {
+					problems.push(`${where}.ids has a non-string or empty id`);
+					idsValid = false;
+					continue;
+				}
+				const kind = literalIdKind(id);
+				if (kind === undefined) {
+					problems.push(
+						`${where}.ids has an id without a " | " separator: ${JSON.stringify(id)}`,
+					);
+					idsValid = false;
+				} else if (!governedByAllowance(kind)) {
+					problems.push(
+						`${where}.ids lists ${JSON.stringify(kind)}, which is not a shape this allowance governs`,
+					);
+					idsValid = false;
+				}
+			}
+			if (idsValid) {
+				if (new Set(ids).size !== ids.length) {
+					problems.push(`${where}.ids has duplicate ids`);
+					idsValid = false;
+				}
+				const sorted = [...ids].sort();
+				if (sorted.some((id, at) => id !== ids[at])) {
+					problems.push(`${where}.ids is not sorted`);
+					idsValid = false;
+				}
+			}
+		}
+		if (idsValid) allowed.set(file, new Set(ids));
+	}
+	return { allowed, problems };
+}
+
+/**
+ * Compare the tree against the allowance. Nothing here prints or exits.
+ *
+ * `unlisted` is every governed finding no entry lists — the discriminating
+ * failure: new copy landed and nobody recorded a debt for it. `stale` is every
+ * listed id that no longer exists — a paid-down finding whose id was left
+ * behind. Both are failures, which is what makes the file shrink-only without a
+ * git ref: it can only move down on its own, and the base-ref check
+ * (`allowanceGrowth`) catches a hand-added id in review.
+ */
+export function literalAllowanceFindings(scanned, allowed) {
+	const unlisted = [];
+	const found = new Map();
+	for (const [rel, violations] of scanned) {
+		const governed = violations.filter((finding) =>
+			governedByAllowance(finding.kind),
+		);
+		if (governed.length === 0) continue;
+		const entry = allowed.get(rel);
+		const ids = new Set();
+		for (const finding of governed) {
+			const id = literalId(finding);
+			ids.add(id);
+			if (!entry?.has(id)) unlisted.push({ path: rel, ...finding });
+		}
+		found.set(rel, ids);
+	}
+	const stale = [];
+	for (const [file, ids] of [...allowed].sort(([a], [b]) => (a < b ? -1 : 1))) {
+		const live = found.get(file) ?? new Set();
+		const gone = [...ids].filter((id) => !live.has(id)).sort();
+		if (gone.length > 0) stale.push({ file, ids: gone });
+	}
+	return { unlisted, stale };
+}
+
+/**
+ * Render the allowance so the committed file and the repository's formatter
+ * agree.
+ *
+ * `JSON.stringify(…, null, "\t")` puts every array element on its own line, but
+ * biome COLLAPSES an array that fits its 80-column budget — so a pruned file and
+ * a formatted file would disagree on every short entry, and each prune would
+ * churn the whole file. `i18n/baseline.json`'s writer documents the same trap for
+ * object keys; this is its array-aware sibling. The budget is calibrated against
+ * the formatter's own output for this schema (a tab counts as two columns, the
+ * line width is biome's default 80), and only the `ids` list can ever be short
+ * enough to collapse — which is why the rule is applied there alone.
+ */
+export function renderAllowance(
+	allowance,
+	{ lineWidth = 80, tabWidth = 2 } = {},
+) {
+	const width = (line) =>
+		line.split("").reduce((sum, ch) => sum + (ch === "\t" ? tabWidth : 1), 0);
+	const lines = [
+		"{",
+		'\t"schema": 1,',
+		`\t"note": ${JSON.stringify(allowance.note)},`,
+	];
+	if (allowance.entries.length === 0) {
+		lines.push('\t"entries": []');
+	} else {
+		lines.push('\t"entries": [');
+		allowance.entries.forEach((entry, index) => {
+			lines.push("\t\t{");
+			lines.push(`\t\t\t"file": ${JSON.stringify(entry.file)},`);
+			const inline = `\t\t\t"ids": [${entry.ids.map((id) => JSON.stringify(id)).join(", ")}],`;
+			if (width(inline) <= lineWidth) {
+				lines.push(inline);
+			} else {
+				lines.push('\t\t\t"ids": [');
+				entry.ids.forEach((id, at) => {
+					const comma = at < entry.ids.length - 1 ? "," : "";
+					lines.push(`\t\t\t\t${JSON.stringify(id)}${comma}`);
+				});
+				lines.push("\t\t\t],");
+			}
+			lines.push(`\t\t\t"owner": ${JSON.stringify(entry.owner)},`);
+			lines.push(`\t\t\t"payoff": ${JSON.stringify(entry.payoff)},`);
+			lines.push(`\t\t\t"reason": ${JSON.stringify(entry.reason)}`);
+			lines.push(index < allowance.entries.length - 1 ? "\t\t}," : "\t\t}");
+		});
+		lines.push("\t]");
+	}
+	lines.push("}", "");
+	return lines.join("\n");
+}
+
+/** Every id an allowance records, as `file`-qualified strings. */
+export function allowanceIds(allowance) {
+	const out = [];
+	for (const entry of allowance?.entries ?? []) {
+		for (const id of entry.ids ?? []) out.push(`${entry.file}\0${id}`);
+	}
+	return out.sort();
+}
+
+/** Ids HEAD records that the base allowance did not — the growth set. */
+export function allowanceGrowth(base, head) {
+	const before = new Set(allowanceIds(base));
+	return allowanceIds(head).filter((id) => !before.has(id));
+}
+
+/**
+ * The allowance at `ref`, read out of git, and a growth report against HEAD.
+ *
+ * A new id is a NEW debt, and adding one must be a reviewed decision with an
+ * owner and a payoff — not something a failing check talks you into. The base is
+ * the CI pull-request base when set, else `origin/main`.
+ *
+ * A base that resolved but does not carry the file yet is the pull request that
+ * INTRODUCES the allowance: there is nothing to compare against, and the
+ * comparison legitimately returns nothing. A base that did not resolve at all is
+ * not that case — the caller has to say so, and `allowanceBaseReport` is where
+ * it does (a failure when the base was required, a stated gap when it was not).
+ */
+export function checkAllowanceGrowth(
+	ref,
+	{ repo = REPO, allowancePath = LITERAL_ALLOWANCE, allowance, base } = {},
+) {
+	/* `base` is the seam the tests use: the comparison is the same code with the
+	 * base handed in rather than read out of git, so a growth test does not need
+	 * a repository (and cannot drift from the real check). */
+	if (base !== undefined) {
+		const head = allowance ?? loadLiteralAllowance(allowancePath);
+		return allowanceGrowth(base, head).map(growthLine);
+	}
+	if (!ref) return [];
+	/* The base that does not carry the file yet is the pull request that
+	 * INTRODUCES this allowance: there is nothing to compare against, and
+	 * reporting every id as growth would make its first commit unsatisfiable.
+	 * Every other read failure still surfaces as a failure below. */
+	try {
+		execFileSync(
+			"git",
+			["cat-file", "-e", `${ref}:i18n/literal-allowance.json`],
+			{
+				cwd: repo,
+				stdio: ["ignore", "ignore", "ignore"],
+			},
+		);
+	} catch {
+		return [];
+	}
+	let before;
+	try {
+		const shown = execFileSync(
+			"git",
+			["show", `${ref}:i18n/literal-allowance.json`],
+			{
+				cwd: repo,
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "ignore"],
+			},
+		);
+		before = JSON.parse(shown);
+	} catch (error) {
+		return [`cannot compare allowances: ${error.message}`];
+	}
+	const head = allowance ?? loadLiteralAllowance(allowancePath);
+	return allowanceGrowth(before, head).map(growthLine);
+}
+
+/** The CI pull-request base commit, when the scanner runs inside one. */
+function ciAllowanceBase() {
+	if (process.env.GITHUB_EVENT_NAME !== "pull_request") return null;
+	const eventPath = process.env.GITHUB_EVENT_PATH;
+	if (!eventPath) return null;
+	try {
+		const event = JSON.parse(readFileSync(eventPath, "utf8"));
+		const base = event?.pull_request?.base;
+		return { sha: base?.sha, ref: base?.ref };
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Resolve the ref the allowance is compared against. Mirrors
+ * `check-coverage.mjs` deliberately: an explicit ref or the CI pull-request base
+ * is REQUIRED and an unresolvable one fails the gate rather than silently
+ * skipping the comparison — a growth check that quietly passes when its base is
+ * missing is the same "gate in name only" this file's docstring rejects.
+ *
+ * A local checkout with neither is the one case that is NOT required — a clone
+ * with no `origin/main` must still be runnable — and that is a skip the caller
+ * has to REPORT: `allowanceBaseReport` prints the gap and the success line
+ * repeats it, so "not required" never reads as "compared and passed".
+ *
+ * The single `git fetch` is the CI case `actions/checkout` creates (a shallow
+ * checkout has the merge commit and not its base); no fetch happens when the ref
+ * already resolves, which is every local run.
+ */
+export function resolveAllowanceBase(base, { repo = REPO } = {}) {
+	const git = (args) => {
+		try {
+			execFileSync("git", args, {
+				cwd: repo,
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "ignore"],
+			});
+			return 0;
+		} catch {
+			return 1;
+		}
+	};
+	const explicit = typeof base === "string" && base.length > 0;
+	const ci = explicit ? null : ciAllowanceBase();
+	const ref = (explicit ? base : null) ?? ci?.sha ?? "origin/main";
+	const required = explicit || Boolean(ci?.sha);
+	if (git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]) === 0)
+		return { ref, required };
+	if (git(["fetch", "--no-tags", "--depth=1", "origin", ref]) === 0)
+		return { ref: "FETCH_HEAD", required };
+	if (
+		ci?.ref &&
+		git(["fetch", "--no-tags", "--depth=1", "origin", ci.ref]) === 0
+	)
+		return { ref: "FETCH_HEAD", required };
+	return { ref: null, required };
+}
+
+/** One growth failure line. */
+function growthLine(id) {
+	return `allowance grew by ${JSON.stringify(id.replace("\0", " | "))}: a new debt needs an owner, a payoff and a reviewer's decision, not a check that failed`;
+}
+
+/**
+ * Drop every id no longer found, and every entry left empty. The ONE writing
+ * mode: it can only remove. Returns what it removed, so the caller can print a
+ * diff a reviewer can read.
+ */
+export function pruneLiteralAllowance(
+	scanned,
+	{ allowancePath = LITERAL_ALLOWANCE } = {},
+) {
+	const allowance = loadLiteralAllowance(allowancePath);
+	const { problems } = validateLiteralAllowance(allowance);
+	if (problems.length > 0) return { removed: 0, removedEntries: 0, problems };
+	const live = new Map();
+	for (const [rel, violations] of scanned) {
+		live.set(
+			rel,
+			new Set(
+				violations
+					.filter((finding) => governedByAllowance(finding.kind))
+					.map(literalId),
+			),
+		);
+	}
+	let removed = 0;
+	const kept = [];
+	for (const entry of allowance.entries) {
+		const present = live.get(entry.file) ?? new Set();
+		const ids = entry.ids.filter((id) => present.has(id));
+		removed += entry.ids.length - ids.length;
+		if (ids.length > 0) kept.push({ ...entry, ids });
+	}
+	const removedEntries = allowance.entries.length - kept.length;
+	if (removed === 0 && removedEntries === 0)
+		return { removed: 0, removedEntries: 0, problems: [] };
+	writeFileSync(
+		allowancePath,
+		renderAllowance({ ...allowance, entries: kept }),
+	);
+	return { removed, removedEntries, problems: [] };
+}
+
+// ---------------------------------------------------------------------------
 // The check, and the CLI
 // ---------------------------------------------------------------------------
 
@@ -617,6 +1391,8 @@ export function runCheck({
 	baseline,
 	allowlistPath = ALLOWLIST,
 	baselinePath = BASELINE,
+	allowancePath = LITERAL_ALLOWANCE,
+	allowance,
 } = {}) {
 	const entries = allowlist ?? loadAllowlist(allowlistPath);
 	const { api, snapshot } = openSnapshot(
@@ -628,7 +1404,19 @@ export function runCheck({
 		const counts = countsOf(scanned, entries);
 		const loaded = baseline ?? loadBaseline(baselinePath);
 		const failures = ratchetFindings(counts, loaded.files);
-		return { scanned, counts, failures, baseline: loaded };
+		const debt = allowance ?? loadLiteralAllowance(allowancePath);
+		const { allowed, problems } = validateLiteralAllowance(debt);
+		const { unlisted, stale } = literalAllowanceFindings(scanned, allowed);
+		return {
+			scanned,
+			counts,
+			failures,
+			baseline: loaded,
+			allowance: debt,
+			allowanceProblems: problems,
+			unlisted,
+			stale,
+		};
 	} finally {
 		api.close();
 	}
@@ -658,6 +1446,75 @@ export function failureSummary(failures) {
 			? " A file with no recorded ceiling is fixed by a reviewed `--init --force` capture."
 			: ""
 	}`;
+}
+
+/**
+ * The remedy sentence for the literal allowance, printed only after a failure
+ * THAT IS ONE.
+ *
+ * The failure shapes have different remedies and naming the wrong one is how a
+ * gate teaches a contributor to weaken it: an UNLISTED finding is paid by
+ * extracting the string; a STALE id is paid by pruning the entry (never by
+ * leaving it, and never by re-adding the literal); an id that GREW relative to
+ * the base is a reviewer's decision, not something a failing check can talk you
+ * into; the allowance's own shape is fixed in the file. No part applies and the
+ * sentence is empty — a baseline breach, an unresolved base or a `--prune`
+ * problem has its own line above, and this one used to print an empty pair of
+ * parentheses over all of them (agent review round 1, N1 / QA Q-1).
+ */
+export function allowanceSummary({
+	unlisted,
+	stale,
+	allowanceProblems,
+	growth,
+}) {
+	const parts = [];
+	if (toCount(allowanceProblems) > 0) parts.push("fix the allowance's shape");
+	if (toCount(unlisted) > 0)
+		parts.push(
+			"extract the unlisted string through the catalogue, or record it in i18n/literal-allowance.json with an owner and a payoff — a new id is a reviewed decision, not a check-fix",
+		);
+	if (toCount(stale) > 0)
+		parts.push(
+			"run `node scripts/i18n/check-strings.mjs --prune-allowance` for the ids that are no longer found — the allowance can only shrink",
+		);
+	if (toCount(growth) > 0)
+		parts.push(
+			"revert the ids this branch added relative to the base, or take them to a reviewer — growth is a decision, never a check-fix",
+		);
+	if (parts.length === 0) return "";
+	return `check-strings.mjs: FAILED — the data shapes (${parts.join("; ")}). See docs/i18n/literal-allowance.md.`;
+}
+
+/**
+ * The growth check's own line: a FAILURE when the base was required, and a
+ * stated GAP when it was not.
+ *
+ * `resolveAllowanceBase` cannot fail the run by itself — a local checkout with
+ * no `origin/main` is a legitimate run — so the reporting lives here, and the
+ * one thing it must never do is stay quiet: a growth comparison that did not
+ * run is a check that did not look, and the success line repeats it so no one
+ * reads an `ok` as a comparison that happened (agent review round 1, M1).
+ */
+export function allowanceBaseReport({ ref, required }) {
+	if (ref !== null) return { lines: [], failed: false };
+	if (required)
+		return {
+			lines: [
+				"i18n/literal-allowance.json: cannot resolve the base ref to compare growth against (`--allowance-base <ref>` or the CI pull-request base) — the growth check cannot be skipped silently.",
+			],
+			failed: true,
+		};
+	return {
+		lines: [
+			"i18n/literal-allowance.json: the growth check DID NOT RUN — no base ref resolved (no `--allowance-base`, no CI pull-request base, and no `origin/main` in this checkout), so ids added since the base are not compared here. Pass `--allowance-base <ref>` to run it.",
+		],
+		failed: false,
+	};
+}
+
+function toCount(value) {
+	return Array.isArray(value) ? value.length : 0;
 }
 
 /**
@@ -729,10 +1586,12 @@ export function main(
 		baselinePath = BASELINE,
 		allowlistPath = ALLOWLIST,
 		counts: fixtureCounts,
+		allowancePath = LITERAL_ALLOWANCE,
 	} = {},
 ) {
 	let mode = "check";
 	let force = false;
+	let allowanceBase;
 	const updatePaths = [];
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
@@ -746,9 +1605,23 @@ export function main(
 				updatePaths.push(argv[++index]);
 			}
 		} else if (arg === "--force") force = true;
-		else if (arg === "--help" || arg === "-h") {
+		else if (arg === "--prune-allowance") mode = "prune-allowance";
+		else if (arg === "--allowance-base") {
+			allowanceBase = argv[index + 1];
+			if (!allowanceBase) {
+				process.stderr.write(
+					"check-strings.mjs: --allowance-base needs a ref\n",
+				);
+				return 2;
+			}
+			index += 1;
+		} else if (arg.startsWith("--allowance-base=")) {
+			allowanceBase = arg.slice("--allowance-base=".length);
+		} else if (arg === "--help" || arg === "-h") {
 			process.stdout.write(
-				"usage: node scripts/i18n/check-strings.mjs [--init [--force]] [--update <path>…]\n",
+				"usage: node scripts/i18n/check-strings.mjs [--init [--force]] [--update <path>…]\n" +
+					"       node scripts/i18n/check-strings.mjs [--allowance-base <ref>]\n" +
+					"       node scripts/i18n/check-strings.mjs --prune-allowance\n",
 			);
 			return 0;
 		} else {
@@ -785,6 +1658,36 @@ export function main(
 		for (const line of captureSummary(preserved.files, counts)) {
 			process.stdout.write(`${line}\n`);
 		}
+		return 0;
+	}
+
+	if (mode === "prune-allowance") {
+		const { api, snapshot } = openSnapshot(REPO);
+		let result;
+		try {
+			const scanned = scanSnapshot(snapshot, REPO);
+			result = pruneLiteralAllowance(scanned, { allowancePath });
+		} finally {
+			api.close();
+		}
+		if (result.problems.length > 0) {
+			for (const problem of result.problems)
+				process.stdout.write(`check-strings.mjs: ${problem}\n`);
+			return 1;
+		}
+		if (result.removed === 0) {
+			process.stdout.write(
+				"check-strings.mjs --prune-allowance: nothing to lower — every listed id is still found.\n",
+			);
+			return 0;
+		}
+		const emptied =
+			result.removedEntries > 0
+				? ` and ${result.removedEntries} emptied entr(y/ies)`
+				: "";
+		process.stdout.write(
+			`check-strings.mjs --prune-allowance: removed ${result.removed} id(s)${emptied}. It never adds; extract the string instead.\n`,
+		);
 		return 0;
 	}
 
@@ -836,23 +1739,73 @@ export function main(
 		return 0;
 	}
 
-	const { scanned, counts, failures } = runCheck();
+	const result = runCheck({ allowancePath });
+	const { scanned, counts, failures } = result;
 	for (const failure of failures) {
 		process.stdout.write(`${findingLine(failure)}\n`);
-		const details = scanned.get(failure.path) ?? [];
+		const details = (scanned.get(failure.path) ?? []).filter(
+			(finding) => !governedByAllowance(finding.kind),
+		);
 		for (const detail of details.slice(0, 40)) {
 			process.stdout.write(
 				`  ${failure.path}:${detail.line}: ${detail.kind} ${JSON.stringify(detail.text)}\n`,
 			);
 		}
 	}
-	if (failures.length > 0) {
-		process.stdout.write(`${failureSummary(failures)}\n`);
+	let failed = failures.length > 0;
+	if (failed) process.stdout.write(`${failureSummary(failures)}\n`);
+
+	for (const problem of result.allowanceProblems) {
+		process.stdout.write(`i18n/literal-allowance.json: ${problem}\n`);
+		failed = true;
+	}
+	const base = resolveAllowanceBase(allowanceBase);
+	const baseReport = allowanceBaseReport(base);
+	for (const line of baseReport.lines) process.stdout.write(`${line}\n`);
+	if (baseReport.failed) failed = true;
+	const growth =
+		base.ref === null
+			? []
+			: checkAllowanceGrowth(base.ref, {
+					allowancePath,
+					allowance: result.allowance,
+				});
+	for (const line of growth) {
+		process.stdout.write(`i18n/literal-allowance.json: ${line}\n`);
+		failed = true;
+	}
+	for (const finding of result.unlisted) {
+		process.stdout.write(
+			`${finding.path}:${finding.line}: ${finding.kind} ${JSON.stringify(finding.text)} — not in i18n/literal-allowance.json\n`,
+		);
+		failed = true;
+	}
+	for (const entry of result.stale) {
+		process.stdout.write(
+			`i18n/literal-allowance.json: ${entry.file} lists ${entry.ids.length} id(s) no longer found (${entry.ids.slice(0, 3).join(", ")}${entry.ids.length > 3 ? ", …" : ""}) — the allowance can only shrink\n`,
+		);
+		failed = true;
+	}
+	if (failed) {
+		const summary = allowanceSummary({ ...result, growth });
+		if (summary) process.stdout.write(`${summary}\n`);
 		return 1;
 	}
 	const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+	const owed = [...scanned].flatMap(([rel, findings]) =>
+		findings
+			.filter((finding) => governedByAllowance(finding.kind))
+			.map(() => rel),
+	).length;
+	/* The ok line must not read as a comparison that did not run: the gap line
+	 * above says the same thing, and a reader who skipped it reads it here
+	 * (agent review round 1, M1). */
+	const growthNote =
+		base.ref === null
+			? "; the growth comparison against the base DID NOT run (see above)"
+			: "";
 	process.stdout.write(
-		`check-strings.mjs: ok — ${scanned.size} file(s) scanned, ${total} literal(s) at or below the baseline\n`,
+		`check-strings.mjs: ok — ${scanned.size} file(s) scanned, ${total} literal(s) at or below the baseline; ${owed} literal(s) in the data shapes, all listed in i18n/literal-allowance.json (shrink-only)${growthNote}\n`,
 	);
 	return 0;
 }

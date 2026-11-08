@@ -831,9 +831,18 @@ test("the store no longer carries a reader-less `sessionByAgent` map", () => {
 		/if \(!SESSION_ID\.test\(routeIdentity\)\)[\s\S]{0,200}?setRouteError/,
 		"a non-session route identity still gets the legacy-link sentence",
 	);
-	assert.match(
-		page,
-		/This legacy link has no canonical chat\. Its saved history is unchanged\./,
+	/*
+	 * The sentence is KEYED since #1761: the page binds
+	 * `t("ui.chat.page_chrome.legacy_link")` and the words live in
+	 * `ui.chat.page_chrome.json`. Both halves are asserted, because "unchanged" is
+	 * a claim about what the reader is told, not about where it is stored.
+	 */
+	assert.match(page, /t\("ui\.chat\.page_chrome\.legacy_link"\)/);
+	assert.equal(
+		JSON.parse(
+			readFileSync("src/i18n/catalogues/en/ui.chat.page_chrome.json", "utf8"),
+		)["ui.chat.page_chrome.legacy_link"],
+		"This legacy link has no canonical chat. Its saved history is unchanged.",
 		"the sentence itself is unchanged: old links are still told the truth",
 	);
 	assert.doesNotMatch(

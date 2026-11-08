@@ -201,6 +201,26 @@ const ENGLISH_ASK_HEADING = /Ask for an agent/;
 const ENGLISH_DELEGATES = /Delegates/;
 const ENGLISH_UPDATED = /updated/;
 const ENGLISH_UPDATED_3_DAYS = /updated 3 days ago/;
+/*
+ * Render-time RTL isolation is PRODUCT behaviour (`src/i18n/bidi.ts`,
+ * `isolateArguments` + `isolateSigils`): when an RTL catalogue answers a key,
+ * every plain-spliced Latin-led value is wrapped in FSI...PDI (U+2068...U+2069)
+ * so a name cannot drag the sentence around it. An expectation for such a
+ * sentence therefore spells the wrapper out - comparing against the bare name
+ * would assert the isolation ABSENT, which is the opposite of what ships.
+ *
+ * The direction comes from the language manifest rather than a `locale === "ur"`
+ * test, for the reason `src/i18n/direction.ts` gives: a second hardcoded RTL
+ * list is a copy that goes stale silently the day an Arabic or Hebrew catalogue
+ * lands.
+ */
+const LANGUAGES = JSON.parse(
+	readFileSync("i18n/languages.json", "utf8"),
+).languages;
+const isolatedText = (locale, value) =>
+	LANGUAGES.find((entry) => entry.code === locale)?.dir === "rtl"
+		? `\u2068${value}\u2069`
+		: value;
 
 /** One build per mutation; the default bundle is shared. */
 const bundles = new Map();
@@ -594,7 +614,7 @@ test("the composer's three placeholders are catalogue messages", async () => {
 		);
 		assert.equal(
 			about.container.querySelector("textarea")?.getAttribute("placeholder"),
-			`${marker} about aida`,
+			`${marker} about ${isolatedText(locale, "aida")}`,
 		);
 		await about.unmount();
 	}
@@ -724,6 +744,13 @@ test("all six publish-dialog titles come from their keys", async () => {
 		["ur", "UR"],
 	]) {
 		useLocale(lib, locale);
+		/*
+		 * Only the EXPECTED sentence carries the isolates: the input keeps the bare
+		 * `agentName`, because that is what the caller holds and what the message
+		 * splices; the wrapper is applied by the render path under test.
+		 */
+		const aida = isolatedText(locale, "aida");
+		const org = isolatedText(locale, "QA Organisation");
 		const states = [
 			[
 				{
@@ -733,7 +760,7 @@ test("all six publish-dialog titles come from their keys", async () => {
 					targetDisplayName: "",
 					hasListing: false,
 				},
-				`${marker} publish aida public?`,
+				`${marker} publish ${aida} public?`,
 			],
 			[
 				{
@@ -743,7 +770,7 @@ test("all six publish-dialog titles come from their keys", async () => {
 					targetDisplayName: "QA Organisation",
 					hasListing: false,
 				},
-				`${marker} publish aida to QA Organisation?`,
+				`${marker} publish ${aida} to ${org}?`,
 			],
 			[
 				{
@@ -753,7 +780,7 @@ test("all six publish-dialog titles come from their keys", async () => {
 					targetDisplayName: "",
 					hasListing: true,
 				},
-				`${marker} update aida?`,
+				`${marker} update ${aida}?`,
 			],
 			[
 				{
@@ -763,7 +790,7 @@ test("all six publish-dialog titles come from their keys", async () => {
 					targetDisplayName: "",
 					hasListing: false,
 				},
-				`${marker} published aida`,
+				`${marker} published ${aida}`,
 			],
 			[
 				{
@@ -773,7 +800,7 @@ test("all six publish-dialog titles come from their keys", async () => {
 					targetDisplayName: "QA Organisation",
 					hasListing: false,
 				},
-				`${marker} published aida to QA Organisation`,
+				`${marker} published ${aida} to ${org}`,
 			],
 			[
 				{
@@ -783,7 +810,7 @@ test("all six publish-dialog titles come from their keys", async () => {
 					targetDisplayName: "",
 					hasListing: true,
 				},
-				`${marker} republished aida`,
+				`${marker} republished ${aida}`,
 			],
 		];
 		for (const [input, want] of states) {
@@ -874,7 +901,10 @@ test("missing and populated detail follow the selected non-English locale", asyn
 					view
 						.text()
 						.includes(
-							messages[`${prefix}${suffix}`].replace("{name}", "census-agent"),
+							messages[`${prefix}${suffix}`].replace(
+								"{name}",
+								isolatedText(locale, "census-agent"),
+							),
 						),
 					view.text(),
 				);

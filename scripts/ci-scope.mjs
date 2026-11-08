@@ -358,7 +358,10 @@ const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
  * it. Equality with the pin is proved by the test instead.
  */
 export const PARITY_MODEL_SOURCES = new Set([
+	"i18n/languages.json",
+	"src/i18n/bidi.ts",
 	"src/i18n/catalogue-locale.ts",
+	"src/i18n/direction.ts",
 	"src/i18n/format.ts",
 	"src/i18n/index.ts",
 	"src/i18n/locale.ts",

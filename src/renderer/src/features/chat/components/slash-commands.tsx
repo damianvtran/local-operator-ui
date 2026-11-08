@@ -2454,7 +2454,7 @@ function argumentRowContent(
 			>
 				{source === "session-tags"
 					? value.applied
-						? "[x]"
+						? "[x]" /* i18n: ignore the three-cell mono mark is a glyph, not copy; its sibling ● is not text either */
 						: "[ ]"
 					: value.current
 						? "●"

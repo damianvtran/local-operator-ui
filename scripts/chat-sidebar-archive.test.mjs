@@ -803,7 +803,19 @@ test("a typed /delete stages the dialog and can never reach the wire itself", ()
 	);
 	assert.equal(branch.includes("deleteSession"), false);
 	assert.match(branch, /DELETE_UNAVAILABLE_REASON/);
-	assert.match(branch, /needs an open conversation/);
+	/*
+	 * The refusal's sentence is KEYED since #1761: the branch holds
+	 * `t("ui.chat.slash.dispatch.needs_conversation", ...)` and the words moved to
+	 * `ui.chat.slash.json`, so both halves are asserted - the binding this branch
+	 * can be read for, and the copy a person is actually told.
+	 */
+	assert.match(branch, /t\("ui\.chat\.slash\.dispatch\.needs_conversation"/);
+	assert.match(
+		JSON.parse(
+			readFileSync("src/i18n/catalogues/en/ui.chat.slash.json", "utf8"),
+		)["ui.chat.slash.dispatch.needs_conversation"],
+		/needs an open conversation/,
+	);
 });
 
 test("a typed /archive STAGES the confirmation, and /unarchive still writes straight through", () => {

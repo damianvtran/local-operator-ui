@@ -6203,7 +6203,17 @@ test("Urdu request starting with a Latin device retains locale direction", () =>
 			provider: "GitHub",
 			account: "acct-42",
 		});
-		assert.ok(request.startsWith("mac-mini"));
+		assert.ok(
+			/*
+			 * The head opens with the device in an FSI...PDI isolate: for an RTL
+			 * catalogue the render path wraps every plain-spliced Latin-led value
+			 * (`src/i18n/bidi.ts`), so `mac-mini` cannot drag the Urdu sentence
+			 * around it. That wrapper is product behaviour, so it is asserted
+			 * exactly rather than stripped - a head that lost it is the regression.
+			 */
+			request.startsWith("\u2068mac-mini\u2069"),
+			`the request head carries the isolated device: ${request}`,
+		);
 		const parts = mesh.namedApprovalRefusalParts(request, "Backend refused.");
 		const requestPart = parts.find((part) => part.kind === "request");
 		assert.equal(requestPart.text, request);

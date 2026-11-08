@@ -663,7 +663,10 @@ test("an unnamed recipient takes the delivery-scoped in-sentence form, not the r
 	];
 	const expected = {
 		hi: "Ben Tran के चीफ़ ऑफ़ स्टाफ़ तक नहीं पहुँचा।",
-		ur: "Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا۔",
+		// The render-time RTL isolation (src/i18n/bidi.ts, isolateValue) wraps a
+		// Latin value in FSI…PDI inside an RTL sentence: that is the product
+		// behaviour now, so the pin carries the isolates rather than bare text.
+		ur: "\u2068Ben Tran\u2069 کے چیف آف اسٹاف تک نہیں پہنچا۔",
 		fr: "Non remis à la cheffe de cabinet (Ben Tran).",
 		// es is built around "para" so no "a el" contraction arises (C5 on #1643).
 		es: "Mensaje para el jefe de gabinete de Ben Tran no entregado.",
