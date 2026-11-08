@@ -45,11 +45,13 @@ export const ErrorView: FC<ErrorViewProps> = ({
 	useI18nLocale();
 	const description = serverUnreachable
 		? message
-			? `${message} The agent's history is safe — try again once the local server is running.`
-			: "The local server did not answer. The agent's history is safe — try again once it is running."
+			? t("ui.chat.page_chrome.error_view.unreachable_with_message", {
+					message,
+				})
+			: t("ui.chat.page_chrome.error_view.unreachable")
 		: message
-			? `${message} The agent's history is safe — try again in a moment.`
-			: "The local server returned an error. The agent's history is safe — try again in a moment.";
+			? t("ui.chat.page_chrome.error_view.failed_with_message", { message })
+			: t("ui.chat.page_chrome.error_view.failed");
 	return (
 		<div
 			data-glass-region="canvas"

@@ -1,0 +1,18 @@
+{
+	"ui.chat.read_ack.clause.offscreen": "faites défiler jusqu’au résultat pour marquer cette conversation comme lue",
+	"ui.chat.read_ack.clause.pending": "marquage en cours comme lue",
+	"ui.chat.read_ack.clause.remote": "la marque non lue se trouve sur un autre appareil et disparaît quand celui-ci se met à jour",
+	"ui.chat.read_ack.clause.remote_named": "la marque non lue se trouve sur {device} et disparaît quand cet appareil se met à jour",
+	"ui.chat.read_ack.description.offscreen": "Faites défiler jusqu’au résultat pour marquer cette conversation comme lue.",
+	"ui.chat.read_ack.description.pending": "Marquage de cette conversation comme lue.",
+	"ui.chat.read_ack.description.remote": "La marque non lue se trouve sur un autre appareil. Elle disparaît quand cet appareil se met à jour.",
+	"ui.chat.read_ack.description.remote_named": "La marque non lue se trouve sur {device}. Elle disparaît quand cet appareil se met à jour.",
+	"ui.chat.read_ack.description.unsettled": "Non marquée comme lue. {remedy}",
+	"ui.chat.read_ack.refusal.busy": "L’état de lecture est occupé ; la marque non lue n’a donc pas été effacée. {remedy}",
+	"ui.chat.read_ack.refusal.refused": "L’état de lecture n’a pas pu être écrit ; la marque non lue n’a donc pas été effacée. {remedy}",
+	"ui.chat.read_ack.refusal.unreachable": "{reason} La marque non lue n’a pas été effacée. {remedy}",
+	"ui.chat.read_ack.refusal.unreported": "La marque non lue n’a pas été effacée. {remedy}",
+	"ui.chat.read_ack.retry_remedy": "cliquez sur la conversation pour réessayer",
+	"ui.chat.read_ack.retry_remedy_sentence": "Cliquez sur la conversation pour réessayer.",
+	"ui.chat.read_ack.unreachable_fallback": "L’application n’a pas pu joindre le backend."
+}

@@ -143,7 +143,9 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 				tabIndex={visible ? 0 : -1}
 			>
 				<ArrowDown aria-hidden="true" />
-				{hasNewActivity ? "New activity" : null}
+				{hasNewActivity
+					? t("ui.chat.page_chrome.scroll_to_bottom.new_activity")
+					: null}
 			</Button>
 		</div>
 	);

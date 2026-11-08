@@ -57,7 +57,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
-import { t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
@@ -102,9 +102,9 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import {
-	MOVE_NOT_READY_REASON,
-	MOVE_UNAVAILABLE_REASON,
 	type MoveCommitOutcome,
+	moveNotReadyReason,
+	moveUnavailableReason,
 	sessionMoveEnabled,
 } from "../move-session";
 import { openConversation } from "../open-conversation";
@@ -347,7 +347,7 @@ export function draftRouteRefusal(
 	capabilities: DesktopCapabilities | null | undefined,
 	resolution: DraftResolution | undefined,
 ): string {
-	const ordinary = `/${name} needs an open conversation. Start one first.`;
+	const ordinary = t("ui.chat.slash.dispatch.needs_conversation", { name });
 	/*
 	 * THE ROW'S OWN ROUTE IS ASKED FIRST (design review round 3, D8). The
 	 * resolution copy below is about THIS PANE's model, and it is only the answer
@@ -367,22 +367,22 @@ export function draftRouteRefusal(
 	 */
 	if (!draft) {
 		if (resolution?.status === "pending")
-			return `/${name} is waiting for this conversation's model to resolve. Try again in a moment.`;
+			return t("ui.chat.slash.dispatch.model_resolving", { name });
 		if (resolution?.status === "failed")
-			return `/${name} needs this conversation's model, which was not resolved. Press Retry, then try again.`;
+			return t("ui.chat.slash.dispatch.model_unresolved", { name });
 		return ordinary;
 	}
 	switch (desktopFeatureState(capabilities, capability)) {
 		case "enabled":
-			return `/${name} takes no argument on a new chat. Type /${name} on its own to set it for the first message.`;
+			return t("ui.chat.slash.dispatch.no_argument_on_draft", { name });
 		case "below-version":
-			return `/${name} is not available on this version of the Local Operator service. Update Local Operator, then try again.`;
+			return t("ui.chat.slash.dispatch.below_version", { name });
 		case "unpaired":
 			/* The app's own words for a credential fact (`moveGateReason`). */
-			return `/${name} is not available: this app is not paired with the backend.`;
+			return t("ui.chat.slash.dispatch.unpaired", { name });
 		case "unknown":
 			/* Transient, and it is the service that has not answered - not the user. */
-			return `/${name} is waiting for the local service to answer. Try again in a moment.`;
+			return t("ui.chat.slash.dispatch.service_waiting", { name });
 	}
 }
 
@@ -648,26 +648,27 @@ export function useSlashDispatch({
 	const presentCwdChip = useCallback(
 		(command: string) => {
 			if (!sessionId) {
-				note(`/${command} needs an open conversation. Start one first.`, true);
+				note(
+					t("ui.chat.slash.dispatch.needs_conversation", { name: command }),
+					true,
+				);
 				return;
 			}
 			if (!canMove) {
 				// The same sentence the read-only chip carries, from the same constant:
 				// a user who types the command and a user who clicks the chip are told
 				// the same thing about the same backend.
-				note(MOVE_UNAVAILABLE_REASON, true);
+				note(moveUnavailableReason(), true);
 				return;
 			}
 			if (!paneReady) {
 				// The chip's other refusal, for the same reason: its read-only reason is
-				// MOVE_NOT_READY_REASON while the session is being created, and a typed
+				// moveNotReadyReason while the session is being created, and a typed
 				// `/move` in that window must not do what the chip refuses (R-3).
-				note(MOVE_NOT_READY_REASON, true);
+				note(moveNotReadyReason(), true);
 				return;
 			}
-			note(
-				"Choose the folder in the working directory chip above, or type /move <path> to move straight there.",
-			);
+			note(t("ui.chat.slash.dispatch.move_hint", { example: "/move <path>" }));
 			focusCwdChip?.();
 		},
 		[canMove, focusCwdChip, paneReady, note, sessionId],
@@ -689,7 +690,7 @@ export function useSlashDispatch({
 					suggestions.length > 0
 						? t("ui.chat.pickers.slash.unknown_command_suggest", {
 								command: word,
-								suggestions: suggestions.join(", "),
+								suggestions: formatList(suggestions),
 							})
 						: t("ui.chat.pickers.slash.unknown_command", { command: word }),
 					true,
@@ -739,7 +740,9 @@ export function useSlashDispatch({
 					 * capability's own remedy rather than a fetched 404.
 					 */
 					note(
-						`/${spec.name} needs a newer backend. Update the backend and try again.`,
+						t("ui.chat.slash.dispatch.needs_newer_backend", {
+							name: spec.name,
+						}),
 						true,
 					);
 					return "consumed";
@@ -868,20 +871,20 @@ export function useSlashDispatch({
 			if (entry && entry.argsBehavior === "execute" && args) {
 				if (!sessionId) {
 					note(
-						`/${spec.name} needs an open conversation. Start one first.`,
+						t("ui.chat.slash.dispatch.needs_conversation", { name: spec.name }),
 						true,
 					);
 					return "consumed";
 				}
 				if (!canMove) {
-					note(MOVE_UNAVAILABLE_REASON, true);
+					note(moveUnavailableReason(), true);
 					return "consumed";
 				}
 				if (!paneReady) {
 					// The chip's own refusal for this window, asked here too: `/move <path>`
 					// used to consult the capability alone, so it posted a move for a session
 					// the chip beside it was refusing to touch (agent review round 2, R-3).
-					note(MOVE_NOT_READY_REASON, true);
+					note(moveNotReadyReason(), true);
 					return "consumed";
 				}
 				if (entry.runArgs) {
@@ -898,7 +901,7 @@ export function useSlashDispatch({
 					// says it executes and then does nothing is exactly the silent dead end
 					// this table exists to make loud.
 					note(
-						`/${spec.name} is not available in the desktop app yet. Run it in the terminal with local-operator.`,
+						t("ui.chat.slash.dispatch.not_in_desktop", { name: spec.name }),
 						true,
 					);
 				}
@@ -928,7 +931,9 @@ export function useSlashDispatch({
 					 */
 					if (!sessionId) {
 						note(
-							`/${spec.name} needs an open conversation. Start one first.`,
+							t("ui.chat.slash.dispatch.needs_conversation", {
+								name: spec.name,
+							}),
 							true,
 						);
 						return "consumed";
@@ -949,7 +954,7 @@ export function useSlashDispatch({
 							// that appears to do nothing is the failure mode this branch
 							// exists to avoid.
 							note(
-								`/${spec.name} asked for a dialog this build does not have, so nothing ran. Run it in the terminal with local-operator.`,
+								t("ui.chat.slash.dispatch.dialog_missing", { name: spec.name }),
 								true,
 							);
 							return "consumed";
@@ -1017,11 +1022,13 @@ export function useSlashDispatch({
 						}
 					} catch (error) {
 						note(
-							`/${spec.name} could not run: ${
-								error instanceof Error
-									? error.message
-									: "the backend refused it"
-							}`,
+							t("ui.chat.slash.dispatch.could_not_run", {
+								name: spec.name,
+								reason:
+									error instanceof Error
+										? error.message
+										: t("ui.chat.slash.dispatch.refused"),
+							}),
 							true,
 						);
 					}
@@ -1047,7 +1054,9 @@ export function useSlashDispatch({
 					const archived = entry.action === "archive";
 					if (!sessionId) {
 						note(
-							`/${spec.name} needs an open conversation. Start one first.`,
+							t("ui.chat.slash.dispatch.needs_conversation", {
+								name: spec.name,
+							}),
 							true,
 						);
 						return "consumed";
@@ -1151,7 +1160,9 @@ export function useSlashDispatch({
 				if (entry.action === "request-delete") {
 					if (!sessionId) {
 						note(
-							`/${spec.name} needs an open conversation. Start one first.`,
+							t("ui.chat.slash.dispatch.needs_conversation", {
+								name: spec.name,
+							}),
 							true,
 						);
 						return "consumed";
@@ -1169,9 +1180,7 @@ export function useSlashDispatch({
 				if (window.api?.desktop?.closeWindow) {
 					await window.api.desktop.closeWindow();
 				} else {
-					note(
-						"Close this window to quit. Conversations keep running in the background.",
-					);
+					note(t("ui.chat.slash.dispatch.quit_hint"));
 				}
 				return "consumed";
 			}
@@ -1639,7 +1648,7 @@ export function useSlashDispatch({
 				spec.name === "rename" &&
 				flagTokenSelects("title-refresh", commandArgs)
 			) {
-				note("refreshing the title…");
+				note(t("ui.chat.slash.dispatch.refreshing_title"));
 			}
 			try {
 				const receipt = await desktopResult<DesktopCommandReceipt>({
@@ -1674,7 +1683,7 @@ export function useSlashDispatch({
 						// offered that cannot be presented, which is a defect in the
 						// catalogue rather than something the user did.
 						note(
-							`/${spec.name} is not available in the desktop app yet. Run it in the terminal with local-operator.`,
+							t("ui.chat.slash.dispatch.not_in_desktop", { name: spec.name }),
 							true,
 						);
 						return "consumed";
@@ -1719,9 +1728,13 @@ export function useSlashDispatch({
 				return "consumed";
 			} catch (error) {
 				note(
-					`/${spec.name} could not run: ${
-						error instanceof Error ? error.message : "the backend refused it"
-					}`,
+					t("ui.chat.slash.dispatch.could_not_run", {
+						name: spec.name,
+						reason:
+							error instanceof Error
+								? error.message
+								: t("ui.chat.slash.dispatch.refused"),
+					}),
 					true,
 				);
 				// The command did not run, whatever refused it, so the composer keeps
@@ -1828,10 +1841,7 @@ export function useSlashDispatch({
 		): Promise<SlashDispatchOutcome> => {
 			const outcome = await dispatch(invocation);
 			if (outcome === "not-a-command") {
-				note(
-					"The backend could not complete this request. Check its connection and try again.",
-					true,
-				);
+				note(t("ui.chat.slash.dispatch.backend_incomplete"), true);
 			}
 			return outcome;
 		},

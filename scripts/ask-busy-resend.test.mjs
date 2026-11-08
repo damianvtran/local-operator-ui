@@ -57,7 +57,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { answerQueuedAsk, createSendLock, answerOwnerIsBusy, ANSWER_BUSY_MESSAGE } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { answerQueuedAsk, createSendLock, answerOwnerIsBusy, answerBusyMessage } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { askRefusalSentence } from "./src/renderer/src/features/chat/ask-queue";',
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 		].join("\n"),
@@ -133,7 +133,7 @@ const {
 	answerQueuedAsk,
 	createSendLock,
 	answerOwnerIsBusy,
-	ANSWER_BUSY_MESSAGE,
+	answerBusyMessage,
 	askRefusalSentence,
 	DesktopControlError,
 } = shipped;
@@ -238,7 +238,7 @@ test("exhausting the repeats reports the answer as not confirmed, never as not s
 	);
 
 	const sentence = askRefusalSentence(outcome.error);
-	assert.equal(sentence, ANSWER_BUSY_MESSAGE);
+	assert.equal(sentence, answerBusyMessage());
 	assert.ok(
 		sentence.includes("isn't confirmed yet"),
 		`the sentence must state the disposition, got: ${sentence}`,

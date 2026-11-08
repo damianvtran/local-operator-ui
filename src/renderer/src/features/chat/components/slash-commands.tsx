@@ -53,7 +53,8 @@ import type {
 	ReusableTeam,
 } from "@shared/api/local-operator/profile-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
-import { t } from "@shared/i18n";
+import { type TextDirection, t } from "@shared/i18n";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -72,6 +73,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { isolateSigilRun } from "../../../../../i18n/bidi";
 import type { TagCategory } from "../../../../../shared/desktop-contract";
 import type { CanonicalModel } from "../../../../../shared/desktop-session-contract";
 import { archiveDestinationApplies } from "../chat-archived";
@@ -102,7 +104,6 @@ import {
 	type ArgumentSource,
 	FLAG_LIST_SOURCES,
 	type FrozenTagOrder,
-	MCP_EMPTY_SLOT_COPY,
 	argumentRows,
 	effectiveInlineArgument,
 	flagTokenDraws,
@@ -110,6 +111,7 @@ import {
 	freezeTagOrder,
 	isRendererLocalSource,
 	isSessionlessBackendSource,
+	mcpEmptySlotCopy,
 	mcpInServerSlot,
 	modelDefaultActionRow,
 	shouldRunArgumentAction,
@@ -717,9 +719,7 @@ function useArgumentRows(
 			return {
 				rows: argumentRows("providers", providers.data ?? [], null),
 				loading: providers.isLoading,
-				error: providers.isError
-					? "The list could not be loaded. Try again."
-					: null,
+				error: providers.isError ? t("ui.chat.slash.list.load_failed") : null,
 				needsSession: false,
 			};
 		}
@@ -762,7 +762,7 @@ function useArgumentRows(
 					argumentRows("providers", providers.data, null),
 				)[0]?.choice.value;
 				if (named && (storedById.get(named) ?? 0) <= 0) {
-					emptyCopy = "No stored credential to remove.";
+					emptyCopy = t("ui.chat.slash.list.no_stored_credential");
 				}
 			}
 			return {
@@ -775,9 +775,7 @@ function useArgumentRows(
 				 * whichever of the two is still in flight, not just the first.
 				 */
 				loading: accounts.isLoading || providers.isLoading,
-				error: accounts.isError
-					? "The list could not be loaded. Try again."
-					: null,
+				error: accounts.isError ? t("ui.chat.slash.list.load_failed") : null,
 				needsSession: false,
 			};
 		}
@@ -797,10 +795,10 @@ function useArgumentRows(
 				 */
 				emptyCopy:
 					rows.length === 0 && mcpInServerSlot(argument)
-						? MCP_EMPTY_SLOT_COPY
+						? mcpEmptySlotCopy()
 						: undefined,
 				loading: mcp.isLoading,
-				error: mcp.isError ? "The list could not be loaded. Try again." : null,
+				error: mcp.isError ? t("ui.chat.slash.list.load_failed") : null,
 				needsSession: false,
 			};
 		}
@@ -832,11 +830,11 @@ function useArgumentRows(
 				emptyCopy:
 					rows.length === 0
 						? draftRosterSource === "team"
-							? "No teams are registered."
-							: "No profiles found."
+							? t("ui.chat.slash.list.no_teams")
+							: t("ui.chat.slash.list.no_profiles")
 						: undefined,
 				loading: list.isLoading,
-				error: list.isError ? "The list could not be loaded. Try again." : null,
+				error: list.isError ? t("ui.chat.slash.list.load_failed") : null,
 				needsSession: false,
 			};
 		}
@@ -897,9 +895,7 @@ function useArgumentRows(
 		return {
 			rows: argumentRows(source, entities.data?.entities ?? [], current),
 			loading: entities.isLoading,
-			error: entities.isError
-				? "The list could not be loaded. Try again."
-				: null,
+			error: entities.isError ? t("ui.chat.slash.list.load_failed") : null,
 			needsSession: false,
 		};
 	}, [
@@ -1835,7 +1831,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	onPick,
 	onActionPick,
 }) => {
-	useI18nLocale();
+	/*
+	 * THE DIRECTION, read through the store so a language switch repaints the rows
+	 * with the rest of the popup - and read ONCE, above the list, because the row
+	 * content is built by plain functions that cannot hold a hook of their own.
+	 */
+	const dir = useTextDirection();
 	const listId = state.listId;
 	const activeRef = useRef<HTMLLIElement | null>(null);
 	/*
@@ -1969,8 +1970,8 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const footer = activeAction
 		? {
 				text: activeAction.disabled
-					? "A current model is needed to set a default."
-					: "Enter sets the current model as the default for new sessions.",
+					? t("ui.chat.slash.footer.default_needs_model")
+					: t("ui.chat.slash.footer.default_sets"),
 				key: activeAction.disabled ? null : "Enter",
 			}
 		: enterFooter({
@@ -2091,7 +2092,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				? t("ui.chat.tags.create_name", { name: activeArgument.value })
 				: activeArgument.applied
 					? t("ui.chat.tags.remove_named", { name: activeArgument.value })
-					: `Add “${activeArgument.value}”`;
+					: t("ui.chat.slash.tag.add_named", { name: activeArgument.value });
 	const baseFooter =
 		typeof footer === "string" ? footer : (footer?.text ?? null);
 	const footerText =
@@ -2099,12 +2100,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			? state.tagPending
 				? t("ui.chat.tags.applying")
 				: unambiguousActive
-					? `Enter ${tagVerb}`
+					? t("ui.chat.slash.enter.verb", { verb: tagVerb })
 					: baseFooter
 			: baseFooter;
 	const clickText =
 		tagListShown && activeArgument && !state.tagPending
-			? `Click ${tagVerb}`
+			? t("ui.chat.slash.click.verb", { verb: tagVerb })
 			: click;
 	/*
 	 * ONE OWNER FOR A REGISTRY LOAD FAILURE. `argumentEmptyCopy` already prints
@@ -2209,7 +2210,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			>
 				{state.matches.length === 0 ? (
 					<div className="px-3 py-2 text-body-sm text-ink-muted">
-						{argument ? emptyArgumentCopy : "No commands match."}
+						{argument
+							? emptyArgumentCopy
+							: t("ui.chat.slash.empty.no_commands")}
 					</div>
 				) : (
 					<ul>
@@ -2295,7 +2298,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 								}}
 							>
 								{row.kind === "command"
-									? commandRowContent(row)
+									? commandRowContent(row, dir)
 									: row.kind === "action"
 										? actionRowContent(row.row)
 										: argumentRowContent(row, state.inline?.source)}
@@ -2320,7 +2323,22 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	);
 };
 
-function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
+function commandRowContent(
+	row: Extract<CompletionRow, { kind: "command" }>,
+	/*
+	 * The popup's active direction, for the two CODE-RENDERED slash tokens on this
+	 * row (QA Q1 / design D1, round 1).
+	 *
+	 * WHY THESE NEED IT AND THE FOOTER DOES NOT: `/help` in the footer is an ICU
+	 * value, so it reaches `translate()` and comes back isolated. The command word
+	 * and the aliases below are literals this function BUILDS, so no catalogue is
+	 * consulted and nothing on the translate path can see them; in Urdu the `/`
+	 * resolved to the paragraph's direction and the row painted `help/`, `exit/`,
+	 * `clear/`. One isolate per painted RUN (not per token) is what keeps the
+	 * word whole and the alias run in its written order - see `isolateSigilRun`.
+	 */
+	dir: TextDirection,
+) {
 	const { command, label, fastState } = row;
 	/*
 	 * THE DANGER ROLE ON THE COMMAND'S OWN WORD, which is the ink `/delete` is
@@ -2341,6 +2359,14 @@ function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 	 * the state, which is what a metadata column may spend on a fact.
 	 */
 	const slot = commandRowSlot(command, fastState);
+	const word = isolateSigilRun(`/${label}`, dir);
+	const aliases = isolateSigilRun(
+		command.aliases
+			.filter((alias) => alias !== label)
+			.map((alias) => `/${alias}`)
+			.join(" "),
+		dir,
+	);
 	return (
 		<>
 			<span
@@ -2349,15 +2375,10 @@ function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 					destructive ? "text-danger" : "text-ink",
 				)}
 			>
-				/{label}
+				{word}
 			</span>
 			{command.aliases.length > 0 && (
-				<span className="shrink-0 text-meta text-ink-dim">
-					{command.aliases
-						.filter((alias) => alias !== label)
-						.map((alias) => `/${alias}`)
-						.join(" ")}
-				</span>
+				<span className="shrink-0 text-meta text-ink-dim">{aliases}</span>
 			)}
 			<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
 				{command.description}

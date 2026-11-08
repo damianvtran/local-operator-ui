@@ -48,26 +48,47 @@ import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
+import enUiChatApproval from "./catalogues/en/ui.chat.approval.json";
+import enUiChatAside from "./catalogues/en/ui.chat.aside.json";
+import enUiChatAskAnswer from "./catalogues/en/ui.chat.ask_answer.json";
+import enUiChatAskPanel from "./catalogues/en/ui.chat.ask_panel.json";
+import enUiChatAskQueue from "./catalogues/en/ui.chat.ask_queue.json";
 import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
+import enUiChatAttachmentRefusal from "./catalogues/en/ui.chat.attachment_refusal.json";
 import enUiChatAttachments from "./catalogues/en/ui.chat.attachments.json";
 import enUiChatBridgeReceipt from "./catalogues/en/ui.chat.bridgeReceipt.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
 import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
+import enUiChatComposerNotes from "./catalogues/en/ui.chat.composer_notes.json";
+import enUiChatCredentialNotice from "./catalogues/en/ui.chat.credential_notice.json";
 import enUiChatDevice from "./catalogues/en/ui.chat.device.json";
+import enUiChatDeviceMove from "./catalogues/en/ui.chat.device_move.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChatDirectory from "./catalogues/en/ui.chat.directory.json";
+import enUiChatFastMode from "./catalogues/en/ui.chat.fast_mode.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
+import enUiChatHeaderMenu from "./catalogues/en/ui.chat.header_menu.json";
+import enUiChatInterrupt from "./catalogues/en/ui.chat.interrupt.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatLiveUpdates from "./catalogues/en/ui.chat.live_updates.json";
+import enUiChatMessageBudget from "./catalogues/en/ui.chat.message_budget.json";
+import enUiChatMoveCwd from "./catalogues/en/ui.chat.move_cwd.json";
+import enUiChatPageChrome from "./catalogues/en/ui.chat.page_chrome.json";
 import enUiChatPickers from "./catalogues/en/ui.chat.pickers.json";
+import enUiChatQuotaResend from "./catalogues/en/ui.chat.quota_resend.json";
 import enUiChatRadientSession from "./catalogues/en/ui.chat.radient_session.json";
+import enUiChatReadAck from "./catalogues/en/ui.chat.read_ack.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
+import enUiChatSessionReadout from "./catalogues/en/ui.chat.session_readout.json";
+import enUiChatSessionSpend from "./catalogues/en/ui.chat.session_spend.json";
 import enUiChatSidebar from "./catalogues/en/ui.chat.sidebar.json";
 import enUiChatSidebarRowBg from "./catalogues/en/ui.chat.sidebar.row.bg.json";
+import enUiChatSidebarNotes from "./catalogues/en/ui.chat.sidebar_notes.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
+import enUiChatSlash from "./catalogues/en/ui.chat.slash.json";
 import enUiChatStatus from "./catalogues/en/ui.chat.status.json";
 import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTagGroups from "./catalogues/en/ui.chat.tag_groups.json";
@@ -181,26 +202,47 @@ import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
 import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
+import esUiChatApproval from "./catalogues/es/ui.chat.approval.json";
+import esUiChatAside from "./catalogues/es/ui.chat.aside.json";
+import esUiChatAskAnswer from "./catalogues/es/ui.chat.ask_answer.json";
+import esUiChatAskPanel from "./catalogues/es/ui.chat.ask_panel.json";
+import esUiChatAskQueue from "./catalogues/es/ui.chat.ask_queue.json";
 import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
+import esUiChatAttachmentRefusal from "./catalogues/es/ui.chat.attachment_refusal.json";
 import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
 import esUiChatBridgeReceipt from "./catalogues/es/ui.chat.bridgeReceipt.json";
 import esUiChatCanonical from "./catalogues/es/ui.chat.canonical.json";
 import esUiChatCommentaryActions from "./catalogues/es/ui.chat.commentary_actions.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
+import esUiChatComposerNotes from "./catalogues/es/ui.chat.composer_notes.json";
+import esUiChatCredentialNotice from "./catalogues/es/ui.chat.credential_notice.json";
 import esUiChatDevice from "./catalogues/es/ui.chat.device.json";
+import esUiChatDeviceMove from "./catalogues/es/ui.chat.device_move.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
 import esUiChatDirectory from "./catalogues/es/ui.chat.directory.json";
+import esUiChatFastMode from "./catalogues/es/ui.chat.fast_mode.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
+import esUiChatHeaderMenu from "./catalogues/es/ui.chat.header_menu.json";
+import esUiChatInterrupt from "./catalogues/es/ui.chat.interrupt.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatLiveUpdates from "./catalogues/es/ui.chat.live_updates.json";
+import esUiChatMessageBudget from "./catalogues/es/ui.chat.message_budget.json";
+import esUiChatMoveCwd from "./catalogues/es/ui.chat.move_cwd.json";
+import esUiChatPageChrome from "./catalogues/es/ui.chat.page_chrome.json";
 import esUiChatPickers from "./catalogues/es/ui.chat.pickers.json";
+import esUiChatQuotaResend from "./catalogues/es/ui.chat.quota_resend.json";
 import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json";
+import esUiChatReadAck from "./catalogues/es/ui.chat.read_ack.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
+import esUiChatSessionReadout from "./catalogues/es/ui.chat.session_readout.json";
+import esUiChatSessionSpend from "./catalogues/es/ui.chat.session_spend.json";
 import esUiChatSidebar from "./catalogues/es/ui.chat.sidebar.json";
 import esUiChatSidebarRowBg from "./catalogues/es/ui.chat.sidebar.row.bg.json";
+import esUiChatSidebarNotes from "./catalogues/es/ui.chat.sidebar_notes.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
+import esUiChatSlash from "./catalogues/es/ui.chat.slash.json";
 import esUiChatStatus from "./catalogues/es/ui.chat.status.json";
 import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
 import esUiChatTagGroups from "./catalogues/es/ui.chat.tag_groups.json";
@@ -314,26 +356,47 @@ import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
+import frUiChatApproval from "./catalogues/fr/ui.chat.approval.json";
+import frUiChatAside from "./catalogues/fr/ui.chat.aside.json";
+import frUiChatAskAnswer from "./catalogues/fr/ui.chat.ask_answer.json";
+import frUiChatAskPanel from "./catalogues/fr/ui.chat.ask_panel.json";
+import frUiChatAskQueue from "./catalogues/fr/ui.chat.ask_queue.json";
 import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
+import frUiChatAttachmentRefusal from "./catalogues/fr/ui.chat.attachment_refusal.json";
 import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
 import frUiChatBridgeReceipt from "./catalogues/fr/ui.chat.bridgeReceipt.json";
 import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
 import frUiChatCommentaryActions from "./catalogues/fr/ui.chat.commentary_actions.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
+import frUiChatComposerNotes from "./catalogues/fr/ui.chat.composer_notes.json";
+import frUiChatCredentialNotice from "./catalogues/fr/ui.chat.credential_notice.json";
 import frUiChatDevice from "./catalogues/fr/ui.chat.device.json";
+import frUiChatDeviceMove from "./catalogues/fr/ui.chat.device_move.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatDirectory from "./catalogues/fr/ui.chat.directory.json";
+import frUiChatFastMode from "./catalogues/fr/ui.chat.fast_mode.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
+import frUiChatHeaderMenu from "./catalogues/fr/ui.chat.header_menu.json";
+import frUiChatInterrupt from "./catalogues/fr/ui.chat.interrupt.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
+import frUiChatMessageBudget from "./catalogues/fr/ui.chat.message_budget.json";
+import frUiChatMoveCwd from "./catalogues/fr/ui.chat.move_cwd.json";
+import frUiChatPageChrome from "./catalogues/fr/ui.chat.page_chrome.json";
 import frUiChatPickers from "./catalogues/fr/ui.chat.pickers.json";
+import frUiChatQuotaResend from "./catalogues/fr/ui.chat.quota_resend.json";
 import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json";
+import frUiChatReadAck from "./catalogues/fr/ui.chat.read_ack.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
+import frUiChatSessionReadout from "./catalogues/fr/ui.chat.session_readout.json";
+import frUiChatSessionSpend from "./catalogues/fr/ui.chat.session_spend.json";
 import frUiChatSidebar from "./catalogues/fr/ui.chat.sidebar.json";
 import frUiChatSidebarRowBg from "./catalogues/fr/ui.chat.sidebar.row.bg.json";
+import frUiChatSidebarNotes from "./catalogues/fr/ui.chat.sidebar_notes.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
+import frUiChatSlash from "./catalogues/fr/ui.chat.slash.json";
 import frUiChatStatus from "./catalogues/fr/ui.chat.status.json";
 import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
 import frUiChatTagGroups from "./catalogues/fr/ui.chat.tag_groups.json";
@@ -447,26 +510,47 @@ import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
 import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
+import hiUiChatApproval from "./catalogues/hi/ui.chat.approval.json";
+import hiUiChatAside from "./catalogues/hi/ui.chat.aside.json";
+import hiUiChatAskAnswer from "./catalogues/hi/ui.chat.ask_answer.json";
+import hiUiChatAskPanel from "./catalogues/hi/ui.chat.ask_panel.json";
+import hiUiChatAskQueue from "./catalogues/hi/ui.chat.ask_queue.json";
 import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
+import hiUiChatAttachmentRefusal from "./catalogues/hi/ui.chat.attachment_refusal.json";
 import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
 import hiUiChatBridgeReceipt from "./catalogues/hi/ui.chat.bridgeReceipt.json";
 import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
 import hiUiChatCommentaryActions from "./catalogues/hi/ui.chat.commentary_actions.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
 import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
+import hiUiChatComposerNotes from "./catalogues/hi/ui.chat.composer_notes.json";
+import hiUiChatCredentialNotice from "./catalogues/hi/ui.chat.credential_notice.json";
 import hiUiChatDevice from "./catalogues/hi/ui.chat.device.json";
+import hiUiChatDeviceMove from "./catalogues/hi/ui.chat.device_move.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
 import hiUiChatDirectory from "./catalogues/hi/ui.chat.directory.json";
+import hiUiChatFastMode from "./catalogues/hi/ui.chat.fast_mode.json";
 import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
+import hiUiChatHeaderMenu from "./catalogues/hi/ui.chat.header_menu.json";
+import hiUiChatInterrupt from "./catalogues/hi/ui.chat.interrupt.json";
 import hiUiChat from "./catalogues/hi/ui.chat.json";
 import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
+import hiUiChatMessageBudget from "./catalogues/hi/ui.chat.message_budget.json";
+import hiUiChatMoveCwd from "./catalogues/hi/ui.chat.move_cwd.json";
+import hiUiChatPageChrome from "./catalogues/hi/ui.chat.page_chrome.json";
 import hiUiChatPickers from "./catalogues/hi/ui.chat.pickers.json";
+import hiUiChatQuotaResend from "./catalogues/hi/ui.chat.quota_resend.json";
 import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json";
+import hiUiChatReadAck from "./catalogues/hi/ui.chat.read_ack.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
+import hiUiChatSessionReadout from "./catalogues/hi/ui.chat.session_readout.json";
+import hiUiChatSessionSpend from "./catalogues/hi/ui.chat.session_spend.json";
 import hiUiChatSidebar from "./catalogues/hi/ui.chat.sidebar.json";
 import hiUiChatSidebarRowBg from "./catalogues/hi/ui.chat.sidebar.row.bg.json";
+import hiUiChatSidebarNotes from "./catalogues/hi/ui.chat.sidebar_notes.json";
 import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
+import hiUiChatSlash from "./catalogues/hi/ui.chat.slash.json";
 import hiUiChatStatus from "./catalogues/hi/ui.chat.status.json";
 import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
 import hiUiChatTagGroups from "./catalogues/hi/ui.chat.tag_groups.json";
@@ -580,26 +664,47 @@ import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
 import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
+import ruUiChatApproval from "./catalogues/ru/ui.chat.approval.json";
+import ruUiChatAside from "./catalogues/ru/ui.chat.aside.json";
+import ruUiChatAskAnswer from "./catalogues/ru/ui.chat.ask_answer.json";
+import ruUiChatAskPanel from "./catalogues/ru/ui.chat.ask_panel.json";
+import ruUiChatAskQueue from "./catalogues/ru/ui.chat.ask_queue.json";
 import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
+import ruUiChatAttachmentRefusal from "./catalogues/ru/ui.chat.attachment_refusal.json";
 import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
 import ruUiChatBridgeReceipt from "./catalogues/ru/ui.chat.bridgeReceipt.json";
 import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
 import ruUiChatCommentaryActions from "./catalogues/ru/ui.chat.commentary_actions.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
+import ruUiChatComposerNotes from "./catalogues/ru/ui.chat.composer_notes.json";
+import ruUiChatCredentialNotice from "./catalogues/ru/ui.chat.credential_notice.json";
 import ruUiChatDevice from "./catalogues/ru/ui.chat.device.json";
+import ruUiChatDeviceMove from "./catalogues/ru/ui.chat.device_move.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
 import ruUiChatDirectory from "./catalogues/ru/ui.chat.directory.json";
+import ruUiChatFastMode from "./catalogues/ru/ui.chat.fast_mode.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
+import ruUiChatHeaderMenu from "./catalogues/ru/ui.chat.header_menu.json";
+import ruUiChatInterrupt from "./catalogues/ru/ui.chat.interrupt.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
 import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
+import ruUiChatMessageBudget from "./catalogues/ru/ui.chat.message_budget.json";
+import ruUiChatMoveCwd from "./catalogues/ru/ui.chat.move_cwd.json";
+import ruUiChatPageChrome from "./catalogues/ru/ui.chat.page_chrome.json";
 import ruUiChatPickers from "./catalogues/ru/ui.chat.pickers.json";
+import ruUiChatQuotaResend from "./catalogues/ru/ui.chat.quota_resend.json";
 import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json";
+import ruUiChatReadAck from "./catalogues/ru/ui.chat.read_ack.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
+import ruUiChatSessionReadout from "./catalogues/ru/ui.chat.session_readout.json";
+import ruUiChatSessionSpend from "./catalogues/ru/ui.chat.session_spend.json";
 import ruUiChatSidebar from "./catalogues/ru/ui.chat.sidebar.json";
 import ruUiChatSidebarRowBg from "./catalogues/ru/ui.chat.sidebar.row.bg.json";
+import ruUiChatSidebarNotes from "./catalogues/ru/ui.chat.sidebar_notes.json";
 import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
+import ruUiChatSlash from "./catalogues/ru/ui.chat.slash.json";
 import ruUiChatStatus from "./catalogues/ru/ui.chat.status.json";
 import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
 import ruUiChatTagGroups from "./catalogues/ru/ui.chat.tag_groups.json";
@@ -713,26 +818,47 @@ import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
 import urUiBrowser from "./catalogues/ur/ui.browser.json";
 import urUiCanvas from "./catalogues/ur/ui.canvas.json";
 import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
+import urUiChatApproval from "./catalogues/ur/ui.chat.approval.json";
+import urUiChatAside from "./catalogues/ur/ui.chat.aside.json";
+import urUiChatAskAnswer from "./catalogues/ur/ui.chat.ask_answer.json";
+import urUiChatAskPanel from "./catalogues/ur/ui.chat.ask_panel.json";
+import urUiChatAskQueue from "./catalogues/ur/ui.chat.ask_queue.json";
 import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
+import urUiChatAttachmentRefusal from "./catalogues/ur/ui.chat.attachment_refusal.json";
 import urUiChatAttachments from "./catalogues/ur/ui.chat.attachments.json";
 import urUiChatBridgeReceipt from "./catalogues/ur/ui.chat.bridgeReceipt.json";
 import urUiChatCanonical from "./catalogues/ur/ui.chat.canonical.json";
 import urUiChatCommentaryActions from "./catalogues/ur/ui.chat.commentary_actions.json";
 import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
 import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
+import urUiChatComposerNotes from "./catalogues/ur/ui.chat.composer_notes.json";
+import urUiChatCredentialNotice from "./catalogues/ur/ui.chat.credential_notice.json";
 import urUiChatDevice from "./catalogues/ur/ui.chat.device.json";
+import urUiChatDeviceMove from "./catalogues/ur/ui.chat.device_move.json";
 import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
 import urUiChatDirectory from "./catalogues/ur/ui.chat.directory.json";
+import urUiChatFastMode from "./catalogues/ur/ui.chat.fast_mode.json";
 import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
+import urUiChatHeaderMenu from "./catalogues/ur/ui.chat.header_menu.json";
+import urUiChatInterrupt from "./catalogues/ur/ui.chat.interrupt.json";
 import urUiChat from "./catalogues/ur/ui.chat.json";
 import urUiChatLiveUpdates from "./catalogues/ur/ui.chat.live_updates.json";
+import urUiChatMessageBudget from "./catalogues/ur/ui.chat.message_budget.json";
+import urUiChatMoveCwd from "./catalogues/ur/ui.chat.move_cwd.json";
+import urUiChatPageChrome from "./catalogues/ur/ui.chat.page_chrome.json";
 import urUiChatPickers from "./catalogues/ur/ui.chat.pickers.json";
+import urUiChatQuotaResend from "./catalogues/ur/ui.chat.quota_resend.json";
 import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json";
+import urUiChatReadAck from "./catalogues/ur/ui.chat.read_ack.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
+import urUiChatSessionReadout from "./catalogues/ur/ui.chat.session_readout.json";
+import urUiChatSessionSpend from "./catalogues/ur/ui.chat.session_spend.json";
 import urUiChatSidebar from "./catalogues/ur/ui.chat.sidebar.json";
 import urUiChatSidebarRowBg from "./catalogues/ur/ui.chat.sidebar.row.bg.json";
+import urUiChatSidebarNotes from "./catalogues/ur/ui.chat.sidebar_notes.json";
 import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
+import urUiChatSlash from "./catalogues/ur/ui.chat.slash.json";
 import urUiChatStatus from "./catalogues/ur/ui.chat.status.json";
 import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
 import urUiChatTagGroups from "./catalogues/ur/ui.chat.tag_groups.json";
@@ -846,26 +972,47 @@ import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
 import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
+import viUiChatApproval from "./catalogues/vi/ui.chat.approval.json";
+import viUiChatAside from "./catalogues/vi/ui.chat.aside.json";
+import viUiChatAskAnswer from "./catalogues/vi/ui.chat.ask_answer.json";
+import viUiChatAskPanel from "./catalogues/vi/ui.chat.ask_panel.json";
+import viUiChatAskQueue from "./catalogues/vi/ui.chat.ask_queue.json";
 import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
+import viUiChatAttachmentRefusal from "./catalogues/vi/ui.chat.attachment_refusal.json";
 import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
 import viUiChatBridgeReceipt from "./catalogues/vi/ui.chat.bridgeReceipt.json";
 import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
 import viUiChatCommentaryActions from "./catalogues/vi/ui.chat.commentary_actions.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
 import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
+import viUiChatComposerNotes from "./catalogues/vi/ui.chat.composer_notes.json";
+import viUiChatCredentialNotice from "./catalogues/vi/ui.chat.credential_notice.json";
 import viUiChatDevice from "./catalogues/vi/ui.chat.device.json";
+import viUiChatDeviceMove from "./catalogues/vi/ui.chat.device_move.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
 import viUiChatDirectory from "./catalogues/vi/ui.chat.directory.json";
+import viUiChatFastMode from "./catalogues/vi/ui.chat.fast_mode.json";
 import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
+import viUiChatHeaderMenu from "./catalogues/vi/ui.chat.header_menu.json";
+import viUiChatInterrupt from "./catalogues/vi/ui.chat.interrupt.json";
 import viUiChat from "./catalogues/vi/ui.chat.json";
 import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
+import viUiChatMessageBudget from "./catalogues/vi/ui.chat.message_budget.json";
+import viUiChatMoveCwd from "./catalogues/vi/ui.chat.move_cwd.json";
+import viUiChatPageChrome from "./catalogues/vi/ui.chat.page_chrome.json";
 import viUiChatPickers from "./catalogues/vi/ui.chat.pickers.json";
+import viUiChatQuotaResend from "./catalogues/vi/ui.chat.quota_resend.json";
 import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json";
+import viUiChatReadAck from "./catalogues/vi/ui.chat.read_ack.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
+import viUiChatSessionReadout from "./catalogues/vi/ui.chat.session_readout.json";
+import viUiChatSessionSpend from "./catalogues/vi/ui.chat.session_spend.json";
 import viUiChatSidebar from "./catalogues/vi/ui.chat.sidebar.json";
 import viUiChatSidebarRowBg from "./catalogues/vi/ui.chat.sidebar.row.bg.json";
+import viUiChatSidebarNotes from "./catalogues/vi/ui.chat.sidebar_notes.json";
 import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
+import viUiChatSlash from "./catalogues/vi/ui.chat.slash.json";
 import viUiChatStatus from "./catalogues/vi/ui.chat.status.json";
 import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
 import viUiChatTagGroups from "./catalogues/vi/ui.chat.tag_groups.json";
@@ -979,26 +1126,47 @@ import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
 import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
+import zhCNUiChatApproval from "./catalogues/zh-CN/ui.chat.approval.json";
+import zhCNUiChatAside from "./catalogues/zh-CN/ui.chat.aside.json";
+import zhCNUiChatAskAnswer from "./catalogues/zh-CN/ui.chat.ask_answer.json";
+import zhCNUiChatAskPanel from "./catalogues/zh-CN/ui.chat.ask_panel.json";
+import zhCNUiChatAskQueue from "./catalogues/zh-CN/ui.chat.ask_queue.json";
 import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
+import zhCNUiChatAttachmentRefusal from "./catalogues/zh-CN/ui.chat.attachment_refusal.json";
 import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
 import zhCNUiChatBridgeReceipt from "./catalogues/zh-CN/ui.chat.bridgeReceipt.json";
 import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
 import zhCNUiChatCommentaryActions from "./catalogues/zh-CN/ui.chat.commentary_actions.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
 import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
+import zhCNUiChatComposerNotes from "./catalogues/zh-CN/ui.chat.composer_notes.json";
+import zhCNUiChatCredentialNotice from "./catalogues/zh-CN/ui.chat.credential_notice.json";
 import zhCNUiChatDevice from "./catalogues/zh-CN/ui.chat.device.json";
+import zhCNUiChatDeviceMove from "./catalogues/zh-CN/ui.chat.device_move.json";
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
 import zhCNUiChatDirectory from "./catalogues/zh-CN/ui.chat.directory.json";
+import zhCNUiChatFastMode from "./catalogues/zh-CN/ui.chat.fast_mode.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
+import zhCNUiChatHeaderMenu from "./catalogues/zh-CN/ui.chat.header_menu.json";
+import zhCNUiChatInterrupt from "./catalogues/zh-CN/ui.chat.interrupt.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
 import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
+import zhCNUiChatMessageBudget from "./catalogues/zh-CN/ui.chat.message_budget.json";
+import zhCNUiChatMoveCwd from "./catalogues/zh-CN/ui.chat.move_cwd.json";
+import zhCNUiChatPageChrome from "./catalogues/zh-CN/ui.chat.page_chrome.json";
 import zhCNUiChatPickers from "./catalogues/zh-CN/ui.chat.pickers.json";
+import zhCNUiChatQuotaResend from "./catalogues/zh-CN/ui.chat.quota_resend.json";
 import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session.json";
+import zhCNUiChatReadAck from "./catalogues/zh-CN/ui.chat.read_ack.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
+import zhCNUiChatSessionReadout from "./catalogues/zh-CN/ui.chat.session_readout.json";
+import zhCNUiChatSessionSpend from "./catalogues/zh-CN/ui.chat.session_spend.json";
 import zhCNUiChatSidebar from "./catalogues/zh-CN/ui.chat.sidebar.json";
 import zhCNUiChatSidebarRowBg from "./catalogues/zh-CN/ui.chat.sidebar.row.bg.json";
+import zhCNUiChatSidebarNotes from "./catalogues/zh-CN/ui.chat.sidebar_notes.json";
 import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
+import zhCNUiChatSlash from "./catalogues/zh-CN/ui.chat.slash.json";
 import zhCNUiChatStatus from "./catalogues/zh-CN/ui.chat.status.json";
 import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
 import zhCNUiChatTagGroups from "./catalogues/zh-CN/ui.chat.tag_groups.json";
@@ -1115,26 +1283,47 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowser,
 	...enUiCanvas,
 	...enUiChatAnalytics,
+	...enUiChatApproval,
+	...enUiChatAside,
+	...enUiChatAskAnswer,
+	...enUiChatAskPanel,
+	...enUiChatAskQueue,
 	...enUiChatAsks,
+	...enUiChatAttachmentRefusal,
 	...enUiChatAttachments,
 	...enUiChatBridgeReceipt,
 	...enUiChatCanonical,
 	...enUiChatCommentaryActions,
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
+	...enUiChatComposerNotes,
+	...enUiChatCredentialNotice,
 	...enUiChatDevice,
+	...enUiChatDeviceMove,
 	...enUiChatDialogs,
 	...enUiChatDirectory,
+	...enUiChatFastMode,
 	...enUiChatHeader,
+	...enUiChatHeaderMenu,
+	...enUiChatInterrupt,
 	...enUiChat,
 	...enUiChatLiveUpdates,
+	...enUiChatMessageBudget,
+	...enUiChatMoveCwd,
+	...enUiChatPageChrome,
 	...enUiChatPickers,
+	...enUiChatQuotaResend,
 	...enUiChatRadientSession,
+	...enUiChatReadAck,
 	...enUiChatResponseActions,
 	...enUiChatRunDetails,
+	...enUiChatSessionReadout,
+	...enUiChatSessionSpend,
 	...enUiChatSidebar,
 	...enUiChatSidebarRowBg,
+	...enUiChatSidebarNotes,
 	...enUiChatSidebarView,
+	...enUiChatSlash,
 	...enUiChatStatus,
 	...enUiChatTagDialogs,
 	...enUiChatTagGroups,
@@ -1256,26 +1445,47 @@ export const bundledCatalogues: Readonly<
 		...esUiBrowser,
 		...esUiCanvas,
 		...esUiChatAnalytics,
+		...esUiChatApproval,
+		...esUiChatAside,
+		...esUiChatAskAnswer,
+		...esUiChatAskPanel,
+		...esUiChatAskQueue,
 		...esUiChatAsks,
+		...esUiChatAttachmentRefusal,
 		...esUiChatAttachments,
 		...esUiChatBridgeReceipt,
 		...esUiChatCanonical,
 		...esUiChatCommentaryActions,
 		...esUiChatComposer,
 		...esUiChatComposerMedia,
+		...esUiChatComposerNotes,
+		...esUiChatCredentialNotice,
 		...esUiChatDevice,
+		...esUiChatDeviceMove,
 		...esUiChatDialogs,
 		...esUiChatDirectory,
+		...esUiChatFastMode,
 		...esUiChatHeader,
+		...esUiChatHeaderMenu,
+		...esUiChatInterrupt,
 		...esUiChat,
 		...esUiChatLiveUpdates,
+		...esUiChatMessageBudget,
+		...esUiChatMoveCwd,
+		...esUiChatPageChrome,
 		...esUiChatPickers,
+		...esUiChatQuotaResend,
 		...esUiChatRadientSession,
+		...esUiChatReadAck,
 		...esUiChatResponseActions,
 		...esUiChatRunDetails,
+		...esUiChatSessionReadout,
+		...esUiChatSessionSpend,
 		...esUiChatSidebar,
 		...esUiChatSidebarRowBg,
+		...esUiChatSidebarNotes,
 		...esUiChatSidebarView,
+		...esUiChatSlash,
 		...esUiChatStatus,
 		...esUiChatTagDialogs,
 		...esUiChatTagGroups,
@@ -1391,26 +1601,47 @@ export const bundledCatalogues: Readonly<
 		...frUiBrowser,
 		...frUiCanvas,
 		...frUiChatAnalytics,
+		...frUiChatApproval,
+		...frUiChatAside,
+		...frUiChatAskAnswer,
+		...frUiChatAskPanel,
+		...frUiChatAskQueue,
 		...frUiChatAsks,
+		...frUiChatAttachmentRefusal,
 		...frUiChatAttachments,
 		...frUiChatBridgeReceipt,
 		...frUiChatCanonical,
 		...frUiChatCommentaryActions,
 		...frUiChatComposer,
 		...frUiChatComposerMedia,
+		...frUiChatComposerNotes,
+		...frUiChatCredentialNotice,
 		...frUiChatDevice,
+		...frUiChatDeviceMove,
 		...frUiChatDialogs,
 		...frUiChatDirectory,
+		...frUiChatFastMode,
 		...frUiChatHeader,
+		...frUiChatHeaderMenu,
+		...frUiChatInterrupt,
 		...frUiChat,
 		...frUiChatLiveUpdates,
+		...frUiChatMessageBudget,
+		...frUiChatMoveCwd,
+		...frUiChatPageChrome,
 		...frUiChatPickers,
+		...frUiChatQuotaResend,
 		...frUiChatRadientSession,
+		...frUiChatReadAck,
 		...frUiChatResponseActions,
 		...frUiChatRunDetails,
+		...frUiChatSessionReadout,
+		...frUiChatSessionSpend,
 		...frUiChatSidebar,
 		...frUiChatSidebarRowBg,
+		...frUiChatSidebarNotes,
 		...frUiChatSidebarView,
+		...frUiChatSlash,
 		...frUiChatStatus,
 		...frUiChatTagDialogs,
 		...frUiChatTagGroups,
@@ -1526,26 +1757,47 @@ export const bundledCatalogues: Readonly<
 		...hiUiBrowser,
 		...hiUiCanvas,
 		...hiUiChatAnalytics,
+		...hiUiChatApproval,
+		...hiUiChatAside,
+		...hiUiChatAskAnswer,
+		...hiUiChatAskPanel,
+		...hiUiChatAskQueue,
 		...hiUiChatAsks,
+		...hiUiChatAttachmentRefusal,
 		...hiUiChatAttachments,
 		...hiUiChatBridgeReceipt,
 		...hiUiChatCanonical,
 		...hiUiChatCommentaryActions,
 		...hiUiChatComposer,
 		...hiUiChatComposerMedia,
+		...hiUiChatComposerNotes,
+		...hiUiChatCredentialNotice,
 		...hiUiChatDevice,
+		...hiUiChatDeviceMove,
 		...hiUiChatDialogs,
 		...hiUiChatDirectory,
+		...hiUiChatFastMode,
 		...hiUiChatHeader,
+		...hiUiChatHeaderMenu,
+		...hiUiChatInterrupt,
 		...hiUiChat,
 		...hiUiChatLiveUpdates,
+		...hiUiChatMessageBudget,
+		...hiUiChatMoveCwd,
+		...hiUiChatPageChrome,
 		...hiUiChatPickers,
+		...hiUiChatQuotaResend,
 		...hiUiChatRadientSession,
+		...hiUiChatReadAck,
 		...hiUiChatResponseActions,
 		...hiUiChatRunDetails,
+		...hiUiChatSessionReadout,
+		...hiUiChatSessionSpend,
 		...hiUiChatSidebar,
 		...hiUiChatSidebarRowBg,
+		...hiUiChatSidebarNotes,
 		...hiUiChatSidebarView,
+		...hiUiChatSlash,
 		...hiUiChatStatus,
 		...hiUiChatTagDialogs,
 		...hiUiChatTagGroups,
@@ -1661,26 +1913,47 @@ export const bundledCatalogues: Readonly<
 		...ruUiBrowser,
 		...ruUiCanvas,
 		...ruUiChatAnalytics,
+		...ruUiChatApproval,
+		...ruUiChatAside,
+		...ruUiChatAskAnswer,
+		...ruUiChatAskPanel,
+		...ruUiChatAskQueue,
 		...ruUiChatAsks,
+		...ruUiChatAttachmentRefusal,
 		...ruUiChatAttachments,
 		...ruUiChatBridgeReceipt,
 		...ruUiChatCanonical,
 		...ruUiChatCommentaryActions,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
+		...ruUiChatComposerNotes,
+		...ruUiChatCredentialNotice,
 		...ruUiChatDevice,
+		...ruUiChatDeviceMove,
 		...ruUiChatDialogs,
 		...ruUiChatDirectory,
+		...ruUiChatFastMode,
 		...ruUiChatHeader,
+		...ruUiChatHeaderMenu,
+		...ruUiChatInterrupt,
 		...ruUiChat,
 		...ruUiChatLiveUpdates,
+		...ruUiChatMessageBudget,
+		...ruUiChatMoveCwd,
+		...ruUiChatPageChrome,
 		...ruUiChatPickers,
+		...ruUiChatQuotaResend,
 		...ruUiChatRadientSession,
+		...ruUiChatReadAck,
 		...ruUiChatResponseActions,
 		...ruUiChatRunDetails,
+		...ruUiChatSessionReadout,
+		...ruUiChatSessionSpend,
 		...ruUiChatSidebar,
 		...ruUiChatSidebarRowBg,
+		...ruUiChatSidebarNotes,
 		...ruUiChatSidebarView,
+		...ruUiChatSlash,
 		...ruUiChatStatus,
 		...ruUiChatTagDialogs,
 		...ruUiChatTagGroups,
@@ -1796,26 +2069,47 @@ export const bundledCatalogues: Readonly<
 		...urUiBrowser,
 		...urUiCanvas,
 		...urUiChatAnalytics,
+		...urUiChatApproval,
+		...urUiChatAside,
+		...urUiChatAskAnswer,
+		...urUiChatAskPanel,
+		...urUiChatAskQueue,
 		...urUiChatAsks,
+		...urUiChatAttachmentRefusal,
 		...urUiChatAttachments,
 		...urUiChatBridgeReceipt,
 		...urUiChatCanonical,
 		...urUiChatCommentaryActions,
 		...urUiChatComposer,
 		...urUiChatComposerMedia,
+		...urUiChatComposerNotes,
+		...urUiChatCredentialNotice,
 		...urUiChatDevice,
+		...urUiChatDeviceMove,
 		...urUiChatDialogs,
 		...urUiChatDirectory,
+		...urUiChatFastMode,
 		...urUiChatHeader,
+		...urUiChatHeaderMenu,
+		...urUiChatInterrupt,
 		...urUiChat,
 		...urUiChatLiveUpdates,
+		...urUiChatMessageBudget,
+		...urUiChatMoveCwd,
+		...urUiChatPageChrome,
 		...urUiChatPickers,
+		...urUiChatQuotaResend,
 		...urUiChatRadientSession,
+		...urUiChatReadAck,
 		...urUiChatResponseActions,
 		...urUiChatRunDetails,
+		...urUiChatSessionReadout,
+		...urUiChatSessionSpend,
 		...urUiChatSidebar,
 		...urUiChatSidebarRowBg,
+		...urUiChatSidebarNotes,
 		...urUiChatSidebarView,
+		...urUiChatSlash,
 		...urUiChatStatus,
 		...urUiChatTagDialogs,
 		...urUiChatTagGroups,
@@ -1931,26 +2225,47 @@ export const bundledCatalogues: Readonly<
 		...viUiBrowser,
 		...viUiCanvas,
 		...viUiChatAnalytics,
+		...viUiChatApproval,
+		...viUiChatAside,
+		...viUiChatAskAnswer,
+		...viUiChatAskPanel,
+		...viUiChatAskQueue,
 		...viUiChatAsks,
+		...viUiChatAttachmentRefusal,
 		...viUiChatAttachments,
 		...viUiChatBridgeReceipt,
 		...viUiChatCanonical,
 		...viUiChatCommentaryActions,
 		...viUiChatComposer,
 		...viUiChatComposerMedia,
+		...viUiChatComposerNotes,
+		...viUiChatCredentialNotice,
 		...viUiChatDevice,
+		...viUiChatDeviceMove,
 		...viUiChatDialogs,
 		...viUiChatDirectory,
+		...viUiChatFastMode,
 		...viUiChatHeader,
+		...viUiChatHeaderMenu,
+		...viUiChatInterrupt,
 		...viUiChat,
 		...viUiChatLiveUpdates,
+		...viUiChatMessageBudget,
+		...viUiChatMoveCwd,
+		...viUiChatPageChrome,
 		...viUiChatPickers,
+		...viUiChatQuotaResend,
 		...viUiChatRadientSession,
+		...viUiChatReadAck,
 		...viUiChatResponseActions,
 		...viUiChatRunDetails,
+		...viUiChatSessionReadout,
+		...viUiChatSessionSpend,
 		...viUiChatSidebar,
 		...viUiChatSidebarRowBg,
+		...viUiChatSidebarNotes,
 		...viUiChatSidebarView,
+		...viUiChatSlash,
 		...viUiChatStatus,
 		...viUiChatTagDialogs,
 		...viUiChatTagGroups,
@@ -2066,26 +2381,47 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiBrowser,
 		...zhCNUiCanvas,
 		...zhCNUiChatAnalytics,
+		...zhCNUiChatApproval,
+		...zhCNUiChatAside,
+		...zhCNUiChatAskAnswer,
+		...zhCNUiChatAskPanel,
+		...zhCNUiChatAskQueue,
 		...zhCNUiChatAsks,
+		...zhCNUiChatAttachmentRefusal,
 		...zhCNUiChatAttachments,
 		...zhCNUiChatBridgeReceipt,
 		...zhCNUiChatCanonical,
 		...zhCNUiChatCommentaryActions,
 		...zhCNUiChatComposer,
 		...zhCNUiChatComposerMedia,
+		...zhCNUiChatComposerNotes,
+		...zhCNUiChatCredentialNotice,
 		...zhCNUiChatDevice,
+		...zhCNUiChatDeviceMove,
 		...zhCNUiChatDialogs,
 		...zhCNUiChatDirectory,
+		...zhCNUiChatFastMode,
 		...zhCNUiChatHeader,
+		...zhCNUiChatHeaderMenu,
+		...zhCNUiChatInterrupt,
 		...zhCNUiChat,
 		...zhCNUiChatLiveUpdates,
+		...zhCNUiChatMessageBudget,
+		...zhCNUiChatMoveCwd,
+		...zhCNUiChatPageChrome,
 		...zhCNUiChatPickers,
+		...zhCNUiChatQuotaResend,
 		...zhCNUiChatRadientSession,
+		...zhCNUiChatReadAck,
 		...zhCNUiChatResponseActions,
 		...zhCNUiChatRunDetails,
+		...zhCNUiChatSessionReadout,
+		...zhCNUiChatSessionSpend,
 		...zhCNUiChatSidebar,
 		...zhCNUiChatSidebarRowBg,
+		...zhCNUiChatSidebarNotes,
 		...zhCNUiChatSidebarView,
+		...zhCNUiChatSlash,
 		...zhCNUiChatStatus,
 		...zhCNUiChatTagDialogs,
 		...zhCNUiChatTagGroups,
@@ -3704,6 +4040,142 @@ export type MessageParams = {
 	"ui.chat.analytics.title": undefined;
 	"ui.chat.analytics.toolbar.refreshing": undefined;
 	"ui.chat.analytics.toolbar.this_session_only": undefined;
+	"ui.chat.approval.escape.default_saved": undefined;
+	"ui.chat.approval.escape.default_saved_session_failed": { detail: string };
+	"ui.chat.approval.escape.global_default": { mode: string };
+	"ui.chat.approval.escape.not_changed": undefined;
+	"ui.chat.approval.escape.pinned_run": { mode: string };
+	"ui.chat.approval.escape.session_override": { mode: string };
+	"ui.chat.approval.escape.session_override_of": {
+		mode: string;
+		globalMode: string;
+	};
+	"ui.chat.approval.escape.session_saved": undefined;
+	"ui.chat.approval.escape.set_all": undefined;
+	"ui.chat.approval.escape.set_session": undefined;
+	"ui.chat.approval.escape.unchanged": { detail: string };
+	"ui.chat.approval.mode.ask": undefined;
+	"ui.chat.approval.mode.auto": undefined;
+	"ui.chat.approval.option.approve": undefined;
+	"ui.chat.approval.option.approve_description": undefined;
+	"ui.chat.approval.option.deny": undefined;
+	"ui.chat.approval.option.deny_description": undefined;
+	"ui.chat.aside.adopt.confirm": { cap: string };
+	"ui.chat.aside.adopt.failed": undefined;
+	"ui.chat.aside.adopt.not_landed": undefined;
+	"ui.chat.aside.adopt.queued": undefined;
+	"ui.chat.aside.adopt.refused.open_tool_batch": undefined;
+	"ui.chat.aside.adopt.refused.session_closed": undefined;
+	"ui.chat.aside.adopt.refused.turn_running": undefined;
+	"ui.chat.aside.adopt.unconfirmed": undefined;
+	"ui.chat.aside.announce.answered": undefined;
+	"ui.chat.aside.announce.answered_truncated": { text: string };
+	"ui.chat.aside.announce.answered_with": { text: string };
+	"ui.chat.aside.announce.asking": undefined;
+	"ui.chat.aside.announce.not_answered": undefined;
+	"ui.chat.aside.ask_busy": undefined;
+	"ui.chat.aside.ask_queued": undefined;
+	"ui.chat.aside.blocked.nothing": undefined;
+	"ui.chat.aside.blocked.nothing_yet": undefined;
+	"ui.chat.aside.blocked.settling": undefined;
+	"ui.chat.aside.blocked.working": undefined;
+	"ui.chat.aside.continuation_escape": undefined;
+	"ui.chat.aside.declined_options": undefined;
+	"ui.chat.aside.model_no_text": undefined;
+	"ui.chat.aside.not_answered": undefined;
+	"ui.chat.aside.off_panel_refusal": { question: string; cause: string };
+	"ui.chat.ask_answer.eyebrow_waiting": undefined;
+	"ui.chat.ask_answer.lost_to_reconnect": undefined;
+	"ui.chat.ask_answer.moved_on": undefined;
+	"ui.chat.ask_answer.not_sent": { reason: string };
+	"ui.chat.ask_answer.request_failed": undefined;
+	"ui.chat.ask_answer.secret_docked": undefined;
+	"ui.chat.ask_answer.session_unreachable": undefined;
+	"ui.chat.ask_answer.settled_elsewhere": undefined;
+	"ui.chat.ask_answer.unconfirmed": { lead: string; reason: string };
+	"ui.chat.ask_answer.unconfirmed_lead": undefined;
+	"ui.chat.ask_panel.answer.attachment_refusal": undefined;
+	"ui.chat.ask_panel.answer.limit_notice": { max: number };
+	"ui.chat.ask_panel.dock.asking": undefined;
+	"ui.chat.ask_panel.dock.keys_one": undefined;
+	"ui.chat.ask_panel.dock.keys_range": { max: number };
+	"ui.chat.ask_panel.dock.sending": undefined;
+	"ui.chat.ask_panel.empty.details_missing": undefined;
+	"ui.chat.ask_panel.empty.none_outstanding": undefined;
+	"ui.chat.ask_panel.empty.none_pending": undefined;
+	"ui.chat.ask_panel.empty.none_settled": undefined;
+	"ui.chat.ask_panel.filter.all": undefined;
+	"ui.chat.ask_panel.filter.chip": { label: string; count: number };
+	"ui.chat.ask_panel.filter.pending": undefined;
+	"ui.chat.ask_panel.filter.settled": undefined;
+	"ui.chat.ask_panel.landing.many": { count: number };
+	"ui.chat.ask_panel.landing.one": undefined;
+	"ui.chat.ask_panel.lapse.many": { count: number };
+	"ui.chat.ask_panel.lapse.one": undefined;
+	"ui.chat.ask_panel.no_question_text": undefined;
+	"ui.chat.ask_panel.other_prompt": undefined;
+	"ui.chat.ask_queue.change_window_hint": undefined;
+	"ui.chat.ask_queue.chip.label_collapse": { clause: string; urgent: string };
+	"ui.chat.ask_queue.chip.label_expand": { clause: string; urgent: string };
+	"ui.chat.ask_queue.chip.moved_on": { clause: string; count: number };
+	"ui.chat.ask_queue.deadline.soonest_subject": undefined;
+	"ui.chat.ask_queue.deadline.with_subject": {
+		subject: string;
+		deadline: string;
+	};
+	"ui.chat.ask_queue.drawer.unavailable_clause": undefined;
+	"ui.chat.ask_queue.drawer.unavailable_line": undefined;
+	"ui.chat.ask_queue.drawer.unread_line": undefined;
+	"ui.chat.ask_queue.duration.days": { count: number };
+	"ui.chat.ask_queue.duration.hours": { count: number };
+	"ui.chat.ask_queue.duration.minutes": { count: number };
+	"ui.chat.ask_queue.duration.seconds": { count: number };
+	"ui.chat.ask_queue.duration.unknown": undefined;
+	"ui.chat.ask_queue.expiry.in": { time: string };
+	"ui.chat.ask_queue.expiry.now_long": undefined;
+	"ui.chat.ask_queue.expiry.now_short": undefined;
+	"ui.chat.ask_queue.late_undelivered": undefined;
+	"ui.chat.ask_queue.open_announcement": { clause: string };
+	"ui.chat.ask_queue.rail.close": {
+		hasCap: string;
+		cap: string;
+		subject: string;
+		count: number;
+	};
+	"ui.chat.ask_queue.rail.open": {
+		hasCap: string;
+		cap: string;
+		subject: string;
+		count: number;
+	};
+	"ui.chat.ask_queue.refusal.already_settled": undefined;
+	"ui.chat.ask_queue.refusal.busy": undefined;
+	"ui.chat.ask_queue.refusal.expired": undefined;
+	"ui.chat.ask_queue.response.answered": { askId: string };
+	"ui.chat.ask_queue.response.declined": { askId: string };
+	"ui.chat.ask_queue.response.dismissed": {
+		hasVia: string;
+		via: string;
+		reason: string;
+		askId: string;
+	};
+	"ui.chat.ask_queue.response.late": { askId: string };
+	"ui.chat.ask_queue.response.reason_answered_in_chat": undefined;
+	"ui.chat.ask_queue.response.reason_moot": undefined;
+	"ui.chat.ask_queue.response.surface_phone": undefined;
+	"ui.chat.ask_queue.response.surface_terminal": undefined;
+	"ui.chat.ask_queue.response.timed_out": { waited: string; askId: string };
+	"ui.chat.ask_queue.secret.placeholder_plain": undefined;
+	"ui.chat.ask_queue.secret.placeholder_retype": undefined;
+	"ui.chat.ask_queue.secret.placeholder_skip": undefined;
+	"ui.chat.ask_queue.status.answered": undefined;
+	"ui.chat.ask_queue.status.declined": undefined;
+	"ui.chat.ask_queue.status.dismissed": undefined;
+	"ui.chat.ask_queue.status.expired": undefined;
+	"ui.chat.ask_queue.status.late": undefined;
+	"ui.chat.ask_queue.status.open": undefined;
+	"ui.chat.ask_queue.status.timed_out": undefined;
+	"ui.chat.ask_queue.status.unknown": undefined;
 	"ui.chat.asks.all_asks": undefined;
 	"ui.chat.asks.answer_aria": { question: string };
 	"ui.chat.asks.answer_options": undefined;
@@ -3745,6 +4217,32 @@ export type MessageParams = {
 	"ui.chat.asks.status.withdrawn_label": undefined;
 	"ui.chat.asks.update_answer": undefined;
 	"ui.chat.asks.urgent": undefined;
+	"ui.chat.attachment_refusal.cannot_upload": undefined;
+	"ui.chat.attachment_refusal.clause.read": { name: string };
+	"ui.chat.attachment_refusal.clause.remote": { name: string };
+	"ui.chat.attachment_refusal.clause.upload": { name: string };
+	"ui.chat.attachment_refusal.clause.upload_reason": {
+		name: string;
+		reason: string;
+	};
+	"ui.chat.attachment_refusal.files_many": {
+		total: number;
+		cap: number;
+		dropped: number;
+	};
+	"ui.chat.attachment_refusal.files_one": { total: number; cap: number };
+	"ui.chat.attachment_refusal.images_many": {
+		total: number;
+		cap: number;
+		dropped: number;
+	};
+	"ui.chat.attachment_refusal.images_one": { total: number; cap: number };
+	"ui.chat.attachment_refusal.mixed_many": { clauses: string };
+	"ui.chat.attachment_refusal.mixed_one": { clauses: string };
+	"ui.chat.attachment_refusal.read_many": { names: string };
+	"ui.chat.attachment_refusal.read_one": { name: string };
+	"ui.chat.attachment_refusal.remote_many": { names: string };
+	"ui.chat.attachment_refusal.remote_one": { name: string };
 	"ui.chat.attachments.copy_path": undefined;
 	"ui.chat.attachments.copy_saved_path": undefined;
 	"ui.chat.attachments.expand_aria": { name: string };
@@ -4125,6 +4623,39 @@ export type MessageParams = {
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
 	"ui.chat.composer_media.sends_now": undefined;
+	"ui.chat.composer_notes.default_not_saved": { reason: string };
+	"ui.chat.composer_notes.default_not_saved_fallback": undefined;
+	"ui.chat.composer_notes.default_saved": { model: string };
+	"ui.chat.composer_notes.goal.done_tag": undefined;
+	"ui.chat.composer_notes.goal.stalled.breaker": undefined;
+	"ui.chat.composer_notes.goal.stalled.cap": { count: number };
+	"ui.chat.composer_notes.goal.stalled.cap_fallback": undefined;
+	"ui.chat.composer_notes.goal.stalled.unknown": undefined;
+	"ui.chat.composer_notes.hint.choose_model": undefined;
+	"ui.chat.composer_notes.hint.connect_provider": undefined;
+	"ui.chat.composer_notes.outside_mentions": { count: number };
+	"ui.chat.composer_notes.skill_empty_body": { name: string };
+	"ui.chat.composer_notes.skill_load_failed": { name: string };
+	"ui.chat.composer_notes.slash_needs_name": { command: string };
+	"ui.chat.credential_notice.armed": undefined;
+	"ui.chat.credential_notice.chip_title": { index: number; chars: number };
+	"ui.chat.credential_notice.clear_label": { index: number };
+	"ui.chat.credential_notice.cleared": {
+		key: string;
+		index: number;
+		undoCap: string;
+	};
+	"ui.chat.credential_notice.discarded": undefined;
+	"ui.chat.credential_notice.empty_span": undefined;
+	"ui.chat.credential_notice.empty_span_draft": undefined;
+	"ui.chat.credential_notice.escape_held": undefined;
+	"ui.chat.credential_notice.operator_move": undefined;
+	"ui.chat.credential_notice.typing": undefined;
+	"ui.chat.credential_notice.unconfirmed_alone": undefined;
+	"ui.chat.credential_notice.unconfirmed_labelled": { key: string };
+	"ui.chat.credential_notice.unconfirmed_words": undefined;
+	"ui.chat.credential_notice.undo": undefined;
+	"ui.chat.credential_notice.unredacted": { length: number };
 	"ui.chat.device.check_again": undefined;
 	"ui.chat.device.fact.this_device": undefined;
 	"ui.chat.device.footer.move_deletes_copy": undefined;
@@ -4154,6 +4685,30 @@ export type MessageParams = {
 		name: string;
 		reason: string;
 	};
+	"ui.chat.device_move.another_device": undefined;
+	"ui.chat.device_move.gate.below_version": undefined;
+	"ui.chat.device_move.gate.checking": undefined;
+	"ui.chat.device_move.gate.unpaired": undefined;
+	"ui.chat.device_move.ineligible.cannot_receive": undefined;
+	"ui.chat.device_move.ineligible.no_answer": undefined;
+	"ui.chat.device_move.ineligible.no_transfer": undefined;
+	"ui.chat.device_move.moving": { name: string };
+	"ui.chat.device_move.other_device": undefined;
+	"ui.chat.device_move.plan.copy": { name: string };
+	"ui.chat.device_move.plan.copy_here": undefined;
+	"ui.chat.device_move.plan.move": { name: string };
+	"ui.chat.device_move.plan.recall": undefined;
+	"ui.chat.device_move.result.back.detail": undefined;
+	"ui.chat.device_move.result.back.detail_deleted": { from: string };
+	"ui.chat.device_move.result.back.verb": undefined;
+	"ui.chat.device_move.result.copied.detail": { name: string; id: string };
+	"ui.chat.device_move.result.copied.second": { name: string };
+	"ui.chat.device_move.result.copied.verb": { name: string };
+	"ui.chat.device_move.result.moved.detail_running": undefined;
+	"ui.chat.device_move.result.moved.detail_there": undefined;
+	"ui.chat.device_move.result.moved.second": { name: string };
+	"ui.chat.device_move.result.moved.verb": { name: string };
+	"ui.chat.device_move.result.source_retired": undefined;
 	"ui.chat.dialogs.archive_action": undefined;
 	"ui.chat.dialogs.cancel": undefined;
 	"ui.chat.dialogs.delete_action": undefined;
@@ -4207,6 +4762,16 @@ export type MessageParams = {
 	"ui.chat.directory.tooltip.pending_move": { path: string };
 	"ui.chat.directory.tooltip.set": undefined;
 	"ui.chat.directory.tooltip.truncated_move_cost": { path: string };
+	"ui.chat.fast_mode.dial_differs": { dial: string; requested: string };
+	"ui.chat.fast_mode.first_message_off": undefined;
+	"ui.chat.fast_mode.first_message_on": undefined;
+	"ui.chat.fast_mode.not_changed": undefined;
+	"ui.chat.fast_mode.pick_unsupported": undefined;
+	"ui.chat.fast_mode.service_cannot_carry": undefined;
+	"ui.chat.fast_mode.service_unavailable": undefined;
+	"ui.chat.fast_mode.stays_on": undefined;
+	"ui.chat.fast_mode.turned_off": undefined;
+	"ui.chat.fast_mode.unsupported_stays_off": undefined;
 	"ui.chat.header.actions": undefined;
 	"ui.chat.header.archive_conversation": undefined;
 	"ui.chat.header.archived": undefined;
@@ -4228,6 +4793,24 @@ export type MessageParams = {
 	"ui.chat.header.session_model_switch": undefined;
 	"ui.chat.header.starting_session": undefined;
 	"ui.chat.header.transcript_display": undefined;
+	"ui.chat.header_menu.close_asks": undefined;
+	"ui.chat.header_menu.close_browser": undefined;
+	"ui.chat.header_menu.close_canvas": undefined;
+	"ui.chat.header_menu.close_code_review": undefined;
+	"ui.chat.header_menu.close_console": undefined;
+	"ui.chat.header_menu.default_description": undefined;
+	"ui.chat.header_menu.open_asks": undefined;
+	"ui.chat.header_menu.open_browser": undefined;
+	"ui.chat.header_menu.open_canvas": undefined;
+	"ui.chat.header_menu.open_code_review": undefined;
+	"ui.chat.header_menu.open_console": undefined;
+	"ui.chat.header_menu.rename_failed": undefined;
+	"ui.chat.interrupt.idle": undefined;
+	"ui.chat.interrupt.idle_disputed": undefined;
+	"ui.chat.interrupt.stopped_both": { children: number; jobs: number };
+	"ui.chat.interrupt.stopped_children": { count: number };
+	"ui.chat.interrupt.stopped_jobs": { count: number };
+	"ui.chat.interrupt.unavailable": undefined;
 	"ui.chat.action.stopped": undefined;
 	"ui.chat.approval.reply_required": undefined;
 	"ui.chat.aside.add_to_conversation": undefined;
@@ -4472,6 +5055,52 @@ export type MessageParams = {
 	"ui.chat.live_updates.reload": undefined;
 	"ui.chat.live_updates.reload_failed": undefined;
 	"ui.chat.live_updates.reloading": undefined;
+	"ui.chat.message_budget.bytes": { count: number };
+	"ui.chat.message_budget.command_chars": { count: number; limit: string };
+	"ui.chat.message_budget.command_size": { size: string; limit: string };
+	"ui.chat.message_budget.fork_chars": { count: number; limit: string };
+	"ui.chat.message_budget.fork_size": { size: string; limit: string };
+	"ui.chat.message_budget.images_size": { size: string; limit: string };
+	"ui.chat.message_budget.message_chars": { count: number; limit: string };
+	"ui.chat.message_budget.prompt_chars": { count: number; limit: string };
+	"ui.chat.message_budget.prompt_size": { size: string; limit: string };
+	"ui.chat.message_budget.text_size": { size: string; limit: string };
+	"ui.chat.move_cwd.already_in": { label: string };
+	"ui.chat.move_cwd.failed": undefined;
+	"ui.chat.move_cwd.in_flight": undefined;
+	"ui.chat.move_cwd.moved": { label: string };
+	"ui.chat.move_cwd.moved_restarting": { label: string };
+	"ui.chat.move_cwd.moved_restarting_lost": { label: string };
+	"ui.chat.move_cwd.not_ready": undefined;
+	"ui.chat.move_cwd.unavailable": undefined;
+	"ui.chat.page_chrome.aside_text_only": undefined;
+	"ui.chat.page_chrome.backend.connecting": undefined;
+	"ui.chat.page_chrome.backend.no_answer": undefined;
+	"ui.chat.page_chrome.backend.update_needed": undefined;
+	"ui.chat.page_chrome.credential_not_stored": undefined;
+	"ui.chat.page_chrome.error_view.failed": undefined;
+	"ui.chat.page_chrome.error_view.failed_with_message": { message: string };
+	"ui.chat.page_chrome.error_view.unreachable": undefined;
+	"ui.chat.page_chrome.error_view.unreachable_with_message": {
+		message: string;
+	};
+	"ui.chat.page_chrome.legacy_link": undefined;
+	"ui.chat.page_chrome.options.choose_agent": undefined;
+	"ui.chat.page_chrome.options.choose_team": undefined;
+	"ui.chat.page_chrome.options.fork": undefined;
+	"ui.chat.page_chrome.options.model": undefined;
+	"ui.chat.page_chrome.options.new": undefined;
+	"ui.chat.page_chrome.options.rename": undefined;
+	"ui.chat.page_chrome.options.resume": undefined;
+	"ui.chat.page_chrome.options.settings": undefined;
+	"ui.chat.page_chrome.scroll_to_bottom.new_activity": undefined;
+	"ui.chat.page_chrome.status_strip.connection": undefined;
+	"ui.chat.page_chrome.status_strip.offline": undefined;
+	"ui.chat.page_chrome.status_strip.outcome_refused": undefined;
+	"ui.chat.page_chrome.status_strip.outcome_unreachable": undefined;
+	"ui.chat.page_chrome.status_strip.retry": undefined;
+	"ui.chat.page_chrome.status_strip.retrying": undefined;
+	"ui.chat.page_chrome.stop_unconfirmed": undefined;
 	"ui.chat.pickers.analytics_model.all_sessions": { base: string };
 	"ui.chat.pickers.analytics_model.as_of": {
 		base: string;
@@ -5525,6 +6154,13 @@ export type MessageParams = {
 		destination: string;
 	};
 	"ui.chat.pickers.use_picker_backend.the_backend_refused_it": undefined;
+	"ui.chat.quota_resend.failed": undefined;
+	"ui.chat.quota_resend.rate_limited": undefined;
+	"ui.chat.quota_resend.refresh_checking": undefined;
+	"ui.chat.quota_resend.refresh_failed": undefined;
+	"ui.chat.quota_resend.refresh_unchanged": undefined;
+	"ui.chat.quota_resend.sending": undefined;
+	"ui.chat.quota_resend.sent": undefined;
 	"ui.chat.radient_session.action.sign_in": undefined;
 	"ui.chat.radient_session.pointer.sign_in_active": undefined;
 	"ui.chat.radient_session.prose.input_required": { message: string };
@@ -5533,6 +6169,22 @@ export type MessageParams = {
 	"ui.chat.radient_session.title.input_required": undefined;
 	"ui.chat.radient_session.title.needs_sign_in": undefined;
 	"ui.chat.radient_session.title.signing_in": undefined;
+	"ui.chat.read_ack.clause.offscreen": undefined;
+	"ui.chat.read_ack.clause.pending": undefined;
+	"ui.chat.read_ack.clause.remote": undefined;
+	"ui.chat.read_ack.clause.remote_named": { device: string };
+	"ui.chat.read_ack.description.offscreen": undefined;
+	"ui.chat.read_ack.description.pending": undefined;
+	"ui.chat.read_ack.description.remote": undefined;
+	"ui.chat.read_ack.description.remote_named": { device: string };
+	"ui.chat.read_ack.description.unsettled": { remedy: string };
+	"ui.chat.read_ack.refusal.busy": { remedy: string };
+	"ui.chat.read_ack.refusal.refused": { remedy: string };
+	"ui.chat.read_ack.refusal.unreachable": { reason: string; remedy: string };
+	"ui.chat.read_ack.refusal.unreported": { remedy: string };
+	"ui.chat.read_ack.retry_remedy": undefined;
+	"ui.chat.read_ack.retry_remedy_sentence": undefined;
+	"ui.chat.read_ack.unreachable_fallback": undefined;
 	"ui.chat.response_actions.answer_label": undefined;
 	"ui.chat.response_actions.copied": undefined;
 	"ui.chat.response_actions.copy": undefined;
@@ -5634,6 +6286,129 @@ export type MessageParams = {
 	"ui.chat.run_details.wake_cancel.cancelling": undefined;
 	"ui.chat.run_details.wake_cancel.keep": undefined;
 	"ui.chat.run_details.wakes.title": undefined;
+	"ui.chat.session_readout.access.absent.description_connect": undefined;
+	"ui.chat.session_readout.access.absent.description_remote": undefined;
+	"ui.chat.session_readout.access.absent.title": { label: string };
+	"ui.chat.session_readout.access.device_bound.description": undefined;
+	"ui.chat.session_readout.access.device_bound.title": { label: string };
+	"ui.chat.session_readout.access.effective_borrow.description": undefined;
+	"ui.chat.session_readout.access.effective_borrow.title": {
+		label: string;
+		owner: string;
+	};
+	"ui.chat.session_readout.access.eligible_borrow_unverified.description": {
+		label: string;
+		owner: string;
+	};
+	"ui.chat.session_readout.access.eligible_borrow_unverified.title": {
+		owner: string;
+	};
+	"ui.chat.session_readout.access.expired.description": { owner: string };
+	"ui.chat.session_readout.access.expired.title": { label: string };
+	"ui.chat.session_readout.access.history.grant_expiry": { time: string };
+	"ui.chat.session_readout.access.history.last_checked": { time: string };
+	"ui.chat.session_readout.access.history.last_resolved": { time: string };
+	"ui.chat.session_readout.access.history.only": undefined;
+	"ui.chat.session_readout.access.local.description": undefined;
+	"ui.chat.session_readout.access.local.title": { label: string };
+	"ui.chat.session_readout.access.owner_fallback": undefined;
+	"ui.chat.session_readout.access.owner_unavailable.description": {
+		label: string;
+		owner: string;
+	};
+	"ui.chat.session_readout.access.owner_unavailable.title": { owner: string };
+	"ui.chat.session_readout.access.pending.description": undefined;
+	"ui.chat.session_readout.access.pending.title": { label: string };
+	"ui.chat.session_readout.access.withdrawn.description": undefined;
+	"ui.chat.session_readout.access.withdrawn.title": { label: string };
+	"ui.chat.session_readout.draft.confirm_effort_changed": {
+		selector: string;
+		level: string;
+		wanted: string;
+	};
+	"ui.chat.session_readout.draft.confirm_effort_unset": {
+		selector: string;
+		wanted: string;
+	};
+	"ui.chat.session_readout.draft.confirm_model": { selector: string };
+	"ui.chat.session_readout.draft.confirm_model_effort": {
+		selector: string;
+		effort: string;
+	};
+	"ui.chat.session_readout.draft.refusal_ladder_unread": undefined;
+	"ui.chat.session_readout.effort.detail.auto": { levels: string };
+	"ui.chat.session_readout.effort.detail.auto_with_default": {
+		default: string;
+		levels: string;
+	};
+	"ui.chat.session_readout.effort.detail.default_only": undefined;
+	"ui.chat.session_readout.effort.detail.no_levels": undefined;
+	"ui.chat.session_readout.effort.detail.not_reported": { command: string };
+	"ui.chat.session_readout.effort.detail.offers": { levels: string };
+	"ui.chat.session_readout.effort.detail.session": undefined;
+	"ui.chat.session_readout.effort.level.auto": undefined;
+	"ui.chat.session_readout.effort.level.max": undefined;
+	"ui.chat.session_readout.effort.level.minimal": undefined;
+	"ui.chat.session_readout.effort.level.none": undefined;
+	"ui.chat.session_readout.effort.level.reasoning": undefined;
+	"ui.chat.session_readout.effort.level.unknown": undefined;
+	"ui.chat.session_readout.effort.level.xhigh": undefined;
+	"ui.chat.session_readout.model.router_auto": undefined;
+	"ui.chat.session_readout.strip.draft_failed.detail": undefined;
+	"ui.chat.session_readout.strip.draft_failed.retry": undefined;
+	"ui.chat.session_readout.strip.draft_failed.title": undefined;
+	"ui.chat.session_readout.strip.draft_pending.detail": undefined;
+	"ui.chat.session_readout.strip.draft_pending.label": undefined;
+	"ui.chat.session_readout.strip.draft_pending.title": undefined;
+	"ui.chat.session_readout.strip.effort_aria": { level: string };
+	"ui.chat.session_readout.strip.fast_mode_on": undefined;
+	"ui.chat.session_readout.strip.model_switching": undefined;
+	"ui.chat.session_readout.strip.readings_dropped": undefined;
+	"ui.chat.session_spend.api_equivalent_labelled": { label: string };
+	"ui.chat.session_spend.basis.billed": undefined;
+	"ui.chat.session_spend.basis.estimated": undefined;
+	"ui.chat.session_spend.basis.included": undefined;
+	"ui.chat.session_spend.basis.not_tracked": undefined;
+	"ui.chat.session_spend.basis_unavailable": undefined;
+	"ui.chat.session_spend.child_line": { amount: string; bases: string };
+	"ui.chat.session_spend.context.estimate": undefined;
+	"ui.chat.session_spend.context.model_maximum": { window: string };
+	"ui.chat.session_spend.context.no_reading": undefined;
+	"ui.chat.session_spend.context.title": undefined;
+	"ui.chat.session_spend.context.tokens_of_window": {
+		tokens: number;
+		window: number;
+		windowLabel: string;
+	};
+	"ui.chat.session_spend.context.window_unknown": { tokens: string };
+	"ui.chat.session_spend.duration_explanation": undefined;
+	"ui.chat.session_spend.included_api_equivalent": undefined;
+	"ui.chat.session_spend.plan_clause": { amount: string };
+	"ui.chat.session_spend.price_unknown": undefined;
+	"ui.chat.session_spend.summary.basis_amount": {
+		label: string;
+		amount: string;
+	};
+	"ui.chat.session_spend.summary.basis_amount_api_equivalent": {
+		label: string;
+		amount: string;
+	};
+	"ui.chat.session_spend.summary.records_unpriced": { count: number };
+	"ui.chat.session_spend.summary.subagent_part": { amount: string };
+	"ui.chat.session_spend.summary.total": { total: string };
+	"ui.chat.session_spend.summary.untracked": {
+		amount: string;
+		children: string;
+	};
+	"ui.chat.session_spend.tooltip.channels_untracked": undefined;
+	"ui.chat.session_spend.tooltip.nothing_spent": undefined;
+	"ui.chat.session_spend.tooltip.part_unpriced": undefined;
+	"ui.chat.session_spend.tooltip.some_unpriced": undefined;
+	"ui.chat.session_spend.tooltip.spend_at_least": { amount: string };
+	"ui.chat.session_spend.tooltip.spend_at_least_untracked": { amount: string };
+	"ui.chat.session_spend.tooltip.spend_so_far": { amount: string };
+	"ui.chat.session_spend.tooltip.unpriced_model": undefined;
+	"ui.chat.session_spend.untracked_basis": undefined;
 	"ui.chat.sidebar.agents.builtin_offer": { count: number; list: string };
 	"ui.chat.sidebar.agents.clear_filter": undefined;
 	"ui.chat.sidebar.agents.create": undefined;
@@ -5731,6 +6506,14 @@ export type MessageParams = {
 	"ui.chat.sidebar.row.bg.subagents": { count: number };
 	"ui.chat.sidebar.row.bg.subagents_queued": { count: number };
 	"ui.chat.sidebar.row.bg.waiting": undefined;
+	"ui.chat.sidebar_notes.clear_all_why": undefined;
+	"ui.chat.sidebar_notes.draft_sending_why": undefined;
+	"ui.chat.sidebar_notes.loading_more": undefined;
+	"ui.chat.sidebar_notes.opened_by_anonymous": undefined;
+	"ui.chat.sidebar_notes.opened_by_named": { agent: string };
+	"ui.chat.sidebar_notes.running_none": undefined;
+	"ui.chat.sidebar_notes.running_unread": undefined;
+	"ui.chat.sidebar_notes.stale_list": { message: string };
 	"ui.chat.sidebar_view.active_first": undefined;
 	"ui.chat.sidebar_view.agent_team": undefined;
 	"ui.chat.sidebar_view.clock_hint": undefined;
@@ -5757,6 +6540,95 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.tag": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
+	"ui.chat.slash.arg.credential_api_key": undefined;
+	"ui.chat.slash.arg.mcp_detail.reauthorize": undefined;
+	"ui.chat.slash.arg.mcp_detail.reuse": undefined;
+	"ui.chat.slash.arg.mcp_detail.stored": undefined;
+	"ui.chat.slash.arg.mcp_detail.stored_connected": undefined;
+	"ui.chat.slash.arg.mcp_status.connected": undefined;
+	"ui.chat.slash.arg.mcp_status.connecting": undefined;
+	"ui.chat.slash.arg.mcp_status.error": undefined;
+	"ui.chat.slash.arg.mcp_status.needs_sign_in": undefined;
+	"ui.chat.slash.arg.mcp_status.not_started": undefined;
+	"ui.chat.slash.arg.model_aggregated": undefined;
+	"ui.chat.slash.arg.model_needs_sign_in": undefined;
+	"ui.chat.slash.arg.price_free": undefined;
+	"ui.chat.slash.arg.price_usage_based": undefined;
+	"ui.chat.slash.arg.provider_state.env_key": undefined;
+	"ui.chat.slash.arg.provider_state.local_ready": undefined;
+	"ui.chat.slash.arg.provider_state.local_unconfigured": undefined;
+	"ui.chat.slash.arg.provider_state.logged_in": undefined;
+	"ui.chat.slash.arg.provider_state.needs_login": undefined;
+	"ui.chat.slash.arg.removal_many": { count: number };
+	"ui.chat.slash.arg.removal_one": { kind: string };
+	"ui.chat.slash.at.empty": undefined;
+	"ui.chat.slash.at.no_match_files": { query: string; scope: string };
+	"ui.chat.slash.at.no_match_projects": { query: string; scope: string };
+	"ui.chat.slash.at.reading": undefined;
+	"ui.chat.slash.at.unavailable": undefined;
+	"ui.chat.slash.at.unreadable_generic": undefined;
+	"ui.chat.slash.at.unreadable_permission": undefined;
+	"ui.chat.slash.click.verb": { verb: string };
+	"ui.chat.slash.dispatch.backend_incomplete": undefined;
+	"ui.chat.slash.dispatch.below_version": { name: string };
+	"ui.chat.slash.dispatch.could_not_run": { name: string; reason: string };
+	"ui.chat.slash.dispatch.dialog_missing": { name: string };
+	"ui.chat.slash.dispatch.model_resolving": { name: string };
+	"ui.chat.slash.dispatch.model_unresolved": { name: string };
+	"ui.chat.slash.dispatch.move_hint": { example: string };
+	"ui.chat.slash.dispatch.needs_conversation": { name: string };
+	"ui.chat.slash.dispatch.needs_newer_backend": { name: string };
+	"ui.chat.slash.dispatch.no_argument_on_draft": { name: string };
+	"ui.chat.slash.dispatch.not_in_desktop": { name: string };
+	"ui.chat.slash.dispatch.quit_hint": undefined;
+	"ui.chat.slash.dispatch.refreshing_title": undefined;
+	"ui.chat.slash.dispatch.refused": undefined;
+	"ui.chat.slash.dispatch.service_waiting": { name: string };
+	"ui.chat.slash.dispatch.unpaired": { name: string };
+	"ui.chat.slash.empty.loading": undefined;
+	"ui.chat.slash.empty.needs_conversation": undefined;
+	"ui.chat.slash.empty.no_commands": undefined;
+	"ui.chat.slash.empty.no_matches": undefined;
+	"ui.chat.slash.empty.no_servers": undefined;
+	"ui.chat.slash.empty.not_reported": undefined;
+	"ui.chat.slash.enter.chooses_name": undefined;
+	"ui.chat.slash.enter.closes_list": undefined;
+	"ui.chat.slash.enter.completes": { label: string };
+	"ui.chat.slash.enter.completes_then_connects": { name: string };
+	"ui.chat.slash.enter.completes_then_runs": { label: string };
+	"ui.chat.slash.enter.completes_then_runs_value": undefined;
+	"ui.chat.slash.enter.completes_to": { prefix: string };
+	"ui.chat.slash.enter.completes_value": undefined;
+	"ui.chat.slash.enter.connects": { name: string };
+	"ui.chat.slash.enter.runs": { label: string };
+	"ui.chat.slash.enter.runs_target": { target: string };
+	"ui.chat.slash.enter.stages": { label: string };
+	"ui.chat.slash.enter.stages_no_conversation": { label: string };
+	"ui.chat.slash.enter.verb": { verb: string };
+	"ui.chat.slash.footer.default_needs_model": undefined;
+	"ui.chat.slash.footer.default_sets": undefined;
+	"ui.chat.slash.list.load_failed": undefined;
+	"ui.chat.slash.list.no_profiles": undefined;
+	"ui.chat.slash.list.no_stored_credential": undefined;
+	"ui.chat.slash.list.no_teams": undefined;
+	"ui.chat.slash.locked.fields": undefined;
+	"ui.chat.slash.locked.taken": { word: string };
+	"ui.chat.slash.locked.undo": { cap: string };
+	"ui.chat.slash.needs_conversation_clause": undefined;
+	"ui.chat.slash.skill.click_footer": { name: string };
+	"ui.chat.slash.skill.empty_attached": undefined;
+	"ui.chat.slash.skill.empty_draft": undefined;
+	"ui.chat.slash.skill.enter_footer": { name: string };
+	"ui.chat.slash.skill.loading": undefined;
+	"ui.chat.slash.skill.miss": undefined;
+	"ui.chat.slash.skill.phase_label": undefined;
+	"ui.chat.slash.skill.transient": undefined;
+	"ui.chat.slash.skill.unavailable": undefined;
+	"ui.chat.slash.staged.refused": { sentence: string; clause: string };
+	"ui.chat.slash.staged.runs": { sentence: string };
+	"ui.chat.slash.staged.runs_again": { sentence: string };
+	"ui.chat.slash.staged.sets_goal": { sentence: string };
+	"ui.chat.slash.tag.add_named": { name: string };
 	"ui.chat.status.credential_refused": undefined;
 	"ui.chat.status.degraded": undefined;
 	"ui.chat.status.internet_offline": undefined;

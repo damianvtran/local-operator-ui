@@ -297,7 +297,7 @@ export function moveGateReason(state: DesktopFeatureState): string | null {
 			 * four, so it alone set the panel's width. "checking…" says the same thing
 			 * in one word.
 			 */
-			return "checking…";
+			return t("ui.chat.device_move.gate.checking");
 		case "unpaired":
 			/*
 			 * A CREDENTIAL fact, in the app's own words for it (design round 2, D6):
@@ -307,10 +307,10 @@ export function moveGateReason(state: DesktopFeatureState): string | null {
 			 * app means the device MESH, so the old wording sent the user to create or
 			 * join a mesh, which does not fix a missing credential.
 			 */
-			return "this app is not paired with the backend";
+			return t("ui.chat.device_move.gate.unpaired");
 		case "below-version":
 			/* The backend answered and does not advertise the capability. */
-			return "this backend cannot move a conversation";
+			return t("ui.chat.device_move.gate.below_version");
 	}
 }
 
@@ -425,10 +425,11 @@ function ineligibleReason(input: {
 	canTransfer: boolean;
 	reachable: boolean;
 }): string {
-	if (!input.canTransfer) return "this backend cannot move a conversation yet";
+	if (!input.canTransfer)
+		return t("ui.chat.device_move.ineligible.no_transfer");
 	return input.reachable
-		? "cannot receive a move"
-		: "did not answer the last read";
+		? t("ui.chat.device_move.ineligible.cannot_receive")
+		: t("ui.chat.device_move.ineligible.no_answer");
 }
 
 export type PickerInput = {
@@ -796,7 +797,7 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 			placement.kind === "moving"
 				? moveFooter()
 				: placement.kind === "gone"
-					? lossSentence(placement.name, "this device")
+					? lossSentence(placement.name, t("ui.mesh.mesh_drop.this_device"))
 					: null,
 		/*
 		 * THE PAIRING LINE IS ONLY TRUE OF AN ANSWERED READ. `pending` gets neither
@@ -809,7 +810,10 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 				: null,
 		readFailure: failed ? meshReadFailure() : null,
 		inFlight: input.busy
-			? moveHoldSentence(placementDeviceName(placement) || "another device")
+			? moveHoldSentence(
+					placementDeviceName(placement) ||
+						t("ui.chat.device_move.another_device"),
+				)
 			: null,
 		offerCheckAgain:
 			failed || (networks.length > 0 && (!answered || unreachableRow)),
@@ -876,10 +880,10 @@ export function arrivalCopy(input: {
 	const { engaged, name, from, newSessionId, sourceRetired } = input;
 	if (from !== null) {
 		return {
-			verb: "Moved back to this device",
+			verb: t("ui.chat.device_move.result.back.verb"),
 			detail: sourceRetired
-				? `the conversation is here now; the copy on ${from} was deleted`
-				: "the conversation is here now",
+				? t("ui.chat.device_move.result.back.detail_deleted", { from })
+				: t("ui.chat.device_move.result.back.detail"),
 			/*
 			 * NO SECOND LINE, and it is the cold arrival's own condition that says why:
 			 * the mandatory line exists to stop a reader waiting for output on a machine
@@ -891,8 +895,11 @@ export function arrivalCopy(input: {
 	}
 	if (!sourceRetired) {
 		return {
-			verb: `Copied to ${name}`,
-			detail: `${name} holds a copy as ${newSessionId.slice(-6)}; the original is still here`,
+			verb: t("ui.chat.device_move.result.copied.verb", { name }),
+			detail: t("ui.chat.device_move.result.copied.detail", {
+				name,
+				id: newSessionId.slice(-6),
+			}),
 			/*
 			 * THE COLD LINE ADAPTS, and "in the copy" is not decoration: the move arm's
 			 * "start it there" reads back to its nearest noun, which in this arm is "the
@@ -904,20 +911,20 @@ export function arrivalCopy(input: {
 			second:
 				engaged === true
 					? null
-					: `Nothing is running on ${name} yet. Send a message in the copy to start it there, or open it from the session list.`,
+					: t("ui.chat.device_move.result.copied.second", { name }),
 		};
 	}
 	if (engaged === true) {
 		return {
-			verb: `Moved to ${name}`,
-			detail: "the conversation is running there now; the copy here is deleted",
+			verb: t("ui.chat.device_move.result.moved.verb", { name }),
+			detail: t("ui.chat.device_move.result.moved.detail_running"),
 			second: null,
 		};
 	}
 	return {
-		verb: `Moved to ${name}`,
-		detail: "the conversation is there; the copy here is deleted",
-		second: `Nothing is running on ${name} yet. Send a message to start it there, or open the conversation on that device.`,
+		verb: t("ui.chat.device_move.result.moved.verb", { name }),
+		detail: t("ui.chat.device_move.result.moved.detail_there"),
+		second: t("ui.chat.device_move.result.moved.second", { name }),
 	};
 }
 
@@ -929,8 +936,8 @@ export function arrivalCopy(input: {
  * silently empty - the two facts the tombstone carries are WHERE it went and
  * that this copy was deleted.
  */
-export const SOURCE_RETIRED_DETAIL =
-	"the copy on this device was deleted when the move committed";
+export const sourceRetiredDetail = (): string =>
+	t("ui.chat.device_move.result.source_retired");
 
 /** The words a picker row and a chip both need for a device: never an empty label. */
 export function deviceName(name: string, deviceId: string): string {
@@ -987,22 +994,25 @@ export function movePair(input: {
 	 * for a third device are `ineligible` in `devicePickerModel` rather than
 	 * composed here - so no reachable pick reaches this arm with a different end.
 	 */
-	const handedOver = "this device";
+	const handedOver = t("ui.mesh.mesh_drop.this_device");
 	if (input.recall) {
 		return {
 			plan: {
 				...common,
 				to: "local",
 				keep: false,
-				verb: "Recall to this device",
-				lost: lossSentence(input.source ?? "the other device", "this device"),
+				verb: t("ui.chat.device_move.plan.recall"),
+				lost: lossSentence(
+					input.source ?? t("ui.chat.device_move.other_device"),
+					t("ui.mesh.mesh_drop.this_device"),
+				),
 			},
 			alternatives: [
 				{
 					...common,
 					to: "local",
 					keep: true,
-					verb: "Copy here, leave it there",
+					verb: t("ui.chat.device_move.plan.copy_here"),
 					lost: null,
 				},
 			],
@@ -1013,7 +1023,7 @@ export function movePair(input: {
 			...common,
 			to: input.destination.deviceId,
 			keep: false,
-			verb: `Move to ${destination}`,
+			verb: t("ui.chat.device_move.plan.move", { name: destination }),
 			lost: lossSentence(handedOver, destination),
 		},
 		alternatives: [
@@ -1021,7 +1031,7 @@ export function movePair(input: {
 				...common,
 				to: input.destination.deviceId,
 				keep: true,
-				verb: `Copy to ${destination}`,
+				verb: t("ui.chat.device_move.plan.copy", { name: destination }),
 				lost: null,
 			},
 		],

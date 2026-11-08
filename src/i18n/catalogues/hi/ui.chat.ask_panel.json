@@ -1,0 +1,22 @@
+{
+	"ui.chat.ask_panel.answer.attachment_refusal": "जवाब के साथ फ़ाइलें और तस्वीरें अभी अटैच नहीं की जा सकतीं। अपना जवाब यहीं टाइप करें, या फ़ाइल चैट में भेजें।",
+	"ui.chat.ask_panel.answer.limit_notice": "जवाब {max, number} अक्षरों पर रुक जाते हैं; उससे आगे का हिस्सा सहेजा नहीं जाता।",
+	"ui.chat.ask_panel.dock.asking": "एजेंट पूछ रहा है",
+	"ui.chat.ask_panel.dock.keys_one": "1 से जवाब दें",
+	"ui.chat.ask_panel.dock.keys_range": "1-{max, number} से जवाब दें",
+	"ui.chat.ask_panel.dock.sending": "आपका जवाब भेजा जा रहा है…",
+	"ui.chat.ask_panel.empty.details_missing": "इन सवालों का विवरण लोड नहीं हो सका।",
+	"ui.chat.ask_panel.empty.none_outstanding": "कोई सवाल बाकी नहीं है। एजेंट किसी चीज़ का इंतज़ार नहीं कर रहा।",
+	"ui.chat.ask_panel.empty.none_pending": "कोई सवाल लंबित नहीं है। सभी निपट चुके हैं — “निपटे हुए” देखें।",
+	"ui.chat.ask_panel.empty.none_settled": "अभी कोई सवाल नहीं निपटा है। सभी अब भी लंबित हैं।",
+	"ui.chat.ask_panel.filter.all": "सभी",
+	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
+	"ui.chat.ask_panel.filter.pending": "लंबित",
+	"ui.chat.ask_panel.filter.settled": "निपटे हुए",
+	"ui.chat.ask_panel.landing.many": "{count, plural, one {# सवाल की समय-सीमा खत्म हो गई} other {# सवालों की समय-सीमा खत्म हो गई}}",
+	"ui.chat.ask_panel.landing.one": "सवाल की समय-सीमा खत्म हो गई",
+	"ui.chat.ask_panel.lapse.many": "{count, plural, one {# सवाल की समय-सीमा खत्म हो गई; आपका जवाब नहीं भेजा गया।} other {# सवालों की समय-सीमा खत्म हो गई; आपके जवाब नहीं भेजे गए।}}",
+	"ui.chat.ask_panel.lapse.one": "उस सवाल की समय-सीमा खत्म हो गई; आपका जवाब नहीं भेजा गया।",
+	"ui.chat.ask_panel.no_question_text": "सवाल का कोई टेक्स्ट नहीं",
+	"ui.chat.ask_panel.other_prompt": "अपना जवाब टाइप करें"
+}

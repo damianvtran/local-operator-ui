@@ -16,7 +16,7 @@
  * what this thing IS versus where it stands right now.
  */
 
-import { t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import type { MessageKey } from "@shared/i18n";
 
 import type {
@@ -349,8 +349,8 @@ export function mcpInServerSlot(argument: string): boolean {
  * is empty BY DESIGN (round 1, U2). The route sentence stays: Enter really
  * does run the command.
  */
-export const MCP_EMPTY_SLOT_COPY =
-	"No servers to choose. Enter runs the command.";
+export const mcpEmptySlotCopy = (): string =>
+	t("ui.chat.slash.empty.no_servers");
 
 /**
  * The minimum version of a `requires` feature that licenses its inline list.
@@ -695,9 +695,9 @@ export function formatPricePair(
 	output: number,
 	routed: boolean,
 ): string {
-	if (routed) return "usage-based";
+	if (routed) return t("ui.chat.slash.arg.price_usage_based");
 	if (!(input >= 0) || !(output >= 0)) return "";
-	if (input === 0 && output === 0) return "free";
+	if (input === 0 && output === 0) return t("ui.chat.slash.arg.price_free");
 	return `$${trimPrice(input)}/${trimPrice(output)}`;
 }
 
@@ -886,10 +886,14 @@ const asAliases = (value: unknown): readonly string[] | undefined =>
  * `remove <kind>`, and the same two words `/accounts` prints, so one credential
  * does not have two names across two surfaces.
  */
-const CREDENTIAL_KINDS: Record<string, string> = {
-	oauth: "oauth",
-	api_key: "api key",
-};
+/* `oauth` is the wire kind word, shown as is; only `api key` is prose. Resolved
+ * per call so the word follows the language in force. */
+const credentialKindWord = (kind: string): string =>
+	kind === "api_key"
+		? t("ui.chat.slash.arg.credential_api_key")
+		: kind === "oauth"
+			? "oauth"
+			: kind;
 
 /**
  * The accounts route's sentinel for "no label found"
@@ -906,12 +910,21 @@ const STORED_CREDENTIAL_FALLBACK = "Stored credential";
  * composer's detail column here say one thing about one provider. The strings
  * are the spec's §5 copy table, pinned by `scripts/slash-contract.test.mjs`.
  */
-const PROVIDER_STATE_COPY: Record<string, string> = {
-	logged_in: "logged in",
-	env_key: "env key",
-	needs_login: "needs login",
-	local_ready: "configured server",
-	local_unconfigured: "configure server",
+const providerStateCopy = (state: string): string | undefined => {
+	switch (state) {
+		case "logged_in":
+			return t("ui.chat.slash.arg.provider_state.logged_in");
+		case "env_key":
+			return t("ui.chat.slash.arg.provider_state.env_key");
+		case "needs_login":
+			return t("ui.chat.slash.arg.provider_state.needs_login");
+		case "local_ready":
+			return t("ui.chat.slash.arg.provider_state.local_ready");
+		case "local_unconfigured":
+			return t("ui.chat.slash.arg.provider_state.local_unconfigured");
+		default:
+			return undefined;
+	}
 };
 
 /** `_squashed` (`app.py:52585`): the ASCII half of a name, lowercased. */
@@ -962,12 +975,21 @@ const MCP_OFFER_ACTIONS: Record<string, readonly string[]> = {
  * state, and `needs_sign_in` reads "needs sign-in" rather than the TUI's
  * `auth-required` because the composer has no room to teach the wire word.
  */
-const MCP_STATUS_WORDS: Record<string, string> = {
-	connected: "connected",
-	connecting: "connecting",
-	needs_sign_in: "needs sign-in",
-	not_started: "not connected",
-	error: "error",
+const mcpStatusWord = (status: string): string | undefined => {
+	switch (status) {
+		case "connected":
+			return t("ui.chat.slash.arg.mcp_status.connected");
+		case "connecting":
+			return t("ui.chat.slash.arg.mcp_status.connecting");
+		case "needs_sign_in":
+			return t("ui.chat.slash.arg.mcp_status.needs_sign_in");
+		case "not_started":
+			return t("ui.chat.slash.arg.mcp_status.not_started");
+		case "error":
+			return t("ui.chat.slash.arg.mcp_status.error");
+		default:
+			return undefined;
+	}
 };
 
 /**
@@ -983,18 +1005,18 @@ function mcpServerDetail(verb: string, server: McpServerEntity): string {
 	if (verb === "remove") return compactPath(asText(server.source?.path));
 	if (verb === "logout") {
 		return status === "connected"
-			? "stored credential · connected"
-			: "stored credential";
+			? t("ui.chat.slash.arg.mcp_detail.stored_connected")
+			: t("ui.chat.slash.arg.mcp_detail.stored");
 	}
 	if (verb === "reauth") {
 		return status === "connected"
-			? "connected — will re-authorize"
-			: (MCP_STATUS_WORDS[status] ?? "");
+			? t("ui.chat.slash.arg.mcp_detail.reauthorize")
+			: (mcpStatusWord(status) ?? "");
 	}
 	// `login`, the only remaining verb with a server slot.
 	return status === "connected"
-		? "connected — will re-use"
-		: (MCP_STATUS_WORDS[status] ?? "");
+		? t("ui.chat.slash.arg.mcp_detail.reuse")
+		: (mcpStatusWord(status) ?? "");
 }
 
 /**
@@ -1056,20 +1078,22 @@ export function argumentRows(
 				 * the per-row `connected` this route does send is already
 				 * resolved on the store's own thread.
 				 */
-				const description = [
-					asText(row.provider),
-					row.aggregated ? "aggregated" : "",
-					/*
-					 * THE SHARED VOCABULARY (design review round 1, D5; UX round 1, U3): the
-					 * dialog's row, its group heading and its count all say `sign-in`; this
-					 * list's rows carried a different word for the same fact, the one
-					 * register outside the family. The fact itself is unchanged — only the
-					 * word for it.
-					 */
-					row.connected === false ? "needs sign-in" : "",
-				]
-					.filter(Boolean)
-					.join(", ");
+				const description = formatList(
+					[
+						asText(row.provider),
+						row.aggregated ? t("ui.chat.slash.arg.model_aggregated") : "",
+						/*
+						 * THE SHARED VOCABULARY (design review round 1, D5; UX round 1, U3): the
+						 * dialog's row, its group heading and its count all say `sign-in`; this
+						 * list's rows carried a different word for the same fact, the one
+						 * register outside the family. The fact itself is unchanged — only the
+						 * word for it.
+						 */
+						row.connected === false
+							? t("ui.chat.slash.arg.model_needs_sign_in")
+							: "",
+					].filter(Boolean),
+				);
 				const detail = [
 					formatWindow(asNumber(row.context_window)),
 					formatPricePair(
@@ -1176,7 +1200,7 @@ export function argumentRows(
 			return entities.map((raw) => {
 				const row = raw as ProviderEntity;
 				const id = asText(row.id);
-				const detail = PROVIDER_STATE_COPY[asText(row.state)];
+				const detail = providerStateCopy(asText(row.state));
 				return {
 					value: id,
 					name: brandOf({
@@ -1228,14 +1252,14 @@ export function argumentRows(
 			);
 			return [...groups.entries()].map(([provider, group]) => {
 				const kinds = new Set(
-					group.kinds
-						.map((kind) => CREDENTIAL_KINDS[kind] ?? kind)
-						.filter(Boolean),
+					group.kinds.map((kind) => credentialKindWord(kind)).filter(Boolean),
 				);
 				const removal =
 					kinds.size === 1
-						? `remove ${[...kinds][0]}`
-						: `remove ${group.kinds.length} credentials`;
+						? t("ui.chat.slash.arg.removal_one", { kind: [...kinds][0] ?? "" })
+						: t("ui.chat.slash.arg.removal_many", {
+								count: group.kinds.length,
+							});
 				const identity =
 					group.labels.length === 1 &&
 					group.labels[0] !== STORED_CREDENTIAL_FALLBACK

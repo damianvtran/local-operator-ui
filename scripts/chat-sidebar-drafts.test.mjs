@@ -232,7 +232,7 @@ test("the clear-all is inside the drafts section, rides the row walk, and clears
 	);
 	assert.match(foot, /if \(clearableDraftRows\.length === 0\) \{/);
 	assert.match(foot, /CLEAR_ALL_WHY_ID/);
-	assert.match(foot, /CLEAR_ALL_WHY/);
+	assert.match(foot, /clearAllWhy/);
 	assert.match(foot, /aria-disabled:text-ink-disabled!/);
 	/*
 	 * The fresh key the discard stages is written to the STORE (`setStagedByDiscard`),
@@ -328,7 +328,7 @@ test("a row whose send hop is live cannot be discarded", () => {
 	 */
 	assert.match(control, /aria-describedby=/);
 	assert.match(control, /draftWhyId\(row\.key\)/);
-	assert.match(control, /SENDING_DISCARD_WHY/);
+	assert.match(control, /sendingDiscardWhy/);
 	/* Colour, never opacity (design round 2's D5; branding.md §6). */
 	assert.match(control, /aria-disabled:text-ink-disabled!/);
 	assert.match(control, /aria-disabled:hover:text-ink-disabled!/);

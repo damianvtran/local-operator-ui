@@ -1,0 +1,436 @@
+{
+	"ui.chat.session_readout.access.absent.description_connect": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {},
+		"role": "access popover description when no access exists and the user can connect here",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.absent.description_remote": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {},
+		"role": "access popover description when no access exists and the user must act on another device",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.absent.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"label": "the provider's name as the backend reports it (for example Anthropic); shown verbatim"
+		},
+		"role": "access popover title when no provider access exists",
+		"tone": "short status"
+	},
+	"ui.chat.session_readout.access.device_bound.description": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {},
+		"role": "access popover description when the login cannot be borrowed",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.device_bound.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"label": "the provider's name as the backend reports it (for example Anthropic); shown verbatim"
+		},
+		"role": "access popover title when the login can only be used on its own device",
+		"tone": "short status"
+	},
+	"ui.chat.session_readout.access.effective_borrow.description": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {},
+		"role": "access popover description when borrowed access is in use",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.effective_borrow.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"label": "the provider's name as the backend reports it (for example Anthropic); shown verbatim",
+			"owner": "the name of the device that owns the provider login; shown verbatim, or the localized fallback owner_fallback"
+		},
+		"role": "access popover title when borrowed access is in use",
+		"tone": "short noun phrase"
+	},
+	"ui.chat.session_readout.access.eligible_borrow_unverified.description": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {
+			"label": "the provider's name as the backend reports it (for example Anthropic); shown verbatim",
+			"owner": "the name of the device that owns the provider login; shown verbatim, or the localized fallback owner_fallback"
+		},
+		"role": "access popover description while borrowed access is unverified",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.eligible_borrow_unverified.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"owner": "the name of the device that owns the provider login; shown verbatim, or the localized fallback owner_fallback"
+		},
+		"role": "access popover title while borrowed access is unverified",
+		"tone": "short status in the gerund"
+	},
+	"ui.chat.session_readout.access.expired.description": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {
+			"owner": "the name of the device that owns the provider login; shown verbatim, or the localized fallback owner_fallback"
+		},
+		"role": "access popover description when the borrowed grant expired",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.expired.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"label": "the provider's name as the backend reports it (for example Anthropic); shown verbatim"
+		},
+		"role": "access popover title when the borrowed grant expired",
+		"tone": "short status"
+	},
+	"ui.chat.session_readout.access.history.grant_expiry": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"time": "a locale-formatted date and time"
+		},
+		"role": "history line in the access popover",
+		"tone": "short label, colon, time"
+	},
+	"ui.chat.session_readout.access.history.last_checked": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"time": "a locale-formatted date and time"
+		},
+		"role": "history line in the access popover",
+		"tone": "short label, colon, time"
+	},
+	"ui.chat.session_readout.access.history.last_resolved": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"time": "a locale-formatted date and time"
+		},
+		"role": "history line in the access popover",
+		"tone": "short label, colon, time"
+	},
+	"ui.chat.session_readout.access.history.only": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "history footnote in the access popover",
+		"tone": "short clause, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.local.description": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {},
+		"role": "access popover description when this session has its own provider access",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.local.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"label": "the provider's name as the backend reports it (for example Anthropic); shown verbatim"
+		},
+		"role": "access popover title when this session has its own provider access",
+		"tone": "short status"
+	},
+	"ui.chat.session_readout.access.owner_fallback": {
+		"length": "",
+		"note": "Used mid-sentence in the access popover.",
+		"placeholders": {},
+		"role": "fallback name for the device that owns a provider login",
+		"tone": "lowercase noun phrase"
+	},
+	"ui.chat.session_readout.access.owner_unavailable.description": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {
+			"label": "the provider's name as the backend reports it (for example Anthropic); shown verbatim",
+			"owner": "the name of the device that owns the provider login; shown verbatim, or the localized fallback owner_fallback"
+		},
+		"role": "access popover description when the owner device cannot provide access",
+		"tone": "three sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.owner_unavailable.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"owner": "the name of the device that owns the provider login; shown verbatim, or the localized fallback owner_fallback"
+		},
+		"role": "access popover title when the owner device cannot provide access",
+		"tone": "short status"
+	},
+	"ui.chat.session_readout.access.pending.description": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {},
+		"role": "access popover description while access is being checked",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.pending.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"label": "the provider's name as the backend reports it (for example Anthropic); shown verbatim"
+		},
+		"role": "access popover title while access is being checked",
+		"tone": "short status in the gerund"
+	},
+	"ui.chat.session_readout.access.withdrawn.description": {
+		"length": "",
+		"note": "Shown in the model-access popover next to the composer model readout. 'Borrowed access' means this session uses a provider login held by another of the user's devices.",
+		"placeholders": {},
+		"role": "access popover description when borrowed access was withdrawn",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.access.withdrawn.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"label": "the provider's name as the backend reports it (for example Anthropic); shown verbatim"
+		},
+		"role": "access popover title when borrowed access was withdrawn",
+		"tone": "short status"
+	},
+	"ui.chat.session_readout.draft.confirm_effort_changed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"selector": "provider and model id; never translated",
+			"level": "the effort level now in force, localized",
+			"wanted": "the effort level that was requested, as the user wrote it"
+		},
+		"role": "confirmation when the carried effort level was not offered and the model's own level applies",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.draft.confirm_effort_unset": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"selector": "provider and model id; never translated",
+			"wanted": "the effort level that was requested, as the user wrote it"
+		},
+		"role": "confirmation when the carried effort level was not offered and none is set",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.draft.confirm_model": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"selector": "provider and model id (for example anthropic/claude-opus); never translated"
+		},
+		"role": "confirmation after choosing a model for a new conversation",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.session_readout.draft.confirm_model_effort": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"selector": "provider and model id; never translated",
+			"effort": "the chosen effort level, localized"
+		},
+		"role": "confirmation after choosing a model and an effort level for a new conversation",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.session_readout.draft.refusal_ladder_unread": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "refusal when the new model's effort levels could not be read",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.effort.detail.auto": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"levels": "the levels the model offers, localized and comma separated"
+		},
+		"role": "tooltip detail of the effort readout when no level is chosen and the default is unknown",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.effort.detail.auto_with_default": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"default": "the model's default level, localized",
+			"levels": "the levels the model offers, localized and comma separated"
+		},
+		"role": "tooltip detail of the effort readout when no level is chosen and the default is known",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.effort.detail.default_only": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "tooltip detail of the effort readout when only the default level is known",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.effort.detail.no_levels": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "tooltip detail of the effort readout for a model with no selectable levels",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.session_readout.effort.detail.not_reported": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"command": "the literal slash-command syntax /effort <level>; never translated"
+		},
+		"role": "tooltip detail of the effort readout before the session reported a level",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.effort.detail.offers": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"levels": "the levels the model offers, localized and comma separated"
+		},
+		"role": "tooltip detail of the effort readout listing the model's levels",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.session_readout.effort.detail.session": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "tooltip detail of the effort readout when the levels are unknown",
+		"tone": "one short sentence, ends with a full stop"
+	},
+	"ui.chat.session_readout.effort.level.auto": {
+		"length": "",
+		"note": "Reasoning effort is how much thinking the model does before it answers.",
+		"placeholders": {},
+		"role": "reasoning-effort level meaning the model chooses its own",
+		"tone": "one word"
+	},
+	"ui.chat.session_readout.effort.level.max": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "reasoning-effort level for the most thinking",
+		"tone": "one word"
+	},
+	"ui.chat.session_readout.effort.level.minimal": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "reasoning-effort level for the least thinking",
+		"tone": "one word"
+	},
+	"ui.chat.session_readout.effort.level.none": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "reasoning-effort level meaning no extra thinking",
+		"tone": "one word"
+	},
+	"ui.chat.session_readout.effort.level.reasoning": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "effort readout for a model that reasons but offers no levels",
+		"tone": "lowercase single word"
+	},
+	"ui.chat.session_readout.effort.level.unknown": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "placeholder shown for the effort level when the session has not reported it",
+		"tone": "lowercase single word"
+	},
+	"ui.chat.session_readout.effort.level.xhigh": {
+		"length": "",
+		"note": "Keep the x prefix; it reads as 'extra high'.",
+		"placeholders": {},
+		"role": "reasoning-effort level above High",
+		"tone": "short label"
+	},
+	"ui.chat.session_readout.model.router_auto": {
+		"length": "",
+		"note": "A router picks the actual model per request.",
+		"placeholders": {},
+		"role": "model name shown when the model is an automatic router",
+		"tone": "one word"
+	},
+	"ui.chat.session_readout.strip.draft_failed.detail": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "second tooltip line of the model readout when a new conversation's model could not be resolved",
+		"tone": "short status, no trailing period"
+	},
+	"ui.chat.session_readout.strip.draft_failed.retry": {
+		"length": "",
+		"note": "Use the same word as ui.chat.page_chrome.status_strip.retry.",
+		"placeholders": {},
+		"role": "tooltip line and button text that retries resolving the model",
+		"tone": "one imperative verb"
+	},
+	"ui.chat.session_readout.strip.draft_failed.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "first tooltip line of the model readout when a new conversation's model could not be resolved",
+		"tone": "short status, no trailing period"
+	},
+	"ui.chat.session_readout.strip.draft_pending.detail": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "second tooltip line while a new conversation's model is being resolved",
+		"tone": "short status in the gerund, no trailing period"
+	},
+	"ui.chat.session_readout.strip.draft_pending.label": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "visible text of the model readout while the model is being resolved",
+		"tone": "short status in the gerund, no trailing period"
+	},
+	"ui.chat.session_readout.strip.draft_pending.title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "first tooltip line of the model readout while a new conversation's model is being resolved",
+		"tone": "one word in the gerund"
+	},
+	"ui.chat.session_readout.strip.effort_aria": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"level": "the current effort level, already localized"
+		},
+		"role": "accessible name prefix of the effort readout",
+		"tone": "label, colon, level, ends with a full stop"
+	},
+	"ui.chat.session_readout.strip.fast_mode_on": {
+		"length": "",
+		"note": "Fast mode trades cost for speed.",
+		"placeholders": {},
+		"role": "line in the model readout tooltip when fast mode is enabled",
+		"tone": "short status, no trailing period"
+	},
+	"ui.chat.session_readout.strip.model_switching": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "line in the model readout tooltip while a model change is awaiting confirmation",
+		"tone": "short status with a semicolon clause, no trailing period"
+	},
+	"ui.chat.session_readout.strip.readings_dropped": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "note in the status strip explaining why usage readings disappeared after a disconnect",
+		"tone": "one sentence, ends with a full stop"
+	}
+}

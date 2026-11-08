@@ -1,0 +1,19 @@
+{
+	"ui.chat.approval.escape.default_saved": "Auto activado para esta conversación; se guardó como predeterminado para las sesiones posteriores. Las conversaciones con una elección propia la conservan. Esta solicitud aún necesita una respuesta.",
+	"ui.chat.approval.escape.default_saved_session_failed": "Auto se guardó como predeterminado para las sesiones posteriores. La parte de la sesión no se aplicó: {detail}. Esta solicitud aún necesita una respuesta.",
+	"ui.chat.approval.escape.global_default": "Aprobaciones: {mode} — predeterminado global.",
+	"ui.chat.approval.escape.not_changed": "No se cambió el modo",
+	"ui.chat.approval.escape.pinned_run": "Aprobaciones: {mode} — esta ejecución.",
+	"ui.chat.approval.escape.session_override": "Aprobaciones: {mode} — anulación de la sesión.",
+	"ui.chat.approval.escape.session_override_of": "Aprobaciones: {mode} — anulación de la sesión; global: {globalMode}.",
+	"ui.chat.approval.escape.session_saved": "Auto para esta sesión — esta solicitud aún necesita una respuesta.",
+	"ui.chat.approval.escape.set_all": "Activar Auto en todas las sesiones",
+	"ui.chat.approval.escape.set_session": "Activar Auto en esta sesión",
+	"ui.chat.approval.escape.unchanged": "Sin cambios: {detail}",
+	"ui.chat.approval.mode.ask": "Preguntar",
+	"ui.chat.approval.mode.auto": "Auto",
+	"ui.chat.approval.option.approve": "Aprobar",
+	"ui.chat.approval.option.approve_description": "Ejecuta la acción y continúa el turno.",
+	"ui.chat.approval.option.deny": "Denegar",
+	"ui.chat.approval.option.deny_description": "Rechaza la acción; el turno continúa."
+}

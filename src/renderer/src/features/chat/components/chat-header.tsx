@@ -460,7 +460,7 @@ const HeaderAvatarScope: FC<{
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
 	agentAvatar = null,
-	description = "Your on-device AI assistant",
+	description = t("ui.chat.header_menu.default_description"),
 	descriptionPending = false,
 	identity,
 	deviceSlot,
@@ -702,7 +702,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		const { result } = await renameCommand.run(
 			"rename",
 			next,
-			"Could not rename the conversation",
+			t("ui.chat.header_menu.rename_failed"),
 		);
 		if (result.tone === "error") {
 			showErrorToast(result.text);
@@ -1677,14 +1677,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 */
 								<DropdownMenuItem onSelect={() => onToggleAsks()}>
 									<AsksScopeIcon scope={asksScope} aria-hidden={true} />
-									<span>{asksOpen ? "Close asks" : "Open asks"}</span>
+									<span>
+										{asksOpen
+											? t("ui.chat.header_menu.close_asks")
+											: t("ui.chat.header_menu.open_asks")}
+									</span>
 								</DropdownMenuItem>
 							)}
 							{onToggleBrowser && (
 								<DropdownMenuItem onSelect={() => onToggleBrowser()}>
 									<Globe aria-hidden="true" />
 									<span>
-										{isBrowserPaneOpen ? "Close browser" : "Open browser"}
+										{isBrowserPaneOpen
+											? t("ui.chat.header_menu.close_browser")
+											: t("ui.chat.header_menu.open_browser")}
 									</span>
 								</DropdownMenuItem>
 							)}
@@ -1692,7 +1698,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								<DropdownMenuItem onSelect={() => onOpenConsole()}>
 									<SquareTerminal aria-hidden="true" />
 									<span>
-										{isConsolePaneOpen ? "Close console" : "Open console"}
+										{isConsolePaneOpen
+											? t("ui.chat.header_menu.close_console")
+											: t("ui.chat.header_menu.open_console")}
 									</span>
 								</DropdownMenuItem>
 							)}
@@ -1708,7 +1716,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 */
 								<DropdownMenuItem onSelect={() => setCanvasOpen(!isCanvasOpen)}>
 									<FileText aria-hidden="true" />
-									<span>{isCanvasOpen ? "Close canvas" : "Open canvas"}</span>
+									<span>
+										{isCanvasOpen
+											? t("ui.chat.header_menu.close_canvas")
+											: t("ui.chat.header_menu.open_canvas")}
+									</span>
 								</DropdownMenuItem>
 							)}
 							{onOpenCodeReview && (
@@ -1721,8 +1733,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									<GitPullRequest aria-hidden="true" />
 									<span>
 										{isCodeReviewPaneOpen
-											? "Close code review"
-											: "Open code review"}
+											? t("ui.chat.header_menu.close_code_review")
+											: t("ui.chat.header_menu.open_code_review")}
 									</span>
 								</DropdownMenuItem>
 							)}

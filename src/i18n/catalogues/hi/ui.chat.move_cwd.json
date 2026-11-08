@@ -1,0 +1,10 @@
+{
+	"ui.chat.move_cwd.already_in": "पहले से {label} में है",
+	"ui.chat.move_cwd.failed": "कार्य फ़ोल्डर बदला नहीं गया।",
+	"ui.chat.move_cwd.in_flight": "कार्य फ़ोल्डर बदलने का काम पहले से चल रहा है।",
+	"ui.chat.move_cwd.moved": "{label} में ले जाया गया",
+	"ui.chat.move_cwd.moved_restarting": "{label} में ले जाया गया — इस सत्र का रनटाइम वहीं दोबारा शुरू हो रहा है",
+	"ui.chat.move_cwd.moved_restarting_lost": "{label} में ले जाया गया — इस सत्र का रनटाइम वहीं दोबारा शुरू हो रहा है, इसलिए eval में आपने जो कुछ सेट किया था, वह चला गया",
+	"ui.chat.move_cwd.not_ready": "यह सत्र अभी शुरू हो रहा है। चालू होते ही इसका कार्य फ़ोल्डर बदला जा सकेगा।",
+	"ui.chat.move_cwd.unavailable": "यह बैकएंड चालू सत्र को नहीं ले जा सकता। दूसरा फ़ोल्डर इस्तेमाल करने के लिए नई चैट शुरू करें, या बैकएंड अपडेट करें।"
+}

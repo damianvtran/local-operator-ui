@@ -1,0 +1,19 @@
+{
+	"ui.chat.approval.escape.default_saved": "Режим «Авто» включён для этого разговора и сохранён как значение по умолчанию для следующих сессий. У разговоров с собственным выбором он сохраняется. Этот запрос всё ещё ждёт ответа.",
+	"ui.chat.approval.escape.default_saved_session_failed": "Режим «Авто» сохранён как значение по умолчанию для следующих сессий. Для текущей сессии он не применился: {detail}. Этот запрос всё ещё ждёт ответа.",
+	"ui.chat.approval.escape.global_default": "Одобрения: {mode} — глобальное значение по умолчанию.",
+	"ui.chat.approval.escape.not_changed": "Режим не изменён",
+	"ui.chat.approval.escape.pinned_run": "Одобрения: {mode} — для этого запуска.",
+	"ui.chat.approval.escape.session_override": "Одобрения: {mode} — переопределено для сессии.",
+	"ui.chat.approval.escape.session_override_of": "Одобрения: {mode} — переопределено для сессии; глобально: {globalMode}.",
+	"ui.chat.approval.escape.session_saved": "Режим «Авто» включён для этой сессии — этот запрос всё ещё ждёт ответа.",
+	"ui.chat.approval.escape.set_all": "Включить «Авто» для всех сессий",
+	"ui.chat.approval.escape.set_session": "Включить «Авто» для этой сессии",
+	"ui.chat.approval.escape.unchanged": "Не изменено: {detail}",
+	"ui.chat.approval.mode.ask": "Спрашивать",
+	"ui.chat.approval.mode.auto": "Авто",
+	"ui.chat.approval.option.approve": "Одобрить",
+	"ui.chat.approval.option.approve_description": "Выполнить действие и продолжить ход.",
+	"ui.chat.approval.option.deny": "Отклонить",
+	"ui.chat.approval.option.deny_description": "Отклонить действие; ход продолжится."
+}

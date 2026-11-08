@@ -1,0 +1,10 @@
+{
+	"ui.chat.sidebar_notes.clear_all_why": "Hay borradores enviándose - se pueden borrar cuando terminen los envíos",
+	"ui.chat.sidebar_notes.draft_sending_why": "Enviando - este borrador se puede descartar cuando termine el envío",
+	"ui.chat.sidebar_notes.loading_more": "Cargando más chats…",
+	"ui.chat.sidebar_notes.opened_by_anonymous": "abierto por un agente",
+	"ui.chat.sidebar_notes.opened_by_named": "abierto por {agent}",
+	"ui.chat.sidebar_notes.running_none": "No hay nada en ejecución ahora mismo.",
+	"ui.chat.sidebar_notes.running_unread": "El daemon no pudo leer qué chats se están ejecutando, así que esta lista puede estar incompleta.",
+	"ui.chat.sidebar_notes.stale_list": "{message} Se muestran los últimos chats cargados."
+}

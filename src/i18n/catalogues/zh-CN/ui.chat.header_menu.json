@@ -1,0 +1,14 @@
+{
+	"ui.chat.header_menu.close_asks": "关闭请求面板",
+	"ui.chat.header_menu.close_browser": "关闭浏览器",
+	"ui.chat.header_menu.close_canvas": "关闭画布",
+	"ui.chat.header_menu.close_code_review": "关闭代码审查",
+	"ui.chat.header_menu.close_console": "关闭控制台",
+	"ui.chat.header_menu.default_description": "你的本机AI助手",
+	"ui.chat.header_menu.open_asks": "打开请求面板",
+	"ui.chat.header_menu.open_browser": "打开浏览器",
+	"ui.chat.header_menu.open_canvas": "打开画布",
+	"ui.chat.header_menu.open_code_review": "打开代码审查",
+	"ui.chat.header_menu.open_console": "打开控制台",
+	"ui.chat.header_menu.rename_failed": "无法重命名对话"
+}

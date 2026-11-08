@@ -1,0 +1,200 @@
+{
+ "schema": 1,
+ "instance": "a7a45956-s3a-ur",
+ "session": "a7a45956ce2c",
+ "locale": "ur",
+ "audit_kind": "s3a composer batch A, ur (RTL), fresh independent audit of uncommitted bytes on disk",
+ "audit_date": "2026-11-08",
+ "pr": "damianvtran/local-operator-ui#1761",
+ "branch": "i18n/composer-keying",
+ "checkout_head": "a151ba95325",
+ "worktree": "local-operator-ui/.worktrees/i18n-composer-keying (uncommitted ur files)",
+ "auditor": {
+  "agent": "translation-auditor",
+  "team": "lopdev (s3a-au-ur)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "actual_model_source": "session header anthropic/claude-sonnet-5-5; no provider fallback",
+  "independent_from_translator_session": true
+ },
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "keys_read": 143,
+ "method": {
+  "icu": "every en and ur value parsed with @formatjs/icu-messageformat-parser; argument names, plural/select option keys, number skeletons and pound usage compared per key (0 differences); ur plural categories one/other (CLDR) on all 4 plural messages",
+  "render": "intl-messageformat locale ur at counts 0,1,2,5,11,21,100 for stopped_children, stopped_jobs, removal_many; stopped_both at 7 count pairs; fast_mode.dial_differs at all 4 on/off pairs",
+  "hygiene": "NFC, no edge/double space, no non-ASCII whitespace, no bidi/zero-width controls, no Devanagari/Arabic-only yeh/kaf/teh-marbuta (same regexes as ur-activation.test.mjs), no ASCII . ? , after Urdu, no English stub",
+  "bidi": "all 143 values rendered with realistic arguments and run through fribidi --rtl --nopad --nobreak --clean; /word and $word tokens checked for sigil side; candidate fixes (LRM before sigil, FSI/PDI around token) re-run",
+  "glossary": "each term grepped across the 8093 shipped ur values outside these five namespaces",
+  "gates": "node --test scripts/i18n/locale-parity.test.mjs 44/44 pass; node scripts/i18n/context-parity.mjs ok; node --test scripts/i18n/ur-activation.test.mjs 3/3 pass (but its bundledCatalogues.ur holds only the 8093 shipped values: keys.gen.ts is not regenerated for the new files, so that scan does not yet cover these 143 values; the same regexes were run directly on them: 0 hits)"
+ },
+ "bidi_decision": {
+  "lrm_in_catalogue": "NO. Evidence: (1) scripts/i18n/ur-activation.test.mjs MANUAL_BIDI rejects U+200E/U+200F/U+2066-2069 in any ur value, so an LRM would fail the repo gate; (2) an LRM only repairs a sigil written in the catalogue string (18 keys), not a sigil that arrives inside a placeholder value (8 keys), which needs FSI/PDI at the call site (precedent hub-skills-library.tsx ui.hub.skills.local_path); (3) 24 shipped ur values already carry the same pattern with no controls; (4) an LRM at string start flips a dir=auto container to LTR.",
+  "rendered_defect": "In a dir=rtl paragraph a '/' or '$' that follows Urdu text (or opens the string) resolves to the RTL embedding level and paints on the far side of the Latin word: '/stop' is shown as 'stop/', '$name' as 'name$'. fribidi --rtl: '/model نہیں چل سکی: x' -> visual 'x :ﯽﮑﺳ ﻞﭼ ﮟﯿﮩﻧ model/'. '/move <path>' as a value is shown as '<move <path/' (the closing > is mirrored to <). Both fixes verified: LRM before the sigil gives '/model'; FSI/PDI around a value gives '/move <path>'. After Latin text ('Enter /goal') nothing is wrong.",
+  "recommendation": "Ship the ur bytes unchanged. Fix in code, not in ur bytes: wrap value placeholders that carry a command (example, sentence, cap, scope) in U+2068..U+2069 at the call site; for the 18 literal-slash messages either pass the slash inside the value (en change, all locales) or add a renderer step for dir=rtl locales that inserts U+200E before a '/' or '$' that precedes a Latin letter or '{'. Not done here: audit is read-only."
+ },
+ "namespaces": {
+  "ui.chat.slash": {
+   "status": "passed",
+   "keys_audited": 89,
+   "file_keys": 89,
+   "sha256": {
+    "en": "7d9ae8c2ff74de40aec65a6bddb7ead03abbc537a04a8366b5c452d7a057be7c",
+    "ur": "4e9319862679c664edffd452a7f099643e11229b01a1ca53ac40e7edb2021a50"
+   },
+   "findings": [
+    {
+     "id": "UR-1",
+     "severity": "MINOR",
+     "kind": "bidi-literal-sigil",
+     "keys": [
+      "ui.chat.slash.dispatch.below_version",
+      "ui.chat.slash.dispatch.could_not_run",
+      "ui.chat.slash.dispatch.dialog_missing",
+      "ui.chat.slash.dispatch.model_resolving",
+      "ui.chat.slash.dispatch.model_unresolved",
+      "ui.chat.slash.dispatch.needs_conversation",
+      "ui.chat.slash.dispatch.needs_newer_backend",
+      "ui.chat.slash.dispatch.no_argument_on_draft",
+      "ui.chat.slash.dispatch.not_in_desktop",
+      "ui.chat.slash.dispatch.service_waiting",
+      "ui.chat.slash.dispatch.unpaired",
+      "ui.chat.slash.locked.taken",
+      "ui.chat.slash.skill.click_footer",
+      "ui.chat.slash.skill.empty_attached"
+     ],
+     "current": "/{name} نہیں چل سکی: {reason}  (and the 13 siblings)",
+     "proposed": "text unchanged; isolate in code (see bidi_decision)",
+     "reason": "A literal '/' or '$' in the catalogue string follows Urdu or opens the string, so under dir=rtl it paints after the word ('model/'). Not fixable in ur bytes (gate forbids controls); same class as 24 shipped ur values."
+    },
+    {
+     "id": "UR-2",
+     "severity": "MINOR",
+     "kind": "bidi-value-placeholder",
+     "keys": [
+      "ui.chat.slash.dispatch.move_hint",
+      "ui.chat.slash.staged.runs",
+      "ui.chat.slash.staged.runs_again",
+      "ui.chat.slash.staged.sets_goal",
+      "ui.chat.slash.staged.refused",
+      "ui.chat.slash.locked.undo",
+      "ui.chat.slash.at.no_match_files",
+      "ui.chat.slash.at.no_match_projects"
+     ],
+     "current": "... لکھیں  with {example}='/move <path>', {sentence}='/goal ...', {cap}='⌘Z', {scope}='~/src'",
+     "proposed": "text unchanged; wrap the value in U+2068..U+2069 at the call site",
+     "reason": "The value carries its own sigil or brackets; unisolated after Urdu it paints '<move <path/', 'Z⌘', 'src/~'. FSI/PDI fixes it exactly (rendered)."
+    },
+    {
+     "id": "UR-3",
+     "severity": "MINOR",
+     "kind": "idiom",
+     "key": "ui.chat.slash.at.unavailable",
+     "current": "یہ بیک اینڈ فائل حوالے نہیں سنبھال سکتا۔ بیک اینڈ اپ ڈیٹ کریں اور دوبارہ کوشش کریں۔",
+     "proposed": "یہ بیک اینڈ فائل کے حوالے نہیں سنبھال سکتا۔ بیک اینڈ اپ ڈیٹ کریں اور دوبارہ کوشش کریں۔",
+     "reason": "'فائل حوالے' drops the کے of the genitive compound and reads telegraphic; 'file references' is 'فائل کے حوالے'."
+    },
+    {
+     "id": "UR-N1",
+     "severity": "NIT",
+     "kind": "idiom",
+     "key": "ui.chat.slash.dispatch.no_argument_on_draft",
+     "current": "اسے مقرر کرنے کو صرف /{name} لکھیں۔",
+     "proposed": "اسے مقرر کرنے کے لیے صرف /{name} لکھیں۔",
+     "reason": "'کرنے کو' as a purpose infinitive is dated; 'کے لیے' is the current form (the earlier 'پہلے پیغام کے لیے' repeat is tolerable)."
+    }
+   ]
+  },
+  "ui.chat.page_chrome": {
+   "status": "passed",
+   "keys_audited": 26,
+   "file_keys": 26,
+   "sha256": {
+    "en": "ad54b5d07aa2de04c8ffab1403fc6adb2b96adcbcb24eddeba99e0ff0425c73e",
+    "ur": "10d5456cacc4cacefc799f17e7d1f836040ca0b2550a572ee2aa33c628ca3813"
+   },
+   "findings": [
+    {
+     "id": "UR-N2",
+     "severity": "NIT",
+     "kind": "idiom",
+     "key": "ui.chat.page_chrome.error_view.failed",
+     "current": "مقامی سرور نے خرابی لوٹائی۔",
+     "proposed": "مقامی سرور نے خرابی کی اطلاع دی۔",
+     "reason": "'خرابی لوٹائی' is a calque of 'returned an error'; Urdu reports/signals an error. Understandable as is."
+    },
+    {
+     "id": "UR-N3",
+     "severity": "NIT",
+     "kind": "gender/ellipsis",
+     "key": "ui.chat.page_chrome.options.new",
+     "current": "نئی",
+     "proposed": "keep (alternative 'نئی چیٹ', 7 cells vs 3, only if the options bar has room)",
+     "reason": "Bare 'نئی' agrees with the feminine نئی چیٹ / نئی گفتگو the button creates and matches the shipped 'New' badge; the English is equally elliptical. Translator's flag judged: acceptable."
+    },
+    {
+     "id": "UR-N4",
+     "severity": "NIT",
+     "kind": "overflow",
+     "key": "ui.chat.page_chrome.status_strip.retry / .retrying",
+     "current": "دوبارہ کوشش کریں (16 chars) / دوبارہ کوشش کی جا رہی ہے… (25 chars) vs 5 / 9",
+     "proposed": "keep; ask the rendered check to look at the connection banner button",
+     "reason": "Byte-identical to the shipped common Retry / Retrying… strings, so no new term, but the banner button is a narrow slot (3.2x / 2.8x the English)."
+    }
+   ]
+  },
+  "ui.chat.header_menu": {
+   "status": "passed",
+   "keys_audited": 12,
+   "file_keys": 12,
+   "sha256": {
+    "en": "2bfaecb5b8bcba8f9b46087bb404d139566a8032578a0e60c3f8b449670e73d4",
+    "ur": "958464db9b4ec3d72305b49a9842d9c720011ec4898d7985185f83ab6415b383"
+   },
+   "findings": []
+  },
+  "ui.chat.interrupt": {
+   "status": "passed",
+   "keys_audited": 6,
+   "file_keys": 6,
+   "sha256": {
+    "en": "c360665564dcd59d5656131902ed17f4a5912914844feabc1e790ded2d2bd603",
+    "ur": "de7d3e9176b43f743105f91166e91bab9b45e7f299c20fd8829145b6de129ea4"
+   },
+   "findings": [
+    {
+     "id": "UR-1b",
+     "severity": "MINOR",
+     "kind": "bidi-literal-sigil",
+     "keys": [
+      "ui.chat.interrupt.stopped_both",
+      "ui.chat.interrupt.stopped_children",
+      "ui.chat.interrupt.stopped_jobs",
+      "ui.chat.interrupt.unavailable"
+     ],
+     "current": "... یا سیشن ختم کرنے کے لیے /stop استعمال کریں۔",
+     "proposed": "text unchanged; isolate in code (see bidi_decision)",
+     "reason": "The literal /stop follows Urdu, so fribidi --rtl paints 'stop/'. Same class and fix as UR-1."
+    },
+    {
+     "id": "UR-N5",
+     "severity": "NIT",
+     "kind": "idiom",
+     "key": "ui.chat.interrupt.stopped_both",
+     "current": "... جبکہ سیشن اور اس کے کام ختم کرنے کے لیے /stop استعمال کریں۔",
+     "proposed": "... اور سیشن اور اس کے کام ختم کرنے کے لیے /stop استعمال کریں۔",
+     "reason": "English joins the two instructions with 'and'; 'جبکہ' (whereas) adds a contrast the source does not state. Plural verb for every count pair is correct (compound subject): translator's flag judged: no defect."
+    }
+   ]
+  },
+  "ui.chat.fast_mode": {
+   "status": "passed",
+   "keys_audited": 10,
+   "file_keys": 10,
+   "sha256": {
+    "en": "c6fd6fd1dfd776d099a74c866be11f0a8e821a4a1fa9beb7bccde11de095f412",
+    "ur": "b04a44ba507fd8bd0110160088b4f27484a8f83053e239d42b5a4f23515a67ec"
+   },
+   "findings": []
+  }
+ }
+}

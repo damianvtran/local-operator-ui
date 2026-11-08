@@ -1,0 +1,14 @@
+{
+	"ui.chat.header_menu.close_asks": "سوالات بند کریں",
+	"ui.chat.header_menu.close_browser": "براؤزر بند کریں",
+	"ui.chat.header_menu.close_canvas": "Canvas بند کریں",
+	"ui.chat.header_menu.close_code_review": "کوڈ کا جائزہ بند کریں",
+	"ui.chat.header_menu.close_console": "کنسول بند کریں",
+	"ui.chat.header_menu.default_description": "آپ کا آن ڈیوائس AI معاون",
+	"ui.chat.header_menu.open_asks": "سوالات کھولیں",
+	"ui.chat.header_menu.open_browser": "براؤزر کھولیں",
+	"ui.chat.header_menu.open_canvas": "Canvas کھولیں",
+	"ui.chat.header_menu.open_code_review": "کوڈ کا جائزہ کھولیں",
+	"ui.chat.header_menu.open_console": "کنسول کھولیں",
+	"ui.chat.header_menu.rename_failed": "گفتگو کا نام نہیں بدلا جا سکا"
+}

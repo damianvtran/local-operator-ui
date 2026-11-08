@@ -60,14 +60,14 @@ const bundle = await build({
 	alias: ALIAS,
 });
 const {
-	CREDENTIAL_ARMED_NOTICE,
+	credentialArmedNotice,
 	CREDENTIAL_TOKEN,
 	CREDENTIAL_KEY_ALPHABET,
 	CREDENTIAL_KEY_PATTERN,
-	CREDENTIAL_CLEAR_UNDO_LABEL,
+	credentialClearUndoLabel,
 	CREDENTIAL_KEY_PREFIX,
 	CREDENTIAL_MARKER,
-	CREDENTIAL_TYPING_NOTICE,
+	credentialTypingNotice,
 	IDLE_CAPTURE,
 	MASK_CELL,
 	abandonTyping,
@@ -1894,7 +1894,7 @@ test("a disclosure count applies only to the buffer it was taken over", () => {
 
 test("the notices are the TUI's own sentences", () => {
 	assert.equal(
-		CREDENTIAL_ARMED_NOTICE,
+		credentialArmedNotice(),
 		"armed — add a space, then type or paste the secret",
 	);
 	/*
@@ -1907,11 +1907,11 @@ test("the notices are the TUI's own sentences", () => {
 	 * five characters shorter, so the overflow behaviour cannot regress on it.
 	 */
 	assert.equal(
-		CREDENTIAL_TYPING_NOTICE,
+		credentialTypingNotice(),
 		"masked as you type — Enter makes a pill, Esc twice discards",
 	);
 	assert.ok(
-		!CREDENTIAL_TYPING_NOTICE.includes("chip"),
+		!credentialTypingNotice().includes("chip"),
 		"the notice must not call the marker a chip",
 	);
 	assert.equal(
@@ -2477,7 +2477,7 @@ test("the notice line's precedence puts the actionable sentence first (UX round 
 	const undoCap = "⌘Z";
 	assert.equal(
 		noticeLineFor({ unredacted: null, armed: true, cleared, undoCap }),
-		CREDENTIAL_ARMED_NOTICE,
+		credentialArmedNotice(),
 	);
 	assert.equal(
 		noticeLineFor({ unredacted: null, armed: false, cleared, undoCap }),
@@ -2485,7 +2485,7 @@ test("the notice line's precedence puts the actionable sentence first (UX round 
 	);
 	assert.equal(
 		noticeLineFor({ unredacted: null, armed: true, cleared: null, undoCap }),
-		CREDENTIAL_ARMED_NOTICE,
+		credentialArmedNotice(),
 	);
 	assert.equal(
 		noticeLineFor({ unredacted: null, armed: false, cleared: null, undoCap }),
@@ -2672,7 +2672,7 @@ test("the clear control's name and the composer chip's title are per-reference c
 		markerChipTitle(1, 19),
 		"Credential #1, 19 chars — held in this message; its value cannot be read",
 	);
-	assert.equal(CREDENTIAL_CLEAR_UNDO_LABEL, "Undo");
+	assert.equal(credentialClearUndoLabel(), "Undo");
 	// U9's own rule, kept: the notice LINE and the durable sentence are one authority.
 	// The TOAST stopped sharing it in round 2 (it says `Credential #N removed` beside
 	// the `Undo`), which is why the pair compared here is the line and the sentence it

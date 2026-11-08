@@ -1637,6 +1637,87 @@ const IDENTICAL_OK = new Map([
 		"ur:ui.chat.canonical.fold.unit_separator",
 		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
 	],
+	// Composer keying (batch A + B1). Global rows first: placeholder-only
+	// skeletons with no words, like `ui.chat.attachments.file_meta`.
+	[
+		"ui.chat.ask_queue.deadline.with_subject",
+		// `{subject} {deadline}`: two caller-supplied fragments joined by a space; the
+		// words live in the keyed subject and deadline phrases, not here, so a
+		// differing value would only invent punctuation per language.
+		"language-neutral composition: two placeholders and a space, no words",
+	],
+	[
+		"ui.chat.session_spend.summary.basis_amount",
+		// `{label} {amount}`: a keyed basis label plus a formatted currency amount;
+		// nothing in the string itself is translatable.
+		"language-neutral composition: two placeholders and a space, no words",
+	],
+	[
+		"ui.chat.ask_panel.filter.chip",
+		// `{label} · {count, number}`: a keyed filter label, a middle-dot separator
+		// and a locale-formatted count; same shape as `ui.chat.asks.scope_line`.
+		"language-neutral composition: placeholders joined by a middle dot, no words",
+	],
+	[
+		"ui.chat.ask_answer.unconfirmed",
+		// `{lead} {reason}`: two caller-supplied, already-translated fragments joined
+		// by a space; zh-CN differs only because CJK joins with no space (`{lead}{reason}`).
+		"language-neutral composition: two placeholders and a space, no words",
+	],
+	// Locale-scoped rows: genuine words/unit symbols whose spelling coincides with
+	// English in that language only; every other locale must still translate them.
+	[
+		"es:ui.chat.ask_queue.response.surface_terminal",
+		"Spanish « terminal » (the text interface) has the same spelling as English; a common noun, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.ask_queue.response.surface_terminal",
+		"French « terminal » (the text interface) has the same spelling as English; a common noun, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.ask_queue.duration.hours",
+		"`{count, number}h`: « h » is the French symbol for heures, so the unit suffix is the correct French value.",
+	],
+	[
+		"fr:ui.chat.ask_queue.duration.seconds",
+		"`{count, number}s`: « s » is the French symbol for secondes, so the unit suffix is the correct French value.",
+	],
+	[
+		"fr:ui.chat.session_readout.effort.level.auto",
+		"French « Auto » is the ordinary short label for an automatic mode (cf. « auto » in French UIs); same spelling as English, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.session_readout.effort.level.max",
+		"French « Max » is the standard abbreviation of « maximum » used as a level label; same spelling as English.",
+	],
+	[
+		"fr:ui.chat.session_readout.effort.level.minimal",
+		"French adjective « minimal » has the same spelling as English; used as a bare level label beside « Max ».",
+	],
+	[
+		"fr:ui.chat.session_readout.model.router_auto",
+		"French « Auto » is the ordinary short label for an automatically routed choice; same spelling as English.",
+	],
+	[
+		"es:ui.chat.approval.mode.auto",
+		"Spanish « Auto » is the ordinary short label for the automatic approval mode (beside « Preguntar »); same spelling as English, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.approval.mode.auto",
+		"French « Auto » is the ordinary short label for the automatic approval mode (beside « Demander »); same spelling as English, not skipped copy.",
+	],
+	[
+		"es:ui.chat.session_readout.effort.level.auto",
+		"Spanish « Auto » is the ordinary short label for an automatic effort level (beside « Máximo », « Mínimo »); same spelling as English, not skipped copy.",
+	],
+	[
+		"es:ui.chat.session_readout.model.router_auto",
+		"Spanish « Auto » is the ordinary short label for an automatically routed model; same spelling as English, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.session_spend.summary.total",
+		"`Total {total}`: « total » is the French noun/word for a sum, spelled as in English; the amount is a placeholder.",
+	],
 ]);
 
 /*

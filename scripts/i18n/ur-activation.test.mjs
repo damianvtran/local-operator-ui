@@ -29,10 +29,10 @@ const FORBIDDEN_SCRIPT = /[\u0964\u0900-\u097f\u0643\u064a\u0629\u0649]/;
  * URDU IS THE RTL LOCALE. Two properties matter beyond ordinary activation:
  *
  * 1. The stored string is LOGICAL ORDER and carries no bidi controls of its
- *    own. This UI has no client-side FSI/PDI wrapper: `messages.ts` passes the
- *    catalogue value straight to the DOM. The no-manual-controls rule therefore
- *    keeps storage clean; a surface that does isolate (the TUI's documented
- *    contract) adds its own wrapping, so a second set here would be the bug.
+ *    own. The controls a Latin token needs inside Urdu copy (`/model`, `⌘Z`)
+ *    are added at RUNTIME by `translate()` (`src/i18n/bidi.ts`, pinned by
+ *    `bidi-isolation.test.mjs`), so a second set in the catalogue would be
+ *    doubled isolation. The no-manual-controls rule keeps storage clean.
  *    The hygiene test below scans the real bundled Urdu bundle, not a fixture,
  *    so a stray RLM cannot ship.
  * 2. Urdu punctuation and script are part of the copy, not presentation: no

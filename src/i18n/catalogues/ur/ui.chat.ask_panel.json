@@ -1,0 +1,22 @@
+{
+	"ui.chat.ask_panel.answer.attachment_refusal": "فائلیں اور تصاویر ابھی جواب کے ساتھ منسلک نہیں کی جا سکتیں۔ اپنا جواب یہیں لکھیں، یا فائل چیٹ میں بھیجیں۔",
+	"ui.chat.ask_panel.answer.limit_notice": "جواب {max, number} حروف تک محدود ہے؛ اس سے آگے کا متن محفوظ نہیں رکھا جاتا۔",
+	"ui.chat.ask_panel.dock.asking": "ایجنٹ پوچھ رہا ہے",
+	"ui.chat.ask_panel.dock.keys_one": "جواب دینے کے لیے 1",
+	"ui.chat.ask_panel.dock.keys_range": "جواب دینے کے لیے 1 تا {max, number}",
+	"ui.chat.ask_panel.dock.sending": "آپ کا جواب بھیجا جا رہا ہے…",
+	"ui.chat.ask_panel.empty.details_missing": "ان سوالات کی تفصیلات لوڈ نہیں ہو سکیں۔",
+	"ui.chat.ask_panel.empty.none_outstanding": "کوئی سوال باقی نہیں۔ ایجنٹ کسی چیز کا منتظر نہیں۔",
+	"ui.chat.ask_panel.empty.none_pending": "کوئی سوال منتظر نہیں۔ سب طے ہو چکے ہیں — طے شدہ دیکھیں۔",
+	"ui.chat.ask_panel.empty.none_settled": "ابھی کوئی سوال طے نہیں ہوا۔ سب ابھی منتظر ہیں۔",
+	"ui.chat.ask_panel.filter.all": "سب",
+	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
+	"ui.chat.ask_panel.filter.pending": "منتظر",
+	"ui.chat.ask_panel.filter.settled": "طے شدہ",
+	"ui.chat.ask_panel.landing.many": "{count, plural, one {# سوال کی مدت ختم ہو گئی} other {# سوالات کی مدت ختم ہو گئی}}",
+	"ui.chat.ask_panel.landing.one": "سوال کی مدت ختم ہو گئی",
+	"ui.chat.ask_panel.lapse.many": "{count, plural, one {# سوال کی مدت ختم ہو گئی؛ آپ کا جواب نہیں بھیجا گیا۔} other {# سوالات کی مدت ختم ہو گئی؛ آپ کے جوابات نہیں بھیجے گئے۔}}",
+	"ui.chat.ask_panel.lapse.one": "اس سوال کی مدت ختم ہو گئی؛ آپ کا جواب نہیں بھیجا گیا۔",
+	"ui.chat.ask_panel.no_question_text": "سوال کا کوئی متن نہیں",
+	"ui.chat.ask_panel.other_prompt": "اپنا جواب لکھیں"
+}

@@ -1,0 +1,316 @@
+{
+	"instance": "91291702-s3d-vi",
+	"locale": "vi",
+	"audit_date": "2026-11-08",
+	"round": 1,
+	"pr": 1761,
+	"branch": "i18n/composer-keying",
+	"head": "7540e3cbc9d",
+	"state": "uncommitted target files audited from disk (post-remediation final bytes), s3d remediation-closing step of the same review round: 5 of 21 namespaces changed since 97ea8fa7-s3c-vi, 16 carried",
+	"auditor": {
+		"agent": "translation-auditor",
+		"team": "lopdev",
+		"session": "060168450ca7",
+		"instance": "91291702-s3d-vi",
+		"model": "deepseek/deepseek-flash",
+		"actual_model": "deepseek/deepseek-flash",
+		"fallback": "started on anthropic/claude-sonnet-5-5; three provider-failure(quota) model switches during this run: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash. The audit below was read and written on deepseek/deepseek-flash.",
+		"actual_model_source": "harness [model switch] notices in this session, reason 'provider failure: quota', last switch to deepseek/deepseek-flash; the session header still reads anthropic/claude-sonnet-5-5 and is stale",
+		"independent_from_translator": true,
+		"independence_basis": "Fresh delegated session; wrote none of the 118 audited vi values and edited no catalogue, ledger or source - this receipt is the only file created. Scope was recomputed from the bytes on disk against each latest receipt's target hash, not taken from the brief."
+	},
+	"status": "passed",
+	"verdict": "pass (clean-with-findings): 0 blocker, 0 major, 1 minor, 2 nit across 5 namespaces / 118 keys audited; 16 namespaces / 343 keys carried unchanged",
+	"scope": {
+		"method": "for each of the 21 ui.chat.* composer namespaces, sha256 of src/i18n/catalogues/vi/<ns>.json on disk compared with the target hash recorded by the latest receipt covering that namespace",
+		"changed_audited": {
+			"ui.chat.ask_panel": {
+				"latest_receipt": "97ea8fa7-s3c-vi",
+				"receipt_target_sha256": "33e90f1c02f5b08e728173cb744d69aab5df20e49c705985e994b5d4b32e4620"
+			},
+			"ui.chat.attachment_refusal": {
+				"latest_receipt": "97ea8fa7-s3c-vi",
+				"receipt_target_sha256": "2186e4106508"
+			},
+			"ui.chat.composer_notes": {
+				"latest_receipt": "97ea8fa7-s3c-vi",
+				"receipt_target_sha256": "e1d4f5490edd"
+			},
+			"ui.chat.credential_notice": {
+				"latest_receipt": "97ea8fa7-s3c-vi",
+				"receipt_target_sha256": "8899779753d8"
+			},
+			"ui.chat.session_readout": {
+				"latest_receipt": "97ea8fa7-s3c-vi",
+				"receipt_target_sha256": "46476341fddc"
+			}
+		},
+		"carried_unchanged": {
+			"ui.chat.approval": "97ea8fa7-s3c-vi",
+			"ui.chat.aside": "97ea8fa7-s3c-vi",
+			"ui.chat.ask_answer": "97ea8fa7-s3c-vi",
+			"ui.chat.ask_queue": "97ea8fa7-s3c-vi",
+			"ui.chat.device_move": "97ea8fa7-s3c-vi",
+			"ui.chat.fast_mode": "6f85fce0-s3b-vi",
+			"ui.chat.header_menu": "97ea8fa7-s3c-vi",
+			"ui.chat.interrupt": "6f85fce0-s3b-vi",
+			"ui.chat.message_budget": "97ea8fa7-s3c-vi",
+			"ui.chat.move_cwd": "97ea8fa7-s3c-vi",
+			"ui.chat.page_chrome": "6f85fce0-s3b-vi",
+			"ui.chat.quota_resend": "97ea8fa7-s3c-vi",
+			"ui.chat.read_ack": "97ea8fa7-s3c-vi",
+			"ui.chat.session_spend": "97ea8fa7-s3c-vi",
+			"ui.chat.sidebar_notes": "97ea8fa7-s3c-vi",
+			"ui.chat.slash": "6f85fce0-s3b-vi"
+		}
+	},
+	"references": {
+		"style_guide": "i18n/style-guides/vi.md (~/local-operator/i18n)",
+		"glossary": "i18n/glossary.md (~/local-operator/i18n)",
+		"shipped_catalogues": "src/i18n/catalogues/vi/*.json grepped for term parity: «thông tin xác thực» (18), «bí mật»/«thông tin bí mật» (25/9), «phê duyệt» (4), «mức suy luận» (17), «thiết bị sở hữu» (5), «thư mục làm việc» (13), «kỹ năng» (12), «bản nháp», «đính kèm» (21), «thẻ», «chế độ nhanh», effort level labels «Thấp/Trung bình/Cao» (ui.chat.session_status), «Đã xử lý» (ui.chat.asks.settled_heading) vs «giải quyết» (ui.chat.asks.clause.settled)"
+	},
+	"checks": {
+		"locale_parity": "node --test scripts/i18n/locale-parity.test.mjs -> tests 44, pass 44, fail 0 (vi: ships messages, no duplicate keys, carries every key, no extra keys, placeholders preserved, not an English stub). NOTE: the run uses the working tree's modified scripts/i18n/locale-parity.test.mjs, whose uncommitted IDENTICAL_OK rows include the global ui.chat.ask_panel.filter.chip; that is the only English-identical value in the five audited namespaces.",
+		"context_parity": "node scripts/i18n/context-parity.mjs -> ok - every English key covered apart from 131 allowed gaps in 4 namespaces; none of the 131 gaps is in the five audited namespaces",
+		"icu": "all 118 vi values and their 118 en sources parsed with @formatjs/icu-messageformat-parser 3.5.21: argument names and types identical per key; every plural is `other`-only (correct CLDR for vi); the two number skeletons ({index, number, ::group-off}, {count, number, ::group-off}) are byte-identical to English; en select/plural stays a plural in vi (count still formatted); no non-ASCII whitespace anywhere in the five files, including inside ICU argument headers; all values NFC; no ASCII '...'; no bidi controls",
+		"render": "every key rendered with intl-messageformat 12.1.3 in vi at plural counts 0,1,2,5,11,21,100 with realistic arguments (see rendered_samples); no render threw",
+		"tokens": "kept verbatim: /credential, {undoCap}, {key}, {label}, {owner}, {selector}, {effort}, {level}, {levels}, {wanted}, {command}, {default}, {name}, {names}, {reason}, {clauses}, Enter, Esc, VĂN BẢN THUẦN casing preserved",
+		"bidi": "not applicable: vi is LTR"
+	},
+	"namespaces": {
+		"ui.chat.ask_panel": {
+			"namespace": "ui.chat.ask_panel",
+			"status": "passed",
+			"keys_audited": 20,
+			"en_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+			"vi_sha256": "48600ef3edea22d789e074be0cf91061a4204f3cb870eba146766f630a5bc7be",
+			"findings": [
+				{
+					"id": "vi-s3d-1",
+					"severity": "INFO",
+					"key": "ui.chat.ask_panel.empty.none_pending / ui.chat.ask_panel.empty.none_settled (cross-namespace)",
+					"keys": [
+						"ui.chat.ask_panel.empty.none_pending",
+						"ui.chat.ask_panel.empty.none_settled"
+					],
+					"current": "Không có câu hỏi nào đang chờ. Tất cả đã được xử lý — xem mục Đã xử lý. / Chưa có câu hỏi nào được xử lý. Tất cả vẫn đang chờ.",
+					"proposed": "(no change in this namespace) — follow-up in the shipped ask namespaces instead",
+					"reason": "Glossary observation, not a defect here: this locale renders the settle term two ways - label «Đã xử lý» (shipped ui.chat.asks.settled_heading, and this panel's filter.settled chip) and clause «đã được giải quyết» (shipped ui.chat.asks.clause.settled «Mọi câu hỏi đã được giải quyết», ui.chat.ask_queue.refusal.already_settled). The changed namespace uses «xử lý» in both its clauses, which agrees with the filter chip that sits on the same screen and with the shipped heading, so the in-scope bytes are right; the divergence lives in the two shipped (carried, out-of-scope) namespaces and is recorded for a later wave rather than churned here."
+				}
+			]
+		},
+		"ui.chat.attachment_refusal": {
+			"namespace": "ui.chat.attachment_refusal",
+			"status": "passed",
+			"keys_audited": 15,
+			"en_sha256": "3eb36121a317a16f814f92f9238acafc2bbd30951ee97c45836d9cd5f0706e0a",
+			"vi_sha256": "f37df84b4d506ac6de3cf66c472eecad26e534a30496f3a2df9ef668e9621f56",
+			"findings": []
+		},
+		"ui.chat.composer_notes": {
+			"namespace": "ui.chat.composer_notes",
+			"status": "passed",
+			"keys_audited": 14,
+			"en_sha256": "d0932047d10b6e27ac42fe82d4538463962e4372db886a650ee7fa8581e156e3",
+			"vi_sha256": "235bcb4013b1006f8908a0419da2097dcd7a50e4e6901854240e7ec0d1c58f91",
+			"findings": [
+				{
+					"id": "vi-s3d-2",
+					"severity": "NIT",
+					"key": "ui.chat.composer_notes.skill_empty_body / ui.chat.composer_notes.skill_load_failed",
+					"keys": [
+						"ui.chat.composer_notes.skill_empty_body",
+						"ui.chat.composer_notes.skill_load_failed"
+					],
+					"current": "kỹ năng `{name}` có nội dung trống — gửi tin nhắn của bạn như đã viết / không tải được kỹ năng `{name}` — gửi tin nhắn của bạn như đã viết",
+					"proposed": "kỹ năng `{name}` có nội dung trống — tin nhắn của bạn vẫn được gửi như đã viết / không tải được kỹ năng `{name}` — tin nhắn của bạn vẫn được gửi như đã viết",
+					"reason": "After the em dash a bare verb phrase («gửi tin nhắn của bạn như đã viết») reads as an instruction to send, while the English present participle is a statement of what happens («sending your message as written»); a passive clause «vẫn được gửi» carries the English sense without the imperative reading. Placeholders and the em-dash punctuation are unchanged."
+				}
+			]
+		},
+		"ui.chat.credential_notice": {
+			"namespace": "ui.chat.credential_notice",
+			"status": "passed",
+			"keys_audited": 15,
+			"en_sha256": "1186b58d4ae1eee83dd05889a1b998919c30cc51b273a506b0d8fc656cfa23df",
+			"vi_sha256": "c09462e2220ce22547beeab82bce3c68d592881786cb41ae8af1df4fcbc74654",
+			"findings": [
+				{
+					"id": "vi-s3d-3",
+					"severity": "MINOR",
+					"key": "ui.chat.credential_notice.unredacted",
+					"keys": [
+						"ui.chat.credential_notice.unredacted"
+					],
+					"current": "{length, plural, other {# ký tự}} giờ là VĂN BẢN THUẦN trong ô soạn tin — nhấn Enter sẽ làm lộ chúng",
+					"proposed": "{length, plural, other {# ký tự}} giờ là VĂN BẢN THUẦN trong ô soạn tin — nhấn Enter sẽ làm lộ nội dung đó",
+					"reason": "«chúng» is a plural-only pronoun and the count can be 1: unredactedNotice(length) is called with the character count of the unredacted buffer (src/renderer/src/features/chat/components/credential-capture.ts:2432), so length=1 renders «1 ký tự giờ là VĂN BẢN THUẦN trong ô soạn tin — nhấn Enter sẽ làm lộ chúng» - a number/pronoun mismatch. vi CLDR is other-only, so the count cannot be branched; a neutral «nội dung đó» is correct at every count. Pre-existing (the s3c remediation touched only armed/empty_span/empty_span_draft), recorded because a full audit re-reads every key."
+				}
+			]
+		},
+		"ui.chat.session_readout": {
+			"namespace": "ui.chat.session_readout",
+			"status": "passed",
+			"keys_audited": 54,
+			"en_sha256": "613dad2f1acee22dd7d6e4b7c482b1caa8ec49938f207b8bee52a071a18c4386",
+			"vi_sha256": "eecd10420ddf4cea62831b0f8d2ea3ce9acadab58d2bce54e31b750922c681cb",
+			"findings": [
+				{
+					"id": "vi-s3d-4",
+					"severity": "NIT",
+					"key": "ui.chat.session_readout.access.history.only",
+					"keys": [
+						"ui.chat.session_readout.access.history.only"
+					],
+					"current": "Chỉ là lịch sử; không phải quyền để dùng lại quyền truy cập.",
+					"proposed": "Chỉ là lịch sử; không cho phép dùng lại quyền truy cập.",
+					"reason": "«quyền … quyền truy cập» repeats the same noun inside one clause («permission to reuse access» rendered word for word); a verb phrase («không cho phép dùng lại …») is what a Vietnamese reader expects and keeps the English meaning exactly."
+				}
+			]
+		}
+	},
+	"rendered_samples": [
+		{
+			"key": "ui.chat.credential_notice.unredacted",
+			"args": "{length: 1}",
+			"vi": "1 ký tự giờ là VĂN BẢN THUẦN trong ô soạn tin — nhấn Enter sẽ làm lộ chúng",
+			"en": "1 character is now PLAIN TEXT in the composer — Enter will expose it",
+			"note": "the MINOR vi-s3d-3: en switches to the singular pronoun, vi stays plural «chúng»"
+		},
+		{
+			"key": "ui.chat.credential_notice.unredacted",
+			"args": "{length: 12}",
+			"vi": "12 ký tự giờ là VĂN BẢN THUẦN trong ô soạn tin — nhấn Enter sẽ làm lộ chúng",
+			"en": "12 characters are now PLAIN TEXT in the composer — Enter will expose them",
+			"note": ""
+		},
+		{
+			"key": "ui.chat.credential_notice.chip_title",
+			"args": "{index: 3, chars: 42}",
+			"vi": "Thông tin xác thực #3, 42 ký tự — nằm trong tin nhắn này; không thể đọc giá trị của nó",
+			"en": "Credential #3, 42 chars — held in this message; its value cannot be read",
+			"note": ""
+		},
+		{
+			"key": "ui.chat.credential_notice.armed",
+			"args": "{}",
+			"vi": "đã sẵn sàng — thêm một dấu cách, rồi nhập hoặc dán thông tin bí mật",
+			"en": "armed — add a space, then type or paste the secret",
+			"note": ""
+		},
+		{
+			"key": "ui.chat.ask_panel.landing.many",
+			"args": "{count: 0 / 1 / 2 / 5 / 11 / 21 / 100}",
+			"vi": "0 câu hỏi đã hết thời gian chờ | 1 câu hỏi đã hết thời gian chờ | 2 câu hỏi đã hết thời gian chờ | 5 câu hỏi đã hết thời gian chờ | 11 câu hỏi đã hết thời gian chờ | 21 câu hỏi đã hết thời gian chờ | 100 câu hỏi đã hết thời gian chờ",
+			"en": "0 questions timed out | 1 question timed out | 2/5/11/21/100 questions timed out",
+			"note": "vi has one plural branch (`other`), which is correct CLDR for vi; the separate landing.one key carries the singular"
+		},
+		{
+			"key": "ui.chat.ask_panel.lapse.many",
+			"args": "{count: 1 / 5}",
+			"vi": "1 câu hỏi đã hết thời gian chờ; các câu trả lời của bạn chưa được gửi. | 5 câu hỏi đã hết thời gian chờ; các câu trả lời của bạn chưa được gửi.",
+			"en": "1 question timed out; your answer was not sent. | 5 questions timed out; your answers were not sent.",
+			"note": ""
+		},
+		{
+			"key": "ui.chat.composer_notes.goal.stalled.cap",
+			"args": "{count: 0 / 1 / 2 / 21}",
+			"vi": "mục tiêu bị đình trệ: đã dừng sau 0 lần tiếp tục — gửi tin nhắn để tiếp tục | … 1 lần tiếp tục … | … 2 lần tiếp tục … | … 21 lần tiếp tục …",
+			"en": "goal stalled: stopped after 0 continuations — send a message to continue | … 1 continuation …",
+			"note": ""
+		},
+		{
+			"key": "ui.chat.session_readout.effort.level.xhigh",
+			"args": "{}",
+			"vi": "Rất cao",
+			"en": "xHigh",
+			"note": "vi-s3c-5 applied; sits beside shipped «Thấp / Trung bình / Cao» (ui.chat.session_status.effort_level.*)"
+		},
+		{
+			"key": "ui.chat.attachment_refusal.files_many",
+			"args": "{total: 7, cap: 5, dropped: 2}",
+			"vi": "Bản nháp này có 7 tệp, trong khi một tin nhắn chỉ đính kèm được tối đa 5 tệp, nên tin nhắn chưa được gửi. Hãy gỡ bớt 2 tệp, hoặc gửi chúng trong tin nhắn thứ hai.",
+			"en": "This draft carries 7 files and one message carries up to 5, so this message was not sent. Remove 2 of them, or send them in a second message.",
+			"note": "vi-s3c-2 applied («đính kèm được» instead of the «mang» calque)"
+		},
+		{
+			"key": "ui.chat.ask_panel.empty.none_outstanding",
+			"args": "{}",
+			"vi": "Không có câu hỏi nào chưa trả lời. Tác nhân không đang chờ điều gì.",
+			"en": "No asks outstanding. The agent is not waiting on anything.",
+			"note": "vi-s3c-1 applied"
+		},
+		{
+			"key": "ui.chat.composer_notes.goal.stalled.unknown",
+			"args": "{}",
+			"vi": "mục tiêu bị đình trệ: việc tự động tiếp tục đã dừng — gửi tin nhắn để tiếp tục",
+			"en": "goal stalled: auto-continuation stopped — send a message to continue",
+			"note": "vi-s3c-4 applied"
+		}
+	],
+	"prior_findings_verified": [
+		{
+			"id": "vi-s3c-1",
+			"namespace": "ui.chat.ask_panel",
+			"disposition": "applied-as-proposed",
+			"now": "Không có câu hỏi nào chưa trả lời. Tác nhân không đang chờ điều gì.",
+			"judgement": "Correct: «không đang chờ điều gì» states the agent's state (not waiting on anything) instead of the obligation reading."
+		},
+		{
+			"id": "vi-s3c-2",
+			"namespace": "ui.chat.attachment_refusal",
+			"disposition": "applied-as-proposed",
+			"now": "…một tin nhắn chỉ đính kèm được tối đa {cap, number} tệp… (files_many, files_one, images_many, images_one)",
+			"judgement": "Correct: the «mang» calque is gone and «đính kèm được tối đa» is what a vi reader expects for a per-message attachment cap; placeholders intact."
+		},
+		{
+			"id": "vi-s3c-3",
+			"namespace": "ui.chat.credential_notice",
+			"disposition": "applied-as-proposed",
+			"now": "…nhập hoặc dán thông tin bí mật… (armed, empty_span, empty_span_draft)",
+			"judgement": "Correct and better supported than the receipt stated: shipped vi already uses «thông tin bí mật» for the pasted value (ui.chat.canonical.fold.count.secret, ui.chat.composer.secret_ask_notice), while the bare «bí mật» shipped form is a modifier («ô bí mật»)."
+		},
+		{
+			"id": "vi-s3c-4",
+			"namespace": "ui.chat.composer_notes",
+			"disposition": "applied-as-proposed",
+			"now": "mục tiêu bị đình trệ: việc tự động tiếp tục đã dừng — gửi tin nhắn để tiếp tục",
+			"judgement": "Correct: the «việc» nominaliser makes the clause parse as «the auto-continuation stopped»; matches goal.stalled.cap's «lần tiếp tục» phrasing."
+		},
+		{
+			"id": "vi-s3c-5",
+			"namespace": "ui.chat.session_readout",
+			"disposition": "applied-as-proposed",
+			"now": "Rất cao (effort.level.xhigh)",
+			"judgement": "Correct: no other namespace ships an xHigh label, and «Rất cao» lines up with shipped «Thấp / Trung bình / Cao» (ui.chat.session_status.effort_level.*); the hybrid «xCao» is gone."
+		},
+		{
+			"id": "vi-s3c-v3 (from vi-s3b-4)",
+			"namespace": "ui.chat.session_readout",
+			"disposition": "applied-ok, still present",
+			"now": "Thời điểm hết hạn của lần cấp quyền đã ghi nhận: {time}.",
+			"judgement": "Noun-phrase form retained; {time} intact."
+		},
+		{
+			"id": "vi-s3c-v4 (from vi-s3b-n2)",
+			"namespace": "ui.chat.session_readout",
+			"disposition": "applied-ok, still present",
+			"now": "Không thể mượn thông tin đăng nhập này.",
+			"judgement": "Retained verbatim."
+		},
+		{
+			"id": "vi-s3c-v5 (from vi-s3b-n3)",
+			"namespace": "ui.chat.session_readout",
+			"disposition": "applied-ok, still present",
+			"now": "Quyền truy cập {label} cần xử lý",
+			"judgement": "Retained; {label} intact."
+		},
+		{
+			"id": "vi-s3c-v6 (from vi-s3b-n4)",
+			"namespace": "ui.chat.session_readout",
+			"disposition": "not-applied (by design; the s3b receipt itself recommended the code owner keep this string) - reason judged sound",
+			"now": "{owner} không thể cấp quyền truy cập / thiết bị sở hữu",
+			"judgement": "Deliberate no-change, and the reason holds: the string is a fragment inserted into a sentence the code capitalises when sentence-initial («Thiết bị sở hữu không thể cấp quyền truy cập» vs «MacBook Pro của Damian không thể cấp quyền truy cập»). Lowercase in the catalogue is correct; no action."
+		}
+	]
+}

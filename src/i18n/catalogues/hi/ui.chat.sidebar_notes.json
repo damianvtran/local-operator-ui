@@ -1,0 +1,10 @@
+{
+	"ui.chat.sidebar_notes.clear_all_why": "ड्राफ़्ट भेजे जा रहे हैं - भेजना पूरा होने पर इन्हें मिटाया जा सकेगा",
+	"ui.chat.sidebar_notes.draft_sending_why": "भेजा जा रहा है - भेजना पूरा होने पर इस ड्राफ़्ट को मिटाया जा सकेगा",
+	"ui.chat.sidebar_notes.loading_more": "और चैट लोड हो रही हैं…",
+	"ui.chat.sidebar_notes.opened_by_anonymous": "एक एजेंट ने खोली",
+	"ui.chat.sidebar_notes.opened_by_named": "{agent} ने खोली",
+	"ui.chat.sidebar_notes.running_none": "अभी कुछ नहीं चल रहा।",
+	"ui.chat.sidebar_notes.running_unread": "डेमन यह नहीं पढ़ सका कि कौन-सी चैट चल रही हैं, इसलिए यह सूची अधूरी हो सकती है।",
+	"ui.chat.sidebar_notes.stale_list": "{message} पिछली बार लोड की गई चैट दिखाई जा रही हैं।"
+}

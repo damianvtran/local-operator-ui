@@ -78,7 +78,6 @@ import type {
  * module's only imports are types, so this adds no runtime weight to a bundle
  * that exists precisely to be DOM-free (see `scripts/ask-queue.test.mjs`).
  */
-import { LABEL_SEAM } from "./components/run-details/run-detail-model";
 import { COMPOSER_TEXTAREA_SELECTOR } from "./composer-field";
 import { pressLandsOnOverlay } from "./keyboard-scopes";
 
@@ -371,7 +370,8 @@ export const askScopeSubject = (scope: AskScope): string =>
  * is unresolved - `askScopeLine` omits the separator when there is no clause - so the
  * surface names what it is doing exactly once.
  */
-export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
+export const askDrawerUnreadLine = (): string =>
+	t("ui.chat.ask_queue.drawer.unread_line");
 
 /**
  * THE OTHER UNRESOLVED-LOOKING FRAME, WHICH IS NOT THE SAME FACT (design round 1, D1).
@@ -398,11 +398,12 @@ export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
  * what that means, in the drawer's own voice; the pair is the drawer's, and the chip
  * and the asks item keep their designed zero-state offers unchanged.
  */
-export const ASK_DRAWER_UNAVAILABLE_CLAUSE = "Asks unavailable";
+export const askDrawerUnavailableClause = (): string =>
+	t("ui.chat.ask_queue.drawer.unavailable_clause");
 
 /** The body under that clause: what is true, rather than what the surface hopes. */
-export const ASK_DRAWER_UNAVAILABLE_LINE =
-	"This runtime doesn't support queued asks.";
+export const askDrawerUnavailableLine = (): string =>
+	t("ui.chat.ask_queue.drawer.unavailable_line");
 
 /**
  * The DRAWER's count clause: what the surface shows, not only what the agent waits on.
@@ -424,7 +425,7 @@ export const ASK_DRAWER_UNAVAILABLE_LINE =
 export const askDrawerCountClause = (view: AskQueueView): string => {
 	/* No clause at all while unresolved: the body names that fact once (D5). */
 	if (view.unread) return "";
-	if (!view.published) return ASK_DRAWER_UNAVAILABLE_CLAUSE;
+	if (!view.published) return askDrawerUnavailableClause();
 	/*
 	 * A timed-out ask is a settled ROW in this drawer (D11), and settled rows are not in
 	 * the title (design round 1 on #1116, D2), so a queue with nothing waiting or being
@@ -508,13 +509,19 @@ export const askRailToggleLabel = (args: {
 	 */
 	cap?: string | null;
 }): string => {
-	const verb = args.open ? "Close" : "Open";
-	const chord =
-		args.cap === null || args.cap === undefined ? "" : ` (${args.cap})`;
-	const subject = askScopeSubject(args.scope);
-	return args.count > 0
-		? `${verb} asks${chord} \u2014 ${subject}, ${args.count} waiting`
-		: `${verb} asks${chord} \u2014 ${subject}`;
+	const cap = args.cap === null || args.cap === undefined ? "" : args.cap;
+	// One message per direction rather than a spliced verb, so each language orders
+	// "Open asks (⌘A) — scope, N waiting" its own way; the waiting clause and the
+	// shortcut parenthetical are optional INSIDE the message.
+	return t(
+		args.open ? "ui.chat.ask_queue.rail.close" : "ui.chat.ask_queue.rail.open",
+		{
+			hasCap: cap === "" ? "no" : "yes",
+			cap,
+			subject: askScopeSubject(args.scope),
+			count: args.count,
+		},
+	);
 };
 
 /**
@@ -573,7 +580,7 @@ export const askChipDeadlineText = (
  * ask the number IS that ask's and any subject would be noise.
  */
 export const askChipDeadlineSubject = (view: AskQueueView): string =>
-	view.waiting > 1 ? "soonest ask" : "";
+	view.waiting > 1 ? t("ui.chat.ask_queue.deadline.soonest_subject") : "";
 
 /**
  * The whole countdown as one string: the subject and its number, or null.
@@ -592,7 +599,12 @@ export const askChipDeadline = (
 	const text = askChipDeadlineText(view, nowMs);
 	if (text === null) return null;
 	const subject = askChipDeadlineSubject(view);
-	return subject === "" ? text : `${subject} ${text}`;
+	return subject === ""
+		? text
+		: t("ui.chat.ask_queue.deadline.with_subject", {
+				subject,
+				deadline: text,
+			});
 };
 
 /**
@@ -647,7 +659,10 @@ const askChipFullClause = (view: AskQueueView, nowMs: number): string => {
 		(view.waiting > 0 || view.delivering > 0) &&
 		view.movedOn > 0
 	) {
-		return `${askChipClause(view, nowMs)} · ${view.movedOn} timed out`;
+		return t("ui.chat.ask_queue.chip.moved_on", {
+			clause: askChipClause(view, nowMs),
+			count: view.movedOn,
+		});
 	}
 	return askChipClause(view, nowMs);
 };
@@ -676,7 +691,6 @@ export const askChipLabel = (
 	 * this control cannot, because its `aria-label` OVERRIDES its content, so the word
 	 * goes in the label. APPENDED, so the visible clause stays a prefix of the name.
 	 */
-	const urgency = view.urgent ? " · Urgent" : "";
 	/*
 	 * THE SURFACE'S OWN NOUN, NOT "the ask history" (UX round 1, U3). The chip's
 	 * label is the only sentence that names what the press opens, and "history" was
@@ -686,7 +700,15 @@ export const askChipLabel = (
 	 * because the chip sits in one conversation's row while the drawer's other scope
 	 * - `fleet` - has no chip here).
 	 */
-	return `${expanded ? "Collapse" : "Expand"} this conversation's asks${LABEL_SEAM}${askChipFullClause(view, nowMs)}${urgency}`;
+	return t(
+		expanded
+			? "ui.chat.ask_queue.chip.label_collapse"
+			: "ui.chat.ask_queue.chip.label_expand",
+		{
+			clause: askChipFullClause(view, nowMs),
+			urgent: view.urgent ? "yes" : "no",
+		},
+	);
 };
 
 /**
@@ -1095,11 +1117,23 @@ export const askSettledAnswers = (
  * rather than rounding up to an hour.
  */
 export const askWaitedText = (seconds: number): string => {
-	if (!Number.isFinite(seconds) || seconds <= 0) return "a while";
-	if (seconds < 60) return `${Math.trunc(seconds)}s`;
-	if (seconds < 3600) return `${Math.trunc(seconds / 60)}m`;
-	if (seconds < 86400) return `${Math.trunc(seconds / 3600)}h`;
-	return `${Math.trunc(seconds / 86400)}d`;
+	if (!Number.isFinite(seconds) || seconds <= 0)
+		return t("ui.chat.ask_queue.duration.unknown");
+	if (seconds < 60)
+		return t("ui.chat.ask_queue.duration.seconds", {
+			count: Math.trunc(seconds),
+		});
+	if (seconds < 3600)
+		return t("ui.chat.ask_queue.duration.minutes", {
+			count: Math.trunc(seconds / 60),
+		});
+	if (seconds < 86400)
+		return t("ui.chat.ask_queue.duration.hours", {
+			count: Math.trunc(seconds / 3600),
+		});
+	return t("ui.chat.ask_queue.duration.days", {
+		count: Math.trunc(seconds / 86400),
+	});
 };
 
 /**
@@ -1133,20 +1167,29 @@ export const askResponseSummary = (receipt: {
 		 */
 		const raw =
 			typeof receipt.by?.surface === "string" ? receipt.by.surface : "";
+		// `remote`/`tui` are wire codes for the phone and terminal surfaces; any other
+		// surface name is a device label the backend wrote and is shown as it came.
 		const surface =
-			raw === "remote" ? "phone" : raw === "tui" ? "terminal" : raw;
-		const via = surface ? ` (${surface})` : "";
-		const reason =
-			receipt.reason === "answered_in_chat"
-				? "settled in chat"
-				: "no longer needed";
-		return `Dismissed by you${via} — ${reason} (ask ${receipt.askId})`;
+			raw === "remote"
+				? t("ui.chat.ask_queue.response.surface_phone")
+				: raw === "tui"
+					? t("ui.chat.ask_queue.response.surface_terminal")
+					: raw;
+		return t("ui.chat.ask_queue.response.dismissed", {
+			hasVia: surface ? "yes" : "no",
+			via: surface,
+			reason:
+				receipt.reason === "answered_in_chat"
+					? t("ui.chat.ask_queue.response.reason_answered_in_chat")
+					: t("ui.chat.ask_queue.response.reason_moot"),
+			askId: receipt.askId,
+		});
 	}
 	if (receipt.status === "declined")
-		return `Ask ${receipt.askId} declined — the agent was told`;
+		return t("ui.chat.ask_queue.response.declined", { askId: receipt.askId });
 	if (receipt.status === "late")
-		return `Answered late — the agent was told (ask ${receipt.askId})`;
-	return `Answered — delivering (ask ${receipt.askId})`;
+		return t("ui.chat.ask_queue.response.late", { askId: receipt.askId });
+	return t("ui.chat.ask_queue.response.answered", { askId: receipt.askId });
 };
 
 /**
@@ -1160,7 +1203,10 @@ export const askTimeoutSummary = (receipt: {
 	askId: string;
 	waitedS: number;
 }): string =>
-	`Timed out after ${askWaitedText(receipt.waitedS)} — the agent goes ahead without your answer (ask ${receipt.askId})`;
+	t("ui.chat.ask_queue.response.timed_out", {
+		waited: askWaitedText(receipt.waitedS),
+		askId: receipt.askId,
+	});
 
 /**
  * WHAT CLOSES THE CHANGE WINDOW, said where the control that uses it is (design §10,
@@ -1175,8 +1221,8 @@ export const askTimeoutSummary = (receipt: {
  * rather than in the mirrored copy contract: these are this surface's words about
  * this surface's control, not a backend notice restated.
  */
-export const ASK_CHANGE_WINDOW_HINT =
-	"You can change this until the agent is handed your answer.";
+export const askChangeWindowHint = (): string =>
+	t("ui.chat.ask_queue.change_window_hint");
 
 /**
  * This surface's record of the ask it last acted on (design §10, #1936).
@@ -1760,18 +1806,35 @@ const compareAge = (a: AskPresentation, b: AskPresentation): number => {
  * offers that any more (D10).
  */
 export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
-	open: "Queued — the agent is continuing",
-	answered: "Answered — delivering",
-	timed_out: "Timed out — the agent goes ahead without your answer",
-	late: "Answered late — the agent was told",
-	declined: "Declined — the agent was told",
-	dismissed: "Dismissed — no reply was sent",
-	expired: "Expired — this ask is too old to answer; ask the agent again",
-	/* Resolve on read, not module load: an open pane follows language changes. */
+	/* Getters, not literals: resolve on read, not module load, so an open pane
+	 * follows a language change and `ASK_STATUS_COPY[status]` keeps its shape. */
+	get open() {
+		return t("ui.chat.ask_queue.status.open");
+	},
+	get answered() {
+		return t("ui.chat.ask_queue.status.answered");
+	},
+	get timed_out() {
+		return t("ui.chat.ask_queue.status.timed_out");
+	},
+	get late() {
+		return t("ui.chat.ask_queue.status.late");
+	},
+	get declined() {
+		return t("ui.chat.ask_queue.status.declined");
+	},
+	get dismissed() {
+		return t("ui.chat.ask_queue.status.dismissed");
+	},
+	get expired() {
+		return t("ui.chat.ask_queue.status.expired");
+	},
 	get withdrawn() {
 		return t("ui.chat.asks.status.withdrawn");
 	},
-	unknown: "Waiting on an answer",
+	get unknown() {
+		return t("ui.chat.ask_queue.status.unknown");
+	},
 };
 
 /**
@@ -1789,7 +1852,8 @@ export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
  * in the settled section (`askStatusWord`), where "the agent was told" is true — the
  * sentence is condition-dependent, the word is not.
  */
-export const ASK_LATE_UNDELIVERED_TEXT = "Answered late — not yet delivered";
+export const askLateUndeliveredText = (): string =>
+	t("ui.chat.ask_queue.late_undelivered");
 
 /**
  * The status WORD for a settled row's one line, DERIVED from the sentence above.
@@ -1870,7 +1934,7 @@ export const askPanelHalves = (
 export const askStatusText = (ask: PendingAsk, nowMs: number): string => {
 	const presentation = presentAsk(ask);
 	if (presentation.status === "late" && presentation.delivering)
-		return ASK_LATE_UNDELIVERED_TEXT;
+		return askLateUndeliveredText();
 	/* A local acknowledgement can stay expanded in its action slot after the
 	 * wire confirms delivery. The generic answered copy names the queue, so only
 	 * use it while delivery is actually pending; no new copy/second status owner. */
@@ -1918,8 +1982,18 @@ const expiryParts = (
 ): { long: string; short: string } | null => {
 	if (!Number.isFinite(expiresAt) || expiresAt <= 0) return null;
 	const remainingMs = expiresAt - nowMs;
-	if (remainingMs <= 0) return { long: "expiring now", short: "now" };
+	if (remainingMs <= 0)
+		return {
+			long: t("ui.chat.ask_queue.expiry.now_long"),
+			short: t("ui.chat.ask_queue.expiry.now_short"),
+		};
 	const minutes = Math.floor(remainingMs / 60_000);
+	// The unit abbreviations are keyed (`ui.chat.ask_queue.duration.*`) so each
+	// language spells "42m" its own way; `long` wraps the same text.
+	const within = (time: string) => ({
+		long: t("ui.chat.ask_queue.expiry.in", { time }),
+		short: time,
+	});
 	/*
 	 * ONE SPELLING OF ONE UNIT, and no space: the TUI this feature deliberately
 	 * rhymes with reads `expires in 42m` (`tui/widgets/ask_queue.py`), and the
@@ -1927,16 +2001,19 @@ const expiryParts = (
 	 * "minutes" in the pair of PRs that share a copy contract is the kind of drift
 	 * the shared contract exists to prevent (design round 1, D5).
 	 */
-	if (minutes < 1) {
-		const seconds = `${Math.floor(remainingMs / 1000)}s`;
-		return { long: `expires in ${seconds}`, short: seconds };
-	}
+	if (minutes < 1)
+		return within(
+			t("ui.chat.ask_queue.duration.seconds", {
+				count: Math.floor(remainingMs / 1000),
+			}),
+		);
 	if (minutes < 60)
-		return { long: `expires in ${minutes}m`, short: `${minutes}m` };
+		return within(t("ui.chat.ask_queue.duration.minutes", { count: minutes }));
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return { long: `expires in ${hours}h`, short: `${hours}h` };
+	if (hours < 24)
+		return within(t("ui.chat.ask_queue.duration.hours", { count: hours }));
 	const days = Math.floor(hours / 24);
-	return { long: `expires in ${days}d`, short: `${days}d` };
+	return within(t("ui.chat.ask_queue.duration.days", { count: days }));
 };
 
 export const askDeadlineText = (
@@ -2065,17 +2142,18 @@ export const askSecretIsSkippable = (
  * "skip" as a parenthetical it read as "you will not be asked again" (design round 1,
  * D3). `askSecretPlaceholder` picks one.
  */
-export const ASK_SECRET_SKIP_PLACEHOLDER =
-	"Leave empty to skip; what you type is never shown";
+export const askSecretSkipPlaceholder = (): string =>
+	t("ui.chat.ask_queue.secret.placeholder_skip");
 /**
  * The change form's field over a stored key. It is the only explanation for a disabled
  * `Update answer` there, so it states the requirement rather than an option (D4), and
  * it is short enough to fit the 400px drawer floor's 332px text box (D6).
  */
-export const ASK_SECRET_RETYPE_PLACEHOLDER =
-	"Required: type it again; it is never shown";
+export const askSecretRetypePlaceholder = (): string =>
+	t("ui.chat.ask_queue.secret.placeholder_retype");
 /** Main's copy, kept where an empty field could not be sent as a skip. */
-export const ASK_SECRET_PLAIN_PLACEHOLDER = "Your answer (never shown again)";
+export const askSecretPlainPlaceholder = (): string =>
+	t("ui.chat.ask_queue.secret.placeholder_plain");
 
 /** Whether a typed secret value is there to send. */
 const secretTyped = (question: PendingAskQuestion, secrets: AskSecrets) =>
@@ -2111,12 +2189,12 @@ export const askSecretPlaceholder = (
 	recorded?: Record<string, string[]>,
 ): string => {
 	if (!askSecretIsSkippable(question, recorded))
-		return ASK_SECRET_RETYPE_PLACEHOLDER;
+		return askSecretRetypePlaceholder();
 	return ask.questions.some(
 		(other) => other.id !== question.id && carriesRealAnswer(other),
 	)
-		? ASK_SECRET_SKIP_PLACEHOLDER
-		: ASK_SECRET_PLAIN_PLACEHOLDER;
+		? askSecretSkipPlaceholder()
+		: askSecretPlainPlaceholder();
 };
 
 /**
@@ -2419,11 +2497,11 @@ export const askRevisionDraft = (ask: PendingAsk): AskDraft => {
  * they are worded to say what the user's next move is rather than to guess which
  * of the two happened.
  */
-export const ASK_ALREADY_SETTLED_MESSAGE =
-	"That question was already settled, so your answer was not sent.";
+export const askAlreadySettledMessage = (): string =>
+	t("ui.chat.ask_queue.refusal.already_settled");
 
-export const ASK_EXPIRED_MESSAGE =
-	"This ask is too old to answer — ask the agent again.";
+export const askExpiredMessage = (): string =>
+	t("ui.chat.ask_queue.refusal.expired");
 
 /**
  * The sentence for a press the owner was too BUSY to confirm, after the app's
@@ -2488,8 +2566,8 @@ export const ASK_EXPIRED_MESSAGE =
  * composition guards against is one of wording between two sentences that say the
  * same thing, and here the wording is the point.
  */
-export const ANSWER_BUSY_MESSAGE =
-	"Your answer isn't confirmed yet. The agent is busy.";
+export const answerBusyMessage = (): string =>
+	t("ui.chat.ask_queue.refusal.busy");
 
 /**
  * Whether this failure is the answers route's retryable-busy refusal.
@@ -2526,8 +2604,8 @@ export const askRefusalFallback = (error: unknown): string | null => {
 		typeof (error as { code?: unknown })?.code === "string"
 			? ((error as { code: string }).code as string)
 			: "";
-	if (status === 410 || code === "expired") return ASK_EXPIRED_MESSAGE;
-	if (status === 409) return ASK_ALREADY_SETTLED_MESSAGE;
+	if (status === 410 || code === "expired") return askExpiredMessage();
+	if (status === 409) return askAlreadySettledMessage();
 	/*
 	 * NULL MEANS "NOT THIS APP'S CALL", and it is a real answer rather than a
 	 * failure. A transport failure carries no status, and a 404 is "no ask with
@@ -2610,9 +2688,9 @@ const askRefusalAuthored = (error: unknown): boolean => {
  * now names both.
  */
 export const askRefusalSentence = (error: unknown): string => {
-	if (answerOwnerIsBusy(error)) return ANSWER_BUSY_MESSAGE;
+	if (answerOwnerIsBusy(error)) return answerBusyMessage();
 	if (askRefusalAuthored(error))
-		return userFacingMessage(error, ASK_ALREADY_SETTLED_MESSAGE);
+		return userFacingMessage(error, askAlreadySettledMessage());
 	const classified = askRefusalFallback(error);
 	if (classified !== null) return classified;
 	/*
@@ -2626,7 +2704,7 @@ export const askRefusalSentence = (error: unknown): string => {
 		error,
 		error instanceof Error && error.message
 			? error.message
-			: ASK_ALREADY_SETTLED_MESSAGE,
+			: askAlreadySettledMessage(),
 	);
 };
 

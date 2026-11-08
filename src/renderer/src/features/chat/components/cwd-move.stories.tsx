@@ -60,10 +60,7 @@ import type {
 	TranscriptRecord,
 	TranscriptState,
 } from "../canonical/transcript-reducer";
-import {
-	MOVE_NOT_READY_REASON,
-	MOVE_UNAVAILABLE_REASON,
-} from "../move-session";
+import { moveNotReadyReason, moveUnavailableReason } from "../move-session";
 import {
 	DirectoryIndicator,
 	type DirectoryWritePath,
@@ -528,7 +525,7 @@ export const ReadonlyOlderBackend: Story = {
 	render: () => (
 		<Frame
 			currentWorkingDirectory={PROJECT}
-			readOnlyReason={MOVE_UNAVAILABLE_REASON}
+			readOnlyReason={moveUnavailableReason()}
 		/>
 	),
 	play: async () => {
@@ -547,7 +544,7 @@ export const ReadonlyOlderBackend: Story = {
  * The chip while its session is still being created - the OTHER reason a chip
  * with a live session is read-only.
  *
- * `MOVE_NOT_READY_REASON` says so, and the frame exists because the sentence
+ * `moveNotReadyReason` says so, and the frame exists because the sentence
  * only exists for this window: before it, a pane between "sent" and "live" read
  * the capability sentence, which was false in all three of its clauses for a
  * backend that can move sessions (agent review m1).
@@ -556,7 +553,7 @@ export const ReadonlyStarting: Story = {
 	render: () => (
 		<Frame
 			currentWorkingDirectory={PROJECT}
-			readOnlyReason={MOVE_NOT_READY_REASON}
+			readOnlyReason={moveNotReadyReason()}
 		/>
 	),
 	play: async () => {

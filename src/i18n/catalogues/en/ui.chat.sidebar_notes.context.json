@@ -1,0 +1,62 @@
+{
+	"ui.chat.sidebar_notes.clear_all_why": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "tooltip on the disabled clear-all-drafts control while drafts are sending",
+		"tone": "short clause with a hyphen, no full stop"
+	},
+	"ui.chat.sidebar_notes.draft_sending_why": {
+		"length": "",
+		"note": "A draft is an unsent message saved in the sidebar.",
+		"placeholders": {},
+		"role": "tooltip on a disabled discard control for a draft that is still sending",
+		"tone": "short clause with a hyphen, no full stop"
+	},
+	"ui.chat.sidebar_notes.loading_more": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "status line under the chat list while the next page loads",
+		"tone": "gerund phrase and an ellipsis"
+	},
+	"ui.chat.sidebar_notes.opened_by_anonymous": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "note on a chat row that an unnamed agent started this conversation",
+		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.sidebar_notes.opened_by_named": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"agent": "the agent's name; shown verbatim"
+		},
+		"role": "note on a chat row that an agent started this conversation",
+		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.sidebar_notes.running_none": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "empty-state text in the Running section",
+		"tone": "one short sentence, ends with a full stop"
+	},
+	"ui.chat.sidebar_notes.running_unread": {
+		"length": "",
+		"note": "The daemon is the background Local Operator service.",
+		"placeholders": {},
+		"role": "empty-state text in the Running section when the backend could not report running chats",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.sidebar_notes.stale_list": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"message": "the backend's or app's error message; shown verbatim"
+		},
+		"role": "chat list error with a note that the previous list is still shown",
+		"tone": "reason sentence then short sentence"
+	}
+}

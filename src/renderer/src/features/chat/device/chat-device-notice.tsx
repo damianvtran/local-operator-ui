@@ -17,6 +17,8 @@
  * the remedy. Both sentences are real; see `arrivalCopy`.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { FC } from "react";
 import { MoveNotice } from "../../mesh/mesh-actions";
@@ -42,6 +44,7 @@ const ROW = "px-4 pt-2";
 const WAIT_CEILING_S = 300;
 
 export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
+	useI18nLocale();
 	const move = useChatDeviceStore((state) =>
 		sessionId ? state.moves[sessionId] : undefined,
 	);
@@ -167,7 +170,7 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 					canWait={false}
 					refusal={null}
 					receipt={{
-						verb: `Moving to ${move.name}`,
+						verb: t("ui.chat.device_move.moving", { name: move.name }),
 						/*
 						 * NO INVENTED PROGRESS: the route answers once, when the move settles, and
 						 * streams nothing - so there is no percentage to show. What is true

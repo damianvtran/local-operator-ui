@@ -473,12 +473,12 @@ test("the strip is one live region, one Retry, and one dismissal", () => {
 	// refusal's answer speaks the refusal's vocabulary, and the reachability
 	// sentence stays for the rows it describes - chosen on the same fact-key the
 	// dismissal rides.
-	assert.match(source, /Retrying…/);
-	assert.match(source, /Still unreachable\./);
+	assert.match(source, /ui\.chat\.page_chrome\.status_strip\.retrying/);
 	assert.match(
 		source,
-		/The server is running, but this app's credential is still refused\./,
+		/ui\.chat\.page_chrome\.status_strip\.outcome_unreachable/,
 	);
+	assert.match(source, /ui\.chat\.page_chrome\.status_strip\.outcome_refused/);
 	assert.match(source, /key\?\.startsWith\("credential-refused"\)/);
 	// The dismissal is a REAL collapse (a pill that re-expands), not a hide.
 	assert.match(source, /data-lo-status-pill=""/);

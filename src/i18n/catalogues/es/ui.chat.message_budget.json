@@ -1,0 +1,12 @@
+{
+	"ui.chat.message_budget.bytes": "{count, plural, one {# byte} many {# de bytes} other {# bytes}}",
+	"ui.chat.message_budget.command_chars": "Este comando tiene {count, plural, one {# carácter} many {# de caracteres} other {# caracteres}} y supera el límite de {limit} que admite un comando. Acórtalo o pon el texto en un mensaje.",
+	"ui.chat.message_budget.command_size": "Este comando ocupa {size} y supera el límite de {limit} que admite un comando. Acórtalo o pon el texto en un mensaje.",
+	"ui.chat.message_budget.fork_chars": "Este primer mensaje tiene {count, plural, one {# carácter} many {# de caracteres} other {# caracteres}} y supera el límite de {limit} que admite un mensaje. Acórtalo o envíalo en la conversación nueva.",
+	"ui.chat.message_budget.fork_size": "Este primer mensaje ocupa {size} y supera el límite de {limit} que admite un mensaje. Acórtalo o envíalo en la conversación nueva.",
+	"ui.chat.message_budget.images_size": "Estas imágenes suman {size} y superan el límite de {limit} que admite un mensaje. Quita una imagen o envíalas en un segundo mensaje.",
+	"ui.chat.message_budget.message_chars": "Este mensaje tiene {count, plural, one {# carácter} many {# de caracteres} other {# caracteres}} y supera el límite de {limit} que admite un mensaje. Divídelo en dos mensajes.",
+	"ui.chat.message_budget.prompt_chars": "Este prompt del sistema tiene {count, plural, one {# carácter} many {# de caracteres} other {# caracteres}} y supera el límite de {limit} que admite un agente. Acórtalo.",
+	"ui.chat.message_budget.prompt_size": "Este prompt del sistema ocupa {size} y supera el límite de {limit} que admite un agente. Acórtalo.",
+	"ui.chat.message_budget.text_size": "Este mensaje ocupa {size} de texto y supera el límite de {limit} que admite un mensaje. Divídelo en dos mensajes."
+}

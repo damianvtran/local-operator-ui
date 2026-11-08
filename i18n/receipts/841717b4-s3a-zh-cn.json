@@ -1,0 +1,215 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev, fresh independent audit session 841717b4; did not write or edit any of these catalogues)",
+ "agent": "translation-auditor (lopdev, fresh independent audit session 841717b4; did not write or edit any of these catalogues)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Session header of 841717b4 names anthropic/claude-sonnet-5-5; every read and verdict ran on it. No fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session from the S3 batch-A translator and from the PR coder. Verdicts rebuilt from the English source, the .context.json sidecars, the shipped zh-CN catalogues (glossary/consistency greps), i18n/style-guides/zh-CN.md and i18n/glossary.md of ~/local-operator, and rendered output; the translator's own deviation notes were not read.",
+ "instance": "841717b4-s3a-zh-cn",
+ "session": "841717b4",
+ "locale": "zh-CN",
+ "branch": "i18n/composer-keying",
+ "head": "a151ba95325 (catalogues audited as UNCOMMITTED files on disk; hashes below name the bytes read)",
+ "pr": "damianvtran/local-operator-ui#1761",
+ "date": "2026-11-08",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "S3 batch A, zh-CN: ui.chat.slash (89), ui.chat.page_chrome (26), ui.chat.header_menu (12), ui.chat.interrupt (6), ui.chat.fast_mode (10) = 143 keys, all read in full against en + sidecar.",
+ "checks": [
+  "node --test scripts/i18n/locale-parity.test.mjs: 44/44 pass (zh-CN: key set equals en, ICU placeholders preserved, no English stubs)",
+  "node scripts/i18n/context-parity.mjs: ok (131 allowed gaps, none in these namespaces)",
+  "@formatjs/icu-messageformat-parser parse of all 143 zh-CN values: 0 failures; argument names/types/styles equal en for every key; select blocks all carry other",
+  "plural categories: only `other` (zh-CN CLDR); 4 plural keys (arg.removal_many, interrupt.stopped_both/children/jobs) rendered with intl-messageformat at 0,1,2,5,11,21,100: count always shown, no empty/garbled branch; fast_mode.dial_differs select rendered for all 4 on/off combinations",
+  "no `::` number skeletons in these five namespaces; no non-ASCII whitespace, bidi or other format characters (Cf/Zs) anywhere; all values NFC; no edge/double spaces; no ASCII '...' ellipsis; no half-width punctuation adjacent to Han; no space between Han and Latin (style guide)",
+  "technical tokens verbatim: /stop, /skills, /{name}, /{word}, /{label}, ${name}, local-operator, Local Operator, Enter, Esc, API all byte-identical; the only Latin runs outside placeholders are those (+AI)",
+  "spliced fragments rendered with realistic arguments (tag verbs Create/Remove/Add; staged.* with English and Chinese user text; locked.*, move_hint, below_version, could_not_run): sentences are grammatical; only the staged adjacency recorded as a minor",
+  "width: widest zh/en display-width ratio is 1.33 on 3-cell 'New' (4 cells); no sidecar sets a maxCells; credential chip 凭据未保存 is 10 cells vs 21 for English; no rendered check needed",
+  "RTL/bidi: not applicable to zh-CN"
+ ],
+ "namespaces": {
+  "ui.chat.slash": {
+   "status": "passed",
+   "keys_read": 89,
+   "sha256": {
+    "en": "7d9ae8c2ff74de40aec65a6bddb7ead03abbc537a04a8366b5c452d7a057be7c",
+    "zh-CN": "45476d43e2388839d8abb51e4a4d0df249f214317ef7fdb4ec1c11ae37249053"
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 5
+   },
+   "findings": [
+    {
+     "severity": "minor",
+     "key": "ui.chat.slash.enter.stages",
+     "current": "按Enter暂存/{label}；再按一次Enter运行。",
+     "proposed": "按Enter预填/{label}；再按一次Enter运行。",
+     "reason": "The same footer family ships click.stages as 点击预填/{label}。 (ui.chat.pickers.slash.click.stages); the keyboard arm says 暂存 and the pointer arm 预填 for one action on one row.",
+     "also_keys": [
+      "ui.chat.slash.enter.stages_no_conversation",
+      "ui.chat.slash.staged.sets_goal",
+      "ui.chat.slash.staged.runs",
+      "ui.chat.slash.staged.runs_again",
+      "ui.chat.slash.staged.refused"
+     ]
+    },
+    {
+     "severity": "minor",
+     "key": "ui.chat.slash.staged.runs",
+     "current": "已暂存：{sentence}按Enter运行。",
+     "proposed": "已暂存：{sentence} 按Enter运行。",
+     "reason": "{sentence} is the user's own text and ends with an ASCII full stop; rendered with realistic input it reads \"已暂存：/goal Please fix the flaky test.按Enter运行。\" with the Latin stop jammed against 按. English has a space there; keep one before 按/再按/需要.",
+     "also_keys": [
+      "ui.chat.slash.staged.sets_goal",
+      "ui.chat.slash.staged.runs_again",
+      "ui.chat.slash.staged.refused"
+     ]
+    },
+    {
+     "severity": "nit",
+     "key": "ui.chat.slash.locked.fields",
+     "current": "请在对话框的“名称”和“值”字段中输入机密。",
+     "proposed": "请在对话框的“名称”和“值”字段中输入敏感信息。",
+     "reason": "\"secret\" is 敏感信息 in 17 uses across 4 shipped files (ui.chat.composer secret_*); 机密 occurs once in shipped copy (a pickers /secret description). Majority term preferred; 输入机密 also reads stiff."
+    },
+    {
+     "severity": "nit",
+     "key": "ui.chat.slash.arg.mcp_detail.stored",
+     "current": "已保存凭据",
+     "proposed": "已存储凭据",
+     "reason": "Shipped copy for the same stored-credential state says 已存储的凭据 (ui.chat.run_details.mcp.credential_removed) and 尚未存储凭据; shipped is itself mixed (已保存/未保存 appears 6 times, 已存储/未存储 6 times), so only a nit.",
+     "also_keys": [
+      "ui.chat.slash.arg.mcp_detail.stored_connected",
+      "ui.chat.slash.list.no_stored_credential"
+     ]
+    },
+    {
+     "severity": "nit",
+     "key": "ui.chat.slash.empty.not_reported",
+     "current": "尚未上报。按Enter运行命令。",
+     "proposed": "尚未报告。按Enter运行命令。",
+     "reason": "The backend reports values; shipped uses 报告 for backend-reported facts (此后端未报告位置) and 汇报 for project progress. 上报 is a third spelling."
+    },
+    {
+     "severity": "nit",
+     "key": "ui.chat.slash.list.no_teams",
+     "current": "没有已注册团队。",
+     "proposed": "没有已注册的团队。",
+     "reason": "Missing 的 makes the noun phrase read clipped; add it."
+    },
+    {
+     "severity": "nit",
+     "key": "ui.chat.slash.at.unreadable_permission",
+     "current": "无法读取此文件夹。可能需要此应用没有的权限。",
+     "proposed": "无法读取此文件夹。此应用可能缺少所需的权限。",
+     "reason": "\"需要此应用没有的权限\" is a relative clause that reads translated and briefly ambiguous about who lacks the permission."
+    }
+   ]
+  },
+  "ui.chat.page_chrome": {
+   "status": "passed",
+   "keys_read": 26,
+   "sha256": {
+    "en": "ad54b5d07aa2de04c8ffab1403fc6adb2b96adcbcb24eddeba99e0ff0425c73e",
+    "zh-CN": "f8cf967de98292785369f6b590aa88f531220e63971b8366e77afeeec1c37066"
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 3
+   },
+   "findings": [
+    {
+     "severity": "minor",
+     "key": "ui.chat.page_chrome.scroll_to_bottom.new_activity",
+     "current": "新动态",
+     "proposed": "新活动",
+     "reason": "The same jump-to-latest control ships 有新活动，滚动到底部 (ui.chat.scroll_to_bottom.label_new_activity): the visible label and the accessible name should name the same thing. 新活动 is 6 cells, so the narrow button is unaffected."
+    },
+    {
+     "severity": "nit",
+     "key": "ui.chat.page_chrome.credential_not_stored",
+     "current": "凭据未保存",
+     "proposed": "凭据未存储",
+     "reason": "Shipped copy for the same event says 凭据未存储 (ui.chat.pickers ...the_credential_was_not_stored). Shipped is mixed on 保存/存储, hence nit."
+    },
+    {
+     "severity": "nit",
+     "key": "ui.chat.page_chrome.error_view.failed",
+     "current": "本地服务器返回了错误。智能体的历史记录是安全的——请稍后重试。",
+     "proposed": "本地服务器返回了错误。智能体的历史记录不会丢失——请稍后重试。",
+     "reason": "\"…是安全的\" calques \"is safe\"; 不会丢失 is the idiomatic reassurance and matches 你的对话不会丢失 in backend.connecting.",
+     "also_keys": [
+      "ui.chat.page_chrome.error_view.failed_with_message",
+      "ui.chat.page_chrome.error_view.unreachable",
+      "ui.chat.page_chrome.error_view.unreachable_with_message"
+     ]
+    },
+    {
+     "severity": "nit",
+     "key": "ui.chat.page_chrome.options.fork",
+     "current": "分叉",
+     "proposed": "分叉 (keep)",
+     "reason": "Shipped renders Fork as 分叉对话 in the sidebar menu but 创建分支 in the fork dialog (ui.chat.pickers.destination_pickers.fork); the new key matches the sidebar and is the shorter chip form. No change needed; recorded so the shipped split is visible."
+    }
+   ]
+  },
+  "ui.chat.header_menu": {
+   "status": "passed",
+   "keys_read": 12,
+   "sha256": {
+    "en": "2bfaecb5b8bcba8f9b46087bb404d139566a8032578a0e60c3f8b449670e73d4",
+    "zh-CN": "05d05e39ad32961812fb21987de969689f66201ebf927b73fa9d0c82b9e3e371"
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "severity": "nit",
+     "key": "ui.chat.header_menu.close_asks",
+     "current": "关闭请求",
+     "proposed": "关闭请求面板",
+     "reason": "Shipped ui.chat.asks.close_asks is 关闭请求面板 for the same English \"Close asks\"; open_asks matches shipped 打开请求. The two menu items are internally consistent, so a nit."
+    }
+   ]
+  },
+  "ui.chat.interrupt": {
+   "status": "passed",
+   "keys_read": 6,
+   "sha256": {
+    "en": "c360665564dcd59d5656131902ed17f4a5912914844feabc1e790ded2d2bd603",
+    "zh-CN": "f307310b66dd0d88bf239a374475c7dc12c329254f866bc83523aa0924e32af5"
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": []
+  },
+  "ui.chat.fast_mode": {
+   "status": "passed",
+   "keys_read": 10,
+   "sha256": {
+    "en": "c6fd6fd1dfd776d099a74c866be11f0a8e821a4a1fa9beb7bccde11de095f412",
+    "zh-CN": "0569b4f7c92cf69d2b6aed87636402b87913b73b6c741c458031b5ec38fb1422"
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": []
+  }
+ }
+}

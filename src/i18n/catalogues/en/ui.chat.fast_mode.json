@@ -1,0 +1,12 @@
+{
+	"ui.chat.fast_mode.dial_differs": "Fast mode is {dial, select, on {on} other {off}} for this model, so it was not turned {requested, select, on {on} other {off}}.",
+	"ui.chat.fast_mode.first_message_off": "Fast mode is off for the first message.",
+	"ui.chat.fast_mode.first_message_on": "Fast mode is on for the first message.",
+	"ui.chat.fast_mode.not_changed": "Fast mode was not changed. Try again.",
+	"ui.chat.fast_mode.pick_unsupported": "This model cannot run fast mode. Pick a model that can.",
+	"ui.chat.fast_mode.service_cannot_carry": "Fast mode is off: this version of the Local Operator service cannot carry it.",
+	"ui.chat.fast_mode.service_unavailable": "Fast mode is not available on this version of the Local Operator service. Update Local Operator, then try again.",
+	"ui.chat.fast_mode.stays_on": "Fast mode stays on for this model.",
+	"ui.chat.fast_mode.turned_off": "Changing the model turned fast mode off.",
+	"ui.chat.fast_mode.unsupported_stays_off": "This model does not support fast mode, so it stays off."
+}

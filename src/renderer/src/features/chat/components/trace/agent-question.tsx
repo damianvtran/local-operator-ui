@@ -74,7 +74,9 @@ export const AgentQuestion = ({
 			/>
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				<p className="font-medium text-accent text-meta">
-					{busy ? "Sending your answer…" : "Waiting for your answer"}
+					{busy
+						? t("ui.chat.ask_panel.dock.sending")
+						: t("ui.chat.ask_answer.eyebrow_waiting")}
 				</p>
 				{/* The body is `ink`, not `accent`.
 				 *

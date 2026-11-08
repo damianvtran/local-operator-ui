@@ -20,7 +20,7 @@ import { Bar, BarChart } from "recharts";
 import type { DesktopModelRate } from "../../../../../../shared/desktop-contract";
 import type { CanonicalSpendChannels } from "../../../../../../shared/desktop-session-contract";
 import { clearSearch } from "../../clear-search";
-import { CHANNELS_UNTRACKED_NOTE } from "../../session-status/session-cost";
+import { channelsUntrackedNote } from "../../session-status/session-cost";
 import { PickerCheck, PickerHost, PickerSegment } from "../picker-host";
 import type { MachinePanelContext } from "../picker-registry";
 import { errorText } from "../use-picker-backend";
@@ -924,7 +924,7 @@ const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
 			 * where the comment here claimed it sat while the frame showed the
 			 * opposite (design round 1, D4).
 			 */}
-			{!view.tracked && <Legend text={CHANNELS_UNTRACKED_NOTE} />}
+			{!view.tracked && <Legend text={channelsUntrackedNote()} />}
 			<DataTable<ChannelTableRow>
 				label={t(
 					"ui.chat.pickers.analytics_panel.channel_spend_for_this_conversation_from_the_published_channel_ledger",

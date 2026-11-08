@@ -19,6 +19,8 @@
  * already did.
  */
 
+// Relative, not `@shared/i18n`: bundled by node tests without an alias map.
+import { t } from "../../../../../i18n/messages";
 import {
 	type AttachmentUploadSource,
 	DESKTOP_MESSAGE_MAX_FILES,
@@ -161,7 +163,7 @@ export async function encodeAttachments(
 			failures.push({
 				name,
 				kind: "upload",
-				detail: "this window cannot upload files",
+				detail: t("ui.chat.attachment_refusal.cannot_upload"),
 			});
 			continue;
 		}

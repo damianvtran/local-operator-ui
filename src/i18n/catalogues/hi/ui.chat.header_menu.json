@@ -1,0 +1,14 @@
+{
+	"ui.chat.header_menu.close_asks": "सवाल बंद करें",
+	"ui.chat.header_menu.close_browser": "ब्राउज़र बंद करें",
+	"ui.chat.header_menu.close_canvas": "कैनवस बंद करें",
+	"ui.chat.header_menu.close_code_review": "कोड समीक्षा बंद करें",
+	"ui.chat.header_menu.close_console": "कंसोल बंद करें",
+	"ui.chat.header_menu.default_description": "आपका ऑन-डिवाइस AI सहायक",
+	"ui.chat.header_menu.open_asks": "सवाल खोलें",
+	"ui.chat.header_menu.open_browser": "ब्राउज़र खोलें",
+	"ui.chat.header_menu.open_canvas": "कैनवस खोलें",
+	"ui.chat.header_menu.open_code_review": "कोड समीक्षा खोलें",
+	"ui.chat.header_menu.open_console": "कंसोल खोलें",
+	"ui.chat.header_menu.rename_failed": "बातचीत का नाम नहीं बदला जा सका"
+}

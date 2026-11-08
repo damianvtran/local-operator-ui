@@ -1,0 +1,19 @@
+{
+	"ui.chat.approval.escape.default_saved": "Auto activé pour cette conversation et enregistré comme valeur par défaut des sessions qui suivent ce réglage. Les conversations qui ont leur propre choix le conservent. Cette demande attend toujours une réponse.",
+	"ui.chat.approval.escape.default_saved_session_failed": "Auto enregistré comme valeur par défaut des sessions qui suivent ce réglage. La partie propre à la session n’a pas été appliquée : {detail}. Cette demande attend toujours une réponse.",
+	"ui.chat.approval.escape.global_default": "Approbations : {mode} — valeur par défaut globale.",
+	"ui.chat.approval.escape.not_changed": "Le mode n’a pas été modifié",
+	"ui.chat.approval.escape.pinned_run": "Approbations : {mode} — cette exécution.",
+	"ui.chat.approval.escape.session_override": "Approbations : {mode} — remplacement de session.",
+	"ui.chat.approval.escape.session_override_of": "Approbations : {mode} — remplacement de session ; valeur globale : {globalMode}.",
+	"ui.chat.approval.escape.session_saved": "Auto pour cette session — cette demande attend toujours une réponse.",
+	"ui.chat.approval.escape.set_all": "Activer Auto pour toutes les sessions",
+	"ui.chat.approval.escape.set_session": "Activer Auto pour cette session",
+	"ui.chat.approval.escape.unchanged": "Inchangé : {detail}",
+	"ui.chat.approval.mode.ask": "Demander",
+	"ui.chat.approval.mode.auto": "Auto",
+	"ui.chat.approval.option.approve": "Approuver",
+	"ui.chat.approval.option.approve_description": "Exécuter l’action et poursuivre le tour.",
+	"ui.chat.approval.option.deny": "Refuser",
+	"ui.chat.approval.option.deny_description": "Refuser l’action ; le tour continue."
+}

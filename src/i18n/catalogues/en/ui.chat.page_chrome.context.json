@@ -1,0 +1,188 @@
+{
+	"ui.chat.page_chrome.aside_text_only": {
+		"length": "",
+		"note": "An aside is an off-the-record side question that is not added to the conversation.",
+		"placeholders": {},
+		"role": "send error on the composer when files are attached to an aside question",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.page_chrome.backend.connecting": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "status line while the app waits for its local server before the conversation can be used",
+		"tone": "short status then reassurance"
+	},
+	"ui.chat.page_chrome.backend.no_answer": {
+		"length": "",
+		"note": "Local Operator is the product name; keep it.",
+		"placeholders": {},
+		"role": "fallback error line when the server's capability check failed with no message of its own",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.page_chrome.backend.update_needed": {
+		"length": "",
+		"note": "Backend means the local server the app talks to.",
+		"placeholders": {},
+		"role": "status line when the installed backend is too old for the current chat format",
+		"tone": "instruction then reassurance, ends with a full stop"
+	},
+	"ui.chat.page_chrome.credential_not_stored": {
+		"length": "",
+		"note": "The chip is narrow; keep it as short as the English.",
+		"placeholders": {},
+		"role": "label on the credential chip in a message when the secret was never saved",
+		"tone": "short noun phrase, no trailing period"
+	},
+	"ui.chat.page_chrome.error_view.failed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline error body when a conversation failed to load with a server error and no message is available",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.page_chrome.error_view.failed_with_message": {
+		"length": "",
+		"note": "The message arrives from the server already in a sentence; this follows it after a space.",
+		"placeholders": {
+			"message": "the server's own error sentence, shown verbatim and not translated"
+		},
+		"role": "inline error body when a conversation failed to load, after the server's own message",
+		"tone": "sentence then reassurance, ends with a full stop"
+	},
+	"ui.chat.page_chrome.error_view.unreachable": {
+		"length": "",
+		"note": "'The agent' is the AI assistant the user chats with; its history is the saved conversation.",
+		"placeholders": {},
+		"role": "inline error body when a conversation cannot load because the local server is not responding and no server message is available",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.page_chrome.error_view.unreachable_with_message": {
+		"length": "",
+		"note": "The message arrives from the server already in a sentence; this follows it after a space.",
+		"placeholders": {
+			"message": "the server's own error sentence, shown verbatim and not translated"
+		},
+		"role": "inline error body when a conversation cannot load because the local server is down, after the server's own message",
+		"tone": "sentence then reassurance, ends with a full stop"
+	},
+	"ui.chat.page_chrome.legacy_link": {
+		"length": "",
+		"note": "Canonical chat means the current conversation format.",
+		"placeholders": {},
+		"role": "error shown when an old chat link does not point at any current conversation",
+		"tone": "two short sentences, ends with a full stop"
+	},
+	"ui.chat.page_chrome.options.choose_agent": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button in the chat options bar that opens the agent picker",
+		"tone": "short imperative, sentence case, no trailing period"
+	},
+	"ui.chat.page_chrome.options.choose_team": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button in the chat options bar that opens the team picker",
+		"tone": "short imperative, sentence case, no trailing period"
+	},
+	"ui.chat.page_chrome.options.fork": {
+		"length": "",
+		"note": "Fork means start a new conversation that begins as a copy of this one.",
+		"placeholders": {},
+		"role": "button in the chat options bar that branches the conversation into a copy",
+		"tone": "one verb"
+	},
+	"ui.chat.page_chrome.options.model": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button in the chat options bar that opens the model picker",
+		"tone": "one noun"
+	},
+	"ui.chat.page_chrome.options.new": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button in the chat options bar that starts a new conversation",
+		"tone": "one adjective used as a command"
+	},
+	"ui.chat.page_chrome.options.rename": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button in the chat options bar that renames the conversation",
+		"tone": "one verb"
+	},
+	"ui.chat.page_chrome.options.resume": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button in the chat options bar that resumes a past conversation",
+		"tone": "one verb"
+	},
+	"ui.chat.page_chrome.options.settings": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button in the chat options bar that opens the settings",
+		"tone": "one noun"
+	},
+	"ui.chat.page_chrome.scroll_to_bottom.new_activity": {
+		"length": "",
+		"note": "Sits inside a small floating button next to a down arrow; keep it short.",
+		"placeholders": {},
+		"role": "text beside the arrow on the jump-to-latest button when new messages arrived while scrolled up",
+		"tone": "two-word label, sentence case, no trailing period"
+	},
+	"ui.chat.page_chrome.status_strip.connection": {
+		"length": "",
+		"note": "Pairs with a dot; the chip is a button that opens the connection detail.",
+		"placeholders": {},
+		"role": "label on the connection chip above the composer when the server connection has a problem",
+		"tone": "one word"
+	},
+	"ui.chat.page_chrome.status_strip.offline": {
+		"length": "",
+		"note": "Pairs with a red or amber dot; the whole chip is a button that opens the connection detail.",
+		"placeholders": {},
+		"role": "label on the connection chip above the composer when the device has no internet",
+		"tone": "one word"
+	},
+	"ui.chat.page_chrome.status_strip.outcome_refused": {
+		"length": "",
+		"note": "Distinguishes 'server reachable' from 'credential refused'; do not turn it into a reachability message.",
+		"placeholders": {},
+		"role": "result line shown after pressing Retry when the server is up but rejects the app's credential",
+		"tone": "one full sentence, ends with a full stop"
+	},
+	"ui.chat.page_chrome.status_strip.outcome_unreachable": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "result line shown after pressing Retry when the server still cannot be reached",
+		"tone": "very short sentence, ends with a full stop"
+	},
+	"ui.chat.page_chrome.status_strip.retry": {
+		"length": "",
+		"note": "Used when the banner supplies no label of its own.",
+		"placeholders": {},
+		"role": "default label of the connection banner's retry button",
+		"tone": "one imperative verb"
+	},
+	"ui.chat.page_chrome.status_strip.retrying": {
+		"length": "",
+		"note": "Replaces the button's normal label for the life of the retry.",
+		"placeholders": {},
+		"role": "label on the connection banner's retry button while a retry is running",
+		"tone": "one verb in the gerund plus an ellipsis"
+	},
+	"ui.chat.page_chrome.stop_unconfirmed": {
+		"length": "",
+		"note": "A turn is one agent reply cycle.",
+		"placeholders": {},
+		"role": "send error on the composer when a stop request got no confirmation",
+		"tone": "two short sentences, ends with a full stop"
+	}
+}

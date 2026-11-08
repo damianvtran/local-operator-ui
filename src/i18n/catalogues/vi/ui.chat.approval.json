@@ -1,0 +1,19 @@
+{
+	"ui.chat.approval.escape.default_saved": "Đã đặt Tự động cho cuộc trò chuyện này và lưu làm mặc định cho các phiên tiếp theo. Cuộc trò chuyện có lựa chọn riêng vẫn giữ nguyên lựa chọn đó. Yêu cầu này vẫn cần được trả lời.",
+	"ui.chat.approval.escape.default_saved_session_failed": "Đã lưu Tự động làm mặc định cho các phiên tiếp theo. Phần áp dụng cho phiên hiện tại chưa thực hiện được: {detail}. Yêu cầu này vẫn cần được trả lời.",
+	"ui.chat.approval.escape.global_default": "Phê duyệt: {mode} — mặc định toàn cục.",
+	"ui.chat.approval.escape.not_changed": "Chưa đổi được chế độ",
+	"ui.chat.approval.escape.pinned_run": "Phê duyệt: {mode} — cho lần chạy này.",
+	"ui.chat.approval.escape.session_override": "Phê duyệt: {mode} — ghi đè theo phiên.",
+	"ui.chat.approval.escape.session_override_of": "Phê duyệt: {mode} — ghi đè theo phiên; mặc định toàn cục là {globalMode}.",
+	"ui.chat.approval.escape.session_saved": "Tự động cho phiên này — yêu cầu này vẫn cần được trả lời.",
+	"ui.chat.approval.escape.set_all": "Đặt Tự động cho mọi phiên",
+	"ui.chat.approval.escape.set_session": "Đặt Tự động cho phiên này",
+	"ui.chat.approval.escape.unchanged": "Không thay đổi: {detail}",
+	"ui.chat.approval.mode.ask": "Hỏi trước",
+	"ui.chat.approval.mode.auto": "Tự động",
+	"ui.chat.approval.option.approve": "Phê duyệt",
+	"ui.chat.approval.option.approve_description": "Chạy hành động và tiếp tục lượt.",
+	"ui.chat.approval.option.deny": "Từ chối",
+	"ui.chat.approval.option.deny_description": "Từ chối hành động; lượt vẫn tiếp tục."
+}

@@ -58,6 +58,7 @@
  * boundary behaviour and the spellings against the Python semantics.
  */
 
+import { t } from "@shared/i18n";
 import { pyFixed } from "./fixed-point";
 
 /**
@@ -287,14 +288,16 @@ export function contextTooltipLines(
 ): string[] {
 	if (reading.status === "no-reading")
 		return [
-			"Context",
-			"No reading yet. The first turn reports what the request carried.",
+			t("ui.chat.session_spend.context.title"),
+			t("ui.chat.session_spend.context.no_reading"),
 		];
 	const lines: string[] = [];
 	if (reading.status === "window-unknown") {
 		lines.push(reading.spelling);
 		lines.push(
-			`${formatContextTokens(reading.tokens ?? 0)} tokens in use. The window this model allows is not known, so there is no percentage to show.`,
+			t("ui.chat.session_spend.context.window_unknown", {
+				tokens: formatContextTokens(reading.tokens ?? 0),
+			}),
 		);
 		return lines;
 	}
@@ -302,15 +305,21 @@ export function contextTooltipLines(
 	const window = reading.window ?? 0;
 	lines.push(reading.spelling);
 	lines.push(
-		`${tokens.toLocaleString()} of ${window.toLocaleString()} tokens (${formatWindow(window)} window)`,
+		t("ui.chat.session_spend.context.tokens_of_window", {
+			tokens,
+			window,
+			windowLabel: formatWindow(window),
+		}),
 	);
 	// Only when it DIFFERS: repeating the same number under a different label
 	// reads as two facts and is one.
 	if (typeof maxWindow === "number" && maxWindow > 0 && maxWindow !== window)
-		lines.push(`Model maximum: ${formatWindow(maxWindow)}`);
-	if (reading.status === "estimate")
 		lines.push(
-			"estimate - counted by the app, not reported by the provider yet",
+			t("ui.chat.session_spend.context.model_maximum", {
+				window: formatWindow(maxWindow),
+			}),
 		);
+	if (reading.status === "estimate")
+		lines.push(t("ui.chat.session_spend.context.estimate"));
 	return lines;
 }

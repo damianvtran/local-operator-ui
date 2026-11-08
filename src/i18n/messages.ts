@@ -44,7 +44,9 @@
 
 import { IntlMessageFormat } from "intl-messageformat";
 
+import { isolateArguments, isolateSigils, plainArgumentNames } from "./bidi";
 import { resolveCatalogueLocale } from "./catalogue-locale";
+import { textDirectionFor } from "./direction";
 import {
 	type MessageKey,
 	type MessageParams,
@@ -153,8 +155,31 @@ function formatterFor(locale: string, message: string): IntlMessageFormat {
 	return format;
 }
 
+/*
+ * The plain-splice argument names of a parsed message, cached with it: the AST
+ * walk is the same cost class as the parse and the answer depends only on the
+ * message.
+ */
+const splices = new WeakMap<IntlMessageFormat, Set<string>>();
+
+function splicesOf(format: IntlMessageFormat): Set<string> {
+	let names = splices.get(format);
+	if (names === undefined) {
+		names = plainArgumentNames(format.getAst());
+		splices.set(format, names);
+	}
+	return names;
+}
+
 /**
  * Render `key` in `locale` (default: the active locale).
+ *
+ * For a message an RTL catalogue answered (`i18n/languages.json` `dir`), the
+ * output carries the bidi isolates `./bidi` documents, so a command like
+ * `/model` or a chord like `⌘Z` paints in its own order inside Urdu copy. Every
+ * LTR message is returned exactly as ICU formatted it. Text that must stay raw
+ * (the clipboard, a file name, anything sent to the backend) asks for
+ * `translateRaw`.
  *
  * The two degradations named in the module docstring both land on the key:
  * a message missing from every catalogue, and a message that fails to format
@@ -166,6 +191,33 @@ export function translate(
 	params: Record<string, unknown> = {},
 	locale: string = currentLocale(),
 ): string {
+	return render(key, params, locale, true);
+}
+
+/**
+ * `translate` without the RTL bidi isolates: the plain ICU output in every
+ * language. For text that leaves the UI as DATA — copied to the clipboard, used
+ * as a file name, sent to the backend or a model prompt — where an invisible
+ * U+2066/2068/2069 would travel with it. (The audit of this PR found no such
+ * call site today; `scripts/i18n/bidi-isolation.test.mjs` fails if a clipboard
+ * write or an outbound send starts passing `t()` output — inline, or through a
+ * local binding initialised from it — so the first one has to choose this. That
+ * sweep is grep-shaped: one hop, not a data-flow analysis.)
+ */
+export function translateRaw(
+	key: string,
+	params: Record<string, unknown> = {},
+	locale: string = currentLocale(),
+): string {
+	return render(key, params, locale, false);
+}
+
+function render(
+	key: string,
+	params: Record<string, unknown>,
+	locale: string,
+	bidi: boolean,
+): string {
 	const catalogue = resolveCatalogueLocale(locale);
 	const message = messageFor(key, locale, catalogue);
 	if (message === undefined) return key;
@@ -176,8 +228,18 @@ export function translate(
 	 */
 	const tag = sourceTagFor(key, locale, catalogue);
 	try {
-		const rendered = formatterFor(tag, message).format(params);
-		return typeof rendered === "string" ? rendered : String(rendered);
+		const format = formatterFor(tag, message);
+		/*
+		 * `tag` is the catalogue that ANSWERED, not the UI locale: an Urdu UI that
+		 * fell back to an English string for a missing key renders that string
+		 * with no controls, because it is English text.
+		 */
+		const isolate = bidi && textDirectionFor(tag) === "rtl";
+		const rendered = format.format(
+			isolate ? isolateArguments(params, splicesOf(format)) : params,
+		);
+		const text = typeof rendered === "string" ? rendered : String(rendered);
+		return isolate ? isolateSigils(text) : text;
 	} catch {
 		return key;
 	}

@@ -1,0 +1,269 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "date": "2026-11-08",
+ "locale": "es",
+ "instance": "f212882f-s3d-es",
+ "session": "f212882f0cd0",
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "f212882f0cd0",
+  "instance": "f212882f-s3d-es",
+  "model": "deepseek/deepseek-flash",
+  "fallback": "YES - the session header named anthropic/claude-sonnet-5-5, then anthropic/claude-opus-5-5 and openai/gpt-6.1-sol, each replaced by a provider quota failure; the harness had switched to deepseek/deepseek-flash before the first tool call and every read, parse, render and check below ran on it. Disclosed per the fallback rule.",
+  "independent_from_translator_session": true
+ },
+ "model": "deepseek/deepseek-flash",
+ "independence": "Fresh independent auditor session (translation-auditor) for one locale, es. I did not write, edit or regenerate any catalogue, ledger, parity test or generator, and had not audited es before. Judged from the bytes on disk in the worktree /Users/damian/local-operator-ui/.worktrees/i18n-composer-keying (branch i18n/composer-keying, local head 7540e3cbc9d, DRAFT PR damianvtran/local-operator-ui#1761) against src/i18n/catalogues/en/<ns>.json and the en .context.json sidecars, the shipped es catalogues (grep for glossary terms), i18n/glossary.md and i18n/style-guides/es.md (read from the ~/local-operator checkout). The translator's summary was not taken as evidence: scope was computed from sha256 of the files on disk versus the target hash recorded in the latest receipt covering each namespace, and every prior finding was re-read in the bytes rather than accepted from its receipt.",
+ "branch": "i18n/composer-keying",
+ "head": "7540e3cbc9d",
+ "pr": "damianvtran/local-operator-ui#1761",
+ "scope": "es only, s3d remediation round. Scope COMPUTED, not assumed: for each of the 21 composer namespaces I compared the sha256 of src/i18n/catalogues/es/<ns>.json on disk with the target hash recorded in the latest receipt covering it (ebc5b152-s3c-es for 15, aeba270e-s3b-es for 6). 3 namespaces changed -> audited IN FULL on the final bytes: ui.chat.ask_panel (20), ui.chat.credential_notice (15), ui.chat.read_ack (16) = 51 keys. 18 namespaces unchanged -> CARRIED with no rows: 410 keys. Total 461 keys across 21 namespaces, matching the batch description.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespaces": {
+  "ui.chat.ask_panel": {
+   "status": "passed",
+   "keys_audited": 20,
+   "sha256": {
+    "en": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+    "es": "5198ede42db19b5d36d07fbac3df7ccfaa35e178cf5068feb00dfacfdefae4a2",
+    "context": "460f1f970a024b36484b79635bce396f740b7c71d2d644c97281522e62b16d9a"
+   },
+   "findings": []
+  },
+  "ui.chat.credential_notice": {
+   "status": "passed",
+   "keys_audited": 15,
+   "sha256": {
+    "en": "1186b58d4ae1eee83dd05889a1b998919c30cc51b273a506b0d8fc656cfa23df",
+    "es": "803dbedc042ee06338db6bd83efc25b8750fb92f1fcc3e68dc3156cea07ea37c",
+    "context": "4331241ecf3a4be4b99662dcf94f4823b6e34a09f32d9fe6dd42774892e1b4ce"
+   },
+   "findings": [
+    {
+     "key": "ui.chat.credential_notice.empty_span",
+     "severity": "nit",
+     "also_keys": [
+      "ui.chat.credential_notice.empty_span_draft"
+     ],
+     "current": "enmascarado — Intro abre el selector de credenciales; escribe o pega el secreto en este tramo",
+     "proposed": "enmascarado — Intro abre el selector de credenciales; escribe o pega el secreto en esta zona",
+     "reason": "'tramo' is the only word for a text region in 152 es catalogue files and names a stretch of road, time or a process, not the masked inline region the user has to type into; 'en esta zona' is the neutral es word for that region. 'espacio' would NOT be a safe replacement: the sibling key credential_notice.armed one status line earlier uses 'espacio' for the space character ('añade un espacio'), so reusing it here would collide. Present in the bytes ebc5b152-s3c-es already audited - not introduced by this remediation - so it is recorded, non-gating, and safe to defer."
+    }
+   ]
+  },
+  "ui.chat.read_ack": {
+   "status": "passed",
+   "keys_audited": 16,
+   "sha256": {
+    "en": "c2f7a40ab687c96db28b6769093d20767b6877f7ea605db0e473bc05b97c7396",
+    "es": "b6ab3a2f01493a3a5e715a915c65fd8c324dae5954c05bf944eb28d9d61ff2dd",
+    "context": "e5edac48843c9d84e647cb7dddb6b9016bd09f72002cb36ed46159b5a8cce751"
+   },
+   "findings": []
+  }
+ },
+ "carried": {
+  "ui.chat.approval": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 17,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.aside": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 24,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.ask_answer": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 10,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.ask_queue": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 44,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.attachment_refusal": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 15,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.composer_notes": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 14,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.device_move": {
+   "receipt": "aeba270e-s3b-es",
+   "receipt_file": "i18n/receipts/aeba270e-s3b-es-composer-b1-es.json",
+   "keys": 24,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.fast_mode": {
+   "receipt": "aeba270e-s3b-es",
+   "receipt_file": "i18n/receipts/aeba270e-s3b-es-composer-b1-es.json",
+   "keys": 10,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.header_menu": {
+   "receipt": "aeba270e-s3b-es",
+   "receipt_file": "i18n/receipts/aeba270e-s3b-es-composer-b1-es.json",
+   "keys": 12,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.interrupt": {
+   "receipt": "aeba270e-s3b-es",
+   "receipt_file": "i18n/receipts/aeba270e-s3b-es-composer-b1-es.json",
+   "keys": 6,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.message_budget": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 10,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.move_cwd": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 8,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.page_chrome": {
+   "receipt": "aeba270e-s3b-es",
+   "receipt_file": "i18n/receipts/aeba270e-s3b-es-composer-b1-es.json",
+   "keys": 26,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.quota_resend": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 7,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.session_readout": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 54,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.session_spend": {
+   "receipt": "aeba270e-s3b-es",
+   "receipt_file": "i18n/receipts/aeba270e-s3b-es-composer-b1-es.json",
+   "keys": 32,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.sidebar_notes": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 8,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  },
+  "ui.chat.slash": {
+   "receipt": "ebc5b152-s3c-es",
+   "receipt_file": "i18n/receipts/ebc5b152-s3c-es-composer-final-es.json",
+   "keys": 89,
+   "es_sha256_on_disk_equals_receipt_target_sha256": true,
+   "en_sha256_equals": true
+  }
+ },
+ "findings": [],
+ "checks": [
+  "node --test scripts/i18n/locale-parity.test.mjs (read-only, worktree as found, including the coder's uncommitted IDENTICAL_OK additions to that test): tests 44, pass 44, fail 0, skipped 0.",
+  "node scripts/i18n/context-parity.mjs: 'context-parity: ok - every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only)'. generate.mjs --check deliberately not run (stale until the manager regenerates).",
+  "Parsed all 51 en and all 51 es values with @formatjs/icu-messageformat-parser 3.5.21 (requiresOtherClause: true): 0 parse errors on either side; per-key argument-name set es == en (0 mismatches); number skeletons es == en, including ::group-off on {index, number} in chip_title, clear_label and cleared; select structure es == en (none in these namespaces); key set AND order equal to en in all three files.",
+  "CLDR categories, checked per plural argument: es carries one/many/other wherever en carries a plural (ask_panel.landing.many, ask_panel.lapse.many, credential_notice.chip_title, credential_notice.unredacted x2); no 'few' and no 'two' anywhere (correct for es: few is not an es category); 'other' present in every plural so requiresOtherClause passes. 'many' is reachable only at exact multiples of 10^6, as i18n/style-guides/es.md fixes.",
+  "Placeholders rendered, not just parsed: intl-messageformat 12.1.3, locale es, at counts 0,1,2,5,11,21,100,1000000 with realistic arguments (index 2, chars 44, key OPENAI_API_KEY, undoCap the displayed shortcut, device a real device name). Agreement is correct in every branch: '1 carácter es ... lo expondrá' vs '2 caracteres son ... los expondrá' vs '1.000.000 de caracteres son ... los expondrá' (style-guide plural example is exactly {# de sesiones}); '1 pregunta caducó' vs '0/2/5/11/21/100 preguntas caducaron' vs '1.000.000 de preguntas caducaron'; '0 preguntas' and '0 caracteres' take other, as the guide requires.",
+  "::group-off proven intact by rendering, not by eye: clear_label renders 'Quitar la credencial n.º 2', '... n.º 1000' and '... n.º 1000000' (no digit grouping); chip_title with index 1000 renders 'Credencial n.º 1000, 7 caracteres ...'. The skeleton is byte-identical to en inside an otherwise localised header.",
+  "Whitespace / typography, byte-level over all 51 values: no U+00A0, U+2000-200F, U+2028-202F, U+205F-206F, U+3000 or U+FEFF; no double space; no leading/trailing space; all NFC; no space before ';' (unlike the fr locale, es forbids it and none appears); no ' ?' / ' !'; no missing inverted '¿'/'¡' (there are no questions or exclamations in these namespaces); the one ellipsis is the single U+2026 character matching en; em dashes are ' — ' with spaces, matching en and the guide. The only non-ASCII characters are accented Spanish letters and the U+00BA in the ordinal 'n.º'.",
+  "Identical-to-English scan of all 51 es values: exactly one identical value, ui.chat.ask_panel.filter.chip '{label} · {count, number}', a placeholder-only composition already allowlisted in IDENTICAL_OK with a reason ('language-neutral composition: placeholders joined by a middle dot, no words'). No English stub anywhere else; no value identical by accident.",
+  "Technical tokens verbatim: '/credential' (2x), '{undoCap}', '{key}', '{device}', '{remedy}', '{reason}', '{max}', '{label}', '{count}', '{index}', '{chars}', '{length}' all survive with the same names; 'TEXTO PLANO' keeps the English emphasis in capitals; esc kept as 'Esc' and Enter rendered 'Intro' (69 occurrences in the shipped es catalogues) per the recorded locale decision.",
+  "Register: tú throughout these three namespaces (escribe, envía, añade, pega, pulsa, desplázate, haz clic, vuelve a pegar, quita) and no usted, vosotros, fichero or region-marked word; sentence case, no Title Case, no '!' and no three-dot ellipsis. Action labels are infinitives (Quitar, Deshacer), as the es guide requires.",
+  "Glossary against the shipped es catalogues, grepped: 'marca de mensajes sin leer' now appears 6x in read_ack and matches shipped ui.notices.chat.unread_not_cleared ('No se borraron las marcas de mensajes sin leer.'); zero 'marca de no leído' left. 'Credencial n.º' now matches shipped ui.notices.credentials.removed ('Credencial n.º {index, number} eliminada') and zero 'Credencial #' remains. 'guardado sin confirmar' matches shipped ui.notices.credentials.unconfirmed ('El guardado de ... no se pudo confirmar'). 'cuadro de mensaje' is the majority shipped term (9x vs 2x 'compositor').",
+  "Prior findings re-verified in the bytes of the changed namespaces, one key at a time (see remediation_verification): 3 findings covering 10 keys, all applied as proposed or exactly as the finding described the swap; none rejected, none absent.",
+  "Scope and source stability: the en hash and the .context.json hash of all 21 namespaces equal the hashes recorded in the receipts covering them, so the English side did not move under this audit and the CARRIED set is comparable."
+ ],
+ "remediation_verification": {
+  "ui.chat.ask_panel.empty.none_pending": "applied-as-proposed, nit closed. Now 'No hay consultas pendientes. Todas están atendidas — mira Atendidas.' The noun/verb pun of 'consulta consulta' is gone; 'mira Atendidas' is an accepted imperative of looking for a sibling filter and the capital 'Atendidas' marks it as the chip label. ('ve a Atendidas' would be marginally more idiomatic for navigating to a filter; not a defect and not raised as a finding.)",
+  "ui.chat.credential_notice.chip_title": "applied-as-proposed, minor closed. 'Credencial n.º {index, number, ::group-off}, ...' matches shipped ui.notices.credentials.removed; the ICU header and ::group-off are untouched and proven by rendering index 1000 -> 'n.º 1000'. The 'many' branch 'de caracteres' is the style-guide pattern and only fires at 10^6.",
+  "ui.chat.credential_notice.clear_label": "applied as the finding described the swap ('Quitar la credencial n.º {index, number, ::group-off}'); accessible name still imperative, header intact.",
+  "ui.chat.credential_notice.cleared": "applied as the finding described the swap ('(credencial n.º {index, number, ::group-off})', correctly lowercase mid-sentence); the three placeholders and the em dash survive; renders 'Se quitó OPENAI_API_KEY (credencial n.º 2) de este mensaje. ...'.",
+  "ui.chat.read_ack.description.remote": "applied-as-proposed, minor closed. 'La marca de mensajes sin leer está en otro dispositivo. Se borra cuando ese dispositivo se actualiza.' matches the shipped glossary.",
+  "ui.chat.read_ack.description.remote_named": "applied as the finding described the swap; 'La marca de mensajes sin leer está en {device}.' with {device} intact.",
+  "ui.chat.read_ack.refusal.busy": "applied as the finding described the swap ('no se borró la marca de mensajes sin leer.'); {remedy} intact and the appended sentence reads naturally.",
+  "ui.chat.read_ack.refusal.refused": "applied as the finding described the swap; {remedy} intact.",
+  "ui.chat.read_ack.refusal.unreachable": "applied as the finding described the swap; both {reason} and {remedy} intact and the three-sentence shape of en is kept.",
+  "ui.chat.read_ack.refusal.unreported": "applied as the finding described the swap; {remedy} intact.",
+  "width flags raised by ebc5b152-s3c-es (read_ack clauses, credential_notice status lines, approval chip labels)": "NOT re-litigated here: that receipt already recorded them as flags for a rendered check, nothing in this remediation makes them worse, and this audit renders no pixels (see limits). The read_ack swap does add ~11 characters per refusal line (68->94, 81->101 against en), which the manager's rendered check should still cover."
+ },
+ "rendered_samples": [
+  "ask_panel.empty.none_pending: 'No hay consultas pendientes. Todas están atendidas — mira Atendidas.'",
+  "credential_notice.chip_title @0/1/2/1000000: 'Credencial n.º 2, 0 caracteres — se conserva en este mensaje; su valor no se puede leer' | '... 1 carácter ...' | '... 2 caracteres ...' | '... 1.000.000 de caracteres ...'",
+  "credential_notice.clear_label @index 2/1000: 'Quitar la credencial n.º 2' | 'Quitar la credencial n.º 1000' (group-off holds)",
+  "credential_notice.cleared: 'Se quitó OPENAI_API_KEY (credencial n.º 2) de este mensaje. Su valor se perdió — pulsa ⌘Z para recuperarlo o vuelve a pegarlo después de /credential para reutilizarlo.'",
+  "read_ack.description.remote: 'La marca de mensajes sin leer está en otro dispositivo. Se borra cuando ese dispositivo se actualiza.'",
+  "read_ack.description.remote_named: 'La marca de mensajes sin leer está en MacBook Pro de Damian. Se borra cuando ese dispositivo se actualiza.'",
+  "read_ack.refusal.busy: 'El estado de lectura está ocupado, así que no se borró la marca de mensajes sin leer. Haz clic en el chat para intentarlo de nuevo.'",
+  "read_ack.refusal.refused: 'No se pudo escribir el estado de lectura, así que no se borró la marca de mensajes sin leer. Haz clic en el chat para intentarlo de nuevo.'",
+  "read_ack.refusal.unreachable: 'La app no pudo comunicarse con el backend. No se borró la marca de mensajes sin leer. Haz clic en el chat para intentarlo de nuevo.'",
+  "read_ack.refusal.unreported: 'No se borró la marca de mensajes sin leer. Haz clic en el chat para intentarlo de nuevo.'",
+  "ask_panel.landing.many @1/2/1000000: '1 pregunta caducó' | '2 preguntas caducaron' | '1.000.000 de preguntas caducaron'",
+  "ask_panel.lapse.many @1/2: '1 pregunta caducó; no se envió tu respuesta.' | '2 preguntas caducaron; no se enviaron tus respuestas.'",
+  "credential_notice.unredacted @1/2/1000000: '1 carácter es ahora TEXTO PLANO en el cuadro de mensaje — Intro lo expondrá' | '2 caracteres son ... Intro los expondrá' | '1.000.000 de caracteres son ... Intro los expondrá'"
+ ],
+ "width_flags_for_rendered_check": [
+  "read_ack: the glossary fix lengthened five keys that are inline status/notice lines (busy 68->94, refused 81->101, description.remote 76->101, remote_named 70->93, unreached 50->60). Carried flag from ebc5b152-s3c-es; no sidecar carries a length budget (every 'length' field is empty).",
+  "read_ack.clause.offscreen 43->62 ('desplázate hasta el resultado para marcar este chat como leído') and clause.pending 12->19 sit in the chat row; retry_remedy 27->44 and retry_remedy_sentence 28->45 are x1.6 on en.",
+  "credential_notice.unconfirmed_alone 28->39 ('Guardado de la credencial sin confirmar') is a chip label with no name in front of it, x1.39.",
+  "ask_panel.filter.pending 'Pendientes' 7->10 and filter.all 'Todas' 3->5 are filter chips beside a middle dot and a count; ask_panel.dock.asking 19->26 is an eyebrow."
+ ],
+ "pre_existing_drift_outside_scope": {
+  "Enter vs Intro": "shipped es ui.miniView.hint ('Enter envía, Shift+Enter añade una línea, Esc oculta') and ui.teamBridge.composer.hint ('Enter para enviar, Shift+Enter para una línea nueva.') keep 'Enter' (4 occurrences in 2 files) against 'Intro' in the composer batch (69 occurrences). Pre-existing, in files outside this batch's 21 namespaces, not introduced or touched here - recorded as drift, not a finding against these namespaces.",
+  "compositor vs cuadro de mensaje": "shipped es ui.chat.aside.empty and ui.chat.question_dock.hint.approval_held use 'compositor' for the message composer (2) against 'cuadro de mensaje' (9, 7 of them in this batch; the third 'compositor' hit is the X11/Wayland compositor in ui.settings.appearance.window_glass and is a different concept). Pre-existing split; the audited namespaces use the majority term."
+ },
+ "translator_choices_judged": {
+  "enter -> Intro": "confirmed: 69 shipped es occurrences, and the es guide keeps key names literal by language convention; Esc stays Esc.",
+  "'n.º' ordinal for '#{index}'": "confirmed against shipped ui.notices.credentials.removed and RAE orthography; only 3 keys use it and they are the same concept.",
+  "'marca de mensajes sin leer' for the unread mark": "confirmed against shipped ui.notices.chat.unread_not_cleared and 32 'sin leer' occurrences; 'no leído' survives only in ui.notifications 'Marcar como no leído' and ui.chat.pickers 'no leído en esta vista', which are a different object (a notification, a listing state), not drift.",
+  "'guardado sin confirmar' for 'store unconfirmed'": "confirmed against shipped ui.notices.credentials.unconfirmed; 'guardado' as the noun for the save operation is shipped usage.",
+  "'cuadro de mensaje' for composer": "accepted; majority shipped term. See pre_existing_drift_outside_scope.",
+  "'tramo' for span": "the one nit recorded above; kept in the passed verdict because it is comprehensible and pre-existing.",
+  "'mira Atendidas'": "accepted; see remediation_verification.",
+  "'consulta' for ask / 'Todas' for All": "consistent with shipped ui.chat.asks and the other audited namespaces (Atendidas/Pendientes), and 'Todas' agrees with feminine 'consultas'."
+ },
+ "limits": "Width judged by character count and by x-ratio against en only - nothing was rendered in a browser and no sidecar carries a length budget (every 'length' field is empty). generate.mjs --check not run (stale until the manager regenerates, per instructions). No bidi/RTL review: es is LTR. Key-level provenance inside the changed namespaces is not recoverable from hashes, so the three namespaces were re-audited in full rather than only at the 10 keys the prior findings named; the 'changed keys' list above is the set the receipts named and the bytes now differ from.",
+ "verdict": {
+  "per_namespace": {
+   "ui.chat.ask_panel": "passed (20 keys, clean: 0 findings; the s3c nit is closed)",
+   "ui.chat.credential_notice": "passed (15 keys, 1 nit: pre-existing \"tramo\"; the s3c minor is closed)",
+   "ui.chat.read_ack": "passed (16 keys, clean: 0 findings; the s3c 6-key glossary minor is closed)"
+  },
+  "overall": "clean-with-findings: 0 blocker, 0 major, 0 minor, 1 nit across 51 keys audited in 3 namespaces; 18 namespaces carried (410 keys) with no rows"
+ },
+ "carried_summary": "18 namespaces CARRIED unchanged, no rows: from ebc5b152-s3c-es - approval 17, aside 24, ask_answer 10, ask_queue 44, attachment_refusal 15, composer_notes 14, message_budget 10, move_cwd 8, quota_resend 7, session_readout 54, sidebar_notes 8, slash 89 (300 keys); from aeba270e-s3b-es - device_move 24, fast_mode 10, header_menu 12, interrupt 6, page_chrome 26, session_spend 32 (110 keys). For every one of them the sha256 of the es file on disk equals that receipt's recorded target hash and the en file equals its recorded source hash (all 18 verified true in the carried block)."
+}

@@ -31,6 +31,7 @@ export {
 	registerCatalogue,
 	t,
 	translate,
+	translateRaw,
 } from "./messages";
 export type {
 	LocaleCapabilities,
@@ -54,6 +55,8 @@ export {
 	formatDate,
 	formatDateTime,
 	formatDuration,
+	formatClauses,
+	formatList,
 	formatNumber,
 	formatRelativeTime,
 	formatTime,

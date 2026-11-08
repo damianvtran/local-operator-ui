@@ -110,16 +110,14 @@ export function durationReading(
 	return { banked, startedAt: running === null ? null : running * 1000 };
 }
 
-/**
- * The tooltip's second line, and the sentence the `aria-label` carries.
- *
- * It names what the number is NOT, because that is the misreading available:
- * a figure beside a context window and a spend reads as "how long this
- * conversation has been open", and it is not — a conversation left open
- * overnight banks nothing.
+/*
+ * The tooltip's second line (`ui.chat.session_spend.duration_explanation`) is
+ * resolved in `session-status-strip.tsx`, not here: this module is loaded by the
+ * node test harness directly, with no alias map, and is deliberately free of the
+ * i18n core. It names what the number is NOT - a figure beside a context window
+ * and a spend reads as "how long this conversation has been open", and it is not;
+ * a conversation left open overnight banks nothing.
  */
-export const DURATION_EXPLANATION =
-	"Time the agent has spent working in this conversation. Time waiting between turns is not counted.";
 
 /*
  * The shorter sentence for the `aria-label` is NOT exported from here: it is

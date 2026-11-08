@@ -1,0 +1,12 @@
+{
+	"ui.chat.ask_answer.eyebrow_waiting": "Ожидается ваш ответ",
+	"ui.chat.ask_answer.lost_to_reconnect": "Ваш ответ не отправлен. Приложение переподключилось к новому экземпляру рантайма, поэтому вопрос здесь остался без ответа.",
+	"ui.chat.ask_answer.moved_on": "Этот вопрос уже решён или потерял актуальность, поэтому ваш ответ не отправлен.",
+	"ui.chat.ask_answer.not_sent": "Ваш ответ не отправлен. {reason}",
+	"ui.chat.ask_answer.request_failed": "Не удалось выполнить запрос.",
+	"ui.chat.ask_answer.secret_docked": "Ваш ответ не отправлен — ответ на запрос секрета вводится в отдельном поле над полем ввода сообщения.",
+	"ui.chat.ask_answer.session_unreachable": "Приложению вообще не удалось связаться с сессией этого чата.",
+	"ui.chat.ask_answer.settled_elsewhere": "На этот вопрос уже ответили в другом месте, поэтому ваш ответ не отправлен.",
+	"ui.chat.ask_answer.unconfirmed": "{lead} {reason}",
+	"ui.chat.ask_answer.unconfirmed_lead": "Невозможно узнать, дошёл ли ваш ответ."
+}

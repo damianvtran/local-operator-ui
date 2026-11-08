@@ -1,0 +1,8 @@
+{
+	"ui.chat.interrupt.idle": "Không có lượt nào đang chạy nên không có gì để dừng.",
+	"ui.chat.interrupt.idle_disputed": "Runtime báo không có lượt nào đang chạy nên chưa dừng gì. Chế độ xem này có thể chưa được cập nhật.",
+	"ui.chat.interrupt.stopped_both": "Đã dừng lượt này. {children, plural, other {# tác nhân con}} và {jobs, plural, other {# tác vụ nền}} vẫn đang chạy — hãy mở Chi tiết lượt chạy để theo dõi, và dùng /stop để kết thúc phiên cùng các tác vụ của nó.",
+	"ui.chat.interrupt.stopped_children": "Đã dừng lượt này. {count, plural, other {# tác nhân con}} vẫn đang chạy — hãy mở Chi tiết lượt chạy để theo dõi, hoặc dùng /stop để kết thúc phiên.",
+	"ui.chat.interrupt.stopped_jobs": "Đã dừng lượt này. {count, plural, other {# tác vụ nền vẫn đang chạy — chúng được thiết kế để chạy lâu hơn lượt, nên /stop mới kết thúc chúng cùng phiên.}}",
+	"ui.chat.interrupt.unavailable": "Backend này chưa hỗ trợ điều khiển dừng nên không thể dừng lượt này từ đây — /stop kết thúc phiên và mọi thứ trong đó."
+}

@@ -1,0 +1,314 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev translation-auditor session e6498c6d s3d-au-ru: fresh independent remediation audit of the ru composer namespaces of #1761 on final bytes; did not write the catalogues and edited no catalogue)",
+ "agent": "translation-auditor (lopdev translation-auditor session e6498c6d s3d-au-ru: fresh independent remediation audit of the ru composer namespaces of #1761 on final bytes; did not write the catalogues and edited no catalogue)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "fallback": "full chain, disclosed: the session opened on the primary anthropic/claude-sonnet-5-5 (two reconnaissance calls), then provider quota failures switched it to anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then deepseek/deepseek-flash, under which every catalogue read, ICU parse, intl-messageformat render, glossary grep and finding in this receipt was executed as a tool call and then serialised. Nothing here is recalled rather than measured, but the audit ran on the fallback, not on the primary, and is recorded that way so the chain is auditable.",
+ "model_provenance": "model field = the session's primary model header (anthropic/claude-sonnet-5-5); the runtime fallback chain is recorded in `fallback` because the harness switched models mid-session on provider quota.",
+ "independence": "Separate session from the PR coder, the ru translator and the earlier ru auditors (receipts 5b8049f8-s3a-ru, 9487efcb-s3b-ru, 3a7aab10-s3c-ru). Those receipts were read only to compute which namespaces changed and to verify each prior finding; every verdict below was rebuilt from the en source, the en context sidecars, the shipped ru catalogues and the repo's own parser/renderer.",
+ "instance": "e6498c6d-s3d-ru",
+ "session": "e6498c6d",
+ "session_id_provenance": "prefix of this harness session id e6498c6d496f",
+ "locale": "ru",
+ "branch": "i18n/composer-keying",
+ "head": "7540e3cbc9d on a151ba95325 (+ uncommitted catalogue files audited from disk; scripts/i18n/locale-parity.test.mjs is also uncommitted - see observations)",
+ "pr": "damianvtran/local-operator-ui#1761",
+ "date": "2026-11-08",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "S3d remediation ru: scope computed from hashes, not assumed. Of the 21 ui.chat.* composer namespaces, 4 ru files changed since the latest receipt covering each (session_readout 54, ask_queue 44, aside 24, credential_notice 15 = 137 keys) and were audited IN FULL on the final bytes; the other 17 (324 keys) are byte-identical to their receipts and are CARRIED with no rows.",
+ "scope_derivation": "for each of the 21 namespaces the sha256 of src/i18n/catalogues/ru/<ns>.json on disk was compared with the target_sha256 recorded in the latest receipt covering that namespace (3a7aab10-s3c-ru for 16, 9487efcb-s3b-ru for the 5 batch-A namespaces). Changed: session_readout, ask_queue, aside, credential_notice. Carried: slash, page_chrome, header_menu, interrupt, fast_mode, session_spend, device_move, ask_panel, approval, read_ack, attachment_refusal, composer_notes, ask_answer, message_budget, move_cwd, sidebar_notes, quota_resend. For every carried namespace the en source and the context sidecar were also re-hashed against the receipt, so a changed English source could not hide behind unchanged ru bytes.",
+ "verified": [
+  "key sets and key order: en==ru in all 4 audited namespaces (137 keys); every ru value parsed with @formatjs/icu-messageformat-parser (requiresOtherClause): 0 parse errors; argument names, argument types, select option sets and number skeletons (::group-off) equal to en in every key; no non-ru plural category present anywhere",
+  "plural categories: the three noun-counting plurals (credential_notice.chip_title, credential_notice.unredacted x2) carry one/few/many/other; ask_queue.rail.close/open carry =0/other only, which is correct because no noun follows the count; rendering at 0,1,2,5,11,21,100 gives 1 символ/2 символа/5 символов/21 символ/100 символов and 1 стал/2 стали/21 стал/100 стали with the pronoun его/их agreeing",
+  "no non-ASCII whitespace or format character (U+00A0, U+2000-200F, U+2028-202F, U+2060-2069, U+FEFF) anywhere in the 137 ru values; no edge or double space; no ASCII ellipsis; no straight quote or apostrophe (so no ICU escaping hazard); ::group-off uses plain ASCII spaces in its argument header",
+  "tokens: every technical token in these four namespaces is byte-identical to the English source - /credential and /btw (including the /credential, form), the key names Enter and Esc, the ⌘Z shortcut carried by {undoCap}, and the ::group-off skeleton; after stripping ICU syntax and placeholders the only Latin runs left are the /credential and /btw command tokens, which are meant to stay literal (no product name and no backticked key occurs in these four namespaces, so none is claimed)",
+  "register: every imperative in the 137 values is the вы-form (Нажмите, Отправьте, Спросите, Задайте, Добавьте, Выберите, Оставьте); no ты-form slipped in; lowercase status clauses and capitalised labels match the tone the context sidecars declare",
+  "identical-to-English values: 1 (ui.chat.ask_queue.deadline.with_subject, `{subject} {deadline}`, placeholder-only, allowlisted in locale-parity IDENTICAL_OK); no English stub in the other 136",
+  "renderer check: every changed key rendered with intl-messageformat in ru with realistic arguments (device names, provider labels, level words, durations, ask ids, a quoted question, an undo shortcut); all 137 outputs read as Russian",
+  "carried namespaces: 17/17 have en source, ru target and context sidecar byte-identical to their receipts (324 keys); nothing carried was re-audited",
+  "checks run: node --test scripts/i18n/locale-parity.test.mjs -> 44 pass / 0 fail; node scripts/i18n/context-parity.mjs -> ok (131 allowed gaps in 4 namespaces, shrink-only allowance). generate.mjs --check was not run (stale until the manager regenerates)."
+ ],
+ "prior_findings": [
+  "R1 (minor, session_readout.access.owner_unavailable.title): APPLIED AS PROPOSED — on disk «Доступ через {owner} недоступен»; renders «Доступ через Mac mini Дамиана недоступен» and «Доступ через устройство-владелец недоступен», so the lowercase-at-title-start symptom N3 raised is gone on the ru side even though N3's code-side fix remains open (it still affects the other locales' {owner}-initial titles).",
+  "R2 / N5 (nit, effort.level.max + effort.level.xhigh): NOT APPLIED, deliberately — R2 asked for a rendered-chip measurement before any change, and the labels are unchanged; recorded here as nit S3D-R1 with the measured ratios, still requiring a rendered check rather than a copy change.",
+  "R3 (nit, ask_queue.duration.days): APPLIED AS PROPOSED — «{count, number} дн.»; checked against shipped precedent, which is the same mixed convention (presence.days_ago «дн. назад», presence.hours_ago «ч назад», presence.minutes_ago «мин назад»), so days-with-period plus hours/minutes/seconds-without is shipped practice, not a new inconsistency.",
+  "R4 (nit, credential_notice.armed): APPLIED AS PROPOSED — «ожидает ввода — поставьте пробел, затем введите или вставьте секрет»; reads as ready-and-waiting, keeps the lowercase status register and the list of actions.",
+  "R5 (nit, aside.adopt.refused.turn_running): APPLIED AS PROPOSED — «…Добавьте вопрос, когда ответ завершится.»; the singular noun now has an antecedent, and the sentence still fits between the two status sentences of its tone.",
+  "N1 (minor, draft.confirm_model_effort): APPLIED WITH A DISCLOSED DEVIATION — N1 asked for the dash clause «уровень рассуждений — {effort}», the final bytes say «глубина рассуждений — {effort}»; N2 separately required unifying the term on «глубина рассуждений», so taking N1's dash shape with N2's noun is the correct consolidation, and the nominative label after the dash still avoids N1's instrumental case disagreement.",
+  "N2 (minor, reasoning-effort glossary): APPLIED — «глубина рассуждений» now appears in confirm_effort_changed, confirm_effort_unset, confirm_model_effort, detail.not_reported, detail.no_levels, detail.offers, detail.session and strip.effort_aria, matching shipped ui.chat.pickers.effort.title and ui.miniView.sheet_effort; «уровни рассуждений» is kept only where the plural noun 'levels' is meant (detail.default_only, refusal_ladder_unread), which is the distinction N2 drew.",
+  "N4 (nit, access.expired.description) and Q2 (nit, rail.close/open): REJECTED-WITH-REASON, judged sound — N4's parenthetical «у владельца ({owner})» is the only shape that avoids demanding a genitive of a caller-supplied device name, and reads redundantly only with the fallback phrase; Q2's «Закрыть панель запросов» vs «Открыть запросы» mirrors shipped ui.chat.asks.close_asks and composer.secret_ask_open exactly. Both verified unchanged in the final bytes.",
+  "Q1 (minor, ask_queue.refusal.expired), A1 (nit, continuation_escape), A2 (nit, declined_options), N6 (nit, strip.readings_dropped): APPLIED AND VERIFIED — «Срок этого запроса истёк, ответить на него уже нельзя — спросите агента ещё раз.», round brackets around «(этот обмен будет отброшен)», «отбросить этот обмен», «Показания сброшены при потере соединения.»"
+ ],
+ "observations": [
+  "PR completeness, not a translation defect: scripts/i18n/locale-parity.test.mjs is modified but UNCOMMITTED, and its added IDENTICAL_OK rows are what make the stub test pass on this tree. Measured, not assumed: across the 21 composer namespaces 33 ru values are byte-identical to English, and 4 of them are covered only by the working-tree table, not by HEAD - ui.chat.ask_queue.deadline.with_subject (in this audited set), ui.chat.ask_answer.unconfirmed, ui.chat.session_spend.summary.basis_amount and ui.chat.ask_panel.filter.chip. allowsIdenticalValue() is a pure table lookup with no placeholder exemption, so without that file in the commit the stub test fails on all four. The catalogue bytes are fine; the test change must ride with them.",
+  "«Глубина рассуждений: {level}» with a masculine level label (высокий/Максимальный) looks like a gender mismatch but is shipped practice: ui.chat.pickers.destination_pickers.effort_for_this_conversation already renders «Глубина рассуждений для этого разговора: {value}», and the label set is heterogeneous (Авто, Нет, неизвестно, Очень высокий) so no single adjective could agree. Not a defect; no change proposed.",
+  "access.owner_fallback «устройство-владелец» is an invariant compound spliced into nominative, accusative and parenthetical slots; it renders acceptably in all of them because the head noun «устройство» is neuter and its accusative equals the nominative. Recorded so nobody later 'fixes' one slot into a genitive.",
+  "ui.chat.credential_notice.unredacted's other branch «# символа стали» would govern a fractional count (1,5 символа стали rather than the prescriptive 1,5 символа стало), but the argument is a character count and therefore always an integer, so the branch is unreachable; the reachable categories (one/few/many) all agree correctly.",
+  "Length: the three widest ru overruns in this set are duration.unknown 7->15 («некоторое время», a two-word phrase substituted into «истекает через …»), strip.fast_mode_on 12->21 and access.history.last_resolved 22->38; all three sit in prose or a detail line, and the sidecars declare no length budget for them, so no shorter phrasing is proposed.",
+  "The repo's own locale-parity run happened in this worktree with the manager's uncommitted test change present, and with node_modules being the shared symlink to the primary checkout; no dependency was installed and no file in the repository outside this receipt was written (the helper scripts live in the session scratchpad)."
+ ],
+ "carried": [
+  {
+   "namespace": "ui.chat.slash",
+   "keys": 89,
+   "carried_from_receipt": "9487efcb-s3b-ru",
+   "receipt_path": "i18n/receipts/9487efcb-s3b-ru-composer-b1-ru.json",
+   "ru_sha256": "e895ee972fe0d56720be138c08ea4e2621ef61538ce5d6f36bfaeb0eb74d3cef",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.page_chrome",
+   "keys": 26,
+   "carried_from_receipt": "9487efcb-s3b-ru",
+   "receipt_path": "i18n/receipts/9487efcb-s3b-ru-composer-b1-ru.json",
+   "ru_sha256": "26e12c0e44b745df55f25f8ccade2e49b9b16b44d9657b3003e7e1169bb0c5b9",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.header_menu",
+   "keys": 12,
+   "carried_from_receipt": "9487efcb-s3b-ru",
+   "receipt_path": "i18n/receipts/9487efcb-s3b-ru-composer-b1-ru.json",
+   "ru_sha256": "b5961af6e67c9ed690a02657c97ca5947a8e28300526f299fe85b800fdc67eb5",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.interrupt",
+   "keys": 6,
+   "carried_from_receipt": "9487efcb-s3b-ru",
+   "receipt_path": "i18n/receipts/9487efcb-s3b-ru-composer-b1-ru.json",
+   "ru_sha256": "3965b08ca2b06cd304a48dd16aff12fd1bd050e75c518dfa91b7a5162ad3dc7c",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.fast_mode",
+   "keys": 10,
+   "carried_from_receipt": "9487efcb-s3b-ru",
+   "receipt_path": "i18n/receipts/9487efcb-s3b-ru-composer-b1-ru.json",
+   "ru_sha256": "7127853aea59711487ec3184d05b1b347573744990fd18dd84e4e09d798a5ae6",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.session_spend",
+   "keys": 32,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "eb3a05cbf557d1446bbcdc36e4c6176922d48056428202184ec95cffda833930",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.device_move",
+   "keys": 24,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "1743514b667edecb4a3cdda52254d20ba086d65ed40b70ebecea9373a65d8b67",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.ask_panel",
+   "keys": 20,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "d7280bee3640b1ce7d19f9d1889a964253cc31540a549f42dfdbb45ebc55da39",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.approval",
+   "keys": 17,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "b602531f6a3803a54adf7ffa71cdf2d4f1374612f9788e29d7af3ec67b5189b3",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.read_ack",
+   "keys": 16,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "b062f631946f439800cdcdbd39c993d4339f0d906aa160d6a9d02eda5379de50",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.attachment_refusal",
+   "keys": 15,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "7db8a7c0c3bc6b68918129f556c43afc3ecc123ad8ff0a6926690655eb3cb0a9",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.composer_notes",
+   "keys": 14,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "8b69d950cb1245afb03c8575e7573db25dc11dc32f652252a6c9410f3c3fe7d4",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.ask_answer",
+   "keys": 10,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "739747a58e3022d2a14ca870c41b4181331dcb020dc90ca934154058ec640825",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.message_budget",
+   "keys": 10,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "706000c42f80347031cc13395e3ac468f2fe577c09d9e0b992689ea5d0e45010",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.move_cwd",
+   "keys": 8,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "6bc3ae6ff9342db45af661a7e8af7306548b41d8a9e119d4f53a099df03c1745",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.sidebar_notes",
+   "keys": 8,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "d6b33d5612f91c11fd84b50789dd45d875c86d56ecdc99d15dee86e4fd0953f0",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  },
+  {
+   "namespace": "ui.chat.quota_resend",
+   "keys": 7,
+   "carried_from_receipt": "3a7aab10-s3c-ru",
+   "receipt_path": "i18n/receipts/3a7aab10-s3c-ru-composer-final-ru.json",
+   "ru_sha256": "43af3bdb64c6d135815ed6a37696f02fc9579c83f1eb8a22e4752207c2105111",
+   "verified_unchanged": "en source, ru target and context sidecar are byte-identical to the hashes recorded in that receipt, so its verdict still describes these bytes; no rows re-audited here"
+  }
+ ],
+ "namespaces": {
+  "ui.chat.session_readout": {
+   "namespace": "ui.chat.session_readout",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 54,
+   "sha256": {
+    "en": "613dad2f1acee22dd7d6e4b7c482b1caa8ec49938f207b8bee52a071a18c4386",
+    "ru": "1a565798c60a6fc5d9854c8af5e89678f1567296c433e4f8f436a4ba6d7973a0",
+    "context": "bd9f4d0e5d1bfe3aa54f01e2c764e928f1a8384e349024c23defb384ace7bbab"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.session_readout.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.session_readout.json",
+    "context": "src/i18n/catalogues/en/ui.chat.session_readout.context.json"
+   },
+   "findings": [
+    {
+     "id": "S3D-R1",
+     "severity": "nit",
+     "key": "ui.chat.session_readout.effort.level.max + ui.chat.session_readout.effort.level.xhigh",
+     "current": "Максимальный / Очень высокий",
+     "proposed": "Максимум / Сверхвысокий, but only if a rendered check of the effort chip shows clipping",
+     "reason": "Carried from R2 (s3c) and N5 (s3b), not applied by design: the labels are 12 and 13 characters against English 'Max' (3) and 'xHigh' (5), the widest ratios in the batch, and the sidecar sets no length budget; the words are correct and match the shipped Низкий/Средний/Высокий family, so this needs a rendered measurement of the readout chip, not a copy change."
+    }
+   ],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "verdict": "clean-with-findings: 54/54 read; R1 (owner_unavailable.title) applied and verified — the title now opens with «Доступ через» so the owner_fallback phrase no longer starts a title lowercase; R2/N5 lie untouched and remain a rendered-chip check (nit S3D-R1); N1 (dash clause), N6 («Показания сброшены») and N2's glossary unification («глубина рассуждений» throughout, «уровни рассуждений» only for the plural 'levels') are in the bytes; all 54 values parse, the argument names/types/select sets match English exactly, ::group-off survives, and the reasoning-depth sentences render naturally («Этот разговор будет работать на Radient Pass; глубина рассуждений — высокий.»)."
+  },
+  "ui.chat.ask_queue": {
+   "namespace": "ui.chat.ask_queue",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 44,
+   "sha256": {
+    "en": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+    "ru": "221aff8aca1a11f91ccd6cd490365923b1b8793efc438880d4582c6d1c859b00",
+    "context": "69086c66cbe510f79384d5c019da4be842dd110b49a2953c53c2bf46ff58cb2a"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.ask_queue.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.ask_queue.json",
+    "context": "src/i18n/catalogues/en/ui.chat.ask_queue.context.json"
+   },
+   "findings": [],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "verdict": "clean: 44/44 read, no findings. R3 (duration.days) applied as proposed («дн.») and now matches the shipped presence.days_ago convention, with ч/мин matching presence.hours_ago/minutes_ago; Q1 (refusal.expired) applied — the calque «слишком старый для ответа» is gone and the sentence matches status.expired's idiom; Q2 (rail.close/open asymmetry) verified as shipped precedent, not drift. rail.close/rail.open carry =0/other only, which is correct because no noun follows the count («в ожидании: #»), and all five plural/select-bearing keys render correctly at 0,1,2,5,11,21,100."
+  },
+  "ui.chat.aside": {
+   "namespace": "ui.chat.aside",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 24,
+   "sha256": {
+    "en": "23591a418d92d4fbb7e67075c59a8efaee0ba9465bd8554ca2dcc51f539ad725",
+    "ru": "f1491310af5fc1cfd61cb2a1725f050ec4175be964a10c60b25e714e5cacf827",
+    "context": "027e95251f1404d795535cd438734746e0e6194a00cacc156b198bd0fe26c577"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.aside.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.aside.json",
+    "context": "src/i18n/catalogues/en/ui.chat.aside.context.json"
+   },
+   "findings": [
+    {
+     "id": "S3D-R2",
+     "severity": "nit",
+     "key": "ui.chat.aside.not_answered + ui.chat.aside.announce.not_answered",
+     "current": "Отдельный вопрос остался без ответа.",
+     "proposed": "Ответа на отдельный вопрос ещё нет. (align with the shipped key) or keep as is",
+     "reason": "The live shipped key ui.chat.canonical.send_failure.aside_not_answered (referenced from canonical-sessions-store.ts:1432) renders the same English sentence 'The aside was not answered.' as «Ответа на отдельный вопрос ещё нет.», while these two new keys say «Отдельный вопрос остался без ответа.»; both are natural Russian, but one English sentence now has two live renderings, so the drift is recorded rather than churned."
+    }
+   ],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "verdict": "clean-with-findings: 24/24 read; R5 (adopt.refused.turn_running) applied as proposed — «Добавьте вопрос» gives the singular noun an antecedent the plural «отдельные вопросы» had broken; A1 (continuation_escape) applied with round brackets, A2 (declined_options) applied naming «этот обмен»; the aside term «отдельный вопрос» matches shipped ui.chat.close_label / add_to_conversation_tooltip. One consistency nit (S3D-R2) against the live shipped canonical key."
+  },
+  "ui.chat.credential_notice": {
+   "namespace": "ui.chat.credential_notice",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 15,
+   "sha256": {
+    "en": "1186b58d4ae1eee83dd05889a1b998919c30cc51b273a506b0d8fc656cfa23df",
+    "ru": "91aac85e3d9a63788d92a5fbd4fbe8ffb343a3f9fd739e228a6aea6013578218",
+    "context": "4331241ecf3a4be4b99662dcf94f4823b6e34a09f32d9fe6dd42774892e1b4ce"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.credential_notice.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.credential_notice.json",
+    "context": "src/i18n/catalogues/en/ui.chat.credential_notice.context.json"
+   },
+   "findings": [
+    {
+     "id": "S3D-R3",
+     "severity": "nit",
+     "key": "ui.chat.credential_notice.chip_title + clear_label + cleared",
+     "current": "учётные данные № {index, number, ::group-off}",
+     "proposed": "учётные данные №{index, number, ::group-off} (align with the shipped credential notice) or keep",
+     "reason": "The live shipped key ui.notices.credentials.removed (credential-capture.ts:2058) renders the same English construct 'Credential #N' as «Учётные данные №{index, number} удалены» with no space, while these three new keys insert one; both spellings exist in shipped copy (ui.settings.shortcuts.browser_numbered_tab uses «№ {digit, number}»), so this is typographic drift for one term, not an error."
+    }
+   ],
+   "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "verdict": "clean-with-findings: 15/15 read; R4 (armed) applied exactly as proposed — «ожидает ввода — поставьте пробел, затем введите или вставьте секрет» now reads ready-and-waiting rather than 'done'; «учётные данные» is the shipped credential term and «плашка» the shipped chip word; chip_title and unredacted carry full one/few/many/other and render correctly at 0,1,2,5,11,21,100 (1 символ стал / 2 символа стали / 21 символ стал / 100 символов стали, pronoun его/их agreeing); ::group-off, /credential, Enter, Esc and {undoCap} intact. One typographic nit (S3D-R3)."
+  }
+ }
+}
