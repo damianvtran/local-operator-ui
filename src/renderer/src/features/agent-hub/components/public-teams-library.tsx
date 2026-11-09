@@ -87,7 +87,7 @@ export const PublicTeamsLibrary: FC<{
 	signedIn: boolean;
 	onOpenSettings: () => void;
 }> = ({ signedIn, onOpenSettings }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [page, setPage] = useState(1);
 	const [searchText, setSearchText] = useState("");
 
@@ -155,6 +155,9 @@ export const PublicTeamsLibrary: FC<{
 	 * credential refusal names the sign-in, and the body's verb comes from the
 	 * `pull` surface rather than the publish dialog's.
 	 */
+	// A subscription repaints the library, but useMemo compares dependencies;
+	// the treatment table's already-resolved refusal must invalidate as well.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translations inside the treatment table.
 	const pullTreatment = useMemo(() => {
 		if (!isPublicationError(pull.error)) return null;
 		const failed = teams.find((team) => team.id === failedTeamId);
@@ -170,7 +173,7 @@ export const PublicTeamsLibrary: FC<{
 				surface: "pull",
 			},
 		);
-	}, [pull.error, failedTeamId, teams]);
+	}, [pull.error, failedTeamId, teams, locale]);
 
 	/*
 	 * WHAT A FAILED PULL SAYS.
