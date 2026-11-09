@@ -224,5 +224,125 @@
 		"length": "Six words.",
 		"note": "Used only when the user IS signed in; the sign-in case has its own heading.",
 		"placeholders": {}
+	},
+	"ui.hub.pages.list_unreadable": {
+		"role": "lead sentence of the agent grid's load-failure alert, the first of three joined sentences",
+		"tone": "plain statement, sentence case, trailing full stop",
+		"length": "Six words in English.",
+		"note": "The call site joins this with a shared diagnosis sentence and a shared remedy sentence, so it MUST end in a full stop and must not name a remedy itself. 'The agent list' is what failed to read, not the whole hub (the hub shell rendered).",
+		"placeholders": {}
+	},
+	"ui.hub.pages.org.plan_headline": {
+		"role": "headline of the warning alert when an organization's hub is refused for want of the Team plan",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "Eight words in English.",
+		"note": "Pairs with org.plan_body. Deliberately does NOT open with 'The hub could not be loaded': a lapsed plan is retried into the same refusal, so that wording would send the reader to a control that cannot work.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.org.no_access_headline": {
+		"role": "headline of the warning alert when the viewer is not a member of the organization whose hub was asked for",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "Nine words in English.",
+		"note": "Pairs with org.no_access_body. 'that organization' is a deictic pointing at the scope chip still on screen; keep both keys using the same demonstrative.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.org.plan_body": {
+		"role": "body of the Team-plan refusal alert",
+		"tone": "plain two-sentence explanation, third person about the organization's owner",
+		"length": "Two sentences, about thirty-five words in English.",
+		"note": "Names who can fix it (an owner) and where (the Radient console). 'Radient' and 'Team plan' are product names and stay verbatim. Mirrors the flagship wording of ui.hub.teams.org.plan_body, which says the same thing for teams; keep the two parallel in a given language.",
+		"placeholders": {
+			"org": "The organization's display name, or the noun phrase from org.that_organization / scope.org_unnamed when its name is unknown. Do not translate the name itself."
+		}
+	},
+	"ui.hub.pages.org.no_access_body": {
+		"role": "body of the not-a-member refusal alert",
+		"tone": "plain two-sentence explanation, second person, quiet",
+		"length": "Two sentences, about twenty words in English.",
+		"note": "Ends with the one remedy that exists for this reader (an owner can invite them again); there is no control on this surface that fixes it, so do not invent one. Mirrors ui.hub.teams.org.no_access_body for teams.",
+		"placeholders": {
+			"org": "The organization's display name, or the noun phrase from org.that_organization when its name is unknown. Do not translate the name itself."
+		}
+	},
+	"ui.hub.pages.org.that_organization": {
+		"role": "fallback noun phrase inside the not-a-member sentence, used when the organization has no readable name",
+		"tone": "plain, factual, lowercase",
+		"length": "Two words in English.",
+		"note": "Flows inside org.no_access_body where a name would otherwise sit, so it must be a NOUN PHRASE that takes the sentence's preposition, not a sentence. The demonstrative must agree with org.no_access_headline's.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.empty.org.title": {
+		"role": "heading of the empty grid when scoped to an organization that has shared no agents",
+		"tone": "plain factual statement, sentence case, trailing full stop",
+		"length": "Eight words in English.",
+		"note": "One of four mutually exclusive empty headings (org, category, search, public); they share one slot, so keep them similar in length or the panel reflows between scopes.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.empty.org.body": {
+		"role": "second line of the empty grid when scoped to an organization",
+		"tone": "plain statement of what will appear, third person",
+		"length": "One sentence, about eleven words in English.",
+		"note": "Says who the list is FOR (its members) because an organization's hub is private. Deliberately not the public hub's 'Yours could be the first': that invites a public publication on a surface only one organization can see.",
+		"placeholders": {
+			"org": "The organization's display name, or the noun phrase from scope.org_unnamed when its name is unknown."
+		}
+	},
+	"ui.hub.pages.empty.category.title": {
+		"role": "heading of the empty grid when a type/category filter matches nothing",
+		"tone": "plain factual statement, sentence case, trailing full stop",
+		"length": "Five words plus the category in English.",
+		"note": "Shares its slot with empty.search.title and empty.public.title.",
+		"placeholders": {
+			"category": "The category's own display label, already translated and already named for the reader; insert it whole, do not decline or re-case it."
+		}
+	},
+	"ui.hub.pages.empty.category.body": {
+		"role": "second line of the empty grid for a category miss, naming the control that clears it",
+		"tone": "plain two-sentence explanation, imperative second sentence",
+		"length": "Two sentences, about thirteen words in English.",
+		"note": "Must use the SAME noun as clear.filter, because the button under it is labelled with that word. This is why the category miss and the search miss have separate bodies.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.empty.search.title": {
+		"role": "heading of the empty grid when the typed query matches nothing",
+		"tone": "plain factual statement, sentence case, trailing full stop",
+		"length": "Five words in English.",
+		"note": "Shares its slot with empty.category.title and empty.public.title.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.empty.search.body": {
+		"role": "second line of the empty grid for a query miss, naming the control that clears it",
+		"tone": "plain two-sentence explanation, imperative second sentence",
+		"length": "Two sentences, about fifteen words in English.",
+		"note": "Says what the search covered (the agent's name or description) and must use the same noun as clear.search. Written for a query the reader TYPED, so it must not use the category miss's 'carries that filter' phrasing.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.empty.public.title": {
+		"role": "heading of the empty grid when nothing has been published to the public hub at all",
+		"tone": "plain factual statement, sentence case, trailing full stop",
+		"length": "Four words in English.",
+		"note": "Shares its slot with the category and search misses; this is the no-filter case.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.empty.public.body": {
+		"role": "second line of the empty public hub, inviting the reader to publish",
+		"tone": "plain two-sentence explanation, second person, quietly encouraging",
+		"length": "Two sentences, about eleven words in English.",
+		"note": "Invites a public publication, so it is used only on the public scope; an organization's hub has its own body. 'Yours' refers to the reader's own agent.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.clear.filter": {
+		"role": "button label that clears the category filter from the empty-grid panel",
+		"tone": "imperative verb and its object, sentence case, no punctuation",
+		"length": "Two words in English; the panel can hold a longer label without wrapping.",
+		"note": "Names the FILTER rather than the search, because the reader switched a category. Must use the same noun as empty.category.body.",
+		"placeholders": {}
+	},
+	"ui.hub.pages.clear.search": {
+		"role": "button label that clears the typed query from the empty-grid panel",
+		"tone": "imperative verb and its object, sentence case, no punctuation",
+		"length": "Two words in English.",
+		"note": "Names the SEARCH because the reader typed a query. Must use the same noun as empty.search.body.",
+		"placeholders": {}
 	}
 }

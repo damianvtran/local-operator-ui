@@ -1,0 +1,104 @@
+{
+	"schema": 1,
+	"receipt": "fr-hub-pages-r1-cf863242",
+	"agent": "translation-auditor",
+	"auditor": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Actual served model: deepseek/deepseek-flash. The session header began on anthropic/claude-sonnet-5-5 and the provider served three fallbacks inside this run (claude-opus-5-5, then gpt-6.1-sol, then deepseek/deepseek-flash, each on a quota failure). Every catalogue read, render-site read, composition test and verdict in this receipt was produced on deepseek/deepseek-flash; no result was carried over from the earlier models.",
+	"fallback": "deepseek/deepseek-flash (after anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol, provider quota)",
+	"independence": "Session cf863242ed03, independent reviewer-role i18n audit. This session did not author, key or translate these values and did not write the commit under audit. Translator provenance is relayed, not verified: i18n/ledger.json records the fr rows locale-wide as agent i18n-translator, model radient/auto, and the ui.hub.pages row notes that translators are recorded locale-wide and relayed rather than attributed per namespace. Cross-family attribution is therefore NOT established and is not claimed. The verdict was rebuilt from the English source, the en context sidecars, the render sites (agent-hub-page.tsx, public-teams-library.tsx, org-teams-list.tsx, backend-error.ts, publication-failure.ts), the shipped fr ui.hub.* and ui.agents.publication.* families, the glossary and the fr style guide.",
+	"instance": "cf863242ed03-fr-hub-pages",
+	"session": "cf863242ed03",
+	"locale": "fr",
+	"namespace": "ui.hub.pages",
+	"branch": "i18n/s5-agent-hub",
+	"base": "c88ad36bbcadee99791b9153ba9a8d31b2b49d1d",
+	"head": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"date": "2026-11-08",
+	"status": "passed",
+	"result": "clean",
+	"scope": "fr ui.hub.pages: the 16 keys added by be77d308262 on top of c88ad36bbca, audited against the English source and its context sidecar at the same head. The 43 keys the base commit already carried are byte-identical at head, so this receipt does not re-audit them.",
+	"key_count": 59,
+	"delta_key_count": 16,
+	"delta_keys": [
+		"ui.hub.pages.list_unreadable",
+		"ui.hub.pages.org.plan_headline",
+		"ui.hub.pages.org.no_access_headline",
+		"ui.hub.pages.org.plan_body",
+		"ui.hub.pages.org.no_access_body",
+		"ui.hub.pages.org.that_organization",
+		"ui.hub.pages.empty.org.title",
+		"ui.hub.pages.empty.org.body",
+		"ui.hub.pages.empty.category.title",
+		"ui.hub.pages.empty.category.body",
+		"ui.hub.pages.empty.search.title",
+		"ui.hub.pages.empty.search.body",
+		"ui.hub.pages.empty.public.title",
+		"ui.hub.pages.empty.public.body",
+		"ui.hub.pages.clear.filter",
+		"ui.hub.pages.clear.search"
+	],
+	"inputs_sha256": {
+		"style guide (local-operator/i18n/style-guides/fr.md)": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+		"glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"source": {
+		"path": "src/i18n/catalogues/en/ui.hub.pages.json",
+		"sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a"
+	},
+	"target": {
+		"path": "src/i18n/catalogues/fr/ui.hub.pages.json",
+		"sha256": "79205724a6f674e880ed72431e5d17da107d3101567b0cf26304662adfd577db"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+		"sha256": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872"
+	},
+	"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+	"target_sha256": "79205724a6f674e880ed72431e5d17da107d3101567b0cf26304662adfd577db",
+	"verified": [
+		"Completeness: 16/16 delta keys present; the parsed key set equals en (59/59), the key order equals en, there are no duplicate JSON members, every value is a real translation and never the key id, the file is NFC and ends with a newline.",
+		"Carried keys untouched: parsing c88ad36bbca and be77d308262 for this namespace differs only by the 16 added keys (16 additions, 0 changes, 0 removals), so the 43 keys the base carried are byte-identical and were not re-audited.",
+		"Placeholders: every delta key preserves its placeholders exactly and once — {org} in org.plan_body, org.no_access_body and empty.org.body; {category} in empty.category.title; the other 12 keys are placeholder-free in both languages. None added, dropped, renamed or duplicated.",
+		"The {org} injection sites accept both values the render site can supply — a real organization name, and the fallback noun phrase (scope.org_unnamed / org.that_organization = « cette organisation »). Rendered with the fallback, org.plan_body reads « Un propriétaire de cette organisation peut l’activer dans la console Radient ; ses agents seront alors listés ici. », org.no_access_body reads « Vous n’êtes pas membre de cette organisation, donc ses agents ne sont pas listés ici. Un propriétaire peut vous inviter de nouveau. » and empty.org.body reads « Les agents publiés dans cette organisation apparaissent ici pour ses membres. » All three stay grammatical after the preposition each template puts before the slot, and {org} itself is never declined.",
+		"Terminology and register: vous throughout (the fr style guide’s decision), no tu, no Veuillez. The delta reuses the shipped fr ui.hub.* vocabulary rather than inventing near-synonyms: « offre Team » (as ui.hub.teams.org.plan_body), « console Radient », « propriétaire », « membre », « agent partagé », « filtre », « recherche », « catégorie ».",
+		"The pages/teams pairs read as one voice: org.plan_headline and org.no_access_headline are byte-identical to their ui.hub.teams siblings, org.that_organization is byte-identical to the teams sibling, and org.plan_headline is additionally byte-identical to the shipped ui.agents.publication.team_plan_required.headline. org.plan_body and org.no_access_body follow the teams bodies clause for clause (same « fait partie de l’offre Team », same « Un propriétaire de {org} peut l’activer dans la console Radient ; ses … seront alors … ici »), with correct gender agreement on each side (agents listés / équipes listées).",
+		"Button/body noun agreement, which the context requires: empty.category.body says « le filtre » and the button under it is « Effacer le filtre »; empty.search.body says « la recherche » and the button is « Effacer la recherche ». Each body names the noun of the control the reader actually used.",
+		"list_unreadable is the lead of a joined alert: backendLoadErrorMessage (src/renderer/src/shared/api/local-operator/backend-error.ts) appends the shared diagnosis and, for the outdated arm only, the shared remedy, so the alert runs to three sentences at most. The lead ends in a full stop and names no remedy of its own, as the context requires. Composed against the shipped fr diagnosis/remedy strings, all five arms read as coherent French (unreachable, deadline, unauthorized, outdated, unknown), with no doubled word and no comma splice.",
+		"The four mutually exclusive empty headings share one slot. Measured in characters: org 50, search 44, category 36–53 depending on the label, public 16 — against English 43 / 28 / 19–33 / 17. French is longer on three of the four, the expansion the fr style guide records (+16% on org, +57% on search, +61% to +89% on category), and shorter on public (-6%). The panel pins no height: the empty state is a flex column with px-6 py-10 and text-center, and the heading paragraph carries typography classes only (text-heading text-ink), so a longer heading changes the panel height rather than clipping, and the English spread (17–43) already varies between scopes. The search heading is the largest relative jump and is the first one to look at if the panel height is ever pinned.",
+		"English residue: none beyond the allowed exceptions. « Radient » and « Team » are product names the en context pins verbatim, and « hub » is this locale’s own shipped term — 150 of the 8 620 shipped fr values contain it as a word, e.g. « Hub des agents », « Le hub public est injoignable. », « Le hub public a répondu {status, number, ::group-off}. » — so it is not residue.",
+		"Typography: U+202F espace fine insécable before the semicolon in org.plan_body, exactly as the fr style guide requires; U+2019 apostrophes throughout (no ASCII apostrophe); sentence case; no double or edge space; no newline, bidi control, zero-width or BOM character in any of the 16 values; trailing full stops present exactly where the English has them and absent where it does not.",
+		"CLDR plurals: none of the 16 delta keys carries a plural — the brief’s plural check is therefore not applicable to this delta, and the file’s untouched plural keys (status.count.*) were not re-audited.",
+		"RTL: not applicable to fr, and no manual bidi control character was found in any delta value."
+	],
+	"findings": [
+		{
+			"key": "ui.hub.pages.org.that_organization",
+			"severity": "info",
+			"status": "verified",
+			"note": "« cette organisation » is byte-identical to scope.org_unnamed, because French has a single demonstrative and the English this/that contrast cannot be carried. That is the correct outcome, not a collision: the context asks the demonstrative to agree with org.no_access_headline, which also says « cette organisation », and the phrase is grammatical after the « de » that org.no_access_body and org.plan_body put before the slot. A distal form (« cette organisation-là ») would read unnatural in fr UI copy; deliberately not used."
+		},
+		{
+			"key": "ui.hub.pages.empty.category.title",
+			"severity": "info",
+			"status": "verified",
+			"note": "The French adds « la catégorie » where the English says only « in {category} ». Kept: {category} is always categoryEntry().label, a bare translated noun (16 mapped labels such as Investissement, Santé, Logiciel, plus a snake_case fallback), and the « all » entry of the category rail selects null, so this heading can never render with a sentinel label. The added noun is what stops a bare label from reading like an agent name in a sentence that says no agent exists."
+		},
+		{
+			"key": "ui.hub.pages.empty.search.body",
+			"severity": "info",
+			"status": "verified",
+			"note": "Renders the English « carries that » as « ne correspond à cette recherche » — the naturalisation the context asks for (the body must not reuse the category miss’s phrasing) — and it names the same noun as clear.search, so the button below it matches."
+		},
+		{
+			"key": "ui.hub.pages.clear.filter",
+			"severity": "info",
+			"status": "verified",
+			"note": "Infinitive label, per the fr style guide’s action-label rule, and singular « le filtre » because this control clears one category filter; the corpus’s plural « Effacer les filtres » is the clear-all control on other surfaces."
+		}
+	],
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"identity_provenance": {
+		"auditor": "translation-auditor (translation-auditor (lopdev reviewer-role session cf863242ed03; independent fr i18n audit, round 1, of the 17 Agent Hub publication keys at be77d308262ce0527c1fd4052ff77207edcac189))"
+	}
+}

@@ -1282,7 +1282,7 @@ export const AgentHubPage: React.FC = () => {
 													 */}
 													{isAuthenticated
 														? backendLoadErrorMessage(
-																"The agent list could not be loaded.",
+																t("ui.hub.pages.list_unreadable"),
 																error,
 															)
 														: t("ui.hub.pages.signed_out.body")}
@@ -1347,13 +1347,20 @@ export const AgentHubPage: React.FC = () => {
 										>
 											<AlertTitle>
 												{orgRefusal === "plan"
-													? "That organization needs an active Team plan"
-													: "You do not have access to that organization"}
+													? t("ui.hub.pages.org.plan_headline")
+													: t("ui.hub.pages.org.no_access_headline")}
 											</AlertTitle>
 											<AlertDescription>
 												{orgRefusal === "plan"
-													? `Sharing agents inside an organization is part of the Team plan. An owner of ${activeOrg.tenant_name || "this organization"} can activate it in the Radient console, and then its agents will be listed here.`
-													: `You are not a member of ${activeOrg.tenant_name || "that organization"}, so its agents are not listed here. An owner can invite you again.`}
+													? t("ui.hub.pages.org.plan_body", {
+															org:
+																orgName ?? t("ui.hub.pages.scope.org_unnamed"),
+														})
+													: t("ui.hub.pages.org.no_access_body", {
+															org:
+																orgName ??
+																t("ui.hub.pages.org.that_organization"),
+														})}
 											</AlertDescription>
 											{orgRefusal === "plan" && (
 												<div className="mt-2">
@@ -1441,12 +1448,15 @@ export const AgentHubPage: React.FC = () => {
 												>
 													<p className="text-heading text-ink">
 														{orgScopeId
-															? "This organization has no shared agents yet."
+															? t("ui.hub.pages.empty.org.title")
 															: selectedCategory
-																? `No agents in ${categoryEntry(selectedCategory).label}.`
+																? t("ui.hub.pages.empty.category.title", {
+																		category:
+																			categoryEntry(selectedCategory).label,
+																	})
 																: hasFilters
-																	? "No agents match that search."
-																	: "The hub is empty."}
+																	? t("ui.hub.pages.empty.search.title")
+																	: t("ui.hub.pages.empty.public.title")}
 													</p>
 													<p className="max-w-md text-body-sm text-ink-muted">
 														{/*
@@ -1462,12 +1472,16 @@ export const AgentHubPage: React.FC = () => {
 														 * (design §8.4 keeps the two namespaces distinct).
 														 */}
 														{orgScopeId
-															? `Agents published into ${activeOrg?.tenant_name || "this organization"} appear here for its members.`
+															? t("ui.hub.pages.empty.org.body", {
+																	org:
+																		orgName ??
+																		t("ui.hub.pages.scope.org_unnamed"),
+																})
 															: selectedCategory
-																? "Nothing in this category yet. Clear the filter to see the whole hub."
+																? t("ui.hub.pages.empty.category.body")
 																: hasFilters
-																	? "No agent's name or description carries that. Clear it to see the whole hub."
-																	: "Nobody has published an agent yet. Yours could be the first."}
+																	? t("ui.hub.pages.empty.search.body")
+																	: t("ui.hub.pages.empty.public.body")}
 													</p>
 													<div className="mt-2 flex flex-wrap items-center justify-center gap-2">
 														{hasFilters ? (
@@ -1489,8 +1503,8 @@ export const AgentHubPage: React.FC = () => {
 																onClick={handleClearFilters}
 															>
 																{selectedCategory
-																	? "Clear filter"
-																	: "Clear search"}
+																	? t("ui.hub.pages.clear.filter")
+																	: t("ui.hub.pages.clear.search")}
 															</Button>
 														) : orgScopeId && !canPublishToOrg ? /*
 														 * A MEMBER WHO CANNOT PUBLISH GETS NO CONTROL, rather than one the hub

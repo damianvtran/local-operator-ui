@@ -41,5 +41,21 @@
 	"ui.hub.pages.viewer_unknown": "无法读取你的点赞和收藏，因此卡片上不会显示你是否已点赞或收藏。",
 	"ui.hub.pages.signed_out.title": "登录后才能使用中心",
 	"ui.hub.pages.signed_out.body": "你尚未登录Radient，中心没有可用来读取智能体列表的凭据。请在设置页登录，然后重试。",
-	"ui.hub.pages.load_failed.title": "无法加载中心"
+	"ui.hub.pages.load_failed.title": "无法加载中心",
+	"ui.hub.pages.list_unreadable": "无法加载智能体列表。",
+	"ui.hub.pages.org.plan_headline": "该组织需要有效的Team套餐",
+	"ui.hub.pages.org.no_access_headline": "你无权访问该组织",
+	"ui.hub.pages.org.plan_body": "在组织内共享智能体属于Team套餐的功能。{org}的所有者可在Radient控制台中启用，之后其智能体就会在此列出。",
+	"ui.hub.pages.org.no_access_body": "你不是{org}的成员，因此这里不列出其智能体。所有者可以再次邀请你。",
+	"ui.hub.pages.org.that_organization": "该组织",
+	"ui.hub.pages.empty.org.title": "此组织尚无共享的智能体。",
+	"ui.hub.pages.empty.org.body": "发布到{org}的智能体会在此显示，供其成员查看。",
+	"ui.hub.pages.empty.category.title": "{category}中没有智能体。",
+	"ui.hub.pages.empty.category.body": "此分类中暂无内容。清除筛选即可查看整个中心。",
+	"ui.hub.pages.empty.search.title": "没有符合该搜索条件的智能体。",
+	"ui.hub.pages.empty.search.body": "没有任何智能体的名称或描述包含该内容。清除搜索即可查看整个中心。",
+	"ui.hub.pages.empty.public.title": "中心暂无内容。",
+	"ui.hub.pages.empty.public.body": "还没有人发布智能体。你的智能体可以成为第一个。",
+	"ui.hub.pages.clear.filter": "清除筛选",
+	"ui.hub.pages.clear.search": "清除搜索"
 }

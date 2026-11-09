@@ -1,0 +1,175 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"locale": "zh-CN",
+	"namespace": "ui.hub.pages",
+	"date": "2026-11-08",
+	"instance": "ba884773",
+	"auditor": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"verdict_summary": "zh-CN / ui.hub.pages: 16 new keys, all present and faithful to the English and its context sidecars; 0 blocker, 0 major, 0 minor, 1 nit (a 将/会 auxiliary that makes one page/teams pair read marginally differently), 1 info observation (pre-existing ASCII-space joiner, not this diff's). Ship it.",
+	"findings": [
+		{
+			"id": "N1",
+			"key": "ui.hub.pages.empty.org.body",
+			"severity": "nit",
+			"finding": "The pair sentence uses 将在此显示 where its approved teams sibling ui.hub.teams.org.empty uses 会在此显示 for the same construction. Both are correct Chinese and the meaning is identical, but the brief asks the pages/teams pairs to read as one voice and every other pair here is verbatim-parallel.",
+			"evidence": "zh-CN ui.hub.pages.empty.org.body = 发布到{org}的智能体将在此显示，供其成员查看。 | zh-CN ui.hub.teams.org.empty = 共享到{org}的团队会在此显示，供其成员查看。",
+			"suggested_fix": "将 -> 会 (『…的智能体会在此显示，供其成员查看。』), one character.",
+			"status": "deferred - nit recorded, does not gate and forces no commit"
+		},
+		{
+			"id": "I1",
+			"key": "ui.hub.pages.list_unreadable",
+			"severity": "info",
+			"finding": "Not a defect in this value, and out of scope for this diff: the value is correct and ends in the full stop its sidecar requires. But backendLoadErrorMessage joins the lead sentence to the shared diagnosis and remedy with an ASCII space, so on zh-CN this surface renders a half-width space after the full-width 。. Pre-existing for every surface and every locale that calls the helper; recorded so the operator sees it, with nothing to change in the catalogue.",
+			"evidence": "src/renderer/src/shared/api/local-operator/backend-error.ts:184-186 `.filter(Boolean).join(\" \")`; joined zh string reproduced from the shipped strings: 无法加载智能体列表。 Local Operator服务器无响应。 (kind=unreachable) and 无法加载智能体列表。 Local Operator服务器版本低于此应用的要求。 更新服务器后重试。 (kind=outdated).",
+			"suggested_fix": "None here. If it is ever wanted, the joiner would pick a locale-aware separator; a catalogue edit cannot fix it.",
+			"status": "observation - pre-existing, out of scope, not counted against this audit"
+		}
+	],
+	"keys_audited": 16,
+	"namespace_keys": 59,
+	"keys": [
+		{
+			"key": "ui.hub.pages.list_unreadable",
+			"en": "The agent list could not be loaded.",
+			"zh-CN": "无法加载智能体列表。",
+			"status": "pass",
+			"finding": "I1"
+		},
+		{
+			"key": "ui.hub.pages.org.plan_headline",
+			"en": "That organization needs an active Team plan",
+			"zh-CN": "该组织需要有效的Team套餐",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.org.no_access_headline",
+			"en": "You do not have access to that organization",
+			"zh-CN": "你无权访问该组织",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.org.plan_body",
+			"en": "Sharing agents inside an organization is part of the Team plan. An owner of {org} can activate it in the Radient console, and then its agents will be listed here.",
+			"zh-CN": "在组织内共享智能体属于Team套餐的功能。{org}的所有者可在Radient控制台中启用，之后其智能体就会在此列出。",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.org.no_access_body",
+			"en": "You are not a member of {org}, so its agents are not listed here. An owner can invite you again.",
+			"zh-CN": "你不是{org}的成员，因此这里不列出其智能体。所有者可以再次邀请你。",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.org.that_organization",
+			"en": "that organization",
+			"zh-CN": "该组织",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.empty.org.title",
+			"en": "This organization has no shared agents yet.",
+			"zh-CN": "此组织尚无共享的智能体。",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.empty.org.body",
+			"en": "Agents published into {org} appear here for its members.",
+			"zh-CN": "发布到{org}的智能体将在此显示，供其成员查看。",
+			"status": "pass",
+			"finding": "N1"
+		},
+		{
+			"key": "ui.hub.pages.empty.category.title",
+			"en": "No agents in {category}.",
+			"zh-CN": "{category}中没有智能体。",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.empty.category.body",
+			"en": "Nothing in this category yet. Clear the filter to see the whole hub.",
+			"zh-CN": "此分类中暂无内容。清除筛选即可查看整个中心。",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.empty.search.title",
+			"en": "No agents match that search.",
+			"zh-CN": "没有符合该搜索条件的智能体。",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.empty.search.body",
+			"en": "No agent's name or description carries that. Clear it to see the whole hub.",
+			"zh-CN": "没有任何智能体的名称或描述包含该内容。清除搜索即可查看整个中心。",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.empty.public.title",
+			"en": "The hub is empty.",
+			"zh-CN": "中心暂无内容。",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.empty.public.body",
+			"en": "Nobody has published an agent yet. Yours could be the first.",
+			"zh-CN": "还没有人发布智能体。你的智能体可以成为第一个。",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.clear.filter",
+			"en": "Clear filter",
+			"zh-CN": "清除筛选",
+			"status": "pass"
+		},
+		{
+			"key": "ui.hub.pages.clear.search",
+			"en": "Clear search",
+			"zh-CN": "清除搜索",
+			"status": "pass"
+		}
+	],
+	"source": {
+		"path": "src/i18n/catalogues/en/ui.hub.pages.json",
+		"sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a"
+	},
+	"target": {
+		"path": "src/i18n/catalogues/zh-CN/ui.hub.pages.json",
+		"sha256": "dab3af3bd52f06277fe65438b81b2c850179338a86509ba63fd2a93bcf122092"
+	},
+	"context_sidecar": {
+		"path": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+		"sha256": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872"
+	},
+	"en_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+	"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+	"target_sha256": "dab3af3bd52f06277fe65438b81b2c850179338a86509ba63fd2a93bcf122092",
+	"revisions": {
+		"base": "c88ad36bbca",
+		"head": "be77d308262"
+	},
+	"checks": [
+		"Completeness: the key-set diff base c88ad36bbca -> head be77d308262 shows exactly this namespace's added keys, 0 removed and 0 pre-existing values changed; whole-file parity against the English source is exact (pages 59/59, teams 50/50, 0 missing, 0 extra).",
+		"Identity: no audited value equals its own key id, and none is empty or whitespace-only.",
+		"Placeholders: every {placeholder} present in the English value is present byte-identically in the zh-CN value, and each sits in a grammatical slot for Chinese ({org} + 的 / 是…的成员, {category} as a fronted topic with 中).",
+		"CLDR plurals: NONE of the 17 new keys carries an ICU plural, select or number skeleton, so there is no plural category or # formatting to verify. Recorded because the brief asks for the check when the answer is 'none'.",
+		"CJK punctuation: every clause and sentence mark is full-width (。U+3002, ，U+FF0C); no ASCII , . : ; ! ? or half-width parentheses sit next to CJK; no leading/trailing or doubled spaces; no ellipsis/parenthesis style drift from the rest of the file.",
+		"Bidi/zero-width: no U+200E/200F, U+202A-202E, U+2066-2069, U+200B-200D or U+FEFF anywhere in the audited values (relevant for ur, checked here for completeness since a stray control character would also corrupt a CJK string).",
+		"CJK<->Latin spacing: the existing zh-CN catalogue has 963 CJK/Latin adjacencies without a space against 34 with one, and 0 instances of 'Team 套餐', so no space is the house style. The new values follow it exactly: 'Team套餐', 'Radient控制台', '{org}的所有者' — identical to the approved sibling ui.hub.teams.org.plan_body.",
+		"Register: 你 (never 您), no added 请, plain declarative sentences — the same voice as the ui.hub.pages.* and ui.hub.teams.* strings already shipping in this file.",
+		"Terminology has precedent in the shipped zh-CN catalogue: 中心 (hub, 137 hits), 智能体 (agent, 742), 组织/团队, 套餐 (plan, 20), 控制台 (console, 38), 所有者 (owner, 39), 分类 (category — ui.hub.taxonomy.heading), 筛选 (filter — ui.library.filter.clear_filters is literally 清除筛选), 搜索 (search — ui.chat.analytics.search.clear is literally 清除搜索, and ui.chat.pickers uses 清除搜索即可查看。).",
+		"English residue: the only Latin-script spans are 'Radient' and 'Team' (both on the brief's allowed list) plus placeholder names — no English word or sentence survives.",
+		"Encoding/shape: valid UTF-8, no BOM, no CRLF, tab-indented, trailing newline, no duplicate keys in the raw text.",
+		"English context sidecars: every audited key has a sidecar entry and sidecar<->catalogue parity is exact (pages 59/59, teams 50/50); each value was checked against its sidecar's role, tone, length and note (including the 'no remedy in the lead sentence' rule for list_unreadable and the 'same demonstrative' rule for org.that_organization).",
+		"Sibling parity with ui.hub.teams.org.* (all four pre-existing, approved): plan_headline, no_access_headline and that_organization are byte-identical between the two namespaces; plan_body and no_access_body differ only where the English differs (共享智能体 vs 读取…团队, 其智能体 vs 其团队); empty.org.body mirrors teams.org.empty apart from N1.",
+		"Demonstratives track the English exactly: 'That organization' -> 该组织 (org.no_access_headline, org.that_organization, matching the teams sibling) while 'This organization' -> 此组织 (empty.org.title) and scope.org_unnamed stays 此组织. The sidecar's 'same demonstrative' rule for org.that_organization holds.",
+		"Headlines carry no trailing punctuation and titles/paragraphs do, exactly as the sidecars specify (org.plan_headline, org.no_access_headline, org.that_organization bare; empty.*.title and org.*_body with 。). Button labels clear.filter / clear.search carry no punctuation."
+	],
+	"note": "Receipt filename uses the lower-cased locale ('zh-cn-') only because the ledger's isRepoReceiptPath requires ^i18n/receipts/[a-z0-9_-]+\\.json$; the locale this receipt audits is zh-CN.",
+	"identity_provenance": {
+		"auditor": "{\"agent\": \"translation-auditor\", \"role\": \"independent i18n auditor (team lopdev); did not write these translations\", \"model\": \"deepseek/deepseek-flash\", \"model_note\": \"Harness model switches during this run, all provider-quota fallbacks and none of them a role or model-pin change: anthropic/claude-sonnet-5-5 (session open) -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash. This audit was executed and the receipts written under deepseek/deepseek-flash, the model serving the run at that moment.\", \"instance\": \"ba884773\", \"independence\": \"Independent auditor: this session wrote none of these translations and edited no catalogue, English source, context sidecar, ledger, allowance or generated file. Every value was read from the working tree at head be77d308262 (verified clean against that commit) and compared with the English source at the same head. This run writes only the two receipt files named in its brief, unstaged.\"}"
+	}
+}

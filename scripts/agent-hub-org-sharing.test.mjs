@@ -1201,7 +1201,18 @@ test("the plan remedy names the Team plan and the console", () => {
 	// C5: plan activation happens in the console, and the sentence says so. The
 	// roster's and the table's wording is catalogue copy, so the source pins follow
 	// the KEYS and the catalogue pins check the wording itself.
-	assert.match(page, /can activate it in the Radient console/);
+	/*
+	 * The page's sentence is catalogue copy now (#1785 keyed it), so the source
+	 * pin follows the KEY and the wording itself is pinned in the catalogue —
+	 * the same shape the roster assertion below already uses. Pinning the
+	 * English literal against the .tsx would fail the day it was keyed, which is
+	 * exactly what happened on the full suite.
+	 */
+	assert.match(page, /t\("ui\.hub\.pages\.org\.plan_body"/);
+	assert.match(
+		read("src/i18n/catalogues/en/ui.hub.pages.json"),
+		/can activate it in the Radient console/,
+	);
 	assert.match(roster, /t\("ui\.hub\.teams\.org\.plan_body"/);
 	assert.match(
 		read("src/i18n/catalogues/en/ui.hub.teams.json"),

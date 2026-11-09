@@ -3,28 +3,6 @@
 	"note": "Shrink-only allowance for the DATA-SHAPE literals: object-literal copy properties (`object-literal:<key>`) and JSX child expressions (`jsx-child-expression`) under src/renderer. Each id is `<shape> | <exact text>`, sorted, and both halves are the identity — the text is part of it so a finding cannot be swapped for a different one of the same shape and still fit. scripts/i18n/check-strings.mjs FAILS on any data-shape finding NOT listed here (a new literal, or a replacement of a listed one) and on any listed id that is no longer found (the allowance can only shrink; `--prune-allowance` removes the paid-off ids and never adds). The baseline (i18n/baseline.json) is untouched: the data shapes are governed HERE, not by a per-file ceiling, so this debt has one owner, one payoff and one place to pay it. A new id is a reviewed decision with a named owner and a real payoff, never a check-fix; `--allowance-base <ref>` refuses growth relative to the base branch. See docs/i18n/literal-allowance.md.",
 	"entries": [
 		{
-			"file": "src/renderer/src/features/agent-hub/agent-hub-page.tsx",
-			"ids": [
-				"jsx-child-expression | Agents published into ${…} appear here for its members.",
-				"jsx-child-expression | Clear filter",
-				"jsx-child-expression | Clear search",
-				"jsx-child-expression | No agent's name or description carries that. Clear it to see the whole hub.",
-				"jsx-child-expression | No agents in ${…}.",
-				"jsx-child-expression | No agents match that search.",
-				"jsx-child-expression | Nobody has published an agent yet. Yours could be the first.",
-				"jsx-child-expression | Nothing in this category yet. Clear the filter to see the whole hub.",
-				"jsx-child-expression | Sharing agents inside an organization is part of the Team plan. An owner of ${…} can activate it in the Radient console, and then its agents will be listed here.",
-				"jsx-child-expression | That organization needs an active Team plan",
-				"jsx-child-expression | The hub is empty.",
-				"jsx-child-expression | This organization has no shared agents yet.",
-				"jsx-child-expression | You are not a member of ${…}, so its agents are not listed here. An owner can invite you again.",
-				"jsx-child-expression | You do not have access to that organization"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/agents/components/agent-detail.tsx",
 			"ids": [
 				"jsx-child-expression | A copy of ${…}. It is a separate agent: changing it does not change the original.",

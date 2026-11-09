@@ -41,5 +41,21 @@
 	"ui.hub.pages.viewer_unknown": "Your likes and favourites could not be read, so no card shows a viewer state.",
 	"ui.hub.pages.signed_out.title": "Sign in to use the hub",
 	"ui.hub.pages.signed_out.body": "You are not signed in to Radient, so the hub has no credential to read the agent list with. Sign in on the settings page, then try again.",
-	"ui.hub.pages.load_failed.title": "The hub could not be loaded"
+	"ui.hub.pages.load_failed.title": "The hub could not be loaded",
+	"ui.hub.pages.list_unreadable": "The agent list could not be loaded.",
+	"ui.hub.pages.org.plan_headline": "That organization needs an active Team plan",
+	"ui.hub.pages.org.no_access_headline": "You do not have access to that organization",
+	"ui.hub.pages.org.plan_body": "Sharing agents inside an organization is part of the Team plan. An owner of {org} can activate it in the Radient console, and then its agents will be listed here.",
+	"ui.hub.pages.org.no_access_body": "You are not a member of {org}, so its agents are not listed here. An owner can invite you again.",
+	"ui.hub.pages.org.that_organization": "that organization",
+	"ui.hub.pages.empty.org.title": "This organization has no shared agents yet.",
+	"ui.hub.pages.empty.org.body": "Agents published into {org} appear here for its members.",
+	"ui.hub.pages.empty.category.title": "No agents in {category}.",
+	"ui.hub.pages.empty.category.body": "Nothing in this category yet. Clear the filter to see the whole hub.",
+	"ui.hub.pages.empty.search.title": "No agents match that search.",
+	"ui.hub.pages.empty.search.body": "No agent's name or description carries that. Clear it to see the whole hub.",
+	"ui.hub.pages.empty.public.title": "The hub is empty.",
+	"ui.hub.pages.empty.public.body": "Nobody has published an agent yet. Yours could be the first.",
+	"ui.hub.pages.clear.filter": "Clear filter",
+	"ui.hub.pages.clear.search": "Clear search"
 }

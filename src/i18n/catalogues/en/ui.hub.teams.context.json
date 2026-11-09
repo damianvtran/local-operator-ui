@@ -251,5 +251,12 @@
 			"when": "The localized relative phrase produced by the hub's shared age messages (ui.hub.comments.age.*), for example '2 days ago' or 'just now'. It already contains its own 'ago'; translate only the verb around it."
 		},
 		"note": "ONE whole sentence, so the target language can put the time before the verb. It is used when updated_at supplied the date; the created sibling is used only when updated_at is missing or unparseable, and the two must stay distinguishable. Never put 'updated' over a creation date."
+	},
+	"ui.hub.teams.unnamed_team": {
+		"role": "fallback name for a team whose roster row could not be resolved when a pull from the hub fails",
+		"tone": "plain, factual, lowercase",
+		"length_hint": "Two words in English.",
+		"placeholders": {},
+		"note": "It is substituted for the team's NAME inside ui.hub.teams.pull_failed (\"{name}\" could not be pulled.), so it must read as a noun phrase that a quoted name slot can hold - not a sentence, and lowercase like a name fragment rather than a sentence start. The sibling ui.hub.teams.org.that_organization does the same job for an organization."
 	}
 }

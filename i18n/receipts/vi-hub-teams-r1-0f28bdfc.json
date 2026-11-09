@@ -1,0 +1,73 @@
+{
+	"schema": 1,
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Session header opened as anthropic/claude-sonnet-5-5; provider quota failures forced three fallbacks in-turn (anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then this model). Every catalogue read, diff read and every check reported here completed on the served model at the time of the call; the verdict below was assembled and written on deepseek/deepseek-flash. No check was skipped across the switches and no other model's summary is quoted.",
+	"fallback": "anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash (provider quota)",
+	"independence": "Separate session and role from the PR coder and from the translator of these values. The translator's commit message was read only as a claim to check, never as evidence. Every verdict here was rebuilt from the English source, its .context.json sidecar, the shipped vi catalogue, the render sites and the glossary/style guide.",
+	"instance": "0f28bdfc-hub-teams-r1-teams",
+	"session": "0f28bdfc1d23",
+	"locale": "vi",
+	"branch": "i18n/s5-agent-hub",
+	"head": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"pr": "damianvtran/local-operator-ui (i18n/s5-agent-hub)",
+	"date": "2026-11-08",
+	"scope": "c88ad36bbcadee99791b9153ba9a8d31b2b49d1d..be77d308262ce0527c1fd4052ff77207edcac189. Round 1, first audit of ui.hub.teams.unnamed_team for vi.",
+	"result": "clean",
+	"verified": [
+		"key sets equal to English: pages 59/59, teams 50/50 — no missing key, no extra key, no duplicate key in the raw JSON text (tab indentation and trailing newline preserved)",
+		"all 17 new keys are present in vi and none carries a value equal to its key id; every one of the 17 also appears in src/i18n/keys.gen.ts, so the committed generated types are in sync",
+		"placeholders preserved byte-exactly and in the same clausinal position: {org} in org.plan_body, org.no_access_body and empty.org.body; {category} in empty.category.title. No placeholder renamed, reordered or inflected (glossary §3 'placeholders')",
+		"CLDR plurals: NONE of the 17 keys carries a plural/select construct, so no plural-category check applies. (Reported as required; the pre-existing plural keys in these namespaces — pages status.count.agents/teams, teams member_count/public.match_line — are outside this delta and already use vi's other-only form per glossary §3)",
+		"no bidi control characters, no zero-width/format (Cf) characters, no BOM, no NBSP or other odd space, no edge or double spaces; every value is NFC (style guide: never decomposed combining sequences); Latin digits only where digits appear at all",
+		"English residue: none beyond the allowed product-surface names. The only Latin runs in the 17 values are 'Team' (product/brand, EN context says stay verbatim) and 'Radient Console' (brand). 'Radient Console' is this catalogue's settled capitalisation — ui.common.account, ui.common.errors, ui.settings.account and the pre-existing ui.hub.teams.org.plan_body all use it, while the English source itself is inconsistent ('Radient console' in the hub keys, 'Radient Console' in account copy), so the vi form is the consistent one, not a deviation",
+		"terminology checked against glossary §2 and the shipped vi ui.hub.*/ui.agents.* copy: agent = tác nhân (glossary), team = nhóm (glossary), organization = tổ chức, hub = trung tâm, category = danh mục (established by ui.hub.taxonomy.all 'Tất cả danh mục' and the forms copy), filter = bộ lọc, search = tìm kiếm, member = thành viên (glossary wave-2 call), owner = chủ sở hữu, plan = gói. The wrong agent classifier đại lý appears 0 times in the whole vi catalogue (grep, 0 hits) — no classification drift",
+		"register: bạn address, 'Hãy + verb' imperatives, sentence case, no '!', no 'Vui lòng'. bạn appears only where the style guide allows it (the blocking no-access pair, and the possessive 'của bạn' needed to render 'Yours'); the rest carry the sentence with plain verbs",
+		"pages/teams read as one voice: org.plan_headline ('Tổ chức đó cần gói Team đang hoạt động'), org.no_access_headline ('Bạn không có quyền truy cập tổ chức đó') and org.that_organization ('tổ chức đó') are BYTE-IDENTICAL to the pre-existing, already-shipped ui.hub.teams siblings. The two {org} bodies are parallel with their teams twins word for word except for the agent/team noun (pages '… tác nhân của tổ chức …' vs teams '… nhóm của tổ chức …')",
+		"ui.hub.teams.unnamed_team 'nhóm này' is byte-identical to the shipped ui.agents.publication.subject.team 'nhóm này' in this locale — the same fallback publication-failure.ts resolves internally (publication-failure.ts:295-301) — so the name slot reads the same whichever side supplies it",
+		"render sites checked, not assumed: agent-hub-page.tsx:1350-1363 renders org.plan_headline/plan_body with org: orgName ?? scope.org_unnamed and no_access_headline/no_access_body with org: orgName ?? org.that_organization, so the no-access demonstrative really does agree with the headline's ('tổ chức đó' in both) as the sidecar requires; empty.org.body takes org: orgName ?? scope.org_unnamed ('tổ chức này'), which the sidecar explicitly permits",
+		"clear.filter/clear.search noun pairing verified at agent-hub-page.tsx:1479-1515: selectedCategory renders empty.category.body together with clear.filter ('bộ lọc' in both) and a typed query renders empty.search.body together with clear.search ('tìm kiếm' in both). hasFilters (line 361) is selectedCategory || debouncedSearch, and the category arm is tested first, so the search arm is only reached with a real typed query — the vi word choice is correct on both arms",
+		"list_unreadable ends in a full stop and names no remedy, which is what backendLoadErrorMessage (backend-error.ts:182-187) requires of the lead it space-joins with the shared diagnosis and remedy sentences",
+		"punctuation matches the source's shapes: full stops where English has them (list_unreadable, the two empty bodies, the two {org} bodies, empty.org.title, category/search/public headings), none on the two headlines and none on the two button labels",
+		"diff purity: the only two deleted lines in the vi diff are the trailing-comma edits on load_failed.title and recency.updated. No pre-existing value was changed, retranslated or reflowed; the commit is 17 additions and nothing else",
+		"audit method: git objects and read-only file reads only. No checkout, no install, no app run, no node process — the host's memory guard was never approached. Targeted checks were python over the JSON text plus grep over the catalogues",
+		"the one value under audit, 'nhóm này', is the noun phrase the sidecar asks for: lowercase (Vietnamese has no case distinction to break), not a sentence, and it reads correctly in the quoted name slot of the two failure sentences that take it — ui.hub.teams.pull_failed \"Không thể tải “{name}” về.\" and ui.agents.publication.pull.no_reason \"Không thể tải {subject} về.\" with subject = subject.name \"“{name}”\", giving 'Không thể tải “nhóm này” về.'"
+	],
+	"observations": [
+		"Demonstrative skew between the page's plan pair is inherited from English, not introduced by vi: the headline says 'Tổ chức đó' (that organization) while plan_body's no-name fallback resolves to scope.org_unnamed 'tổ chức này' (this organization). English does exactly the same ('That organization needs…' / 'An owner of this organization…'), and the sidecar only requires demonstrative agreement for the no-access pair, which vi satisfies. Recorded so a future EN change is not mistaken for a vi regression",
+		"org.plan_headline ('Tổ chức đó cần gói Team đang hoạt động') stacks the modifier directly on the noun; 'cần một gói Team đang hoạt động' or 'gói Team còn hiệu lực' would read a shade smoother. Not raised as a finding because the string is byte-identical to the shipped teams sibling — any such change must move both keys together, and it is pre-existing copy",
+		"Two pre-existing vi inconsistencies sit adjacent to this delta and are out of scope, listed so nobody re-files them as new: browse_aria uses 'loại' for the hub's type while the taxonomy and this delta use 'danh mục'; add_category carries ASCII '...' in ui.agents.settings while the style guide says U+2026"
+	],
+	"namespaces": {
+		"ui.hub.teams": {
+			"namespace": "ui.hub.teams",
+			"status": "passed",
+			"result": "clean",
+			"key_count_new": 1,
+			"keys_read": 50,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.hub.teams.json",
+				"target": "src/i18n/catalogues/vi/ui.hub.teams.json",
+				"context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+			},
+			"sha256": {
+				"en": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+				"target": "40a65f956e637bad9cbdf18adf0815cecbafd122d26809043dcf100633ed719f",
+				"context": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe"
+			},
+			"delta_keys": [
+				"ui.hub.teams.unnamed_team"
+			],
+			"key_verdicts": {
+				"ui.hub.teams.unnamed_team": "clean"
+			},
+			"findings": []
+		}
+	},
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"auditor_provenance": "translation-auditor (local-operator reviewer session 0f28bdfc1d23 (lopdev reviewer role), independent i18n auditor for vi on the Agent Hub publication copy)",
+	"identity_provenance": {
+		"agent": "local-operator reviewer session 0f28bdfc1d23 (lopdev reviewer role)"
+	}
+}
