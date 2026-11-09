@@ -90,6 +90,16 @@ const writeReceipt = (root, name, body) => {
 const ledgerOf = (root) =>
 	JSON.parse(readFileSync(join(root, "i18n", "ledger.json"), "utf8"));
 
+function hasFixtureRow(root, file) {
+	return (
+		existsSync(join(root, "i18n/ledger.json")) &&
+		ledgerOf(root).entries.some(
+			(row) =>
+				file === `src/i18n/catalogues/${row.locale}/${row.namespace}.json`,
+		)
+	);
+}
+
 function run(root, overrides = {}) {
 	const instance = overrides.auditorInstance ?? "run-aaaaaaaa";
 	const receipt =
@@ -103,8 +113,13 @@ function run(root, overrides = {}) {
 		auditorModel: MODEL,
 		result: "clean",
 		receipt,
-		translatorAgent: "i18n-translator",
-		translatorModel: "test/translator",
+		// Existing-row audit calls omit translator flags; correction is explicit.
+		...(!hasFixtureRow(root, overrides.file ?? FILE)
+			? {
+					translatorAgent: "i18n-translator",
+					translatorModel: "test/translator",
+				}
+			: {}),
 		date: "2026-10-14",
 		...overrides,
 	});
@@ -126,6 +141,146 @@ function refusal(fn, pattern) {
 		return true;
 	});
 }
+
+/* Translator correction is deliberately separate from recording a new audit. */
+test("TRANSLATOR: existing-row identity flags require explicit correction", () => {
+	withTree((root) => {
+		run(root);
+		const before = readFileSync(join(root, "i18n/ledger.json"));
+		refusal(
+			() =>
+				run(root, {
+					translatorAgent: "coder",
+					translatorModel: "actual/model",
+				}),
+			/--update-translator/,
+		);
+		assert.deepEqual(readFileSync(join(root, "i18n/ledger.json")), before);
+	});
+});
+
+test("TRANSLATOR: correction preserves every other row field", () => {
+	withTree((root) => {
+		run(root);
+		const ledger = ledgerOf(root);
+		ledger.entries[0].superseded = [
+			{ reason: "retained history", auditors: [] },
+		];
+		writeFileSync(
+			join(root, "i18n/ledger.json"),
+			`${JSON.stringify(ledger, null, "\t")}\n`,
+		);
+		const before = ledgerOf(root).entries[0];
+		run(root, {
+			updateTranslator: true,
+			translatorAgent: "coder",
+			translatorModel: "actual/model",
+			date: "2026-11-09",
+			note: "translation lane abcdef123456; provider-quota fallback",
+		});
+		const after = ledgerOf(root).entries[0];
+		assert.deepEqual(after.translator, {
+			agent: "coder",
+			model: "actual/model",
+			date: "2026-11-09",
+			note: "translation lane abcdef123456; provider-quota fallback",
+		});
+		const { translator: oldTranslator, ...oldRest } = before;
+		const { translator: newTranslator, ...newRest } = after;
+		assert.equal(JSON.stringify(newRest), JSON.stringify(oldRest));
+		assert.deepEqual(checkLedger({ repo: root }).failures, []);
+	});
+});
+
+test("TRANSLATOR: correction requires an existing row and both identity fields", () => {
+	withTree((root) => {
+		refusal(
+			() => run(root, { updateTranslator: true }),
+			/no row.*--update-translator/,
+		);
+		for (const field of ["translatorAgent", "translatorModel"]) {
+			refusal(() => run(root, { [field]: undefined }), /required to create/);
+		}
+		run(root);
+		for (const field of ["translatorAgent", "translatorModel"]) {
+			refusal(
+				() => run(root, { updateTranslator: true, [field]: undefined }),
+				/--translator-agent.*--translator-model/,
+			);
+		}
+	});
+});
+
+test("REAL TRANSLATOR: CLI correction is guarded and preserves serialized audit evidence", () => {
+	withTree((root) => {
+		run(root);
+		const before = ledgerOf(root).entries[0];
+		for (const identity of [
+			{ translatorAgent: "coder" },
+			{ translatorModel: "actual/model" },
+		]) {
+			const out = writerCommand(root, identity);
+			assert.equal(out.status, 2, out.stderr);
+			assert.match(out.stderr, /--update-translator/);
+		}
+		for (const field of ["translatorAgent", "translatorModel"]) {
+			const out = writerCommand(root, {
+				updateTranslator: true,
+				translatorAgent: "coder",
+				translatorModel: "actual/model",
+				[field]: undefined,
+			});
+			assert.equal(out.status, 2, out.stderr);
+			assert.match(out.stderr, /--translator-agent.*--translator-model/);
+		}
+		const out = writerCommand(root, {
+			updateTranslator: true,
+			translatorAgent: "coder",
+			translatorModel: "actual/model",
+			date: "2026-11-09",
+			note: "lane abcdef123456; provider-quota fallback",
+		});
+		assert.equal(out.status, 0, out.stderr);
+		const after = ledgerOf(root).entries[0];
+		assert.equal(after.translator.agent, "coder");
+		assert.equal(after.translator.date, "2026-11-09");
+		assert.equal(
+			JSON.stringify(after.auditors),
+			JSON.stringify(before.auditors),
+		);
+		assert.equal(gateCommand(root).status, 0);
+	});
+});
+
+test("TRANSLATOR: correction refuses stale bytes, new audit runs and lost independence", () => {
+	for (const scenario of ["stale", "new audit", "self-audit"]) {
+		withTree((root) => {
+			run(root);
+			const before = readFileSync(join(root, "i18n/ledger.json"));
+			if (scenario === "stale") writeFileSync(join(root, FILE), `${FR}\n`);
+			const overrides = {
+				updateTranslator: true,
+				translatorAgent: "coder",
+				translatorModel: "actual/model",
+			};
+			if (scenario === "stale") {
+				overrides.auditorInstance = "run-bbbbbbbb";
+				overrides.receipt = writeReceipt(
+					root,
+					"stale.json",
+					receiptFor({
+						instance: "run-bbbbbbbb",
+						extra: { sha256: { fr: sha(`${FR}\n`), en: sha(EN) } },
+					}),
+				);
+			}
+			if (scenario === "new audit") overrides.auditorInstance = "run-bbbbbbbb";
+			if (scenario === "self-audit") overrides.translatorAgent = "i18n-auditor";
+			refusal(() => run(root, overrides), /--update-translator/);
+			assert.deepEqual(readFileSync(join(root, "i18n/ledger.json")), before);
+		});
+	}
+});
 
 /* ------------------------------ controls ------------------------------ */
 
@@ -1014,8 +1169,13 @@ function writerCommand(root, overrides = {}) {
 		auditorModel: MODEL,
 		result: "clean",
 		receipt: join(root, "i18n/receipts/run-aaaaaaaa.json"),
-		translatorAgent: "i18n-translator",
-		translatorModel: "test/translator",
+		// Existing-row audit calls omit translator flags; correction is explicit.
+		...(!hasFixtureRow(root, overrides.file ?? FILE)
+			? {
+					translatorAgent: "i18n-translator",
+					translatorModel: "test/translator",
+				}
+			: {}),
 		...overrides,
 	};
 	const flags = {
@@ -1023,10 +1183,13 @@ function writerCommand(root, overrides = {}) {
 		auditorModel: "auditor-model",
 		translatorAgent: "translator-agent",
 		translatorModel: "translator-model",
+		updateTranslator: "update-translator",
 	};
 	const argv = [new URL("./ledger-assemble.mjs", import.meta.url).pathname];
-	for (const [key, value] of Object.entries(options))
-		if (value !== undefined) argv.push(`--${flags[key] ?? key}`, value);
+	for (const [key, value] of Object.entries(options)) {
+		if (value === true) argv.push(`--${flags[key] ?? key}`);
+		else if (value !== undefined) argv.push(`--${flags[key] ?? key}`, value);
+	}
 	return spawnSync(process.execPath, argv, {
 		cwd: root,
 		encoding: "utf8",
