@@ -120,7 +120,9 @@ export const markAllReadCopy = (
 		);
 	return {
 		count,
-		label: `Mark all ${count} read`,
+		// Read at call time: the sidebar calls `markAllReadCopy` in its render and
+		// subscribes to the locale, so the label follows the language picker.
+		label: t("ui.chat.sidebar.mark_all_read.label", { count }),
 		scope: sentences.join(" "),
 		nameSuffix:
 			elsewhere > 0 ? `, including ${elsewhere} in Previous chats` : "",
