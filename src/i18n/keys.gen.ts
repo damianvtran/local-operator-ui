@@ -6196,13 +6196,16 @@ export type MessageParams = {
 	"ui.chat.quota_resend.refresh_unchanged": undefined;
 	"ui.chat.quota_resend.sending": undefined;
 	"ui.chat.quota_resend.sent": undefined;
+	"ui.chat.radient_session.action.open_console": undefined;
 	"ui.chat.radient_session.action.sign_in": undefined;
 	"ui.chat.radient_session.pointer.sign_in_active": undefined;
 	"ui.chat.radient_session.prose.input_required": { message: string };
 	"ui.chat.radient_session.prose.needs_sign_in": undefined;
+	"ui.chat.radient_session.prose.not_cleared": undefined;
 	"ui.chat.radient_session.prose.signing_in": undefined;
 	"ui.chat.radient_session.title.input_required": undefined;
 	"ui.chat.radient_session.title.needs_sign_in": undefined;
+	"ui.chat.radient_session.title.not_cleared": undefined;
 	"ui.chat.radient_session.title.signing_in": undefined;
 	"ui.chat.read_ack.clause.offscreen": undefined;
 	"ui.chat.read_ack.clause.pending": undefined;

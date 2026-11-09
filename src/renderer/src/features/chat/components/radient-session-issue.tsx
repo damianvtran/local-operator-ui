@@ -30,7 +30,22 @@
  * event. The sentences this file owns are the four the backend cannot write -
  * what the issue means, what the connector does once a sign-in completes, the
  * pointer for the state this surface deliberately cannot finish, and the
- * pointer for a refusal it cannot clear either.
+ * pointer for a refusal it cannot clear either - plus the `not-cleared` pair,
+ * for a sign-in that completed without healing the login.
+ *
+ * ## No terminal advice, ever
+ *
+ * This surface used to end with "If signing in does not clear this, run
+ * `lop login radient` in a terminal." (hard-coded English, too). It is gone on
+ * the operator's rule that a desktop user is never sent to a terminal, and on
+ * measurement: in the reproduced case (2026-11-06) the tunnel stayed pinned to a
+ * dead credential row, which neither the in-app sign-in nor that command
+ * replaced, so the line was a dead end dressed as a fallback. When a sign-in
+ * started here completes and the verdict still says `login_required`, the
+ * callout says that in its own `not-cleared` state: one ordered next step (sign
+ * in once more), then the Radient console to check the account. Settings is
+ * deliberately NOT named (design round 1, D1): its Radient panel offers the very
+ * sign-in that just failed, so pointing there was a loop on another screen.
  *
  * ## One action, and where the other one goes
  *
@@ -56,6 +71,12 @@ import type {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import {
+	RADIENT_CONSOLE_URL,
+	consoleUrl,
+	openConsolePage,
+} from "@shared/utils/radient-account-copy";
+import { ArrowUpRight } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
 import { CHAT_MEASURE } from "../chat-measure";
 import { shouldRestoreComposerFocus } from "./composer-status-row";
@@ -99,7 +120,7 @@ function issueProse(issue: RadientSessionIssue): string | null {
 			 *
 			 * "and remote access to this machine" promised a restoration the
 			 * sign-in does not unconditionally deliver: a sign-in can leave the
-			 * connector parked, which is exactly the case the remedy line below
+			 * connector parked, which is exactly the case the `not-cleared` state
 			 * exists for. "the connector restarts on its own once the sign-in
 			 * completes" moved to the in-flight sentence, where it is the next
 			 * thing that will happen rather than a second prediction - the state
@@ -128,6 +149,8 @@ function issueProse(issue: RadientSessionIssue): string | null {
 			return t("ui.chat.radient_session.prose.input_required", {
 				message: issue.message,
 			});
+		case "not-cleared":
+			return t("ui.chat.radient_session.prose.not_cleared");
 		case "settled":
 			return issue.message;
 		default:
@@ -265,7 +288,21 @@ export const RadientSessionIssueCallout: FC<
 	 */
 	const failed = issue.kind === "settled" && issue.canRetry;
 	const refusing = issue.kind === "settled" && !issue.canRetry;
-	const actionable = issue.kind === "needs-sign-in" || failed;
+	/*
+	 * `not-cleared` keeps the sign-in: the re-read that decided it is bounded, so
+	 * a heal slower than it is cleared by trying again, and the retry costs the
+	 * user nothing the console link would not.
+	 */
+	const notCleared = issue.kind === "not-cleared";
+	const actionable = issue.kind === "needs-sign-in" || failed || notCleared;
+	/*
+	 * The console page the backend names (`tunnel_remedy.url`), through the same
+	 * scheme guard every console button uses - the URL arrives in a payload the
+	 * renderer does not author, and the shell hands it to the OS.
+	 */
+	const consoleTarget = notCleared
+		? consoleUrl(issue.remedy?.url, RADIENT_CONSOLE_URL)
+		: null;
 	const cancellable = signingIn || issue.kind === "input-required";
 	const pointer =
 		issue.kind === "settled" ? refusalPointer(issue.refusal) : null;
@@ -275,6 +312,8 @@ export const RadientSessionIssueCallout: FC<
 	 * state that offers no control at all - a refusal this surface cannot clear,
 	 * before it had a dismissal - reserved 24px under the sentence for nothing.
 	 */
+	// `consoleTarget` is set only in `not-cleared`, which `actionable` already
+	// covers - there is no console-only state (agent review round 1, n-1).
 	const hasActions = actionable || cancellable || refusing;
 
 	return (
@@ -296,6 +335,14 @@ export const RadientSessionIssueCallout: FC<
 			 * contract a scene should key on.
 			 */
 			data-lo-radient-issue={issue.kind}
+			/*
+			 * `not-cleared` is the one state this block enters AS THE RESULT of the
+			 * user's own action (their sign-in finished), so it is announced - `Alert`
+			 * sets no role by design and asks such callers to pass one (design round
+			 * 1, D3). `status`, polite, not `alert`: it reports an outcome, it is not
+			 * an interruption. Every other kind stays silent, as before.
+			 */
+			role={notCleared ? "status" : undefined}
 			className={frame}
 			icon={signingIn ? <Spinner size="sm" /> : undefined}
 		>
@@ -310,6 +357,11 @@ export const RadientSessionIssueCallout: FC<
 			{issue.kind === "input-required" && (
 				<AlertTitle>
 					{t("ui.chat.radient_session.title.input_required")}
+				</AlertTitle>
+			)}
+			{notCleared && (
+				<AlertTitle>
+					{t("ui.chat.radient_session.title.not_cleared")}
 				</AlertTitle>
 			)}
 			<AlertDescription>{issueProse(issue)}</AlertDescription>
@@ -331,7 +383,33 @@ export const RadientSessionIssueCallout: FC<
 							className={cn("cursor-pointer text-body-sm underline")}
 							onClick={onSignIn}
 						>
-							{t("ui.chat.radient_session.action.sign_in")}
+							{/*
+							 * "Sign in again" after a sign-in that did not take (design round 1,
+							 * D2): the first attempt's label, repeated, reads as "do the same
+							 * thing and expect a different result". The providers panel's key
+							 * is reused - the same action, the same words, already translated.
+							 */}
+							{notCleared
+								? t("ui.providers.provider_detail.sign_in_again")
+								: t("ui.chat.radient_session.action.sign_in")}
+						</Button>
+					)}
+					{consoleTarget !== null && (
+						<Button
+							type="button"
+							variant="link"
+							size="sm"
+							className={cn("cursor-pointer text-body-sm underline")}
+							onClick={() => openConsolePage(consoleTarget)}
+						>
+							{t("ui.chat.radient_session.action.open_console")}
+							{/*
+							 * The "leaves the app" glyph in a compact register, as
+							 * `wake-conversation-row.tsx` uses it (design round 1, D5): this
+							 * opens the system browser. Hidden from assistive tech - the
+							 * label already names the destination.
+							 */}
+							<ArrowUpRight aria-hidden={true} />
 						</Button>
 					)}
 					{cancellable && (
@@ -366,37 +444,6 @@ export const RadientSessionIssueCallout: FC<
 						</Button>
 					)}
 				</div>
-			) : null}
-			{issue.kind === "needs-sign-in" && issue.remedy?.command ? (
-				/*
-				 * The backend's own remedy, shown rather than run: the tunnel route
-				 * is read-only by construction and its remedy is a terminal command,
-				 * which is the one form this app must not execute on the user's
-				 * behalf.
-				 *
-				 * BELOW THE ACTION, which is the whole of design round 1's D2. It used
-				 * to sit between the sentence and the button, where it read as the
-				 * instruction and the button as the afterthought: a command the app
-				 * cannot run and the user must leave the app to perform, placed above
-				 * the one action the app can take for them. It is a FALLBACK - the
-				 * case where a sign-in does not clear a connector that is still
-				 * parked - so it is stated after the action, in muted ink.
-				 *
-				 * AND THIS COMMENT NO LONGER CLAIMS A COMPARISON THE CODE DOES NOT
-				 * MAKE (agent review round 1, MIN-2). It said the line renders when
-				 * the remedy "DIFFERS from what the button does", while the condition
-				 * was `issue.remedy?.command` alone - and in the state on screen that
-				 * difference does not exist: `lop login radient` IS the terminal form
-				 * of the sign-in the button starts, so the line renders the duplicate
-				 * the old comment ruled out. Suppressing it means comparing the
-				 * backend's command against this app's own flow, which is prose this
-				 * surface does not own and cannot keep in step; demoting it is the
-				 * other half of the same fix, and its own wording already makes it
-				 * conditional on the sign-in not being enough.
-				 */
-				<AlertDescription className={cn("text-ink-muted")}>
-					{`If signing in does not clear this, run ${issue.remedy.command} in a terminal.`}
-				</AlertDescription>
 			) : null}
 		</Alert>
 	);
