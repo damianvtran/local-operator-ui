@@ -1,16 +1,20 @@
 # Desktop never-keyed literal backlog — measured 2026-11-09 at `8c9a47c78b7`
 
-Measured by running the repository's own gate, not by estimate:
+Measured by running the repository's own gate, not by estimate. The invocation and its
+output, the gate's line unwrapped and character-for-character as it prints it:
 
 ```
 node scripts/i18n/check-strings.mjs --allowance-base origin/main
-check-strings.mjs: ok — 1628 file(s) scanned, 0 literal(s) at or below the baseline;
-  111 literal(s) in the data shapes, all listed in i18n/literal-allowance.json (shrink-only)
+check-strings.mjs: ok — 1628 file(s) scanned, 0 literal(s) at or below the baseline; 111 literal(s) in the data shapes, all listed in i18n/literal-allowance.json (shrink-only)
 ```
 
 Run on a clean `git worktree` at `origin/main` (`8c9a47c78b7`), so the growth comparison
-against the base actually ran — in an export without `.git` that check silently skips and
-says so on its own line.
+against the base actually ran — in an export without `.git` that check skips itself and
+prints a line saying so.
+
+Every date in this document is UTC. The repository's commit dates are local, so
+`8c9a47c78b7` (authored 2026-11-08 19:41 -0500) is `2026-11-09` in UTC — the date this
+census, and its title, carry.
 
 ## The three numbers, and why there are three
 
@@ -18,7 +22,11 @@ says so on its own line.
 | --- | --- | --- |
 | JSX text and copy attributes at or above the baseline | **0** | the original ratchet is fully cleared (`i18n/baseline.json` holds 0 files, 0 ceilings) |
 | data-shape literals listed in the allowance | **111 findings / 106 ids / 39 files** | object-literal copy properties and JSX child expressions; shrink-only |
-| templates the ratchet deliberately does NOT list | **234** in 108 files (169 of them hold two alphabetic words) | `const`/`return`/array position, outside the allowance by design; new ones are blocked by `check-added-strings.mjs` |
+| templates the ratchet deliberately does NOT list | **234** in 108 files (169 of them hold two alphabetic words) [^1] | `const`/`return`/array position, outside the allowance by design; new ones are blocked by `check-added-strings.mjs` |
+
+[^1]: The 234 / 108 / 169 figures are not emitted by any command — they are quoted from
+the scanner's own `KNOWN BOUNDARIES` prose (`scripts/i18n/check-strings.mjs:74-88`),
+which states them for this head. The other two rows come from the gate run above.
 
 The 111/106 gap is not an inconsistency: the allowance stores ids as a per-file **set**
 (`literalAllowanceFindings` builds `new Set()`), while the headline counts findings, so a
@@ -30,11 +38,41 @@ literal that appears twice in one file counts twice and lists once.
 | --- | --- | --- |
 | 2026-11-08, allowance created by #1767 | data-shape ids | 120 ids across 40 files |
 | 2026-11-09, this measurement | data-shape ids | **106 ids across 39 files** |
-| earlier checkout `72f94dfa` | JSX/attribute ceilings | 102 files / 601 ceilings |
+| 2026-10-22, earlier checkout `72f94df2697e85734b08d97c1335414ab1ac7c5b` | JSX/attribute ceilings | 102 files / 601 ceilings |
 | 2026-11-09, this measurement | JSX/attribute ceilings | **0 files / 0 ceilings** |
 
 Both directions are gate-enforced: a new data-shape literal fails unless listed, and a
 listed id that disappears fails too, so the allowance can only shrink through review.
+
+## What this census cannot see
+
+The gate states its own blind spots in `scripts/i18n/check-strings.mjs`, under
+`KNOWN BOUNDARIES` (`:59-95`), and this census inherits them instead of widening them. The
+reason reduces to one constant — `DATA_SHAPE_ROOT = "src/renderer/"` (`:310`): the
+data-shape pass is scoped to that prefix, so anything outside it is not a surface this
+gate can count.
+
+- **Object literals under `src/main/` and `src/shared/` are invisible** (`:60-67`) —
+  protocol validation text, IPC errors, log lines. A main-process dialog or notification
+  string is caught by nothing in this file.
+- **`src/shared/backend-status.ts` is the sharpest case.** Its `title`/`detail` prose IS
+  rendered in the renderer, but the file sits outside the scanned surface: `:349` ships
+  "Not connected to a Local Operator server." as copy the gate never sees. Widening the
+  surface to catch it is a measured decision, not a patch.
+- **A prop outside `COPY_ATTRIBUTES` is invisible** (`:89-90`). Adding a prose prop to a
+  component is a reason to add its name there.
+- **Prose passed through a helper is counted at the helper, not the attribute**
+  (`:91-93`): `label={describe(x)}` puts its strings inside `describe`, which is an
+  object-literal or helper site.
+- **Main-process strings are not counted at all** (`:94-95`) — native dialogs and OS
+  notifications sit outside the renderer toast paths this file walks.
+- The template gap (`const`/`return`/array position, **234** at this head) is the same
+  kind of stated gap; it is described under "The three numbers" above (`:74-88`).
+
+So the "backlog" in this document's title means **this gate's** backlog: the copy it can
+count, on the surface it can count. English that renders in the main process, or reaches a
+component through an unlisted prop or a helper, is not among these 106 ids and is not
+claimed to be.
 
 ## The list
 
