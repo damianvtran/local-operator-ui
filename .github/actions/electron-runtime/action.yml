@@ -1,0 +1,103 @@
+name: Cached Electron runtime
+description: Restore the versioned archive before install, then fail closed on a bounded runtime assertion.
+inputs:
+  phase:
+    description: prepare before dependency installation, assert before using the runtime
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Validate phase
+      shell: bash
+      env:
+        PHASE: ${{ inputs.phase }}
+      run: |
+        case "$PHASE" in
+          prepare|assert) ;;
+          *) echo "::error::Unknown Electron runtime phase: $PHASE"; exit 1 ;;
+        esac
+
+    # Cache the download archive, not dist/: install recreates node_modules.
+    # Exact OS/arch/resolved-version identity only; older archives cannot satisfy
+    # a different download URL, so restore-key fallbacks would only waste time.
+    - name: Resolve the Electron runtime version for the download cache
+      if: inputs.phase == 'prepare'
+      id: electron_runtime
+      shell: bash
+      run: |
+        set -euo pipefail
+        version="$(
+          node -e '
+            const fs = require("node:fs");
+            // The RESOLVED lockfile entry is what the installer fetches. The
+            // declared pin (optionalDependencies.electron) is exact today;
+            // reading the resolved entry is what keeps that true of a range.
+            const lock = fs.readFileSync("pnpm-lock.yaml", "utf8");
+            const entry = /^ {6}electron:\n {8}specifier: \S+\n {8}version: (\S+)$/m.exec(lock);
+            if (!entry) {
+              console.error("local-operator-ui: no resolved electron entry in pnpm-lock.yaml. The download cache key cannot be built, and guessing one would cache a runtime the installer will not use.");
+              process.exit(1);
+            }
+            process.stdout.write(entry[1].replace(/\(.*$/, ""));
+          '
+        )"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "Electron runtime the download cache is keyed on: $version"
+
+    - name: Restore the Electron runtime download cache
+      if: inputs.phase == 'prepare'
+      uses: actions/cache@v4
+      with:
+        # Outside the checkout so archive restoration never dirties the tree.
+        # GITHUB_ENV below shares it with the install's postinstall hook.
+        path: ${{ runner.temp }}/electron-runtime-downloads
+        key: electron-runtime-${{ runner.os }}-${{ runner.arch }}-${{ steps.electron_runtime.outputs.version }}
+
+    - name: Share the archive location with installation and assertion
+      if: inputs.phase == 'prepare'
+      shell: bash
+      run: echo "electron_config_cache=${{ runner.temp }}/electron-runtime-downloads" >> "$GITHUB_ENV"
+
+    # postinstall deliberately swallows download failures. Assert separately so
+    # neither a build nor a test silently starts without the required runtime.
+    # Preserve the reviewed 180 s bound: run 42480901689 spent 443 s fetching;
+    # a cold linux-x64 fetch measured 28 s (a49319925 commit evidence).
+    # Node supplies the same clock on Linux/macOS,
+    # where GNU timeout is not installed. Reap the installer's process group too.
+    - name: Assert the Electron runtime is installed
+      if: inputs.phase == 'assert'
+      shell: bash
+      env:
+        electron_config_cache: ${{ runner.temp }}/electron-runtime-downloads
+      run: |
+        node <<'NODE'
+        const { spawn } = require('node:child_process');
+        const bound = 180;
+        let expired = false;
+        const child = spawn(process.execPath, ['bin/ensure-electron.js'], {
+          stdio: 'inherit', detached: true,
+        });
+        const killGroup = (signal) => {
+          try { process.kill(-child.pid, signal); }
+          catch (error) { if (error.code !== 'ESRCH') throw error; }
+        };
+        const timer = setTimeout(() => {
+          expired = true;
+          console.error(`::error::The Electron runtime fetch timed out after ${bound}s: node bin/ensure-electron.js did not finish installing node_modules/electron/dist. Fetch explicitly: npx install-electron --no`);
+          killGroup('SIGTERM');
+          // Do not let a grandchild surviving TERM escape the fetch bound.
+          setTimeout(() => { killGroup('SIGKILL'); process.exit(124); }, 10000);
+        }, bound * 1000);
+        child.on('error', (error) => {
+          clearTimeout(timer);
+          console.error(`::error::The Electron runtime fetch could not start (bound ${bound}s): ${error.message}`);
+          process.exitCode = 1;
+        });
+        child.on('exit', (code, signal) => {
+          if (expired) return; // Keep the escalation alive even if the parent exits.
+          clearTimeout(timer);
+          if (code === 0) return;
+          console.error(`::error::The Electron runtime is absent and could not be fetched: node bin/ensure-electron.js exited ${code ?? signal} within the ${bound}s bound.`);
+          process.exitCode = code || 1;
+        });
+        NODE

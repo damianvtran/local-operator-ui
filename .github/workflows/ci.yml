@@ -832,8 +832,18 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
 
       - name: Build main with V8 bytecode
         env:
@@ -1038,6 +1048,19 @@ jobs:
         with:
           version: '10.29.2'
 
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
+
       - name: Build and pack
         # Fork pull_request jobs cannot read repository secrets. This disposable
         # tarball proves packaging and launch, not OAuth authentication, so use
@@ -1085,7 +1108,6 @@ jobs:
         # here: it would emit bytecode that prepack then overwrites, which is
         # exactly the ambiguity that let the broken artifact ship.
         run: |
-          pnpm install --frozen-lockfile
           npm pack
           # Seal this canonical build before any native scene can touch outputs.
           node scripts/model-uncertainty-native.mjs --write-build-receipt "$RUNNER_TEMP/model-case-build.json"
