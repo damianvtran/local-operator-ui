@@ -1,0 +1,230 @@
+{
+  "audit_id": "vi-upload-f188ee72259c",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "audit_date": "2026-11-08",
+  "locale": "vi",
+  "namespace": "ui.agents.upload",
+  "key_count": 15,
+  "keys_audited": [
+    "ui.agents.upload.action.publish",
+    "ui.agents.upload.action.publishing",
+    "ui.agents.upload.action.update_listing",
+    "ui.agents.upload.availability.reserved_named",
+    "ui.agents.upload.availability.reserved_unnamed",
+    "ui.agents.upload.intro.org",
+    "ui.agents.upload.intro.public",
+    "ui.agents.upload.not_leaving.org",
+    "ui.agents.upload.not_leaving.public",
+    "ui.agents.upload.published.org_listed",
+    "ui.agents.upload.receipt.title_hub",
+    "ui.agents.upload.receipt.title_org",
+    "ui.agents.upload.receipt.title_updated",
+    "ui.agents.upload.target.blocked_hint",
+    "ui.agents.upload.target.visibility_hint_public"
+  ],
+  "audited_base": "b915083bd96",
+  "audited_head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-s4",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "05ea8d11157a",
+    "instance": "f188ee72259c",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness model-switch notices in this session's own transcript: pinned anthropic/claude-sonnet-5-5, served as anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then deepseek/deepseek-flash on provider quota failures",
+    "fallback": "anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash (provider quota)",
+    "fallback_disclosure": "Disclosed rather than hidden: the early reads of the diff, the sidecar and the style guide were served under the fallback chain above, and the verdict, every finding and every file in this bundle were written while serving deepseek/deepseek-flash. No verdict claim rests on a model that was not reading the same bytes recorded in input_hashes.",
+    "independent_from_translator_session": true,
+    "independence_basis": "This session did not translate, remediate or author any audited value and wrote none of the seven locale catalogues. It read no translator reasoning beyond the relayed brief, and wrote only this bundle and the receipt named below."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.agents.upload.json",
+      "sha256": "8308c99f44ab7771c06e54af9ecc3acd50456acb6e7e9feadc55533bde94235f"
+    }
+  },
+  "references": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "note": "The vi style guide and the shared glossary live in the local-operator repo, not in this one; the hashes above are of the copies read for this audit."
+  },
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "result": "changes-requested",
+    "unresolved_blocker_major_count": 1,
+    "finding_ids": [
+      "vi-r1-m1",
+      "vi-r1-n1",
+      "vi-r1-n2",
+      "vi-r1-i1",
+      "vi-r1-i2",
+      "vi-r1-i3",
+      "vi-r1-i4",
+      "vi-r1-i5"
+    ],
+    "findings": {
+      "blocker": 0,
+      "major": 1,
+      "minor": 0,
+      "nit": 2
+    },
+    "summary": "1 MAJOR (blocked_hint names one organization in the only plural arm, against the sidecar's stated rule), 2 NIT, 5 INFO. Nothing else blocks: placeholders, key set and order, ICU parse, NFC, terminology, typography and the five-item promise list all pass."
+  },
+  "findings": [
+    {
+      "id": "vi-r1-m1",
+      "severity": "MAJOR",
+      "key": "ui.agents.upload.target.blocked_hint",
+      "locale": "vi",
+      "problem": "The single `other` arm names one organization, which the sidecar's plural_guidance forbids for every non-`one` category. Rendered at count=1, 2 and 12 the vi hint is byte-identical: 'Chủ sở hữu của tổ chức được đánh dấu ở trên (chẳng hạn Acme Corporation) có thể kích hoạt gói này trong Radient Console.' Vietnamese has only the `other` category, so there is no `one` arm to carry the naming; the translator preserved the naming by gluing a parenthetical into the only arm. Two defects follow. (1) At count>=2 the string presupposes exactly one organization ('của tổ chức được đánh dấu ở trên', singular definite) and names blockedTargets[0] as if exemplary, where the design says 'any of the organizations marked above, without naming one, and must stay usable for a count of two as well as a dozen'. (2) At count=1 it is also wrong in the other direction: 'chẳng hạn' ('for example') hedges a singleton, implying further organizations that do not exist, where the English `one` arm simply says 'An owner of Acme Corporation'. The parenthetical does fix the real count=1 garden path it was written for ('…được đánh dấu ở trên Acme Corporation…' parses as 'marked above Acme'), so the fix is sound in intent but is a workaround that shows through, not a natural rendering.",
+      "evidence": "Rendered with the repository's own formatter (intl-messageformat, locale 'vi') from the catalogue bytes at 2b72db6a56a; the four render rows are in checks.render_blocked_hint below. Intl.PluralRules('vi').select for 0,1,2,5,12,100 returns 'other' for every value, so the collapse to one arm is correct and only the arm's content is at issue. Sidecar src/i18n/catalogues/en/ui.agents.upload.context.json -> ui.agents.upload.target.blocked_hint.plural_guidance. Call site src/renderer/src/features/agents/components/upload-agent-dialog.tsx:1040-1045 passes org = blockedTargets[0].tenant_name || t('ui.hub.pages.scope.org_unnamed') and count = blockedTargets.length, so the named organization is always the first blocked one in the picker's order, which is arbitrary from the message's point of view.",
+      "fix_one_line": "Drop {org} and carry the `other` semantics: 'Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.' — verified to parse and to render identically at count=1, 2 and 12, 156 chars against the current 185; the call site can keep passing org because IntlMessageFormat ignores an argument the message does not reference.",
+      "blocks_merge": false
+    },
+    {
+      "id": "vi-r1-n1",
+      "severity": "NIT",
+      "key": "ui.agents.upload.published.org_listed",
+      "locale": "vi",
+      "problem": "'nằm trong tác nhân được chia sẻ của {destination}' puts a bare noun after 'trong' where the sense is 'among the shared agents'; 'nằm trong số tác nhân' or 'nằm trong các tác nhân' reads better. Meaning is not lost — Vietnamese tolerates bare nouns in this frame — so this is a wording improvement, not a defect.",
+      "evidence": "src/i18n/catalogues/vi/ui.agents.upload.json:21 at 2b72db6a56a; English 'is in {destination}'s shared agents as an instruction set' plus the sidecar's note that this is published.org_listed's organization twin.",
+      "fix_one_line": "'“{name}” nằm trong số tác nhân được chia sẻ của {destination} dưới dạng bộ chỉ dẫn.'",
+      "blocks_merge": false
+    },
+    {
+      "id": "vi-r1-n2",
+      "severity": "NIT",
+      "key": "ui.agents.upload.availability.reserved_named",
+      "locale": "vi",
+      "problem": "Both reservation lines run past their stated one-line budget: reserved_named 75 chars against 'about 60 characters in English', reserved_unnamed 74 against 'about 55'. Vietnamese runs long by rule (vi style guide 'Width rules: vi runs long; tighten'), so this is recorded as a wrap risk on a single line under the name field, not as an observed clip — nothing in this audit rendered the dialog.",
+      "evidence": "Lengths measured on the catalogue bytes: en 57 -> vi 75 (x1.32) and en 58 -> vi 74 (x1.28); budgets quoted from the sidecar's length_hint. Sibling keys in this file hit x1.12-x1.33, so the ratio is normal for the locale and only the two absolute figures exceed their stated budgets.",
+      "fix_one_line": "If the line wraps or clips, 'Trung tâm dành riêng “{name}” cho một trong các tác nhân tích hợp.' (70) drops 'của mình' and stays idiomatic.",
+      "blocks_merge": false
+    },
+    {
+      "id": "vi-r1-i1",
+      "severity": "INFO",
+      "key": "ui.agents.upload.target.blocked_hint",
+      "locale": "vi",
+      "note": "RULING (asked): {count} being declared but never rendered as text is correct and required, not a defect. The sidecar states it outright — 'How many blocked organizations the picker is showing. It selects the organization phrase; it never renders as a digit.' The English source behaves identically: its two arms contain no {count}, and the selector argument is never printed. Dropping it is not an option either, since the plural arm must have a selector.",
+      "blocks_merge": false
+    },
+    {
+      "id": "vi-r1-i2",
+      "severity": "INFO",
+      "key": "ui.agents.upload.target.blocked_hint",
+      "locale": "vi",
+      "note": "RULING (asked): the collapse to a single `other` arm is correct, and its identical output at every count is correct too — it is not evidence of a broken plural. CLDR gives Vietnamese one cardinal category (Intl.PluralRules returns 'other' for 0/1/2/5/12/100) and the vi style guide is binding on the point: '`other` only — Vietnamese has no plural agreement; never add one/other branches.' Every one of the namespace's plural messages and 12 other shipped vi keys use `other` alone. The finding above (vi-r1-m1) is about what that one arm says, never about the number of arms.",
+      "blocks_merge": false
+    },
+    {
+      "id": "vi-r1-i3",
+      "severity": "INFO",
+      "key": "all 15",
+      "locale": "vi",
+      "note": "Consistency pass, no defect. Terminology matches the locale's shipped siblings rather than inventing second names: 'Trung tâm tác nhân' for the Agent Hub (26 shipped uses against one English 'Agent Hub' in ui.hub.updates, pre-existing), 'mục đăng' listing (9), 'bộ chỉ dẫn' instruction set (7), 'tác nhân tích hợp' built-in agent (5), 'Radient Console' capitalised as shipped (10), 'gói Team' as shipped (6). Typography follows the style guide: “ ” quotes, U+2026 in action.publishing, NFC throughout, no space before punctuation. The five-item 'nothing else leaves this machine' list keeps the English order and no item is added, dropped or reordered. No English residue beyond the product and tier names the sidecar protects ('gói Team', 'Radient Console'). Address register: 'Bạn sắp xuất bản…' appears only on the two intro strings, which is first contact with a decision, exactly where the style guide allows the pronoun.",
+      "blocks_merge": false
+    },
+    {
+      "id": "vi-r1-i4",
+      "severity": "INFO",
+      "key": "ui.agents.upload.target.blocked_hint",
+      "locale": "vi",
+      "note": "Recorded so the fix does not undo it: the count=1 garden path the translator's rewrite targets is real. With {org} placed directly after 'được đánh dấu ở trên', a reader parses 'trên Acme Corporation' as a prepositional phrase ('marked above Acme') before recovering the intended 'marked above: Acme'. Whatever string remediates vi-r1-m1 must not reintroduce {org} in that position; the recommended fix removes the placeholder entirely and is immune.",
+      "blocks_merge": false
+    },
+    {
+      "id": "vi-r1-i5",
+      "severity": "INFO",
+      "key": "all 15",
+      "locale": "vi",
+      "note": "Merge prerequisite, not a translation defect and not counted above. All seven locale rows for ui.agents.upload in i18n/ledger.json are stale on both hashes at this head (row source 45760232…, disk source 3676c1b3…; each row's target likewise), identically for es/fr/hi/ru/ur/vi/zh-CN. The source-side drift is inherited from the base b915083bd96 (the English keying commit) and the target-side from this commit, so it is a property of the PR rather than of the vi values. Reassemble each row with ledger-assemble and its round's receipt; this audit does not touch the ledger.",
+      "blocks_merge": false
+    }
+  ],
+  "checks": {
+    "note": "Every value below is the actual stdout of a command run in the worktree at the audited head; no output is asserted from memory.",
+    "diff_scope": {
+      "command": "git diff --stat b915083bd96..2b72db6a56a",
+      "output": "7 files changed, 105 insertions(+): es, fr, hi, ru, ur, vi, zh-CN ui.agents.upload.json, 15 insertions each. No English catalogue, sidecar, keys.gen.ts or ledger change in the audited commit."
+    },
+    "key_set": {
+      "command": "python: compare list(vi) to list(en)",
+      "output": "vi key count 46, en key count 46, vi order == en order: True; all 15 audited keys present in vi: True"
+    },
+    "placeholder_parity": {
+      "command": "python: every {arg} at any ICU depth, en vs vi, for the 15 keys",
+      "output": "15/15 OK. reserved_named {name}; intro.org {destination}; not_leaving.org {destination}; published.org_listed {name,destination}; receipt.title_org {destination}; blocked_hint {count,org}; the other 9 keys carry none on either side."
+    },
+    "icu_parse": {
+      "command": "node intl-messageformat parse of all 15 vi values, locale vi",
+      "output": "OK for all 15; no parse failures."
+    },
+    "nfc": {
+      "command": "python unicodedata.normalize('NFC', v) != v",
+      "output": "no NFD value among the 15"
+    },
+    "render_blocked_hint": {
+      "command": "NODE_OPTIONS=--max-old-space-size=1024 node --input-type=module -e '<intl-messageformat render>' (cwd = worktree)",
+      "output": [
+        "vi count=1 named: Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của tổ chức được đánh dấu ở trên (chẳng hạn Acme Corporation) có thể kích hoạt gói này trong Radient Console.",
+        "vi count=2 named: Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của tổ chức được đánh dấu ở trên (chẳng hạn Acme Corporation) có thể kích hoạt gói này trong Radient Console.",
+        "vi count=12 named: Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của tổ chức được đánh dấu ở trên (chẳng hạn Acme Corporation) có thể kích hoạt gói này trong Radient Console.",
+        "en count=1 named: ... An owner of Acme Corporation can activate it in the Radient console.",
+        "en count=2 named: ... An owner of any of the organizations marked above can activate it in the Radient console.",
+        "vi plural categories: 0->other, 1->other, 2->other, 5->other, 12->other, 100->other"
+      ]
+    },
+    "widths": {
+      "command": "python: len(en) vs len(vi) per key, against the sidecar length_hint",
+      "output": "ratios x0.97..x1.33; the two absolute overruns are reserved_named 75 vs 'about 60' and reserved_unnamed 74 vs 'about 55' (vi-r1-n2). blocked_hint 185 vs en 190, intro.public 127 vs 'about 130', visibility_hint_public 131 vs 'about 130' all sit inside their budgets."
+    },
+    "terminology": {
+      "command": "grep -rl <term> src/i18n/catalogues/vi/",
+      "output": "'Trung tâm tác nhân' 26 uses; 'mục đăng' 9; 'bộ chỉ dẫn' 7; 'tác nhân tích hợp' 5; 'Radient Console' 10 (capitalised, one lowercase 'Radient console' context in ui.chat.canonical/ui.chat.header_menu, pre-existing); 'gói Team' 6 files"
+    },
+    "sibling_precedent": {
+      "command": "python: dump vi/en values containing 'Team' or 'Console' from ui.agents.publication.json",
+      "output": "ui.agents.publication.team_plan_required.body = 'Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Hãy nhờ chủ sở hữu tổ chức kích hoạt gói này trong Radient Console, rồi xuất bản lại.' — same subject, same first clause, and it names no organization at all, which is the shipped in-locale shape vi-r1-m1 recommends."
+    },
+    "proposed_fix_render": {
+      "command": "node intl-messageformat render of the vi-r1-m1 fix string, locale vi, counts 1/2/12",
+      "output": "identical at all three counts: 'Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.' (156 chars, parse OK)"
+    },
+    "ledger_state": {
+      "command": "python: sha256 of each locale catalogue vs the ui.agents.upload row in i18n/ledger.json",
+      "output": "all 7 locales: src=STALE tgt=STALE. vi row source 45760232c7ac / target c5b588852a39; disk source 3676c1b366cc / target 8308c99f44ab."
+    },
+    "not_run": "No repo-wide gate was run (ledger-check, check-clean-view, generate --check, the full vitest suite). Those are CI's and the manager's; this audit ran only the reads and the two node renders named above, serialised under NODE_OPTIONS=--max-old-space-size=1024."
+  },
+  "scope": "Independent audit of the 15 vi keys added to src/i18n/catalogues/vi/ui.agents.upload.json by 2b72db6a56a on branch i18n/slice-upload-agent-dialog, against the English source and its context sidecar at that head, bound by sha256 before reading. All 46 values of the file were read for consistency with already-shipped siblings; only the 15 added keys are judged. Reads only: no catalogue, ledger, allowance, generator or test file was written.",
+  "receipt": "i18n/receipts/vi-upload-r1-f188ee72259c.json",
+  "receipt_sha256": null,
+  "receipt_sha256_note": "Deliberately null. The receipt records the sha256 of this file and of report.md; the reverse direction would be circular (this file's bytes would have to be final before the receipt's, and the receipt's before this one's). Name the receipt by path here and read its hash from disk when the bundle is reviewed.",
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/vi/ui.agents.upload/vi-upload-f188ee72259c/record.json",
+      "sha256": null,
+      "note": "this record; a file cannot carry its own digest — the receipt hashes it"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.agents.upload/vi-upload-f188ee72259c/report.md",
+      "sha256": null,
+      "note": "hashed by the receipt"
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+ "head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+ "hashes": {
+  "en": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f",
+  "ur": "89fe14994a64d7eba37f789a7ca5debc6503beb42ee99eabfe7f5256ef135c62",
+  "context": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+ },
+ "key_parity": {
+  "en_keys": 46,
+  "ur_keys": 46,
+  "missing_in_ur": [],
+  "extra_in_ur": [],
+  "new_keys_audited": 15
+ },
+ "context_parity": {
+  "missing": [],
+  "stale": []
+ },
+ "latin_residue": [
+  {
+   "key": "ui.agents.upload.target.blocked_hint",
+   "latin": [
+    "Team",
+    "count",
+    "plural",
+    "one",
+    "other",
+    "Radient"
+   ]
+  }
+ ],
+ "per_key": [
+  {
+   "key": "ui.agents.upload.action.publish",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 7,
+   "ur_chars": 9
+  },
+  {
+   "key": "ui.agents.upload.action.publishing",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 11,
+   "ur_chars": 19
+  },
+  {
+   "key": "ui.agents.upload.action.update_listing",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 14,
+   "ur_chars": 18
+  },
+  {
+   "key": "ui.agents.upload.availability.reserved_named",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 57,
+   "ur_chars": 67
+  },
+  {
+   "key": "ui.agents.upload.availability.reserved_unnamed",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 58,
+   "ur_chars": 62
+  },
+  {
+   "key": "ui.agents.upload.intro.org",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 168,
+   "ur_chars": 166
+  },
+  {
+   "key": "ui.agents.upload.intro.public",
+   "latin_outside_icu": [
+    "Agent Hub"
+   ],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 125,
+   "ur_chars": 114
+  },
+  {
+   "key": "ui.agents.upload.not_leaving.org",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 230,
+   "ur_chars": 252
+  },
+  {
+   "key": "ui.agents.upload.not_leaving.public",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 190,
+   "ur_chars": 203
+  },
+  {
+   "key": "ui.agents.upload.published.org_listed",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 141,
+   "ur_chars": 160
+  },
+  {
+   "key": "ui.agents.upload.receipt.title_hub",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 20,
+   "ur_chars": 21
+  },
+  {
+   "key": "ui.agents.upload.receipt.title_org",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 26,
+   "ur_chars": 33
+  },
+  {
+   "key": "ui.agents.upload.receipt.title_updated",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 15,
+   "ur_chars": 20
+  },
+  {
+   "key": "ui.agents.upload.target.blocked_hint",
+   "latin_outside_icu": [
+    "Team",
+    "count",
+    "plural",
+    "one",
+    "other",
+    "Radient"
+   ],
+   "context_present": true,
+   "has_plural": true,
+   "en_chars": 190,
+   "ur_chars": 172
+  },
+  {
+   "key": "ui.agents.upload.target.visibility_hint_public",
+   "latin_outside_icu": [],
+   "context_present": true,
+   "has_plural": false,
+   "en_chars": 106,
+   "ur_chars": 100
+  }
+ ],
+ "file_scans": [
+  {
+   "name": "ur",
+   "manual_bidi": 0,
+   "forbidden_script": 0,
+   "other_invisible": 0,
+   "duplicate_members": [],
+   "ends_with_newline": true
+  },
+  {
+   "name": "en",
+   "manual_bidi": 0,
+   "forbidden_script": 0,
+   "other_invisible": 0,
+   "duplicate_members": [],
+   "ends_with_newline": true
+  }
+ ],
+ "findings": []
+}

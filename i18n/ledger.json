@@ -1086,8 +1086,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
-			"target_sha256": "5ee849cbe88590066cb3b45a66d6174c15d3109506222f6355d6630aef9719ae",
+			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+			"target_sha256": "a3ecc58f02b9d5cd03fb866f9dbba0c7678264cf3b696d8cc9808a9bfb21baa4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
@@ -1096,21 +1096,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
-					"result": "clean-with-findings",
-					"instance": "62bb649752be-1603r1-es",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "898c4472a4d3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/62bb649752be-1603r1-es.json",
-					"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
-					"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
+					"receipt": "i18n/receipts/898c4472a4d3.json",
+					"receipt_sha256": "8b6ffd8c3c1c36477e3929e894268f7f881ae3e899714c7c61e57bff35fe1a83",
+					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 				}
 			],
 			"status": "audited",
@@ -1155,6 +1155,30 @@
 							},
 							"receipt": "i18n/receipts/e9688c682c8f.json",
 							"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
+					"target_sha256": "5ee849cbe88590066cb3b45a66d6174c15d3109506222f6355d6630aef9719ae",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "62bb649752be-1603r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/62bb649752be-1603r1-es.json",
+							"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
+							"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
 						}
 					],
 					"status": "audited"
@@ -11614,8 +11638,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
-			"target_sha256": "54c6b08c1dcdd9df5e91dc2c8c1448e3461c051bce64da070ba61344640ea096",
+			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+			"target_sha256": "f24de528122dd459f1c3897af0e41a9817b22f2184c5490013bb6aaa757f837b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
@@ -11624,21 +11648,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "c09dbedc5d8a-1603r1-fr",
+					"instance": "fdf2eeb5ba4c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c09dbedc5d8a-1603r1-fr.json",
-					"receipt_sha256": "9f3c0a52d34a38716106cd30627a4b2c35227dce02be2725da37ef3d56033e88",
-					"scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/c09dbedc5d8a-1603r1-fr.json"
+					"receipt": "i18n/receipts/fdf2eeb5ba4c.json",
+					"receipt_sha256": "705f5bf7c7ee0202efd62bedbb5a13ff04d3b596ae329b311203efdf04b747d5",
+					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 				}
 			],
 			"status": "audited",
@@ -11684,6 +11708,30 @@
 							"receipt": "i18n/receipts/4acffbcd1c3d.json",
 							"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
 							"note": "i18n/audits/evidence/fr/ui.agents.upload/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 29-key file / 6 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
+					"target_sha256": "54c6b08c1dcdd9df5e91dc2c8c1448e3461c051bce64da070ba61344640ea096",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "c09dbedc5d8a-1603r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c09dbedc5d8a-1603r1-fr.json",
+							"receipt_sha256": "9f3c0a52d34a38716106cd30627a4b2c35227dce02be2725da37ef3d56033e88",
+							"scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/c09dbedc5d8a-1603r1-fr.json"
 						}
 					],
 					"status": "audited"
@@ -22620,8 +22668,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
-			"target_sha256": "f2f8e8d92e05c80efc90fbbbe269fd57c813e2e26e07a25d67f073f8f158fbe6",
+			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+			"target_sha256": "c4db80a23bbaab3dd626eddead6a3859780c79530fc728ac1455a99a38a3c342",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
@@ -22630,21 +22678,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "a8b33d269fce-1603r1-hi",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "hi-upload-r2-6210d7bea55d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a8b33d269fce-1603r1-hi.json",
-					"receipt_sha256": "6e6c16a177d9b7428b0404309161ad873e0065f54d676237fed2b404400f4437",
-					"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout), A-1p (ui.chat.pickers), A-1c (ui.chat), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta 553e1ccbd7b1. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/a8b33d269fce-1603r1-hi.json"
+					"receipt": "i18n/receipts/hi-upload-r2-6210d7bea55d.json",
+					"receipt_sha256": "bba604553be681d61f887f79b74e7772a76da22e877906f77713282aa6a52514",
+					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 				}
 			],
 			"status": "audited",
@@ -22689,6 +22737,30 @@
 							},
 							"receipt": "i18n/receipts/c512d3228b7f.json",
 							"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
+					"target_sha256": "f2f8e8d92e05c80efc90fbbbe269fd57c813e2e26e07a25d67f073f8f158fbe6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "a8b33d269fce-1603r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a8b33d269fce-1603r1-hi.json",
+							"receipt_sha256": "6e6c16a177d9b7428b0404309161ad873e0065f54d676237fed2b404400f4437",
+							"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout), A-1p (ui.chat.pickers), A-1c (ui.chat), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta 553e1ccbd7b1. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/a8b33d269fce-1603r1-hi.json"
 						}
 					],
 					"status": "audited"
@@ -33278,8 +33350,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
-			"target_sha256": "1d9d177aae8f86da73ff7d25ba58948ff8e9f6918c008b7394d5794776dacb0c",
+			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+			"target_sha256": "eab2258e22d38391c179067f225b5385f572229962d68a19fb7714c06f9fbd8f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a; remediation of the audited keys at 011c0f4f4ca, session 2a835d4a8c42 job bf4831b9c2ca)",
@@ -33288,21 +33360,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "ed052586f8fb-1603r2-ru",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "9db9e255c45c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/ed052586f8fb-1603r2-ru.json",
-					"receipt_sha256": "5c2e55043b83ecb3d7e745071e7020148523c645fc92a0a0b678559ef0492645",
-					"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 2 keys PR #1603 added + round-2 delta re-audit (ed052586f8fb) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
-					"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/ed052586f8fb-1603r2-ru.json"
+					"receipt": "i18n/receipts/9db9e255c45c.json",
+					"receipt_sha256": "64f9a67abc07660158d44d294bdebfb49c3a1bd7df8f7d320be72ddebf606c77",
+					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 				}
 			],
 			"status": "audited",
@@ -33347,6 +33419,30 @@
 							},
 							"receipt": "i18n/receipts/114c8d6e8551.json",
 							"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
+					"target_sha256": "1d9d177aae8f86da73ff7d25ba58948ff8e9f6918c008b7394d5794776dacb0c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "ed052586f8fb-1603r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ed052586f8fb-1603r2-ru.json",
+							"receipt_sha256": "5c2e55043b83ecb3d7e745071e7020148523c645fc92a0a0b678559ef0492645",
+							"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 2 keys PR #1603 added + round-2 delta re-audit (ed052586f8fb) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
+							"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/ed052586f8fb-1603r2-ru.json"
 						}
 					],
 					"status": "audited"
@@ -43857,8 +43953,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
-			"target_sha256": "b1ad8ff02d6a40121c70d98f11cb90fc8aaa1b303de6ba32d7d9d6c4aec2bff4",
+			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+			"target_sha256": "85886c70dad735c2133757c52a30a3522c34cbb4ab2fb6864f3baa792dd48ce3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
@@ -43867,21 +43963,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "7dde05a06499-1603r1-ur",
+					"instance": "f90f2ee5589a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7dde05a06499-1603r1-ur.json",
-					"receipt_sha256": "5ebbed48b2be756b106b78c3fc2b9fd94524653d46c913169224b61950baf0ea",
-					"scope": "Round-1 full review (7dde05a06499) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat), A-2 (ui.chat.attachments)), fixed at 011c0f4f4ca and passed by round-2 delta d83d475c68e1. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/7dde05a06499-1603r1-ur.json"
+					"receipt": "i18n/receipts/f90f2ee5589a.json",
+					"receipt_sha256": "6fc5edc001053c0e86a4a7f947ef842fefecec911b5081e6c4ec12c2b01afcaa",
+					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 				}
 			],
 			"status": "audited",
@@ -43927,6 +44023,30 @@
 							"receipt": "i18n/receipts/d959bfda62d5.json",
 							"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
 							"note": "Record: i18n/audits/evidence/ur/ui.agents.upload/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
+					"target_sha256": "b1ad8ff02d6a40121c70d98f11cb90fc8aaa1b303de6ba32d7d9d6c4aec2bff4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "7dde05a06499-1603r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7dde05a06499-1603r1-ur.json",
+							"receipt_sha256": "5ebbed48b2be756b106b78c3fc2b9fd94524653d46c913169224b61950baf0ea",
+							"scope": "Round-1 full review (7dde05a06499) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat), A-2 (ui.chat.attachments)), fixed at 011c0f4f4ca and passed by round-2 delta d83d475c68e1. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/7dde05a06499-1603r1-ur.json"
 						}
 					],
 					"status": "audited"
@@ -54412,8 +54532,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
-			"target_sha256": "c5b588852a391df3ff0a4758681bf34d36f34c7690558a425e75ab96c30bc32c",
+			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+			"target_sha256": "42bc714694c4cfb62ea4e92ec1ba3d7deae35cab80edf06f45879ece2d048232",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
@@ -54422,21 +54542,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "ff1dde7af5b2-1603r1-vi",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "3a3cef56dc0b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/ff1dde7af5b2-1603r1-vi.json",
-					"receipt_sha256": "09710c169ff9bdd0d658318f05e99cbb3f4cc21545fc727a15079f0d053c7ea2",
-					"scope": "Round-1 full review (ff1dde7af5b2) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta b8016304b62d. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/ff1dde7af5b2-1603r1-vi.json"
+					"receipt": "i18n/receipts/3a3cef56dc0b.json",
+					"receipt_sha256": "a38265d4f8e50aebadf3d3a4d1d1e4034a779b1396156b9f10f90e7f50289a6b",
+					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 				}
 			],
 			"status": "audited",
@@ -54482,6 +54602,30 @@
 							"receipt": "i18n/receipts/abdb30734404.json",
 							"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
 							"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
+					"target_sha256": "c5b588852a391df3ff0a4758681bf34d36f34c7690558a425e75ab96c30bc32c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "ff1dde7af5b2-1603r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ff1dde7af5b2-1603r1-vi.json",
+							"receipt_sha256": "09710c169ff9bdd0d658318f05e99cbb3f4cc21545fc727a15079f0d053c7ea2",
+							"scope": "Round-1 full review (ff1dde7af5b2) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta b8016304b62d. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/ff1dde7af5b2-1603r1-vi.json"
 						}
 					],
 					"status": "audited"
@@ -65661,8 +65805,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
-			"target_sha256": "2e2ec1ab0d0507bd83f9ca0c53d63e70400f80c2408a20863717f9d8710f9092",
+			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+			"target_sha256": "1c4421610206ff75ff7c590a29b9917b605bf7344d73ec6c4b660c0781c027a5",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
@@ -65671,21 +65815,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "0bb8123f20fc-1603r1-zh-cn",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "bf341286bd26",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json",
-					"receipt_sha256": "5ce56c39bc182a3ee0551c3363050165b4512407a7193cfbb77cf3aa66c0cf53",
-					"scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail)), fixed at 011c0f4f4ca and passed by round-2 delta e98e27ec97a4. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json"
+					"receipt": "i18n/receipts/bf341286bd26.json",
+					"receipt_sha256": "96cbcad971913680c5d09dff0a019e9b28e719bfcdb116354d2140647250daa7",
+					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 				}
 			],
 			"status": "audited",
@@ -65730,6 +65874,30 @@
 							},
 							"receipt": "i18n/receipts/c041efdee6f6.json",
 							"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
+					"target_sha256": "2e2ec1ab0d0507bd83f9ca0c53d63e70400f80c2408a20863717f9d8710f9092",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "0bb8123f20fc-1603r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json",
+							"receipt_sha256": "5ce56c39bc182a3ee0551c3363050165b4512407a7193cfbb77cf3aa66c0cf53",
+							"scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail)), fixed at 011c0f4f4ca and passed by round-2 delta e98e27ec97a4. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json"
 						}
 					],
 					"status": "audited"

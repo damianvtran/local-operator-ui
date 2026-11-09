@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "instance": "hi-upload-r1-0a2d35091c2c",
+  "locale": "hi",
+  "namespace": "ui.agents.upload",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "base": "b915083bd96f5118c793d26c47d5a1f2afc1f8d9",
+  "scope": "b915083bd96..2b72db6a56a",
+  "date": "2026-11-08",
+  "round": 1,
+  "status": "passed",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "gating": false,
+  "verdict_note": "No BLOCKER and no MAJOR. Both findings are consistency/wording and do not gate; per review economy they are folded into one remediation wave or deferred in the thread, never a new round of their own.",
+  "keys_audited": 15,
+  "keys_total_in_file": 46,
+  "keys_pre_existing_in_file": 31,
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.agents.upload.json",
+      "sha256": "1adaf78e8656d3881af6f87c5da387a032601428b5408d32c174933aa8eafbbd"
+    },
+    "hi_base": {
+      "path": "src/i18n/catalogues/hi/ui.agents.upload.json at b915083bd96",
+      "sha256": "f2f8e8d92e05c80efc90fbbbe269fd57c813e2e26e07a25d67f073f8f158fbe6"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md (checkout b42471d3935)",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md (checkout b42471d3935)",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "findings": [
+    {
+      "id": "HIU-R1-M1",
+      "severity": "MINOR",
+      "gates": false,
+      "keys": [
+        "ui.agents.upload.not_leaving.org",
+        "ui.agents.upload.published.org_listed"
+      ],
+      "summary": "Same {destination} referent drawn with two demonstratives in one dialog: उसके सदस्य in intro.org/visibility_hint_public vs इसके बाहर in not_leaving.org and इसके सदस्य in published.org_listed. Corpus idiom for 'outside it' is उसके बाहर (3x, no इसके बाहर elsewhere) and for an org named in-sentence is उसके सदस्यों (ui.hub.teams.org.empty, ui.hub.pages.empty.org.body). Suggest उसके in both.",
+      "evidence": "rendered both keys through intl-messageformat with the same destination; upload-agent-dialog.tsx:949 and :961 are stacked paragraphs of one body with destination: targetDisplayName"
+    },
+    {
+      "id": "HIU-R1-N1",
+      "severity": "NIT",
+      "gates": false,
+      "keys": [
+        "ui.agents.upload.intro.org",
+        "ui.agents.upload.target.visibility_hint_public"
+      ],
+      "summary": "Exclusive doubled as केवल … ही; no corpus precedent (those two are the only values matching केवल+word ही), established idiom is सिर्फ़ … ही (4x, incl. ui.hub.subscriptions.enable_private) or केवल alone. Suggest सिर्फ़ … ही or drop one marker."
+    }
+  ],
+  "checked_passed": [
+    "name-subject re-voicing of reserved_named/reserved_unnamed matches siblings and preserves the proposition",
+    "placeholders identical (15/15 added; 0 mismatches in all 46)",
+    "ICU parse + one/other plural shapes match English; zero-count branch unreachable at the call site",
+    "बिल्ट-इन consistent with 7 corpus occurrences",
+    "लिस्टिंग feminine agreement (की गई) consistent with pre-existing title.republished",
+    "no English residue beyond kept-Latin Team/Radient",
+    "आप register, polite imperative, danda, ellipsis, quotes, nukta",
+    "key-set parity with en (46/46); generate.mjs --check clean; catalogue tests 11/11"
+  ],
+  "artifacts": [
+    "i18n/audits/evidence/hi/ui.agents.upload/hi-upload-0a2d35091c2c/record.json",
+    "i18n/audits/evidence/hi/ui.agents.upload/hi-upload-0a2d35091c2c/report.md",
+    "i18n/receipts/hi-upload-r1-0a2d35091c2c.json"
+  ],
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "0a2d35091c2c",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Disclosed fallback chain observed in this session: anthropic/claude-sonnet-5-5 (primary) failed on provider quota, anthropic/claude-opus-5-5 failed on quota, openai/gpt-6.1-sol failed on quota, deepseek/deepseek-flash served the audit. The auditor did not translate or remediate any string.",
+    "independent_from_translator": true,
+    "role": "round-1 independent i18n auditor"
+  },
+  "no_commit": "Audit only. No catalogue, ledger, allowance, generator or test file was modified; the only files written are this receipt and the two evidence files under i18n/audits/evidence/hi/ui.agents.upload/hi-upload-0a2d35091c2c/."
+}
