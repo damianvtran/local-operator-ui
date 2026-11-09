@@ -1,0 +1,100 @@
+{
+  "tested_head": "a8c1ba616c746c41929a5687c1893350f9f9f1da",
+  "electron": "45.1.0",
+  "attempt": 2,
+  "source_bundle_sha256": "81585a1f3cda89256fde2faefa1b705d2497048a95452672aa82d402216f415a",
+  "capture": {
+    "region_points": [
+      0,
+      917,
+      1728,
+      200
+    ],
+    "display_points": [
+      1728,
+      1117
+    ],
+    "scale": 2,
+    "duration_seconds": 9.013333,
+    "creation_time_utc_second_precision": "2026-11-09T17:47:33Z",
+    "recorder_spawn_epoch_ms": 1794246452455
+  },
+  "events": [
+    {
+      "event": "ordinary-observe",
+      "at": 1794246454156
+    },
+    {
+      "event": "inert-show",
+      "at": 1794246454249
+    },
+    {
+      "event": "inert-show",
+      "at": 1794246456156
+    },
+    {
+      "event": "native-bounce",
+      "type": "informational",
+      "id": 0,
+      "at": 1794246456157
+    },
+    {
+      "event": "bridge-result",
+      "result": {
+        "shown": true
+      },
+      "at": 1794246456159
+    },
+    {
+      "event": "native-cancel",
+      "id": 0,
+      "at": 1794246461034
+    }
+  ],
+  "measurement": {
+    "analysis_hz": 60,
+    "rest_tile_top_px": 242,
+    "peak_tile_top_px": 104,
+    "vertical_displacement_px": 138,
+    "vertical_displacement_points": 69,
+    "motion_first_pts_seconds": 3.216666666666667,
+    "motion_settled_pts_seconds": 4.233333333333333,
+    "motion_duration_seconds": 1.0166666666666666,
+    "boundary_resolution_seconds": 0.016666666666666666,
+    "motion_threshold_px": 2,
+    "ordinary_phase_top_px_range": [
+      242,
+      242
+    ]
+  },
+  "foreground": {
+    "samples": 13,
+    "test_carrier_frontmost_samples": 0,
+    "focused_samples": 0
+  },
+  "cleanup": {
+    "carrier_clean": true,
+    "recorder_clean": true,
+    "console_surface_closed": true,
+    "console_cleanup_running": 0
+  },
+  "frames": {
+    "rest": {
+      "pts_seconds": 1.0,
+      "sha256": "108fd6d285a8b8b997d585d07c7c0da936e4204bd1ca54cebb117f9ae495f28a"
+    },
+    "ordinary-no-motion": {
+      "pts_seconds": 2.0,
+      "sha256": "d4a1fe5555320ab56a8fa93c0595dbb142eca5367a44668686cac3e242763387"
+    },
+    "motion": {
+      "pts_seconds": 3.45,
+      "sha256": "d5243111ad9d8a1e8b942e48614714298bee2dd924611ff9b7784d977f09e6c6"
+    },
+    "settled": {
+      "pts_seconds": 5.2,
+      "sha256": "fd232847433759cca79fd62d5355472755c385e5c90023e2c06115f53f6234f6"
+    }
+  },
+  "privacy": "Each image preserves the native tile plus 2px border at its recorded screen coordinates on a fixed 144x282px canvas; all surrounding desktop pixels are replaced with a neutral matte. Raw Dock strip and clip stay local."
+}
