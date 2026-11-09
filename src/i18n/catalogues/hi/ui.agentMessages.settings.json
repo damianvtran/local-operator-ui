@@ -90,5 +90,7 @@
 	"ui.agentMessages.settings.default_on.b_body": "आपका संगठन तैयार होते ही Team Bridge आपके लिए अपने-आप चालू हो जाएगा। चालू होने पर कुछ भी नहीं भेजा जाता।",
 	"ui.agentMessages.settings.default_on.e_body": "इस खाते के लिए Team Bridge बंद है। नीचे सहमति का पाठ पढ़ें, फिर इसे वापस चाहें तो दोबारा चालू करें।",
 	"ui.agentMessages.settings.action.turn_on_again": "फिर चालू करें",
-	"ui.agentMessages.settings.consent.via_default_on": "डिफ़ॉल्ट रूप से चालू"
+	"ui.agentMessages.settings.consent.via_default_on": "डिफ़ॉल्ट रूप से चालू",
+	"ui.agentMessages.settings.share_typing.label": "जब मैं टाइप करूँ तो दिखाएँ",
+	"ui.agentMessages.settings.share_typing.description": "आपकी Team Bridge बातचीत के लोग आपके लिखते समय एक छोटी “टाइप कर रहे हैं” पंक्ति देखते हैं। आप जो टाइप करते हैं, वह कभी साझा नहीं होता।"
 }

@@ -4071,6 +4071,41 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			endpoint_id: id.optional(),
 		})
 		.strict(),
+	/*
+	 * Typing indicators (`team_bridge_typing`). The read needs only the tenant;
+	 * both writes are owner-guarded like reactions (captured account + target
+	 * tenant), so a typing heartbeat captured for account A can never be sent as
+	 * B after a sign-in switch. `thread_root_id` scopes the hint to one thread.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.typing.get"),
+			conversation_id: id,
+			tenant_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.enum(["team_bridge.typing.set", "team_bridge.typing.clear"]),
+			conversation_id: id,
+			tenant_id: id,
+			expected_account_id: id,
+			thread_root_id: id.optional(),
+		})
+		.strict(),
+	/*
+	 * The "Show when I'm typing" preference: a lop-local setting on the Team
+	 * Bridge settings route. Sent WITHOUT `state` on purpose - the runtime treats
+	 * a share_typing-only PUT as a local write with no hub call, and answers only
+	 * `{share_typing}` (contract amendment from the lop proxy PR).
+	 */
+	z
+		.object({
+			op: z.literal("agent_messages.settings.share_typing"),
+			expected_account_id: id,
+			share_typing: z.boolean(),
+		})
+		.strict(),
 	/* Reactions have no receipt-less legacy caller: the captured account and
 	 * target tenant are required before main may dispatch either verb. */
 	z
@@ -10466,6 +10501,46 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "team_bridge.typing.get":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/typing${tenantQuery(request.tenant_id)}`,
+				method: "GET",
+			};
+		case "team_bridge.typing.set":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/typing`,
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					tenant_id: request.tenant_id,
+					...(request.thread_root_id
+						? { thread_root_id: request.thread_root_id }
+						: {}),
+				},
+			};
+		case "team_bridge.typing.clear": {
+			// Query, not body: a DELETE body is not reliably forwarded (the runtime
+			// takes the owner guard from the query for the same reason).
+			const query = new URLSearchParams({
+				tenant_id: request.tenant_id,
+				expected_account_id: request.expected_account_id,
+			});
+			if (request.thread_root_id)
+				query.set("thread_root_id", request.thread_root_id);
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/typing?${query}`,
+				method: "DELETE",
+			};
+		}
+		case "agent_messages.settings.share_typing":
+			return {
+				path: "/v1/desktop/team-bridge/settings",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					share_typing: request.share_typing,
+				},
+			};
 		case "team_bridge.reactions.toggle": {
 			const path = `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/reactions/${encodeURIComponent(request.emoji)}`;
 			return request.active

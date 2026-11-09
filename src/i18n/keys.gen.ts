@@ -2624,6 +2624,8 @@ export type MessageParams = {
 	"ui.agentMessages.settings.session.none": undefined;
 	"ui.agentMessages.settings.session.title": undefined;
 	"ui.agentMessages.settings.session.unavailable": undefined;
+	"ui.agentMessages.settings.share_typing.description": undefined;
+	"ui.agentMessages.settings.share_typing.label": undefined;
 	"ui.agentMessages.settings.state.b_body": undefined;
 	"ui.agentMessages.settings.state.b_title": undefined;
 	"ui.agentMessages.settings.state.c_body": undefined;
@@ -4541,6 +4543,10 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": undefined;
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": undefined;
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": undefined;
+	"ui.chat.canonical.tool_row.diff.more": { count: number };
+	"ui.chat.canonical.tool_row.diff.show_less": undefined;
+	"ui.chat.canonical.tool_row.diff.truncated": { count: number };
+	"ui.chat.canonical.tool_row.diff.withheld": undefined;
 	"ui.chat.canonical.tool_row.generic_verb.running": undefined;
 	"ui.chat.canonical.tool_row.generic_verb.settled": undefined;
 	"ui.chat.canonical.tool_row.outcome.failed": undefined;
@@ -12249,6 +12255,14 @@ export type MessageParams = {
 	"ui.teamBridge.thread.today": undefined;
 	"ui.teamBridge.thread.withheld": undefined;
 	"ui.teamBridge.thread.yesterday": undefined;
+	"ui.teamBridge.typing.one": { first: string };
+	"ui.teamBridge.typing.several": undefined;
+	"ui.teamBridge.typing.three": {
+		first: string;
+		second: string;
+		third: string;
+	};
+	"ui.teamBridge.typing.two": { first: string; second: string };
 	"ui.teamBridge.unread.count": { count: number };
 	"ui.teamBridge.leave.back": undefined;
 	"ui.teamBridge.leave.back_shortcut": { shortcut: string };

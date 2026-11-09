@@ -407,5 +407,9 @@
 	"ui.teamBridge.files.no_schedule": "Файлы можно отправить сейчас, но нельзя запланировать.",
 	"ui.teamBridge.files.uploading": "Загрузка файла…",
 	"ui.teamBridge.files.attached": "Прикреплён",
-	"ui.teamBridge.files.not_uploaded": "Не загружен"
+	"ui.teamBridge.files.not_uploaded": "Не загружен",
+	"ui.teamBridge.typing.one": "{first} печатает",
+	"ui.teamBridge.typing.two": "{first} и {second} печатают",
+	"ui.teamBridge.typing.three": "{first}, {second} и {third} печатают",
+	"ui.teamBridge.typing.several": "Несколько человек печатают"
 }

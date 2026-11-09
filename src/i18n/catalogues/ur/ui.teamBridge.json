@@ -407,5 +407,9 @@
 	"ui.teamBridge.files.no_schedule": "فائلیں ابھی بھیجی جا سکتی ہیں، لیکن ان کی ترسیل طے نہیں کی جا سکتی۔",
 	"ui.teamBridge.files.uploading": "فائل اپ لوڈ ہو رہی ہے…",
 	"ui.teamBridge.files.attached": "منسلک",
-	"ui.teamBridge.files.not_uploaded": "اپ لوڈ نہیں ہوئی"
+	"ui.teamBridge.files.not_uploaded": "اپ لوڈ نہیں ہوئی",
+	"ui.teamBridge.typing.one": "{first} ٹائپ کر رہے ہیں",
+	"ui.teamBridge.typing.two": "{first} اور {second} ٹائپ کر رہے ہیں",
+	"ui.teamBridge.typing.three": "{first}، {second} اور {third} ٹائپ کر رہے ہیں",
+	"ui.teamBridge.typing.several": "کئی لوگ ٹائپ کر رہے ہیں"
 }

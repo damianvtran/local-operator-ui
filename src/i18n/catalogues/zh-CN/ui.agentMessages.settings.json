@@ -90,5 +90,7 @@
 	"ui.agentMessages.settings.default_on.b_body": "组织就绪后，Team Bridge会自动为你开启，开启时不会发送任何内容。",
 	"ui.agentMessages.settings.default_on.e_body": "此账户已关闭Team Bridge。阅读下方同意声明，如需恢复，可重新开启。",
 	"ui.agentMessages.settings.action.turn_on_again": "重新开启",
-	"ui.agentMessages.settings.consent.via_default_on": "默认开启"
+	"ui.agentMessages.settings.consent.via_default_on": "默认开启",
+	"ui.agentMessages.settings.share_typing.label": "显示我正在输入",
+	"ui.agentMessages.settings.share_typing.description": "你输入时，Team Bridge对话中的其他成员会看到一行简短的“正在输入”提示。输入的内容绝不会被分享。"
 }

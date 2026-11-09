@@ -85,6 +85,20 @@ export const agentMessagesApi = {
 		});
 		return agentMessagesOnboardingDismissResultSchema.parse(result);
 	},
+	/**
+	 * "Show when I'm typing". A share_typing-only PUT is a lop-local write and
+	 * answers only `{share_typing}`, never the full settings envelope.
+	 */
+	async setShareTyping(accountId: string, shareTyping: boolean) {
+		const answer = await desktopResult<{ share_typing?: unknown } | null>({
+			op: "agent_messages.settings.share_typing",
+			expected_account_id: accountId,
+			share_typing: shareTyping,
+		});
+		return typeof answer?.share_typing === "boolean"
+			? answer.share_typing
+			: shareTyping;
+	},
 	async localSetting(
 		key: "team_bridge.enabled" | "team_bridge.session",
 		value: boolean | string,

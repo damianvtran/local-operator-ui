@@ -407,5 +407,9 @@
 	"ui.teamBridge.files.no_schedule": "Los archivos se pueden enviar ahora, pero no programar.",
 	"ui.teamBridge.files.uploading": "Subiendo archivo…",
 	"ui.teamBridge.files.attached": "Adjunto",
-	"ui.teamBridge.files.not_uploaded": "Sin subir"
+	"ui.teamBridge.files.not_uploaded": "Sin subir",
+	"ui.teamBridge.typing.one": "{first} está escribiendo",
+	"ui.teamBridge.typing.two": "{first} y {second} están escribiendo",
+	"ui.teamBridge.typing.three": "{first}, {second} y {third} están escribiendo",
+	"ui.teamBridge.typing.several": "Varias personas están escribiendo"
 }
