@@ -15,8 +15,9 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { ASK_SESSION_IDS, startAsksAppFixture } from "./asks-app-fixture.mjs";
@@ -524,6 +525,99 @@ export function describeMainPreloadReuse(plan) {
 	}
 	return `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
 }
+/**
+ * HOW A LOCKFILE-DIFFERING CONTROL GETS ITS ELECTRON EXECUTABLE.
+ *
+ * The control's own install (`prepareControl`, `lockDiffers`) runs with
+ * `--ignore-scripts` so a base-revision dependency tree cannot execute arbitrary
+ * lifecycle scripts on the runner. That also skips Electron's postinstall, so the
+ * control's `node_modules/electron` has neither `dist/` nor `path.txt`, and the
+ * control's `renderer-driver.mjs` -> `installedElectronBinary` refuses with
+ * "native executable absent; proof harnesses never bootstrap Electron". Measured
+ * on PR #1821 (CI run 42710783768, job 129481850011, NPX Sanity Check macOS):
+ * any dependency-adding PR tripped it, while lockfile-identical PRs take the
+ * symlink branch and never see it.
+ *
+ * Decision (pure, so it is unit-tested without launching anything):
+ * - SAME Electron version on both sides: the control's JS stays "base tree with
+ *   base deps", and the native runtime is the candidate's already-installed
+ *   binary - byte-for-byte the runtime the control's own installer would fetch.
+ *   It is handed to the control leg ONLY through that child's env
+ *   (`ELECTRON_OVERRIDE_DIST_PATH`, the npm-documented override the pinned
+ *   control's `installedElectronBinary` already honours), never via the global
+ *   `process.env`, plus the candidate's `path.txt` marker, because the resolver
+ *   needs the platform-relative executable path (`Electron.app/Contents/MacOS/
+ *   Electron` on macOS) and would otherwise guess a bare `electron`.
+ * - DIFFERENT versions: run ONLY Electron's own installer in the control root
+ *   (CI feeds it from the restored Electron cache); every other dependency keeps
+ *   `--ignore-scripts`. If that leaves no executable, fail naming both versions.
+ */
+export function controlElectronPlan({
+	controlVersion,
+	candidateVersion,
+	candidateDist,
+}) {
+	if (controlVersion === candidateVersion) {
+		return {
+			action: "reuse-candidate-binary",
+			env: { ELECTRON_OVERRIDE_DIST_PATH: candidateDist },
+			describe: `candidate Electron ${candidateVersion} binary (same version as control)`,
+		};
+	}
+	return {
+		action: "run-electron-installer",
+		installer: ["node_modules/electron/install.js"],
+		env: {},
+		describe: `control Electron ${controlVersion} via its own installer (candidate has ${candidateVersion})`,
+	};
+}
+async function provisionControlElectron(root) {
+	const electronDir = (base) =>
+		dirname(
+			createRequire(join(base, "package.json")).resolve(
+				"electron/package.json",
+			),
+		);
+	const controlDir = electronDir(root);
+	const candidateDir = electronDir(process.cwd());
+	const version = (dir) =>
+		JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
+	const controlVersion = version(controlDir);
+	const candidateVersion = version(candidateDir);
+	const plan = controlElectronPlan({
+		controlVersion,
+		candidateVersion,
+		candidateDist: join(candidateDir, "dist"),
+	});
+	const marker = join(candidateDir, "path.txt");
+	if (plan.action === "reuse-candidate-binary") {
+		if (!existsSync(marker))
+			throw new Error(
+				`control Electron ${controlVersion} = candidate ${candidateVersion}, but the candidate has no installed runtime (${marker} missing)`,
+			);
+		// Written into the control's own scratch install only; the candidate's
+		// tree and the shared store copies are never touched.
+		writeFileSync(join(controlDir, "path.txt"), readFileSync(marker));
+	} else {
+		try {
+			await execute(process.execPath, plan.installer, {
+				cwd: root,
+				env: { ...process.env, CI: "true" },
+				timeout: 300000,
+				maxBuffer: 8 * 1024 * 1024,
+			});
+		} catch (error) {
+			throw new Error(
+				`control Electron ${controlVersion} differs from candidate ${candidateVersion} and its installer failed: ${error.message}`,
+			);
+		}
+		if (!existsSync(join(controlDir, "path.txt")))
+			throw new Error(
+				`control Electron ${controlVersion} differs from candidate ${candidateVersion} and its installer left no executable (${controlDir}/path.txt missing)`,
+			);
+	}
+	return plan;
+}
 async function prepareControl(root, output) {
 	// The control's source is read from its own revision; ask for it up front so a
 	// clone that does not hold it fails with the reason instead of a bare
@@ -579,7 +673,11 @@ async function prepareControl(root, output) {
 				maxBuffer: 8 * 1024 * 1024,
 			},
 		);
-	} else {
+	}
+	const electron = plan.lockDiffers
+		? await provisionControlElectron(root)
+		: null;
+	if (!plan.lockDiffers) {
 		symlinkSync(resolve("node_modules"), join(root, "node_modules"), "dir");
 	}
 	if (plan.reuse) {
@@ -606,6 +704,9 @@ async function prepareControl(root, output) {
 		commit: ASKS_CONTROL,
 		srcTree: git("rev-parse", `${ASKS_CONTROL}:src`),
 		mainPreloadReuse: describeMainPreloadReuse(plan),
+		electronRuntime: electron?.describe ?? "shared candidate node_modules",
+		// Not provenance: the control leg's child env, consumed (and removed) by main().
+		legEnv: electron?.env ?? {},
 		rendererOutputs: Object.fromEntries(
 			files(join(root, "out/renderer")).map((p) => [
 				p.slice(root.length + 1),
@@ -1590,10 +1691,11 @@ async function main() {
 	};
 	let primaryError = null;
 	try {
-		manifest.controlIdentity = await prepareControl(
+		const { legEnv: controlLegEnv, ...controlIdentity } = await prepareControl(
 			join(scratch, "control-app"),
 			output,
 		);
+		manifest.controlIdentity = controlIdentity;
 		const controlArchive = join(output, "control-source.tar");
 		manifest.controlSourceArchive = {
 			path: "control-source.tar",
@@ -1635,6 +1737,8 @@ async function main() {
 							ASKS_APP_ROOT: root,
 							ASKS_OUTPUT: dir,
 							ASKS_RECORDS: fixture.records,
+							// Only the control leg gets its Electron runtime override.
+							...(kind === "control" ? controlLegEnv : {}),
 						},
 						timeout: 150000,
 						maxBuffer: 4 * 1024 * 1024,
