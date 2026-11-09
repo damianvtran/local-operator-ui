@@ -29,5 +29,12 @@
 	"ui.agents.pages.search_aria": "Tìm tác nhân và nhóm",
 	"ui.agents.pages.tab.agents": "Tác nhân",
 	"ui.agents.pages.tab.teams": "Nhóm",
-	"ui.agents.pages.blocked_edit": "Hãy hoàn tất hoặc hủy phần chỉnh sửa trước."
+	"ui.agents.pages.blocked_edit": "Hãy hoàn tất hoặc hủy phần chỉnh sửa trước.",
+	"ui.agents.pages.backend.connecting": "Đang kết nối với máy chủ",
+	"ui.agents.pages.backend.loading_capabilities": "Đang tải thông tin về khả năng của máy chủ này…",
+	"ui.agents.pages.backend.unreachable": "Không kết nối được với máy chủ",
+	"ui.agents.pages.backend.upgrade_heading": "Tác nhân có thể tái sử dụng cần máy chủ mới hơn",
+	"ui.agents.pages.backend.upgrade_body": "Cập nhật máy chủ để quản lý tác nhân có thể tái sử dụng và nhóm. Các cuộc trò chuyện đã lưu không thay đổi.",
+	"ui.agents.pages.change.new": "Mới",
+	"ui.agents.pages.change.updated": "Đã cập nhật"
 }

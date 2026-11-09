@@ -29,5 +29,12 @@
 	"ui.agents.pages.search_aria": "Buscar agentes y equipos",
 	"ui.agents.pages.tab.agents": "Agentes",
 	"ui.agents.pages.tab.teams": "Equipos",
-	"ui.agents.pages.blocked_edit": "Termina o cancela antes tu edición."
+	"ui.agents.pages.blocked_edit": "Termina o cancela antes tu edición.",
+	"ui.agents.pages.backend.connecting": "Conectando con el servidor de Local Operator",
+	"ui.agents.pages.backend.loading_capabilities": "Cargando las funciones de este servidor de Local Operator…",
+	"ui.agents.pages.change.new": "Nuevo",
+	"ui.agents.pages.backend.upgrade_heading": "Los agentes reutilizables necesitan un servidor de Local Operator más reciente",
+	"ui.agents.pages.backend.unreachable": "No se pudo conectar con el servidor de Local Operator",
+	"ui.agents.pages.backend.upgrade_body": "Actualiza el servidor de Local Operator para gestionar agentes y equipos reutilizables. Los chats guardados no cambian.",
+	"ui.agents.pages.change.updated": "Actualizado"
 }

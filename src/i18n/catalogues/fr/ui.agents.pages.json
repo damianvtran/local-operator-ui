@@ -29,5 +29,12 @@
 	"ui.agents.pages.search_aria": "Rechercher des agents et des équipes",
 	"ui.agents.pages.tab.agents": "Agents",
 	"ui.agents.pages.tab.teams": "Équipes",
-	"ui.agents.pages.blocked_edit": "Terminez ou annulez d’abord votre modification."
+	"ui.agents.pages.blocked_edit": "Terminez ou annulez d’abord votre modification.",
+	"ui.agents.pages.backend.connecting": "Connexion au backend",
+	"ui.agents.pages.backend.loading_capabilities": "Chargement des capacités de ce backend…",
+	"ui.agents.pages.change.new": "Nouveau",
+	"ui.agents.pages.backend.upgrade_heading": "Les agents réutilisables nécessitent un backend plus récent",
+	"ui.agents.pages.backend.unreachable": "Impossible de joindre le backend",
+	"ui.agents.pages.backend.upgrade_body": "Mettez à jour le backend pour gérer les agents réutilisables et les équipes. Les conversations enregistrées restent inchangées.",
+	"ui.agents.pages.change.updated": "Mis à jour"
 }

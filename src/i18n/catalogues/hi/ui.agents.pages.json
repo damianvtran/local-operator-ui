@@ -29,5 +29,12 @@
 	"ui.agents.pages.search_aria": "एजेंट और टीमें खोजें",
 	"ui.agents.pages.tab.agents": "एजेंट",
 	"ui.agents.pages.tab.teams": "टीमें",
-	"ui.agents.pages.blocked_edit": "पहले अपना संपादन पूरा करें या रद्द करें।"
+	"ui.agents.pages.blocked_edit": "पहले अपना संपादन पूरा करें या रद्द करें।",
+	"ui.agents.pages.backend.connecting": "बैकएंड से कनेक्ट हो रहा है",
+	"ui.agents.pages.backend.loading_capabilities": "इस बैकएंड की क्षमताएँ लोड हो रही हैं…",
+	"ui.agents.pages.change.new": "नया",
+	"ui.agents.pages.backend.upgrade_heading": "बार-बार इस्तेमाल होने वाले एजेंटों के लिए नया बैकएंड चाहिए",
+	"ui.agents.pages.backend.unreachable": "बैकएंड से संपर्क नहीं हो सका",
+	"ui.agents.pages.backend.upgrade_body": "बार-बार इस्तेमाल होने वाले एजेंटों और टीमों को प्रबंधित करने के लिए बैकएंड अपडेट करें। सहेजी गई बातचीत में कोई बदलाव नहीं हुआ है।",
+	"ui.agents.pages.change.updated": "अपडेट हुआ"
 }

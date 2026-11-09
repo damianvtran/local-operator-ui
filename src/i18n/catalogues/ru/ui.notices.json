@@ -100,5 +100,11 @@
 	"ui.notices.variables.delete_failed": "Не удалось удалить переменную.",
 	"ui.notices.variables.deleted": "Переменная удалена",
 	"ui.notices.variables.update_failed": "Не удалось обновить переменную.",
-	"ui.notices.variables.updated": "Переменная обновлена"
+	"ui.notices.variables.updated": "Переменная обновлена",
+	"ui.notices.aida.paused_receipt": "Работа Aida приостановлена. Проверок не будет до возобновления работы.",
+	"ui.notices.aida.resumed_receipt": "Работа Aida возобновлена. Проверки будут проходить по обычному расписанию.",
+	"ui.notices.aida.paused": "Работа Aida приостановлена.",
+	"ui.notices.aida.active": "Aida работает.",
+	"ui.notices.aida.account_required": "После подключения учётной записи ИИ появится приветствие от {name}. Для начала подключите учётную запись в чате.",
+	"ui.notices.aida.open_fallback": "Не удалось открыть разговор с {name}, поэтому вместо него открыт новый чат. {detail}"
 }

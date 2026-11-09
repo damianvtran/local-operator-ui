@@ -100,5 +100,11 @@
 	"ui.notices.variables.delete_failed": "वेरिएबल नहीं हटाया जा सका।",
 	"ui.notices.variables.deleted": "वेरिएबल हटाया गया",
 	"ui.notices.variables.update_failed": "वेरिएबल अपडेट नहीं हो सका।",
-	"ui.notices.variables.updated": "वेरिएबल अपडेट हुआ"
+	"ui.notices.variables.updated": "वेरिएबल अपडेट हुआ",
+	"ui.notices.aida.paused_receipt": "Aida रुकी हुई है। फिर शुरू करने तक वह हालचाल नहीं पूछेगी।",
+	"ui.notices.aida.resumed_receipt": "Aida फिर शुरू हो गई है। वह अपने सामान्य शेड्यूल पर हालचाल पूछेगी।",
+	"ui.notices.aida.paused": "Aida रुकी हुई है।",
+	"ui.notices.aida.active": "Aida सक्रिय है।",
+	"ui.notices.aida.account_required": "एआई खाता कनेक्ट होने पर {name} बातचीत शुरू करेगी। शुरू करने के लिए चैट से खाता कनेक्ट करें।",
+	"ui.notices.aida.open_fallback": "{name} की बातचीत नहीं खोली जा सकी, इसलिए उसकी जगह नई चैट खुली है। {detail}"
 }

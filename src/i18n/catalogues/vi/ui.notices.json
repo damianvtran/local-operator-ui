@@ -100,5 +100,11 @@
 	"ui.notices.variables.delete_failed": "Không xóa được biến.",
 	"ui.notices.variables.deleted": "Đã xóa biến",
 	"ui.notices.variables.update_failed": "Không cập nhật được biến.",
-	"ui.notices.variables.updated": "Đã cập nhật biến"
+	"ui.notices.variables.updated": "Đã cập nhật biến",
+	"ui.notices.aida.account_required": "{name} sẽ chào bạn khi có tài khoản AI được kết nối. Kết nối tài khoản từ cuộc trò chuyện để bắt đầu.",
+	"ui.notices.aida.active": "Aida đang hoạt động.",
+	"ui.notices.aida.open_fallback": "Không mở được cuộc trò chuyện của {name}, nên bạn đang ở cuộc trò chuyện mới. {detail}",
+	"ui.notices.aida.paused": "Aida đang tạm dừng.",
+	"ui.notices.aida.paused_receipt": "Aida đang tạm dừng. Cô ấy sẽ không hỏi thăm cho đến khi bạn cho tiếp tục.",
+	"ui.notices.aida.resumed_receipt": "Aida đã tiếp tục hoạt động. Cô ấy sẽ hỏi thăm theo lịch thường lệ."
 }

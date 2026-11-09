@@ -91,5 +91,21 @@
 	"ui.chat.run_details.wake.armed_count": "{count, plural, other {{count_display}个唤醒项待触发}}",
 	"ui.chat.run_details.wake.cadence_once": "一次",
 	"ui.chat.run_details.wake.managed_by": "由{name}管理",
-	"ui.chat.run_details.wake.managed_note": "此唤醒属于{name}自己的定时任务，无法在此取消。要停止这些定期检查，请使用/aida pause。"
+	"ui.chat.run_details.wake.managed_note": "此唤醒属于{name}自己的定时任务，无法在此取消。要停止这些定期检查，请使用/aida pause。",
+	"ui.chat.run_details.child.brief.show_less": "收起",
+	"ui.chat.run_details.child.brief.show_more": "{count, plural, other {再显示{count, number, ::group-off}行}}",
+	"ui.chat.run_details.child.result.preview": "结果预览",
+	"ui.chat.run_details.child.result.title": "结果",
+	"ui.chat.run_details.child.result.unavailable": "无法在此查看该子智能体的对话。",
+	"ui.chat.run_details.child.result.unavailable_clipped": "此副本已缩短。无法在此查看该子智能体的对话。",
+	"ui.chat.run_details.mcp_auth.no_references": "此服务器不使用OAuth，也未声明密钥引用。在其MCP环境变量或请求头中添加明确的$'{'NAME'}'引用后重试。",
+	"ui.chat.run_details.mcp_auth.status": "登录：{status}。",
+	"ui.chat.run_details.mcp_auth.status_unavailable": "状态不可用",
+	"ui.chat.run_details.mcp_auth.unknown_method": "无法确定此服务器的登录方式。检查连接和MCP配置后重试。",
+	"ui.chat.run_details.mcp_auth.upgrade": "更新后端以安全输入MCP密钥。OAuth和服务器列表仍可使用。",
+	"ui.chat.run_details.mcp_auth.waiting": "正在等待后端登录状态……",
+	"ui.chat.run_details.mcp_failure.busy": "{lead}：此对话已有登录操作正在运行，一次只能运行一个。等待其完成，或在服务器所在行取消。",
+	"ui.chat.run_details.mcp_failure.cancel_lead": "无法确认取消是否成功",
+	"ui.chat.run_details.mcp_failure.refused": "{lead}：服务器拒绝了操作，但未说明原因，未作任何更改。",
+	"ui.chat.run_details.mcp_failure.session": "{lead}，因为此对话的会话未运行。重试将重启会话并再次发送此请求。"
 }

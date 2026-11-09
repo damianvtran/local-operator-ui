@@ -91,5 +91,21 @@
 	"ui.chat.run_details.wake.armed_count": "{count, plural, one {{count_display} despertar activado} many {{count_display} de despertares activados} other {{count_display} despertares activados}}",
 	"ui.chat.run_details.wake.cadence_once": "una vez",
 	"ui.chat.run_details.wake.managed_by": "gestionado por {name}",
-	"ui.chat.run_details.wake.managed_note": "Este despertar es la programación propia de {name}, así que no se puede cancelar aquí. Para detener estos seguimientos, usa /aida pause."
+	"ui.chat.run_details.wake.managed_note": "Este despertar es la programación propia de {name}, así que no se puede cancelar aquí. Para detener estos seguimientos, usa /aida pause.",
+	"ui.chat.run_details.child.result.preview": "Vista previa del resultado",
+	"ui.chat.run_details.child.result.title": "Resultado",
+	"ui.chat.run_details.child.result.unavailable_clipped": "Esta es una copia abreviada. La conversación de este subagente no está disponible aquí.",
+	"ui.chat.run_details.child.result.unavailable": "La conversación de este subagente no está disponible aquí.",
+	"ui.chat.run_details.child.brief.show_less": "Mostrar menos",
+	"ui.chat.run_details.child.brief.show_more": "{count, plural, one {Mostrar {count, number, ::group-off} línea más} other {Mostrar {count, number, ::group-off} líneas más}}",
+	"ui.chat.run_details.mcp_auth.upgrade": "Actualiza el servidor de Local Operator para introducir claves MCP de forma segura. OAuth y la lista de servidores siguen disponibles.",
+	"ui.chat.run_details.mcp_auth.no_references": "Este servidor no usa OAuth ni declara referencias a secretos. Añade referencias explícitas $'{'NAME'}' a las variables de entorno o las cabeceras de su configuración MCP y vuelve a intentarlo.",
+	"ui.chat.run_details.mcp_auth.unknown_method": "No se pudo determinar el método de inicio de sesión de este servidor. Revisa su conexión y su configuración MCP y vuelve a intentarlo.",
+	"ui.chat.run_details.mcp_auth.waiting": "Esperando el estado de inicio de sesión del servidor de Local Operator…",
+	"ui.chat.run_details.mcp_auth.status": "Inicio de sesión: {status}.",
+	"ui.chat.run_details.mcp_auth.status_unavailable": "estado no disponible",
+	"ui.chat.run_details.mcp_failure.cancel_lead": "No se pudo confirmar la cancelación",
+	"ui.chat.run_details.mcp_failure.busy": "{lead}: ya hay un inicio de sesión en curso para esta conversación y solo puede haber uno a la vez. Espera a que termine o cancélalo desde la fila del servidor.",
+	"ui.chat.run_details.mcp_failure.refused": "{lead}: el servidor lo rechazó sin indicar el motivo y no se cambió nada.",
+	"ui.chat.run_details.mcp_failure.session": "{lead} porque la sesión de esta conversación no está en ejecución. Al volver a intentarlo, se reinicia la sesión y se repite esta solicitud."
 }
