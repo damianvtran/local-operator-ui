@@ -230,7 +230,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	const resultRegion = useRef<HTMLDivElement>(null);
 	const navigate = useNavigate();
 	const publish = usePublishAgent();
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [initialPolicy, setInitialPolicy] = useState(newHubPolicy);
 	const publicationRequest = useRef<{ tuple: string; id: string } | null>(null);
 	const nameSeed = useRef<{ open: boolean; id: string | null }>({
@@ -387,6 +387,10 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * come back as a treatment below instead, because they arrive with a code and a
 	 * different next step.
 	 */
+	// Only the reserved-name branch resolves catalogue copy here. Keep it fresh
+	// across language switches without remounting the dialog or resetting a draft;
+	// publicationIssues' ordinary rule text remains a separate literal path.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates publicationTreatment's resolved body.
 	const issues = useMemo(() => {
 		const list = publicationIssues({
 			name,
@@ -407,7 +411,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			});
 		}
 		return list;
-	}, [name, agent?.description, agent?.tags, instructions, reserved]);
+	}, [name, agent?.description, agent?.tags, instructions, reserved, locale]);
 
 	const treatment = failure
 		? publicationTreatment(failure, {
