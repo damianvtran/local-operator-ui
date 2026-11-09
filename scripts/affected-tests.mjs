@@ -258,7 +258,11 @@ function onDisk(root, path) {
 export function resolveSpecifier(from, specifier, exists) {
 	if (specifier.startsWith("./") || specifier.startsWith("../")) {
 		const adjacent = resolvePath(
-			posix.normalize(posix.join(posix.dirname(from), specifier)),
+			// Match the alias/root arms: bundler queries are not part of the
+			// on-disk filename, including imports captured from new URL(...).
+			posix
+				.normalize(posix.join(posix.dirname(from), specifier))
+				.replace(/\?.*$/, ""),
 			exists,
 		);
 		if (adjacent) return adjacent;

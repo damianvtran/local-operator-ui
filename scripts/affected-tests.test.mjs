@@ -94,6 +94,41 @@ test("an import chain, an alias and a join() mention each reach the test", () =>
 	assert.ok(!orphan.files.includes("scripts/widget.test.mjs"));
 });
 
+for (const [name, specifier] of [
+	["adjacent", "./packet.txt?raw"],
+	["parent", "../packet.txt?raw"],
+	["alias", "@shared/packet.txt?raw"],
+	["root fallback", "./src/main/packet.txt?raw"],
+	["URL", 'new URL("./packet.txt?raw", import.meta.url)'],
+]) {
+	test(`a query-suffixed ${name} dependency selects its transitive test`, () => {
+		const entry =
+			name === "parent" ? "src/main/deep/load.ts" : "src/main/load.ts";
+		const packet =
+			name === "alias"
+				? "src/renderer/src/shared/packet.txt"
+				: "src/main/packet.txt";
+		const root = tree({
+			[packet]: "fixture payload\n",
+			[entry]:
+				name === "URL"
+					? `export const packet = ${specifier};\n`
+					: `import packet from "${specifier}";\n`,
+			"scripts/read.test.mjs": `build({ entryPoints: ["${entry}"] });\n`,
+			"scripts/unrelated.test.mjs": "export {};\n",
+		});
+		// Assert selection through the source importer, not just resolution:
+		// a missing raw-asset edge can silently omit a test even when others run.
+		const selection = selectTests([packet], {
+			graph: buildGraph(root),
+			inventory: ["scripts/read.test.mjs", "scripts/unrelated.test.mjs"],
+			exempt: {},
+		});
+		assert.deepEqual(selection.affected, ["scripts/read.test.mjs"]);
+		assert.deepEqual(selection.unreached, []);
+	});
+}
+
 test("a test that pins a file's text by path, suffix or name is selected without an import", () => {
 	// The shapes of the real escapes: shell-path.test.mjs read src/main/index.ts
 	// as text; default-on-banner.test.mjs pinned team-bridge-page.tsx by a
