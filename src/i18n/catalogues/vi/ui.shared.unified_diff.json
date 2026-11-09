@@ -1,0 +1,14 @@
+{
+	"ui.shared.unified_diff.accessible": "Bản so sánh hợp nhất; nhấn N đến thay đổi tiếp theo, P đến thay đổi trước",
+	"ui.shared.unified_diff.no_changes": "Không có thay đổi",
+	"ui.shared.unified_diff.changes": "{count} thay đổi",
+	"ui.shared.unified_diff.stats_accessible": "{added} dòng thêm, {removed} dòng xóa",
+	"ui.shared.unified_diff.position": "Thay đổi {index} trên {total}",
+	"ui.shared.unified_diff.previous": "Thay đổi trước",
+	"ui.shared.unified_diff.previous_hint": "Thay đổi trước (P)",
+	"ui.shared.unified_diff.next": "Thay đổi tiếp theo",
+	"ui.shared.unified_diff.next_hint": "Thay đổi tiếp theo (N)",
+	"ui.shared.unified_diff.show_unchanged": "Hiện {count} dòng không đổi",
+	"ui.shared.unified_diff.line_added": "Đã thêm:",
+	"ui.shared.unified_diff.line_removed": "Đã xóa:"
+}

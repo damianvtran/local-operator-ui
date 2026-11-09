@@ -61,6 +61,11 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
+import {
+	pendingProposalCount,
+	proposalReviewPath,
+} from "@shared/api/local-operator/profile-proposals";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
@@ -1552,6 +1557,9 @@ export function ChatSidebar({
 	 * are drawn by `entity` below and the per-section strip by `hubStrip`; both
 	 * read this one snapshot, so a row and its section can never disagree.
 	 */
+	const proposalsEnabled =
+		ready && desktopFeatureEnabled(capabilities.data, "profile_proposals");
+	const proposals = useProfileProposals(proposalsEnabled);
 	const hubUpdates = useHubUpdates(
 		ready && desktopFeatureEnabled(capabilities.data, "hub_updates"),
 	);
@@ -7246,6 +7254,9 @@ export function ChatSidebar({
 		const hubKey = hubItemKey(kind, name);
 		const hubItem = hubItems.get(hubKey);
 		const hubMark = hubMarkFor(hubItem);
+		const proposalCount = proposalsEnabled
+			? pendingProposalCount(proposals.data, kind, name)
+			: 0;
 		const localId =
 			kind === "team"
 				? teams.data?.find((row) => row.name === name)?.id
@@ -7514,6 +7525,31 @@ export function ChatSidebar({
 									aria-hidden="true"
 									className={cn("size-4", pinnedAgent && "text-ink")}
 									fill={pinnedAgent ? "currentColor" : "none"}
+								/>
+							</button>
+						</Tooltip>
+					)}
+					{proposalCount > 0 && (
+						<Tooltip
+							content={t("ui.agents.proposals.waiting", {
+								count: proposalCount,
+							})}
+						>
+							<button
+								type="button"
+								data-testid="profile-proposal-row-badge"
+								aria-label={t("ui.agents.proposals.waiting", {
+									count: proposalCount,
+								})}
+								className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm hover:bg-row-hover focus-visible:outline focus-visible:outline-accent"
+								onClick={(event) => {
+									event.stopPropagation();
+									navigate(proposalReviewPath(kind, name));
+								}}
+							>
+								<span
+									aria-hidden="true"
+									className="h-1.5 w-1.5 rounded-full bg-warning"
 								/>
 							</button>
 						</Tooltip>

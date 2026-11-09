@@ -1,3 +1,7 @@
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 /**
  * The Mesh tab's approval surface: the device-local onboarding records, read
  * and answered.
@@ -1311,7 +1315,14 @@ export function useMeshApprovals(
 	enabled: boolean,
 	{ poll = true }: { poll?: boolean } = {},
 ) {
+	const capabilities = useDesktopCapabilities();
+	const proposalsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"profile_proposals",
+	);
 	return useQuery({
+		select: (rows: MeshApprovalRow[]) =>
+			meshRowsWithoutProfileProposals(rows, proposalsEnabled),
 		queryKey: meshApprovalKeys.approvals,
 		enabled,
 		queryFn: async () =>
@@ -1537,4 +1548,12 @@ export function deliverApprovalRefusal({
 	const focused =
 		refusalTarget !== null && document.activeElement === refusalTarget;
 	return { focused, announcement: focused ? "" : sentence };
+}
+
+/** A new core owns profile proposals in Agents, even if a skewed feed lists legacy rows. */
+export function meshRowsWithoutProfileProposals(
+	rows: MeshApprovalRow[],
+	enabled: boolean,
+): MeshApprovalRow[] {
+	return enabled ? rows.filter((row) => row.kind !== "profile") : rows;
 }

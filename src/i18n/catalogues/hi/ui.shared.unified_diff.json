@@ -1,0 +1,14 @@
+{
+	"ui.shared.unified_diff.accessible": "एकीकृत अंतर; अगले बदलाव के लिए N, पिछले के लिए P दबाएँ",
+	"ui.shared.unified_diff.no_changes": "कोई बदलाव नहीं",
+	"ui.shared.unified_diff.changes": "{count} बदलाव",
+	"ui.shared.unified_diff.stats_accessible": "{added} पंक्तियाँ जोड़ी गईं, {removed} पंक्तियाँ हटाई गईं",
+	"ui.shared.unified_diff.position": "बदलाव {index}, कुल {total}",
+	"ui.shared.unified_diff.previous": "पिछला बदलाव",
+	"ui.shared.unified_diff.previous_hint": "पिछला बदलाव (P)",
+	"ui.shared.unified_diff.next": "अगला बदलाव",
+	"ui.shared.unified_diff.next_hint": "अगला बदलाव (N)",
+	"ui.shared.unified_diff.show_unchanged": "{count} अपरिवर्तित पंक्तियाँ दिखाएँ",
+	"ui.shared.unified_diff.line_added": "जोड़ा गया:",
+	"ui.shared.unified_diff.line_removed": "हटाया गया:"
+}

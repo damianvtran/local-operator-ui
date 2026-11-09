@@ -1,0 +1,14 @@
+{
+	"ui.shared.unified_diff.accessible": "یکجا فرق؛ اگلی تبدیلی کے لیے N، پچھلی کے لیے P دبائیں",
+	"ui.shared.unified_diff.no_changes": "کوئی تبدیلی نہیں",
+	"ui.shared.unified_diff.changes": "{count} تبدیلیاں",
+	"ui.shared.unified_diff.stats_accessible": "{added} سطریں شامل، {removed} سطریں حذف",
+	"ui.shared.unified_diff.position": "تبدیلی {index} از {total}",
+	"ui.shared.unified_diff.previous": "پچھلی تبدیلی",
+	"ui.shared.unified_diff.previous_hint": "پچھلی تبدیلی (P)",
+	"ui.shared.unified_diff.next": "اگلی تبدیلی",
+	"ui.shared.unified_diff.next_hint": "اگلی تبدیلی (N)",
+	"ui.shared.unified_diff.show_unchanged": "{count} غیر تبدیل شدہ سطریں دکھائیں",
+	"ui.shared.unified_diff.line_added": "شامل:",
+	"ui.shared.unified_diff.line_removed": "حذف:"
+}

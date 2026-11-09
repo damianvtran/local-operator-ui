@@ -1,0 +1,14 @@
+{
+	"ui.shared.unified_diff.accessible": "Объединённое сравнение; N — следующее изменение, P — предыдущее",
+	"ui.shared.unified_diff.no_changes": "Нет изменений",
+	"ui.shared.unified_diff.changes": "{count, plural, one {# изменение} few {# изменения} many {# изменений} other {# изменения}}",
+	"ui.shared.unified_diff.stats_accessible": "Добавлено строк: {added}, удалено: {removed}",
+	"ui.shared.unified_diff.position": "Изменение {index} из {total}",
+	"ui.shared.unified_diff.previous": "Предыдущее изменение",
+	"ui.shared.unified_diff.previous_hint": "Предыдущее изменение (P)",
+	"ui.shared.unified_diff.next": "Следующее изменение",
+	"ui.shared.unified_diff.next_hint": "Следующее изменение (N)",
+	"ui.shared.unified_diff.show_unchanged": "Показать неизменённые строки: {count}",
+	"ui.shared.unified_diff.line_added": "Добавлено:",
+	"ui.shared.unified_diff.line_removed": "Удалено:"
+}

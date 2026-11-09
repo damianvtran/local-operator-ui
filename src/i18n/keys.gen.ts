@@ -35,6 +35,7 @@ import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
+import enUiAgentsProposals from "./catalogues/en/ui.agents.proposals.json";
 import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsRouting from "./catalogues/en/ui.agents.routing.json";
@@ -164,6 +165,7 @@ import enUiSettingsSearch from "./catalogues/en/ui.settings.search.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
+import enUiSharedUnifiedDiff from "./catalogues/en/ui.shared.unified_diff.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
@@ -1270,6 +1272,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsModels,
 	...enUiAgentsNavigation,
 	...enUiAgentsPages,
+	...enUiAgentsProposals,
 	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
 	...enUiAgentsRouting,
@@ -1399,6 +1402,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
 	...enUiSettingsUpdates,
+	...enUiSharedUnifiedDiff,
 	...enUiShell,
 	...enUiShellMenubar,
 	...enUiShellRail,
@@ -2956,6 +2960,33 @@ export type MessageParams = {
 	"ui.agents.pages.search_aria": undefined;
 	"ui.agents.pages.tab.agents": undefined;
 	"ui.agents.pages.tab.teams": undefined;
+	"ui.agents.proposals.accept": undefined;
+	"ui.agents.proposals.accept_edits": undefined;
+	"ui.agents.proposals.accepted": { name: string };
+	"ui.agents.proposals.accessible": undefined;
+	"ui.agents.proposals.action_error": undefined;
+	"ui.agents.proposals.applying": undefined;
+	"ui.agents.proposals.cancel_edit": undefined;
+	"ui.agents.proposals.current": undefined;
+	"ui.agents.proposals.edit": undefined;
+	"ui.agents.proposals.invalid_json": undefined;
+	"ui.agents.proposals.load_error": undefined;
+	"ui.agents.proposals.loading": undefined;
+	"ui.agents.proposals.not_applied": undefined;
+	"ui.agents.proposals.open_conversation": undefined;
+	"ui.agents.proposals.origin": { trigger: string };
+	"ui.agents.proposals.proposed": undefined;
+	"ui.agents.proposals.refresh": undefined;
+	"ui.agents.proposals.reject": undefined;
+	"ui.agents.proposals.rejected": { name: string };
+	"ui.agents.proposals.rejecting": undefined;
+	"ui.agents.proposals.retry": undefined;
+	"ui.agents.proposals.review": undefined;
+	"ui.agents.proposals.stale": { name: string };
+	"ui.agents.proposals.title": { name: string };
+	"ui.agents.proposals.unavailable": undefined;
+	"ui.agents.proposals.untrusted": undefined;
+	"ui.agents.proposals.waiting": { count: number };
 	"ui.agents.publication.action.edit_agent": undefined;
 	"ui.agents.publication.action.edit_instructions": undefined;
 	"ui.agents.publication.action.focus_name": undefined;
@@ -11651,6 +11682,18 @@ export type MessageParams = {
 		choice: string;
 	};
 	"ui.settings.updates.update_following.update_notifications": undefined;
+	"ui.shared.unified_diff.accessible": undefined;
+	"ui.shared.unified_diff.changes": { count: number };
+	"ui.shared.unified_diff.line_added": undefined;
+	"ui.shared.unified_diff.line_removed": undefined;
+	"ui.shared.unified_diff.next": undefined;
+	"ui.shared.unified_diff.next_hint": undefined;
+	"ui.shared.unified_diff.no_changes": undefined;
+	"ui.shared.unified_diff.position": { index: string; total: string };
+	"ui.shared.unified_diff.previous": undefined;
+	"ui.shared.unified_diff.previous_hint": undefined;
+	"ui.shared.unified_diff.show_unchanged": { count: string };
+	"ui.shared.unified_diff.stats_accessible": { added: string; removed: string };
 	"ui.shell.collapsible_app_logo.local_operator": undefined;
 	"ui.shell.panel_rail.panels": undefined;
 	"ui.shell.sidebar_navigation.agent_hub": undefined;

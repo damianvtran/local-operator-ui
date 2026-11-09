@@ -123,6 +123,7 @@ import {
 import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
 import { MissingDefinitionError } from "./missing-definition-error";
+import { ProfileProposalPanel } from "./profile-proposal-panel";
 import {
 	SKILL_SCOPE_LABEL,
 	SkillDetail,
@@ -247,9 +248,11 @@ export function AgentsPage() {
 	 */
 	const wantsSkills = params.get("kind") === "skill";
 	const teamMode =
-		params.get("kind") === "team" || params.get("create") === "team";
+		params.get("kind") === "team" ||
+		params.has("team") ||
+		params.get("create") === "team";
 	const creating = params.has("create");
-	const name = params.get("name");
+	const name = params.get("name") ?? params.get("team");
 	const duplicateOf = params.get("duplicate");
 
 	const capabilities = useDesktopCapabilities();
@@ -556,6 +559,13 @@ export function AgentsPage() {
 		installed = true,
 	) => (
 		<>
+			<ProfileProposalPanel
+				key={`proposal:${kind}:${itemName}`}
+				kind={kind}
+				name={itemName}
+				enabled={desktopFeatureEnabled(capabilities.data, "profile_proposals")}
+				proposalId={params.get("proposal")}
+			/>
 			{/* Full inventory keeps healthy policy editing available; legacy servers
 			    retain the existing pending-only path without receiving skill rows. */}
 			<HubLinksPanel
@@ -1262,14 +1272,25 @@ export function AgentsPage() {
 											 * link's local name, as the agent pane matches by its own.
 											 */
 											belowHeader={
-												openSkillCard?.source === "hub"
-													? hubPane(
-															"skill",
-															selected,
-															undefined,
-															openSkillCard.installed,
-														)
-													: undefined
+												openSkillCard?.source === "hub" ? (
+													hubPane(
+														"skill",
+														selected,
+														undefined,
+														openSkillCard.installed,
+													)
+												) : (
+													<ProfileProposalPanel
+														key={`proposal:skill:${selected}`}
+														kind="skill"
+														name={selected}
+														enabled={desktopFeatureEnabled(
+															capabilities.data,
+															"profile_proposals",
+														)}
+														proposalId={params.get("proposal")}
+													/>
+												)
 											}
 											onAsk={(skillName) => {
 												askForChange(

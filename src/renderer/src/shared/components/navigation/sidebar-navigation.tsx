@@ -45,6 +45,8 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
+import { totalPendingProposals } from "@shared/api/local-operator/profile-proposals";
 import { useSidebarLayout } from "@shared/api/local-operator/sidebar-layout";
 import { useSidebarFrame } from "@shared/components/common/chat-layout";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
@@ -453,6 +455,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		{ poll: true },
 	);
 	const meshWaiting = waitingApprovalCount(meshApprovals.data ?? []);
+	const proposalsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"profile_proposals",
+	);
+	const proposals = useProfileProposals(proposalsEnabled);
+	const proposalCount = proposalsEnabled
+		? totalPendingProposals(proposals.data)
+		: 0;
 	/*
 	 * Whether this backend serves the Projects surface at all.
 	 *
@@ -680,6 +690,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		path: "/agents",
 		isActive: currentView === "agents",
 		tourTag: "nav-item-agents",
+		attention: proposalCount,
+		attentionTag: "nav-agents-badge",
+		attentionName: (count) => t("ui.agents.proposals.waiting", { count }),
 	});
 	destinationItems.set("schedules", {
 		icon: CalendarDays,

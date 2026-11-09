@@ -1,0 +1,62 @@
+{
+	"ui.shared.unified_diff.accessible": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.no_changes": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.changes": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.stats_accessible": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.position": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.previous": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.previous_hint": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.next": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.next_hint": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.show_unchanged": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.line_added": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.line_removed": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	}
+}

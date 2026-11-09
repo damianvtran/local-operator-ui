@@ -1,0 +1,14 @@
+{
+	"ui.shared.unified_diff.accessible": "Unified diff; press N for next change, P for previous change",
+	"ui.shared.unified_diff.no_changes": "No changes",
+	"ui.shared.unified_diff.changes": "{count, plural, one {# change} other {# changes}}",
+	"ui.shared.unified_diff.stats_accessible": "{added} added lines, {removed} removed lines",
+	"ui.shared.unified_diff.position": "Change {index} of {total}",
+	"ui.shared.unified_diff.previous": "Previous change",
+	"ui.shared.unified_diff.previous_hint": "Previous change (P)",
+	"ui.shared.unified_diff.next": "Next change",
+	"ui.shared.unified_diff.next_hint": "Next change (N)",
+	"ui.shared.unified_diff.show_unchanged": "Show {count} unchanged lines",
+	"ui.shared.unified_diff.line_added": "Added:",
+	"ui.shared.unified_diff.line_removed": "Removed:"
+}
