@@ -3,6 +3,7 @@
 import {mkdirSync,readFileSync,writeFileSync,existsSync,symlinkSync} from 'node:fs';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {assertNoAutoplay,safeCancel,signalCleanup} from './native-contracts.mjs';
 process.env.GIT_CONFIG_SYSTEM='/dev/null';
 process.env.GIT_TERMINAL_PROMPT='0';
 const root=process.env.MUSIC_QA_ROOT;
@@ -13,13 +14,23 @@ if(process.env.MUSIC_NATIVE_LEASE!=='1')throw Error('Native resource/CPP lease a
 process.env.TMPDIR=join(root,'native-tmp');mkdirSync(process.env.TMPDIR,{recursive:true});
 const {rendererDriverApi:d}=await import(pathToFileURL(join(process.env.MUSIC_UI_WORKTREE,'scripts/renderer-driver.mjs')).href);
 const results={scope:'actual native RootApp attached to same real serving music graph',stages:[]};
-const pause=ms=>new Promise(r=>setTimeout(r,ms));let app,cdp,context;
+let interrupted=false,launchPromise;
+const pause=async ms=>{await new Promise(r=>setTimeout(r,ms));if(interrupted)throw Error('Native consumer interrupted');};let app,cdp,context;
+// Importing the producer deliberately installs no CLI reapers. Join its awaited
+// drain ourselves, including a boot still resolving when the signal arrives.
+async function cleanup(){
+ try{await launchPromise}catch{}
+ try{cdp?.close()}catch{}
+ try{note('drain',await d.drainLiveBoots({why:'serving acceptance consumer teardown',strict:true}))}
+ catch(e){note('drain_error',String(e));process.exitCode=1;throw e}
+}
+const reaper=signalCleanup(cleanup,()=>{interrupted=true;process.exitCode=143;});
 function demand(message, condition){if(!condition)throw Error(message);}
 async function observed(label, read, accept){for(let i=0;i<300;i++){const value=await read();if(accept(value)){note(label,value);return value;}await pause(100);}throw Error('Required actual native condition absent: '+label);}
 async function motionFacts(){return cdp.evaluate(`(()=>{const svg=document.querySelector('[data-music-processing] svg');const r=svg?.getBoundingClientRect();return {reduce:matchMedia('(prefers-reduced-motion: reduce)').matches,animation:svg?getComputedStyle(svg).animationName:null,width:r?.width||0,height:r?.height||0}})()`);}
 
 function note(stage,value){results.stages.push({stage,value});writeFileSync(join(root,'native-result.json'),JSON.stringify(results,null,2));console.log(stage,JSON.stringify(value));}
-async function control(action){let id=Date.now()+':'+action;writeFileSync(join(root,'native-control.json'),JSON.stringify({id,action}));for(let i=0;i<300;i++){let p=join(root,'native-control-result.json');if(existsSync(p)){let x=JSON.parse(readFileSync(p));if(x.id===id){if(x.error)throw Error(x.error);return x}}await pause(100)}throw Error('Serving graph control timed out '+action)}
+async function control(action,details={}){let id=Date.now()+':'+action;writeFileSync(join(root,'native-control.json'),JSON.stringify({id,action,...details}));for(let i=0;i<300;i++){let p=join(root,'native-control-result.json');if(existsSync(p)){let x=JSON.parse(readFileSync(p));if(x.id===id){if(x.error)throw Error(x.error);return x}}await pause(100)}throw Error('Serving graph control timed out '+action)}
 async function facts(){return await cdp.evaluate(`({route:location.hash,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},processing:[...document.querySelectorAll('[data-music-processing]')].map(x=>({width:x.getBoundingClientRect().width,height:x.getBoundingClientRect().height})),results:document.querySelectorAll('[data-music-result]').length,tracks:[...document.querySelectorAll('[data-music-track]')].map(x=>x.getAttribute('data-music-track')),audio:[...document.querySelectorAll('audio')].map(x=>({paused:x.paused,currentTime:x.currentTime,duration:x.duration})),buttons:[...document.querySelectorAll('button')].map(x=>({label:x.getAttribute('aria-label'),text:x.textContent?.trim().slice(0,100)})).filter(x=>x.label||x.text)})`)}
 async function frame(label){note(label+'-facts',await facts());note(label,await d.capture(cdp,label,{assertPalette:false}));}
 async function pressLabel(match){const label=await cdp.evaluate(`(()=>{let b=[...document.querySelectorAll('button[aria-label]')].find(x=>${match}.test(x.getAttribute('aria-label')||''));return b?.getAttribute('aria-label')||null})()`);if(!label)return false;await d.verb(cdp,'press',{selector:'button[aria-label='+JSON.stringify(label)+']'});return true;}
@@ -28,7 +39,7 @@ try{
  const records=join(process.env.MUSIC_CORE_CONFIG,'run/serve');
  if(!existsSync(records))throw Error('Actual owned Core serve record absent');
  mkdirSync(join(context.config,'run'),{recursive:true});symlinkSync(records,join(context.config,'run/serve'));
- app=await d.launchApp({armed:true,apiUrl:'http://127.0.0.1:8080',windowMode:'headless',tag:'music-serving-acceptance'});
+ launchPromise=d.launchApp({armed:true,apiUrl:'http://127.0.0.1:8080',windowMode:'headless',tag:'music-serving-acceptance'});app=await launchPromise;if(interrupted)throw Error('Interrupted during boot');
  note('app_pid',app.pid);await d.waitForDevtools(app,45000);cdp=await d.CdpClient.attach(app.port,'out/renderer/index.html');await d.waitForBridge(cdp,45000);
  // Exact official internal seed lifecycle, renderer-driver.mjs:19857–19864.
  await cdp.send('Page.addScriptToEvaluateOnNewDocument',{source:'try { localStorage.setItem("onboarding-storage", JSON.stringify({ state: { isModalComplete: true, isTourComplete: true, currentStep: "create_agent" }, version: 0 })); } catch (error) {}'});
@@ -36,19 +47,27 @@ try{
  note('hello',await d.verb(cdp,'hello'));note('sound_safety_arm',await d.verb(cdp,'soundsArm'));await frame('music-empty-new-chat');
  await d.verb(cdp,'navigate','/chat/'+process.env.MUSIC_SESSION_ID);await pause(1500);await frame('music-populated-preflight');
  const populated=await facts();if(!populated.results||populated.tracks.length<2)throw Error('Actual serving results not rendered; no hand-authored row fallback');
+ const mountedPlayers=await cdp.evaluate(`(()=>{return [...document.querySelectorAll('[data-music-track] [data-sound-player]')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0}).length})()`);demand('Real mounted visible music players required before engine assertion',mountedPlayers>0);
+ note('mounted_engine_no_autoplay',assertNoAutoplay(await d.verb(cdp,'soundsFacts')));
  const pending=await control('start_pending');note('pending_control',pending);await pause(750);await frame('music-loading-first');await pause(1000);await frame('music-loading-settled');
  await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
  const motionFirst=await motionFacts();await frame('music-reduced-first');await pause(1000);const motionSettled=await motionFacts();await frame('music-reduced-settled');note('reduced_motion',{first:motionFirst,settled:motionSettled});
  demand('Real pending motif must honor reduced motion and keep geometry',motionFirst.reduce&&motionSettled.reduce&&motionSettled.animation==='none'&&motionFirst.width>0&&motionFirst.height>0&&motionFirst.width===motionSettled.width&&motionFirst.height===motionSettled.height);
  await cdp.send('Emulation.setEmulatedMedia',{features:[]});
- const jobsOpened=await pressLabel(/jobs|background/i);note('jobs_opened',jobsOpened);await pause(500);
- const cancelled=await pressLabel(/cancel/i);note('native_cancel_pressed',cancelled);if(!cancelled)throw Error('Required native Cancel control absent');
- if(cancelled){await pause(500);await frame('music-cancel-confirmation');
-  // A confirmation's safe Keep control is never dismissed by submitting a fake
-  // transport request. Press the actual confirmation only if the UI provides it.
-  const confirm=await pressLabel(/cancel.*job|confirm.*cancel|stop.*job/i);note('cancel_confirm_pressed',confirm);
- }
- note('late_settlement',await control(cancelled?'settle_after_native_cancel':'settle_without_native_cancel'));
+ const jobsOpened=await pressLabel(/jobs|background/i);demand('Required Jobs control absent',jobsOpened);await pause(500);
+ // The only trigger permitted here names the actual pending job, never the
+ // first global Cancel button (other completed jobs coexist in this Session).
+ const cancelSelector='[data-job-cancel='+JSON.stringify(pending.job)+']';
+ const dialog=async()=>{await pause(500);return cdp.evaluate(`(()=>{const cards=document.querySelectorAll('[data-job-confirm]');const card=cards[0];const keep=card?.querySelector('[data-job-confirm-keep]');const action=card?.querySelector('[data-job-confirm-action]');return {open:cards.length===1,keep:!!keep&&!keep.disabled,confirm:!!action&&!action.disabled,keepFocused:document.activeElement===keep,focusReturned:document.activeElement===document.querySelector(${JSON.stringify(cancelSelector)})}})()`)};
+ await safeCancel({
+  open:async()=>{await d.verb(cdp,'press',{selector:cancelSelector});await frame('music-cancel-confirmation');},
+  keep:()=>d.verb(cdp,'press',{selector:'[data-job-confirm] [data-job-confirm-keep]'}),
+  escape:async()=>{for(const type of ['keyDown','keyUp'])await cdp.send('Input.dispatchKeyEvent',{type,key:'Escape',code:'Escape',windowsVirtualKeyCode:27});},
+  confirm:()=>d.verb(cdp,'press',{selector:'[data-job-confirm] [data-job-confirm-action]'}),
+  dialog,
+  counter:async()=>{const witness=await control('inspect_cancel',{job:pending.job});demand('Wrong pending cancellation witness',witness.job===pending.job);note('safe_cancel_counter',witness);return witness.cancel_delta;}
+ });
+ note('late_settlement',await control('settle_after_native_cancel'));
  await pause(1500);await frame('music-late-result');
  const late=JSON.parse(readFileSync(join(root,'native-control-result.json'))).record;
  const track=late.tracks[0].id;
@@ -60,6 +79,7 @@ try{
  const recordId=await observed('actual_music_record',()=>cdp.evaluate(`document.querySelector('[data-music-track="'+${JSON.stringify(track)}+'"]:not([data-turn-summary] *)')?.closest('[data-record-id]')?.getAttribute('data-record-id')||null`),Boolean);
  const player='[data-record-id='+JSON.stringify(recordId)+']:not([data-turn-summary] *) [data-music-track='+JSON.stringify(track)+'] [data-sound-player]';
  const geometry=await cdp.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(player+' [data-sound-slider]')});const r=e?.getBoundingClientRect();return {width:r?.width||0,height:r?.height||0}})()`);note('player_slider_geometry',geometry);demand('Owned transcript player slider must be visible',geometry.width>0&&geometry.height>0);
+ note('before_first_play_engine_no_autoplay',assertNoAutoplay(await d.verb(cdp,'soundsFacts')));
  await d.verb(cdp,'press',{selector:player+' > button'});
  const playing=await observed('actual_player_advances',()=>d.verb(cdp,'soundsFacts'),x=>x.time>.2&&!x.paused&&x.gain===0&&x.rms===0&&x.src?.startsWith('blob:'));
  // The owned fixture is intentionally silent; inputRms===0 is not decoder failure.
@@ -104,7 +124,6 @@ try{
 
 }catch(e){note('blocked',String(e));process.exitCode=1}
 finally{
- try{cdp?.close()}catch{}
- try{note('drain',await d.drainLiveBoots({why:'serving acceptance consumer finally',strict:true}))}catch(e){note('drain_error',String(e));process.exitCode=1}
- if(app?.child){const arg=app.child.spawnargs.find(x=>x.startsWith('--user-data-dir='));if(arg){const {thisRunProfile}=await import(pathToFileURL(join(process.env.MUSIC_UI_WORKTREE,'scripts/app-tree-teardown.mjs')).href);let rows=thisRunProfile(arg.slice(16));if(rows===null){note('profile_unreadable',true);process.exitCode=1}else{for(const x of rows){try{process.kill(x.pid,'SIGKILL')}catch(e){if(e.code!=='ESRCH')throw e}}await pause(500);rows=thisRunProfile(arg.slice(16));note('remaining_profile_processes',rows);if(rows===null||rows.length)process.exitCode=1}}}
+ try{await reaper.stop()}catch(e){note('cleanup_blocked',String(e));process.exitCode=1}
+ reaper.dispose();
 }

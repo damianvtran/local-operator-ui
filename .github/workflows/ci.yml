@@ -1210,6 +1210,8 @@ jobs:
         if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode == 'native' && steps.music_core_preflight.outcome == 'success'
         timeout-minutes: 10
         env:
+          # Never inherited by automatic, off, or preflight-only executions.
+          MUSIC_NATIVE_LEASE: '1'
           LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
           LOCAL_OPERATOR_UI_TELEMETRY: 'off'
           LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'

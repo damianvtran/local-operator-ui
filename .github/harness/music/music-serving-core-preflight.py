@@ -2,7 +2,7 @@
 CI-only synthetic serving graph. Native launch requires explicit admission AFTER
 all Core assertions pass; never imports a paid provider or replaces Session.
 """
-import asyncio, contextlib, json, os, signal, subprocess, sys, time, uuid
+import asyncio, json, os, subprocess, sys, time, uuid
 from pathlib import Path
 
 S = Path(__file__).resolve().parent
@@ -11,6 +11,7 @@ CORE = Path(os.environ['LOCAL_OPERATOR_CORE_BIN']).resolve()
 CORE_PYTHON = Path(os.environ['LOCAL_OPERATOR_CORE_PYTHON']).resolve()
 UI_ROOT = Path(os.environ['MUSIC_UI_WORKTREE']).resolve()
 import shutil
+from owned_cleanup import OwnedProcesses, cleanup_all, cancel_listener, run_signalled
 FFMPEG = Path(shutil.which('ffmpeg') or '/missing-ffmpeg')
 
 async def main():
@@ -22,42 +23,48 @@ async def main():
     subprocess.run([str(FFMPEG),'-v','error','-f','lavfi','-i','anullsrc=r=44100:cl=mono','-t','3',
                     '-c:a','libmp3lame','-b:a','64k','-f','mp3',str(mp3)],check=True,timeout=15)
     os.environ['MUSIC_QA_MP3']=str(mp3)
-    upstream=MusicUpstream().start()
-    bearer=uuid.uuid4().hex
-    env={'PATH':os.environ['PATH'],'HOME':str(home),
-         'LOCAL_OPERATOR_CONFIG_DIR':str(config),'LOCAL_OPERATOR_LOG_DIR':str(ROOT/'logs'),
-         'LOCAL_OPERATOR_DESKTOP_TOKEN':bearer,'LOCAL_OPERATOR_NO_NOTIFICATIONS':'1',
-         'TMPDIR':str(ROOT/'tmp'),'MUSIC_QA_ROOT':str(ROOT),
-         'PYTHONPATH':str(S/'music_worker_bootstrap'),
-          'MUSIC_QA_ALLOWED_ROOT':str(ROOT.parent),
-          'MUSIC_QA_CORE_MODULE':os.environ['MUSIC_QA_CORE_MODULE'],
-          'MUSIC_UI_WORKTREE':str(UI_ROOT),
-          'LOCAL_OPERATOR_SCRATCHPAD':str(ROOT),
-         'RADIENT_API_BASE_URL':upstream.base_url,'RADIENT_API_KEY':upstream.bearer}
-    (ROOT/'tmp').mkdir()
-    # The controller and every inherited child use only the owned CI root.
-    os.environ.update(HOME=str(home), LOCAL_OPERATOR_CONFIG_DIR=str(config), TMPDIR=str(ROOT/'tmp'))
-    os.chdir(ROOT)
-    secret_path=ROOT/'qa-secrets.json'
-    secret_path.write_text(json.dumps({'desktop':bearer,'upstream':upstream.bearer}))
-    secret_path.chmod(0o600)
-    # Persist a genuine synthetic provider row for the actual registration gate.
-    seed="from pathlib import Path;import os;from local_operator.providers.auth_store import AuthStore;s=AuthStore(db_path=Path(os.environ['LOCAL_OPERATOR_CONFIG_DIR'])/'auth.db',config_dir=Path(os.environ['LOCAL_OPERATOR_CONFIG_DIR']));s.upsert_credential('radient',{'type':'api_key','source':'login','key':os.environ['RADIENT_API_KEY']});s.close()"
-    subprocess.run([str(CORE_PYTHON),'-c',seed],env=env,check=True,timeout=30)
-    log=(ROOT/'core.log').open('w');core=None;listener=None;native=None;native_log=None;facts={'root':str(ROOT),'stages':[]}
+    upstream=None;watcher=None;log=None;core=None;listener=None;native=None;native_log=None
+    owned=OwnedProcesses(ROOT)
+    facts={'root':str(ROOT),'stages':[]}
     def record(stage,value):
         facts['stages'].append({'stage':stage,'value':value});(ROOT/'receipt.json').write_text(json.dumps(facts,indent=2,default=str));print(stage,json.dumps(value,default=str),flush=True)
-    async def until(fn,limit=20):
-        end=time.monotonic()+limit
-        while time.monotonic()<end:
-            try:
-                value=await fn()
-                if value:return value
-            except (httpx.ConnectError,httpx.ReadError):pass
-            await asyncio.sleep(.1)
-        raise TimeoutError('owned serving preflight condition')
     try:
-        core=subprocess.Popen([str(CORE),'serve','--host','127.0.0.1','--port','8080','--hosting','test','--model','mock-model'],env=env,cwd=ROOT,stdout=log,stderr=log,start_new_session=True)
+        upstream=MusicUpstream().start()
+        watcher=asyncio.create_task(owned.watch())
+        bearer=uuid.uuid4().hex
+        env={'PATH':os.environ['PATH'],'HOME':str(home),
+             'LOCAL_OPERATOR_CONFIG_DIR':str(config),'LOCAL_OPERATOR_LOG_DIR':str(ROOT/'logs'),
+             'LOCAL_OPERATOR_DESKTOP_TOKEN':bearer,'LOCAL_OPERATOR_NO_NOTIFICATIONS':'1',
+             'TMPDIR':str(ROOT/'tmp'),'MUSIC_QA_ROOT':str(ROOT),
+             'PYTHONPATH':str(S/'music_worker_bootstrap'),
+              'MUSIC_QA_ALLOWED_ROOT':str(ROOT.parent),
+              'MUSIC_QA_CORE_MODULE':os.environ['MUSIC_QA_CORE_MODULE'],
+              'MUSIC_UI_WORKTREE':str(UI_ROOT),
+              'LOCAL_OPERATOR_SCRATCHPAD':str(ROOT),
+             'RADIENT_API_BASE_URL':upstream.base_url,'RADIENT_API_KEY':upstream.bearer}
+        (ROOT/'tmp').mkdir()
+        # The controller and every inherited child use only the owned CI root.
+        os.environ.update(HOME=str(home), LOCAL_OPERATOR_CONFIG_DIR=str(config), TMPDIR=str(ROOT/'tmp'))
+        os.chdir(ROOT)
+        secret_path=ROOT/'qa-secrets.json'
+        secret_path.write_text(json.dumps({'desktop':bearer,'upstream':upstream.bearer}))
+        secret_path.chmod(0o600)
+        # Persist a genuine synthetic provider row for the actual registration gate.
+        seed="from pathlib import Path;import os;from local_operator.providers.auth_store import AuthStore;s=AuthStore(db_path=Path(os.environ['LOCAL_OPERATOR_CONFIG_DIR'])/'auth.db',config_dir=Path(os.environ['LOCAL_OPERATOR_CONFIG_DIR']));s.upsert_credential('radient',{'type':'api_key','source':'login','key':os.environ['RADIENT_API_KEY']});s.close()"
+        subprocess.run([str(CORE_PYTHON),'-c',seed],env=env,check=True,timeout=30)
+        log=(ROOT/'core.log').open('w')
+        async def until(fn,limit=20):
+            end=time.monotonic()+limit
+            while time.monotonic()<end:
+                try:
+                    value=await fn()
+                    if value:return value
+                except (httpx.ConnectError,httpx.ReadError):pass
+                await asyncio.sleep(.1)
+            raise TimeoutError('owned serving preflight condition')
+        core=subprocess.Popen([str(CORE),'serve','--host','127.0.0.1','--port','8080','--hosting','test','--model','mock-model'],env=env,cwd=ROOT,stdout=log,stderr=log)
+        # Stay in the supervisor group as a final bounded-command safety net.
+        owned.seeds.add(core.pid);owned.observe()
         record('core_pid',core.pid)
         async with httpx.AsyncClient(base_url='http://127.0.0.1:8080',headers={'Authorization':'Bearer '+bearer},timeout=15) as client:
             async def healthy():
@@ -171,6 +178,7 @@ async def main():
                 native_env.update(MUSIC_CORE_PREFLIGHT_PASS='1',MUSIC_NATIVE_LEASE='1',MUSIC_CORE_CONFIG=str(config),MUSIC_SESSION_ID=sid)
                 native_log=(ROOT/'native.log').open('w')
                 native=await asyncio.create_subprocess_exec(shutil.which('node'),str(S/'music-native-serving-consumer.mjs'),cwd=UI_ROOT,env=native_env,stdout=native_log,stderr=native_log)
+                owned.seeds.add(native.pid);owned.observe()
                 handled=set();deadline=time.monotonic()+480
                 while native.returncode is None:
                     if time.monotonic()>deadline:raise TimeoutError('Native consumer bounded480s')
@@ -185,6 +193,9 @@ async def main():
                                     async def native_tracks():
                                         v=read_records(str(directory)).get(current['job']);return v if v and v.get('tracks') else None
                                     reply['job']= (await until(native_tracks))['job'];reply['cancel_before']=upstream.cancel_count;reply['producing_call_id']=json.loads((ROOT/'model-command.json').read_text())['id']
+                                elif ctl['action']=='inspect_cancel':
+                                    if ctl.get('job')!=native_job:raise RuntimeError('Wrong pending job cancellation witness')
+                                    reply.update(job=native_job,cancel_delta=upstream.cancel_count-reply_cancel_before)
                                 elif ctl['action']=='inspect_links':
                                     inventory=await client.get(target+'/files',params={'scope':'self'})
                                     assert inventory.status_code==200,inventory.text
@@ -197,6 +208,9 @@ async def main():
                                         return v if v and v.get('state') in {'completed','failed'} else None
                                     reply['record']=await until(native_outcome,30)
                                 elif ctl['action'] in {'settle_after_native_cancel','settle_without_native_cancel'}:
+                                    if ctl['action']=='settle_after_native_cancel':
+                                        async def actual_cancel():return upstream.cancel_count==reply_cancel_before+1
+                                        await until(actual_cancel)
                                     observed=upstream.cancel_count
                                     if ctl['action']=='settle_after_native_cancel' and observed!=reply_cancel_before+1:
                                         raise RuntimeError('Native UI did not issue exactly one provider cancel; no fake tool/RPC fallback')
@@ -212,45 +226,24 @@ async def main():
                 rc=await native.wait();record('native_exit',rc)
                 if rc:raise RuntimeError('Native consumer did not pass; see native-result.json')
     finally:
-        if native and native.returncode is None:
-            native.terminate()
-            try:await asyncio.wait_for(native.wait(),10)
-            except asyncio.TimeoutError:native.kill();await native.wait()
-        if native_log:native_log.close()
-        if listener:
-            listener.cancel()
-            with contextlib.suppress(asyncio.CancelledError):await listener
-        # Bootstrap records are scoped to fresh ROOT; inspect each PID before
-        # signalling so an unrelated/reused PID can never be terminated.
-        for receipt in ROOT.glob('bootstrap-*.jsonl'):
-            pid=int(receipt.stem.split('-')[-1])
-            if pid in {os.getpid(),getattr(core,'pid',None)}:continue
-            row=subprocess.run(['/bin/ps','-p',str(pid),'-o','command='],capture_output=True,text=True)
-            if row.returncode==0 and 'local_operator.session.runtime' in row.stdout and str(ROOT) in row.stdout:
-                with contextlib.suppress(ProcessLookupError):os.kill(pid,signal.SIGTERM)
-                await asyncio.sleep(.2)
-                row=subprocess.run(['/bin/ps','-p',str(pid),'-o','command='],capture_output=True,text=True)
-                if row.returncode==0 and 'local_operator.session.runtime' in row.stdout and str(ROOT) in row.stdout:
-                    with contextlib.suppress(ProcessLookupError):os.kill(pid,signal.SIGKILL)
-        if core:
-            with contextlib.suppress(ProcessLookupError):os.killpg(core.pid,signal.SIGTERM)
-            try:core.wait(5)
-            except subprocess.TimeoutExpired:
-                with contextlib.suppress(ProcessLookupError):os.killpg(core.pid,signal.SIGKILL)
-                core.wait(5)
-        upstream.close();log.close()
-        record('cleanup_core_absent',core is None or core.poll() is not None)
-        await asyncio.sleep(.2)
-        alive=[]
-        for receipt in ROOT.glob('bootstrap-*.jsonl'):
-            pid=int(receipt.stem.split('-')[-1])
-            if pid==os.getpid():continue
-            try:os.kill(pid,0);alive.append(pid)
-            except ProcessLookupError:pass
-        record('cleanup_bootstrap_pids_alive',alive)
-        if alive:raise RuntimeError('Owned bootstrap process cleanup not proven')
+        async def stop_owned():
+            # Snapshot before parents die so reparented helpers keep their exact
+            # identity witness; remaining actions still run if the SSE failed.
+            await owned.stop()
+            if core:await asyncio.to_thread(core.wait,5)
+            if native:await native.wait()
+            record('cleanup_owned_absent',not owned.observe())
+        async def stop_upstream():
+            if upstream:await asyncio.to_thread(upstream.close)
+        async def stop_watcher():
+            await cancel_listener(watcher)
+        async def close_logs():
+            if native_log:native_log.close()
+            if log:log.close()
+        await cleanup_all([lambda:cancel_listener(listener),stop_owned,
+                           stop_upstream,stop_watcher,close_logs])
 
 if __name__=='__main__':
     # No resources are started merely by inspecting/importing this source.
     if '--resource-lease' not in sys.argv:raise SystemExit('Core held: explicit resource lease required')
-    asyncio.run(main())
+    asyncio.run(run_signalled(main))

@@ -3,6 +3,13 @@ import ast
 import importlib.util
 import json
 import os
+import asyncio
+import signal
+import subprocess
+import sys
+import re
+import shutil
+from owned_cleanup import OwnedProcesses, cleanup_all, cancel_listener, run_signalled
 from pathlib import Path
 import tempfile
 import unittest
@@ -27,9 +34,127 @@ class PortableContracts(unittest.TestCase):
         self.assertIn('--memory-mb 1536', text)
         self.assertIn('--native-after-preflight', text)
 
+    def test_native_lease_is_step_local_and_reaches_controller(self):
+        text = (UI / '.github/workflows/ci.yml').read_text()
+        step = text.split('      - name: Execute one native music acceptance on the same serving graph', 1)[1].split('      - name:', 1)[0]
+        self.assertEqual(text.count("MUSIC_NATIVE_LEASE: '1'"), 1)
+        self.assertIn("github.event_name == 'workflow_dispatch'", step)
+        self.assertIn("inputs.music_acceptance_mode == 'native'", step)
+        self.assertIn("steps.music_core_preflight.outcome == 'success'", step)
+        environment, command = step.split('        run:', 1)
+        lease = re.search(r"^          MUSIC_NATIVE_LEASE: '([^']+)'$", environment, re.M).group(1)
+        self.assertEqual(lease, '1')
+        self.assertIn('music-serving-core-preflight.py --resource-lease --native-after-preflight', command)
+        # Execute the actual controller admission expression with the environment
+        # extracted from the actual step, then prove its no-lease negative.
+        tree = ast.parse((HERE / 'music-serving-core-preflight.py').read_text())
+        guards = [node for node in ast.walk(tree) if isinstance(node, ast.If)
+                  and isinstance(node.test, ast.Compare)
+                  and "MUSIC_NATIVE_LEASE" in ast.unparse(node.test)]
+        self.assertEqual(len(guards), 1)
+        code = compile(ast.Expression(guards[0].test), '<controller admission>', 'eval')
+        from types import SimpleNamespace
+        condition = re.search(r'^        if: (.+)$', step, re.M).group(1).replace('&&', 'and')
+        for event, mode, success, expected in [('push','native','success',False), ('workflow_dispatch','off','success',False), ('workflow_dispatch','preflight','success',False), ('workflow_dispatch','native','failure',False), ('workflow_dispatch','native','success',True)]:
+            context = dict(runner=SimpleNamespace(os='macOS'), github=SimpleNamespace(event_name=event), inputs=SimpleNamespace(music_acceptance_mode=mode), steps=SimpleNamespace(music_core_preflight=SimpleNamespace(outcome=success)))
+            self.assertEqual(eval(condition, {}, context), expected)
+        self.assertFalse(eval(code, {'os': SimpleNamespace(environ={'MUSIC_NATIVE_LEASE':lease})}))
+        self.assertTrue(eval(code, {'os': SimpleNamespace(environ={})}))
+
+    def test_listener_failure_does_not_skip_remaining_cleanup(self):
+        async def exercise():
+            events = []
+            async def failed():
+                raise RuntimeError('mock HTTP listener failure')
+            listener = asyncio.create_task(failed())
+            await asyncio.sleep(0)
+            async def stopped(): events.append('server stopped')
+            with self.assertRaises(BaseExceptionGroup):
+                await cleanup_all([lambda:cancel_listener(listener), stopped])
+            self.assertEqual(events, ['server stopped'])
+        asyncio.run(exercise())
+
+    def test_signals_and_cancellation_await_owned_child_cleanup(self):
+        # Only synthetic Python sleepers, never Core, Electron or a live session.
+        for sig in (signal.SIGTERM, signal.SIGINT, None):
+            with self.subTest(signal=sig), tempfile.TemporaryDirectory(dir=os.environ['LOCAL_OPERATOR_SCRATCHPAD']) as root:
+                async def exercise():
+                    owned = OwnedProcesses(root)
+                    child = None
+                    cleaned = False
+                    async def work():
+                        nonlocal child, cleaned
+                        child = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(30)', root], start_new_session=True)
+                        owned.seeds.add(child.pid);owned.observe()
+                        try:
+                            if sig is None:
+                                asyncio.current_task().cancel()
+                            else:
+                                os.kill(os.getpid(), sig)
+                            await asyncio.sleep(30)
+                        finally:
+                            await owned.stop()
+                            await asyncio.to_thread(child.wait, 5)
+                            cleaned = True
+                    try:
+                        with self.assertRaises(asyncio.CancelledError):
+                            await run_signalled(work)
+                        self.assertTrue(cleaned)
+                        self.assertEqual(owned.observe(), {})
+                        with self.assertRaises(ProcessLookupError): os.kill(child.pid, 0)
+                    finally:
+                        if child and child.poll() is None:
+                            child.kill();child.wait()
+                asyncio.run(exercise())
+
+    def test_reparented_helper_retains_exact_identity_witness(self):
+        async def exercise(root):
+            owned = OwnedProcesses(root)
+            code = "import subprocess,sys;p=subprocess.Popen([sys.executable,'-c','import time;time.sleep(30)'],start_new_session=True);print(p.pid,flush=True);sys.stdin.readline()"
+            parent = subprocess.Popen([sys.executable,'-c',code], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+            helper = int(parent.stdout.readline())
+            try:
+                owned.seeds.add(parent.pid);owned.observe()
+                self.assertIn(helper, owned.identities)
+                parent.stdin.close();parent.wait(5)
+                # The helper has no root marker and is no longer this child's
+                # descendant: only the earlier exact identity authorizes its stop.
+                self.assertNotEqual(owned.observe()[helper][0], parent.pid)
+                await owned.stop()
+                self.assertEqual(owned.observe(), {})
+            finally:
+                if parent.poll() is None:parent.kill();parent.wait()
+                await owned.stop()
+                parent.stdout.close()
+        with tempfile.TemporaryDirectory(dir=os.environ['LOCAL_OPERATOR_SCRATCHPAD']) as root:
+            asyncio.run(exercise(root))
+
+    def test_reused_pid_is_never_signalled(self):
+        from unittest.mock import patch
+        owned = OwnedProcesses('/synthetic-owned-root')
+        pid = 987654
+        with patch('owned_cleanup.process_rows', return_value={pid:(1,'original-start','synthetic child')}):
+            owned.seeds.add(pid);owned.observe()
+        with patch('owned_cleanup.process_rows', return_value={pid:(1,'new-start','unrelated child')}), patch('owned_cleanup.os.kill') as kill:
+            asyncio.run(owned.stop())
+            kill.assert_not_called()
+
+    def test_native_behavior_contracts(self):
+        node = shutil.which('node')
+        self.assertIsNotNone(node, 'node required for cheap native predicate tests')
+        result = subprocess.run([node, str(HERE/'test_native_contracts.mjs')], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertIn('PASS native contracts', result.stdout)
+
     def test_native_linkage_uses_real_inventory_and_driver_actions(self):
         source = (HERE / 'music-native-serving-consumer.mjs').read_text()
         self.assertNotIn('panelIdentityAssertionsReady=false', source)
+        self.assertIn('signalCleanup(cleanup,', source)
+        self.assertIn('d.drainLiveBoots({why:', source)
+        self.assertIn('strict:true', source)
+        self.assertIn('await reaper.stop()', source)
+        self.assertIn('safeCancel({', source)
+        self.assertIn('assertNoAutoplay(await d.verb', source)
         self.assertNotIn("d.verb(cdp,'openCanvasDocument'", source)
         for contract in ["control('inspect_links')", "R.ref", "data-file-id", "aria-controls", "indexed_canvas_digest_playback", "same_turn_highlight_digest_playback", "producing_call_id"]:
             self.assertIn(contract.replace('R.ref', 'r.ref'), source)
