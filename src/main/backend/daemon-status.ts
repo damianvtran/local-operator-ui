@@ -120,6 +120,45 @@ export const PROBE_INTERVAL_MS = 10_000;
 export const PROBE_TIMEOUT_MS = 2_000;
 
 /**
+ * How many SAMPLES one folded observation spends before it may call a daemon
+ * silent, and the budgets of the retries.
+ *
+ * WHY ONE SAMPLE WAS NOT ENOUGH, measured on the operator's machine 2026-11-08:
+ * `/health` answered in 10-28 ms at p50 and 99-152 ms at p95, but its MAX over
+ * the same run was 3982 ms - and the daemon's own access log recorded `GET
+ * /health 200 OK` for probes this app reported as "did not answer". A single 2 s
+ * budget therefore folds an ordinary stall as silence, and the banner it paints
+ * ("Can't reach the Local Operator server") was drawn six times in one evening
+ * over a daemon the operator was chatting through.
+ *
+ * THE SHAPE IS DELIBERATE: attempt 1 keeps the ordinary budget, so a healthy
+ * daemon costs exactly what it cost before; attempts 2 and 3 sit INSIDE the same
+ * stall rather than after it, so a stall of ~4 s is answered by attempt 2 at its
+ * own tail. The window one observation spans is
+ * `2 + 0.15 + 2.5 + 0.15 + 2.5 = 7.3 s`, which keeps a tick inside
+ * `PROBE_INTERVAL_MS` (10 s) - the bound that matters, because a tick that
+ * outlives its interval would overlap the next one.
+ *
+ * WHAT IS NOT RETRIED: a refused socket. `ECONNREFUSED` is EVIDENCE (nothing is
+ * accepting on the port) rather than a budget that expired, and the three-miss
+ * fast path out of it is what reports a genuinely gone daemon promptly.
+ */
+export const PROBE_ATTEMPTS = 3;
+
+/** Budget of every attempt after the first, which keeps `PROBE_TIMEOUT_MS`. */
+export const PROBE_RETRY_TIMEOUT_MS = 2_500;
+
+/**
+ * Gap between attempts.
+ *
+ * Short on purpose: the retry's subject is the SAME stall the first attempt hit,
+ * and a longer gap only pushes the retry past that stall's end while widening the
+ * observation's worst case. Long enough that the retry is a second request rather
+ * than a second read of one `keep-alive` connection's left-over error.
+ */
+export const PROBE_RETRY_GAP_MS = 150;
+
+/**
  * How long a `detached` connection is reported as "reconnecting" before the
  * status escalates to "the daemon stopped" - the point at which the honest
  * thing to tell the user is that it is gone, not that we are still trying.
@@ -599,6 +638,24 @@ export class DaemonStateMachine {
 		const current = this.backoffMs;
 		this.backoffMs = Math.min(this.backoffMs * 2, REATTACH_BACKOFF_CEILING_MS);
 		return current;
+	}
+
+	/**
+	 * True while this connection has no usable daemon and only a RE-PROVED
+	 * IDENTITY can clear it.
+	 *
+	 * `detached` and `wedged` are the two states a surface renders as
+	 * "unreachable" (`isServerReachable` is their inverse in
+	 * `shared/backend-status.ts`), and they are the two a successful desktop
+	 * request may NOT clear on its own: an answer proves the transport, never that
+	 * the process answering is the one this app holds a credential for (see
+	 * `recordTransportSuccess`). So a caller holding that answer uses this
+	 * predicate to reach `recoverFromDetachment`, the only path that re-proves
+	 * identity - which is what makes an answered request end a detach instead of
+	 * waiting out `REATTACH_BACKOFF_CEILING_MS`.
+	 */
+	needsRecovery(): boolean {
+		return this.state === "detached" || this.state === "wedged";
 	}
 
 	/** True once a detach has lasted long enough to be reported as gone. */
