@@ -27,6 +27,13 @@
 		"note": "Covers both 'no server is there' and 'a daemon is there that this app did not attach to': the reader's position is the same, and main's own detail line says which path was taken.",
 		"placeholders": {}
 	},
+	"ui.chat.status.updating": {
+		"role": "title of the chat status strip while the Local Operator server is updating itself",
+		"tone": "calm, reassuring statement of fact, sentence case, trailing period",
+		"length": "Thirteen words.",
+		"note": "Shown with a spinner and no Retry: the server returns by itself within a few seconds. It deliberately says nothing about failure or what to do. Same English as ui.common.errors.desktop_refusal.server_updating on purpose - one fact, one sentence across the strip and the per-request surfaces.",
+		"placeholders": {}
+	},
 	"ui.chat.status.pill_aria": {
 		"role": "Accessible name of the collapsed connection-status pill",
 		"tone": "Label, then statements, then an imperative",

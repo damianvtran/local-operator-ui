@@ -1,5 +1,6 @@
 import { SettingsSection } from "@features/settings/components/settings-section";
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, waitFor } from "@storybook/test";
 import { MessageSquare } from "lucide-react";
 import allowlistFixture from "../../../../../scripts/fixtures/agent-messages-allowlist.json";
 import settingsFixture from "../../../../../scripts/fixtures/agent-messages-settings.json";
@@ -264,4 +265,47 @@ export const HoldInSettingsSection: Story = {
 			</div>
 		</div>
 	),
+};
+
+/**
+ * "Show when I'm typing" with the `team_bridge_typing` capability on. The
+ * switch sits directly under "Enabled on this machine" - the two per-machine
+ * switches read as one group (design round 1, D2) - and is a settings-search
+ * row like its siblings (D3). The play pins both.
+ */
+export const ShareTypingSwitch: Story = {
+	args: {
+		status: statusWith({
+			surface_state: "C",
+			local: { enabled: true, session: "aaaaaaaaaaaa" },
+		}),
+		typingAvailable: true,
+		api: {
+			...fakeApi({ ...activeSettings, share_typing: true }),
+			setShareTyping: async (_accountId: string, next: boolean) => next,
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const typing = await waitFor(() => {
+			const row = canvasElement.querySelector<HTMLElement>(
+				"[data-agent-messages-share-typing]",
+			);
+			expect(row).not.toBeNull();
+			return row as HTMLElement;
+		});
+		expect(typing.getAttribute("data-search-row")).toBe(
+			"agent-messages.share-typing",
+		);
+		expect(typing.hasAttribute("data-search-control")).toBe(true);
+		const rows = [
+			...canvasElement.querySelectorAll<HTMLElement>(
+				'[data-search-row="agent-messages.enabled"], [data-agent-messages-share-typing], [data-search-row="agent-messages.session"]',
+			),
+		].map((row) => row.getAttribute("data-search-row"));
+		expect(rows).toEqual([
+			"agent-messages.enabled",
+			"agent-messages.share-typing",
+			"agent-messages.session",
+		]);
+	},
 };

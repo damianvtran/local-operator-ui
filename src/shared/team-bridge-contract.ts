@@ -152,6 +152,62 @@ export const teamBridgeReactionsSchema = z
 	})
 	.passthrough();
 
+/*
+ * TYPING INDICATORS (design: Team Bridge typing indicators, §4-§6).
+ *
+ * Ephemeral hints, never persisted: the hub keeps one Redis ZSET per room with
+ * an 8 s TTL per entry, and the desktop routes proxy it 1:1. The cadence is the
+ * SERVER's (`poll_after_ms`, `resend_after_ms`, `ttl_ms`), so ops can retune it
+ * without a client release; the client only bounds what it will honour (below).
+ *
+ * Reads are forward-compatible (`passthrough`, unknown `kind` kept as a string)
+ * because a newer hub may add agent typers or fields; a typer the client cannot
+ * place is simply not shown, never a failed poll.
+ */
+const typingIntervalMs = z
+	.number()
+	.int()
+	// A hub answering 0 or a negative interval would turn the poller into a hot
+	// loop; a floor of 1 s keeps a misconfigured hub from DoSing itself through us.
+	.transform((value) => Math.max(1_000, value));
+
+export const teamBridgeTypingTyperSchema = z
+	.object({
+		account_id: id,
+		kind: z.string().min(1),
+		thread_root_id: z.string().min(1).nullable(),
+		expires_in_ms: z.number().int().nonnegative(),
+	})
+	.passthrough();
+export type TeamBridgeTypingTyper = z.infer<typeof teamBridgeTypingTyperSchema>;
+
+export const teamBridgeTypingStateSchema = z
+	.object({
+		enabled: z.boolean(),
+		poll_after_ms: typingIntervalMs,
+		// Absent when the hub's typing flag is off (`{enabled:false, …}`).
+		message_seq: z.number().int().nonnegative().optional(),
+		truncated: z.boolean().optional(),
+		typers: z.array(teamBridgeTypingTyperSchema).max(64),
+	})
+	.passthrough();
+export type TeamBridgeTypingState = z.infer<typeof teamBridgeTypingStateSchema>;
+
+/**
+ * The heartbeat answer. `{shared: false}` is lop's own answer when the user
+ * turned "Show when I'm typing" off: no hub call was made, and the emitter must
+ * stop sending until the preference is turned back on.
+ */
+export const teamBridgeTypingHeartbeatSchema = z.union([
+	z
+		.object({ ttl_ms: typingIntervalMs, resend_after_ms: typingIntervalMs })
+		.passthrough(),
+	z.object({ shared: z.literal(false) }).passthrough(),
+]);
+export type TeamBridgeTypingHeartbeat = z.infer<
+	typeof teamBridgeTypingHeartbeatSchema
+>;
+
 // History is a forward-compatible read: future server caps must not make a whole page unreadable.
 // Retain today's display bounds by trimming only optional reaction metadata; toggle writes keep
 // their strict response schema above so incompatible mutation responses remain visible failures.

@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "instance": "5bd8c68783d2-1817r1-es",
+  "locale": "es",
+  "pr": "damianvtran/local-operator-ui#1817",
+  "head": "7a8afeabb73c7af64fb3ab6868ac552930588719",
+  "base": "884953f7c4880d36084e7b6a273d2774bef475fd",
+  "date": "2026-11-09",
+  "status": "passed",
+  "model": "anthropic/claude-opus-5-5",
+  "audit_kind": "independent round-1 translation audit of the keys PR #1817 adds",
+  "auditor": {
+    "agent": "reviewer",
+    "session": "5bd8c68783d2",
+    "instance": "5bd8c68783d2-1817r1-es",
+    "model": "anthropic/claude-opus-5-5",
+    "model_note": "Served model as named in the auditor session's own system header (anthropic/claude-opus-5-5); no fallback observed or claimed.",
+    "independent_from_translator": true,
+    "role": "lopdev team reviewer, task r1-i18n-audit"
+  },
+  "independence": "Translated by the PR's coder (lopdev team coder session, not this one); this auditor (reviewer session 5bd8c68783d2) translated, edited or remediated no string. Independence is by agent and session.",
+  "method": "Read each target against the English value, en context.json, glossary and the locale style guide; compared with sibling keys (desktop_refusal.*, ui.chat.status.*) and catalogue-wide usage via grep at the head. No translation API/MT service used. No rendered/pseudo-loc evidence produced by this audit (text-only).",
+  "references": {
+    "core_repo": "damianvtran/local-operator",
+    "core_rev": "ae1dd3e0a769fc0345dee7c21b4418f45b82cad3",
+    "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style guide (local-operator/i18n/style-guides/es.md)": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+  },
+  "namespaces": {
+    "ui.chat.status": {
+      "namespace": "ui.chat.status",
+      "status": "passed",
+      "scope": "Independent round-1 audit of the 1 key PR #1817 adds to es/ui.chat.status (ui.chat.status.updating) at 7a8afeabb73; pre-existing keys unchanged by the PR (only the one added line in the diff 884953f7c48..7a8afeabb73) and keep their earlier audits in superseded.",
+      "keys_added_by_pr": 1,
+      "key": "ui.chat.status.updating",
+      "en_value": "The Local Operator server is updating. It will be back in a moment.",
+      "target_value": "El servidor de Local Operator se está actualizando. Volverá en un momento.",
+      "sha256": {
+        "en": "688f8a6ee95882ed825be1aacfa60023cf01f81f77769c3204949a475f623a15",
+        "es": "b1d6e1164bdf3bc61276b2a4cad8342a1e147afcb1a1ea2228b14d934e0f8b68"
+      },
+      "context_sha256": "947cf9534360913930087efaed4b1af3791e9d07ba662705c19a7b0a0cef895e",
+      "checks": {
+        "meaning": "pass",
+        "register": "pass",
+        "glossary": "pass (Local Operator kept Latin, glossary §1)",
+        "placeholders": "none in English, none in target — pass",
+        "plural_cldr": "not plural — n/a",
+        "keyset_equals_en": "pass (verified by node keyset compare)"
+      },
+      "notes": "Matches English meaning and calm register; 'servidor de Local Operator' matches sibling desktop_refusal.* and status.unreachable; no tú/usted pronoun needed; Local Operator kept Latin per glossary §1.",
+      "findings": []
+    },
+    "ui.common.errors": {
+      "namespace": "ui.common.errors",
+      "status": "passed",
+      "scope": "Independent round-1 audit of the 1 key PR #1817 adds to es/ui.common.errors (ui.common.errors.desktop_refusal.server_updating) at 7a8afeabb73; pre-existing keys unchanged by the PR (only the one added line in the diff 884953f7c48..7a8afeabb73) and keep their earlier audits in superseded.",
+      "keys_added_by_pr": 1,
+      "key": "ui.common.errors.desktop_refusal.server_updating",
+      "en_value": "The Local Operator server is updating. It will be back in a moment.",
+      "target_value": "El servidor de Local Operator se está actualizando. Volverá en un momento.",
+      "sha256": {
+        "en": "f85143309f924a6d75162645b148c1cf969d71e14e59f49b0735ac33bdc503c0",
+        "es": "f42e5adcc66ae9bc21cdd4cacf3e44b75743953641e5ffa793aead7988ca96c5"
+      },
+      "context_sha256": "7e48e4574a49eeb707db4de172b8c8c958ce0eb9bbc44a0c56e9f4de00ffb7d3",
+      "checks": {
+        "meaning": "pass",
+        "register": "pass",
+        "glossary": "pass (Local Operator kept Latin, glossary §1)",
+        "placeholders": "none in English, none in target — pass",
+        "plural_cldr": "not plural — n/a",
+        "keyset_equals_en": "pass (verified by node keyset compare)"
+      },
+      "notes": "Matches English meaning and calm register; 'servidor de Local Operator' matches sibling desktop_refusal.* and status.unreachable; no tú/usted pronoun needed; Local Operator kept Latin per glossary §1.",
+      "findings": []
+    }
+  }
+}

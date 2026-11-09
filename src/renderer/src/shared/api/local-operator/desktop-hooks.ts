@@ -350,6 +350,13 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_reactions"
 	/**
+	 * Team Bridge typing indicators: the three
+	 * `/v1/desktop/team-bridge/conversations/{id}/typing` routes exist and their
+	 * writes are owner-guarded. Absent (an older backend): no emitter, no reader,
+	 * no request at all - the composers render exactly as before.
+	 */
+	| "team_bridge_typing"
+	/**
 	 * Structured `mentions[]` on a Team Bridge send (local-operator #3204).
 	 * Absent: the composer still inserts readable `@Name` text but sends no
 	 * `mentions`, because an older backend refuses the unknown field.

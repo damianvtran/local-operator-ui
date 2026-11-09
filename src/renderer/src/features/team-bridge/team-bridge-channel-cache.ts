@@ -1,3 +1,4 @@
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type {
 	TeamBridgeEvent,
 	TeamBridgeMessage,
@@ -89,6 +90,172 @@ export const TEAM_BRIDGE_MAX_CONVERSATIONS = 20;
  */
 export const TEAM_BRIDGE_HISTORY_STALE_MS = 30_000;
 export const TEAM_BRIDGE_HISTORY_GC_MS = 30 * 60_000;
+
+/* ------------------------------------------------------- read retry policy */
+
+/*
+ * WHY THE HISTORY READ HAS ITS OWN RETRY POLICY (operator report 2026-11-09:
+ * qa-coordination sat on skeleton rows for over seven seconds, then failed, and
+ * only loaded after clicking another channel and back).
+ *
+ * The app's backend log for that minute shows the cause, and it is not latency:
+ * every hop answers in ~150 ms (hub page ~180 ms, lop route ~150 ms, measured
+ * 2026-11-09). The history GET was answered `429 rate_limited` four times in a
+ * row - 12:56:06.6, 07.7, 09.8, 13.97 - which is React Query's default backoff
+ * (1 s, 2 s, 4 s; query-core 5.73.3 `defaultRetryDelay`) running out its three
+ * retries, so the pane spent 7.4 s on skeletons and then gave up. The reader's
+ * click away and back at 12:56:17.7 started a FRESH chain after the bucket had
+ * refilled, which is why that "fixed" it.
+ *
+ * The bucket is the hub's `conversation-reads` limiter: 120 reads/min PER
+ * ACCOUNT (agent-server `internal/bridge/bridge.go`, `ConversationReads`),
+ * shared with every agent session reading channels as that account. The app
+ * itself made ~10 history reads that minute; the agents spent the rest. So the
+ * app cannot avoid a 429 by being frugal - it has to WAIT CORRECTLY: the
+ * refusal carries the hub's own `retry_after_seconds` (relayed unchanged by the
+ * lop route's `_refusal_detail`), and a blind exponential backoff that stops
+ * after three tries is exactly the wrong answer to "come back in N seconds".
+ */
+
+/**
+ * The floor and ceiling a hub-stated wait is clamped to. The ceiling is the
+ * bucket's own window (60 s): no honest wait for a per-minute bucket exceeds
+ * it, so a larger number is a malformed answer, not a reason to sit longer.
+ * The floor stops a `0` from turning the wait into a tight loop.
+ */
+export const TEAM_BRIDGE_RATE_LIMIT_MIN_WAIT_MS = 1_000;
+export const TEAM_BRIDGE_RATE_LIMIT_MAX_WAIT_MS = 60_000;
+
+/** Retries for any OTHER failure: unchanged from the shipped policy (3). */
+export const TEAM_BRIDGE_HISTORY_FAILURE_RETRIES = 3;
+
+/**
+ * How long the hub asked us to wait, when `error` is its rate-limit refusal;
+ * `null` for every other failure.
+ *
+ * Reads the shapes the desktop transport produces: `DesktopControlError` keeps
+ * the backend's refusal body as `detail` (`{code, retry_after_seconds}`) and
+ * any `retry_after_ms` as `retryAfterMs`. A 429 without a stated wait still
+ * counts as rate-limited and waits the floor's worth of exponential backoff.
+ */
+export function historyRateLimitWaitMs(
+	error: unknown,
+	failureCount = 0,
+): number | null {
+	if (typeof error !== "object" || error === null) return null;
+	const shaped = error as {
+		status?: unknown;
+		code?: unknown;
+		retryAfterMs?: unknown;
+		detail?: unknown;
+	};
+	if (shaped.status !== 429 && shaped.code !== "rate_limited") return null;
+	const detail =
+		typeof shaped.detail === "object" && shaped.detail !== null
+			? (shaped.detail as {
+					retry_after_seconds?: unknown;
+					details?: { retry_after_seconds?: unknown } | null;
+				})
+			: null;
+	const seconds =
+		detail?.retry_after_seconds ?? detail?.details?.retry_after_seconds;
+	const stated =
+		typeof shaped.retryAfterMs === "number" &&
+		Number.isFinite(shaped.retryAfterMs)
+			? shaped.retryAfterMs
+			: typeof seconds === "number" && Number.isFinite(seconds)
+				? seconds * 1000
+				: // No stated wait: back off from the floor, doubling, to the ceiling.
+					TEAM_BRIDGE_RATE_LIMIT_MIN_WAIT_MS * 2 ** Math.min(failureCount, 6);
+	return Math.min(
+		TEAM_BRIDGE_RATE_LIMIT_MAX_WAIT_MS,
+		Math.max(TEAM_BRIDGE_RATE_LIMIT_MIN_WAIT_MS, stated),
+	);
+}
+
+/**
+ * The most CONSECUTIVE rate-limit refusals one retry chain rides out before it
+ * settles on the error state (which offers Try again).
+ *
+ * A BACKSTOP, not the primary stop: the chain normally ends when the reader
+ * leaves (see `historyReadShouldRetry`). It exists because the "only while
+ * observed" check reads React Query internals that have already surprised us
+ * once (review round 1, R1: a cancelled chain revived by a `fetchQuery` join),
+ * and an unbounded loop against the shared per-account bucket is the expensive
+ * way for that to fail again.
+ *
+ * Sized from the incident: the log shows a run of 4 consecutive 429s (about
+ * 7.4 s) before the bucket served the read. 30 is 7.5x that run. At the hub's
+ * typical 1-2 s stated wait it still covers 30-60 s - up to one full window of
+ * the 120/min bucket, which refills within that window - so it only trips when
+ * agents have kept the bucket drained for the whole window, and continuing would
+ * just compete with them. At the 60 s clamp it bounds a chain to 30 reads.
+ */
+export const TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES = 30;
+
+/**
+ * Whether the history read should try again after `failureCount` failures.
+ *
+ * A rate limit is retried only while somebody is READING (`observed`) and at
+ * most `TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES` times in a row; its cadence is the
+ * hub's own stated wait. Leaving the channel alone is NOT enough to stop the
+ * chain: `Query.removeObserver` cancels the retryer (query-core 5.73.3), but a
+ * later `fetchQuery` on the same key - the notification watcher does exactly
+ * that (`use-team-bridge-notifications.ts`) - joins the pending retryer through
+ * `continueRetry()`, which clears that cancel, and the retryer still holds this
+ * policy. So the policy itself asks whether anyone is watching (review round 1,
+ * R1: 31 reads/min with zero observers before this check). A definite refusal
+ * (`definite`, e.g. `not_a_member`) is never retried; any other failure keeps
+ * the shipped three-retry bound.
+ */
+export function historyReadShouldRetry(
+	failureCount: number,
+	error: unknown,
+	definite: boolean,
+	observed = true,
+): boolean {
+	if (definite) return false;
+	if (historyRateLimitWaitMs(error, failureCount) !== null)
+		return observed && failureCount < TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES;
+	return failureCount < TEAM_BRIDGE_HISTORY_FAILURE_RETRIES;
+}
+
+/**
+ * The `retry` option for the history query at `queryKey`: the policy above,
+ * with `observed` read from the query's LIVE observer count at the moment of
+ * each failure. Read through the cache rather than closed over, because the
+ * retryer keeps the function it was created with for its whole life - only a
+ * live lookup sees the reader leave.
+ */
+export function historyReadRetry(
+	client: QueryClient,
+	queryKey: QueryKey,
+	isDefinite: (error: unknown) => boolean,
+	// Typed `Error`, not `unknown`: `useQuery` infers its error type from this
+	// parameter, and the hook's callers read `query.error` as `Error | null`.
+): (failureCount: number, error: Error) => boolean {
+	return (failureCount, error) =>
+		historyReadShouldRetry(
+			failureCount,
+			error,
+			isDefinite(error),
+			(client
+				.getQueryCache()
+				.find({ queryKey, exact: true })
+				?.getObserversCount() ?? 0) > 0,
+		);
+}
+
+/** The wait before the next attempt: the hub's, or React Query's default. */
+export function historyReadRetryDelay(
+	failureCount: number,
+	error: unknown,
+): number {
+	return (
+		historyRateLimitWaitMs(error, failureCount) ??
+		Math.min(1000 * 2 ** failureCount, 30_000)
+	);
+}
 
 /**
  * A per-row overhead estimate for the bytes bound: the row object, its sender,

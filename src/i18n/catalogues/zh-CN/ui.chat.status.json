@@ -3,5 +3,6 @@
 	"ui.chat.status.degraded": "服务器响应缓慢。消息已排队等待。",
 	"ui.chat.status.internet_offline": "本机已离线。发送将排队等待。",
 	"ui.chat.status.unreachable": "无法连接Local Operator服务器。发送将排队等待。",
+	"ui.chat.status.updating": "Local Operator服务器正在更新，稍后即可恢复。",
 	"ui.chat.status.pill_aria": "连接状态：{title}{hasOutcome, select, yes { {outcome}} other {}} 显示详情"
 }

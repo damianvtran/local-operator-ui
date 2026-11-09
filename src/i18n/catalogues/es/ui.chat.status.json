@@ -3,5 +3,6 @@
 	"ui.chat.status.degraded": "El servidor está respondiendo despacio. Tus mensajes están en cola.",
 	"ui.chat.status.internet_offline": "Este equipo está sin conexión. El envío quedará en espera.",
 	"ui.chat.status.unreachable": "No se puede contactar con el servidor de Local Operator. El envío quedará en espera.",
+	"ui.chat.status.updating": "El servidor de Local Operator se está actualizando. Volverá en un momento.",
 	"ui.chat.status.pill_aria": "Estado de la conexión: {title}{hasOutcome, select, yes { {outcome}} other {}} Mostrar detalles"
 }

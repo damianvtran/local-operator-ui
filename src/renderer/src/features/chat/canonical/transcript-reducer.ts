@@ -63,6 +63,7 @@ import {
 	preferDeliveryState,
 	preferDiff,
 	preferDiffCounts,
+	preferDiffTruncatedRows,
 	preferProgressDetails,
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
@@ -551,6 +552,18 @@ type TranscriptPayloadRecord =
 			 * producer sends — see `tool-row-model.ts`) without taking the row down.
 			 */
 			diff: string[] | null;
+			/**
+			 * Rendered diff rows the PRODUCER dropped from `diff`, from
+			 * `details.diff_truncated_rows`; 0 when it dropped none (or the core
+			 * predates the key). Those rows were never recorded, so the body states
+			 * the count in a footer instead of offering to reveal them. Guarded by
+			 * `preferDiffTruncatedRows`, the counters' absent-vs-stated rule.
+			 *
+			 * Optional only for hand-built fixtures (stories, tests) that predate
+			 * it: every record this reducer builds states it, so a merge never
+			 * flips the key between present and absent.
+			 */
+			diffTruncatedRows?: number;
 			/**
 			 * The call was still running when the turn was aborted, so it never
 			 * reported an outcome of its own.
@@ -3748,6 +3761,10 @@ function durableRecord(
 				diffFromDetails(providerPayload.details),
 				previous?.kind === "tool" ? previous.diff : null,
 			),
+			diffTruncatedRows: preferDiffTruncatedRows(
+				providerPayload.details,
+				previous?.kind === "tool" ? (previous.diffTruncatedRows ?? 0) : 0,
+			),
 			// A durable row is the authoritative record of how the call ended - and
 			// when the runtime's own classifier says the end was an INTERRUPT
 			// (`skipped`/`aborted`), "ended" is not "failed": the row wears the
@@ -6264,6 +6281,7 @@ export function applyEvent(
 				// so there is no diff. The guards above return early for any row that
 				// already settled, so this cannot blank one.
 				diff: null,
+				diffTruncatedRows: 0,
 				stopped: false,
 				notRunReason: notRun,
 				// The kind rides the verdict and nothing else: no verdict, no class.
@@ -6416,6 +6434,8 @@ export function applyEvent(
 				added: 0,
 				removed: 0,
 				diff: current?.kind === "tool" ? current.diff : null,
+				diffTruncatedRows:
+					current?.kind === "tool" ? (current.diffTruncatedRows ?? 0) : 0,
 				// The live progress payload survives a replayed/reviving start: the
 				// update frames are self-replacing, but a replay between two of them
 				// must not blank what the row already showed (the same rule the diff
@@ -6493,6 +6513,7 @@ export function applyEvent(
 							added: 0,
 							removed: 0,
 							diff: null,
+							diffTruncatedRows: 0,
 							stopped: false,
 						};
 			// The row is settled, so this is also the last chance to LEARN the call's
@@ -6687,6 +6708,10 @@ export function applyEvent(
 				// reconnect seed whose `details` were stripped by the live-event
 				// budget must not blank a body the row already showed.
 				diff: preferDiff(diffFromDetails(result.details), base.diff),
+				diffTruncatedRows: preferDiffTruncatedRows(
+					result.details,
+					base.diffTruncatedRows ?? 0,
+				),
 				// It reported an end, so whatever happened it was not interrupted —
 				// UNLESS THE USER STOPPED IT (UX round 2, U7), or the WIRE's own fault
 				// marker says the end was an interrupt (`interruptedFault`). The leading

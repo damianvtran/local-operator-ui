@@ -19,6 +19,11 @@
 		"tone": "calm factual statement, sentence case, full stop",
 		"note": "Composed from the refusal code when the request never completed: nothing was established about the server's pairing state, so the sentence claims only that no answer arrived. 'Local Operator' is the product name and stays in English. DELIBERATELY DIFFERENT from ui.common.errors.desktop_transport_failed (\"The backend could not complete this request...\"): that key words the same transport.failed refusal in the agent/team detail error pane, where it replaced the machine sentinel the pane already showed, so its English could not change. This key serves every other surface (composer, sidebar, notices), where it has always been the shown sentence. Both claim only that the request did not complete; translate each on its own terms and do not harmonise one onto the other."
 	},
+	"ui.common.errors.desktop_refusal.server_updating": {
+		"role": "diagnosis shown when the Local Operator server refused a request because it is reloading itself onto a new build (lop update)",
+		"tone": "calm, reassuring statement of fact, sentence case, full stop",
+		"note": "Composed from the server-updating code, never from the daemon's own prose. Replaces an error the app used to show during a server update: nothing is broken and the reader has nothing to do, so the sentence names no action and no fault - only that the server is updating and will be back shortly. 'Local Operator' is the product name and stays in English."
+	},
 	"ui.common.errors.error_boundary.error_details": {
 		"role": "heading",
 		"tone": "Technical noun phrase.",
