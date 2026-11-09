@@ -1,0 +1,105 @@
+{
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71e1b9fc83e0d1a9714e52a19301913",
+  "checks": [
+    {
+      "key": "ui.chat.canonical.transcript.earlier_text_offscreen",
+      "en": "Earlier text of this answer is not on screen",
+      "es": "El texto anterior de esta respuesta no está en pantalla",
+      "placeholders": [],
+      "bidi_controls": [],
+      "sample_output": "El texto anterior de esta respuesta no está en pantalla",
+      "result": "PASS"
+    },
+    {
+      "key": "ui.chat.canonical.transcript.interrupted",
+      "en": "Interrupted",
+      "es": "Interrumpido",
+      "placeholders": [],
+      "bidi_controls": [],
+      "sample_output": "Interrumpido",
+      "result": "PASS"
+    },
+    {
+      "key": "ui.chat.canonical.transcript.no_answer_given",
+      "en": "No answer given",
+      "es": "Sin respuesta",
+      "placeholders": [],
+      "bidi_controls": [],
+      "sample_output": "Sin respuesta",
+      "result": "PASS"
+    },
+    {
+      "key": "ui.chat.canonical.transcript.not_run",
+      "en": "Not run",
+      "es": "No se ejecutó",
+      "placeholders": [],
+      "bidi_controls": [],
+      "sample_output": "No se ejecutó",
+      "result": "PASS"
+    },
+    {
+      "key": "ui.chat.canonical.transcript.answer_may_be_missing",
+      "en": "Part of this answer may be missing",
+      "es": "Puede que falte parte de esta respuesta",
+      "placeholders": [],
+      "bidi_controls": [],
+      "sample_output": "Puede que falte parte de esta respuesta",
+      "result": "PASS"
+    },
+    {
+      "key": "ui.chat.canonical.transcript.worked",
+      "en": "Worked",
+      "es": "Trabajó",
+      "placeholders": [],
+      "bidi_controls": [],
+      "sample_output": "Trabajó",
+      "result": "PASS"
+    },
+    {
+      "key": "ui.chat.canonical.transcript.worked_for",
+      "en": "Worked for {duration}",
+      "es": "Trabajó durante {duration}",
+      "placeholders": [
+        "duration"
+      ],
+      "bidi_controls": [],
+      "sample_output": "Trabajó durante 2m 4s",
+      "result": "PASS"
+    },
+    {
+      "key": "ui.chat.canonical.transcript.job_suffix",
+      "en": "· Job {id}",
+      "es": "· Trabajo {id}",
+      "placeholders": [
+        "id"
+      ],
+      "bidi_controls": [],
+      "sample_output": "· Trabajo job_A-07",
+      "result": "PASS"
+    },
+    {
+      "key": "ui.agents.upload.failure.publish_fallback",
+      "en": "The agent could not be published. Try again.",
+      "es": "No se pudo publicar el agente. Inténtalo de nuevo.",
+      "placeholders": [],
+      "bidi_controls": [],
+      "sample_output": "No se pudo publicar el agente. Inténtalo de nuevo.",
+      "result": "PASS"
+    }
+  ],
+  "terminology": {
+    "ui.chat.canonical.fold.count.task": "{count, plural, one {{count, number, ::group-off} tarea} many {{count, number, ::group-off} de tareas} other {{count, number, ::group-off} tareas}}",
+    "ui.chat.canonical.fold.count.jobs": "{count, plural, one {{count, number, ::group-off} comprobación de trabajos} many {{count, number, ::group-off} de comprobaciones de trabajos} other {{count, number, ::group-off} comprobaciones de trabajos}}",
+    "ui.chat.canonical.fold.count.jobs_cancel": "{count, plural, one {{count, number, ::group-off} cancelación de trabajo} many {{count, number, ::group-off} de cancelaciones de trabajos} other {{count, number, ::group-off} cancelaciones de trabajos}}",
+    "ui.chat.canonical.fold.sentence.delegated_lead": "{count, plural, one {Delegó {count, number, ::group-off} tarea} many {Delegó {count, number, ::group-off} de tareas} other {Delegó {count, number, ::group-off} tareas}}",
+    "ui.chat.canonical.fold.sentence.delegated_follow": "{count, plural, one {delegó {count, number, ::group-off} tarea} many {delegó {count, number, ::group-off} de tareas} other {delegó {count, number, ::group-off} tareas}}",
+    "ui.chat.canonical.fold.receipt.job_result": "{count, plural, one {{count, number, ::group-off} resultado de trabajo} many {{count, number, ::group-off} de resultados de trabajos} other {{count, number, ::group-off} resultados de trabajos}}",
+    "ui.chat.canonical.transcript.job_suffix": "· Trabajo {id}"
+  },
+  "assertions": "PASS: 9/9 key presence, exact placeholder sets vs English and context, no bidi controls, distinct worked/worked_for, exact middle dot, task/tarea vs job/trabajo in all 7 canonical job/task/delegation entries",
+  "limitations": [
+    "Python structural and sample-substitution checks, not app ICU execution or rendered screenshots. Samples preserve supplied opaque IDs and already formatted durations.",
+    "Manual English-residue review covers these nine Spanish values only."
+  ]
+}

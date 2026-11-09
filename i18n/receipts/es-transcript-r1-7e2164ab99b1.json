@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-11-09",
+  "round": 1,
+  "locale": "es",
+  "branch": "i18n/slice-transcript",
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71e1b9fc83e0d1a9714e52a19301913",
+  "instance": "7e2164ab99b1",
+  "agent": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "i18n-auditor (s2a-es)",
+    "session": "7e2164ab99b1",
+    "instance": "7e2164ab99b1",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": true,
+    "model_source": "Latest harness model-switch banner; quota failures for prior anthropic models",
+    "independent_from_translator_session": true,
+    "independence": "Did not write translations; only wrote assigned Spanish evidence and receipt paths"
+  },
+  "status": "clean",
+  "result": "clean",
+  "key_count": 9,
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "clean",
+      "keys": [
+        "ui.chat.canonical.transcript.earlier_text_offscreen",
+        "ui.chat.canonical.transcript.interrupted",
+        "ui.chat.canonical.transcript.no_answer_given",
+        "ui.chat.canonical.transcript.not_run",
+        "ui.chat.canonical.transcript.answer_may_be_missing",
+        "ui.chat.canonical.transcript.worked",
+        "ui.chat.canonical.transcript.worked_for",
+        "ui.chat.canonical.transcript.job_suffix"
+      ],
+      "key_count": 8,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "target": "src/i18n/catalogues/es/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "hashes": {
+        "en": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+        "target": "71ec923c445ee4df382e865352c5d90193295cc529b68dac9a9227a8db729e08",
+        "context": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.agents.upload": {
+      "status": "clean",
+      "keys": [
+        "ui.agents.upload.failure.publish_fallback"
+      ],
+      "key_count": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "target": "src/i18n/catalogues/es/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "hashes": {
+        "en": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+        "target": "1be6372b482749eab2aa6aa6317014c1e98cd6b9aa5c7c6c285bdc8132db6b2a",
+        "context": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    }
+  },
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "findings_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+    }
+  },
+  "artifacts": {
+    "i18n/audits/evidence/es/ui.chat.canonical/es-transcript-r1-7e2164ab99b1/checks.json": {
+      "sha256": "06826372753fac50bf05d2f9e4d58992eff026be9a3255e0a555c553d132e473"
+    },
+    "i18n/audits/evidence/es/ui.chat.canonical/es-transcript-r1-7e2164ab99b1/report.md": {
+      "sha256": "58d33445a1f966f8f3c57998ffc86b797d84382c7c464dbf2ab9a34ba5451642"
+    }
+  },
+  "limitations": [
+    "Python structural and sample-substitution checks, not app ICU execution or rendered screenshots. Samples preserve supplied opaque IDs and already formatted durations.",
+    "Manual English-residue review covers these nine Spanish values only.",
+    "No rendered frame or app runtime formatter execution; browser not available to this role."
+  ],
+  "evidence_record": {
+    "path": "i18n/audits/evidence/es/ui.chat.canonical/es-transcript-r1-7e2164ab99b1/record.json",
+    "sha256": "6dd264bc31ac53e5ea3b222ee6310536d27eb51880164d1f449bbedb2ec53498"
+  }
+}

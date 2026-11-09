@@ -1,0 +1,89 @@
+{
+  "instance": "4c8a43091740",
+  "locale": "ru",
+  "scope": [
+    "ui.chat.canonical",
+    "ui.agents.upload"
+  ],
+  "audit_id": "s2a-ru-2cf1ea7b5fd",
+  "audit_date": "2026-11-09",
+  "frozen_head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "4c8a43091740",
+    "session": "4c8a43091740",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "authored_translation": false,
+    "requested_model": "anthropic/claude-sonnet-5-5",
+    "fallback": true,
+    "actual_model_source": "Session model-switch notifications: anthropic/claude-opus-5-5 then openai/gpt-6.1-sol, provider failure: quota. All substantive audit and checks executed after gpt-6.1-sol notification."
+  },
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+        "context": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc",
+        "ru": "fc107d781035ed4e7e043ff844b9bf6d1a36b51c293e34c90e5f37d13a59a990"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.canonical.json"
+      },
+      "keys_audited": 8,
+      "reviewed_keys": [
+        "ui.chat.canonical.transcript.earlier_text_offscreen",
+        "ui.chat.canonical.transcript.interrupted",
+        "ui.chat.canonical.transcript.no_answer_given",
+        "ui.chat.canonical.transcript.not_run",
+        "ui.chat.canonical.transcript.answer_may_be_missing",
+        "ui.chat.canonical.transcript.worked",
+        "ui.chat.canonical.transcript.worked_for",
+        "ui.chat.canonical.transcript.job_suffix"
+      ],
+      "scope_note": "Delta only, not a fresh full-namespace audit.",
+      "findings": [],
+      "record_reference": "i18n/audits/evidence/ru/ui.chat.canonical/s2a-ru-2cf1ea7b5fd/record.json",
+      "record_sha256": "048fddba3cd293c15d505249d93bcb66e746a9298318bf6a3623c5f85b102637",
+      "report_reference": "i18n/audits/evidence/ru/ui.chat.canonical/s2a-ru-2cf1ea7b5fd/report.md",
+      "report_sha256": "7cfd385383430f4a6c005800b1724d3a46e71ec5d1608b1cc9803d384610de48"
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+        "context": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f",
+        "ru": "fd5cf0acdb350da982e667157df051d189405ed78a20158b484705ea4b56941c"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+        "ru": "src/i18n/catalogues/ru/ui.agents.upload.json"
+      },
+      "keys_audited": 1,
+      "reviewed_keys": [
+        "ui.agents.upload.failure.publish_fallback"
+      ],
+      "scope_note": "Delta only, not a fresh full-namespace audit.",
+      "findings": [],
+      "record_reference": "i18n/audits/evidence/ru/ui.agents.upload/s2a-ru-2cf1ea7b5fd/record.json",
+      "record_sha256": "1df3c54d7009e1c5e9c5a5b1116d9c1a1be302067acb60f94711f17fc9eae20f",
+      "report_reference": "i18n/audits/evidence/ru/ui.agents.upload/s2a-ru-2cf1ea7b5fd/report.md",
+      "report_sha256": "7cfd385383430f4a6c005800b1724d3a46e71ec5d1608b1cc9803d384610de48"
+    }
+  },
+  "limitations": [
+    "Delta-only linguistic and formatter audit; not full-namespace re-audit.",
+    "No browser/rendered UI fit evidence."
+  ]
+}

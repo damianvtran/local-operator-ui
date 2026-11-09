@@ -1,0 +1,961 @@
+{
+  "auditor": "i18n-auditor",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "fr-transcript-r1-2eae3ddc404e",
+  "session": "2eae3ddc404e",
+  "locale": "fr",
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71",
+  "date": "2026-11-09T10:16:38.932747+00:00",
+  "independence": {
+    "independent": true,
+    "statement": "Did not author translations; audited directly from frozen worktree bytes; wrote only own evidence and receipt."
+  },
+  "fallback": "anthropic/claude-sonnet-5-5 → anthropic/claude-opus-5-5 → openai/gpt-6.1-sol (provider quota notices)",
+  "status": "passed",
+  "result": "clean",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+        "fr": "1423095a87c282abd47c2ac723c3cfce17698289460f242aff4fb7d5ee56ee65",
+        "context": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "fr": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "keys_audited": [
+        "ui.chat.canonical.transcript.earlier_text_offscreen",
+        "ui.chat.canonical.transcript.interrupted",
+        "ui.chat.canonical.transcript.no_answer_given",
+        "ui.chat.canonical.transcript.not_run",
+        "ui.chat.canonical.transcript.answer_may_be_missing",
+        "ui.chat.canonical.transcript.worked",
+        "ui.chat.canonical.transcript.worked_for",
+        "ui.chat.canonical.transcript.job_suffix"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.agents.upload": {
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+        "fr": "24f6c4f45242d5dffc5aad356b2750b238dd9db328b259aebcbf1c157421b6ce",
+        "context": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "fr": "src/i18n/catalogues/fr/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "keys_audited": [
+        "ui.agents.upload.failure.publish_fallback"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    }
+  },
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "evidence": {
+    "record": "i18n/audits/evidence/fr/ui.chat.canonical/fr-transcript-2eae3ddc404e/record.json",
+    "report": "i18n/audits/evidence/fr/ui.chat.canonical/fr-transcript-2eae3ddc404e/report.md"
+  },
+  "reference_sha256": {
+    "/Users/damian/local-operator/i18n/style-guides/fr.md": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+    "/Users/damian/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "mechanical_checks": [
+    {
+      "namespace": "ui.chat.canonical",
+      "previous_values": 241,
+      "unchanged_previous_values": 241,
+      "new_values": 8,
+      "rows": [
+        {
+          "key": "ui.chat.canonical.transcript.earlier_text_offscreen",
+          "en": "Earlier text of this answer is not on screen",
+          "fr": "Le début de cette réponse n’est pas à l’écran",
+          "arguments": [],
+          "placeholder_parity": true,
+          "bidi_controls": [],
+          "nfc": true
+        },
+        {
+          "key": "ui.chat.canonical.transcript.interrupted",
+          "en": "Interrupted",
+          "fr": "Interrompu",
+          "arguments": [],
+          "placeholder_parity": true,
+          "bidi_controls": [],
+          "nfc": true
+        },
+        {
+          "key": "ui.chat.canonical.transcript.no_answer_given",
+          "en": "No answer given",
+          "fr": "Aucune réponse donnée",
+          "arguments": [],
+          "placeholder_parity": true,
+          "bidi_controls": [],
+          "nfc": true
+        },
+        {
+          "key": "ui.chat.canonical.transcript.not_run",
+          "en": "Not run",
+          "fr": "Non exécuté",
+          "arguments": [],
+          "placeholder_parity": true,
+          "bidi_controls": [],
+          "nfc": true
+        },
+        {
+          "key": "ui.chat.canonical.transcript.answer_may_be_missing",
+          "en": "Part of this answer may be missing",
+          "fr": "Une partie de cette réponse pourrait manquer",
+          "arguments": [],
+          "placeholder_parity": true,
+          "bidi_controls": [],
+          "nfc": true
+        },
+        {
+          "key": "ui.chat.canonical.transcript.worked",
+          "en": "Worked",
+          "fr": "A travaillé",
+          "arguments": [],
+          "placeholder_parity": true,
+          "bidi_controls": [],
+          "nfc": true
+        },
+        {
+          "key": "ui.chat.canonical.transcript.worked_for",
+          "en": "Worked for {duration}",
+          "fr": "A travaillé pendant {duration}",
+          "arguments": [
+            "duration"
+          ],
+          "placeholder_parity": true,
+          "bidi_controls": [],
+          "nfc": true
+        },
+        {
+          "key": "ui.chat.canonical.transcript.job_suffix",
+          "en": "· Job {id}",
+          "fr": "· Tâche {id}",
+          "arguments": [
+            "id"
+          ],
+          "placeholder_parity": true,
+          "bidi_controls": [],
+          "nfc": true
+        }
+      ]
+    },
+    {
+      "namespace": "ui.agents.upload",
+      "previous_values": 47,
+      "unchanged_previous_values": 47,
+      "new_values": 1,
+      "rows": [
+        {
+          "key": "ui.agents.upload.failure.publish_fallback",
+          "en": "The agent could not be published. Try again.",
+          "fr": "L’agent n’a pas pu être publié. Réessayez.",
+          "arguments": [],
+          "placeholder_parity": true,
+          "bidi_controls": [],
+          "nfc": true
+        }
+      ]
+    }
+  ],
+  "concept_concordance": [
+    {
+      "file": "src/i18n/catalogues/fr/ui.agentMessages.settings.json",
+      "key": "ui.agentMessages.settings.state.d_body",
+      "en": "Message flow stops both ways. Queued messages stay, and you can still answer pending requests. Resume needs no new consent.",
+      "fr": "Le flux de messages s’arrête dans les deux sens. Les messages en file d’attente sont conservés et vous pouvez toujours répondre aux demandes en attente. La reprise ne demande aucun nouveau consentement."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.agents.config.json",
+      "key": "ui.agents.config.error.turn_failed",
+      "en": "The model did not answer this request.",
+      "fr": "Le modèle n’a pas répondu à cette demande."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.agents.detail.json",
+      "key": "ui.agents.detail.alert.unconfirmed_body",
+      "en": "The backend did not answer, so the write may or may not have landed. Check the agent below, then edit again.",
+      "fr": "Le backend n’a pas répondu ; l’écriture a donc pu aboutir ou non. Vérifiez l’agent ci-dessous, puis modifiez à nouveau."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.agents.starters.json",
+      "key": "ui.agents.starters.server_unanswered",
+      "en": "The server did not answer.",
+      "fr": "Le serveur n’a pas répondu."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.browser.json",
+      "key": "ui.browser.browser_load_failure.the_site_did_not_answer_in_time",
+      "en": "The site did not answer in time.",
+      "fr": "Le site n’a pas répondu à temps."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.canvas.json",
+      "key": "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
+      "en": "The backend did not answer, so this chat's code memory could not be read. Nothing was changed. Try again in a moment.",
+      "fr": "Le backend n’a pas répondu, donc la mémoire de code de cette conversation n’a pas pu être lue. Aucune modification n’a été effectuée. Réessayez dans un instant."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.approval.json",
+      "key": "ui.chat.approval.escape.default_saved",
+      "en": "Auto set for this conversation; saved as the default for sessions that follow it. Conversations with their own choice keep it. This request still needs an answer.",
+      "fr": "Auto activé pour cette conversation et enregistré comme valeur par défaut des sessions qui suivent ce réglage. Les conversations qui ont leur propre choix le conservent. Cette demande attend toujours une réponse."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.approval.json",
+      "key": "ui.chat.approval.escape.default_saved_session_failed",
+      "en": "Auto saved as the default for sessions that follow it. The session part did not apply: {detail}. This request still needs an answer.",
+      "fr": "Auto enregistré comme valeur par défaut des sessions qui suivent ce réglage. La partie propre à la session n’a pas été appliquée : {detail}. Cette demande attend toujours une réponse."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.approval.json",
+      "key": "ui.chat.approval.escape.session_saved",
+      "en": "Auto for this session — this request still needs an answer.",
+      "fr": "Auto pour cette session — cette demande attend toujours une réponse."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.aside.json",
+      "key": "ui.chat.aside.ask_busy",
+      "en": "The aside is still answering. Press Enter again once the answer is in.",
+      "fr": "L’aparté répond encore. Appuyez à nouveau sur Entrée une fois la réponse terminée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.aside.json",
+      "key": "ui.chat.aside.off_panel_refusal",
+      "en": "Your aside {question} got no answer: {cause}",
+      "fr": "Votre aparté {question} n’a pas reçu de réponse : {cause}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_answer.json",
+      "key": "ui.chat.ask_answer.eyebrow_waiting",
+      "en": "Waiting for your answer",
+      "fr": "En attente de votre réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_answer.json",
+      "key": "ui.chat.ask_answer.lost_to_reconnect",
+      "en": "Your answer was not sent. The app reconnected to a new runtime instance, so the question was not answered here.",
+      "fr": "Votre réponse n’a pas été envoyée. L’application s’est reconnectée à une nouvelle instance du runtime, donc la question n’a pas reçu de réponse ici."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_answer.json",
+      "key": "ui.chat.ask_answer.moved_on",
+      "en": "That question had already been settled or moved on, so your answer was not sent.",
+      "fr": "Cette question a déjà été réglée ou dépassée ; votre réponse n’a donc pas été envoyée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_answer.json",
+      "key": "ui.chat.ask_answer.not_sent",
+      "en": "Your answer was not sent. {reason}",
+      "fr": "Votre réponse n’a pas été envoyée. {reason}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_answer.json",
+      "key": "ui.chat.ask_answer.secret_docked",
+      "en": "Your answer was not sent — a secret request is answered in the field above the composer.",
+      "fr": "Votre réponse n’a pas été envoyée — une demande de secret reçoit sa réponse dans le champ situé au-dessus du champ de saisie."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_answer.json",
+      "key": "ui.chat.ask_answer.settled_elsewhere",
+      "en": "That question was already answered somewhere else, so your answer was not sent.",
+      "fr": "Cette question a déjà reçu une réponse ailleurs ; votre réponse n’a donc pas été envoyée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_answer.json",
+      "key": "ui.chat.ask_answer.unconfirmed_lead",
+      "en": "Whether your answer landed is not knowable.",
+      "fr": "Impossible de savoir si votre réponse est bien arrivée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+      "key": "ui.chat.ask_panel.answer.attachment_refusal",
+      "en": "Files and images can't be attached to an answer yet. Type your answer here, or send the file in the chat.",
+      "fr": "Les fichiers et les images ne peuvent pas encore être joints à une réponse. Saisissez votre réponse ici, ou envoyez le fichier dans la conversation."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+      "key": "ui.chat.ask_panel.answer.limit_notice",
+      "en": "Answers stop at {max, number} characters; anything past that is not kept.",
+      "fr": "Les réponses sont limitées à {max, number} caractères ; tout ce qui dépasse n’est pas conservé."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+      "key": "ui.chat.ask_panel.dock.keys_one",
+      "en": "1 to answer",
+      "fr": "1 pour répondre"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+      "key": "ui.chat.ask_panel.dock.keys_range",
+      "en": "1-{max, number} to answer",
+      "fr": "1-{max, number} pour répondre"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+      "key": "ui.chat.ask_panel.dock.sending",
+      "en": "Sending your answer…",
+      "fr": "Envoi de votre réponse…"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+      "key": "ui.chat.ask_panel.lapse.many",
+      "en": "{count, plural, one {# question timed out; your answer was not sent.} other {# questions timed out; your answers were not sent.}}",
+      "fr": "{count, plural, one {# question a expiré ; votre réponse n’a pas été envoyée.} many {# de questions ont expiré ; vos réponses n’ont pas été envoyées.} other {# questions ont expiré ; vos réponses n’ont pas été envoyées.}}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+      "key": "ui.chat.ask_panel.lapse.one",
+      "en": "That question timed out; your answer was not sent.",
+      "fr": "Cette question a expiré ; votre réponse n’a pas été envoyée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+      "key": "ui.chat.ask_panel.other_prompt",
+      "en": "Type your answer",
+      "fr": "Saisissez votre réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+      "key": "ui.chat.ask_queue.change_window_hint",
+      "en": "You can change this until the agent is handed your answer.",
+      "fr": "Vous pouvez modifier votre réponse jusqu’à ce qu’elle soit remise à l’agent."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+      "key": "ui.chat.ask_queue.refusal.already_settled",
+      "en": "That question was already settled, so your answer was not sent.",
+      "fr": "Cette question a déjà été réglée ; votre réponse n’a donc pas été envoyée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+      "key": "ui.chat.ask_queue.refusal.busy",
+      "en": "Your answer isn't confirmed yet. The agent is busy.",
+      "fr": "Votre réponse n’est pas encore confirmée. L’agent est occupé."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+      "key": "ui.chat.ask_queue.refusal.expired",
+      "en": "This ask is too old to answer — ask the agent again.",
+      "fr": "Cette demande est trop ancienne pour recevoir une réponse — redemandez à l’agent."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+      "key": "ui.chat.ask_queue.response.timed_out",
+      "en": "Timed out after {waited} — the agent goes ahead without your answer (ask {askId})",
+      "fr": "Expirée après {waited} — l’agent poursuit sans votre réponse (demande {askId})"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+      "key": "ui.chat.ask_queue.secret.placeholder_plain",
+      "en": "Your answer (never shown again)",
+      "fr": "Votre réponse (jamais réaffichée)"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+      "key": "ui.chat.ask_queue.status.expired",
+      "en": "Expired — this ask is too old to answer; ask the agent again",
+      "fr": "Expirée — cette demande est trop ancienne pour recevoir une réponse ; redemandez à l’agent"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+      "key": "ui.chat.ask_queue.status.timed_out",
+      "en": "Timed out — the agent goes ahead without your answer",
+      "fr": "Expirée — l’agent poursuit sans votre réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+      "key": "ui.chat.ask_queue.status.unknown",
+      "en": "Waiting on an answer",
+      "fr": "En attente d’une réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.asks.json",
+      "key": "ui.chat.asks.answer_options",
+      "en": "Answer options",
+      "fr": "Options de réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.asks.json",
+      "key": "ui.chat.asks.no_answer",
+      "en": "No answer given",
+      "fr": "Aucune réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.asks.json",
+      "key": "ui.chat.asks.send_answer",
+      "en": "Send answer",
+      "fr": "Envoyer la réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.asks.json",
+      "key": "ui.chat.asks.update_answer",
+      "en": "Update answer",
+      "fr": "Mettre à jour la réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.asks.json",
+      "key": "ui.chat.asks.change_answer",
+      "en": "Change answer",
+      "fr": "Modifier la réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.asks.json",
+      "key": "ui.chat.asks.status.withdrawn",
+      "en": "Withdrawn — the agent no longer needs an answer",
+      "fr": "Retirée — l’agent n’attend plus de réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.asks.json",
+      "key": "ui.chat.asks.answer_aria",
+      "en": "Your answer to: {question}",
+      "fr": "Votre réponse à : {question}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.asks.json",
+      "key": "ui.chat.asks.clause.delivering",
+      "en": "{count, plural, one {{count, number, ::group-off} answer not yet delivered — you can still change it} other {{count, number, ::group-off} answers not yet delivered — you can still change them}}",
+      "fr": "{count, plural, one {{count, number, ::group-off} réponse pas encore remise — vous pouvez encore la modifier} many {{count, number, ::group-off} de réponses pas encore remises — vous pouvez encore les modifier} other {{count, number, ::group-off} réponses pas encore remises — vous pouvez encore les modifier}}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.transcript.credential_lost",
+      "en": "The session no longer holds the credential this answer named.",
+      "fr": "La session ne dispose plus de l’identifiant nommé dans cette réponse."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.send_failure.aside_still_answering",
+      "en": "The aside is still answering. Press Enter again once the answer is in.",
+      "fr": "L’aparté répond encore. Appuyez à nouveau sur Entrée une fois la réponse terminée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.send_failure.gate_lock",
+      "en": "Answer the question above first.",
+      "fr": "Répondez d’abord à la question ci-dessus."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.tool_row.outcome.interrupted",
+      "en": "interrupted",
+      "fr": "interrompu"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.fold.count.jobs",
+      "en": "{count, plural, one {{count, number, ::group-off} job check} other {{count, number, ::group-off} job checks}}",
+      "fr": "{count, plural, one {{count, number, ::group-off} vérification de tâche} many {{count, number, ::group-off} de vérifications de tâche} other {{count, number, ::group-off} vérifications de tâche}}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.fold.count.jobs_cancel",
+      "en": "{count, plural, one {{count, number, ::group-off} job cancellation} other {{count, number, ::group-off} job cancellations}}",
+      "fr": "{count, plural, one {{count, number, ::group-off} annulation de tâche} many {{count, number, ::group-off} d’annulations de tâche} other {{count, number, ::group-off} annulations de tâche}}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.fold.receipt.job_result",
+      "en": "{count, plural, one {{count, number, ::group-off} job result} other {{count, number, ::group-off} job results}}",
+      "fr": "{count, plural, one {{count, number, ::group-off} résultat de tâche} many {{count, number, ::group-off} de résultats de tâche} other {{count, number, ::group-off} résultats de tâche}}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.transcript.earlier_text_offscreen",
+      "en": "Earlier text of this answer is not on screen",
+      "fr": "Le début de cette réponse n’est pas à l’écran"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.transcript.interrupted",
+      "en": "Interrupted",
+      "fr": "Interrompu"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.transcript.no_answer_given",
+      "en": "No answer given",
+      "fr": "Aucune réponse donnée"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.transcript.answer_may_be_missing",
+      "en": "Part of this answer may be missing",
+      "fr": "Une partie de cette réponse pourrait manquer"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "key": "ui.chat.canonical.transcript.job_suffix",
+      "en": "· Job {id}",
+      "fr": "· Tâche {id}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.composer.json",
+      "key": "ui.chat.composer.placeholder.answer",
+      "en": "Type your own answer…",
+      "fr": "Saisissez votre propre réponse…"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.composer.json",
+      "key": "ui.chat.composer.placeholder.secret_answer",
+      "en": "Answer the secret request in the asks panel",
+      "fr": "Répondez à la demande de secret dans le panneau des demandes"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.composer.json",
+      "key": "ui.chat.composer.secret_closure_notice",
+      "en": "Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.",
+      "fr": "Répondez à la demande de secret dans le panneau des demandes — ce champ reste en pause jusqu’à votre réponse, et votre brouillon est conservé."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.device.json",
+      "key": "ui.chat.device.sentence.gone_did_not_answer",
+      "en": "This conversation moved to {name}, which did not answer the last read. The copy that was here was deleted. Click to bring it back here.",
+      "fr": "Cette conversation a été déplacée vers {name}, qui n’a pas répondu à la dernière lecture. La copie qui se trouvait ici a été supprimée. Cliquez pour la ramener ici."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.device.json",
+      "key": "ui.chat.device.sentence.remote_did_not_answer",
+      "en": "This conversation runs on {name}, which did not answer the last read.",
+      "fr": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.device.json",
+      "key": "ui.chat.device.sentence.remote_did_not_answer_reason",
+      "en": "This conversation runs on {name}, which did not answer the last read ({reason}).",
+      "fr": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture ({reason})."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.device.json",
+      "key": "ui.chat.device.sentence.mesh_read_failure",
+      "en": "The device list could not be read, so this is what the last answer holds.",
+      "fr": "La liste des appareils n’a pas pu être lue ; l’affichage reprend donc la dernière réponse."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.device_move.json",
+      "key": "ui.chat.device_move.ineligible.no_answer",
+      "en": "did not answer the last read",
+      "fr": "n’a pas répondu à la dernière lecture"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.interrupt.json",
+      "key": "ui.chat.interrupt.stopped_both",
+      "en": "Stopped this turn. {children, plural, one {# subagent} other {# subagents}} and {jobs, plural, one {# background job} other {# background jobs}} are still running - open Run details to watch them, and use /stop to end the session and its jobs.",
+      "fr": "Tour arrêté. {children, plural, one {# sous-agent} many {# de sous-agents} other {# sous-agents}} et {jobs, plural, one {# tâche en arrière-plan} many {# de tâches en arrière-plan} other {# tâches en arrière-plan}} sont toujours en cours — ouvrez les détails de l’exécution pour les suivre, et utilisez /stop pour mettre fin à la session et à ses tâches."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.interrupt.json",
+      "key": "ui.chat.interrupt.stopped_jobs",
+      "en": "Stopped this turn. {count, plural, one {# background job is still running - it outlived the turn by design, so /stop is what ends it with the session.} other {# background jobs are still running - they outlived the turn by design, so /stop is what ends them with the session.}}",
+      "fr": "Tour arrêté. {count, plural, one {# tâche en arrière-plan est toujours en cours — elle survit volontairement au tour ; /stop y met fin avec la session.} many {# de tâches en arrière-plan sont toujours en cours — elles survivent volontairement au tour ; /stop y met fin avec la session.} other {# tâches en arrière-plan sont toujours en cours — elles survivent volontairement au tour ; /stop y met fin avec la session.}}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.json",
+      "key": "ui.chat.composer.status.jobs_action",
+      "en": "Open the jobs in run details",
+      "fr": "Ouvrir les tâches dans les détails de l’exécution"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.json",
+      "key": "ui.chat.question_dock.secret_answer_label",
+      "en": "Secret answer",
+      "fr": "Réponse secrète"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.json",
+      "key": "ui.chat.aside.empty",
+      "en": "Type a question in the composer below — the answer lands here.",
+      "fr": "Posez une question dans le champ de saisie ci-dessous — la réponse apparaîtra ici."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.json",
+      "key": "ui.chat.approval.reply_required",
+      "en": "Reply yes or no to answer the approval request.",
+      "fr": "Tapez yes ou no pour répondre à la demande d’approbation."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.json",
+      "key": "ui.chat.question_dock.hint.approval_held",
+      "en": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+      "fr": "Répondez plutôt dans le champ de saisie : tapez yes, no, 1 ou 2 puis envoyez, ou appuyez sur Échap dans ce champ pour arrêter le tour."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.json",
+      "key": "ui.chat.question_dock.hint.secret_held",
+      "en": "{prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+      "fr": "{prefix}Envoi suspendu tant que le sort de cette réponse est inconnu — elle a peut-être été transmise, donc plus rien ne peut être envoyé · Échap dans la carte la masque"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.json",
+      "key": "ui.chat.question_dock.hint.type",
+      "en": "{prefix}Type your answer below.",
+      "fr": "{prefix}Saisissez votre réponse ci-dessous."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.json",
+      "key": "ui.chat.question_dock.hint.options",
+      "en": "{prefix}Up/Down choose · Enter or {digits} answers · Esc hides · or type your own answer below",
+      "fr": "{prefix}Haut/Bas pour choisir · Entrée ou {digits} pour répondre · Échap masque · ou saisissez votre propre réponse ci-dessous"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.json",
+      "key": "ui.chat.session_status.not_signed_in_description",
+      "en": "This session runs {label} without a working sign-in, so it cannot answer until you connect it.",
+      "fr": "Cette session utilise {label} sans connexion active ; elle ne peut donc pas répondre tant que la connexion n’est pas établie."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.page_chrome.json",
+      "key": "ui.chat.page_chrome.aside_text_only",
+      "en": "An aside answers text only. Remove the attached files to ask it.",
+      "fr": "Un aparté répond uniquement par du texte. Retirez les fichiers joints pour poser la question."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.page_chrome.json",
+      "key": "ui.chat.page_chrome.backend.no_answer",
+      "en": "The Local Operator server did not answer as expected.",
+      "fr": "Le serveur Local Operator n’a pas répondu comme prévu."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.page_chrome.json",
+      "key": "ui.chat.page_chrome.error_view.unreachable",
+      "en": "The local server did not answer. The agent's history is safe — try again once it is running.",
+      "fr": "Le serveur local n’a pas répondu. L’historique de l’agent est en sécurité — réessayez dès qu’il est en cours d’exécution."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.pickers.json",
+      "key": "ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w",
+      "en": "Repeats turns toward a goal. Approval and question gates still stop and wait for you; the loop never answers them.",
+      "fr": "Répète les tours en vue d’un objectif. Les demandes d’approbation et de réponse restent bloquantes et attendent votre intervention ; la boucle n’y répond jamais."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.pickers.json",
+      "key": "ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did",
+      "en": "{length, plural, one {One provider did not answer ({length, number, ::group-off}). The rows below are the ones that did.} other {Some providers did not answer ({length, number, ::group-off}). The rows below are the ones that did.}}",
+      "fr": "{length, plural, one {Un fournisseur n’a pas répondu ({length, number, ::group-off}). Les lignes ci-dessous sont celles des fournisseurs qui ont répondu.} many {Certains fournisseurs n’ont pas répondu ({length, number, ::group-off}). Les lignes ci-dessous sont celles des fournisseurs qui ont répondu.} other {Certains fournisseurs n’ont pas répondu ({length, number, ::group-off}). Les lignes ci-dessous sont celles des fournisseurs qui ont répondu.}}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.response_actions.json",
+      "key": "ui.chat.response_actions.answer_label",
+      "en": "Answer actions",
+      "fr": "Actions de la réponse finale"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.run_details.json",
+      "key": "ui.chat.run_details.jobs",
+      "en": "Jobs",
+      "fr": "Tâches"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.sidebar.row.bg.json",
+      "key": "ui.chat.sidebar.row.bg.jobs",
+      "en": "{count, plural, one {{count, number, ::group-off} job} other {{count, number, ::group-off} jobs}}",
+      "fr": "{count, plural, one {{count, number, ::group-off} tâche} many {{count, number, ::group-off} de tâches} other {{count, number, ::group-off} tâches}}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.slash.json",
+      "key": "ui.chat.slash.dispatch.service_waiting",
+      "en": "/{name} is waiting for the local service to answer. Try again in a moment.",
+      "fr": "/{name} attend la réponse du service local. Réessayez dans un instant."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.chat.usage_reset.json",
+      "key": "ui.chat.usage_reset.busy",
+      "en": "Waiting for {account} to answer. This can take a moment.",
+      "fr": "En attente de la réponse de {account}. Cela peut prendre un moment."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.connection.json",
+      "key": "ui.common.connection.backend.diagnosis_deadline",
+      "en": "The Local Operator server did not answer in time.",
+      "fr": "Le serveur Local Operator n’a pas répondu à temps."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.connection.json",
+      "key": "ui.common.connection.backend.compatibility_unknown",
+      "en": "Provider sign-in, settings, slash commands and MCP management are unavailable because the Local Operator server did not answer as expected.",
+      "fr": "La connexion aux fournisseurs, les paramètres, les commandes slash et la gestion MCP sont indisponibles, car le serveur Local Operator n’a pas répondu comme prévu."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.errors.json",
+      "key": "ui.common.errors.desktop_refusal.transport_failed",
+      "en": "The Local Operator server did not answer this request.",
+      "fr": "Le serveur Local Operator n’a pas répondu à cette requête."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.errors.json",
+      "key": "ui.common.errors.desktop_refusal_placeholder",
+      "en": "This server did not answer the request for its desktop controls.",
+      "fr": "Ce serveur n’a pas répondu à la demande de commandes de bureau."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.errors.json",
+      "key": "ui.common.errors.job_cancel",
+      "en": "Cancel job request failed: {status, number, ::group-off} {statusText}",
+      "fr": "Échec de la requête d’annulation de la tâche : {status, number, ::group-off} {statusText}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.errors.json",
+      "key": "ui.common.errors.jobs_list",
+      "en": "List jobs request failed: {status, number, ::group-off} {statusText}",
+      "fr": "Échec de la requête de liste des tâches : {status, number, ::group-off} {statusText}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.errors.json",
+      "key": "ui.common.errors.jobs_cleanup",
+      "en": "Cleanup jobs request failed: {status, number, ::group-off} {statusText}",
+      "fr": "Échec de la requête de nettoyage des tâches : {status, number, ::group-off} {statusText}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_server_will_tem",
+      "en": "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started.",
+      "fr": "Patientez pendant la mise à jour du serveur. Le serveur sera temporairement hors ligne pendant son redémarrage pour appliquer la mise à jour. La mise à jour ne peut pas être interrompue une fois commencée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_update_can_t_be",
+      "en": "Please wait while the server is being updated. The update can't be interrupted once it has started.",
+      "fr": "Patientez pendant la mise à jour du serveur. La mise à jour ne peut pas être interrompue une fois commencée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.rolling_the_server_onto",
+      "en": "Running sessions aren't interrupted. Rolling the server onto {detail}; sessions keep working on their current version and switch when they next go idle. The update can't be stopped once it has started.",
+      "fr": "Les sessions en cours ne sont pas interrompues. Déploiement du serveur vers {detail} ; les sessions continuent sur leur version actuelle et basculent lors de leur prochain passage au repos. La mise à jour ne peut pas être arrêtée une fois commencée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.the_app_updates_this_install_and_then_restarts_the_server_it_star",
+      "en": "Running sessions aren't interrupted. The app updates this install and then restarts the server it started. Sessions that are still working move onto the new build when they next stop or go idle.",
+      "fr": "Les sessions en cours ne sont pas interrompues. L’application met à jour cette installation puis redémarre le serveur qu’elle a démarré. Les sessions encore actives passent à la nouvelle compilation lors de leur prochain arrêt ou passage au repos."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.the_app_updates_this_install_itself_the_server_you_are_using_was_",
+      "en": "Running sessions aren't interrupted. The app updates this install itself. The server you are using was started outside Local Operator, so it keeps running the old build until it restarts.",
+      "fr": "Les sessions en cours ne sont pas interrompues. L’application met à jour cette installation elle-même. Le serveur que vous utilisez a été démarré en dehors de Local Operator ; il continue donc d’exécuter l’ancienne compilation jusqu’à son redémarrage."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.the_install_is_now_at",
+      "en": "The install is now at {detail}, and the server serving this app did not answer after it was restarted.",
+      "fr": "L’installation se trouve maintenant en {detail}, et le serveur servant cette application n’a pas répondu après son redémarrage."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.this_app_started_that_server_so_it_can_restart_it_onto_the",
+      "en": "Running sessions aren't interrupted. This app started that server, so it can restart it onto the new build now. {restartcostsentence}",
+      "fr": "Les sessions en cours ne sont pas interrompues. Cette application a démarré ce serveur ; elle peut donc le redémarrer sur la nouvelle compilation maintenant. {restartcostsentence}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.waiting_for_the_turns_running_on_this_machine_to_finish",
+      "en": "Waiting for the turns running on this machine to finish. {restartdrainbound} - and the update can't be interrupted while it waits.",
+      "fr": "Attente de la fin des tours en cours sur cet ordinateur. {restartdrainbound} — et la mise à jour ne peut pas être interrompue pendant l’attente."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th",
+      "en": "Rebuilding the server from this machine's checkout. The app waited for the turns running on this machine to finish first, and the rebuild reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take several minutes (up to half an hour). It can't be interrupted once it has started.",
+      "fr": "Recompilation du serveur depuis la copie de travail de cette machine. L’application a d’abord attendu la fin des tours actifs sur cette machine. La recompilation réinstalle cette installation sur place, donc un tour démarré pendant son exécution peut encore être interrompu, et elle peut prendre plusieurs minutes (jusqu’à une demi-heure). Elle ne peut plus être interrompue une fois lancée."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.remedy_managed_app_owned",
+      "en": "Running sessions aren't interrupted. The app publishes the new build beside the one the server is using and then moves the server onto it. Sessions that are still working move onto the new build when they next stop or go idle. This can take a minute or two.",
+      "fr": "Les sessions en cours ne sont pas interrompues. L’application publie la nouvelle compilation à côté de celle qu’utilise le serveur, puis y fait passer le serveur. Les sessions encore actives passent à la nouvelle compilation lors de leur prochain arrêt ou passage au repos. Cela peut prendre une minute ou deux."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.common.updates.json",
+      "key": "ui.common.updates.update_notification.remedy_managed_global",
+      "en": "Running sessions aren't interrupted. The app installs the new build beside the one in use and moves the server onto it right away. Sessions switch to the new build when they next go idle.",
+      "fr": "Les sessions en cours ne sont pas interrompues. L’application installe la nouvelle compilation à côté de celle en service et y fait passer le serveur immédiatement. Les sessions basculent sur la nouvelle compilation lors de leur prochain passage au repos."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.hub.detail.json",
+      "key": "ui.hub.detail.load_failed_body",
+      "en": "The Radient agent catalogue did not answer.",
+      "fr": "Le catalogue d’agents Radient n’a pas répondu."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.library.json",
+      "key": "ui.library.librarian.control_failed",
+      "en": "The Librarian did not answer.",
+      "fr": "Le Bibliothécaire n’a pas répondu."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.mesh.json",
+      "key": "ui.mesh.mesh_approvals.answer_approval_prompts_there",
+      "en": "answer approval prompts there",
+      "fr": "répondre aux invites d’approbation là-bas"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.mesh.json",
+      "key": "ui.mesh.mesh_graph.no_answer_count",
+      "en": "{count, plural, other {{count, number, ::group-off} no answer}}",
+      "fr": "{count, plural, one {{count, number, ::group-off} sans réponse} many {{count, number, ::group-off} sans réponse} other {{count, number, ::group-off} sans réponse}}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.mesh.json",
+      "key": "ui.mesh.mesh_reach.attempt_no_answer",
+      "en": "no answer",
+      "fr": "sans réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.mesh.json",
+      "key": "ui.mesh.mesh_reach.no_answer",
+      "en": "no answer",
+      "fr": "sans réponse"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.mesh.json",
+      "key": "ui.mesh.approval.answer_window",
+      "en": "Answer within {duration}",
+      "fr": "Répondre sous {duration}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.notices.json",
+      "key": "ui.notices.chat.answer_changed",
+      "en": "Answer changed",
+      "fr": "Réponse modifiée"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.notices.json",
+      "key": "ui.notices.chat.ask_answered",
+      "en": "Answer sent to",
+      "fr": "Réponse envoyée"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.notices.json",
+      "key": "ui.notices.chat.ask_answered_named",
+      "en": "Answer sent to {name}",
+      "fr": "Réponse envoyée dans {name}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.notices.json",
+      "key": "ui.notices.chat.ask_changed",
+      "en": "Answer changed for",
+      "fr": "Réponse modifiée"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.notices.json",
+      "key": "ui.notices.chat.ask_changed_named",
+      "en": "Answer changed for {name}",
+      "fr": "Réponse modifiée dans {name}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.notices.json",
+      "key": "ui.notices.chat.unread_backend_silent",
+      "en": "The backend did not answer.",
+      "fr": "Le backend n’a pas répondu."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.notices.json",
+      "key": "ui.notices.hub.downloaded_collision",
+      "en": "Downloaded \"{name}\". You already have an agent called \"{existing}\", so two agents now answer to that name and either may be picked. Rename one of them.",
+      "fr": "« {name} » téléchargé. Vous avez déjà un agent nommé « {existing} », donc deux agents répondent désormais à ce nom et l’un ou l’autre peut être choisi. Renommez l’un des deux."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.notifications.json",
+      "key": "ui.notifications.row.answer",
+      "en": "Answer",
+      "fr": "Répondre"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.notifications.json",
+      "key": "ui.notifications.error.refresh.body",
+      "en": "The local server didn't answer. Showing what loaded at {time} — dismissing and marking read are paused until it's back.",
+      "fr": "Le serveur local n’a pas répondu. Affichage des données chargées à {time} — les actions Ignorer et Marquer comme lu sont suspendues jusqu’à son retour."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.onboarding.tour.json",
+      "key": "ui.onboarding.tour.chat_input.body.1",
+      "en": "Type your request here. Agents can answer questions, perform tasks, search the web, and much more. When you create a new agent, you'll see suggested prompts for ideas.",
+      "fr": "Saisissez votre demande ici. Les agents peuvent répondre à des questions, accomplir des tâches, rechercher sur le web et bien plus encore. Quand vous créez un agent, des prompts suggérés vous donnent des idées."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.settings.appearance.json",
+      "key": "ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every",
+      "en": "By turn condenses each turn to its answer. By response keeps every settled response on screen, with the turn's final answer still marked.",
+      "fr": "Par tour ne garde que la réponse finale de chaque tour. Par réponse garde chaque réponse terminée à l’écran, tout en signalant la réponse finale du tour."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.settings.imports.json",
+      "key": "ui.settings.imports.progress_job",
+      "en": "Job {job} · {state}",
+      "fr": "Tâche {job} · {state}"
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.settings.navigation.json",
+      "key": "ui.settings.navigation.settings_page.the_local_operator_server_is_taking_longer_than_usual_to_answer_i",
+      "en": "The Local Operator server is taking longer than usual to answer. If it does not respond, you will be able to retry from here.",
+      "fr": "Le serveur Local Operator met plus de temps que d’habitude à répondre. S’il ne répond pas, vous pourrez réessayer ici."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.settings.shortcuts.json",
+      "key": "ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
+      "en": "The browser's own shortcuts answer only while the browser pane or a page inside it has focus: new tab, reopen tab, the address bar and switching tabs. That is deliberate, because the app must not take those chords away from the rest of the interface. To use one, focus the browser first.",
+      "fr": "Les raccourcis propres au navigateur ne répondent que lorsque le panneau du navigateur ou une page qu’il contient a le focus : nouvel onglet, rouvrir un onglet, la barre d’adresse et le changement d’onglet. C’est délibéré : l’application ne doit pas retirer ces raccourcis au reste de l’interface. Pour en utiliser un, activez d’abord le navigateur."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "key": "ui.teamBridge.invitations.failed.unconfirmed",
+      "en": "Your answer was not confirmed. Try again.",
+      "fr": "Votre réponse n’a pas été confirmée. Réessayez."
+    },
+    {
+      "file": "src/i18n/catalogues/fr/ui.updates.service.json",
+      "key": "ui.updates.service.global.source_rebuild.remedy",
+      "en": "Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.",
+      "fr": "Recompilation de ce checkout avec `lop-update`. L’application attend d’abord la fin des tours en cours sur cet ordinateur, puis la recompilation réinstalle cette installation sur place ; un tour démarré pendant son exécution peut donc encore être interrompu, et l’opération peut durer jusqu’à une demi-heure. Cette installation continue de signaler la version du checkout, et non celle que l’application a proposée."
+    }
+  ],
+  "execution": {
+    "language": "Python standard library",
+    "assertions_passed": true,
+    "node_processes_started": 0,
+    "browser_used": false,
+    "scope": "Nine new values, earlier values used for consistency only"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.canonical/fr-transcript-2eae3ddc404e/report.md",
+      "sha256": "9e1ad88852dc5a27758003fe069b8185ffb3d5be70d3d35dee56f23042db403f"
+    }
+  ]
+}
