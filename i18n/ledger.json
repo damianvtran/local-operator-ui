@@ -1089,10 +1089,10 @@
 			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
 			"target_sha256": "1be6372b482749eab2aa6aa6317014c1e98cd6b9aa5c7c6c285bdc8132db6b2a",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 9a6333fafa02; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -2428,10 +2428,10 @@
 			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
 			"target_sha256": "71ec923c445ee4df382e865352c5d90193295cc529b68dac9a9227a8db729e08",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 9a6333fafa02; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -11689,10 +11689,10 @@
 			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
 			"target_sha256": "24f6c4f45242d5dffc5aad356b2750b238dd9db328b259aebcbf1c157421b6ce",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 92406429e984; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -13053,10 +13053,10 @@
 			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
 			"target_sha256": "1423095a87c282abd47c2ac723c3cfce17698289460f242aff4fb7d5ee56ee65",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 92406429e984; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -22767,10 +22767,10 @@
 			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
 			"target_sha256": "d8fab0a0c8c2d601ea54233b4bc79b8fef00c9d012ae2af1f428c12834133192",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session dbb7c7d873cd; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -24087,10 +24087,10 @@
 			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
 			"target_sha256": "5eb7691f97e9fdb1b3bdf3bacd7e29467f302563b280a0a948ed74a3c9dac994",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session dbb7c7d873cd; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -33497,10 +33497,10 @@
 			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
 			"target_sha256": "fd5cf0acdb350da982e667157df051d189405ed78a20158b484705ea4b56941c",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a; remediation of the audited keys at 011c0f4f4ca, session 2a835d4a8c42 job bf4831b9c2ca)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session ef3a6636b35b; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -34791,10 +34791,10 @@
 			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
 			"target_sha256": "fc107d781035ed4e7e043ff844b9bf6d1a36b51c293e34c90e5f37d13a59a990",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session ef3a6636b35b; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -44148,10 +44148,10 @@
 			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
 			"target_sha256": "883a364c941c68a16fb93d0fb7be338806326d66f2bbfca16329089a6a4b88de",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 872c9d99cb31; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -45516,10 +45516,10 @@
 			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
 			"target_sha256": "1afbe15928e45422eaddc7576116832645561c331a0fad4e9b0d2775b54517ad",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb; remediation of the audited keys at 011c0f4f4ca, session 634c73fee13a job 70c2d5eecc5d)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 872c9d99cb31; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -54775,10 +54775,10 @@
 			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
 			"target_sha256": "cbf960f0f8b65894b0bd49b966e4f60b4973ef97e23acd0bed75609020f625fd",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session aca3bfa430aa; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -56105,10 +56105,10 @@
 			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
 			"target_sha256": "9dddf80e887fdd631860e64f3dd56796b1babeaf5bbdd9f0e4b7db7fa17e9bbf",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session aca3bfa430aa; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -66096,10 +66096,10 @@
 			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
 			"target_sha256": "e2c6e9d3dff38f707287097c74b012adf9c4fcfbc91b2400a15ce18b1520b4a9",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session e0c3abf82259; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -67476,10 +67476,10 @@
 			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
 			"target_sha256": "d5b5bba0c55a44bbf261d5b2277b7dc074fd9ff0159722b9e414998a2ab1b3bd",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc; remediation of the audited keys at 011c0f4f4ca, session 969fd4e90925 job bdffc4284eb8)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session e0c3abf82259; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
