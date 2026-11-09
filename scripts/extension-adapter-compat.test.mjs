@@ -132,3 +132,24 @@ for (const file of ["dist/cjs/index.js", "dist/esm/index.mjs"])
 		assert.equal(none.id, -1);
 		assert.deepEqual(none.tabs, []);
 	});
+
+test("the pnpm patch ships policy-option declarations, not only locally edited installed types", () => {
+	// A local .d.ts edit made the main typecheck pass while clean CI failed
+	// TS2353 on allowNativeMessaging. The declarations must travel WITH the
+	// runtime patch. Negative control: omitting the declaration diff fails even
+	// when this developer's installed .d.ts already contains the fields.
+	const patch = readFileSync(
+		join(process.cwd(), "patches/electron-chrome-extensions@4.10.0.patch"),
+		"utf8",
+	);
+	const declaration = patch.split(
+		"diff --git a/dist/types/browser/index.d.ts b/dist/types/browser/index.d.ts",
+	)[1];
+	assert.ok(declaration, "clean-install declaration delta is present");
+	for (const option of [
+		"allowNativeMessaging",
+		"allowNotifications",
+		"openActionPopup",
+	])
+		assert.ok(declaration.includes(`+    ${option}?:`), option);
+});
