@@ -92,5 +92,5 @@
 	"ui.agentMessages.settings.action.turn_on_again": "Activer à nouveau",
 	"ui.agentMessages.settings.consent.via_default_on": "Activé par défaut",
 	"ui.agentMessages.settings.share_typing.label": "Indiquer quand j’écris",
-	"ui.agentMessages.settings.share_typing.description": "Les membres de vos conversations Team Bridge voient une courte mention « en train d’écrire » pendant que vous rédigez. Le texte que vous saisissez n’est jamais partagé."
+	"ui.agentMessages.settings.share_typing.description": "Les membres de vos conversations Team Bridge voient une courte mention « en train d’écrire » pendant que vous rédigez. Le texte que vous saisissez n’est jamais partagé."
 }

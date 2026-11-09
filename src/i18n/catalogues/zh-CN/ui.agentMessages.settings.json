@@ -92,5 +92,5 @@
 	"ui.agentMessages.settings.action.turn_on_again": "重新开启",
 	"ui.agentMessages.settings.consent.via_default_on": "默认开启",
 	"ui.agentMessages.settings.share_typing.label": "显示我正在输入",
-	"ui.agentMessages.settings.share_typing.description": "你在输入时，Team Bridge 对话中的其他成员会看到一行简短的“正在输入”提示。你输入的内容永远不会被分享。"
+	"ui.agentMessages.settings.share_typing.description": "你输入时，Team Bridge对话中的其他成员会看到一行简短的“正在输入”提示。输入的内容绝不会被分享。"
 }
