@@ -36,8 +36,33 @@ import {
  * The scroll container is Radix's viewport inside our `ScrollArea`; the ref
  * goes on the ScrollArea root and the viewport is found by its data attribute,
  * the same way `team-bridge-thread-read.ts` finds it.
+ *
+ * UPWARD INTENT UNPINS AT ONCE; ONLY THE READER RE-PINS (the "it fights me"
+ * fix). `pinned` used to be re-derived from geometry on every scroll event:
+ * within `NEAR_BOTTOM_PX` of the end counted as pinned. A reader at the bottom
+ * who scrolls up with small trackpad deltas spends the first several events
+ * inside that band, so they stayed pinned - and the windowed timeline re-cuts
+ * its mounted slice and re-measures rows as they scroll, so the content
+ * resizes mid-gesture, the ResizeObserver below fires, and `toBottom()` threw
+ * them back. Every gesture restarted inside the band, so they could never get
+ * out. Now:
+ * - a scroll that moved UP and left the reader off the very end unpins,
+ *   whatever the distance (wheel, keys, scrollbar drag and touch all arrive as
+ *   a scrollTop decrease; checked against the last position we observed OR
+ *   wrote ourselves, so our own `toBottom()` is never mistaken for intent);
+ * - a wheel tick upward unpins even before the browser applies it, because a
+ *   resize can land between the wheel and its scroll event;
+ * - re-pinning needs the reader's own move DOWN into the band (or `pin()`, a
+ *   new `resetKey`, the live edge returning). A scroll that ends exactly at
+ *   the end because content SHRANK (the browser clamps scrollTop down) keeps
+ *   a pinned reader pinned - that decrease is not intent.
+ * The page's windowed timeline consults this decision through `isPinned`
+ * before its own end-snap, so once the reader has left, neither hook writes
+ * them back to the end (its own "at bottom" lags a frame behind the scroll).
  */
 const NEAR_BOTTOM_PX = 48;
+/** "At the very end": one pixel, because fractional layouts settle by fractions. */
+const AT_END_PX = 1;
 const VIEWPORT = "[data-radix-scroll-area-viewport]";
 
 export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
@@ -75,6 +100,10 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	const previousLiveEdge = useRef(liveEdgeAvailable);
 	const anchor = useRef<{ id: string; offset: number } | null>(null);
 	const previousRows = useRef<readonly string[]>([]);
+	/* The scroll position we last saw or set. Direction is judged against this,
+	   and our own writes update it, so a reader's upward scroll that coalesces
+	   with one of our `toBottom()` writes still reads as upward. */
+	const lastTop = useRef(0);
 	const [newMessages, setNewMessages] = useState(0);
 	const viewport = useCallback(
 		() =>
@@ -111,15 +140,20 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		const row = [...element.querySelectorAll<HTMLElement>(rowSelector)].find(
 			(node) => node.dataset.messageId === anchor.current?.id,
 		);
-		if (row)
+		if (row) {
 			element.scrollTop +=
 				row.getBoundingClientRect().top -
 				element.getBoundingClientRect().top -
 				anchor.current.offset;
+			lastTop.current = element.scrollTop;
+		}
 	}, [preserveAnchor, viewport, rowSelector]);
 	const toBottom = useCallback(() => {
 		const element = viewport();
-		if (element) element.scrollTop = element.scrollHeight;
+		if (!element) return;
+		element.scrollTop = element.scrollHeight;
+		// Read back: the browser clamps, and the clamped value is what we compare to.
+		lastTop.current = element.scrollTop;
 	}, [viewport]);
 	const pin = useCallback(() => {
 		if (!liveEdgeAvailable) return;
@@ -181,11 +215,18 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	useEffect(() => {
 		const element = viewport();
 		if (!element) return;
+		lastTop.current = element.scrollTop;
 		const onScroll = () => {
-			pinned.current =
-				liveEdgeAvailable &&
-				element.scrollHeight - element.scrollTop - element.clientHeight <=
-					NEAR_BOTTOM_PX;
+			const top = element.scrollTop;
+			const fromEnd = element.scrollHeight - top - element.clientHeight;
+			const movedUp = top < lastTop.current - AT_END_PX;
+			lastTop.current = top;
+			if (!liveEdgeAvailable) pinned.current = false;
+			else if (movedUp && fromEnd > AT_END_PX) pinned.current = false;
+			// Moving down (or a clamp that left the reader at the very end): the
+			// band decides, as it always has - entering it re-pins, and a jump
+			// that lands far above the end (a restored position) is not pinned.
+			else pinned.current = fromEnd <= NEAR_BOTTOM_PX;
 			if (pinned.current) {
 				anchor.current = null;
 				if (preserveAnchor) setNewMessages(0);
@@ -198,7 +239,30 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 				else restoreAnchor();
 			}
 		};
+		/* The wheel arrives before its scroll, and a content resize can fire in
+		   between: unpin on the intent itself. A pinch-zoom (ctrlKey) is not a
+		   scroll. A downward tick inside the band re-pins, so a stray upward tick
+		   the browser absorbed at the end cannot strand the reader unpinned. */
+		const onWheel = (event: WheelEvent) => {
+			if (event.ctrlKey || !liveEdgeAvailable) return;
+			if (event.deltaY < 0) {
+				if (pinned.current) {
+					pinned.current = false;
+					captureAnchor();
+				}
+			} else if (
+				event.deltaY > 0 &&
+				!pinned.current &&
+				element.scrollHeight - element.scrollTop - element.clientHeight <=
+					NEAR_BOTTOM_PX
+			) {
+				pinned.current = true;
+				anchor.current = null;
+				if (preserveAnchor) setNewMessages(0);
+			}
+		};
 		element.addEventListener("scroll", onScroll, { passive: true });
+		element.addEventListener("wheel", onWheel, { passive: true });
 		element.addEventListener("load", onLoad, true);
 		/*
 		 * Observe Radix's content wrapper AND its direct children (review r8 m1).
@@ -231,6 +295,7 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		resize?.observe(element);
 		return () => {
 			element.removeEventListener("scroll", onScroll);
+			element.removeEventListener("wheel", onWheel);
 			element.removeEventListener("load", onLoad, true);
 			resize?.disconnect();
 		};
