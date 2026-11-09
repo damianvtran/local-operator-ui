@@ -5578,7 +5578,101 @@ export const DESKTOP_REFUSAL_CODE = {
 	 * carries its own authored sentence.
 	 */
 	transportFailed: "transport.failed",
+	/**
+	 * The daemon is reloading itself onto a new build (`lop update` /
+	 * `lop-update` → SIGUSR1 → local-operator `server/reload.py`) and refused
+	 * this request at its admission fence BEFORE any handler ran. NOT a pairing
+	 * condition and NOT an outage: the request was definitively not processed,
+	 * so it is safe to repeat, and the server comes back by itself. Main writes
+	 * this code when {@link isServeReloadFence} recognises the fence answer, so
+	 * the user reads "the server is updating" instead of the plane-closed
+	 * sentence a bare 503 used to map to.
+	 */
+	serverUpdating: "transient.server-updating",
 } as const;
+
+/**
+ * The sentence local-operator's reload admission fence answers with
+ * (`server/reload.py`, the `ADMISSION_ATTR` arm of the reload middleware):
+ * `503 {"detail": "service is preparing a safe reload; retry shortly"}` plus
+ * `Retry-After: 1`, on every HTTP request except `/health`.
+ *
+ * Matched EXACTLY and only on a 503: every released backend with in-place
+ * reload emits this bare string, and no code accompanies it, so the string is
+ * the only fact an existing daemon offers. It is a machine vocabulary in this
+ * app (compared, never rendered), the same footing as
+ * {@link DESKTOP_MACHINE_DETAIL}. Measured on a real isolated `lop serve`
+ * 0.101.37/0.101.38 reload (2026-11-09): body byte-identical to this, header
+ * `Retry-After: 1`.
+ */
+export const SERVE_RELOAD_FENCE_DETAIL =
+	"service is preparing a safe reload; retry shortly";
+
+/**
+ * The declared code a future backend may put on the same fence answer
+ * (`{"detail": {"code": "serve_reloading", "message": ..., "retry_after_ms"}}`).
+ * Recognised already so the UI keeps working if the backend moves from the
+ * bare string to a coded envelope; nothing emits it today.
+ */
+export const SERVE_RELOAD_FENCE_CODE = "serve_reloading";
+
+/**
+ * Whether one daemon answer is the reload admission fence.
+ *
+ * Deliberately narrow: a 503 AND either the declared code or the exact legacy
+ * sentence. A plane-closed 503 ("Desktop controls require a backend started by
+ * the desktop app.") and any other 503 stay what they were, so a genuinely
+ * unpaired daemon is never reported as "updating". The path is not consulted:
+ * the fence refuses every route but `/health`, and its sentence cannot be
+ * produced by anything else.
+ */
+export function isServeReloadFence(status: number, body: unknown): boolean {
+	if (status !== 503 || body === null || typeof body !== "object") return false;
+	const detail = (body as { detail?: unknown }).detail;
+	if (detail === SERVE_RELOAD_FENCE_DETAIL) return true;
+	return (
+		detail !== null &&
+		typeof detail === "object" &&
+		(detail as { code?: unknown }).code === SERVE_RELOAD_FENCE_CODE
+	);
+}
+
+/**
+ * Whether a refusal body carries main's display-only `updating` hint.
+ *
+ * Main adds `detail.updating: true` to a follow-on failure (a plane-closed 503,
+ * a transport failure, a deadline) that lands while the server-update window is
+ * open, KEEPING the original code: an ask treats `transportFailed` as an outcome
+ * it cannot know (`ask-queue.ts`), and rewriting that code into a retryable one
+ * could make the app send twice. The hint changes only the sentence a user reads.
+ */
+export function desktopDetailUpdating(detail: unknown): boolean {
+	return (
+		detail !== null &&
+		typeof detail === "object" &&
+		(detail as { updating?: unknown }).updating === true
+	);
+}
+
+/**
+ * Whether a refusal body is a reload-fence answer main relayed AFTER the
+ * server-update window's cap ran out (`detail.update_stalled: true`).
+ *
+ * WHY A SECOND HINT (review round 1, M2). Past the cap the fence is no longer
+ * "back in a moment": main relays it as `transport.failed` (its honest, existing
+ * sentence, and an outcome-unknown code, so nothing is re-sent on a guess). That
+ * code alone would make the compatibility banner yield to the chat strip as an
+ * outage - but the daemon still answers `/health`, so the strip has no row and
+ * the header would go silent. This hint is what lets the banner keep speaking.
+ * Display-only: no retry or outcome rule reads it.
+ */
+export function desktopDetailUpdateStalled(detail: unknown): boolean {
+	return (
+		detail !== null &&
+		typeof detail === "object" &&
+		(detail as { update_stalled?: unknown }).update_stalled === true
+	);
+}
 
 /** One code from {@link DESKTOP_REFUSAL_CODE}. */
 export type DesktopRefusalCode =
@@ -5919,6 +6013,8 @@ export const DESKTOP_REFUSAL_COPY_KEY: Record<
 		"ui.common.errors.desktop_refusal.plane_closed",
 	[DESKTOP_REFUSAL_CODE.transportFailed]:
 		"ui.common.errors.desktop_refusal.transport_failed",
+	[DESKTOP_REFUSAL_CODE.serverUpdating]:
+		"ui.common.errors.desktop_refusal.server_updating",
 };
 
 /**
@@ -5944,6 +6040,7 @@ export const DESKTOP_MACHINE_DETAIL = {
 	noCredential: "Restart with a desktop-managed backend to use these controls.",
 	transportFailed:
 		"The backend could not complete this request. Check its connection and try again.",
+	serverUpdating: "The Local Operator server is updating.",
 } as const;
 
 /** Whether a caught error's `code` is one of the refusal codes. */

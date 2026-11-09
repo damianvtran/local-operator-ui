@@ -76,6 +76,17 @@ const STRIP_IMPORT =
 	/import \{ useStripSpeaksConnection \} from "\.\.\/chat-status-presence";/;
 const SIDEBAR_HOOK_CALL =
 	/const stripSpeaksConnection = useStripSpeaksConnection\(\s*serverHealth\?\.online === false,\s*\);/;
+/*
+ * THE SIDEBAR'S READING ALSO COUNTS A SERVER UPDATE (PR #1817): during an update
+ * the strip's `updating` row is the one voice for the outage, so the sidebar's
+ * reason term widens to "offline OR updating". The R11 invariant is unchanged -
+ * the call still goes through the presence hook, so the stand-down holds only
+ * where the strip is on screen - and only that one extra disjunct is accepted:
+ * a bare `serverUpdating` (dropping the offline term) or a reading outside the
+ * hook still fails here.
+ */
+const SIDEBAR_OWN_HOOK_CALL =
+	/const stripSpeaksConnection = useStripSpeaksConnection\(\s*serverHealth\?\.online === false(?:\s*\|\|\s*serverUpdating)?,\s*\);/;
 const PRESENCE_TWO_TERMS =
 	/export function useStripSpeaksConnection\(serverOffline: boolean\): boolean \{\s*return useChatStatusStripPresent\(\) && serverOffline;/;
 const PRESENCE_DEFAULT = /let stripPresent = false;/;
@@ -133,8 +144,14 @@ test("the capability paragraph stands down on the strip's own reading, and the b
 });
 
 test("the withdrawn-gate paragraph takes the same stand-down", () => {
+	/*
+	 * The marker carries PR #1817's `!serverUpdating` term: the notice is also
+	 * hidden for an update window (its sentence is read off the same fenced
+	 * answer). The guarded invariant - the paragraph stands down on the shared
+	 * predicate - is still the marker's own `!stripSpeaksConnection`.
+	 */
 	const block = between(
-		"{notice && !stripSpeaksConnection && (",
+		"{notice && !stripSpeaksConnection && !serverUpdating && (",
 		"\n\t\t\t{/*",
 	);
 	assert.match(block, NOTICE_ROW);
@@ -207,7 +224,7 @@ test("the foot line and the two paragraphs read one predicate, not three", () =>
 test("the shared predicate carries the strip's presence beside the copy condition (R11)", () => {
 	assert.match(
 		SOURCE,
-		SIDEBAR_HOOK_CALL,
+		SIDEBAR_OWN_HOOK_CALL,
 		"the sidebar must read the shared predicate: 'the strip is on screen AND unreachability is the reason' - a one-term version is the silent-route defect R11 found",
 	);
 	assert.match(

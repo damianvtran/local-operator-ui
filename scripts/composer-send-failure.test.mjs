@@ -409,6 +409,62 @@ test("every failure class resolves once, and the notice says which it is", () =>
 	}
 });
 
+test("the server updating: a fence refusal is not-sent and retryable; a hinted failure keeps its verdict", () => {
+	const updating =
+		"The Local Operator server is updating. It will be back in a moment.";
+	// The fence refused before any handler ran: provably not admitted.
+	const fence = new DesktopControlError(
+		503,
+		"The Local Operator server is updating.",
+		undefined,
+		"transient.server-updating",
+		1000,
+	);
+	assert.equal(sendFailureClass(fence), "not_sent");
+	assert.deepEqual(sendFailureCopy(fence), {
+		message: updating,
+		retry: true,
+		code: "transient.server-updating",
+	});
+	// A transport failure inside the window: same unknown class and Retry as ever,
+	// only the sentence is the update's.
+	const reset = new DesktopControlError(
+		503,
+		"down",
+		undefined,
+		"transport.failed",
+		undefined,
+		{ code: "transport.failed", message: "down", updating: true },
+	);
+	assert.equal(sendFailureClass(reset), "unknown");
+	assert.deepEqual(sendFailureCopy(reset), {
+		message: updating,
+		retry: true,
+		code: "transport.failed",
+	});
+	// A plane-closed refusal inside the window: the update sentence, still no press.
+	const closed = new DesktopControlError(
+		503,
+		"closed",
+		undefined,
+		"pairing.plane-closed",
+		undefined,
+		{ message: "closed", updating: true },
+	);
+	assert.deepEqual(sendFailureCopy(closed), {
+		message: updating,
+		retry: false,
+		code: "pairing.plane-closed",
+	});
+	// Outside the window (no hint) the plane-closed sentence is unchanged.
+	assert.notEqual(
+		sendFailureCopy(
+			new DesktopControlError(503, "closed", undefined, "pairing.plane-closed"),
+		).message,
+		updating,
+	);
+});
+
 test("the copy table is one place, and none of it speaks the app's own vocabulary", () => {
 	const table = Object.values(SEND_FAILURE_COPY).join(" ");
 	for (const jargon of ["held", "admission", "claim", "owner", "request id"]) {

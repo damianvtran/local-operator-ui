@@ -3,5 +3,6 @@
 	"ui.chat.status.degraded": "The server is answering slowly. Your messages are queued.",
 	"ui.chat.status.internet_offline": "This machine is offline. Sending will wait.",
 	"ui.chat.status.unreachable": "Can't reach the Local Operator server. Sending will wait.",
+	"ui.chat.status.updating": "The Local Operator server is updating. It will be back in a moment.",
 	"ui.chat.status.pill_aria": "Connection status: {title}{hasOutcome, select, yes { {outcome}} other {}} Show details"
 }
