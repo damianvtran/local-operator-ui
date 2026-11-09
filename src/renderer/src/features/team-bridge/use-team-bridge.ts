@@ -65,6 +65,8 @@ import {
 	TEAM_BRIDGE_HISTORY_STALE_MS,
 	TEAM_BRIDGE_PAGE_SIZE,
 	channelViewOrder,
+	historyReadRetry,
+	historyReadRetryDelay,
 	mergeChannelPage,
 	mergeOlderPageAtCursor,
 	rememberChannelView,
@@ -354,8 +356,15 @@ export function useTeamBridgeMessages(
 		gcTime: TEAM_BRIDGE_HISTORY_GC_MS,
 		/* `not_a_member` is a definite answer (an administrator opening an archived
 		   channel they never joined), not a blip: retrying it only delays the state
-		   that explains it, and polling it every eight seconds only repeats the refusal. */
-		retry: (failures, error) => !isNotAMemberRefusal(error) && failures < 3,
+		   that explains it, and polling it every eight seconds only repeats the refusal.
+		   A `429 rate_limited` is the hub's shared per-account read bucket saying
+		   "come back in N s": the chain waits exactly that and keeps going while the
+		   reader is on the channel, instead of three blind 1/2/4 s tries that end in
+		   an error (the 7.4 s stuck-skeleton report; see the policy's note in
+		   `team-bridge-channel-cache.ts`). It stops once nobody observes the query,
+		   even if a `fetchQuery` has rejoined the chain, and after a bounded run. */
+		retry: historyReadRetry(client, options.queryKey, isNotAMemberRefusal),
+		retryDelay: (failures, error) => historyReadRetryDelay(failures, error),
 		/* A conversation needs to feel live: without a poll an incoming message
 		   never appears until the reader clicks away. Eight seconds is Slack's
 		   order of immediacy for a background tab without an events stream;
