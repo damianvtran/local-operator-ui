@@ -1,0 +1,193 @@
+{
+  "schema": 1,
+  "kind": "independent_delta_i18n_audit",
+  "locale": "zh-CN",
+  "namespace": [
+    "ui.chat.canonical",
+    "ui.agents.upload"
+  ],
+  "audit_date": "2026-11-09",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "c01a80b57a32",
+    "instance": "c01a80b57a32",
+    "model": "openai/gpt-6.1-sol",
+    "requested_model": "anthropic/claude-sonnet-5-5",
+    "fallback": true,
+    "fallback_reason": "Provider quota failures; session model-switch notices selected anthropic/claude-opus-5-5 then openai/gpt-6.1-sol. All audit execution and linguistic decisions used openai/gpt-6.1-sol.",
+    "independence": "Independent auditor; did not author or modify any translations.",
+    "model_source": "Session model-switch notice: openai/gpt-6.1-sol after Anthropic provider quota failures. All audit execution and linguistic judgment occurred after that switch.",
+    "independent_from_translator_session": true
+  },
+  "base": "6031bc9ad71",
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "scope": "Only newly added keys in the briefed delta; no whole-namespace linguistic certification.",
+  "key_count": 9,
+  "reviewed_keys": [
+    "ui.chat.canonical.transcript.earlier_text_offscreen",
+    "ui.chat.canonical.transcript.interrupted",
+    "ui.chat.canonical.transcript.no_answer_given",
+    "ui.chat.canonical.transcript.not_run",
+    "ui.chat.canonical.transcript.answer_may_be_missing",
+    "ui.chat.canonical.transcript.worked",
+    "ui.chat.canonical.transcript.worked_for",
+    "ui.chat.canonical.transcript.job_suffix",
+    "ui.agents.upload.failure.publish_fallback"
+  ],
+  "reviewed_messages": [
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.earlier_text_offscreen",
+      "en": "Earlier text of this answer is not on screen",
+      "target": "此回答前面的文字不在屏幕上",
+      "placeholder_ast": []
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.interrupted",
+      "en": "Interrupted",
+      "target": "已中断",
+      "placeholder_ast": []
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.no_answer_given",
+      "en": "No answer given",
+      "target": "未作答",
+      "placeholder_ast": []
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.not_run",
+      "en": "Not run",
+      "target": "未运行",
+      "placeholder_ast": []
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.answer_may_be_missing",
+      "en": "Part of this answer may be missing",
+      "target": "此回答可能缺少部分内容",
+      "placeholder_ast": []
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.worked",
+      "en": "Worked",
+      "target": "已进行工作",
+      "placeholder_ast": []
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.worked_for",
+      "en": "Worked for {duration}",
+      "target": "工作耗时{duration}",
+      "placeholder_ast": [
+        [
+          "duration",
+          1
+        ]
+      ]
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.job_suffix",
+      "en": "· Job {id}",
+      "target": "· 任务{id}",
+      "placeholder_ast": [
+        [
+          "id",
+          1
+        ]
+      ]
+    },
+    {
+      "namespace": "ui.agents.upload",
+      "key": "ui.agents.upload.failure.publish_fallback",
+      "en": "The agent could not be published. Try again.",
+      "target": "智能体未能发布。重试。",
+      "placeholder_ast": []
+    }
+  ],
+  "input_hashes": {
+    "ui.chat.canonical": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "sha256": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+        "sha256": "d5b5bba0c55a44bbf261d5b2277b7dc074fd9ff0159722b9e414998a2ab1b3bd"
+      }
+    },
+    "ui.agents.upload": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+        "sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/zh-CN/ui.agents.upload.json",
+        "sha256": "e2c6e9d3dff38f707287097c74b012adf9c4fcfbc91b2400a15ce18b1520b4a9"
+      }
+    }
+  },
+  "style_and_glossary": [
+    {
+      "repo": "local-operator",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repo": "local-operator",
+      "path": "i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  ],
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/zh-transcript-c01a80b57a32/report.md",
+      "sha256": "b4c277efa2baf87fa5bc9edc1c6be8dd130ae2c39e2c58beb8330f6c25295749"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/zh-transcript-c01a80b57a32/mechanical.json",
+      "sha256": "f452c5e48bf423535300d6de9903c441d1be049e8c74952e34ac6b9782b8d212"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/zh-transcript-c01a80b57a32/check.cjs",
+      "sha256": "e8700560d4a0bba4a251c9ba65f80312af75247a91e4899c9cd695ca18dd805a"
+    }
+  ],
+  "not_executed": [
+    "ICU formatter execution and source-path inspection only; no browser or rendered-frame validation.",
+    "Only nine newly added Chinese keys receive a fresh linguistic audit; existing keys supply terminology context, not a full namespace re-audit."
+  ],
+  "audit_kind": "linguistic_and_mechanical_delta",
+  "date": "2026-11-09",
+  "round": 1,
+  "branch": "i18n/slice-transcript",
+  "instance": "c01a80b57a32",
+  "agent": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol"
+}

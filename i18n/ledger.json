@@ -1086,31 +1086,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
-			"target_sha256": "a3ecc58f02b9d5cd03fb866f9dbba0c7678264cf3b696d8cc9808a9bfb21baa4",
+			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+			"target_sha256": "1be6372b482749eab2aa6aa6317014c1e98cd6b9aa5c7c6c285bdc8132db6b2a",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 9a6333fafa02; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "898c4472a4d3",
+					"instance": "7e2164ab99b1",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/898c4472a4d3.json",
-					"receipt_sha256": "8b6ffd8c3c1c36477e3929e894268f7f881ae3e899714c7c61e57bff35fe1a83",
-					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
-					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
+					"receipt": "i18n/receipts/7e2164ab99b1.json",
+					"receipt_sha256": "55e4cc2c8506a5f61bac5389391470255611d7304a7097e154b9381a4c996c17",
+					"scope": "failure.publish_fallback, replacing a hardcoded English exception body",
+					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 				}
 			],
 			"status": "audited",
@@ -1179,6 +1179,30 @@
 							"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
 							"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+					"target_sha256": "a3ecc58f02b9d5cd03fb866f9dbba0c7678264cf3b696d8cc9808a9bfb21baa4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "898c4472a4d3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/898c4472a4d3.json",
+							"receipt_sha256": "8b6ffd8c3c1c36477e3929e894268f7f881ae3e899714c7c61e57bff35fe1a83",
+							"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+							"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 						}
 					],
 					"status": "audited"
@@ -2401,31 +2425,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
-			"target_sha256": "36e22f64e6e2187cccdff1a308415dd27c0e60117445e8719ed1a4bd07e5b806",
+			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+			"target_sha256": "71ec923c445ee4df382e865352c5d90193295cc529b68dac9a9227a8db729e08",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 9a6333fafa02; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "78c4c8dbce2e-ui1753-es",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "7e2164ab99b1",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/78c4c8dbce2e-ui1753-es.json",
-					"receipt_sha256": "18cb3169c02a8a6d7d70ae4c3f80078cebb031f1100ffc5986fa844a523dbb91",
-					"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/7e2164ab99b1.json",
+					"receipt_sha256": "55e4cc2c8506a5f61bac5389391470255611d7304a7097e154b9381a4c996c17",
+					"scope": "the eight transcript status keys added to ui.chat.canonical",
+					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 				}
 			],
 			"status": "audited",
@@ -2703,6 +2727,30 @@
 							"receipt_sha256": "1b49990327d80d4b7ba1d35868021117db6a491518f1e9c230956329f2c7739e",
 							"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
 							"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
+					"target_sha256": "36e22f64e6e2187cccdff1a308415dd27c0e60117445e8719ed1a4bd07e5b806",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "78c4c8dbce2e-ui1753-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/78c4c8dbce2e-ui1753-es.json",
+							"receipt_sha256": "18cb3169c02a8a6d7d70ae4c3f80078cebb031f1100ffc5986fa844a523dbb91",
+							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -11638,13 +11686,13 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
-			"target_sha256": "f24de528122dd459f1c3897af0e41a9817b22f2184c5490013bb6aaa757f837b",
+			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+			"target_sha256": "24f6c4f45242d5dffc5aad356b2750b238dd9db328b259aebcbf1c157421b6ce",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 92406429e984; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -11652,17 +11700,17 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "fdf2eeb5ba4c",
+					"instance": "fr-transcript-r1-2eae3ddc404e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fdf2eeb5ba4c.json",
-					"receipt_sha256": "705f5bf7c7ee0202efd62bedbb5a13ff04d3b596ae329b311203efdf04b747d5",
-					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
-					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
+					"receipt": "i18n/receipts/fr-transcript-r1-2eae3ddc404e.json",
+					"receipt_sha256": "d7a9a55e5857c73b1c639492681a158961814377b8cbf90edc34463a9fe0583a",
+					"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
+					"note": "round-1 independent audit"
 				}
 			],
 			"status": "audited",
@@ -11732,6 +11780,30 @@
 							"receipt_sha256": "9f3c0a52d34a38716106cd30627a4b2c35227dce02be2725da37ef3d56033e88",
 							"scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/c09dbedc5d8a-1603r1-fr.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+					"target_sha256": "f24de528122dd459f1c3897af0e41a9817b22f2184c5490013bb6aaa757f837b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "fdf2eeb5ba4c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fdf2eeb5ba4c.json",
+							"receipt_sha256": "705f5bf7c7ee0202efd62bedbb5a13ff04d3b596ae329b311203efdf04b747d5",
+							"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+							"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 						}
 					],
 					"status": "audited"
@@ -12978,31 +13050,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
-			"target_sha256": "fddda38eab075c96d3a0678c4f4bcecb1c7828e018fda0c136c73bbb7030bba4",
+			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+			"target_sha256": "1423095a87c282abd47c2ac723c3cfce17698289460f242aff4fb7d5ee56ee65",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 92406429e984; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "6ff7a7a1f3b4-ui1753-fr",
+					"instance": "fr-transcript-r1-2eae3ddc404e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6ff7a7a1f3b4-ui1753-fr.json",
-					"receipt_sha256": "f6197d6aa3d6a949739405047da9354dd8830da6ecfc072a715d2925fa77aeb3",
-					"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/fr-transcript-r1-2eae3ddc404e.json",
+					"receipt_sha256": "d7a9a55e5857c73b1c639492681a158961814377b8cbf90edc34463a9fe0583a",
+					"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
+					"note": "round-1 independent audit"
 				}
 			],
 			"status": "audited",
@@ -13278,6 +13350,30 @@
 							"receipt_sha256": "cc5a57646a049fd1d19b9b0aa0ebbe11f7f534f4558c6d25651c063933ae0171",
 							"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
 							"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
+					"target_sha256": "fddda38eab075c96d3a0678c4f4bcecb1c7828e018fda0c136c73bbb7030bba4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "6ff7a7a1f3b4-ui1753-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6ff7a7a1f3b4-ui1753-fr.json",
+							"receipt_sha256": "f6197d6aa3d6a949739405047da9354dd8830da6ecfc072a715d2925fa77aeb3",
+							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -22668,31 +22764,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
-			"target_sha256": "c4db80a23bbaab3dd626eddead6a3859780c79530fc728ac1455a99a38a3c342",
+			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+			"target_sha256": "d8fab0a0c8c2d601ea54233b4bc79b8fef00c9d012ae2af1f428c12834133192",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session dbb7c7d873cd; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "hi-upload-r2-6210d7bea55d",
+					"result": "clean",
+					"instance": "hi-transcript-r1-ab2f2fb6eeff",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/hi-upload-r2-6210d7bea55d.json",
-					"receipt_sha256": "bba604553be681d61f887f79b74e7772a76da22e877906f77713282aa6a52514",
-					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
-					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
+					"receipt": "i18n/receipts/hi-transcript-r1-ab2f2fb6eeff.json",
+					"receipt_sha256": "2dc80817cda09cace39eae7c60a215fb8e29716be5de6dfade66a639e0b8cc6a",
+					"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
+					"note": "round-1 independent audit"
 				}
 			],
 			"status": "audited",
@@ -22761,6 +22857,30 @@
 							"receipt_sha256": "6e6c16a177d9b7428b0404309161ad873e0065f54d676237fed2b404400f4437",
 							"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout), A-1p (ui.chat.pickers), A-1c (ui.chat), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta 553e1ccbd7b1. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/a8b33d269fce-1603r1-hi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+					"target_sha256": "c4db80a23bbaab3dd626eddead6a3859780c79530fc728ac1455a99a38a3c342",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "hi-upload-r2-6210d7bea55d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-upload-r2-6210d7bea55d.json",
+							"receipt_sha256": "bba604553be681d61f887f79b74e7772a76da22e877906f77713282aa6a52514",
+							"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+							"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 						}
 					],
 					"status": "audited"
@@ -23964,31 +24084,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
-			"target_sha256": "5334774dd61a2931998d41c607d845d8aa554484cdbc817784bd79767739b563",
+			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+			"target_sha256": "5eb7691f97e9fdb1b3bdf3bacd7e29467f302563b280a0a948ed74a3c9dac994",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session dbb7c7d873cd; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "050f568ab597",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "hi-transcript-r1-ab2f2fb6eeff",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/050f568ab597.json",
-					"receipt_sha256": "2e140f685e9a147aceb472be77294577a1336adf8b65d80e867cb4710e9b4775",
-					"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/hi-transcript-r1-ab2f2fb6eeff.json",
+					"receipt_sha256": "2dc80817cda09cace39eae7c60a215fb8e29716be5de6dfade66a639e0b8cc6a",
+					"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
+					"note": "round-1 independent audit"
 				}
 			],
 			"status": "audited",
@@ -24264,6 +24384,30 @@
 							"receipt_sha256": "80f0a6d7037f0704878e65964097bb4d67080c509b1a59fc5df8484acfb0f12d",
 							"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
 							"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
+					"target_sha256": "5334774dd61a2931998d41c607d845d8aa554484cdbc817784bd79767739b563",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "050f568ab597",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/050f568ab597.json",
+							"receipt_sha256": "2e140f685e9a147aceb472be77294577a1336adf8b65d80e867cb4710e9b4775",
+							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -33350,31 +33494,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
-			"target_sha256": "eab2258e22d38391c179067f225b5385f572229962d68a19fb7714c06f9fbd8f",
+			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+			"target_sha256": "fd5cf0acdb350da982e667157df051d189405ed78a20158b484705ea4b56941c",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a; remediation of the audited keys at 011c0f4f4ca, session 2a835d4a8c42 job bf4831b9c2ca)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session ef3a6636b35b; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "9db9e255c45c",
+					"result": "clean",
+					"instance": "4c8a43091740",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 3
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/9db9e255c45c.json",
-					"receipt_sha256": "64f9a67abc07660158d44d294bdebfb49c3a1bd7df8f7d320be72ddebf606c77",
-					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
-					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
+					"receipt": "i18n/receipts/4c8a43091740.json",
+					"receipt_sha256": "2bc427c3dc18fd57023c21f287654113cd66a2f2c6340240a5a724b2d4b65ada",
+					"scope": "failure.publish_fallback, replacing a hardcoded English exception body",
+					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 				}
 			],
 			"status": "audited",
@@ -33443,6 +33587,30 @@
 							"receipt_sha256": "5c2e55043b83ecb3d7e745071e7020148523c645fc92a0a0b678559ef0492645",
 							"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 2 keys PR #1603 added + round-2 delta re-audit (ed052586f8fb) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
 							"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/ed052586f8fb-1603r2-ru.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+					"target_sha256": "eab2258e22d38391c179067f225b5385f572229962d68a19fb7714c06f9fbd8f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "9db9e255c45c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/9db9e255c45c.json",
+							"receipt_sha256": "64f9a67abc07660158d44d294bdebfb49c3a1bd7df8f7d320be72ddebf606c77",
+							"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+							"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 						}
 					],
 					"status": "audited"
@@ -34620,31 +34788,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
-			"target_sha256": "0d72b4a18e5fd9bf8b681f28b2ed44e147e542d9a49a040bd33fdb546ebc26d4",
+			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+			"target_sha256": "fc107d781035ed4e7e043ff844b9bf6d1a36b51c293e34c90e5f37d13a59a990",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session ef3a6636b35b; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "05dd4fa2b221-ui1753-ru",
+					"instance": "4c8a43091740",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/05dd4fa2b221-ui1753-ru.json",
-					"receipt_sha256": "ec04548218150371863adc9922ded3953b91d16ccf9a8a8a460cfc00538a732a",
-					"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/4c8a43091740.json",
+					"receipt_sha256": "2bc427c3dc18fd57023c21f287654113cd66a2f2c6340240a5a724b2d4b65ada",
+					"scope": "the eight transcript status keys added to ui.chat.canonical",
+					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 				}
 			],
 			"status": "audited",
@@ -34920,6 +35088,30 @@
 							"receipt_sha256": "9fe63fffeadbab9e5276044e22e30e82e0b33719bca147636003ed245caca924",
 							"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
 							"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
+					"target_sha256": "0d72b4a18e5fd9bf8b681f28b2ed44e147e542d9a49a040bd33fdb546ebc26d4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "05dd4fa2b221-ui1753-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/05dd4fa2b221-ui1753-ru.json",
+							"receipt_sha256": "ec04548218150371863adc9922ded3953b91d16ccf9a8a8a460cfc00538a732a",
+							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -43953,13 +44145,13 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
-			"target_sha256": "85886c70dad735c2133757c52a30a3522c34cbb4ab2fb6864f3baa792dd48ce3",
+			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+			"target_sha256": "883a364c941c68a16fb93d0fb7be338806326d66f2bbfca16329089a6a4b88de",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 872c9d99cb31; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
@@ -43967,17 +44159,17 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "f90f2ee5589a",
+					"instance": "s2a-ur-2cf1ea7b5fd-e05de8251ff7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f90f2ee5589a.json",
-					"receipt_sha256": "6fc5edc001053c0e86a4a7f947ef842fefecec911b5081e6c4ec12c2b01afcaa",
-					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
-					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
+					"receipt": "i18n/receipts/s2a-ur-2cf1ea7b5fd-e05de8251ff7.json",
+					"receipt_sha256": "9bdb5bd8f245d249799fa28a9801a3862e7fcbea2309bf114ea8894bf3cebd17",
+					"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
+					"note": "round-1 independent audit"
 				}
 			],
 			"status": "audited",
@@ -44047,6 +44239,30 @@
 							"receipt_sha256": "5ebbed48b2be756b106b78c3fc2b9fd94524653d46c913169224b61950baf0ea",
 							"scope": "Round-1 full review (7dde05a06499) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat), A-2 (ui.chat.attachments)), fixed at 011c0f4f4ca and passed by round-2 delta d83d475c68e1. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/7dde05a06499-1603r1-ur.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+					"target_sha256": "85886c70dad735c2133757c52a30a3522c34cbb4ab2fb6864f3baa792dd48ce3",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "f90f2ee5589a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f90f2ee5589a.json",
+							"receipt_sha256": "6fc5edc001053c0e86a4a7f947ef842fefecec911b5081e6c4ec12c2b01afcaa",
+							"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+							"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 						}
 					],
 					"status": "audited"
@@ -45297,31 +45513,31 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
-			"target_sha256": "1bf0af8888365ae102150f7df7f919c4963ba4ad27cbc4e86165b96dc4b3e6de",
+			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+			"target_sha256": "1afbe15928e45422eaddc7576116832645561c331a0fad4e9b0d2775b54517ad",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb; remediation of the audited keys at 011c0f4f4ca, session 634c73fee13a job 70c2d5eecc5d)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session 872c9d99cb31; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "ab407cfa3e46-ui1753-ur",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "s2a-ur-2cf1ea7b5fd-e05de8251ff7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/ab407cfa3e46-ui1753-ur.json",
-					"receipt_sha256": "6a201068e55667716093e6d48ad24439a3ddff6945641f0dbb06ece7c0203240",
-					"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/s2a-ur-2cf1ea7b5fd-e05de8251ff7.json",
+					"receipt_sha256": "9bdb5bd8f245d249799fa28a9801a3862e7fcbea2309bf114ea8894bf3cebd17",
+					"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
+					"note": "round-1 independent audit"
 				}
 			],
 			"status": "audited",
@@ -45598,6 +45814,30 @@
 							"receipt_sha256": "e9d17a2fc75b5990a571c9dbd22c0f2444d69c6a58e5caadb40eac24f2fb6950",
 							"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
 							"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
+					"target_sha256": "1bf0af8888365ae102150f7df7f919c4963ba4ad27cbc4e86165b96dc4b3e6de",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "ab407cfa3e46-ui1753-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/ab407cfa3e46-ui1753-ur.json",
+							"receipt_sha256": "6a201068e55667716093e6d48ad24439a3ddff6945641f0dbb06ece7c0203240",
+							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -54532,31 +54772,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
-			"target_sha256": "42bc714694c4cfb62ea4e92ec1ba3d7deae35cab80edf06f45879ece2d048232",
+			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+			"target_sha256": "cbf960f0f8b65894b0bd49b966e4f60b4973ef97e23acd0bed75609020f625fd",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session aca3bfa430aa; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "3a3cef56dc0b",
+					"result": "clean",
+					"instance": "849774c2de9b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/3a3cef56dc0b.json",
-					"receipt_sha256": "a38265d4f8e50aebadf3d3a4d1d1e4034a779b1396156b9f10f90e7f50289a6b",
-					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
-					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
+					"receipt": "i18n/receipts/849774c2de9b.json",
+					"receipt_sha256": "13182d6d54c25e498bef2d360dd9ca5b48511464613955b6fb8b1b9c81ff20c4",
+					"scope": "failure.publish_fallback, replacing a hardcoded English exception body",
+					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 				}
 			],
 			"status": "audited",
@@ -54626,6 +54866,30 @@
 							"receipt_sha256": "09710c169ff9bdd0d658318f05e99cbb3f4cc21545fc727a15079f0d053c7ea2",
 							"scope": "Round-1 full review (ff1dde7af5b2) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta b8016304b62d. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/ff1dde7af5b2-1603r1-vi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+					"target_sha256": "42bc714694c4cfb62ea4e92ec1ba3d7deae35cab80edf06f45879ece2d048232",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "3a3cef56dc0b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3a3cef56dc0b.json",
+							"receipt_sha256": "a38265d4f8e50aebadf3d3a4d1d1e4034a779b1396156b9f10f90e7f50289a6b",
+							"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+							"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 						}
 					],
 					"status": "audited"
@@ -55838,31 +56102,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
-			"target_sha256": "7be5750808c26b883a8b9d9fd0c59c3dded418db03441c5cfa5d0657887abeb4",
+			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+			"target_sha256": "9dddf80e887fdd631860e64f3dd56796b1babeaf5bbdd9f0e4b7db7fa17e9bbf",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session aca3bfa430aa; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "200a953fa085-ui1753-vi",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "849774c2de9b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/200a953fa085-ui1753-vi.json",
-					"receipt_sha256": "2610b82de42cf1e20231b2fffb3035497cbe6f19b70864b19e41b5f328c61243",
-					"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/849774c2de9b.json",
+					"receipt_sha256": "13182d6d54c25e498bef2d360dd9ca5b48511464613955b6fb8b1b9c81ff20c4",
+					"scope": "the eight transcript status keys added to ui.chat.canonical",
+					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 				}
 			],
 			"status": "audited",
@@ -56138,6 +56402,30 @@
 							"receipt_sha256": "7024e281805b75686e0dade9a23abf09f638d5e837e65f6af5f1b30318c5dec8",
 							"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
 							"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
+					"target_sha256": "7be5750808c26b883a8b9d9fd0c59c3dded418db03441c5cfa5d0657887abeb4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "200a953fa085-ui1753-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/200a953fa085-ui1753-vi.json",
+							"receipt_sha256": "2610b82de42cf1e20231b2fffb3035497cbe6f19b70864b19e41b5f328c61243",
+							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -65805,31 +66093,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
-			"target_sha256": "1c4421610206ff75ff7c590a29b9917b605bf7344d73ec6c4b660c0781c027a5",
+			"source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+			"target_sha256": "e2c6e9d3dff38f707287097c74b012adf9c4fcfbc91b2400a15ce18b1520b4a9",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / radient/auto / 2026-10-26); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session e0c3abf82259; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "bf341286bd26",
+					"result": "clean",
+					"instance": "c01a80b57a32",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/bf341286bd26.json",
-					"receipt_sha256": "96cbcad971913680c5d09dff0a019e9b28e719bfcdb116354d2140647250daa7",
-					"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
-					"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
+					"receipt": "i18n/receipts/c01a80b57a32.json",
+					"receipt_sha256": "f58897ff93360355eab757d79e5ffc5b3d32647dee3ca78042fab59ed5818ca9",
+					"scope": "failure.publish_fallback, replacing a hardcoded English exception body",
+					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 				}
 			],
 			"status": "audited",
@@ -65898,6 +66186,30 @@
 							"receipt_sha256": "5ce56c39bc182a3ee0551c3363050165b4512407a7193cfbb77cf3aa66c0cf53",
 							"scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail)), fixed at 011c0f4f4ca and passed by round-2 delta e98e27ec97a4. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+					"target_sha256": "1c4421610206ff75ff7c590a29b9917b605bf7344d73ec6c4b660c0781c027a5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "bf341286bd26",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/bf341286bd26.json",
+							"receipt_sha256": "96cbcad971913680c5d09dff0a019e9b28e719bfcdb116354d2140647250daa7",
+							"scope": "the 15 values this branch added to ui.agents.upload, plus the target.org_unnamed fallback added in the round-2 remediation; independent audit of the delta only",
+							"note": "round-2 audit of the remediation delta 2b72db6a56a..269ef259c05"
 						}
 					],
 					"status": "audited"
@@ -67161,31 +67473,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
-			"target_sha256": "05eaf8a0710cf1878553fdcb7071cfab2393a8eb1c6e1eb466598ec1033a5eb5",
+			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+			"target_sha256": "d5b5bba0c55a44bbf261d5b2277b7dc074fd9ff0159722b9e414998a2ab1b3bd",
 			"translator": {
-				"agent": "task",
-				"model": "radient/auto (pinned tier anthropic/claude-opus-5-5; three provider-quota fallbacks; underlying concrete model unknown)",
-				"date": "2026-11-05",
-				"note": "New sidebar/canonical keys translated by lopdev task jobs a4d7bf30e299 (pass 1), 89d546304098 (pass 2), 29c829f9fded (pass 3 corrections); translator model radient/auto, underlying concrete model unknown. Prior translator provenance: {\"agent\": \"i18n-translator\", \"date\": \"2026-11-02\", \"model\": \"anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc; remediation of the audited keys at 011c0f4f4ca, session 969fd4e90925 job bdffc4284eb8)\", \"note\": \"Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row).\"}. PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "coder",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09",
+				"note": "PR #1804 translation lane session e0c3abf82259; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "7d3d4a9a80a4-ui1753-zh-cn",
+					"instance": "c01a80b57a32",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7d3d4a9a80a4-ui1753-zh-cn.json",
-					"receipt_sha256": "df3f3c8c1341cf428d1882f755e48af66db7ed7852b1c47574ea6674ea69c371",
-					"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/c01a80b57a32.json",
+					"receipt_sha256": "f58897ff93360355eab757d79e5ffc5b3d32647dee3ca78042fab59ed5818ca9",
+					"scope": "the eight transcript status keys added to ui.chat.canonical",
+					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 				}
 			],
 			"status": "audited",
@@ -67461,6 +67773,30 @@
 							"receipt_sha256": "8d84cdf9ae246fd82ce95b91fa23668dda1d509f9bd0d9f3429a284b26c768dc",
 							"scope": "Canonical audit of corrected sidebar/canonical bytes 20261105T180154Z",
 							"note": "Fourteen-pair canonical audit; prior audits superseded; vi nit deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885",
+					"target_sha256": "05eaf8a0710cf1878553fdcb7071cfab2393a8eb1c6e1eb466598ec1033a5eb5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "7d3d4a9a80a4-ui1753-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7d3d4a9a80a4-ui1753-zh-cn.json",
+							"receipt_sha256": "df3f3c8c1341cf428d1882f755e48af66db7ed7852b1c47574ea6674ea69c371",
+							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"

@@ -45,5 +45,6 @@
 	"ui.agents.upload.title.republished": "“{name}” کا اندراج Agent Hub پر اپ ڈیٹ کر دیا گیا",
 	"ui.agents.upload.title.update_listing": "کیا “{name}” کا اندراج Agent Hub پر اپ ڈیٹ کریں؟",
 	"ui.agents.upload.sign_in.title_continue": "جاری رکھنے کے لیے سائن ان کریں",
-	"ui.agents.upload.sign_in.title_again": "دوبارہ سائن ان کریں"
+	"ui.agents.upload.sign_in.title_again": "دوبارہ سائن ان کریں",
+	"ui.agents.upload.failure.publish_fallback": "ایجنٹ شائع نہیں ہو سکا۔ دوبارہ کوشش کریں۔"
 }

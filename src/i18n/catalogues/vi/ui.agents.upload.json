@@ -45,5 +45,6 @@
 	"ui.agents.upload.title.republished": "Đã cập nhật mục đăng của “{name}” trên Trung tâm tác nhân",
 	"ui.agents.upload.title.update_listing": "Cập nhật mục đăng của “{name}” trên Trung tâm tác nhân?",
 	"ui.agents.upload.sign_in.title_continue": "Đăng nhập để tiếp tục",
-	"ui.agents.upload.sign_in.title_again": "Đăng nhập lại"
+	"ui.agents.upload.sign_in.title_again": "Đăng nhập lại",
+	"ui.agents.upload.failure.publish_fallback": "Không thể xuất bản tác nhân. Hãy thử lại."
 }

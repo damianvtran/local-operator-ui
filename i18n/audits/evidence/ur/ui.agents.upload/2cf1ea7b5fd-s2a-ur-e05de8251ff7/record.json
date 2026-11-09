@@ -1,0 +1,112 @@
+{
+  "locale": "ur",
+  "branch": "i18n/slice-transcript",
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71e1b9fc83e0d1a9714e52a19301913",
+  "date": "2026-11-09",
+  "instance": "s2a-ur-2cf1ea7b5fd-e05de8251ff7",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "model": "openai/gpt-6.1-sol",
+    "instance": "s2a-ur-2cf1ea7b5fd-e05de8251ff7",
+    "session": "e05de8251ff7",
+    "independent": true,
+    "fallback": "Provider quota fallback; task started with anthropic/claude-sonnet-5-5, switched through anthropic/claude-opus-5-5 before review analysis to openai/gpt-6.1-sol."
+  },
+  "status": "passed",
+  "result": "clean",
+  "scope": "Urdu delta: eight canonical transcript strings and upload fallback; no rendered UI sign-off",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+      "en_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+      "target_sha256": "1afbe15928e45422eaddc7576116832645561c331a0fad4e9b0d2775b54517ad",
+      "ur_sha256": "1afbe15928e45422eaddc7576116832645561c331a0fad4e9b0d2775b54517ad",
+      "context_sha256": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "scope": [
+        "ui.chat.canonical.transcript.earlier_text_offscreen",
+        "ui.chat.canonical.transcript.interrupted",
+        "ui.chat.canonical.transcript.no_answer_given",
+        "ui.chat.canonical.transcript.not_run",
+        "ui.chat.canonical.transcript.answer_may_be_missing",
+        "ui.chat.canonical.transcript.worked",
+        "ui.chat.canonical.transcript.worked_for",
+        "ui.chat.canonical.transcript.job_suffix"
+      ],
+      "evidence": "i18n/audits/evidence/ur/ui.chat.canonical/2cf1ea7b5fd-s2a-ur-e05de8251ff7"
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+      "en_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+      "target_sha256": "883a364c941c68a16fb93d0fb7be338806326d66f2bbfca16329089a6a4b88de",
+      "ur_sha256": "883a364c941c68a16fb93d0fb7be338806326d66f2bbfca16329089a6a4b88de",
+      "context_sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "scope": [
+        "ui.agents.upload.failure.publish_fallback"
+      ],
+      "evidence": "i18n/audits/evidence/ur/ui.agents.upload/2cf1ea7b5fd-s2a-ur-e05de8251ff7"
+    }
+  },
+  "namespace": "ui.agents.upload",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+    "sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/ur/ui.agents.upload.json",
+    "sha256": "883a364c941c68a16fb93d0fb7be338806326d66f2bbfca16329089a6a4b88de"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+    "sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+  },
+  "policy_sources": [
+    {
+      "repo": "local-operator",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repo": "local-operator",
+      "path": "i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/ur/ui.agents.upload/2cf1ea7b5fd-s2a-ur-e05de8251ff7/scan.json",
+      "sha256": "afaaa5b24617a38bd4c85b46364edac9b2a2f4a30d5884c17c9decb713ba85d7"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.agents.upload/2cf1ea7b5fd-s2a-ur-e05de8251ff7/report.md",
+      "sha256": "88a4061c685042ae1a0deb1a7403e31b27c8ea91c3f4c6ebfb939cabce4ab5c4"
+    }
+  ],
+  "audit_receipt": "i18n/receipts/ur-transcript-r1-e05de8251ff7.json"
+}

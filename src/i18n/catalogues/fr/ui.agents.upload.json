@@ -45,5 +45,6 @@
 	"ui.agents.upload.title.republished": "Fiche de « {name} » mise à jour sur le Hub des agents",
 	"ui.agents.upload.title.update_listing": "Mettre à jour la fiche de « {name} » sur le Hub des agents ?",
 	"ui.agents.upload.sign_in.title_continue": "Connectez-vous pour continuer",
-	"ui.agents.upload.sign_in.title_again": "Reconnectez-vous"
+	"ui.agents.upload.sign_in.title_again": "Reconnectez-vous",
+	"ui.agents.upload.failure.publish_fallback": "L’agent n’a pas pu être publié. Réessayez."
 }

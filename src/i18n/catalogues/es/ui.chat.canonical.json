@@ -239,5 +239,13 @@
 	"ui.chat.canonical.fold.receipt.steered": "Guiado",
 	"ui.chat.canonical.checkpoint_rail.label": "Puntos de control de turnos",
 	"ui.chat.canonical.transcript.not_delivered": "No entregado",
+	"ui.chat.canonical.transcript.earlier_text_offscreen": "El texto anterior de esta respuesta no está en pantalla",
+	"ui.chat.canonical.transcript.interrupted": "Interrumpido",
+	"ui.chat.canonical.transcript.no_answer_given": "Sin respuesta",
+	"ui.chat.canonical.transcript.not_run": "No se ejecutó",
+	"ui.chat.canonical.transcript.answer_may_be_missing": "Puede que falte parte de esta respuesta",
+	"ui.chat.canonical.transcript.worked": "Trabajó",
+	"ui.chat.canonical.transcript.worked_for": "Trabajó durante {duration}",
+	"ui.chat.canonical.transcript.job_suffix": "· Trabajo {id}",
 	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ acciones} many {{count, number, ::group-off}+ de acciones} other {{count, number, ::group-off}+ acciones}}"
 }

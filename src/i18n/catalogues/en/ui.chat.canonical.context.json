@@ -1720,5 +1720,65 @@
 		"placeholders": {
 			"count": "the number of loaded actions; printed without digit grouping"
 		}
+	},
+	"ui.chat.canonical.transcript.earlier_text_offscreen": {
+		"role": "notice above an answer whose earlier text is outside the loaded transcript",
+		"tone": "calm factual sentence, sentence case, no trailing punctuation",
+		"length": "One short line or wrap in a narrow transcript.",
+		"note": "Describes text not on screen, not proof that the answer is lost.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.interrupted": {
+		"role": "status label on an expanded tool call stopped or redirected before it ran",
+		"tone": "neutral past participle, sentence case, no trailing punctuation",
+		"length": "One short word.",
+		"note": "Distinct from Not run: interruption is not a tool failure.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.no_answer_given": {
+		"role": "fallback body for an unanswered question in an expanded ask receipt",
+		"tone": "neutral factual phrase, sentence case, no trailing punctuation",
+		"length": "One short line.",
+		"note": "Shown in place of an answer; do not imply the question was answered.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.not_run": {
+		"role": "failure status label on an expanded tool call that never executed",
+		"tone": "plain factual status, sentence case, no trailing punctuation",
+		"length": "Two short words.",
+		"note": "Used for planning failures or legacy records; distinguish from neutral Interrupted.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.answer_may_be_missing": {
+		"role": "warning above an answer with potentially missing content",
+		"tone": "cautious factual sentence, sentence case, no trailing punctuation",
+		"length": "One short line or wrap in a narrow transcript.",
+		"note": "Keep the uncertainty: part of this answer MAY be missing.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.worked": {
+		"role": "completed-turn footer status when no elapsed duration is available",
+		"tone": "neutral past-tense receipt, sentence case, no trailing punctuation",
+		"length": "One short word in a compact footer.",
+		"note": "Pair with worked_for: this duration-free form means the agent worked, not that the task necessarily succeeded. Do not add a duration or imply success.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.worked_for": {
+		"role": "completed-turn footer status with elapsed work duration",
+		"tone": "neutral past-tense receipt, sentence case, no trailing punctuation",
+		"length": "Short phrase plus duration in a compact footer.",
+		"note": "Pair with worked: this form includes elapsed work time, not a success verdict. Translate the whole phrase so duration can be placed naturally.",
+		"placeholders": {
+			"duration": "already formatted elapsed duration from formatDuration, e.g. 2m 4s; preserve as supplied"
+		}
+	},
+	"ui.chat.canonical.transcript.job_suffix": {
+		"role": "job identifier suffix after a hub receipt identity",
+		"tone": "compact noun label, sentence case, no trailing punctuation",
+		"length": "Short label plus identifier in a metadata line.",
+		"note": "Keep the middle-dot separator; the call site supplies the preceding space. The identifier is not translated.",
+		"placeholders": {
+			"id": "opaque job identifier from the hub receipt; preserve as supplied"
+		}
 	}
 }
