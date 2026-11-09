@@ -102,6 +102,7 @@ export const OrgTeamsList: React.FC<{
 	tenantId: string;
 	orgName: string | null;
 }> = ({ tenantId, orgName }) => {
+	const locale = useI18nLocale();
 	const { teams, isLoading, isFetching, isError, error, refetch } =
 		useOrgTeamsQuery({ tenantId });
 	/* The refusal the read is answered with, when it is one (§2.2). */
@@ -172,6 +173,9 @@ export const OrgTeamsList: React.FC<{
 	 * reach — a treatment pinned by a test and rendered by nobody. The name in the
 	 * context is the failed row's, because the sentence is about that document.
 	 */
+	// The treatment (including its unnamed-team context) contains resolved copy;
+	// a parent repaint alone does not invalidate it while the same error is held.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translations inside the treatment table.
 	const pullTreatment = useMemo(() => {
 		if (!isPublicationError(pull.error)) return null;
 		const failed = teams.find((team) => team.id === failedTeamId);
@@ -189,7 +193,7 @@ export const OrgTeamsList: React.FC<{
 				surface: "pull",
 			},
 		);
-	}, [pull.error, failedTeamId, teams]);
+	}, [pull.error, failedTeamId, teams, locale]);
 
 	/*
 	 * One action, one act. `default` renders nothing at all (see ROSTER_ACTIONS):

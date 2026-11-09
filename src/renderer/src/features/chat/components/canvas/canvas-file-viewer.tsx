@@ -6,6 +6,7 @@ import {
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
 import { desktopRequest } from "@shared/api/local-operator/desktop-api";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
@@ -60,6 +61,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	scan = null,
 	attachments = null,
 }) => {
+	const locale = useI18nLocale();
 	// Get files from the canvas store for this conversation
 	const fallbackFiles = useCanvasStore((state): CanvasDocument[] => {
 		const conv = state.conversations[conversationId];
@@ -320,9 +322,13 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		],
 	);
 
+	// The builder stores translated labels in each item. Subscribe through the
+	// viewer's React.memo AND invalidate this memo, without churning finder item
+	// identities on unrelated renders (or remounting its selection on a switch).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates copy resolved inside the builder.
 	const attachmentItems = useMemo(
 		() => attachmentFinderItems(attachments?.items ?? [], sessionId ?? ""),
-		[attachments?.items, sessionId],
+		[attachments?.items, sessionId, locale],
 	);
 	/*
 	 * Attachments OWN what the person attached: the ledger also admits a
