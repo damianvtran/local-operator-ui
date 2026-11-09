@@ -474,26 +474,10 @@ export function AgentMessagesSettings({
 						setPending={setPending}
 					/>
 
-					<SessionDesignation
-						value={sessionValue}
-						sessions={sessions}
-						pending={pending === "session"}
-						disabled={pending !== null}
-						onSave={async (next) => {
-							setPending("session");
-							setActionRefusal(null);
-							try {
-								await api.localSetting("team_bridge.session", next);
-								setSessionValue(next);
-								await onRefreshStatus(true);
-							} catch (error) {
-								setActionRefusal(agentMessagesRefusal(error));
-							} finally {
-								setPending(null);
-							}
-						}}
-					/>
-
+					{/* Directly under the state block, whose last row is "Enabled on
+					    this machine": both are per-machine "what this device does on
+					    Team Bridge" switches and read as one group (design round 1,
+					    D2), rather than sitting below the unrelated session picker. */}
 					{typingAvailable &&
 						api.setShareTyping &&
 						typeof load.settings.share_typing === "boolean" && (
@@ -533,6 +517,26 @@ export function AgentMessagesSettings({
 								}}
 							/>
 						)}
+
+					<SessionDesignation
+						value={sessionValue}
+						sessions={sessions}
+						pending={pending === "session"}
+						disabled={pending !== null}
+						onSave={async (next) => {
+							setPending("session");
+							setActionRefusal(null);
+							try {
+								await api.localSetting("team_bridge.session", next);
+								setSessionValue(next);
+								await onRefreshStatus(true);
+							} catch (error) {
+								setActionRefusal(agentMessagesRefusal(error));
+							} finally {
+								setPending(null);
+							}
+						}}
+					/>
 
 					{load.allowlist &&
 						(agentMessagesSettingsState(status, load.settings) === "C" ||
@@ -1181,6 +1185,12 @@ const ShareTypingSwitch: FC<{
 	return (
 		<div
 			data-agent-messages-share-typing=""
+			/* A settings-search row like its siblings (design round 1, D3). The
+			   terms are search keys, not copy - English identifiers exactly like
+			   the machine switch's and the session row's. */
+			data-search-row="agent-messages.share-typing"
+			data-search-control
+			data-search-terms="team bridge team_bridge typing share_typing indicator"
 			className="flex items-start justify-between gap-4"
 		>
 			<div className="min-w-0">

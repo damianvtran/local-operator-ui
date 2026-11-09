@@ -245,7 +245,10 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	const stageMentionsRef = useRef<(body: string) => void>(() => {});
 	/* The emitter is created after `useMessageInput` (it reads the text), but
 	   the submit callback is handed over before it exists: a ref bridges them. */
-	const typingSentRef = useRef<() => void>(() => {});
+	const typingSendRef = useRef<{
+		onSendStart: () => void;
+		onSendEnd: () => void;
+	}>({ onSendStart: () => {}, onSendEnd: () => {} });
 
 	const {
 		inputValue,
@@ -267,19 +270,26 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 			const keys = files.chips.map((chip) => chip.key);
 			// @-mentions: stage this text's `mentions[]` for its send (mentions/).
 			stageMentionsRef.current(message);
-			const accepted = await onSendMessage(
-				message,
-				(
-					useConversationInputStore.getState().inputByConversation[
-						conversationId
-					]?.attachments ?? NO_ATTACHMENTS
-				).map((entry) => entry.path),
-				files.receipt(),
-			);
-			if (accepted) {
-				for (const key of keys) files.remove(key);
-				typingSentRef.current();
+			// Typing stops BEFORE the message leaves, and no heartbeat may follow
+			// it until the send settles: a PUT landing after the message would
+			// re-show this person as typing for a whole TTL (review round 1, R4).
+			const typingSend = typingSendRef.current;
+			typingSend.onSendStart();
+			let accepted: boolean;
+			try {
+				accepted = await onSendMessage(
+					message,
+					(
+						useConversationInputStore.getState().inputByConversation[
+							conversationId
+						]?.attachments ?? NO_ATTACHMENTS
+					).map((entry) => entry.path),
+					files.receipt(),
+				);
+			} finally {
+				typingSend.onSendEnd();
 			}
+			if (accepted) for (const key of keys) files.remove(key);
 			return accepted;
 		},
 	});
@@ -297,7 +307,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	   restored draft or a programmatic clear arrives through `inputValue`, which
 	   the emitter reads solely to STOP on an empty box. */
 	const typing = useTeamBridgeTypingEmitter(typingTarget, inputValue);
-	typingSentRef.current = typing.onSent;
+	typingSendRef.current = typing;
 
 	/*
 	 * THE FIELD'S HEIGHT, ASKED OF ITS OWN CONTENT.
@@ -639,9 +649,8 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 							setInputValue(event.target.value);
 							typing.onInput(event.target.value);
 						}}
-						/* Capture-phase, so these never collide with the `onBlur` the
+						/* Capture-phase, so this never collides with the `onBlur` the
 						   mention binding may spread onto the same field. */
-						onFocusCapture={typing.onFocus}
 						onBlurCapture={typing.onBlur}
 						{...(dictation.isRecording || dictation.isPreparing
 							? {

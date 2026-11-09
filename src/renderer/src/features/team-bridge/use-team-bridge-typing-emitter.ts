@@ -5,6 +5,7 @@ import {
 	TYPING_DEFAULT_RESEND_MS,
 	TYPING_IDLE_MS,
 	boundedInterval,
+	typingRetryAfterMs,
 	useTeamBridgeShareTypingStore,
 } from "./team-bridge-typing-model";
 
@@ -28,10 +29,16 @@ export type TypingEmitterApi = Pick<
 export type TypingEmitterHandlers = {
 	/** Call from the field's real `onChange` with the new text. Nothing else starts it. */
 	onInput: (text: string) => void;
-	onFocus: () => void;
 	onBlur: () => void;
-	/** A send (or schedule) was accepted: stop now, do not wait for the idle timer. */
-	onSent: () => void;
+	/**
+	 * Call BEFORE the message request leaves. It stops the session (one DELETE,
+	 * ordered after any PUT still in flight) and holds every further PUT until
+	 * `onSendEnd`, so no heartbeat can reach the hub after the message does and
+	 * re-show the sender as typing for a TTL (agent review round 1, R4).
+	 */
+	onSendStart: () => void;
+	/** The send settled (accepted or refused): the next keystroke may report again. */
+	onSendEnd: () => void;
 };
 
 /**
@@ -74,7 +81,8 @@ const targetKey = (target: TypingTarget | null) =>
  *   - It sends DELETE, once, when it has an active PUT and: 5 s pass with no
  *     keystroke, the text becomes empty (by input OR by the host clearing it),
  *     the field blurs, the window goes hidden, the target changes (conversation
- *     or thread switch), the composer unmounts, or a send is accepted.
+ *     or thread switch), the composer unmounts, or a send starts (and no PUT
+ *     leaves until that send settles).
  *   - `target: null` (capability off, new-DM draft with no conversation yet,
  *     a read-only pane) and `share_typing === false` send nothing at all.
  *   - A failed PUT or DELETE is dropped silently - no retry, no toast. The
@@ -104,7 +112,15 @@ export function useTeamBridgeTypingEmitter(
 		active: null as TypingTarget | null,
 		/** A PUT for `active` has left; only then does a stop owe a DELETE. */
 		sent: false,
-		focused: false,
+		/** A message send is in flight: no PUT may start (`onSendStart`). */
+		sending: false,
+		/**
+		 * The newest PUT still awaiting its answer, settled-safe. A DELETE waits on
+		 * it: issued at once it could reach the hub BEFORE a slow PUT, which would
+		 * then re-create the entry for its whole TTL after the person stopped
+		 * (QA round 1, Q1: reproduced at 600 ms PUT latency).
+		 */
+		inflight: null as Promise<void> | null,
 		lastPutAt: Number.NEGATIVE_INFINITY,
 		resendMs: TYPING_DEFAULT_RESEND_MS,
 		resendTimer: null as ReturnType<typeof setTimeout> | null,
@@ -128,18 +144,23 @@ export function useTeamBridgeTypingEmitter(
 		s.sent = false;
 		// Only a session whose PUT actually left has hub state to remove.
 		if (!active || !sent) return;
-		void apiRef.current.typingClear(active).catch(() => {
-			// Dropped on purpose: the hub expires the entry within its TTL.
-		});
+		const clear = () =>
+			apiRef.current.typingClear(active).catch(() => {
+				// Dropped on purpose: the hub expires the entry within its TTL.
+			});
+		// Issued synchronously when nothing is in flight (the common case keeps
+		// its timing); otherwise strictly after the PUT has been answered.
+		if (s.inflight) void s.inflight.then(clear);
+		else void clear();
 	}, [clearTimers]);
 
 	const put = useCallback(() => {
 		const s = state.current;
 		const active = s.active;
-		if (!active) return;
+		if (!active || s.sending) return;
 		s.sent = true;
 		s.lastPutAt = Date.now();
-		apiRef.current.typingSet(active).then(
+		const request = apiRef.current.typingSet(active).then(
 			(answer) => {
 				if ("shared" in answer) {
 					// lop refused locally: the preference is off. Learn it and go quiet;
@@ -165,7 +186,8 @@ export function useTeamBridgeTypingEmitter(
 				if (error?.code === "outdated_hub") emitterOutdated = true;
 				else if (error?.status === 429 || error?.status === 503)
 					emitterBackoffUntil =
-						Date.now() + (error.retryAfterMs ?? TYPING_BACKOFF_MS);
+						Date.now() +
+						boundedInterval(typingRetryAfterMs(error), TYPING_BACKOFF_MS);
 				else return;
 				if (s.active === active) {
 					clearTimers();
@@ -174,6 +196,15 @@ export function useTeamBridgeTypingEmitter(
 				}
 			},
 		);
+		const settled = request.then(
+			() => {
+				if (s.inflight === settled) s.inflight = null;
+			},
+			() => {
+				if (s.inflight === settled) s.inflight = null;
+			},
+		);
+		s.inflight = settled;
 	}, [clearTimers]);
 
 	/** The resend tick: one PUT per interval while the session stays active. */
@@ -199,11 +230,9 @@ export function useTeamBridgeTypingEmitter(
 				stop();
 				return;
 			}
-			// Input implies focus even if the focus event was missed (a field
-			// focused before this hook's target existed).
-			s.focused = true;
 			if (
 				!current ||
+				s.sending ||
 				shareRef.current === false ||
 				emitterOutdated ||
 				Date.now() < emitterBackoffUntil ||
@@ -231,14 +260,14 @@ export function useTeamBridgeTypingEmitter(
 		[put, scheduleResend, stop],
 	);
 
-	const onFocus = useCallback(() => {
-		state.current.focused = true;
-	}, []);
-	const onBlur = useCallback(() => {
-		state.current.focused = false;
+	const onBlur = useCallback(() => stop(), [stop]);
+	const onSendStart = useCallback(() => {
+		state.current.sending = true;
 		stop();
 	}, [stop]);
-	const onSent = useCallback(() => stop(), [stop]);
+	const onSendEnd = useCallback(() => {
+		state.current.sending = false;
+	}, []);
 
 	// A host-side clear (send retiring the text, a schedule, discard) is not an
 	// input event, but an empty field is never "typing".
@@ -246,9 +275,19 @@ export function useTeamBridgeTypingEmitter(
 		if (text.trim() === "") stop();
 	}, [text, stop]);
 
-	// Target switch and unmount: stop the session that belonged to the OLD target.
+	// Target switch and unmount: stop the session that belonged to the OLD target,
+	// and forget its throttle - the one-PUT-per-interval budget is per target, so
+	// the first keystroke in the next conversation must not wait out the last
+	// one's remainder nor inherit its server cadence (agent review round 1, R3).
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `key` is the identity trigger; the cleanup reads the active target from the ref.
-	useEffect(() => stop, [key, stop]);
+	useEffect(
+		() => () => {
+			stop();
+			state.current.lastPutAt = Number.NEGATIVE_INFINITY;
+			state.current.resendMs = TYPING_DEFAULT_RESEND_MS;
+		},
+		[key, stop],
+	);
 
 	// The preference turned off mid-session: stop now rather than at idle.
 	useEffect(() => {
@@ -266,7 +305,7 @@ export function useTeamBridgeTypingEmitter(
 	}, [stop]);
 
 	return useMemo(
-		() => ({ onInput, onFocus, onBlur, onSent }),
-		[onInput, onFocus, onBlur, onSent],
+		() => ({ onInput, onBlur, onSendStart, onSendEnd }),
+		[onInput, onBlur, onSendStart, onSendEnd],
 	);
 }

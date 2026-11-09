@@ -85,7 +85,15 @@ function renderSentence(sentence: string, names: readonly string[]) {
 		if (!match) break;
 		if (match.index > 0) parts.push(rest.slice(0, match.index));
 		parts.push(
-			<strong key={key++} className="font-semibold text-ink-muted">
+			/* Each name is capped (design round 1, D1): with one long display name
+			   the line's own `truncate` cut the sentence's END, so the verb that
+			   says what is happening was the part that disappeared. Clipping the
+			   name instead keeps "... is typing" readable; `align-bottom` keeps the
+			   inline-block on the 16 px line box. */
+			<strong
+				key={key++}
+				className="inline-block max-w-[16ch] truncate align-bottom font-semibold text-ink-muted"
+			>
 				{names[Number(match[1])] ?? ""}
 			</strong>,
 		);
@@ -213,8 +221,11 @@ export const TeamBridgeTypingProvider: FC<TeamBridgeTypingProviderProps> = ({
 
 /**
  * The line under one composer, scoped: `rootId` null for the main pane, the
- * thread's root id for the thread pane. Outside a provider (capability off) it
- * renders nothing at all, so the composers keep their pre-feature geometry.
+ * thread's root id for the thread pane. The page always mounts the provider;
+ * what keeps the line off the screen when typing is unavailable is the host
+ * rendering it only under `typingOpen`, so the composers keep their
+ * pre-feature geometry. Outside any provider (a story, a test) it renders
+ * nothing.
  */
 export const TeamBridgeTypingLine: FC<{
 	rootId: string | null;

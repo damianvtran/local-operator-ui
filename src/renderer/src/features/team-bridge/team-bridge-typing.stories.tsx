@@ -40,6 +40,8 @@ const NAMES: Record<string, string> = {
 	acct_ana: "Ana",
 	acct_bo: "Bo",
 	acct_long: "Maximiliana Alexandrovna Kowalczyk-Featherstonehaugh",
+	acct_long_two: "Bartholomew Montgomery-Vanderbilt",
+	acct_long_three: "Anastasiya Konstantinovna Rimsky",
 	acct_other_scope: "Should Never Show",
 };
 const OTHER_SCOPE_NAME = /Should Never Show/;
@@ -184,11 +186,35 @@ export const MainSeveral: Story = {
 	args: { accounts: ["acct_sana", "acct_ryan", "acct_ana", "acct_bo"] },
 	play: expectLine("Several people are typing", "main"),
 };
+/**
+ * Long names are clipped per name, never at the sentence's end (design round
+ * 1, D1): the line must still close with its verb. The full text stays in the
+ * DOM (and the polite region) - only the paint is cut - so the play checks the
+ * geometry, not the text: the line itself never overflows, each name does.
+ */
+const expectVerbVisible =
+	(text: string) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await expectLine(text, "main")({ canvasElement });
+		const line = canvasElement.querySelector<HTMLElement>(
+			'[data-team-bridge-typing="main"]',
+		);
+		expect(line).not.toBeNull();
+		if (!line) return;
+		expect(line.scrollWidth).toBeLessThanOrEqual(line.clientWidth);
+		for (const name of line.querySelectorAll<HTMLElement>("strong"))
+			expect(name.scrollWidth).toBeGreaterThan(name.clientWidth);
+	};
 export const MainLongName: Story = {
 	args: { accounts: ["acct_long"] },
-	play: expectLine(
+	play: expectVerbVisible(
 		"Maximiliana Alexandrovna Kowalczyk-Featherstonehaugh is typing",
-		"main",
+	),
+};
+export const MainThreeLongNames: Story = {
+	args: { accounts: ["acct_long", "acct_long_two", "acct_long_three"] },
+	play: expectVerbVisible(
+		"Maximiliana Alexandrovna Kowalczyk-Featherstonehaugh, Bartholomew Montgomery-Vanderbilt and Anastasiya Konstantinovna Rimsky are typing",
 	),
 };
 

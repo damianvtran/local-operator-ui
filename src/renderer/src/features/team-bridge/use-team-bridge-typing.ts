@@ -6,7 +6,9 @@ import {
 	type TypingEntry,
 	boundedInterval,
 	nextTypingExpiry,
+	transientTypingBackoffMs,
 	typingEntries,
+	typingRetryAfterMs,
 } from "./team-bridge-typing-model";
 
 export type TypingReaderApi = Pick<typeof TeamBridgeApi, "typing">;
@@ -108,7 +110,18 @@ export function useTeamBridgeTyping({
 }: TypingReaderOptions): TypingReaderState {
 	const focused = useWindowActive();
 	const active = windowActive ?? focused;
-	const [entries, setEntries] = useState<readonly TypingEntry[]>(EMPTY);
+	/*
+	 * Entries are held WITH the conversation they were read for, and only a match
+	 * is returned: on a switch the old room's typers vanish on the very render
+	 * that shows the new room, not one poll later (agent review round 1, R2).
+	 */
+	const key =
+		conversationId && tenantId ? `${tenantId}\u0000${conversationId}` : "";
+	const [held, setHeld] = useState<{
+		key: string;
+		entries: readonly TypingEntry[];
+	}>({ key: "", entries: EMPTY });
+	const entries = held.key === key ? held.entries : EMPTY;
 	const [now, setNow] = useState(() => Date.now());
 	const apiRef = useRef(api);
 	apiRef.current = api;
@@ -116,6 +129,19 @@ export function useTeamBridgeTyping({
 	advanceRef.current = onMessageSeqAdvance;
 	/** The newest `message_seq` seen for the current conversation; reset on switch. */
 	const seqRef = useRef<{ key: string; seq: number } | null>(null);
+	/*
+	 * The read cadence for the current conversation, kept across effect re-runs:
+	 * a refocus re-runs the effect, and without this every alt-tab sent a GET at
+	 * once, ignoring `poll_after_ms` and inviting a 429 (agent review round 1,
+	 * R5). `nextAt` is when the next read is due; `failures` counts consecutive
+	 * transient failures for the back-off (QA round 1, N1).
+	 */
+	const cadenceRef = useRef({
+		key: "",
+		nextAt: 0,
+		pollMs: TYPING_DEFAULT_POLL_MS,
+		failures: 0,
+	});
 
 	const running =
 		enabled && active && Boolean(conversationId) && Boolean(tenantId);
@@ -123,15 +149,26 @@ export function useTeamBridgeTyping({
 	useEffect(() => {
 		if (!running || !conversationId || !tenantId) {
 			// Not looking: nothing shown, so a stale line never greets a returning eye.
-			setEntries(EMPTY);
+			setHeld({ key: "", entries: EMPTY });
 			return;
 		}
 		const key = `${tenantId}\u0000${conversationId}`;
+		const setEntries = (entries: readonly TypingEntry[]) =>
+			setHeld({ key, entries });
 		if (seqRef.current?.key !== key) seqRef.current = null;
+		const cadence = cadenceRef.current;
+		if (cadence.key !== key) {
+			// Another room is a fresh cadence: read it at once.
+			cadence.key = key;
+			cadence.nextAt = 0;
+			cadence.pollMs = TYPING_DEFAULT_POLL_MS;
+			cadence.failures = 0;
+		}
 		let cancelled = false;
 		let timer: ReturnType<typeof setTimeout> | null = null;
 		const schedule = (delay: number) => {
 			if (cancelled) return;
+			cadence.nextAt = Date.now() + Math.max(0, delay);
 			timer = setTimeout(run, Math.max(0, delay));
 		};
 		const run = async () => {
@@ -150,6 +187,8 @@ export function useTeamBridgeTyping({
 					answer.poll_after_ms,
 					TYPING_DEFAULT_POLL_MS,
 				);
+				cadence.pollMs = poll;
+				cadence.failures = 0;
 				if (!answer.enabled) {
 					// The hub's typing flag is off: hide, and come back at its pace.
 					setEntries(EMPTY);
@@ -174,22 +213,34 @@ export function useTeamBridgeTyping({
 				const error = cause as {
 					code?: string;
 					status?: number | null;
-					retryAfterMs?: number;
 				};
 				if (error?.code === "outdated_hub") {
 					// Never again this session: the backend's hub has no typing route.
 					readerOutdated = true;
 					return;
 				}
-				const backoff =
-					error?.status === 429
-						? boundedInterval(error.retryAfterMs, TYPING_BACKOFF_MS)
-						: TYPING_BACKOFF_MS;
+				let backoff: number;
+				if (error?.status === 429) {
+					backoff = boundedInterval(
+						typingRetryAfterMs(cause),
+						TYPING_BACKOFF_MS,
+					);
+				} else if (error?.status === 503) {
+					// A dark hub said "not now" on purpose: the full minute.
+					backoff = TYPING_BACKOFF_MS;
+				} else {
+					// A blip (502, dropped connection): retry at the poll pace, doubling.
+					cadence.failures += 1;
+					backoff = transientTypingBackoffMs(cadence.failures, cadence.pollMs);
+				}
 				readerBackoffUntil = Date.now() + backoff;
 				schedule(backoff);
 			}
 		};
-		void run();
+		// A refocus inside the interval waits out its remainder (R5).
+		const due = cadence.nextAt - Date.now();
+		if (due > 0) schedule(due);
+		else void run();
 		return () => {
 			cancelled = true;
 			if (timer !== null) clearTimeout(timer);

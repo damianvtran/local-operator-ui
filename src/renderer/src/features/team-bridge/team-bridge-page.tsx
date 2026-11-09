@@ -1613,6 +1613,33 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					accountId: selfAccountId,
 				}
 			: null;
+	/*
+	 * The typing line's name resolver, stable per room (agent review round 1,
+	 * R8): inline, it changed identity on every page render and invalidated the
+	 * provider's memo, recomputing both lines' names each time. It reads
+	 * `labelFor` through a ref because that resolver is rebuilt every render
+	 * from the rosters; a roster rename still reaches the line within one typing
+	 * poll, since every answer hands the provider a new entries object.
+	 */
+	const labelForRef = useRef(labelFor);
+	labelForRef.current = labelFor;
+	const typingLabelFor = useCallback(
+		(accountId: string) => {
+			if (!shown) return null;
+			// No labels on the typing wire (design §4): the room's own member
+			// row and the roster name the typer, as they name a sender.
+			const member = shown.members.find((row) => row.account_id === accountId);
+			return labelForRef.current(
+				{
+					account_id: accountId,
+					kind: "human",
+					display_label: member?.display_label ?? "",
+				},
+				shown.tenant_id,
+			);
+		},
+		[shown],
+	);
 	// A focused window is quiet only for the conversation actually on screen.
 	useReportTeamBridgeViewing(shown?.id);
 	/* The reply route: only ever handed to the timeline while the hold permits
@@ -4832,22 +4859,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				selfAccountId={selfAccountId ?? null}
 				open={typingOpen}
 				threadRootId={threadIsOpen ? (threadSelection?.rootId ?? null) : null}
-				labelFor={(accountId) => {
-					if (!shown) return null;
-					// No labels on the typing wire (design §4): the room's own member
-					// row and the roster name the typer, as they name a sender.
-					const member = shown.members.find(
-						(row) => row.account_id === accountId,
-					);
-					return labelFor(
-						{
-							account_id: accountId,
-							kind: "human",
-							display_label: member?.display_label ?? "",
-						},
-						shown.tenant_id,
-					);
-				}}
+				labelFor={typingLabelFor}
 			>
 				{pageBody}
 			</TeamBridgeTypingProvider>

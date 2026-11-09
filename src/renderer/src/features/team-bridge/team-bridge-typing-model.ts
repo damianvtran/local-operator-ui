@@ -49,6 +49,45 @@ export function boundedInterval(value: number | undefined, fallback: number) {
 	return Math.min(Math.max(value, 1_000), TYPING_MAX_INTERVAL_MS);
 }
 
+/**
+ * How long a refused typing request was asked to wait, in ms, or `undefined`.
+ *
+ * `desktopResult` lifts `detail.retry_after_ms` into `retryAfterMs` (lop sends
+ * it as an int since lop PR #3689). An older lop sent only
+ * `retry_after_seconds`, which survives on the error's `detail` object; read it
+ * as the fallback so a 429 from that backend is not mistaken for "no wait
+ * named" and stretched to the full minute (agent review round 1, R1).
+ */
+export function typingRetryAfterMs(error: unknown): number | undefined {
+	const refusal = error as {
+		retryAfterMs?: unknown;
+		detail?: unknown;
+	} | null;
+	if (
+		typeof refusal?.retryAfterMs === "number" &&
+		Number.isFinite(refusal.retryAfterMs)
+	)
+		return refusal.retryAfterMs;
+	const detail = refusal?.detail as { retry_after_seconds?: unknown } | null;
+	const seconds = detail?.retry_after_seconds;
+	return typeof seconds === "number" && Number.isFinite(seconds)
+		? seconds * 1_000
+		: undefined;
+}
+
+/**
+ * The reader's wait after a TRANSIENT failure (a 502, a dropped connection):
+ * the next poll interval, doubling per consecutive failure, capped at
+ * `TYPING_BACKOFF_MS`. One blip used to dark the line for a whole minute (QA
+ * round 1, N1); a hub that keeps failing still reaches the minute after five
+ * misses at the 3 s cadence (3, 6, 12, 24, 48, 60). Deliberate refusals (429,
+ * 503, `enabled:false`, `outdated_hub`) keep their own rules.
+ */
+export function transientTypingBackoffMs(failures: number, pollMs: number) {
+	const exponent = Math.max(0, failures - 1);
+	return Math.min(pollMs * 2 ** exponent, TYPING_BACKOFF_MS);
+}
+
 /** Display names beyond this collapse into "Several people are typing" (Zulip's 3). */
 export const TYPING_MAX_NAMES = 3;
 

@@ -39,6 +39,7 @@ const bundle = await build({
 		export * from './src/renderer/src/features/team-bridge/team-bridge-typing-line';
 		export {desktopRequestSchema,desktopEndpoint} from './src/shared/desktop-contract';
 		export {teamBridgeTypingStateSchema,teamBridgeTypingHeartbeatSchema} from './src/shared/team-bridge-contract';
+		export {DesktopControlError} from './src/renderer/src/shared/api/local-operator/desktop-api';
 	`,
 		resolveDir: process.cwd(),
 	},
@@ -157,7 +158,6 @@ test("emitter: first keystroke PUTs at once, then once per resend interval while
 	const fake = emitterApi();
 	const view = await mountEmitter(t, { api: fake.api });
 	await act(async () => {
-		view.handle.current.onFocus();
 		view.handle.current.onInput("h");
 		await flush();
 	});
@@ -203,7 +203,7 @@ test("emitter: 5 s with no keystroke stops with one DELETE and no further PUT", 
 
 for (const [name, act_] of [
 	["blur", (view) => view.handle.current.onBlur()],
-	["an accepted send", (view) => view.handle.current.onSent()],
+	["a send starting", (view) => view.handle.current.onSendStart()],
 	["clearing the text by input", (view) => view.handle.current.onInput("   ")],
 ]) {
 	test(`emitter: ${name} sends DELETE immediately`, async (t) => {
@@ -329,6 +329,129 @@ test("emitter: a refused PUT is dropped silently; outdated_hub silences the sess
 	await act(async () => view.handle.current.onInput("again"));
 	await view.tick(10_000);
 	assert.deepEqual(calls, ["PUT"]);
+});
+
+/**
+ * The refusal `desktopResult` builds from lop's 429 body: `detail.retry_after_ms`
+ * becomes `retryAfterMs` and the body rides along as `detail` (lop PR #3689
+ * sends the int ms beside `retry_after_seconds`). `ms: undefined` is the older
+ * lop that sent only seconds.
+ */
+function rateLimited({ ms, seconds }) {
+	const detail = {
+		code: "rate_limited",
+		message: "Slow down",
+		...(ms === undefined ? {} : { retry_after_ms: ms }),
+		retry_after_seconds: seconds,
+	};
+	return new m.DesktopControlError(
+		429,
+		detail.message,
+		undefined,
+		detail.code,
+		detail.retry_after_ms,
+		detail,
+	);
+}
+
+test("model: typingRetryAfterMs reads retry_after_ms, then retry_after_seconds", () => {
+	assert.equal(
+		m.typingRetryAfterMs(rateLimited({ ms: 2500, seconds: 3 })),
+		2500,
+	);
+	assert.equal(m.typingRetryAfterMs(rateLimited({ seconds: 7 })), 7000);
+	assert.equal(m.typingRetryAfterMs(new Error("plain")), undefined);
+	assert.equal(m.typingRetryAfterMs(null), undefined);
+});
+
+test("emitter: a DELETE never overtakes a PUT still in flight (QA Q1)", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+	const calls = [];
+	let answerPut;
+	const api = {
+		typingSet: () => {
+			calls.push("PUT sent");
+			return new Promise((resolve) => {
+				answerPut = () => {
+					calls.push("PUT answered");
+					resolve({ ttl_ms: 8000, resend_after_ms: 3000 });
+				};
+			});
+		},
+		typingClear: () => {
+			calls.push("DELETE sent");
+			return Promise.resolve();
+		},
+	};
+	const view = await mountEmitter(t, { api });
+	await act(async () => view.handle.current.onInput("draft"));
+	await act(async () => view.handle.current.onBlur());
+	assert.deepEqual(calls, ["PUT sent"], "the DELETE waits for the PUT");
+	await view.tick(600);
+	await act(async () => {
+		answerPut();
+		await flush();
+	});
+	assert.deepEqual(calls, ["PUT sent", "PUT answered", "DELETE sent"]);
+});
+
+test("emitter: no PUT leaves while a send is in flight, typing resumes after it settles", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+	const fake = emitterApi();
+	const view = await mountEmitter(t, { api: fake.api });
+	await act(async () => view.handle.current.onInput("hello"));
+	await view.tick(1000);
+	await act(async () => view.handle.current.onSendStart());
+	assert.equal(fake.deletes().length, 1);
+	// Keystrokes while the message request is out never heartbeat.
+	await act(async () => view.handle.current.onInput("hello again"));
+	await view.tick(10_000);
+	assert.equal(fake.puts().length, 1, "no PUT while sending");
+	await act(async () => view.handle.current.onSendEnd());
+	await act(async () => view.handle.current.onInput("next"));
+	assert.equal(fake.puts().length, 2, "the next keystroke reports again");
+});
+
+test("emitter: the resend throttle is per target - a new conversation PUTs at once (R3)", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+	const fake = emitterApi({ ttl_ms: 8000, resend_after_ms: 10_000 });
+	const view = await mountEmitter(t, { api: fake.api });
+	await act(async () => view.handle.current.onInput("a"));
+	await view.tick(500);
+	const other = { ...TARGET, conversationId: "bcv_typing02" };
+	await view.rerender({ target: other, text: "", api: fake.api });
+	await act(async () => view.handle.current.onInput("b"));
+	assert.equal(fake.puts().length, 2);
+	assert.equal(fake.puts()[1].target.conversationId, "bcv_typing02");
+	assert.equal(fake.puts()[1].at, 500, "no inherited remainder");
+	// And the old room's server cadence (10 s) is not inherited either.
+	await view.tick(3000);
+	assert.equal(fake.puts().length, 3, "default 3 s resend for the new target");
+});
+
+test("emitter: a 429 from an older lop (retry_after_seconds only) holds PUTs that long", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+	const calls = [];
+	const api = {
+		typingSet: () => {
+			calls.push(Date.now());
+			return calls.length === 1
+				? Promise.reject(rateLimited({ seconds: 4 }))
+				: Promise.resolve({ ttl_ms: 8000, resend_after_ms: 3000 });
+		},
+		typingClear: () => Promise.resolve(),
+	};
+	const view = await mountEmitter(t, { api });
+	await act(async () => {
+		view.handle.current.onInput("a");
+		await flush();
+	});
+	await view.tick(3999);
+	await act(async () => view.handle.current.onInput("ab"));
+	assert.equal(calls.length, 1, "inside the 4 s wait");
+	await view.tick(1);
+	await act(async () => view.handle.current.onInput("abc"));
+	assert.equal(calls.length, 2);
 });
 
 /* ---------------------------------------------------------------- reader */
@@ -475,12 +598,7 @@ test("reader: enabled:false backs off to the server's poll_after_ms", async (t) 
 test("reader: 429 honours retry_after_ms, a refocus does not bypass it, outdated_hub stops for the session", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
 	const limited = () =>
-		Promise.reject(
-			Object.assign(new Error("slow down"), {
-				status: 429,
-				retryAfterMs: 10_000,
-			}),
-		);
+		Promise.reject(rateLimited({ ms: 10_000, seconds: 10 }));
 	const outdated = () =>
 		Promise.reject(
 			Object.assign(new Error("old"), { status: 409, code: "outdated_hub" }),
@@ -497,6 +615,126 @@ test("reader: 429 honours retry_after_ms, a refocus does not bypass it, outdated
 	assert.equal(fake.calls.length, 2);
 	await view.tick(600_000);
 	assert.equal(fake.calls.length, 2, "outdated_hub: no further reads");
+});
+
+test("reader: a 429 from an older lop (retry_after_seconds only) waits that long, not a minute", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+	const fake = readerApi([
+		() => Promise.reject(rateLimited({ seconds: 5 })),
+		typingAnswer([]),
+	]);
+	const view = await mountReader(t, { ...READER, api: fake.api });
+	await view.tick(4_999);
+	assert.equal(fake.calls.length, 1);
+	await view.tick(1);
+	assert.equal(fake.calls.length, 2);
+});
+
+test("reader: a transient failure retries at the poll pace, doubling to the 60 s cap (N1)", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+	const blip = () =>
+		Promise.reject(new m.DesktopControlError(502, "Bad gateway"));
+	const offline = () =>
+		Promise.reject(new m.DesktopControlError(null, "Network down"));
+	const fake = readerApi([
+		typingAnswer([]),
+		blip,
+		offline,
+		blip,
+		blip,
+		blip,
+		blip,
+		blip,
+		typingAnswer([]),
+		blip,
+		typingAnswer([]),
+	]);
+	await mountReader(t, { ...READER, api: fake.api });
+	const view = {
+		tick: async (ms) =>
+			act(async () => {
+				t.mock.timers.tick(ms);
+				await flush();
+			}),
+	};
+	// Read times (ms): 0 ok, 3000 blip, then +3, +6, +12, +24, +48, +60 (capped).
+	for (let i = 0; i < 230; i += 1) await view.tick(1000);
+	const at = fake.calls.map((call) => call.at);
+	assert.deepEqual(
+		at.slice(0, 9),
+		[0, 3000, 6000, 12_000, 24_000, 48_000, 96_000, 156_000, 216_000],
+	);
+	// A success resets the doubling: the next blip waits one poll again.
+	assert.equal(at[9], 219_000, "one poll after the success (a blip)");
+	assert.equal(
+		at[10],
+		222_000,
+		"first blip after a success waits one poll, not 60 s",
+	);
+});
+
+test("reader: a refocus inside the poll interval waits out the remainder (R5)", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+	const fake = readerApi([typingAnswer([])]);
+	const view = await mountReader(t, { ...READER, api: fake.api });
+	assert.equal(fake.calls.length, 1);
+	await view.tick(1000);
+	for (let i = 0; i < 5; i += 1) {
+		await view.rerender({ ...READER, windowActive: false, api: fake.api });
+		await view.rerender({ ...READER, api: fake.api });
+	}
+	await act(async () => flush());
+	assert.equal(fake.calls.length, 1, "rapid alt-tabbing sends no GET");
+	await view.tick(1999);
+	assert.equal(fake.calls.length, 1);
+	await view.tick(1);
+	assert.equal(fake.calls.length, 2, "the read lands at poll_after_ms");
+	// Away longer than the interval: the return reads at once.
+	await view.rerender({ ...READER, windowActive: false, api: fake.api });
+	await view.tick(10_000);
+	await view.rerender({ ...READER, api: fake.api });
+	await act(async () => flush());
+	assert.equal(fake.calls.length, 3);
+});
+
+test("reader: switching conversation drops the old room's typers on that render (R2)", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+	const typer = {
+		account_id: "acct_sana",
+		kind: "human",
+		thread_root_id: null,
+		expires_in_ms: 8000,
+	};
+	const fake = readerApi([
+		typingAnswer([typer]),
+		// The new room's first read never answers: nothing may linger meanwhile.
+		() => new Promise(() => {}),
+	]);
+	const renders = [];
+	const host = document.createElement("div");
+	const root = createRoot(host);
+	function Harness(p) {
+		const state = m.useTeamBridgeTyping(p);
+		renders.push({
+			conversationId: p.conversationId,
+			count: state.entries.length,
+		});
+		return null;
+	}
+	const render = (p) =>
+		act(async () => root.render(React.createElement(Harness, p)));
+	t.after(() => act(async () => root.unmount()));
+	await render({ ...READER, api: fake.api });
+	await act(async () => flush());
+	assert.equal(renders.at(-1).count, 1);
+	await render({ ...READER, conversationId: "bcv_other", api: fake.api });
+	await act(async () => flush());
+	assert.equal(fake.calls.length, 2, "the new room is read at once");
+	assert.deepEqual(
+		renders.filter((r) => r.conversationId === "bcv_other").map((r) => r.count),
+		renders.filter((r) => r.conversationId === "bcv_other").map(() => 0),
+		"no render of the new room ever shows the old room's typer",
+	);
 });
 
 /* ------------------------------------------------------------ model + view */

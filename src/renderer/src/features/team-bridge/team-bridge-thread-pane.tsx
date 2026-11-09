@@ -343,6 +343,9 @@ function TeamBridgeThreadPaneBody({
 		setImagesBlocked(false);
 		scroll.pin();
 		mentions.stage(body);
+		// Typing stops BEFORE the reply leaves and stays held until it settles:
+		// a heartbeat after the message would re-show the typer (review R4).
+		typing.onSendStart();
 		try {
 			const fileIds = files.chips.length
 				? await files.stageInto(conversationId ?? "", tenantId)
@@ -350,7 +353,6 @@ function TeamBridgeThreadPaneBody({
 			if (ids.length + fileIds.length > 10)
 				throw new Error("Too many attachments");
 			await onSend(body, entry.clientRef, ids, fileIds);
-			typing.onSent();
 			for (const key of fileKeys) files.remove(key);
 			pending.current = null;
 			images.clearSent(ids);
@@ -359,6 +361,7 @@ function TeamBridgeThreadPaneBody({
 			setFailed(true);
 			if (ids.length > 0 && isAttachmentNotFound(error)) images.markExpired();
 		} finally {
+			typing.onSendEnd();
 			lock.current = false;
 			setSending(false);
 		}
@@ -584,7 +587,6 @@ function TeamBridgeThreadPaneBody({
 									typing.onInput(e.target.value);
 								}}
 								/* Capture-phase: never collides with the mention binding's onBlur. */
-								onFocusCapture={typing.onFocus}
 								onBlurCapture={typing.onBlur}
 								{...mentions.bindField({
 									onKeyDown: (e) => {
