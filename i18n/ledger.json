@@ -92054,6 +92054,223 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.browser.extensions",
+			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+			"target_sha256": "48e9d02d6b46c8b9fa0465adf062948192725570c9e00964b673db0022f93a16",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "designer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "78bf270248b6-r3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/78bf270248b6-r3.json",
+					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+					"scope": "ui.browser.extensions round-3 independent copy audit",
+					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.browser.extensions",
+			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+			"target_sha256": "e2788eba32114e68a8b0ff3eff25f864068b880abeb549b321a29c7c10146254",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "designer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "78bf270248b6-r3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/78bf270248b6-r3.json",
+					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+					"scope": "ui.browser.extensions round-3 independent copy audit",
+					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.browser.extensions",
+			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+			"target_sha256": "7d8479f7a433bdc3fe89905a6924b500f68b64d925113bdd079b55202eacb509",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "designer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "78bf270248b6-r3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/78bf270248b6-r3.json",
+					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+					"scope": "ui.browser.extensions round-3 independent copy audit",
+					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.browser.extensions",
+			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+			"target_sha256": "eb1d241bd11e4f3b042ad3b7a71c8720537df3ef922d68bc978cb0b2985f6c45",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "designer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "78bf270248b6-r3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/78bf270248b6-r3.json",
+					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+					"scope": "ui.browser.extensions round-3 independent copy audit",
+					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.browser.extensions",
+			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+			"target_sha256": "e1e03672356bd5d1d8386ea24874c49c23fd44d46be9138c797d33a1e092088a",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "designer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "78bf270248b6-r3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/78bf270248b6-r3.json",
+					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+					"scope": "ui.browser.extensions round-3 independent copy audit",
+					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.browser.extensions",
+			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+			"target_sha256": "49d4db25bc9eda413ca4fb1caafed4095e874e5c94d09ed2065816ecd67a9210",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "designer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "78bf270248b6-r3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/78bf270248b6-r3.json",
+					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+					"scope": "ui.browser.extensions round-3 independent copy audit",
+					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.browser.extensions",
+			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+			"target_sha256": "7dfb43fdb18dd6308a1757d0440864d28f64384cd110c1e4cd97ce9fab3e2f7a",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "designer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean-with-findings",
+					"instance": "78bf270248b6-r3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/78bf270248b6-r3.json",
+					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+					"scope": "ui.browser.extensions round-3 independent copy audit",
+					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
