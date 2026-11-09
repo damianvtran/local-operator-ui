@@ -103,9 +103,12 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 	private readonly spans = new Map<string, Span>();
 	private snapshot: Snapshot = { source: "", children: [], start: 0, end: 0 };
 	private readonly snapshots = new Map<string, Snapshot>();
+	/** External label IDs keep localized presentation outside the source DOM:
+	 * history snapshots retain references, never old-language label strings. */
 	constructor(
 		private editSourceLabel: string,
 		private emptyTaskLabel = "",
+		private readonly labelIds?: { source: string },
 	) {}
 
 	/** Locale changes must not replace this codec: its spans/snapshots are the
@@ -119,8 +122,9 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 	): void {
 		this.editSourceLabel = editSourceLabel;
 		this.emptyTaskLabel = emptyTaskLabel;
-		for (const atom of root.querySelectorAll(`[${OPAQUE}]`))
-			atom.setAttribute("aria-label", editSourceLabel);
+		if (!this.labelIds)
+			for (const atom of root.querySelectorAll(`[${OPAQUE}]`))
+				atom.setAttribute("aria-label", editSourceLabel);
 		for (const task of root.querySelectorAll("[data-prompt-empty-task]"))
 			task.setAttribute("aria-label", emptyTaskLabel);
 	}
@@ -160,7 +164,7 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 		// Keep the complete class attribute in a plain literal: the theme/source
 		// gate must audit every ground without evaluating interpolated HTML.
 		return [
-			`<${tag} ${NODE}="${span.id}" ${OPAQUE}="true" contenteditable="false" role="button" tabindex="0" aria-label="${escapeHtml(this.editSourceLabel)}"`,
+			`<${tag} ${NODE}="${span.id}" ${OPAQUE}="true" contenteditable="false" role="button" tabindex="0" ${this.labelIds ? `aria-labelledby="${escapeHtml(this.labelIds.source)}"` : `aria-label="${escapeHtml(this.editSourceLabel)}"`}`,
 			' class="cursor-pointer whitespace-pre-wrap break-words rounded-sm bg-sunken px-1 font-mono text-mono-sm text-ink-muted">',
 			`${escapeHtml(span.raw)}</${tag}>`,
 		].join("");

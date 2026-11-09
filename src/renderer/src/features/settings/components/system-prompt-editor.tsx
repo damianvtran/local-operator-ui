@@ -31,12 +31,14 @@ export const SystemPromptEditor = ({
 	const locale = useI18nLocale();
 	const host = useRef<HTMLDivElement>(null);
 	const id = useId();
+	const sourceLabelId = `${id}-source-label`;
 	const [source, setSource] = useState(false);
 	const [codec] = useState(
 		() =>
 			new SourcePreservingMarkdown(
 				t("ui.settings.model.system_prompt.source_edit"),
 				t("ui.canvas.wysiwyg_markdown_editor.checklist"),
+				{ source: sourceLabelId },
 			),
 	);
 	// Keep the codec and rich DOM stable: replacing either loses source spans,
@@ -98,6 +100,12 @@ export const SystemPromptEditor = ({
 
 	return (
 		<div ref={host} className="flex min-w-0 flex-col gap-2">
+			{/* Localized presentation lives outside the observed rich document.
+			    Stable references survive undo/redo snapshots without recording a
+			    locale switch as an edit or restoring an old-language label. */}
+			<span id={sourceLabelId} className="sr-only">
+				{t("ui.settings.model.system_prompt.source_edit")}
+			</span>
 			<fieldset
 				className="flex flex-wrap gap-2"
 				aria-label={t("ui.settings.model.system_prompt.instructions")}
