@@ -104,9 +104,26 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 	private snapshot: Snapshot = { source: "", children: [], start: 0, end: 0 };
 	private readonly snapshots = new Map<string, Snapshot>();
 	constructor(
-		private readonly editSourceLabel: string,
-		private readonly emptyTaskLabel = "",
+		private editSourceLabel: string,
+		private emptyTaskLabel = "",
 	) {}
+
+	/** Locale changes must not replace this codec: its spans/snapshots are the
+	 * authority for source fidelity and undo. Update only presentation attributes,
+	 * both for mounted atoms and for source inserted after the switch. A getter
+	 * alone cannot invalidate attributes already written into contenteditable. */
+	refreshLabels(
+		root: HTMLElement,
+		editSourceLabel: string,
+		emptyTaskLabel: string,
+	): void {
+		this.editSourceLabel = editSourceLabel;
+		this.emptyTaskLabel = emptyTaskLabel;
+		for (const atom of root.querySelectorAll(`[${OPAQUE}]`))
+			atom.setAttribute("aria-label", editSourceLabel);
+		for (const task of root.querySelectorAll("[data-prompt-empty-task]"))
+			task.setAttribute("aria-label", emptyTaskLabel);
+	}
 
 	private allocate(node: MarkdownNode, source: string, block: boolean): Span {
 		const id = `${this.prefix}${this.next++}`;
@@ -232,10 +249,9 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 					const value = (node as MarkdownNode & { value?: string }).value;
 					return value ?? (node.children ?? []).map(taskText).join("");
 				};
-				const taskLabel =
-					(n.children ?? []).map(taskText).join(" ").trim() ||
-					this.emptyTaskLabel;
-				result = `<li ${attr}${n.checked !== null && n.checked !== undefined ? ' class="task-list-item"' : ""}>${n.checked !== null && n.checked !== undefined ? `<input type="checkbox"${n.checked ? " checked" : ""} aria-label="${escapeHtml(taskLabel)}"/> ` : ""}${children()}</li>`;
+				const taskTextLabel = (n.children ?? []).map(taskText).join(" ").trim();
+				const taskLabel = taskTextLabel || this.emptyTaskLabel;
+				result = `<li ${attr}${n.checked !== null && n.checked !== undefined ? ' class="task-list-item"' : ""}>${n.checked !== null && n.checked !== undefined ? `<input type="checkbox"${n.checked ? " checked" : ""}${taskTextLabel ? "" : ' data-prompt-empty-task="true"'} aria-label="${escapeHtml(taskLabel)}"/> ` : ""}${children()}</li>`;
 				break;
 			}
 			case "break":
