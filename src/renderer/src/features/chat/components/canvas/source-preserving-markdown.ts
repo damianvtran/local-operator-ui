@@ -146,6 +146,7 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 		// Keep the complete class attribute in a plain literal: the theme/source
 		// gate must audit every ground without evaluating interpolated HTML.
 		return [
+			// i18n: ignore HTML attribute template with no human-readable string; interpolates DOM identifiers and separately localized label values.
 			`<${tag} ${NODE}="${span.id}" ${OPAQUE}="true" contenteditable="false" role="button" tabindex="0" ${this.labelIds ? `aria-labelledby="${escapeHtml(this.labelIds.source)}"` : `aria-label="${escapeHtml(this.editSourceLabel)}"`}`,
 			' class="cursor-pointer whitespace-pre-wrap break-words rounded-sm bg-sunken px-1 font-mono text-mono-sm text-ink-muted">',
 			`${escapeHtml(span.raw)}</${tag}>`,

@@ -23,7 +23,9 @@ export const SystemPromptEditor = ({
 }) => {
 	const locale = useI18nLocale();
 	const id = useId();
+	// i18n: ignore useId-derived element id; must stay stable for aria-labelledby and is never rendered as text.
 	const sourceLabelId = `${id}-source-label`;
+	// i18n: ignore useId-derived element id; must stay stable for aria-labelledby and is never rendered as text.
 	const emptyTaskLabelId = `${id}-empty-task-label`;
 	const [source, setSource] = useState(false);
 	const [codec] = useState(
