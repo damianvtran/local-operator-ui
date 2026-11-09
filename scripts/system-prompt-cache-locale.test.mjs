@@ -149,7 +149,13 @@ test("R1: locale preserves pending redo and undo/redo keep current source labels
 		assert.equal(manager.undo(), true);
 		assert.equal(manager.canRedo(), true);
 		const before = manager.getHistoryState();
+		const beforeHtml = root.innerHTML;
 		await React.act(async () => setLocale("fr"));
+		assert.equal(
+			root.innerHTML,
+			beforeHtml,
+			"locale presentation is outside the document DOM",
+		);
 		await drainHistory();
 		assert.deepEqual(
 			manager.getHistoryState(),
@@ -192,6 +198,55 @@ test("R1: locale preserves pending redo and undo/redo keep current source labels
 			[],
 			"presentation refresh does not report a settings edit",
 		);
+	});
+});
+
+test("R2: untouched empty-text task retains exact Markdown after locale switch", async () => {
+	const source = "-   [ ] ![](https://fixture.invalid/task.png)\n";
+	await withEditor(source, async ({ root, codec, manager, changes }) => {
+		const checkbox = root.querySelector('input[type="checkbox"]');
+		assert.ok(checkbox);
+		assert.equal(codec.read(root), source);
+		const before = manager.getHistoryState();
+		const beforeHtml = root.innerHTML;
+		await React.act(async () => setLocale("fr"));
+		assert.equal(
+			root.innerHTML,
+			beforeHtml,
+			"locale presentation is outside the document DOM",
+		);
+		assert.equal(accessibleLabel(checkbox), "CHECKLIST-FR");
+		assert.equal(
+			codec.read(root),
+			source,
+			"changing presentation cannot normalize an unedited -   [ ] list",
+		);
+		await drainHistory();
+		assert.deepEqual(manager.getHistoryState(), before);
+		checkbox.checked = true;
+		checkbox.setAttribute("checked", "");
+		manager.saveCurrentState();
+		assert.equal(manager.undo(), true);
+		assert.equal(
+			codec.read(root),
+			source,
+			"task undo preserves the original list marker and spacing",
+		);
+		assert.equal(
+			accessibleLabel(root.querySelector('input[type="checkbox"]')),
+			"CHECKLIST-FR",
+		);
+		assert.equal(manager.redo(), true);
+		assert.equal(
+			codec.read(root),
+			source.replace("[ ]", "[x]"),
+			"task redo changes only the checked marker",
+		);
+		assert.equal(
+			accessibleLabel(root.querySelector('input[type="checkbox"]')),
+			"CHECKLIST-FR",
+		);
+		assert.deepEqual(changes, []);
 	});
 });
 

@@ -106,28 +106,10 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 	/** External label IDs keep localized presentation outside the source DOM:
 	 * history snapshots retain references, never old-language label strings. */
 	constructor(
-		private editSourceLabel: string,
-		private emptyTaskLabel = "",
-		private readonly labelIds?: { source: string },
+		private readonly editSourceLabel: string,
+		private readonly emptyTaskLabel = "",
+		private readonly labelIds?: { source: string; emptyTask: string },
 	) {}
-
-	/** Locale changes must not replace this codec: its spans/snapshots are the
-	 * authority for source fidelity and undo. Update only presentation attributes,
-	 * both for mounted atoms and for source inserted after the switch. A getter
-	 * alone cannot invalidate attributes already written into contenteditable. */
-	refreshLabels(
-		root: HTMLElement,
-		editSourceLabel: string,
-		emptyTaskLabel: string,
-	): void {
-		this.editSourceLabel = editSourceLabel;
-		this.emptyTaskLabel = emptyTaskLabel;
-		if (!this.labelIds)
-			for (const atom of root.querySelectorAll(`[${OPAQUE}]`))
-				atom.setAttribute("aria-label", editSourceLabel);
-		for (const task of root.querySelectorAll("[data-prompt-empty-task]"))
-			task.setAttribute("aria-label", emptyTaskLabel);
-	}
 
 	private allocate(node: MarkdownNode, source: string, block: boolean): Span {
 		const id = `${this.prefix}${this.next++}`;
@@ -255,7 +237,14 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 				};
 				const taskTextLabel = (n.children ?? []).map(taskText).join(" ").trim();
 				const taskLabel = taskTextLabel || this.emptyTaskLabel;
-				result = `<li ${attr}${n.checked !== null && n.checked !== undefined ? ' class="task-list-item"' : ""}>${n.checked !== null && n.checked !== undefined ? `<input type="checkbox"${n.checked ? " checked" : ""}${taskTextLabel ? "" : ' data-prompt-empty-task="true"'} aria-label="${escapeHtml(taskLabel)}"/> ` : ""}${children()}</li>`;
+				// Text-derived names are document content. The localized empty-task
+				// fallback is not: a stable external reference keeps a locale change
+				// from invalidating the exact-source skeleton (or any undo snapshot).
+				const taskLabelAttribute =
+					!taskTextLabel && this.labelIds
+						? `aria-labelledby="${escapeHtml(this.labelIds.emptyTask)}"`
+						: `aria-label="${escapeHtml(taskLabel)}"`;
+				result = `<li ${attr}${n.checked !== null && n.checked !== undefined ? ' class="task-list-item"' : ""}>${n.checked !== null && n.checked !== undefined ? `<input type="checkbox"${n.checked ? " checked" : ""} ${taskLabelAttribute}/> ` : ""}${children()}</li>`;
 				break;
 			}
 			case "break":

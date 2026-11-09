@@ -4,14 +4,7 @@ import type { CanvasDocument } from "@features/chat/types/canvas";
 import { Button, Textarea } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import {
-	useCallback,
-	useId,
-	useLayoutEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 
 /** Settings owns canonical Markdown and its explicit Save boundary. Mode switches
  * never serialize the rich DOM: only an actual user edit may change the draft. */
@@ -29,30 +22,18 @@ export const SystemPromptEditor = ({
 	disabled?: boolean;
 }) => {
 	const locale = useI18nLocale();
-	const host = useRef<HTMLDivElement>(null);
 	const id = useId();
 	const sourceLabelId = `${id}-source-label`;
+	const emptyTaskLabelId = `${id}-empty-task-label`;
 	const [source, setSource] = useState(false);
 	const [codec] = useState(
 		() =>
 			new SourcePreservingMarkdown(
 				t("ui.settings.model.system_prompt.source_edit"),
 				t("ui.canvas.wysiwyg_markdown_editor.checklist"),
-				{ source: sourceLabelId },
+				{ source: sourceLabelId, emptyTask: emptyTaskLabelId },
 			),
 	);
-	// Keep the codec and rich DOM stable: replacing either loses source spans,
-	// selection and undo. The subscription refreshes memoized draft props, while
-	// this effect refreshes imperative labels that React does not own.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: locale refreshes imperative labels without replacing the source codec.
-	useLayoutEffect(() => {
-		if (host.current)
-			codec.refreshLabels(
-				host.current,
-				t("ui.settings.model.system_prompt.source_edit"),
-				t("ui.canvas.wysiwyg_markdown_editor.checklist"),
-			);
-	}, [codec, locale]);
 	const [generation, setGeneration] = useState(0);
 	// Stable document identity during typing keeps selection, undo and scroll.
 	// Re-entering rich mode mounts the latest canonical source, not a stale DOM.
@@ -99,12 +80,15 @@ export const SystemPromptEditor = ({
 	};
 
 	return (
-		<div ref={host} className="flex min-w-0 flex-col gap-2">
+		<div className="flex min-w-0 flex-col gap-2">
 			{/* Localized presentation lives outside the observed rich document.
 			    Stable references survive undo/redo snapshots without recording a
 			    locale switch as an edit or restoring an old-language label. */}
 			<span id={sourceLabelId} className="sr-only">
 				{t("ui.settings.model.system_prompt.source_edit")}
+			</span>
+			<span id={emptyTaskLabelId} className="sr-only">
+				{t("ui.canvas.wysiwyg_markdown_editor.checklist")}
 			</span>
 			<fieldset
 				className="flex flex-wrap gap-2"
