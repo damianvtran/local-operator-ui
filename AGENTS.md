@@ -263,8 +263,9 @@ The mechanics:
   state every UNREACHED and BROAD path. The full suite runs in `full-suite.yml`
   on each `main` push and nightly, and ONCE on a pull request: at the merge gate,
   from a `ready-to-merge` label event (*The merge gate (full suite)*). It never
-  runs per push on a PR; an open `ci-main-red` issue means `main` is red: fix
-  forward. See `scripts/affected-tests.mjs`.
+  runs per push on a PR; no issue is filed for a red `main`. After merging, follow
+  `main`'s next full-suite run for your merge commit; if it is red because of
+  your change, fix forward or revert. See `scripts/affected-tests.mjs`.
 - The merge gate: `pnpm merge-gate <n>` removes and re-adds the `ready-to-merge`
   label - the only trigger the full suite has on a pull request - and prints the
   run it started. Run it when the review rounds are clean and the head is final,
