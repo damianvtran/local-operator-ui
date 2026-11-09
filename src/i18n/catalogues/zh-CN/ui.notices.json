@@ -100,5 +100,11 @@
 	"ui.notices.variables.delete_failed": "无法删除该变量。",
 	"ui.notices.variables.deleted": "变量已删除",
 	"ui.notices.variables.update_failed": "无法更新该变量。",
-	"ui.notices.variables.updated": "变量已更新"
+	"ui.notices.variables.updated": "变量已更新",
+	"ui.notices.aida.account_required": "连接人工智能账号后，{name}会主动打招呼。在对话中连接账号即可开始。",
+	"ui.notices.aida.active": "Aida已启用",
+	"ui.notices.aida.open_fallback": "无法打开{name}的对话，已改为打开新对话。{detail}",
+	"ui.notices.aida.paused": "Aida已暂停",
+	"ui.notices.aida.paused_receipt": "Aida已暂停，恢复前不会主动联系。",
+	"ui.notices.aida.resumed_receipt": "Aida已恢复，将按原定时间主动联系。"
 }

@@ -29,5 +29,12 @@
 	"ui.agents.pages.search_aria": "搜索智能体和团队",
 	"ui.agents.pages.tab.agents": "智能体",
 	"ui.agents.pages.tab.teams": "团队",
-	"ui.agents.pages.blocked_edit": "请先完成或取消你的编辑。"
+	"ui.agents.pages.blocked_edit": "请先完成或取消你的编辑。",
+	"ui.agents.pages.backend.loading_capabilities": "正在加载后端支持的功能……",
+	"ui.agents.pages.backend.connecting": "正在连接后端",
+	"ui.agents.pages.backend.upgrade_body": "更新后端即可管理可复用的智能体与团队。已保存的对话不受影响。",
+	"ui.agents.pages.backend.upgrade_heading": "可复用智能体需要更新版本的后端",
+	"ui.agents.pages.backend.unreachable": "无法连接后端",
+	"ui.agents.pages.change.new": "新增",
+	"ui.agents.pages.change.updated": "已更新"
 }

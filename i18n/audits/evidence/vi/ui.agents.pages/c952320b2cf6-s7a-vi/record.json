@@ -1,0 +1,176 @@
+{
+  "locale": "vi",
+  "namespace": "ui.agents.pages",
+  "instance": "c952320b2cf6-s7a-vi",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "c952320b2cf6-s7a-vi",
+    "model": "openai/gpt-6.1-sol",
+    "independent_of_translator": true
+  },
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "date": "2026-11-09",
+  "scope": "Added values only; not a full namespace re-audit",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+    "sha256": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/vi/ui.agents.pages.json",
+    "sha256": "46ddd2bdc08df788c58013345d02538d5747747bd3632a8f5e79b69a30bd16cc"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+    "sha256": "d17a2e44ddb8bf3d0896cdd6eddd13933ec9cdd804252e4e03c840ab3dca59f1"
+  },
+  "keys_audited": 7,
+  "keys": [
+    {
+      "key": "ui.agents.pages.backend.connecting",
+      "line": 33,
+      "english": "Connecting to the backend",
+      "vietnamese": "Đang kết nối với máy chủ",
+      "grammar": "Đang + kết nối gives ongoing connection; với máy chủ is the correct complement; no có required.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Đang kết nối với máy chủ",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.backend.loading_capabilities",
+      "line": 34,
+      "english": "Loading what this backend can do…",
+      "vietnamese": "Đang tải thông tin về khả năng của máy chủ này…",
+      "grammar": "Đang tải thông tin về khả năng explicitly names capability information; no existential construction or missing có.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Đang tải thông tin về khả năng của máy chủ này…",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.backend.unreachable",
+      "line": 35,
+      "english": "The backend could not be reached",
+      "vietnamese": "Không kết nối được với máy chủ",
+      "grammar": "Không kết nối được is a complete negative potential construction; có is not required before được.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Không kết nối được với máy chủ",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.backend.upgrade_heading",
+      "line": 36,
+      "english": "Reusable agents need a newer backend",
+      "vietnamese": "Tác nhân có thể tái sử dụng cần máy chủ mới hơn",
+      "grammar": "Tác nhân có thể tái sử dụng preserves the full modal có thể; cần máy chủ mới hơn expresses the requirement, not a completed update.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Tác nhân có thể tái sử dụng cần máy chủ mới hơn",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.backend.upgrade_body",
+      "line": 37,
+      "english": "Update the backend to manage reusable agents and teams. Saved chats are unchanged.",
+      "vietnamese": "Cập nhật máy chủ để quản lý tác nhân có thể tái sử dụng và nhóm. Các cuộc trò chuyện đã lưu không thay đổi.",
+      "grammar": "Có thể tái sử dụng retains có; để manages purpose; đã lưu marks saved chats and không thay đổi states invariance.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Cập nhật máy chủ để quản lý tác nhân có thể tái sử dụng và nhóm. Các cuộc trò chuyện đã lưu không thay đổi.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.change.new",
+      "line": 38,
+      "english": "New",
+      "vietnamese": "Mới",
+      "grammar": "Mới is a complete compact state label.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Mới",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.change.updated",
+      "line": 39,
+      "english": "Updated",
+      "vietnamese": "Đã cập nhật",
+      "grammar": "Đã cập nhật explicitly marks completion; no có needed.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Đã cập nhật",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    }
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "status": "passed",
+  "method": "Independent key-by-key English/Vietnamese meaning, function-word, tense/aspect, terminology and residue review; executable ICU AST parity, other-only arms, formatter, NFC and bidi assertions. Latin product/protocol identifiers Aida, AI, OAuth, MCP, NAME and ICU argument tokens are intentional, not English residue. No rendered UI claim.",
+  "style_guide": "/Users/damian/local-operator/i18n/style-guides/vi.md",
+  "glossary": "/Users/damian/local-operator/i18n/glossary.md"
+}

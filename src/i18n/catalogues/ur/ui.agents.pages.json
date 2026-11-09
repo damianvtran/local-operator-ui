@@ -29,5 +29,12 @@
 	"ui.agents.pages.search_aria": "ایجنٹس اور ٹیمیں تلاش کریں",
 	"ui.agents.pages.tab.agents": "ایجنٹس",
 	"ui.agents.pages.tab.teams": "ٹیمیں",
-	"ui.agents.pages.blocked_edit": "پہلے اپنی ترمیم مکمل کریں یا منسوخ کریں۔"
+	"ui.agents.pages.blocked_edit": "پہلے اپنی ترمیم مکمل کریں یا منسوخ کریں۔",
+	"ui.agents.pages.backend.connecting": "بیک اینڈ سے رابطہ ہو رہا ہے",
+	"ui.agents.pages.backend.loading_capabilities": "اس بیک اینڈ کی صلاحیتیں لوڈ ہو رہی ہیں…",
+	"ui.agents.pages.change.new": "نیا",
+	"ui.agents.pages.backend.upgrade_heading": "دوبارہ استعمال کے قابل ایجنٹوں کے لیے نیا بیک اینڈ درکار ہے",
+	"ui.agents.pages.backend.unreachable": "بیک اینڈ سے رابطہ نہیں ہو سکا",
+	"ui.agents.pages.backend.upgrade_body": "دوبارہ استعمال کے قابل ایجنٹوں اور ٹیموں کا انتظام کرنے کے لیے بیک اینڈ اپ ڈیٹ کریں۔ محفوظ شدہ گفتگو میں کوئی تبدیلی نہیں ہوئی۔",
+	"ui.agents.pages.change.updated": "اپ ڈیٹ شدہ"
 }

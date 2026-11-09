@@ -91,5 +91,21 @@
 	"ui.chat.run_details.wake.armed_count": "{count, plural, =1 {{count_display} जागृति सक्रिय} one {{count_display} जागृति सक्रिय} other {{count_display} जागृतियाँ सक्रिय}}",
 	"ui.chat.run_details.wake.cadence_once": "एक बार",
 	"ui.chat.run_details.wake.managed_by": "{name} द्वारा प्रबंधित",
-	"ui.chat.run_details.wake.managed_note": "यह जागृति {name} का अपना शेड्यूल है, इसलिए इसे यहाँ से रद्द नहीं किया जा सकता। इन्हें रोकने के लिए /aida pause चलाएँ।"
+	"ui.chat.run_details.wake.managed_note": "यह जागृति {name} का अपना शेड्यूल है, इसलिए इसे यहाँ से रद्द नहीं किया जा सकता। इन्हें रोकने के लिए /aida pause चलाएँ।",
+	"ui.chat.run_details.child.result.preview": "परिणाम का पूर्वावलोकन",
+	"ui.chat.run_details.child.result.title": "परिणाम",
+	"ui.chat.run_details.child.result.unavailable_clipped": "यह एक संक्षिप्त प्रति है। इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+	"ui.chat.run_details.child.result.unavailable": "इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+	"ui.chat.run_details.child.brief.show_less": "कम दिखाएँ",
+	"ui.chat.run_details.child.brief.show_more": "{count, plural, one {{count, number, ::group-off} और पंक्ति दिखाएँ} other {{count, number, ::group-off} और पंक्तियाँ दिखाएँ}}",
+	"ui.chat.run_details.mcp_auth.upgrade": "MCP कुंजियाँ सुरक्षित रूप से दर्ज करने के लिए बैकएंड अपडेट करें। OAuth और सर्वर सूची उपलब्ध हैं।",
+	"ui.chat.run_details.mcp_auth.no_references": "यह सर्वर OAuth का इस्तेमाल नहीं करता और इसमें सीक्रेट के कोई संदर्भ घोषित नहीं हैं। इसके MCP एनवायरनमेंट या हेडर में स्पष्ट $'{'NAME'}' संदर्भ जोड़ें, फिर कोशिश करें।",
+	"ui.chat.run_details.mcp_auth.unknown_method": "इस सर्वर के साइन इन का तरीका पता नहीं चल सका। इसका कनेक्शन और MCP सेटअप जाँचें, फिर कोशिश करें।",
+	"ui.chat.run_details.mcp_auth.waiting": "बैकएंड से साइन इन की स्थिति का इंतज़ार है…",
+	"ui.chat.run_details.mcp_auth.status": "साइन इन: {status}।",
+	"ui.chat.run_details.mcp_auth.status_unavailable": "स्थिति उपलब्ध नहीं",
+	"ui.chat.run_details.mcp_failure.cancel_lead": "रद्द किए जाने की पुष्टि नहीं हो सकी",
+	"ui.chat.run_details.mcp_failure.busy": "{lead}: इस बातचीत के लिए साइन इन पहले से चल रहा है, और एक समय में एक ही चल सकता है। इसके पूरा होने का इंतज़ार करें, या सर्वर की पंक्ति से इसे रद्द करें।",
+	"ui.chat.run_details.mcp_failure.refused": "{lead}: सर्वर ने बिना कारण बताए इसे अस्वीकार कर दिया, और कोई बदलाव नहीं हुआ।",
+	"ui.chat.run_details.mcp_failure.session": "{lead} क्योंकि इस बातचीत का सत्र नहीं चल रहा है। फिर कोशिश करने पर सत्र दोबारा शुरू होता है और यही अनुरोध दोहराया जाता है।"
 }

@@ -358,8 +358,8 @@ const ResultPreview = ({ text }: { text: string }) => (
 		</p>
 		<p className={cn("text-meta text-ink-muted")}>
 			{clippedByWire(text)
-				? "This is a shortened copy. This subagent's conversation is not available here."
-				: "This subagent's conversation is not available here."}
+				? t("ui.chat.run_details.child.result.unavailable_clipped")
+				: t("ui.chat.run_details.child.result.unavailable")}
 		</p>
 	</div>
 );
@@ -411,7 +411,11 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
 						 * to stop. The unit survives because it is the honest one: the count
 						 * is LINES of one authored instruction, not rows.
 						 */}
-						{expanded ? "Show less" : `Show ${folded.hidden} more lines`}
+						{expanded
+							? t("ui.chat.run_details.child.brief.show_less")
+							: t("ui.chat.run_details.child.brief.show_more", {
+									count: folded.hidden,
+								})}
 					</Button>
 				)}
 			</div>
@@ -1155,7 +1159,9 @@ export const RunChildReader = ({
 				{!row.errorText && previewsClippedResult && row.resultText && (
 					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
 						<span className={cn("text-meta text-ink-muted")}>
-							{clippedByWire(row.resultText) ? "Result preview" : "Result"}
+							{clippedByWire(row.resultText)
+								? t("ui.chat.run_details.child.result.preview")
+								: t("ui.chat.run_details.child.result.title")}
 						</span>
 						<ResultPreview text={row.resultText} />
 					</div>

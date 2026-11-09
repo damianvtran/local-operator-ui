@@ -91,5 +91,21 @@
 	"ui.chat.run_details.wake.armed_count": "{count, plural, other {{count_display} lịch thức dậy đã đặt}}",
 	"ui.chat.run_details.wake.cadence_once": "một lần",
 	"ui.chat.run_details.wake.managed_by": "do {name} quản lý",
-	"ui.chat.run_details.wake.managed_note": "Lịch đánh thức này là lịch riêng của {name} nên không thể hủy tại đây. Để dừng các lần kiểm tra này, hãy dùng /aida pause."
+	"ui.chat.run_details.wake.managed_note": "Lịch đánh thức này là lịch riêng của {name} nên không thể hủy tại đây. Để dừng các lần kiểm tra này, hãy dùng /aida pause.",
+	"ui.chat.run_details.child.brief.show_less": "Hiển thị ít hơn",
+	"ui.chat.run_details.child.brief.show_more": "{count, plural, other {Hiển thị thêm {count, number, ::group-off} dòng}}",
+	"ui.chat.run_details.child.result.title": "Kết quả",
+	"ui.chat.run_details.child.result.preview": "Xem trước kết quả",
+	"ui.chat.run_details.child.result.unavailable": "Cuộc trò chuyện của tác nhân con này không có sẵn ở đây.",
+	"ui.chat.run_details.child.result.unavailable_clipped": "Đây là bản sao rút gọn. Cuộc trò chuyện của tác nhân con này không có sẵn ở đây.",
+	"ui.chat.run_details.mcp_auth.no_references": "Máy chủ này không dùng OAuth và không khai báo tham chiếu nào đến bí mật. Thêm các tham chiếu $'{'NAME'}' tường minh vào biến môi trường hoặc tiêu đề MCP của máy chủ, rồi thử lại.",
+	"ui.chat.run_details.mcp_auth.upgrade": "Cập nhật máy chủ để nhập khóa MCP an toàn. OAuth và danh sách máy chủ vẫn dùng được.",
+	"ui.chat.run_details.mcp_auth.status": "Đăng nhập: {status}.",
+	"ui.chat.run_details.mcp_auth.status_unavailable": "không có thông tin trạng thái",
+	"ui.chat.run_details.mcp_auth.waiting": "Đang chờ trạng thái đăng nhập từ máy chủ…",
+	"ui.chat.run_details.mcp_auth.unknown_method": "Không xác định được phương thức đăng nhập của máy chủ này. Kiểm tra kết nối và thiết lập MCP của máy chủ, rồi thử lại.",
+	"ui.chat.run_details.mcp_failure.busy": "{lead}: một lượt đăng nhập đang chạy cho cuộc trò chuyện này và mỗi lần chỉ có thể chạy một lượt. Chờ lượt đó hoàn tất hoặc hủy tại hàng của máy chủ.",
+	"ui.chat.run_details.mcp_failure.refused": "{lead}: máy chủ đã từ chối mà không nêu lý do và không có gì thay đổi.",
+	"ui.chat.run_details.mcp_failure.session": "{lead} vì phiên của cuộc trò chuyện này không chạy. Thử lại sẽ khởi động lại phiên và gửi lại yêu cầu này.",
+	"ui.chat.run_details.mcp_failure.cancel_lead": "Không xác nhận được việc hủy"
 }

@@ -100,5 +100,11 @@
 	"ui.notices.variables.delete_failed": "The variable could not be deleted.",
 	"ui.notices.variables.deleted": "Variable deleted",
 	"ui.notices.variables.update_failed": "The variable could not be updated.",
-	"ui.notices.variables.updated": "Variable updated"
+	"ui.notices.variables.updated": "Variable updated",
+	"ui.notices.aida.paused_receipt": "Aida is paused. She will not check in until you resume her.",
+	"ui.notices.aida.resumed_receipt": "Aida is resumed. She will check in on her usual schedule.",
+	"ui.notices.aida.paused": "Aida is paused.",
+	"ui.notices.aida.active": "Aida is active.",
+	"ui.notices.aida.account_required": "{name} will say hello once an AI account is connected. Connect one from the chat to start.",
+	"ui.notices.aida.open_fallback": "{name}'s conversation could not be opened, so you are in a new chat instead. {detail}"
 }

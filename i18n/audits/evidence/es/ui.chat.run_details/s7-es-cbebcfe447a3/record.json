@@ -1,0 +1,169 @@
+{
+  "locale": "es",
+  "namespace": "ui.chat.run_details",
+  "instance": "cbebcfe447a3",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "cbebcfe447a3",
+    "session": "cbebcfe447a3",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "independence": "Did not author or remediate translations; wrote only own receipt and evidence. No catalogue/ledger/allowance/generator edits."
+  },
+  "head": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "scope": "Only the 29 additions (7/16/6); retained English labels/diagnostics explicitly excluded.",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/es/ui.chat.run_details.json",
+    "sha256": "ac88f983347883318862982751fea2cba96aaa54a7b772e1eda9d16813591e13"
+  },
+  "glossary": {
+    "repo": "damianvtran/local-operator",
+    "path": "i18n/glossary.md",
+    "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+    "repo": "damianvtran/local-operator",
+    "path": "i18n/style-guides/es.md",
+    "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+  },
+  "checks": {
+    "icu": "PASS: all 29 new values parse with IntlMessageFormat; English/Spanish argument types, names, plural arms and number-style AST signatures match exactly.",
+    "literal_tokens": "PASS: $'{'NAME'}' byte-identical; both ::group-off occurrences retained. Formatted output renders ${NAME} literally.",
+    "register": "PASS: new imperatives Actualiza/Añade/Revisa/Espera/Conecta and pronouns te/tu agree with existing tú register; no usted/ustedes/vosotros. agente/equipo/subagente/sesión/inicio de sesión remain consistent.",
+    "notices": "PASS: short status notices, concise two-clause receipt/account/fallback notices; faithful action and outcome.",
+    "residue": "PASS: no identical English values, no manual bidi controls in additions; manual reading finds only allowed product/protocol identifiers Local Operator, MCP, OAuth and literal NAME. Retained canonical approval labels and encoder diagnostics excluded as instructed.",
+    "backend": "ACCURATE: capabilities and mcp_auth negotiation are provided by Local Operator desktop APIs, not external MCP servers. All 7 newly translated backend references use servidor de Local Operator. One non-blocking naming drift against existing backend labels (S7-ES-1).",
+    "limitations": "Source/ICU audit only. No rendered screenshot or browser geometry evidence: browser tool unavailable in this role; no second browser stack installed."
+  },
+  "execution": {
+    "command": "NODE_OPTIONS=--max-old-space-size=768 node --input-type=module (inline probe using existing intl-messageformat; ICU AST signature checks, literal token checks, register/bidi checks and negative controls)",
+    "exit_code": 0,
+    "actual_stdout": [
+      "ui.agents.pages: 7 additions; ICU AST signatures exact; no bidi/formal-register/identical-English residue: PASS",
+      "ui.chat.run_details: 16 additions; ICU AST signatures exact; no bidi/formal-register/identical-English residue: PASS",
+      "ui.notices: 6 additions; ICU AST signatures exact; no bidi/formal-register/identical-English residue: PASS",
+      "show_more count=1: Mostrar 1 línea más",
+      "show_more count=2: Mostrar 2 líneas más",
+      "show_more count=1000: Mostrar 1000 líneas más",
+      "literal reference: Este servidor no usa OAuth ni declara referencias a secretos. Añade referencias explícitas ${NAME} a las variables de entorno o las cabeceras de su configuración MCP y vuelve a intentarlo.",
+      "Total 29; literal reference + 2 skeletons exact; placeholder/bidi negative controls detected: PASS"
+    ]
+  },
+  "reviewed_pairs": [
+    {
+      "key": "ui.chat.run_details.child.result.preview",
+      "en": "Result preview",
+      "es": "Vista previa del resultado"
+    },
+    {
+      "key": "ui.chat.run_details.child.result.title",
+      "en": "Result",
+      "es": "Resultado"
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable_clipped",
+      "en": "This is a shortened copy. This subagent's conversation is not available here.",
+      "es": "Esta es una copia abreviada. La conversación de este subagente no está disponible aquí."
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable",
+      "en": "This subagent's conversation is not available here.",
+      "es": "La conversación de este subagente no está disponible aquí."
+    },
+    {
+      "key": "ui.chat.run_details.child.brief.show_less",
+      "en": "Show less",
+      "es": "Mostrar menos"
+    },
+    {
+      "key": "ui.chat.run_details.child.brief.show_more",
+      "en": "{count, plural, one {Show {count, number, ::group-off} more line} other {Show {count, number, ::group-off} more lines}}",
+      "es": "{count, plural, one {Mostrar {count, number, ::group-off} línea más} other {Mostrar {count, number, ::group-off} líneas más}}"
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.upgrade",
+      "en": "Update the backend for secure MCP key entry. OAuth and the server list remain available.",
+      "es": "Actualiza el servidor de Local Operator para introducir claves MCP de forma segura. OAuth y la lista de servidores siguen disponibles."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.no_references",
+      "en": "This server does not use OAuth and declares no secret references. Add explicit $'{'NAME'}' references to its MCP environment or headers, then retry.",
+      "es": "Este servidor no usa OAuth ni declara referencias a secretos. Añade referencias explícitas $'{'NAME'}' a las variables de entorno o las cabeceras de su configuración MCP y vuelve a intentarlo."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.unknown_method",
+      "en": "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
+      "es": "No se pudo determinar el método de inicio de sesión de este servidor. Revisa su conexión y su configuración MCP y vuelve a intentarlo."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.waiting",
+      "en": "Waiting for backend sign-in status…",
+      "es": "Esperando el estado de inicio de sesión del servidor de Local Operator…"
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status",
+      "en": "Sign-in {status}.",
+      "es": "Inicio de sesión: {status}."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status_unavailable",
+      "en": "status unavailable",
+      "es": "estado no disponible"
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.cancel_lead",
+      "en": "The cancellation could not be confirmed",
+      "es": "No se pudo confirmar la cancelación"
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.busy",
+      "en": "{lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.",
+      "es": "{lead}: ya hay un inicio de sesión en curso para esta conversación y solo puede haber uno a la vez. Espera a que termine o cancélalo desde la fila del servidor."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.refused",
+      "en": "{lead}: the server refused it without giving a reason, and nothing was changed.",
+      "es": "{lead}: el servidor lo rechazó sin indicar el motivo y no se cambió nada."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.session",
+      "en": "{lead} because this conversation's session is not running. Trying again restarts it and repeats this request.",
+      "es": "{lead} porque la sesión de esta conversación no está en ejecución. Al volver a intentarlo, se reinicia la sesión y se repite esta solicitud."
+    }
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "id": "S7-ES-1",
+        "severity": "MINOR",
+        "key": "ui.chat.run_details.mcp_auth.upgrade",
+        "file": "src/i18n/catalogues/es/ui.chat.run_details.json",
+        "line": 103,
+        "problem": "The new accurate term «servidor de Local Operator» differs from «backend de Local Operator» / «backend» already used for the same product component in this run-details surface (children_unopenable, update_backend), and from backend in the notices aida.unreachable and chat.unread_backend_silent. The referent is not wrong, but the requested same-concept naming consistency is not complete.",
+        "evidence": "New mcp_auth.upgrade: «Actualiza el servidor de Local Operator…». Existing children_unopenable: «…un backend de Local Operator más reciente. Actualiza el backend…»; update_backend: «Actualizar el backend». The existing settings configuration upgrade copy already uses «servidor de Local Operator», confirming the new wording is an established accurate alternative rather than an incorrect component.",
+        "suggested_fix": "Defer harmonization of the older adjacent backend labels to the established «servidor de Local Operator» terminology; do not revert this accurate Spanish translation merely to preserve English.",
+        "disposition": "deferred — non-blocking naming consistency; existing labels are outside these 29 additions"
+      }
+    ],
+    "nit": []
+  },
+  "status": "clean-with-findings",
+  "source_referents": [
+    "src/renderer/src/features/agents/components/agents-page.tsx:1330-1359",
+    "src/renderer/src/shared/api/local-operator/desktop-hooks.ts:160",
+    "src/renderer/src/features/chat/components/run-details/mcp-auth-dialog.tsx:94-99,140-153,470-480",
+    "src/renderer/src/shared/api/local-operator/mcp-list.ts:24-38,71-89",
+    "src/renderer/src/features/aida/aida-control.ts:110-123"
+  ],
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+    "sha256": "525753ac3b7aa85ddd4781b7c9752aac4d2ffeaec06ec4898c117cb65549ba74"
+  }
+}

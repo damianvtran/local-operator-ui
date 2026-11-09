@@ -90,17 +90,19 @@ export function aidaControlReceipt(
 ): { text: string; kind: "success" | "info" } {
 	if (action === "pause")
 		return {
-			text: "Aida is paused. She will not check in until you resume her.",
+			text: t("ui.notices.aida.paused_receipt"),
 			kind: "success",
 		};
 	if (action === "resume")
 		return {
-			text: "Aida is resumed. She will check in on her usual schedule.",
+			text: t("ui.notices.aida.resumed_receipt"),
 			kind: "success",
 		};
 	return {
 		kind: "info",
-		text: state.paused ? "Aida is paused." : "Aida is active.",
+		text: state.paused
+			? t("ui.notices.aida.paused")
+			: t("ui.notices.aida.active"),
 	};
 }
 
@@ -171,11 +173,14 @@ export function aidaGreetFailure(
 	if (code === AIDA_NO_PROVIDER_CODE)
 		return {
 			kind: "info",
-			text: `${name} will say hello once an AI account is connected. Connect one from the chat to start.`,
+			text: t("ui.notices.aida.account_required", { name }),
 		};
 	return {
 		kind: "error",
-		text: `${name}'s conversation could not be opened, so you are in a new chat instead. ${aidaControlFailureCopy(error)}`,
+		text: t("ui.notices.aida.open_fallback", {
+			name,
+			detail: aidaControlFailureCopy(error),
+		}),
 	};
 }
 

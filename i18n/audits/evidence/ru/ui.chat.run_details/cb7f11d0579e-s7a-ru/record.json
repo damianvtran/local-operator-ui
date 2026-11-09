@@ -1,0 +1,393 @@
+{
+  "locale": "ru",
+  "namespace": "ui.chat.run_details",
+  "instance": "cb7f11d0579e-s7a-ru",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "head": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "date": "2026-11-09",
+  "scope": "Added values only; existing strings retained",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/ru/ui.chat.run_details.json",
+    "sha256": "ba2db0a9b262b004808ea97676ab89f9278ce8b9b3e38c596659847e5bb9f80b"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+    "sha256": "525753ac3b7aa85ddd4781b7c9752aac4d2ffeaec06ec4898c117cb65549ba74"
+  },
+  "records": [
+    {
+      "key": "ui.chat.run_details.child.result.preview",
+      "line": 95,
+      "english": "Result preview",
+      "russian": "Предпросмотр результата",
+      "grammar": "Предпросмотр governs genitive результата.",
+      "arguments": [],
+      "formatted": "Предпросмотр результата",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.result.title",
+      "line": 96,
+      "english": "Result",
+      "russian": "Результат",
+      "grammar": "Результат is a nominative heading.",
+      "arguments": [],
+      "formatted": "Результат",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable_clipped",
+      "line": 97,
+      "english": "This is a shortened copy. This subagent's conversation is not available here.",
+      "russian": "Это сокращённая копия. Разговор этого субагента здесь недоступен.",
+      "grammar": "сокращённая agrees with feminine копия; этого субагента is genitive possessive; недоступен agrees with masculine Разговор.",
+      "arguments": [],
+      "formatted": "Это сокращённая копия. Разговор этого субагента здесь недоступен.",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable",
+      "line": 98,
+      "english": "This subagent's conversation is not available here.",
+      "russian": "Разговор этого субагента здесь недоступен.",
+      "grammar": "этого субагента is genitive possessive; недоступен agrees with masculine Разговор.",
+      "arguments": [],
+      "formatted": "Разговор этого субагента здесь недоступен.",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.brief.show_less",
+      "line": 99,
+      "english": "Show less",
+      "russian": "Свернуть",
+      "grammar": "Свернуть is an infinitive action label.",
+      "arguments": [],
+      "formatted": "Свернуть",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.brief.show_more",
+      "line": 100,
+      "english": "{count, plural, one {Show {count, number, ::group-off} more line} other {Show {count, number, ::group-off} more lines}}",
+      "russian": "{count, plural, one {Показать ещё {count, number, ::group-off} строку} few {Показать ещё {count, number, ::group-off} строки} many {Показать ещё {count, number, ::group-off} строк} other {Показать ещё {count, number, ::group-off} строки}}",
+      "grammar": "Показать governs accusative quantity: one строку, few строки, many строк, fractional other строки; formatter outputs independently checked.",
+      "arguments": [
+        "number:count",
+        "plural:count"
+      ],
+      "formatted": "Показать ещё 2 строки",
+      "latin_tokens": [
+        "count",
+        "plural",
+        "one",
+        "number",
+        "group-off",
+        "few",
+        "many",
+        "other"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      },
+      "plural_arms": [
+        "one",
+        "few",
+        "many",
+        "other"
+      ],
+      "plural_matrix": [
+        {
+          "count": 0,
+          "arm": "many",
+          "actual": "Показать ещё 0 строк",
+          "status": "PASS"
+        },
+        {
+          "count": 1,
+          "arm": "one",
+          "actual": "Показать ещё 1 строку",
+          "status": "PASS"
+        },
+        {
+          "count": 2,
+          "arm": "few",
+          "actual": "Показать ещё 2 строки",
+          "status": "PASS"
+        },
+        {
+          "count": 5,
+          "arm": "many",
+          "actual": "Показать ещё 5 строк",
+          "status": "PASS"
+        },
+        {
+          "count": 21,
+          "arm": "one",
+          "actual": "Показать ещё 21 строку",
+          "status": "PASS"
+        },
+        {
+          "count": 22,
+          "arm": "few",
+          "actual": "Показать ещё 22 строки",
+          "status": "PASS"
+        },
+        {
+          "count": 25,
+          "arm": "many",
+          "actual": "Показать ещё 25 строк",
+          "status": "PASS"
+        },
+        {
+          "count": 1.5,
+          "arm": "other",
+          "actual": "Показать ещё 1,5 строки",
+          "status": "PASS"
+        }
+      ],
+      "group_off": {
+        "source_occurrences": 2,
+        "target_occurrences": 4,
+        "exact_token": "::group-off",
+        "note": "One number skeleton per language-specific plural arm; four RU arms vs two EN arms, intentionally different multiplicity."
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.upgrade",
+      "line": 101,
+      "english": "Update the backend for secure MCP key entry. OAuth and the server list remain available.",
+      "russian": "Обновите бэкенд для безопасного ввода ключей MCP. OAuth и список серверов остаются доступны.",
+      "grammar": "для + genitive безопасного ввода ключей; безопасного agrees with ввода; доступны agrees with compound plural OAuth и список серверов.",
+      "arguments": [],
+      "formatted": "Обновите бэкенд для безопасного ввода ключей MCP. OAuth и список серверов остаются доступны.",
+      "latin_tokens": [
+        "MCP",
+        "OAuth"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.no_references",
+      "line": 102,
+      "english": "This server does not use OAuth and declares no secret references. Add explicit $'{'NAME'}' references to its MCP environment or headers, then retry.",
+      "russian": "Этот сервер не использует OAuth и не указывает ссылок на секреты. Добавьте явные ссылки $'{'NAME'}' в его переменные окружения MCP или заголовки, затем повторите попытку.",
+      "grammar": "не указывает ссылок is permissible genitive under negation; на секреты and в переменные/заголовки take accusative; явные agrees with plural ссылки. MCP/OAuth and literal NAME are deliberate technical tokens.",
+      "arguments": [],
+      "formatted": "Этот сервер не использует OAuth и не указывает ссылок на секреты. Добавьте явные ссылки ${NAME} в его переменные окружения MCP или заголовки, затем повторите попытку.",
+      "latin_tokens": [
+        "OAuth",
+        "NAME",
+        "MCP"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      },
+      "literal_configuration": {
+        "source_and_target_token": "$'{'NAME'}'",
+        "formatted_token": "${NAME}",
+        "status": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.unknown_method",
+      "line": 103,
+      "english": "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
+      "russian": "Не удалось определить способ входа на этот сервер. Проверьте подключение к нему и настройки MCP, затем повторите попытку.",
+      "grammar": "способ входа has genitive dependent; на этот сервер accusative destination; к нему dative; настройки MCP accusative object.",
+      "arguments": [],
+      "formatted": "Не удалось определить способ входа на этот сервер. Проверьте подключение к нему и настройки MCP, затем повторите попытку.",
+      "latin_tokens": [
+        "MCP"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.waiting",
+      "line": 104,
+      "english": "Waiting for backend sign-in status…",
+      "russian": "Ожидание статуса входа от бэкенда…",
+      "grammar": "Ожидание + genitive статуса входа; от + genitive бэкенда.",
+      "arguments": [],
+      "formatted": "Ожидание статуса входа от бэкенда…",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status",
+      "line": 105,
+      "english": "Sign-in {status}.",
+      "russian": "Вход: {status}.",
+      "grammar": "Вход is nominative label; status inserted without a case-sensitive frame.",
+      "arguments": [
+        "argument:status"
+      ],
+      "formatted": "Вход: статус недоступен.",
+      "latin_tokens": [
+        "status"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status_unavailable",
+      "line": 106,
+      "english": "status unavailable",
+      "russian": "статус недоступен",
+      "grammar": "недоступен agrees with masculine статус.",
+      "arguments": [],
+      "formatted": "статус недоступен",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.cancel_lead",
+      "line": 107,
+      "english": "The cancellation could not be confirmed",
+      "russian": "Не удалось подтвердить отмену",
+      "grammar": "подтвердить + accusative отмену.",
+      "arguments": [],
+      "formatted": "Не удалось подтвердить отмену",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.busy",
+      "line": 108,
+      "english": "{lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.",
+      "russian": "{lead}: в этом разговоре уже выполняется вход, а одновременно возможен только один. Дождитесь его завершения или отмените его в строке сервера.",
+      "grammar": "в этом разговоре prepositional; один refers to masculine вход; его refers to вход; Дождитесь + genitive завершения; в строке сервера prepositional + dependent genitive.",
+      "arguments": [
+        "argument:lead"
+      ],
+      "formatted": "Не удалось подтвердить отмену: в этом разговоре уже выполняется вход, а одновременно возможен только один. Дождитесь его завершения или отмените его в строке сервера.",
+      "latin_tokens": [
+        "lead"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.refused",
+      "line": 109,
+      "english": "{lead}: the server refused it without giving a reason, and nothing was changed.",
+      "russian": "{lead}: сервер отклонил запрос без объяснения причины. Ничего не изменилось.",
+      "grammar": "без + genitive объяснения причины; Ничего не изменилось is an impersonal negative result.",
+      "arguments": [
+        "argument:lead"
+      ],
+      "formatted": "Не удалось подтвердить отмену: сервер отклонил запрос без объяснения причины. Ничего не изменилось.",
+      "latin_tokens": [
+        "lead"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.session",
+      "line": 110,
+      "english": "{lead} because this conversation's session is not running. Trying again restarts it and repeats this request.",
+      "russian": "{lead}, поскольку сессия этого разговора не запущена. Повторная попытка перезапустит её и повторит этот запрос.",
+      "grammar": "сессия feminine: не запущена, её; этого разговора genitive; Повторная agrees with попытка; этот agrees with accusative masculine запрос.",
+      "arguments": [
+        "argument:lead"
+      ],
+      "formatted": "Не удалось подтвердить отмену, поскольку сессия этого разговора не запущена. Повторная попытка перезапустит её и повторит этот запрос.",
+      "latin_tokens": [
+        "lead"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    }
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "status": "passed",
+  "method": "Manual key-by-key English/Russian meaning and Russian government/agreement review plus executable ICU AST, placeholder/type parity, formatter, Latin allowlist and bidi assertions. No rendered UI claim."
+}

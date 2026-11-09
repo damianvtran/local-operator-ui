@@ -100,5 +100,11 @@
 	"ui.notices.variables.delete_failed": "متغیر حذف نہیں کیا جا سکا۔",
 	"ui.notices.variables.deleted": "متغیر حذف ہو گیا",
 	"ui.notices.variables.update_failed": "متغیر اپ ڈیٹ نہیں کیا جا سکا۔",
-	"ui.notices.variables.updated": "متغیر اپ ڈیٹ ہو گیا"
+	"ui.notices.variables.updated": "متغیر اپ ڈیٹ ہو گیا",
+	"ui.notices.aida.paused_receipt": "Aida روک دی گئی ہے۔ دوبارہ جاری کرنے تک وہ چیک اِن نہیں کرے گی۔",
+	"ui.notices.aida.resumed_receipt": "Aida دوبارہ جاری کر دی گئی ہے۔ وہ اپنے معمول کے شیڈول پر چیک اِن کرے گی۔",
+	"ui.notices.aida.paused": "Aida روک دی گئی ہے۔",
+	"ui.notices.aida.active": "Aida فعال ہے۔",
+	"ui.notices.aida.account_required": "مصنوعی ذہانت کا اکاؤنٹ منسلک ہونے پر {name} سلام کرے گی۔ شروع کرنے کے لیے چیٹ سے اکاؤنٹ منسلک کریں۔",
+	"ui.notices.aida.open_fallback": "{name} کی گفتگو نہیں کھولی جا سکی، اس لیے اس کے بجائے نئی چیٹ کھولی گئی ہے۔ {detail}"
 }

@@ -91,5 +91,21 @@
 	"ui.chat.run_details.wake.armed_count": "{count, plural, =1 {{count_display} بیداری فعال ہے} one {{count_display} بیداری فعال ہے} other {{count_display} بیداریاں فعال ہیں}}",
 	"ui.chat.run_details.wake.cadence_once": "ایک بار",
 	"ui.chat.run_details.wake.managed_by": "{name} کے زیرِ انتظام",
-	"ui.chat.run_details.wake.managed_note": "یہ بیداری {name} کا اپنا شیڈول ہے، اس لیے اسے یہاں منسوخ نہیں کیا جا سکتا۔ ان چیک اِنز کو روکنے کے لیے /aida pause استعمال کریں۔"
+	"ui.chat.run_details.wake.managed_note": "یہ بیداری {name} کا اپنا شیڈول ہے، اس لیے اسے یہاں منسوخ نہیں کیا جا سکتا۔ ان چیک اِنز کو روکنے کے لیے /aida pause استعمال کریں۔",
+	"ui.chat.run_details.child.result.preview": "نتیجے کا پیش منظر",
+	"ui.chat.run_details.child.result.title": "نتیجہ",
+	"ui.chat.run_details.child.result.unavailable_clipped": "یہ ایک مختصر نقل ہے۔ اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔",
+	"ui.chat.run_details.child.result.unavailable": "اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔",
+	"ui.chat.run_details.child.brief.show_less": "کم دکھائیں",
+	"ui.chat.run_details.child.brief.show_more": "{count, plural, one {مزید {count, number, ::group-off} سطر دکھائیں} other {مزید {count, number, ::group-off} سطریں دکھائیں}}",
+	"ui.chat.run_details.mcp_auth.upgrade": "MCP کی کلید محفوظ طریقے سے درج کرنے کے لیے بیک اینڈ اپ ڈیٹ کریں۔ OAuth اور سرور کی فہرست دستیاب رہیں گے۔",
+	"ui.chat.run_details.mcp_auth.no_references": "یہ سرور OAuth استعمال نہیں کرتا اور اس میں کسی خفیہ قدر کے حوالے متعین نہیں ہیں۔ اس کے MCP ماحول یا ہیڈرز میں واضح $'{'NAME'}' حوالے شامل کریں، پھر دوبارہ کوشش کریں۔",
+	"ui.chat.run_details.mcp_auth.unknown_method": "اس سرور کے سائن ان کا طریقہ معلوم نہیں ہو سکا۔ اس کا رابطہ اور MCP کی ترتیب جانچیں، پھر دوبارہ کوشش کریں۔",
+	"ui.chat.run_details.mcp_auth.waiting": "بیک اینڈ سے سائن ان کی حالت کا انتظار ہے…",
+	"ui.chat.run_details.mcp_auth.status": "سائن ان کی حالت: {status}۔",
+	"ui.chat.run_details.mcp_auth.status_unavailable": "حالت دستیاب نہیں",
+	"ui.chat.run_details.mcp_failure.cancel_lead": "منسوخی کی تصدیق نہیں ہو سکی",
+	"ui.chat.run_details.mcp_failure.busy": "{lead}: اس گفتگو کے لیے سائن ان پہلے ہی جاری ہے، اور ایک وقت میں صرف ایک سائن ان ہو سکتا ہے۔ اس کے مکمل ہونے کا انتظار کریں، یا سرور کی قطار سے اسے منسوخ کریں۔",
+	"ui.chat.run_details.mcp_failure.refused": "{lead}: سرور نے وجہ بتائے بغیر اسے مسترد کر دیا، اور کوئی تبدیلی نہیں ہوئی۔",
+	"ui.chat.run_details.mcp_failure.session": "{lead} کیونکہ اس گفتگو کا سیشن چل نہیں رہا۔ دوبارہ کوشش کرنے سے سیشن پھر شروع ہو گا اور یہی درخواست دہرائی جائے گی۔"
 }
