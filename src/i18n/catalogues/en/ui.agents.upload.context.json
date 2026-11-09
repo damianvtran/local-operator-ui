@@ -9,6 +9,24 @@
 		"plain, action",
 		"Navigates to the new hub listing. Only shown when the outcome carries a hub id."
 	],
+	"ui.agents.upload.action.publish": {
+		"role": "primary button label, pre-submit state",
+		"tone": "plain, action",
+		"length_hint": "One word; it sits alone in the dialog footer, which keeps its width across the three submit states.",
+		"note": "The submit control for a FIRST publication. It must not promise an update: the branch that replaces an existing listing has its own label (action.update_listing), because a label promising a first publication on an update press is the same defect as the reverse."
+	},
+	"ui.agents.upload.action.publishing": {
+		"role": "primary button label while the publication request is in flight",
+		"tone": "plain, progress",
+		"length_hint": "One word plus a single-character ellipsis (U+2026).",
+		"note": "U+2026, never three periods. The button is disabled in this state, so this label is the only thing on it that still changes."
+	},
+	"ui.agents.upload.action.update_listing": {
+		"role": "primary button label when the press will UPDATE an existing public listing",
+		"tone": "plain, action",
+		"length_hint": "Two words; keep it short enough not to outgrow the footer.",
+		"note": "Says update, not publish. The press sends an existing listing id, so a label reading as a first publication would be the receipt's own defect one control earlier."
+	},
 	"ui.agents.upload.availability.agent_label": [
 		"prefix before the agent name in the name-check line",
 		"plain",
@@ -24,6 +42,21 @@
 		"plain, cautious",
 		"'Looks free', not 'is free': reservations are not consulted, so the submit answer is authoritative. Do not strengthen this claim in translation."
 	],
+	"ui.agents.upload.availability.reserved_named": {
+		"role": "status line under the name field, when the hub holds the typed name as one of its built-in agents",
+		"tone": "plain, factual",
+		"length_hint": "One line under the field (about 60 characters in English).",
+		"placeholders": {
+			"name": "The built-in agent's canonical spelling as the hub reports it; typeable backwards into the field, so never translated or re-cased. The quote marks around it belong to the message and are the locale's own."
+		},
+		"note": "The named variant: it hands the author the spelling the reservation actually holds, which is the only help this line can give them. The refusal itself is the alert above, not this sentence."
+	},
+	"ui.agents.upload.availability.reserved_unnamed": {
+		"role": "status line under the name field, when a built-in holds the name but the check returned no spelling for it",
+		"tone": "plain, factual",
+		"length_hint": "One line under the field (about 55 characters in English).",
+		"note": "The variant without a canonical spelling. It must not promise the name is free or say which built-in holds it, because this state knows neither."
+	},
 	"ui.agents.upload.availability.taken": [
 		"status line under the name field",
 		"plain, factual",
@@ -44,6 +77,21 @@
 		"plain",
 		"The name this agent will carry on the public hub, which may differ from its local name."
 	],
+	"ui.agents.upload.intro.org": {
+		"role": "sentence introducing the 'what is published' list, organization destination",
+		"tone": "plain, declarative",
+		"length_hint": "Two to three lines above the list; the organization name is data and can be long.",
+		"placeholders": {
+			"destination": "The organization's display name, data returned by the backend; never translate it."
+		},
+		"note": "The organization variant of intro.public. The trailing colon introduces the list below it and belongs to this message, not to the list. 'Instruction set' is what a publication IS: the sentence must not start describing conversation, history or memory."
+	},
+	"ui.agents.upload.intro.public": {
+		"role": "sentence introducing the 'what is published' list, public hub destination",
+		"tone": "plain, declarative",
+		"length_hint": "Two lines above the list (about 130 characters in English).",
+		"note": "The public twin of intro.org. 'Agent Hub' is the surface's shipped name; render it the same way this language renders ui.hub.pages.header.title, not as a second name. The trailing colon belongs to this message."
+	},
 	"ui.agents.upload.list.instructions": [
 		"list item in the publish summary",
 		"plain, factual",
@@ -59,16 +107,62 @@
 		"plain, factual",
 		"Third of three: the tool surface, effort tier and delegation, shown only when present."
 	],
+	"ui.agents.upload.not_leaving.org": {
+		"role": "sentence after the 'what is published' list, organization destination",
+		"tone": "plain, reassuring, factual",
+		"length_hint": "Three to four lines: the longest sentence in the dialog, and the one an author reads before deciding.",
+		"placeholders": {
+			"destination": "The organization's display name, data returned by the backend; never translate it. The possessive after it is English grammar, and the construction is yours to render natively."
+		},
+		"note": "The PRE-submit promise, not the receipt: sign_in.nothing_left is its past-tense sibling with a shorter list, so do not merge the two. Every item named here is something the backend strips from a published archive - do not add, drop or reorder one, and do not turn the sentence into a warning."
+	},
+	"ui.agents.upload.not_leaving.public": {
+		"role": "sentence after the 'what is published' list, public hub destination",
+		"tone": "plain, reassuring, factual",
+		"length_hint": "Three lines (about 185 characters in English).",
+		"note": "The public twin of not_leaving.org. 'Anyone' is the whole audience of the public hub, so it must not be narrowed to members, to readers of a link or to signed-in accounts."
+	},
 	"ui.agents.upload.published.listed": [
 		"success alert body",
 		"plain, factual",
 		"{name} is the hub display name (escaped display bytes, never translated). Quotes around it are part of the message; the sentence says anyone may read and install it."
 	],
+	"ui.agents.upload.published.org_listed": {
+		"role": "receipt body after an organization publication succeeded",
+		"tone": "past-tense receipt, factual",
+		"length_hint": "Two to three lines in the result region; the agent name and the organization name are both data.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it. Keep it quoted with the locale's own quotation marks.",
+			"destination": "The organization's display name, data returned by the backend; never translate it. The possessive after it is English grammar."
+		},
+		"note": "The organization twin of published.listed, and it must not imply the public hub: what was published is readable by that organization's members only."
+	},
 	"ui.agents.upload.published.republished": [
 		"success alert body after an update",
 		"plain, factual",
 		"{name} is the hub display name. Says the hub now holds the current instruction set, which is what distinguishes this from a first publish."
 	],
+	"ui.agents.upload.receipt.title_hub": {
+		"role": "heading of the receipt alert, public publication with no prior listing",
+		"tone": "past-tense receipt, not a question",
+		"length_hint": "One short line in the alert heading (about 20 characters in English).",
+		"note": "Names no agent: the body beside it does. Uses the short 'hub' the shipped English carries rather than expanding it to 'Agent Hub'. Not the dialog title (title.published_public) - that one names the agent and asks nothing either."
+	},
+	"ui.agents.upload.receipt.title_org": {
+		"role": "heading of the receipt alert, organization publication",
+		"tone": "past-tense receipt, not a question",
+		"length_hint": "One short line; the organization name is data and can be long.",
+		"placeholders": {
+			"destination": "The organization's display name, data returned by the backend; never translate it."
+		},
+		"note": "Names the destination because an organization publication is the case where the audience is not obvious from the screen."
+	},
+	"ui.agents.upload.receipt.title_updated": {
+		"role": "heading of the receipt alert, an existing public listing was replaced",
+		"tone": "past-tense receipt, not a question",
+		"length_hint": "Two words (about 15 characters in English).",
+		"note": "The UPDATE receipt: the hub replaced a listing that already existed. It must not read as a first publication, and it pairs with published.republished rather than published.listed."
+	},
 	"ui.agents.upload.sign_in.needed": [
 		"signed-out notice in the dialog",
 		"plain, explains the gate",
@@ -84,6 +178,17 @@
 		"plain, direct",
 		"Says what to do (sign in again) and why (replace the refused credential). The sign-in control sits under it."
 	],
+	"ui.agents.upload.target.blocked_hint": {
+		"role": "hint under the publish-target picker when at least one organization is blocked by its plan",
+		"tone": "plain, explanatory; a plan state, not a refusal of the reader",
+		"length_hint": "Two lines under the picker (about 150 characters in English): the longest hint in the dialog.",
+		"placeholders": {
+			"count": "How many blocked organizations the picker is showing. It selects the organization phrase; it never renders as a digit.",
+			"org": "One organization's display name, or the shipped placeholder 'this organization' (ui.hub.pages.scope.org_unnamed) when the app has no name for it; never translate the name."
+		},
+		"plural_guidance": "Use the target locale's own CLDR categories for the blocked count. The 'one' arm names the organization the reader has to ask; every other category says 'any of the organizations marked above', without naming one, and must stay usable for a count of two as well as a dozen.",
+		"note": "'Team plan' is the product tier's name and stays recognisable; 'Radient console' names where an owner activates it. A blocked organization is shown DISABLED rather than hidden, so this hint explains a control that is visible and unusable."
+	},
 	"ui.agents.upload.target.label": [
 		"field label for the destination group",
 		"plain",
@@ -99,6 +204,12 @@
 		"plain, quiet",
 		"A blocked organization stays visible with this hint rather than disappearing, so a lapsed plan reads as a plan state, not an absence."
 	],
+	"ui.agents.upload.target.visibility_hint_public": {
+		"role": "hint under the publish-target picker when every visible target is available",
+		"tone": "plain, factual",
+		"length_hint": "Two lines under the picker (about 130 characters in English).",
+		"note": "Explains the two audiences the picker chooses between: a public hub publication is readable by anyone, an organization's agents only by that organization's members. Do not swap the halves or widen 'agents' to 'content'."
+	},
 	"ui.agents.upload.terms.lead": [
 		"first fragment of the consent sentence, before the link",
 		"plain, legal register",

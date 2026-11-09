@@ -756,10 +756,10 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					 * creates would be the receipt's own defect, one control earlier.
 					 */}
 					{submitting
-						? "Publishing…"
+						? t("ui.agents.upload.action.publishing")
 						: listing && !targetIsOrg
-							? "Update listing"
-							: "Publish"}
+							? t("ui.agents.upload.action.update_listing")
+							: t("ui.agents.upload.action.publish")}
 				</PrimaryButton>
 			)}
 		</>
@@ -832,14 +832,19 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					<Alert variant="success" aria-live="polite">
 						<AlertTitle>
 							{published.orgName
-								? `Published to ${published.orgName}`
+								? t("ui.agents.upload.receipt.title_org", {
+										destination: published.orgName,
+									})
 								: published.republished
-									? "Listing updated"
-									: "Published to the hub"}
+									? t("ui.agents.upload.receipt.title_updated")
+									: t("ui.agents.upload.receipt.title_hub")}
 						</AlertTitle>
 						<AlertDescription>
 							{published.orgName
-								? `"${published.name}" is in ${published.orgName}'s shared agents as an instruction set. Its members can read and install it; nobody outside the organization can.`
+								? t("ui.agents.upload.published.org_listed", {
+										name: published.name,
+										destination: published.orgName,
+									})
 								: published.republished
 									? t("ui.agents.upload.published.republished", {
 											name: published.name,
@@ -941,8 +946,10 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					<>
 						<p className="text-body text-ink">
 							{targetIsOrg
-								? `You are about to publish this agent's instruction set into ${targetDisplayName}, where only its members can read and install it. What is published is what describes the agent:`
-								: "You are about to publish this agent's instruction set to the public Agent Hub. What is published is what describes the agent:"}
+								? t("ui.agents.upload.intro.org", {
+										destination: targetDisplayName,
+									})
+								: t("ui.agents.upload.intro.public")}
 						</p>
 						<ul className="list-disc space-y-1 ps-5 text-body text-ink-muted">
 							<li>{t("ui.agents.upload.list.name")}</li>
@@ -951,8 +958,10 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						</ul>
 						<p className="text-body text-ink">
 							{targetIsOrg
-								? `Nothing else leaves this machine: no conversation, no execution history, no memory or learnings, no plan, and no machine-specific configuration. ${targetDisplayName}'s members can read and install what you publish; nobody outside it can.`
-								: "Nothing else leaves this machine: no conversation, no execution history, no memory or learnings, no plan, and no machine-specific configuration. Anyone can read and install what you publish."}
+								? t("ui.agents.upload.not_leaving.org", {
+										destination: targetDisplayName,
+									})
+								: t("ui.agents.upload.not_leaving.public")}
 						</p>
 
 						{/*
@@ -1003,7 +1012,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 										</SelectItem>
 										{publishTargets.map((org) => (
 											<SelectItem key={org.tenant_id} value={org.tenant_id}>
-												{org.tenant_name || "Organization"}
+												{org.tenant_name || t("ui.hub.pages.scope.org_label")}
 											</SelectItem>
 										))}
 										{blockedTargets.map((org) => (
@@ -1028,12 +1037,13 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 									data-testid="publish-target-hint"
 								>
 									{blockedTargets.length > 0
-										? `Sharing agents inside an organization is part of the Team plan. An owner of ${
-												blockedTargets.length === 1
-													? blockedTargets[0].tenant_name || "this organization"
-													: "any of the organizations marked above"
-											} can activate it in the Radient console.`
-										: "Public hub publications are readable by anyone. An organization's agents are readable by its members only."}
+										? t("ui.agents.upload.target.blocked_hint", {
+												count: blockedTargets.length,
+												org:
+													blockedTargets[0].tenant_name ||
+													t("ui.hub.pages.scope.org_unnamed"),
+											})
+										: t("ui.agents.upload.target.visibility_hint_public")}
 								</p>
 							</div>
 						) : orgNotice ? (
@@ -1214,8 +1224,10 @@ const availabilityLine = (availability: {
 			return (
 				<p className="text-meta text-ink-muted">
 					{availability.builtinName
-						? `The hub reserves "${availability.builtinName}" for one of its built-in agents.`
-						: "The hub reserves this name for one of its built-in agents."}
+						? t("ui.agents.upload.availability.reserved_named", {
+								name: availability.builtinName,
+							})
+						: t("ui.agents.upload.availability.reserved_unnamed")}
 				</p>
 			);
 		default:
