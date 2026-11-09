@@ -4378,6 +4378,11 @@ export type MessageParams = {
 		count_display: string;
 	};
 	"ui.chat.canonical.lightbox.show_image": { index: number; count: number };
+	"ui.chat.canonical.link_toolkit.actions_for": { name: string };
+	"ui.chat.canonical.notice.compaction_not_run": { detail: string };
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": { detail: string };
+	"ui.chat.canonical.notice.interrupted": undefined;
+	"ui.chat.canonical.notice.stopped_with_error": undefined;
 	"ui.chat.canonical.older_history.conversation_start": undefined;
 	"ui.chat.canonical.older_history.failed.long": undefined;
 	"ui.chat.canonical.older_history.failed.short": undefined;
@@ -6512,6 +6517,7 @@ export type MessageParams = {
 	"ui.chat.sidebar.list.offline": undefined;
 	"ui.chat.sidebar.list.retry_refresh": undefined;
 	"ui.chat.sidebar.list.truncated_legacy": undefined;
+	"ui.chat.sidebar.mark_all_read.label": { count: number };
 	"ui.chat.sidebar.nav.chats": undefined;
 	"ui.chat.sidebar.pins.drag_title": undefined;
 	"ui.chat.sidebar.pins.failure": { action: string; title: string };
@@ -6594,6 +6600,7 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.tag": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
+	"ui.chat.sidebar_view.ungrouped": undefined;
 	"ui.chat.slash.arg.credential_api_key": undefined;
 	"ui.chat.slash.arg.mcp_detail.reauthorize": undefined;
 	"ui.chat.slash.arg.mcp_detail.reuse": undefined;

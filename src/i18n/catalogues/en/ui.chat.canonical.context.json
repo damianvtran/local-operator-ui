@@ -1780,5 +1780,46 @@
 		"placeholders": {
 			"id": "opaque job identifier from the hub receipt; preserve as supplied"
 		}
+	},
+	"ui.chat.canonical.notice.interrupted": {
+		"role": "transcript notice line marking a turn that was interrupted before it finished",
+		"tone": "neutral past participle, sentence case, no trailing punctuation",
+		"length": "One short word.",
+		"note": "A completion marker the transcript paints in warning ink at the end of the turn. Distinct from the tool-call status of the same word (ui.chat.canonical.transcript.interrupted): this one closes a whole turn.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.notice.stopped_with_error": {
+		"role": "transcript notice line marking a turn that ended in an error",
+		"tone": "neutral factual statement, sentence case, no trailing punctuation",
+		"length": "Short phrase.",
+		"note": "A completion marker painted in error ink at the end of the turn. It states that the turn stopped, not why; the cause is a separate row.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.notice.compaction_not_run": {
+		"role": "transcript notice explaining that a context compaction was refused or failed",
+		"tone": "plain statement, sentence case, colon then the runtime's reason",
+		"length": "One line; the reason is a full sentence from the runtime and can be long.",
+		"note": "Pair with compaction_not_run_after_colon: this form is used when the runtime's reason carries no colon of its own. Keep the colon-then-reason order if the language allows; the reason is inserted verbatim.",
+		"placeholders": {
+			"detail": "the runtime's own English reason sentence, inserted verbatim; do not translate or reorder it"
+		}
+	},
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": {
+		"role": "transcript notice explaining that a context compaction was refused or failed, when the reason already contains a colon",
+		"tone": "plain statement, sentence case, dash then the runtime's reason",
+		"length": "One line; the reason is a full sentence from the runtime and can be long.",
+		"note": "Pair with compaction_not_run: this form is used when the runtime's reason already contains a colon, so an em dash joins the two instead of a second colon.",
+		"placeholders": {
+			"detail": "the runtime's own English reason sentence, inserted verbatim; do not translate or reorder it"
+		}
+	},
+	"ui.chat.canonical.link_toolkit.actions_for": {
+		"role": "accessible name of the hover toolbar offered on a link or file path in the transcript",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Short; the name is a file name or URL host and can be long.",
+		"note": "Screen-reader only: names the toolbar by the thing its buttons act on. name is a file basename or URL, shown verbatim.",
+		"placeholders": {
+			"name": "file basename or URL; insert verbatim"
+		}
 	}
 }
