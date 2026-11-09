@@ -85,6 +85,57 @@ class HostedSetupContracts(unittest.TestCase):
                 self.assertEqual(result.returncode == 0, brew_code == probe_code == 0, result.stderr)
                 self.assertEqual(log.read_text().splitlines(), expected)
 
+    def test_each_step_admits_exactly_the_grant_it_spends(self):
+        # Run 42690842897 was reaped at 1,537 MiB of a 1,536 MiB native grant;
+        # the admission check must track the step's own run_bounded grant.
+        import re
+        expected = {'Execute serving music Core preflight and prove rollback': 1536,
+                    'Execute one native music acceptance on the same serving graph': 2560}
+        for name, grant in expected.items():
+            run = self.step(name)['run']
+            admitted = re.findall(r'check_capacity\.py .*? --grant-mib (\d+)\n', run)
+            bounded = re.findall(r'run_bounded\.py .*?--memory-mb (\d+) --', run)
+            self.assertEqual([int(v) for v in admitted], [grant], name)
+            self.assertEqual([int(v) for v in bounded], [grant], name)
+
+
+class CapacityAdmission(unittest.TestCase):
+    def setUp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('check_capacity', HERE / 'check_capacity.py')
+        self.mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.mod)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.receipt = Path(self.tmp.name) / 'admission.json'
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def run_with(self, measured, *args):
+        return self.mod.main([str(self.receipt), *args], measure=lambda: measured)
+
+    def test_refuses_below_grant_plus_margin_and_names_numbers(self):
+        for grant in (1536, 2560):
+            with self.assertRaises(SystemExit) as refused:
+                self.run_with(grant + 511.9, '--grant-mib', str(grant))
+            self.assertIn(f'{grant}MiB grant+512MiB margin ({grant + 512}MiB)', str(refused.exception))
+            receipt = json.loads(self.receipt.read_text())
+            self.assertEqual((receipt['owned_group_grant_mib'], receipt['admitted']), (grant, False))
+
+    def test_admits_at_and_above_grant_plus_margin(self):
+        for grant in (1536, 2560):
+            for measured in (grant + 512, grant + 512 + 1):
+                receipt = self.run_with(measured, '--grant-mib', str(grant))
+                self.assertTrue(receipt['admitted'])
+                self.assertEqual(json.loads(self.receipt.read_text())['owned_group_grant_mib'], grant)
+
+    def test_grant_is_required_and_positive(self):
+        with self.assertRaises(SystemExit):
+            self.run_with(10 ** 6)
+        with self.assertRaises(ValueError):
+            self.run_with(10 ** 6, '--grant-mib', '0')
+        self.assertFalse(self.receipt.exists())
+
 
 if __name__ == '__main__':
     unittest.main()

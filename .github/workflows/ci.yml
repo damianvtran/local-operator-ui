@@ -1223,7 +1223,7 @@ jobs:
         if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
         timeout-minutes: 10
         run: |
-          python3 .github/harness/music/check_capacity.py "$LOCAL_OPERATOR_SCRATCHPAD/resource-admission-${{ github.action }}.json"
+          python3 .github/harness/music/check_capacity.py "$LOCAL_OPERATOR_SCRATCHPAD/resource-admission-${{ github.action }}.json" --grant-mib 1536
           "$LOCAL_OPERATOR_CORE_PYTHON" .music-core-source/scripts/run_bounded.py             --contract command-status --timeout 600 --memory-mb 1536 --             "$LOCAL_OPERATOR_CORE_PYTHON" .github/harness/music/music-serving-core-preflight.py --resource-lease
 
       - name: Execute one native music acceptance on the same serving graph
@@ -1238,8 +1238,8 @@ jobs:
           LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
           LOCAL_OPERATOR_UI_WINDOW_MODE: headless
         run: |
-          python3 .github/harness/music/check_capacity.py "$LOCAL_OPERATOR_SCRATCHPAD/resource-admission-${{ github.action }}.json"
-          "$LOCAL_OPERATOR_CORE_PYTHON" .music-core-source/scripts/run_bounded.py             --contract command-status --timeout 600 --memory-mb 1536 --             "$LOCAL_OPERATOR_CORE_PYTHON" .github/harness/music/music-serving-core-preflight.py --resource-lease --native-after-preflight
+          python3 .github/harness/music/check_capacity.py "$LOCAL_OPERATOR_SCRATCHPAD/resource-admission-${{ github.action }}.json" --grant-mib 2560
+          "$LOCAL_OPERATOR_CORE_PYTHON" .music-core-source/scripts/run_bounded.py             --contract command-status --timeout 600 --memory-mb 2560 --             "$LOCAL_OPERATOR_CORE_PYTHON" .github/harness/music/music-serving-core-preflight.py --resource-lease --native-after-preflight
 
       - name: Collect sanitized music receipts without credential databases
         if: always() && runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
