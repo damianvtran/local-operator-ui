@@ -75,6 +75,7 @@ import {
 	receiveJournalOrder,
 	rememberJournalCalls,
 } from "./journal-order";
+import { type NoticeCopy, noticeCopyText } from "./notice-copy";
 import {
 	type PendingProfileHistoryReplacement,
 	profileHistoryReplacements,
@@ -618,6 +619,13 @@ type TranscriptPayloadRecord =
 			id: string;
 			ts: number;
 			text: string;
+			/**
+			 * The renderer-authored sentence as an id plus arguments, re-resolved at
+			 * paint time so a language change reaches a record already in state
+			 * (`notice-copy.ts` says why `text` alone cannot). Absent for sentences
+			 * the backend wrote or that mirror the core byte-for-byte.
+			 */
+			copy?: NoticeCopy;
 			level: "info" | "warning" | "error";
 	  }
 	| {
@@ -2195,6 +2203,7 @@ const SILENT_CUSTOM_TYPES = new Set([
  */
 function compactionOutcome(detail: string): {
 	text: string;
+	copy: NoticeCopy;
 	level: "info" | "warning" | "error";
 } {
 	const sentence = detail.trim() || "compaction did not run";
@@ -2205,8 +2214,10 @@ function compactionOutcome(detail: string): {
 	 * (design round 2, N1). An em dash is the join, because the sentence after it
 	 * is the runtime's and not this renderer's to rewrite.
 	 */
+	const copy: NoticeCopy = { id: "compaction_not_run", sentence };
 	return {
-		text: `Compaction did not run${sentence.includes(":") ? " — " : ": "}${sentence}`,
+		text: noticeCopyText(copy),
+		copy,
 		level: sentence.startsWith("compaction failed") ? "error" : "warning",
 	};
 }
@@ -3242,6 +3253,7 @@ function durableRecord(
 			id: entry.id,
 			ts,
 			text: outcome.text,
+			copy: outcome.copy,
 			level: outcome.level,
 		};
 	}
@@ -3281,6 +3293,10 @@ function durableRecord(
 				};
 			}
 			if (details.kind === "error" || details.kind === "interrupted") {
+				const copy: NoticeCopy =
+					details.kind === "error"
+						? { id: "stopped_with_error" }
+						: { id: "interrupted" };
 				// Preserve the marker's durable position. Appending an old failure at
 				// the current retry tail would misrepresent which outcome was viewed.
 				return {
@@ -3288,8 +3304,8 @@ function durableRecord(
 					id: details.anchor,
 					ts,
 					complete: true,
-					text:
-						details.kind === "error" ? "Stopped with an error" : "Interrupted",
+					text: noticeCopyText(copy),
+					copy,
 					level: details.kind === "error" ? "error" : "warning",
 				};
 			}
@@ -6801,6 +6817,7 @@ export function applyEvent(
 					id,
 					ts: now,
 					text,
+					copy: failure.copy,
 					level: failure.level,
 				});
 			/*
@@ -8123,6 +8140,14 @@ export function withRecoveredOutcome(
 	)
 		return state;
 	remembered?.add(anchor);
+	// Only the two outcomes the renderer words itself carry a re-resolvable
+	// `copy`; closed/retired are the core's byte-identical constants.
+	const copy: NoticeCopy | undefined =
+		kind === "error"
+			? { id: "stopped_with_error" }
+			: kind === "interrupted"
+				? { id: "interrupted" }
+				: undefined;
 	return upsert(state, {
 		kind: "notice",
 		id: anchor,
@@ -8135,9 +8160,8 @@ export function withRecoveredOutcome(
 				? CLOSED_OUTCOME_TEXT
 				: kind === "retired"
 					? RETIRED_OUTCOME_TEXT
-					: kind === "error"
-						? "Stopped with an error"
-						: "Interrupted",
+					: noticeCopyText(copy as NoticeCopy),
+		...(copy ? { copy } : {}),
 		level:
 			kind === "closed"
 				? "info"

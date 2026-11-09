@@ -203,6 +203,7 @@ import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
+import { noticeText } from "./notice-copy";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
 import {
@@ -3083,8 +3084,12 @@ const NoticeRow = memo(function NoticeRow({
 	// notice whose first line IS the whole text now has nothing to disclose and
 	// paints through the static branch, which is the honest affordance: a chevron
 	// that reveals the same bytes promises material it does not add.
-	const { headline, rest } = splitFirstLine(record.text);
-	const providerAction = providerErrorGuidance({ text: record.text });
+	// Re-resolved on every paint: a notice the renderer worded itself carries its
+	// sentence as an id plus arguments (`notice-copy.ts`), so a language change
+	// reaches a record that is already in state. This row subscribes to the locale.
+	const text = record.kind === "notice" ? noticeText(record) : record.text;
+	const { headline, rest } = splitFirstLine(text);
+	const providerAction = providerErrorGuidance({ text });
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<TraceLine
@@ -3118,7 +3123,7 @@ const NoticeRow = memo(function NoticeRow({
 			 * the backend's -- and gains the action it describes, which opens the
 			 * connect dialog over this conversation instead of navigating away.
 			 */}
-			{NO_PROVIDER_NOTICE.test(record.text) ? (
+			{NO_PROVIDER_NOTICE.test(text) ? (
 				<div className="mt-1 ps-6">
 					<Button
 						variant="secondary"
