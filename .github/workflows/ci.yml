@@ -709,6 +709,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -785,6 +787,42 @@ jobs:
         with:
           name: ui-qa-bundle-${{ github.event.pull_request.number }}-${{ github.run_id }}
           path: out/
+          if-no-files-found: error
+          retention-days: 1
+
+      # Same changed-path inventory as ci-scope; no PR-number/branch exception.
+      # Hosted compilation avoids another whole-renderer build on the shared
+      # development host. Static files remain separate from out/'s closed manifest.
+      - name: Classify scoped music evidence
+        id: music_evidence
+        run: node scripts/music-storybook-evidence.mjs scope
+
+      - name: Build static music component evidence
+        if: steps.music_evidence.outputs.music == 'true'
+        env:
+          LOP_STORYBOOK_MUSIC_EVIDENCE: '1'
+          STORYBOOK_CACHE_PRUNE: 'off'
+          STORYBOOK_DISABLE_TELEMETRY: '1'
+          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:8080'
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          VITE_GOOGLE_CLIENT_ID: 'qa-not-configured'
+          VITE_GOOGLE_CLIENT_SECRET: 'qa-not-configured'
+          VITE_MICROSOFT_CLIENT_ID: '00000000-0000-0000-0000-000000000000'
+          VITE_MICROSOFT_TENANT_ID: '00000000-0000-0000-0000-000000000000'
+          QA_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pnpm build-storybook --output-dir "$RUNNER_TEMP/music-storybook"
+          node scripts/music-storybook-evidence.mjs manifest "$RUNNER_TEMP/music-storybook"
+
+      - name: Upload static music component evidence
+        if: steps.music_evidence.outputs.music == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-music-storybook-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/music-storybook/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
 
