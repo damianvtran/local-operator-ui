@@ -247,5 +247,10 @@
 	"ui.chat.canonical.transcript.worked": "Велась работа",
 	"ui.chat.canonical.transcript.worked_for": "Время работы: {duration}",
 	"ui.chat.canonical.transcript.job_suffix": "· Задание {id}",
-	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ действие} few {{count, number, ::group-off}+ действия} many {{count, number, ::group-off}+ действий} other {{count, number, ::group-off}+ действия}}"
+	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ действие} few {{count, number, ::group-off}+ действия} many {{count, number, ::group-off}+ действий} other {{count, number, ::group-off}+ действия}}",
+	"ui.chat.canonical.notice.interrupted": "Прервано",
+	"ui.chat.canonical.notice.stopped_with_error": "Остановлено из-за ошибки",
+	"ui.chat.canonical.notice.compaction_not_run": "Сжатие не выполнено: {detail}",
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Сжатие не выполнено — {detail}",
+	"ui.chat.canonical.link_toolkit.actions_for": "Действия для {name}"
 }

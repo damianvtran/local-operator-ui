@@ -247,5 +247,10 @@
 	"ui.chat.canonical.transcript.answer_may_be_missing": "此回答可能缺少部分内容",
 	"ui.chat.canonical.transcript.worked": "已进行工作",
 	"ui.chat.canonical.transcript.worked_for": "工作耗时{duration}",
-	"ui.chat.canonical.transcript.job_suffix": "· 任务{id}"
+	"ui.chat.canonical.transcript.job_suffix": "· 任务{id}",
+	"ui.chat.canonical.notice.interrupted": "已中断",
+	"ui.chat.canonical.notice.stopped_with_error": "因出错而停止",
+	"ui.chat.canonical.notice.compaction_not_run": "上下文压缩未执行：{detail}",
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": "上下文压缩未执行——{detail}",
+	"ui.chat.canonical.link_toolkit.actions_for": "{name}的操作"
 }

@@ -247,5 +247,10 @@
 	"ui.chat.canonical.transcript.worked": "Trabajó",
 	"ui.chat.canonical.transcript.worked_for": "Trabajó durante {duration}",
 	"ui.chat.canonical.transcript.job_suffix": "· Trabajo {id}",
-	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ acciones} many {{count, number, ::group-off}+ de acciones} other {{count, number, ::group-off}+ acciones}}"
+	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ acciones} many {{count, number, ::group-off}+ de acciones} other {{count, number, ::group-off}+ acciones}}",
+	"ui.chat.canonical.notice.interrupted": "Interrumpido",
+	"ui.chat.canonical.notice.stopped_with_error": "Se detuvo con un error",
+	"ui.chat.canonical.notice.compaction_not_run": "La compactación no se ejecutó: {detail}",
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": "La compactación no se ejecutó — {detail}",
+	"ui.chat.canonical.link_toolkit.actions_for": "Acciones para {name}"
 }

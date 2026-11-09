@@ -247,5 +247,10 @@
 	"ui.chat.canonical.transcript.answer_may_be_missing": "اس جواب کا کچھ حصہ غائب ہو سکتا ہے",
 	"ui.chat.canonical.transcript.worked": "کام کیا",
 	"ui.chat.canonical.transcript.worked_for": "{duration} تک کام کیا",
-	"ui.chat.canonical.transcript.job_suffix": "· جاب {id}"
+	"ui.chat.canonical.transcript.job_suffix": "· جاب {id}",
+	"ui.chat.canonical.notice.interrupted": "روکی گئی",
+	"ui.chat.canonical.notice.stopped_with_error": "خرابی کے ساتھ رک گئی",
+	"ui.chat.canonical.notice.compaction_not_run": "کمپریشن نہیں چلا: {detail}",
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": "کمپریشن نہیں چلا — {detail}",
+	"ui.chat.canonical.link_toolkit.actions_for": "{name} کے لیے اقدامات"
 }
