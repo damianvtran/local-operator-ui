@@ -1,8 +1,8 @@
 {
-  "ui.music.label": "Musique",
-  "ui.music.progress": "{completed}/{total} pistes terminées",
-  "ui.music.cancel_warning": "Le travail déjà commencé pour « {label} » peut encore aboutir et être facturé. Les résultats restent accessibles.",
-  "ui.music.track": "Piste {index}",
-  "ui.music.failed": "Cette piste n’a pas pu être générée.",
-  "ui.music.empty": "Aucune piste n’a été renvoyée."
+	"ui.music.label": "Musique",
+	"ui.music.progress": "{completed}/{total} pistes terminées",
+	"ui.music.cancel_warning": "Le travail déjà commencé pour « {label} » peut encore aboutir et être facturé. Les résultats restent accessibles.",
+	"ui.music.track": "Piste {index}",
+	"ui.music.failed": "Cette piste n’a pas pu être générée.",
+	"ui.music.empty": "Aucune piste n’a été renvoyée."
 }

@@ -1,17 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { CanonicalTranscript } from "./canonical-transcript";
-import { EMPTY_TRANSCRIPT, applyHistoryPage } from "./transcript-reducer";
+import { useEffect, useRef, useState } from "react";
+import { JobCancelPopover } from "../components/run-details/job-cancel-popover";
 import { RunDetailJobs } from "../components/run-details/run-detail-jobs";
 import { deriveRunDetails } from "../components/run-details/run-detail-model";
 import { useJobCancel } from "../components/run-details/use-job-cancel";
-import { JobCancelPopover } from "../components/run-details/job-cancel-popover";
+import { CanonicalTranscript } from "./canonical-transcript";
+import { EMPTY_TRANSCRIPT, applyHistoryPage } from "./transcript-reducer";
 import "../../../styles/index.css";
 import toneUrl from "../../../../../../scripts/fixtures/music-tone.mp3?url";
 import { MusicJobMotif } from "./music-job-motif";
+import { type MusicReceipt, musicReceiptOf } from "./music-receipt-model";
 import { MusicResult } from "./music-result";
-import { musicReceiptOf, type MusicReceipt } from "./music-receipt-model";
 
 /** Rendered-state fixtures use a real synthetic MP3, never autoplay. The inline
  * fixture proves the shared player's layout/decoding input, NOT the production
@@ -186,13 +186,17 @@ export const JobsCancelRtl: Story = { render: () => <JobsFlow rtl /> };
 /** Durable-envelope fixture reaches the production reducer/NoticeRow/player.
  * Missing cached bytes and peaks are intentional; this does not claim relay QA. */
 const CanonicalFlow = ({ rtl = false }: { rtl?: boolean }) => {
+	// The production transcript owns this ref's scrolling element. Its flex
+	// column needs an allocated viewport, not a fresh null ref on each render.
+	const containerRef = useRef<HTMLDivElement>(null);
 	const transcript = applyHistoryPage(EMPTY_TRANSCRIPT, {
 		entries: [
 			{
 				id: "fixture-job-result",
 				ts: 1760000000,
-				type: "custom",
+				type: "message",
 				payload: {
+					kind: "custom",
 					custom_type: "job_result",
 					details: {
 						text: "Music settled",
@@ -231,7 +235,10 @@ const CanonicalFlow = ({ rtl = false }: { rtl?: boolean }) => {
 	});
 	return (
 		<QueryClientProvider client={fixtureQueries}>
-			<div dir={rtl ? "rtl" : "ltr"} className="w-[172px]">
+			<div
+				dir={rtl ? "rtl" : "ltr"}
+				className="flex h-[600px] w-[172px] min-h-0 flex-col"
+			>
 				<CanonicalTranscript
 					transcript={transcript}
 					gate={null}
@@ -239,7 +246,7 @@ const CanonicalFlow = ({ rtl = false }: { rtl?: boolean }) => {
 					starting={false}
 					loadingOlder={false}
 					onLoadOlder={async () => true}
-					containerRef={{ current: null }}
+					containerRef={containerRef}
 					isSmallView={true}
 					status="live"
 					failure={null}

@@ -186,7 +186,6 @@ import { copyTarget } from "../utils/link-open";
 import { openPathInCanvas } from "../utils/open-in-canvas";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
-import { MusicResult } from "./music-result";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
@@ -204,6 +203,7 @@ import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
+import { MusicResult } from "./music-result";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
 import {
@@ -3254,7 +3254,9 @@ const HubRow = memo(function HubRow({
 	useI18nLocale();
 	const receipt = record.receipt;
 	if (!receipt)
-		return <NoticeRow record={record} isSmallView={isSmallView} scope={scope} />;
+		return (
+			<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
+		);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
@@ -3986,7 +3988,9 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		default:
-			body = <NoticeRow record={record} isSmallView={isSmallView} scope={scope} />;
+			body = (
+				<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
+			);
 	}
 	if (body === null) return null;
 	return (

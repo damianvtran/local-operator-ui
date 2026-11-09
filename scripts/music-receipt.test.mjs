@@ -3,15 +3,22 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 const compiled = await build({
-	entryPoints: [
-		"src/renderer/src/features/chat/canonical/music-receipt-model.ts",
-	],
+	stdin: {
+		contents: `export { musicReceiptOf } from "./src/renderer/src/features/chat/canonical/music-receipt-model";
+export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";`,
+		resolveDir: process.cwd(),
+	},
+	alias: {
+		"@shared/i18n": "./src/i18n",
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
 	write: false,
 });
-const { musicReceiptOf } = await import(
+const { musicReceiptOf, EMPTY_TRANSCRIPT, applyHistoryPage } = await import(
 	`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString("base64")}`
 );
 const digest = "a".repeat(32);
@@ -91,4 +98,49 @@ test("failed siblings and missing-byte errors never erase purchased audio", () =
 	assert.equal(value.tracks[0].images.length, 1);
 	assert.equal(value.tracks[1].error, true);
 	assert.equal(value.tracks[2].error, true);
+});
+
+test("music bookkeeping stays silent while its terminal receipt remains visible", () => {
+	const transcript = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: ["music_job_v1", "job_result"].map((customType) => ({
+			id: customType,
+			ts: 1760000000,
+			type: "message",
+			payload: {
+				kind: "custom",
+				custom_type: customType,
+				details: {
+					text: "Music settled",
+					material: "music",
+					tracks: [
+						{ id: "first", title: "Piano", variant_index: 0 },
+						{
+							id: "second",
+							title: "Piano",
+							variant_index: 1,
+							error_type: "fixture_failure",
+						},
+					],
+					artifacts: [
+						{
+							digest,
+							track_id: "first",
+							artifact_id: "first",
+							role: "full_mix",
+						},
+					],
+				},
+			},
+		})),
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(transcript.records.length, 1);
+	assert.equal(transcript.records[0].customType, "job_result");
+	assert.equal(transcript.records[0].music.tracks.length, 2);
+	assert.equal(
+		transcript.records[0].music.tracks[0].images[0].attachment,
+		digest,
+	);
+	assert.equal(transcript.records[0].music.tracks[1].error, true);
 });

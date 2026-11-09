@@ -67,7 +67,6 @@ import {
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
 import { soundCostCaption } from "./image-gen-card-model";
-import { musicReceiptOf, type MusicReceipt } from "./music-receipt-model";
 import {
 	type JournalOrderRead,
 	type JournalPosition,
@@ -76,6 +75,7 @@ import {
 	receiveJournalOrder,
 	rememberJournalCalls,
 } from "./journal-order";
+import { type MusicReceipt, musicReceiptOf } from "./music-receipt-model";
 import {
 	type PendingProfileHistoryReplacement,
 	profileHistoryReplacements,

@@ -1,6 +1,6 @@
-import { Music2 } from "lucide-react";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
+import { Music2 } from "lucide-react";
 
 /** Processing identity, never measured waveform data or a completion estimate.
  * Four rhythmic phrase groups deliberately differ from the continuous SFX loader.
@@ -46,10 +46,16 @@ export const MusicJobMotif = ({
 		>
 			{[0, 1, 2, 3].map((group) => (
 				<g key={group} transform={`translate(${group * 64},0)`}>
-					{[8, 20, 32, 20, 12].map((height, index) => (
+					{[
+						{ id: 0, height: 8 },
+						{ id: 1, height: 20 },
+						{ id: 2, height: 32 },
+						{ id: 3, height: 20 },
+						{ id: 4, height: 12 },
+					].map(({ height, id }) => (
 						<rect
-							key={index}
-							x={index * 6}
+							key={id}
+							x={id * 6}
 							y={(44 - height) / 2}
 							width="4"
 							height={height}

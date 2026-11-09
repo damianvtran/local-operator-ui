@@ -54,6 +54,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { Ref } from "react";
+import { MusicJobMotif } from "../../canonical/music-job-motif";
 import { type JobCancelSection, jobRowCanCancel } from "./job-controls-model";
 import {
 	type RunDetails,
@@ -64,7 +65,6 @@ import {
 	tallyFitsInline,
 } from "./run-detail-model";
 import { SubagentRowBody } from "./run-detail-row-parts";
-import { MusicJobMotif } from "../../canonical/music-job-motif";
 
 /**
  * One tool row, and the video family's one control.

@@ -1,8 +1,8 @@
 {
-  "ui.music.label": "Âm nhạc",
-  "ui.music.progress": "{completed}/{total} bản nhạc đã hoàn tất",
-  "ui.music.cancel_warning": "Công việc đã bắt đầu cho “{label}” vẫn có thể hoàn tất và bị tính phí. Kết quả vẫn có thể truy xuất.",
-  "ui.music.track": "Bản nhạc {index}",
-  "ui.music.failed": "Không thể tạo bản nhạc này.",
-  "ui.music.empty": "Không có bản nhạc nào được trả về."
+	"ui.music.label": "Âm nhạc",
+	"ui.music.progress": "{completed}/{total} bản nhạc đã hoàn tất",
+	"ui.music.cancel_warning": "Công việc đã bắt đầu cho “{label}” vẫn có thể hoàn tất và bị tính phí. Kết quả vẫn có thể truy xuất.",
+	"ui.music.track": "Bản nhạc {index}",
+	"ui.music.failed": "Không thể tạo bản nhạc này.",
+	"ui.music.empty": "Không có bản nhạc nào được trả về."
 }

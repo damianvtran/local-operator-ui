@@ -584,8 +584,9 @@ test("canonical music job_result preserves each track's monetary provenance", ()
 			{
 				id: "music-settled",
 				ts: 1760000000,
-				type: "custom",
+				type: "message",
 				payload: {
+					kind: "custom",
 					custom_type: "job_result",
 					details: {
 						text: "Music settled",

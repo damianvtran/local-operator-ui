@@ -3,13 +3,13 @@ import { createHash } from "node:crypto";
 import {
 	appendFileSync,
 	lstatSync,
-	readdirSync,
 	readFileSync,
+	readdirSync,
 	writeFileSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { collectPaths } from "./ci-scope.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 import { musicStoryScope } from "./storybook-music-scope.mjs";
 
 /** Use the same merge-first-parent path inventory as CI, not a PR/branch pin.
@@ -121,8 +121,4 @@ export function main(args = process.argv.slice(2)) {
 	);
 }
 
-if (
-	process.argv[1] &&
-	resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-)
-	main();
+if (isEntryPoint(import.meta.url)) main();

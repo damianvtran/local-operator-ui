@@ -1,8 +1,8 @@
 {
-  "ui.music.label": "موسیقی",
-  "ui.music.progress": "{completed}/{total} ٹریک مکمل ہو گئے",
-  "ui.music.cancel_warning": "”{label}“ پر شروع کیا گیا کام مکمل ہو سکتا ہے اور اس کی فیس وصول ہو سکتی ہے۔ نتائج دستیاب رہیں گے۔",
-  "ui.music.track": "ٹریک {index}",
-  "ui.music.failed": "یہ ٹریک تخلیق نہیں ہو سکا۔",
-  "ui.music.empty": "کوئی ٹریک موصول نہیں ہوا۔"
+	"ui.music.label": "موسیقی",
+	"ui.music.progress": "{completed}/{total} ٹریک مکمل ہو گئے",
+	"ui.music.cancel_warning": "”{label}“ پر شروع کیا گیا کام مکمل ہو سکتا ہے اور اس کی فیس وصول ہو سکتی ہے۔ نتائج دستیاب رہیں گے۔",
+	"ui.music.track": "ٹریک {index}",
+	"ui.music.failed": "یہ ٹریک تخلیق نہیں ہو سکا۔",
+	"ui.music.empty": "کوئی ٹریک موصول نہیں ہوا۔"
 }

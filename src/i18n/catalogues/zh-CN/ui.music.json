@@ -1,8 +1,8 @@
 {
-  "ui.music.label": "音乐",
-  "ui.music.progress": "{completed}/{total} 条音轨已结算",
-  "ui.music.cancel_warning": "“{label}”已开始的生成仍可能完成并产生费用。结果仍可获取。",
-  "ui.music.track": "音轨 {index}",
-  "ui.music.failed": "无法生成此音轨。",
-  "ui.music.empty": "未返回任何音轨。"
+	"ui.music.label": "音乐",
+	"ui.music.progress": "{completed}/{total} 条音轨已结算",
+	"ui.music.cancel_warning": "“{label}”已开始的生成仍可能完成并产生费用。结果仍可获取。",
+	"ui.music.track": "音轨 {index}",
+	"ui.music.failed": "无法生成此音轨。",
+	"ui.music.empty": "未返回任何音轨。"
 }

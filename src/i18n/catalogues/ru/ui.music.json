@@ -1,8 +1,8 @@
 {
-  "ui.music.label": "Музыка",
-  "ui.music.progress": "Завершено дорожек: {completed}/{total}",
-  "ui.music.cancel_warning": "Работа над «{label}» может завершиться и быть оплачена. Результаты останутся доступны.",
-  "ui.music.track": "Дорожка {index}",
-  "ui.music.failed": "Не удалось создать эту дорожку.",
-  "ui.music.empty": "Ни одной дорожки не получено."
+	"ui.music.label": "Музыка",
+	"ui.music.progress": "Завершено дорожек: {completed}/{total}",
+	"ui.music.cancel_warning": "Работа над «{label}» может завершиться и быть оплачена. Результаты останутся доступны.",
+	"ui.music.track": "Дорожка {index}",
+	"ui.music.failed": "Не удалось создать эту дорожку.",
+	"ui.music.empty": "Ни одной дорожки не получено."
 }
