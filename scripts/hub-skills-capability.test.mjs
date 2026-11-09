@@ -45,7 +45,7 @@ const state = {
 	pending: [],
 };
 globalThis.__hubSkillGateTest = state;
-const transport = `export { DesktopControlError, isDeadlineExceeded } from "${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts"; export async function desktopResult(input) { const s=globalThis.__hubSkillGateTest; s.requests.push(input); if(input.op==='capabilities')return s.capabilities; return {links:{links:[],unresolved:[]},reports:[],link:null,local_link_receipt:null}; }`;
+const transport = `export { DesktopControlError, isDeadlineExceeded, isServerUpdatingError } from "${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts"; export async function desktopResult(input) { const s=globalThis.__hubSkillGateTest; s.requests.push(input); if(input.op==='capabilities')return s.capabilities; return {links:{links:[],unresolved:[]},reports:[],link:null,local_link_receipt:null}; }`;
 const catalogue = `export const hubSourceAddress=(origin)=>origin.replace(/\\/+$/,'')+'/v1';const call=(kind,args)=>{const s=globalThis.__hubSkillGateTest;s.remote.push({kind,args});const result={result:{skills:[],records:[],total_pages:1,sync_contract:{revision_cas:1,skills:1}}};return s.hold?new Promise(resolve=>s.pending.push(()=>resolve(result))):Promise.resolve(result);};export const listPublicSkills=(...a)=>call('public-list',a);export const getPublicSkill=(...a)=>call('public-detail',a);export const listOrgSkills=(...a)=>call('org-list',a);export const getOrgSkill=(...a)=>call('org-detail',a);`;
 const built = await build({
 	stdin: {

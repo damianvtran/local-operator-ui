@@ -25,7 +25,6 @@ import {
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
-import { isServerUpdatingError } from "@shared/api/local-operator/server-updating-error";
 // The echo seam, not the hook itself: these are module-level functions over a
 // registry of mounted transcripts, so the store never touches React state and
 // the dependency stays one-way (the hook does not import this store).
@@ -93,6 +92,10 @@ import {
 	reconcilePeerDeviceSnapshot,
 } from "../../features/mesh/peer-presence";
 import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-copy";
+// Relative, like the line above: the store's node suites bundle it without an
+// `@shared` alias and resolve only the `@shared` paths they stub, so a new
+// `@shared/...` import is unresolvable there (merge-gate run 42679243544).
+import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
 
 export type CanonicalSessionRow = {
 	session_id: string;
