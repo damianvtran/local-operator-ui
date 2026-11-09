@@ -11,11 +11,15 @@ import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
+	SERVE_RELOAD_FENCE_CODE,
+	SERVE_RELOAD_FENCE_DETAIL,
+	desktopDetailUpdating,
 	desktopEndpoint,
 	desktopRefusalCodeForStatus,
 	desktopRequestDeadlineDetail,
 	desktopRequestTimeoutMs,
 	isDesktopRefusalCode,
+	isServeReloadFence,
 } from "../../../../../shared/desktop-contract";
 import {
 	SESSION_IS_REMOTE_CAUSE_BUILD_BEHIND,
@@ -291,6 +295,33 @@ export class UserFacingError extends Error {
 }
 
 /**
+ * Whether a caught failure is the Local Operator server updating itself, so a
+ * surface should say "updating, back in a moment" rather than report a fault.
+ *
+ * Two shapes, deliberately kept apart:
+ *  - `code === serverUpdating`: the daemon's reload fence refused the request
+ *    BEFORE any handler ran (main rewrote the fence answer into this code), so
+ *    the request was definitively not processed and repeating it is safe;
+ *  - any other code carrying main's display-only `detail.updating` hint
+ *    (`markUpdating`): a follow-on failure inside the update window. Its code -
+ *    and so every retry/outcome rule - is unchanged; only the sentence is.
+ *
+ * Callers that decide whether a REPEAT is safe must key on the code, never on
+ * this predicate: the second shape includes `transport.failed`, whose outcome
+ * is unknown.
+ */
+export function isServerUpdatingError(error: unknown): boolean {
+	if (
+		!(error instanceof DesktopControlError || error instanceof UserFacingError)
+	)
+		return false;
+	if (error.code === DESKTOP_REFUSAL_CODE.serverUpdating) return true;
+	return (
+		error instanceof DesktopControlError && desktopDetailUpdating(error.detail)
+	);
+}
+
+/**
  * The sentence to show a user for a caught failure, or `fallback`.
  *
  * A thrown value is only copy when we know who wrote it. `DesktopControlError`
@@ -307,6 +338,16 @@ export class UserFacingError extends Error {
  * how a raw exception finds its way back to the screen.
  */
 export function userFacingMessage(error: unknown, fallback: string): string {
+	/*
+	 * THE SERVER IS UPDATING: checked before the pairing translation below, because
+	 * inside main's server-update window a plane-closed 503 or a transport failure
+	 * is the update's own tail (a claimed daemon not yet re-claimed, a reset as the
+	 * old image exec'd), and its pairing sentence is the false alarm the operator
+	 * reported. Only the SENTENCE changes - `error.code` is untouched, so every
+	 * retry and outcome rule keyed on it reads exactly what it read before.
+	 */
+	if (isServerUpdatingError(error))
+		return desktopRefusalSentence(DESKTOP_REFUSAL_CODE.serverUpdating);
 	if (
 		error instanceof DesktopControlError ||
 		error instanceof UserFacingError
@@ -361,7 +402,16 @@ function desktopErrorMessageCode(
 	 * development proxy forwards a refusal body without declaring a code, and "this
 	 * app holds no credential" must not be read as "the plane is shut".
 	 */
+	/*
+	 * The reload fence, for a transport that did not rewrite it - the development
+	 * proxy forwards the daemon's body verbatim, and a future backend may declare
+	 * `serve_reloading` itself. Main already rewrites both into `serverUpdating`.
+	 */
+	if (declared === SERVE_RELOAD_FENCE_CODE && status === 503)
+		return DESKTOP_REFUSAL_CODE.serverUpdating;
 	if (typeof declared === "string") return declared;
+	if (detail === SERVE_RELOAD_FENCE_DETAIL && status === 503)
+		return DESKTOP_REFUSAL_CODE.serverUpdating;
 	if (detail === DESKTOP_MACHINE_DETAIL.noCredential)
 		return DESKTOP_REFUSAL_CODE.noCredential;
 	if (detail === DESKTOP_MACHINE_DETAIL.transportFailed)
@@ -1308,6 +1358,10 @@ export async function desktopMedia(
 		if (type.includes("application/json")) {
 			try {
 				const body = (await response.json()) as { detail?: unknown };
+				// The reload fence, forwarded raw by the development proxy (main's relay
+				// rewrites it already): read before the generic arms below.
+				if (isServeReloadFence(response.status, body))
+					declaredCode = DESKTOP_REFUSAL_CODE.serverUpdating;
 				const raw = body?.detail;
 				if (typeof raw === "string") {
 					detail = raw;
@@ -1334,7 +1388,8 @@ export async function desktopMedia(
 					) {
 						detail = envelope.message;
 					}
-					if (typeof envelope.code === "string") declaredCode = envelope.code;
+					if (typeof envelope.code === "string" && declaredCode === undefined)
+						declaredCode = envelope.code;
 					const params = (raw as { params?: unknown }).params;
 					if (
 						typeof params === "object" &&

@@ -195,6 +195,49 @@ export const DETACHED_AFTER_MS = 90_000;
 export const REATTACH_BACKOFF_MS = 30_000;
 export const REATTACH_BACKOFF_CEILING_MS = 300_000;
 
+/**
+ * THE SERVER-UPDATE WINDOW: how long after the daemon last answered with its
+ * reload admission fence (`isServeReloadFence`) this app still reports "the
+ * server is updating" instead of a failure.
+ *
+ * WHY A WINDOW AND NOT JUST THE FENCE ANSWER. `lop update` / `lop-update` asks
+ * every stale `lop serve` to reload in place (SIGUSR1, local-operator
+ * `server/reload.py`). The fence answers only while the old image drains and
+ * smoke-checks; after the `execve` new connections queue in the kept listener
+ * until the successor boots (a probe reads that as "unanswered"), and a CLAIMED
+ * daemon then answers a real plane-closed 503 until this app re-claims it
+ * (≈ 3 probes × `PROBE_INTERVAL_MS`). Each of those tails would otherwise flip
+ * the surfaces to an error a few seconds before everything comes back.
+ *
+ * MEASURED (2026-11-09, n = 11): a real isolated `lop serve` (installed
+ * 0.101.37 ↔ 0.101.38 generations, scratch HOME, CMUX_* stripped, synthetic
+ * port), SIGUSR1, polling `/v1/desktop/sessions` every 50 ms: fence first seen
+ * → first non-fence answer from the successor was median 3.43 s, min 3.07 s,
+ * max 5.06 s (idle daemon). The backend's own worst honest budget for the fence
+ * is ≈ 32 s (`DRAIN_BUDGET_S` 10 + `SMOKE_TIMEOUT_S` 10 + drain 10 + ~2 s,
+ * reload.py), inside its caller's 45 s `services.RELOAD_WAIT_S`; the claimed
+ * re-claim tail adds ≈ 30 s after the last fence answer.
+ *
+ * So: each fence answer extends the window to 60 s from THAT answer (above the
+ * measured 5.06 s boot gap plus the ≈ 30 s re-claim tail), and the window can
+ * never outlive {@link SERVER_UPDATING_CAP_MS} from its first sighting. Only a
+ * positive fence answer ever opens it - silence never does - so an outage that
+ * is not an update is reported exactly as before.
+ */
+export const SERVER_UPDATING_EXTEND_MS = 60_000;
+
+/**
+ * The hard ceiling on one server-update window, from its first fence answer.
+ *
+ * 120 s covers the backend's worst honest fence (≈ 32 s) plus the measured boot
+ * gap (max 5.06 s) plus the claimed re-claim tail (≈ 30 s), with headroom for
+ * a second reload landing during the first (`lop update` run twice; the
+ * backend refuses a second reload within its own cool-down, reload.py). Past
+ * it every surface reverts to today's real error copy, so a daemon wedged with
+ * its fence shut is still reported as broken - bounded, never masked forever.
+ */
+export const SERVER_UPDATING_CAP_MS = 120_000;
+
 /** What one probe observed. */
 export type ProbeObservation =
 	| { kind: "identified" }
@@ -298,6 +341,13 @@ export class DaemonStateMachine {
 	private unanswered = 0;
 	/** When a desktop request was last answered, or null. */
 	private lastTransportAt: number | null = null;
+	/**
+	 * The open server-update window (see {@link SERVER_UPDATING_EXTEND_MS}):
+	 * when its first fence answer arrived, and when it lapses unless another
+	 * fence answer extends it. Both null when no update is in progress.
+	 */
+	private updatingSince: number | null = null;
+	private updatingUntil: number | null = null;
 
 	constructor(private readonly now: () => number = Date.now) {
 		this.updatedAt = now();
@@ -324,6 +374,8 @@ export class DaemonStateMachine {
 		this.unanswered = 0;
 		this.detachedSince = null;
 		this.backoffMs = REATTACH_BACKOFF_MS;
+		// A (re-)claimed daemon is paired again: a claimed daemon's update ends here.
+		this.clearServerUpdating();
 		this.state = "attached";
 		this.detail = `Connected to the daemon on ${identity.url} (pid ${identity.pid}, v${identity.version}).`;
 		/*
@@ -369,8 +421,30 @@ export class DaemonStateMachine {
 	 * daemon is alive and talking.
 	 */
 	observe(observation: ProbeObservation): DaemonConnectionState {
+		/*
+		 * A MISSED PROBE INSIDE A SERVER-UPDATE WINDOW IS THE UPDATE, NOT AN OUTAGE.
+		 * After the reload's `execve` the listener is kept but nothing accepts until
+		 * the successor boots, so `/health` goes unanswered for a few seconds
+		 * (measured max 5.06 s, see `SERVER_UPDATING_EXTEND_MS`). Counting those
+		 * toward `degraded`/`detached` is what would put "disconnected" on screen in
+		 * the middle of an update that is about to land. They are not counted while
+		 * the window is open; the window is bounded, so a daemon that never comes
+		 * back still reaches `detached` once it lapses. `contradicted`, `pid-dead`
+		 * and every positive observation keep their normal meaning - a re-claim
+		 * depends on `contradicted`, and a dead pid is not an update.
+		 */
+		if (
+			(observation.kind === "unanswered" || observation.kind === "failed") &&
+			this.isServerUpdating()
+		) {
+			this.updatedAt = this.now();
+			return this.state;
+		}
 		switch (observation.kind) {
 			case "identified":
+				// The daemon answered its identity probe as the process this app
+				// holds: any update it was going through has landed.
+				this.clearServerUpdating();
 				this.failures = 0;
 				this.unanswered = 0;
 				this.capabilityStatus = null;
@@ -403,6 +477,9 @@ export class DaemonStateMachine {
 				 * itself prove a credential is admitted.
 				 */
 				this.identity = observation.identity;
+				// Same pid, new instance id: exactly what a landed in-place reload
+				// looks like, so the update window closes here.
+				this.clearServerUpdating();
 				this.failures = 0;
 				this.unanswered = 0;
 				this.capabilityStatus = null;
@@ -538,6 +615,63 @@ export class DaemonStateMachine {
 	 *   3. Only `UNANSWERED_BEFORE_DETACHED` consecutive misses detach, and the
 	 *      detail says how many were counted, so the log line names the evidence.
 	 */
+	/**
+	 * The daemon answered with its reload admission fence: open the server-update
+	 * window, or extend it by {@link SERVER_UPDATING_EXTEND_MS} from now, never
+	 * past {@link SERVER_UPDATING_CAP_MS} from its first sighting.
+	 *
+	 * Returns whether the window OPENED (it was closed before), so the caller
+	 * pushes one snapshot per update rather than one per refused request.
+	 *
+	 * A fence answered after the cap has run out does not reopen the window: a
+	 * daemon that keeps its fence shut for longer than any measured reload is the
+	 * condition the cap exists to report, and reopening would mask it forever.
+	 * The window may open again only once an admitted answer (or a re-identified
+	 * daemon) has closed it - i.e. for a genuinely new update.
+	 */
+	noteServerUpdating(): boolean {
+		const now = this.now();
+		if (this.updatingSince === null) {
+			this.updatingSince = now;
+			this.updatingUntil = now + SERVER_UPDATING_EXTEND_MS;
+			this.updatedAt = now;
+			return true;
+		}
+		const cap = this.updatingSince + SERVER_UPDATING_CAP_MS;
+		this.updatingUntil = Math.min(now + SERVER_UPDATING_EXTEND_MS, cap);
+		return false;
+	}
+
+	/**
+	 * Whether a server update is in progress right now: a window is open and has
+	 * neither lapsed (no fence answer for {@link SERVER_UPDATING_EXTEND_MS}) nor
+	 * reached its cap. Read lazily against the clock, so expiry needs no timer
+	 * here - the service schedules one only to PUSH the reverted snapshot.
+	 */
+	isServerUpdating(): boolean {
+		return this.updatingUntil !== null && this.now() < this.updatingUntil;
+	}
+
+	/**
+	 * When the open window lapses unless extended (epoch ms), or null. The
+	 * service uses it to push a snapshot at expiry so the surfaces revert to the
+	 * real error copy without waiting for the next unrelated event.
+	 */
+	serverUpdatingUntil(): number | null {
+		return this.isServerUpdating() ? this.updatingUntil : null;
+	}
+
+	/**
+	 * Close the window because the update LANDED: an admitted answer, or a probe
+	 * that identified / re-anchored the daemon. Returns whether it was open.
+	 */
+	private clearServerUpdating(): boolean {
+		const open = this.isServerUpdating();
+		this.updatingSince = null;
+		this.updatingUntil = null;
+		return open;
+	}
+
 	private observeUnanswered(detail: string): void {
 		this.unanswered += 1;
 		if (this.transportEvidenceFresh()) {
@@ -607,6 +741,13 @@ export class DaemonStateMachine {
 	 * snapshot when there is something new to push.
 	 */
 	recordTransportSuccess(): boolean {
+		/*
+		 * An ADMITTED answer is the plainest proof an update is over: the plane let
+		 * a request through, so the fence is gone and the successor is paired. It
+		 * counts as a move so the service pushes the snapshot that ends the
+		 * "updating" display.
+		 */
+		const updateLanded = this.clearServerUpdating();
 		const moved = this.state === "degraded";
 		this.lastTransportAt = this.now();
 		this.unanswered = 0;
@@ -618,7 +759,7 @@ export class DaemonStateMachine {
 				: "Connected to the Local Operator daemon.";
 		}
 		this.updatedAt = this.now();
-		return moved;
+		return moved || updateLanded;
 	}
 
 	/** Whether a successful request is recent enough to outrank a probe. */
@@ -773,6 +914,7 @@ export class DaemonStateMachine {
 			 */
 			unanswered: this.unanswered,
 			lastTransportAt: this.lastTransportAt,
+			updating: this.isServerUpdating(),
 			detail: this.detail,
 			updatedAt: this.updatedAt,
 		};

@@ -211,7 +211,10 @@ export function bannerYieldsToStrip(input: {
 		(cause === "credential-refused" ||
 			(cause === null &&
 				!answered &&
-				(kind === "unreachable" || kind === "deadline" || kind === "unknown")))
+				(kind === "updating" ||
+					kind === "unreachable" ||
+					kind === "deadline" ||
+					kind === "unknown")))
 	);
 }
 

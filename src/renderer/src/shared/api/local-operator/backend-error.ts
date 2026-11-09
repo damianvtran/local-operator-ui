@@ -22,7 +22,13 @@ import { t } from "../../../../../i18n/messages";
 import type { DaemonPairingCause } from "../../../../../shared/backend-status";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
-import { DesktopControlError, isDeadlineExceeded } from "./desktop-api";
+import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
+import {
+	DesktopControlError,
+	isDeadlineExceeded,
+	isServerUpdatingError,
+} from "./desktop-api";
+import { desktopRefusalSentence } from "./desktop-refusal-copy";
 
 /**
  * What a failed desktop control says about the backend, in terms of the ONE
@@ -34,6 +40,7 @@ import { DesktopControlError, isDeadlineExceeded } from "./desktop-api";
  * advise on, and the copy for it must therefore assert no remedy at all.
  */
 export type BackendErrorKind =
+	| "updating"
 	| "unreachable"
 	| "deadline"
 	| "unauthorized"
@@ -65,6 +72,12 @@ export type BackendErrorKind =
  * running, current and merely erroring -- was answered with an install.
  */
 export function backendErrorKind(error: unknown): BackendErrorKind {
+	/*
+	 * `updating` first: the server is reloading onto a new build (`lop update`),
+	 * which is neither an outage nor a pairing fault, and it carries no remedy -
+	 * the server returns by itself (see `isServerUpdatingError`).
+	 */
+	if (isServerUpdatingError(error)) return "updating";
 	if (isDeadlineExceeded(error)) return "deadline";
 	const status = error instanceof DesktopControlError ? error.status : null;
 	if (status === null || status === 503) return "unreachable";
@@ -115,6 +128,8 @@ export const BACKEND_ERROR_REMEDY: Record<BackendErrorKind, string> = {
 	 * one that cannot states the condition and stops. A shared string cannot know
 	 * which of those a caller is, so it says nothing and the composition drops it.
 	 */
+	// Nothing to do: the server comes back by itself once its update lands.
+	updating: "",
 	unreachable: "",
 	// As `unreachable`, and for the same reason: a server that has been silent for
 	// the whole budget is not answering. It is NOT the panel copy — a panel renders
@@ -141,6 +156,9 @@ export const BACKEND_ERROR_REMEDY: Record<BackendErrorKind, string> = {
  * advise on gets the surface's lead sentence and nothing more.
  */
 export const BACKEND_ERROR_DIAGNOSIS: Record<BackendErrorKind, string> = {
+	get updating() {
+		return desktopRefusalSentence(DESKTOP_REFUSAL_CODE.serverUpdating);
+	},
 	get unreachable() {
 		return t("ui.common.connection.backend.diagnosis_unreachable");
 	},
@@ -388,6 +406,9 @@ export function backendCompatibilityMessage(input: {
 	const { kind, unpaired, missing, answered, cause = null } = input;
 	if (cause !== null) return BACKEND_PAIRING_SENTENCE[cause];
 	if (!answered) {
+		// The server is updating: say that and nothing else - no "did not answer",
+		// no install, no reconnect. It returns by itself.
+		if (kind === "updating") return BACKEND_ERROR_DIAGNOSIS.updating;
 		if (kind === "unreachable")
 			return t("ui.common.connection.backend.compatibility_unreachable", {
 				diagnosis: BACKEND_ERROR_DIAGNOSIS.unreachable,

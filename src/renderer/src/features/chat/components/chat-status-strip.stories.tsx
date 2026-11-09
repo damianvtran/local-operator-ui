@@ -136,6 +136,29 @@ export const Unreachable: Story = {
 };
 
 /**
+ * The server updating itself (`lop update` reloading the daemon in place):
+ * neutral info wash, a spinner, no Retry and no dismiss. Drawn from a DETACHED
+ * snapshot on purpose - the update row outranks the failure rows, so this is
+ * the frame the operator now sees where `Unreachable` above used to appear.
+ */
+export const Updating: Story = {
+	render: () => (
+		<Strip
+			input={{
+				connectivityIssue: null,
+				server: {
+					state: "detached",
+					detail: null,
+					pairing: null,
+					updating: true,
+				},
+				internetOffline: false,
+			}}
+		/>
+	),
+};
+
+/**
  * The refusal: the strip's fact while its daemon is there to refuse.
  *
  * THE SECOND LINE IS THE FIXTURE'S, NOT THE SHIPPED ONE (UX round 1's U6):

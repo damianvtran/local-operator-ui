@@ -3,5 +3,6 @@
 	"ui.chat.status.degraded": "Máy chủ đang trả lời chậm. Tin nhắn của bạn đang nằm trong hàng đợi.",
 	"ui.chat.status.internet_offline": "Máy này đang ngoại tuyến. Tin nhắn sẽ chờ gửi.",
 	"ui.chat.status.unreachable": "Không kết nối được với máy chủ Local Operator. Tin nhắn sẽ chờ gửi.",
+	"ui.chat.status.updating": "Máy chủ Local Operator đang cập nhật. Máy chủ sẽ hoạt động lại trong giây lát.",
 	"ui.chat.status.pill_aria": "Trạng thái kết nối: {title}{hasOutcome, select, yes { {outcome}} other {}} Hiện chi tiết"
 }

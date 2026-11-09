@@ -6692,6 +6692,7 @@ export type MessageParams = {
 		outcome: string;
 	};
 	"ui.chat.status.unreachable": undefined;
+	"ui.chat.status.updating": undefined;
 	"ui.chat.tag_dialogs.assign_created_failed": { name: string };
 	"ui.chat.tag_dialogs.changed_elsewhere": undefined;
 	"ui.chat.tag_dialogs.created_assigned": { name: string };
@@ -7204,6 +7205,7 @@ export type MessageParams = {
 	"ui.common.errors.desktop_refusal.no_credential": undefined;
 	"ui.common.errors.desktop_refusal.plane_closed": undefined;
 	"ui.common.errors.desktop_refusal.refused": undefined;
+	"ui.common.errors.desktop_refusal.server_updating": undefined;
 	"ui.common.errors.desktop_refusal.transport_failed": undefined;
 	"ui.common.errors.desktop_refusal_placeholder": undefined;
 	"ui.common.errors.desktop_transport_failed": undefined;

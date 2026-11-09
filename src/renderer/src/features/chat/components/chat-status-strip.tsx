@@ -123,7 +123,11 @@ export const ChatStatusStripView = ({
 						aria-hidden="true"
 						className={cn(
 							"size-1.5 rounded-full",
-							display.dot === "danger" ? "bg-danger" : "bg-warning",
+							display.dot === "danger"
+								? "bg-danger"
+								: display.dot === "info"
+									? "bg-info"
+									: "bg-warning",
 						)}
 					/>
 					{display.kind === "internet-offline"
@@ -155,7 +159,13 @@ export const ChatStatusStripView = ({
 			onKeyDown={onKeyDown}
 		>
 			<Alert
-				variant={display.wash === "danger-wash" ? "danger" : "warning"}
+				variant={
+					display.wash === "danger-wash"
+						? "danger"
+						: display.wash === "info-wash"
+							? "info"
+							: "warning"
+				}
 				className={NOTICE_BAND}
 				role={display.role}
 			>
@@ -171,6 +181,14 @@ export const ChatStatusStripView = ({
 							<span className="block text-meta text-ink-muted">{outcome}</span>
 						) : null}
 					</span>
+					{display.busy ? (
+						// Progress, not an action: the condition clears by itself.
+						<Loader2
+							aria-hidden="true"
+							data-lo-status-busy=""
+							className="size-4 shrink-0 animate-spin text-info"
+						/>
+					) : null}
 					{display.action === "retry" && (
 						<span className="flex shrink-0 items-center gap-2">
 							<Button

@@ -2772,7 +2772,17 @@ export const askFailureEarnsRetry = (error: unknown): boolean => {
 			? (error as { code?: unknown }).code
 			: undefined;
 	if (typeof code !== "string") return true;
-	return code === DESKTOP_REFUSAL_CODE.transportFailed;
+	/*
+	 * `serverUpdating` earns Retry: the reload fence refused the answer before any
+	 * handler ran, so nothing was recorded and a second press is safe once the
+	 * server is back. Keyed on the CODE, not on the display-only `updating` hint a
+	 * follow-on failure may carry - that hint rides `planeClosed` and deadlines
+	 * too, whose retry rules must not move (see `isServerUpdatingError`).
+	 */
+	return (
+		code === DESKTOP_REFUSAL_CODE.transportFailed ||
+		code === DESKTOP_REFUSAL_CODE.serverUpdating
+	);
 };
 
 /**

@@ -60,6 +60,7 @@ import {
 import { DesktopStreamRelay } from "../desktop-stream";
 import {
 	desktopAnswerProvesPairing,
+	markUpdating,
 	requestDesktop,
 	requestDesktopOutcome,
 } from "../desktop-transport";
@@ -1095,6 +1096,8 @@ export class BackendServiceManager {
 	 * carry an SSE connection and to beat the presence lease.
 	 */
 	private feedRelay: DesktopFeedRelay | null = null;
+	/** Pushes the reverted snapshot when the server-update window lapses. */
+	private serverUpdatingTimer: ReturnType<typeof setTimeout> | null = null;
 	private feedRelayUrl = "";
 	/**
 	 * The credential the current feed relay was built with.
@@ -1459,11 +1462,49 @@ export class BackendServiceManager {
 			input,
 			this.backendUrl,
 			this.desktopToken,
-		).then(({ response, answered }) => {
+		).then(({ response, answered, serverUpdating }) => {
+			if (serverUpdating) {
+				// The fence is a refusal, never an admitted answer: liveness only, and
+				// the server-update window opens (or extends).
+				this.daemonState.recordTransportAnswer();
+				this.noteServerUpdating();
+				return response;
+			}
 			if (answered)
 				this.noteTransportAnswer(desktopAnswerProvesPairing(input, response));
-			return response;
+			// A follow-on failure inside the window is the update's tail: same code,
+			// plus the display-only hint (see `markUpdating` for which, and why).
+			return this.daemonState.isServerUpdating()
+				? markUpdating(input, response)
+				: response;
 		});
+	}
+
+	/**
+	 * The daemon answered with its reload admission fence: open or extend the
+	 * server-update window, push ONE snapshot when it opens, and arm a single
+	 * timer that pushes the reverted snapshot when it lapses.
+	 *
+	 * The timer exists because `snapshot().updating` is read lazily against the
+	 * clock: without a push at expiry the strip would keep saying "updating" until
+	 * some unrelated event re-sent the status, which is the "masked forever" risk
+	 * the window's cap is there to prevent. It is re-armed on every extension and
+	 * unref'd so it never holds the process open.
+	 */
+	private noteServerUpdating(): void {
+		if (this.daemonState.noteServerUpdating()) this.notifyStatus();
+		const until = this.daemonState.serverUpdatingUntil();
+		if (this.serverUpdatingTimer) clearTimeout(this.serverUpdatingTimer);
+		this.serverUpdatingTimer = null;
+		if (until === null) return;
+		this.serverUpdatingTimer = setTimeout(
+			() => {
+				this.serverUpdatingTimer = null;
+				if (!this.daemonState.isServerUpdating()) this.notifyStatus();
+			},
+			Math.max(0, until - this.daemonState.nowMs()) + 50,
+		);
+		this.serverUpdatingTimer.unref?.();
 	}
 
 	requestDesktopMedia(
@@ -1476,7 +1517,7 @@ export class BackendServiceManager {
 			this.backendUrl,
 			this.desktopToken,
 			this.teamBridgeImages,
-		).then(({ response, answered }) => {
+		).then(({ response, answered, serverUpdating }) => {
 			// A media answer is recorded as LIVENESS and nothing else, and the
 			// reason is structural rather than provisional: `desktopAnswerProvesPairing`
 			// parses its request against the JSON contract's op vocabulary, and the
@@ -1493,6 +1534,7 @@ export class BackendServiceManager {
 			// evidence, through the predicate written for them. If a media op ever
 			// needs to prove a pairing on its own, it needs its own predicate rather
 			// than a widened `input` type here.
+			if (serverUpdating) this.noteServerUpdating();
 			if (answered) this.daemonState.recordTransportAnswer();
 			return response;
 		});
