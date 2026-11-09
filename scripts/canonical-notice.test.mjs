@@ -22,7 +22,7 @@ const queryClient = new QueryClient({
 const bundle = await build({
 	stdin: {
 		contents: `export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
- export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+ export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
  export { MemoryRouter } from "react-router-dom";`,
 		resolveDir: process.cwd(),
 	},
@@ -69,11 +69,11 @@ const bundlePath = new URL("./_canonical-notice.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 let CanonicalTranscript;
 let EMPTY_TRANSCRIPT;
+let applyHistoryPage;
 let MemoryRouter;
 try {
-	({ CanonicalTranscript, EMPTY_TRANSCRIPT, MemoryRouter } = await import(
-		bundlePath.href
-	));
+	({ CanonicalTranscript, EMPTY_TRANSCRIPT, applyHistoryPage, MemoryRouter } =
+		await import(bundlePath.href));
 } finally {
 	await unlink(bundlePath);
 }
@@ -566,4 +566,82 @@ test("a non-Radient rate limit renders exactly as before", () => {
 	assert.ok(text.includes("Open provider settings"));
 	assert.ok(!text.includes("Out of credits"));
 	assert.ok(!text.includes("Top up"));
+});
+
+// Exercise the durable custom job_result envelope, the reducer, NoticeRow and
+// the real monetary helper together. Isolated MusicResult props missed both
+// the unbound attachment scope and the versioned receipt mismatch.
+test("canonical music job_result preserves each track's monetary provenance", () => {
+	const costs = [
+		{ v: 1, amount_usd: 0.0075, basis: "billed" },
+		{ v: 1, amount_usd: 0, basis: "billed" },
+		{ v: 1, amount_usd: 0.01, basis: "estimated" },
+		{ v: 1, basis: "billed" },
+		{ v: 1, amount_usd: 0.1, basis: "unknown" },
+	];
+	const transcript = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "music-settled",
+				ts: 1760000000,
+				type: "custom",
+				payload: {
+					custom_type: "job_result",
+					details: {
+						text: "Music settled",
+						material: "music",
+						attribution: "Fixture attribution",
+						tracks: costs.map((cost, index) => ({
+							id: `track-${index}`,
+							title: `Variant ${index}`,
+							variant_index: index,
+							cost,
+							...(index === 3 ? { error_type: "failed" } : {}),
+						})),
+						artifacts: [0, 1].map((index) => ({
+							digest: "a".repeat(32),
+							track_id: `track-${index}`,
+							artifact_id: `artifact-${index}`,
+							role: "full_mix",
+							name: `variant-${index}.mp3`,
+						})),
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(transcript.records[0].music.tracks.length, 5);
+	assert.notEqual(
+		transcript.records[0].music.tracks[0].images[0].id,
+		transcript.records[0].music.tracks[1].images[0].id,
+	);
+	const markup = renderToStaticMarkup(
+		h(
+			QueryClientProvider,
+			{ client: queryClient },
+			h(CanonicalTranscript, {
+				transcript,
+				gate: null,
+				waiting: false,
+				loadingOlder: false,
+				onLoadOlder: async () => true,
+				containerRef: { current: null },
+				isSmallView: false,
+				status: "live",
+				failure: null,
+				hydrated: true,
+				onReconnect: () => {},
+				attachmentScope: { sessionId: "synthetic-music", childId: null },
+			}),
+		),
+	);
+	assert.match(markup, /data-music-result/);
+	assert.match(markup, /Cost \$0\.0075 \(billed\)/);
+	assert.match(markup, /Cost \$0 \(billed\)/);
+	assert.match(markup, /Cost \$0\.01 \(estimated\)/);
+	assert.equal((markup.match(/Cost \$/g) ?? []).length, 3);
+	assert.match(markup, /data-music-track="track-3"/);
+	assert.match(markup, /Fixture attribution/);
 });

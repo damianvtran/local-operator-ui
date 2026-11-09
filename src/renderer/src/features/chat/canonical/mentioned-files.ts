@@ -441,10 +441,10 @@ function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
 					push(audio.attachment, {
 						digest: audio.attachment,
 						kind: "audio",
-						name: audio.name,
+						name: audio.name ?? undefined,
 						contentType: audio.mimeType,
-						sizeBytes: audio.sizeBytes,
-						durationS: audio.durationS,
+						sizeBytes: audio.sizeBytes ?? undefined,
+						durationS: audio.durationS ?? undefined,
 					});
 				}
 		}

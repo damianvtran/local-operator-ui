@@ -2960,12 +2960,14 @@ const ProviderAction: FC<{ action: ProviderErrorAction }> = ({ action }) => (
 const NoticeRow = memo(function NoticeRow({
 	record,
 	isSmallView,
+	scope,
 }: {
 	record: Extract<
 		TranscriptRecord,
 		{ kind: "notice" | "compaction" | "custom" }
 	>;
 	isSmallView: boolean;
+	scope: AttachmentScope | null;
 }) {
 	useI18nLocale();
 	// A custom row and a notice are two registers, and the difference is what
@@ -3251,7 +3253,8 @@ const HubRow = memo(function HubRow({
 }) {
 	useI18nLocale();
 	const receipt = record.receipt;
-	if (!receipt) return <NoticeRow record={record} isSmallView={isSmallView} />;
+	if (!receipt)
+		return <NoticeRow record={record} isSmallView={isSmallView} scope={scope} />;
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
@@ -3948,7 +3951,7 @@ const TranscriptRow = memo(function TranscriptRow({
 				) : record.receipt ? (
 					<HubRow record={record} isSmallView={isSmallView} scope={scope} />
 				) : (
-					<NoticeRow record={record} isSmallView={isSmallView} />
+					<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
 				);
 			break;
 		case "peer":
@@ -3983,7 +3986,7 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		default:
-			body = <NoticeRow record={record} isSmallView={isSmallView} />;
+			body = <NoticeRow record={record} isSmallView={isSmallView} scope={scope} />;
 	}
 	if (body === null) return null;
 	return (

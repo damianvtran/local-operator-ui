@@ -31,6 +31,10 @@ test("bounded scope retains every planned music state and the real stylesheet", 
 		"Populated",
 		"PartialFailure",
 		"Empty",
+		"JobsCancel",
+		"JobsCancelRtl",
+		"CanonicalMissingBytes",
+		"CanonicalRtl",
 	]) {
 		assert.match(source, new RegExp(`export const ${state}\\b`));
 	}

@@ -20,8 +20,18 @@ export const MusicResult = ({
 		)}
 		{receipt.tracks.map((track) => {
 			const label =
-				track.title || t("ui.music.track", { index: track.variantIndex + 1 });
-			const cost = track.cost ? soundCostCaption({ cost: track.cost }) : null;
+				track.title ||
+				t("ui.music.track", {
+					index: (track.variantIndex + 1).toLocaleString(),
+				});
+			// Adapt only the wire shape; the shared caption owns precision and
+			// billed/estimated/unknown semantics, including an explicit zero.
+			const cost = track.cost
+				? soundCostCaption({
+						cost_usd: track.cost.amount_usd,
+						billing_basis: track.cost.basis,
+					})
+				: null;
 			return (
 				<div
 					key={track.id}
@@ -31,7 +41,9 @@ export const MusicResult = ({
 					<p className={cn("text-body-sm text-ink")}>{label}</p>
 					{track.title && receipt.tracks.length > 1 && (
 						<p className={cn("text-body-sm text-ink-muted")}>
-							{t("ui.music.track", { index: track.variantIndex + 1 })}
+							{t("ui.music.track", {
+								index: (track.variantIndex + 1).toLocaleString(),
+							})}
 						</p>
 					)}
 					{track.images.map((audio) => (

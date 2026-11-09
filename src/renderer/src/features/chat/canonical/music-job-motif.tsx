@@ -27,7 +27,10 @@ export const MusicJobMotif = ({
 			<span>{t("ui.music.label")}</span>
 			{typeof total === "number" && total > 0 && (
 				<span>
-					{t("ui.music.progress", { completed: completed ?? 0, total })}
+					{t("ui.music.progress", {
+						completed: (completed ?? 0).toLocaleString(),
+						total: total.toLocaleString(),
+					})}
 				</span>
 			)}
 		</div>

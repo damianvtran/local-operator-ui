@@ -1,5 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { CanonicalTranscript } from "./canonical-transcript";
+import { EMPTY_TRANSCRIPT, applyHistoryPage } from "./transcript-reducer";
+import { RunDetailJobs } from "../components/run-details/run-detail-jobs";
+import { deriveRunDetails } from "../components/run-details/run-detail-model";
+import { useJobCancel } from "../components/run-details/use-job-cancel";
+import { JobCancelPopover } from "../components/run-details/job-cancel-popover";
 import "../../../styles/index.css";
 import toneUrl from "../../../../../../scripts/fixtures/music-tone.mp3?url";
 import { MusicJobMotif } from "./music-job-motif";
@@ -104,7 +111,7 @@ export const Running: Story = {
 };
 export const Narrow: Story = {
 	render: () => (
-		<div className="w-[200px]">
+		<div className="w-[172px]">
 			<MusicJobMotif active={true} completed={1} total={2} />
 		</div>
 	),
@@ -116,3 +123,133 @@ export const Empty: Story = {
 		<MusicResult receipt={{ attribution: "", tracks: [] }} scope={null} />
 	),
 };
+
+const fixtureQueries = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
+const fixtureTitle =
+	"A long piano composition title with retained ranges and independently billed variations";
+
+/** Actual Jobs row, confirmation and hook; the synthetic control is explicitly
+ * local and cannot cancel or purchase anything from a provider. */
+const JobsFlow = ({ rtl = false }: { rtl?: boolean }) => {
+	const [requested, setRequested] = useState(false);
+	const cancel = useJobCancel({
+		sessionId: "synthetic-music",
+		controls: {
+			cancel: async () => {
+				setRequested(true);
+				return { ok: true };
+			},
+		},
+	});
+	const details = deriveRunDetails({
+		jobs: [
+			{
+				id: "fixture-music",
+				type: "music",
+				status: "running",
+				label: fixtureTitle,
+				latest_details: {
+					music: {
+						stage: requested ? "cancel_requested" : "polling",
+						tracks: [
+							{ id: "first", settled: true },
+							{ id: "second", settled: false },
+						],
+						attribution: "Approved fixture attribution",
+					},
+				},
+			},
+		],
+		todos: [],
+	});
+	return (
+		<div
+			dir={rtl ? "rtl" : "ltr"}
+			className="w-[172px]"
+			data-run-panel-pane
+			tabIndex={-1}
+		>
+			<RunDetailJobs
+				details={details}
+				paneWidth={172}
+				cancel={cancel.section}
+			/>
+			<JobCancelPopover {...cancel.popover} />
+		</div>
+	);
+};
+export const JobsCancel: Story = { render: () => <JobsFlow /> };
+export const JobsCancelRtl: Story = { render: () => <JobsFlow rtl /> };
+
+/** Durable-envelope fixture reaches the production reducer/NoticeRow/player.
+ * Missing cached bytes and peaks are intentional; this does not claim relay QA. */
+const CanonicalFlow = ({ rtl = false }: { rtl?: boolean }) => {
+	const transcript = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "fixture-job-result",
+				ts: 1760000000,
+				type: "custom",
+				payload: {
+					custom_type: "job_result",
+					details: {
+						text: "Music settled",
+						material: "music",
+						attribution: "Approved fixture attribution",
+						tracks: [
+							{
+								id: "first",
+								title: fixtureTitle,
+								variant_index: 0,
+								cost: { v: 1, amount_usd: 0.0075, basis: "billed" },
+							},
+							{
+								id: "second",
+								title: fixtureTitle,
+								variant_index: 1,
+								error_type: "fixture_failure",
+								cost: { v: 1, amount_usd: 0, basis: "billed" },
+							},
+						],
+						artifacts: [
+							{
+								digest: "a".repeat(32),
+								track_id: "first",
+								artifact_id: "first",
+								role: "full_mix",
+								name: "piano.mp3",
+							},
+						],
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	return (
+		<QueryClientProvider client={fixtureQueries}>
+			<div dir={rtl ? "rtl" : "ltr"} className="w-[172px]">
+				<CanonicalTranscript
+					transcript={transcript}
+					gate={null}
+					waiting={false}
+					starting={false}
+					loadingOlder={false}
+					onLoadOlder={async () => true}
+					containerRef={{ current: null }}
+					isSmallView={true}
+					status="live"
+					failure={null}
+					awaitingHydration={false}
+					hydrationProven={true}
+					onReconnect={() => {}}
+				/>
+			</div>
+		</QueryClientProvider>
+	);
+};
+export const CanonicalMissingBytes: Story = { render: () => <CanonicalFlow /> };
+export const CanonicalRtl: Story = { render: () => <CanonicalFlow rtl /> };
