@@ -7,7 +7,7 @@
 	"ui.chat.run_details.previous_subagent": "Subagente anterior",
 	"ui.chat.run_details.next_subagent": "Subagente siguiente",
 	"ui.chat.run_details.close_label": "Cerrar detalles de ejecución",
-	"ui.chat.run_details.children_unopenable": "Abrir la conversación de un subagente necesita un backend de Local Operator más reciente. Actualiza el backend y reinicia la app.",
+	"ui.chat.run_details.children_unopenable": "Abrir la conversación de un subagente necesita un servidor de Local Operator más reciente. Actualiza el servidor y reinicia la app.",
 	"ui.chat.run_details.updating_backend": "Actualizando",
 	"ui.chat.run_details.update_backend": "Actualizar el backend",
 	"ui.chat.run_details.retry": "Reintentar",
