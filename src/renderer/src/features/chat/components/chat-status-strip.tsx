@@ -340,6 +340,16 @@ export const ChatStatusStrip = () => {
 			 * later. So the sentence names the state rather than a countdown nobody
 			 * measured.
 			 *
+			 * HOW LONG THE SPINNER MAY HONESTLY SPIN, because it is now longer: one
+			 * recovery attempt spends up to three `/health` samples - `2 + 0.15 + 2.5 +
+			 * 0.15 + 2.5 = 7.3 s` (`daemon-status.ts`) - and then possibly a discovery
+			 * sweep, and a press that lands while an attempt is already running waits for
+			 * THAT attempt rather than starting a second one (`recoverFromDetachment`
+			 * joins it). So the honest bound is one attempt, not the ~2 s a single sample
+			 * cost when this was written (design review round 1, D3). No copy change: the
+			 * sentence still names a state, and a bound in the copy would be the countdown
+			 * this comment rejects.
+			 *
 			 * AND IT SPEAKS THE BAND'S OWN VOCABULARY (UX round 1's U2): a refusal's
 			 * answer used to be the reachability sentence, which the refused band's own
 			 * detail line had just refuted ("A daemon is running at …, but it refused

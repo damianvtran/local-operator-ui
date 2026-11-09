@@ -124,24 +124,44 @@ export const PROBE_TIMEOUT_MS = 2_000;
  * silent, and the budgets of the retries.
  *
  * WHY ONE SAMPLE WAS NOT ENOUGH, measured on the operator's machine 2026-11-08:
- * `/health` answered in 10-28 ms at p50 and 99-152 ms at p95, but its MAX over
- * the same run was 3982 ms - and the daemon's own access log recorded `GET
- * /health 200 OK` for probes this app reported as "did not answer". A single 2 s
- * budget therefore folds an ordinary stall as silence, and the banner it paints
- * ("Can't reach the Local Operator server") was drawn six times in one evening
- * over a daemon the operator was chatting through.
+ * `/health` costs the daemon ~1.3 ms of its own time to serve, and yet this app's
+ * per-tick sample of it reached a 3982 ms MAXIMUM over the same evening while the
+ * host was swapping 12.3 GB of 13.3 GB at load 132. The daemon's timestamped
+ * access log for that day (8,765 access lines, 19 detach events) contains NO
+ * `/health` completion inside any pre-detach window: it served nothing for 25-1021
+ * s before every one of those detaches. So the app was not wrong that no answer
+ * arrived inside its budget - a host this starved takes seconds to reach a request
+ * it has already ACCEPTED, which is the shape that writes a `200` after the
+ * client's budget expired. A single 2 s sample therefore folds an ordinary stall
+ * as silence, and the banner it paints ("Can't reach the Local Operator server")
+ * was drawn six times in one evening over a daemon the operator was chatting
+ * through.
  *
  * THE SHAPE IS DELIBERATE: attempt 1 keeps the ordinary budget, so a healthy
  * daemon costs exactly what it cost before; attempts 2 and 3 sit INSIDE the same
  * stall rather than after it, so a stall of ~4 s is answered by attempt 2 at its
- * own tail. The window one observation spans is
- * `2 + 0.15 + 2.5 + 0.15 + 2.5 = 7.3 s`, which keeps a tick inside
- * `PROBE_INTERVAL_MS` (10 s) - the bound that matters, because a tick that
- * outlives its interval would overlap the next one.
+ * own tail.
  *
- * WHAT IS NOT RETRIED: a refused socket. `ECONNREFUSED` is EVIDENCE (nothing is
- * accepting on the port) rather than a budget that expired, and the three-miss
- * fast path out of it is what reports a genuinely gone daemon promptly.
+ * WHAT IT COSTS, AND THE BOUND IT DOES NOT MEET. The window one observation spans
+ * is `2 + 0.15 + 2.5 + 0.15 + 2.5 = 7.3 s`, which is shorter than
+ * `PROBE_INTERVAL_MS` but does NOT keep a TICK inside it: a tick that moves the
+ * state spends this observation, then runs `recoverFromDetachment`, whose own
+ * observation spends up to another 7.3 s - ~14.6 s of work against a 10 s
+ * interval - and `setInterval` does not serialise its callback. So the tick
+ * itself refuses to overlap (`backend-service.ts::checkBackendHealth`), because
+ * two overlapping ticks sample one physical stall twice and count it twice.
+ *
+ * WHAT IS RETRIED, and what is not: the CAUSE decides, and
+ * `discovery.ts::classifyUnreachable` is the arbiter. A budget that expired
+ * (`timeout`), a name that did not resolve (`unresolved` - `EAI_AGAIN` is the
+ * transient one) and anything the classifier cannot name (`other` - a
+ * `ECONNRESET`, an unknown throw) all get the remaining samples: the classifier
+ * files those WITH the timeouts precisely because they are transients, and they
+ * are the shapes this change exists for. A REFUSED socket is not retried:
+ * `ECONNREFUSED` is EVIDENCE (nothing is accepting on the port) rather than a
+ * budget that expired, and the three-miss fast path out of it is what reports a
+ * genuinely gone daemon promptly - re-asking a refusal would turn that prompt
+ * report into a retry storm.
  */
 export const PROBE_ATTEMPTS = 3;
 
@@ -153,8 +173,14 @@ export const PROBE_RETRY_TIMEOUT_MS = 2_500;
  *
  * Short on purpose: the retry's subject is the SAME stall the first attempt hit,
  * and a longer gap only pushes the retry past that stall's end while widening the
- * observation's worst case. Long enough that the retry is a second request rather
- * than a second read of one `keep-alive` connection's left-over error.
+ * observation's worst case.
+ *
+ * THE GAP IS NOT WHAT MAKES THE RETRY A SECOND REQUEST, and the earlier
+ * justification here said otherwise: undici opens a NEW connection for the retry
+ * after an abort (measured 2026-11-08 on this machine, local ports 64077 -> 64085),
+ * so a retry is a fresh request even with no gap at all. What the gap buys is one
+ * turn of the loop between two back-to-back failures, so three samples cannot
+ * become one busy retry loop against a daemon that is already starved.
  */
 export const PROBE_RETRY_GAP_MS = 150;
 
@@ -275,6 +301,19 @@ export class DaemonStateMachine {
 
 	constructor(private readonly now: () => number = Date.now) {
 		this.updatedAt = now();
+	}
+
+	/**
+	 * This machine's clock, for a caller that logs a duration it measured AGAINST
+	 * the state it folded here.
+	 *
+	 * WHY an accessor rather than `Date.now()` at the caller: `now` is injectable,
+	 * so a reader comparing a logged age with a stamp this class wrote would be
+	 * comparing two clocks the moment one of them is pinned (review round 1, N4).
+	 * Production passes nothing and both are `Date.now()`.
+	 */
+	nowMs(): number {
+		return this.now();
 	}
 
 	/** Adopt a validated daemon (`owned` says whether this app spawned it). */

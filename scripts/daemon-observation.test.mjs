@@ -125,6 +125,18 @@ const RE_THE_DAEMON_IS_RUNNING = /The daemon is running/;
 const RE_RECOVERY_ATTEMPT = /Recovery attempt/;
 const RE_PROBE_IDENTIFIED = /probe=identified/;
 const RE_NEXT_ATTEMPT = /next=/;
+/*
+ * The round-2 pins (review round 1, R1-2/R1-5/R1-6): a probe whose verdict is
+ * `failed` must say so and name the guard that stopped it, an attempt that
+ * answered on a retry must say which sample answered, and the no-identity default
+ * must not appear over a probe that ran.
+ */
+const RE_PROBE_FAILED = /probe=failed/;
+const RE_PROBE_CONTRADICTED = /probe=contradicted/;
+const RE_HELD_BACK = /re-discovery was held back/;
+const RE_NO_IDENTITY = /no identity and no repairable pairing/;
+const RE_ANSWERED_ON_ATTEMPT = /answered on probe attempt/;
+const RE_ATTEMPT_2_OF_3 = /attempt 2 of 3/;
 
 /*
  * A pairing token in the operator's environment would let the adoption path
@@ -439,6 +451,8 @@ async function daemonScene({
 		claimStatus,
 		/** Wall-clock deadline of a simulated event-loop stall on `/health`. */
 		healthStalledUntil: 0,
+		/** Whether the NEXT `/health` request dies with its socket (one shot). */
+		resetHealthOnce: false,
 	};
 
 	const child = spawn(
@@ -478,19 +492,30 @@ async function daemonScene({
 		};
 		if (path === "/health") {
 			/*
-			 * A BUSY DAEMON ANSWERS LATE rather than not at all, and the shape is the
-			 * operator's own (2026-11-08): `/health` from python measured p50 10-28 ms
-			 * and a 3982 ms max, while the app's access log recorded `200 OK` for the
-			 * very probes main reported as "did not answer". The request is ACCEPTED
-			 * and the status line written after the stall - by which time a 2 s client
-			 * budget has already given up - so modelling a stall as a dead socket
-			 * would test a different failure than the one reported.
+			 * A STARVED DAEMON ANSWERS LATE rather than not at all. That is a real shape -
+			 * a host that is swapping takes seconds to reach a request it has already
+			 * ACCEPTED - and it is what the retry is for, but it is NOT what the operator's
+			 * access log recorded: `/health` costs this daemon ~1.3 ms of its own time, this
+			 * app's per-tick sample of it reached 3982 ms while the host swapped 12.3 GB of
+			 * 13.3 GB at load 132, and the log contains no `/health` completion inside any
+			 * pre-detach window (8,765 access lines, 19 detach events; it served nothing for
+			 * 25-1021 s before each detach). The request is ACCEPTED and the status line
+			 * written after the stall - by which time a 2 s client budget has already given
+			 * up - so modelling a stall as a dead socket would test a different failure.
 			 *
 			 * `live.healthStalledUntil` is a deadline rather than a per-request delay:
 			 * the stall is the PROCESS being blocked, so every sample that arrives
 			 * inside the window waits for the same window to end, which is what makes a
 			 * retry inside the window answer before the window's own end.
 			 */
+			// A ONE-SHOT RESET, for the transient the retry exists for but a stall cannot
+			// model: the socket dies mid-request, which classifies as `other` (a reset)
+			// rather than as a refusal or an expired budget. See `resetNextHealth` below.
+			if (live.resetHealthOnce) {
+				live.resetHealthOnce = false;
+				req.destroy();
+				return;
+			}
 			const stalledFor = live.healthStalledUntil - Date.now();
 			if (stalledFor > 0) {
 				setTimeout(() => {
@@ -644,6 +669,15 @@ async function daemonScene({
 		 */
 		stallHealth(ms) {
 			live.healthStalledUntil = Date.now() + ms;
+		},
+		/**
+		 * The NEXT `/health` request dies with its socket and the one after it answers
+		 * normally: a reset (`ECONNRESET`, classified `other`) is a transient the retry
+		 * exists for that a stall cannot model, so one sample must be spent on it and the
+		 * next must find the daemon serving.
+		 */
+		resetNextHealth() {
+			live.resetHealthOnce = true;
 		},
 		/**
 		 * The daemon dies the way it died in the report: its process is gone and
@@ -3063,10 +3097,14 @@ test("the operator's report: an ADOPTED daemon that reloads in place never re-di
  * through. The two facts below are the two halves of how that happened, and each
  * is asserted here against the real manager over real loopback HTTP.
  *
- * The numbers both cases turn on are measured, not chosen: `/health` on this
- * machine (python, daemon v0.101.30 up 4h48m) ran p50 10-28 ms, p95 99-152 ms
- * and a 3982 ms MAX, while the daemon's own access log recorded `GET /health 200
- * OK` for the probes main reported as unanswered. A budget of 2000 ms with ONE
+ * The numbers both cases turn on are measured, not chosen: `/health` costs the
+ * daemon (python, v0.101.30, up 4h48m) ~1.3 ms of its own time to serve, and yet
+ * this app's per-tick sample of it reached a 3982 ms MAX over that evening while the
+ * host was swapping 12.3 GB of 13.3 GB at load 132. The daemon's timestamped access
+ * log (8,765 access lines, 19 detach events) contains no `/health` completion inside
+ * any pre-detach window - it served nothing for 25-1021 s before each detach - so
+ * the app was right that no answer arrived, and wrong only in treating ONE 2 s
+ * sample as the whole answer. A budget of 2000 ms with ONE
  * sample per observation therefore folds a stall as silence - and, once the
  * connection is detached, the same single sample is what every five-minute
  * recovery attempt spends.
@@ -3135,9 +3173,11 @@ test("a daemon that answers this app's own request clears a detached connection 
 		await scene.fallSilent();
 		/*
 		 * A REFUSED SOCKET IS NOT RETRIED (change 1's other half, pinned here rather
-		 * than assumed): the three-sample observation exists for a budget that
-		 * EXPIRED, and re-asking a refusal would turn the fast path that reports a
-		 * gone daemon into a retry storm. One request per tick, counted.
+		 * than assumed): the extra samples exist for a TRANSIENT failure - an expired
+		 * budget, an unresolved name, a reset - and re-asking a refusal would turn the
+		 * fast path that reports a gone daemon into a retry storm. The REQUEST COUNT is
+		 * not the instrument for it here (the stub's own handler cannot count a request
+		 * that never arrives, because the socket is already closed); the clock below is.
 		 */
 		/*
 		 * The instrument is the CLOCK here, and only because the two answers are an
@@ -3269,6 +3309,195 @@ test("a daemon that answers this app's own request clears a detached connection 
 		/* And the next tick does not undo it. */
 		await driveTick(loop);
 		assert.equal(manager.getStatusSnapshot().state, "attached");
+	} finally {
+		await manager.stop(false).catch(() => {});
+		await scene.dispose();
+	}
+});
+
+/*
+ * ROUND 2'S TWO PINS ON THE SAMPLING RULE (review round 1, R1-2 and R1-5/R1-6).
+ *
+ * R1-2: the retry's gate used to be `cause === "timeout"`, so a RESET - the
+ * `other` arm `discovery.ts::classifyUnreachable` files WITH the timeouts - got no
+ * second sample at all, and `EAI_AGAIN`/`ECONNRESET` are exactly the transients the
+ * change exists for. A reset is one-shot here, so the answered retry is
+ * observable: the request count proves the second sample happened and the log line
+ * proves WHICH sample answered.
+ *
+ * R1-6: the held-back arm's verdict was unasserted - deleting its `verdict =` left
+ * this file green - and R1-5: the line's DEFAULT spelled out a sweep, which an
+ * arm that never swept then appended to. Both are read off the real attempt here.
+ */
+test("a reset is a transient, so it spends a second sample and the answered retry is logged (2026-11-08, R1-2)", async () => {
+	const scene = await daemonScene({ instanceId: "instance-reset-transient" });
+	globalThis.__testConfiguredUrl = scene.address;
+	const { manager, intervals } = await adoptAtStartup(scene);
+	try {
+		const loop = intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
+		assert.ok(loop, "adoption must have armed the probe loop");
+		const healthBefore = scene.seen.filter((r) => r.path === "/health").length;
+		globalThis.__testBackendLog = [];
+		scene.resetNextHealth();
+		await driveTick(loop);
+
+		const samples = scene.seen.filter((r) => r.path === "/health").length;
+		assert.ok(
+			samples - healthBefore >= 2,
+			`a reset is a transient, so the observation must sample again instead of concluding from it. Samples inside the tick: ${samples - healthBefore}`,
+		);
+		assert.equal(
+			manager.getStatusSnapshot().state,
+			"attached",
+			`one reset is not a missing daemon. Observed: ${manager.getStatusSnapshot().state} / ${manager.getStatusSnapshot().detail}`,
+		);
+		const retried = (globalThis.__testBackendLog ?? []).filter((entry) =>
+			RE_ANSWERED_ON_ATTEMPT.test(entry.message),
+		);
+		assert.equal(
+			retried.length,
+			1,
+			`the retry that answered must say so, exactly once - it is the only line that tells a reader the daemon was serving all along. Saw: ${JSON.stringify(retried)}`,
+		);
+		assert.match(
+			retried[0].message,
+			RE_ATTEMPT_2_OF_3,
+			`and it must name the sample that answered. Saw: ${retried[0].message}`,
+		);
+	} finally {
+		await manager.stop(false).catch(() => {});
+		await scene.dispose();
+	}
+});
+
+test("a failed probe on a live daemon names its own verdict instead of claiming a sweep (2026-11-08, R1-5/R1-6)", async () => {
+	const scene = await daemonScene({
+		instanceId: "instance-failed-probe-verdict",
+	});
+	globalThis.__testConfiguredUrl = scene.address;
+	const { manager } = await adoptAtStartup(scene);
+	try {
+		assert.equal(manager.getStatusSnapshot().state, "attached");
+		/*
+		 * The daemon stops accepting while its PROCESS stays alive, so the probe ANSWERS
+		 * with a refusal: `failed`, not a stall, on a live pid - exactly the arm that
+		 * holds re-discovery back (`recoverFromDetachment`). Driven through the banner's
+		 * own entry point, `reconnectNow()`, which is the path a renderer can reach.
+		 */
+		await scene.fallSilent();
+		globalThis.__testBackendLog = [];
+		await manager.reconnectNow();
+
+		const lines = (globalThis.__testBackendLog ?? []).filter((entry) =>
+			RE_RECOVERY_ATTEMPT.test(entry.message),
+		);
+		assert.equal(
+			lines.length,
+			1,
+			`exactly one verdict line per attempt. Saw: ${JSON.stringify(lines)}`,
+		);
+		assert.match(
+			lines[0].message,
+			RE_PROBE_FAILED,
+			`the line must name the probe's own verdict: without this, the default's sentence about a sweep is all a reader gets. Saw: ${lines[0].message}`,
+		);
+		assert.match(
+			lines[0].message,
+			RE_HELD_BACK,
+			`and the branch it took, which was the live-process guard's: deleting its verdict leaves the line describing only the probe. Saw: ${lines[0].message}`,
+		);
+		assert.doesNotMatch(
+			lines[0].message,
+			RE_NO_IDENTITY,
+			`the no-identity default is FALSE on a probed attempt - no arm may inherit it. Saw: ${lines[0].message}`,
+		);
+		/*
+		 * AND THE SAME, ON AN ARM THAT APPENDS. The arm above writes its own probe
+		 * clause, so it cannot show what a SWEEPING arm inherits: those append their
+		 * sentence to whatever the verdict already holds, and the default spelling out
+		 * "no identity and no repairable pairing" would ride along under a probe that
+		 * had just answered. This is that shape - the same live process answers under a
+		 * new `instance_id`, so the probe CONTRADICTS and the attempt sweeps.
+		 */
+		await scene.acceptAgain();
+		scene.replaceUnderApp({ instanceId: "instance-verdict-successor" });
+		globalThis.__testBackendLog = [];
+		await manager.reconnectNow();
+		const swept = (globalThis.__testBackendLog ?? []).filter((entry) =>
+			RE_RECOVERY_ATTEMPT.test(entry.message),
+		);
+		assert.equal(
+			swept.length,
+			1,
+			`one verdict line for the second attempt too. Saw: ${JSON.stringify(swept)}`,
+		);
+		assert.match(
+			swept[0].message,
+			RE_PROBE_CONTRADICTED,
+			`the sweeping arm must carry the probe's own reading. Saw: ${swept[0].message}`,
+		);
+		assert.doesNotMatch(
+			swept[0].message,
+			RE_NO_IDENTITY,
+			`and no appending arm may inherit the no-identity default. Saw: ${swept[0].message}`,
+		);
+	} finally {
+		await manager.stop(false).catch(() => {});
+		await scene.dispose();
+	}
+});
+
+/*
+ * D1: A PRESS DURING AN ATTEMPT THAT IS ALREADY RUNNING (design review round 1).
+ *
+ * `recoverFromDetachment` used to DROP a caller while `recoveryInFlight` was set,
+ * and `reconnectNow()` renders whatever snapshot it gets back - so a press could be
+ * told "Still unreachable" over an attempt that was at that moment re-attaching.
+ * This change makes that collision ordinary (recovery now starts on the next
+ * admitted request), so the press JOINS the running attempt instead. The pin is the
+ * second press's own return: it must read the attempt's result, not the snapshot it
+ * found on arrival.
+ */
+test("a Retry pressed while an attempt is running reads that attempt's result (design round 1, D1)", async () => {
+	const scene = await daemonScene({ instanceId: "instance-retry-joins" });
+	globalThis.__testConfiguredUrl = scene.address;
+	const { manager, intervals } = await adoptAtStartup(scene);
+	try {
+		const loop = intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
+		assert.ok(loop, "adoption must have armed the probe loop");
+		await scene.fallSilent();
+		for (
+			let tick = 0;
+			tick < UNANSWERED_BEFORE_DETACHED + DEGRADED_AFTER_FAILURES &&
+			manager.getStatusSnapshot().state !== "detached";
+			tick++
+		) {
+			await driveTick(loop);
+		}
+		assert.equal(
+			manager.getStatusSnapshot().state,
+			"detached",
+			"the rig must reach the state the banner renders before the press means anything",
+		);
+		await scene.acceptAgain();
+		/*
+		 * Both presses are started before either is awaited, so the second one arrives
+		 * while the first one's probe is in flight - the exact window a reader's second
+		 * click lands in.
+		 */
+		const first = manager.reconnectNow();
+		const second = manager.reconnectNow();
+		const [a, b] = await Promise.all([first, second]);
+		assert.equal(
+			a.state,
+			"attached",
+			`the press must attach. Saw: ${a.state} / ${a.detail}`,
+		);
+		assert.equal(
+			b.state,
+			"attached",
+			`the second press must read the attempt that was running, not answer with the snapshot it found - a press told "Still unreachable" while a heal is in flight is the false reachability statement this change exists to remove. Saw: ${b.state} / ${b.detail}`,
+		);
 	} finally {
 		await manager.stop(false).catch(() => {});
 		await scene.dispose();
