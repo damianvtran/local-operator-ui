@@ -15,6 +15,8 @@ globalThis.document = dom.window.document;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const captures = [];
 globalThis.__canvasLocaleCaptures = captures;
+const VIEWER_PORT = /(?:finder-files-view|@shared\/store\/canvas-store)$/;
+const ALL = /.*/;
 const bundle = await build({
 	stdin: {
 		contents: `
@@ -45,11 +47,11 @@ const bundle = await build({
 		{
 			name: "viewer-ports",
 			setup(builder) {
-				builder.onResolve(
-					{ filter: /(?:finder-files-view|@shared\/store\/canvas-store)$/ },
-					({ path }) => ({ path, namespace: "ports" }),
-				);
-				builder.onLoad({ filter: /.*/, namespace: "ports" }, ({ path }) => ({
+				builder.onResolve({ filter: VIEWER_PORT }, ({ path }) => ({
+					path,
+					namespace: "ports",
+				}));
+				builder.onLoad({ filter: ALL, namespace: "ports" }, ({ path }) => ({
 					loader: "js",
 					contents: path.endsWith("finder-files-view")
 						? "export function FinderFilesView(props) { globalThis.__canvasLocaleCaptures.push(props); return null; }"

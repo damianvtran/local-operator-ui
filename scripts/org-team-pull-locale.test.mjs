@@ -85,7 +85,6 @@ const {
 	createRoot,
 	OrgTeamsList,
 	PublicationError,
-	publicationTreatment,
 	useI18nLocale,
 	t,
 	setLocale,
