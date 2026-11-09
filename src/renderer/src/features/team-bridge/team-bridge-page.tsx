@@ -625,6 +625,13 @@ export type TeamBridgePageViewProps = {
 	 * failure nor an empty channel.
 	 */
 	messageState: "idle" | "loading" | "error" | "ready" | "forbidden";
+	/**
+	 * Re-read the selected conversation's history after `messageState` settled on
+	 * `error`. Without it the only way out of a failed load was to click another
+	 * channel and back (operator report 2026-11-09), which works only because the
+	 * remount starts a new read - this offers that read directly.
+	 */
+	onRetryMessages?: () => void;
 	conversations: TeamBridgeConversation[];
 	/**
 	 * What the rail has selected. The view resolves the conversation it shows
@@ -942,6 +949,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onCloseThread,
 	listState,
 	messageState,
+	onRetryMessages,
 	conversations,
 	target,
 	messages,
@@ -4055,9 +4063,22 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										label={t("ui.teamBridge.thread.loading")}
 									/>
 								) : messageState === "error" ? (
-									<p className="px-5 py-8 text-[13px] text-ink-muted">
-										{t("ui.teamBridge.thread.error")}
-									</p>
+									<div role="alert" className="px-5 py-8 text-[13px]">
+										<p className="text-ink-muted">
+											{t("ui.teamBridge.thread.error")}
+										</p>
+										{onRetryMessages && (
+											/* Same control as the rail's error state, so one failure
+											   reads the same wherever it lands. */
+											<button
+												type="button"
+												onClick={onRetryMessages}
+												className="mt-2 min-h-6 rounded-sm px-1.5 font-medium text-[13px] text-accent hover:underline"
+											>
+												{t("ui.teamBridge.list.retry")}
+											</button>
+										)}
+									</div>
 								) : messageState === "forbidden" ? (
 									/* An administrator opening an archived channel they never joined:
 									   the server lets them manage it but not read it (agent-server
@@ -6435,6 +6456,7 @@ const TeamBridgeOwnedPage: FC<{
 									: "error"
 								: "ready"
 				}
+				onRetryMessages={messages.refetch}
 				conversations={conversations}
 				target={target}
 				messages={messages.messages}

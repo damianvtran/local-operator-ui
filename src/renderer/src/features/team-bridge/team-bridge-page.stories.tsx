@@ -994,8 +994,16 @@ export const RefreshingUnread: Story = {
 	args: { refreshingUnread: true },
 };
 
+/* A failed history read offers its own retry (operator report 2026-11-09: the
+   only way out used to be clicking another channel and back). */
 export const ThreadError: Story = {
-	args: { messageState: "error" },
+	args: { messageState: "error", onRetryMessages: () => undefined },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(
+			await canvas.findByRole("button", { name: "Try again" }),
+		).toBeVisible();
+	},
 };
 
 export const SendingDisabledComposer: Story = {
