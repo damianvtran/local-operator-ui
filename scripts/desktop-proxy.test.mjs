@@ -231,15 +231,29 @@ test("a refusal that arrives before any byte still reaches the reader as the sha
 });
 
 test("an upstream nobody is listening on still reaches the reader as the shared sentence", async () => {
-	// A port this process opened and closed, so nothing is listening on it: the
-	// `ECONNREFUSED` arm, and the arm that proves the guard does not swallow the
-	// refusals that CAN be delivered.
-	const reserved = createServer(() => {});
-	await new Promise((resolve) => reserved.listen(0, "127.0.0.1", resolve));
-	const dead = `http://127.0.0.1:${reserved.address().port}`;
-	await close(reserved);
-
-	const { port, rejections } = await proxy(dead);
+	/*
+	 * A PRIVILEGED port, not one this process reserved and released. Port 4 is
+	 * below 1024, so an unprivileged process cannot bind it (`EACCES`, the same
+	 * error this test would get), which means nothing in this shard can be
+	 * listening on it now or start listening between here and the proxy's connect:
+	 * the `ECONNREFUSED` arm, and the arm that proves the guard does not swallow
+	 * the refusals that CAN be delivered.
+	 *
+	 * This used to bind port 0, read the number, close the server, and then assert
+	 * nobody was listening on a port the kernel was free to hand to the very next
+	 * `listen(0)`. It was not a hypothesis: merge-gate run 42600460375, shard 4/5,
+	 * answered `404 !== 503` because a sibling test in the same shard had taken the
+	 * port, while the same tree's own push (run 42598245178) was green minutes
+	 * earlier. A released ephemeral port is not a promise, so this test no longer
+	 * relies on one.
+	 *
+	 * Why 4 and not 1: fetch refuses the URL spec's known-bad ports (1 is tcpmux)
+	 * without opening a socket, and the thrown `TypeError` carries no `cause`, so
+	 * the middleware could never reach its `ECONNREFUSED` arm and the reader got
+	 * the generic sentence instead. Port 4 is IANA-unassigned, outside that list,
+	 * and measured here: bind `EACCES`, fetch `cause.code === "ECONNREFUSED"`.
+	 */
+	const { port, rejections } = await proxy("http://127.0.0.1:4");
 	const answer = await read(port, `/__desktop/stream?session=${SESSION}`);
 	assert.equal(answer.status, 503);
 	assert.equal(answer.type, "application/json");
