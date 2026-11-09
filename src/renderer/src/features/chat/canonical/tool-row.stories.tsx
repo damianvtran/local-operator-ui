@@ -143,6 +143,7 @@ const Frame = ({
 	status = "live",
 	failure = null,
 	isSmallView = false,
+	attachmentScope,
 	/*
 	 * A fixture of rows handed in rather than read: by default NO page is owed,
 	 * and the hold cannot fire here anyway (it needs zero records). The
@@ -193,6 +194,11 @@ const Frame = ({
 	awaitingHydration?: boolean;
 	/** The small-view wrapper of the same transcript. */
 	isSmallView?: boolean;
+	/**
+	 * The conversation the rows were read through. Only the full-diff stories
+	 * pass one: the pager pages its archive through this scope's route.
+	 */
+	attachmentScope?: { sessionId: string; childId: string | null };
 	/**
 	 * Click every row's trigger after mount, the way a reader opens one.
 	 *
@@ -262,6 +268,7 @@ const Frame = ({
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
 				isSmallView={isSmallView}
+				attachmentScope={attachmentScope}
 				status={status}
 				failure={failure}
 				/*
@@ -2849,6 +2856,240 @@ const WITHHELD_WRITE_ROW = tool({
 		...Array.from({ length: 203 }, () => ""),
 	],
 });
+
+/*
+ * ---- Full historical diff (diff-history.tsx) ------------------------------
+ *
+ * A child-scoped edit whose preview omitted rows and whose core archived the
+ * whole redacted diff: 1,000 rows with unique first / middle / final markers,
+ * a 20,000-char row the route clips, and a fake `window.api.desktop.request`
+ * that answers the frozen page contract INCLUDING the byte budget, so pages
+ * end early and only `next_start` is a cursor. `mode` picks the answer shape
+ * for the loading / error / empty / evicted frames.
+ */
+const FULL_TOTAL = 1000;
+const FULL_ARTIFACT = Array.from({ length: FULL_TOTAL }, (_, i) => {
+	if (i === 0) return "--- ";
+	if (i === 1) return "+++ ";
+	if (i === 3) return "-UNIQUE-FIRST-ROW const legacy = readOld();";
+	if (i === 501) return "+UNIQUE-MIDDLE-ROW const value = await readNew();";
+	if (i === FULL_TOTAL - 1) return "+UNIQUE-FINAL-ROW export default value;";
+	if (i === 700) return `+const blob = "${"y".repeat(4000)}`;
+	if (i % 50 === 2)
+		return `@@ -${i},50 +${i},50 @@ export function section${i}()`;
+	if (i % 3 === 0) return `-\tconst legacy${i} = readOld(${i});`;
+	if (i % 3 === 1)
+		return `+\tconst value${i} = await readNew(${i}, { strict: true });`;
+	return ` \t// context line ${i}`;
+});
+
+const fullPage = (start: number, limit: number) => {
+	const rows: string[] = [];
+	const clipped: number[] = [];
+	let bytes = 0;
+	let i = start;
+	while (i < FULL_TOTAL && rows.length < limit) {
+		let row = FULL_ARTIFACT[i];
+		if (row.length > 2000) {
+			row = row.slice(0, 2000);
+			clipped.push(i);
+		}
+		if (rows.length > 0 && bytes + row.length > 6000) break;
+		rows.push(row);
+		bytes += row.length;
+		i += 1;
+	}
+	let hunk: string | null = null;
+	for (let j = start; j >= 0; j -= 1) {
+		if (FULL_ARTIFACT[j].startsWith("@@")) {
+			hunk = j === start ? null : FULL_ARTIFACT[j];
+			break;
+		}
+	}
+	return {
+		state: "archived",
+		start,
+		total_rows: FULL_TOTAL,
+		rows,
+		hunk_header: hunk,
+		next_start: i < FULL_TOTAL ? i : null,
+		clipped_rows: clipped,
+	};
+};
+
+type FullMode = "archive" | "loading" | "error" | "empty" | "evicted";
+
+/** Installed during render, like `installChildImageRelay` (run-details). */
+const installDiffRelay = (mode: FullMode) => {
+	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
+	const api = (window as any).api ?? {};
+	api.desktop = {
+		...api.desktop,
+		request: async (request: {
+			op?: string;
+			start?: number;
+			limit?: number;
+		}) => {
+			if (request.op !== "subagents.diff" && request.op !== "sessions.diff")
+				return { status: 404, body: { detail: "Not in this story." } };
+			if (mode === "loading") return new Promise(() => {});
+			if (mode === "error")
+				return { status: 503, body: { detail: "Backend unavailable." } };
+			const empty = {
+				start: 0,
+				total_rows: 0,
+				rows: [],
+				hunk_header: null,
+				next_start: null,
+				clipped_rows: [],
+			};
+			if (mode === "empty")
+				return {
+					status: 200,
+					body: { result: { state: "archived", ...empty } },
+				};
+			if (mode === "evicted")
+				return {
+					status: 200,
+					body: { result: { state: "evicted", ...empty } },
+				};
+			return {
+				status: 200,
+				body: { result: fullPage(request.start ?? 0, request.limit ?? 200) },
+			};
+		},
+	};
+	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
+	(window as any).api = api;
+};
+
+const FULL_SCOPE = { sessionId: "a1b2c3d4e5f6", childId: "0a1b2c3d4e5f" };
+
+const fullRow = (descriptor: Record<string, unknown> | null) =>
+	tool({
+		id: "tool:full",
+		...LARGE_WRITE,
+		toolName: "edit",
+		toolCallId: "toolu_full",
+		diff: LARGE_DIFF,
+		diffTruncatedRows: 798,
+		diffFull: descriptor as ToolRecord["diffFull"],
+	});
+
+const FullFrame = ({
+	mode = "archive",
+	descriptor = { state: "archived", rows: FULL_TOTAL },
+}: {
+	mode?: FullMode;
+	descriptor?: Record<string, unknown> | null;
+}) => {
+	installDiffRelay(mode);
+	return (
+		<Frame
+			height={900}
+			bounded
+			openRows
+			attachmentScope={FULL_SCOPE}
+			records={[fullRow(descriptor)]}
+		/>
+	);
+};
+
+const openFull = async (canvasElement: HTMLElement) => {
+	await userEvent.click(
+		await within(canvasElement).findByRole("button", {
+			name: /View full diff/,
+		}),
+	);
+};
+const press = async (canvasElement: HTMLElement, name: string) => {
+	const button = await within(canvasElement).findByRole("button", { name });
+	await userEvent.click(button);
+};
+
+/** The preview's footer now offers the archived rows instead of "not recorded". */
+export const DiffFullOffer: Story = {
+	render: () => <FullFrame />,
+	play: async ({ canvasElement }) => {
+		(
+			await within(canvasElement).findByRole("button", {
+				name: /View full diff/,
+			})
+		).scrollIntoView({ block: "end" });
+	},
+};
+/** First page: the nameless header pair dropped, row 4 is the unique first row. */
+export const DiffFullFirstPage: Story = {
+	render: () => <FullFrame />,
+	play: async ({ canvasElement }) => openFull(canvasElement),
+};
+/** Next until the unique middle row: a mid-hunk page shows its `@@` context. */
+export const DiffFullMiddlePage: Story = {
+	render: () => <FullFrame />,
+	play: async ({ canvasElement }) => {
+		await openFull(canvasElement);
+		for (let i = 0; i < 40; i += 1) {
+			if (canvasElement.textContent?.includes("UNIQUE-MIDDLE-ROW")) break;
+			await press(canvasElement, "Next");
+			await new Promise((r) => setTimeout(r, 30));
+		}
+		canvasElement
+			.querySelector('[data-diff-line="501"]')
+			?.scrollIntoView({ block: "center" });
+	},
+};
+/** Last: the final row, despite byte-bounded pages. */
+export const DiffFullFinalPage: Story = {
+	render: () => <FullFrame />,
+	play: async ({ canvasElement }) => {
+		await openFull(canvasElement);
+		await press(canvasElement, "Last");
+		await new Promise((r) => setTimeout(r, 100));
+		canvasElement
+			.querySelector(`[data-diff-line="${FULL_TOTAL - 1}"]`)
+			?.scrollIntoView({ block: "end" });
+	},
+};
+/** A page with the clipped 4,000-char row and its disclosure. */
+export const DiffFullClippedRow: Story = {
+	render: () => <FullFrame />,
+	play: async ({ canvasElement }) => {
+		await openFull(canvasElement);
+		for (let i = 0; i < 80; i += 1) {
+			if (canvasElement.querySelector('[data-diff-line="700"]')) break;
+			await press(canvasElement, "Next");
+			await new Promise((r) => setTimeout(r, 30));
+		}
+		canvasElement
+			.querySelector('[data-diff-line="700"]')
+			?.scrollIntoView({ block: "center" });
+	},
+};
+export const DiffFullLoading: Story = {
+	render: () => <FullFrame mode="loading" />,
+	play: async ({ canvasElement }) => openFull(canvasElement),
+};
+export const DiffFullError: Story = {
+	render: () => <FullFrame mode="error" />,
+	play: async ({ canvasElement }) => openFull(canvasElement),
+};
+export const DiffFullEmpty: Story = {
+	render: () => <FullFrame mode="empty" />,
+	play: async ({ canvasElement }) => openFull(canvasElement),
+};
+export const DiffFullEvicted: Story = {
+	render: () => <FullFrame mode="evicted" />,
+	play: async ({ canvasElement }) => openFull(canvasElement),
+};
+/** Descriptor says withheld: no pager offered, the reason stated in the footer. */
+export const DiffFullWithheldDescriptor: Story = {
+	render: () => <FullFrame descriptor={{ state: "withheld" }} />,
+	play: async ({ canvasElement }) => {
+		(
+			await within(canvasElement).findByText(/couldn't be redacted safely/)
+		).scrollIntoView({ block: "end" });
+	},
+};
 
 /** The actual role=log / flex-col-reverse scroller, bounded like the app.
  * Keep the large write last: expanding at scrollTop=0 is the negative control

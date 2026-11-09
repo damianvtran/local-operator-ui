@@ -2790,7 +2790,17 @@ const ToolRow = memo(function ToolRow({
 			</div>
 		</div>
 	) : isDiffBodyRow(record) ? (
-		<DiffBlock diff={record.diff} truncatedRows={record.diffTruncatedRows} />
+		<DiffBlock
+			diff={record.diff}
+			truncatedRows={record.diffTruncatedRows}
+			// The row's own scope (parent, or the child reader's) decides which
+			// route pages the archive — the same seam media rows resolve through.
+			history={{
+				scope,
+				callId: record.toolCallId,
+				descriptor: record.diffFull ?? null,
+			}}
+		/>
 	) : bridge && !running ? (
 		<BridgeDetail
 			record={record}
