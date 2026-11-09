@@ -79,22 +79,6 @@
 			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
-			"ids": [
-				"jsx-child-expression | Earlier text of this answer is not on screen",
-				"jsx-child-expression | Interrupted",
-				"jsx-child-expression | No answer given",
-				"jsx-child-expression | Not run",
-				"jsx-child-expression | Part of this answer may be missing",
-				"jsx-child-expression | Worked",
-				"jsx-child-expression | Worked for ${…}",
-				"jsx-child-expression | · Job ${…}"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/chat/canonical/image-group-lightbox.tsx",
 			"ids": [
 				"object-literal:label | Show image ${…} of ${…}",
