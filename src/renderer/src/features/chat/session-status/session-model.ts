@@ -279,11 +279,24 @@ export function modelIdentity(
 export function bandReadings(
 	frontend: CanonicalFrontendState | null | undefined,
 	pendingModel: CanonicalModel | null,
+	/*
+	 * A durable effort intent's TARGET level (`features.settings_intents`), or
+	 * null. Unlike a model paint it names exactly the one field it changes, so
+	 * the effort reading stays the in-force spec - with its ladder - and only
+	 * the level is overridden: the chip keeps its place and names the pick at
+	 * once instead of after the runtime's next step. Absent (the default) is
+	 * today's reading, byte for byte.
+	 */
+	pendingEffort: string | null = null,
 ): { identity: CanonicalModel | null; effort: CanonicalModel | null } {
 	// `selected_model` is the fallback for an owner that reports no effective
 	// spec (nothing has run yet), which is the state a fresh session is in.
 	const inForce = frontend?.effective_model ?? frontend?.selected_model ?? null;
-	return { identity: pendingModel ?? inForce, effort: inForce };
+	const effort =
+		pendingEffort && inForce
+			? { ...inForce, reasoning_effort: pendingEffort }
+			: inForce;
+	return { identity: pendingModel ?? inForce, effort };
 }
 
 /** The fast dial's three states; `null` is "nothing to report" (not OFF). */

@@ -652,6 +652,16 @@ export type DesktopFeature =
 	 */
 	| "session_move"
 	/**
+	 * Durable per-session settings intents (`/v1/desktop/settings-intents`, the
+	 * `settings_intent` feed frame). A model/effort/fast/cwd pick is written to
+	 * the server and applied in the background with retries, so the picker
+	 * closes at once and a busy runtime never blocks the next pick.
+	 *
+	 * Its own key: without it every picker keeps today's synchronous
+	 * `sessions.command` path byte for byte (`settings-intents.ts`).
+	 */
+	| "settings_intents"
+	/**
 	 * `sessions.interrupt`: stopping the session's CURRENT TURN and its children
 	 * without ending the session (`POST /v1/desktop/sessions/{id}/interrupt`).
 	 *

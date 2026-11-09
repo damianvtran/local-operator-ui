@@ -56,7 +56,13 @@ import {
 	isUnreadAckableCompletion,
 	unreadCompletionKind,
 } from "../../../../shared/completion-attention";
-import type { TagRef } from "../../../../shared/desktop-contract";
+import type {
+	SettingsIntent,
+	SettingsIntentError,
+	SettingsIntentKind,
+	SettingsIntentSlots,
+	TagRef,
+} from "../../../../shared/desktop-contract";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
@@ -92,6 +98,16 @@ import {
 	reconcilePeerDeviceSnapshot,
 } from "../../features/mesh/peer-presence";
 import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-copy";
+import {
+	EMPTY_SETTINGS_INTENTS,
+	type SettingsIntentsMirror,
+	applyIntentFrame,
+	applySessionSlots,
+	failLocalIntent,
+	hydrateIntents,
+	paintIntent,
+	removeIntent,
+} from "./settings-intents";
 
 export type CanonicalSessionRow = {
 	session_id: string;
@@ -3881,6 +3897,56 @@ export function scopeAnswerRows(args: {
 type CanonicalSessionsState = {
 	sessions: CanonicalSessionRow[];
 	/**
+	 * The server's durable settings intents, mirrored (`features.settings_intents`).
+	 *
+	 * NOT PERSISTED - `partialize` names its keys and this is not one - because
+	 * the server is the durable authority (`sessions/<id>/settings-intent.json`):
+	 * a reload re-reads it from `GET /v1/desktop/settings-intents`, and a second
+	 * copy on the renderer's disk could only disagree with it. Every write goes
+	 * through the pure transitions in `settings-intents.ts`, which own the
+	 * last-wins, per-session and local-pick rules.
+	 */
+	settingsIntents: SettingsIntentsMirror;
+	/** `GET` baseline (boot, feed reconnect); `scope` = a `?session_id=` read. */
+	hydrateSettingsIntents: (
+		listed: Record<string, SettingsIntentSlots>,
+		scope?: string,
+	) => void;
+	/** One slot from a `settings_intent` frame; `null` is a prune. */
+	applySettingsIntentFrame: (
+		sessionId: string,
+		kind: SettingsIntentKind,
+		intent: SettingsIntent | null,
+	) => void;
+	/** A POST reply's full slot set for one session. */
+	applySettingsIntentSlots: (
+		sessionId: string,
+		slots: SettingsIntentSlots,
+	) => void;
+	/** The optimistic slot a pick paints before its POST leaves. */
+	paintSettingsIntent: (
+		sessionId: string,
+		pick: {
+			kind: SettingsIntentKind;
+			value: string | boolean;
+			requestId: string;
+			effort?: string;
+		},
+	) => void;
+	/** The POST itself failed; keyed by request id. */
+	failSettingsIntent: (
+		sessionId: string,
+		kind: SettingsIntentKind,
+		requestId: string,
+		error: SettingsIntentError,
+	) => void;
+	/** Dismiss/cancel; keyed by generation. */
+	removeSettingsIntent: (
+		sessionId: string,
+		kind: SettingsIntentKind,
+		generation: number,
+	) => void;
+	/**
 	 * Whether this daemon advertises `session_catalogue_page`, as published by the surface
 	 * that resolves the capability (`setCataloguePageable`). It sizes an unnamed catalogue
 	 * read - see `cataloguePageDefault` - and is `false` until something says otherwise,
@@ -5863,6 +5929,78 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 	persist(
 		(set, get) => ({
 			sessions: [],
+			settingsIntents: EMPTY_SETTINGS_INTENTS,
+			/*
+			 * Each writer commits only when the transition returned a NEW mirror: the
+			 * transitions return the same object for a no-op (a duplicate frame from a
+			 * second mounted feed hook, an older generation), and an unchanged slice
+			 * must not re-render the sidebar.
+			 */
+			hydrateSettingsIntents: (listed, scope) => {
+				set((state) => {
+					const next = hydrateIntents(state.settingsIntents, listed, scope);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
+			applySettingsIntentFrame: (sessionId, kind, intent) => {
+				set((state) => {
+					const next = applyIntentFrame(
+						state.settingsIntents,
+						sessionId,
+						kind,
+						intent,
+					);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
+			applySettingsIntentSlots: (sessionId, slots) => {
+				set((state) => {
+					const next = applySessionSlots(
+						state.settingsIntents,
+						sessionId,
+						slots,
+					);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
+			paintSettingsIntent: (sessionId, pick) => {
+				set((state) => ({
+					settingsIntents: paintIntent(state.settingsIntents, sessionId, pick),
+				}));
+			},
+			failSettingsIntent: (sessionId, kind, requestId, error) => {
+				set((state) => {
+					const next = failLocalIntent(
+						state.settingsIntents,
+						sessionId,
+						kind,
+						requestId,
+						error,
+					);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
+			removeSettingsIntent: (sessionId, kind, generation) => {
+				set((state) => {
+					const next = removeIntent(
+						state.settingsIntents,
+						sessionId,
+						kind,
+						generation,
+					);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
 			cataloguePageable: false,
 			catalogueActivityHead: false,
 			// Fail-closed until a mounted pane resolves the capability and publishes it

@@ -39,6 +39,14 @@ import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import {
+	dismissSettingsIntent,
+	intentPendingModel,
+	retrySettingsIntent,
+	useModelDescriber,
+	usePickerCataloguePrefetch,
+	useSessionSettingsIntents,
+} from "@shared/hooks/use-settings-intents";
 import { isDictationActive } from "@shared/hooks/use-speech-to-text-manager";
 import { useStableCallback } from "@shared/hooks/use-stable-callback";
 import {
@@ -71,6 +79,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import type { MirroredIntent } from "@shared/store/settings-intents";
 import {
 	type AskDrawerCloseOptions,
 	useUiPreferencesStore,
@@ -171,6 +180,7 @@ import { openTrace } from "../open-trace";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { resolveSessionAskFrame } from "../session-asks";
 import {
+	effortDisplay,
 	effortQueryModel,
 	modelAccessLocality,
 } from "../session-status/session-model";
@@ -4536,6 +4546,82 @@ function SessionPanel({
 	const servingLocality = useCanonicalSessionsStore((state) =>
 		modelAccessLocality(state.sessions, sessionId),
 	);
+	/*
+	 * DURABLE SETTINGS INTENTS (`features.settings_intents`). The server applies a
+	 * model/effort/cwd pick in the background; this pane mirrors the slots and
+	 * paints the TARGET at once - the model through the same `pendingModel` slot
+	 * the handle's paint uses, so the band draws both alike. The handle's own
+	 * paint (and its 15 s backstop) is never armed under the capability, because
+	 * the pickers no longer call `paintPendingModel` there; the intent is the
+	 * one source. Without the capability every value below is null and the
+	 * readings are today's.
+	 */
+	const settingsIntentsOn = desktopFeatureEnabled(
+		capabilities.data,
+		"settings_intents",
+	);
+	const intentSlots = useSessionSettingsIntents(
+		settingsIntentsOn ? sessionId : null,
+	);
+	const describeIntentModel = useModelDescriber(settingsIntentsOn);
+	usePickerCataloguePrefetch(sessionId);
+	const intentModel = useMemo(
+		() =>
+			settingsIntentsOn
+				? intentPendingModel(intentSlots, describeIntentModel)
+				: null,
+		[settingsIntentsOn, intentSlots, describeIntentModel],
+	);
+	const settingsIntentsBand = useMemo(
+		() =>
+			settingsIntentsOn && sessionId
+				? {
+						slots: intentSlots,
+						describeModel: describeIntentModel,
+						onRetry: (intent: MirroredIntent) =>
+							void retrySettingsIntent(sessionId, intent),
+						onDismiss: (intent: MirroredIntent) =>
+							void dismissSettingsIntent(sessionId, intent),
+					}
+				: undefined,
+		[settingsIntentsOn, sessionId, intentSlots, describeIntentModel],
+	);
+	/*
+	 * A SUPERSEDED pick - the TUI or the phone changed the setting first - is
+	 * published once and then pruned, so it is told here as a transcript note
+	 * rather than a chip that would vanish on its own. Noted once per request.
+	 */
+	const notedSuperseded = useRef(new Set<string>());
+	useEffect(() => {
+		for (const intent of Object.values(intentSlots)) {
+			if (intent?.state !== "superseded") continue;
+			if (notedSuperseded.current.has(intent.request_id)) continue;
+			notedSuperseded.current.add(intent.request_id);
+			const inForce =
+				canonical.frontend?.effective_model ??
+				canonical.frontend?.selected_model;
+			if (intent.kind === "model" && inForce) {
+				canonical.addNote(
+					t("ui.chat.settings_intents.superseded_model", {
+						model: describeIntentModel(
+							`${inForce.provider}/${inForce.model_id}`,
+						),
+					}),
+				);
+			} else if (
+				intent.kind === "effort" &&
+				typeof inForce?.reasoning_effort === "string"
+			) {
+				canonical.addNote(
+					t("ui.chat.settings_intents.superseded_effort", {
+						level: effortDisplay(inForce.reasoning_effort),
+					}),
+				);
+			} else {
+				canonical.addNote(t("ui.chat.settings_intents.superseded_other"));
+			}
+		}
+	}, [intentSlots, canonical.addNote, canonical.frontend, describeIntentModel]);
 	const liveSessionStatus = useMemo(
 		() =>
 			sessionId
@@ -4603,7 +4689,8 @@ function SessionPanel({
 						 * (latency U1). Straight off the handle, which owns both the paint and
 						 * its reconciliation with the authoritative frames.
 						 */
-						pendingModel: canonical.pendingModel,
+						pendingModel: intentModel ?? canonical.pendingModel,
+						settingsIntents: settingsIntentsBand,
 						/*
 						 * `dispatchFromControl`'s STABLE WRAPPER, not `dispatch`: a chip has no
 						 * fallback path to report a failure the way typed text does, so an
@@ -4641,6 +4728,8 @@ function SessionPanel({
 			servingLocality,
 			readingsDroppedFor,
 			canonical.pendingModel,
+			intentModel,
+			settingsIntentsBand,
 			stableDispatchFromControl,
 			effortEntities.data,
 			capabilities.data,

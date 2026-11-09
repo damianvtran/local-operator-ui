@@ -350,6 +350,23 @@ export function useDesktopFeed(): DesktopFeedConnection {
 				return;
 			}
 			/*
+			 * A settings-intent slot moved (`features.settings_intents`). Applied
+			 * straight to the store's mirror, like `attention`: every mounted feed
+			 * hook receives the frame, and the mirror's generation guard makes the
+			 * second and later deliveries no-ops. A backend without the capability
+			 * never publishes the type.
+			 */
+			if (frame.type === "settings_intent") {
+				useCanonicalSessionsStore
+					.getState()
+					.applySettingsIntentFrame(
+						frame.session_id,
+						frame.payload.kind,
+						frame.payload.intent,
+					);
+				return;
+			}
+			/*
 			 * The authoring revision is EXPOSED, not acted on, for the same reason the
 			 * catalogue revision is: this hook is the transport, and what a revision
 			 * invalidates belongs to whoever owns the query keys. Here that is the

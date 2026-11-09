@@ -745,6 +745,44 @@ test("typing retires the sentence even when the row it names survives", async ()
 });
 
 /** The bundle is written outside the repo tree; a leftover would be a fingerprint. */
+/*
+ * THE BUSY GATE AND DURABLE INTENTS (`features.settings_intents`).
+ *
+ * A pick used to BE the runtime round trip, so the host swallowed every pick
+ * while `busy`. Under the capability a pick is a durable intent the server
+ * coalesces last-wins, and the only thing still busy is a default save beside
+ * it - which must not eat the user's next pick. `picksWhileBusy` lifts the gate;
+ * without it the gate is exactly what it was.
+ */
+test("a busy host drops picks unless picksWhileBusy says the pick is a durable intent", async () => {
+	const picked = [];
+	const props = {
+		open: true,
+		onClose: () => {},
+		title: "Model",
+		options: interleaved(),
+		busy: true,
+		onPick: (value) => {
+			picked.push(value);
+		},
+	};
+	const view = mount(props);
+	const press = async () => {
+		const row = [...document.querySelectorAll('[role="option"]')][1];
+		await act(async () => {
+			row.dispatchEvent(
+				new dom.window.MouseEvent("mousedown", { bubbles: true }),
+			);
+		});
+	};
+	await press();
+	assert.deepEqual(picked, [], "today's gate: a busy host ignores the pick");
+	view.render({ ...props, picksWhileBusy: true });
+	await press();
+	assert.equal(picked.length, 1, "with the capability the pick goes through");
+	view.unmount();
+});
+
 test("the bundled component was built from this tree", () => {
 	const tracked = execFileSync("git", ["status", "--short", "--", "scripts/"], {
 		encoding: "utf8",

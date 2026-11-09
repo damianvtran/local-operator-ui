@@ -2323,6 +2323,54 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * DURABLE SETTINGS INTENTS (`features.settings_intents`, design 2026-11-09).
+	 *
+	 * WHY THESE EXIST. A model/effort/fast/cwd change used to be ONE HTTP request
+	 * that attached to the session's runtime and waited for its answer, so a busy
+	 * or starved runtime held the picker open (and refused the next pick) for up
+	 * to the renderer's whole deadline. These three ops move the wait off the
+	 * request: the server writes `sessions/<id>/settings-intent.json` and returns
+	 * at once (202), and its own applier retries against the runtime in the
+	 * background, surviving a conversation switch and an app restart. The
+	 * renderer only MIRRORS the server's slots (see `settings-intents.ts`); it
+	 * persists nothing, so two windows and the TUI never disagree.
+	 *
+	 * `submit` is idempotent on `requestId`: a replay of the slot's current id
+	 * answers 200 with the same body, so a renderer that lost the reply can send
+	 * the same request again. Retry after a failure is a NEW request id with the
+	 * same value (no separate route). `effort` is accepted only beside
+	 * `kind: "model"`, which pairs the two into one runtime `set_model`.
+	 */
+	z
+		.object({
+			op: z.literal("settingsIntents.list"),
+			sessionId: sessionId.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("settingsIntents.submit"),
+			sessionId,
+			requestId,
+			kind: z.enum(["model", "effort", "fast", "cwd"]),
+			value: z.union([z.string().min(1).max(4096), z.boolean()]),
+			effort: z.string().min(1).max(64).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("settingsIntents.dismiss"),
+			sessionId,
+			kind: z.enum(["model", "effort", "fast", "cwd"]),
+			/*
+			 * The slot generation the user saw. A newer pick bumps it, and the server
+			 * answers 409 `generation_moved` rather than cancelling a choice the user
+			 * made after the one they meant to dismiss.
+			 */
+			generation: z.number().int().nonnegative(),
+		})
+		.strict(),
+	/*
 	 * THE LIVE PROFILE-ACTION STATUS READ (read-only, session-scoped).
 	 *
 	 * It is the SOLE authority for enabling a Revert: core's gate is a live
@@ -9423,6 +9471,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// path is the SESSION's directory, which the renderer does not own.
 				body: { request_id: request.requestId, cwd: request.cwd },
 			};
+		case "settingsIntents.list":
+			return {
+				path: request.sessionId
+					? `/v1/desktop/settings-intents?session_id=${request.sessionId}`
+					: "/v1/desktop/settings-intents",
+				method: "GET",
+			};
+		case "settingsIntents.submit":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/settings-intents`,
+				method: "POST",
+				// `effort` rides only when given: the route refuses it beside any kind
+				// other than `model`, and an absent key is the unpaired form.
+				body: {
+					request_id: request.requestId,
+					kind: request.kind,
+					value: request.value,
+					...(request.effort !== undefined ? { effort: request.effort } : {}),
+				},
+			};
+		case "settingsIntents.dismiss":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/settings-intents/${request.kind}?generation=${request.generation}`,
+				method: "DELETE",
+			};
 		case "sessions.warm":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/warm`,
@@ -11742,4 +11815,74 @@ export type DesktopContextNumbers = {
 	context_window: number;
 	cache_read: number;
 	total: number;
+};
+
+/*
+ * THE SETTINGS-INTENT SLOT, as `GET|POST /v1/desktop/.../settings-intents` and
+ * the feed's `settings_intent` frame carry it (design 2026-11-09 §2b).
+ *
+ * One slot per KIND per session; a newer pick for the same kind REPLACES the
+ * slot and bumps `generation` (last-wins coalescing happens on the server).
+ * `base` is the value in force when the slot was written, which is how the
+ * server tells "someone else changed it" (`superseded`) from "ours landed".
+ *
+ * States, in the order a slot normally walks them:
+ * - `pending` / `applying`: queued for, or inside, an attempt.
+ * - `queued_next_step`: the runtime accepted it and applies it before its next
+ *   provider call (it was mid-step).
+ * - `waiting_idle`: cwd only - a move waits for the turn to end; cancellable.
+ * - `applied`: confirmed; pruned 60 s later (a `null` frame).
+ * - `failed`: terminal refusal or retry budget spent; stays until dismissed or
+ *   replaced. `error.retryable` says whether Retry can help.
+ * - `superseded`: another client changed the setting first; published once.
+ */
+export type SettingsIntentKind = "model" | "effort" | "fast" | "cwd";
+
+export type SettingsIntentState =
+	| "pending"
+	| "applying"
+	| "queued_next_step"
+	| "waiting_idle"
+	| "applied"
+	| "failed"
+	| "superseded";
+
+export type SettingsIntentError = {
+	code: string;
+	message: string;
+	retryable: boolean;
+	/** Set beside `retry_budget_exhausted`: the code the last attempt saw. */
+	last_code?: string;
+};
+
+export type SettingsIntent = {
+	kind: SettingsIntentKind;
+	value: string | boolean;
+	/** Paired effort, only beside `kind: "model"`. */
+	effort?: string | null;
+	request_id: string;
+	generation: number;
+	base?: string | boolean | null;
+	state: SettingsIntentState;
+	attempts?: number;
+	created_at?: string;
+	updated_at?: string;
+	next_attempt_at?: string | null;
+	deadline_at?: string | null;
+	error?: SettingsIntentError | null;
+};
+
+export type SettingsIntentSlots = Partial<
+	Record<SettingsIntentKind, SettingsIntent>
+>;
+
+/** `POST .../settings-intents` (202 new, 200 replay). */
+export type SettingsIntentSubmitResult = {
+	intent: SettingsIntent;
+	intents: SettingsIntentSlots;
+};
+
+/** `GET /v1/desktop/settings-intents`: only sessions holding a slot appear. */
+export type SettingsIntentsListResult = {
+	intents: Record<string, SettingsIntentSlots>;
 };

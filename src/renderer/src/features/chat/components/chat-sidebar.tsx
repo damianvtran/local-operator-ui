@@ -317,6 +317,7 @@ import { builtinOfferSentence } from "./builtin-offer-sentence";
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
+import { ChatSettingsIntentMark } from "./chat-settings-intent-mark";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 import {
 	ChatTagFooter,
@@ -5152,6 +5153,12 @@ export function ChatSidebar({
 					row={row}
 					open={asksBySession?.get(row.session_id)}
 				/>
+				{/*
+				 * A settings change still applying (or failed) on this conversation,
+				 * beside the asks mark for the same reason: a leading fact, and nothing
+				 * at all when there is none (`chat-settings-intent-mark.tsx`).
+				 */}
+				<ChatSettingsIntentMark sessionId={row.session_id} />
 				{/*
 				 * THE ARCHIVED MARKER, and where it sits is the decision this file owes an
 				 * answer for: IN FRONT of the title rather than in the trailing slot.

@@ -61,6 +61,7 @@ import type {
 	TranscriptState,
 } from "../canonical/transcript-reducer";
 import { moveNotReadyReason, moveUnavailableReason } from "../move-session";
+import { SettingsIntentChips } from "../session-status/settings-intent-chips";
 import {
 	DirectoryIndicator,
 	type DirectoryWritePath,
@@ -712,4 +713,70 @@ export const Receipts: Story = {
 			]}
 		/>
 	),
+};
+
+/**
+ * A durable cwd intent WAITING FOR THE TURN TO END (`features.settings_intents`).
+ *
+ * The chip keeps naming the directory IN FORCE - new sends still run there
+ * until the move lands between turns (design §2e) - and the intent line above
+ * says where it will go, with Cancel (which DELETEs the slot by generation).
+ * The play asserts the pair and that Cancel reaches the slot's own handler.
+ */
+const MATCH_WHEN_TURN_ENDS = /when this turn ends/;
+
+const WaitingIdleFrame: FC = () => {
+	const [cancelled, setCancelled] = useState(false);
+	return (
+		<div className={cn("flex min-h-screen w-full justify-center bg-canvas")}>
+			<div
+				className={cn(
+					"@container/chatcol",
+					"flex h-screen flex-col justify-end border-x border-hairline bg-surface p-3",
+				)}
+				style={{ width: "880px" }}
+			>
+				<SettingsIntentChips
+					slots={
+						cancelled
+							? {}
+							: {
+									cwd: {
+										kind: "cwd",
+										value: `${HOME}/Downloads`,
+										request_id: "00000000-0000-4000-8000-000000000001",
+										generation: 1,
+										state: "waiting_idle",
+										error: null,
+									},
+								}
+					}
+					describeDir={(path) => path.replace(HOME, "~")}
+					onRetry={() => undefined}
+					onDismiss={() => setCancelled(true)}
+				/>
+				<div className={cn("flex min-w-0 items-center gap-2")}>
+					<DirectoryIndicator
+						currentWorkingDirectory={PROJECT}
+						writePath={MOVING}
+					/>
+				</div>
+			</div>
+		</div>
+	);
+};
+
+export const WaitingIdle: Story = {
+	render: () => <WaitingIdleFrame />,
+	play: async () => {
+		await waitFor(() =>
+			expect(
+				screen.getByText("Moves to ~/Downloads when this turn ends"),
+			).toBeTruthy(),
+		);
+		await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+		await waitFor(() =>
+			expect(screen.queryByText(MATCH_WHEN_TURN_ENDS)).toBeNull(),
+		);
+	},
 };

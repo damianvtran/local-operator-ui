@@ -44,9 +44,16 @@ import {
 	resyncCanonicalSession,
 } from "@shared/hooks/use-canonical-session";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
+import {
+	PICKER_CATALOGUE_KEY,
+	submitSettingsIntent,
+	useSessionSettingsIntents,
+	useSettingsIntentsEnabled,
+} from "@shared/hooks/use-settings-intents";
 import { formatList, t } from "@shared/i18n";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { intentOverride } from "@shared/store/settings-intents";
 import {
 	type ModelAuthorityReceipt,
 	observeModelAuthority,
@@ -283,6 +290,26 @@ export function useEntities<T = Record<string, unknown>>(
 }
 
 // ------------------------------------------------------------------ model
+
+/**
+ * The effort ladder a catalogue row reports for `selector`, or `[]` when the
+ * catalogue is not warm or the row carries none. Lets the effort picker paint
+ * from the registry cache instead of waiting on a runtime read
+ * (`features.settings_intents`).
+ */
+export function catalogueRungs(
+	catalogue: DesktopModelCatalogue | undefined,
+	selector: string,
+): string[] {
+	const row = catalogue?.models.find(
+		(candidate) =>
+			(candidate.selector || `${candidate.provider}/${candidate.model_id}`) ===
+			selector,
+	);
+	return (row?.reasoning_efforts ?? []).filter(
+		(rung): rung is string => typeof rung === "string" && rung !== "",
+	);
+}
 
 type CatalogueRow = DesktopModelCatalogue["models"][number] & {
 	value?: string;
@@ -1231,6 +1258,14 @@ export const ModelPicker: FC<PickerContext> = ({
 		enabled: Boolean(draft),
 	});
 	const persist = useOperation();
+	/*
+	 * DURABLE INTENTS (`features.settings_intents`): a pick is POSTed to the
+	 * server, which applies it in the background, and the dialog closes at once
+	 * - no "Switching the model..." wait, no busy gate on the next pick. A draft
+	 * pane has no session to address and keeps its own preview path.
+	 */
+	const intents = useSettingsIntentsEnabled() && !draft;
+	const intentSlots = useSessionSettingsIntents(intents ? sessionId : null);
 	const [persistDefault, setPersistDefault] = useState(false);
 	/*
 	 * The checkbox's value as the pick's continuation reads it, and whether a
@@ -1313,7 +1348,11 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const shownSelector = draft
 		? modelSelector(bandReadings(draftFrontend, null).identity)
-		: (pickedCurrent ?? currentSelector);
+		: intents
+			? // The pending target is what the band already names, so the list
+				// marks it too; the frame's model returns once the slot settles.
+				(intentOverride(intentSlots).model ?? currentSelector)
+			: (pickedCurrent ?? currentSelector);
 
 	/*
 	 * The catalogue row's own auth state, by selector.
@@ -1641,6 +1680,13 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * The model is assembled from the selector the row carried, so the paint
 			 * cannot name a model the catalogue did not offer.
 			 */
+			if (intents) {
+				void submitSettingsIntent(sessionId, { kind: "model", value });
+				if (persistDefaultRef.current)
+					void saveModelDefault({ provider, model_id: modelId });
+				onClose();
+				return;
+			}
 			const model: CanonicalModel = {
 				provider,
 				model_id: modelId,
@@ -1874,6 +1920,8 @@ export const ModelPicker: FC<PickerContext> = ({
 			saveModelDefault,
 			persist.setResult,
 			modelName,
+			intents,
+			onClose,
 		],
 	);
 
@@ -2160,7 +2208,14 @@ export const ModelPicker: FC<PickerContext> = ({
 				) : undefined
 			}
 			onPick={onPick}
-			busy={draft ? draftPick.busy : command.busy || persist.busy}
+			picksWhileBusy={intents}
+			busy={
+				draft
+					? draftPick.busy
+					: intents
+						? persist.busy
+						: command.busy || persist.busy
+			}
 			/*
 			 * The in-flight copy names the change, not the machinery: the user asked
 			 * whether their pick registered, and "the backend" is the
@@ -2377,6 +2432,26 @@ export const EffortPicker: FC<PickerContext> = ({
 	const command = useSessionCommand(sessionId);
 	const draftPick = useDraftPick(draft, note);
 	const defaultSetting = useOperation();
+	/*
+	 * DURABLE INTENTS: the rungs are drawn from the WARM registry catalogue's row
+	 * for the model the band names (the pending target, else the frame's), so
+	 * the dialog paints at once even while the runtime is busy; `useEntities`
+	 * keeps refreshing in the background and is the fallback when the row
+	 * carries no ladder. A pick POSTs and closes.
+	 */
+	const intents = useSettingsIntentsEnabled() && !draft;
+	const intentSlots = useSessionSettingsIntents(intents ? sessionId : null);
+	const intentCatalogue = useQuery({
+		queryKey: PICKER_CATALOGUE_KEY,
+		queryFn: () =>
+			desktopResult<DesktopModelCatalogue>({
+				op: "models.catalogue",
+				live: false,
+				scope: "usable",
+			}),
+		staleTime: 60_000,
+		enabled: intents,
+	});
 	const [saveAsDefault, setSaveAsDefault] = useState(false);
 	/*
 	 * The same two refs the model dialog keeps, for the same reason: the pick's
@@ -2463,9 +2538,17 @@ export const EffortPicker: FC<PickerContext> = ({
 		? draftModel
 		: (runningFrontend(canonical)?.effective_model ??
 			runningFrontend(canonical)?.selected_model);
+	const intentTarget = intents
+		? (intentOverride(intentSlots).model ?? modelSelector(model))
+		: null;
+	const cachedRungs = intentTarget
+		? catalogueRungs(intentCatalogue.data, intentTarget)
+		: [];
 	const rungs = draft
 		? effortLadder(draftModel)
-		: (entities.data?.entities ?? []).map((row) => row.value);
+		: cachedRungs.length > 0
+			? cachedRungs
+			: (entities.data?.entities ?? []).map((row) => row.value);
 	/*
 	 * A session's rung in force is read off the LIVE frame first - the field the
 	 * status chip prints - and the entity list only when the frame names none.
@@ -2499,7 +2582,10 @@ export const EffortPicker: FC<PickerContext> = ({
 	 * ONE answer to "which rung is in force", read by the ✓ and by the tick, so
 	 * the row marked current is the rung a tick saves.
 	 */
-	const rungInForce = acceptedRung ?? currentRung;
+	const rungInForce =
+		(intents ? intentOverride(intentSlots).effort : null) ??
+		acceptedRung ??
+		currentRung;
 
 	const options = useMemo<PickerOption[]>(() => {
 		// t() reads at call time; locale invalidates the display-only labels.
@@ -2538,7 +2624,9 @@ export const EffortPicker: FC<PickerContext> = ({
 	 * having no rungs; a session's is a read of a live spec, which can be empty
 	 * because the owner has not resolved it yet.
 	 */
-	const loading = draft ? draftPreview.isLoading : entities.isLoading;
+	const loading = draft
+		? draftPreview.isLoading
+		: entities.isLoading && cachedRungs.length === 0;
 	const noOptions = options.length === 0 && !loading;
 	/*
 	 * The tick is a request about the rung IN FORCE, whenever it is made: the one
@@ -2678,6 +2766,12 @@ export const EffortPicker: FC<PickerContext> = ({
 						)
 			}
 			onPick={(value) => {
+				if (intents) {
+					void submitSettingsIntent(sessionId, { kind: "effort", value });
+					if (saveAsDefaultRef.current) void saveEffortDefault(value);
+					onClose();
+					return;
+				}
 				if (!draft) {
 					switching.current = true;
 					void command
@@ -2738,7 +2832,14 @@ export const EffortPicker: FC<PickerContext> = ({
 			}}
 			/* Keep both receipts visible: the effort command and machine-default write
 			 * are separate outcomes, as they are for the model picker. */
-			busy={draft ? draftPick.busy : command.busy || defaultSetting.busy}
+			picksWhileBusy={intents}
+			busy={
+				draft
+					? draftPick.busy
+					: intents
+						? defaultSetting.busy
+						: command.busy || defaultSetting.busy
+			}
 			result={
 				draft
 					? draftPick.result

@@ -1,0 +1,23 @@
+{
+	"ui.chat.settings_intents.chips_label": "सेटिंग में बदलाव",
+	"ui.chat.settings_intents.cwd_waiting": "यह टर्न ख़त्म होने पर {dir} में जाएगा",
+	"ui.chat.settings_intents.effort_queued": "प्रयास स्तर {level} अगले चरण से लागू होगा",
+	"ui.chat.settings_intents.failed_cwd": "{dir} में नहीं ले जाया जा सका: {reason}",
+	"ui.chat.settings_intents.failed_effort": "प्रयास स्तर {level} सेट नहीं हो सका: {reason}",
+	"ui.chat.settings_intents.failed_fast": "फ़ास्ट मोड नहीं बदला जा सका: {reason}",
+	"ui.chat.settings_intents.failed_model": "{model} पर स्विच नहीं हो सका: {reason}",
+	"ui.chat.settings_intents.fast_queued": "फ़ास्ट मोड का बदलाव अगले चरण से लागू होगा",
+	"ui.chat.settings_intents.model_queued": "{model} अगले चरण से लागू होगा",
+	"ui.chat.settings_intents.moving_cwd": "{dir} में ले जाया जा रहा है…",
+	"ui.chat.settings_intents.reason_budget": "सत्र ने समय पर जवाब नहीं दिया",
+	"ui.chat.settings_intents.reason_unknown": "कोई कारण नहीं बताया गया",
+	"ui.chat.settings_intents.row_applying": "सेटिंग में बदलाव लागू किया जा रहा है",
+	"ui.chat.settings_intents.row_failed": "सेटिंग का एक बदलाव विफल रहा",
+	"ui.chat.settings_intents.setting_effort": "प्रयास स्तर {level} पर सेट किया जा रहा है…",
+	"ui.chat.settings_intents.setting_fast_off": "फ़ास्ट मोड बंद किया जा रहा है…",
+	"ui.chat.settings_intents.setting_fast_on": "फ़ास्ट मोड चालू किया जा रहा है…",
+	"ui.chat.settings_intents.superseded_effort": "प्रयास स्तर को कहीं और से {level} में बदला गया",
+	"ui.chat.settings_intents.superseded_model": "मॉडल को कहीं और से {model} में बदला गया",
+	"ui.chat.settings_intents.superseded_other": "यह सेटिंग कहीं और से बदली गई",
+	"ui.chat.settings_intents.switching_model": "{model} पर स्विच किया जा रहा है…"
+}

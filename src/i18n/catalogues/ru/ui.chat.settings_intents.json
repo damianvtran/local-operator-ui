@@ -1,0 +1,23 @@
+{
+	"ui.chat.settings_intents.chips_label": "Изменения настроек",
+	"ui.chat.settings_intents.cwd_waiting": "Переход в {dir} после завершения этого хода",
+	"ui.chat.settings_intents.effort_queued": "Усилие {level} будет применено на следующем шаге",
+	"ui.chat.settings_intents.failed_cwd": "Не удалось перейти в {dir}: {reason}",
+	"ui.chat.settings_intents.failed_effort": "Не удалось установить усилие {level}: {reason}",
+	"ui.chat.settings_intents.failed_fast": "Не удалось изменить быстрый режим: {reason}",
+	"ui.chat.settings_intents.failed_model": "Не удалось переключиться на {model}: {reason}",
+	"ui.chat.settings_intents.fast_queued": "Смена быстрого режима будет применена на следующем шаге",
+	"ui.chat.settings_intents.model_queued": "{model} будет применена на следующем шаге",
+	"ui.chat.settings_intents.moving_cwd": "Перемещение в {dir}…",
+	"ui.chat.settings_intents.reason_budget": "сессия не ответила вовремя",
+	"ui.chat.settings_intents.reason_unknown": "причина не указана",
+	"ui.chat.settings_intents.row_applying": "Применяется изменение настроек",
+	"ui.chat.settings_intents.row_failed": "Изменение настроек не удалось",
+	"ui.chat.settings_intents.setting_effort": "Установка усилия: {level}…",
+	"ui.chat.settings_intents.setting_fast_off": "Выключение быстрого режима…",
+	"ui.chat.settings_intents.setting_fast_on": "Включение быстрого режима…",
+	"ui.chat.settings_intents.superseded_effort": "Усилие изменено в другом месте на {level}",
+	"ui.chat.settings_intents.superseded_model": "Модель изменена в другом месте на {model}",
+	"ui.chat.settings_intents.superseded_other": "Этот параметр изменён в другом месте",
+	"ui.chat.settings_intents.switching_model": "Переключение на {model}…"
+}

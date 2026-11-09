@@ -112,6 +112,10 @@ import {
 } from "@features/chat/session-status/session-model";
 import { SessionModelAccessBand } from "@features/chat/session-status/session-model-access";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
+import {
+	SettingsIntentChips,
+	type SettingsIntentsBand,
+} from "@features/chat/session-status/settings-intent-chips";
 import type { Message } from "@features/chat/types/message";
 import {
 	DesktopControlError,
@@ -169,6 +173,7 @@ import {
 	type Reply,
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
+import { intentOverride } from "@shared/store/settings-intents";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
 import { pasteInsertsOnlyFileNames } from "@shared/utils/paste-utils";
 import { normalizePath } from "@shared/utils/path-utils";
@@ -1163,6 +1168,13 @@ export type MessageInputProps = {
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
 		pendingModel?: CanonicalModel | null;
+		/**
+		 * Durable settings-intent slots and their actions
+		 * (`features.settings_intents`): rendered as a chip line above the control
+		 * row, and the pending effort level painted on the band. Absent without
+		 * the capability, which leaves the composer exactly as before.
+		 */
+		settingsIntents?: SettingsIntentsBand;
 		/**
 		 * This pane is a NEW conversation's draft: there is no session yet, so the
 		 * readings come from `sessions.preview` and render inert unless the backend
@@ -9855,6 +9867,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * It renders only once the attempts are spent (`!isTranscribing`), so
 						 * the row never appears while a send is still in flight.
 						 */}
+						{/*
+						 * The durable settings changes still applying (or failed) for this
+						 * session: their own line, in the dictation row's slot and register,
+						 * because the control row below is one line that cannot hold a
+						 * sentence with buttons (see `settings-intent-chips.tsx`).
+						 */}
+						{sessionStatus?.settingsIntents && (
+							<SettingsIntentChips {...sessionStatus.settingsIntents} />
+						)}
 						{dictationFailure !== null &&
 							!isTranscribing &&
 							audioBlob !== null && (
@@ -9995,6 +10016,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										contextHeld={sessionStatus.contextHeld}
 										readingsDropped={sessionStatus.readingsDropped}
 										pendingModel={sessionStatus.pendingModel}
+										pendingEffort={
+											sessionStatus.settingsIntents
+												? intentOverride(sessionStatus.settingsIntents.slots)
+														.effort
+												: null
+										}
 										costChannels={sessionStatus.costChannels}
 										/*
 										 * The row's own third-box predicate, handed down rather than

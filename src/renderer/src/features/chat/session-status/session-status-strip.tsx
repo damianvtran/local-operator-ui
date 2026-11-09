@@ -163,6 +163,13 @@ export type SessionStatusStripProps = {
 	 */
 	pendingModel?: CanonicalModel | null;
 	/**
+	 * An effort level the user just chose that a durable settings intent is
+	 * still applying (`features.settings_intents`), or null. The effort reading
+	 * names it at once and is drawn pending, like `pendingModel`. Never set
+	 * without the capability.
+	 */
+	pendingEffort?: string | null;
+	/**
 	 * Whether this is a NEW conversation's draft — a pane with no session yet.
 	 *
 	 * TOLD, never inferred. `onCommand === undefined` already means a backend
@@ -1099,6 +1106,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 	onCommand,
 	effortEntities,
 	pendingModel = null,
+	pendingEffort = null,
 	draft = false,
 	held = false,
 	contextHeld = false,
@@ -1145,7 +1153,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 	 * chip (reviewer round 1, major 1: `effortState` answers `null` for a row's
 	 * spec, so the chip vanished for the whole 1.1-4.2 s pending window).
 	 */
-	const readings = bandReadings(frontend, pendingModel);
+	const readings = bandReadings(frontend, pendingModel, pendingEffort);
 	const model = readings.identity;
 	const identity = modelIdentity(model);
 	/*
@@ -1819,6 +1827,8 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 							 * because the sentence already rides the accessible name.
 							 */
 							effortNote && "inline-flex items-center gap-1 text-warning",
+							// The same pending register the model reading takes.
+							pendingEffort !== null && "text-ink-dim",
 						)}
 					>
 						{effortDisplay(effort.label)}
