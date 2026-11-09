@@ -142,7 +142,7 @@ test("derived inventory includes nested names; partition is complete, disjoint, 
 	assert.deepEqual(sizes, {
 		2: [255, 287],
 		3: [196, 182, 164],
-		4: [126, 144, 129, 143],
+		5: [106, 104, 115, 99, 118],
 	});
 });
 
@@ -237,9 +237,14 @@ test("the shard memory ceiling fails hard, naming the shard, its size, the ceili
 	// Boundary, both directions, through the assertion the planner calls, so the
 	// guard cannot decay into decoration: the ceiling itself passes, one over fails.
 	assert.doesNotThrow(() =>
-		assertShardCeiling(shaped([SHARD_FILE_CEILING, 1, 1, 1])),
+		assertShardCeiling(
+			shaped([SHARD_FILE_CEILING, ...Array(SHARD_COUNT - 1).fill(1)]),
+		),
 	);
-	const over = shaped([SHARD_FILE_CEILING + 1, 1, 1, 1]);
+	const over = shaped([
+		SHARD_FILE_CEILING + 1,
+		...Array(SHARD_COUNT - 1).fill(1),
+	]);
 	assert.throws(() => assertShardCeiling(over), /memory ceiling/);
 	let message = "";
 	try {
@@ -253,7 +258,7 @@ test("the shard memory ceiling fails hard, naming the shard, its size, the ceili
 	// constants, so this cannot pin a number that later moves.
 	assert.match(
 		message,
-		new RegExp(`shard 1/4 holds ${SHARD_FILE_CEILING + 1} files`),
+		new RegExp(`shard 1/${SHARD_COUNT} holds ${SHARD_FILE_CEILING + 1} files`),
 	);
 	assert.match(
 		message,
@@ -282,9 +287,12 @@ test("the shard memory ceiling fails hard, naming the shard, its size, the ceili
 	// And end to end through the planner: a real tree whose largest lane is over
 	// the ceiling fails `plan`, which is the one path plan/run/receipt/verify all
 	// take, so this fails a CI lane instead of launching it.
-	tree(shaped([SHARD_FILE_CEILING + 1, 1, 1, 1]).flat(), (root) => {
-		assert.throws(() => plan(root, HEAD, CHECKOUT), /memory ceiling/);
-	});
+	tree(
+		shaped([SHARD_FILE_CEILING + 1, ...Array(SHARD_COUNT - 1).fill(1)]).flat(),
+		(root) => {
+			assert.throws(() => plan(root, HEAD, CHECKOUT), /memory ceiling/);
+		},
+	);
 });
 
 test("empty-lane refill is pinned, including the case that disproved its reachability claim", () => {
@@ -343,37 +351,55 @@ test("empty-lane refill is pinned, including the case that disproved its reachab
 
 test("refill cannot reach a suite this size, and cannot hide a lane that is over", () => {
 	const ceiling = SHARD_FILE_CEILING;
-	// 3 x the ceiling + 1 is the largest inventory whose refilled partition can
-	// still pass: it needs the two other lanes at the ceiling or less and the
+	// (SHARD_COUNT - 1) x the ceiling + 1 is the largest inventory whose
+	// refilled partition can still pass: it needs the other occupied lanes at the ceiling or less and the
 	// largest at ceiling + 1. One file more and the dispatched partition is over.
 	const dispatches = assertShardCeiling(
-		partition(shaped([ceiling + 1, ceiling, ceiling, 0]).flat()),
+		partition(
+			shaped([ceiling + 1, ...Array(SHARD_COUNT - 2).fill(ceiling), 0]).flat(),
+		),
 	);
 	assert.deepEqual(
 		dispatches.map((group) => group.length),
-		[ceiling, ceiling, ceiling, 1],
+		[...Array(SHARD_COUNT - 1).fill(ceiling), 1],
 	);
 	assert.throws(
 		() =>
 			assertShardCeiling(
-				partition(shaped([ceiling + 2, ceiling, ceiling, 0]).flat()),
+				partition(
+					shaped([
+						ceiling + 2,
+						...Array(SHARD_COUNT - 2).fill(ceiling),
+						0,
+					]).flat(),
+				),
 			),
 		/memory ceiling/,
 	);
 	// Refill is why the assertion runs on the partition that is DISPATCHED rather
-	// than on the raw deal: three empty lanes refill a raw ceiling + 1 lane down
-	// to ceiling - 2, and ceiling - 2 is a lane memory can carry, so the shard
+	// than on the raw deal: each empty lane takes one file from the raw ceiling
+	// + 1 lane, putting it below the ceiling, so the shard
 	// that runs is the one that is checked.
 	assert.deepEqual(
-		assertShardCeiling(partition(shaped([ceiling + 1, 0, 0, 0]).flat())).map(
-			(group) => group.length,
-		),
-		[ceiling - 2, 1, 1, 1],
+		assertShardCeiling(
+			partition(
+				shaped([ceiling + 1, ...Array(SHARD_COUNT - 1).fill(0)]).flat(),
+			),
+		).map((group) => group.length),
+		[ceiling + 2 - SHARD_COUNT, ...Array(SHARD_COUNT - 1).fill(1)],
 	);
-	// And refill cannot rescue a lane that is genuinely over: taking three files
-	// off 300 leaves 297, which fails.
+	// And refill cannot rescue a lane that is genuinely over: taking spare files
+	// off an oversized lane still leaves it above the ceiling.
 	assert.throws(
-		() => assertShardCeiling(partition(shaped([300, 0, 0, 0]).flat())),
+		() =>
+			assertShardCeiling(
+				partition(
+					shaped([
+						ceiling + SHARD_COUNT,
+						...Array(SHARD_COUNT - 1).fill(0),
+					]).flat(),
+				),
+			),
 		/memory ceiling/,
 	);
 });
@@ -395,6 +421,20 @@ test("the lane count is one constant: CI derives its matrix from it, and a disag
 		JSON.parse(printed.join("\n")),
 		Array.from({ length: SHARD_COUNT }, (_, index) => index),
 	);
+
+	// The CI output must carry the same count as the JSON mode: a stale display
+	// count hides a matrix drift even when all dispatched lanes report green.
+	const outputRoot = mkdtempSync(join(tmpdir(), "desktop-shard-matrix-"));
+	try {
+		const output = join(outputRoot, "github-output");
+		assert.equal(await main(["matrix", "--github-output", output]), 0);
+		assert.equal(
+			readFileSync(output, "utf8"),
+			`shards=${JSON.stringify(shardMatrix())}\nshardcount=${SHARD_COUNT}\n`,
+		);
+	} finally {
+		rmSync(outputRoot, { recursive: true, force: true });
+	}
 
 	// The workflow must DERIVE from that output. A literal `shard: [...]` list is
 	// a second place to edit, and a literal that drifts dispatches fewer lanes
@@ -422,10 +462,31 @@ test("the lane count is one constant: CI derives its matrix from it, and a disag
 	// index outside the constant is refused, and a partial run cannot be verified
 	// as complete.
 	const p = expected();
-	assert.throws(
-		() => receipt(p, SHARD_COUNT, runnerLog(p.shards[0].length), 0, 1),
-		/Invalid shard index/,
-	);
+	for (const index of [-1, SHARD_COUNT]) {
+		assert.throws(
+			() => receipt(p, index, runnerLog(p.shards[0].length), 0, 1),
+			/Invalid shard index/,
+		);
+		await assert.rejects(
+			() =>
+				main([
+					"run",
+					"--head",
+					HEAD,
+					"--checkout",
+					CHECKOUT,
+					"--index",
+					String(index),
+				]),
+			new RegExp(`Expected --index 0\\.\\.${SHARD_COUNT - 1}`),
+		);
+		const invalid = rows(p);
+		invalid[0].index = index;
+		assert.throws(
+			() => verify(p, invalid, "true", "success", "success"),
+			/index/,
+		);
+	}
 	assert.throws(
 		() =>
 			verify(
@@ -442,16 +503,20 @@ test("the lane count is one constant: CI derives its matrix from it, and a disag
 });
 
 test("headroom warns on stderr without failing, and the hard failure still bites through run mode", async () => {
-	// 199 is today's largest lane and must stay silent; 200 is the warning line.
+	// One below the warning must stay silent, regardless of the current lane count.
 	assert.equal(
-		shardHeadroomWarning(shaped([SHARD_WARNING_LANE - 1, 1, 1, 1])),
+		shardHeadroomWarning(
+			shaped([SHARD_WARNING_LANE - 1, ...Array(SHARD_COUNT - 1).fill(1)]),
+		),
 		null,
 	);
-	const warn = shardHeadroomWarning(shaped([SHARD_WARNING_LANE, 1, 1, 1]));
+	const warn = shardHeadroomWarning(
+		shaped([SHARD_WARNING_LANE, ...Array(SHARD_COUNT - 1).fill(1)]),
+	);
 	assert.match(
 		warn,
 		new RegExp(
-			`shard 1/4 holds ${SHARD_WARNING_LANE} files, ${SHARD_FILE_CEILING - SHARD_WARNING_LANE} under the ${SHARD_FILE_CEILING}-file memory ceiling`,
+			`shard 1/${SHARD_COUNT} holds ${SHARD_WARNING_LANE} files, ${SHARD_FILE_CEILING - SHARD_WARNING_LANE} under the ${SHARD_FILE_CEILING}-file memory ceiling`,
 		),
 	);
 	// The warning carries the same runway arithmetic as the failure: the point of
@@ -466,17 +531,20 @@ test("headroom warns on stderr without failing, and the hard failure still bites
 	const writes = [];
 	const originalWrite = process.stderr.write;
 	let planned = null;
-	tree(shaped([SHARD_WARNING_LANE, 1, 1, 1]).flat(), (root) => {
-		process.stderr.write = (chunk) => {
-			writes.push(String(chunk));
-			return true;
-		};
-		try {
-			planned = plan(root, HEAD, CHECKOUT);
-		} finally {
-			process.stderr.write = originalWrite;
-		}
-	});
+	tree(
+		shaped([SHARD_WARNING_LANE, ...Array(SHARD_COUNT - 1).fill(1)]).flat(),
+		(root) => {
+			process.stderr.write = (chunk) => {
+				writes.push(String(chunk));
+				return true;
+			};
+			try {
+				planned = plan(root, HEAD, CHECKOUT);
+			} finally {
+				process.stderr.write = originalWrite;
+			}
+		},
+	);
 	assert.ok(planned, "the plan must still be produced under the warning");
 	assert.ok(
 		Math.max(...planned.shards.map((group) => group.length)) >=
@@ -489,19 +557,22 @@ test("headroom warns on stderr without failing, and the hard failure still bites
 	// through `run` mode - the real CI entry point - so the lane is refused before
 	// the guarded runner is launched at all.
 	let rejection = null;
-	tree(shaped([SHARD_FILE_CEILING + 1, 1, 1, 1]).flat(), (root) => {
-		rejection = main([
-			"run",
-			"--root",
-			root,
-			"--head",
-			HEAD,
-			"--checkout",
-			CHECKOUT,
-			"--index",
-			"0",
-		]);
-	});
+	tree(
+		shaped([SHARD_FILE_CEILING + 1, ...Array(SHARD_COUNT - 1).fill(1)]).flat(),
+		(root) => {
+			rejection = main([
+				"run",
+				"--root",
+				root,
+				"--head",
+				HEAD,
+				"--checkout",
+				CHECKOUT,
+				"--index",
+				"0",
+			]);
+		},
+	);
 	await assert.rejects(rejection, /memory ceiling/);
 });
 
@@ -535,7 +606,7 @@ test("inventory rejects unsupported syntax instead of guessing shell semantics",
 			/Unsafe|Duplicate|Empty/,
 		);
 	}
-	assert.throws(() => partition(names, 5), /count/);
+	assert.throws(() => partition(names, SHARD_COUNT + 1), /count/);
 	assert.throws(() => partition([], 3), /Empty/);
 });
 
@@ -620,10 +691,10 @@ test("TAP and receipt cannot be emitted after an error, cancellation, empty or t
 		);
 	}
 	assert.throws(() => receipt(p, 0, log, 137, 1), /rc=0/);
-	assert.throws(() => receipt(p, 4, log, 0, 1), /index/);
+	assert.throws(() => receipt(p, SHARD_COUNT, log, 0, 1), /index/);
 });
 
-test("exact four same-head success receipts prove disjoint complete inventory; every mutation fails for its own reason", () => {
+test("exact configured-count same-head success receipts prove disjoint complete inventory; every mutation fails for its own reason", () => {
 	const p = expected();
 	assert.equal(verify(p, rows(p), "true", "success", "success"), "passed");
 	assert.equal(verify(p, [], "false", "success", "skipped"), "skipped");
@@ -638,8 +709,8 @@ test("exact four same-head success receipts prove disjoint complete inventory; e
 			/matrix/i,
 		);
 	for (const [mutate, message] of [
-		[(r) => r.pop(), /exactly 4/],
-		[(r) => r.push(r[0]), /exactly 4/],
+		[(r) => r.pop(), new RegExp(`exactly ${SHARD_COUNT}`)],
+		[(r) => r.push(r[0]), new RegExp(`exactly ${SHARD_COUNT}`)],
 		[
 			(r) => {
 				r[1].index = 0;
