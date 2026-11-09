@@ -3557,6 +3557,10 @@ export type MessageParams = {
 	"ui.browser.browser_passkey_notice.dismiss": undefined;
 	"ui.browser.browser_passkey_notice.explanation": undefined;
 	"ui.browser.browser_passkey_notice.message": { who: string; site: string };
+	"ui.browser.browser_passkey_notice.not_allowed": {
+		who: string;
+		site: string;
+	};
 	"ui.browser.browser_passkey_notice.open_in_system_browser": undefined;
 	"ui.browser.browser_passkey_notice.passkey_request": undefined;
 	"ui.browser.browser_surface.browser_unavailable": undefined;

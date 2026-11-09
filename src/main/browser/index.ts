@@ -917,16 +917,15 @@ async function initializeBrowserHost(
 		 * for a tab nobody has attached to. The cost is a window between commit and the
 		 * first inline script in which a call is not observed.
 		 *
-		 * ARMED ONLY WHEN THE PLATFORM AUTHENTICATOR IS OFF. With it on (a signed build
-		 * whose entitlement the gate accepted) the OS sheet is the UX and a "may be
-		 * stuck" notice would contradict it, so no shim is registered at all. The
-		 * decision is per host start because the gate is per process.
+		 * A configured Touch ID authenticator is device-bound, not access to the
+		 * user's synced/manager passkeys. Keep rejection recovery armed in signed
+		 * builds too. Pending notices remain gate-off only: a native sheet awaiting
+		 * a touch is not evidence of an unavailable provider.
 		 *
 		 * `registry` is declared further down; `ownerOf` runs only after it is built (a
 		 * tab cannot exist before that), so the forward reference is safe and avoids
 		 * moving the registry's construction.
 		 */
-		const passkeyNoticesArmed = !webauthnInstall.configured;
 		const passkeyNotices = new PasskeyNotices({
 			now: () => Date.now(),
 			log,
@@ -1896,7 +1895,7 @@ async function initializeBrowserHost(
 			 * frame. Main only READS the line; nothing is sent back into the page.
 			 */
 			const injectPasskeyShim = (frame: WebFrameMain | undefined | null) => {
-				if (!passkeyNoticesArmed || !frame || frame.isDestroyed()) return;
+				if (!frame || frame.isDestroyed()) return;
 				// http(s) documents only: `about:blank`, `file:` and extension pages have
 				// no origin the notice could name, and nothing there needs a notice.
 				if (!HTTP_URL.test(frame.url)) return;
@@ -1907,6 +1906,7 @@ async function initializeBrowserHost(
 								tabId,
 								`${frame.processId}:${frame.routingId}`,
 							),
+							!webauthnInstall.configured,
 						),
 					)
 					.catch(() => {
@@ -1937,7 +1937,6 @@ async function initializeBrowserHost(
 					),
 			);
 			contents.on("console-message", (event) => {
-				if (!passkeyNoticesArmed) return;
 				// ONLY the message is used: the event's `frame` is the top frame even for a
 				// child's line (measured), so the frame is resolved from the nonce instead.
 				const { message } = event as unknown as { message: string };

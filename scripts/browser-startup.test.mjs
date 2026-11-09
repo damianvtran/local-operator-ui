@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
+import vm from "node:vm";
 import { build } from "esbuild";
 
 const electron = `
@@ -27,7 +28,7 @@ export const Menu = { buildFromTemplate: () => ({ popup: () => {} }) };
 export const clipboard = { writeText: () => {} };
 export const webContents = { getAllWebContents: () => [] };
 // Startup has no page frames: passkey attribution must treat missing frames as gone.
-export const webFrameMain = { fromId: () => null };
+export const webFrameMain = { fromId: (processId, routingId) => f().frames?.get(processId + ':' + routingId) ?? null };
 export class Notification { static isSupported() { return false; } }
 export const safeStorage = { isEncryptionAvailable: () => false };
 export const protocol = { registerSchemesAsPrivileged() {} };
@@ -92,7 +93,7 @@ const bundled = await build({
 				}));
 				b.onLoad({ filter: /main\/webauthn(?:\/index)?\.ts$/ }, () => ({
 					contents: `
-export async function installWebauthn() { globalThis.__browserStartupFixture.installs++; return { configured: false }; }
+export async function installWebauthn() { const f = globalThis.__browserStartupFixture; f.installs++; return { configured: !!f.touchIdConfigured }; }
 export class WebauthnChooser { dispose() {} state() { return null; } }
 export function attachWebauthnChooser() { return () => {}; }
 `,
@@ -210,6 +211,7 @@ function fixture(failConsole) {
 		handlers: new Map(),
 		views: new Set(),
 		liveViews: new Map(),
+		frames: new Map(),
 		peak: 0,
 		id: 800,
 		installs: 0,
@@ -270,6 +272,62 @@ test("production startup owns IPC before awaits, rolls back seven restored views
 			}).availability.status,
 			"unavailable",
 		);
+	} finally {
+		await stopBrowserHost();
+	}
+});
+
+test("configured Touch ID still injects rejection recovery and projects the requesting origin", async () => {
+	const f = fixture(false);
+	f.touchIdConfigured = true;
+	try {
+		await startBrowserHost(options(f));
+		const contents = [...f.liveViews.values()].find(
+			(view) => view.webContents.getURL() === "https://example.test/0",
+		).webContents;
+		const timers = [];
+		class CredentialsContainer {
+			get() {
+				return Promise.reject(
+					new DOMException("private detail", "NotAllowedError"),
+				);
+			}
+		}
+		const page = vm.createContext({
+			CredentialsContainer,
+			console: {
+				debug: (message) => contents.emit("console-message", { message }),
+			},
+			setTimeout: (fn) => {
+				timers.push(fn);
+			},
+		});
+		f.frames.set("1:8", {
+			processId: 1,
+			routingId: 8,
+			url: "https://example.test/0",
+			origin: "https://example.test",
+			parent: null,
+			isDestroyed: () => false,
+			executeJavaScript: async (source) => vm.runInContext(source, page),
+		});
+		contents.emit("did-frame-finish-load", {}, true, 1, 8);
+		await assert.rejects(new CredentialsContainer().get({ publicKey: {} }), {
+			name: "NotAllowedError",
+		});
+		assert.equal(
+			timers.length,
+			1,
+			"the configured gate must not skip injection",
+		);
+		for (const fn of timers) fn();
+		await new Promise((resolve) => setImmediate(resolve));
+		const state = f.handlers.get("browser-state")({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		});
+		assert.equal(state.passkeyNotice?.outcome, "not-allowed");
+		assert.equal(state.passkeyNotice?.origin, "https://example.test");
 	} finally {
 		await stopBrowserHost();
 	}

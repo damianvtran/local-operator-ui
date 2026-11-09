@@ -707,6 +707,43 @@ system browser; since §3.6 the browser says so instead of hanging silently.
 
 ### 3.6 The notice: a request that cannot be served must not hang silently
 
+**2026-11-09 correction — signed Touch ID is not synced passkey access.**
+Read-only checks of the installed v0.52.12 app found the exact
+`SHA2U6KT7V.com.local-operator.webauthn` keychain group and an embedded
+provisioning profile; `codesign --verify --deep --strict` succeeded. The
+associated-domains and web-browser public-key-credential entitlements were
+absent. The October gate-off description below is historical, not the current
+installed capability. This signature check does not prove a native ceremony.
+Existing GitHub credentials in Apple Passwords or another manager are not made
+available by configuring Electron's device-bound Touch ID authenticator. The
+per-RP AASA restriction in §3.5 still prevents treating `platformPasskeys` as a
+generic browser replacement.
+
+The old recovery path had two observable holes: `index.ts` did not inject the
+shim at all once Touch ID was configured, and its delayed observer ignored a
+request that had already rejected. A baseline execution of the original shim
+returned the page's `NotAllowedError` unchanged but emitted zero recovery
+signals. Recovery now observes explicit `create`/`get` requests in both gate
+states. It keeps the existing three-second courtesy delay (no synchronous
+interruption of the site's cancellation UX); only gate-off pending requests
+raise a pending notice. A `NotAllowedError` instead carries the typed
+`outcome: "not-allowed"` and says the request did not complete. Native
+cancellation and an unavailable credential have the same error name: neither
+is diagnosed as a broken or missing provider. Successful requests, conditional
+mediation, `AbortError`, aborted signals, validation and security errors stay
+silent. The original promise, arguments and exception remain the site's own.
+The delayed observation has the same late-unhandled-rejection limitation noted
+below; exception messages and credentials are never signalled.
+
+Both notice states explain the actual recovery choices: use another sign-in
+method **on this page** to authenticate this tab, or sign in separately in the
+system browser. Opening the current URL does **not** transfer cookies or make
+the embedded tab authenticated. It remains a nonmodal, rate-limited,
+dismissible courtesy, with origin read by main and no automatic navigation.
+The existing observer injection race and frame limits remain unchanged.
+
+**Historical gate-off implementation and evidence (2026-10-28):**
+
 **The mechanism and why this one.** Electron 44 gives the embedder no
 request-start signal: its only WebAuthn event, `select-webauthn-account`, fires
 after a request already has several credentials to choose from (and never fires
@@ -812,8 +849,9 @@ was converted), so the keychain group's value did not change.
    `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` returning
    `true` on a test page; and one real `navigator.credentials.create()` and
    `.get()` that **settle** (the OS Touch ID sheet appears, a credential is
-   created and retrieved). With the authenticator on, the §3.6 notice is not
-   armed; confirm that too.
+   created and retrieved). With the authenticator on, the §3.6 **pending** notice
+   is not armed; rejection recovery remains available. Confirm that a successful
+   native request produces no notice and explicit abort stays silent.
 6. **Rollback and reinstall consequence (not measured).** Credentials are
    device-bound and scoped to the configured keychain access group. A build
    without access to that group cannot use those keys. Whether a reinstall or

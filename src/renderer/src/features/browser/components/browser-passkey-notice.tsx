@@ -10,8 +10,8 @@ import {
 } from "../../../../../shared/browser-passkey-notice";
 
 /**
- * The passkey notice: a page in the browser asked for a passkey and this browser
- * has no provider to answer, so the page's request is probably stuck.
+ * Recovery for a pending or NotAllowed passkey request. A configured device-bound
+ * authenticator does not make a user's synced/manager credentials available.
  * Design: docs/design/browser-challenges-and-passkeys.md section 3.6.
  *
  * WHY A BAND AND NOT A DIALOG. The chooser (`browser-webauthn-dialog.tsx`) is a
@@ -22,11 +22,11 @@ import {
  * a notice is reliably visible, and it takes no focus (the page keeps whatever
  * the user was doing; nothing here steals a keystroke).
  *
- * WHAT IT MAY CLAIM. Only what main can stand behind: a passkey request from THIS
- * origin was still unanswered after a few seconds, and this browser has no passkey
- * provider. It does not say the request failed (it did not; the page's promise is
- * untouched) and it does not say "unsupported" about Touch ID or a USB key, which
- * are unmeasured (design section 3.5). The site shown is the requesting FRAME's
+ * WHAT IT MAY CLAIM. Pending and rejected requests have distinct copy.
+ * NotAllowedError cannot distinguish a native cancellation from an unavailable
+ * credential, so it offers optional recovery, never a diagnosis or an alert.
+ * Opening externally does not transfer the embedded browser's login session.
+ * The site shown is the requesting FRAME's
  * origin as main read it, never a string from the page; a request from an embedded
  * frame, or from an agent-driven tab, says so.
  *
@@ -90,10 +90,12 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 		>
 			<KeyRound aria-hidden className="size-4 shrink-0 text-ink-muted" />
 			<p className="min-w-0 grow basis-64 text-body-sm text-ink">
-				{t("ui.browser.browser_passkey_notice.message", {
-					who,
-					site: siteOf(notice.origin),
-				})}{" "}
+				{t(
+					notice.outcome === "not-allowed"
+						? "ui.browser.browser_passkey_notice.not_allowed"
+						: "ui.browser.browser_passkey_notice.message",
+					{ who, site: siteOf(notice.origin) },
+				)}{" "}
 				<span className="text-ink-muted">
 					{t("ui.browser.browser_passkey_notice.explanation")}
 				</span>

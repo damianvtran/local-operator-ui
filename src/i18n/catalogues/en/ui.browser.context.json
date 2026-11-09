@@ -1214,10 +1214,15 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Names who asked for a passkey. {who} is agent (tab driven by an agent), agentFrame (an embedded frame in an agent-driven tab), userFrame (an embedded frame on the user's page) or other (the page itself); {site} is a host name, never translate it. Say the request MAY still be waiting: the page's request was neither refused nor answered. Do not say it failed. 'Agent' follows the glossary term for AI agent."
 	},
+	"ui.browser.browser_passkey_notice.not_allowed": {
+		"role": "status sentence — optional passkey recovery strip",
+		"tone": "Neutral and non-alarming; cancellation is not a system failure",
+		"note": "A NotAllowedError means the request did not complete, but cannot distinguish native user cancellation from unavailable credentials. Never diagnose a missing provider. Preserve {who} select arms agent, agentFrame, userFrame, other and {site}, a browser-attributed host name. The strip is nonmodal and dismissible."
+	},
 	"ui.browser.browser_passkey_notice.explanation": {
 		"role": "explanatory text \u2014 passkey notice strip",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "States plainly that passkeys do not work in this browser yet, that Touch ID passkeys are planned (a plan, not a promise or date), and to use the system browser meanwhile. Do not name unsupported hardware and do not give dates."
+		"note": "An existing passkey may only be available in the user's usual browser or password manager. Offer another sign-in method on this page or a separate sign-in in the system browser. Its login session is NOT transferred to this tab. Do not claim that no provider exists: device-bound Touch ID may already be configured. Do not promise synced passkeys or hardware support."
 	},
 	"ui.browser.browser_passkey_notice.open_in_system_browser": {
 		"role": "button label \u2014 passkey notice strip",
