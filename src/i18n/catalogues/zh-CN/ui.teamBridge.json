@@ -405,5 +405,9 @@
 	"ui.teamBridge.files.no_schedule": "文件可以立即发送，但不支持定时发送。",
 	"ui.teamBridge.files.uploading": "正在上传文件…",
 	"ui.teamBridge.files.attached": "已附加",
-	"ui.teamBridge.files.not_uploaded": "未上传"
+	"ui.teamBridge.files.not_uploaded": "未上传",
+	"ui.teamBridge.typing.one": "{first}正在输入",
+	"ui.teamBridge.typing.two": "{first}和{second}正在输入",
+	"ui.teamBridge.typing.three": "{first}、{second}和{third}正在输入",
+	"ui.teamBridge.typing.several": "多人正在输入"
 }

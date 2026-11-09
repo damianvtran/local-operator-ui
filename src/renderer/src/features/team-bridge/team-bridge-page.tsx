@@ -262,6 +262,11 @@ import {
 	threadTargetFromSearch,
 } from "./team-bridge-thread-read";
 import {
+	TeamBridgeTypingLine,
+	TeamBridgeTypingProvider,
+} from "./team-bridge-typing-line";
+import { teamBridgeTypingAvailable } from "./team-bridge-typing-model";
+import {
 	useTeamBridgeUnreadView,
 	withSharedUnread,
 } from "./team-bridge-unread-sync";
@@ -815,6 +820,12 @@ export type TeamBridgePageViewProps = {
 	 */
 	reactionsCapabilityState?: DesktopFeatureState;
 	/**
+	 * The `team_bridge_typing` capability answer, computed by the container.
+	 * Defaults to `unknown`, so a surface that has not asked sends no typing
+	 * request and renders no indicator line (no reserved space either).
+	 */
+	typingCapabilityState?: DesktopFeatureState;
+	/**
 	 * The `team_bridge_send_mentions` capability answer. Only `enabled` puts
 	 * `mentions[]` on a send; any other answer keeps the readable `@Name` text
 	 * and sends no field an older backend would refuse.
@@ -1004,6 +1015,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	initialDialog,
 	threadsCapabilityState = "unknown",
 	reactionsCapabilityState = "unknown",
+	typingCapabilityState = "unknown",
 	sendMentionsCapabilityState = "unknown",
 	agentNotifyCapabilityState = "unknown",
 	defaultMenuOpen = false,
@@ -1586,6 +1598,55 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			threadSelection.tenantId === shown.tenant_id &&
 			!previewSelected &&
 			!selectedOrganizationUnknown,
+	);
+	/*
+	 * TYPING INDICATORS (`team-bridge-typing-*.ts`). The surface exists only on
+	 * an exact `enabled` capability and a listed, member-readable room - never a
+	 * preview, an unknown organization or a new-DM draft (no conversation id yet).
+	 * Reporting additionally needs a writable pane; reading does not.
+	 * No hooks here on purpose: the target is rebuilt each render and the
+	 * emitter keys its session on the target's identity, not the object.
+	 */
+	const typingOpen =
+		teamBridgeTypingAvailable(typingCapabilityState) &&
+		Boolean(selfAccountId) &&
+		shown !== null &&
+		!previewSelected &&
+		!selectedOrganizationUnknown;
+	const typingTarget =
+		typingOpen && !readOnly && shown && selfAccountId
+			? {
+					conversationId: shown.id,
+					tenantId: shown.tenant_id,
+					accountId: selfAccountId,
+				}
+			: null;
+	/*
+	 * The typing line's name resolver, stable per room (agent review round 1,
+	 * R8): inline, it changed identity on every page render and invalidated the
+	 * provider's memo, recomputing both lines' names each time. It reads
+	 * `labelFor` through a ref because that resolver is rebuilt every render
+	 * from the rosters; a roster rename still reaches the line within one typing
+	 * poll, since every answer hands the provider a new entries object.
+	 */
+	const labelForRef = useRef(labelFor);
+	labelForRef.current = labelFor;
+	const typingLabelFor = useCallback(
+		(accountId: string) => {
+			if (!shown) return null;
+			// No labels on the typing wire (design §4): the room's own member
+			// row and the roster name the typer, as they name a sender.
+			const member = shown.members.find((row) => row.account_id === accountId);
+			return labelForRef.current(
+				{
+					account_id: accountId,
+					kind: "human",
+					display_label: member?.display_label ?? "",
+				},
+				shown.tenant_id,
+			);
+		},
+		[shown],
 	);
 	// A focused window is quiet only for the conversation actually on screen.
 	useReportTeamBridgeViewing(shown?.id);
@@ -4389,6 +4450,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													: undefined
 										}
 										onSendMessage={submit}
+										typingTarget={typingTarget}
 										/* HOST CHROME WITH NO BAR SLOT. Scheduling needs the target
 										   and a time, neither of which is typing. */
 										trailing={
@@ -4431,6 +4493,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											) : undefined
 										}
 									/>
+									{/* Who else is typing in the channel (thread typing shows only
+									    in that thread's pane). `-mt-1` pulls the line to 4 px under
+									    the bar inside the column's `gap-2`; its box is always one
+									    fixed line, so typers coming and going never move the bar. */}
+									{typingOpen && (
+										<TeamBridgeTypingLine rootId={null} className="-mt-1" />
+									)}
 									<TeamBridgeScheduleDialog
 										open={scheduleOpen}
 										returnFocus={clockRef}
@@ -4501,6 +4570,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								accountId={selfAccountId}
 								attachmentCapability={imageCapability}
 								filesCapability={fileCapability}
+								typingEnabled={typingOpen}
 								onClose={() => {
 									setThreadSelection(null);
 									onCloseThread?.();
@@ -4804,7 +4874,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			sendMentions={sendMentionsCapabilityState === "enabled"}
 			onAddMembers={onAddMembers}
 		>
-			{pageBody}
+			{/* ALWAYS mounted, so the page body's position in the tree never moves
+			    when typing turns on or off; with `open` false it makes no request
+			    and no line renders (every line is gated on `typingOpen`). */}
+			<TeamBridgeTypingProvider
+				conversationId={shown?.id ?? null}
+				tenantId={shown?.tenant_id ?? null}
+				selfAccountId={selfAccountId ?? null}
+				open={typingOpen}
+				threadRootId={threadIsOpen ? (threadSelection?.rootId ?? null) : null}
+				labelFor={typingLabelFor}
+			>
+				{pageBody}
+			</TeamBridgeTypingProvider>
 		</TeamBridgeMentionProvider>
 	);
 };
@@ -6417,6 +6499,10 @@ const TeamBridgeOwnedPage: FC<{
 				reactionsCapabilityState={desktopFeatureState(
 					capabilities.data,
 					"team_bridge_reactions",
+				)}
+				typingCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_typing",
 				)}
 				sendMentionsCapabilityState={desktopFeatureState(
 					capabilities.data,

@@ -90,5 +90,7 @@
 	"ui.agentMessages.settings.default_on.b_body": "Team Bridge se activará automáticamente para ti cuando tu organización esté lista. No se envía nada al activarse.",
 	"ui.agentMessages.settings.default_on.e_body": "Team Bridge está desactivado para esta cuenta. Lee el texto de consentimiento de abajo y vuelve a activarlo si quieres recuperarlo.",
 	"ui.agentMessages.settings.action.turn_on_again": "Volver a activar",
-	"ui.agentMessages.settings.consent.via_default_on": "Activado de forma predeterminada"
+	"ui.agentMessages.settings.consent.via_default_on": "Activado de forma predeterminada",
+	"ui.agentMessages.settings.share_typing.label": "Mostrar cuando estoy escribiendo",
+	"ui.agentMessages.settings.share_typing.description": "Los participantes de tus conversaciones de Team Bridge ven una breve línea “está escribiendo” mientras redactas. Lo que escribes nunca se comparte."
 }

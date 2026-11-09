@@ -1982,6 +1982,10 @@ export const SettingsPage: FC = () => {
 											refusal={agentMessagesSnapshot.refusal}
 											onRefreshStatus={refreshAgentMessages}
 											sessions={canonicalSessions}
+											typingAvailable={desktopFeatureEnabled(
+												capabilities.data,
+												"team_bridge_typing",
+											)}
 											focus={
 												settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY ||
 												searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY

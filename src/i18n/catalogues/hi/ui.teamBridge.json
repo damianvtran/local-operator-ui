@@ -405,5 +405,9 @@
 	"ui.teamBridge.files.no_schedule": "फ़ाइलें अभी भेजी जा सकती हैं, लेकिन शेड्यूल नहीं की जा सकतीं।",
 	"ui.teamBridge.files.uploading": "फ़ाइल अपलोड हो रही है…",
 	"ui.teamBridge.files.attached": "संलग्न",
-	"ui.teamBridge.files.not_uploaded": "अपलोड नहीं हुई"
+	"ui.teamBridge.files.not_uploaded": "अपलोड नहीं हुई",
+	"ui.teamBridge.typing.one": "{first} टाइप कर रहे हैं",
+	"ui.teamBridge.typing.two": "{first} और {second} टाइप कर रहे हैं",
+	"ui.teamBridge.typing.three": "{first}, {second} और {third} टाइप कर रहे हैं",
+	"ui.teamBridge.typing.several": "कई लोग टाइप कर रहे हैं"
 }

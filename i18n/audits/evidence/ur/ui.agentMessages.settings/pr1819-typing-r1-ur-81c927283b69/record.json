@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "kind": "locale-audit evidence (PR #1819 round 1, added keys)",
+  "audit_id": "pr1819-typing-r1-ur-81c927283b69",
+  "instance": "81c927283b69-pr1819-r1-ur",
+  "date": "2026-11-09",
+  "locale": "ur",
+  "namespace": "ui.agentMessages.settings",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "team_role": "task (lopdev team)",
+    "session": "81c927283b69",
+    "model": "anthropic/claude-opus-5-5",
+    "model_fallback": "none observed",
+    "independent_of_translator": true
+  },
+  "translator": {
+    "agent": "coder",
+    "lane": "pr3-ui-typing",
+    "model": "not supplied in the audit brief",
+    "commit": "f0182d4e032"
+  },
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "pr": 1819,
+    "branch": "feat/team-bridge-typing-indicators",
+    "base": "884953f7c48",
+    "translated_head": "f0182d4e032"
+  },
+  "inputs": {
+    "english": {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.settings.json",
+      "sha256": "b7f898772e64100cce5df2aae472a0cbfa855ce5dd2b56699ae19c7c3040f3b7"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.settings.context.json",
+      "sha256": "ca2e7810dd8db4f9bd9175588645738adccefa2dd2801954a222b32c08c2a13d"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ur/ui.agentMessages.settings.json",
+      "sha256": "2d4e1fb2889ee3d7d2badd62c9e0a371e54a08b29bd46dc7c47449884aed1336"
+    },
+    "glossary": {
+      "path": "local-operator i18n/glossary.md",
+      "commit": "ae1dd3e0a76",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "local-operator i18n/style-guides/ur.md",
+      "commit": "ae1dd3e0a76",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    }
+  },
+  "checks": {
+    "key_set_equals_english": true,
+    "added_keys_vs_base": true,
+    "pre_existing_pairs_byte_identical_to_base": true,
+    "placeholders_match_english": {
+      "ui.agentMessages.settings.share_typing.label": true,
+      "ui.agentMessages.settings.share_typing.description": true
+    },
+    "no_bidi_controls": {
+      "ui.agentMessages.settings.share_typing.label": true,
+      "ui.agentMessages.settings.share_typing.description": true
+    },
+    "no_trailing_ellipsis_or_period_on_indicator": {}
+  },
+  "audited_keys": {
+    "ui.agentMessages.settings.share_typing.label": {
+      "en": "Show when I’m typing",
+      "translator_value": "میرے ٹائپ کرنے کی اطلاع دکھائیں",
+      "final": "میرے ٹائپ کرنے کی اطلاع دکھائیں",
+      "context_role": "settings switch label",
+      "context_note": "Privacy preference: whether other people see that you are typing in Team Bridge conversations. Default on. It only controls what others see about you, not what you see about others."
+    },
+    "ui.agentMessages.settings.share_typing.description": {
+      "en": "People in your Team Bridge conversations see a short “is typing” line while you write. What you type is never shared.",
+      "translator_value": "آپ کی Team Bridge گفتگو میں شامل لوگ آپ کے لکھتے وقت ایک مختصر ”ٹائپ کر رہے ہیں“ لائن دیکھتے ہیں۔ آپ جو لکھتے ہیں وہ کبھی شیئر نہیں ہوتا۔",
+      "final": "آپ کی Team Bridge گفتگو میں شامل لوگ آپ کے لکھتے وقت ایک مختصر “ٹائپ کر رہے ہیں” لائن دیکھتے ہیں۔ آپ جو لکھتے ہیں وہ کبھی شیئر نہیں ہوتا۔",
+      "context_role": "helper text under a settings switch",
+      "context_note": "Explains what the switch shares (only the fact that you are typing) and states that the draft text is never shared. Quote the indicator wording with the locale's usual quotation marks."
+    }
+  },
+  "findings": [
+    {
+      "id": "A1-ur-1",
+      "severity": "minor",
+      "key": "ui.agentMessages.settings.share_typing.description",
+      "issue": "Quote marks stored reversed (U+201D … U+201C). ur style guide sets “ ” in logical order and every other ur catalogue string stores “…” (e.g. “{name}”); the bidi algorithm mirrors placement, not glyph choice.",
+      "before": "”ٹائپ کر رہے ہیں“",
+      "after": "“ٹائپ کر رہے ہیں”",
+      "disposition": "fixed in this commit"
+    }
+  ],
+  "verdict": "clean-with-findings",
+  "notes": "Catalogue audit only: no rendered-fit or native-render claim. Mechanical checks above were executed by scratch build.py in the auditor session; findings are the auditor's linguistic judgement against glossary + style guide."
+}
