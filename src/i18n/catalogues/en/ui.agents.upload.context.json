@@ -298,5 +298,12 @@
 		"tone": "Short imperative",
 		"length_hint": "Three words",
 		"note": "Heads the Radient sign-in buttons when the stored session was refused."
+	},
+	"ui.agents.upload.failure.publish_fallback": {
+		"role": "fallback failure body in the agent publication dialog when an untyped exception has no user-facing message",
+		"tone": "calm factual failure sentence followed by a brief retry instruction; sentence case, full stops",
+		"length_hint": "Two short sentences; wraps in the dialog body.",
+		"placeholders": {},
+		"note": "This is the fallback for an untyped exception, not a heading or a success receipt. Typed publication failures and transport-authored messages keep their own wording."
 	}
 }

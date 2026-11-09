@@ -517,7 +517,8 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 		} catch (error) {
 			// The refusal stays in the dialog. `isPublicationError` is the typed half;
 			// anything else keeps whatever sentence the transport authored, which is
-			// what an older backend's prose is.
+			// what an older backend's prose is. The exception path is untyped;
+			// the catalogue sentence is its fallback failure body.
 			setFailure(
 				isPublicationError(error)
 					? {
@@ -528,7 +529,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					: {
 							message: userFacingMessage(
 								error,
-								"The agent could not be published. Try again.",
+								t("ui.agents.upload.failure.publish_fallback"),
 							),
 						},
 			);

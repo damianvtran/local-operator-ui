@@ -3342,6 +3342,7 @@ export type MessageParams = {
 	"ui.agents.upload.availability.reserved_unnamed": undefined;
 	"ui.agents.upload.availability.taken": undefined;
 	"ui.agents.upload.error.cannot_publish": undefined;
+	"ui.agents.upload.failure.publish_fallback": undefined;
 	"ui.agents.upload.field.name_hint": undefined;
 	"ui.agents.upload.field.name_label": undefined;
 	"ui.agents.upload.intro.org": { destination: string };
