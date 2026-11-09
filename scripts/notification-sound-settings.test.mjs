@@ -478,9 +478,10 @@ const describePredicate = (predicate) =>
  * miss was runner starvation - ~50x the same work - not a logic race). Two
  * sightings of one message three lines from the cause is what this fixes.
  *
- * NOTHING DEPENDED ON THE `false`: all 29 call sites are bare `await waitFor`,
- * none reads the result (audited when this changed). A site that wants "this
- * never happens" must assert absence of its own accord, not wait for it.
+ * NOTHING DEPENDED ON THE `false`: all 28 call sites are bare `await waitFor`
+ * (29 before this change - Q8's is now `drainReads`), none reads the result
+ * (audited when this changed). A site that wants "this never happens" must
+ * assert absence of its own accord, not wait for it.
  *
  * THE BOUND IS A HANG GUARD, NOT A PERFORMANCE ASSERTION. Prefer a condition
  * that settles on its own (`drainReads` below) where one exists; a bound is for
@@ -500,26 +501,51 @@ const waitFor = async (predicate, timeout = 2000) => {
 };
 
 /*
- * Wait for the section's reads to settle - no wall-clock deadline.
+ * Wait for the section's reads to settle, bounded in work units AND wall time.
  *
- * A deadline measures the runner, not the code: this suite's Q8 window took
- * 61 ms on an idle host and over 3 s on a loaded CI shard - the same work, 50x
- * the wall time - so a bound tight enough to catch a real hang is also loose
- * enough to redden a passing test, and one loose enough to survive starvation
- * would hang a broken one for that whole span. Quiescence is the state that
- * actually carries meaning here (the harness answers every request itself, so
- * the sequence completes in a bounded number of turns whatever the host), so
- * poll the cache in WORK UNITS and name whatever is still fetching if it never
- * quiets.
+ * TWO INSTRUMENTS, TWO FAILURE MODES - neither one alone covers both:
+ *
+ *  - A CPU-STARVED RUNNER stretches the same work 50x in wall time (Q8's window
+ *    measured 61 ms on an idle host against over 3 s on CI shard 0/4 of run
+ *    42543029193), so a wall clock expires while the fixture is healthy. Act
+ *    turns stretch with the host, so a turn budget is the honest unit there:
+ *    200 turns is ~250 ms idle and buys less work the busier the host is.
+ *  - A SLOW-BUT-PROGRESSING READ PATH (a read debounce, `retry: true`) burns
+ *    wall time without consuming extra turns, so a turn budget is the wrong
+ *    unit there: at 200 turns, a 1.5 s read delay exhausted the whole budget in
+ *    the time 200 turns take - measured here at 1.16-2.76 ms/turn, so 230-550 ms
+ *    - and failed 3/3 with both reads still fetching, where the 3 s wall clock
+ *    this replaced passed that same injection 3/3. That is the regression this
+ *    floor closes: ~250 ms against 3000 ms, the 12x tighter bound the reviewer
+ *    measured, failing with a message that reads exactly like a product hang.
+ *
+ * So the wait ends when the reads are QUIET, or at the 3000 ms floor - never at a
+ * spent turn budget, which is exactly what makes the floor a floor (`turn <
+ * turns || Date.now() < deadline`): slow-but-progressing reads outlive the turn
+ * budget and still settle. The floor is 3000 ms because that is the exact bound
+ * this replaces; anything below it is tighter than the thing it superseded,
+ * which is how the 200-turn-only version regressed. The turn budget is what
+ * carries a starved host (3000 ms buys far fewer turns there), so its spent
+ * count is reported with the failure - a large count says the work kept
+ * churning, a tiny one says the host was slow.
+ *
+ * Quiescence is still the state that carries meaning (the harness answers every
+ * request itself, so the sequence completes in a bounded number of turns
+ * whatever the host); the budgets exist only so a cache that never quiets fails
+ * LOUDLY, naming the bound that tripped and what was still fetching.
  */
-const drainReads = async (client, { turns = 200 } = {}) => {
+const drainReads = async (client, { turns = 200, ms = 3000 } = {}) => {
+	const started = Date.now();
+	const deadline = started + ms;
 	const inFlight = () =>
 		client
 			.getQueryCache()
 			.findAll()
 			.filter((query) => query.state.fetchStatus === "fetching")
 			.map((query) => query.queryKey.join("/"));
-	for (let turn = 0; turn < turns; turn += 1) {
+	let turn = 0;
+	while (turn < turns || Date.now() < deadline) {
+		turn += 1;
 		await settle(1, 0);
 		if (inFlight().length > 0) continue;
 		// Quiet, but the settled state still has to reach React.
@@ -527,7 +553,9 @@ const drainReads = async (client, { turns = 200 } = {}) => {
 		if (inFlight().length === 0) return;
 	}
 	throw new Error(
-		`reads never went quiet after ${turns} turns; still fetching: ${
+		`reads never went quiet: the ${ms}ms floor spent after ${
+			Date.now() - started
+		}ms and ${turn} turns (turn budget ${turns}); still fetching: ${
 			inFlight().join(", ") || "(none - the state kept changing)"
 		}`,
 	);
@@ -1398,14 +1426,30 @@ test("Q8: the section-level Retry also reloads the sound list", async (t) => {
 	 * 3 s and the wait timed out silently, reddening the assertion below with a
 	 * message about "Couldn't load" rather than about the wait that missed
 	 * (run 42543029193, shard 0/4). Waiting for QUIET takes the runner's speed
-	 * out of the assertion; `drainReads` bounds itself in work units and names
-	 * whatever is still fetching if it never settles.
+	 * out of the assertion; `drainReads` bounds itself in work units and wall
+	 * time, and names what is still fetching if it never settles.
+	 *
+	 * TWO BARRIERS, because they watch different things: the drain watches the
+	 * CACHE, the wait below watches the RENDER, and quiescence only means the
+	 * fetches finished, not that React has painted the result. Measured with a
+	 * 600 ms delay on both reads (well inside the floor), a fixed two-turn
+	 * settle still caught stale "Couldn't load" text in 1 run of 4 - the exact
+	 * downstream-symptom failure this test exists to stop reporting. So the
+	 * render barrier is the end state itself, and it is LOUD (`waitFor` throws
+	 * naming its predicate): with the cache already drained it waits for one
+	 * render, so a starved host costs a flush, not the whole sequence.
 	 */
 	await drainReads(client);
-	await settle(2);
+	await waitFor(
+		() =>
+			radio(container, "soft-pulse") !== null &&
+			!container.textContent.includes("Couldn't load"),
+		3000,
+	);
 	assert.ok(
 		daemon.asked.filter((op) => op === "notification_sounds.list").length >
 			before + 1,
+		"the retry re-asked the listing",
 	);
 	assert.ok(
 		!container.textContent.includes("Couldn't load"),
