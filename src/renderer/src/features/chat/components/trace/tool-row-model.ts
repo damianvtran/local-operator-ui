@@ -1782,8 +1782,11 @@ export function isDiffBodyRow<
  *
  * Source of truth: `_diff_details` (tools/builtin.py:4863-4888) puts a
  * `difflib.unified_diff(..., n=2, lineterm="")` line list on `details.diff`,
- * capped at `_DIFF_DETAILS_CAP_LINES = 200` with a literal `…` appended as the
- * LAST element when it truncated. Nothing on this side recomputes a diff — the
+ * capped at `_DIFF_DETAILS_CAP_LINES = 200`. An older core appended a literal
+ * `…` as the LAST element when it truncated (still on disk, rendered as one dim
+ * row); the current contract keeps the list a valid unified diff and reports the
+ * dropped row count on `details.diff_truncated_rows` instead
+ * (`preferDiffTruncatedRows`). Nothing on this side recomputes a diff — the
  * payload is the producer's own bytes, which is what keeps the row's `+N/-N`
  * counters and the body beside them describing one change.
  *
@@ -1901,6 +1904,30 @@ export function preferDiffCounts(
 }
 
 /**
+ * Rendered diff rows the PRODUCER omitted, under `preferDiffCounts`' rule.
+ *
+ * The core caps a stored diff (`_diff_details`, tools/builtin.py) and, under the
+ * contract both repositories share, a truncated diff is still a complete valid
+ * unified diff — no `…` row — with `details.diff_truncated_rows` counting the
+ * rows it dropped (the key is absent when nothing was dropped). Those rows were
+ * never recorded, so the body says so in a footer rather than offering a toggle
+ * that could not reveal them.
+ *
+ * Same "absent vs stated" split as the counters: a frame with no `details`
+ * (stripped by the live-event budget) keeps the row's previous figure, and a
+ * frame with `details` is the producer's statement — a missing key there means
+ * "not truncated" and states 0. `diffCount` supplies the positive-integer rule,
+ * so a malformed value reads as "not truncated" rather than as a number.
+ */
+export function preferDiffTruncatedRows(
+	details: unknown,
+	previous: number,
+): number {
+	if (!details || typeof details !== "object") return previous;
+	return diffCount((details as Record<string, unknown>).diff_truncated_rows);
+}
+
+/**
  * Drop the nameless `---`/`+++` file-header pair, POSITIONALLY.
  *
  * `_append_diff_body` (tool_card.py:2178-2225). The tool diffs one file's
@@ -1976,40 +2003,124 @@ export type DiffBodyLine = {
 
 export type DiffBody = {
 	lines: DiffBodyLine[];
-	/** Lines the cap hid, for the overflow marker. */
+	/**
+	 * Recorded lines the 40-line default hid — what the `… N more diff lines`
+	 * toggle offers to reveal. Always 0 once expanded (every line is shown) and
+	 * on a withheld body (there is nothing to reveal). `expandable` is the
+	 * separate fact "this body has more than the default", which stays true
+	 * while expanded so the toggle can offer `Show less`.
+	 */
 	hidden: number;
+	/** The body has more recorded lines than the collapsed default shows. */
+	expandable: boolean;
+	/**
+	 * The stored diff is the old core's redaction stand-in rather than a diff
+	 * (see `DIFF_WITHHELD_MARKER`): the body paints one notice, never the marker
+	 * and its trail of blank rows.
+	 */
+	withheld: boolean;
 };
+
+/**
+ * The stand-in an older core stored in place of a diff it refused to redact.
+ *
+ * `_redact_diff_detail` (local_operator/harness/loop.py, `_DIFF_DETAIL_WITHHELD`)
+ * parses each stored diff against its `@@` counts before redacting it, and any
+ * diff the producer had capped at 200 rendered rows (with a trailing `…`) failed
+ * that parse — so every large `write`/`edit` was persisted as
+ * `["--- ", "+++ ", <this marker>, "", "", ...]`, one blank per original row.
+ * Those rows are on disk in every transcript written before the core fix and the
+ * diff they stood for is gone, so the honest rendering is one dim notice. The
+ * string is matched EXACTLY: it is the producer's literal constant, and a
+ * looser match could swallow a real diff whose content line mentions it.
+ */
+export const DIFF_WITHHELD_MARKER =
+	"[output withheld: credential redaction requires a complete bounded diff]";
+
+/**
+ * Whether a header-stripped diff is the withheld stand-in: the marker as the
+ * first line and nothing after it but the blank rows the redactor padded with
+ * (or an old producer's trailing `…`). Anything else after the marker means the
+ * line is real content and the body renders normally.
+ */
+function isWithheldDiff(stripped: readonly string[]): boolean {
+	if (stripped.length === 0 || rstrip(stripped[0]) !== DIFF_WITHHELD_MARKER) {
+		return false;
+	}
+	return stripped
+		.slice(1)
+		.every((line) => rstrip(line) === "" || rstrip(line) === "…");
+}
 
 /**
  * The body the expanded row paints: header-stripped, rstripped, classified and
  * capped, so the component below stays presentational.
  *
+ * COLLAPSED (the default) keeps the terminal's 40-line depth so a row opened in
+ * passing stays a glance. EXPANDED shows every RECORDED line — the reader asked
+ * for all of it, and a cap the reader cannot lift is the defect this replaced:
+ * the overflow marker used to be inert text, so lines 41+ of every large diff
+ * were unreachable in the app. "Recorded" is the bound: whatever the producer
+ * itself dropped is reported separately (`diff_truncated_rows`, see
+ * `preferDiffTruncatedRows`) because those lines do not exist on this side.
+ *
  * The cap counts lines AFTER the header strip, as the terminal does, and the
- * overflow count is the number of remaining lines — including the producer's
- * own trailing `…` on a diff truncated at 200, which is ordinary content line
- * 201 rather than this marker. That is why the two are separate ideas here: the
- * producer's `…` is a dim line inside the body, this one is the dim line below
- * it that says how much is not shown.
+ * overflow count is the number of remaining lines — including an OLDER
+ * producer's own trailing `…` on a diff truncated at 200, which is ordinary dim
+ * content line 201 rather than this marker. That is why the two are separate
+ * ideas here: the producer's `…` is a dim line inside the body, this one is the
+ * toggle below it that says how much is not shown.
  */
-export function diffBody(diff: readonly string[]): DiffBody {
+export function diffBody(
+	diff: readonly string[],
+	options: { expanded?: boolean } = {},
+): DiffBody {
 	const stripped = stripDiffHeader(diff);
-	const shown = stripped.slice(0, DIFF_EXPAND_MAX_LINES);
+	if (isWithheldDiff(stripped)) {
+		return { lines: [], hidden: 0, expandable: false, withheld: true };
+	}
+	const expandable = stripped.length > DIFF_EXPAND_MAX_LINES;
+	const shown = options.expanded
+		? stripped
+		: stripped.slice(0, DIFF_EXPAND_MAX_LINES);
 	return {
 		lines: shown.map((raw) => {
 			const text = rstrip(raw);
 			return { text, marker: text.slice(0, 1), kind: diffLineKind(text) };
 		}),
 		hidden: stripped.length - shown.length,
+		expandable,
+		withheld: false,
 	};
 }
 
 /**
- * The overflow marker, spelled exactly as the terminal spells it.
+ * The overflow toggle's label, spelled as the terminal spells its marker.
  *
  * `f"… {hidden} more diff line{'s' if hidden != 1 else ''}"`
  * (tool_card.py:2222-2223) — including the singular case, because "… 1 more
- * diff lines" is the kind of copy a reader notices instead of the number.
+ * diff lines" is the kind of copy a reader notices instead of the number. Keyed
+ * now that it is a control rather than a terminal echo: it is the button's
+ * accessible name, and copy on a control is interface copy.
  */
 export function diffOverflowLabel(hidden: number): string {
-	return `… ${hidden} more diff line${hidden === 1 ? "" : "s"}`;
+	return t("ui.chat.canonical.tool_row.diff.more", { count: hidden });
+}
+
+/** The expanded body's toggle label, collapsing back to the default depth. */
+export function diffShowLessLabel(): string {
+	return t("ui.chat.canonical.tool_row.diff.show_less");
+}
+
+/**
+ * The footer under a diff the PRODUCER cut short: `rows` rendered diff rows it
+ * never recorded, so no toggle can reveal them.
+ */
+export function diffTruncatedLabel(rows: number): string {
+	return t("ui.chat.canonical.tool_row.diff.truncated", { count: rows });
+}
+
+/** The single notice a withheld legacy diff paints instead of its stand-in. */
+export function diffWithheldLabel(): string {
+	return t("ui.chat.canonical.tool_row.diff.withheld");
 }

@@ -68,6 +68,10 @@ const {
 	diffFromDetails,
 	diffLineKind,
 	diffOverflowLabel,
+	diffShowLessLabel,
+	diffTruncatedLabel,
+	diffWithheldLabel,
+	DIFF_WITHHELD_MARKER,
 	displayName,
 	formatBytes,
 	formatDuration,
@@ -79,6 +83,7 @@ const {
 	isPartialDelivery,
 	preferDiff,
 	preferDiffCounts,
+	preferDiffTruncatedRows,
 	preferDeliveryState,
 	outputFallbackLine,
 	requestDesktopMedia,
@@ -2303,6 +2308,126 @@ test("the body shows at most 40 lines and says how many it hid", () => {
 	const small = diffBody(capped);
 	assert.equal(small.hidden, 0);
 	assert.equal(small.lines[1].text, "…");
+});
+
+test("an expanded body shows every recorded line, and collapses back to 40", () => {
+	/*
+	 * The reported defect: a `+531 -163` write showed 40 lines and an inert
+	 * "… 161 more diff lines" — nothing could reveal the rest. The model now
+	 * takes `expanded`, and the toggle the component renders is driven by
+	 * `expandable` (more than the default exists) and `hidden` (how many the
+	 * collapsed body is not showing).
+	 */
+	const rows = Array.from({ length: 200 }, (_, i) =>
+		i % 3 === 0 ? `-old ${i}` : i % 3 === 1 ? `+new ${i}` : ` ctx ${i}`,
+	);
+	const diff = ["--- ", "+++ ", "@@ -1,134 +1,133 @@", ...rows];
+
+	const collapsed = diffBody(diff);
+	assert.equal(collapsed.lines.length, 40);
+	assert.equal(collapsed.hidden, 161, "201 body rows, 40 shown");
+	assert.equal(collapsed.expandable, true);
+	assert.equal(collapsed.withheld, false);
+
+	const expanded = diffBody(diff, { expanded: true });
+	assert.equal(expanded.lines.length, 201, "every recorded row, hunk included");
+	assert.equal(expanded.hidden, 0);
+	assert.equal(expanded.expandable, true, "still offers Show less");
+	assert.equal(expanded.lines.at(-1).text, rows.at(-1));
+	// Ink survives past the default cap: the kinds of lines 41+ are the same
+	// classification the first 40 get, so green/red/dim hold for every row.
+	for (const [index, line] of expanded.lines.entries()) {
+		const source = index === 0 ? "@@ -1,134 +1,133 @@" : rows[index - 1];
+		assert.equal(line.kind, diffLineKind(source), `row ${index}`);
+	}
+	assert.deepEqual(
+		new Set(expanded.lines.slice(40).map((line) => line.kind)),
+		new Set(["added", "removed", "context"]),
+	);
+
+	// A body at or under the default has nothing to toggle, expanded or not.
+	const small = ["--- ", "+++ ", "@@ -1 +1 @@", "-a", "+b"];
+	assert.equal(diffBody(small).expandable, false);
+	assert.equal(diffBody(small, { expanded: true }).expandable, false);
+	assert.equal(diffBody(small, { expanded: true }).lines.length, 3);
+
+	assert.equal(diffShowLessLabel(), "Show less");
+});
+
+test("a producer-truncated diff states the rows it never recorded", () => {
+	/*
+	 * The shared contract with the core: a truncated diff carries no `…` row and
+	 * `details.diff_truncated_rows` counts what was dropped (absent when nothing
+	 * was). The counters' absent-vs-stated rule applies: no `details` keeps the
+	 * row's figure, a stated `details` wins, a missing key states 0.
+	 */
+	assert.equal(preferDiffTruncatedRows({ diff_truncated_rows: 12 }, 0), 12);
+	assert.equal(preferDiffTruncatedRows(null, 12), 12);
+	assert.equal(preferDiffTruncatedRows(undefined, 12), 12);
+	assert.equal(preferDiffTruncatedRows({ diff: ["+a"] }, 12), 0);
+	assert.equal(preferDiffTruncatedRows({ diff_truncated_rows: -3 }, 5), 0);
+	assert.equal(preferDiffTruncatedRows({ diff_truncated_rows: "9" }, 5), 0);
+	assert.equal(preferDiffTruncatedRows({ diff_truncated_rows: 1.5 }, 5), 0);
+
+	assert.equal(
+		diffTruncatedLabel(1),
+		"Diff truncated — 1 more line not recorded",
+	);
+	assert.equal(
+		diffTruncatedLabel(334),
+		"Diff truncated — 334 more lines not recorded",
+	);
+});
+
+test("a diff the old core withheld paints one notice, not a page of blanks", () => {
+	/*
+	 * The stored shape every large write/edit had before the core fix:
+	 * `_redact_diff_detail` (harness/loop.py) kept the header pair, then its
+	 * `_DIFF_DETAIL_WITHHELD` marker, then one "" per original row — rendered,
+	 * that was the marker, 39 blank lines and "… 161 more diff lines".
+	 */
+	assert.equal(
+		DIFF_WITHHELD_MARKER,
+		"[output withheld: credential redaction requires a complete bounded diff]",
+	);
+	const legacy = ["--- ", "+++ ", DIFF_WITHHELD_MARKER, ...Array(200).fill("")];
+	for (const expanded of [false, true]) {
+		const body = diffBody(legacy, { expanded });
+		assert.equal(body.withheld, true);
+		assert.deepEqual(body.lines, []);
+		assert.equal(body.hidden, 0);
+		assert.equal(body.expandable, false, "nothing to reveal");
+	}
+	// With an old producer's `…` among the padding, and with no header at all.
+	assert.equal(
+		diffBody(["--- ", "+++ ", DIFF_WITHHELD_MARKER, "", "…"]).withheld,
+		true,
+	);
+	assert.equal(diffBody([DIFF_WITHHELD_MARKER]).withheld, true);
+	assert.equal(diffWithheldLabel(), "Diff not available for this change");
+
+	// The match is exact and the tail must be padding: a real diff that merely
+	// mentions the marker, or carries content after it, renders as a diff.
+	const real = ["--- ", "+++ ", "@@ -1 +1 @@", `+${DIFF_WITHHELD_MARKER}`];
+	assert.equal(diffBody(real).withheld, false);
+	assert.equal(diffBody(real).lines.length, 2);
+	assert.equal(
+		diffBody([DIFF_WITHHELD_MARKER, "+real content"]).withheld,
+		false,
+	);
+});
+
+test("an old producer's trailing ellipsis stays one harmless dim row", () => {
+	// Pre-contract cores appended a literal `…` as row 201. Collapsed it is
+	// counted among the hidden rows; expanded it is ordinary dim context — never
+	// a hunk/added/removed ink, and never mistaken for the withheld stand-in.
+	const rows = Array.from({ length: 199 }, (_, i) => `+row ${i}`);
+	const old = ["--- ", "+++ ", "@@ -0,0 +1,199 @@", ...rows, "…"];
+	assert.equal(diffBody(old).hidden, 161);
+	const expanded = diffBody(old, { expanded: true });
+	assert.equal(expanded.withheld, false);
+	assert.equal(expanded.lines.at(-1).text, "…");
+	assert.equal(expanded.lines.at(-1).kind, "context");
 });
 
 test("a diff payload is normalised, and a malformed one degrades to no diff", () => {

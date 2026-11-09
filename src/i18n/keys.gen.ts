@@ -4541,6 +4541,10 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": undefined;
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": undefined;
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": undefined;
+	"ui.chat.canonical.tool_row.diff.more": { count: number };
+	"ui.chat.canonical.tool_row.diff.show_less": undefined;
+	"ui.chat.canonical.tool_row.diff.truncated": { count: number };
+	"ui.chat.canonical.tool_row.diff.withheld": undefined;
 	"ui.chat.canonical.tool_row.generic_verb.running": undefined;
 	"ui.chat.canonical.tool_row.generic_verb.settled": undefined;
 	"ui.chat.canonical.tool_row.outcome.failed": undefined;

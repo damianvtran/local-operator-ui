@@ -2742,6 +2742,71 @@ test("a replayed frame without details does not erase a diff already shown", () 
 	assert.deepEqual([row.added, row.removed], [2, 1]);
 });
 
+test("diff_truncated_rows rides both the live end and the durable page", () => {
+	/*
+	 * The core contract: a producer-truncated diff carries
+	 * `details.diff_truncated_rows`. Both reducer paths read it (the live
+	 * `tool_execution_end` and the durable history row), and a frame whose
+	 * `details` the live budget stripped keeps the figure, as the counters do.
+	 */
+	const end = (details) => ({
+		type: "tool_execution_end",
+		tool_call_id: "c-big",
+		tool_name: "write",
+		result: { content: [{ type: "text", text: "Wrote big.py" }], details },
+		duration_s: 0.1,
+	});
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		end({
+			added: 531,
+			removed: 163,
+			diff: REAL_EDIT_DIFF,
+			diff_truncated_rows: 494,
+		}),
+		1,
+	);
+	const row = () => state.records.find((r) => r.kind === "tool");
+	assert.equal(row().diffTruncatedRows, 494);
+	state = applyEvent(state, end(undefined), 2);
+	assert.equal(row().diffTruncatedRows, 494, "a stripped frame keeps it");
+
+	const page = (details) => ({
+		entries: [
+			{
+				id: "t-big",
+				ts: 3,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-big",
+					tool_name: "write",
+					content: [{ text: "Wrote big.py", type: "text" }],
+					provider_payload: { duration_s: 0.1, details },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = applyHistoryPage(
+		state,
+		page({
+			added: 531,
+			removed: 163,
+			diff: REAL_EDIT_DIFF,
+			diff_truncated_rows: 7,
+		}),
+	);
+	assert.equal(row().diffTruncatedRows, 7, "the durable row states its own");
+	// An untruncated diff states no key, which is the producer saying 0.
+	state = applyHistoryPage(
+		state,
+		page({ added: 2, removed: 1, diff: REAL_EDIT_DIFF }),
+	);
+	assert.equal(row().diffTruncatedRows, 0);
+});
+
 test("a durable row that dropped its diff leaves the live one in place", () => {
 	let state = applyEvent(
 		EMPTY_TRANSCRIPT,

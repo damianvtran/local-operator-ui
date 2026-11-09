@@ -45,24 +45,52 @@
  * all.
  *
  * Everything with a right answer lives in `tool-row-model.ts` — the positional
- * header strip, the classification, the cap and the overflow marker — so this
- * file is presentational: it takes lines, paints them, and decides nothing.
+ * header strip, the classification, the cap, the overflow count, the withheld
+ * stand-in and the copy — so this file holds one piece of state (collapsed or
+ * expanded) and otherwise paints what the model hands it.
+ *
+ * THE CAP IS A DEFAULT, NOT A LIMIT. A body opens at the terminal's 40 lines,
+ * and the `… N more diff lines` row under it is a BUTTON that shows every
+ * recorded line (and becomes `Show less`). It used to be inert text: lines 41+
+ * of every large `write`/`edit` were unreachable anywhere in the app, which is
+ * the defect an operator reported reviewing a subagent's work. Lines the
+ * PRODUCER never recorded are a different fact and get a footer, not a toggle
+ * (`truncatedRows`); a legacy row whose diff the old core withheld gets one
+ * notice (`diffBody(...).withheld`).
  */
 
 import { cn } from "@shared/lib/utils";
-import type { FC } from "react";
+import { type FC, useId, useState } from "react";
 import {
 	type DiffBodyLine,
 	type DiffLineKind,
 	diffBody,
 	diffOverflowLabel,
+	diffShowLessLabel,
+	diffTruncatedLabel,
+	diffWithheldLabel,
 } from "./tool-row-model";
 
 export type DiffBlockProps = {
 	/** The tool result's own diff lines, header pair included. */
 	diff: readonly string[];
+	/**
+	 * Rendered diff rows the producer dropped before storing `diff`
+	 * (`details.diff_truncated_rows`); 0 or absent when it dropped none.
+	 */
+	truncatedRows?: number;
 	className?: string;
 };
+
+/**
+ * The toggle's ink and focus treatment. Dim like the marker it replaced, so the
+ * collapsed body reads exactly as before; `hover:text-ink` and the accent focus
+ * outline (the trace's `approval-escape` link treatment) are what say "this is
+ * pressable". `text-left` + `w-full`: a `<button>` centres its text by default,
+ * and the row has to sit in the diff's own column.
+ */
+const TOGGLE =
+	"block w-full cursor-pointer bg-sunken text-left text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
 
 /**
  * The line's ink, by the line's kind.
@@ -99,10 +127,17 @@ const Line: FC<{ line: DiffBodyLine }> = ({ line }) => (
 	<span className={cn(KIND_INK[line.kind], "block")}>{line.text}</span>
 );
 
-export const DiffBlock: FC<DiffBlockProps> = ({ diff, className }) => {
-	const body = diffBody(diff);
+export const DiffBlock: FC<DiffBlockProps> = ({
+	diff,
+	truncatedRows = 0,
+	className,
+}) => {
+	const [expanded, setExpanded] = useState(false);
+	const wellId = useId();
+	const body = diffBody(diff, { expanded });
 	return (
 		<div
+			id={wellId}
 			className={cn(
 				// The app's existing sunken well, the same shape `output-block.tsx`
 				// uses for machine voice: `rounded-sm bg-sunken p-3 font-mono
@@ -116,42 +151,78 @@ export const DiffBlock: FC<DiffBlockProps> = ({ diff, className }) => {
 				// blocks that live there carry the hairline instead, `output-block`
 				// and `log-block` among them.
 				//
-				// `whitespace-pre-wrap` with `overflow-auto` vertically only: a diff
-				// line is long by nature and a horizontal scrollbar inside a
-				// disclosure is a scroll region the reader has to discover, so long
-				// lines wrap instead. `break-words` is required alongside it — a
-				// pre-wrapped token with no break opportunity overflows the box
-				// rather than wrapping.
-				// The ceiling is DERIVED from the cap rather than picked: a diff at
-				// `DIFF_EXPAND_MAX_LINES = 40` shows 40 lines AND the `… N more diff
-				// line(s)` marker under them, which at `text-mono-sm`'s 0.75rem/1.45
-				// metrics is 41 x 17.4px plus the 12px padding on each side. A shorter
-				// ceiling hides the marker that makes the cap honest — measured rather
-				// than anticipated: at 720px the capped body clipped that row by 17px,
-				// so the frame said "40 lines" with nothing saying there were more.
-				// The scroll region that remains is for a WRAPPED body (a 560px column
-				// turns 40 lines into 80 rows), which is the case it was always for.
+				// `whitespace-pre-wrap` and no horizontal scroll: a diff line is long
+				// by nature and a horizontal scrollbar inside a disclosure is a
+				// scroll region the reader has to discover, so long lines wrap
+				// instead. `break-words` is required alongside it — a pre-wrapped
+				// token with no break opportunity overflows the box rather than
+				// wrapping.
 				// §E5: one treatment for detail, code and diffs - `sunken`, radius
 				// 10, no border (design round 1, D9).
-				"max-h-[740px] overflow-y-auto overflow-x-hidden rounded-md bg-sunken p-3 font-mono text-ink text-mono-sm whitespace-pre-wrap break-words",
+				"rounded-md bg-sunken p-3 font-mono text-ink text-mono-sm whitespace-pre-wrap break-words",
+				expanded
+					? // EXPANDED: no ceiling and no scroll region of its own. The
+						// reader asked for the whole diff, and a 200-line body in a
+						// 740px inner scroller is a scroll-inside-a-scroll they have to
+						// wheel through twice. The well grows and the transcript
+						// scrolls it. `overflow-x-clip` rather than `-hidden` is the
+						// load-bearing choice: `hidden` on one axis turns the other
+						// axis's `visible` into `auto`, which would make the well a
+						// scroll container again — and the `Show less` row's `sticky`
+						// would then pin against a box that never scrolls instead of
+						// the transcript viewport. `clip` does not create a scroll
+						// container (CSS Overflow 3), so the toggle stays reachable at
+						// the bottom of the viewport while any of the well is on
+						// screen.
+						"overflow-x-clip"
+					: // COLLAPSED: the ceiling is DERIVED from the default depth
+						// rather than picked: a diff at `DIFF_EXPAND_MAX_LINES = 40`
+						// shows 40 lines AND the `… N more diff line(s)` toggle under
+						// them, which at `text-mono-sm`'s 0.75rem/1.45 metrics is 41 x
+						// 17.4px plus the 12px padding on each side. A shorter ceiling
+						// hides the toggle that makes the default honest — measured
+						// rather than anticipated: at 720px the capped body clipped
+						// that row by 17px, so the frame said "40 lines" with nothing
+						// saying there were more. The scroll region that remains is for
+						// a WRAPPED body (a 560px column turns 40 lines into 80 rows),
+						// which is the case it was always for.
+						"max-h-[740px] overflow-y-auto overflow-x-hidden",
 				className,
 			)}
 		>
-			{body.lines.map((line, index) => (
-				// Position is the key because a diff is an ordered record with no
-				// identity of its own: the same line text legitimately appears twice
-				// (a repeated `+` line), and the list never reorders in place.
-				// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered record
-				<Line key={index} line={line} />
-			))}
-			{body.hidden > 0 && (
+			{body.withheld ? (
+				// One notice instead of the old core's stand-in plus a column of
+				// blank rows: the diff it stood for was never stored, so there is
+				// nothing to expand and no count worth stating.
+				<span className="block text-ink-dim">{diffWithheldLabel()}</span>
+			) : (
+				body.lines.map((line, index) => (
+					// Position is the key because a diff is an ordered record with no
+					// identity of its own: the same line text legitimately appears
+					// twice (a repeated `+` line), and the list never reorders in
+					// place.
+					// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered record
+					<Line key={index} line={line} />
+				))
+			)}
+			{
+				// Only once every RECORDED line is on screen: the footer is a claim
+				// about the end of the record, so above a collapsed body's toggle it
+				// would sit mid-diff and read as if the shown 40 were all there was.
+				!body.withheld && body.hidden === 0 && truncatedRows > 0 && (
+					<span className="block text-ink-dim">
+						{diffTruncatedLabel(truncatedRows)}
+					</span>
+				)
+			}
+			{body.expandable && !expanded && (
 				/*
 				 * STICKY, and this is the one thing in the well that must not be
 				 * allowed to scroll away. The ceiling above is derived for UNWRAPPED
-				 * rows, where the marker sits inside it by construction; a wrapped
+				 * rows, where the toggle sits inside it by construction; a wrapped
 				 * body is the shape that actually reaches the cap, and at a 560px
 				 * column the 40 shown long lines are 80 rows — 1415px of content in a
-				 * 738px client box, measured — so in the flow the marker's own row
+				 * 738px client box, measured — so in the flow the toggle's own row
 				 * begins 648.6px BELOW the clip, and the pin has to lift it by 677px
 				 * (also this body's maxScroll, `scrollHeight - clientHeight`) to land
 				 * it flush at the foot, its box top 709.61px inside the well. The two
@@ -164,26 +235,53 @@ export const DiffBlock: FC<DiffBlockProps> = ({ diff, className }) => {
 				 * - `sticky -bottom-3` (`bottom: -12px`) pins the row's box to the
 				 *   well's inner edge. With plain `bottom-0` it pins 13px higher, at
 				 *   the content-box edge, and the next diff row shows through the
-				 *   band underneath it — the marker does not read as the well's foot
+				 *   band underneath it — the toggle does not read as the well's foot
 				 *   any more.
 				 * - `pb-3` gives that pinned row the well's own bottom padding as its
 				 *   background, so nothing shows through beneath the text.
 				 * - `-mb-3` cancels the same padding in the FLOW, and it is not
-				 *   cosmetic: without it the marker row is 12px taller, which took
+				 *   cosmetic: without it the toggle row is 12px taller, which took
 				 *   the unwrapped at-cap body from 737px of content in a 738px clip
 				 *   (no scroll — the property the ceiling was derived for) to 749 in
 				 *   738, i.e. a scroll region at the exact height where there should
 				 *   be none.
 				 *
 				 * In the well's flow rather than hoisted out as a caption under it:
-				 * outside the scroller the marker would have to be counted for
+				 * outside the scroller the toggle would have to be counted for
 				 * separately in the ceiling, and the ceiling is the well's own.
 				 * `bg-sunken` is the well's ground, so the pinned row is not a second
-				 * surface.
+				 * surface. A real `<button>` (not a clickable span) so it is in the
+				 * tab order, fires on Enter/Space, and announces its state through
+				 * `aria-expanded`/`aria-controls`.
 				 */
-				<span className="sticky -bottom-3 -mb-3 block bg-sunken pb-3 text-ink-dim">
+				<button
+					type="button"
+					aria-expanded={false}
+					aria-controls={wellId}
+					onClick={() => setExpanded(true)}
+					className={cn(TOGGLE, "sticky -bottom-3 -mb-3 pb-3")}
+				>
 					{diffOverflowLabel(body.hidden)}
-				</span>
+				</button>
+			)}
+			{body.expandable && expanded && (
+				// Pinned to the TRANSCRIPT viewport's bottom (the expanded well is
+				// not a scroll container, see `overflow-x-clip` above), so collapsing
+				// is one press away from anywhere in a long diff rather than at its
+				// far end only. Measured ancestor chain in Storybook: button → well
+				// (`overflow: clip`, no scroll box) → the transcript's
+				// `flex-col-reverse overflow-y-auto` scroller, which is therefore
+				// the nearest scroll container the pin resolves against. `-mb-3 pb-3` as in the collapsed row: the band under
+				// the text is the well's ground, and the flow height is unchanged.
+				<button
+					type="button"
+					aria-expanded={true}
+					aria-controls={wellId}
+					onClick={() => setExpanded(false)}
+					className={cn(TOGGLE, "sticky bottom-0 -mb-3 pb-3")}
+				>
+					{diffShowLessLabel()}
+				</button>
 			)}
 		</div>
 	);

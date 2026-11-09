@@ -1780,5 +1780,34 @@
 		"placeholders": {
 			"id": "opaque job identifier from the hub receipt; preserve as supplied"
 		}
+	},
+	"ui.chat.canonical.tool_row.diff.more": {
+		"role": "button under a collapsed write/edit diff that reveals every remaining recorded line",
+		"tone": "terse, mirrors the terminal's overflow marker; keep the leading ellipsis",
+		"length": "Short; one line under the diff.",
+		"note": "Reads '… 161 more diff lines'. 'diff' is the developer term for a line-by-line change listing; keep it untranslated where the locale already uses it.",
+		"placeholders": {
+			"count": "number of diff lines currently hidden"
+		}
+	},
+	"ui.chat.canonical.tool_row.diff.show_less": {
+		"role": "button under an expanded write/edit diff that collapses it back to its first 40 lines",
+		"tone": "plain control label",
+		"length": "One or two words."
+	},
+	"ui.chat.canonical.tool_row.diff.truncated": {
+		"role": "dim footer under a diff the agent's tool stored only partially; the missing lines were never recorded and cannot be shown",
+		"tone": "plain statement, no blame",
+		"length": "One short line.",
+		"note": "Reads 'Diff truncated — 12 more lines not recorded'.",
+		"placeholders": {
+			"count": "number of diff lines the tool did not record"
+		}
+	},
+	"ui.chat.canonical.tool_row.diff.withheld": {
+		"role": "dim notice in place of a diff an older Local Operator version did not store",
+		"tone": "plain statement",
+		"length": "One short sentence fragment, no full stop.",
+		"note": "Shown for file edits recorded before the fix; the change itself happened, only its diff is unavailable."
 	}
 }
