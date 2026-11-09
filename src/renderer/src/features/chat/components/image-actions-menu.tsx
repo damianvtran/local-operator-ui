@@ -6,6 +6,7 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
@@ -203,6 +204,10 @@ export const ImageActionsMenu = ({
 	tooltip = "Image actions",
 	"aria-label": ariaLabel,
 }: ImageActionsMenuProps) => {
+	// Memoized markdown keeps its JSX when props are unchanged. Translated
+	// getters read the locale, but do not invalidate that JSX: subscribe at the
+	// small per-image menu, not at the expensive transcript/markdown parser.
+	useI18nLocale();
 	const kind = classifyAttachmentSource(file);
 	const actions = imageMenuActions({
 		file,
