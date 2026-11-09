@@ -147,6 +147,10 @@ export function useSkillCompletion({
 	argumentWords,
 	enabled,
 }: SkillListArgs): SkillCompletionState {
+	// The popup's subscription refreshes its chrome, not strings retained by
+	// this hook's memo. Invalidate the notice where skillNotice resolves keys;
+	// a translated getter alone does not invalidate its cached result.
+	const locale = useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * THE PROVIDER-OPTIONAL CLIENT (QA round 1, Q-1). The shared composer mounts
@@ -345,6 +349,7 @@ export function useSkillCompletion({
 	 */
 	const hasQuery = token !== null && token.query.trim() !== "";
 	const settled = active && skillsQuery.isSuccess;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale is read indirectly by t() inside skillNotice; it must invalidate translated text.
 	const notice = useMemo(
 		() =>
 			token === null || claimed
@@ -367,6 +372,7 @@ export function useSkillCompletion({
 									: "pending",
 					}),
 		[
+			locale,
 			token,
 			claimed,
 			feature,

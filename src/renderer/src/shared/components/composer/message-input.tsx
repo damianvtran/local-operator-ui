@@ -486,6 +486,14 @@ export type ComposerSendError = {
 	 */
 	message?: string;
 	/**
+	 * App-owned notices with no interpolation retain their key across page
+	 * memoization. Backend error sentences still use `message`; translating a
+	 * key here lets the locale subscription invalidate the consumer, not the
+	 * transcript-scale producer. Parameterized notices need a typed params
+	 * contract rather than storing a pre-rendered sentence.
+	 */
+	messageKey?: WithoutParams;
+	/**
 	 * The failure's code, for the surfaces that read one (the ask-answer report,
 	 * the draft row's own copy). Nothing in this file branches on it any more -
 	 * the decisions it used to make are taken where the failure is classified.
@@ -8017,6 +8025,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * there is a claim to drop (or a returned payload waiting to be adopted), and
 		 * it is that second half `hasSomethingToClear` reads.
 		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: t() reads the locale store; locale invalidates a keyed notice even when its object is memoized by the page.
 		const composerAlert = useMemo(() => {
 			const boxPayload = buildSendPayload(newMessage, replies);
 			const hasSomethingToClear = boxPayload !== "" || attachments.length > 0;
@@ -8042,7 +8051,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						]
 					: [];
 			return {
-				message: sendError?.message,
+				message: sendError?.messageKey
+					? t(sendError.messageKey)
+					: sendError?.message,
 				muted: sendError?.muted === true,
 				polite: sendError?.polite === true,
 				/*
@@ -8083,7 +8094,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					sendError?.muted !== true &&
 					(sendError?.onClear !== undefined || hasSomethingToClear),
 			};
-		}, [sendError, newMessage, replies, attachments, noProvider]);
+		}, [sendError, newMessage, replies, attachments, noProvider, locale]);
 
 		/*
 		 * The session issue: the state of this machine's Radient sign-in, and the one
