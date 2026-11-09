@@ -37,6 +37,13 @@ const DOT_ONLY_VARIABLE_KEY = /^\.+$/;
 const PUBLICATION_FORMAT_POINT = /\p{Cf}/u;
 const PUBLICATION_PATH_SEPARATOR = /[/\\:]/;
 
+/**
+ * The most rows one full-diff page may ask for: the core's page cap, which is
+ * also the inline preview's row budget, so a page never paints a longer body
+ * than the preview the reader already knows.
+ */
+export const DESKTOP_DIFF_PAGE_MAX_ROWS = 200;
+
 const id = z
 	.string()
 	.min(1)
@@ -2249,6 +2256,44 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.regex(/^[a-zA-Z0-9_:-]+$/)
 				.optional(),
 			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
+	/*
+	 * One page of a write/edit call's FULL historical diff: the redacted,
+	 * immutable artifact the core archived when the call ran, beyond the 200-row
+	 * inline preview its transcript row carries.
+	 *
+	 * The request names the CALL, never the artifact: there is deliberately no
+	 * digest/ref field. The route proves membership itself (the transcript of
+	 * THIS session — or of THIS child, contained by the parent's roster — holds a
+	 * tool result with this id whose descriptor names the artifact), so a
+	 * renderer that learned a ref some other way still cannot read it. The child
+	 * twin mirrors `subagents.attachment`/`subagents.transcript`: a child is not a
+	 * user session, so the parent route refuses it.
+	 *
+	 * `callId` is a provider tool-call id (`toolu_…`, `call_…`), not a path:
+	 * `id`'s charset, so no `/`, `.` or `%` ever reaches the URL. `start` is an
+	 * artifact ROW index (rows never move: the artifact is immutable), and
+	 * `limit` is capped at the route's 200 — the route may still return fewer
+	 * under its byte budget and says where to resume (`next_start`).
+	 */
+	z
+		.object({
+			op: z.literal("sessions.diff"),
+			sessionId,
+			callId: id,
+			start: z.number().int().min(0).max(1_000_000),
+			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("subagents.diff"),
+			sessionId,
+			childId: sessionId,
+			callId: id,
+			start: z.number().int().min(0).max(1_000_000),
+			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
 		})
 		.strict(),
 	z
@@ -7358,6 +7403,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.variables.list",
 	"skills.list",
 	"subagents.transcript",
+	// The full-diff pages: reads of an immutable archived artifact.
+	"sessions.diff",
+	"subagents.diff",
 	"teams.effective",
 	"teams.get",
 	"teams.list",
@@ -9350,6 +9398,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.entryId) query.set("entry_id", request.entryId);
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/transcript?${query}`,
+				method: "GET",
+			};
+		}
+		case "sessions.diff":
+		case "subagents.diff": {
+			// `start` and `limit` are ALWAYS sent, like `subagents.transcript`'s
+			// limit: the route's defaults are a second authority, and the page's
+			// `next_start` is a fact about the range the caller actually asked for.
+			const query = new URLSearchParams({
+				start: String(request.start),
+				limit: String(request.limit),
+			});
+			const call = encodeURIComponent(request.callId);
+			const owner =
+				request.op === "subagents.diff"
+					? `${request.sessionId}/children/${request.childId}`
+					: request.sessionId;
+			return {
+				path: `/v1/desktop/sessions/${owner}/tool-calls/${call}/diff?${query}`,
 				method: "GET",
 			};
 		}

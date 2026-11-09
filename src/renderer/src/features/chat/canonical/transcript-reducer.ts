@@ -45,6 +45,10 @@ import {
 	preferBridgeLabel,
 } from "../components/trace/bridge-row-model";
 import {
+	type DiffFullDescriptor,
+	preferDiffFull,
+} from "../components/trace/diff-history-model";
+import {
 	type HubReceipt,
 	type PeerSender,
 	hubFields,
@@ -563,6 +567,16 @@ type TranscriptPayloadRecord =
 			 * flips the key between present and absent.
 			 */
 			diffTruncatedRows?: number;
+			/**
+			 * The full archived diff's descriptor (`details.diff_full`), parsed by
+			 * `preferDiffFull`; null when there is none (complete preview, or a
+			 * call recorded before the archive existed). It names the artifact
+			 * only to the core: the renderer pages it by call id, so replaying a
+			 * stored transcript reaches the same immutable rows without the
+			 * artifact ever riding the transcript. Optional for the same
+			 * hand-built-fixture reason as `diffTruncatedRows`.
+			 */
+			diffFull?: DiffFullDescriptor | null;
 			/**
 			 * The call was still running when the turn was aborted, so it never
 			 * reported an outcome of its own.
@@ -3749,6 +3763,10 @@ function durableRecord(
 				providerPayload.details,
 				previous?.kind === "tool" ? (previous.diffTruncatedRows ?? 0) : 0,
 			),
+			diffFull: preferDiffFull(
+				providerPayload.details,
+				previous?.kind === "tool" ? (previous.diffFull ?? null) : null,
+			),
 			// A durable row is the authoritative record of how the call ended - and
 			// when the runtime's own classifier says the end was an INTERRUPT
 			// (`skipped`/`aborted`), "ended" is not "failed": the row wears the
@@ -6266,6 +6284,7 @@ export function applyEvent(
 				// already settled, so this cannot blank one.
 				diff: null,
 				diffTruncatedRows: 0,
+				diffFull: null,
 				stopped: false,
 				notRunReason: notRun,
 				// The kind rides the verdict and nothing else: no verdict, no class.
@@ -6420,6 +6439,7 @@ export function applyEvent(
 				diff: current?.kind === "tool" ? current.diff : null,
 				diffTruncatedRows:
 					current?.kind === "tool" ? (current.diffTruncatedRows ?? 0) : 0,
+				diffFull: current?.kind === "tool" ? (current.diffFull ?? null) : null,
 				// The live progress payload survives a replayed/reviving start: the
 				// update frames are self-replacing, but a replay between two of them
 				// must not blank what the row already showed (the same rule the diff
@@ -6498,6 +6518,7 @@ export function applyEvent(
 							removed: 0,
 							diff: null,
 							diffTruncatedRows: 0,
+							diffFull: null,
 							stopped: false,
 						};
 			// The row is settled, so this is also the last chance to LEARN the call's
@@ -6696,6 +6717,7 @@ export function applyEvent(
 					result.details,
 					base.diffTruncatedRows ?? 0,
 				),
+				diffFull: preferDiffFull(result.details, base.diffFull ?? null),
 				// It reported an end, so whatever happened it was not interrupted —
 				// UNLESS THE USER STOPPED IT (UX round 2, U7), or the WIRE's own fault
 				// marker says the end was an interrupt (`interruptedFault`). The leading

@@ -61,10 +61,16 @@
 
 import { cn } from "@shared/lib/utils";
 import { type FC, useId, useLayoutEffect, useRef, useState } from "react";
+import { DiffHistoryPager, type DiffHistoryScope } from "./diff-history";
+import {
+	type DiffFullDescriptor,
+	diffFullNoticeLabel,
+	diffFullViewLabel,
+} from "./diff-history-model";
+import { KIND_INK } from "./diff-ink";
 import {
 	DIFF_EXPAND_MAX_LINES,
 	type DiffBodyLine,
-	type DiffLineKind,
 	diffBody,
 	diffOverflowLabel,
 	diffShowLessLabel,
@@ -80,6 +86,18 @@ export type DiffBlockProps = {
 	 * (`details.diff_truncated_rows`); 0 or absent when it dropped none.
 	 */
 	truncatedRows?: number;
+	/**
+	 * Where this call's FULL archived diff can be paged from, when the core
+	 * archived one (`details.diff_full`). Only meaningful with
+	 * `truncatedRows > 0`: the preview already holds every row otherwise.
+	 * `scope` is the conversation the row was read through (parent or child),
+	 * `callId` the tool call — the route resolves the artifact from both.
+	 */
+	history?: {
+		scope: DiffHistoryScope | null;
+		callId: string;
+		descriptor: DiffFullDescriptor | null;
+	};
 	className?: string;
 };
 
@@ -91,25 +109,6 @@ export type DiffBlockProps = {
  */
 const TOGGLE =
 	"group/diff-toggle block w-full cursor-pointer bg-sunken text-start text-ink-dim underline underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink focus-visible:outline-none";
-
-/**
- * The line's ink, by the line's kind.
- *
- * Roles only, per `docs/branding.md` § 1: `success`/`danger` are the same two
- * roles the row's counters use, `ink-muted` is the TUI's `tool.diff.hunk` and
- * `ink-dim` its `tool.diff.context`. `success` and `danger` as text on a
- * `sunken` ground are asserted on every theme by
- * `scripts/contrast-contract.mjs` (`AS_TEXT` against `canvas`/`surface`/
- * `sunken`), so the pairs this block introduces — coloured text in a sunken
- * well — are measured pairs rather than a new token. The two tightest are
- * 4.58 and 4.73 on sage; see the file header for the full reading.
- */
-const KIND_INK: Record<DiffLineKind, string> = {
-	hunk: "text-ink-muted",
-	added: "text-success",
-	removed: "text-danger",
-	context: "text-ink-dim",
-};
 
 /**
  * One line, painted whole in its kind's ink.
@@ -132,9 +131,16 @@ const Line: FC<{ line: DiffBodyLine; index: number }> = ({ line, index }) => (
 export const DiffBlock: FC<DiffBlockProps> = ({
 	diff,
 	truncatedRows = 0,
+	history,
 	className,
 }) => {
 	const [expanded, setExpanded] = useState(false);
+	// Full mode REPLACES the preview inside this same well with one bounded page
+	// of the archive; Back returns to the preview exactly as it was left.
+	const [full, setFull] = useState(false);
+	const descriptor = truncatedRows > 0 ? (history?.descriptor ?? null) : null;
+	const pageable =
+		descriptor?.state === "archived" && history?.scope ? history : null;
 	const wellId = useId();
 	const wellRef = useRef<HTMLDivElement>(null);
 	const toggleRef = useRef<HTMLButtonElement>(null);
@@ -206,8 +212,8 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 				// §E5: one treatment for detail, code and diffs - `sunken`, radius
 				// 10, no border (design round 1, D9).
 				"rounded-md bg-sunken p-3 font-mono text-ink text-mono-sm whitespace-pre-wrap break-words",
-				expanded
-					? // EXPANDED: no ceiling and no scroll region of its own. The
+				expanded || full
+					? // EXPANDED (or paging the full diff): no ceiling and no scroll region of its own. The
 						// reader asked for the whole diff, and a 200-line body in a
 						// 740px inner scroller is a scroll-inside-a-scroll they have to
 						// wheel through twice. The well grows and the transcript
@@ -236,12 +242,30 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 							"overflow-y-auto overflow-x-hidden",
 							// One extra 17.4px row when producer truncation is stated:
 							// the footer and toggle must both fit without an inner scroll.
-							truncatedRows > 0 ? "max-h-[758px]" : "max-h-[740px]",
+							// A non-archived descriptor states WHY in one more row.
+							truncatedRows > 0
+								? descriptor && descriptor.state !== "archived"
+									? "max-h-[776px]"
+									: "max-h-[758px]"
+								: "max-h-[740px]",
 						),
 				className,
 			)}
 		>
-			{body.withheld ? (
+			{full && pageable?.scope ? (
+				<DiffHistoryPager
+					scope={pageable.scope}
+					callId={pageable.callId}
+					onBack={() => {
+						setFull(false);
+						// Back lands on the preview's own top, not wherever the
+						// (possibly taller) page left the transcript.
+						requestAnimationFrame(() =>
+							wellRef.current?.scrollIntoView({ block: "nearest" }),
+						);
+					}}
+				/>
+			) : body.withheld ? (
 				// One notice instead of the old core's stand-in plus a column of
 				// blank rows: the diff it stood for was never stored, so there is
 				// nothing to expand and no count worth stating.
@@ -259,13 +283,44 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 			{
 				// Producer truncation is independent of display collapse: disclose
 				// the missing record even before the reader reveals its stored tail.
-				!body.withheld && truncatedRows > 0 && (
-					<span className="block text-ink-dim">
-						{diffTruncatedLabel(truncatedRows)}
-					</span>
-				)
+				!full &&
+					!body.withheld &&
+					truncatedRows > 0 &&
+					(pageable ? (
+						/*
+						 * The omitted rows WERE archived, so "not recorded" would be
+						 * false: the footer becomes the way to them. Same row, same
+						 * ceiling as the truncation notice it replaces.
+						 */
+						<button
+							type="button"
+							data-diff-view-full=""
+							onClick={() => setFull(true)}
+							className={TOGGLE}
+						>
+							<span className="block group-focus-visible/diff-toggle:outline group-focus-visible/diff-toggle:outline-2 group-focus-visible/diff-toggle:outline-accent group-focus-visible/diff-toggle:outline-offset-[-2px]">
+								{diffFullViewLabel(
+									descriptor?.state === "archived" ? descriptor.rows : 0,
+								)}
+							</span>
+						</button>
+					) : (
+						<>
+							<span className="block text-ink-dim">
+								{diffTruncatedLabel(truncatedRows)}
+							</span>
+							{descriptor && descriptor.state !== "archived" && (
+								<span
+									data-diff-full-notice={descriptor.state}
+									className="block text-ink-dim"
+								>
+									{diffFullNoticeLabel(descriptor.state)}
+								</span>
+							)}
+						</>
+					))
 			}
-			{body.expandable && (
+			{!full && body.expandable && (
 				/*
 				 * STICKY, and this is the one thing in the well that must not be
 				 * allowed to scroll away. The ceiling above is derived for UNWRAPPED

@@ -2807,6 +2807,87 @@ test("diff_truncated_rows rides both the live end and the durable page", () => {
 	assert.equal(row().diffTruncatedRows, 0);
 });
 
+test("diff_full rides the live end and the durable replay, never the digest", () => {
+	/*
+	 * The archive descriptor follows the counters' absent-vs-stated rule on both
+	 * reducer paths, so a REPLAYED transcript (durable page) still knows the call
+	 * has a full diff to page — and the parsed record never keeps the digest,
+	 * because nothing in the renderer may send it.
+	 */
+	const full = { v: 1, state: "archived", rows: 1847, digest: "a".repeat(32) };
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-full",
+			tool_name: "edit",
+			result: {
+				content: [{ type: "text", text: "Edited big.py" }],
+				details: {
+					diff: REAL_EDIT_DIFF,
+					diff_truncated_rows: 1647,
+					diff_full: full,
+				},
+			},
+			duration_s: 0.1,
+		},
+		1,
+	);
+	const row = () => state.records.find((r) => r.kind === "tool");
+	assert.deepEqual(row().diffFull, { state: "archived", rows: 1847 });
+	assert.ok(!JSON.stringify(row()).includes("a".repeat(32)));
+	// Replay: a fresh transcript built from the durable page alone.
+	state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-full",
+				ts: 2,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-full",
+					tool_name: "edit",
+					content: [{ text: "Edited big.py", type: "text" }],
+					provider_payload: {
+						duration_s: 0.1,
+						details: {
+							diff: REAL_EDIT_DIFF,
+							diff_truncated_rows: 1647,
+							diff_full: full,
+						},
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(row().diffFull, { state: "archived", rows: 1847 });
+	assert.equal(row().toolCallId, "c-full");
+	// A legacy durable row (no descriptor) states none.
+	state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-old",
+				ts: 3,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-old",
+					tool_name: "edit",
+					content: [{ text: "Edited", type: "text" }],
+					provider_payload: {
+						details: { diff: REAL_EDIT_DIFF, diff_truncated_rows: 5 },
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(row().diffFull, null);
+});
+
 test("a durable row that dropped its diff leaves the live one in place", () => {
 	let state = applyEvent(
 		EMPTY_TRANSCRIPT,
