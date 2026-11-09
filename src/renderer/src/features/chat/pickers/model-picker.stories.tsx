@@ -104,6 +104,7 @@ import type { SlashCommandMeta } from "../components/slash-commands";
 import { SettingsIntentChips } from "../session-status/settings-intent-chips";
 import {
 	EffortPicker,
+	FastPicker,
 	ModelPicker,
 	type PickerContext,
 } from "./destination-pickers";
@@ -136,6 +137,8 @@ const MATCH_HAIKU_NAME = /Claude Haiku 4\.5|claude-haiku-4-5/;
 const MATCH_COULD_NOT_SWITCH_BUDGET =
 	/Couldn't switch to .*did not respond in time/;
 const MATCH_SWITCHING_TO = /^Switching to /;
+const MATCH_TURNING_FAST_ON = /^Turning fast mode on/;
+const MATCH_FAST_ON_ROW = /^On/;
 const MATCH_ENTER_CONNECTS_ZAI = /Enter connects zai/;
 
 const noop = () => {};
@@ -551,7 +554,7 @@ type FrameProps = {
 	commandResponse?: DesktopResponse;
 	/** The model the session is on (the session frame's stand-in). */
 	selected?: { provider: string; model_id: string } | null;
-	picker?: "model" | "effort";
+	picker?: "model" | "effort" | "fast";
 	/** A whole frame in place of `{selected_model: selected}`, for states such as an effort displacement. */
 	frontend?: Record<string, unknown>;
 	onClose?: () => void;
@@ -600,6 +603,8 @@ const Frame: FC<FrameProps> = ({
 		dispatch: noop,
 		rebind: noop,
 	};
+	if (picker === "fast")
+		return <FastPicker {...ctx} action={{ ...MODEL_ACTION, data: {} }} />;
 	return isEffort ? <EffortPicker {...ctx} /> : <ModelPicker {...ctx} />;
 };
 
@@ -2359,7 +2364,7 @@ const intentSlot = (
 	state: SettingsIntent["state"],
 ): SettingsIntent => ({
 	kind: (request.kind ?? "model") as SettingsIntent["kind"],
-	value: request.value as string,
+	value: request.value as string | boolean,
 	effort: null,
 	request_id: request.requestId ?? "",
 	generation,
@@ -2421,7 +2426,9 @@ const LiveChips: FC<{ sessionId: string }> = ({ sessionId }) => {
 const IntentFrame: FC<{
 	bridge: FrameProps["bridge"];
 	sessions: string[];
-}> = ({ bridge, sessions }) => {
+	picker?: FrameProps["picker"];
+	frontend?: FrameProps["frontend"];
+}> = ({ bridge, sessions, picker, frontend }) => {
 	const [index, setIndex] = useState(0);
 	const [reset] = useState(() => {
 		resetIntents();
@@ -2436,6 +2443,8 @@ const IntentFrame: FC<{
 					key={sessionId}
 					bridge={bridge}
 					sessionId={sessionId}
+					picker={picker}
+					frontend={frontend}
 					onClose={() => setIndex((current) => current + 1)}
 				/>
 			)}
@@ -2551,6 +2560,42 @@ export const IntentBurstAcrossSessions: Story = {
 			"bbbbbbbbbbbb",
 			"cccccccccccc",
 		]);
+		expect(commandPosts).toEqual([]);
+	},
+};
+
+/**
+ * The FAST dial is a per-session setting too: with the capability its pick is
+ * a `fast` intent (boolean value) that closes the dialog at once, never a
+ * `sessions.command` a busy owner would hold.
+ */
+export const IntentFastToggle: Story = {
+	render: () => (
+		<IntentFrame
+			sessions={[INTENT_SESSION]}
+			picker="fast"
+			frontend={{
+				selected_model: {
+					...CURRENT,
+					supports_fast_mode: true,
+					fast_mode: false,
+				},
+			}}
+			bridge={intentBridge(async (request, n) => {
+				const intent = intentSlot(request, n, "applying");
+				return ok({ intent, intents: { fast: intent } });
+			})}
+		/>
+	),
+	play: async () => {
+		await pickRow(MATCH_FAST_ON_ROW);
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() =>
+			expect(screen.getByText(MATCH_TURNING_FAST_ON)).toBeTruthy(),
+		);
+		expect(intentPosts).toHaveLength(1);
+		expect(intentPosts[0].kind).toBe("fast");
+		expect(intentPosts[0].value).toBe(true);
 		expect(commandPosts).toEqual([]);
 	},
 };

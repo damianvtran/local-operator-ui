@@ -267,6 +267,10 @@ test("picks on three sessions in a row never wait on the first one's answer", as
 	await runStory("IntentBurstAcrossSessions");
 });
 
+test("the fast dial is a durable intent too: boolean value, closes at once, no command", async () => {
+	await runStory("IntentFastToggle");
+});
+
 test("without the capability the picker keeps today's synchronous switch", async () => {
 	await runStory("Busy");
 });

@@ -4605,6 +4605,14 @@ export const FastPicker: FC<PickerContext> = ({
 	const draftIdentity = draft
 		? bandReadings(draftPreview.data?.snapshot, null).identity
 		: null;
+	/*
+	 * DURABLE INTENTS (`features.settings_intents`): the fast dial is a
+	 * per-session setting like model and effort, so a session pick is the same
+	 * background-applied intent - POST, close, chip - rather than a runtime
+	 * round trip that a busy owner would stall. A draft keeps its preview path.
+	 */
+	const intents = useSettingsIntentsEnabled() && !draft;
+	const intentSlots = useSessionSettingsIntents(intents ? sessionId : null);
 	const [acknowledged, setAcknowledged] = useState(false);
 	const premium = Boolean(
 		(action.data as { premium_pricing?: boolean }).premium_pricing,
@@ -4621,12 +4629,22 @@ export const FastPicker: FC<PickerContext> = ({
 	 * function the strip prints through, so the mark and the model chip's badge
 	 * cannot name different dials (issue #1265).
 	 */
-	const dial = fastModeState(
+	const frameDial = fastModeState(
 		draft
 			? draftIdentity
 			: (runningFrontend(canonical)?.effective_model ??
 					runningFrontend(canonical)?.selected_model),
 	);
+	// A pending fast intent is the dial the user just chose; it marks the row
+	// until the frame confirms (the model picker's pending-target rule). Only a
+	// model that HAS the tier can carry one, so a `null` dial stays `null`.
+	const pendingFast = intents ? intentOverride(intentSlots).fast : null;
+	const dial =
+		frameDial !== null && pendingFast !== null
+			? pendingFast
+				? "on"
+				: "off"
+			: frameDial;
 	/*
 	 * The premium gate stays here rather than in the builder: it is the
 	 * picker's own acknowledgement state, not a property of the dial.
@@ -4683,9 +4701,19 @@ export const FastPicker: FC<PickerContext> = ({
 						)
 			}
 			options={options}
-			onPick={(value) =>
-				draft ? draftFast(value) : void command.run("fast", value)
-			}
+			onPick={(value) => {
+				if (draft) return draftFast(value);
+				if (intents) {
+					void submitSettingsIntent(sessionId, {
+						kind: "fast",
+						value: value === "on",
+					});
+					onClose();
+					return;
+				}
+				void command.run("fast", value);
+			}}
+			picksWhileBusy={intents}
 			toolbar={
 				premium ? (
 					<PickerCheck
@@ -4697,7 +4725,7 @@ export const FastPicker: FC<PickerContext> = ({
 					</PickerCheck>
 				) : undefined
 			}
-			busy={draft ? draftPick.busy : command.busy}
+			busy={draft ? draftPick.busy : intents ? false : command.busy}
 			result={draft ? draftPick.result : command.result}
 		/>
 	);
