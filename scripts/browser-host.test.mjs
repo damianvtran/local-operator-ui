@@ -13122,3 +13122,41 @@ test("setvalue is advertised, document/owner scoped, and restores forbidden chan
 	);
 	assert.equal(contents.url, "https://approved.example/");
 });
+
+test("U1c: typed chrome-extension pages require an installed+enabled extension and a USER tab", async () => {
+	const id = "aeblfdkhhhdcdjpifhhbdiojplfjncoa";
+	let active = true;
+	const { host, registry } = makeHost({
+		isActiveExtension: (candidate) => active && candidate === id,
+	});
+	await host.newTab();
+	const welcome = `chrome-extension://${id}/app/app.html#/page/welcome`;
+	const shown = await host.navigateActive(welcome);
+	assert.equal(shown.url, welcome);
+	active = false;
+	await assert.rejects(() => host.navigateActive(welcome), {
+		code: "nav_failed",
+	});
+	active = true;
+	await assert.rejects(
+		() => host.navigateActive(`chrome-extension://${"b".repeat(32)}/x.html`),
+		{ code: "nav_failed" },
+	);
+	// Agent page actions still refuse the extension document, even after handover.
+	const tab = registry.activeTab;
+	host.handOver(tab.tabId, "synthetic-u1c");
+	const listed = await host.dispatch(
+		"tabs",
+		{ requester: "session:synthetic-u1c" },
+		"u1c-tabs",
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"read",
+				{ tab: listed.tabs[0].tab, requester: "session:synthetic-u1c" },
+				"u1c-read",
+			),
+		(error) => error.code === "owner_refused",
+	);
+});

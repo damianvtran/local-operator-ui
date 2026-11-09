@@ -45,6 +45,7 @@
 	"ui.browser.extensions.disabled_info": "{name} 已关闭。重新加载已打开的页面，以停止它已添加的脚本。",
 	"ui.browser.extensions.error_generic": "操作未成功，请重试。",
 	"ui.browser.extensions.passkey_recovery": "如果你的通行密钥保存在密码管理器中，请在“扩展程序”中添加它的扩展程序并登录，然后在此页面重试。",
+	"ui.browser.extensions.passkey_recovery_installed": "如果你的通行密钥保存在 {name} 中，请在“扩展程序”中打开 {name} 并登录，然后在此页面重试。",
 	"ui.browser.extensions.page_title": "扩展程序",
 	"ui.browser.extensions.search_placeholder": "搜索扩展程序",
 	"ui.browser.extensions.search_none": "没有与“{query}”匹配的扩展程序。",

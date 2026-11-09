@@ -1,5 +1,5 @@
 diff --git a/dist/chrome-extension-api.preload.js b/dist/chrome-extension-api.preload.js
-index 67d3be4..07bbd2d 100644
+index 67d3be4..121dd5e 100644
 --- a/dist/chrome-extension-api.preload.js
 +++ b/dist/chrome-extension-api.preload.js
 @@ -21,9 +21,6 @@
@@ -110,11 +110,15 @@ index 67d3be4..07bbd2d 100644
                getAll: invokeExtension2("notifications.getAll"),
                getPermissionLevel: invokeExtension2("notifications.getPermissionLevel"),
                update: invokeExtension2("notifications.update"),
-@@ -443,7 +465,17 @@
+@@ -443,7 +465,21 @@
                  return port;
                },
                openOptionsPage: invokeExtension2("runtime.openOptionsPage"),
 -              sendNativeMessage: invokeExtension2("runtime.sendNativeMessage")
++              // Electron's loadExtension never fires the native onInstalled, so
++              // extensions that onboard from it (1Password's welcome page) never
++              // start. The embedder dispatches it through the router instead.
++              onInstalled: new ExtensionEvent("runtime.onInstalled"),
 +              sendNativeMessage: (application, message, callback) => {
 +                const result = electron.invokeExtension(extensionId, "runtime.sendNativeMessage", {}, application, message).then((value) => {
 +                  if (value?.nativeMessagingDenied) throw new Error("Native messaging is disabled by browser policy");
@@ -129,7 +133,7 @@ index 67d3be4..07bbd2d 100644
              };
            }
          },
-@@ -560,14 +592,29 @@
+@@ -560,14 +596,29 @@
          const baseApi = chrome[apiName];
          const api = apiDefinitions[apiName];
          if (api.shouldInject && !api.shouldInject()) return;
@@ -160,7 +164,7 @@ index 67d3be4..07bbd2d 100644
      }
      if (!process.contextIsolated) {
        console.warn(`injectExtensionAPIs: context isolation disabled in ${location.href}`);
-@@ -584,6 +631,26 @@
+@@ -584,6 +635,26 @@
        } else {
          import_electron2.webFrame.executeJavaScript(`(${mainWorldScript}());`);
        }
@@ -188,7 +192,7 @@ index 67d3be4..07bbd2d 100644
        console.error(`injectExtensionAPIs error (${location.href})`);
        console.error(error);
 diff --git a/dist/cjs/index.js b/dist/cjs/index.js
-index a91ca8f..74b8d14 100644
+index a91ca8f..dc92ce4 100644
 --- a/dist/cjs/index.js
 +++ b/dist/cjs/index.js
 @@ -448,7 +448,7 @@ var BrowserActionAPI = class {
@@ -246,7 +250,19 @@ index a91ca8f..74b8d14 100644
    }
    createTabDetails(tab) {
      const tabId = tab.id;
-@@ -1179,7 +1189,7 @@ var WebNavigationAPI = class {
+@@ -1048,6 +1058,11 @@ var _TabsAPI = class _TabsAPI {
+     tabId = tab.id;
+     const props = updateProperties;
+     const url = props.url ? validateExtensionUrl(props.url, event.extension) : void 0;
++    // A browser-initiated loadURL bypasses the embedder's will-navigate scheme
++    // rule, so the embedder must vet it here (file:, data:, about: pages).
++    if (url && typeof this.ctx.store.impl.validateTabNavigation === "function" && !this.ctx.store.impl.validateTabNavigation(url, event.extension.id)) {
++      throw new Error("Invalid URL");
++    }
+     if (url) await tab.loadURL(url);
+     if (typeof props.muted === "boolean") tab.setAudioMuted(props.muted);
+     if (props.active) this.onActivated(tabId);
+@@ -1179,7 +1194,7 @@ var WebNavigationAPI = class {
    constructor(ctx) {
      this.ctx = ctx;
      this.sendNavigationEvent = (eventName, details) => {
@@ -255,7 +271,7 @@ index a91ca8f..74b8d14 100644
        this.ctx.router.broadcastEvent(`webNavigation.${eventName}`, details);
      };
      this.onCreatedNavigationTarget = (tab, { url, frame }) => {
-@@ -1950,11 +1960,13 @@ var NativeMessagingHost = class {
+@@ -1950,11 +1965,13 @@ var NativeMessagingHost = class {
  
  // src/browser/api/runtime.ts
  var RuntimeAPI = class extends import_node_events3.EventEmitter {
@@ -270,7 +286,7 @@ index a91ca8f..74b8d14 100644
        const host = new NativeMessagingHost(
          event.extension.id,
          event.sender,
-@@ -1968,6 +1980,7 @@ var RuntimeAPI = class extends import_node_events3.EventEmitter {
+@@ -1968,6 +1985,7 @@ var RuntimeAPI = class extends import_node_events3.EventEmitter {
        this.hostMap[connectionId] = void 0;
      };
      this.sendNativeMessage = async (event, application, message) => {
@@ -278,7 +294,7 @@ index a91ca8f..74b8d14 100644
        const connectionId = (0, import_node_crypto.randomUUID)();
        const host = new NativeMessagingHost(
          event.extension.id,
-@@ -2102,7 +2115,7 @@ var stripScopeFromIdentifier = (id) => {
+@@ -2102,7 +2120,7 @@ var stripScopeFromIdentifier = (id) => {
    return id.substr(index + 1);
  };
  var NotificationsAPI = class {
@@ -287,7 +303,7 @@ index a91ca8f..74b8d14 100644
      this.ctx = ctx;
      this.registry = /* @__PURE__ */ new Map();
      this.clear = ({ extension }, id) => {
-@@ -2112,6 +2125,8 @@ var NotificationsAPI = class {
+@@ -2112,6 +2130,8 @@ var NotificationsAPI = class {
        }
      };
      this.create = async ({ extension }, arg1, arg2) => {
@@ -296,7 +312,7 @@ index a91ca8f..74b8d14 100644
        let id;
        let opts;
        if (typeof arg1 === "object") {
-@@ -2271,12 +2286,12 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2271,12 +2291,12 @@ var RoutingDelegate = class _RoutingDelegate {
      this.sessionMap = /* @__PURE__ */ new WeakMap();
      this.workers = /* @__PURE__ */ new WeakSet();
      this.onRouterMessage = async (event, extensionId, handlerName, ...args) => {
@@ -311,7 +327,7 @@ index a91ca8f..74b8d14 100644
        const ses = sessionPartition === DEFAULT_SESSION ? getSessionFromEvent(event) : resolvePartition(sessionPartition);
        const observer = this.sessionMap.get(ses);
        return observer?.onExtensionMessage(event, void 0, handlerName, ...args);
-@@ -2324,7 +2339,7 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2324,7 +2344,7 @@ var RoutingDelegate = class _RoutingDelegate {
          versionId
        );
        if (serviceWorker?.scope?.startsWith("chrome-extension://") && !this.workers.has(serviceWorker)) {
@@ -320,7 +336,7 @@ index a91ca8f..74b8d14 100644
          this.workers.add(serviceWorker);
          serviceWorker.ipc.handle("crx-msg", this.onRouterMessage);
          serviceWorker.ipc.handle("crx-msg-remote", this.onRemoteMessage);
-@@ -2368,7 +2383,7 @@ var ExtensionRouter = class {
+@@ -2368,7 +2388,7 @@ var ExtensionRouter = class {
      });
      import_electron9.app.on("web-contents-created", (event, webContents2) => {
        if (webContents2.session === this.session && webContents2.getType() === "backgroundPage") {
@@ -329,7 +345,7 @@ index a91ca8f..74b8d14 100644
          this.extensionHosts.add(webContents2);
        }
      });
-@@ -2383,7 +2398,7 @@ var ExtensionRouter = class {
+@@ -2383,7 +2403,7 @@ var ExtensionRouter = class {
          if (this.extensionHosts.has(serviceWorker)) {
            d8("%s running status changed to %s", scope, runningStatus);
          } else {
@@ -338,7 +354,7 @@ index a91ca8f..74b8d14 100644
            this.extensionWorkers.add(serviceWorker);
          }
        }
-@@ -2405,7 +2420,7 @@ var ExtensionRouter = class {
+@@ -2405,7 +2425,7 @@ var ExtensionRouter = class {
    }
    observeListenerHost(host) {
      const hostId = getHostId(host);
@@ -347,7 +363,7 @@ index a91ca8f..74b8d14 100644
      host.once("destroyed", () => {
        d8(`extension host destroyed [id:${hostId}]`);
        this.filterListeners((listener) => listener.type !== "frame" || listener.host !== host);
-@@ -2478,7 +2493,7 @@ var ExtensionRouter = class {
+@@ -2478,7 +2498,7 @@ var ExtensionRouter = class {
      }
      const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
      const result = await handler.callback(extEvent, ...args);
@@ -356,7 +372,7 @@ index a91ca8f..74b8d14 100644
      return result;
    }
    handle(name, callback, opts) {
-@@ -2696,7 +2711,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+@@ -2696,7 +2716,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
    }
    constructor(opts) {
      super();
@@ -365,7 +381,7 @@ index a91ca8f..74b8d14 100644
      checkVersion();
      if (sessionMap.has(session2)) {
        throw new Error(`Extensions instance already exists for the given session`);
-@@ -2706,6 +2721,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+@@ -2706,6 +2726,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
      const store = new ExtensionStore(impl);
      this.ctx = {
        emit: this.emit.bind(this),
@@ -373,7 +389,7 @@ index a91ca8f..74b8d14 100644
        router,
        session: session2,
        store
-@@ -2715,9 +2731,9 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+@@ -2715,9 +2736,9 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
        contextMenus: new ContextMenusAPI(this.ctx),
        commands: new CommandsAPI(this.ctx),
        cookies: new CookiesAPI(this.ctx),
@@ -386,7 +402,7 @@ index a91ca8f..74b8d14 100644
        webNavigation: new WebNavigationAPI(this.ctx),
        windows: new WindowsAPI(this.ctx)
 diff --git a/dist/esm/index.mjs b/dist/esm/index.mjs
-index 4392922..ed07359 100644
+index 4392922..69713ae 100644
 --- a/dist/esm/index.mjs
 +++ b/dist/esm/index.mjs
 @@ -411,7 +411,7 @@ var BrowserActionAPI = class {
@@ -444,7 +460,19 @@ index 4392922..ed07359 100644
    }
    createTabDetails(tab) {
      const tabId = tab.id;
-@@ -1142,7 +1152,7 @@ var WebNavigationAPI = class {
+@@ -1011,6 +1021,11 @@ var _TabsAPI = class _TabsAPI {
+     tabId = tab.id;
+     const props = updateProperties;
+     const url = props.url ? validateExtensionUrl(props.url, event.extension) : void 0;
++    // A browser-initiated loadURL bypasses the embedder's will-navigate scheme
++    // rule, so the embedder must vet it here (file:, data:, about: pages).
++    if (url && typeof this.ctx.store.impl.validateTabNavigation === "function" && !this.ctx.store.impl.validateTabNavigation(url, event.extension.id)) {
++      throw new Error("Invalid URL");
++    }
+     if (url) await tab.loadURL(url);
+     if (typeof props.muted === "boolean") tab.setAudioMuted(props.muted);
+     if (props.active) this.onActivated(tabId);
+@@ -1142,7 +1157,7 @@ var WebNavigationAPI = class {
    constructor(ctx) {
      this.ctx = ctx;
      this.sendNavigationEvent = (eventName, details) => {
@@ -453,7 +481,7 @@ index 4392922..ed07359 100644
        this.ctx.router.broadcastEvent(`webNavigation.${eventName}`, details);
      };
      this.onCreatedNavigationTarget = (tab, { url, frame }) => {
-@@ -1913,11 +1923,13 @@ var NativeMessagingHost = class {
+@@ -1913,11 +1928,13 @@ var NativeMessagingHost = class {
  
  // src/browser/api/runtime.ts
  var RuntimeAPI = class extends EventEmitter3 {
@@ -468,7 +496,7 @@ index 4392922..ed07359 100644
        const host = new NativeMessagingHost(
          event.extension.id,
          event.sender,
-@@ -1931,6 +1943,7 @@ var RuntimeAPI = class extends EventEmitter3 {
+@@ -1931,6 +1948,7 @@ var RuntimeAPI = class extends EventEmitter3 {
        this.hostMap[connectionId] = void 0;
      };
      this.sendNativeMessage = async (event, application, message) => {
@@ -476,7 +504,7 @@ index 4392922..ed07359 100644
        const connectionId = randomUUID();
        const host = new NativeMessagingHost(
          event.extension.id,
-@@ -2065,7 +2078,7 @@ var stripScopeFromIdentifier = (id) => {
+@@ -2065,7 +2083,7 @@ var stripScopeFromIdentifier = (id) => {
    return id.substr(index + 1);
  };
  var NotificationsAPI = class {
@@ -485,7 +513,7 @@ index 4392922..ed07359 100644
      this.ctx = ctx;
      this.registry = /* @__PURE__ */ new Map();
      this.clear = ({ extension }, id) => {
-@@ -2075,6 +2088,8 @@ var NotificationsAPI = class {
+@@ -2075,6 +2093,8 @@ var NotificationsAPI = class {
        }
      };
      this.create = async ({ extension }, arg1, arg2) => {
@@ -494,7 +522,7 @@ index 4392922..ed07359 100644
        let id;
        let opts;
        if (typeof arg1 === "object") {
-@@ -2234,12 +2249,12 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2234,12 +2254,12 @@ var RoutingDelegate = class _RoutingDelegate {
      this.sessionMap = /* @__PURE__ */ new WeakMap();
      this.workers = /* @__PURE__ */ new WeakSet();
      this.onRouterMessage = async (event, extensionId, handlerName, ...args) => {
@@ -509,7 +537,7 @@ index 4392922..ed07359 100644
        const ses = sessionPartition === DEFAULT_SESSION ? getSessionFromEvent(event) : resolvePartition(sessionPartition);
        const observer = this.sessionMap.get(ses);
        return observer?.onExtensionMessage(event, void 0, handlerName, ...args);
-@@ -2287,7 +2302,7 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2287,7 +2307,7 @@ var RoutingDelegate = class _RoutingDelegate {
          versionId
        );
        if (serviceWorker?.scope?.startsWith("chrome-extension://") && !this.workers.has(serviceWorker)) {
@@ -518,7 +546,7 @@ index 4392922..ed07359 100644
          this.workers.add(serviceWorker);
          serviceWorker.ipc.handle("crx-msg", this.onRouterMessage);
          serviceWorker.ipc.handle("crx-msg-remote", this.onRemoteMessage);
-@@ -2331,7 +2346,7 @@ var ExtensionRouter = class {
+@@ -2331,7 +2351,7 @@ var ExtensionRouter = class {
      });
      app4.on("web-contents-created", (event, webContents2) => {
        if (webContents2.session === this.session && webContents2.getType() === "backgroundPage") {
@@ -527,7 +555,7 @@ index 4392922..ed07359 100644
          this.extensionHosts.add(webContents2);
        }
      });
-@@ -2346,7 +2361,7 @@ var ExtensionRouter = class {
+@@ -2346,7 +2366,7 @@ var ExtensionRouter = class {
          if (this.extensionHosts.has(serviceWorker)) {
            d8("%s running status changed to %s", scope, runningStatus);
          } else {
@@ -536,7 +564,7 @@ index 4392922..ed07359 100644
            this.extensionWorkers.add(serviceWorker);
          }
        }
-@@ -2368,7 +2383,7 @@ var ExtensionRouter = class {
+@@ -2368,7 +2388,7 @@ var ExtensionRouter = class {
    }
    observeListenerHost(host) {
      const hostId = getHostId(host);
@@ -545,7 +573,7 @@ index 4392922..ed07359 100644
      host.once("destroyed", () => {
        d8(`extension host destroyed [id:${hostId}]`);
        this.filterListeners((listener) => listener.type !== "frame" || listener.host !== host);
-@@ -2441,7 +2456,7 @@ var ExtensionRouter = class {
+@@ -2441,7 +2461,7 @@ var ExtensionRouter = class {
      }
      const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
      const result = await handler.callback(extEvent, ...args);
@@ -554,7 +582,7 @@ index 4392922..ed07359 100644
      return result;
    }
    handle(name, callback, opts) {
-@@ -2659,7 +2674,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+@@ -2659,7 +2679,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
    }
    constructor(opts) {
      super();
@@ -563,7 +591,7 @@ index 4392922..ed07359 100644
      checkVersion();
      if (sessionMap.has(session2)) {
        throw new Error(`Extensions instance already exists for the given session`);
-@@ -2669,6 +2684,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+@@ -2669,6 +2689,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
      const store = new ExtensionStore(impl);
      this.ctx = {
        emit: this.emit.bind(this),
@@ -571,7 +599,7 @@ index 4392922..ed07359 100644
        router,
        session: session2,
        store
-@@ -2678,9 +2694,9 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+@@ -2678,9 +2699,9 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
        contextMenus: new ContextMenusAPI(this.ctx),
        commands: new CommandsAPI(this.ctx),
        cookies: new CookiesAPI(this.ctx),

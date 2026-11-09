@@ -45,9 +45,12 @@ import type { WindowShow } from "../../window-mode";
 import { presentPopupWindow } from "../../window-raise";
 import {
 	type AdapterBinding,
+	dispatchActionClick,
+	dispatchInstalled,
 	extensionIdOfUrl,
 	extensionsAdapter,
 	isExtensionPageOf,
+	runtimePopupUrl,
 } from "./adapter";
 import { ONEPASSWORD_EXTENSION_ID } from "./crx";
 import {
@@ -139,6 +142,17 @@ interface Runtime {
  * `background.js` onInstalled). Three keeps the newest few and drops the oldest,
  * so an extension cannot grow main's memory by spamming requests. */
 const MAX_DEFERRED_PAGES = 3;
+/** R2-2: how long after the user's own act (install settled, toolbar Open)
+ * the extension's first tab may still come to the foreground. Long enough
+ * for a busy worker to answer onInstalled/onClicked with tabs.create, short
+ * enough that a tab opened later is clearly not a response to that act. */
+const FOREGROUND_ARM_MS = 30_000;
+/** How long `deliverInstallEvent` waits for the worker's top-level
+ * `runtime.onInstalled.addListener` to reach main (an IPC hop that can trail
+ * the worker's `running` status under load). Bounded: a worker that never
+ * listens is simply not told. */
+const INSTALL_LISTENER_WAIT_MS = 15_000;
+const INSTALL_LISTENER_POLL_MS = 100;
 
 function withAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
 	return new Promise<T>((resolve, reject) => {
@@ -246,10 +260,14 @@ export class ExtensionManager {
 	private updating: Promise<ExtensionUpdateReport> | null = null;
 	/** Installs between the store click and the consent dialog (U5). */
 	private installing = new Map<string, ExtensionInstallProgress["phase"]>();
-	/** Ids whose user-consented install just completed: the FIRST tab the
-	 * extension then asks for (an onboarding/sign-in page) is activated, because
-	 * it follows the user's own Add + consent; every later one stays background. */
-	private welcomeArmed = new Set<string>();
+	/** Ids whose next extension tab follows the user's OWN act — a consented
+	 * install (the onboarding page 1Password opens from onInstalled) or the
+	 * user's "Open" with no popup (onClicked). The FIRST tab the extension then
+	 * asks for is selected; every other stays background. Value = expiry
+	 * (ms epoch): R2-2, an extension that opens no tab must not get a
+	 * selected tab hours later, so the arm lapses FOREGROUND_ARM_MS after the
+	 * act settles and is dropped on unload. */
+	private foregroundArmed = new Map<string, number>();
 	private readonly binding: AdapterBinding;
 	constructor(
 		private session: Session,
@@ -298,8 +316,59 @@ export class ExtensionManager {
 			runtime.status === "error" &&
 			runtime.error === "worker" &&
 			this.state.extensions[id]?.enabled
-		)
+		) {
 			this.set(id, "enabled");
+			void this.deliverInstallEvent(id, this.lifetime.signal);
+		}
+	}
+
+	/** Arm `id`'s next extension tab to come to the foreground: `ttl` ms from
+	 * now, or until further notice (null) while the act is still in progress. */
+	private armForeground(id: string, ttl: number | null): void {
+		this.foregroundArmed.set(
+			id,
+			ttl === null ? Number.POSITIVE_INFINITY : Date.now() + ttl,
+		);
+		if (ttl === null) return;
+		// Dropped once lapsed so the map does not keep stale ids.
+		const timer = setTimeout(() => {
+			if ((this.foregroundArmed.get(id) ?? 0) <= Date.now())
+				this.foregroundArmed.delete(id);
+		}, ttl + 1);
+		timer.unref?.();
+	}
+
+	/**
+	 * Deliver the `runtime.onInstalled` a consented install/update owes the
+	 * extension (U1b; see `InstalledExtension.installEvent`). The router only
+	 * reaches listeners already registered, so this waits — bounded, by polling
+	 * the router's listener table, which has no event to subscribe to — for the
+	 * worker's listener. Cleared and saved only after it was sent.
+	 */
+	private async deliverInstallEvent(
+		id: string,
+		signal: AbortSignal,
+	): Promise<void> {
+		const entry = this.state.extensions[id];
+		const event = entry?.installEvent;
+		if (!entry || !event) return;
+		const deadline = Date.now() + INSTALL_LISTENER_WAIT_MS;
+		for (;;) {
+			if (signal.aborted || this.disposed || !this.isActive(id)) return;
+			if (this.state.extensions[id]?.installEvent !== event) return;
+			if (dispatchInstalled(this.binding, id, event)) break;
+			if (Date.now() >= deadline) break;
+			await new Promise((resolve) =>
+				setTimeout(resolve, INSTALL_LISTENER_POLL_MS),
+			);
+		}
+		// Sent, or the extension never listened: either way it is owed no more.
+		entry.installEvent = undefined;
+		try {
+			this.save();
+		} catch {
+			/* Re-delivered on the next load at worst. */
+		}
 	}
 
 	// ---- queries ---------------------------------------------------------
@@ -620,6 +689,7 @@ export class ExtensionManager {
 						consented: access,
 						description: prepared.description,
 						homepage: prepared.homepage,
+						installEvent: { reason: "install" },
 					};
 					this.save();
 				} catch {
@@ -629,9 +699,16 @@ export class ExtensionManager {
 					return "install_error";
 				}
 				// Armed BEFORE activate: 1Password requests its welcome tab from
-				// onInstalled, which fires during the load.
-				this.welcomeArmed.add(id);
-				await this.activate(id, prepared, signal);
+				// onInstalled, dispatched at the end of the load.
+				this.armForeground(id, null);
+				try {
+					await this.activate(id, prepared, signal);
+				} finally {
+					// R2-2: the window starts when the load settles, not at install.
+					// Do not re-arm if the first onboarding tab already consumed it.
+					if (this.foregroundArmed.has(id))
+						this.armForeground(id, FOREGROUND_ARM_MS);
+				}
 				return "success";
 			},
 		);
@@ -698,6 +775,11 @@ export class ExtensionManager {
 				await persistStoreCrx(this.hooks.root, id, prepared.crx);
 				await rm(crxPath(this.hooks.root, id, "pending"), { force: true });
 				entry.pendingVersion = undefined;
+				if (entry.version !== version)
+					entry.installEvent = {
+						reason: "update",
+						previousVersion: entry.version,
+					};
 				entry.version = version;
 				entry.name = prepared.name;
 				entry.icon = await iconOf(prepared);
@@ -743,6 +825,7 @@ export class ExtensionManager {
 	private async unload(id: string): Promise<void> {
 		const runtime = this.runtime(id);
 		runtime.deferred = [];
+		this.foregroundArmed.delete(id);
 		const window = this.windows.get(id);
 		if (window && !window.isDestroyed()) window.close();
 		this.session.extensions.removeExtension(id);
@@ -808,6 +891,10 @@ export class ExtensionManager {
 						entry.pendingVersion = undefined;
 						await rm(crxPath(this.hooks.root, id, "pending"), { force: true });
 					}
+					entry.installEvent = {
+						reason: "update",
+						previousVersion: entry.version,
+					};
 					entry.version = version;
 					entry.name = prepared.name;
 					entry.icon = await iconOf(prepared);
@@ -944,6 +1031,7 @@ export class ExtensionManager {
 			}
 			if (this.disposed) throw new Error("Browser host stopped");
 			this.set(id, "enabled");
+			void this.deliverInstallEvent(id, outer);
 		} catch {
 			if (outer.aborted || !loaded) {
 				this.session.extensions.removeExtension(id);
@@ -975,7 +1063,29 @@ export class ExtensionManager {
 	async openPopup(id: string): Promise<boolean> {
 		if (!this.isActive(id)) return false;
 		const runtime = this.runtimes.get(id);
-		const url = runtime?.popupPath;
+		// U1a: the popup Chrome would show NOW, for the user's active tab — the
+		// extension may have changed it with action.setPopup. 1Password sets ""
+		// while no account is signed in, and expects the click to reach
+		// action.onClicked, which opens its welcome/sign-in page in a tab.
+		const tab = this.hooks.activeTab();
+		const tabId = tab && !tab.isDestroyed() ? tab.id : -1;
+		const declared = runtime?.popupPath ?? null;
+		const current = tabId < 0 ? null : runtimePopupUrl(this.binding, id, tabId);
+		const url = !current
+			? declared
+			: current.url && isExtensionPageOf(current.url, id)
+				? current.url
+				: null;
+		if (!url && tabId >= 0) {
+			// No popup for this tab: Chrome's click is onClicked(tab). The tab
+			// the extension opens in answer follows the user's own press.
+			this.armForeground(id, FOREGROUND_ARM_MS);
+			if (dispatchActionClick(this.binding, id, tabId)) {
+				await this.presentDeferred(id);
+				return true;
+			}
+			this.foregroundArmed.delete(id);
+		}
 		// An extension with no popup can still have queued pages (U1): "Open"
 		// presents those.
 		const waiting = runtime?.deferred.length ?? 0;
@@ -1028,8 +1138,12 @@ export class ExtensionManager {
 		const id = extensionIdOfUrl(url);
 		if (this.disposed || !id || !this.isActive(id))
 			throw new Error("Unsupported extension page");
-		const welcome = this.welcomeArmed.delete(id);
-		return this.hooks.createTab(url, welcome);
+		const until = this.foregroundArmed.get(id);
+		this.foregroundArmed.delete(id);
+		return this.hooks.createTab(
+			url,
+			until !== undefined && Date.now() <= until,
+		);
 	}
 
 	/** Details view links: the store listing and the manifest homepage, each in
@@ -1052,9 +1166,12 @@ export class ExtensionManager {
 		);
 	}
 
-	/** One extension window per id. Popups and options pages open here, NOT as
-	 * registry tabs, keeping chrome-extension:// documents out of TabRegistry
-	 * and CDP reach. Navigation is confined to the extension's own origin. */
+	/** One extension window per id. Popups and options pages open here, in a
+	 * window rather than a registry tab; navigation is confined to the
+	 * extension's own origin. Extension pages CAN be registry user tabs (U1:
+	 * `tabs.create`, a typed address) — there `registry.requireSurface`, which
+	 * refuses `chrome-extension:` documents to every agent action, is the
+	 * boundary, not registry membership (R2-3). */
 	private async openPage(
 		url: string,
 		appUserAction = false,

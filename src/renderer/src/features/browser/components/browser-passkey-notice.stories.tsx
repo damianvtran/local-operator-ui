@@ -56,6 +56,14 @@ export const Pending: Story = { args: { notice: notice() } };
 export const NotCompleted: Story = {
 	args: { notice: notice({ outcome: "not-allowed" }) },
 };
+/** U10: a password manager is already installed and on — the one hint says
+ * to open it and sign in, not to add one. */
+export const PasswordManagerInstalled: Story = {
+	args: {
+		notice: notice({ outcome: "not-allowed" }),
+		passwordManagerName: "1Password – Password Manager",
+	},
+};
 export const AgentFrame: Story = {
 	args: {
 		notice: notice({

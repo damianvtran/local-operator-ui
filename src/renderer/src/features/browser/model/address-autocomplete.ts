@@ -358,7 +358,14 @@ export function addressIntent(raw: string): AddressIntent {
 	const withSlashes = SCHEME_WITH_SLASHES.exec(raw);
 	if (withSlashes) {
 		const scheme = foldAscii(withSlashes[1]);
-		if (scheme === "http" || scheme === "https" || scheme === "file")
+		// U1c: a typed extension page reaches main, which checks installed +
+		// enabled and user ownership. This classifier grants no navigation.
+		if (
+			scheme === "http" ||
+			scheme === "https" ||
+			scheme === "file" ||
+			scheme === "chrome-extension"
+		)
 			return "url";
 		return "blocked";
 	}

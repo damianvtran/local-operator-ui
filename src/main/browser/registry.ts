@@ -1,7 +1,12 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
-import { displayUrlOf, internalPageOfDocument } from "./internal-pages";
+import {
+	displayTitleFor,
+	displayUrlFor,
+	isInternalDocument,
+	trackInternalPages,
+} from "./internal-pages";
 import type { PersistedTab } from "./session-store";
 import type { SnapshotRef } from "./vendor/driver/ax-compact";
 
@@ -396,6 +401,8 @@ export class TabRegistry {
 			allocationId: options.allocationId ?? "",
 		};
 		this.tabs.set(tabId, record);
+		// Internal pages are shown only for commits main armed (internal-pages.ts).
+		trackInternalPages(record.view.webContents);
 		// Only a USER tab may become the active one, including when nothing is active
 		// yet. The earlier `activeTabId === null` form activated whichever tab was
 		// created first — on a session with no user tab that is the agent's own, so the
@@ -471,11 +478,15 @@ export class TabRegistry {
 	 * rather than an error.
 	 */
 	byWebContentsId(webContentsId: number): TabRecord | undefined {
-		return this.list().find(
-			(record) =>
-				!record.view.webContents.isDestroyed() &&
-				record.view.webContents.id === webContentsId,
-		);
+		return this.list().find((record) => {
+			// Electron detaches a WebContentsView's webContents during native
+			// destruction, before all extension callbacks have drained. Read it
+			// once: a late adapter callback simply belongs to no live tab.
+			const contents = record.view.webContents;
+			return (
+				contents && !contents.isDestroyed() && contents.id === webContentsId
+			);
+		});
 	}
 
 	/** The tab a webContents belongs to, or null.
@@ -581,7 +592,7 @@ export class TabRegistry {
 				{ reason: "extension_page" },
 			);
 		}
-		if (internalPageOfDocument(documentUrl)) {
+		if (isInternalDocument(documentUrl)) {
 			throw new BrowserHostError(
 				"owner_refused",
 				"that tab is showing the browser's own Extensions page, which agents cannot read or drive",
@@ -979,14 +990,8 @@ export class TabRegistry {
 				// display URL is what every reader (chrome, agent `tabs`) gets, and its
 				// title is blank because Chromium falls back to the URL (nonce
 				// included) for a titleless document. Chrome names it itself.
-				url: record.view.webContents.isDestroyed()
-					? ""
-					: displayUrlOf(record.view.webContents.getURL()),
-				title:
-					record.view.webContents.isDestroyed() ||
-					internalPageOfDocument(record.view.webContents.getURL())
-						? ""
-						: record.view.webContents.getTitle(),
+				url: displayUrlFor(record.view.webContents),
+				title: displayTitleFor(record.view.webContents),
 				handle: token ? redactToken(token) : `ui:${record.tabId}:no-handle`,
 			};
 		});

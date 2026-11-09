@@ -266,3 +266,31 @@ export function describePermissions(
 	}
 	return { labels, blocked, other };
 }
+
+/**
+ * Chrome Web Store ids of password managers whose extension answers passkey
+ * requests in page script (no `webAuthenticationProxy` permission to detect
+ * them by). Used ONLY to word the passkey notice (review U10): with one
+ * installed and on, the useful step is "open it and sign in", not "add one".
+ * Misclassifying costs a less specific sentence, never access.
+ */
+const PASSWORD_MANAGER_IDS: ReadonlySet<string> = new Set([
+	"aeblfdkhhhdcdjpifhhbdiojplfjncoa", // 1Password
+	"nngceckbapebfimnlniiiahkandclblb", // Bitwarden
+	"hdokiejnpimakedhajhdlcegeplioahd", // LastPass
+	"fdjamakpfbbddfjaooikfcpapjohcfmg", // Dashlane
+]);
+
+/** The first installed, turned-on extension that can hold passkeys, if any. */
+export function passwordManagerOf(
+	extensions: readonly ExtensionSummary[],
+): ExtensionSummary | null {
+	return (
+		extensions.find(
+			(extension) =>
+				extension.status === "enabled" &&
+				(PASSWORD_MANAGER_IDS.has(extension.id) ||
+					extension.permissions.includes("webAuthenticationProxy")),
+		) ?? null
+	);
+}

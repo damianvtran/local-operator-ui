@@ -87,6 +87,7 @@ import {
 	isReportableLoadFailure,
 	sessionRequesterOf,
 } from "./host";
+import { armInternalNavigation, displayUrlFor } from "./internal-pages";
 import {
 	PRODUCT_ADDRESS_OVERLAY_EVENT,
 	type RegisterBrowserIpcOptions,
@@ -1536,6 +1537,7 @@ async function initializeBrowserHost(
 		const host = new BrowserHost({
 			registry,
 			cdp,
+			isActiveExtension: (id) => extensions.isActive(id),
 			approvals,
 			ownership,
 			downloads,
@@ -2435,13 +2437,17 @@ async function initializeBrowserHost(
 							label: item.label,
 							enabled: item.enabled,
 							click: () => {
+								// The user's own Back/Forward may return to an internal page
+								// (internal-pages.ts); a page's history.back() may not.
+								if (item.id === "back" || item.id === "forward")
+									armInternalNavigation(contents);
 								if (item.id === "back") navigation?.goBack();
 								else if (item.id === "forward") navigation?.goForward();
 								else if (item.id === "reload") contents.reload();
 								else if (item.id === "copy-link")
 									clipboard.writeText(params.linkURL ?? "");
 								else if (item.id === "copy-page")
-									clipboard.writeText(contents.getURL());
+									clipboard.writeText(displayUrlFor(contents));
 								else if (item.id === "undo") contents.undo();
 								else if (item.id === "redo") contents.redo();
 								else if (item.id === "cut") contents.cut();

@@ -69,8 +69,35 @@ export interface ExtensionsPageViewProps {
 	onCheckUpdates: () => void;
 }
 
-/** Badge for NON-binary states only (design D4): the switch already says
- * on/off, so "On"/"Off" badges would repeat it. */
+/**
+ * U9: a control the user just pressed stays FOCUSABLE while its operation
+ * runs. A real `disabled` makes Chromium blur the focused element to <body>,
+ * so a keyboard or screen-reader user lost their place after every toggle,
+ * Try again or Check for updates. `aria-disabled` + `data-disabled` keep the
+ * disabled look (Switch styles key on `data-disabled`) and a capture-phase
+ * click stop swallows presses — keyboard Space/Enter included, since they
+ * arrive as clicks — before the control's own handler runs.
+ */
+function holdBusy(busy: boolean, className?: string) {
+	if (!busy) return { className };
+	return {
+		"aria-disabled": true,
+		"data-disabled": "",
+		onClickCapture: (event: {
+			preventDefault(): void;
+			stopPropagation(): void;
+		}) => {
+			event.preventDefault();
+			event.stopPropagation();
+		},
+		className: cn(
+			className,
+			"aria-disabled:cursor-default aria-disabled:text-ink-disabled! aria-disabled:hover:bg-transparent!",
+		),
+	};
+}
+
+/** Badge for non-binary states only: the switch already says on/off. */
 function stateBadge(
 	extension: ExtensionSummary,
 ): { label: string; variant: "danger" | "neutral" | "warning" } | null {
@@ -207,7 +234,8 @@ const ListView: FC<ExtensionsPageViewProps & { scrolled: boolean }> = ({
 							<Button
 								variant="ghost"
 								size="sm"
-								disabled={checking || extensions.length === 0}
+								disabled={extensions.length === 0}
+								{...holdBusy(checking)}
 								onClick={onCheckUpdates}
 								data-tour-tag="browser-extensions-check-updates"
 							>
@@ -354,7 +382,7 @@ const InstallRow: FC<{
 		<Button
 			variant="ghost"
 			size="sm"
-			disabled={busy}
+			{...holdBusy(busy)}
 			onClick={() => onCancel(install.id)}
 		>
 			{t("ui.browser.extensions.install_confirm_cancel")}
@@ -414,6 +442,12 @@ const ExtensionCard: FC<{
 	onRetry,
 }) => {
 	const busy = working || extension.status === "loading";
+	// Keep the pressed Try again mounted while the worker starts (U9); an
+	// aria-disabled control cannot retain focus if its whole node disappears.
+	const retryVisible = useRef(false);
+	if (!busy)
+		retryVisible.current =
+			extension.status === "error" && extension.error === "worker";
 	const badge = stateBadge(extension);
 	const problem = problemText(extension);
 	return (
@@ -424,7 +458,10 @@ const ExtensionCard: FC<{
 			<div className="flex min-w-0 items-start gap-3">
 				<ExtensionIcon extension={extension} size="size-10" />
 				<div className="flex min-w-0 flex-1 flex-col">
+					{/* D1: manifest text keeps its OWN direction (an English name under
+					    ur must truncate at its end and keep its punctuation). */}
 					<span
+						dir="auto"
 						className="truncate text-heading text-ink"
 						title={extension.name}
 					>
@@ -441,9 +478,8 @@ const ExtensionCard: FC<{
 					</span>
 				</div>
 				<Switch
-					className="shrink-0"
 					checked={extension.status !== "disabled"}
-					disabled={busy}
+					{...holdBusy(busy, "shrink-0")}
 					aria-label={t("ui.browser.extensions.toggle_label", {
 						name: extension.name,
 					})}
@@ -451,7 +487,7 @@ const ExtensionCard: FC<{
 				/>
 			</div>
 			{extension.description && (
-				<p className="line-clamp-2 text-body-sm text-ink-muted">
+				<p dir="auto" className="line-clamp-2 text-body-sm text-ink-muted">
 					{extension.description}
 				</p>
 			)}
@@ -479,11 +515,11 @@ const ExtensionCard: FC<{
 				>
 					{t("ui.browser.extensions.action_details")}
 				</Button>
-				{extension.status === "error" && extension.error === "worker" && (
+				{retryVisible.current && (
 					<Button
 						variant="ghost"
 						size="sm"
-						disabled={busy}
+						{...holdBusy(busy)}
 						onClick={() => onRetry(extension)}
 					>
 						{t("ui.browser.extensions.action_retry")}
@@ -493,7 +529,7 @@ const ExtensionCard: FC<{
 					<Button
 						variant="ghost"
 						size="sm"
-						disabled={busy}
+						{...holdBusy(busy)}
 						onClick={() => onSetEnabled(extension, true)}
 					>
 						{t("ui.browser.extensions.action_review_update")}
@@ -503,7 +539,7 @@ const ExtensionCard: FC<{
 					<Button
 						variant="ghost"
 						size="sm"
-						disabled={busy}
+						{...holdBusy(busy)}
 						onClick={() =>
 							onOpen(extension, extension.hasOptions ? "options" : "popup")
 						}
@@ -516,7 +552,7 @@ const ExtensionCard: FC<{
 				<Button
 					variant="ghost"
 					size="sm"
-					disabled={busy}
+					{...holdBusy(busy)}
 					onClick={() => void onRemove(extension)}
 				>
 					{t("ui.browser.extensions.action_remove")}
@@ -555,6 +591,7 @@ const DetailsView: FC<
 	scrolled,
 }) => {
 	const back = useRef<HTMLButtonElement | null>(null);
+	const retryVisible = useRef(false);
 	// Initial focus on Back, never on the switch (U3/D5).
 	useEffect(() => {
 		back.current?.focus();
@@ -594,6 +631,9 @@ const DetailsView: FC<
 			</>
 		);
 	const working = busy.has(extension.id) || extension.status === "loading";
+	if (!working)
+		retryVisible.current =
+			extension.status === "error" && extension.error === "worker";
 	const badge = stateBadge(extension);
 	const problem = problemText(extension);
 	const permissions = describePermissions(extension.permissions);
@@ -603,7 +643,10 @@ const DetailsView: FC<
 			<Column className="flex flex-col pb-10">
 				<div className="flex min-w-0 items-center gap-3 pb-4">
 					<ExtensionIcon extension={extension} size="size-10" />
-					<h1 className="min-w-0 flex-1 truncate text-display text-ink">
+					<h1
+						dir="auto"
+						className="min-w-0 flex-1 truncate text-display text-ink"
+					>
 						{extension.name}
 					</h1>
 					{badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
@@ -617,7 +660,7 @@ const DetailsView: FC<
 						</span>
 						<Switch
 							checked={extension.status !== "disabled"}
-							disabled={working}
+							{...holdBusy(working)}
 							aria-label={t("ui.browser.extensions.toggle_label", {
 								name: extension.name,
 							})}
@@ -625,12 +668,12 @@ const DetailsView: FC<
 						/>
 					</div>
 					{problem && <p className="text-body-sm text-danger">{problem}</p>}
-					{extension.status === "error" && extension.error === "worker" && (
+					{retryVisible.current && (
 						<div>
 							<Button
 								variant="outline"
 								size="sm"
-								disabled={working}
+								{...holdBusy(working)}
 								onClick={() => onRetry(extension)}
 							>
 								{t("ui.browser.extensions.action_retry")}
@@ -640,7 +683,9 @@ const DetailsView: FC<
 				</Section>
 				{extension.description && (
 					<Section title={t("ui.browser.extensions.details_description")}>
-						<p className="text-body text-ink-muted">{extension.description}</p>
+						<p dir="auto" className="text-body text-ink-muted">
+							{extension.description}
+						</p>
 					</Section>
 				)}
 				<Section title={t("ui.browser.extensions.details_version")}>
@@ -709,7 +754,7 @@ const DetailsView: FC<
 							<Button
 								variant="outline"
 								size="sm"
-								disabled={working}
+								{...holdBusy(working)}
 								onClick={() => onOpen(extension, "options")}
 							>
 								{t("ui.browser.extensions.action_options")}
@@ -727,7 +772,7 @@ const DetailsView: FC<
 							<Button
 								variant="outline"
 								size="sm"
-								disabled={working}
+								{...holdBusy(working)}
 								onClick={() => onOpen(extension, "popup")}
 							>
 								{t("ui.browser.extensions.action_open")}
@@ -753,7 +798,7 @@ const DetailsView: FC<
 							<Button
 								variant="outline"
 								size="sm"
-								disabled={working}
+								{...holdBusy(working)}
 								onClick={() => onSetEnabled(extension, true)}
 							>
 								{t("ui.browser.extensions.action_review_update")}
@@ -788,7 +833,7 @@ const DetailsView: FC<
 					<Button
 						variant="danger"
 						size="sm"
-						disabled={working}
+						{...holdBusy(working)}
 						onClick={() =>
 							void onRemove(extension).then((removed) => {
 								if (removed) onNavigate(EXTENSIONS_PAGE_URL);

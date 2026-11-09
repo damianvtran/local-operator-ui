@@ -225,9 +225,17 @@
 		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
 	},
 	"ui.browser.extensions.passkey_recovery": {
-		"role": "Passkey notice strip: recovery hint, followed by a button that opens the Extensions page",
+		"role": "Passkey notice strip: the one hint shown when NO password-manager extension is installed and on; followed by an 'Open Extensions' button",
 		"tone": "Plain, does not promise the passkey will work",
 		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.passkey_recovery_installed": {
+		"role": "Passkey notice strip: the one hint shown when a password-manager extension IS installed and on; followed by an 'Open Extensions' button. The user opens that extension from the Extensions page (its Open button) and signs in to it there.",
+		"tone": "Plain, does not promise the passkey will work",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility.",
+		"placeholders": {
+			"name": "The extension's own name from its manifest, e.g. '1Password – Password Manager'. Not translated."
+		}
 	},
 	"ui.browser.extensions.page_title": {
 		"role": "Extensions page (lop://extensions) text",

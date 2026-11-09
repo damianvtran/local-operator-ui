@@ -21,7 +21,9 @@ export const ExtensionIcon: FC<{
 			src={extension.iconDataUrl}
 			alt=""
 			aria-hidden
-			className={`${size} shrink-0`}
+			// D2: manifest icons need not be square; never stretch one. The
+			// small radius matches the card's rounded language.
+			className={`${size} shrink-0 rounded-xs object-contain`}
 		/>
 	) : (
 		<Puzzle aria-hidden className={`${size} shrink-0`} />
@@ -65,7 +67,10 @@ export const BrowserExtensionsSubmenu: FC<BrowserExtensionsSubmenuProps> = ({
 						onSelect={() => onOpenPopup(extension)}
 					>
 						<ExtensionIcon extension={extension} />
-						<span className="truncate">{extension.name}</span>
+						{/* D1: the manifest name keeps its own direction under RTL. */}
+						<span dir="auto" className="truncate">
+							{extension.name}
+						</span>
 					</DropdownMenuItem>
 				))
 			)}

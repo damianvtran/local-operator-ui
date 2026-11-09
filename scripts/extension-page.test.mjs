@@ -219,9 +219,12 @@ test("agents cannot resolve a tab showing lop://extensions or an extension's own
 		(error) =>
 			error.code === "owner_refused" && error.data?.reason === "internal_page",
 	);
-	// Projections never carry the nonce document or its URL-as-title.
+	// Projections never carry the nonce document or its URL-as-title. Main
+	// never loads an internal page into an AGENT tab, so this document arrived
+	// unarmed (QA W8: forged by page script) and projects as plain about:blank —
+	// still refused above.
 	const [row] = registry.snapshot();
-	assert.equal(row.url, "lop://extensions");
+	assert.equal(row.url, "about:blank");
 	assert.equal(row.title, "");
 	views.get(record.tabId).url = `chrome-extension://${ID}/app/app.html`;
 	assert.throws(
@@ -329,4 +332,207 @@ test("the address bar treats lop://extensions as an address, not a blocked schem
 	assert.equal(model.addressIntent(`lop://extensions?id=${ID}`), "url");
 	assert.equal(model.addressIntent("lop://settings"), "blocked");
 	assert.equal(model.addressIntent("javascript:alert(1)"), "blocked");
+});
+
+// ---- round 2 (QA Q5/Q6/Q7, reviewer R2-1, UX U10) ---------------------------
+
+const { EventEmitter } = await import("node:events");
+const authz = await load(`
+	export * as main from "./src/main/browser/internal-pages";
+	export { pageOf } from "./src/main/browser/actions/gate";
+	export {
+		extensionMayNavigateTab,
+		maskTabDetails,
+	} from "./src/main/browser/extensions/adapter";
+	export { passwordManagerOf } from "./src/shared/browser-extensions";
+`);
+
+/** A tab WebContents whose commits fire the events Electron fires. */
+function fakeTab() {
+	const tab = Object.assign(new EventEmitter(), {
+		url: "about:blank",
+		title: "",
+		getURL: () => tab.url,
+		getTitle: () => tab.title || tab.url,
+		isDestroyed: () => false,
+		/** A cross-document commit (did-navigate). */
+		commit(url) {
+			tab.url = url;
+			tab.emit("did-navigate", {}, url);
+		},
+		/** A same-document commit (fragment / same-doc traversal). */
+		commitInPage(url) {
+			tab.url = url;
+			tab.emit("did-navigate-in-page", {}, url, true);
+		},
+	});
+	authz.main.trackInternalPages(tab);
+	return tab;
+}
+
+test("Q5: only a commit main armed shows an internal page; a forged one is blank", () => {
+	const { main } = authz;
+	const list = main.internalDocumentUrl({ page: "extensions", id: null });
+	const details = main.internalDocumentUrl({ page: "extensions", id: ID });
+	// Negative control: main's own (armed) load DOES show the page.
+	const own = fakeTab();
+	main.armInternalNavigation(own);
+	own.commit(list);
+	assert.deepEqual(
+		{ ...main.internalPageOf(own) },
+		{ page: "extensions", id: null },
+	);
+	assert.equal(main.displayUrlFor(own), "lop://extensions");
+	// A web page's location = <exact document URL> (nonce known): not armed.
+	const forged = fakeTab();
+	forged.commit("https://attacker.test/");
+	forged.commit(details);
+	assert.equal(main.internalPageOf(forged), null);
+	assert.equal(main.displayUrlFor(forged), "about:blank");
+	assert.equal(main.displayTitleFor(forged), "");
+	// The arm is single-use: a later unarmed fragment commit is not shown.
+	own.commitInPage(details);
+	assert.equal(main.internalPageOf(own), null);
+	assert.equal(main.displayUrlFor(own), "about:blank");
+	// An arm whose navigation never committed does not authorize a later one.
+	const stale = fakeTab();
+	main.armInternalNavigation(stale);
+	stale.commit("https://example.com/"); // consumed by an unrelated commit
+	stale.commit(list);
+	assert.equal(main.internalPageOf(stale), null);
+});
+
+test("Q6: page-script history.back() into a user-created entry is blank; the user's own Back shows it", () => {
+	const { main } = authz;
+	const list = main.internalDocumentUrl({ page: "extensions", id: null });
+	const tab = fakeTab();
+	main.armInternalNavigation(tab);
+	tab.commit(list);
+	tab.commit("https://example.com/after");
+	tab.commit(list); // history.back() from the page: unarmed traversal
+	assert.equal(main.internalPageOf(tab), null);
+	tab.commit("https://example.com/after");
+	main.armInternalNavigation(tab); // host.historyActive / toolbar Back
+	tab.commit(list);
+	assert.equal(main.displayUrlFor(tab), "lop://extensions");
+});
+
+test("Q5/Q7/R2-1: no projection carries the nonce", () => {
+	const { main, maskTabDetails } = authz;
+	const doc = main.internalDocumentUrl({ page: "extensions", id: ID });
+	assert.equal(main.displayUrlOf(doc), `lop://extensions?id=${ID}`);
+	// Wrong nonce (Q7): the address bar shows about:blank, not the fragment.
+	assert.equal(
+		main.displayUrlOf(`about:blank#lop-${"0".repeat(32)}:lop://extensions`),
+		"about:blank",
+	);
+	// Extension tab details (chrome.tabs.query/get/onUpdated) are masked.
+	const tab = fakeTab();
+	main.armInternalNavigation(tab);
+	tab.commit(doc);
+	const details = { url: tab.getURL(), title: tab.getTitle() };
+	assert.match(details.url, /lop-[0-9a-f]{32}/, "precondition: raw has nonce");
+	maskTabDetails(details, tab);
+	assert.deepEqual(details, { url: `lop://extensions?id=${ID}`, title: "" });
+	// Agent RPC `tabs` and action-result projections use pageOf, not registry
+	// snapshot — the missed projection that let Q5 leak the nonce in round 2.
+	assert.deepEqual(
+		JSON.parse(JSON.stringify(authz.pageOf({ webContents: tab }))),
+		{ url: `lop://extensions?id=${ID}`, title: "" },
+	);
+	const web = fakeTab();
+	web.commit("https://example.com/");
+	web.title = "Example";
+	const plain = { url: web.getURL(), title: web.getTitle() };
+	maskTabDetails(plain, web);
+	assert.deepEqual(plain, { url: "https://example.com/", title: "Example" });
+});
+
+test("R2-1: chrome.tabs.update may load only http(s), about:blank, or the caller's own pages", () => {
+	const { extensionMayNavigateTab, main } = authz;
+	const other = "b".repeat(32);
+	for (const [url, allowed] of [
+		["https://example.com/", true],
+		["http://example.com/", true],
+		["about:blank", true],
+		[`chrome-extension://${ID}/app/app.html`, true],
+		[`chrome-extension://${other}/x.html`, false],
+		["file:///etc/passwd", false],
+		["data:text/html,<b>x</b>", false],
+		["about:srcdoc", false],
+		[main.internalDocumentUrl({ page: "extensions", id: null }), false],
+		["javascript:alert(1)", false],
+		["not a url", false],
+	])
+		assert.equal(extensionMayNavigateTab(url, ID), allowed, url);
+});
+
+test("U10: the passkey notice names an installed, turned-on password manager only", () => {
+	const { passwordManagerOf } = authz;
+	const row = (over) => ({
+		id: ID,
+		name: "1Password – Password Manager",
+		status: "enabled",
+		permissions: [],
+		...over,
+	});
+	assert.equal(
+		passwordManagerOf([row()])?.name,
+		"1Password – Password Manager",
+	);
+	assert.equal(passwordManagerOf([row({ status: "disabled" })]), null);
+	assert.equal(passwordManagerOf([row({ id: "b".repeat(32) })]), null);
+	assert.equal(
+		passwordManagerOf([
+			row({
+				id: "c".repeat(32),
+				name: "Keys",
+				permissions: ["webAuthenticationProxy"],
+			}),
+		])?.name,
+		"Keys",
+	);
+	assert.equal(passwordManagerOf([]), null);
+});
+
+test("late extension callback resolves no tab after native WebContentsView detaches its contents", async () => {
+	const { TabRegistry } = await load(
+		'export { TabRegistry } from "./src/main/browser/registry";',
+	);
+	const view = {
+		webContents: {
+			id: 313,
+			isDestroyed: () => false,
+			getURL: () => "about:blank",
+			getTitle: () => "",
+			on() {},
+		},
+		setVisible() {},
+		setBounds() {},
+	};
+	const registry = new TabRegistry(
+		() => view,
+		() => {},
+		() => {},
+	);
+	registry.create({ owner: "user" });
+	assert.equal(
+		registry.byWebContentsId(313)?.view,
+		view,
+		"live negative control",
+	);
+	view.webContents = undefined; // Electron's native destruction ordering
+	assert.equal(registry.byWebContentsId(313), undefined);
+});
+
+test("U1c: the address classifier forwards typed extension URLs to main, not the blocked-scheme notice", async () => {
+	const { addressIntent } = await load(
+		'export { addressIntent } from "./src/renderer/src/features/browser/model/address-autocomplete";',
+	);
+	assert.equal(
+		addressIntent(`chrome-extension://${ID}/app/app.html#/page/welcome`),
+		"url",
+	);
+	assert.equal(addressIntent("data:text/html,hello"), "blocked");
+	assert.equal(addressIntent("javascript:alert(1)"), "blocked");
 });

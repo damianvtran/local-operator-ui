@@ -9,7 +9,7 @@ overrides:
 
 patchedDependencies:
   electron-chrome-extensions@4.10.0:
-    hash: 87fc2b69af76387ca1c9f22e79787c8910f4f7685e9a63b5f2031457b8a29827
+    hash: c66ad26e5e4712bd561bf35185ae2242c6523737c405538b644836e90232b16e
     path: patches/electron-chrome-extensions@4.10.0.patch
 
 importers:

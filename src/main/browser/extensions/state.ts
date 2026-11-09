@@ -34,6 +34,27 @@ export interface InstalledExtension {
 	 * next load). */
 	description?: string;
 	homepage?: string | null;
+	/** A `runtime.onInstalled` owed to the extension (review U1b): set in the
+	 * same save that records a consented install/update, cleared once
+	 * dispatched, so a crash in between re-delivers it on the next load and a
+	 * plain restart never re-fires it. */
+	installEvent?: InstallEvent;
+}
+
+export type InstallEvent =
+	| { reason: "install" }
+	| { reason: "update"; previousVersion: string };
+
+function installEventOf(raw: unknown): InstallEvent | null {
+	if (!raw || typeof raw !== "object") return null;
+	const event = raw as Record<string, unknown>;
+	if (event.reason === "install") return { reason: "install" };
+	if (event.reason === "update" && typeof event.previousVersion === "string")
+		return {
+			reason: "update",
+			previousVersion: event.previousVersion.slice(0, 64),
+		};
+	return null;
 }
 
 export interface ExtensionsState {
@@ -92,6 +113,9 @@ export function readExtensionsState(root: string): ExtensionsState {
 			consented: entry.consented as ExtensionAccess | null,
 			...(typeof entry.pendingVersion === "string"
 				? { pendingVersion: entry.pendingVersion }
+				: {}),
+			...(installEventOf(entry.installEvent)
+				? { installEvent: installEventOf(entry.installEvent) as InstallEvent }
 				: {}),
 			...(typeof entry.description === "string"
 				? { description: entry.description.slice(0, 400) }

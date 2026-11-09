@@ -1,7 +1,12 @@
 /* Native half of extension-native-proof.mjs. Exercises the ACTUAL product
  * ExtensionManager + adapter binding + TabRegistry on real Electron: legacy-layout
  * migration, verified restore, MV3 worker readiness, hidden popup frames, a
- * worker-requested tab, disable/restore and remove. Not whole-desktop-renderer
+ * worker-requested tab, disable/restore and remove; round 2 adds the zero-
+ * account toolbar activation (runtime popup "" → action.onClicked → welcome
+ * USER tab, captured as a frame) and a consented reinstall whose
+ * runtime.onInstalled is dispatched exactly once (not again on restart). The
+ * reinstall's network download is served from the same verified local CRX;
+ * everything after the fetch is the product path. Not whole-desktop-renderer
  * QA and not a passkey assertion. No vault access, visible windows or native
  * host grants; popup text is reduced to a "Loading" boolean + length. */
 const { app, session, BrowserWindow, WebContentsView } = require("electron");
@@ -14,7 +19,18 @@ const uiDiagnostic = process.env.EXTENSION_UI_DIAGNOSTIC === "1";
 let phase = "bootstrap";
 const output = (data) => console.log(JSON.stringify(data));
 const fail = (error) => {
-	output({ result: "FAIL", phase, category: error?.name ?? "Error" });
+	output({
+		result: "FAIL",
+		phase,
+		category: error?.name ?? "Error",
+		// Our own thrown messages only (no page text reaches an Error here).
+		message: String(error?.message ?? "").slice(0, 200),
+		at: String(error?.stack ?? "")
+			.split("\n")
+			.slice(1, 3)
+			.map((line) => line.trim().replace(/\(.*\//, "("))
+			.join(" | "),
+	});
 	app.exit(1);
 };
 // Fail closed instead of Electron's default native error dialog/warning-only
@@ -109,6 +125,18 @@ app
 			},
 		});
 		const binding = extensionsAdapter(ses);
+		// Count onInstalled dispatches at the router (U1b): the product sends it
+		// there; a count of exactly 1 across install + restart is the claim.
+		const router = binding.adapter.ctx.router;
+		const sendEvent = router.sendEvent.bind(router);
+		let installedEvents = 0;
+		router.sendEvent = (extensionId, name, ...args) => {
+			if (name === "runtime.onInstalled" && extensionId === ID) {
+				installedEvents++;
+				output({ onInstalledDispatched: args[0] });
+			}
+			return sendEvent(extensionId, name, ...args);
+		};
 		if (uiDiagnostic)
 			ses.registerPreloadScript({
 				type: "frame",
@@ -164,13 +192,17 @@ app
 			{ mode: 0o600 },
 		);
 		const workerTabs = [];
+		let consentAnswer = null;
 		const hooks = {
 			window: parent,
 			show: "never",
 			backgroundThrottling: false,
 			root: extensionsRoot,
+			// Only the reinstall phase answers (synthetic "Add", as for Remove).
 			confirmInstall: async () => {
-				throw new Error("Proof must not open a consent dialog");
+				if (consentAnswer === null)
+					throw new Error("Proof must not open a consent dialog");
+				return consentAnswer;
 			},
 			// The synthetic removal answer stands in for the native dialog's "Remove".
 			confirmRemove: async () => true,
@@ -188,6 +220,7 @@ app
 					scheme: parsed.protocol,
 					path: parsed.pathname,
 					active,
+					tabId: record.tabId,
 				});
 				void record.view.webContents.loadURL(url).catch(() => {});
 				return record.view.webContents;
@@ -246,20 +279,84 @@ app
 			)
 				throw new Error("Extension worker is not running");
 			mark(`popup-${cycle}`);
+			// What Chrome would open for the user's active tab right now. With no
+			// account, 1Password has called action.setPopup({popup: ""}).
+			// A user presses the toolbar well after start-up; the worker settles
+			// its account state (and the popup) asynchronously, so wait for that
+			// state, bounded, rather than racing the worker's first seconds.
+			const popupOf = () =>
+				binding.adapter.api.browserAction.getPopupUrl(
+					ID,
+					registry.activeTab.view.webContents.id,
+				) ?? "";
+			const settleBy = Date.now() + 20_000;
+			while (popupOf() && Date.now() < settleBy)
+				await new Promise((yes) => setTimeout(yes, 200));
+			const runtimePopup = popupOf();
+			const tabsBefore = workerTabs.length;
 			const opened = await manager.openPopup(ID);
+			// onClicked → the worker's tabs.create is asynchronous; bounded wait.
+			const deadline = Date.now() + 15_000;
+			while (
+				!runtimePopup &&
+				workerTabs.length === tabsBefore &&
+				Date.now() < deadline
+			)
+				await new Promise((yes) => setTimeout(yes, 100));
 			const windows = BrowserWindow.getAllWindows().map((window) => ({
 				visible: window.isVisible(),
 				official: isOfficialPage(window.webContents.getURL()),
 				registeredUserTab: !!registry.byWebContentsId(window.webContents.id),
 			}));
-			output({ cycle, opened, windows });
-			if (
-				!opened ||
-				windows.some((window) => window.visible) ||
-				!windows.some((window) => window.official)
-			)
+			const clickedTabs = workerTabs.slice(tabsBefore);
+			output({
+				cycle,
+				opened,
+				runtimePopupEmpty: !runtimePopup,
+				windows,
+				toolbarTabs: clickedTabs,
+			});
+			if (!opened || windows.some((window) => window.visible))
 				throw new Error("Hidden extension popup contract failed");
-			if (cycle === 0) {
+			if (!runtimePopup) {
+				// U1a: zero accounts → onClicked → the welcome page as a SELECTED
+				// user tab (it answers the user's own press), no popup window.
+				const welcome = clickedTabs.find(
+					(tab) =>
+						tab.scheme === "chrome-extension:" && tab.path === "/app/app.html",
+				);
+				if (!welcome?.active || windows.some((window) => window.official))
+					throw new Error("Toolbar activation did not open the welcome tab");
+				if (cycle === 0) {
+					const record = registry.get(welcome.tabId);
+					const view = views.get(welcome.tabId);
+					// The parent stays hidden (show:false); the child view paints for
+					// capture only, then is hidden again.
+					await new Promise((yes) => setTimeout(yes, 4000));
+					view.setVisible(true);
+					await new Promise((yes) => setTimeout(yes, 500));
+					const file = path.join(
+						process.env.EXTENSION_EVIDENCE_ROOT ?? root,
+						"welcome-tab.png",
+					);
+					await fs.writeFile(
+						file,
+						(await record.view.webContents.capturePage()).toPNG(),
+					);
+					view.setVisible(false);
+					const text = await record.view.webContents
+						.executeJavaScript("document.body ? document.body.innerText : ''")
+						.catch(() => "");
+					output({
+						welcomeFrame: file,
+						welcomeUrlPath: new URL(record.view.webContents.getURL()).pathname,
+						welcomeTextLength: text.length,
+						parentVisible: parent.isVisible(),
+					});
+				}
+			} else if (!windows.some((window) => window.official))
+				throw new Error("Hidden extension popup contract failed");
+			if (cycle === 0 && runtimePopup) {
 				const official = BrowserWindow.getAllWindows().find((window) =>
 					isOfficialPage(window.webContents.getURL()),
 				);
@@ -355,6 +452,50 @@ app
 				});
 				if (!removed || !dirGone || Object.keys(state.extensions).length)
 					throw new Error("Remove did not clear");
+				// U1b: a consented reinstall owes exactly one onInstalled.
+				mark("reinstall");
+				const crx = await fs.readFile(path.join(root, "official.crx"));
+				const realFetch = globalThis.fetch;
+				globalThis.fetch = async () => new Response(crx);
+				consentAnswer = true;
+				const before = installedEvents;
+				const tabsBefore = workerTabs.length;
+				const installed = await manager.installFromStore(ID);
+				globalThis.fetch = realFetch;
+				consentAnswer = null;
+				const until = Date.now() + 20_000;
+				while (installedEvents === before && Date.now() < until)
+					await new Promise((yes) => setTimeout(yes, 100));
+				// Give the worker time to answer onInstalled with its welcome tab.
+				await new Promise((yes) => setTimeout(yes, 5000));
+				const saved = JSON.parse(
+					await fs.readFile(path.join(extensionsRoot, "state.json"), "utf8"),
+				);
+				output({
+					installed,
+					onInstalledCount: installedEvents - before,
+					installEventCleared: saved.extensions[ID]?.installEvent === undefined,
+					installTabs: workerTabs.slice(tabsBefore),
+				});
+				if (
+					installed !== "success" ||
+					installedEvents - before !== 1 ||
+					saved.extensions[ID]?.installEvent !== undefined
+				)
+					throw new Error("onInstalled was not delivered exactly once");
+				mark("reinstall-restart");
+				await manager.dispose();
+				const again = new ExtensionManager(ses, hooks, binding);
+				await again.restore();
+				await new Promise((yes) => setTimeout(yes, 3000));
+				output({
+					restartStatus: again.list()[0]?.status,
+					onInstalledTotalAfterRestart: installedEvents - before,
+				});
+				if (installedEvents - before !== 1)
+					throw new Error("onInstalled re-fired on restart");
+				await again.dispose();
+				continue;
 			}
 			mark(`manager-dispose-${cycle}`);
 			await manager.dispose();

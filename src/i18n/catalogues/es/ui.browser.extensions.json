@@ -44,7 +44,8 @@
 	"ui.browser.extensions.remove_confirm_remove": "Quitar",
 	"ui.browser.extensions.disabled_info": "{name} está desactivada. Recarga las páginas abiertas para detener los scripts que ya añadió.",
 	"ui.browser.extensions.error_generic": "No funcionó. Inténtalo de nuevo.",
-	"ui.browser.extensions.passkey_recovery": "Si tu llave de acceso está guardada en un gestor de contraseñas, añade su extensión desde Extensiones, inicia sesión en ella y vuelve a intentarlo en esta página.",
+	"ui.browser.extensions.passkey_recovery": "Si tu clave de acceso está en un gestor de contraseñas, añade su extensión desde «Extensiones» e inicia sesión en ella; luego vuelve a intentarlo en esta página.",
+	"ui.browser.extensions.passkey_recovery_installed": "Si tu clave de acceso está en {name}, abre {name} desde «Extensiones» e inicia sesión; luego vuelve a intentarlo en esta página.",
 	"ui.browser.extensions.page_title": "Extensiones",
 	"ui.browser.extensions.search_placeholder": "Buscar extensiones",
 	"ui.browser.extensions.search_none": "Ninguna extensión coincide con «{query}».",
@@ -97,6 +98,6 @@
 	"ui.browser.extensions.permission_management": "Gestionar tus apps, extensiones y temas",
 	"ui.browser.extensions.permission_privacy": "Cambiar tu configuración de privacidad",
 	"ui.browser.extensions.permission_proxy": "Leer y cambiar tu configuración de proxy",
-	"ui.browser.extensions.permission_passkeys": "Gestionar las solicitudes de llaves de acceso y de seguridad de los sitios web",
+	"ui.browser.extensions.permission_passkeys": "Gestionar las solicitudes de claves de acceso y de seguridad de los sitios web",
 	"ui.browser.extensions.permission_email": "Conocer tu dirección de correo"
 }

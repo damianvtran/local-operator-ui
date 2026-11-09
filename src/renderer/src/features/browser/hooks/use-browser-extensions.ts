@@ -172,8 +172,17 @@ export function useBrowserExtensions(
 		[run],
 	);
 	const retry = useCallback(
-		(extension: ExtensionSummary) =>
-			void run({ op: "retry", id: extension.id }, extension.id),
+		(extension: ExtensionSummary) => {
+			// U12: the badge says "Starting…" the moment the user asks, not ~2 s
+			// later when main's own `loading` push arrives. Main's next list
+			// replaces this optimistic row either way.
+			setExtensions((current) =>
+				current.map((entry) =>
+					entry.id === extension.id ? { ...entry, status: "loading" } : entry,
+				),
+			);
+			void run({ op: "retry", id: extension.id }, extension.id);
+		},
 		[run],
 	);
 	const cancelInstall = useCallback(

@@ -17,6 +17,7 @@
  */
 import type { BrowserWindow, Session, WebContents } from "electron";
 import { ElectronChromeExtensions } from "electron-chrome-extensions";
+import { displayTitleFor, displayUrlFor } from "../internal-pages";
 
 export interface AdapterHooks {
 	window: BrowserWindow;
@@ -43,6 +44,125 @@ export interface AdapterBinding {
 }
 
 const adapters = new WeakMap<Session, AdapterBinding>();
+
+/**
+ * What `chrome.tabs.update({url})` may load into a tab (reviewer R2-1
+ * out-of-scope note, folded in round 2). The adapter performs it as a
+ * browser-initiated `loadURL`, which the views' `will-navigate` scheme rule
+ * never sees, so without this an extension could put `file:`, `data:` or an
+ * internal `about:blank#lop-…` document into any tab, agent tabs included.
+ * Same rule as the views: http(s), the bare about:blank, or the calling
+ * extension's OWN pages.
+ */
+export function extensionMayNavigateTab(
+	url: string,
+	extensionId: string,
+): boolean {
+	try {
+		const parsed = new URL(url);
+		if (parsed.protocol === "http:" || parsed.protocol === "https:")
+			return true;
+		if (parsed.protocol === "about:") return parsed.href === "about:blank";
+		return extensionIdOfUrl(parsed.href) === extensionId;
+	} catch {
+		return false;
+	}
+}
+
+/** The tab fields an extension may see: never main's internal-page nonce
+ * (reviewer R2-1). Mutates the adapter's details object in place, which is the
+ * library's `assignTabDetails` contract. */
+export function maskTabDetails(
+	details: { url?: string; title?: string },
+	tab: Parameters<typeof displayUrlFor>[0],
+): void {
+	details.url = displayUrlFor(tab);
+	details.title = displayTitleFor(tab);
+}
+
+/* The library marks these private, but they are exactly Chrome's toolbar
+ * semantics (per-tab popup resolution, onClicked dispatch) and the version is
+ * pinned by the patch; a reimplementation would drift from its state. */
+interface BrowserActionInternals {
+	getPopupUrl(extensionId: string, tabId: number): string | undefined;
+	activateClick(details: { extensionId: string; tabId: number }): void;
+}
+function browserAction(binding: AdapterBinding): BrowserActionInternals {
+	return (
+		binding.adapter as unknown as {
+			api: { browserAction: BrowserActionInternals };
+		}
+	).api.browserAction;
+}
+
+/** The runtime popup of `extensionId` for `tabId`, as the extension last set
+ * it with `action.setPopup` (falling back to the manifest): `{url: null}` when
+ * it has none — 1Password sets `""` while no account is signed in, so a
+ * toolbar click must dispatch `action.onClicked` instead (review U1) — and
+ * null when the adapter cannot answer (the caller keeps the manifest popup). */
+export function runtimePopupUrl(
+	binding: AdapterBinding,
+	extensionId: string,
+	tabId: number,
+): { url: string | null } | null {
+	try {
+		return {
+			url: browserAction(binding).getPopupUrl(extensionId, tabId) || null,
+		};
+	} catch {
+		return null;
+	}
+}
+
+/** Chrome's toolbar click with no popup: `action.onClicked(tab)` to the
+ * extension. Only from the app's own sender-checked "Open" command. */
+export function dispatchActionClick(
+	binding: AdapterBinding,
+	extensionId: string,
+	tabId: number,
+): boolean {
+	try {
+		browserAction(binding).activateClick({ extensionId, tabId });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+interface RouterLike {
+	listeners: Map<string, { extensionId: string }[]>;
+	sendEvent(id: string, event: string, ...args: unknown[]): void;
+}
+
+/**
+ * `runtime.onInstalled` for `extensionId` (review U1b). Electron's
+ * `loadExtension` never fires it, so the patched preload routes
+ * `chrome.runtime.onInstalled` through the adapter's router and main
+ * dispatches it here. Answers whether the extension had a listener registered
+ * (a worker registers at top level, which can trail the `running` status by a
+ * few IPC hops — the caller waits for one, bounded).
+ */
+export function dispatchInstalled(
+	binding: AdapterBinding,
+	extensionId: string,
+	details:
+		| { reason: "install" }
+		| { reason: "update"; previousVersion: string },
+): boolean {
+	try {
+		const router = (
+			binding.adapter as unknown as { ctx: { router: RouterLike } }
+		).ctx.router;
+		const listening = (router.listeners.get("runtime.onInstalled") ?? []).some(
+			(listener) => listener.extensionId === extensionId,
+		);
+		if (listening)
+			router.sendEvent(extensionId, "runtime.onInstalled", details);
+		return listening;
+	} catch {
+		return false;
+	}
+}
 
 /** `chrome-extension://<id>/...` → id, else null. */
 export function extensionIdOfUrl(raw: string): string | null {
@@ -152,6 +272,12 @@ export function extensionsAdapter(session: Session): AdapterBinding {
 				window.close();
 		},
 		requestPermissions: async () => false,
+		assignTabDetails: (details, tab) => maskTabDetails(details, tab),
+		// Read by the patched `tabs.update` (see extensionMayNavigateTab).
+		...({
+			validateTabNavigation: (url: string, extensionId: string) =>
+				extensionMayNavigateTab(url, extensionId),
+		} as object),
 	});
 	adapters.set(session, binding);
 	return binding;

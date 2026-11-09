@@ -14,7 +14,7 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import { AlertTriangle, Globe, ShieldCheck, X } from "lucide-react";
-import type { FC } from "react";
+import type { ComponentProps, FC } from "react";
 import {
 	useCallback,
 	useEffect,
@@ -24,6 +24,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { passwordManagerOf } from "../../../../../shared/browser-extensions";
 import {
 	EXTENSIONS_PAGE_URL,
 	parseInternalUrl,
@@ -36,6 +37,7 @@ import {
 	type BrowserTabView,
 	useBrowserChrome,
 } from "../hooks/use-browser-chrome";
+import { useBrowserExtensions } from "../hooks/use-browser-extensions";
 import {
 	originOfUrl,
 	requestsInScope,
@@ -74,6 +76,27 @@ import {
 	type AddressFocusRequest,
 	BrowserUrlBar,
 } from "./browser-url-bar";
+
+type PasskeyNoticeHostProps = Omit<
+	ComponentProps<typeof BrowserPasskeyNotice>,
+	"passwordManagerName"
+>;
+
+/** The passkey notice plus the one extension fact its wording needs (U10).
+ * The extension list is subscribed ONLY while a notice is showing, so the
+ * common no-notice browser pays nothing for it. */
+const PasskeyNoticeHost: FC<PasskeyNoticeHostProps> = (props) =>
+	props.notice ? <PasskeyNoticeWithExtensions {...props} /> : null;
+
+const PasskeyNoticeWithExtensions: FC<PasskeyNoticeHostProps> = (props) => {
+	const { extensions } = useBrowserExtensions();
+	return (
+		<BrowserPasskeyNotice
+			{...props}
+			passwordManagerName={passwordManagerOf(extensions)?.name ?? null}
+		/>
+	);
+};
 
 /**
  * The browser surface: everything that exists once per host.
@@ -534,7 +557,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	   start page, so it uses this renderer's trusted IPC and no web document or
 	   agent CDP session can reach it. It counts as an own-state page, so main
 	   refuses page controls (find, zoom, print) while it shows. */
-	const internalPage = activeTab ? parseInternalUrl(activeTab.url) : null;
+	const internalPage =
+		activeTab?.owner === "user" ? parseInternalUrl(activeTab.url) : null;
 	const browserOwnState =
 		onStartPage || navFailure !== null || internalPage !== null;
 
@@ -1016,9 +1040,24 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		"browser-internal-page",
 	);
 	const openExtensionsPage = useCallback(() => {
-		if (activeTab?.owner === "user")
+		if (activeTab?.owner === "user") {
 			void chrome.navigate(EXTENSIONS_PAGE_URL, activeTab.tabId);
-	}, [activeTab?.owner, activeTab?.tabId, chrome.navigate]);
+			return;
+		}
+		// U8: the start page (no tab) or an agent's tab cannot show the page —
+		// the browser's own pages open only in the user's tabs — so it opens in a
+		// NEW user tab, which newTab makes the active one.
+		void (async () => {
+			await chrome.newTab(hostSessionId);
+			await chrome.navigate(EXTENSIONS_PAGE_URL);
+		})();
+	}, [
+		activeTab?.owner,
+		activeTab?.tabId,
+		chrome.navigate,
+		chrome.newTab,
+		hostSessionId,
+	]);
 
 	// A reachable IPC bridge is not a ready browser. In particular, startup's
 	// empty projection must not offer New tab or claim the saved tabs are gone.
@@ -1350,7 +1389,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			{/* U5: download/verify progress + Cancel for a store install, shown
 			    on whatever tab the user is on (normally the store's). */}
 			<BrowserExtensionInstallStrip />
-			<BrowserPasskeyNotice
+			<PasskeyNoticeHost
 				notice={chrome.state?.passkeyNotice}
 				onOpen={(notice) =>
 					void chrome.openPasskeyNotice(notice.tabId, notice.at)

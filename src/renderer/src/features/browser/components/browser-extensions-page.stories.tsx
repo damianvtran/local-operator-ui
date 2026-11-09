@@ -17,6 +17,14 @@ import { ExtensionsPageView } from "./browser-extensions-page";
  * The decorator gives the page the tab content rect it fills in the app
  * (a fixed-height box), so sticky header and scrolling behave as they do there.
  */
+/* D2: production cards show the verified package's icon (main inlines it as a
+ * bounded data: URL); the fixtures are neutral generated PNGs — one square, one
+ * deliberately 2:1 so the frames prove a non-square icon is contained, not
+ * stretched. */
+const SQUARE_ICON =
+	"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAiUlEQVR42u2X2xHAIAgErSM1p2fTQAQ8xDtnZCZ/kd3EF7R2Wjxv79ZDgZbKoPC0xF+yaKRFULAnshUOS0Tgo/mOvJ+CRxceJLEKDktYg9EtCAmsgnv5yr9+6i+MBmThXs4rcAX0BbZtQ/pBJHUU0y4j+nUsUZBIlGT0olSiLJdoTGRaM4nmtDI+8qaVieUM1VoAAAAASUVORK5CYII=";
+const WIDE_ICON =
+	"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAYCAYAAAC8/X7cAAAAaElEQVR42u2WsQ2AMAwEX4I1mZOV2CIRKSxZDqk55Qs3lou7yqfnOttq2n2k+du9yPDvTmT4TwEK/FSABF8EaPBJgAgfAlT4IUCGLwLEpyYyfAiQc0JuIbeQW8gt5BZyC7mF3EIbt1AHkZPsl4eVlxEAAAAASUVORK5CYII=";
 const base: ExtensionSummary = {
 	id: "aeblfdkhhhdcdjpifhhbdiojplfjncoa",
 	name: "1Password – Password Manager",
@@ -25,7 +33,7 @@ const base: ExtensionSummary = {
 	error: null,
 	hasPopup: true,
 	hasOptions: false,
-	iconDataUrl: null,
+	iconDataUrl: SQUARE_ICON,
 	allSites: true,
 	hosts: [],
 	permissions: [
@@ -49,6 +57,7 @@ const other: ExtensionSummary = {
 	id: "cjpalhdlnbpafiamejdnhcphjbkeiagm",
 	name: "Example Blocker",
 	version: "1.62.0",
+	iconDataUrl: WIDE_ICON,
 	hasPopup: true,
 	hasOptions: true,
 	allSites: false,
@@ -66,6 +75,8 @@ const third: ExtensionSummary = {
 	hasPopup: false,
 	hasOptions: false,
 	description: "",
+	// The neutral-glyph fallback stays in every frame.
+	iconDataUrl: null,
 };
 
 const noop = () => {};

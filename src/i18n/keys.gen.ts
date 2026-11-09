@@ -3484,6 +3484,7 @@ export type MessageParams = {
 	"ui.browser.extensions.page_title": undefined;
 	"ui.browser.extensions.passkey_open_extensions": undefined;
 	"ui.browser.extensions.passkey_recovery": undefined;
+	"ui.browser.extensions.passkey_recovery_installed": { name: string };
 	"ui.browser.extensions.perm_all_sites": undefined;
 	"ui.browser.extensions.perm_none": undefined;
 	"ui.browser.extensions.perm_other": { permissions: string };

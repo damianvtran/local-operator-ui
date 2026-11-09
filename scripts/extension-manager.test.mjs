@@ -120,6 +120,35 @@ async function fixture(t) {
 	class Adapter {
 		constructor(options) {
 			state.options = options;
+			// The library internals the manager reaches (adapter.ts): Chrome's
+			// per-tab popup resolution, onClicked dispatch, and the event router.
+			state.clicks = [];
+			state.events = [];
+			state.listeners = new Map();
+			this.api = {
+				browserAction: {
+					getPopupUrl: (_extensionId, tabId) => {
+						state.popupTab = tabId;
+						return state.popupOverride === undefined
+							? `${scope}popup/index.html`
+							: state.popupOverride || undefined;
+					},
+					activateClick: (details) => {
+						state.clicks.push({ ...details });
+						state.onClick?.(details);
+					},
+				},
+			};
+			this.ctx = {
+				router: {
+					listeners: state.listeners,
+					// JSON: the vm realm's objects compare structurally here.
+					sendEvent: (extensionId, name, details) =>
+						state.events.push(
+							JSON.parse(JSON.stringify({ extensionId, name, details })),
+						),
+				},
+			};
 		}
 		selectTab(contents) {
 			state.mirrorSelections = state.mirrorSelections ?? [];
@@ -239,7 +268,7 @@ async function fixture(t) {
 			state.selections = state.selections ?? [];
 			state.selections.push(contents.id);
 		},
-		activeTab: () => ({ id: 100 }),
+		activeTab: () => ({ id: 100, isDestroyed: () => false }),
 		removeTab() {},
 		mayPresentExtensionPopup: () => state.foregroundHuman,
 	};
@@ -850,5 +879,130 @@ test(
 		await assert.rejects(readdir(store), { code: "ENOENT" });
 		assert.equal(await manager.installFromStore(id), "success");
 		await assert.rejects(readdir(store), { code: "ENOENT" });
+	},
+);
+
+const settle = async (predicate, ms = 3000) => {
+	const end = Date.now() + ms;
+	while (!predicate() && Date.now() < end)
+		await new Promise((yes) => setTimeout(yes, 20));
+	return predicate();
+};
+
+test(
+	"U1a: Open with no runtime popup (1Password, zero accounts) dispatches onClicked; the welcome tab comes forward",
+	real,
+	async (t) => {
+		const { manager, state } = await fixture(t);
+		state.fetcher = async () => new Response(realCrx);
+		state.allowTabs = true;
+		assert.equal(await manager.installFromStore(id), "success");
+		manager.foregroundArmed.clear(); // isolate from the install's own arm
+		// Negative control: the declared popup is still the runtime one → window.
+		const windows = state.windows.length;
+		assert.equal(await manager.openPopup(id), true);
+		assert.equal(state.windows.length, windows + 1);
+		assert.equal(state.popupTab, 100, "resolved for the user's active tab");
+		assert.deepEqual(state.clicks, []);
+		// action.setPopup({popup: ""}): Chrome's click becomes onClicked(tab).
+		state.popupOverride = "";
+		const welcome = `${scope}app/app.html#/page/welcome`;
+		state.focused = false;
+		state.onClick = () => void state.options.createTab({ url: welcome });
+		assert.equal(await manager.openPopup(id), true);
+		assert.deepEqual(state.clicks, [{ extensionId: id, tabId: 100 }]);
+		assert.equal(state.windows.length, windows + 1, "no popup window");
+		assert.ok(await settle(() => state.created?.length === 1));
+		assert.deepEqual(state.created, [{ url: welcome, active: true }]);
+		// A later, unprompted tab stays in the background.
+		await state.options.createTab({ url: `${scope}app/app.html#/later` });
+		assert.equal(state.created.at(-1).active, false);
+		// Another extension's page as the "popup" is not opened: onClicked.
+		state.popupOverride = `chrome-extension://${"b".repeat(32)}/x.html`;
+		assert.equal(await manager.openPopup(id), true);
+		assert.equal(state.clicks.length, 2);
+		assert.equal(state.windows.length, windows + 1);
+	},
+);
+
+test(
+	"U1b: onInstalled {reason:install} is delivered once after a consented install, never re-fired on restart",
+	real,
+	async (t) => {
+		const { manager, state, root } = await fixture(t);
+		state.fetcher = async () => new Response(realCrx);
+		// The worker's top-level addListener reaches main AFTER the load.
+		setTimeout(
+			() => state.listeners.set("runtime.onInstalled", [{ extensionId: id }]),
+			300,
+		);
+		assert.equal(await manager.installFromStore(id), "success");
+		assert.ok(await settle(() => state.events.length > 0));
+		assert.deepEqual(state.events, [
+			{
+				extensionId: id,
+				name: "runtime.onInstalled",
+				details: { reason: "install" },
+			},
+		]);
+		assert.equal(
+			(await stateFile(root)).extensions[id].installEvent,
+			undefined,
+			"cleared once sent",
+		);
+		// Restart on the delivered state: nothing owed, nothing sent.
+		const again = await installedRig(t, "success");
+		again.state.listeners.set("runtime.onInstalled", [{ extensionId: id }]);
+		await again.manager.restore();
+		await new Promise((yes) => setTimeout(yes, 300));
+		assert.deepEqual(again.state.events, []);
+	},
+);
+
+test(
+	"U1b: an onInstalled persisted but not yet sent (crash) is delivered on the next load, once",
+	real,
+	async (t) => {
+		const rig = await installedRig(t, "success", {
+			installEvent: { reason: "update", previousVersion: "8.11.0.1" },
+		});
+		rig.state.listeners.set("runtime.onInstalled", [{ extensionId: id }]);
+		await rig.manager.restore();
+		assert.ok(await settle(() => rig.state.events.length > 0));
+		assert.deepEqual(
+			rig.state.events.map((event) => event.details),
+			[{ reason: "update", previousVersion: "8.11.0.1" }],
+		);
+		assert.equal(
+			(await stateFile(rig.root)).extensions[id].installEvent,
+			undefined,
+		);
+		assert.equal(await rig.manager.retry(id), true);
+		await new Promise((yes) => setTimeout(yes, 200));
+		assert.equal(rig.state.events.length, 1, "not re-fired by a reload");
+	},
+);
+
+test(
+	"R2-2: the foreground arm lapses and is dropped on unload",
+	real,
+	async (t) => {
+		const { manager, state } = await fixture(t);
+		state.fetcher = async () => new Response(realCrx);
+		state.allowTabs = true;
+		assert.equal(await manager.installFromStore(id), "success");
+		const until = manager.foregroundArmed.get(id);
+		assert.ok(until > Date.now() && until <= Date.now() + 30_000);
+		// Lapsed (as if the extension waited past the window): background.
+		manager.foregroundArmed.set(id, Date.now() - 1);
+		await state.options.createTab({ url: `${scope}app/app.html#/late` });
+		assert.deepEqual(state.created.at(-1).active, false);
+		// Negative control: a live arm IS foreground.
+		manager.foregroundArmed.set(id, Date.now() + 10_000);
+		await state.options.createTab({ url: `${scope}app/app.html#/now` });
+		assert.equal(state.created.at(-1).active, true);
+		manager.foregroundArmed.set(id, Date.now() + 10_000);
+		assert.equal(await manager.setEnabled(id, false), true);
+		assert.equal(manager.foregroundArmed.has(id), false);
 	},
 );

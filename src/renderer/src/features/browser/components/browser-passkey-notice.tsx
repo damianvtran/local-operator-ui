@@ -43,6 +43,9 @@ export interface BrowserPasskeyNoticeProps {
 	 * route gets a control, not just words). Omitted when the active tab is not
 	 * the user's, since the browser's own pages open only in user tabs. */
 	onOpenExtensions?: () => void;
+	/** An installed, turned-on password manager's name (review U10): the hint
+	 * then says to open and sign in to it rather than to add one. */
+	passwordManagerName?: string | null;
 }
 
 /** `host[:port]` of an origin. The scheme is dropped because WebAuthn only runs
@@ -61,6 +64,7 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 	onOpen,
 	onDismiss,
 	onOpenExtensions,
+	passwordManagerName,
 }) => {
 	useI18nLocale();
 	// Aged on THIS clock too: main stops projecting a notice at the same TTL, but
@@ -101,9 +105,17 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 						: "ui.browser.browser_passkey_notice.message",
 					{ who, site: siteOf(notice.origin) },
 				)}{" "}
+				{/* D3: ONE hint. With the Extensions action present the recovery
+				    route replaces the generic "usual browser or password manager"
+				    sentence; the system-browser button still offers that route. */}
 				<span className="text-ink-muted">
-					{t("ui.browser.extensions.passkey_recovery")}{" "}
-					{t("ui.browser.browser_passkey_notice.explanation")}
+					{!onOpenExtensions
+						? t("ui.browser.browser_passkey_notice.explanation")
+						: passwordManagerName
+							? t("ui.browser.extensions.passkey_recovery_installed", {
+									name: passwordManagerName,
+								})
+							: t("ui.browser.extensions.passkey_recovery")}
 				</span>
 			</p>
 			<div className="ml-auto flex shrink-0 items-center gap-1">
