@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
 import test from "node:test";
 import vm from "node:vm";
 import { parse } from "yaml";
@@ -90,9 +90,7 @@ test("cache identity is exact and the resolver reads the actual lockfile", () =>
 	);
 	assert.equal(cache.with["restore-keys"], undefined);
 	const resolver = steps.find((step) => step.id === "electron_runtime");
-	const command =
-		resolver.run.slice(0, resolver.run.indexOf('echo "version=')) +
-		'printf "%s" "$version"';
+	const command = `${resolver.run.slice(0, resolver.run.indexOf('echo "version='))}printf "%s" "$version"`;
 	const result = spawnSync("bash", ["-c", command], { encoding: "utf8" });
 	assert.equal(result.status, 0, result.stderr);
 	const lock = parse(read("pnpm-lock.yaml"));
