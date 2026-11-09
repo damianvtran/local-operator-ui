@@ -1169,6 +1169,29 @@ jobs:
       # Manual-only evidence lease: push/PR events can never consume this boot.
       # Reuse this job's actual packed App and normal Core server extras. Setup
       # runs before HOME isolation; fixture workers never invoke git/gh/keychains.
+      - name: Initialize owned music acceptance receipts
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        run: |
+          set -euo pipefail
+          # Failure artifacts must exist even if Python, Homebrew or pip fails.
+          # These exports are paths only; never copy a credential/profile store.
+          mkdir -p "$RUNNER_TEMP/music-acceptance" "$RUNNER_TEMP/music-acceptance-artifacts"
+          echo "LOCAL_OPERATOR_CORE_BIN=$RUNNER_TEMP/music-core-venv/bin/local-operator" >> "$GITHUB_ENV"
+          echo "LOCAL_OPERATOR_CORE_PYTHON=$RUNNER_TEMP/music-core-venv/bin/python" >> "$GITHUB_ENV"
+          echo "MUSIC_UI_WORKTREE=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "LOCAL_OPERATOR_SCRATCHPAD=$RUNNER_TEMP/music-acceptance" >> "$GITHUB_ENV"
+          git rev-parse HEAD > "$RUNNER_TEMP/music-acceptance/ui-checkout.txt"
+          git rev-parse HEAD:src HEAD:.storybook HEAD:i18n HEAD:scripts/fixtures > "$RUNNER_TEMP/music-acceptance/ui-trees.txt"
+          shasum -a 256 out/main/index.js out/preload/index.js > "$RUNNER_TEMP/music-acceptance/app-source-sha256.txt"
+
+      - name: Set up supported music acceptance Python
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        uses: actions/setup-python@v7
+        with:
+          # Pinned Core requires >=3.12; use the harness-tested interpreter,
+          # not an unversioned runner image's incidental python3 installation.
+          python-version: '3.14'
+
       - name: Checkout pinned music Core source
         if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
         uses: actions/checkout@v4
@@ -1183,19 +1206,17 @@ jobs:
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          command -v ffmpeg
+          # Hosted ephemeral runner only, before HOME isolation. Real MP3
+          # generation/peaks need ffmpeg; absence must acquire it, not skip proof.
+          if ! command -v ffmpeg; then
+            brew install ffmpeg
+          fi
+          ffmpeg -version
           test "$(git -C .music-core-source rev-parse HEAD)" = 859729bd322da793575527b264b69de0a2601d02
-          python3 -m venv "$RUNNER_TEMP/music-core-venv"
+          python -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.version'
+          python -m venv "$RUNNER_TEMP/music-core-venv"
           "$RUNNER_TEMP/music-core-venv/bin/pip" install --quiet './.music-core-source[server]'
-          mkdir -p "$RUNNER_TEMP/music-acceptance"
-          echo "LOCAL_OPERATOR_CORE_BIN=$RUNNER_TEMP/music-core-venv/bin/local-operator" >> "$GITHUB_ENV"
-          echo "LOCAL_OPERATOR_CORE_PYTHON=$RUNNER_TEMP/music-core-venv/bin/python" >> "$GITHUB_ENV"
           echo "MUSIC_QA_CORE_MODULE=$("$RUNNER_TEMP/music-core-venv/bin/python" -c 'import local_operator; print(local_operator.__file__)')" >> "$GITHUB_ENV"
-          echo "MUSIC_UI_WORKTREE=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
-          echo "LOCAL_OPERATOR_SCRATCHPAD=$RUNNER_TEMP/music-acceptance" >> "$GITHUB_ENV"
-          git rev-parse HEAD > "$RUNNER_TEMP/music-acceptance/ui-checkout.txt"
-          git rev-parse HEAD:src HEAD:.storybook HEAD:i18n HEAD:scripts/fixtures > "$RUNNER_TEMP/music-acceptance/ui-trees.txt"
-          shasum -a 256 out/main/index.js out/preload/index.js > "$RUNNER_TEMP/music-acceptance/app-source-sha256.txt"
 
       - name: Execute serving music Core preflight and prove rollback
         id: music_core_preflight
