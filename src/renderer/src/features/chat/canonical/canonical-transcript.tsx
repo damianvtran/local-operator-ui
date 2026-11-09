@@ -2461,6 +2461,9 @@ const ToolRow = memo(function ToolRow({
 	/** The pane's interrupt press, for the card's Cancel; absent = no control. */
 	onInterruptTurn?: () => void;
 }) {
+	// memo compares props, but a locale change arrives through the locale store.
+	// Subscribe here so unchanged tool props cannot retain old-language details.
+	useI18nLocale();
 	/*
 	 * A `notify` CALL THE REEL KNOWS IS ITS FLAG LINE (notifications design
 	 * § 17.2): the item's title and read state, and the anchor the in-view
