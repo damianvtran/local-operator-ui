@@ -1345,17 +1345,17 @@ export function AgentsPage() {
 									>
 										<AlertTitle>
 											{capabilities.isLoading
-												? "Connecting to the backend"
+												? t("ui.agents.pages.backend.connecting")
 												: capabilities.error
-													? "The backend could not be reached"
-													: "Reusable agents need a newer backend"}
+													? t("ui.agents.pages.backend.unreachable")
+													: t("ui.agents.pages.backend.upgrade_heading")}
 										</AlertTitle>
 										<AlertDescription>
 											{capabilities.isLoading
-												? "Loading what this backend can do…"
+												? t("ui.agents.pages.backend.loading_capabilities")
 												: capabilities.error
 													? capabilities.error.message
-													: "Update the backend to manage reusable agents and teams. Saved chats are unchanged."}
+													: t("ui.agents.pages.backend.upgrade_body")}
 										</AlertDescription>
 									</Alert>
 								) : listError ? (
@@ -1991,7 +1991,9 @@ function Roster({
 										 * the badge followed "this row was marked", and the strip next to it
 										 * said Created, so the two disagreed about the same fact.
 										 */}
-										{mark ? "New" : "Updated"}
+										{mark
+											? t("ui.agents.pages.change.new")
+											: t("ui.agents.pages.change.updated")}
 									</Badge>
 								) : null}
 								{/*

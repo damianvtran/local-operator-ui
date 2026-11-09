@@ -162,5 +162,47 @@
 		"tone": "Short imperative, sentence case",
 		"length_hint": "Six words",
 		"note": "Explains why the ask box next to an open edit form cannot be used yet."
+	},
+	"ui.agents.pages.backend.connecting": {
+		"role": "Agents page backend status",
+		"tone": "Concise, factual",
+		"length": "Inline status or paragraph; may wrap",
+		"placeholders": {}
+	},
+	"ui.agents.pages.backend.loading_capabilities": {
+		"role": "Agents page backend status",
+		"tone": "Concise, factual",
+		"length": "Inline status or paragraph; may wrap",
+		"placeholders": {}
+	},
+	"ui.agents.pages.change.new": {
+		"role": "Definition change badge",
+		"tone": "Concise, factual",
+		"length": "Short badge",
+		"placeholders": {}
+	},
+	"ui.agents.pages.backend.upgrade_heading": {
+		"role": "Agents page backend status",
+		"tone": "Concise, factual",
+		"length": "Inline status or paragraph; may wrap",
+		"placeholders": {}
+	},
+	"ui.agents.pages.backend.unreachable": {
+		"role": "Agents page backend status",
+		"tone": "Concise, factual",
+		"length": "Inline status or paragraph; may wrap",
+		"placeholders": {}
+	},
+	"ui.agents.pages.backend.upgrade_body": {
+		"role": "Agents page backend status",
+		"tone": "Concise, factual",
+		"length": "Inline status or paragraph; may wrap",
+		"placeholders": {}
+	},
+	"ui.agents.pages.change.updated": {
+		"role": "Definition change badge",
+		"tone": "Concise, factual",
+		"length": "Short badge",
+		"placeholders": {}
 	}
 }

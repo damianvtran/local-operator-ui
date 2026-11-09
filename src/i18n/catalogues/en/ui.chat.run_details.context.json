@@ -188,5 +188,116 @@
 		"placeholders": {
 			"name": "the assistant's display name, as the operator configured it"
 		}
+	},
+	"ui.chat.run_details.child.result.preview": {
+		"role": "Subagent result preview heading, availability or expansion control",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.child.result.title": {
+		"role": "Subagent result preview heading, availability or expansion control",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.child.result.unavailable_clipped": {
+		"role": "Subagent result preview heading, availability or expansion control",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.child.result.unavailable": {
+		"role": "Subagent result preview heading, availability or expansion control",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.child.brief.show_less": {
+		"role": "Collapse expanded subagent instruction",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Compact button label",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.child.brief.show_more": {
+		"role": "Expand folded subagent instruction",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Compact button label",
+		"placeholders": {
+			"count": "Number of hidden lines"
+		},
+		"note": "Count refers to lines of the delegated instruction, not the result or conversation rows. The semantic brief name is intentional."
+	},
+	"ui.chat.run_details.mcp_auth.upgrade": {
+		"role": "MCP sign-in notice",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth.no_references": {
+		"role": "MCP sign-in notice",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {},
+		"note": "${NAME} is a literal configuration example, not a translation placeholder."
+	},
+	"ui.chat.run_details.mcp_auth.unknown_method": {
+		"role": "MCP sign-in notice",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth.waiting": {
+		"role": "MCP sign-in notice",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth.status": {
+		"role": "Sign-in operation status",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {
+			"status": "Backend operation status (machine token), or localized unavailable fallback"
+		}
+	},
+	"ui.chat.run_details.mcp_auth.status_unavailable": {
+		"role": "Fallback when no backend sign-in status exists",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.cancel_lead": {
+		"role": "Lead clause for a refused MCP cancellation",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.busy": {
+		"role": "MCP failure explanation",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {
+			"lead": "Action-specific failure clause; no terminal punctuation"
+		},
+		"note": "Lead clauses have their own owner; preserve the complete sentence and its remedy."
+	},
+	"ui.chat.run_details.mcp_failure.refused": {
+		"role": "MCP failure explanation",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {
+			"lead": "Action-specific failure clause; no terminal punctuation"
+		},
+		"note": "Lead clauses have their own owner; preserve the complete sentence and its remedy."
+	},
+	"ui.chat.run_details.mcp_failure.session": {
+		"role": "MCP failure explanation",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {
+			"lead": "Action-specific failure clause; no terminal punctuation"
+		},
+		"note": "Lead clauses have their own owner; preserve the complete sentence and its remedy."
 	}
 }
