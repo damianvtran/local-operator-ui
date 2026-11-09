@@ -8,10 +8,8 @@ process.env.GIT_TERMINAL_PROMPT='0';
 const root=process.env.MUSIC_QA_ROOT;
 if(!root || process.env.MUSIC_CORE_PREFLIGHT_PASS!=='1')throw Error('Serving graph preflight not passed');
 if(process.env.MUSIC_NATIVE_LEASE!=='1')throw Error('Native resource/CPP lease absent');
-// This gate is deliberately not an environment bypass. Complete the actual
-// linked-identity assertions below before spending the one authorized App boot.
-const panelIdentityAssertionsReady=false;
-if(!panelIdentityAssertionsReady)throw Error('Native source preflight BLOCKED: Files/Canvas/Highlights linked-identity predicates are not implemented; do not consume an App boot');
+// Linked-identity assertions below are mandatory; manual native admission still
+// requires the actual hosted Core preflight and the parent's single-run lease.
 process.env.TMPDIR=join(root,'native-tmp');mkdirSync(process.env.TMPDIR,{recursive:true});
 const {rendererDriverApi:d}=await import(pathToFileURL(join(process.env.MUSIC_UI_WORKTREE,'scripts/renderer-driver.mjs')).href);
 const results={scope:'actual native RootApp attached to same real serving music graph',stages:[]};
@@ -38,7 +36,7 @@ try{
  note('hello',await d.verb(cdp,'hello'));note('sound_safety_arm',await d.verb(cdp,'soundsArm'));await frame('music-empty-new-chat');
  await d.verb(cdp,'navigate','/chat/'+process.env.MUSIC_SESSION_ID);await pause(1500);await frame('music-populated-preflight');
  const populated=await facts();if(!populated.results||populated.tracks.length<2)throw Error('Actual serving results not rendered; no hand-authored row fallback');
- note('pending_control',await control('start_pending'));await pause(750);await frame('music-loading-first');await pause(1000);await frame('music-loading-settled');
+ const pending=await control('start_pending');note('pending_control',pending);await pause(750);await frame('music-loading-first');await pause(1000);await frame('music-loading-settled');
  await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
  const motionFirst=await motionFacts();await frame('music-reduced-first');await pause(1000);const motionSettled=await motionFacts();await frame('music-reduced-settled');note('reduced_motion',{first:motionFirst,settled:motionSettled});
  demand('Real pending motif must honor reduced motion and keep geometry',motionFirst.reduce&&motionSettled.reduce&&motionSettled.animation==='none'&&motionFirst.width>0&&motionFirst.height>0&&motionFirst.width===motionSettled.width&&motionFirst.height===motionSettled.height);
@@ -54,7 +52,13 @@ try{
  await pause(1500);await frame('music-late-result');
  const late=JSON.parse(readFileSync(join(root,'native-control-result.json'))).record;
  const track=late.tracks[0].id;
- const player='[data-music-track='+JSON.stringify(track)+']:not([data-turn-summary] *) [data-sound-player]';
+ // Use the observed canonical run token, never manufacture tool:<call> IDs.
+ const summaryIdentity=await observed('actual_producing_run',()=>cdp.evaluate(`(()=>{for(const e of document.querySelectorAll('[data-turn-summary][data-run-ids]')){const id=e.getAttribute('data-run-ids').split(/\\s+/).find(x=>x.includes(${JSON.stringify(pending.producing_call_id)}));if(id)return id;}return null})()`),Boolean);
+ const summary='[data-turn-summary][data-run-ids~='+JSON.stringify(summaryIdentity)+']';
+ const expanded=await cdp.evaluate(`document.querySelector(${JSON.stringify(summary+' button[aria-expanded]')})?.getAttribute('aria-expanded')`);
+ if(expanded==='false')await d.verb(cdp,'press',{selector:summary+' button[aria-expanded]'});
+ const recordId=await observed('actual_music_record',()=>cdp.evaluate(`document.querySelector('[data-music-track="'+${JSON.stringify(track)}+'"]:not([data-turn-summary] *)')?.closest('[data-record-id]')?.getAttribute('data-record-id')||null`),Boolean);
+ const player='[data-record-id='+JSON.stringify(recordId)+']:not([data-turn-summary] *) [data-music-track='+JSON.stringify(track)+'] [data-sound-player]';
  const geometry=await cdp.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(player+' [data-sound-slider]')});const r=e?.getBoundingClientRect();return {width:r?.width||0,height:r?.height||0}})()`);note('player_slider_geometry',geometry);demand('Owned transcript player slider must be visible',geometry.width>0&&geometry.height>0);
  await d.verb(cdp,'press',{selector:player+' > button'});
  const playing=await observed('actual_player_advances',()=>d.verb(cdp,'soundsFacts'),x=>x.time>.2&&!x.paused&&x.gain===0&&x.rms===0&&x.src?.startsWith('blob:'));
@@ -62,14 +66,42 @@ try{
  const scrub=await d.verb(cdp,'soundsScrub',{selector:player+' [data-sound-slider]',fraction:.65});note('seek_scrubbing',scrub);demand('Actual pointer handlers must enter scrubbing at65percent',scrub.during==='scrubbing'&&Math.round(scrub.seconds/playing.duration*100)===65);
  const committed=await d.verb(cdp,'soundsScrubFinish');demand('Actual pointerup commits seek',committed.committed===true);await frame('music-seek-committed');
  await d.verb(cdp,'press',{selector:player+' > button'});await observed('actual_player_pause',()=>d.verb(cdp,'soundsFacts'),x=>x.paused);
- await d.verb(cdp,'soundsEnd');await frame('music-player-ended');
+ await d.verb(cdp,'press',{selector:player+' > button'});await d.verb(cdp,'soundsEnd');await observed('actual_player_end',()=>d.verb(cdp,'soundsFacts'),x=>x.status==='ended'&&x.paused);await frame('music-player-ended');
  const partial=await control('start_partial');note('partial_record',partial.record);await observed('visible_partial_receipt',()=>facts(),x=>partial.record.tracks.every(v=>x.tracks.includes(v.id)));await frame('music-partial');
- demand('Actual partial receipt retains billed success and zero failed sibling',partial.record.artifacts.length===1&&partial.record.tracks.some(x=>x.cost.amount_usd===0)&&partial.record.tracks.some(x=>x.cost.amount_usd===.0075));
+ demand('Actual partial receipt retains billed success and zero failed sibling',partial.record.artifacts.length===1&&partial.record.tracks.some(x=>x.cost.amount_usd===0)&&partial.record.tracks.some(x=>x.cost.basis==='billed'&&x.cost.units===3000&&Math.round(x.cost.amount_usd*1e6)===7500));
  const failed=await control('start_failed');note('failed_record',failed.record);await observed('visible_failed_receipt',()=>facts(),x=>x.tracks.includes(failed.record.tracks[0].id));await frame('music-settled-zero');demand('Actual failed settlement is zero, with no playable artifact',failed.record.artifacts.length===0&&failed.record.tracks[0].cost.amount_usd===0&&failed.record.tracks[0].cost.basis==='billed');
- const openedFiles=await pressLabel(/^files$|open files|show files/i);note('files_open_pressed',openedFiles);demand('Actual Files control required',openedFiles);await pause(600);await frame('music-files');note('filesFacts',await d.verb(cdp,'filesFacts'));
- const openedCanvas=await pressLabel(/canvas/i);note('canvas_open_pressed',openedCanvas);demand('Actual Canvas control required',openedCanvas);await pause(500);await frame('music-canvas');
- const openedHighlights=await pressLabel(/highlights/i);note('highlights_open_pressed',openedHighlights);demand('Actual Highlights control required',openedHighlights);await pause(500);await frame('music-highlights');
- note('coverage',{serving_graph:'observed',seek:'asserted',reduced_motion:'asserted',error_state:'asserted',sfx_neighbor:'RETAINED only if parent verifies prior sounds-scene evidence and unchanged shared player/engine',rtl:'PRESENTATIONAL RTL only: parent-verified canonical RTL Story evidence; no full-app RTL activation claim',panel_linked_identity:'BLOCKED: panel open is not yet a linked-asset assertion',acceptance:'BLOCKED until panel linked identities and retained evidence are independently verified'});process.exitCode=1;
+ // Authoritative inventory supplies service-row IDs and digest document identity.
+ const zeroTrack=failed.record.tracks[0].id;
+ await observed('visible_zero_is_billed_not_unknown',()=>cdp.evaluate(`(()=>{const e=document.querySelector('[data-music-track="'+${JSON.stringify(zeroTrack)}+'"]:not([data-turn-summary] *)');const r=e?.getBoundingClientRect();return {text:e?.textContent||'',width:r?.width||0,height:r?.height||0,players:e?.querySelectorAll('[data-sound-player]').length??-1}})()`),x=>x.width>0&&x.height>0&&x.players===0&&x.text.includes('$0')&&x.text.includes('(billed)')&&!x.text.toLowerCase().includes('unknown'));
+ const links=await observed('actual_core_files',()=>control('inspect_links'),x=>x.files.state==='ready'&&x.files.rows.some(r=>r.ref?.digest===late.artifacts[0].digest));
+ const D=late.artifacts[0].digest,docId='artifact:'+D;
+ const rows=links.files.rows.filter(r=>r.ref?.digest===D);const R=rows[0];
+ note('logical_vs_content_identity',{serviceRows:rows.map(r=>({id:r.id,name:r.name,digest:r.ref.digest})),documentId:docId,initialBatch:links.initial_batch});
+ demand('Same-byte batch retains independent logical tracks and artifacts',new Set(links.initial_batch.tracks.map(x=>x.id)).size===2&&new Set(links.initial_batch.artifacts.map(x=>x.artifact_id)).size===2&&new Set(links.initial_batch.artifacts.map(x=>x.digest)).size===1);
+ demand('Core inventory retains logical service row identities',new Set(rows.map(r=>r.id)).size>=2);
+ await d.verb(cdp,'press',{selector:'[data-panel-rail-item="canvas"]'});
+ await d.verb(cdp,'press',{selector:'[data-tour-tag="canvas-files-view-button"]'});
+ const fileRow='[data-tour-tag="file-row"][data-file-id='+JSON.stringify(docId)+']';
+ await observed('visible_indexed_music_file',()=>cdp.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(fileRow)});const r=e?.getBoundingClientRect();return {width:r?.width||0,height:r?.height||0,text:e?.textContent||'',titles:[...(e?.querySelectorAll('[title]')||[])].map(x=>x.getAttribute('title')),player:!!e?.querySelector('[data-sound-player]')}})()`),x=>x.width>0&&x.height>0&&x.player&&(x.text.includes(R.name)||x.titles.some(v=>v?.includes(R.name))));
+ await frame('music-files');note('files_resource_counters_only',await d.verb(cdp,'filesFacts'));
+ // This is the indexed row's actual onOpen, not openCanvasDocument/mention:true.
+ await d.verb(cdp,'press',{selector:fileRow+' > div > button.flex-1'});
+ await observed('selected_indexed_canvas_document',()=>d.verb(cdp,'soundsFacts'),x=>x.canvas.some(p=>p.selectedTab===docId&&p.files?.some(f=>f.id===docId&&f.path===docId&&JSON.stringify(f.artifact).includes(D))));
+ const panelId=await observed('associated_audio_tabpanel',()=>cdp.evaluate(`(()=>{for(const tab of document.querySelectorAll('[role="tab"][aria-selected="true"]')){const id=tab.getAttribute('aria-controls'),p=id&&document.getElementById(id),r=p?.getBoundingClientRect();if(p?.getAttribute('role')==='tabpanel'&&r.width>0&&r.height>0&&p.querySelector('[data-sound-player]'))return id;}return null})()`),Boolean);
+ const preview='[id='+JSON.stringify(panelId)+'] [data-sound-player]';
+ await d.verb(cdp,'press',{selector:preview+' > button'});
+ await observed('indexed_canvas_digest_playback',()=>d.verb(cdp,'soundsFacts'),x=>x.ownerId==='sound:'+D&&!x.paused&&x.time>.2&&x.src?.startsWith('blob:')&&x.nativeElements===0);
+ await frame('music-canvas');await d.verb(cdp,'press',{selector:preview+' > button'});
+ await d.verb(cdp,'press',{selector:'[aria-label="Close canvas"]'});
+ // Reopen only the actual producing turn; never a global first summary/player.
+ const nowExpanded=await cdp.evaluate(`document.querySelector(${JSON.stringify(summary+' button[aria-expanded]')})?.getAttribute('aria-expanded')`);
+ if(nowExpanded==='false')await d.verb(cdp,'press',{selector:summary+' button[aria-expanded]'});
+ const highlightSelector=await observed('actual_same_turn_highlight',()=>cdp.evaluate(`(()=>{const run=document.querySelector(${JSON.stringify(summary)});const ids=new Set(run?.getAttribute('data-run-ids')?.split(/\\s+/)||[]);const owners=[run,...document.querySelectorAll('[data-record-id]')].filter(e=>e&&(e===run||ids.has(e.getAttribute('data-record-id'))));let cells=[...new Set(owners.flatMap(e=>[...e.querySelectorAll('[data-supplement-sounds] > [data-supplement-sound]')]))];const cell=cells.find(e=>e.querySelector('[data-supplement-sound-title]')?.textContent?.includes(${JSON.stringify(R.name)}));if(!cell)return null;const e=cell.querySelector('[data-sound-player] > button');if(!e)return null;let path='';for(let n=e;n&&n.parentElement;n=n.parentElement){path=n.tagName.toLowerCase()+':nth-child('+([...n.parentElement.children].indexOf(n)+1)+')'+(path?' > '+path:'');}return 'html > '+path;})()`),Boolean);
+ await d.verb(cdp,'press',{selector:highlightSelector});
+ await observed('same_turn_highlight_digest_playback',()=>d.verb(cdp,'soundsFacts'),x=>x.ownerId==='sound:'+D&&!x.paused&&x.time>.2&&x.src?.startsWith('blob:'));
+ await frame('music-highlights');
+ note('coverage',{serving_graph:'asserted',seek:'asserted',reduced_motion:'asserted',error_state:'asserted',files:'Core logical IDs + visible indexed digest row',canvas:'actual row onOpen + selected tab/panel + digest playback',highlights:'actual producing run/cell + same digest playback',sfx_neighbor:'RETAINED component presentation only: parent verified R2 sound-player blob2f0fbd5bf83149744d486bbd1c020d65b1626239; no new SFX generation claim',rtl:'RETAINED JobsCancelRtl/Urdu confirmation presentation with source/catalogue compatibility; no full-App RTL claim',acceptance:'Native predicates executed; retained dimensions still require independent QA/design judgment'});
+
 }catch(e){note('blocked',String(e));process.exitCode=1}
 finally{
  try{cdp?.close()}catch{}

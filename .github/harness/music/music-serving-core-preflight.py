@@ -184,7 +184,11 @@ async def main():
                                     current=await generate_case('native-pending',{'prompt':'Native owned pending','duration_ms':3000,'variations':1},{'failed':False,'partial':False,'complete':False})
                                     async def native_tracks():
                                         v=read_records(str(directory)).get(current['job']);return v if v and v.get('tracks') else None
-                                    reply['job']= (await until(native_tracks))['job'];reply['cancel_before']=upstream.cancel_count
+                                    reply['job']= (await until(native_tracks))['job'];reply['cancel_before']=upstream.cancel_count;reply['producing_call_id']=json.loads((ROOT/'model-command.json').read_text())['id']
+                                elif ctl['action']=='inspect_links':
+                                    inventory=await client.get(target+'/files',params={'scope':'self'})
+                                    assert inventory.status_code==200,inventory.text
+                                    reply['files']=inventory.json()['result'];reply['initial_batch']=done
                                 elif ctl['action'] in {'start_partial','start_failed'}:
                                     failing = ctl['action']=='start_failed'
                                     current=await generate_case('native-error', {'prompt':'Owned native outcome','duration_ms':3000,'variations':1 if failing else 2}, {'failed':failing,'partial':not failing,'complete':True})

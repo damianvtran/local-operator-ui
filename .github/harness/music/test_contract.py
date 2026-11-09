@@ -27,6 +27,13 @@ class PortableContracts(unittest.TestCase):
         self.assertIn('--memory-mb 1536', text)
         self.assertIn('--native-after-preflight', text)
 
+    def test_native_linkage_uses_real_inventory_and_driver_actions(self):
+        source = (HERE / 'music-native-serving-consumer.mjs').read_text()
+        self.assertNotIn('panelIdentityAssertionsReady=false', source)
+        self.assertNotIn("d.verb(cdp,'openCanvasDocument'", source)
+        for contract in ["control('inspect_links')", "R.ref", "data-file-id", "aria-controls", "indexed_canvas_digest_playback", "same_turn_highlight_digest_playback", "producing_call_id"]:
+            self.assertIn(contract.replace('R.ref', 'r.ref'), source)
+
     def test_collector_excludes_auth_profiles_and_redacts_owned_tokens(self):
         spec = importlib.util.spec_from_file_location('music_collector', HERE / 'collect_artifacts.py')
         module = importlib.util.module_from_spec(spec)

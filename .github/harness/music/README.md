@@ -23,24 +23,25 @@ Core/worker/AuthStore/SSE/Session/upstream graph alive while the real App runs.
 Only the parent may admit the single attempt after the preflight is reviewed:
 
 ```sh
-# NOT READY at this revision: source guard described below must be completed.
+# Only after independent R5 review, observed preflight exit0, and parent admission.
 gh workflow run ci.yml -R damianvtran/local-operator-ui --ref feat/async-music \
   -f music_acceptance_mode=native
 ```
 
-**Known source blocker:** the consumer refuses BEFORE Electron because the supplied
-Files/Canvas/Highlights code opened panels but did not establish linked artifact
-identity. `filesFacts` is thumbnail resource counters, not that proof. Complete
-actual linked-identity predicates before enabling the source guard; there is no
-environment waiver. This revision is useful for hosted Core preflight, NOT a
-claim that the sole native acceptance attempt is ready or passed.
+The native source now requires actual Core inventory IDs/digests, a visible indexed
+Files row, its real name/onOpen action, the selected Canvas tab/associated panel,
+and actual digest-owned playback from both Canvas and the producing turn's
+Highlights. Content identity (`artifact:<digest>`) is intentionally distinct from
+logical service-row/track identities. No discovery or document state is injected.
+These are candidate predicates, NOT observed acceptance. Independent combined
+R5 review and an actually clean hosted Core preflight are still required before
+the parent admits the sole native attempt. Missing predicates fail, never pass.
 
-The consumer includes real player safety/seek, pending reduced-motion geometry,
-actual cancel/late settlement, and fresh partial/failed outcome predicates. Those
-are SOURCE only until executed. Missing controls fail, never become a pass.
-SFX/shared-player presentation and RTL Jobs presentation may be retained only
-with the manager's earlier rendered evidence and exact source/catalogue proof;
-no new SFX generation or full-App RTL activation is claimed here.
+SFX/shared-player presentation may retain the parent-verified R2 frames and
+unchanged shared-player blob; no new SFX generation is claimed. RTL retains only
+the parent-verified JobsCancelRtl/Urdu confirmation presentation with source and
+catalogue compatibility, not full-App locale activation or the old blank canonical
+RTL frame. Independent QA/design must judge those retained dimensions separately.
 
 ## Bounds, identity and isolation
 
