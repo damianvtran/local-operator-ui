@@ -40,6 +40,13 @@ on:
   # against such a branch by hand. The backend repository has the same
   # trigger for the same reason.
   workflow_dispatch:
+    inputs:
+      music_acceptance_mode:
+        description: 'off; Core preflight only; or explicitly admitted single native acceptance'
+        type: choice
+        options: ['off', 'preflight', 'native']
+        required: false
+        default: 'off'
 
 # Cancellation exists for SUPERSEDED COMMITS, not for "any event".
 #
@@ -1158,6 +1165,71 @@ jobs:
         run: |
           TARBALL=$(ls local-operator-ui-*.tgz)
           node scripts/npx-smoke-test.mjs "$TARBALL"
+
+      # Manual-only evidence lease: push/PR events can never consume this boot.
+      # Reuse this job's actual packed App and normal Core server extras. Setup
+      # runs before HOME isolation; fixture workers never invoke git/gh/keychains.
+      - name: Checkout pinned music Core source
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        uses: actions/checkout@v4
+        with:
+          repository: damianvtran/local-operator
+          ref: 859729bd322da793575527b264b69de0a2601d02
+          path: .music-core-source
+          persist-credentials: false
+
+      - name: Prepare isolated music acceptance dependencies
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          command -v ffmpeg
+          test "$(git -C .music-core-source rev-parse HEAD)" = 859729bd322da793575527b264b69de0a2601d02
+          python3 -m venv "$RUNNER_TEMP/music-core-venv"
+          "$RUNNER_TEMP/music-core-venv/bin/pip" install --quiet './.music-core-source[server]'
+          mkdir -p "$RUNNER_TEMP/music-acceptance"
+          echo "LOCAL_OPERATOR_CORE_BIN=$RUNNER_TEMP/music-core-venv/bin/local-operator" >> "$GITHUB_ENV"
+          echo "LOCAL_OPERATOR_CORE_PYTHON=$RUNNER_TEMP/music-core-venv/bin/python" >> "$GITHUB_ENV"
+          echo "MUSIC_QA_CORE_MODULE=$("$RUNNER_TEMP/music-core-venv/bin/python" -c 'import local_operator; print(local_operator.__file__)')" >> "$GITHUB_ENV"
+          echo "MUSIC_UI_WORKTREE=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "LOCAL_OPERATOR_SCRATCHPAD=$RUNNER_TEMP/music-acceptance" >> "$GITHUB_ENV"
+          git rev-parse HEAD > "$RUNNER_TEMP/music-acceptance/ui-checkout.txt"
+          git rev-parse HEAD:src HEAD:.storybook HEAD:i18n HEAD:scripts/fixtures > "$RUNNER_TEMP/music-acceptance/ui-trees.txt"
+          shasum -a 256 out/main/index.js out/preload/index.js > "$RUNNER_TEMP/music-acceptance/app-source-sha256.txt"
+
+      - name: Execute serving music Core preflight and prove rollback
+        id: music_core_preflight
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        timeout-minutes: 10
+        run: |
+          python3 .github/harness/music/check_capacity.py "$LOCAL_OPERATOR_SCRATCHPAD/resource-admission-${{ github.action }}.json"
+          "$LOCAL_OPERATOR_CORE_PYTHON" .music-core-source/scripts/run_bounded.py             --contract command-status --timeout 600 --memory-mb 1536 --             "$LOCAL_OPERATOR_CORE_PYTHON" .github/harness/music/music-serving-core-preflight.py --resource-lease
+
+      - name: Execute one native music acceptance on the same serving graph
+        id: music_native_acceptance
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode == 'native' && steps.music_core_preflight.outcome == 'success'
+        timeout-minutes: 10
+        env:
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+          LOCAL_OPERATOR_UI_WINDOW_MODE: headless
+        run: |
+          python3 .github/harness/music/check_capacity.py "$LOCAL_OPERATOR_SCRATCHPAD/resource-admission-${{ github.action }}.json"
+          "$LOCAL_OPERATOR_CORE_PYTHON" .music-core-source/scripts/run_bounded.py             --contract command-status --timeout 600 --memory-mb 1536 --             "$LOCAL_OPERATOR_CORE_PYTHON" .github/harness/music/music-serving-core-preflight.py --resource-lease --native-after-preflight
+
+      - name: Collect sanitized music receipts without credential databases
+        if: always() && runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        run: python3 .github/harness/music/collect_artifacts.py "$RUNNER_TEMP/music-acceptance" "$RUNNER_TEMP/music-acceptance-artifacts"
+
+      - name: Upload owned music acceptance receipts and native frames
+        if: always() && runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-native-acceptance-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/music-acceptance-artifacts/
+          if-no-files-found: error
+          retention-days: 7
 
       # This is the real production app already compiled by npm pack, not a
       # Storybook surrogate. macOS already owns Electron launch in this job;
