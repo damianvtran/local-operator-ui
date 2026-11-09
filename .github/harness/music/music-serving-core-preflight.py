@@ -95,10 +95,12 @@ async def main():
             async def is_live():
                 r=await client.get(target);v=r.json().get('result',{}).get('payload',{});return v if v and not v.get('cold',True) else None
             record('actual_live_snapshot',await until(is_live,30))
+            # Core's turn route is POST .../messages; its handler is merely NAMED
+            # `prompt`. test_route_contract.py pins every call here to Core's app.
             async def command(tool,args):
                 cid='music-qa-'+uuid.uuid4().hex
                 (ROOT/'model-command.json').write_text(json.dumps({'id':cid,'tool':tool,'args':args}))
-                r=await client.post(target+'/prompt',json={'request_id':str(uuid.uuid4()),'text':'MUSIC_QA_TOOL '+cid});record('prompt_'+tool,{'status':r.status_code,'body':r.json()});assert r.status_code==200
+                r=await client.post(target+'/messages',json={'request_id':str(uuid.uuid4()),'text':'MUSIC_QA_TOOL '+cid});record('prompt_'+tool,{'status':r.status_code,'body':r.json()});assert r.status_code==200
             await command('generate_music',{'prompt':'Owned silent fixture','duration_ms':3000,'variations':2})
             async def generated():return upstream.facts() if upstream.generate_count==1 else None
             record('actual_generate_http',await until(generated))
