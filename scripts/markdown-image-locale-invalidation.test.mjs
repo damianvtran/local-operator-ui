@@ -4,6 +4,13 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
+const MERMAID_MODULE = /^mermaid$/;
+const ANY_MODULE = /.*/;
+const TOAST_MANAGER_MODULE = /@shared\/utils\/toast-manager/;
+const ENGLISH_IMAGE_URL = /Copy image URL/;
+const FRENCH_IMAGE_URL = /Fixture image URL/;
+const FRENCH_BROWSER = /Fixture browser/;
+
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 	pretendToBeVisual: true,
 });
@@ -85,19 +92,22 @@ const built = await build({
 			setup(builder) {
 				// Images never load Mermaid. Keep its uncalled dynamic engine out
 				// of this fixture so failure stacks fit the host's 1 GB guard.
-				builder.onResolve({ filter: /^mermaid$/ }, () => ({
+				builder.onResolve({ filter: MERMAID_MODULE }, () => ({
 					path: "engine",
 					namespace: "unused-engine",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "unused-engine" }, () => ({
-					loader: "js",
-					contents: "export default {}",
-				}));
-				builder.onResolve({ filter: /@shared\/utils\/toast-manager/ }, () => ({
+				builder.onLoad(
+					{ filter: ANY_MODULE, namespace: "unused-engine" },
+					() => ({
+						loader: "js",
+						contents: "export default {}",
+					}),
+				);
+				builder.onResolve({ filter: TOAST_MANAGER_MODULE }, () => ({
 					path: "toast",
 					namespace: "fixture",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+				builder.onLoad({ filter: ANY_MODULE, namespace: "fixture" }, () => ({
 					loader: "js",
 					contents: `
 						const record = (kind, message) => {
@@ -120,7 +130,6 @@ const {
 	createRoot,
 	MarkdownRenderer,
 	React,
-	t,
 	setLocale,
 	registerCatalogue,
 	clearRegisteredCatalogues,
@@ -173,14 +182,14 @@ test("an open markdown image menu refreshes through the memoized component map",
 				}),
 			),
 		);
-		assert.match(document.body.textContent, /Copy image URL/);
+		assert.match(document.body.textContent, ENGLISH_IMAGE_URL);
 		await act(async () => setLocale("fr"));
 		assert.match(
 			document.body.textContent,
-			/Fixture image URL/,
+			FRENCH_IMAGE_URL,
 			"already-open image menu must invalidate without changing markdown props",
 		);
-		assert.match(document.body.textContent, /Fixture browser/);
+		assert.match(document.body.textContent, FRENCH_BROWSER);
 	} finally {
 		await act(async () => root.unmount());
 		container.remove();

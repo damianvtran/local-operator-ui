@@ -4,6 +4,11 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
+const DESKTOP_HOOKS_MODULE = /desktop-hooks$/;
+const PAIRING_CAUSE_MODULE = /use-pairing-cause$/;
+const ANY_MODULE = /.*/;
+const TOAST_MANAGER_MODULE = /@shared\/utils\/toast-manager/;
+
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 	pretendToBeVisual: true,
 });
@@ -90,28 +95,31 @@ const built = await build({
 		{
 			name: "toast-recorder",
 			setup(builder) {
-				builder.onResolve({ filter: /desktop-hooks$/ }, (args) =>
+				builder.onResolve({ filter: DESKTOP_HOOKS_MODULE }, (args) =>
 					args.importer.endsWith("skill-picker.tsx")
 						? { path: "capabilities", namespace: "unavailable" }
 						: null,
 				);
-				builder.onResolve({ filter: /use-pairing-cause$/ }, (args) =>
+				builder.onResolve({ filter: PAIRING_CAUSE_MODULE }, (args) =>
 					args.importer.endsWith("skill-picker.tsx")
 						? { path: "pairing", namespace: "unavailable" }
 						: null,
 				);
-				builder.onLoad({ filter: /.*/, namespace: "unavailable" }, (args) => ({
-					loader: "js",
-					contents:
-						args.path === "capabilities"
-							? 'const answer = {data: {}}; export const useDesktopCapabilities = () => answer; export const desktopFeatureState = () => "below-version";'
-							: "export const usePairingCause = () => null;",
-				}));
-				builder.onResolve({ filter: /@shared\/utils\/toast-manager/ }, () => ({
+				builder.onLoad(
+					{ filter: ANY_MODULE, namespace: "unavailable" },
+					(args) => ({
+						loader: "js",
+						contents:
+							args.path === "capabilities"
+								? 'const answer = {data: {}}; export const useDesktopCapabilities = () => answer; export const desktopFeatureState = () => "below-version";'
+								: "export const usePairingCause = () => null;",
+					}),
+				);
+				builder.onResolve({ filter: TOAST_MANAGER_MODULE }, () => ({
 					path: "toast",
 					namespace: "fixture",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+				builder.onLoad({ filter: ANY_MODULE, namespace: "fixture" }, () => ({
 					loader: "js",
 					contents: `
 						const record = (kind, message) => {

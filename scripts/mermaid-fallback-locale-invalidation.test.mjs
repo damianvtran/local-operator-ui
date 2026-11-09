@@ -4,6 +4,15 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
+const MERMAID_MODULE = /^mermaid$/;
+const ANY_MODULE = /.*/;
+const APPEARANCE_MODULE = /use-resolved-appearance$/;
+const TOAST_MANAGER_MODULE = /@shared\/utils\/toast-manager/;
+const RENDER_FAILURE = /fixture render failure/;
+const ENGLISH_DIAGRAM_ERROR = /Mermaid diagram error/;
+const FRENCH_DIAGRAM_ERROR = /Fixture diagram error/;
+const FRENCH_CONTAINED = /Fixture contained/;
+
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 	pretendToBeVisual: true,
 });
@@ -85,28 +94,34 @@ const built = await build({
 			setup(builder) {
 				// The core throws before diagram loading; do not bundle the unrelated
 				// Mermaid engine into this boundary-only fixture under the 1 GB guard.
-				builder.onResolve({ filter: /^mermaid$/ }, () => ({
+				builder.onResolve({ filter: MERMAID_MODULE }, () => ({
 					path: "engine",
 					namespace: "unused-engine",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "unused-engine" }, () => ({
-					loader: "js",
-					contents: "export default {}",
-				}));
-				builder.onResolve({ filter: /use-resolved-appearance$/ }, () => ({
+				builder.onLoad(
+					{ filter: ANY_MODULE, namespace: "unused-engine" },
+					() => ({
+						loader: "js",
+						contents: "export default {}",
+					}),
+				);
+				builder.onResolve({ filter: APPEARANCE_MODULE }, () => ({
 					path: "appearance",
 					namespace: "force-error",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "force-error" }, () => ({
-					loader: "js",
-					contents:
-						'export function useResolvedAppearance() { throw new Error("fixture render failure"); }',
-				}));
-				builder.onResolve({ filter: /@shared\/utils\/toast-manager/ }, () => ({
+				builder.onLoad(
+					{ filter: ANY_MODULE, namespace: "force-error" },
+					() => ({
+						loader: "js",
+						contents:
+							'export function useResolvedAppearance() { throw new Error("fixture render failure"); }',
+					}),
+				);
+				builder.onResolve({ filter: TOAST_MANAGER_MODULE }, () => ({
 					path: "toast",
 					namespace: "fixture",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+				builder.onLoad({ filter: ANY_MODULE, namespace: "fixture" }, () => ({
 					loader: "js",
 					contents: `
 						const record = (kind, message) => {
@@ -129,7 +144,6 @@ const {
 	createRoot,
 	MermaidDiagram,
 	React,
-	t,
 	setLocale,
 	registerCatalogue,
 	clearRegisteredCatalogues,
@@ -173,21 +187,21 @@ test("the contained Mermaid fallback refreshes after its subscribing core unmoun
 		);
 		assert.match(
 			container.textContent,
-			/fixture render failure/,
+			RENDER_FAILURE,
 			"the real boundary caught the injected render failure",
 		);
-		assert.match(container.textContent, /Mermaid diagram error/);
+		assert.match(container.textContent, ENGLISH_DIAGRAM_ERROR);
 		assert.ok(errors.length > 0, "React reported the caught rendering error");
 		await act(async () => setLocale("fr"));
 		assert.match(
 			container.textContent,
-			/Fixture diagram error/,
+			FRENCH_DIAGRAM_ERROR,
 			"fallback must subscribe independently of its unmounted core",
 		);
-		assert.match(container.textContent, /Fixture contained/);
+		assert.match(container.textContent, FRENCH_CONTAINED);
 		assert.match(
 			container.textContent,
-			/fixture render failure/,
+			RENDER_FAILURE,
 			"language change must not reset boundary state",
 		);
 	} finally {
