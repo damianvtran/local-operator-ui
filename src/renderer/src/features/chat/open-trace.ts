@@ -21,7 +21,42 @@
  * so a reader can grep it, and stays English (not user copy, so not i18n).
  *
  * WHAT EACH STAGE MEANS (milliseconds from the trace's start, `-` = not reached):
+ *   - `store`    the store has committed the target as the active conversation.
+ *                `start`..`store` is the click handler plus every synchronous
+ *                store subscriber the write wakes (the persisted write, the
+ *                sidebar's own derived selectors), i.e. the part of the click
+ *                that runs before React is asked to render at all.
  *   - `routed`   the transcript pane committed with the target session id.
+ *                `store`..`routed` is React's render and commit for the switch:
+ *                unmounting the transcript being left and mounting the one being
+ *                opened. This is the stretch that grows with the conversation you
+ *                are leaving, and on the operator's data it is where the seconds
+ *                went.
+ *   - `request`  the target's stream subscription asked the transport for it - the
+ *                `events` request the daemon's access log shows. `start`..`request`
+ *                is therefore the whole stretch the renderer owns before any
+ *                network is involved, and `request`..`snapshot` is the backend's
+ *                own service time (measured 190-400 ms on a healthy daemon). The
+ *                split exists because those two were being read as one number: an
+ *                operator's correlation of the access log with this line showed a
+ *                **5.8 s** gap between the click and the request on the slow
+ *                switches and 0.25 s on the fast ones, with the daemon answering
+ *                in 248 ms either way - so the variance is ours, and without this
+ *                stage the line could not say which side of the transport it fell.
+ *                `routed`..`request` is the scheduler alone plus the effect's own
+ *                preamble: a passive effect cannot run until React commits, and it
+ *                is then flushed in a task of its own - so this segment is where a
+ *                main thread busy with the outgoing view shows up as silence.
+ *                TWO WRITERS, ONE NUMBER. The click stamps this stage where it asks
+ *                the desktop plane for the stream (`prewarmSessionStream`), and the
+ *                pane stamps it again when it had to open its OWN connection because
+ *                that prewarm was refused - a refused prewarm is a request that did
+ *                not leave at the click, and this line must not claim it did (agent
+ *                review round 1, MAJOR 1: every refusal reported `request=0`). The
+ *                click's stamp is a FALLBACK (see `note`): the pane's own ask
+ *                replaces it, and the click's stands only when no pane stamp comes,
+ *                which is the adopted case - there the request really did leave with
+ *                the click.
  *   - `snapshot` the session stream's first `snapshot` frame for the target was
  *                received and parsed (before it is folded into state). Counted
  *                only from a stream connection opened under THIS trace (see
@@ -65,7 +100,9 @@
 
 export type OpenEntrance = "sidebar" | "open" | "native";
 export type OpenStage =
+	| "store"
 	| "routed"
+	| "request"
 	| "snapshot"
 	| "content"
 	| "painted"
@@ -79,7 +116,9 @@ export type OpenOutcome =
 
 /** Stage order as printed; `settled` is derived and appended. */
 export const OPEN_STAGES: readonly OpenStage[] = [
+	"store",
 	"routed",
+	"request",
 	"snapshot",
 	"content",
 	"painted",
@@ -117,6 +156,14 @@ interface Trace {
 	entrance: OpenEntrance;
 	start: number;
 	stages: Partial<Record<OpenStage, number>>;
+	/**
+	 * Stages whose stamp is a FALLBACK: a value recorded by a writer that knows
+	 * the stage happened but not that it is the one to report. Folded into
+	 * `stages` at `finish` only when nothing better stamped the stage - see
+	 * `note`. Kept apart rather than flagged in place so a real stamp always
+	 * wins, whatever order the two arrive in.
+	 */
+	fallbacks: Partial<Record<OpenStage, number>>;
 	timer: unknown;
 	frameRequested: boolean;
 	endListeners: Array<() => void>;
@@ -130,11 +177,18 @@ export interface OpenTracer {
 	 * write wins. With `token`, also only if that trace is still the open one:
 	 * an observer that captured `currentToken()` when it started (the stream
 	 * connection) cannot stamp a later trace for the same session.
+	 *
+	 * With `options.fallback`, the stamp is recorded ASIDE as the stage's value
+	 * only if nothing better arrives: the last writer still wins, but a fallback
+	 * never displaces a real stamp, and a real stamp always replaces a fallback.
+	 * That is the `request` stage's shape - the click says where the ask left
+	 * from, and the pane corrects it if the connection it asked for was refused.
 	 */
 	note(
 		sessionId: string | null | undefined,
 		stage: OpenStage,
 		token?: number | null,
+		options?: { fallback?: boolean },
 	): void;
 	/** Ends the open trace for `sessionId` with a terminal non-settled outcome. */
 	fail(sessionId: string | null | undefined, outcome: "missing" | "left"): void;
@@ -186,6 +240,12 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 		if (!trace) return;
 		current = null;
 		deps.clearTimer(trace.timer);
+		// A stage nothing better stamped reports the fallback, so a line written
+		// before the pane could correct it still carries the ask's own time.
+		for (const stage of Object.keys(trace.fallbacks) as OpenStage[]) {
+			if (trace.stages[stage] === undefined)
+				trace.stages[stage] = trace.fallbacks[stage];
+		}
 		deps.log(formatOpenTraceLine(trace, outcome, supersededBy));
 		for (const listener of trace.endListeners.splice(0)) listener();
 	};
@@ -211,6 +271,7 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 				entrance,
 				start: deps.now(),
 				stages: {},
+				fallbacks: {},
 				timer: undefined,
 				frameRequested: false,
 				endListeners: [],
@@ -221,10 +282,20 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 			current = trace;
 			return token;
 		},
-		note(sessionId, stage, token) {
+		note(sessionId, stage, token, options) {
 			const trace = current;
 			if (!trace || !sessionId || trace.sessionId !== sessionId) return;
 			if (token !== undefined && token !== trace.token) return;
+			if (options?.fallback === true) {
+				// Held aside, never written into `stages`: a fallback is a claim about
+				// what happened that a better-informed writer may still contradict.
+				if (
+					trace.stages[stage] === undefined &&
+					trace.fallbacks[stage] === undefined
+				)
+					trace.fallbacks[stage] = deps.now();
+				return;
+			}
 			if (stage === "content" && !trace.frameRequested) {
 				trace.frameRequested = true;
 				record(trace, "content");
@@ -347,6 +418,9 @@ export function watchSendable(
 			return;
 		}
 		sawTarget = true;
+		// The store's own write for this switch, observed from outside it: this
+		// listener runs synchronously inside `set`, so the stage is the commit.
+		tracer.note(target, "store");
 		// `openSession` commits the target and opens its window in ONE write, so
 		// the first observation of the target already sees the window and this
 		// waits for it to close. The native entrance's `setActiveSession` opens

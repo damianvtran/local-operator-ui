@@ -28,6 +28,7 @@ import {
 	useDelegatedCleanupNoticeStore,
 } from "../../store/delegated-cleanup-notice-store";
 import { desktopRefusalSentence } from "./desktop-refusal-copy";
+import { recordedStreamCapabilityFlags } from "./desktop-stream-capabilities";
 
 export type {
 	AuthOperation,
@@ -661,50 +662,566 @@ export async function openAuthorization(
  * `/__desktop/stream` proxy (which does the same). EventSource against the
  * backend directly is never an option — it cannot send the bearer, and an
  * unauthenticated fallback would be a silent security downgrade.
+ *
+ * THIS ENTRY POINT ALSO ADOPTS A PREWARM (see `prewarmSessionStream`): the click
+ * path asks the desktop plane for the target's stream before React is asked to
+ * render anything, and this is where the pane's own subscription picks that
+ * connection up instead of opening a second one. A caller that cannot be
+ * served by the prewarm gets exactly the subscription it always got.
+ *
+ * `onDecision` reports WHICH of those two happened, synchronously, because the
+ * open trace's `request` stage has to tell them apart: an adopted connection was
+ * asked for at the CLICK, so the click's stamp is the honest one and the pane
+ * must not write a later time over it; a subscription that had to open its own
+ * connection asked for it NOW, and there the click's stamp (a fallback) is a
+ * lie that the pane's ask corrects.
  */
 export function subscribeDesktopStream(
-	args: {
-		sessionId: string;
-		epoch?: string;
-		afterSeq?: number;
+	args: DesktopStreamArgs,
+	onEvent: (event: DesktopStreamEvent) => void,
+	onDecision?: (decision: DesktopStreamDecision) => void,
+): () => void {
+	const claim = takePrewarmedStream(args);
+	if (claim.record) {
+		onDecision?.("adopted");
+		logPrewarmDecision(
+			args.sessionId,
+			"adopted",
+			"none",
+			negotiationOf(args),
+			null,
+		);
+		return adoptPrewarmedStream(claim.record, onEvent);
+	}
+	/*
+	 * A PREWARM NOBODY CLAIMED IS RETIRED BY THE NEXT CONVERSATION'S SUBSCRIPTION
+	 * (QA round 1, M1). A prewarm left unclaimed belongs to a switch that did not
+	 * land - and this, some other conversation's pane, is the view that did. Holding
+	 * it would keep a second live stream beside the one on screen for up to the TTL,
+	 * the one window where "exactly one subscription" was not true. Nothing is lost
+	 * when the prewarm's own pane arrives next: that call adopts above and never
+	 * reaches this line.
+	 */
+	if (prewarmed) discardPrewarm();
+	onDecision?.("requested");
+	logPrewarmDecision(
+		args.sessionId,
+		"requested",
+		claim.refusal,
+		negotiationOf(args),
+		claim.held,
+	);
+	return openStreamTransport(args, onEvent);
+}
+
+/**
+ * Which of the two things one {@link subscribeDesktopStream} call did: it
+ * ADOPTED the click's prewarm, or it asked the transport for a connection
+ * itself. See that function's doc for why the open trace needs the difference.
+ */
+export type DesktopStreamDecision = "adopted" | "requested";
+
+/** One event from a session stream, in the shape both transports deliver. */
+export type DesktopStreamEvent = {
+	kind: "data" | "error" | "end";
+	data?: string;
+	detail?: string;
+	/**
+	 * The HTTP status that refused the stream, when one did.
+	 *
+	 * Only main can see it: it is the process that carries the bearer and
+	 * makes the fetch. A 404 is the one refusal that is about the SESSION
+	 * rather than about the transport — the desktop plane answers it for an id
+	 * this machine does not have — and the click path reaches exactly that case
+	 * without validating the id first (it deliberately spends no `sessions.get`
+	 * on the latency path). Without the code the panel can only render transport
+	 * text for a conversation that is simply gone.
+	 */
+	status?: number;
+};
+
+/** What one stream subscription asks the desktop plane for. */
+export type DesktopStreamArgs = {
+	sessionId: string;
+	epoch?: string;
+	afterSeq?: number;
+	/**
+	 * The open-frame negotiation (`docs/DESKTOP_API.md`, "The open frame").
+	 * This renderer sends it only once it has read the capability, and the
+	 * snapshot page it governs is the one this subscription carries: a caller
+	 * that sets it must read `runs`/`runs_state`/`head_cut` off `view.history`.
+	 * Absent keeps today's page, byte for byte.
+	 */
+	openFrame?: boolean;
+	journalOrder?: boolean;
+	orderIds?: string[];
+	/**
+	 * The complete peer-source declaration, forwarded on the same rule as
+	 * `openFrame`: only this renderer's own negotiation may say it reads the
+	 * complete-contract family (the peer-origin wakes and the recovery
+	 * delta's declared keys), and the caller scopes it to a conversation on
+	 * another device whose subscription already declared it. Absent — a local
+	 * conversation, or a peer opened before the catalogue placed it — keeps
+	 * the subscription's shape exactly as it was.
+	 */
+	peerJournalSource?: boolean;
+};
+
+/**
+ * HOW LONG AN UNCLAIMED PREWARM IS KEPT, and why that number.
+ *
+ * The prewarm exists because the pane's own subscription is opened from a
+ * PASSIVE effect, and a passive effect is flushed in a task of its own - behind
+ * whatever the renderer already has queued. Measured on the operator's app
+ * (2026-11-08, 21 switches, `[open-trace]` in the backend log): the click's
+ * React commit landed in 38-400 ms every time, while the subscription request
+ * landed 209-16,584 ms after the click - the same work, delayed by the queue in
+ * front of it. So the wait this timer has to survive is that queue, and its
+ * distribution is what sets the bound: max observed 18.4 s, and this is three
+ * times that, because a bound that only covers yesterday's worst sample is a
+ * timer that turns into a silent second subscription the first time the machine
+ * is busier.
+ *
+ * A prewarm that nobody claims costs one open stream until this fires. That is
+ * the trade: one connection held for at most a minute, against a conversation
+ * that paints a frame's worth of milliseconds after the click that asked for it.
+ */
+const PREWARM_TTL_MS = 60_000;
+
+/**
+ * How many events a prewarm buffers before it gives up.
+ *
+ * A snapshot is ONE event, and the frames after it are deltas, so an unclaimed
+ * prewarm's buffer is small in the ordinary case. The bound is here because a
+ * prewarm can sit for up to `PREWARM_TTL_MS` against a live conversation, and
+ * an unbounded buffer would be a leak with a timer on it. Overflow DISCARDS the
+ * prewarm rather than dropping the oldest events: a stream whose snapshot fell
+ * off the front would paint a conversation missing its history, and the pane
+ * then opens an ordinary subscription - slower, and correct.
+ */
+const PREWARM_MAX_EVENTS = 512;
+
+/** The negotiation flags a prewarm may reuse, as every real subscription asks.
+ *
+ * TWO KINDS OF FACT, from two different sources, and the prewarm must take each
+ * from the source that OWNS it.
+ *
+ * `openFrame` and `journalOrder` are CAPABILITIES: the projection of the desktop
+ * capabilities answer through `desktopFeatureEnabled`, which is exactly what the
+ * pane derives its own subscription's flags from (`chat-page.tsx`). The prewarm
+ * therefore reads them off that answer (`recordedStreamCapabilityFlags`),
+ * recorded where it arrives - the SAME source the pane reads, never a
+ * neighbour's request. Inheriting them from the last subscription instead is
+ * what broke adoption on every app session's first click: the inheritance is
+ * all-`false` until a subscription has run, so the prewarm asked undeclared, the
+ * pane asked declared, and `takePrewarmedStream` correctly refused - costing the
+ * feature its benefit and dropping a live stream (`desktop-stream-capabilities.ts`
+ * carries the CI measurement).
+ *
+ * The per-visit parts of a subscription (the reconnect cursor and the journal
+ * order ids) are NOT prewarmed for a mirror-image reason: they are read from the
+ * conversation the renderer is about to leave, so a prewarm could not send them
+ * and the adopter refuses to accept one that would have.
+ *
+ * `peerJournalSource` is NEITHER of those. It is that capability AND-ed with a
+ * fact about one conversation - the catalogue placing it on another device
+ * (`remoteOwnedId`) - so it is per-CONVERSATION, and the click path supplies the
+ * target's own half (`remoteOwned`) rather than inheriting the departed pane's.
+ * Inheritance here declared the complete contract for local conversations the
+ * module's own rule says must not declare it (agent review round 1, MINOR 1). */
+type StreamNegotiation = {
+	openFrame: boolean;
+	journalOrder: boolean;
+	peerJournalSource: boolean;
+};
+
+function negotiationOf(args: DesktopStreamArgs): StreamNegotiation {
+	return {
+		openFrame: args.openFrame === true,
+		journalOrder: args.journalOrder === true,
+		peerJournalSource: args.peerJournalSource === true,
+	};
+}
+
+type PrewarmedStream = {
+	sessionId: string;
+	negotiation: StreamNegotiation;
+	buffered: DesktopStreamEvent[];
+	/** Set once a subscriber adopts it; from then on events go straight through. */
+	live: ((event: DesktopStreamEvent) => void) | null;
+	/**
+	 * Set when the transport said the stream is over (`error`/`end`) before anyone
+	 * claimed it. A connection whose daemon side is gone is not a prewarm - it is
+	 * a failure waiting to be replayed - so it is retired where it dies and refused
+	 * here as a second line of defence.
+	 */
+	ended: boolean;
+	disposeTransport: () => void;
+};
+
+let prewarmed: PrewarmedStream | null = null;
+let prewarmTimer: ReturnType<typeof setTimeout> | null = null;
+
+function discardPrewarm(): void {
+	if (prewarmTimer !== null) {
+		clearTimeout(prewarmTimer);
+		prewarmTimer = null;
+	}
+	const record = prewarmed;
+	prewarmed = null;
+	if (!record) return;
+	record.live = null;
+	record.buffered = [];
+	record.disposeTransport();
+}
+
+/**
+ * The conversation the unclaimed prewarm is holding a stream for, or `null` when
+ * there is none.
+ *
+ * Read by the click path's route watch (`open-conversation.ts`), which retires a
+ * prewarm the navigation walked away from instead of leaving the connection open
+ * until the TTL (agent review round 1, NIT 1).
+ */
+export function prewarmedSessionStreamId(): string | null {
+	return prewarmed?.sessionId ?? null;
+}
+
+/**
+ * Retire the unclaimed prewarm IF it is for `sessionId`.
+ *
+ * Scoped by id on purpose: the prewarm is one-at-a-time and a newer click replaces
+ * it, so a late report about an older switch must not close the newer one's
+ * connection. Anything not matching is someone else's intent and is left alone.
+ */
+export function discardPrewarmedStream(sessionId: string): void {
+	if (!sessionId || prewarmed?.sessionId !== sessionId) return;
+	discardPrewarm();
+}
+
+/**
+ * Ask the desktop plane for `sessionId`'s stream NOW, from the click that chose
+ * it, and hold what comes back until the pane subscribes.
+ *
+ * THE DEFECT THIS EXISTS FOR. `useCanonicalSession` opens its subscription from
+ * a passive effect, which React flushes in a task of its own. On the operator's
+ * machine that flush was measured 0.2-16.6 s after the click (`[open-trace]`:
+ * `routed` and the previous pane's stream teardown both landed in 38-400 ms, so
+ * the commit was never the slow part), while the daemon answered the request in
+ * 190-400 ms whenever it arrived. The switch therefore spent its seconds with
+ * NO REQUEST IN FLIGHT, which is why the app looked stalled and the backend
+ * looked idle. Issuing the request in the click's own task removes the queue from
+ * that path entirely - the answer is already arriving while the commit runs.
+ *
+ * ONE PREWARM AT A TIME, deliberately: a burst of clicks disposes the previous
+ * target's connection rather than accumulating one stream per row pressed. The
+ * cost of a wrong guess is one connection held for a moment, never a paint: the
+ * adopter's own generation and connection guards still decide what reaches the
+ * view, exactly as they do for a subscription opened by the effect.
+ */
+export function prewarmSessionStream(
+	sessionId: string,
+	options?: {
 		/**
-		 * The open-frame negotiation (`docs/DESKTOP_API.md`, "The open frame").
-		 * This renderer sends it only once it has read the capability, and the
-		 * snapshot page it governs is the one this subscription carries: a caller
-		 * that sets it must read `runs`/`runs_state`/`head_cut` off `view.history`.
-		 * Absent keeps today's page, byte for byte.
-		 */
-		openFrame?: boolean;
-		journalOrder?: boolean;
-		orderIds?: string[];
-		/**
-		 * The complete peer-source declaration, forwarded on the same rule as
-		 * `openFrame`: only this renderer's own negotiation may say it reads the
-		 * complete-contract family (the peer-origin wakes and the recovery
-		 * delta's declared keys), and the caller scopes it to a conversation on
-		 * another device whose subscription already declared it. Absent — a local
-		 * conversation, or a peer opened before the catalogue placed it — keeps
-		 * the subscription's shape exactly as it was.
-		 */
-		peerJournalSource?: boolean;
-	},
-	onEvent: (event: {
-		kind: "data" | "error" | "end";
-		data?: string;
-		detail?: string;
-		/**
-		 * The HTTP status that refused the stream, when one did.
+		 * Whether the catalogue places THIS conversation on another device
+		 * (`remoteOwnedId`, read by the click path). One half of the complete-contract
+		 * declaration; the other half is the app's capability, taken below.
 		 *
-		 * Only main can see it: it is the process that carries the bearer and
-		 * makes the fetch. A 404 is the one refusal that is about the SESSION
-		 * rather than about the transport — the desktop plane answers it for an id
-		 * this machine does not have — and the click path reaches exactly that case
-		 * without validating the id first (it deliberately spends no `sessions.get`
-		 * on the latency path). Without the code the panel can only render transport
-		 * text for a conversation that is simply gone.
+		 * Absent is "not proven remote" - fail-closed, like every other negotiation
+		 * read here - so a local target never declares the contract.
 		 */
-		status?: number;
-	}) => void,
+		remoteOwned?: boolean;
+	},
+): void {
+	if (!sessionId) return;
+	if (prewarmed?.sessionId === sessionId) return;
+	discardPrewarm();
+	/*
+	 * THE FLAGS ARE THE PANE'S OWN; ONLY THE DECLARATION IS THE TARGET'S.
+	 *
+	 * Read from the capabilities answer this app received (the pane's source),
+	 * so the prewarm phrases the request the pane is about to phrase. No answer
+	 * yet is all-`false`, which is also what the pane passes then
+	 * (`desktopFeatureEnabled(undefined, ...)`), so the two agree in that case too.
+	 *
+	 * `peerJournalSource` is that capability AND-ed with the click's own answer
+	 * about THIS conversation: copied from the departed pane it declared the
+	 * complete contract for a local target (agent review round 1, MINOR 1 - the
+	 * probe saw `peerJournalSource: true` on a local target's request).
+	 */
+	const capabilities = recordedStreamCapabilityFlags();
+	const negotiation: StreamNegotiation = {
+		openFrame: capabilities?.openFrame === true,
+		journalOrder: capabilities?.journalOrder === true,
+		peerJournalSource:
+			capabilities?.peerJournalSource === true && options?.remoteOwned === true,
+	};
+	/*
+	 * Whether the record died while the transport was still being opened: an
+	 * overflow, or a terminal `error`/`end`. The dispose handle only exists once
+	 * `openStreamTransport` returns, so a death during that call has nothing to
+	 * close yet - this flag is what makes the handover close it rather than leaving
+	 * an unclaimed stream behind.
+	 */
+	let retired = false;
+	const record: PrewarmedStream = {
+		sessionId,
+		negotiation,
+		buffered: [],
+		live: null,
+		ended: false,
+		disposeTransport: () => {},
+	};
+	record.disposeTransport = openStreamTransport(
+		{
+			sessionId,
+			...(negotiation.openFrame ? { openFrame: true } : {}),
+			...(negotiation.journalOrder ? { journalOrder: true } : {}),
+			...(negotiation.peerJournalSource ? { peerJournalSource: true } : {}),
+		},
+		(event) => {
+			if (record.live) {
+				record.live(event);
+				return;
+			}
+			/*
+			 * A DEAD STREAM IS NOT A PREWARM (agent review round 1, MINOR 2). The handler
+			 * used to buffer `error`/`end` and keep the record, so a click inside the TTL
+			 * adopted a dead connection: it replayed the failure into the pane and paid
+			 * the first retry backoff where a fresh subscribe would simply have asked.
+			 * Retired here, the next click opens its own connection and nothing replays.
+			 */
+			if (event.kind === "error" || event.kind === "end") {
+				record.ended = true;
+				retired = true;
+				discardPrewarm();
+				return;
+			}
+			if (record.buffered.length >= PREWARM_MAX_EVENTS) {
+				retired = true;
+				discardPrewarm();
+				return;
+			}
+			record.buffered.push(event);
+		},
+	);
+	if (retired) {
+		record.disposeTransport();
+		return;
+	}
+	prewarmed = record;
+	const timer = setTimeout(() => {
+		if (prewarmed === record) discardPrewarm();
+	}, PREWARM_TTL_MS);
+	/*
+	 * A DIAGNOSTIC TIMER MUST NOT OUTLIVE ITS HOST. In Electron's renderer this is
+	 * a DOM timer and `unref` does not exist; in the node test host it does, and a
+	 * 60 s timer that nothing else is waiting on keeps the process alive for a
+	 * minute after the last assertion (measured: one suite at 61.7 s, all of it
+	 * this timer). Guarded rather than assumed, because the two hosts spell their
+	 * timer handles differently.
+	 */
+	if (typeof (timer as { unref?: () => void }).unref === "function")
+		(timer as unknown as { unref: () => void }).unref();
+	prewarmTimer = timer;
+}
+
+/**
+ * Why a prewarm could not serve `args`.
+ *
+ * `none` is "there was no prewarm at all" - an ordinary subscription, a
+ * reconnect, a background pane - which is not a decision worth a log line. The
+ * rest are refusals of a prewarm that WAS held for this conversation, i.e. cases
+ * where the click spent a connection the pane then had to replace.
+ *
+ * `negotiation` is the class this module was fixed for: the two requests
+ * disagreed about a capability flag.
+ */
+type PrewarmRefusal =
+	| "none"
+	| "other-session"
+	| "ended"
+	| "resuming"
+	| "negotiation";
+
+/**
+ * The prewarm `args` may adopt, or why it cannot.
+ *
+ * A prewarm is only usable when the caller wants EXACTLY what it asked for: the
+ * same conversation, the same capability negotiation, and no reconnect cursor
+ * or journal order ids - the two per-visit facts a prewarm cannot know, because
+ * at click time the renderer still holds the conversation being left. Anything
+ * else is a subscription the prewarm could not have phrased, so it is left for
+ * the TTL (a different conversation the user moved past, which a newer prewarm
+ * or the timer will retire) or refused here.
+ *
+ * THE REFUSAL IS RETURNED RATHER THAN DROPPED (agent review remediation round 2).
+ * The guard is correctness and stays exactly as strict; what was missing is the
+ * record of WHICH rule fired, because the first-click defect it hid was invisible
+ * in every artefact the app produced.
+ */
+function takePrewarmedStream(args: DesktopStreamArgs):
+	| {
+			record: PrewarmedStream;
+			refusal: null;
+			held: StreamNegotiation;
+	  }
+	| {
+			record: null;
+			refusal: PrewarmRefusal;
+			/**
+			 * What the prewarm actually asked for, when one was held for THIS conversation.
+			 *
+			 * Reported back because a refusal DISPOSES the record: by the time the caller
+			 * writes its diagnostic line, the negotiation it needs to compare against is
+			 * gone. `null` when nothing was held, or when it belonged to another
+			 * conversation (whose flags are not this call's business).
+			 */
+			held: StreamNegotiation | null;
+	  } {
+	const record = prewarmed;
+	if (!record) return { record: null, refusal: "none", held: null };
+	if (record.ended) {
+		discardPrewarm();
+		return { record: null, refusal: "ended", held: record.negotiation };
+	}
+	if (record.sessionId !== args.sessionId)
+		return { record: null, refusal: "other-session", held: null };
+	const wanted = negotiationOf(args);
+	const resuming =
+		args.epoch !== undefined ||
+		args.afterSeq !== undefined ||
+		(args.orderIds?.length ?? 0) > 0;
+	if (resuming) {
+		discardPrewarm();
+		return { record: null, refusal: "resuming", held: record.negotiation };
+	}
+	if (
+		wanted.openFrame !== record.negotiation.openFrame ||
+		wanted.journalOrder !== record.negotiation.journalOrder ||
+		wanted.peerJournalSource !== record.negotiation.peerJournalSource
+	) {
+		discardPrewarm();
+		return { record: null, refusal: "negotiation", held: record.negotiation };
+	}
+	return { record, refusal: null, held: record.negotiation };
+}
+
+/**
+ * The session id as it may appear in a log line, or `?`.
+ *
+ * THE SAME RULE THE OPEN TRACE APPLIES (`open-trace.ts`): ids are opaque tokens,
+ * so anything else must never reach the durable log as free text. Spelled here
+ * rather than imported because that module belongs to the chat feature and this
+ * one is its transport.
+ */
+const LOG_SESSION_ID_SHAPE = /^[A-Za-z0-9_-]{1,80}$/;
+
+/** The prefix `grep` finds every prewarm decision by, beside `[open-trace]`. */
+const PREWARM_TRACE_PREFIX = "[stream-prewarm]";
+
+/**
+ * ONE LINE PER PREWARM DECISION - adoption, or the reason a held prewarm was
+ * refused - at warn level, which is the channel that reaches the app's log.
+ *
+ * WHY IT EXISTS. This PR's own native lane failed on a defect nothing could see:
+ * `model-uncertainty` showed two click-time `/events` attempts (61 and 69), the
+ * first abandoned with its snapshot unconsumed, and no artefact said why -
+ * `onDecision` had the answer and was consumed for the trace's `request` stamp,
+ * then dropped. So the decision is written where the operator's `[open-trace]`
+ * lines land: `console.warn` from the renderer, which main forwards to the app
+ * log (`src/main/index.ts`, `console-message` -> `LogFileType.BACKEND`).
+ *
+ * WHAT IT COSTS. At most one line per switch: `adopted`, or a refusal of a
+ * prewarm that WAS held for this conversation. A subscription with no prewarm
+ * behind it (`refusal: "none"` - reconnects, background panes, the mini view)
+ * writes nothing, so ordinary traffic stays silent.
+ *
+ * The flags print in the fixed order `openFrame,journalOrder,peerJournalSource`;
+ * `caps=absent` means no capabilities answer had arrived, which is the other
+ * way the two requests can legitimately agree on "no flags".
+ */
+function logPrewarmDecision(
+	sessionId: string,
+	decision: DesktopStreamDecision,
+	refusal: PrewarmRefusal,
+	asked: StreamNegotiation,
+	prewarmedNegotiation: StreamNegotiation | null,
+): void {
+	if (decision === "requested" && refusal === "none") return;
+	const id = LOG_SESSION_ID_SHAPE.test(sessionId) ? sessionId : "?";
+	const flags = (n: StreamNegotiation) =>
+		[
+			n.openFrame ? "1" : "0",
+			n.journalOrder ? "1" : "0",
+			n.peerJournalSource ? "1" : "0",
+		].join(",");
+	const parts = [
+		PREWARM_TRACE_PREFIX,
+		`session=${id}`, // i18n: ignore developer log trace field, machine text
+		`decision=${decision}`, // i18n: ignore developer log trace field, machine text
+	];
+	if (decision === "requested") {
+		parts.push(`why=${refusal}`, `asked=${flags(asked)}`);
+		if (prewarmedNegotiation)
+			parts.push(`prewarm=${flags(prewarmedNegotiation)}`);
+		if (refusal === "negotiation")
+			parts.push(
+				`caps=${recordedStreamCapabilityFlags() ? "recorded" : "absent"}`,
+			);
+	}
+	console.warn(parts.join(" "));
+}
+
+/**
+ * Hand a prewarm to the subscriber that claimed it, and replay what it already
+ * received.
+ *
+ * THE REPLAY IS DEFERRED BY A MICROTASK, and that is a correctness requirement
+ * rather than politeness. `subscribeDesktopStream`'s caller assigns the dispose
+ * handle only AFTER this returns (`dispose = subscribeDesktopStream(...)`), so a
+ * frame replayed synchronously could reach a handler that tears the subscription
+ * down on a 404 - and that teardown would find no handle to close, leaving the
+ * adopted transport alive forever. One microtask is long enough for the caller
+ * to store its handle and far shorter than any transport hop.
+ */
+function adoptPrewarmedStream(
+	record: PrewarmedStream,
+	onEvent: (event: DesktopStreamEvent) => void,
+): () => void {
+	const buffered = record.buffered;
+	record.buffered = [];
+	record.live = onEvent;
+	if (prewarmTimer !== null) {
+		clearTimeout(prewarmTimer);
+		prewarmTimer = null;
+	}
+	if (prewarmed === record) prewarmed = null;
+	let disposed = false;
+	queueMicrotask(() => {
+		if (disposed) return;
+		for (const event of buffered) onEvent(event);
+	});
+	return () => {
+		if (disposed) return;
+		disposed = true;
+		record.live = null;
+		record.disposeTransport();
+	};
+}
+
+/**
+ * Open the stream on whichever transport this build has.
+ *
+ * It no longer records anything for the next click: the prewarm's negotiation
+ * comes from the capabilities answer (`desktop-stream-capabilities.ts`), because
+ * a request's own flags are not where that answer lives - and treating them as
+ * if they were is what made the first click of every app session miss the
+ * prewarm entirely.
+ */
+function openStreamTransport(
+	args: DesktopStreamArgs,
+	onEvent: (event: DesktopStreamEvent) => void,
 ): () => void {
 	const native = window.api?.desktop?.stream;
 	if (native) {

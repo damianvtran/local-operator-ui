@@ -5666,6 +5666,28 @@ export function useCanonicalSessionStream(
 			 * consult the stream ref - this is the subscription creating it.
 			 */
 			const peerDeclared = peerDeclarable();
+			/*
+			 * THE REQUEST GOES OUT HERE, and the trace times it here rather than
+			 * after the fact. Everything the renderer spends before this line - the
+			 * click's store write and every synchronous subscriber it wakes, the
+			 * render and commit of the new conversation, and the wait for this
+			 * passive effect to be flushed - is spent WITHOUT a request in flight,
+			 * so a switch can sit silent for seconds while the daemon is idle. That
+			 * is the operator's report of 2026-11-08 (5.8 s from click to request on
+			 * the slow switches, 0.25 s on the fast ones, with the daemon answering
+			 * in 248 ms either way), and the stage is what separates it from the
+			 * backend's own time in the same line.
+			 *
+			 * Noted from the DECISION below rather than here, under the token this
+			 * connection captured. A connection that ADOPTED the click's prewarm was
+			 * asked for at the click, so the click's own stamp is the honest one and
+			 * stamping here again would report the commit instead of the request; a
+			 * connection that had to ask for itself is exactly the refused-prewarm case,
+			 * and only there does this stamp replace the click's fallback (agent review
+			 * round 1, MAJOR 1). The token still stops a resync that opens a second
+			 * connection for the same conversation from stamping a newer trace with an
+			 * older request.
+			 */
 			dispose = subscribeDesktopStream(
 				{
 					sessionId,
@@ -5919,6 +5941,19 @@ export function useCanonicalSessionStream(
 						// A malformed frame is skipped, never fatal: the next snapshot
 						// heals any state it would have touched.
 					}
+				},
+				(decision) => {
+					/*
+					 * THE PANE'S OWN ASK, AND ONLY WHEN IT IS ITS OWN. `requested` means this
+					 * call opened a connection - the prewarm was refused (a cursor, a journal
+					 * order, a negotiation it could not phrase, or a stream that died in
+					 * flight) - so the click's fallback stamp is a request that did not leave
+					 * at the click, and this is where the real one did. `adopted` writes
+					 * nothing: the connection was asked for at the click, and the click's stamp
+					 * is already the truthful number for it.
+					 */
+					if (decision === "requested")
+						openTrace.note(sessionId, "request", openTraceToken);
 				},
 			);
 			/*
