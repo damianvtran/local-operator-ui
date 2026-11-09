@@ -315,6 +315,12 @@ export type SubagentRow = {
 	 * is withheld rather than guessed onto it.
 	 */
 	jobType: string | null;
+	music?: {
+		stage: string;
+		completed: number;
+		total: number;
+		attribution: string;
+	};
 	status: ChildStatus;
 	/** `7m49s`, or `null` when the job has no trustworthy launch clock. */
 	elapsedLabel: string | null;
@@ -1367,6 +1373,24 @@ const deriveChild = (
 		label,
 		role,
 		jobType: wireText(job.type) || null,
+		...(wireText(job.type) === "music" &&
+		isRecord(job.latest_details) &&
+		isRecord(job.latest_details.music)
+			? {
+					music: {
+						stage: wireText(job.latest_details.music.stage),
+						total: Array.isArray(job.latest_details.music.tracks)
+							? job.latest_details.music.tracks.length
+							: 0,
+						completed: Array.isArray(job.latest_details.music.tracks)
+							? job.latest_details.music.tracks.filter(
+									(track: unknown) => isRecord(track) && track.settled === true,
+								).length
+							: 0,
+						attribution: wireText(job.latest_details.music.attribution),
+					},
+				}
+			: {}),
 		status,
 		// The band's word for a state this model knows; the wire's own word for one
 		// it does not (`SubagentRow.stateWord`) — sanitised, and refused when the
@@ -2065,7 +2089,7 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	const jobWire: Array<Record<string, unknown>> = [];
 	for (const job of jobs) {
 		const type = wireText(job.type);
-		if (type === "bash" || type === "video") {
+		if (type === "bash" || type === "video" || type === "music") {
 			jobWire.push(job);
 			continue;
 		}

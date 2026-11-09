@@ -97,6 +97,7 @@ export type JobCancelPopoverProps = {
 	open: boolean;
 	/** The pressed row's label, for the copy ("this job"). */
 	label: string | null;
+	jobType?: string | null;
 	anchor: CancelCardAnchor | null;
 	refusal: string | null;
 	refusalSeq: number;
@@ -126,6 +127,7 @@ export const useJobCancel = ({
 	const [pending, setPending] = useState<{
 		id: string;
 		label: string;
+		jobType: string | null;
 	} | null>(null);
 	const [anchor, setAnchor] = useState<CancelCardAnchor | null>(null);
 	const [refusal, setRefusal] = useState<string | null>(null);
@@ -198,7 +200,7 @@ export const useJobCancel = ({
 		(row: SubagentRow, pressedAnchor: CancelCardAnchor) => {
 			if (busy) return;
 			lastPressedIdRef.current = row.id;
-			setPending({ id: row.id, label: row.label });
+			setPending({ id: row.id, label: row.label, jobType: row.jobType });
 			setAnchor(pressedAnchor);
 			/*
 			 * A fresh open is a FRESH question: the previous refusal's sentence is
@@ -265,6 +267,7 @@ export const useJobCancel = ({
 		popover: {
 			open: pending !== null,
 			label: pending?.label ?? null,
+			jobType: pending?.jobType ?? null,
 			anchor,
 			refusal,
 			refusalSeq,

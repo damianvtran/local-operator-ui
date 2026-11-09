@@ -67,6 +67,7 @@ import {
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
 import { soundCostCaption } from "./image-gen-card-model";
+import { musicReceiptOf, type MusicReceipt } from "./music-receipt-model";
 import {
 	type JournalOrderRead,
 	type JournalPosition,
@@ -629,6 +630,7 @@ type TranscriptPayloadRecord =
 			receipt?: HubReceipt;
 			/** Display-only Bridge facts; never a model-context admission grant. */
 			bridgeReceipt?: BridgeReceipt;
+			music?: MusicReceipt;
 			images?: TranscriptImage[];
 			/** The row's rendered body, as persisted. */
 			text: string;
@@ -2167,6 +2169,7 @@ function supersedesRekey(
 /** Custom transcript rows that are bookkeeping, never conversation. */
 const SILENT_CUSTOM_TYPES = new Set([
 	"frontend_state_checkpoint_v1",
+	"music_job_v1",
 	"session_state",
 	"hub_communication",
 	"wake_schedule",
@@ -3470,12 +3473,17 @@ function durableRecord(
 		// (a row that states nothing but its type name). No producer emits one
 		// today; the gate is here so none can.
 		if (!text.trim()) return null;
+		const music =
+			customType === "job_result" ? musicReceiptOf(details) : undefined;
 		return {
 			kind: "custom",
 			id: entry.id,
 			ts,
 			customType,
 			text,
+			...(music
+				? { music, images: music.tracks.flatMap((track) => track.images) }
+				: {}),
 			...(customType === "team_bridge_message"
 				? {
 						bridgeReceipt: bridgeReceiptOf(details),

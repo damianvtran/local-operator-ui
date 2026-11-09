@@ -64,6 +64,7 @@ import {
 	tallyFitsInline,
 } from "./run-detail-model";
 import { SubagentRowBody } from "./run-detail-row-parts";
+import { MusicJobMotif } from "../../canonical/music-job-motif";
 
 /**
  * One tool row, and the video family's one control.
@@ -89,7 +90,17 @@ const JobRow = ({
 			data-run-panel-row={row.id}
 			className={cn("flex items-start gap-2 px-3 py-1.5")}
 		>
-			<SubagentRowBody row={row} />
+			<div className={cn("flex min-w-0 flex-1 flex-col")}>
+				<SubagentRowBody row={row} />
+				{row.jobType === "music" && (
+					<MusicJobMotif
+						active={row.music?.stage === "polling"}
+						completed={row.music?.completed}
+						total={row.music?.total}
+						attribution={row.music?.attribution}
+					/>
+				)}
+			</div>
 			{jobRowCanCancel(row) && (
 				<Button
 					variant="ghost"

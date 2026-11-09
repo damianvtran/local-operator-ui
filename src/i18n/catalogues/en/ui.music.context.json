@@ -1,0 +1,32 @@
+{
+  "ui.music.label": {
+    "role": "status",
+    "tone": "neutral",
+    "note": "Music detached job. Counts are settled child tracks, not fake percentage. Cancellation does not imply upstream stop or refund. label is the job title. index is a one-based track number."
+  },
+  "ui.music.progress": {
+    "role": "status",
+    "tone": "neutral",
+    "note": "Music detached job. Counts are settled child tracks, not fake percentage. Cancellation does not imply upstream stop or refund. label is the job title. index is a one-based track number."
+  },
+  "ui.music.cancel_warning": {
+    "role": "status",
+    "tone": "neutral",
+    "note": "Music detached job. Counts are settled child tracks, not fake percentage. Cancellation does not imply upstream stop or refund. label is the job title. index is a one-based track number."
+  },
+  "ui.music.track": {
+    "role": "status",
+    "tone": "neutral",
+    "note": "Music detached job. Counts are settled child tracks, not fake percentage. Cancellation does not imply upstream stop or refund. label is the job title. index is a one-based track number."
+  },
+  "ui.music.failed": {
+    "role": "status",
+    "tone": "neutral",
+    "note": "Music detached job. Counts are settled child tracks, not fake percentage. Cancellation does not imply upstream stop or refund. label is the job title. index is a one-based track number."
+  },
+  "ui.music.empty": {
+    "role": "status",
+    "tone": "neutral",
+    "note": "Empty structured music envelope. No success check or fake playable band. No fixed width."
+  }
+}

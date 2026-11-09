@@ -380,6 +380,9 @@ const ARTIFACT_TOOLS = new Set([
 	"generate_image",
 	"generate_video",
 	"video_status",
+	"generate_music",
+	"modify_music",
+	"music_status",
 	// The two audio producers (sound phase): their artifacts arrive with a block
 	// exactly as an image's does, but a result whose block was pruned still
 	// states the digest in prose, and the allow-list is what admits that receipt
@@ -431,6 +434,20 @@ function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
 			artifact,
 		});
 	if (record.kind === "custom") {
+		if (record.music) {
+			for (const track of record.music.tracks)
+				for (const audio of track.images) {
+					if (!audio.attachment) continue;
+					push(audio.attachment, {
+						digest: audio.attachment,
+						kind: "audio",
+						name: audio.name,
+						contentType: audio.mimeType,
+						sizeBytes: audio.sizeBytes,
+						durationS: audio.durationS,
+					});
+				}
+		}
 		// A detached video job's completion, delivered as a `job_result` row (see
 		// the module header). Kind comes from the sentence: only a video job writes it.
 		if (record.customType === "job_result" && VIDEO_RECEIPT.test(record.text)) {
@@ -477,7 +494,10 @@ function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
 			record.toolName === "generate_image"
 				? "image"
 				: record.toolName === "generate_voiceover" ||
-						record.toolName === "generate_sound_effect"
+						record.toolName === "generate_sound_effect" ||
+						["generate_music", "modify_music", "music_status"].includes(
+							record.toolName,
+						)
 					? "audio"
 					: "video";
 		for (const phrase of record.output.matchAll(DIGEST_PHRASE)) {

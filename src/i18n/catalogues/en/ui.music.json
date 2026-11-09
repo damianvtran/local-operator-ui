@@ -1,0 +1,8 @@
+{
+  "ui.music.label": "Music",
+  "ui.music.progress": "{completed}/{total} tracks settled",
+  "ui.music.cancel_warning": "Work already started on “{label}” may still finish and be charged. Results remain available.",
+  "ui.music.track": "Track {index}",
+  "ui.music.failed": "This track could not be generated.",
+  "ui.music.empty": "No tracks were returned."
+}

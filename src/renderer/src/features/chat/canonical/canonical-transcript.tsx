@@ -186,6 +186,7 @@ import { copyTarget } from "../utils/link-open";
 import { openPathInCanvas } from "../utils/open-in-canvas";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
+import { MusicResult } from "./music-result";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
@@ -3042,6 +3043,7 @@ const NoticeRow = memo(function NoticeRow({
 						<ProviderAction action={providerAction} />
 					)
 				) : null}
+				{record.music && <MusicResult receipt={record.music} scope={scope} />}
 			</MessageContainer>
 		);
 	}

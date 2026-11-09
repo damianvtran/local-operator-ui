@@ -1,0 +1,8 @@
+{
+  "ui.music.label": "संगीत",
+  "ui.music.progress": "{completed}/{total} ट्रैक पूरे हुए",
+  "ui.music.cancel_warning": "“{label}” पर शुरू हुआ काम फिर भी पूरा हो सकता है और उसका शुल्क लग सकता है। परिणाम उपलब्ध रहेंगे।",
+  "ui.music.track": "ट्रैक {index}",
+  "ui.music.failed": "यह ट्रैक नहीं बनाया जा सका।",
+  "ui.music.empty": "कोई ट्रैक नहीं मिला।"
+}
