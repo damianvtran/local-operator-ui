@@ -1,5 +1,4 @@
 import type { ComposerSendError } from "@shared/components/composer/message-input";
-import { SEND_FAILURE_COPY } from "@shared/store/canonical-sessions-store";
 import type { LateDeliveryBox } from "@shared/store/conversation-input-store";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
@@ -64,12 +63,15 @@ export function composerNoticeFor(input: {
 			 * guessing the arm (design round 9, D17): `delivered` is the arm that never
 			 * read the box, so it takes the sentence that is true whatever is in it.
 			 */
-			message:
+			// ChatPage memoizes this notice across stream flushes. Preserve the
+			// key, not a getter's rendered sentence: only the subscribing composer
+			// can translate it again when the locale changes without a state change.
+			messageKey:
 				input.lateDelivered === "delivered"
-					? SEND_FAILURE_COPY.lateDelivery
+					? "ui.chat.canonical.send_failure.late_delivery"
 					: input.lateDelivered === "draft-only"
-						? SEND_FAILURE_COPY.lateDeliveryDraft
-						: SEND_FAILURE_COPY.lateDeliveryOverlap,
+						? "ui.chat.canonical.send_failure.late_delivery_draft"
+						: "ui.chat.canonical.send_failure.late_delivery_overlap",
 			muted: true,
 			// Announce, do not interrupt: nothing failed, nothing needs repairing, and
 			// the reader may be listening to the message that has just been delivered.
