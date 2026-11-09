@@ -60,8 +60,9 @@
  */
 
 import { cn } from "@shared/lib/utils";
-import { type FC, useId, useState } from "react";
+import { type FC, useId, useLayoutEffect, useRef, useState } from "react";
 import {
+	DIFF_EXPAND_MAX_LINES,
 	type DiffBodyLine,
 	type DiffLineKind,
 	diffBody,
@@ -83,14 +84,13 @@ export type DiffBlockProps = {
 };
 
 /**
- * The toggle's ink and focus treatment. Dim like the marker it replaced, so the
- * collapsed body reads exactly as before; `hover:text-ink` and the accent focus
- * outline (the trace's `approval-escape` link treatment) are what say "this is
- * pressable". `text-left` + `w-full`: a `<button>` centres its text by default,
- * and the row has to sit in the diff's own column.
+ * Underline at rest separates the action from context rows and the dim footer
+ * without introducing another ink. Start alignment follows the reader's locale.
+ * The focus outline belongs to the label, not the sticky background's padding:
+ * otherwise the well clips its bottom edge and leaves an empty 12px box.
  */
 const TOGGLE =
-	"block w-full cursor-pointer bg-sunken text-left text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
+	"group/diff-toggle block w-full cursor-pointer bg-sunken text-start text-ink-dim underline underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink focus-visible:outline-none";
 
 /**
  * The line's ink, by the line's kind.
@@ -123,8 +123,10 @@ const KIND_INK: Record<DiffLineKind, string> = {
  * read as a truncated diff. `block` is what keeps one line to one row; the wrap
  * comes from the container.
  */
-const Line: FC<{ line: DiffBodyLine }> = ({ line }) => (
-	<span className={cn(KIND_INK[line.kind], "block")}>{line.text}</span>
+const Line: FC<{ line: DiffBodyLine; index: number }> = ({ line, index }) => (
+	<span data-diff-line={index} className={cn(KIND_INK[line.kind], "block")}>
+		{line.text}
+	</span>
 );
 
 export const DiffBlock: FC<DiffBlockProps> = ({
@@ -134,10 +136,54 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 }) => {
 	const [expanded, setExpanded] = useState(false);
 	const wellId = useId();
+	const wellRef = useRef<HTMLDivElement>(null);
+	const toggleRef = useRef<HTMLButtonElement>(null);
+	const anchorRef = useRef<{ scroller: HTMLElement; top: number } | null>(null);
 	const body = diffBody(diff, { expanded });
+
+	useLayoutEffect(() => {
+		const anchor = anchorRef.current;
+		if (!anchor) return;
+		anchorRef.current = null;
+		if (expanded) {
+			// The canonical transcript is bottom-anchored (flex-col-reverse).
+			// Growing in place otherwise keeps its tail, jumping past line 41.
+			// Restore the first revealed line to the toggle's former viewport
+			// position before paint; scrollTop also works in the negative range.
+			const firstRevealed = wellRef.current?.querySelector<HTMLElement>(
+				`[data-diff-line="${DIFF_EXPAND_MAX_LINES}"]`,
+			);
+			if (firstRevealed) {
+				const top =
+					firstRevealed.getBoundingClientRect().top -
+					anchor.scroller.getBoundingClientRect().top;
+				anchor.scroller.scrollTop += top - anchor.top;
+			}
+		} else {
+			// Removing a long body can leave the reader above the well. Bring
+			// its collapsed form back without disturbing unrelated transcript rows.
+			wellRef.current?.scrollIntoView({ block: "nearest" });
+		}
+	}, [expanded]);
+
+	const toggle = () => {
+		const scroller = wellRef.current?.closest<HTMLElement>(
+			"[data-lo-canonical-transcript]",
+		);
+		if (scroller && toggleRef.current) {
+			anchorRef.current = {
+				scroller,
+				top:
+					toggleRef.current.getBoundingClientRect().top -
+					scroller.getBoundingClientRect().top,
+			};
+		}
+		setExpanded((value) => !value);
+	};
 	return (
 		<div
 			id={wellId}
+			ref={wellRef}
 			className={cn(
 				// The app's existing sunken well, the same shape `output-block.tsx`
 				// uses for machine voice: `rounded-sm bg-sunken p-3 font-mono
@@ -186,7 +232,12 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 						// saying there were more. The scroll region that remains is for
 						// a WRAPPED body (a 560px column turns 40 lines into 80 rows),
 						// which is the case it was always for.
-						"max-h-[740px] overflow-y-auto overflow-x-hidden",
+						cn(
+							"overflow-y-auto overflow-x-hidden",
+							// One extra 17.4px row when producer truncation is stated:
+							// the footer and toggle must both fit without an inner scroll.
+							truncatedRows > 0 ? "max-h-[758px]" : "max-h-[740px]",
+						),
 				className,
 			)}
 		>
@@ -202,20 +253,19 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 					// twice (a repeated `+` line), and the list never reorders in
 					// place.
 					// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered record
-					<Line key={index} line={line} />
+					<Line key={index} line={line} index={index} />
 				))
 			)}
 			{
-				// Only once every RECORDED line is on screen: the footer is a claim
-				// about the end of the record, so above a collapsed body's toggle it
-				// would sit mid-diff and read as if the shown 40 were all there was.
-				!body.withheld && body.hidden === 0 && truncatedRows > 0 && (
+				// Producer truncation is independent of display collapse: disclose
+				// the missing record even before the reader reveals its stored tail.
+				!body.withheld && truncatedRows > 0 && (
 					<span className="block text-ink-dim">
 						{diffTruncatedLabel(truncatedRows)}
 					</span>
 				)
 			}
-			{body.expandable && !expanded && (
+			{body.expandable && (
 				/*
 				 * STICKY, and this is the one thing in the well that must not be
 				 * allowed to scroll away. The ceiling above is derived for UNWRAPPED
@@ -256,31 +306,19 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 				 */
 				<button
 					type="button"
-					aria-expanded={false}
+					ref={toggleRef}
+					aria-expanded={expanded}
 					aria-controls={wellId}
-					onClick={() => setExpanded(true)}
-					className={cn(TOGGLE, "sticky -bottom-3 -mb-3 pb-3")}
+					onClick={toggle}
+					className={cn(
+						TOGGLE,
+						"sticky -mb-3 pb-3",
+						expanded ? "bottom-0" : "-bottom-3",
+					)}
 				>
-					{diffOverflowLabel(body.hidden)}
-				</button>
-			)}
-			{body.expandable && expanded && (
-				// Pinned to the TRANSCRIPT viewport's bottom (the expanded well is
-				// not a scroll container, see `overflow-x-clip` above), so collapsing
-				// is one press away from anywhere in a long diff rather than at its
-				// far end only. Measured ancestor chain in Storybook: button → well
-				// (`overflow: clip`, no scroll box) → the transcript's
-				// `flex-col-reverse overflow-y-auto` scroller, which is therefore
-				// the nearest scroll container the pin resolves against. `-mb-3 pb-3` as in the collapsed row: the band under
-				// the text is the well's ground, and the flow height is unchanged.
-				<button
-					type="button"
-					aria-expanded={true}
-					aria-controls={wellId}
-					onClick={() => setExpanded(false)}
-					className={cn(TOGGLE, "sticky bottom-0 -mb-3 pb-3")}
-				>
-					{diffShowLessLabel()}
+					<span className="block group-focus-visible/diff-toggle:outline group-focus-visible/diff-toggle:outline-2 group-focus-visible/diff-toggle:outline-accent group-focus-visible/diff-toggle:outline-offset-[-2px]">
+						{expanded ? diffShowLessLabel() : diffOverflowLabel(body.hidden)}
+					</span>
 				</button>
 			)}
 		</div>

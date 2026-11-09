@@ -2451,10 +2451,10 @@
 			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
 			"target_sha256": "3508756022df64c17151ca9d64041b03a423f30e006848c93deaa0661d7af868",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session 9a6333fafa02; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
@@ -13269,10 +13269,10 @@
 			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
 			"target_sha256": "f33976a615863616cd93782120b4fa5dfddda66f3270999fe4b19508630bdffe",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session 92406429e984; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
@@ -24496,10 +24496,10 @@
 			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
 			"target_sha256": "2c166eecf5db5f7a30b83e1248f081dbdceef87e4e85de5c3b64f5d84a7f1497",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session dbb7c7d873cd; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
@@ -35393,10 +35393,10 @@
 			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
 			"target_sha256": "0b9b758aa132875d5cf4fa392117836c07a12e4bb823bd6708a306ad4ac7a0e8",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session ef3a6636b35b; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
@@ -46311,10 +46311,10 @@
 			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
 			"target_sha256": "e81ca81801140aa071f17baa15c85e8de393b35ce0de5a4131c8cd8b3ae5cc4d",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session 872c9d99cb31; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
@@ -57093,10 +57093,10 @@
 			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
 			"target_sha256": "030d7ac3a2202f305a7513fe9bb643d894c7e40b70835675e13e63da3c07fe0a",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session aca3bfa430aa; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
@@ -68657,10 +68657,10 @@
 			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
 			"target_sha256": "443f49962eaec1f016a26ae59ba80ffe5623bd198b6d93a9999f46f9c6c707c7",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session e0c3abf82259; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{

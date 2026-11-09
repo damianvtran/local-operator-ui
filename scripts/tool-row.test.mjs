@@ -2382,15 +2382,14 @@ test("a producer-truncated diff states the rows it never recorded", () => {
 test("a diff the old core withheld paints one notice, not a page of blanks", () => {
 	/*
 	 * The stored shape every large write/edit had before the core fix:
-	 * `_redact_diff_detail` (harness/loop.py) kept the header pair, then its
-	 * `_DIFF_DETAIL_WITHHELD` marker, then one "" per original row — rendered,
-	 * that was the marker, 39 blank lines and "… 161 more diff lines".
+	 * `_redact_diff_detail` (harness/loop.py) replaced the first string with
+	 * `_DIFF_DETAIL_WITHHELD` and blanked every other row, headers included.
 	 */
 	assert.equal(
 		DIFF_WITHHELD_MARKER,
 		"[output withheld: credential redaction requires a complete bounded diff]",
 	);
-	const legacy = ["--- ", "+++ ", DIFF_WITHHELD_MARKER, ...Array(200).fill("")];
+	const legacy = [DIFF_WITHHELD_MARKER, ...Array(203).fill("")];
 	for (const expanded of [false, true]) {
 		const body = diffBody(legacy, { expanded });
 		assert.equal(body.withheld, true);
@@ -2398,6 +2397,8 @@ test("a diff the old core withheld paints one notice, not a page of blanks", () 
 		assert.equal(body.hidden, 0);
 		assert.equal(body.expandable, false, "nothing to reveal");
 	}
+	// Header-bearing variants remain accepted, but are not the real stored shape.
+	assert.equal(diffBody(["--- ", "+++ ", ...legacy]).withheld, true);
 	// With an old producer's `…` among the padding, and with no header at all.
 	assert.equal(
 		diffBody(["--- ", "+++ ", DIFF_WITHHELD_MARKER, "", "…"]).withheld,

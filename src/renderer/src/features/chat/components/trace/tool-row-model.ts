@@ -2028,7 +2028,8 @@ export type DiffBody = {
  * parses each stored diff against its `@@` counts before redacting it, and any
  * diff the producer had capped at 200 rendered rows (with a trailing `…`) failed
  * that parse — so every large `write`/`edit` was persisted as
- * `["--- ", "+++ ", <this marker>, "", "", ...]`, one blank per original row.
+ * `[<this marker>, "", "", ...]`: the first row is replaced and every
+ * other row is blanked; neither file header is preserved.
  * Those rows are on disk in every transcript written before the core fix and the
  * diff they stood for is gone, so the honest rendering is one dim notice. The
  * string is matched EXACTLY: it is the producer's literal constant, and a

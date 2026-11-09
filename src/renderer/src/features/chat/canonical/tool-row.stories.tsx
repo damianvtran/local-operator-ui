@@ -153,6 +153,7 @@ const Frame = ({
 	 */
 	awaitingHydration = false,
 	openRows = false,
+	bounded = false,
 	keepClosed,
 	frontend = null,
 }: {
@@ -204,6 +205,8 @@ const Frame = ({
 	 * if the trigger stopped reaching the body, they would come out collapsed.
 	 */
 	openRows?: boolean;
+	/** Bound the real bottom-pinned transcript, not an outer story scroller. */
+	bounded?: boolean;
 	/**
 	 * The row positions `openRows` leaves CLOSED, in paint order.
 	 *
@@ -242,7 +245,9 @@ const Frame = ({
 	}, [openRows, keepClosed]);
 	return (
 		<div
-			className="overflow-y-auto p-6"
+			className={
+				bounded ? "flex flex-col overflow-hidden p-6" : "overflow-y-auto p-6"
+			}
 			ref={containerRef}
 			style={{ width, height }}
 		>
@@ -2840,12 +2845,20 @@ const WITHHELD_WRITE_ROW = tool({
 	id: "tool:withheld",
 	...LARGE_WRITE,
 	diff: [
-		"--- ",
-		"+++ ",
 		"[output withheld: credential redaction requires a complete bounded diff]",
-		...Array.from({ length: 200 }, () => ""),
+		...Array.from({ length: 203 }, () => ""),
 	],
 });
+
+/** The actual role=log / flex-col-reverse scroller, bounded like the app.
+ * Keep the large write last: expanding at scrollTop=0 is the negative control
+ * for bottom anchoring jumping straight to the tail instead of line 41.
+ */
+export const DiffBodyBottomPinned: Story = {
+	render: () => (
+		<Frame height={640} bounded openRows records={[TRUNCATED_WRITE_ROW]} />
+	),
+};
 
 /** Collapsed: 40 lines, then `… 161 more diff lines` as a focusable button. */
 export const DiffBodyLargeCollapsed: Story = {
