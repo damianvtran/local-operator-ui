@@ -30,7 +30,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 export const QUALITY = 88;
 export const SCENARIOS = [
@@ -47,6 +47,14 @@ export const SCENARIOS = [
 	"asks",
 	"review-pane",
 ];
+/**
+ * Scenes that also ship a full 2560-wide derivative. The hero always did; the
+ * landing stage now shows teams, projects and subagents at full width too, so
+ * they need real 2560 pixels rather than a 1536 file stretched by the browser.
+ * The no-upscale rule below still applies: a master narrower than 2560 skips
+ * the variant (and reports it) instead of inventing it.
+ */
+export const FULL_WIDTH_SCENARIOS = ["hero", "teams", "projects", "subagents"];
 const BRIDGE = ["channel", "thread", "approval", "mention", "launch"];
 // Coordinates measured against the current real-component story; no retouching.
 const CROPS = {
@@ -119,7 +127,9 @@ export function planDerivatives(name, dimensions) {
 		outputs.push({ file, width: outputWidth, height: outputHeight, crop });
 	};
 	if (SCENARIOS.includes(scene)) {
-		for (const w of scene === "hero" ? [768, 1536, 2560] : [768, 1536])
+		for (const w of FULL_WIDTH_SCENARIOS.includes(scene)
+			? [768, 1536, 2560]
+			: [768, 1536])
 			add(
 				`local-operator-site/src/assets/scenarios/${scene}-${theme}-${w}.webp`,
 				w,
@@ -229,10 +239,10 @@ export function derive(
 	return reports;
 }
 
-if (
-	process.argv[1] &&
-	resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+// Through `scripts/entry-point.mjs`, never a local `process.argv[1]` compare:
+// the lexical form disagrees with `import.meta.url` under a symlinked path
+// (`/tmp` on macOS), and the script then derives nothing and exits 0.
+if (isEntryPoint(import.meta.url)) {
 	const flag = (name) =>
 		process.argv
 			.slice(2)

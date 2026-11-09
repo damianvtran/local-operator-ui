@@ -4,6 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+	captureHoldTextPainted,
+	captureHoldVerdict,
+} from "../src/renderer/src/shared/components/navigation/docs-capture-hold.ts";
+import {
+	FULL_WIDTH_SCENARIOS,
 	QUALITY,
 	derive,
 	planDerivatives,
@@ -182,7 +187,8 @@ test("Team Bridge masters that are not 16:9 are refused before any output is pla
 	assert.equal(
 		planDerivatives("teams-dark.png", { width: 2560, height: 1800 }).outputs
 			.length,
-		2,
+		// 768, 1536 and the landing stage's full-width 2560.
+		3,
 	);
 	// The capture rig's own default and usage text now produce a 16:9 master.
 	assert.match(capture, /VIEWPORT\?\.\[1\] \?\? 1280\)/);
@@ -346,4 +352,107 @@ test("a scene never inherits another scene's persisted composer draft", () => {
 		library,
 		/total: 0, passed: 0, failed: 0, pending: [1-9]/,
 	);
+});
+
+test("the landing-stage scenes derive a real 2560 variant, and only from 2560 pixels", () => {
+	assert.deepEqual(FULL_WIDTH_SCENARIOS, [
+		"hero",
+		"teams",
+		"projects",
+		"subagents",
+	]);
+	for (const scene of ["teams", "projects", "subagents"]) {
+		for (const theme of ["light", "dark"]) {
+			const plan = planDerivatives(`${scene}-${theme}.png`, {
+				width: 2560,
+				height: 1440,
+			});
+			assert.deepEqual(
+				plan.outputs.map(({ file, width, height, crop }) => [
+					file,
+					width,
+					height,
+					crop,
+				]),
+				[768, 1536, 2560].map((w) => [
+					`local-operator-site/src/assets/scenarios/${scene}-${theme}-${w}.webp`,
+					w,
+					(w * 9) / 16,
+					null,
+				]),
+			);
+			assert.equal(plan.skipped.length, 0);
+			// One pixel short of 2560 is not 2560: the variant is reported as
+			// skipped, never upscaled or emitted under the 2560 name.
+			const short = planDerivatives(`${scene}-${theme}.png`, {
+				width: 2559,
+				height: 1439,
+			});
+			assert.deepEqual(
+				short.outputs.map(({ width }) => width),
+				[768, 1536],
+			);
+			assert.equal(short.skipped.length, 1);
+			assert.match(short.skipped[0].file, new RegExp(`${scene}-${theme}-2560`));
+			assert.match(short.skipped[0].reason, /would upscale 2559x1439/);
+		}
+	}
+	// A scene outside the landing stage keeps the two responsive widths.
+	const other = planDerivatives("mesh-dark.png", { width: 2560, height: 1440 });
+	assert.deepEqual(
+		other.outputs.map(({ width }) => width),
+		[768, 1536],
+	);
+	assert.equal(other.skipped.length, 0);
+});
+
+test("the Asks shutter hold finds drawer text outside <main>, and stays released", () => {
+	const ASK = "Use last quarter's churn rate";
+	// ChatLayout's shape: the story's <main> is the routed content, the fleet
+	// drawer a sibling of it, both under #storybook-root inside <body>.
+	const page = (mainText, siblingText, portalText = "") => ({
+		querySelector: (selector) =>
+			selector === "main" ? { textContent: mainText } : null,
+		body: { textContent: `${mainText}${siblingText}${portalText}` },
+	});
+	const sibling = page("Reconcile the ledger", `5 questions waiting ${ASK}`);
+	// Negative control: the old `main`-only search misses the painted drawer
+	// and fails the frame once the timeout passes.
+	assert.equal(captureHoldTextPainted(sibling, ASK, "main"), false);
+	assert.equal(captureHoldVerdict(sibling, ASK, "main", 19_000), "wait");
+	assert.equal(captureHoldVerdict(sibling, ASK, "main", 21_000), "fail");
+	// The fix: document scope releases before the timeout and after it alike.
+	assert.equal(captureHoldVerdict(sibling, ASK, "document", 100), "release");
+	assert.equal(captureHoldVerdict(sibling, ASK, "document", 19_999), "release");
+	assert.equal(captureHoldVerdict(sibling, ASK, "document", 21_000), "release");
+	// Text portalled to <body> (menus, pickers) is found the same way.
+	const portalled = page("Reconcile the ledger", "", ASK);
+	assert.equal(captureHoldVerdict(portalled, ASK, "document", 100), "release");
+	// The failure latch is not suppressed: absent text still waits, then fails.
+	const empty = page("Reconcile the ledger", "Loading questions");
+	assert.equal(captureHoldVerdict(empty, ASK, "document", 20_000), "wait");
+	assert.equal(captureHoldVerdict(empty, ASK, "document", 20_001), "fail");
+	// A page scene keeps the narrow scope, so an echo outside <main> (a toast,
+	// the rail) cannot release it before its own row is painted.
+	assert.equal(captureHoldVerdict(sibling, ASK, "main", 100), "wait");
+	assert.equal(
+		captureHoldVerdict(page(ASK, ""), ASK, "main", 21_000),
+		"release",
+	);
+
+	// The stories wire it: Asks searches the document, Notifications does not,
+	// and neither carries its own copy of the decision.
+	const hold = library.slice(library.indexOf("const TextHold = "));
+	assert.match(hold, /captureHoldVerdict\(\s*document,\s*text,\s*within,/);
+	assert.doesNotMatch(library, /querySelector\("main"\)\?\.textContent/);
+	const asks = hold.slice(hold.indexOf("const AsksScene"));
+	assert.match(
+		asks,
+		/failure="fleet-asks-not-listed"[\s\S]{0,120}within="document"/,
+	);
+	const notifications = hold.slice(
+		hold.indexOf("const NotificationsScene"),
+		hold.indexOf("const AsksScene"),
+	);
+	assert.doesNotMatch(notifications, /within=/);
 });

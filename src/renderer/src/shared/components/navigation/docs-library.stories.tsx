@@ -104,6 +104,7 @@ import {
 	useState,
 } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
+import { type CaptureHoldScope, captureHoldVerdict } from "./docs-capture-hold";
 
 /* ------------------------------------------------------------------ the world */
 
@@ -2527,26 +2528,43 @@ export const Notifications: Story = {
  * Hold the shutter until a row of the claimed state is painted: both the page
  * and the fleet drawer read through an async query, and the rig's element-count
  * gate fires on the shell alone (the `unreadable/` frames class in AGENTS.md).
+ *
+ * `within` names where that row renders. A routed page paints inside `<main>`;
+ * the fleet ask drawer does not - `ChatLayout` mounts it as a sibling of the
+ * routed content - so a `main`-only search failed a correctly painted Asks
+ * frame after 20 s. The decision itself lives in `docs-capture-hold.ts`, where
+ * it is tested against sibling and portalled text.
  */
-const TextHold = ({ text, failure }: { text: string; failure: string }) => {
+const TextHold = ({
+	text,
+	failure,
+	within = "main",
+}: {
+	text: string;
+	failure: string;
+	within?: CaptureHoldScope;
+}) => {
 	useEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
 		const started = Date.now();
 		const timer = window.setInterval(() => {
-			if ((document.querySelector("main")?.textContent ?? "").includes(text)) {
-				document.documentElement.removeAttribute("data-capture-pending");
-				window.clearInterval(timer);
-			} else if (Date.now() - started > 20_000) {
+			const verdict = captureHoldVerdict(
+				document,
+				text,
+				within,
+				Date.now() - started,
+			);
+			if (verdict === "wait") return;
+			if (verdict === "fail")
 				document.documentElement.dataset.captureFailed = failure;
-				document.documentElement.removeAttribute("data-capture-pending");
-				window.clearInterval(timer);
-			}
+			document.documentElement.removeAttribute("data-capture-pending");
+			window.clearInterval(timer);
 		}, 100);
 		return () => {
 			window.clearInterval(timer);
 			document.documentElement.removeAttribute("data-capture-pending");
 		};
-	}, [text, failure]);
+	}, [text, failure, within]);
 	return null;
 };
 
@@ -2625,6 +2643,8 @@ const AsksScene = () => {
 			<TextHold
 				text="Use last quarter's churn rate"
 				failure="fleet-asks-not-listed"
+				// The drawer is ChatLayout's, outside this story's <main>.
+				within="document"
 			/>
 			<AppShell
 				records={PARALLEL_CONVERSATION}
