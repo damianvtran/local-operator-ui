@@ -1,0 +1,147 @@
+{
+  "locale": "ru",
+  "namespace": "ui.notices",
+  "instance": "cb7f11d0579e-s7a-ru",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "head": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "date": "2026-11-09",
+  "scope": "Added values only; existing strings retained",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.notices.json",
+    "sha256": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/ru/ui.notices.json",
+    "sha256": "99d2d3a5c094a4da84fc64147e2906059b676edf96b1929db1ba285be45574b9"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.notices.context.json",
+    "sha256": "5c14ca70d2d1df2b22dc169e891143cc5f9e10dd34f4e96eb84a53a18318313b"
+  },
+  "records": [
+    {
+      "key": "ui.notices.aida.paused_receipt",
+      "line": 104,
+      "english": "Aida is paused. She will not check in until you resume her.",
+      "russian": "Работа Aida приостановлена. Проверок не будет до возобновления работы.",
+      "grammar": "Работа feminine: приостановлена; Проверок genitive under не будет; до + genitive возобновления работы.",
+      "arguments": [],
+      "formatted": "Работа Aida приостановлена. Проверок не будет до возобновления работы.",
+      "latin_tokens": [
+        "Aida"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.resumed_receipt",
+      "line": 105,
+      "english": "Aida is resumed. She will check in on her usual schedule.",
+      "russian": "Работа Aida возобновлена. Проверки будут проходить по обычному расписанию.",
+      "grammar": "Работа feminine: возобновлена; Проверки plural: будут проходить; по + dative обычному расписанию, adjective agrees with расписанию.",
+      "arguments": [],
+      "formatted": "Работа Aida возобновлена. Проверки будут проходить по обычному расписанию.",
+      "latin_tokens": [
+        "Aida"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.paused",
+      "line": 106,
+      "english": "Aida is paused.",
+      "russian": "Работа Aida приостановлена.",
+      "grammar": "Работа feminine: приостановлена.",
+      "arguments": [],
+      "formatted": "Работа Aida приостановлена.",
+      "latin_tokens": [
+        "Aida"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.active",
+      "line": 107,
+      "english": "Aida is active.",
+      "russian": "Aida работает.",
+      "grammar": "Aida is product/assistant name; работает is gender-neutral present tense.",
+      "arguments": [],
+      "formatted": "Aida работает.",
+      "latin_tokens": [
+        "Aida"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.account_required",
+      "line": 108,
+      "english": "{name} will say hello once an AI account is connected. Connect one from the chat to start.",
+      "russian": "После подключения учётной записи ИИ появится приветствие от {name}. Для начала подключите учётную запись в чате.",
+      "grammar": "После + genitive подключения учётной записи; учётной agrees with записи; от governs genitive semantic assistant-name slot; configured names are opaque identity tokens, not translated prose; в чате prepositional.",
+      "arguments": [
+        "argument:name"
+      ],
+      "formatted": "После подключения учётной записи ИИ появится приветствие от Aida. Для начала подключите учётную запись в чате.",
+      "latin_tokens": [
+        "name"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.open_fallback",
+      "line": 109,
+      "english": "{name}'s conversation could not be opened, so you are in a new chat instead. {detail}",
+      "russian": "Не удалось открыть разговор с {name}, поэтому вместо него открыт новый чат. {detail}",
+      "grammar": "с + instrumental semantic configured-name slot (opaque identity token); вместо него refers to masculine разговор; открыт новый agrees with masculine чат; detail is standalone.",
+      "arguments": [
+        "argument:detail",
+        "argument:name"
+      ],
+      "formatted": "Не удалось открыть разговор с Aida, поэтому вместо него открыт новый чат. Сведения недоступны.",
+      "latin_tokens": [
+        "name",
+        "detail"
+      ],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    }
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "status": "passed",
+  "method": "Manual key-by-key English/Russian meaning and Russian government/agreement review plus executable ICU AST, placeholder/type parity, formatter, Latin allowlist and bidi assertions. No rendered UI claim."
+}

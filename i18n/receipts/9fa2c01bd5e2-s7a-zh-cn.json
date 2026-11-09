@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "locale": "zh-CN",
+  "branch": "feat/i18n-s7",
+  "head": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "main_base": "41c265cbff628f8c6add089f6c042363a131f24c",
+  "instance": "9fa2c01bd5e2-s7a-zh-cn",
+  "agent": "i18n-auditor-s7a-zh",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "i18n-auditor-s7a-zh",
+    "model": "openai/gpt-6.1-sol",
+    "instance": "9fa2c01bd5e2-s7a-zh-cn",
+    "session": "9fa2c01bd5e2",
+    "independent": true
+  },
+  "model_provenance": "Initial skill reads under anthropic/claude-sonnet-5-5; host announced quota fallbacks via anthropic/claude-opus-5-5 to openai/gpt-6.1-sol. All diff inspection, semantic review, probes and receipt creation ran on openai/gpt-6.1-sol.",
+  "date": "2026-11-09",
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.agents.pages": {
+      "status": "passed",
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "zh-CN": "0897262054c50e8355faaad03fdfbe02f3386424b4863e84120dc486ab6cd635"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "zh-CN": "8c7229a394091d3b05ebb1723af637078dcc22f42720681609700c8ab594e63d"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.notices": {
+      "status": "passed",
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "zh-CN": "21ef6724666bcfe676428b242c30cb148768e67fc95983e4f762cfea2281efe8"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    }
+  },
+  "evidence": "i18n/audit-evidence/9fa2c01bd5e2-s7a-zh-cn.json"
+}
