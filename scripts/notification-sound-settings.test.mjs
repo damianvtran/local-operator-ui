@@ -453,13 +453,84 @@ const settle = async (turns = 4, ms = 0) => {
 	}
 };
 
+/** One readable line naming the predicate a failed wait was watching. */
+const describePredicate = (predicate) =>
+	String(predicate)
+		.replace(/\s+/g, " ")
+		.trim()
+		.replace(/^\(?\s*\)?\s*=>\s*/, "")
+		.slice(0, 300);
+
+/*
+ * A TIMEOUT IS LOUD, AND NAMES THE WAIT THAT MISSED.
+ *
+ * This used to return `false` when its bound expired. A starved runner then
+ * failed the test at whatever assertion came next, naming a symptom instead of
+ * the wait that never settled: Q8 ("the section-level Retry also reloads the
+ * sound list") reddened on
+ *
+ *     assert.ok(!container.textContent.includes("Couldn't load"),
+ *               "one Retry recovers both reads");
+ *
+ * while the `waitFor` above it had already timed out unnoticed, and the file
+ * carries no evidence the read ever re-failed (run 42543029193, shard 0/4, head
+ * 186a8b1b: the same window measured 61 ms healthy against a 3 s bound, so the
+ * miss was runner starvation - ~50x the same work - not a logic race). Two
+ * sightings of one message three lines from the cause is what this fixes.
+ *
+ * NOTHING DEPENDED ON THE `false`: all 29 call sites are bare `await waitFor`,
+ * none reads the result (audited when this changed). A site that wants "this
+ * never happens" must assert absence of its own accord, not wait for it.
+ *
+ * THE BOUND IS A HANG GUARD, NOT A PERFORMANCE ASSERTION. Prefer a condition
+ * that settles on its own (`drainReads` below) where one exists; a bound is for
+ * the case where nothing will ever change.
+ */
 const waitFor = async (predicate, timeout = 2000) => {
 	const deadline = Date.now() + timeout;
 	while (Date.now() < deadline) {
 		if (predicate()) return true;
 		await settle(1, 20);
 	}
-	return predicate();
+	// One last look: the final turn may have made it true.
+	if (predicate()) return true;
+	throw new Error(
+		`waitFor timed out after ${timeout}ms waiting for: ${describePredicate(predicate)}`,
+	);
+};
+
+/*
+ * Wait for the section's reads to settle - no wall-clock deadline.
+ *
+ * A deadline measures the runner, not the code: this suite's Q8 window took
+ * 61 ms on an idle host and over 3 s on a loaded CI shard - the same work, 50x
+ * the wall time - so a bound tight enough to catch a real hang is also loose
+ * enough to redden a passing test, and one loose enough to survive starvation
+ * would hang a broken one for that whole span. Quiescence is the state that
+ * actually carries meaning here (the harness answers every request itself, so
+ * the sequence completes in a bounded number of turns whatever the host), so
+ * poll the cache in WORK UNITS and name whatever is still fetching if it never
+ * quiets.
+ */
+const drainReads = async (client, { turns = 200 } = {}) => {
+	const inFlight = () =>
+		client
+			.getQueryCache()
+			.findAll()
+			.filter((query) => query.state.fetchStatus === "fetching")
+			.map((query) => query.queryKey.join("/"));
+	for (let turn = 0; turn < turns; turn += 1) {
+		await settle(1, 0);
+		if (inFlight().length > 0) continue;
+		// Quiet, but the settled state still has to reach React.
+		await settle(1, 0);
+		if (inFlight().length === 0) return;
+	}
+	throw new Error(
+		`reads never went quiet after ${turns} turns; still fetching: ${
+			inFlight().join(", ") || "(none - the state kept changing)"
+		}`,
+	);
 };
 
 /** Mount the section; teardown is armed first (speech-settings' rule). */
@@ -500,7 +571,8 @@ const mount = async (t, daemon, props = {}) => {
 			mounted.container.textContent.includes("Couldn't load"),
 	);
 	await settle(3);
-	return { container: mounted.container };
+	// `client` is exposed for `drainReads`, which reads the cache's own state.
+	return { container: mounted.container, client: mounted.client };
 };
 
 const radio = (container, id) =>
@@ -1301,7 +1373,7 @@ test("U13: a successful volume Reset moves focus to the slider", async (t) => {
 
 test("Q8: the section-level Retry also reloads the sound list", async (t) => {
 	const daemon = makeDaemon();
-	const { container } = await mount(t, daemon);
+	const { container, client } = await mount(t, daemon);
 	const before = daemon.asked.filter(
 		(op) => op === "notification_sounds.list",
 	).length;
@@ -1318,12 +1390,19 @@ test("Q8: the section-level Retry also reloads the sound list", async (t) => {
 		(b) => b.textContent.trim() === "Retry",
 	);
 	await click(retry);
-	await waitFor(
-		() =>
-			radio(container, "soft-pulse") !== null &&
-			!container.textContent.includes("Couldn't load"),
-		3000,
-	);
+	/*
+	 * ASSERT THE CONDITION, NOT THE CLOCK. One Retry kicks two refetches this
+	 * harness answers itself, so the end state is a fixed number of act turns
+	 * away and only the wall time those turns take depends on the host. This
+	 * wait used to allow 3 s: on a starved shard the same sequence took over
+	 * 3 s and the wait timed out silently, reddening the assertion below with a
+	 * message about "Couldn't load" rather than about the wait that missed
+	 * (run 42543029193, shard 0/4). Waiting for QUIET takes the runner's speed
+	 * out of the assertion; `drainReads` bounds itself in work units and names
+	 * whatever is still fetching if it never settles.
+	 */
+	await drainReads(client);
+	await settle(2);
 	assert.ok(
 		daemon.asked.filter((op) => op === "notification_sounds.list").length >
 			before + 1,
@@ -1331,6 +1410,11 @@ test("Q8: the section-level Retry also reloads the sound list", async (t) => {
 	assert.ok(
 		!container.textContent.includes("Couldn't load"),
 		"one Retry recovers both reads",
+	);
+	// The other half of the wait this test used to make: the listing is back.
+	assert.ok(
+		radio(container, "soft-pulse") !== null,
+		"the sound list is back after one Retry",
 	);
 });
 
