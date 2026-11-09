@@ -27,7 +27,9 @@ async function cleanup(){
 const reaper=signalCleanup(cleanup,()=>{interrupted=true;process.exitCode=143;});
 function demand(message, condition){if(!condition)throw Error(message);}
 async function observed(label, read, accept){for(let i=0;i<300;i++){const value=await read();if(accept(value)){note(label,value);return value;}await pause(100);}throw Error('Required actual native condition absent: '+label);}
-async function motionFacts(){return cdp.evaluate(`(()=>{const svg=document.querySelector('[data-music-processing] svg');const r=svg?.getBoundingClientRect();return {reduce:matchMedia('(prefers-reduced-motion: reduce)').matches,animation:svg?getComputedStyle(svg).animationName:null,width:r?.width||0,height:r?.height||0}})()`);}
+// Operator decision a-69e7: the pending motif is measured on the INLINE chat card for
+// the named pending job, before the Jobs panel opens, so a motif only the panel paints fails.
+async function motionFacts(job){const card='[data-music-generating='+JSON.stringify(job)+']';return cdp.evaluate(`(()=>{const svg=document.querySelector(${JSON.stringify(card+' [data-music-motif]')});const r=svg?.getBoundingClientRect();return {reduce:matchMedia('(prefers-reduced-motion: reduce)').matches,animation:svg?getComputedStyle(svg).animationName:null,width:r?.width||0,height:r?.height||0}})()`);}
 
 function note(stage,value){results.stages.push({stage,value});writeFileSync(join(root,'native-result.json'),JSON.stringify(results,null,2));console.log(stage,JSON.stringify(value));}
 async function control(action,details={}){let id=Date.now()+':'+action;writeFileSync(join(root,'native-control.json'),JSON.stringify({id,action,...details}));for(let i=0;i<300;i++){let p=join(root,'native-control-result.json');if(existsSync(p)){let x=JSON.parse(readFileSync(p));if(x.id===id){if(x.error)throw Error(x.error);return x}}await pause(100)}throw Error('Serving graph control timed out '+action)}
@@ -51,7 +53,7 @@ try{
  note('mounted_engine_no_autoplay',assertNoAutoplay(await d.verb(cdp,'soundsFacts')));
  const pending=await control('start_pending');note('pending_control',pending);await pause(750);await frame('music-loading-first');await pause(1000);await frame('music-loading-settled');
  await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
- const motionFirst=await motionFacts();await frame('music-reduced-first');await pause(1000);const motionSettled=await motionFacts();await frame('music-reduced-settled');note('reduced_motion',{first:motionFirst,settled:motionSettled});
+ const motionFirst=await motionFacts(pending.job);await frame('music-reduced-first');await pause(1000);const motionSettled=await motionFacts(pending.job);await frame('music-reduced-settled');note('reduced_motion',{first:motionFirst,settled:motionSettled});
  demand('Real pending motif must honor reduced motion and keep geometry',motionFirst.reduce&&motionSettled.reduce&&motionSettled.animation==='none'&&motionFirst.width>0&&motionFirst.height>0&&motionFirst.width===motionSettled.width&&motionFirst.height===motionSettled.height);
  await cdp.send('Emulation.setEmulatedMedia',{features:[]});
  const jobsOpened=await pressLabel(/jobs|background/i);demand('Required Jobs control absent',jobsOpened);await pause(500);
