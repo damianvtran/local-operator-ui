@@ -161,15 +161,6 @@
 			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/chat/components/radient-session-issue.tsx",
-			"ids": [
-				"jsx-child-expression | If signing in does not clear this, run ${…} in a terminal."
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/chat/components/run-details/job-cancel-popover.tsx",
 			"ids": [
 				"jsx-child-expression | Cancel",
