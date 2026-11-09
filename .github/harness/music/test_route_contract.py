@@ -351,7 +351,7 @@ class RouteContract(unittest.TestCase):
         import tempfile
         text = Path(SOURCE).read_text()
         nested = ".get('payload',{}).get('frontend',{}).get('snapshot',{})"
-        self.assertEqual(text.count(nested), 2)
+        self.assertEqual(text.count(nested), 3)
         with tempfile.TemporaryDirectory() as tmp:
             mutated = Path(tmp) / 'preflight.py'
             mutated.write_text(text.replace(nested, ".get('payload',{})"))

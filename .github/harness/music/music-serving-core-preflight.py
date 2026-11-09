@@ -22,6 +22,7 @@ CORE_PYTHON = configured_launcher('LOCAL_OPERATOR_CORE_PYTHON')
 UI_ROOT = Path(os.environ['MUSIC_UI_WORKTREE']).resolve()
 import shutil
 from owned_cleanup import OwnedProcesses, cleanup_all, cancel_listener, run_signalled
+from command_sequencing import assert_previous_consumed, own_emission, receipts_tail
 FFMPEG = Path(shutil.which('ffmpeg') or '/missing-ffmpeg')
 
 async def main():
@@ -123,6 +124,7 @@ async def main():
                 out['history_tail']=hist.json().get('result',{}).get('entries',[])[-6:] if hist.status_code==200 else hist.status_code
                 events=ROOT/'events.jsonl'
                 out['events_tail']=events.read_text().splitlines()[-30:] if events.exists() else []
+                out['worker_receipts_tail']=receipts_tail(ROOT)
                 return scrub(out)
             diagnose[0]=diagnostics
             # generate_music/modify_music are approval_tier="write" in Core and
@@ -148,11 +150,34 @@ async def main():
                 assert a.status_code==200,a.text
             # Core's turn route is POST .../messages; its handler is merely NAMED
             # `prompt`. test_route_contract.py pins every call here to Core's app.
+            # Run 42675368995: admission (200) is NOT consumption. The mock model
+            # reads one shared model-command.json per request, so returning on
+            # admission let the next command overwrite the file before the late
+            # status turn read it (see command_sequencing.py). Each command now
+            # waits for the worker's tool_emitted receipt carrying ITS call id
+            # and for the session to settle (not streaming, no gate, no queued
+            # steering) before the next one may be written.
+            async def settled():
+                r=await client.get(target);fe=r.json().get('result',{}).get('payload',{}).get('frontend',{}).get('snapshot',{})
+                return {'epoch':fe.get('epoch')} if not fe.get('streaming') and not fe.get('pending_gate') and not fe.get('queued_steering') else None
             async def command(tool,args):
+                await until(settled)
+                assert_previous_consumed(ROOT)
                 cid='music-qa-'+uuid.uuid4().hex
                 (ROOT/'model-command.json').write_text(json.dumps({'id':cid,'tool':tool,'args':args}))
-                r=await client.post(target+'/messages',json={'request_id':str(uuid.uuid4()),'text':'MUSIC_QA_TOOL '+cid});record('prompt_'+tool,{'status':r.status_code,'body':r.json()});assert r.status_code==200
-                if tool in gated:await approve(tool)
+                try:
+                    r=await client.post(target+'/messages',json={'request_id':str(uuid.uuid4()),'text':'MUSIC_QA_TOOL '+cid});record('prompt_'+tool,{'status':r.status_code,'body':r.json()});assert r.status_code==200
+                    if tool in gated:await approve(tool)
+                except httpx.TimeoutException as error:
+                    # until() records diagnostics on its own timeouts; an HTTP
+                    # client timeout bypassed them in run 42675368995.
+                    try:record('http_timeout_diagnostics',{'error':repr(error),**await diagnose[0]('command_'+tool)})
+                    except Exception as failure:record('http_timeout_diagnostics_failed',repr(failure))
+                    raise
+                async def emitted():return own_emission(ROOT,cid,tool)
+                record('emitted_'+tool,{'call_id':cid,'tool':await until(emitted)})
+                record('settled_'+tool,await until(settled))
+                return cid
             await command('generate_music',{'prompt':'Owned silent fixture','duration_ms':3000,'variations':2})
             async def generated():return upstream.facts() if upstream.generate_count==1 else None
             record('actual_generate_http',await until(generated))
@@ -173,7 +198,14 @@ async def main():
             assert len({a['artifact_id'] for a in done['artifacts']})==2
             assert len({a['digest'] for a in done['artifacts']})==1
             assert all(t['cost']['basis']=='billed' and abs(t['cost']['amount_usd']-.0075)<1e-9 for t in done['tracks'])
-            await command('music_status',{'job_id':done['job']})
+            status_cid=await command('music_status',{'job_id':done['job']})
+            # Record the status tool's actual result, not only its admission.
+            async def status_result():
+                hist=await client.get(target+'/history')
+                entries=hist.json().get('result',{}).get('entries',[]) if hist.status_code==200 else []
+                own=[e for e in entries if status_cid in json.dumps(e,default=str) and 'MUSIC_QA_TOOL' not in json.dumps(e,default=str)]
+                return own or None
+            record('music_status_result',scrub(await until(status_result)))
             record('bootstrap_receipts',[str(p) for p in ROOT.glob('bootstrap-*.jsonl')])
             async def newest_except(exclude):
                 values=read_records(str(directory))
