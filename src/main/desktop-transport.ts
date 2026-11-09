@@ -79,6 +79,32 @@ export function serverUpdatingBody(): {
 }
 
 /**
+ * The body main hands the renderer for a reload-fence answer that arrives once
+ * the server-update window can no longer be open (its 120 s cap ran out).
+ *
+ * WHY NOT `serverUpdatingBody()` (review round 1, M2): that code renders "It will
+ * be back in a moment" on every per-request surface, and two minutes of fence is
+ * past every measured reload - promising a return the app has no evidence for is
+ * the masking the cap exists to stop. `transport.failed` is the existing, honest
+ * code for "the server did not complete this request": its sentence needs no new
+ * copy, and its outcome-unknown verdict means an ask or send is never repeated on
+ * a guess (the fence did refuse before admission, so that is merely cautious).
+ * `update_stalled` lets the compatibility banner keep speaking where the strip
+ * has nothing to say (`desktopDetailUpdateStalled`).
+ */
+export function serverUpdateStalledBody(): {
+	detail: { code: string; message: string; update_stalled: true };
+} {
+	return {
+		detail: {
+			code: DESKTOP_REFUSAL_CODE.transportFailed,
+			message: DESKTOP_MACHINE_DETAIL.transportFailed,
+			update_stalled: true,
+		},
+	};
+}
+
+/**
  * The desktop request, with its liveness verdict kept beside the response.
  *
  * Callers that only render the answer want {@link requestDesktop}; the ONE

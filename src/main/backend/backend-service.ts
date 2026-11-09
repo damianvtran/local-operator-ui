@@ -36,9 +36,11 @@ import {
 	pairingHasRemedy,
 	relayNeedsRebuild,
 } from "../../shared/backend-status";
-import type {
-	DesktopFeedState,
-	DesktopResponse,
+import {
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+	type DesktopFeedState,
+	type DesktopResponse,
 } from "../../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
 import {
@@ -63,6 +65,7 @@ import {
 	markUpdating,
 	requestDesktop,
 	requestDesktopOutcome,
+	serverUpdateStalledBody,
 } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { type UserShellPath, withUserShellPath } from "../shell-path";
@@ -1465,10 +1468,11 @@ export class BackendServiceManager {
 		).then(({ response, answered, serverUpdating }) => {
 			if (serverUpdating) {
 				// The fence is a refusal, never an admitted answer: liveness only, and
-				// the server-update window opens (or extends).
-				this.daemonState.recordTransportAnswer();
-				this.noteServerUpdating();
-				return response;
+				// the server-update window opens (or extends). Past the window's cap
+				// it is relayed as a real failure instead (review round 1, M2).
+				return this.noteFenceAnswer()
+					? response
+					: { status: 503, body: serverUpdateStalledBody() };
 			}
 			if (answered)
 				this.noteTransportAnswer(desktopAnswerProvesPairing(input, response));
@@ -1481,9 +1485,15 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * The daemon answered with its reload admission fence: open or extend the
-	 * server-update window, push ONE snapshot when it opens, and arm a single
-	 * timer that pushes the reverted snapshot when it lapses.
+	 * The daemon answered with its reload admission fence: record it as liveness,
+	 * open or extend the server-update window, push ONE snapshot when it opens,
+	 * and arm a single timer that pushes the reverted snapshot when it lapses.
+	 *
+	 * Returns whether the window is open AFTER this answer, i.e. whether the
+	 * caller may relay "updating". False means the episode's cap has run out and
+	 * the fence must be reported as a failure - the JSON and media relays share
+	 * this one decision, and one order (liveness first, then the window), so the
+	 * two paths cannot disagree about what a fence answer means (review m2).
 	 *
 	 * The timer exists because `snapshot().updating` is read lazily against the
 	 * clock: without a push at expiry the strip would keep saying "updating" until
@@ -1491,12 +1501,13 @@ export class BackendServiceManager {
 	 * the window's cap is there to prevent. It is re-armed on every extension and
 	 * unref'd so it never holds the process open.
 	 */
-	private noteServerUpdating(): void {
+	private noteFenceAnswer(): boolean {
+		this.daemonState.recordTransportAnswer();
 		if (this.daemonState.noteServerUpdating()) this.notifyStatus();
 		const until = this.daemonState.serverUpdatingUntil();
 		if (this.serverUpdatingTimer) clearTimeout(this.serverUpdatingTimer);
 		this.serverUpdatingTimer = null;
-		if (until === null) return;
+		if (until === null) return false;
 		this.serverUpdatingTimer = setTimeout(
 			() => {
 				this.serverUpdatingTimer = null;
@@ -1505,6 +1516,7 @@ export class BackendServiceManager {
 			Math.max(0, until - this.daemonState.nowMs()) + 50,
 		);
 		this.serverUpdatingTimer.unref?.();
+		return true;
 	}
 
 	requestDesktopMedia(
@@ -1534,7 +1546,16 @@ export class BackendServiceManager {
 			// evidence, through the predicate written for them. If a media op ever
 			// needs to prove a pairing on its own, it needs its own predicate rather
 			// than a widened `input` type here.
-			if (serverUpdating) this.noteServerUpdating();
+			if (serverUpdating)
+				return this.noteFenceAnswer()
+					? response
+					: {
+							// Past the cap: the same honest failure the JSON relay sends
+							// (`serverUpdateStalledBody`), in the media envelope.
+							...response,
+							code: DESKTOP_REFUSAL_CODE.transportFailed,
+							detail: DESKTOP_MACHINE_DETAIL.transportFailed,
+						};
 			if (answered) this.daemonState.recordTransportAnswer();
 			return response;
 		});
@@ -2187,7 +2208,15 @@ export class BackendServiceManager {
 		 * running re-observes the same reading on every paced attempt.
 		 */
 		const after = this.daemonState.snapshot();
-		if (after.state !== before.state || after.detail !== before.detail) {
+		if (
+			after.state !== before.state ||
+			after.detail !== before.detail ||
+			// `updating` is news too (review round 1, M1): a probe can end the
+			// server-update window (a re-anchored reload, a detach) without moving
+			// state or detail, and the spinner then stayed up until the window's
+			// expiry timer - up to 60 s after the server was back.
+			after.updating !== before.updating
+		) {
 			this.notifyStatus();
 		}
 	}
@@ -4779,7 +4808,15 @@ export class BackendServiceManager {
 		// Push only a real change: a probe that found what the last probe found is
 		// not news, and a status event per 10 s tick would be one IPC wake-up per
 		// interval forever.
-		if (after.state !== before.state || after.detail !== before.detail) {
+		if (
+			after.state !== before.state ||
+			after.detail !== before.detail ||
+			// `updating` is news too (review round 1, M1): a probe can end the
+			// server-update window (a re-anchored reload, a detach) without moving
+			// state or detail, and the spinner then stayed up until the window's
+			// expiry timer - up to 60 s after the server was back.
+			after.updating !== before.updating
+		) {
 			this.notifyStatus();
 		}
 		if (next === "detached") {
@@ -5040,7 +5077,15 @@ export class BackendServiceManager {
 				const after = this.daemonState.snapshot();
 				// The same push discipline the tick uses: a probe that found what the
 				// last one found is not news.
-				if (after.state !== before.state || after.detail !== before.detail) {
+				if (
+					after.state !== before.state ||
+					after.detail !== before.detail ||
+					// `updating` is news too (review round 1, M1): a probe can end the
+					// server-update window (a re-anchored reload, a detach) without moving
+					// state or detail, and the spinner then stayed up until the window's
+					// expiry timer - up to 60 s after the server was back.
+					after.updating !== before.updating
+				) {
 					this.notifyStatus();
 				}
 				// A process that is still there is not ours to replace on a failed

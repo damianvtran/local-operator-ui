@@ -5654,6 +5654,26 @@ export function desktopDetailUpdating(detail: unknown): boolean {
 	);
 }
 
+/**
+ * Whether a refusal body is a reload-fence answer main relayed AFTER the
+ * server-update window's cap ran out (`detail.update_stalled: true`).
+ *
+ * WHY A SECOND HINT (review round 1, M2). Past the cap the fence is no longer
+ * "back in a moment": main relays it as `transport.failed` (its honest, existing
+ * sentence, and an outcome-unknown code, so nothing is re-sent on a guess). That
+ * code alone would make the compatibility banner yield to the chat strip as an
+ * outage - but the daemon still answers `/health`, so the strip has no row and
+ * the header would go silent. This hint is what lets the banner keep speaking.
+ * Display-only: no retry or outcome rule reads it.
+ */
+export function desktopDetailUpdateStalled(detail: unknown): boolean {
+	return (
+		detail !== null &&
+		typeof detail === "object" &&
+		(detail as { update_stalled?: unknown }).update_stalled === true
+	);
+}
+
 /** One code from {@link DESKTOP_REFUSAL_CODE}. */
 export type DesktopRefusalCode =
 	(typeof DESKTOP_REFUSAL_CODE)[keyof typeof DESKTOP_REFUSAL_CODE];

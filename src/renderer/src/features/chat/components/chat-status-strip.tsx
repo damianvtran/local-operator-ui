@@ -182,12 +182,23 @@ export const ChatStatusStripView = ({
 						) : null}
 					</span>
 					{display.busy ? (
-						// Progress, not an action: the condition clears by itself.
-						<Loader2
-							aria-hidden="true"
-							data-lo-status-busy=""
-							className="size-4 shrink-0 animate-spin text-info"
-						/>
+						/*
+						 * Progress, not an action: the condition clears by itself. The
+						 * spinner sits in an `h-7` slot - the 28px of the `size="sm"`
+						 * Button every other row carries - so the band keeps the same
+						 * 46px height when the strip moves between this row and a failure
+						 * row (design round 1, D1: it measured 37.5px, an 8.5px jump).
+						 */
+						<span
+							data-lo-status-busy-slot=""
+							className="flex h-7 shrink-0 items-center"
+						>
+							<Loader2
+								aria-hidden="true"
+								data-lo-status-busy=""
+								className="size-4 animate-spin text-info"
+							/>
+						</span>
 					) : null}
 					{display.action === "retry" && (
 						<span className="flex shrink-0 items-center gap-2">

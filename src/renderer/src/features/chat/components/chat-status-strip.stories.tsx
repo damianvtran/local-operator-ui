@@ -18,7 +18,10 @@
  * about the surface it is drawn on.
  */
 
-import { BACKEND_PAIRING_SENTENCE } from "@shared/api/local-operator/backend-error";
+import {
+	BACKEND_ERROR_DIAGNOSIS,
+	BACKEND_PAIRING_SENTENCE,
+} from "@shared/api/local-operator/backend-error";
 import {
 	BackendCompatibilityBannerView,
 	type BackendCompatibilityBannerViewProps,
@@ -147,7 +150,9 @@ export const Updating: Story = {
 			input={{
 				connectivityIssue: null,
 				server: {
-					state: "detached",
+					// `attached`: main clears `updating` on a detach (a dead daemon
+					// is not updating), and `/health` answers through the fence.
+					state: "attached",
 					detail: null,
 					pairing: null,
 					updating: true,
@@ -351,7 +356,7 @@ export const DismissedWarning: Story = {
 /** The banner view's props, with the fields a state does not use filled in. */
 const banner = (state: {
 	message: string;
-	severity: "danger" | "warning";
+	severity: "danger" | "warning" | "info";
 	offerUpdate?: boolean;
 	offerRetry?: boolean;
 	updating?: boolean;
@@ -485,6 +490,53 @@ export const ComposedServerGone: Story = {
 				dismissedKey={null}
 				onDismiss={noop}
 				onShow={noop}
+			/>
+		</PANE>
+	),
+};
+
+/**
+ * A server update in the chat pane: ONE band, the strip's `updating` row.
+ *
+ * The compatibility banner classifies the fenced capability poll as `updating`
+ * and yields it to the strip while main's window is open (`bannerYieldsToStrip`),
+ * so the pane shows the neutral row and nothing red (#1817; design round 1, D3).
+ */
+export const ComposedUpdating: Story = {
+	render: () => (
+		<PANE>
+			<ChatStatusStripView
+				display={chatStatusDisplay({
+					connectivityIssue: null,
+					server: {
+						state: "attached",
+						detail: "Connected to the daemon.",
+						pairing: { available: true, cause: null },
+						updating: true,
+					},
+					internetOffline: false,
+				})}
+				dismissedKey={null}
+				onDismiss={noop}
+				onShow={noop}
+			/>
+		</PANE>
+	),
+};
+
+/**
+ * The same update where the strip is NOT mounted (Settings and its siblings):
+ * the banner states it itself, in `info` and with no Retry or Update - a
+ * reconnect would only race the reload (design round 1, D2).
+ */
+export const UpdatingWithoutStrip: Story = {
+	render: () => (
+		<PANE>
+			<BackendCompatibilityBannerView
+				{...banner({
+					message: BACKEND_ERROR_DIAGNOSIS.updating,
+					severity: "info",
+				})}
 			/>
 		</PANE>
 	),

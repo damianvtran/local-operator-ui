@@ -13,6 +13,7 @@ import {
 	DESKTOP_REFUSAL_CODE,
 	SERVE_RELOAD_FENCE_CODE,
 	SERVE_RELOAD_FENCE_DETAIL,
+	desktopDetailUpdateStalled,
 	desktopDetailUpdating,
 	desktopEndpoint,
 	desktopRefusalCodeForStatus,
@@ -318,6 +319,19 @@ export function isServerUpdatingError(error: unknown): boolean {
 	if (error.code === DESKTOP_REFUSAL_CODE.serverUpdating) return true;
 	return (
 		error instanceof DesktopControlError && desktopDetailUpdating(error.detail)
+	);
+}
+
+/**
+ * Whether a caught failure is a reload-fence answer main relayed after the
+ * server-update window's cap ran out (`desktopDetailUpdateStalled`). Its code is
+ * `transport.failed` and its sentence that code's own; only the compatibility
+ * banner reads this, to keep speaking where the strip has no row (review M2).
+ */
+export function isServerUpdateStalledError(error: unknown): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		desktopDetailUpdateStalled(error.detail)
 	);
 }
 

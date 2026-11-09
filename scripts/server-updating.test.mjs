@@ -24,6 +24,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -171,10 +172,9 @@ test("the window lapses without a fresh fence answer", () => {
 	assert.equal(m.serverUpdatingUntil(), null);
 });
 
-test("proof the update landed closes the window: admitted answer, identified, reanchored, re-claim", () => {
+test("proof the update landed closes the window: admitted answer, reanchored, re-claim", () => {
 	const closers = [
 		["admitted answer", (m) => assert.equal(m.recordTransportSuccess(), true)],
-		["identified", (m) => m.observe({ kind: "identified" })],
 		[
 			"reanchored",
 			(m) =>
@@ -193,6 +193,56 @@ test("proof the update landed closes the window: admitted answer, identified, re
 		assert.equal(m.isServerUpdating(), false, name);
 		// And a NEW update after a landed one opens a fresh window.
 		assert.equal(m.noteServerUpdating(), true, `${name}: reopens`);
+	}
+});
+
+test("an `identified` probe (same instance, /health exempt from the fence) does NOT close the window (M1/Q1)", () => {
+	// reload.py lets `/health` through the fence, so the OLD image answers its
+	// identity probe unchanged for the whole drain: that proves it is alive, not
+	// that the update landed.
+	const { m } = machine();
+	m.noteServerUpdating();
+	m.observe({ kind: "identified" });
+	assert.equal(m.isServerUpdating(), true, "still the same image");
+	assert.equal(
+		m.noteServerUpdating(),
+		false,
+		"the next fence extends the SAME episode rather than opening a new one",
+	);
+});
+
+test("a perpetual fence with real probes interleaved ends 'updating' at the cap (M1/Q1 repro)", () => {
+	// The reviewer's and QA's repro: a fence answer every 5 s, an `identified`
+	// probe every 10 s, a fence that never lifts. At 7a8afeabb73 the window was
+	// re-opened 61 times in 300 s and still open at 600 s.
+	const { m, clock } = machine();
+	const start = clock.now;
+	let opens = 0;
+	const seen = [];
+	for (let t = 0; t <= 600_000; t += 5_000) {
+		clock.now = start + t;
+		if (m.noteServerUpdating()) opens += 1;
+		if (t % 10_000 === 0) m.observe({ kind: "identified" });
+		seen.push([t, m.snapshot().updating]);
+	}
+	assert.equal(opens, 1, "one episode, opened once");
+	for (const [t, updating] of seen)
+		assert.equal(
+			updating,
+			t < state.SERVER_UPDATING_CAP_MS,
+			`updating at t=${t / 1000}s`,
+		);
+});
+
+test("a daemon that dies inside the window is not 'updating' (Q2)", () => {
+	for (const kind of ["pid-dead", "no-candidate"]) {
+		const { m } = machine();
+		m.noteServerUpdating();
+		m.observe(
+			kind === "pid-dead" ? { kind } : { kind, detail: "nothing listening" },
+		);
+		assert.equal(m.getState(), "detached", kind);
+		assert.equal(m.snapshot().updating, false, `${kind}: updating cleared`);
 	}
 });
 
@@ -462,5 +512,28 @@ test("without the window the rows are exactly today's (negative)", () => {
 			internetOffline: false,
 		}),
 		null,
+	);
+});
+
+const RE_BUSY_SLOT =
+	/data-lo-status-busy-slot=""\s+className="flex h-7 shrink-0 items-center"[\s\S]{0,120}<Loader2/;
+
+test("the updating band keeps the 46px band height: spinner in the Button's h-7 slot (D1)", () => {
+	/*
+	 * Every other strip row's content height is its `size="sm"` Button (28px,
+	 * `h-7`); this row has no Button, so a bare 16px spinner made the band 8.5px
+	 * shorter and the column jumped when the row changed (design round 1, D1).
+	 * Pinned at the source, the convention `chat-status-strip.test.mjs` uses for
+	 * the strip's markup.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-status-strip.tsx",
+		"utf8",
+	);
+	assert.match(source, RE_BUSY_SLOT);
+	assert.match(
+		readFileSync("src/renderer/src/shared/components/ui/button.tsx", "utf8"),
+		/sm:\s*"h-7/,
+		"the slot is the sm Button's own height",
 	);
 });

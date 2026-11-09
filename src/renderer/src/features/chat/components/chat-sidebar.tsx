@@ -1136,8 +1136,11 @@ export function ChatSidebar({
 	 * "Retry refresh" would offer a press that has nothing to repair. Where the
 	 * pane's status strip is on screen it owns the one voice for this (its
 	 * `updating` row), so the sidebar stands down exactly as it does for an
-	 * unreachable server; where it is not (Settings and its siblings) the sidebar
-	 * states the update itself, with no Retry.
+	 * unreachable server. Where it is not (Settings and its siblings) the two
+	 * list-pane paragraphs say "updating" in place of their error text, with no
+	 * Retry; the catalogue-gate notice is hidden for the window rather than
+	 * restated, because its sentence is about a withdrawn gate read off the same
+	 * fenced answer, not a fact of its own (review round 1, n2).
 	 */
 	const serverUpdating = serverHealth?.snapshot?.updating === true;
 	const stripSpeaksConnection = useStripSpeaksConnection(

@@ -11,4 +11,7 @@
  * `instanceof` checks inside still see one class - without widening every
  * fixture's export list for a pure function.
  */
-export { isServerUpdatingError } from "./desktop-api";
+export {
+	isServerUpdateStalledError,
+	isServerUpdatingError,
+} from "./desktop-api";

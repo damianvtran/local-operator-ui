@@ -213,7 +213,10 @@ export const REATTACH_BACKOFF_CEILING_MS = 300_000;
  * 0.101.37 ↔ 0.101.38 generations, scratch HOME, CMUX_* stripped, synthetic
  * port), SIGUSR1, polling `/v1/desktop/sessions` every 50 ms: fence first seen
  * → first non-fence answer from the successor was median 3.43 s, min 3.07 s,
- * max 5.06 s (idle daemon). The backend's own worst honest budget for the fence
+ * max 5.06 s (idle daemon). QA's independent rerun on a LOADED machine (load
+ * average 65-100, n = 4) measured SIGUSR1 → successor's first answer at 8.7,
+ * 10.0, 11.5 and 8.7 s - slower, and still far inside one 60 s extension.
+ * The backend's own worst honest budget for the fence
  * is ≈ 32 s (`DRAIN_BUDGET_S` 10 + `SMOKE_TIMEOUT_S` 10 + drain 10 + ~2 s,
  * reload.py), inside its caller's 45 s `services.RELOAD_WAIT_S`; the claimed
  * re-claim tail adds ≈ 30 s after the last fence answer.
@@ -442,9 +445,17 @@ export class DaemonStateMachine {
 		}
 		switch (observation.kind) {
 			case "identified":
-				// The daemon answered its identity probe as the process this app
-				// holds: any update it was going through has landed.
-				this.clearServerUpdating();
+				/*
+				 * NOT proof an update landed, so the server-update window is left alone
+				 * (review round 1, M1 / QA Q1). The reload fence exempts `/health`
+				 * (`reload.py`: the middleware passes `/health` through), so while the OLD
+				 * image drains behind its fence every probe answers with the same pid AND
+				 * the same `instance_id` - i.e. `identified`. Clearing here closed the
+				 * window on every 10 s tick, the next fence answer re-opened it with a
+				 * fresh `updatingSince`, and the 120 s cap never applied: a daemon wedged
+				 * behind its fence read "updating" forever. A landed reload shows up as
+				 * `reanchored` (new instance id), an admitted answer, or a re-claim.
+				 */
 				this.failures = 0;
 				this.unanswered = 0;
 				this.capabilityStatus = null;
@@ -598,24 +609,6 @@ export class DaemonStateMachine {
 	}
 
 	/**
-	 * Fold a probe that ran out of budget with no answer.
-	 *
-	 * Three rules, in order, and each one exists because the alternative was
-	 * measured on the operator's machine:
-	 *
-	 *   1. A successful desktop request inside the evidence window means the
-	 *      connection is ALIVE and the probe is the thing that is wrong. The state
-	 *      does not move at all - not to `degraded`, because the app is talking to
-	 *      its daemon right now - and the detail records both facts. This is the
-	 *      rule that makes "no surface may say offline while the app is still
-	 *      reading from it" true by construction rather than by each surface
-	 *      remembering to check a second flag.
-	 *   2. Without that evidence, misses accumulate as `degraded` (usable), which
-	 *      is all a 2 s budget on a busy box justifies.
-	 *   3. Only `UNANSWERED_BEFORE_DETACHED` consecutive misses detach, and the
-	 *      detail says how many were counted, so the log line names the evidence.
-	 */
-	/**
 	 * The daemon answered with its reload admission fence: open the server-update
 	 * window, or extend it by {@link SERVER_UPDATING_EXTEND_MS} from now, never
 	 * past {@link SERVER_UPDATING_CAP_MS} from its first sighting.
@@ -626,8 +619,10 @@ export class DaemonStateMachine {
 	 * A fence answered after the cap has run out does not reopen the window: a
 	 * daemon that keeps its fence shut for longer than any measured reload is the
 	 * condition the cap exists to report, and reopening would mask it forever.
-	 * The window may open again only once an admitted answer (or a re-identified
-	 * daemon) has closed it - i.e. for a genuinely new update.
+	 * The window may open again only once an admitted answer, a re-anchored
+	 * daemon, a re-claim or a detach has ended the episode - i.e. for a genuinely
+	 * new update. The cap therefore runs from the FIRST fence answer of an
+	 * episode, however many probes answer in between.
 	 */
 	noteServerUpdating(): boolean {
 		const now = this.now();
@@ -662,8 +657,9 @@ export class DaemonStateMachine {
 	}
 
 	/**
-	 * Close the window because the update LANDED: an admitted answer, or a probe
-	 * that identified / re-anchored the daemon. Returns whether it was open.
+	 * End the episode: the update LANDED (an admitted answer, a probe that
+	 * re-anchored onto the reloaded image, a re-claim) or the daemon is gone.
+	 * Never an `identified` probe - see that arm. Returns whether it was open.
 	 */
 	private clearServerUpdating(): boolean {
 		const open = this.isServerUpdating();
@@ -672,6 +668,24 @@ export class DaemonStateMachine {
 		return open;
 	}
 
+	/**
+	 * Fold a probe that ran out of budget with no answer.
+	 *
+	 * Three rules, in order, and each one exists because the alternative was
+	 * measured on the operator's machine:
+	 *
+	 *   1. A successful desktop request inside the evidence window means the
+	 *      connection is ALIVE and the probe is the thing that is wrong. The state
+	 *      does not move at all - not to `degraded`, because the app is talking to
+	 *      its daemon right now - and the detail records both facts. This is the
+	 *      rule that makes "no surface may say offline while the app is still
+	 *      reading from it" true by construction rather than by each surface
+	 *      remembering to check a second flag.
+	 *   2. Without that evidence, misses accumulate as `degraded` (usable), which
+	 *      is all a 2 s budget on a busy box justifies.
+	 *   3. Only `UNANSWERED_BEFORE_DETACHED` consecutive misses detach, and the
+	 *      detail says how many were counted, so the log line names the evidence.
+	 */
 	private observeUnanswered(detail: string): void {
 		this.unanswered += 1;
 		if (this.transportEvidenceFresh()) {
@@ -809,6 +823,13 @@ export class DaemonStateMachine {
 		}
 		this.failures = DEGRADED_AFTER_FAILURES;
 		this.state = "detached";
+		/*
+		 * A daemon that is GONE is not updating (QA round 1, Q2): `pid-dead` and
+		 * `no-candidate` reach here even inside the window, and leaving it open would
+		 * keep the strip's "updating" row - which outranks every failure row - over
+		 * a dead process for up to a minute. A successor's own fence re-opens it.
+		 */
+		this.clearServerUpdating();
 		if (this.detachedSince === null) this.detachedSince = this.now();
 		this.detail = detail;
 	}
