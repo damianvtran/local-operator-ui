@@ -634,7 +634,11 @@ function TeamBridgeThreadPaneBody({
 					    padding block, after the bar; it reserves one fixed line so a
 					    typer arriving or leaving never moves the composer. */}
 					{typingLineRootId !== null && (
-						<TeamBridgeTypingLine rootId={typingLineRootId} className="mt-1" />
+						<TeamBridgeTypingLine
+							rootId={typingLineRootId}
+							/* `ps-3.5`: this field's text inset, so the line starts under the caret. */
+							className="mt-1 ps-3.5"
+						/>
 					)}
 				</div>
 			)}
