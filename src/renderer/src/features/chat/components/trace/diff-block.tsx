@@ -66,6 +66,7 @@ import {
 	type DiffFullDescriptor,
 	diffFullNoticeLabel,
 	diffFullViewLabel,
+	namelessHeaderRows,
 } from "./diff-history-model";
 import { KIND_INK } from "./diff-ink";
 import {
@@ -145,7 +146,15 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 	const wellRef = useRef<HTMLDivElement>(null);
 	const toggleRef = useRef<HTMLButtonElement>(null);
 	const anchorRef = useRef<{ scroller: HTMLElement; top: number } | null>(null);
+	const viewFullRef = useRef<HTMLButtonElement>(null);
 	const body = diffBody(diff, { expanded });
+	/*
+	 * The preview is the first rows of the same redacted diff the archive
+	 * holds, so its nameless `---`/`+++` pair tells us the archive's too. Both
+	 * the "View full diff · N lines" count and the pager's range subtract it:
+	 * the reader never sees those rows (review round 1, R3/U4/Q3).
+	 */
+	const headerRows = namelessHeaderRows(diff);
 
 	useLayoutEffect(() => {
 		const anchor = anchorRef.current;
@@ -256,13 +265,17 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 				<DiffHistoryPager
 					scope={pageable.scope}
 					callId={pageable.callId}
+					headerRows={headerRows}
 					onBack={() => {
 						setFull(false);
 						// Back lands on the preview's own top, not wherever the
-						// (possibly taller) page left the transcript.
-						requestAnimationFrame(() =>
-							wellRef.current?.scrollIntoView({ block: "nearest" }),
-						);
+						// (possibly taller) page left the transcript, and focus
+						// returns to the control that opened full mode (U1): the
+						// pressed Back button no longer exists.
+						requestAnimationFrame(() => {
+							wellRef.current?.scrollIntoView({ block: "nearest" });
+							viewFullRef.current?.focus({ preventScroll: true });
+						});
 					}}
 				/>
 			) : body.withheld ? (
@@ -294,13 +307,16 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 						 */
 						<button
 							type="button"
+							ref={viewFullRef}
 							data-diff-view-full=""
 							onClick={() => setFull(true)}
 							className={TOGGLE}
 						>
 							<span className="block group-focus-visible/diff-toggle:outline group-focus-visible/diff-toggle:outline-2 group-focus-visible/diff-toggle:outline-accent group-focus-visible/diff-toggle:outline-offset-[-2px]">
 								{diffFullViewLabel(
-									descriptor?.state === "archived" ? descriptor.rows : 0,
+									descriptor?.state === "archived"
+										? Math.max(0, descriptor.rows - headerRows)
+										: 0,
 								)}
 							</span>
 						</button>

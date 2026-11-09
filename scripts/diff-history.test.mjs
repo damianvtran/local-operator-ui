@@ -189,6 +189,9 @@ async function mount(props = {}) {
 	};
 }
 
+/** `aria-disabled`, not `disabled`: a disabled button drops focus to <body>. */
+const inert = (button) => button.getAttribute("aria-disabled") === "true";
+
 // ---- model ------------------------------------------------------------------
 
 test("descriptor parse: archived, explicit states, legacy absent, and strictness", () => {
@@ -280,7 +283,7 @@ test("page lines: nameless header dropped at start 0 only; hunk context mid-hunk
 test("child scope: Next walks every row exactly once; colours; bounded DOM; no digest sent", async () => {
 	requests = [];
 	const v = await mount();
-	const view = v.button("View full diff · 1,000 lines");
+	const view = v.button("View full diff · 998 lines");
 	assert.ok(view, "the truncated footer becomes the way to the archive");
 	await v.click(view);
 	const seen = [];
@@ -309,7 +312,7 @@ test("child scope: Next walks every row exactly once; colours; bounded DOM; no d
 		}
 		pages += 1;
 		const next = v.button("Next");
-		if (next.disabled) break;
+		if (inert(next)) break;
 		await v.click(next);
 	}
 	// Rows 0-1 are the nameless header pair; everything else, once, in order.
@@ -320,11 +323,10 @@ test("child scope: Next walks every row exactly once; colours; bounded DOM; no d
 	assert.ok(pages > 5, `byte budget must end pages early (${pages} pages)`);
 	const text = v.host.textContent;
 	assert.ok(text.includes("+UNIQUE-FINAL-ROW"));
-	assert.ok(
-		text.includes(
-			`Rows ${TOTAL - (TOTAL - seen.at(-1) - 1) - (v.rows().length - 1)}`,
-		),
-	);
+	// Visible numbering: artifact row i is the reader's row i - 1 (the hidden
+	// header pair takes artifact rows 0-1).
+	const firstShown = Number(v.rows()[0].getAttribute("data-diff-line")) - 1;
+	assert.ok(text.includes(`Rows ${firstShown}–${TOTAL - 2} of ${TOTAL - 2}`));
 	for (const request of requests) {
 		assert.equal(request.op, "subagents.diff");
 		assert.equal(request.childId, "0f0f0f0f0f0f");
@@ -344,15 +346,15 @@ test("first / middle / final rows; Last reaches the final row; Prev returns; cli
 			descriptor: { state: "archived", rows: TOTAL },
 		},
 	});
-	await v.click(v.button("View full diff · 1,000 lines"));
+	await v.click(v.button("View full diff · 998 lines"));
 	assert.ok(v.host.textContent.includes("-UNIQUE-FIRST-ROW"));
 	assert.equal(requests[0].op, "sessions.diff");
 	await v.click(v.button("Last"));
 	const last = v.rows();
 	assert.equal(Number(last.at(-1).getAttribute("data-diff-line")), TOTAL - 1);
 	assert.ok(v.host.textContent.includes("+UNIQUE-FINAL-ROW"));
-	assert.ok(v.range().endsWith(`of ${TOTAL.toLocaleString("en")}`));
-	assert.equal(v.button("Next").disabled, true);
+	assert.ok(v.range().endsWith(`of ${(TOTAL - 2).toLocaleString("en")}`));
+	assert.equal(v.button("Next").getAttribute("aria-disabled"), "true");
 	// Walk back with Prev until the middle row shows; every page stays bounded.
 	let guard = 0;
 	while (!v.host.textContent.includes("+UNIQUE-MIDDLE-ROW") && guard < 40) {
@@ -373,7 +375,7 @@ test("first / middle / final rows; Last reaches the final row; Prev returns; cli
 	// Back restores the preview.
 	await v.click(v.button("Back to preview"));
 	assert.equal(v.host.querySelector("[data-diff-history]"), null);
-	assert.ok(v.button("View full diff · 1,000 lines"));
+	assert.ok(v.button("View full diff · 998 lines"));
 	v.unmount();
 });
 
@@ -383,7 +385,7 @@ test("404, failure + retry, non-archived page and descriptor states are explicit
 		body: { detail: { code: "diff_not_found" } },
 	});
 	let v = await mount();
-	await v.click(v.button("View full diff · 1,000 lines"));
+	await v.click(v.button("View full diff · 998 lines"));
 	assert.match(v.host.textContent, /Full diff not found for this change/);
 	assert.equal(v.rows().length, 0);
 	v.unmount();
@@ -394,7 +396,7 @@ test("404, failure + retry, non-archived page and descriptor states are explicit
 			? { status: 503, body: { detail: "down" } }
 			: { status: 200, body: { result: pageOf(request.start, request.limit) } };
 	v = await mount();
-	await v.click(v.button("View full diff · 1,000 lines"));
+	await v.click(v.button("View full diff · 998 lines"));
 	assert.match(v.host.textContent, /Couldn't load the full diff/);
 	fail = false;
 	await v.click(v.button("Retry"));
@@ -416,7 +418,7 @@ test("404, failure + retry, non-archived page and descriptor states are explicit
 		},
 	});
 	v = await mount();
-	await v.click(v.button("View full diff · 1,000 lines"));
+	await v.click(v.button("View full diff · 998 lines"));
 	assert.match(v.host.textContent, /Full diff no longer stored/);
 	v.unmount();
 
@@ -435,7 +437,7 @@ test("404, failure + retry, non-archived page and descriptor states are explicit
 		},
 	});
 	v = await mount();
-	await v.click(v.button("View full diff · 1,000 lines"));
+	await v.click(v.button("View full diff · 998 lines"));
 	assert.match(v.host.textContent, /This change has no diff lines/);
 	v.unmount();
 
@@ -457,7 +459,7 @@ test("404, failure + retry, non-archived page and descriptor states are explicit
 			v.host.textContent,
 			/Diff truncated — 798 more lines not recorded/,
 		);
-		assert.equal(v.button("View full diff · 1,000 lines"), undefined);
+		assert.equal(v.button("View full diff · 998 lines"), undefined);
 		v.unmount();
 	}
 	// Legacy row (no descriptor) keeps #1824's honest footer and offers nothing.
@@ -472,4 +474,158 @@ test("404, failure + retry, non-archived page and descriptor states are explicit
 	assert.equal(v.host.querySelector("[data-diff-view-full]"), null);
 	v.unmount();
 	assert.equal(requests.length, 0, "no request without an archived descriptor");
+});
+
+// ---- round-1 remediation regressions (UI #1829) ---------------------------
+// Each test below was written RED against ed039e2 and names the finding it
+// pins, so a later refactor that reintroduces the defect fails by name.
+
+const inPager = (v) =>
+	Boolean(
+		v.host
+			.querySelector("[data-diff-history]")
+			?.contains(document.activeElement),
+	);
+
+test("U1/R4 focus: enter, page while loading, Retry and Back never drop focus to <body>", async () => {
+	let fail = false;
+	respond = (request) =>
+		fail
+			? { status: 503, body: { detail: "down" } }
+			: { status: 200, body: { result: pageOf(request.start, request.limit) } };
+	const v = await mount();
+	const view = v.button("View full diff · 998 lines");
+	view.focus();
+	await v.click(view);
+	assert.ok(inPager(v), "entering full moves focus into the pager");
+	// At the first page First/Previous are inert but still focusable, so a
+	// keyboard reader parked on them is not thrown out of the pager.
+	assert.ok(inert(v.button("First")) && inert(v.button("Previous")));
+	assert.equal(v.button("First").disabled, false);
+	const next = v.button("Next");
+	next.focus();
+	await v.click(next);
+	assert.equal(document.activeElement, v.button("Next"), "Next keeps focus");
+	// Error then Retry: the Retry button disappears while loading.
+	fail = true;
+	v.button("Next").focus();
+	await v.click(v.button("Next"));
+	const retry = v.button("Retry");
+	retry.focus();
+	fail = false;
+	await v.click(retry);
+	assert.ok(inPager(v), "Retry hands focus to the pager, not <body>");
+	const back = v.button("Back to preview");
+	back.focus();
+	await v.click(back);
+	await new Promise((r) => setTimeout(r, 30));
+	assert.equal(
+		document.activeElement,
+		v.host.querySelector("[data-diff-view-full]"),
+		"Back restores focus to the control that opened full mode",
+	);
+	v.unmount();
+	respond = (request) => ({
+		status: 200,
+		body: { result: pageOf(request.start, request.limit) },
+	});
+});
+
+test("D1/D2 pager: sticky opaque bar, no opacity-dimmed controls", async () => {
+	const v = await mount();
+	await v.click(v.button("View full diff · 998 lines"));
+	const nav = v.host.querySelector("[data-diff-history] nav");
+	assert.match(nav.className, /\bsticky\b/);
+	assert.match(nav.className, /\bbg-sunken\b/);
+	for (const button of nav.querySelectorAll("button"))
+		assert.doesNotMatch(button.className, /opacity/);
+	v.unmount();
+});
+
+test("R2/Q1 Retry replays the failed action (Last stays Last)", async () => {
+	let fail = false;
+	respond = (request) =>
+		fail
+			? { status: 503, body: { detail: "down" } }
+			: { status: 200, body: { result: pageOf(request.start, request.limit) } };
+	const v = await mount();
+	await v.click(v.button("View full diff · 998 lines"));
+	fail = true;
+	await v.click(v.button("Last"));
+	assert.ok(v.button("Retry"));
+	fail = false;
+	await v.click(v.button("Retry"));
+	assert.ok(
+		v.host.textContent.includes("+UNIQUE-FINAL-ROW"),
+		"Retry of Last lands on the final row",
+	);
+	v.unmount();
+	respond = (request) => ({
+		status: 200,
+		body: { result: pageOf(request.start, request.limit) },
+	});
+});
+
+test("U2/Q3 Previous after Last ends exactly before Last's first row", async () => {
+	const v = await mount();
+	await v.click(v.button("View full diff · 998 lines"));
+	await v.click(v.button("Last"));
+	const lastFirst = Number(v.rows()[0].getAttribute("data-diff-line"));
+	await v.click(v.button("Previous"));
+	const prevRows = v
+		.rows()
+		.map((r) => Number(r.getAttribute("data-diff-line")));
+	assert.equal(prevRows.at(-1), lastFirst - 1, "no overlap, no gap");
+	// Next from the trimmed page returns to Last's page.
+	await v.click(v.button("Next"));
+	assert.equal(Number(v.rows()[0].getAttribute("data-diff-line")), lastFirst);
+	v.unmount();
+});
+
+test("R1/Q2 parser: exact requested start, contiguous cursor, final page ends at total", () => {
+	const ok = pageOf(0, 200);
+	assert.ok(m.parseDiffPage(ok, 0));
+	assert.equal(
+		m.parseDiffPage(ok, 5),
+		null,
+		"start must be the requested start",
+	);
+	assert.equal(
+		m.parseDiffPage({ ...ok, next_start: ok.next_start + 1 }, 0),
+		null,
+		"cursor jump",
+	);
+	assert.equal(
+		m.parseDiffPage({ ...ok, next_start: null }, 0),
+		null,
+		"premature final",
+	);
+	const tail = pageOf(TOTAL - 1, 200);
+	assert.ok(m.parseDiffPage(tail, TOTAL - 1));
+});
+
+test("R3/U4/Q3 counts: the hidden nameless header pair is not counted", async () => {
+	const v = await mount();
+	await v.click(v.button("View full diff · 998 lines"));
+	assert.match(v.range(), /^Rows 1–\d+ of 998$/);
+	const shown = v.rows().length;
+	assert.equal(v.range(), `Rows 1–${shown} of 998`);
+	v.unmount();
+});
+
+test("U3 announce: notices and errors land in a persistent status region", async () => {
+	respond = () => ({
+		status: 404,
+		body: { detail: { code: "diff_not_found" } },
+	});
+	const v = await mount();
+	await v.click(v.button("View full diff · 998 lines"));
+	const status = v.host.querySelector("[data-diff-history] output");
+	assert.ok(status, "status region exists");
+	assert.match(status.textContent, /Full diff not found/);
+	v.unmount();
+	respond = (request) => ({
+		status: 200,
+		body: { result: pageOf(request.start, request.limit) },
+	});
 });

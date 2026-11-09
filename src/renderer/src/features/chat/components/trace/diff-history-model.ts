@@ -133,10 +133,20 @@ function nonNegativeInt(value: unknown): number | null {
 /**
  * Parse one page `result`. Returns `null` for a frame that does not honour the
  * contract — the caller shows the error state with Retry rather than painting
- * rows whose position it cannot trust. `next_start` must move FORWARD: a cursor
- * at or behind `start` would loop Next forever.
+ * rows whose position it cannot trust.
+ *
+ * Cursor rules (review round 1, R1/Q2): pages are CONTIGUOUS slices, so an
+ * archived page must start exactly where it was asked to (`requestedStart`),
+ * its `next_start` must be exactly `start + rows.length` (a jump would skip
+ * rows silently; a cursor at or behind `start` would loop Next forever), and a
+ * page that says it is final (`next_start: null`) must end at `total_rows` —
+ * otherwise rows past it would be unreachable. No arbitrary cap is added: the
+ * only bounds are the wire's own row budget and safe integers.
  */
-export function parseDiffPage(value: unknown): DiffPage | null {
+export function parseDiffPage(
+	value: unknown,
+	requestedStart?: number,
+): DiffPage | null {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 	const raw = value as Record<string, unknown>;
 	if (typeof raw.state !== "string" || !PAGE_STATES.has(raw.state)) return null;
@@ -156,6 +166,17 @@ export function parseDiffPage(value: unknown): DiffPage | null {
 	if (raw.next_start !== null && raw.next_start !== undefined) {
 		nextStart = nonNegativeInt(raw.next_start);
 		if (nextStart === null || nextStart <= start || nextStart > totalRows) {
+			return null;
+		}
+	}
+	if (raw.state === "archived") {
+		if (requestedStart !== undefined && start !== requestedStart) return null;
+		if (nextStart !== null && nextStart !== start + rows.length) return null;
+		if (
+			nextStart === null &&
+			rows.length > 0 &&
+			start + rows.length !== totalRows
+		) {
 			return null;
 		}
 	}
@@ -205,12 +226,7 @@ export function diffPageLines(page: DiffPage): {
 	hunkHeader: string | null;
 } {
 	// Same exact rule as `stripDiffHeader`: only the NAMELESS pair, both rows.
-	const skip =
-		page.start === 0 &&
-		page.rows[0]?.replace(TRAILING_WHITESPACE, "") === "---" &&
-		page.rows[1]?.replace(TRAILING_WHITESPACE, "") === "+++"
-			? 2
-			: 0;
+	const skip = page.start === 0 ? namelessHeaderRows(page.rows) : 0;
 	const clipped = new Set(page.clippedRows);
 	const lines = page.rows.slice(skip).map((raw, offset) => {
 		const index = page.start + skip + offset;
@@ -248,9 +264,49 @@ export function previousPageStart(start: number): number {
 	return Math.max(0, start - DESKTOP_DIFF_PAGE_MAX_ROWS);
 }
 
-/** Inclusive 1-based row range a page shows, for the pager label. */
-export function pageRange(page: DiffPage): { first: number; last: number } {
-	return { first: page.start + 1, last: page.start + page.rows.length };
+/**
+ * How many leading artifact rows are the nameless `---`/`+++` pair the pager
+ * hides (2) or none (0). Decided from rows 0-1 only — the same positional rule
+ * as `diffPageLines`/`stripDiffHeader`.
+ */
+export function namelessHeaderRows(rows: readonly string[]): 0 | 2 {
+	return rows[0]?.replace(TRAILING_WHITESPACE, "") === "---" &&
+		rows[1]?.replace(TRAILING_WHITESPACE, "") === "+++"
+		? 2
+		: 0;
+}
+
+/**
+ * Inclusive 1-based range and total the reader can SEE (review round 1,
+ * R3/U4/Q3): the artifact counts the hidden nameless header pair, the painted
+ * rows do not, so "Rows 1–N of T" subtracts it. Cursors stay in artifact
+ * positions internally; only this display arithmetic shifts.
+ */
+export function pageRange(
+	page: DiffPage,
+	headerRows: number,
+): { first: number; last: number; total: number } {
+	const first = Math.max(page.start, headerRows) - headerRows + 1;
+	const last = page.start + page.rows.length - headerRows;
+	return { first, last, total: Math.max(0, page.totalRows - headerRows) };
+}
+
+/**
+ * The tail of the page the reader is leaving: an `answer` that crosses
+ * `before` is cut to end at row `before - 1`, with its cursor pointing at
+ * `before` (review round 1, U2/Q3: Previous after Last used to repaint rows
+ * the reader had just seen). Contiguity is preserved, so Next from the cut page
+ * returns to exactly the page it came from.
+ */
+export function pageEndingBefore(answer: DiffPage, before: number): DiffPage {
+	if (answer.start + answer.rows.length <= before) return answer;
+	const keep = Math.max(0, before - answer.start);
+	return {
+		...answer,
+		rows: answer.rows.slice(0, keep),
+		nextStart: before,
+		clippedRows: answer.clippedRows.filter((row) => row < before),
+	};
 }
 
 // --- copy ------------------------------------------------------------------
