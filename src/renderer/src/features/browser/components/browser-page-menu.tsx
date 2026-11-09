@@ -24,6 +24,9 @@ import {
 } from "lucide-react";
 import type { FC, Ref } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useBrowserExtensions } from "../hooks/use-browser-extensions";
+import { BrowserExtensionsDialog } from "./browser-extensions-dialog";
+import { BrowserExtensionsSubmenu } from "./browser-extensions-menu";
 
 /**
  * The page menu: what is left after the address row became permanent.
@@ -111,6 +114,10 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	canControlPage,
 }) => {
 	const [open, setOpen] = useState(false);
+	// Extensions (design §4.3). The manage dialog is a SIBLING of the menu: a
+	// dialog inside DropdownMenuContent would unmount when the menu closes.
+	const extensionState = useBrowserExtensions();
+	const [extensionsOpen, setExtensionsOpen] = useState(false);
 	/* A tooltip that opens on the focus the menu returns must not read as a
 	   stray label after an item was chosen (round-2 D12): suppress it through the
 	   close and for a moment after, so the focus event cannot open a panel. */
@@ -150,145 +157,175 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 				})
 			: t("ui.browser.browser_url_bar.page_menu");
 	return (
-		<DropdownMenu
-			open={open}
-			onOpenChange={(next) => {
-				setOpen(next);
-				if (next) {
-					if (quietTimer.current) clearTimeout(quietTimer.current);
-					setReturning(false);
-					return;
-				}
-				setReturning(true);
-				quietTimer.current = setTimeout(() => setReturning(false), 500);
-			}}
-		>
-			<Tooltip
-				content={t("ui.browser.browser_url_bar.page_menu")}
-				side="top"
-				suppressed={open || returning}
-				discardWhileSuppressed={open || returning}
-				disableHoverableContent
-			>
-				<DropdownMenuTrigger asChild>
-					<Button
-						ref={triggerRef}
-						variant="ghost"
-						size="icon-sm"
-						className="relative shrink-0"
-						aria-label={pageMenuLabel}
-						disabled={disabled}
-						data-tour-tag="browser-page-menu"
-					>
-						<MoreHorizontal aria-hidden className="size-4" />
-						{showApprovalsFolded && waitingCount > 0 && (
-							<span className="pointer-events-none absolute -top-0.5 -right-0.5">
-								<Badge
-									variant="attention"
-									shape="pill"
-									size="count"
-									className="ring-2 ring-elevated"
-									aria-hidden="true"
-									data-tour-tag="browser-approvals-folded-badge"
-								>
-									{countLabel(waitingCount, 99)}
-								</Badge>
-							</span>
-						)}
-					</Button>
-				</DropdownMenuTrigger>
-			</Tooltip>
-			<DropdownMenuContent
-				align="end"
-				sideOffset={4}
-				onCloseAutoFocus={(event) => {
-					if (!dockRequested.current) return;
-					dockRequested.current = false;
-					event.preventDefault();
-					/* The item unmounts before this handler, so focus is already on
-					   `<body>`; the dock's heading takes it on the next tick, after
-					   Radix has finished closing. */
-					dockOpenTimer.current = window.setTimeout(() => onDockOpened?.(), 0);
+		<>
+			<DropdownMenu
+				open={open}
+				onOpenChange={(next) => {
+					setOpen(next);
+					if (next) {
+						if (quietTimer.current) clearTimeout(quietTimer.current);
+						setReturning(false);
+						return;
+					}
+					setReturning(true);
+					quietTimer.current = setTimeout(() => setReturning(false), 500);
 				}}
 			>
-				{folded && (
-					<>
-						{showForward && (
-							<DropdownMenuItem
-								disabled={!canGoForward}
-								onSelect={onForward}
-								data-tour-tag="browser-page-menu-forward"
-							>
-								<ArrowRight aria-hidden className="size-4" />
-								{t("ui.browser.browser_url_bar.forward")}
-								<DropdownMenuShortcut>{forward}</DropdownMenuShortcut>
-							</DropdownMenuItem>
-						)}
-						{showHome && (
-							<DropdownMenuItem
-								onSelect={onHome}
-								data-tour-tag="browser-page-menu-home"
-							>
-								<Home aria-hidden className="size-4" />
-								{t("ui.browser.browser_url_bar.home")}
-							</DropdownMenuItem>
-						)}
-						<DropdownMenuSeparator />
-					</>
-				)}
-				<DropdownMenuItem
-					disabled={!canControlPage}
-					onSelect={onFind}
-					data-tour-tag="browser-find"
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.page_menu")}
+					side="top"
+					suppressed={open || returning}
+					discardWhileSuppressed={open || returning}
+					disableHoverableContent
 				>
-					<Search aria-hidden className="size-4" />
-					{t("ui.browser.browser_url_bar.find_in_page")}
-					<DropdownMenuShortcut>{find}</DropdownMenuShortcut>
-				</DropdownMenuItem>
-				<DropdownMenuItem
-					disabled={!canControlPage}
-					onSelect={onPrint}
-					data-tour-tag="browser-print"
+					<DropdownMenuTrigger asChild>
+						<Button
+							ref={triggerRef}
+							variant="ghost"
+							size="icon-sm"
+							className="relative shrink-0"
+							aria-label={pageMenuLabel}
+							disabled={disabled}
+							data-tour-tag="browser-page-menu"
+						>
+							<MoreHorizontal aria-hidden className="size-4" />
+							{showApprovalsFolded && waitingCount > 0 && (
+								<span className="pointer-events-none absolute -top-0.5 -right-0.5">
+									<Badge
+										variant="attention"
+										shape="pill"
+										size="count"
+										className="ring-2 ring-elevated"
+										aria-hidden="true"
+										data-tour-tag="browser-approvals-folded-badge"
+									>
+										{countLabel(waitingCount, 99)}
+									</Badge>
+								</span>
+							)}
+						</Button>
+					</DropdownMenuTrigger>
+				</Tooltip>
+				<DropdownMenuContent
+					align="end"
+					sideOffset={4}
+					onCloseAutoFocus={(event) => {
+						if (!dockRequested.current) return;
+						dockRequested.current = false;
+						event.preventDefault();
+						/* The item unmounts before this handler, so focus is already on
+					   `<body>`; the dock's heading takes it on the next tick, after
+					   Radix has finished closing. */
+						dockOpenTimer.current = window.setTimeout(
+							() => onDockOpened?.(),
+							0,
+						);
+					}}
 				>
-					<Printer aria-hidden className="size-4" />
-					{t("ui.browser.browser_url_bar.print_page")}
-				</DropdownMenuItem>
-				{pageZoom !== 1 && (
+					{folded && (
+						<>
+							{showForward && (
+								<DropdownMenuItem
+									disabled={!canGoForward}
+									onSelect={onForward}
+									data-tour-tag="browser-page-menu-forward"
+								>
+									<ArrowRight aria-hidden className="size-4" />
+									{t("ui.browser.browser_url_bar.forward")}
+									<DropdownMenuShortcut>{forward}</DropdownMenuShortcut>
+								</DropdownMenuItem>
+							)}
+							{showHome && (
+								<DropdownMenuItem
+									onSelect={onHome}
+									data-tour-tag="browser-page-menu-home"
+								>
+									<Home aria-hidden className="size-4" />
+									{t("ui.browser.browser_url_bar.home")}
+								</DropdownMenuItem>
+							)}
+							<DropdownMenuSeparator />
+						</>
+					)}
 					<DropdownMenuItem
 						disabled={!canControlPage}
-						onSelect={onResetZoom}
-						data-tour-tag="browser-zoom"
+						onSelect={onFind}
+						data-tour-tag="browser-find"
 					>
-						{t("ui.browser.browser_url_bar.page_zoom_reset", {
-							zoom: Math.round(pageZoom * 100),
-						})}
-						<DropdownMenuShortcut>{zoomReset}</DropdownMenuShortcut>
+						<Search aria-hidden className="size-4" />
+						{t("ui.browser.browser_url_bar.find_in_page")}
+						<DropdownMenuShortcut>{find}</DropdownMenuShortcut>
 					</DropdownMenuItem>
-				)}
-				{downloadsDir && (
 					<DropdownMenuItem
-						onSelect={onOpenDownloads}
-						data-tour-tag="browser-downloads-folder"
+						disabled={!canControlPage}
+						onSelect={onPrint}
+						data-tour-tag="browser-print"
 					>
-						<FolderOpen aria-hidden className="size-4" />
-						{t("ui.browser.browser_file_transfer_row.open_downloads_folder")}
+						<Printer aria-hidden className="size-4" />
+						{t("ui.browser.browser_url_bar.print_page")}
 					</DropdownMenuItem>
-				)}
-				<DropdownMenuSeparator />
-				<DropdownMenuItem
-					onSelect={() => {
-						dockRequested.current = onOpenApprovals();
-					}}
-					data-tour-tag="browser-approvals"
-				>
-					<ShieldCheck aria-hidden className="size-4" />
-					{waitingCount > 0
-						? t("ui.browser.browser_url_bar.approvals_waiting", {
-								count: waitingCount,
-							})
-						: t("ui.browser.chrome.approvals")}
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
+					{pageZoom !== 1 && (
+						<DropdownMenuItem
+							disabled={!canControlPage}
+							onSelect={onResetZoom}
+							data-tour-tag="browser-zoom"
+						>
+							{t("ui.browser.browser_url_bar.page_zoom_reset", {
+								zoom: Math.round(pageZoom * 100),
+							})}
+							<DropdownMenuShortcut>{zoomReset}</DropdownMenuShortcut>
+						</DropdownMenuItem>
+					)}
+					{downloadsDir && (
+						<DropdownMenuItem
+							onSelect={onOpenDownloads}
+							data-tour-tag="browser-downloads-folder"
+						>
+							<FolderOpen aria-hidden className="size-4" />
+							{t("ui.browser.browser_file_transfer_row.open_downloads_folder")}
+						</DropdownMenuItem>
+					)}
+					<DropdownMenuSeparator />
+					<BrowserExtensionsSubmenu
+						extensions={extensionState.extensions}
+						onOpenPopup={(extension) =>
+							void extensionState.open(extension, "popup")
+						}
+						onManage={() => setExtensionsOpen(true)}
+						onOpenStore={extensionState.openStore}
+					/>
+					<DropdownMenuItem
+						onSelect={() => {
+							dockRequested.current = onOpenApprovals();
+						}}
+						data-tour-tag="browser-approvals"
+					>
+						<ShieldCheck aria-hidden className="size-4" />
+						{waitingCount > 0
+							? t("ui.browser.browser_url_bar.approvals_waiting", {
+									count: waitingCount,
+								})
+							: t("ui.browser.chrome.approvals")}
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<BrowserExtensionsDialog
+				open={extensionsOpen}
+				extensions={extensionState.extensions}
+				busy={extensionState.busy}
+				checking={extensionState.checking}
+				onClose={() => setExtensionsOpen(false)}
+				onSetEnabled={(extension, enabled) =>
+					void extensionState.setEnabled(extension, enabled)
+				}
+				onRemove={extensionState.remove}
+				onOpen={(extension, page) => void extensionState.open(extension, page)}
+				onOpenStore={() => {
+					setExtensionsOpen(false);
+					extensionState.openStore();
+				}}
+				onCheckUpdates={() => void extensionState.checkUpdates()}
+			/>
+		</>
 	);
 };

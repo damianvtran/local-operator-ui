@@ -97,6 +97,7 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 					{ who, site: siteOf(notice.origin) },
 				)}{" "}
 				<span className="text-ink-muted">
+					{t("ui.browser.extensions.passkey_recovery")}{" "}
 					{t("ui.browser.browser_passkey_notice.explanation")}
 				</span>
 			</p>

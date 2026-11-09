@@ -274,6 +274,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/extension-native-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"The isolated extension-manager proof must not send OS banners.",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-focus-stability-proof.mjs",
 		"spawn",
 		2,

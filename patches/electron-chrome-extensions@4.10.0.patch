@@ -1,0 +1,585 @@
+diff --git a/dist/chrome-extension-api.preload.js b/dist/chrome-extension-api.preload.js
+index 67d3be4..07bbd2d 100644
+--- a/dist/chrome-extension-api.preload.js
++++ b/dist/chrome-extension-api.preload.js
+@@ -21,9 +21,6 @@
+     }
+     listenerMap.set(name, listenerCount + 1);
+     import_electron.ipcRenderer.addListener(formatIpcName(name), function(event, ...args) {
+-      if (true) {
+-        console.log(name, "(result)", ...args);
+-      }
+       callback(...args);
+     });
+   };
+@@ -44,9 +41,6 @@
+   var injectExtensionAPIs = () => {
+     const invokeExtension = async function(extensionId, fnName, options = {}, ...args) {
+       const callback = typeof args[args.length - 1] === "function" ? args.pop() : void 0;
+-      if (true) {
+-        console.log(fnName, args);
+-      }
+       if (options.noop) {
+         console.warn(`${fnName} is not yet implemented.`);
+         if (callback) callback(options.defaultResponse);
+@@ -59,12 +53,17 @@
+       try {
+         result = await import_electron2.ipcRenderer.invoke("crx-msg", extensionId, fnName, ...args);
+       } catch (e) {
+-        console.error(e);
++        const failure = typeof e?.message === "string" ? e.message : "";
++        const category = /Unable to (?:find|get).*tab|active tab/i.test(failure) ? "tab-unavailable"
++          : /event listener.*not registered/i.test(failure) ? "listener-unregistered"
++          : /not implemented|not supported|unknown handler|no handler/i.test(failure) ? "unsupported-api"
++          : /permission|policy|not allowed/i.test(failure) ? "permission-denied"
++          : e instanceof TypeError ? "TypeError" : "api-error";
++        // Fixed categories and operation names only: exception messages can
++        // contain OAuth URLs, vault values or autofill data.
++        console.error("Extension API request failed", fnName, category);
+         result = void 0;
+       }
+-      if (true) {
+-        console.log(fnName, "(result)", result);
+-      }
+       if (callback) {
+         callback(result);
+       } else {
+@@ -75,7 +74,7 @@
+       const connectionId = import_electron2.contextBridge.executeInMainWorld({
+         func: () => crypto.randomUUID()
+       });
+-      invokeExtension(extensionId, "runtime.connectNative", {}, connectionId, application);
++
+       const onMessage = (_event, message) => {
+         receive(message);
+       };
+@@ -88,6 +87,14 @@
+         import_electron2.ipcRenderer.send(`crx-native-msg-${connectionId}`, message);
+       };
+       callback(connectionId, send);
++      // Install listeners and initialize the Port before a denial can disconnect it.
++      invokeExtension(extensionId, "runtime.connectNative", {}, connectionId, application).then((result) => {
++        if (result?.nativeMessagingDenied) {
++          import_electron2.ipcRenderer.off(`crx-native-msg-${connectionId}`, onMessage);
++          import_electron2.ipcRenderer.removeAllListeners(`crx-native-msg-${connectionId}-disconnect`);
++          disconnect("Native messaging is disabled by browser policy");
++        }
++      });
+     };
+     const disconnectNative = (extensionId, connectionId) => {
+       invokeExtension(extensionId, "runtime.disconnectNative", {}, connectionId);
+@@ -104,6 +111,12 @@
+       const chrome = globalThis.chrome || {};
+       const extensionId = chrome.runtime?.id;
+       const manifest = extensionId && chrome.runtime.getManifest?.() || {};
++      let policyLastError;
++      const withPolicyLastError = (callback, message) => {
++        const previous = policyLastError;
++        policyLastError = { message };
++        try { callback(); } finally { policyLastError = previous; }
++      };
+       const invokeExtension2 = (fnName, opts = {}) => (...args) => electron.invokeExtension(extensionId, fnName, opts, ...args);
+       function imageData2base64(imageData) {
+         const canvas = document.createElement("canvas");
+@@ -197,8 +210,9 @@
+           ;
+           this.onMessage._emit(message);
+         }
+-        _disconnect() {
+-          this.disconnect();
++        _disconnect(message) {
++          if (message) withPolicyLastError(() => this.disconnect(), message);
++          else this.disconnect();
+         }
+         postMessage(message) {
+           this._send(message);
+@@ -386,7 +400,15 @@
+             return {
+               ...base,
+               clear: invokeExtension2("notifications.clear"),
+-              create: invokeExtension2("notifications.create"),
++              create: (...args) => {
++                const callback = typeof args[args.length - 1] === "function" ? args.pop() : undefined;
++                const result = electron.invokeExtension(extensionId, "notifications.create", {}, ...args).then((value) => {
++                  if (value?.notificationDenied) throw new Error("Notifications are disabled by browser policy");
++                  return value;
++                });
++                if (!callback) return result;
++                result.then(callback, () => withPolicyLastError(callback, "Notifications are disabled by browser policy"));
++              },
+               getAll: invokeExtension2("notifications.getAll"),
+               getPermissionLevel: invokeExtension2("notifications.getPermissionLevel"),
+               update: invokeExtension2("notifications.update"),
+@@ -443,7 +465,17 @@
+                 return port;
+               },
+               openOptionsPage: invokeExtension2("runtime.openOptionsPage"),
+-              sendNativeMessage: invokeExtension2("runtime.sendNativeMessage")
++              sendNativeMessage: (application, message, callback) => {
++                const result = electron.invokeExtension(extensionId, "runtime.sendNativeMessage", {}, application, message).then((value) => {
++                  if (value?.nativeMessagingDenied) throw new Error("Native messaging is disabled by browser policy");
++                  return value;
++                });
++                if (typeof callback !== "function") return result;
++                result.then(callback, () => {
++                  // Chrome exposes lastError only for the synchronous callback scope.
++                  withPolicyLastError(callback, "Native messaging is disabled by browser policy");
++                });
++              }
+             };
+           }
+         },
+@@ -560,14 +592,29 @@
+         const baseApi = chrome[apiName];
+         const api = apiDefinitions[apiName];
+         if (api.shouldInject && !api.shouldInject()) return;
++        const value = api.factory(baseApi);
++        // Preserve native callback lastError dynamically; spreading its getter
++        // would snapshot undefined and hide real native errors after injection.
++        if (apiName === "runtime") Object.defineProperty(value, "lastError", {
++          configurable: true, enumerable: true,
++          get: () => policyLastError || baseApi?.lastError
++        });
+         Object.defineProperty(chrome, apiName, {
+-          value: api.factory(baseApi),
++          value,
+           enumerable: true,
+           configurable: true
+         });
+       });
+       delete globalThis.electron;
+       Object.freeze(chrome);
++      // Upstream electron-browser-shell PR190 (8c85cd1): Chromium's separate
++      // native browser namespace otherwise bypasses compatibility AND policy.
++      // Keep the original chrome API objects/identity, alias only existing browser.
++      if ('browser' in globalThis) {
++        Object.defineProperty(globalThis, 'browser', {
++          value: chrome, enumerable: true, configurable: true, writable: true
++        });
++      }
+     }
+     if (!process.contextIsolated) {
+       console.warn(`injectExtensionAPIs: context isolation disabled in ${location.href}`);
+@@ -584,6 +631,26 @@
+       } else {
+         import_electron2.webFrame.executeJavaScript(`(${mainWorldScript}());`);
+       }
++      // local-operator: Electron does not put extension pages (action popup,
++      // options) under the extension worker's control, so a worker calling
++      // clients.matchAll({type:"window"}) gets [] and never pushes state to an
++      // open popup (1Password's popup stayed "Loading..."). Default
++      // includeUncontrolled:true for chrome-extension:// WORKERS only. matchAll
++      // is same-origin by spec, so this exposes only the extension's own pages.
++      if (process.type === "service-worker" && "executeInMainWorld" in import_electron2.contextBridge) {
++        import_electron2.contextBridge.executeInMainWorld({
++          func: () => {
++            const workerClients = globalThis.clients;
++            if (!workerClients || typeof workerClients.matchAll !== "function" || !String(location.href).startsWith("chrome-extension://")) return;
++            const matchAll = workerClients.matchAll.bind(workerClients);
++            Object.defineProperty(workerClients, "matchAll", {
++              configurable: true,
++              writable: true,
++              value: (options) => matchAll({ ...(options || {}), includeUncontrolled: options?.includeUncontrolled ?? true })
++            });
++          }
++        });
++      }
+     } catch (error) {
+       console.error(`injectExtensionAPIs error (${location.href})`);
+       console.error(error);
+diff --git a/dist/cjs/index.js b/dist/cjs/index.js
+index a91ca8f..74b8d14 100644
+--- a/dist/cjs/index.js
++++ b/dist/cjs/index.js
+@@ -448,7 +448,7 @@ var BrowserActionAPI = class {
+     });
+   }
+   handleCRXRequest(request) {
+-    d2("%s", request.url);
++    d2("extension action resource requested");
+     try {
+       const url = new URL(request.url);
+       const { hostname: requestType } = url;
+@@ -608,6 +608,11 @@ var BrowserActionAPI = class {
+       if (!win) {
+         throw new Error("Unable to get BrowserWindow from active tab");
+       }
++      // Embedders own presentation policy; never bypass their headless/focus guard.
++      if (this.ctx.openActionPopup) {
++        this.ctx.openActionPopup({ extensionId, url: popupUrl, parent: win });
++        return;
++      }
+       this.popup = new PopupView({
+         extensionId,
+         session: this.ctx.session,
+@@ -616,7 +621,7 @@ var BrowserActionAPI = class {
+         anchorRect,
+         alignment
+       });
+-      d2(`opened popup: ${popupUrl}`);
++      d2("extension action popup opened");
+       this.ctx.emit("browser-action-popup-created", this.popup);
+     } else {
+       d2(`dispatching onClicked for ${extensionId}`);
+@@ -771,8 +776,13 @@ var _WindowsAPI = class _WindowsAPI {
+     return this.getWindowDetails(win);
+   }
+   getLastFocused(event) {
+-    const win = this.ctx.store.getLastFocusedWindow();
+-    return win ? this.getWindowDetails(win) : null;
++    // local-operator: an app window that was never focused (headless/background
++    // launch) left lastFocusedWindowId unset, so windows.getCurrent resolved null
++    // and MV3 workers threw "Cannot read properties of null (reading 'id')".
++    // Chrome always answers getCurrent/getLastFocused with a window: fall back to
++    // any live registered window, else a WINDOW_ID_NONE stub (never null).
++    const win = this.ctx.store.getLastFocusedWindow() || Array.from(this.ctx.store.windows).find((w) => !w.isDestroyed());
++    return win ? this.getWindowDetails(win) : { id: _WindowsAPI.WINDOW_ID_NONE, focused: false, tabs: [], incognito: false, type: "normal", state: "normal", alwaysOnTop: false };
+   }
+   getAll(event) {
+     return Array.from(this.ctx.store.windows).map(this.getWindowDetails.bind(this));
+@@ -907,7 +917,7 @@ var _TabsAPI = class _TabsAPI {
+     });
+     this.onCreated(tabId);
+     this.onActivated(tabId);
+-    d4(`Observing tab[${tabId}][${tab.getType()}] ${tab.getURL()}`);
++    d4(`Observing tab[${tabId}][${tab.getType()}]`);
+   }
+   createTabDetails(tab) {
+     const tabId = tab.id;
+@@ -1179,7 +1189,7 @@ var WebNavigationAPI = class {
+   constructor(ctx) {
+     this.ctx = ctx;
+     this.sendNavigationEvent = (eventName, details) => {
+-      d5(`${eventName} [url: ${details.url}]`);
++      d5(`${eventName}`);
+       this.ctx.router.broadcastEvent(`webNavigation.${eventName}`, details);
+     };
+     this.onCreatedNavigationTarget = (tab, { url, frame }) => {
+@@ -1950,11 +1960,13 @@ var NativeMessagingHost = class {
+ 
+ // src/browser/api/runtime.ts
+ var RuntimeAPI = class extends import_node_events3.EventEmitter {
+-  constructor(ctx) {
++  constructor(ctx, allowNativeMessaging = false) {
+     super();
+     this.ctx = ctx;
+     this.hostMap = {};
+     this.connectNative = async (event, connectionId, application) => {
++      // Standalone extensions must not discover or launch local native hosts.
++      if (allowNativeMessaging !== true) return { nativeMessagingDenied: true };
+       const host = new NativeMessagingHost(
+         event.extension.id,
+         event.sender,
+@@ -1968,6 +1980,7 @@ var RuntimeAPI = class extends import_node_events3.EventEmitter {
+       this.hostMap[connectionId] = void 0;
+     };
+     this.sendNativeMessage = async (event, application, message) => {
++      if (allowNativeMessaging !== true) return { nativeMessagingDenied: true };
+       const connectionId = (0, import_node_crypto.randomUUID)();
+       const host = new NativeMessagingHost(
+         event.extension.id,
+@@ -2102,7 +2115,7 @@ var stripScopeFromIdentifier = (id) => {
+   return id.substr(index + 1);
+ };
+ var NotificationsAPI = class {
+-  constructor(ctx) {
++  constructor(ctx, allowNotifications = false) {
+     this.ctx = ctx;
+     this.registry = /* @__PURE__ */ new Map();
+     this.clear = ({ extension }, id) => {
+@@ -2112,6 +2125,8 @@ var NotificationsAPI = class {
+       }
+     };
+     this.create = async ({ extension }, arg1, arg2) => {
++      // Declared manifest permission is not a grant to show native OS banners.
++      if (allowNotifications !== true) return { notificationDenied: true };
+       let id;
+       let opts;
+       if (typeof arg1 === "object") {
+@@ -2271,12 +2286,12 @@ var RoutingDelegate = class _RoutingDelegate {
+     this.sessionMap = /* @__PURE__ */ new WeakMap();
+     this.workers = /* @__PURE__ */ new WeakSet();
+     this.onRouterMessage = async (event, extensionId, handlerName, ...args) => {
+-      d8(`received '${handlerName}'`, args);
++      d8(`received '${handlerName}'`);
+       const observer = this.sessionMap.get(getSessionFromEvent(event));
+       return observer?.onExtensionMessage(event, extensionId, handlerName, ...args);
+     };
+     this.onRemoteMessage = async (event, sessionPartition, handlerName, ...args) => {
+-      d8(`received remote '${handlerName}' for '${sessionPartition}'`, args);
++      d8(`received remote '${handlerName}' for '${sessionPartition}'`);
+       const ses = sessionPartition === DEFAULT_SESSION ? getSessionFromEvent(event) : resolvePartition(sessionPartition);
+       const observer = this.sessionMap.get(ses);
+       return observer?.onExtensionMessage(event, void 0, handlerName, ...args);
+@@ -2324,7 +2339,7 @@ var RoutingDelegate = class _RoutingDelegate {
+         versionId
+       );
+       if (serviceWorker?.scope?.startsWith("chrome-extension://") && !this.workers.has(serviceWorker)) {
+-        d8(`listening to service worker [versionId:${versionId}, scope:${serviceWorker.scope}]`);
++        d8(`listening to service worker [versionId:${versionId}]`);
+         this.workers.add(serviceWorker);
+         serviceWorker.ipc.handle("crx-msg", this.onRouterMessage);
+         serviceWorker.ipc.handle("crx-msg-remote", this.onRemoteMessage);
+@@ -2368,7 +2383,7 @@ var ExtensionRouter = class {
+     });
+     import_electron9.app.on("web-contents-created", (event, webContents2) => {
+       if (webContents2.session === this.session && webContents2.getType() === "backgroundPage") {
+-        d8(`storing reference to background host [url:'${webContents2.getURL()}']`);
++        d8("storing reference to extension background host");
+         this.extensionHosts.add(webContents2);
+       }
+     });
+@@ -2383,7 +2398,7 @@ var ExtensionRouter = class {
+         if (this.extensionHosts.has(serviceWorker)) {
+           d8("%s running status changed to %s", scope, runningStatus);
+         } else {
+-          d8(`storing reference to background service worker [url:'${scope}']`);
++          d8("storing reference to extension background service worker");
+           this.extensionWorkers.add(serviceWorker);
+         }
+       }
+@@ -2405,7 +2420,7 @@ var ExtensionRouter = class {
+   }
+   observeListenerHost(host) {
+     const hostId = getHostId(host);
+-    d8(`observing listener [id:${hostId}, url:'${getHostUrl(host)}']`);
++    d8(`observing listener [id:${hostId}]`);
+     host.once("destroyed", () => {
+       d8(`extension host destroyed [id:${hostId}]`);
+       this.filterListeners((listener) => listener.type !== "frame" || listener.host !== host);
+@@ -2478,7 +2493,7 @@ var ExtensionRouter = class {
+     }
+     const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
+     const result = await handler.callback(extEvent, ...args);
+-    d8(`${handlerName} result: %r`, result);
++    d8(`${handlerName} completed`);
+     return result;
+   }
+   handle(name, callback, opts) {
+@@ -2696,7 +2711,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+   }
+   constructor(opts) {
+     super();
+-    const { session: session2 = import_electron10.session.defaultSession, ...impl } = opts || {};
++    const { session: session2 = import_electron10.session.defaultSession, allowNativeMessaging = false, allowNotifications = false, openActionPopup, ...impl } = opts || {};
+     checkVersion();
+     if (sessionMap.has(session2)) {
+       throw new Error(`Extensions instance already exists for the given session`);
+@@ -2706,6 +2721,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+     const store = new ExtensionStore(impl);
+     this.ctx = {
+       emit: this.emit.bind(this),
++      openActionPopup,
+       router,
+       session: session2,
+       store
+@@ -2715,9 +2731,9 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+       contextMenus: new ContextMenusAPI(this.ctx),
+       commands: new CommandsAPI(this.ctx),
+       cookies: new CookiesAPI(this.ctx),
+-      notifications: new NotificationsAPI(this.ctx),
++      notifications: new NotificationsAPI(this.ctx, allowNotifications === true),
+       permissions: new PermissionsAPI(this.ctx),
+-      runtime: new RuntimeAPI(this.ctx),
++      runtime: new RuntimeAPI(this.ctx, allowNativeMessaging === true),
+       tabs: new TabsAPI(this.ctx),
+       webNavigation: new WebNavigationAPI(this.ctx),
+       windows: new WindowsAPI(this.ctx)
+diff --git a/dist/esm/index.mjs b/dist/esm/index.mjs
+index 4392922..ed07359 100644
+--- a/dist/esm/index.mjs
++++ b/dist/esm/index.mjs
+@@ -411,7 +411,7 @@ var BrowserActionAPI = class {
+     });
+   }
+   handleCRXRequest(request) {
+-    d2("%s", request.url);
++    d2("extension action resource requested");
+     try {
+       const url = new URL(request.url);
+       const { hostname: requestType } = url;
+@@ -571,6 +571,11 @@ var BrowserActionAPI = class {
+       if (!win) {
+         throw new Error("Unable to get BrowserWindow from active tab");
+       }
++      // Embedders own presentation policy; never bypass their headless/focus guard.
++      if (this.ctx.openActionPopup) {
++        this.ctx.openActionPopup({ extensionId, url: popupUrl, parent: win });
++        return;
++      }
+       this.popup = new PopupView({
+         extensionId,
+         session: this.ctx.session,
+@@ -579,7 +584,7 @@ var BrowserActionAPI = class {
+         anchorRect,
+         alignment
+       });
+-      d2(`opened popup: ${popupUrl}`);
++      d2("extension action popup opened");
+       this.ctx.emit("browser-action-popup-created", this.popup);
+     } else {
+       d2(`dispatching onClicked for ${extensionId}`);
+@@ -734,8 +739,13 @@ var _WindowsAPI = class _WindowsAPI {
+     return this.getWindowDetails(win);
+   }
+   getLastFocused(event) {
+-    const win = this.ctx.store.getLastFocusedWindow();
+-    return win ? this.getWindowDetails(win) : null;
++    // local-operator: an app window that was never focused (headless/background
++    // launch) left lastFocusedWindowId unset, so windows.getCurrent resolved null
++    // and MV3 workers threw "Cannot read properties of null (reading 'id')".
++    // Chrome always answers getCurrent/getLastFocused with a window: fall back to
++    // any live registered window, else a WINDOW_ID_NONE stub (never null).
++    const win = this.ctx.store.getLastFocusedWindow() || Array.from(this.ctx.store.windows).find((w) => !w.isDestroyed());
++    return win ? this.getWindowDetails(win) : { id: _WindowsAPI.WINDOW_ID_NONE, focused: false, tabs: [], incognito: false, type: "normal", state: "normal", alwaysOnTop: false };
+   }
+   getAll(event) {
+     return Array.from(this.ctx.store.windows).map(this.getWindowDetails.bind(this));
+@@ -870,7 +880,7 @@ var _TabsAPI = class _TabsAPI {
+     });
+     this.onCreated(tabId);
+     this.onActivated(tabId);
+-    d4(`Observing tab[${tabId}][${tab.getType()}] ${tab.getURL()}`);
++    d4(`Observing tab[${tabId}][${tab.getType()}]`);
+   }
+   createTabDetails(tab) {
+     const tabId = tab.id;
+@@ -1142,7 +1152,7 @@ var WebNavigationAPI = class {
+   constructor(ctx) {
+     this.ctx = ctx;
+     this.sendNavigationEvent = (eventName, details) => {
+-      d5(`${eventName} [url: ${details.url}]`);
++      d5(`${eventName}`);
+       this.ctx.router.broadcastEvent(`webNavigation.${eventName}`, details);
+     };
+     this.onCreatedNavigationTarget = (tab, { url, frame }) => {
+@@ -1913,11 +1923,13 @@ var NativeMessagingHost = class {
+ 
+ // src/browser/api/runtime.ts
+ var RuntimeAPI = class extends EventEmitter3 {
+-  constructor(ctx) {
++  constructor(ctx, allowNativeMessaging = false) {
+     super();
+     this.ctx = ctx;
+     this.hostMap = {};
+     this.connectNative = async (event, connectionId, application) => {
++      // Standalone extensions must not discover or launch local native hosts.
++      if (allowNativeMessaging !== true) return { nativeMessagingDenied: true };
+       const host = new NativeMessagingHost(
+         event.extension.id,
+         event.sender,
+@@ -1931,6 +1943,7 @@ var RuntimeAPI = class extends EventEmitter3 {
+       this.hostMap[connectionId] = void 0;
+     };
+     this.sendNativeMessage = async (event, application, message) => {
++      if (allowNativeMessaging !== true) return { nativeMessagingDenied: true };
+       const connectionId = randomUUID();
+       const host = new NativeMessagingHost(
+         event.extension.id,
+@@ -2065,7 +2078,7 @@ var stripScopeFromIdentifier = (id) => {
+   return id.substr(index + 1);
+ };
+ var NotificationsAPI = class {
+-  constructor(ctx) {
++  constructor(ctx, allowNotifications = false) {
+     this.ctx = ctx;
+     this.registry = /* @__PURE__ */ new Map();
+     this.clear = ({ extension }, id) => {
+@@ -2075,6 +2088,8 @@ var NotificationsAPI = class {
+       }
+     };
+     this.create = async ({ extension }, arg1, arg2) => {
++      // Declared manifest permission is not a grant to show native OS banners.
++      if (allowNotifications !== true) return { notificationDenied: true };
+       let id;
+       let opts;
+       if (typeof arg1 === "object") {
+@@ -2234,12 +2249,12 @@ var RoutingDelegate = class _RoutingDelegate {
+     this.sessionMap = /* @__PURE__ */ new WeakMap();
+     this.workers = /* @__PURE__ */ new WeakSet();
+     this.onRouterMessage = async (event, extensionId, handlerName, ...args) => {
+-      d8(`received '${handlerName}'`, args);
++      d8(`received '${handlerName}'`);
+       const observer = this.sessionMap.get(getSessionFromEvent(event));
+       return observer?.onExtensionMessage(event, extensionId, handlerName, ...args);
+     };
+     this.onRemoteMessage = async (event, sessionPartition, handlerName, ...args) => {
+-      d8(`received remote '${handlerName}' for '${sessionPartition}'`, args);
++      d8(`received remote '${handlerName}' for '${sessionPartition}'`);
+       const ses = sessionPartition === DEFAULT_SESSION ? getSessionFromEvent(event) : resolvePartition(sessionPartition);
+       const observer = this.sessionMap.get(ses);
+       return observer?.onExtensionMessage(event, void 0, handlerName, ...args);
+@@ -2287,7 +2302,7 @@ var RoutingDelegate = class _RoutingDelegate {
+         versionId
+       );
+       if (serviceWorker?.scope?.startsWith("chrome-extension://") && !this.workers.has(serviceWorker)) {
+-        d8(`listening to service worker [versionId:${versionId}, scope:${serviceWorker.scope}]`);
++        d8(`listening to service worker [versionId:${versionId}]`);
+         this.workers.add(serviceWorker);
+         serviceWorker.ipc.handle("crx-msg", this.onRouterMessage);
+         serviceWorker.ipc.handle("crx-msg-remote", this.onRemoteMessage);
+@@ -2331,7 +2346,7 @@ var ExtensionRouter = class {
+     });
+     app4.on("web-contents-created", (event, webContents2) => {
+       if (webContents2.session === this.session && webContents2.getType() === "backgroundPage") {
+-        d8(`storing reference to background host [url:'${webContents2.getURL()}']`);
++        d8("storing reference to extension background host");
+         this.extensionHosts.add(webContents2);
+       }
+     });
+@@ -2346,7 +2361,7 @@ var ExtensionRouter = class {
+         if (this.extensionHosts.has(serviceWorker)) {
+           d8("%s running status changed to %s", scope, runningStatus);
+         } else {
+-          d8(`storing reference to background service worker [url:'${scope}']`);
++          d8("storing reference to extension background service worker");
+           this.extensionWorkers.add(serviceWorker);
+         }
+       }
+@@ -2368,7 +2383,7 @@ var ExtensionRouter = class {
+   }
+   observeListenerHost(host) {
+     const hostId = getHostId(host);
+-    d8(`observing listener [id:${hostId}, url:'${getHostUrl(host)}']`);
++    d8(`observing listener [id:${hostId}]`);
+     host.once("destroyed", () => {
+       d8(`extension host destroyed [id:${hostId}]`);
+       this.filterListeners((listener) => listener.type !== "frame" || listener.host !== host);
+@@ -2441,7 +2456,7 @@ var ExtensionRouter = class {
+     }
+     const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
+     const result = await handler.callback(extEvent, ...args);
+-    d8(`${handlerName} result: %r`, result);
++    d8(`${handlerName} completed`);
+     return result;
+   }
+   handle(name, callback, opts) {
+@@ -2659,7 +2674,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+   }
+   constructor(opts) {
+     super();
+-    const { session: session2 = electronSession.defaultSession, ...impl } = opts || {};
++    const { session: session2 = electronSession.defaultSession, allowNativeMessaging = false, allowNotifications = false, openActionPopup, ...impl } = opts || {};
+     checkVersion();
+     if (sessionMap.has(session2)) {
+       throw new Error(`Extensions instance already exists for the given session`);
+@@ -2669,6 +2684,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+     const store = new ExtensionStore(impl);
+     this.ctx = {
+       emit: this.emit.bind(this),
++      openActionPopup,
+       router,
+       session: session2,
+       store
+@@ -2678,9 +2694,9 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+       contextMenus: new ContextMenusAPI(this.ctx),
+       commands: new CommandsAPI(this.ctx),
+       cookies: new CookiesAPI(this.ctx),
+-      notifications: new NotificationsAPI(this.ctx),
++      notifications: new NotificationsAPI(this.ctx, allowNotifications === true),
+       permissions: new PermissionsAPI(this.ctx),
+-      runtime: new RuntimeAPI(this.ctx),
++      runtime: new RuntimeAPI(this.ctx, allowNativeMessaging === true),
+       tabs: new TabsAPI(this.ctx),
+       webNavigation: new WebNavigationAPI(this.ctx),
+       windows: new WindowsAPI(this.ctx)

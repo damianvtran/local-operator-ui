@@ -45,6 +45,7 @@ import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
 import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
+import enUiBrowserExtensions from "./catalogues/en/ui.browser.extensions.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
@@ -199,6 +200,7 @@ import esUiAgentsTeams from "./catalogues/es/ui.agents.teams.json";
 import esUiAgentsUpload from "./catalogues/es/ui.agents.upload.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
+import esUiBrowserExtensions from "./catalogues/es/ui.browser.extensions.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
 import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
@@ -353,6 +355,7 @@ import frUiAgentsTeams from "./catalogues/fr/ui.agents.teams.json";
 import frUiAgentsUpload from "./catalogues/fr/ui.agents.upload.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
+import frUiBrowserExtensions from "./catalogues/fr/ui.browser.extensions.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
@@ -507,6 +510,7 @@ import hiUiAgentsTeams from "./catalogues/hi/ui.agents.teams.json";
 import hiUiAgentsUpload from "./catalogues/hi/ui.agents.upload.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
+import hiUiBrowserExtensions from "./catalogues/hi/ui.browser.extensions.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
 import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
@@ -661,6 +665,7 @@ import ruUiAgentsTeams from "./catalogues/ru/ui.agents.teams.json";
 import ruUiAgentsUpload from "./catalogues/ru/ui.agents.upload.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
+import ruUiBrowserExtensions from "./catalogues/ru/ui.browser.extensions.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
 import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
@@ -815,6 +820,7 @@ import urUiAgentsTeams from "./catalogues/ur/ui.agents.teams.json";
 import urUiAgentsUpload from "./catalogues/ur/ui.agents.upload.json";
 import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
 import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
+import urUiBrowserExtensions from "./catalogues/ur/ui.browser.extensions.json";
 import urUiBrowser from "./catalogues/ur/ui.browser.json";
 import urUiCanvas from "./catalogues/ur/ui.canvas.json";
 import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
@@ -969,6 +975,7 @@ import viUiAgentsTeams from "./catalogues/vi/ui.agents.teams.json";
 import viUiAgentsUpload from "./catalogues/vi/ui.agents.upload.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
+import viUiBrowserExtensions from "./catalogues/vi/ui.browser.extensions.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
 import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
@@ -1123,6 +1130,7 @@ import zhCNUiAgentsTeams from "./catalogues/zh-CN/ui.agents.teams.json";
 import zhCNUiAgentsUpload from "./catalogues/zh-CN/ui.agents.upload.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
+import zhCNUiBrowserExtensions from "./catalogues/zh-CN/ui.browser.extensions.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
 import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
@@ -1280,6 +1288,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsUpload,
 	...enUiBrowserChrome,
 	...enUiBrowserErrors,
+	...enUiBrowserExtensions,
 	...enUiBrowser,
 	...enUiCanvas,
 	...enUiChatAnalytics,
@@ -1442,6 +1451,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsUpload,
 		...esUiBrowserChrome,
 		...esUiBrowserErrors,
+		...esUiBrowserExtensions,
 		...esUiBrowser,
 		...esUiCanvas,
 		...esUiChatAnalytics,
@@ -1598,6 +1608,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsUpload,
 		...frUiBrowserChrome,
 		...frUiBrowserErrors,
+		...frUiBrowserExtensions,
 		...frUiBrowser,
 		...frUiCanvas,
 		...frUiChatAnalytics,
@@ -1754,6 +1765,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsUpload,
 		...hiUiBrowserChrome,
 		...hiUiBrowserErrors,
+		...hiUiBrowserExtensions,
 		...hiUiBrowser,
 		...hiUiCanvas,
 		...hiUiChatAnalytics,
@@ -1910,6 +1922,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsUpload,
 		...ruUiBrowserChrome,
 		...ruUiBrowserErrors,
+		...ruUiBrowserExtensions,
 		...ruUiBrowser,
 		...ruUiCanvas,
 		...ruUiChatAnalytics,
@@ -2066,6 +2079,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsUpload,
 		...urUiBrowserChrome,
 		...urUiBrowserErrors,
+		...urUiBrowserExtensions,
 		...urUiBrowser,
 		...urUiCanvas,
 		...urUiChatAnalytics,
@@ -2222,6 +2236,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsUpload,
 		...viUiBrowserChrome,
 		...viUiBrowserErrors,
+		...viUiBrowserExtensions,
 		...viUiBrowser,
 		...viUiCanvas,
 		...viUiChatAnalytics,
@@ -2378,6 +2393,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsUpload,
 		...zhCNUiBrowserChrome,
 		...zhCNUiBrowserErrors,
+		...zhCNUiBrowserExtensions,
 		...zhCNUiBrowser,
 		...zhCNUiCanvas,
 		...zhCNUiChatAnalytics,
@@ -3411,6 +3427,55 @@ export type MessageParams = {
 	"ui.browser.chrome.tab_gone": undefined;
 	"ui.browser.errors.address_history_unavailable": undefined;
 	"ui.browser.errors.browser_unavailable": undefined;
+	"ui.browser.extensions.action_open": undefined;
+	"ui.browser.extensions.action_options": undefined;
+	"ui.browser.extensions.action_remove": undefined;
+	"ui.browser.extensions.action_review_update": undefined;
+	"ui.browser.extensions.disabled_info": { name: string };
+	"ui.browser.extensions.error_download": undefined;
+	"ui.browser.extensions.error_generic": undefined;
+	"ui.browser.extensions.error_startup": undefined;
+	"ui.browser.extensions.error_verify": undefined;
+	"ui.browser.extensions.error_worker": undefined;
+	"ui.browser.extensions.install_compat_note": undefined;
+	"ui.browser.extensions.install_confirm_add": undefined;
+	"ui.browser.extensions.install_confirm_body": { version: string };
+	"ui.browser.extensions.install_confirm_cancel": undefined;
+	"ui.browser.extensions.install_confirm_enable": undefined;
+	"ui.browser.extensions.install_confirm_enable_title": { name: string };
+	"ui.browser.extensions.install_confirm_title": { name: string };
+	"ui.browser.extensions.install_confirm_update": undefined;
+	"ui.browser.extensions.install_confirm_update_title": { name: string };
+	"ui.browser.extensions.manage_check_updates": undefined;
+	"ui.browser.extensions.manage_checking": undefined;
+	"ui.browser.extensions.manage_close": undefined;
+	"ui.browser.extensions.manage_description": undefined;
+	"ui.browser.extensions.manage_empty": undefined;
+	"ui.browser.extensions.manage_open_store": undefined;
+	"ui.browser.extensions.manage_title": undefined;
+	"ui.browser.extensions.menu_extensions": undefined;
+	"ui.browser.extensions.menu_manage": undefined;
+	"ui.browser.extensions.menu_none": undefined;
+	"ui.browser.extensions.menu_store": undefined;
+	"ui.browser.extensions.passkey_recovery": undefined;
+	"ui.browser.extensions.perm_all_sites": undefined;
+	"ui.browser.extensions.perm_none": undefined;
+	"ui.browser.extensions.perm_other": { permissions: string };
+	"ui.browser.extensions.perm_sites": { hosts: string };
+	"ui.browser.extensions.permissions_heading": undefined;
+	"ui.browser.extensions.reconsent_note": { version: string };
+	"ui.browser.extensions.remove_confirm_body": undefined;
+	"ui.browser.extensions.remove_confirm_remove": undefined;
+	"ui.browser.extensions.remove_confirm_title": { name: string };
+	"ui.browser.extensions.status_disabled": undefined;
+	"ui.browser.extensions.status_enabled": undefined;
+	"ui.browser.extensions.status_error": undefined;
+	"ui.browser.extensions.status_loading": undefined;
+	"ui.browser.extensions.status_needs_reconsent": undefined;
+	"ui.browser.extensions.toggle_label": { name: string };
+	"ui.browser.extensions.updates_applied": { count: number };
+	"ui.browser.extensions.updates_none": undefined;
+	"ui.browser.extensions.version": { version: string };
 	"ui.browser.approval_queue_model.denied": undefined;
 	"ui.browser.approval_queue_model.expires_in_under_a_minute": undefined;
 	"ui.browser.approval_queue_model.expires_minutes": { count: number };
