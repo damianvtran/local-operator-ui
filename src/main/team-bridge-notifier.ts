@@ -118,6 +118,8 @@ export type TeamBridgeNotifierOptions = {
 	show: "focus" | "inactive" | "never";
 	store: TeamBridgeNotifyStore;
 	host: TeamBridgeNotifierHost;
+	/** Main-owned macOS informational attention, never exposed over IPC. */
+	attention?: { request: () => number; cancel: (id: number) => void };
 	icon?: NativeImage | string;
 	/** Memory-only enrichment, bounded by TEAM_BRIDGE_IMAGE_WAIT_MS. A late
 	 * result is for the next banner; it never mutates or re-posts this one. */
@@ -256,6 +258,9 @@ export class TeamBridgeNotifier {
 	private lifetime = new NotificationLifetime();
 	private pendingOpen: TeamBridgeOpenTarget | null = null;
 	private pendingUnavailable = false;
+	/** Informational animation ends on its own; its request stays active until
+	 * focus/cancellation. Keep only ours so later bursts cannot accumulate it. */
+	private attentionId: number | undefined;
 	/** Last settled owner outlives renderer documents and credential refresh. */
 	private settledOwner: string | undefined;
 	private awaitingDocument = false;
@@ -479,6 +484,7 @@ export class TeamBridgeNotifier {
 	}
 
 	private revoke(): void {
+		this.cancelAttention();
 		// Fences every banner still inside its image wait: see `notify`.
 		this.revision += 1;
 		this.directories.clear();
@@ -626,6 +632,27 @@ export class TeamBridgeNotifier {
 			request.conversationId,
 			request.seq,
 		);
+		// Attention shares the banner's admission, authority and burst policy, not
+		// the generic session notifier: regular completions must never bounce.
+		// A focused app can still show another conversation's banner (viewing:false)
+		// but needs no Dock prompt. Informational, not critical, bounds animation
+		// without timers or a perpetual unread-count-driven bounce loop.
+		const window = this.options.window();
+		if (
+			!burst &&
+			(this.options.platform ?? process.platform) === "darwin" &&
+			(!window || window.isDestroyed() || !window.isFocused()) &&
+			this.options.attention
+		) {
+			this.cancelAttention();
+			try {
+				const id = this.options.attention.request();
+				if (id !== -1) this.attentionId = id;
+			} catch {
+				// Best effort: a missing Dock must not turn a delivered banner into
+				// an IPC failure or roll back the persisted duplicate fence.
+			}
+		}
 		// Only AFTER show/seq recording. Same-tag replacement can re-alert on
 		// macOS/Windows and Linux has no public stable-id replacement guarantee.
 		// Until each platform proves otherwise, completion warms future fallback
@@ -633,11 +660,20 @@ export class TeamBridgeNotifier {
 		return { shown: true };
 	}
 
+	private cancelAttention(): void {
+		const id = this.attentionId;
+		this.attentionId = undefined;
+		if (id === undefined) return;
+		try {
+			this.options.attention?.cancel(id);
+		} catch {
+			// Authority withdrawal must still close banners if the Dock is gone.
+		}
+	}
+
 	/**
 	 * Whether this request may raise a banner against the LIVE state.
-	 *
-	 * One predicate, called before and after the bounded image wait, so the two
-	 * checks cannot drift apart. Every clause reads state the wait can change.
+	 * One predicate before and after the image wait prevents admission drift.
 	 */
 	private admits(request: TeamBridgeNotifyRequest): boolean {
 		if (
