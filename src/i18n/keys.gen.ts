@@ -3367,6 +3367,7 @@ export type MessageParams = {
 	"ui.agents.upload.sign_in.title_continue": undefined;
 	"ui.agents.upload.target.blocked_hint": { count: number; org: string };
 	"ui.agents.upload.target.label": undefined;
+	"ui.agents.upload.target.org_unnamed": undefined;
 	"ui.agents.upload.target.orgs_unread": undefined;
 	"ui.agents.upload.target.upgrade": undefined;
 	"ui.agents.upload.target.visibility_hint_public": undefined;

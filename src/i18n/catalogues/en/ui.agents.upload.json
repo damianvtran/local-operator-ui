@@ -31,6 +31,7 @@
 	"ui.agents.upload.sign_in.reauthenticate": "Sign in to Radient again to replace the credential the hub refused.",
 	"ui.agents.upload.target.blocked_hint": "Sharing agents inside an organization is part of the Team plan. An owner of {count, plural, one {{org}} other {any of the organizations marked above}} can activate it in the Radient console.",
 	"ui.agents.upload.target.label": "Publish to",
+	"ui.agents.upload.target.org_unnamed": "this organization",
 	"ui.agents.upload.target.orgs_unread": "Your organizations could not be read, so this publishes to the public hub. Try again in a moment to publish into an organization.",
 	"ui.agents.upload.target.upgrade": "(upgrade needed)",
 	"ui.agents.upload.target.visibility_hint_public": "Public hub publications are readable by anyone. An organization's agents are readable by its members only.",

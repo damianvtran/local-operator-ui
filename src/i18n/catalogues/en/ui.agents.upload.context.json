@@ -194,6 +194,12 @@
 		"plain",
 		"Introduces the public hub and organization targets below it."
 	],
+	"ui.agents.upload.target.org_unnamed": {
+		"role": "the organization's name when the backend returned none",
+		"tone": "plain, factual",
+		"length_hint": "Shorter than a name: it sits where a tenant name would, and the sentence around it has already spent its words.",
+		"note": "Substitutes a NAME, not a noun phrase. Six of the seven sentences that receive this value already supply the noun and its case around it — ru «в организацию {destination}», «Участники организации {destination}», «в общих агентах организации {destination}» — so a value carrying its own noun duplicates it: the accusative «эту организацию» renders «в организацию эту организацию». Russian therefore takes the shipped idiom «без названия» («Разговор без названия», «Сессия без названия»), which apposes to the supplied noun in every frame. This is NOT ui.hub.pages.scope.org_unnamed: that key is the hub status fragment's noun phrase and renders «в хабе этой организации», a different grammatical frame. The seventh receiver, ui.hub.subscriptions.enable_private («… могут публиковаться в {organization}»), supplies no noun of its own; it renders «в без названия» for an unnamed org, a pre-existing mismatch between that frame and this fallback rather than something this value can carry."
+	},
 	"ui.agents.upload.target.orgs_unread": [
 		"hint when memberships could not be read",
 		"plain, factual",

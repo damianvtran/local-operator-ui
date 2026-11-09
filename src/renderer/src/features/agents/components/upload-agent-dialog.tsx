@@ -301,9 +301,28 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					organization: targetOrganization.tenant_name,
 				})
 			: t("ui.hub.links.source_unavailable");
+	/*
+	 * The unnamed fallback is a translated name, not the English literal it used
+	 * to be: an organization whose tenant_name the backend did not return rendered
+	 * "this organization" inside every locale's sentence (ru produced «в
+	 * организацию this organization»).
+	 *
+	 * It is its own key rather than the hub's scope.org_unnamed because it stands
+	 * in a NAME slot, not a noun-phrase slot: six of the seven sentences that
+	 * receive it (intro.org, not_leaving.org, title.published_org,
+	 * receipt.title_org, published.org_listed, title.publish_org) already supply
+	 * the noun and its case — ru says «в организацию {destination}» — so an
+	 * inflected value like the accusative «эту организацию» renders «в
+	 * организацию эту организацию». Hence ru carries the name-shaped idiom
+	 * «без названия». scope.org_unnamed is the hub status fragment's noun phrase
+	 * («в хабе этой организации») and cannot serve this slot. The seventh
+	 * receiver, ui.hub.subscriptions.enable_private, supplies no noun of its own
+	 * and reads «в без названия» for an unnamed org; that mismatch belongs to
+	 * that frame, not to this value.
+	 */
 	const targetDisplayName =
 		publishTargets.find((org) => org.tenant_id === targetTenant)?.tenant_name ||
-		"this organization";
+		t("ui.agents.upload.target.org_unnamed");
 
 	// Generated rather than a literal: three surfaces mount this dialog and two
 	// can be in the tree at once, so a fixed id would make one label toggle the
