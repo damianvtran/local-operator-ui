@@ -155,6 +155,8 @@ interface Trace {
 	sessionId: string;
 	entrance: OpenEntrance;
 	start: number;
+	/** Click-time epoch bridge; unlike stage deltas it is approximate across processes. */
+	clickEpochMs?: number;
 	stages: Partial<Record<OpenStage, number>>;
 	/**
 	 * Stages whose stamp is a FALLBACK: a value recorded by a writer that knows
@@ -205,7 +207,10 @@ export interface OpenTracer {
 }
 
 export function formatOpenTraceLine(
-	trace: Pick<Trace, "token" | "sessionId" | "entrance" | "start" | "stages">,
+	trace: Pick<
+		Trace,
+		"token" | "sessionId" | "entrance" | "start" | "stages" | "clickEpochMs"
+	>,
 	outcome: OpenOutcome,
 	supersededBy?: number,
 ): string {
@@ -221,6 +226,7 @@ export function formatOpenTraceLine(
 	const parts = [
 		OPEN_TRACE_PREFIX,
 		`t=${trace.token}`,
+		`clickEpochMs=${trace.clickEpochMs ?? "-"}`,
 		`session=${id}`,
 		`via=${entrance}`,
 		`outcome=${outcome}`,
@@ -270,6 +276,7 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 				sessionId,
 				entrance,
 				start: deps.now(),
+				clickEpochMs: performance.timeOrigin + performance.now(),
 				stages: {},
 				fallbacks: {},
 				timer: undefined,

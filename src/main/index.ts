@@ -3112,11 +3112,17 @@ app
 			void publishViewerPresence();
 		});
 		backendService.observeStream((sessionId, data) => {
+			let snapshot: true | undefined;
 			try {
-				desktopNotifier.observe(sessionId, JSON.parse(data));
+				const frame = JSON.parse(data);
+				// Reuse type knowledge even if a notification side effect throws;
+				// otherwise the diagnostic could silently label a later snapshot first.
+				if (frame?.type === "snapshot") snapshot = true;
+				desktopNotifier.observe(sessionId, frame);
 			} catch {
 				// A frame the renderer cannot parse is not a notification either.
 			}
+			return snapshot;
 		});
 		// The ONE trusted renderer URL: the dev server while developing, the packaged
 		// document otherwise. Named rather than inlined because a second consumer

@@ -24,6 +24,11 @@ import {
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
 import { appendJournalOrderIds } from "../../../../../shared/journal-order-query";
 import {
+	type SnapshotReceipt,
+	deliverSnapshot,
+	enterSnapshotRenderer,
+} from "../../../../../shared/snapshot-receipt";
+import {
 	parseDelegatedCleanupNotice,
 	useDelegatedCleanupNoticeStore,
 } from "../../store/delegated-cleanup-notice-store";
@@ -723,6 +728,7 @@ export type DesktopStreamDecision = "adopted" | "requested";
 
 /** One event from a session stream, in the shape both transports deliver. */
 export type DesktopStreamEvent = {
+	receipt?: SnapshotReceipt;
 	kind: "data" | "error" | "end";
 	data?: string;
 	detail?: string;
@@ -981,6 +987,7 @@ export function prewarmSessionStream(
 		},
 		(event) => {
 			if (record.live) {
+				deliverSnapshot(event.receipt, "live");
 				record.live(event);
 				return;
 			}
@@ -1002,6 +1009,7 @@ export function prewarmSessionStream(
 				discardPrewarm();
 				return;
 			}
+			if (event.receipt) event.receipt.bufferedAt = performance.now();
 			record.buffered.push(event);
 		},
 	);
@@ -1200,7 +1208,10 @@ function adoptPrewarmedStream(
 	let disposed = false;
 	queueMicrotask(() => {
 		if (disposed) return;
-		for (const event of buffered) onEvent(event);
+		for (const event of buffered) {
+			deliverSnapshot(event.receipt, "replay");
+			onEvent(event);
+		}
 	});
 	return () => {
 		if (disposed) return;
@@ -1225,7 +1236,18 @@ function openStreamTransport(
 ): () => void {
 	const native = window.api?.desktop?.stream;
 	if (native) {
-		const subscription = native.subscribe(args, onEvent);
+		const subscription = native.subscribe(args, (event) => {
+			// contextBridge may freeze copied values. Own only the diagnostic
+			// envelope; never mutate the native event or its raw SSE data.
+			const received = event.receipt
+				? { ...event, receipt: { ...event.receipt } }
+				: event;
+			enterSnapshotRenderer(received.receipt);
+			// A prewarm overwrites this at its live/replay boundary; a direct
+			// subscription has no buffering or adoption stage.
+			deliverSnapshot(received.receipt, "direct");
+			onEvent(received);
+		});
 		return () => subscription.dispose();
 	}
 	const query = new URLSearchParams({ session: args.sessionId });
