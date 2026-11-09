@@ -3134,6 +3134,26 @@ test("a daemon that answers this app's own request clears a detached connection 
 		 */
 		await scene.fallSilent();
 		/*
+		 * A REFUSED SOCKET IS NOT RETRIED (change 1's other half, pinned here rather
+		 * than assumed): the three-sample observation exists for a budget that
+		 * EXPIRED, and re-asking a refusal would turn the fast path that reports a
+		 * gone daemon into a retry storm. One request per tick, counted.
+		 */
+		/*
+		 * The instrument is the CLOCK here, and only because the two answers are an
+		 * order of magnitude apart: a refused socket costs one immediate failure
+		 * (~1 ms, and the stub's own handler cannot count it - the socket is closed
+		 * before any request reaches it), while ONE retried attempt would cost 2 s of
+		 * budget. One second sits between them with 2x margin on each side.
+		 */
+		const silentStartedAt = Date.now();
+		await driveTick(loop);
+		const silentTickMs = Date.now() - silentStartedAt;
+		assert.ok(
+			silentTickMs < 1_000,
+			`a refused socket must stay on the fast path, not be retried: the tick took ${silentTickMs}ms (a retried one cannot finish under 2000ms)`,
+		);
+		/*
 		 * Ticks until the machine calls it: a closed socket mid-flight classifies as
 		 * `other` rather than `refused` (`discovery.ts::classifyUnreachable`), and that
 		 * one counts as a miss (`unanswered`) rather than as evidence, so the number of
