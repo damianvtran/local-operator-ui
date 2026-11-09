@@ -39,6 +39,10 @@ export interface BrowserPasskeyNoticeProps {
 	notice: PasskeyNoticeView | null | undefined;
 	onOpen: (notice: PasskeyNoticeView) => void;
 	onDismiss: (notice: PasskeyNoticeView) => void;
+	/** Opens lop://extensions in the current tab (review U4: the extension
+	 * route gets a control, not just words). Omitted when the active tab is not
+	 * the user's, since the browser's own pages open only in user tabs. */
+	onOpenExtensions?: () => void;
 }
 
 /** `host[:port]` of an origin. The scheme is dropped because WebAuthn only runs
@@ -56,6 +60,7 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 	notice,
 	onOpen,
 	onDismiss,
+	onOpenExtensions,
 }) => {
 	useI18nLocale();
 	// Aged on THIS clock too: main stops projecting a notice at the same TTL, but
@@ -102,7 +107,17 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 				</span>
 			</p>
 			<div className="ml-auto flex shrink-0 items-center gap-1">
-				<Button variant="outline" size="sm" onClick={() => onOpen(notice)}>
+				{onOpenExtensions && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onOpenExtensions}
+						data-tour-tag="browser-passkey-notice-extensions"
+					>
+						{t("ui.browser.extensions.passkey_open_extensions")}
+					</Button>
+				)}
+				<Button variant="ghost" size="sm" onClick={() => onOpen(notice)}>
 					{t("ui.browser.browser_passkey_notice.open_in_system_browser")}
 				</Button>
 				<Button

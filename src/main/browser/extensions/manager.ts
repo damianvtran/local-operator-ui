@@ -34,9 +34,12 @@ import { BrowserWindow, type Session, type WebContents } from "electron";
 import {
 	EXTENSION_STARTUP_DEADLINE_MS,
 	type ExtensionError,
+	type ExtensionInstallProgress,
 	type ExtensionStatus,
 	type ExtensionSummary,
+	type ExtensionUpdateReport,
 	isExtensionId,
+	storeListingUrl,
 } from "../../../shared/browser-extensions";
 import type { WindowShow } from "../../window-mode";
 import { presentPopupWindow } from "../../window-raise";
@@ -87,6 +90,8 @@ export interface ExtensionHooks {
 	/** `<userData>/browser-extensions`. */
 	root: string;
 	changed: () => void;
+	/** A USER tab for `url` (http(s), about:blank, or a page of an ACTIVE
+	 * extension — main's hook re-checks the scheme and `isActive`). */
 	createTab: (url: string, active: boolean) => Promise<WebContents>;
 	selectTab: (contents: WebContents) => void;
 	activeTab: () => WebContents | null;
@@ -112,7 +117,8 @@ export type StoreInstallResult =
 	| "install_in_progress"
 	| "install_error"
 	| "manifest_error"
-	| "invalid_id";
+	| "invalid_id"
+	| "blocked_by_policy";
 
 interface Runtime {
 	status: ExtensionStatus;
@@ -122,7 +128,17 @@ interface Runtime {
 	optionsPath: string | null;
 	operation: AbortController;
 	pending: Promise<unknown> | null;
+	/** Extension-page WINDOW requests refused while the app was unfocused,
+	 * presented on the user's next explicit open of this extension (U1). */
+	deferred: string[];
 }
+
+/** Bound on queued window requests per extension (U1). Not a measured
+ * distribution: a queue exists to keep a one-shot onboarding page from being
+ * lost, and 1Password issues exactly one (its install-time welcome page,
+ * `background.js` onInstalled). Three keeps the newest few and drops the oldest,
+ * so an extension cannot grow main's memory by spamming requests. */
+const MAX_DEFERRED_PAGES = 3;
 
 function withAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
 	return new Promise<T>((resolve, reject) => {
@@ -191,13 +207,49 @@ function optionsPageOf(id: string, manifest: ExtensionManifest): string | null {
 	);
 }
 
+/**
+ * Q1: Remove must also delete Chromium's extension value store. Electron's
+ * `removeExtension` is an UNLOAD, not Chrome's uninstall, and
+ * `clearStorageData({origin})` does not cover `chrome.storage.local/sync`, which
+ * live in leveldb directories named by id under the session's storage path. A
+ * password manager keeps its account/session there, so leaving them made a
+ * reinstall resurrect the old data (QA round 1 repro).
+ *
+ * `id` is regex-checked again here (no caller-supplied path segment can reach
+ * `join`), and the target must resolve directly under its parent directory.
+ * A null storagePath (in-memory session) has nothing on disk to remove.
+ */
+export const EXTENSION_SETTINGS_DIRECTORIES = [
+	"Local Extension Settings",
+	"Sync Extension Settings",
+] as const;
+
+export async function removeExtensionSettings(
+	storagePath: string | null | undefined,
+	id: string,
+): Promise<void> {
+	if (!storagePath || !isExtensionId(id)) return;
+	for (const name of EXTENSION_SETTINGS_DIRECTORIES) {
+		const parent = resolve(storagePath, name);
+		const target = resolve(parent, id);
+		if (relative(parent, target) !== id) continue;
+		await rm(target, { recursive: true, force: true }).catch(() => {});
+	}
+}
+
 export class ExtensionManager {
 	private state: ExtensionsState = { version: 1, extensions: {} };
 	private runtimes = new Map<string, Runtime>();
 	private windows = new Map<string, BrowserWindow>();
 	private disposed = false;
 	private lifetime = new AbortController();
-	private updating: Promise<number> | null = null;
+	private updating: Promise<ExtensionUpdateReport> | null = null;
+	/** Installs between the store click and the consent dialog (U5). */
+	private installing = new Map<string, ExtensionInstallProgress["phase"]>();
+	/** Ids whose user-consented install just completed: the FIRST tab the
+	 * extension then asks for (an onboarding/sign-in page) is activated, because
+	 * it follows the user's own Add + consent; every later one stays background. */
+	private welcomeArmed = new Set<string>();
 	private readonly binding: AdapterBinding;
 	constructor(
 		private session: Session,
@@ -206,12 +258,48 @@ export class ExtensionManager {
 	) {
 		this.binding = binding ?? extensionsAdapter(session);
 		this.binding.hooks = hooks;
-		this.binding.openExtension = (url) => this.openPage(url);
+		this.binding.openExtension = (url, large) =>
+			this.openPage(url, false, large);
+		this.binding.openExtensionTab = (url) => this.openExtensionTab(url);
 		this.binding.isActiveExtension = (id) => this.isActive(id);
 		this.binding.mayActivateTab = () =>
 			[...this.windows.values()].some(
 				(window) => !window.isDestroyed() && window.isFocused(),
 			);
+		this.workerRunning = this.workerRunning.bind(this);
+		this.session.serviceWorkers?.on?.(
+			"running-status-changed",
+			this.workerRunning,
+		);
+	}
+
+	/** QA Q3: a worker that missed the startup deadline (heavy host load) and
+	 * reaches `running` later makes the extension ready after all, without the
+	 * user doing anything. Engine event, not a timer. */
+	private workerRunning(details: {
+		versionId: number;
+		runningStatus: string;
+	}): void {
+		if (this.disposed || details.runningStatus !== "running") return;
+		let scope: string;
+		try {
+			scope = this.session.serviceWorkers.getInfoFromVersionID(
+				details.versionId,
+			).scope;
+		} catch {
+			return;
+		}
+		const id = extensionIdOfUrl(scope);
+		const runtime = id ? this.runtimes.get(id) : undefined;
+		if (
+			id &&
+			runtime?.prepared &&
+			!runtime.pending &&
+			runtime.status === "error" &&
+			runtime.error === "worker" &&
+			this.state.extensions[id]?.enabled
+		)
+			this.set(id, "enabled");
 	}
 
 	// ---- queries ---------------------------------------------------------
@@ -234,6 +322,20 @@ export class ExtensionManager {
 		return Object.entries(this.state.extensions)
 			.map(([id, entry]) => this.summary(id, entry))
 			.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	/** Installs still downloading/verifying (U5), for progress + Cancel. */
+	installs(): ExtensionInstallProgress[] {
+		return [...this.installing].map(([id, phase]) => ({ id, phase }));
+	}
+
+	private setInstalling(
+		id: string,
+		phase: ExtensionInstallProgress["phase"] | null,
+	): void {
+		if (phase) this.installing.set(id, phase);
+		else this.installing.delete(id);
+		if (!this.disposed) this.hooks.changed();
 	}
 
 	/** For the store page's install button state only (design §3C): id,
@@ -276,6 +378,9 @@ export class ExtensionManager {
 			hosts: access.hosts,
 			permissions: access.permissions,
 			pendingVersion: entry.pendingVersion ?? null,
+			description: entry.description ?? "",
+			hasHomepage: !!entry.homepage,
+			waitingPages: runtime?.deferred.length ?? 0,
 		};
 	}
 
@@ -290,6 +395,7 @@ export class ExtensionManager {
 				optionsPath: null,
 				operation: new AbortController(),
 				pending: null,
+				deferred: [],
 			};
 			this.runtimes.set(id, runtime);
 		}
@@ -337,46 +443,62 @@ export class ExtensionManager {
 
 	// ---- startup -----------------------------------------------------------
 
-	/** Load every enabled extension from its re-verified CRX. Sequential, so
-	 * worker readiness events for one scope never race another's. */
+	/** Load every enabled extension from its re-verified CRX. Concurrent per
+	 * id (review R1-3): each activation filters worker events by its own scope,
+	 * so one slow worker no longer delays the others, and the host does not
+	 * await this at all (index.ts) — browser startup never waits on a worker. */
 	async restore(): Promise<void> {
 		if (this.disposed) return;
 		await ensurePrivateDirectory(this.hooks.root);
 		this.state = readExtensionsState(this.hooks.root);
 		await this.migrateSingleVendorLayout();
+		const loads: Promise<unknown>[] = [];
 		for (const [id, entry] of Object.entries(this.state.extensions)) {
 			if (this.disposed) return;
 			if (!entry.enabled) {
 				this.set(id, "disabled");
 				continue;
 			}
-			await this.exclusive(id, async (signal) => {
-				try {
-					await removeStaleExtractions(this.hooks.root, id);
-					const crx = await readFile(crxPath(this.hooks.root, id));
-					const prepared = await prepareExtension(
-						this.hooks.root,
-						id,
-						crx,
-					).catch(() => null);
-					if (!prepared) return this.set(id, "error", "verify");
-					await this.activate(id, prepared, signal);
-					// A migrated single-vendor entry's consent was that dialog's
-					// all-sites text; pin it to the verified manifest it now runs.
-					if (entry.consented === null && this.runtime(id).prepared) {
-						entry.consented = accessOf(prepared.manifest);
-						this.save();
-						if (id === ONEPASSWORD_EXTENSION_ID)
-							await rm(join(this.hooks.root, "1password"), {
-								recursive: true,
-								force: true,
-							});
-					}
-				} catch {
-					this.set(id, "error", "startup");
-				}
-			});
+			loads.push(this.restoreOne(id, entry));
 		}
+		await Promise.all(loads);
+	}
+
+	private restoreOne(id: string, entry: InstalledExtension): Promise<unknown> {
+		return this.exclusive(id, async (signal) => {
+			try {
+				await removeStaleExtractions(this.hooks.root, id);
+				const crx = await readFile(crxPath(this.hooks.root, id));
+				const prepared = await prepareExtension(this.hooks.root, id, crx).catch(
+					() => null,
+				);
+				if (!prepared) return this.set(id, "error", "verify");
+				this.recordDetails(entry, prepared);
+				await this.activate(id, prepared, signal);
+				// A migrated single-vendor entry's consent was that dialog's
+				// all-sites text; pin it to the verified manifest it now runs.
+				if (entry.consented === null && this.runtime(id).prepared) {
+					entry.consented = accessOf(prepared.manifest);
+					this.save();
+					if (id === ONEPASSWORD_EXTENSION_ID)
+						await rm(join(this.hooks.root, "1password"), {
+							recursive: true,
+							force: true,
+						});
+				}
+			} catch {
+				this.set(id, "error", "startup");
+			}
+		});
+	}
+
+	/** U7: the user's Retry on a "not ready"/"not working" enabled extension —
+	 * the same re-verified load restore performs, nothing more. */
+	async retry(id: string): Promise<boolean> {
+		const entry = this.state.extensions[id];
+		if (!entry?.enabled) return false;
+		await this.restoreOne(id, entry);
+		return this.runtimes.get(id)?.status === "enabled";
 	}
 
 	/** One-shot, idempotent migration of `browser-extensions/1password/
@@ -426,6 +548,26 @@ export class ExtensionManager {
 
 	// ---- install / enable / disable / remove --------------------------------
 
+	/** Page-facing details captured from a verified package. Saved by the
+	 * caller's own save(); fills entries written before the page existed. */
+	private recordDetails(
+		entry: InstalledExtension,
+		prepared: PreparedExtension,
+	): void {
+		if (
+			entry.description === prepared.description &&
+			entry.homepage === prepared.homepage
+		)
+			return;
+		entry.description = prepared.description;
+		entry.homepage = prepared.homepage;
+		try {
+			this.save();
+		} catch {
+			/* Display-only fields; the next load retries. */
+		}
+	}
+
 	/** Store-page install. The caller (webstore.ts) has already proved the
 	 * request came from the exact store origin in a user-owned, presented,
 	 * focused tab. Download + verify first, then a native dialog built from the
@@ -438,14 +580,19 @@ export class ExtensionManager {
 			async (signal): Promise<StoreInstallResult> => {
 				let prepared: PreparedExtension;
 				try {
+					this.setInstalling(id, "downloading");
 					const crx = await downloadStoreCrx(id, signal);
+					if (signal.aborted) throw new Error("Install cancelled");
+					this.setInstalling(id, "verifying");
 					prepared = await prepareExtension(this.hooks.root, id, crx);
 				} catch (error) {
+					this.setInstalling(id, null);
 					await this.forgetIfUninstalled(id);
 					if (error instanceof UnsupportedManifestError)
 						return "manifest_error";
 					return signal.aborted ? "user_cancelled" : "install_error";
 				}
+				this.setInstalling(id, null);
 				const access = accessOf(prepared.manifest);
 				const version = String(prepared.manifest.version ?? "");
 				const allowed =
@@ -471,6 +618,8 @@ export class ExtensionManager {
 						name: prepared.name,
 						icon: await iconOf(prepared),
 						consented: access,
+						description: prepared.description,
+						homepage: prepared.homepage,
 					};
 					this.save();
 				} catch {
@@ -479,6 +628,9 @@ export class ExtensionManager {
 					await this.forgetIfUninstalled(id);
 					return "install_error";
 				}
+				// Armed BEFORE activate: 1Password requests its welcome tab from
+				// onInstalled, which fires during the load.
+				this.welcomeArmed.add(id);
 				await this.activate(id, prepared, signal);
 				return "success";
 			},
@@ -550,6 +702,8 @@ export class ExtensionManager {
 				entry.name = prepared.name;
 				entry.icon = await iconOf(prepared);
 			}
+			entry.description = prepared.description;
+			entry.homepage = prepared.homepage;
 			entry.enabled = true;
 			entry.consented = access;
 			this.save();
@@ -576,15 +730,19 @@ export class ExtensionManager {
 			await this.session
 				.clearStorageData({ origin: `chrome-extension://${id}` })
 				.catch(() => {});
+			await removeExtensionSettings(this.session.storagePath, id);
 			return true;
 		});
-		this.runtimes.delete(id);
+		// R1-2: only the op that actually removed the extension drops its
+		// runtime; a lost race leaves the winner's runtime (and its tree) intact.
+		if (done) this.runtimes.delete(id);
 		if (!this.disposed) this.hooks.changed();
 		return done ?? false;
 	}
 
 	private async unload(id: string): Promise<void> {
 		const runtime = this.runtime(id);
+		runtime.deferred = [];
 		const window = this.windows.get(id);
 		if (window && !window.isDestroyed()) window.close();
 		this.session.extensions.removeExtension(id);
@@ -600,8 +758,8 @@ export class ExtensionManager {
 	 * installed id: download the store's current package, verify it exactly as
 	 * an install, and accept only a STRICTLY newer 4-part version. More access
 	 * than consented → park it as pending.crx and mark needs-reconsent while the
-	 * old version keeps running. Returns how many updates were applied. */
-	checkUpdates(): Promise<number> {
+	 * old version keeps running. Reports applied / parked / failed (U2). */
+	checkUpdates(): Promise<ExtensionUpdateReport> {
 		if (this.updating) return this.updating;
 		this.updating = this.runUpdates().finally(() => {
 			this.updating = null;
@@ -609,48 +767,65 @@ export class ExtensionManager {
 		return this.updating;
 	}
 
-	private async runUpdates(): Promise<number> {
-		let applied = 0;
+	private async runUpdates(): Promise<ExtensionUpdateReport> {
+		const report: ExtensionUpdateReport = { applied: 0, pending: 0, failed: 0 };
 		for (const [id, entry] of Object.entries(this.state.extensions)) {
 			if (this.disposed) break;
-			const ok = await this.exclusive(id, async (signal) => {
-				let prepared: PreparedExtension;
-				try {
-					prepared = await prepareExtension(
-						this.hooks.root,
-						id,
-						await downloadStoreCrx(id, signal),
-					);
-				} catch {
-					return false;
-				}
-				const version = String(prepared.manifest.version ?? "");
-				const baseline = entry.pendingVersion ?? entry.version;
-				if (!isStrictUpgrade(baseline, version) || signal.aborted) {
-					await prepared.dispose();
-					return false;
-				}
-				const access = accessOf(prepared.manifest);
-				if (entry.consented && accessGrew(entry.consented, access)) {
-					await persistStoreCrx(this.hooks.root, id, prepared.crx, "pending");
-					await prepared.dispose();
-					entry.pendingVersion = version;
+			const outcome = await this.exclusive(
+				id,
+				async (
+					signal,
+				): Promise<"applied" | "pending" | "failed" | "current"> => {
+					let prepared: PreparedExtension;
+					try {
+						prepared = await prepareExtension(
+							this.hooks.root,
+							id,
+							await downloadStoreCrx(id, signal),
+						);
+					} catch {
+						return "failed";
+					}
+					const version = String(prepared.manifest.version ?? "");
+					const baseline = entry.pendingVersion ?? entry.version;
+					if (!isStrictUpgrade(baseline, version) || signal.aborted) {
+						await prepared.dispose();
+						return entry.pendingVersion ? "pending" : "current";
+					}
+					const access = accessOf(prepared.manifest);
+					if (entry.consented && accessGrew(entry.consented, access)) {
+						await persistStoreCrx(this.hooks.root, id, prepared.crx, "pending");
+						await prepared.dispose();
+						entry.pendingVersion = version;
+						this.save();
+						this.hooks.changed();
+						return "pending";
+					}
+					await persistStoreCrx(this.hooks.root, id, prepared.crx);
+					// R1-1: a newer package within consent supersedes any parked one;
+					// approving the stale pending.crx later would roll back.
+					if (entry.pendingVersion) {
+						entry.pendingVersion = undefined;
+						await rm(crxPath(this.hooks.root, id, "pending"), { force: true });
+					}
+					entry.version = version;
+					entry.name = prepared.name;
+					entry.icon = await iconOf(prepared);
+					entry.description = prepared.description;
+					entry.homepage = prepared.homepage;
 					this.save();
-					this.hooks.changed();
-					return false;
-				}
-				await persistStoreCrx(this.hooks.root, id, prepared.crx);
-				entry.version = version;
-				entry.name = prepared.name;
-				entry.icon = await iconOf(prepared);
-				this.save();
-				if (entry.enabled) await this.activate(id, prepared, signal);
-				else await prepared.dispose();
-				return true;
-			});
-			if (ok) applied++;
+					if (entry.enabled) await this.activate(id, prepared, signal);
+					else await prepared.dispose();
+					return "applied";
+				},
+			);
+			// A busy id (another op holds it) was not checked: count it as failed
+			// so the summary never claims "up to date" for it.
+			if (outcome === "applied") report.applied++;
+			else if (outcome === "pending") report.pending++;
+			else if (outcome !== "current") report.failed++;
 		}
-		return applied;
+		return report;
 	}
 
 	// ---- load + worker readiness ---------------------------------------------
@@ -798,18 +973,80 @@ export class ExtensionManager {
 
 	/** App-initiated (desktop menu press, sender-checked by IPC). */
 	async openPopup(id: string): Promise<boolean> {
-		const url = this.runtimes.get(id)?.popupPath;
-		if (!url || !this.isActive(id)) return false;
-		return this.openPage(url, true).then(
-			() => true,
-			() => false,
-		);
+		if (!this.isActive(id)) return false;
+		const runtime = this.runtimes.get(id);
+		const url = runtime?.popupPath;
+		// An extension with no popup can still have queued pages (U1): "Open"
+		// presents those.
+		const waiting = runtime?.deferred.length ?? 0;
+		if (!url && !waiting) return false;
+		const opened = url
+			? await this.openPage(url, true).then(
+					() => true,
+					() => false,
+				)
+			: false;
+		await this.presentDeferred(id);
+		return opened || waiting > 0;
 	}
 
 	async openOptions(id: string): Promise<boolean> {
 		const url = this.runtimes.get(id)?.optionsPath;
 		if (!url || !this.isActive(id)) return false;
-		return this.openPage(url, true, true).then(
+		const opened = await this.openPage(url, true, true).then(
+			() => true,
+			() => false,
+		);
+		await this.presentDeferred(id);
+		return opened;
+	}
+
+	/** U1: pages an extension asked to show while the app was unfocused are
+	 * presented now, on the user's own open of THAT extension — so the
+	 * presentation comes from a user action and the agent/focus boundary holds.
+	 * They open as user tabs (one popup window per id would replace each other),
+	 * the last one selected. */
+	private async presentDeferred(id: string): Promise<void> {
+		const runtime = this.runtimes.get(id);
+		if (!runtime?.deferred.length) return;
+		const urls = runtime.deferred.splice(0);
+		for (const [index, url] of urls.entries())
+			if (this.isActive(id))
+				await this.hooks
+					.createTab(url, index === urls.length - 1)
+					.catch(() => {});
+		if (!this.disposed) this.hooks.changed();
+	}
+
+	/** U1: an extension's `chrome.tabs.create` for one of its OWN pages (an
+	 * onboarding or sign-in page) opens as a background USER tab, regardless of
+	 * focus — a tab is not a window raise, so it needs no presentation gate, and
+	 * a user tab is never agent-drivable (registry.requireSurface refuses
+	 * extension documents). The first one after a consented install is selected
+	 * (it follows the user's own Add); every other stays in the background. */
+	async openExtensionTab(url: string): Promise<WebContents> {
+		const id = extensionIdOfUrl(url);
+		if (this.disposed || !id || !this.isActive(id))
+			throw new Error("Unsupported extension page");
+		const welcome = this.welcomeArmed.delete(id);
+		return this.hooks.createTab(url, welcome);
+	}
+
+	/** Details view links: the store listing and the manifest homepage, each in
+	 * a user tab. Main builds both URLs from the regex-checked id / stored
+	 * http(s) homepage; nothing renderer-supplied is opened. */
+	async openListing(id: string): Promise<boolean> {
+		if (!this.state.extensions[id]) return false;
+		return this.hooks.createTab(storeListingUrl(id), true).then(
+			() => true,
+			() => false,
+		);
+	}
+
+	async openHomepage(id: string): Promise<boolean> {
+		const homepage = this.state.extensions[id]?.homepage;
+		if (!homepage) return false;
+		return this.hooks.createTab(homepage, true).then(
 			() => true,
 			() => false,
 		);
@@ -834,8 +1071,20 @@ export class ExtensionManager {
 			!appUserAction &&
 			!this.hooks.mayPresentExtensionPopup() &&
 			(!existing || existing.isDestroyed() || !existing.isFocused())
-		)
+		) {
+			// U1: refused now, but not lost — queued for the user's next explicit
+			// open of this extension (bounded, newest kept).
+			const runtime = this.runtime(id);
+			if (!runtime.deferred.includes(url)) {
+				runtime.deferred.push(url);
+				runtime.deferred.splice(
+					0,
+					Math.max(0, runtime.deferred.length - MAX_DEFERRED_PAGES),
+				);
+				if (!this.disposed) this.hooks.changed();
+			}
 			throw new Error("Extension popup requires the app's user action");
+		}
 		if (existing && !existing.isDestroyed()) {
 			if (existing.webContents.getURL() !== url) await existing.loadURL(url);
 			presentPopupWindow(existing, this.presentation(id), {
@@ -909,6 +1158,11 @@ export class ExtensionManager {
 		this.windows.clear();
 		this.binding.hooks = null;
 		this.binding.openExtension = null;
+		this.binding.openExtensionTab = null;
+		this.session.serviceWorkers?.removeListener?.(
+			"running-status-changed",
+			this.workerRunning,
+		);
 		this.binding.isActiveExtension = null;
 		this.binding.mayActivateTab = null;
 		for (const [id, runtime] of this.runtimes) {

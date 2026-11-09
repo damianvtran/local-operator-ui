@@ -29,6 +29,11 @@ export interface InstalledExtension {
 	consented: ExtensionAccess | null;
 	/** Version of `<id>/pending.crx`, when an update asks for more access. */
 	pendingVersion?: string;
+	/** Captured from the verified package for the extensions page; optional so
+	 * entries written before the page existed still read (they fill in on the
+	 * next load). */
+	description?: string;
+	homepage?: string | null;
 }
 
 export interface ExtensionsState {
@@ -87,6 +92,14 @@ export function readExtensionsState(root: string): ExtensionsState {
 			consented: entry.consented as ExtensionAccess | null,
 			...(typeof entry.pendingVersion === "string"
 				? { pendingVersion: entry.pendingVersion }
+				: {}),
+			...(typeof entry.description === "string"
+				? { description: entry.description.slice(0, 400) }
+				: {}),
+			// Re-checked on read: only an http(s) URL is ever opened from here.
+			...(typeof entry.homepage === "string" &&
+			/^https?:\/\//i.test(entry.homepage)
+				? { homepage: entry.homepage }
 				: {}),
 		};
 	}

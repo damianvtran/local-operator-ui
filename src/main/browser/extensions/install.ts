@@ -19,10 +19,15 @@ import { verifyStoreCrx } from "./crx";
 /** Fixed store endpoint built from a regex-checked id: neither the store page
  * nor renderer IPC ever supplies a download URL, and an update response's
  * `codebase` is ignored (design §1 row 3a). `prodversion` is this runtime's real
- * Chromium version so the store serves a package compatible with it. CRX3 only. */
-export function storeCrxUrl(id: string): string {
+ * Chromium version so the store serves a package compatible with it. CRX3 only.
+ * `prodversion` is overridable only for the plain-Node proof runner (QA Q2: it
+ * has no `process.versions.chrome`, and the store answers 204 to `0`). */
+export function storeCrxUrl(
+	id: string,
+	prodversion: string = process.versions.chrome ?? "0",
+): string {
 	if (!isExtensionId(id)) throw new Error("Invalid extension id");
-	return `https://clients2.google.com/service/update2/crx?response=redirect&acceptformat=crx3&prodversion=${encodeURIComponent(process.versions.chrome ?? "0")}&x=id%3D${id}%26uc`;
+	return `https://clients2.google.com/service/update2/crx?response=redirect&acceptformat=crx3&prodversion=${encodeURIComponent(prodversion)}&x=id%3D${id}%26uc`;
 }
 
 export function safeExtensionEntry(
@@ -49,12 +54,22 @@ export function safeExtensionEntry(
 	return path;
 }
 
+/** Inflated-size and entry-count bounds for one extraction (review R1-6).
+ * Measured: official 1Password 8.12.44.33, n=1 — 1,046 entries, 44,495,108
+ * bytes uncompressed (18.4 MB signed package). 256 MiB is >5.7x and 20,000
+ * entries >19x that, so a real extension never meets them, while a signed but
+ * hostile zip bomb cannot fill the disk. Checked on the declared sizes, which
+ * `validateEntrySizes` makes yauzl enforce while inflating. */
+export const MAX_UNPACKED_BYTES = 256 * 1024 * 1024;
+export const MAX_UNPACKED_ENTRIES = 20_000;
+
 /** Extract only an already signature-verified archive. Streaming/lazy entries
  * keep decompression sequential; exclusive creates reject duplicate ZIP paths.
  * The destination is a NEW private directory, never a browser/user directory. */
 export async function extractVerifiedArchive(
 	archive: Buffer,
 	directory: string,
+	limits = { bytes: MAX_UNPACKED_BYTES, entries: MAX_UNPACKED_ENTRIES },
 ): Promise<void> {
 	const zip = await new Promise<ZipFile>((yes, no) =>
 		fromBuffer(
@@ -76,7 +91,15 @@ export async function extractVerifiedArchive(
 		zip.on("end", () => {
 			if (!failed) yes();
 		});
+		let total = 0;
+		let entries = 0;
 		zip.on("entry", (entry: Entry) => {
+			total += entry.uncompressedSize;
+			entries += 1;
+			if (total > limits.bytes || entries > limits.entries) {
+				fail(new Error("Extension package is too large to unpack"));
+				return;
+			}
 			void (async () => {
 				const path = safeExtensionEntry(directory, entry);
 				if (entry.fileName.endsWith("/"))
@@ -110,10 +133,11 @@ export async function downloadStoreCrx(
 	id: string,
 	signal: AbortSignal,
 	fetcher: typeof fetch = fetch,
+	prodversion?: string,
 ): Promise<Buffer> {
 	// credentials:"omit": the store download needs no cookies, and the browser
 	// profile's Google session must never ride along with a main-process fetch.
-	const response = await fetcher(storeCrxUrl(id), {
+	const response = await fetcher(storeCrxUrl(id, prodversion), {
 		credentials: "omit",
 		signal,
 	});
@@ -165,27 +189,33 @@ export interface PreparedExtension {
 	manifest: ExtensionManifest;
 	/** Display name with `__MSG_*__` resolved from the package's own locale. */
 	name: string;
+	/** Manifest description, resolved the same way; "" when absent. */
+	description: string;
+	/** http(s) `homepage_url`, or null. */
+	homepage: string | null;
 	/** A private staging directory created by THIS operation only. */
 	dispose: () => Promise<void>;
 }
 
 /** Resolve a `__MSG_key__` manifest string from the package's default locale.
- * Chrome looks message keys up case-insensitively. Unresolvable names fall back
- * to the id so a dialog never shows a raw placeholder as if it were a name. */
-async function localizedName(
+ * Chrome looks message keys up case-insensitively. Unresolvable strings fall
+ * back to `fallback` so the UI never shows a raw placeholder as if it were copy. */
+async function localizedString(
 	directory: string,
 	manifest: ExtensionManifest,
-	id: string,
+	value: unknown,
+	fallback: string,
+	max: number,
 ): Promise<string> {
-	const raw = typeof manifest.name === "string" ? manifest.name : "";
-	const match = /^__MSG_([A-Za-z0-9_@]+)__$/.exec(raw);
-	if (!match) return raw.trim().slice(0, 120) || id;
+	const raw = typeof value === "string" ? value : "";
+	const match = /^__MSG_([A-Za-z0-9_@]+)__$/.exec(raw.trim());
+	if (!match) return raw.trim().slice(0, max) || fallback;
 	const locale =
 		typeof manifest.default_locale === "string" &&
 		/^[A-Za-z0-9_-]{1,20}$/.test(manifest.default_locale)
 			? manifest.default_locale
 			: null;
-	if (!locale) return id;
+	if (!locale) return fallback;
 	try {
 		const messages = JSON.parse(
 			await readFile(
@@ -194,13 +224,28 @@ async function localizedName(
 			),
 		) as Record<string, { message?: unknown }>;
 		const wanted = match[1].toLowerCase();
-		for (const [key, value] of Object.entries(messages))
-			if (key.toLowerCase() === wanted && typeof value?.message === "string")
-				return value.message.trim().slice(0, 120) || id;
+		for (const [key, entry] of Object.entries(messages))
+			if (key.toLowerCase() === wanted && typeof entry?.message === "string")
+				return entry.message.trim().slice(0, max) || fallback;
 	} catch {
-		/* Missing/invalid locale file: fall through to the id. */
+		/* Missing/invalid locale file: fall through. */
 	}
-	return id;
+	return fallback;
+}
+
+/** The manifest's `homepage_url` when it is a plain http(s) URL, else null: the
+ * manager opens it in a user tab, so it gets the same scheme rule as a typed URL. */
+function homepageOf(manifest: ExtensionManifest): string | null {
+	const raw = (manifest as { homepage_url?: unknown }).homepage_url;
+	if (typeof raw !== "string" || raw.length > 2048) return null;
+	try {
+		const url = new URL(raw);
+		return url.protocol === "https:" || url.protocol === "http:"
+			? url.href
+			: null;
+	} catch {
+		return null;
+	}
 }
 
 /** The signed CRX is the durable source of truth, NOT an unpacked directory
@@ -226,7 +271,22 @@ export async function prepareExtension(
 		if (!manifest || typeof manifest !== "object")
 			throw new Error("Invalid extension manifest");
 		if (manifest.manifest_version !== 3) throw new UnsupportedManifestError();
-		const name = await localizedName(directory, manifest, id);
+		const name = await localizedString(
+			directory,
+			manifest,
+			manifest.name,
+			id,
+			120,
+		);
+		// Shown on the extensions page card (2-line clamp) and details view; 400
+		// characters is above Chrome's own 132-character store limit.
+		const description = await localizedString(
+			directory,
+			manifest,
+			(manifest as { description?: unknown }).description,
+			"",
+			400,
+		);
 		await writeFile(
 			manifestPath,
 			JSON.stringify({ ...manifest, key: verified.publicKey }),
@@ -238,6 +298,8 @@ export async function prepareExtension(
 			crx,
 			manifest,
 			name,
+			description,
+			homepage: homepageOf(manifest),
 			dispose: () => rm(directory, { recursive: true, force: true }),
 		};
 	} catch (error) {

@@ -25,7 +25,6 @@ import {
 import type { FC, Ref } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useBrowserExtensions } from "../hooks/use-browser-extensions";
-import { BrowserExtensionsDialog } from "./browser-extensions-dialog";
 import { BrowserExtensionsSubmenu } from "./browser-extensions-menu";
 
 /**
@@ -91,6 +90,8 @@ export interface BrowserPageMenuProps {
 	 * where main refuses them; the items are disabled rather than painting the
 	 * refusal sentence (round-4 Q4-3). */
 	canControlPage: boolean;
+	/** "Manage extensions": opens lop://extensions in the current tab. */
+	onManageExtensions: () => void;
 }
 
 export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
@@ -112,12 +113,12 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	triggerRef,
 	showApprovalsFolded,
 	canControlPage,
+	onManageExtensions,
 }) => {
 	const [open, setOpen] = useState(false);
-	// Extensions (design §4.3). The manage dialog is a SIBLING of the menu: a
-	// dialog inside DropdownMenuContent would unmount when the menu closes.
+	// Extensions (design §4.3): the quick list lives here; management is the
+	// lop://extensions page, opened in the current tab.
 	const extensionState = useBrowserExtensions();
-	const [extensionsOpen, setExtensionsOpen] = useState(false);
 	/* A tooltip that opens on the focus the menu returns must not read as a
 	   stray label after an item was chosen (round-2 D12): suppress it through the
 	   close and for a moment after, so the focus event cannot open a panel. */
@@ -291,7 +292,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 						onOpenPopup={(extension) =>
 							void extensionState.open(extension, "popup")
 						}
-						onManage={() => setExtensionsOpen(true)}
+						onManage={onManageExtensions}
 						onOpenStore={extensionState.openStore}
 					/>
 					<DropdownMenuItem
@@ -309,23 +310,6 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
-			<BrowserExtensionsDialog
-				open={extensionsOpen}
-				extensions={extensionState.extensions}
-				busy={extensionState.busy}
-				checking={extensionState.checking}
-				onClose={() => setExtensionsOpen(false)}
-				onSetEnabled={(extension, enabled) =>
-					void extensionState.setEnabled(extension, enabled)
-				}
-				onRemove={extensionState.remove}
-				onOpen={(extension, page) => void extensionState.open(extension, page)}
-				onOpenStore={() => {
-					setExtensionsOpen(false);
-					extensionState.openStore();
-				}}
-				onCheckUpdates={() => void extensionState.checkUpdates()}
-			/>
 		</>
 	);
 };

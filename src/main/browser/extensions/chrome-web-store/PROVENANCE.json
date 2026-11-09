@@ -6,11 +6,12 @@
   "repository": "https://github.com/samuelmaddock/electron-browser-shell",
   "file": "package/dist/chrome-web-store.preload.js",
   "original_sha256": "46dc49be10c911cce297de9d1e706bf251e374220b0a9c71d198a1eae0bb78ea",
-  "vendored_sha256": "f40258121fa9a6281e19fb6925db6d1e6145b6324ccb0735f0c9810a94be4732",
+  "vendored_sha256": "b7573586607f54fe9162524781aef6949ce8d79184aa368bab1cc79249f944ed",
   "why": "Only the store-page shim is vendored: it installs chrome.webstorePrivate/chrome.management so the Chrome Web Store renders 'Add to Chrome'. The package's main-process half is NOT used (no CRX signature verification, prefix origin check, unvalidated uninstall path, 3-part version compare); src/main/browser/extensions/webstore.ts owns every IPC handler. The npm dependency is not added.",
   "edits": [
     "Header comment naming the source, license and this file.",
     "DEBUG = false: upstream hard-codes true and console.debug's install details into the store page console.",
-    "Gate changed from location.href.startsWith('https://chromewebstore.google.com') to location.origin === 'https://chromewebstore.google.com' && window === window.top (exact origin, top frame only)."
+    "Gate changed from location.href.startsWith('https://chromewebstore.google.com') to location.origin === 'https://chromewebstore.google.com' && window === window.top (exact origin, top frame only).",
+    "chrome.management.uninstall reports main's refusal message as chrome.extension.lastError (upstream ignored the result), so the store page shows the removal failed and where to remove instead."
   ]
 }

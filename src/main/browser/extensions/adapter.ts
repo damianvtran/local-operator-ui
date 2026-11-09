@@ -29,8 +29,14 @@ export interface AdapterHooks {
 export interface AdapterBinding {
 	adapter: ElectronChromeExtensions;
 	hooks: AdapterHooks | null;
-	/** Open an extension page of a loaded, enabled extension (manager-owned). */
-	openExtension: ((url: string) => Promise<BrowserWindow>) | null;
+	/** Open an extension page of a loaded, enabled extension in its extension
+	 * window (manager-owned). `large`: a page-sized window, for requests that
+	 * are not the toolbar popup (review U1a). */
+	openExtension:
+		| ((url: string, large: boolean) => Promise<BrowserWindow>)
+		| null;
+	/** Open an extension's own page as a background USER tab (U1). */
+	openExtensionTab: ((url: string) => Promise<WebContents>) | null;
 	/** Whether `id` is installed AND enabled in the manager right now. */
 	isActiveExtension: ((id: string) => boolean) | null;
 	mayActivateTab: (() => boolean) | null;
@@ -63,15 +69,26 @@ export function extensionsAdapter(session: Session): AdapterBinding {
 		if (!binding.hooks) throw new Error("Browser host unavailable");
 		return binding.hooks;
 	};
-	const open = async (url: string): Promise<[WebContents, BrowserWindow]> => {
+	const open = async (
+		url: string,
+		as: "tab" | "window",
+	): Promise<[WebContents, BrowserWindow]> => {
 		const id = extensionIdOfUrl(url);
 		if (id) {
-			// Only an installed+enabled extension's OWN pages open in an extension
-			// window; never as a registry tab, which would put chrome-extension://
-			// documents within agent/CDP reach.
+			// Only an installed+enabled extension's OWN pages. `tabs.create` opens
+			// a background USER tab (review U1: 1Password's install-time welcome /
+			// sign-in page must not be lost to a focus check); such a tab is never
+			// agent-drivable — registry.requireSurface refuses extension documents
+			// — and agent tabs refuse extension subframes (subframe-policy.ts).
+			// `windows.create` keeps the extension-window path.
 			if (!binding.isActiveExtension?.(id))
 				throw new Error("Unsupported extension page");
-			const window = await binding.openExtension?.(url);
+			if (as === "tab") {
+				const contents = await binding.openExtensionTab?.(url);
+				if (!contents) throw new Error("Extension UI unavailable");
+				return [contents, hooks().window];
+			}
+			const window = await binding.openExtension?.(url, true);
 			if (!window) throw new Error("Extension UI unavailable");
 			return [window.webContents, window];
 		}
@@ -88,6 +105,7 @@ export function extensionsAdapter(session: Session): AdapterBinding {
 	};
 	binding.hooks = null;
 	binding.openExtension = null;
+	binding.openExtensionTab = null;
 	binding.isActiveExtension = null;
 	binding.mayActivateTab = null;
 	binding.adapter = new ElectronChromeExtensions({
@@ -104,11 +122,11 @@ export function extensionsAdapter(session: Session): AdapterBinding {
 			)
 				throw new Error("Unsupported extension action");
 			if (!binding.openExtension) throw new Error("Browser host unavailable");
-			void binding.openExtension(url).catch(() => {
+			void binding.openExtension(url, false).catch(() => {
 				/* The caller receives no vendor exception text. */
 			});
 		},
-		createTab: (details) => open(details.url ?? "about:blank"),
+		createTab: (details) => open(details.url ?? "about:blank", "tab"),
 		// Native destroyed/closed events can arrive after the host detached hooks.
 		// They release adapter bookkeeping only; never call a dead registry.
 		selectTab: (contents) => {
@@ -126,7 +144,7 @@ export function extensionsAdapter(session: Session): AdapterBinding {
 			const urls = Array.isArray(details.url) ? details.url : [details.url];
 			if (urls.length !== 1 || typeof urls[0] !== "string")
 				throw new Error("Unsupported extension window request");
-			return (await open(urls[0]))[1];
+			return (await open(urls[0], "window"))[1];
 		},
 		// An extension must not close the app's browser window.
 		removeWindow: (window) => {

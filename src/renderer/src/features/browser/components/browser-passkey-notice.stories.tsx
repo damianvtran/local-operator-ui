@@ -13,7 +13,7 @@ const meta = {
 	title: "Browser/Passkey notice",
 	component: BrowserPasskeyNotice,
 	parameters: { layout: "fullscreen" },
-	args: { onOpen: () => {}, onDismiss: () => {} },
+	args: { onOpen: () => {}, onDismiss: () => {}, onOpenExtensions: () => {} },
 	render: function InteractiveNotice(args) {
 		const [dismissed, setDismissed] = useState(false);
 		const [at] = useState(Date.now);
@@ -64,6 +64,9 @@ export const AgentFrame: Story = {
 			ownerKind: "agent",
 			origin: "https://accounts.example.com",
 		}),
+		// The app omits the Extensions action on an agent's tab: the browser's
+		// own pages open only in user tabs.
+		onOpenExtensions: undefined,
 	},
 };
 export const Narrow: Story = {

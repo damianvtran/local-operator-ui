@@ -527,11 +527,14 @@ for (const mode of ["success", "snapshot"])
 		real,
 		async (t) => {
 			const { manager, state, workers } = await installedRig(t, mode);
+			// The manager's own readiness listener (QA Q3) is permanent; an
+			// activation must leave nothing beyond it.
+			const baseline = workers.listenerCount("running-status-changed");
 			await manager.restore();
 			assert.equal(manager.list()[0].status, "enabled");
 			assert.equal(state.loads, 1);
 			assert.equal(workers.listenerCount("registration-completed"), 0);
-			assert.equal(workers.listenerCount("running-status-changed"), 0);
+			assert.equal(workers.listenerCount("running-status-changed"), baseline);
 		},
 	);
 
@@ -585,12 +588,18 @@ test(
 		const equal = await installedRig(t, "success");
 		equal.state.fetcher = async () => new Response(realCrx);
 		await equal.manager.restore();
-		assert.equal(await equal.manager.checkUpdates(), 0);
+		assert.deepEqual(
+			{ ...(await equal.manager.checkUpdates()) },
+			{ applied: 0, pending: 0, failed: 0 },
+		);
 
 		const older = await installedRig(t, "success", { version: "8.12.44.32" });
 		older.state.fetcher = async () => new Response(realCrx);
 		await older.manager.restore();
-		assert.equal(await older.manager.checkUpdates(), 1);
+		assert.deepEqual(
+			{ ...(await older.manager.checkUpdates()) },
+			{ applied: 1, pending: 0, failed: 0 },
+		);
 		assert.equal(
 			(await stateFile(older.root)).extensions[id].version,
 			"8.12.44.33",
@@ -603,7 +612,10 @@ test(
 		narrower.state.fetcher = async () => new Response(realCrx);
 		await narrower.manager.restore();
 		const loadsBefore = narrower.state.loads;
-		assert.equal(await narrower.manager.checkUpdates(), 0);
+		assert.deepEqual(
+			{ ...(await narrower.manager.checkUpdates()) },
+			{ applied: 0, pending: 1, failed: 0 },
+		);
 		const [row] = narrower.manager.list();
 		assert.equal(row.status, "needs-reconsent");
 		assert.equal(row.pendingVersion, "8.12.44.33");
@@ -663,3 +675,180 @@ for (const [marker, expected] of [
 				);
 		},
 	);
+
+// ---- PR #1821 round-1 remediation -------------------------------------------
+
+const entryState = (entry) =>
+	JSON.stringify({
+		version: 1,
+		extensions: {
+			[id]: {
+				enabled: false,
+				installedAt: 1,
+				version: "1.0.0.0",
+				name: "Synthetic",
+				icon: null,
+				consented: { allSites: false, hosts: [], permissions: [] },
+				...entry,
+			},
+		},
+	});
+
+test("U2: an update check that cannot download reports failed, never up to date", async (t) => {
+	const { manager, state, root } = await fixture(t);
+	await writeFile(join(root, "state.json"), entryState({}));
+	await manager.restore();
+	state.fetcher = async () => {
+		throw new TypeError("fetch failed (offline)");
+	};
+	assert.deepEqual(
+		{ ...(await manager.checkUpdates()) },
+		{ applied: 0, pending: 0, failed: 1 },
+	);
+});
+
+test("R1-2: a removal that lost the per-id race does not drop the winner's runtime", async (t) => {
+	const { manager, state, root, ses } = await fixture(t);
+	await writeFile(join(root, "state.json"), entryState({}));
+	await manager.restore();
+	// X: an update check holding the id until it is cancelled.
+	state.fetcher = (_url, init) =>
+		new Promise((_yes, no) =>
+			init.signal.addEventListener("abort", () => no(new Error("aborted"))),
+		);
+	const x = manager.checkUpdates();
+	await new Promise((yes) => setImmediate(yes));
+	// U wins the id after X; its storage clear is held open.
+	let release;
+	ses.clearStorageData = () =>
+		new Promise((yes) => {
+			release = yes;
+		});
+	const u = manager.uninstall(id);
+	const y = manager.uninstall(id);
+	assert.equal(await y, false, "the loser removed nothing");
+	assert.ok(
+		manager.runtimes.has(id),
+		"the in-flight winner's runtime survives the loser",
+	);
+	while (!release) await new Promise((yes) => setImmediate(yes));
+	release();
+	assert.equal(await u, true);
+	assert.equal(manager.runtimes.has(id), false);
+	assert.deepEqual({ ...(await x) }, { applied: 0, pending: 0, failed: 1 });
+});
+
+test(
+	"R1-1: a newer in-consent update supersedes a parked one (no rollback on approve)",
+	real,
+	async (t) => {
+		const rig = await installedRig(t, "success", {
+			version: "8.12.44.31",
+			pendingVersion: "8.12.44.32",
+		});
+		await writeFile(join(rig.root, id, "pending.crx"), realCrx);
+		rig.state.fetcher = async () => new Response(realCrx);
+		await rig.manager.restore();
+		assert.deepEqual(
+			{ ...(await rig.manager.checkUpdates()) },
+			{ applied: 1, pending: 0, failed: 0 },
+		);
+		const saved = (await stateFile(rig.root)).extensions[id];
+		assert.equal(saved.version, "8.12.44.33");
+		assert.equal(saved.pendingVersion, undefined);
+		assert.ok(!(await readdir(join(rig.root, id))).includes("pending.crx"));
+		const [row] = rig.manager.list();
+		assert.deepEqual([row.status, row.pendingVersion], ["enabled", null]);
+	},
+);
+
+test(
+	"Q3/U7: a worker that missed the deadline becomes ready on its own, and Retry reloads",
+	real,
+	async (t) => {
+		const { manager, state, workers } = await installedRig(t, "failure");
+		await manager.restore();
+		assert.deepEqual(
+			[manager.list()[0].status, manager.list()[0].error],
+			["error", "worker"],
+		);
+		workers.emit("running-status-changed", {
+			versionId: 1,
+			runningStatus: "running",
+		});
+		assert.equal(manager.list()[0].status, "enabled");
+
+		const again = await installedRig(t, "failure");
+		await again.manager.restore();
+		assert.equal(again.manager.list()[0].error, "worker");
+		again.state.mode = "success";
+		assert.equal(await again.manager.retry(id), true);
+		assert.equal(again.manager.list()[0].status, "enabled");
+		assert.equal(again.state.loads, 2);
+		void state;
+	},
+);
+
+test(
+	"U1: extension tabs open as user tabs regardless of focus; refused windows wait for the user's next open",
+	real,
+	async (t) => {
+		const { manager, state } = await fixture(t);
+		state.fetcher = async () => new Response(realCrx);
+		state.allowTabs = true;
+		assert.equal(await manager.installFromStore(id), "success");
+		// The app is not in front: no presentation grant.
+		state.focused = false;
+		state.foregroundHuman = false;
+		const welcome = `${scope}app/app.html#/page/welcome`;
+		await state.options.createTab({ url: welcome });
+		await state.options.createTab({ url: `${scope}app/app.html#/second` });
+		assert.deepEqual(state.created, [
+			{ url: welcome, active: true },
+			{ url: `${scope}app/app.html#/second`, active: false },
+		]);
+		// Another extension's page is never opened as this one's tab.
+		await assert.rejects(
+			state.options.createTab({
+				url: `chrome-extension://${"b".repeat(32)}/x.html`,
+			}),
+		);
+		const sign = `${scope}app/app.html#/page/signin`;
+		const windows = state.windows.length;
+		await assert.rejects(state.options.createWindow({ url: sign }));
+		assert.equal(state.windows.length, windows);
+		assert.equal(manager.list()[0].waitingPages, 1);
+		for (let index = 0; index < 5; index++)
+			await assert.rejects(
+				state.options.createWindow({ url: `${sign}-${index}` }),
+			);
+		assert.equal(manager.list()[0].waitingPages, 3, "bounded queue");
+		// The user's own Open presents the queued pages (newest three).
+		assert.equal(await manager.openPopup(id), true);
+		assert.deepEqual(
+			state.created.slice(-3).map((tab) => tab.url),
+			[`${sign}-2`, `${sign}-3`, `${sign}-4`],
+		);
+		assert.equal(state.created.at(-1).active, true);
+		assert.equal(manager.list()[0].waitingPages, 0);
+	},
+);
+
+test(
+	"Q1: Remove deletes chrome.storage (Local/Sync Extension Settings); a reinstall starts empty",
+	real,
+	async (t) => {
+		const { manager, state, ses, root } = await fixture(t);
+		ses.storagePath = join(root, "..", `${root.split("/").at(-1)}-storage`);
+		t.after(() => rm(ses.storagePath, { recursive: true, force: true }));
+		state.fetcher = async () => new Response(realCrx);
+		assert.equal(await manager.installFromStore(id), "success");
+		const store = join(ses.storagePath, "Local Extension Settings", id);
+		await mkdir(store, { recursive: true });
+		await writeFile(join(store, "000003.log"), "QA_MARKER_7f3c");
+		assert.equal(await manager.uninstall(id), true);
+		await assert.rejects(readdir(store), { code: "ENOENT" });
+		assert.equal(await manager.installFromStore(id), "success");
+		await assert.rejects(readdir(store), { code: "ENOENT" });
+	},
+);

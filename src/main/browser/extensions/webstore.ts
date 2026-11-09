@@ -1,6 +1,6 @@
 /**
  * Chrome Web Store page bridge (design §3C). The vendored store-page preload
- * (vendor/chrome-web-store/) installs chrome.webstorePrivate/chrome.management
+ * (extensions/chrome-web-store/) installs chrome.webstorePrivate/chrome.management
  * in the store page so "Add to Chrome" renders and calls back here. Every
  * handler on these channels is OURS; electron-chrome-web-store's main process
  * is not used (design §1: prefix origin check, uninstall-any-id with an
@@ -23,6 +23,7 @@ import type {
 	Session,
 	WebContents,
 } from "electron";
+import { t } from "../../../i18n";
 import { isExtensionId } from "../../../shared/browser-extensions";
 import type { StoreInstallResult } from "./manager";
 
@@ -142,10 +143,15 @@ export function registerWebStoreBridge(
 		guard(async (event, details: unknown) => {
 			const id = (details as { id?: unknown } | null)?.id;
 			if (!isExtensionId(id)) return { result: "invalid_id" };
-			// Agent-owned, background or unfocused tabs: same answer as a user
-			// pressing Cancel, and no dialog is shown.
+			// Agent-owned, background or unfocused tabs: no dialog is shown. The
+			// store is told it FAILED, with a reason it displays through
+			// chrome.extension.lastError (review U5b), instead of a silent
+			// "cancelled" that looks like nothing happened.
 			if (!options.mayInstallFrom(event.sender))
-				return { result: "user_cancelled" };
+				return {
+					result: "blocked_by_policy",
+					message: t("ui.browser.extensions.store_install_blocked"),
+				};
 			const result = await manager.installFromStore(id);
 			if (result === "success") {
 				const frame = event.senderFrame;
@@ -180,9 +186,14 @@ export function registerWebStoreBridge(
 		"chrome.management.setEnabled",
 		guard(() => false),
 	);
+	// Refused, but said (review U6): the vendored shim reports this message as
+	// chrome.extension.lastError so the store does not treat it as removed, and
+	// the message points at the browser's own extensions page.
 	ipc.handle(
 		"chrome.management.uninstall",
-		guard(() => "unknown_error"),
+		guard(() => ({
+			error: t("ui.browser.extensions.store_remove_refused"),
+		})),
 	);
 	return () => {
 		for (const channel of WEBSTORE_CHANNELS) ipc.removeHandler(channel);

@@ -9,7 +9,7 @@
  * marker; it never touches the operator's profile or a real vault. Not
  * whole-app renderer QA, and not proof of a passkey assertion.
  */
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createWriteStream, rmSync } from "node:fs";
 import {
 	lstat,
@@ -107,6 +107,14 @@ const crx = args[1]
 	: await downloadStoreCrx(
 			ONEPASSWORD_EXTENSION_ID,
 			AbortSignal.timeout(budget),
+			fetch,
+			// QA Q2: this outer runner is plain Node (no process.versions.chrome);
+			// ask the Electron binary that will load the package for its Chromium
+			// version, so the store serves a compatible CRX instead of a 204.
+			execFileSync(electronPath, ["-p", "process.versions.chrome"], {
+				env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+				encoding: "utf8",
+			}).trim(),
 		);
 verifyStoreCrx(crx, ONEPASSWORD_EXTENSION_ID);
 await writeFile(join(root, "official.crx"), crx, { mode: 0o600 });

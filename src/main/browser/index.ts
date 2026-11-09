@@ -18,6 +18,7 @@ import {
 	type BrowserChord,
 	browserChordIntent,
 } from "../../shared/browser-chord";
+import type { ExtensionUpdateReport } from "../../shared/browser-extensions";
 import { startConsoleHost } from "../console";
 import type { ConsoleCompletionNotifier } from "../console/completion";
 import { isConsoleDispatchMethod } from "../console/dispatch";
@@ -68,9 +69,14 @@ import { ConsentNotifier } from "./consent-notifier";
 import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
-import { extensionsAdapter } from "./extensions/adapter";
+import { extensionIdOfUrl, extensionsAdapter } from "./extensions/adapter";
+import webStorePreload from "./extensions/chrome-web-store/chrome-web-store.preload.js?asset";
 import { installExtensionDialogs } from "./extensions/dialogs";
 import { ExtensionManager } from "./extensions/manager";
+import {
+	mustReloadOnOwnerChange,
+	refusesExtensionSubframe,
+} from "./extensions/subframe-policy";
 import {
 	WEBSTORE_ORIGIN,
 	WEB_STORE_PRELOAD_ID,
@@ -153,7 +159,6 @@ import {
 	mintSessionKey,
 	stateFilePath,
 } from "./state-file";
-import webStorePreload from "./vendor/chrome-web-store/chrome-web-store.preload.js?asset";
 import {
 	configurePslRules,
 	domainScopeAvailable,
@@ -666,7 +671,7 @@ async function initializeBrowserHost(
 		// restored extension worker. The desktop renderer stays in its own session.
 		const extensionsBinding = extensionsAdapter(browserSession);
 		// The store-page shim: a session-wide FRAME preload, gated inside the file
-		// to the exact store origin + top frame (vendor/chrome-web-store). Every
+		// to the exact store origin + top frame (extensions/chrome-web-store). Every
 		// IPC it calls is re-gated in main (extensions/webstore.ts). Registered
 		// once per persistent session, like the adapter.
 		if (
@@ -1179,12 +1184,15 @@ async function initializeBrowserHost(
 				// be refused is an extension's own UI frame (a password manager's
 				// inline menu is a chrome-extension:// subframe) inside a tab an
 				// agent owns, so CDP can neither drive nor read it (design §4.4).
-				// Re-evaluated per navigation, so an ownership hand-over applies.
+				// Re-evaluated per navigation; a hand-over reloads a tab holding
+				// one (registry.ownerChanged below). Rule: subframe-policy.ts.
 				view.webContents.on("will-frame-navigate", (event) => {
 					if (
-						!event.isMainFrame &&
-						event.url.startsWith("chrome-extension:") &&
-						registry.get(tabId)?.owner !== "user"
+						refusesExtensionSubframe({
+							isMainFrame: event.isMainFrame,
+							url: event.url,
+							owner: registry.get(tabId)?.owner,
+						})
 					)
 						event.preventDefault();
 				});
@@ -1253,10 +1261,14 @@ async function initializeBrowserHost(
 				confirmRemove: extensionDialogs.confirmRemove,
 				createTab: async (rawUrl, activate) => {
 					const url = new URL(rawUrl);
+					// A page of an ACTIVE extension may open as a user tab (review
+					// U1); requireSurface keeps it out of agent reach.
+					const extensionId = extensionIdOfUrl(url.href);
 					if (
 						url.protocol !== "http:" &&
 						url.protocol !== "https:" &&
-						url.href !== "about:blank"
+						url.href !== "about:blank" &&
+						!(extensionId && extensions.isActive(extensionId))
 					)
 						throw new Error("Unsupported extension navigation");
 					const record = registry.create({ owner: "user", activate });
@@ -1286,7 +1298,7 @@ async function initializeBrowserHost(
 		);
 		bindings.extensions = async (request) => {
 			let ok = true;
-			let updated: number | undefined;
+			let updates: ExtensionUpdateReport | undefined;
 			switch (request.op) {
 				case "list":
 					break;
@@ -1306,7 +1318,16 @@ async function initializeBrowserHost(
 					extensions.cancel(request.id);
 					break;
 				case "check-updates":
-					updated = await extensions.checkUpdates();
+					updates = await extensions.checkUpdates();
+					break;
+				case "retry":
+					ok = await extensions.retry(request.id);
+					break;
+				case "open-listing":
+					ok = await extensions.openListing(request.id);
+					break;
+				case "open-homepage":
+					ok = await extensions.openHomepage(request.id);
 					break;
 				case "open-store": {
 					// A USER tab, activated: this is the desktop menu press.
@@ -1315,6 +1336,8 @@ async function initializeBrowserHost(
 						await record.view.webContents.loadURL(`${WEBSTORE_ORIGIN}/`);
 						await cdp.attach(record.view.webContents);
 					} catch {
+						// R1-5: no empty tab left behind (mirrors createTab above).
+						registry.destroy(record.tabId);
 						ok = false;
 					}
 					break;
@@ -1322,10 +1345,25 @@ async function initializeBrowserHost(
 			}
 			return {
 				extensions: extensions.list(),
+				installing: extensions.installs(),
 				ok,
-				...(updated === undefined ? {} : { updated }),
+				...(updates === undefined ? {} : { updates }),
 			};
 		};
+		// R1-4: a hand-over away from the user re-applies the subframe rule to
+		// frames that loaded while the tab was the user's, by reloading it.
+		registry.ownerChanged = (record) => {
+			const contents = record.view
+				.webContents as unknown as Electron.WebContents;
+			if (contents.isDestroyed()) return;
+			const subframes = contents.mainFrame.framesInSubtree
+				.filter((frame) => frame !== contents.mainFrame)
+				.map((frame) => frame.url);
+			if (mustReloadOnOwnerChange(record.owner, subframes)) contents.reload();
+		};
+		rollback.add(() => {
+			registry.ownerChanged = null;
+		});
 		const removeWebStoreBridge = registerWebStoreBridge({
 			ipc: ipcMain,
 			session: browserSession,
@@ -1681,7 +1719,12 @@ async function initializeBrowserHost(
 		rollback.add(detachChords);
 		// Vendor startup can open a welcome/sign-in tab through the real registry;
 		// restore only after every per-view callback has a fully constructed host.
-		await extensions.restore();
+		// NOT awaited (review R1-3): worker readiness can take seconds (measured
+		// 2.0–8.4 s for 1Password) and must never delay the browser becoming
+		// usable; each extension reports its own status as it loads.
+		void extensions.restore().catch((error: unknown) => {
+			log(`[browser] extension restore failed: ${String(error)}`);
+		});
 
 		// Restore BEFORE any interaction is possible, and after the session handlers
 		// exist (the user agent must already be set: Electron documents that

@@ -181,7 +181,14 @@ app
 			// Product behaviour: a worker-requested tab is a BACKGROUND user tab.
 			createTab: async (url, active) => {
 				const record = registry.create({ owner: "user", activate: active });
-				workerTabs.push({ origin: new URL(url).origin, active });
+				// Scheme + path only: review U1 expects 1Password's install-time
+				// welcome page (chrome-extension://…/app/app.html) to arrive here.
+				const parsed = new URL(url);
+				workerTabs.push({
+					scheme: parsed.protocol,
+					path: parsed.pathname,
+					active,
+				});
 				void record.view.webContents.loadURL(url).catch(() => {});
 				return record.view.webContents;
 			},
@@ -314,7 +321,25 @@ app
 				)
 					throw new Error("Disable did not persist");
 				mark("remove");
+				// QA Q1: the extension's chrome.storage value store must go too.
+				const settings = path.join(
+					ses.storagePath ?? "",
+					"Local Extension Settings",
+					ID,
+				);
+				const settingsBefore = await fs.access(settings).then(
+					() => true,
+					() => false,
+				);
 				const removed = await manager.uninstall(ID);
+				const settingsAfter = await fs.access(settings).then(
+					() => true,
+					() => false,
+				);
+				output({
+					storageSettings: { before: settingsBefore, after: settingsAfter },
+				});
+				if (settingsAfter) throw new Error("chrome.storage survived Remove");
 				const dirGone = await fs.access(path.join(extensionsRoot, ID)).then(
 					() => false,
 					() => true,

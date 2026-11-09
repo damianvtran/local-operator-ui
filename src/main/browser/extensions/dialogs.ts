@@ -12,6 +12,7 @@
  */
 import { type BrowserWindow, dialog } from "electron";
 import { t } from "../../../i18n";
+import { describePermissions } from "../../../shared/browser-extensions";
 import type { InstallPrompt } from "./manager";
 import type { ExtensionAccess } from "./policy";
 
@@ -31,14 +32,28 @@ export function accessLines(access: ExtensionAccess): string[] {
 			}),
 		);
 	}
-	if (access.permissions.length)
+	// Design D3: plain-language rows from Chrome's warning set; capabilities
+	// this browser denies (desktop-app connections, notifications) are NOT
+	// listed as granted — blockedLines() states them separately.
+	const permissions = describePermissions(access.permissions);
+	for (const key of permissions.labels) lines.push(t(key));
+	if (permissions.other.length)
 		lines.push(
 			t("ui.browser.extensions.perm_other", {
-				permissions: access.permissions.join(", "),
+				permissions: permissions.other.join(", "),
 			}),
 		);
 	if (!lines.length) lines.push(t("ui.browser.extensions.perm_none"));
 	return lines;
+}
+
+/** What the extension asks for that this browser turns off. */
+export function blockedLines(access: ExtensionAccess): string[] {
+	return describePermissions(access.permissions).blocked.map((capability) =>
+		capability === "desktop_apps"
+			? t("ui.browser.extensions.blocked_desktop_apps")
+			: t("ui.browser.extensions.blocked_notifications"),
+	);
 }
 
 export function installExtensionDialogs(
@@ -74,6 +89,13 @@ export function installExtensionDialogs(
 					version: prompt.version,
 				}),
 				...accessLines(prompt.access).map((line) => `• ${line}`),
+				...(blockedLines(prompt.access).length
+					? [
+							"",
+							t("ui.browser.extensions.blocked_heading"),
+							...blockedLines(prompt.access).map((line) => `• ${line}`),
+						]
+					: []),
 				"",
 				t("ui.browser.extensions.install_compat_note"),
 			].join("\n");

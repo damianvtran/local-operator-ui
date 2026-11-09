@@ -8,6 +8,7 @@ import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../../shared/browser-tab-action";
+import { parseInternalUrl } from "../../shared/internal-pages";
 import type { BrowserActionContext, HostFacts } from "./actions/context";
 import { requesterOf } from "./actions/context";
 import * as downloadActions from "./actions/download";
@@ -30,6 +31,11 @@ import {
 	type BrowserHistoryStore,
 	createBrowserHistoryStore,
 } from "./history-store";
+import {
+	displayUrlOf,
+	internalDocumentUrl,
+	internalPageOfDocument,
+} from "./internal-pages";
 import { PageControls, type PageZoomCommand } from "./page-controls";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
@@ -1055,9 +1061,10 @@ export class BrowserHost implements BrowserActionContext {
 					// English under every locale. Reuses the strip's key, which every
 					// shipped locale already translates, rather than minting a twin that
 					// would have to be translated and audited again.
-					title:
-						this.titleForChrome(entry.title) ||
-						t("ui.browser.browser_tab_strip.new_tab"),
+					title: parseInternalUrl(entry.url)
+						? t("ui.browser.extensions.page_title")
+						: this.titleForChrome(entry.title) ||
+							t("ui.browser.browser_tab_strip.new_tab"),
 					url: entry.url,
 					owner: entry.owner,
 					// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
@@ -1122,9 +1129,12 @@ export class BrowserHost implements BrowserActionContext {
 			passkeyNotice: active
 				? (this.passkeyNotice?.(active.tabId) ?? null)
 				: null,
-			url: active ? active.view.webContents.getURL() : "",
+			// Internal pages project their lop:// URL, never the nonce document.
+			url: active ? displayUrlOf(active.view.webContents.getURL()) : "",
 			title: active
-				? this.titleForChrome(active.view.webContents.getTitle())
+				? internalPageOfDocument(active.view.webContents.getURL())
+					? t("ui.browser.extensions.page_title")
+					: this.titleForChrome(active.view.webContents.getTitle())
 				: "",
 			loading: active ? active.view.webContents.isLoading() : false,
 			canGoBack: navigation ? navigation.canGoBack() : false,
@@ -1919,6 +1929,22 @@ export class BrowserHost implements BrowserActionContext {
 				"nav_failed",
 				"the active tab changed before the address was submitted",
 			);
+		}
+		// The browser's own pages (lop://extensions). Reached ONLY from here — the
+		// desktop renderer's sender-checked navigate — never from the agent RPC
+		// (`goto`/`open` keep the http(s)-only rule) or from web content
+		// (renderer-initiated about: navigations are refused in index.ts). See
+		// internal-pages.ts for why this is a history entry and not a protocol.
+		const internal = parseInternalUrl(rawUrl);
+		if (internal) {
+			if (record.owner !== "user")
+				throw new BrowserHostError(
+					"owner_refused",
+					"the browser's own pages open only in your own tabs",
+				);
+			await record.view.webContents.loadURL(internalDocumentUrl(internal));
+			this.onChanged();
+			return this.chromeState();
 		}
 		let url: URL;
 		try {

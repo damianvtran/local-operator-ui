@@ -275,6 +275,7 @@
         log("chrome.management.uninstall", { id, options });
         import_electron.ipcRenderer.invoke("chrome.management.uninstall", id, options).then((result) => {
           log("chrome.management.uninstall result:", result);
+          setExtensionError(result && typeof result.error === "string" ? result.error : null);
           if (callback) callback();
         });
       }

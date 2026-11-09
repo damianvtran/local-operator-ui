@@ -131,8 +131,14 @@ test("renderer IPC decoding: closed op set, exact fields, id regex", () => {
 		{ op: "uninstall", id: ID, path: "/" },
 		{ op: "set-enabled", id: ID, enabled: "true" },
 		{ op: "open-popup" },
+		// New ops (round-1 remediation) carry the same id rule and no URL.
+		{ op: "retry", id: ".." },
+		{ op: "open-listing", id: ID, url: "https://evil.example/" },
+		{ op: "open-homepage" },
 	])
 		assert.equal(decodeExtensionsRequest(raw), null, JSON.stringify(raw));
+	for (const op of ["retry", "open-listing", "open-homepage"])
+		assert.deepEqual(decodeExtensionsRequest({ op, id: ID }), { op, id: ID });
 });
 
 test("state reader drops malformed entries instead of coercing them into consent", async (t) => {
@@ -288,7 +294,7 @@ test("bridge: every channel refuses a look-alike origin before reading arguments
 	assert.deepEqual(calls, []);
 });
 
-test("bridge: install from a user tab reaches the manager; agent tabs get user_cancelled with no install", async () => {
+test("bridge: install from a user tab reaches the manager; agent tabs are told blocked_by_policy with a reason and no install (U5b)", async () => {
 	const ok = bridge();
 	const event = storeEvent();
 	assert.deepEqual(
@@ -313,7 +319,11 @@ test("bridge: install from a user tab reaches the manager; agent tabs get user_c
 	const agent = bridge({ userTab: false });
 	assert.deepEqual(
 		await agent.invoke("chromeWebstore.beginInstall", storeEvent(), { id: ID }),
-		{ result: "user_cancelled" },
+		{
+			result: "blocked_by_policy",
+			message:
+				"Extensions can only be added from your own tab while this app is in front.",
+		},
 	);
 	assert.deepEqual(agent.calls, []);
 	for (const id of ["..", "../x", ID.toUpperCase(), undefined])
@@ -327,14 +337,16 @@ test("bridge: the page can neither uninstall nor toggle; MV2 claims read as depr
 	const { invoke, installed } = bridge();
 	installed.set(ID, { id: ID, enabled: true, version: "1.0" });
 	const event = storeEvent();
-	assert.equal(
-		await invoke("chrome.management.uninstall", event, ID, {}),
-		"unknown_error",
-	);
-	assert.equal(
-		await invoke("chrome.management.uninstall", event, "..", {}),
-		"unknown_error",
-	);
+	// U6: refused, with a reason the shim reports as lastError.
+	for (const target of [ID, ".."]) {
+		const refusal = await invoke(
+			"chrome.management.uninstall",
+			event,
+			target,
+			{},
+		);
+		assert.match(refusal.error, /lop:\/\/extensions/);
+	}
 	assert.equal(
 		await invoke("chrome.management.setEnabled", event, ID, false),
 		false,
