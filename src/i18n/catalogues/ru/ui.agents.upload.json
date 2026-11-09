@@ -45,5 +45,6 @@
 	"ui.agents.upload.title.republished": "Обновлена публикация «{name}» в Хабе агентов",
 	"ui.agents.upload.title.update_listing": "Обновить публикацию «{name}» в Хабе агентов?",
 	"ui.agents.upload.sign_in.title_continue": "Войдите, чтобы продолжить",
-	"ui.agents.upload.sign_in.title_again": "Войдите снова"
+	"ui.agents.upload.sign_in.title_again": "Войдите снова",
+	"ui.agents.upload.failure.publish_fallback": "Не удалось опубликовать агента. Попробуйте ещё раз."
 }

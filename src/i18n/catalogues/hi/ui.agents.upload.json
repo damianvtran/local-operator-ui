@@ -1,4 +1,5 @@
 {
+	"ui.agents.upload.failure.publish_fallback": "एजेंट प्रकाशित नहीं किया जा सका। फिर कोशिश करें।",
 	"ui.agents.upload.action.edit_agent": "एजेंट संपादित करें",
 	"ui.agents.upload.action.open_listing": "लिस्टिंग खोलें",
 	"ui.agents.upload.action.publish": "प्रकाशित करें",

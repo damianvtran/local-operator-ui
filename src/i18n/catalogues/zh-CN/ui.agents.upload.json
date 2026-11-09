@@ -45,5 +45,6 @@
 	"ui.agents.upload.title.republished": "已更新“{name}”在智能体中心的条目",
 	"ui.agents.upload.title.update_listing": "更新“{name}”在智能体中心的条目？",
 	"ui.agents.upload.sign_in.title_continue": "登录以继续",
-	"ui.agents.upload.sign_in.title_again": "重新登录"
+	"ui.agents.upload.sign_in.title_again": "重新登录",
+	"ui.agents.upload.failure.publish_fallback": "智能体未能发布。重试。"
 }
