@@ -8,7 +8,14 @@ import { t } from "@shared/i18n";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fireEvent, userEvent, waitFor, within } from "@storybook/test";
+import {
+	expect,
+	fireEvent,
+	fn,
+	userEvent,
+	waitFor,
+	within,
+} from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	type CSSProperties,
@@ -997,12 +1004,14 @@ export const RefreshingUnread: Story = {
 /* A failed history read offers its own retry (operator report 2026-11-09: the
    only way out used to be clicking another channel and back). */
 export const ThreadError: Story = {
-	args: { messageState: "error", onRetryMessages: () => undefined },
-	play: async ({ canvasElement }) => {
+	args: { messageState: "error", onRetryMessages: fn() },
+	play: async ({ args, canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(
-			await canvas.findByRole("button", { name: "Try again" }),
-		).toBeVisible();
+		const retry = await canvas.findByRole("button", { name: "Try again" });
+		await expect(retry).toBeVisible();
+		// Visible is not wired: the click must reach the read's refetch.
+		await userEvent.click(retry);
+		await expect(args.onRetryMessages).toHaveBeenCalledOnce();
 	},
 };
 

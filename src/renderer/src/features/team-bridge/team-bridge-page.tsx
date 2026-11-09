@@ -4069,11 +4069,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										</p>
 										{onRetryMessages && (
 											/* Same control as the rail's error state, so one failure
-											   reads the same wherever it lands. */
+											   reads the same wherever it lands. `-ml-1.5` cancels the
+											   padding's inset in this left-aligned column so the label
+											   lines up with the sentence, while the padded box keeps
+											   the focus ring clear of the glyphs (design round 1, D2). */
 											<button
 												type="button"
 												onClick={onRetryMessages}
-												className="mt-2 min-h-6 rounded-sm px-1.5 font-medium text-[13px] text-accent hover:underline"
+												className="-ml-1.5 mt-2 min-h-6 rounded-sm px-1.5 font-medium text-[13px] text-accent hover:underline"
 											>
 												{t("ui.teamBridge.list.retry")}
 											</button>

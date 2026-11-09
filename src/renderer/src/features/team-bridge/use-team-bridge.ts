@@ -65,8 +65,8 @@ import {
 	TEAM_BRIDGE_HISTORY_STALE_MS,
 	TEAM_BRIDGE_PAGE_SIZE,
 	channelViewOrder,
+	historyReadRetry,
 	historyReadRetryDelay,
-	historyReadShouldRetry,
 	mergeChannelPage,
 	mergeOlderPageAtCursor,
 	rememberChannelView,
@@ -361,9 +361,9 @@ export function useTeamBridgeMessages(
 		   "come back in N s": the chain waits exactly that and keeps going while the
 		   reader is on the channel, instead of three blind 1/2/4 s tries that end in
 		   an error (the 7.4 s stuck-skeleton report; see the policy's note in
-		   `team-bridge-channel-cache.ts`). */
-		retry: (failures, error) =>
-			historyReadShouldRetry(failures, error, isNotAMemberRefusal(error)),
+		   `team-bridge-channel-cache.ts`). It stops once nobody observes the query,
+		   even if a `fetchQuery` has rejoined the chain, and after a bounded run. */
+		retry: historyReadRetry(client, options.queryKey, isNotAMemberRefusal),
 		retryDelay: (failures, error) => historyReadRetryDelay(failures, error),
 		/* A conversation needs to feel live: without a poll an incoming message
 		   never appears until the reader clicks away. Eight seconds is Slack's

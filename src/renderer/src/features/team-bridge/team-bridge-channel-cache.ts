@@ -1,3 +1,4 @@
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type {
 	TeamBridgeEvent,
 	TeamBridgeMessage,
@@ -173,24 +174,76 @@ export function historyRateLimitWaitMs(
 }
 
 /**
+ * The most CONSECUTIVE rate-limit refusals one retry chain rides out before it
+ * settles on the error state (which offers Try again).
+ *
+ * A BACKSTOP, not the primary stop: the chain normally ends when the reader
+ * leaves (see `historyReadShouldRetry`). It exists because the "only while
+ * observed" check reads React Query internals that have already surprised us
+ * once (review round 1, R1: a cancelled chain revived by a `fetchQuery` join),
+ * and an unbounded loop against the shared per-account bucket is the expensive
+ * way for that to fail again.
+ *
+ * Sized from the incident: the log shows a run of 4 consecutive 429s (about
+ * 7.4 s) before the bucket served the read. 30 is 7.5x that run. At the hub's
+ * typical 1-2 s stated wait it still covers 30-60 s - up to one full window of
+ * the 120/min bucket, which refills within that window - so it only trips when
+ * agents have kept the bucket drained for the whole window, and continuing would
+ * just compete with them. At the 60 s clamp it bounds a chain to 30 reads.
+ */
+export const TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES = 30;
+
+/**
  * Whether the history read should try again after `failureCount` failures.
  *
- * A rate limit is retried for as long as somebody is READING: React Query
- * stops a retry chain once the query's last observer unmounts
- * (`Query.removeObserver` → `retryer.cancelRetry()`, query-core 5.73.3) and
- * pauses it while the window is unfocused, so the chain's lifetime is the
- * reader's time on the channel and its cadence is the hub's own stated wait.
- * That is the invariant that makes an uncounted retry safe here; a definite
- * refusal (`definite`, e.g. `not_a_member`) is never retried.
+ * A rate limit is retried only while somebody is READING (`observed`) and at
+ * most `TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES` times in a row; its cadence is the
+ * hub's own stated wait. Leaving the channel alone is NOT enough to stop the
+ * chain: `Query.removeObserver` cancels the retryer (query-core 5.73.3), but a
+ * later `fetchQuery` on the same key - the notification watcher does exactly
+ * that (`use-team-bridge-notifications.ts`) - joins the pending retryer through
+ * `continueRetry()`, which clears that cancel, and the retryer still holds this
+ * policy. So the policy itself asks whether anyone is watching (review round 1,
+ * R1: 31 reads/min with zero observers before this check). A definite refusal
+ * (`definite`, e.g. `not_a_member`) is never retried; any other failure keeps
+ * the shipped three-retry bound.
  */
 export function historyReadShouldRetry(
 	failureCount: number,
 	error: unknown,
 	definite: boolean,
+	observed = true,
 ): boolean {
 	if (definite) return false;
-	if (historyRateLimitWaitMs(error, failureCount) !== null) return true;
+	if (historyRateLimitWaitMs(error, failureCount) !== null)
+		return observed && failureCount < TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES;
 	return failureCount < TEAM_BRIDGE_HISTORY_FAILURE_RETRIES;
+}
+
+/**
+ * The `retry` option for the history query at `queryKey`: the policy above,
+ * with `observed` read from the query's LIVE observer count at the moment of
+ * each failure. Read through the cache rather than closed over, because the
+ * retryer keeps the function it was created with for its whole life - only a
+ * live lookup sees the reader leave.
+ */
+export function historyReadRetry(
+	client: QueryClient,
+	queryKey: QueryKey,
+	isDefinite: (error: unknown) => boolean,
+	// Typed `Error`, not `unknown`: `useQuery` infers its error type from this
+	// parameter, and the hook's callers read `query.error` as `Error | null`.
+): (failureCount: number, error: Error) => boolean {
+	return (failureCount, error) =>
+		historyReadShouldRetry(
+			failureCount,
+			error,
+			isDefinite(error),
+			(client
+				.getQueryCache()
+				.find({ queryKey, exact: true })
+				?.getObserversCount() ?? 0) > 0,
+		);
 }
 
 /** The wait before the next attempt: the hub's, or React Query's default. */
