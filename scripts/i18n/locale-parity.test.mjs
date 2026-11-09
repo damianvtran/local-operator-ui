@@ -65,6 +65,51 @@ const IDENTICAL_OK = new Map([
 		"zh-CN:ui.settings.notifications.volume.readout",
 		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
 	],
+	// Browser extensions manager (PR #1821): proper nouns and French cognates.
+	[
+		"ui.browser.extensions.menu_store",
+		"« Chrome Web Store » is Google's product name, which Chrome shows untranslated in every locale; identical in every locale by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"ui.browser.extensions.source_store",
+		"« Chrome Web Store » is Google's product name, which Chrome shows untranslated in every locale; identical in every locale by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"ui.browser.extensions.details_id",
+		"« ID » is the extension identifier label, the universal abbreviation Chrome's own extension details use in every shipped locale; identical by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"fr:ui.browser.extensions.menu_extensions",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.manage_title",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.page_title",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.action_options",
+		"French cognate « Options » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_description",
+		"French cognate « Description » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_version",
+		"French cognate « Version » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.blocked_notifications",
+		"French cognate « Notifications » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_source",
+		"French cognate « Source » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
 
 	[
 		"ui.settings.appearance.editor.copy_name",

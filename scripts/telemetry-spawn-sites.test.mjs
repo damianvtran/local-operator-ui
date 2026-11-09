@@ -564,6 +564,13 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	exempt(
+		"scripts/extension-native-proof.mjs",
+		"execFileSync",
+		1,
+		"asks the Electron binary for its Chromium version so the store serves a compatible CRX: `ELECTRON_RUN_AS_NODE=1` with `-p` makes Electron a plain Node interpreter that evaluates one expression and exits - the app main is never loaded, so neither `posthog-node` nor the renderer's provider exists in it. The app boot in this rig is `spawn #1`, guarded above",
+		/ELECTRON_RUN_AS_NODE:\s*"1"/,
+	),
+	exempt(
 		"scripts/session-cookie-electron.test.mjs",
 		"spawn",
 		1,
