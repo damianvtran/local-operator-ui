@@ -566,7 +566,9 @@ test("every org refusal has a treatment, and only the plan one offers a retry", 
 	const { publicationTreatment, publicationErrorFromBody } = mod;
 
 	for (const [code, expected] of [
-		["team_plan_required", ["retry"]],
+		// Retry stays primary; the console action is the route to the page the
+		// body names (onboarding audit U4).
+		["team_plan_required", ["retry", "open-console"]],
 		["not_a_member", []],
 		["insufficient_role", []],
 		["team_not_found", ["refresh-hub"]],
@@ -1567,7 +1569,7 @@ test("the roster honours its actions, and renders no others", () => {
 		roster,
 		/const ROSTER_ACTIONS: readonly PublicationAction\[\] = \[/,
 	);
-	for (const action of ["refresh-hub", "retry", "sign-in"]) {
+	for (const action of ["refresh-hub", "retry", "sign-in", "open-console"]) {
 		assert.match(roster, new RegExp(`"${action}"`));
 	}
 	assert.match(
@@ -1854,4 +1856,28 @@ test("every agent-hub-page state holds one frame per sweep theme", async (t) => 
 		);
 		assert.equal(frames.length, 12, `${state} holds one frame per theme`);
 	}
+});
+
+test("U4: every plan refusal links to the pinned console page for its organization", () => {
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	const roster = read(
+		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
+	);
+	const upload = read(
+		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
+	);
+	// The plan-only buttons are additional remedies; they must never replace
+	// Retry or appear for a no-access refusal that a subscription cannot fix.
+	assert.match(page, /orgRefusal === "plan" &&/);
+	assert.match(page, /data-testid="agent-hub-org-plan-console"/);
+	assert.match(page, /openConsolePage\(subscribeUrlFor\(orgScopeId\)\)/);
+	assert.match(roster, /refusal === "plan" &&/);
+	assert.match(roster, /data-testid="org-teams-plan-console"/);
+	assert.match(roster, /openConsolePage\(subscribeUrlFor\(tenantId\)\)/);
+	// The publish dialog retains its target while the reader goes to the
+	// console. An unscoped publish must not leak the public sentinel as tenant.
+	assert.match(upload, /case "open-console":/);
+	assert.match(upload, /subscribeUrlFor\(targetIsOrg \? targetTenant : null\)/);
+	assert.match(upload, /data-testid="publish-target-console-link"/);
+	assert.match(upload, /blockedTargets\.length === 1/);
 });

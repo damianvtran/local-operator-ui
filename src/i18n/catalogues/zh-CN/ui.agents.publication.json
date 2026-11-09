@@ -92,7 +92,7 @@
 	"ui.agents.publication.subject.unknown": "该智能体",
 	"ui.agents.publication.team_not_found.body": "自本页加载以来，它可能已被下架。",
 	"ui.agents.publication.team_not_found.headline": "该团队已不再发布",
-	"ui.agents.publication.team_plan_required.body": "在组织内共享智能体属于Team套餐的功能。请让组织所有者在Radient控制台中启用，然后重新发布。",
-	"ui.agents.publication.team_plan_required.body_pull": "读取组织内的团队属于Team套餐的功能。请让组织所有者在Radient控制台中启用，然后重新拉取。",
-	"ui.agents.publication.team_plan_required.headline": "该组织需要有效的Team套餐"
+	"ui.agents.publication.team_plan_required.body": "在组织内共享智能体属于Radient Team套餐的功能。请让组织所有者在Radient控制台中启用，然后重新发布。",
+	"ui.agents.publication.team_plan_required.body_pull": "读取组织内的团队属于Radient Team套餐的功能。请让组织所有者在Radient控制台中启用，然后重新拉取。",
+	"ui.agents.publication.team_plan_required.headline": "该组织需要有效的Radient Team套餐"
 }

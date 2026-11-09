@@ -62,7 +62,7 @@
 	"ui.providers.provider_catalog.use_your_claude_pro_or_max_plan": "Utilisez votre offre Claude Pro ou Max. Sans frais supplémentaires.",
 	"ui.providers.provider_catalog.use_your_chatgpt_plus_or_pro_plan": "Utilisez votre offre ChatGPT Plus ou Pro. Sans frais supplémentaires.",
 	"ui.providers.provider_catalog.use_your_chatgpt_plan_signing_in_with": "Utilisez votre offre ChatGPT, en vous connectant avec un code à usage unique. Sans frais supplémentaires.",
-	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "Une seule connexion par navigateur. Rien à coller.",
+	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "Une seule connexion dans le navigateur pour de nombreux modèles. Sans abonnement ni clé API.",
 	"ui.providers.provider_catalog.sign_in_to_your_account_with_a": "Connectez-vous à votre compte {brand} avec un code à usage unique.",
 	"ui.providers.provider_catalog.sign_in_with_your_account": "Connectez-vous avec votre compte {brand}.",
 	"ui.providers.provider_catalog.use_a_subscription": "Utiliser un abonnement",

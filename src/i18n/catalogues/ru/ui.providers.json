@@ -61,7 +61,7 @@
 	"ui.providers.provider_catalog.more_providers_variant_41": "Другие провайдеры: {provider}",
 	"ui.providers.provider_catalog.needs_running": "Нужен запущенный {brand}",
 	"ui.providers.provider_catalog.on_this_computer": "На этом компьютере",
-	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "Один вход в браузере. Ничего вставлять не нужно.",
+	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "Один вход в браузере для многих моделей. Без подписки и API-ключа.",
 	"ui.providers.provider_catalog.paste_an_api_key": "Введите ключ API",
 	"ui.providers.provider_catalog.run_models_on_this_computer": "Запускать модели на этом компьютере",
 	"ui.providers.provider_catalog.set_up": "Настроить",

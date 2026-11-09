@@ -663,6 +663,20 @@
 		"placeholders": {},
 		"note": "The honest state reason. It must not read as the user's fault."
 	},
+	"ui.teamBridge.plan.reason_account": {
+		"role": "eligibility reason on the full-page Team Bridge gate for surface state A",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown to an account that is in no organization at all as well as one whose organizations lack the plan, so it must not say 'this organization'. 'Radient Team plan' is the one product name for the plan; keep 'Radient Team' untranslated and use the locale's established word for plan. It must not read as the user's fault."
+	},
+	"ui.teamBridge.plan.see_plan": {
+		"role": "secondary button on the Team Bridge plan gate and inline link in Settings > Radient account; opens the plan page of the Radient console in the browser",
+		"tone": "imperative",
+		"length": "3-5 words, one line.",
+		"placeholders": {},
+		"note": "A quiet route to look at the plan, not a purchase command: do not translate as buy, upgrade or subscribe. Keep 'Radient Team' untranslated."
+	},
 	"ui.teamBridge.plan.sign_in_title": {
 		"role": "eligibility panel heading when signed out",
 		"tone": "direct, calm",

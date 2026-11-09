@@ -110,6 +110,8 @@
 	"ui.teamBridge.plan.title": "Для Team Bridge нужен тариф Radient Team",
 	"ui.teamBridge.plan.body": "Общайтесь с участниками команды и их агентами и позвольте агентам сотрудничать с другими агентами вашей организации.",
 	"ui.teamBridge.plan.reason": "Тариф этой организации не включает Team Bridge.",
+	"ui.teamBridge.plan.reason_account": "Ваша учётная запись не входит в организацию с тарифом Radient Team.",
+	"ui.teamBridge.plan.see_plan": "Посмотреть тариф Radient Team",
 	"ui.teamBridge.plan.sign_in_title": "Войдите в Radient",
 	"ui.teamBridge.plan.sign_in_reason": "Вы не вошли в учётную запись. Войдите, чтобы пользоваться Team Bridge.",
 	"ui.teamBridge.plan.update_title": "Обновите Radient для Team Bridge",

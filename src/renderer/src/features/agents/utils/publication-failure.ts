@@ -58,7 +58,13 @@ export type PublicationAction =
 	| "edit-agent"
 	| "publish-as-new"
 	| "sign-in"
-	| "refresh-hub";
+	| "refresh-hub"
+	/**
+	 * Open the Radient console page where an organization's plan is activated.
+	 * The one action that leaves the app: the consumer opens
+	 * `subscribeUrlFor(<the organization the refusal was about>)`.
+	 */
+	| "open-console";
 
 export type PublicationTreatment = {
 	/** `warning` for the one refusal that is not about the agent being wrong. */
@@ -566,10 +572,16 @@ export function publicationTreatment(
 					? t("ui.agents.publication.team_plan_required.body_pull")
 					: t("ui.agents.publication.team_plan_required.body"),
 				note: null,
-				// Safe to retry, and the only step this dialog can take: the plan is
-				// activated on the console, and a retry is what a user who has just
-				// done that needs. Nothing was published.
-				actions: ["retry"],
+				/*
+				 * Retry stays FIRST (primary): nothing was published, and a retry is
+				 * what a user who has just activated the plan needs. The console
+				 * action sits beside it because the body sends the reader to the
+				 * Radient console and used to give no way to get there (onboarding
+				 * audit U4). It is shown to every member, not only owners: this
+				 * treatment does not carry the member's role, and the console page
+				 * itself tells a non-owner who can activate the plan.
+				 */
+				actions: ["retry", "open-console"],
 			};
 		case "not_a_member":
 			return {
@@ -896,5 +908,10 @@ export const PUBLICATION_ACTION_LABEL: Record<PublicationAction, string> = {
 	},
 	get "refresh-hub"() {
 		return t("ui.agents.publication.action.refresh_hub");
+	},
+	// The label the chat's Radient session notice already uses for the same
+	// destination: one name for the console everywhere it is linked.
+	get "open-console"() {
+		return t("ui.chat.radient_session.action.open_console");
 	},
 };

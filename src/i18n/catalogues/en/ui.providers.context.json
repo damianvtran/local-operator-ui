@@ -317,7 +317,7 @@
 	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": {
 		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
 		"tone": "Plain factual status/explanation; preserve source confidence",
-		"note": "Provider method/group presentation: one browser sign in nothing to paste. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+		"note": "Radient row and browser sign-in method explanation: many models through one sign-in, with no existing subscription or API key required. This does not say model usage is free; do not translate it as unlimited/free access. Keep Radient untranslated. Length: short paragraph that can wrap within the existing provider panel."
 	},
 	"ui.providers.provider_catalog.sign_in_to_your_account_with_a": {
 		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",

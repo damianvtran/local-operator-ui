@@ -92,7 +92,7 @@
 	"ui.agents.publication.subject.unknown": "Tác nhân đó",
 	"ui.agents.publication.team_not_found.body": "Có thể nhóm đã bị gỡ khỏi trung tâm kể từ khi trang này được tải.",
 	"ui.agents.publication.team_not_found.headline": "Nhóm đó không còn được xuất bản",
-	"ui.agents.publication.team_plan_required.body": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Hãy nhờ chủ sở hữu tổ chức kích hoạt gói này trong Radient Console, rồi xuất bản lại.",
-	"ui.agents.publication.team_plan_required.body_pull": "Đọc nhóm của một tổ chức thuộc gói Team. Hãy nhờ chủ sở hữu tổ chức kích hoạt gói này trong Radient Console, rồi tải lại.",
-	"ui.agents.publication.team_plan_required.headline": "Tổ chức đó cần gói Team đang hoạt động"
+	"ui.agents.publication.team_plan_required.body": "Chia sẻ tác nhân trong một tổ chức thuộc gói Radient Team. Hãy nhờ chủ sở hữu tổ chức kích hoạt gói này trong Radient Console, rồi xuất bản lại.",
+	"ui.agents.publication.team_plan_required.body_pull": "Đọc nhóm của một tổ chức thuộc gói Radient Team. Hãy nhờ chủ sở hữu tổ chức kích hoạt gói này trong Radient Console, rồi tải lại.",
+	"ui.agents.publication.team_plan_required.headline": "Tổ chức đó cần gói Radient Team đang hoạt động"
 }

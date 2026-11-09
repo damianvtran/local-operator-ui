@@ -9,6 +9,7 @@ import {
 	TeamBridgeApi,
 	requireBridgeWriteAccount,
 } from "@shared/api/local-operator/team-bridge-api";
+import { TEAM_TRIAL_START_ENABLED } from "@shared/api/local-operator/team-trial-activation";
 import { Spinner } from "@shared/components/common/spinner";
 import { useLeftSidebarHosted } from "@shared/components/navigation/left-sidebar-host";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
@@ -27,6 +28,10 @@ import {
 	teamBridgeComposerKey,
 } from "@shared/store/team-bridge-composer-rows";
 import { onDraftRevocation } from "@shared/store/team-bridge-draft-account";
+import {
+	RADIENT_ACCOUNT_SETTINGS_ROUTE,
+	openConsolePage,
+} from "@shared/utils/radient-account-copy";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -69,6 +74,8 @@ import { browserDraftStorage } from "../../shared/store/team-bridge-draft-accoun
 import { rowCurrent } from "../chat/components/chat-sidebar";
 import { TeamBridgeTrialEmpty } from "../team-bridge-trial/team-bridge-trial-empty";
 import {
+	subscribeUrlFor,
+	teamBridgeGateAction,
 	teamBridgeReadOnly,
 	trialEndedOrg,
 	trialReplacesPanel,
@@ -512,8 +519,15 @@ const chiefLabelCopy = (): ChiefLabels => ({
  */
 export const TeamBridgeEligibilityPanel: FC<{
 	reason: TeamBridgeEligibility;
-}> = ({ reason }) => {
+	/**
+	 * Whether this build may start Team trials. Defaults to the release
+	 * constant; a parameter only so the plan link's deferral to the trial
+	 * on-ramp can be rendered both ways (`teamBridgeGateAction`).
+	 */
+	trialStartEnabled?: boolean;
+}> = ({ reason, trialStartEnabled = TEAM_TRIAL_START_ENABLED }) => {
 	useI18nLocale();
+	const action = teamBridgeGateAction(reason, trialStartEnabled);
 	const copy = {
 		// Member opt-out is a plain state, not an organization-plan upsell.
 		off: {
@@ -524,9 +538,16 @@ export const TeamBridgeEligibilityPanel: FC<{
 			title: "ui.agentMessages.page_off.local_title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
 			reason: "ui.agentMessages.page_off.local_body",
 		},
+		/*
+		 * The ACCOUNT's sentence, not `plan.reason`'s "This organization's plan":
+		 * this gate is surface A, which is also what an account with no
+		 * organization at all reads, and that reader has no organization for the
+		 * sentence to be about (onboarding audit U2). `plan.reason` stays for
+		 * the People failure, which is about one named organization.
+		 */
 		plan_required: {
 			title: "ui.teamBridge.plan.title",
-			reason: "ui.teamBridge.plan.reason",
+			reason: "ui.teamBridge.plan.reason_account",
 		},
 		signed_out: {
 			title: "ui.teamBridge.plan.sign_in_title",
@@ -569,7 +590,7 @@ export const TeamBridgeEligibilityPanel: FC<{
 					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
 						{t(copy[reason].reason)}
 					</p>
-					{(reason === "off" || reason === "off_local") && (
+					{action === "settings" && (
 						<Button asChild variant="secondary" size="sm" className="mt-4">
 							<Link
 								to={`/settings?setting=${TEAM_BRIDGE_ENABLED_SETTING_KEY}`}
@@ -577,6 +598,39 @@ export const TeamBridgeEligibilityPanel: FC<{
 							>
 								{t("ui.agentMessages.page_off.action")}
 							</Link>
+						</Button>
+					)}
+					{/*
+					 * Navigation to the account section that owns the sign-in control,
+					 * the same route the sidebar's signed-out row uses. Not a second
+					 * sign-in implementation on this page: the browser hand-off, its
+					 * pending state and its errors already live there.
+					 */}
+					{action === "sign_in" && (
+						<Button asChild variant="secondary" size="sm" className="mt-4">
+							<Link
+								to={RADIENT_ACCOUNT_SETTINGS_ROUTE}
+								data-team-bridge-gate-action="sign-in"
+							>
+								{t("ui.teamBridge.plan.sign_in_title")}
+							</Link>
+						</Button>
+					)}
+					{/*
+					 * `subscribeUrlFor(null)`: the pinned console page with no tenant.
+					 * This gate has no organization id to pass (surface A answers
+					 * `tenant_id: null`), and the console resolves the signed-in
+					 * account's own organization or offers to create one.
+					 */}
+					{action === "see_plan" && (
+						<Button
+							variant="secondary"
+							size="sm"
+							className="mt-4"
+							data-team-bridge-gate-action="see-plan"
+							onClick={() => openConsolePage(subscribeUrlFor(null))}
+						>
+							{t("ui.teamBridge.plan.see_plan")}
 						</Button>
 					)}
 				</div>

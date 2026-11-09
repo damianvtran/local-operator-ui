@@ -37,6 +37,7 @@ import {
 	orgSurfaceNotice,
 	orgSurfaceReady,
 } from "@features/agent-hub/org-surface-gate";
+import { subscribeUrlFor } from "@features/team-bridge-trial/team-bridge-trial-model";
 import type {
 	PublicationDocumentOverride,
 	PublishedListing,
@@ -61,6 +62,7 @@ import {
 	Alert,
 	AlertDescription,
 	AlertTitle,
+	Button,
 	Checkbox,
 	Input,
 	Label,
@@ -79,6 +81,7 @@ import {
 	usePublishedListing,
 	usePublishedListingsStore,
 } from "@shared/store/published-listings-store";
+import { openConsolePage } from "@shared/utils/radient-account-copy";
 import type { FC } from "react";
 import {
 	useEffect,
@@ -617,6 +620,12 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			case "retry":
 				void submit();
 				break;
+			case "open-console":
+				// The organization the refused publish was aimed at, so the console
+				// opens on the plan page for THAT organization. The dialog stays
+				// open: the reader comes back to Retry once the plan is active.
+				openConsolePage(subscribeUrlFor(targetIsOrg ? targetTenant : null));
+				break;
 		}
 	};
 
@@ -1068,6 +1077,34 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 													t("ui.hub.pages.scope.org_unnamed"),
 											})
 										: t("ui.agents.upload.target.visibility_hint_public")}
+									{/*
+									 * The hint says the plan is activated in the Radient console;
+									 * this is the way there (onboarding audit U4). With exactly one
+									 * blocked organization the link opens that organization's plan
+									 * page; with several it opens the console's own chooser, because
+									 * guessing one of them would open the wrong organization.
+									 */}
+									{blockedTargets.length > 0 ? (
+										<>
+											{" "}
+											<Button
+												variant="link"
+												size="sm"
+												data-testid="publish-target-console-link"
+												onClick={() =>
+													openConsolePage(
+														subscribeUrlFor(
+															blockedTargets.length === 1
+																? blockedTargets[0].tenant_id
+																: null,
+														),
+													)
+												}
+											>
+												{PUBLICATION_ACTION_LABEL["open-console"]}
+											</Button>
+										</>
+									) : null}
 								</p>
 							</div>
 						) : orgNotice ? (

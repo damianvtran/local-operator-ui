@@ -110,6 +110,8 @@
 	"ui.teamBridge.plan.title": "Team Bridge کے لیے Radient Team پلان درکار ہے",
 	"ui.teamBridge.plan.body": "اپنی ٹیم کے ارکان اور ان کے ایجنٹس سے بات چیت کریں، اور ایجنٹس کو اپنی تنظیم کے دوسرے ایجنٹس کے ساتھ مل کر کام کرنے دیں۔",
 	"ui.teamBridge.plan.reason": "اس تنظیم کے پلان میں Team Bridge شامل نہیں۔",
+	"ui.teamBridge.plan.reason_account": "آپ کا اکاؤنٹ Radient Team پلان والی کسی تنظیم میں شامل نہیں۔",
+	"ui.teamBridge.plan.see_plan": "Radient Team پلان دیکھیں",
 	"ui.teamBridge.plan.sign_in_title": "Radient میں سائن ان کریں",
 	"ui.teamBridge.plan.sign_in_reason": "آپ سائن آؤٹ ہیں۔ Team Bridge استعمال کرنے کے لیے سائن ان کریں۔",
 	"ui.teamBridge.plan.update_title": "Team Bridge کے لیے اپ ڈیٹ کریں",

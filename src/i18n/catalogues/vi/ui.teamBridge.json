@@ -110,6 +110,8 @@
 	"ui.teamBridge.plan.title": "Team Bridge cần gói Radient Team",
 	"ui.teamBridge.plan.body": "Trao đổi với đồng nghiệp và tác nhân của họ, đồng thời để các tác nhân cộng tác với những tác nhân khác trong tổ chức của bạn.",
 	"ui.teamBridge.plan.reason": "Gói của tổ chức này không bao gồm Team Bridge.",
+	"ui.teamBridge.plan.reason_account": "Tài khoản của bạn không thuộc tổ chức nào dùng gói Radient Team.",
+	"ui.teamBridge.plan.see_plan": "Xem gói Radient Team",
 	"ui.teamBridge.plan.sign_in_title": "Đăng nhập Radient",
 	"ui.teamBridge.plan.sign_in_reason": "Bạn đã đăng xuất. Đăng nhập để dùng Team Bridge.",
 	"ui.teamBridge.plan.update_title": "Cập nhật để dùng Team Bridge",

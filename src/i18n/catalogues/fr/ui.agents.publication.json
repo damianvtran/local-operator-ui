@@ -92,7 +92,7 @@
 	"ui.agents.publication.subject.unknown": "Cet agent",
 	"ui.agents.publication.team_not_found.body": "Elle a peut-être été retirée du hub depuis le chargement de cette page.",
 	"ui.agents.publication.team_not_found.headline": "Cette équipe n’est plus publiée",
-	"ui.agents.publication.team_plan_required.body": "Le partage d’agents au sein d’une organisation fait partie de l’offre Team. Demandez à un propriétaire de l’organisation de l’activer dans la console Radient, puis publiez à nouveau.",
-	"ui.agents.publication.team_plan_required.body_pull": "La lecture des équipes d’une organisation fait partie de l’offre Team. Demandez à un propriétaire de l’organisation de l’activer dans la console Radient, puis réessayez.",
-	"ui.agents.publication.team_plan_required.headline": "Cette organisation nécessite une offre Team active"
+	"ui.agents.publication.team_plan_required.body": "Le partage d’agents au sein d’une organisation fait partie de l’offre Radient Team. Demandez à un propriétaire de l’organisation de l’activer dans la console Radient, puis publiez à nouveau.",
+	"ui.agents.publication.team_plan_required.body_pull": "La lecture des équipes d’une organisation fait partie de l’offre Radient Team. Demandez à un propriétaire de l’organisation de l’activer dans la console Radient, puis réessayez.",
+	"ui.agents.publication.team_plan_required.headline": "Cette organisation nécessite une offre Radient Team active"
 }

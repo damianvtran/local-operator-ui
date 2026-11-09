@@ -110,6 +110,8 @@
 	"ui.teamBridge.plan.title": "Team Bridge requiere un plan Radient Team",
 	"ui.teamBridge.plan.body": "Comunícate con los miembros de tu equipo y sus agentes, y deja que los agentes colaboren con otros agentes de tu organización.",
 	"ui.teamBridge.plan.reason": "El plan de esta organización no incluye Team Bridge.",
+	"ui.teamBridge.plan.reason_account": "Tu cuenta no pertenece a ninguna organización con el plan Radient Team.",
+	"ui.teamBridge.plan.see_plan": "Ver el plan Radient Team",
 	"ui.teamBridge.plan.sign_in_title": "Inicia sesión en Radient",
 	"ui.teamBridge.plan.sign_in_reason": "No has iniciado sesión. Inicia sesión para usar Team Bridge.",
 	"ui.teamBridge.plan.update_title": "Actualiza para usar Team Bridge",

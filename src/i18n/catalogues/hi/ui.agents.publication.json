@@ -92,7 +92,7 @@
 	"ui.agents.publication.subject.unknown": "उस एजेंट",
 	"ui.agents.publication.team_not_found.body": "इस पेज के लोड होने के बाद से इसे सूची से हटाया गया हो सकता है।",
 	"ui.agents.publication.team_not_found.headline": "वह टीम अब प्रकाशित नहीं है",
-	"ui.agents.publication.team_plan_required.body": "संगठन के अंदर एजेंट साझा करना Team प्लान का हिस्सा है। संगठन के किसी मालिक से कहें कि वह इसे Radient कंसोल में चालू करे, फिर दोबारा प्रकाशित करें।",
-	"ui.agents.publication.team_plan_required.body_pull": "संगठन की टीमें पढ़ना Team प्लान का हिस्सा है। संगठन के किसी मालिक से कहें कि वह इसे Radient कंसोल में चालू करे, फिर दोबारा pull करें।",
-	"ui.agents.publication.team_plan_required.headline": "उस संगठन के लिए सक्रिय Team प्लान ज़रूरी है"
+	"ui.agents.publication.team_plan_required.body": "संगठन के अंदर एजेंट साझा करना Radient Team प्लान का हिस्सा है। संगठन के किसी मालिक से कहें कि वह इसे Radient कंसोल में चालू करे, फिर दोबारा प्रकाशित करें।",
+	"ui.agents.publication.team_plan_required.body_pull": "संगठन की टीमें पढ़ना Radient Team प्लान का हिस्सा है। संगठन के किसी मालिक से कहें कि वह इसे Radient कंसोल में चालू करे, फिर दोबारा pull करें।",
+	"ui.agents.publication.team_plan_required.headline": "उस संगठन के लिए सक्रिय Radient Team प्लान ज़रूरी है"
 }
