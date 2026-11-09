@@ -4,10 +4,10 @@
  * per scene per theme.
  *
  *     node scripts/capture-docs-library.mjs [origin] \
- *         [--only=hero,teams] [--themes=light,dark] [--out=<dir>]
+ *         [--only=hero,teams] [--themes=light,dark] [--out=<dir>] \
+ *         [--viewport=1280x900]
  *
- * Default origin is http://localhost:6129 (the capture checkout's own
- * Storybook). The default output directory is `docs-library-captures/` beside
+ * Default origin is http://localhost:6006 (`pnpm storybook`'s port). The default output directory is `docs-library-captures/` beside
  * the repository root.
  *
  * WHY THIS EXISTS, RATHER THAN REUSING `capture-evidence.mjs`. That tool
@@ -44,6 +44,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withMockKeychain } from "./chrome-keychain.mjs";
+import { EVIDENCE_TZ, pinnedEvidenceEnv } from "./evidence-tz.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -51,9 +52,6 @@ const DEBUG_PORT_LINE = /DevTools listening on (ws:\/\/[^\s]+)/;
 
 /** Scene name (used in file names) -> story id. */
 const SCENES = [
-	/* `hero` resolves into the sibling `docs-hero` story, which this repo does
-	   not carry: a default run reports its two frames as failed and exits 1, so
-	   scope an ordinary run with `--only=...` until that story lands beside it. */
 	["hero", "docs-app-hero--scene"],
 	["conversation-tools", "docs-library--conversation-tools"],
 	["subagents", "docs-library--subagents"],
@@ -66,6 +64,14 @@ const SCENES = [
 	["media-in-conversation", "docs-library--media-in-conversation"],
 	["appearance", "docs-library--appearance"],
 	["chat-trace", "docs-library--chat-trace"],
+	["notifications", "docs-library--notifications"],
+	["asks", "docs-library--asks"],
+	["review-pane", "docs-library--review-pane"],
+	["bridge-channel", "docs-team-bridge--channel"],
+	["bridge-thread", "docs-team-bridge--thread"],
+	["bridge-approval", "docs-team-bridge--approval"],
+	["bridge-mention", "docs-team-bridge--mention"],
+	["bridge-launch", "docs-team-bridge--launch"],
 ];
 
 /** CLI alias -> the registry's palette id. */
@@ -76,15 +82,20 @@ const flag = (name) => {
 	const hit = ARGS.find((a) => a.startsWith(`--${name}=`));
 	return hit ? hit.slice(name.length + 3) : null;
 };
-const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6129";
+const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6006";
 const ONLY = flag("only")?.split(",").filter(Boolean) ?? null;
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? [
 	"light",
 	"dark",
 ];
 const OUT = flag("out") ?? join(ROOT, "docs-library-captures");
-const WIDTH = Number(flag("width") ?? 1280);
-const HEIGHT = Number(flag("height") ?? 900);
+// Team Bridge's committed masters use 1440x900 CSS pixels; ordinary library
+// scenes retain 1280x900. One explicit viewport avoids silently changing either.
+const VIEWPORT = flag("viewport")?.match(/^(\d+)x(\d+)$/);
+if (flag("viewport") && !VIEWPORT)
+	throw new Error("--viewport must be WIDTHxHEIGHT, e.g. 1440x900");
+const WIDTH = Number(flag("width") ?? VIEWPORT?.[1] ?? 1280);
+const HEIGHT = Number(flag("height") ?? VIEWPORT?.[2] ?? 900);
 const SCALE = Number(flag("scale") ?? 2);
 /*
  * How long a story may take to become ready. The first load of each story
@@ -130,6 +141,7 @@ const evaluate = async (cdp, expression) => {
 };
 
 const main = async () => {
+	process.env.TZ = EVIDENCE_TZ;
 	const scenes = SCENES.filter(([name]) => !ONLY || ONLY.includes(name));
 	const themes = THEME_FILTER.map((alias) => {
 		const id = THEMES[alias];
@@ -155,7 +167,16 @@ const main = async () => {
 			"--no-default-browser-check",
 			"about:blank",
 		]),
-		{ detached: true, stdio: ["ignore", "ignore", "pipe"] },
+		{
+			detached: true,
+			stdio: ["ignore", "ignore", "pipe"],
+			// No live terminal identity belongs in a synthetic capture child.
+			env: Object.fromEntries(
+				Object.entries(pinnedEvidenceEnv()).filter(
+					([key]) => !key.startsWith("CMUX_"),
+				),
+			),
+		},
 	);
 
 	/* Chrome prints the DevTools websocket on stderr; reading it there avoids
@@ -190,6 +211,7 @@ const main = async () => {
 	const cdp = new Cdp(ws);
 	await cdp.send("Page.enable");
 	await cdp.send("Runtime.enable");
+	await cdp.send("Emulation.setTimezoneOverride", { timezoneId: EVIDENCE_TZ });
 
 	let seedScript = null;
 	let prefsKey = null;

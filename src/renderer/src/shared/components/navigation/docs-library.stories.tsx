@@ -30,7 +30,10 @@
 
 import "../../../styles/index.css";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
-import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
+import type {
+	DesktopNotificationItem,
+	DesktopProject,
+} from "../../../../../shared/desktop-control-contract";
 // The shim installs window.api for every story here.
 import "@features/chat/components/story-electron-shim";
 import { AgentHubPage } from "@features/agent-hub/agent-hub-page";
@@ -40,6 +43,7 @@ import type {
 	TranscriptRecord,
 	TranscriptState,
 } from "@features/chat/canonical/transcript-reducer";
+import { FleetAskDrawer } from "@features/chat/components/asks/fleet-ask-drawer";
 import { ChatHeader } from "@features/chat/components/chat-header";
 import {
 	deriveMcpServers,
@@ -54,7 +58,15 @@ import type { MonitorControls } from "@features/chat/components/run-details/use-
 import type { WakeControls } from "@features/chat/components/run-details/use-wake-controls";
 import type { AidaWakeIdentity } from "@features/chat/components/run-details/wake-controls-model";
 import type { Message } from "@features/chat/types/message";
+import {
+	FIXTURE_NOW_MS as CODE_REVIEW_NOW_MS,
+	list as codeRequestList,
+	populatedRows as codeRequestRows,
+} from "@features/code-review/code-review-fixtures";
+import { CodeReviewPaneBody } from "@features/code-review/components/code-review-pane";
 import { MeshPage } from "@features/mesh/mesh-page";
+import { NotificationsPage } from "@features/notifications/components/notifications-page";
+import { createNotificationFixture } from "@features/notifications/notifications-fixture";
 import { ProjectsPage } from "@features/projects/components/projects-page";
 import { SchedulesPage } from "@features/schedules/components/schedules-page";
 import { SettingsSection } from "@features/settings/components/settings-section";
@@ -71,6 +83,7 @@ import { PanelRail } from "@shared/components/navigation/panel-rail";
 import { InPanelRailHost } from "@shared/components/navigation/panel-rail-host";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
 	resolveRightSlotWidth,
@@ -268,6 +281,333 @@ const profileWire = (p: (typeof PROFILES)[number]) =>
 
 /* --------------------------------------------------------------- the bridge */
 
+/* ------------------------------------------- notifications, asks and review */
+
+/**
+ * The notifications scene's pinned clock (a local-time instant: the capture rig
+ * pins the zone, so the time column and the Today/Yesterday groups do not churn
+ * between captures).
+ */
+const NOTIFICATIONS_NOW_MS = new Date(2026, 2, 14, 15, 4, 0).getTime();
+
+let notificationSeq = 100;
+const notification = (
+	over: Partial<DesktopNotificationItem> & {
+		id: string;
+		title: string;
+		minutesAgo: number;
+	},
+): DesktopNotificationItem => {
+	notificationSeq += 1;
+	const { minutesAgo, ...rest } = over;
+	const stamp = NOTIFICATIONS_NOW_MS - minutesAgo * 60_000;
+	return {
+		source: "notify",
+		priority: "normal",
+		excerpt: "",
+		created_at: stamp,
+		updated_at: stamp,
+		seq: notificationSeq,
+		revision: 1,
+		read: false,
+		read_via: null,
+		dismissed: false,
+		repeat_count: 1,
+		session: { id: "3f9c1a2b4d5e", title: "Reconcile the March invoices" },
+		ask: null,
+		...rest,
+	};
+};
+
+/**
+ * What the world's conversations reported while nobody was watching them: the
+ * point of the scene is that several agents finished, stalled or asked in
+ * parallel and one page collects it. Titles reuse the sidebar roster's own
+ * conversation names so the page and the sidebar read as one workspace.
+ */
+const NOTIFICATION_WAITING: DesktopNotificationItem[] = [
+	notification({
+		id: "ask:3f9c1a2b4d5e:a-pending",
+		source: "ask",
+		priority: "high",
+		title: "Two Contoso rows are marked pending. Count them as unpaid?",
+		minutesAgo: 4,
+		ask: {
+			status: "open",
+			question_count: 1,
+			deadline_at: NOTIFICATIONS_NOW_MS + 26 * 60_000,
+		},
+	}),
+	notification({
+		id: "ask:5a6b7c8d9e0f:a-send",
+		source: "ask",
+		priority: "high",
+		title: "The renewal draft is ready. Send it to the vendor?",
+		minutesAgo: 11,
+		session: { id: "5a6b7c8d9e0f", title: "Vendor contract renewal" },
+		ask: {
+			status: "open",
+			question_count: 1,
+			deadline_at: NOTIFICATIONS_NOW_MS + 19 * 60_000,
+		},
+	}),
+];
+
+const NOTIFICATION_ITEMS: DesktopNotificationItem[] = [
+	notification({
+		id: "n_reviewcleandeploy",
+		priority: "high",
+		title: "Review round 2 is clean on #212: migrate the deploy script",
+		excerpt: "No blockers left; 23 of 23 checks passed. Ready to merge.",
+		minutesAgo: 6,
+		session: { id: "2b3c4d5e6f70", title: "Migrate the deploy script" },
+	}),
+	notification({
+		id: "n_auditfinishedmar",
+		title: "Audit finished: 452 ledger rows checked",
+		excerpt:
+			"4 rows differ from the ledger export. Details in reports/audit-march.md.",
+		minutesAgo: 14,
+	}),
+	notification({
+		id: "n_scenariosrevenue",
+		title: "Scenario run complete: 3 revenue scenarios",
+		excerpt: "Written to models/q1-scenarios.xlsx with the assumptions used.",
+		minutesAgo: 41,
+		session: { id: "7c1f2e3d4a5b", title: "Quarterly revenue model" },
+	}),
+	notification({
+		id: "n_duplicatesledger",
+		title: "Clean-up paused: 2 duplicate suppliers need a decision",
+		excerpt: "Fabrikam appears under two tax IDs; nothing was merged.",
+		minutesAgo: 95,
+		session: { id: "1a2b3c4d5e6f", title: "Supplier ledger clean-up" },
+	}),
+	notification({
+		id: "n_backupverifiedmar",
+		priority: "low",
+		title: "Nightly ledger backup verified",
+		excerpt: "Checksums match for all 14 exports.",
+		minutesAgo: 190,
+		read: true,
+		read_via: "watching",
+		session: { id: "1a2b3c4d5e6f", title: "Supplier ledger clean-up" },
+	}),
+	notification({
+		id: "n_postmortemdraft",
+		title: "Postmortem draft ready for review",
+		excerpt: "docs-pod finished the timeline and five action items.",
+		minutesAgo: 26 * 60,
+		session: { id: "3c4d5e6f7081", title: "Draft the incident postmortem" },
+	}),
+	notification({
+		id: "n_weeklydigestmar",
+		priority: "low",
+		title: "Weekly digest ready",
+		excerpt: "9 conversations finished, 4 pull requests merged.",
+		minutesAgo: 28 * 60,
+		read: true,
+		read_via: "explicit",
+		session: { id: "7c1f2e3d4a5b", title: "Quarterly revenue model" },
+	}),
+];
+
+/** `asks.list` at fleet scope: one open question per busy conversation, and two
+ * from the one this window is on. The wire row, as `fleet-ask-drawer.stories`
+ * writes it. */
+const fleetAsk = (over: {
+	ask_id: string;
+	session_id: string;
+	cwd: string;
+	minutesAgo: number;
+	question: string;
+	options: string[];
+}) => ({
+	ask_id: over.ask_id,
+	session_id: over.session_id,
+	cwd: over.cwd,
+	status: "open",
+	created_at: NOW - over.minutesAgo * 60_000,
+	expires_at: NOW + (30 - over.minutesAgo) * 60_000,
+	timeout_s: 1800,
+	urgent: false,
+	questions: [
+		{
+			id: "q",
+			question: over.question,
+			options: over.options.map((label) => ({ label })),
+			multi: false,
+		},
+	],
+});
+
+const FLEET_ASKS = [
+	fleetAsk({
+		ask_id: "a-pending",
+		session_id: "3f9c1a2b4d5e",
+		cwd: "/workspace/invoices",
+		minutesAgo: 4,
+		question: "Two Contoso rows are marked pending. Count them as unpaid?",
+		options: ["Count them", "Leave them out"],
+	}),
+	fleetAsk({
+		ask_id: "a-ledger",
+		session_id: "3f9c1a2b4d5e",
+		cwd: "/workspace/invoices",
+		minutesAgo: 2,
+		question:
+			"The audit found 4 rows that differ from the ledger. Fix the export or report only?",
+		options: ["Fix the export", "Report only"],
+	}),
+	fleetAsk({
+		ask_id: "a-send",
+		session_id: "5a6b7c8d9e0f",
+		cwd: "/workspace/contracts",
+		minutesAgo: 11,
+		question: "The renewal draft is ready. Send it to the vendor?",
+		options: ["Send it", "Hold for edits"],
+	}),
+	fleetAsk({
+		ask_id: "a-merge",
+		session_id: "2b3c4d5e6f70",
+		cwd: "/workspace/atlas",
+		minutesAgo: 6,
+		question: "Review is clean and CI is green on #212. Merge it?",
+		options: ["Merge", "Wait"],
+	}),
+	fleetAsk({
+		ask_id: "a-churn",
+		session_id: "7c1f2e3d4a5b",
+		cwd: "/workspace/finance-models",
+		minutesAgo: 17,
+		question: "Use last quarter's churn rate or the 12-month average?",
+		options: ["Last quarter", "12-month average"],
+	}),
+];
+
+/** The catalogue the fleet drawer names its groups from (title, then folder). */
+const FLEET_CATALOGUE = [
+	{
+		session_id: "3f9c1a2b4d5e",
+		title: "Reconcile the March invoices",
+		cwd: "/workspace/invoices",
+	},
+	{
+		session_id: "5a6b7c8d9e0f",
+		title: "Vendor contract renewal",
+		cwd: "/workspace/contracts",
+	},
+	{
+		session_id: "2b3c4d5e6f70",
+		title: "Migrate the deploy script",
+		cwd: "/workspace/atlas",
+	},
+	{
+		session_id: "7c1f2e3d4a5b",
+		title: "Quarterly revenue model",
+		cwd: "/workspace/finance-models",
+	},
+];
+
+/**
+ * The review pane's ledger for this world. The rows are the shipped fixture's
+ * own shapes (lanes, CI, relation) re-pointed at a fictional repository, because
+ * that fixture names the real one it was written against and this frame is a
+ * public asset.
+ */
+const REVIEW_REQUESTS = (() => {
+	const [template] = codeRequestRows();
+	const minutes = (ago: number) =>
+		Math.floor((CODE_REVIEW_NOW_MS - ago * 60_000) / 1000);
+	const request = (
+		number: number,
+		title: string,
+		over: Partial<typeof template> = {},
+		summary: Partial<NonNullable<(typeof template)["summary"]>> = {},
+	): typeof template => ({
+		...template,
+		key: `gh:${number}`,
+		number,
+		url: `https://github.com/northwind/invoices/pull/${number}`,
+		project: "northwind/invoices",
+		...over,
+		summary: template.summary
+			? { ...template.summary, title, ...summary }
+			: template.summary,
+	});
+	const [agentLane, qaLane] = template.lanes ?? [];
+	if (!agentLane || !qaLane)
+		throw new Error(
+			"The marketing ledger needs the fixture's agent and QA lanes",
+		);
+	return codeRequestList([
+		request(
+			212,
+			"feat(deploy): migrate the deploy script to the release runner",
+			{
+				lanes: [
+					{ ...agentLane, round: 2, state: "clean", reviewed_head: "4be19c02" },
+					{ ...qaLane, round: 1, state: "clean", reviewed_head: "4be19c02" },
+				],
+			},
+			{ head_sha: "4be19c02a771", updated_at: minutes(6), comments: 7 },
+		),
+		request(
+			214,
+			"fix(invoices): count pending rows apart from unpaid ones",
+			{
+				lanes: [
+					{
+						...agentLane,
+						round: 1,
+						state: "findings_open",
+						reviewed_head: "a03d7e55",
+					},
+				],
+			},
+			{
+				head_sha: "a03d7e5519c4",
+				ci: { status: "failure", total: 24, passed: 22, failed: 2, pending: 0 },
+				updated_at: minutes(18),
+				comments: 3,
+			},
+		),
+		request(
+			215,
+			"docs(reports): add the March unpaid summary",
+			{ lanes: [] },
+			{
+				draft: true,
+				head_sha: "77c2f0aa31be",
+				ci: { status: "pending", total: 0, passed: 0, failed: 0, pending: 3 },
+				updated_at: minutes(3),
+				comments: 0,
+			},
+		),
+		request(
+			209,
+			"chore(ledger): merge the duplicate supplier records",
+			{
+				relation: "mentioned",
+				lanes: [
+					{
+						...agentLane,
+						round: 2,
+						state: "terminal",
+						reviewed_head: "19ab44d0",
+					},
+				],
+			},
+			{
+				state: "merged",
+				head_sha: "19ab44d0c2e8",
+				updated_at: minutes(190),
+				comments: 9,
+			},
+		),
+	]);
+})();
+
 type BridgeRequest = {
 	op: string;
 	q?: string;
@@ -287,6 +627,10 @@ const ok = (result: unknown): DesktopResponse => ({
  */
 const installWorldBridge = () => {
 	const rows = roster();
+	const notifications = createNotificationFixture(
+		structuredClone(NOTIFICATION_ITEMS),
+		structuredClone(NOTIFICATION_WAITING),
+	);
 	const handler = async (request: BridgeRequest): Promise<DesktopResponse> => {
 		switch (request.op) {
 			case "capabilities":
@@ -303,6 +647,17 @@ const installWorldBridge = () => {
 						aida: 1,
 						projects: 1,
 						peers: 1,
+						/*
+						 * The rows a current core advertises and the default sidebar
+						 * therefore shows: Notifications and Library above Projects,
+						 * Team Bridge inside More. Without them every frame here
+						 * photographs the sidebar of a core older than 2026-10-25.
+						 */
+						notifications: 1,
+						notification_bulk_selection: 1,
+						desktop_feed: 1,
+						library: 1,
+						team_bridge_conversations: 1,
 					},
 				});
 			case "sessions.list":
@@ -377,18 +732,44 @@ const installWorldBridge = () => {
 					supervisor: SUPERVISOR,
 					read_error: false,
 				});
+			case "notifications.list":
+			case "notifications.count":
+			case "notifications.get":
+			case "notifications.read":
+			case "notifications.dismiss":
+				/* The shipped stateful fixture over the pinned contract, so the page,
+				   the sidebar badge and the rail's Asks count agree with each other. */
+				return notifications.request(request) as DesktopResponse;
+			case "asks.list":
+				return ok({ asks: FLEET_ASKS });
+			case "sidebar_layout.get":
+				return ok({ layout: null });
 			default:
+				/* Named on the document as well as thrown: a query swallows the
+				   rejection, and the capture rig prints this attribute, so a scene
+				   that starts issuing a new call is visible in the capture log. */
+				document.documentElement.dataset.refusedOps = [
+					...new Set([
+						...(document.documentElement.dataset.refusedOps ?? "")
+							.split(",")
+							.filter(Boolean),
+						request.op,
+					]),
+				].join(",");
 				throw new Error(`unexpected desktop op in this story: ${request.op}`);
 		}
 	};
 	const page = window as unknown as {
 		api?: {
-			desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> };
+			desktop?: {
+				request: (r: BridgeRequest) => Promise<DesktopResponse>;
+				feed?: unknown;
+			};
 		};
 	};
 	const api = page.api ?? {};
 	page.api = api;
-	api.desktop = { request: handler };
+	api.desktop = { request: handler, feed: notifications.feed };
 };
 
 /**
@@ -704,7 +1085,14 @@ const EMPTY_ROUTE = {
 const AppShell: FC<{
 	records?: TranscriptRecord[];
 	runPanelWidth?: number;
-	rightPane?: "run" | null;
+	rightPane?: "run" | "review" | "asks" | null;
+	/** The rail's own counts, for a scene whose subject is one of its triggers. */
+	rail?: {
+		askCount?: number;
+		askScope?: "session" | "fleet";
+		codeOpened?: number;
+		codeMentioned?: number;
+	};
 	/** A scene's own run-details state; the shared hero fixture when passed none. */
 	details?: ReturnType<typeof deriveRunDetails>;
 	children?: ReactNode;
@@ -718,6 +1106,7 @@ const AppShell: FC<{
 	runPanelWidth = 0,
 	rightPane = null,
 	details = deriveRunDetails(runFixtures.bothInFlight()),
+	rail = {},
 	children,
 }) => {
 	const rowRef = useRef<HTMLDivElement | null>(null);
@@ -735,12 +1124,18 @@ const AppShell: FC<{
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({
 			isRunPanelOpen: rightPane === "run",
+			isCodeReviewPaneOpen: rightPane === "review",
+			isAskDrawerOpen: rightPane === "asks",
+			askDrawerScope: rightPane === "asks" ? "fleet" : "session",
 			rightSlotWidth: runPanelWidth,
 			rightSlotRoute: DRAWABLE_ROUTE,
 		});
 		return () => {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: false,
+				isCodeReviewPaneOpen: false,
+				isAskDrawerOpen: false,
+				askDrawerScope: "session",
 				rightSlotRoute: EMPTY_ROUTE,
 			});
 		};
@@ -792,6 +1187,23 @@ const AppShell: FC<{
 									/>
 								</PaneSlot>
 							)}
+							{rightPane === "review" && (
+								<PaneSlot width={slotWidth} minWidth={420}>
+									<CodeReviewPaneBody
+										phase="ready"
+										data={REVIEW_REQUESTS}
+										refreshing={false}
+										onRefresh={() => undefined}
+										onClose={() => undefined}
+										nowMs={CODE_REVIEW_NOW_MS}
+									/>
+								</PaneSlot>
+							)}
+							{rightPane === "asks" && (
+								<PaneSlot width={slotWidth} minWidth={380}>
+									<FleetAskDrawer onClose={() => undefined} />
+								</PaneSlot>
+							)}
 						</div>
 						{/* The rail through the SHELL'S host, exactly as the app mounts it. */}
 						<InPanelRailHost>
@@ -802,14 +1214,14 @@ const AppShell: FC<{
 								listOnScreen={false}
 								readerChildId={null}
 								browserAttentionCount={0}
-								askCount={0}
-								askScope="session"
+								askCount={rail.askCount ?? 0}
+								askScope={rail.askScope ?? "session"}
 								consoleUnseenCount={0}
 								consoleUnseenPulsing={false}
 								consoleLiveCount={0}
 								fileCount={0}
-								codeOpened={0}
-								codeMentioned={0}
+								codeOpened={rail.codeOpened ?? 0}
+								codeMentioned={rail.codeMentioned ?? 0}
 								codeAttention={null}
 							/>
 						</InPanelRailHost>
@@ -843,6 +1255,8 @@ const RouteTo = ({ path, children }: { path: string; children: ReactNode }) => {
 			<Route path="/projects/:projectId" element={children} />
 			<Route path="/agents" element={children} />
 			<Route path="/agents/:agentId" element={children} />
+			<Route path="/notifications" element={children} />
+			<Route path="/notifications/:notificationId" element={children} />
 		</Routes>
 	);
 };
@@ -935,6 +1349,8 @@ const HubHold = () => {
 const meta: Meta = {
 	title: "Docs/Library",
 	parameters: { layout: "fullscreen" },
+	/* The one non-story export: the shell kit `docs-app-hero.stories.tsx` reuses. */
+	excludeStories: ["docsLibraryKit"],
 };
 
 export default meta;
@@ -1774,7 +2190,7 @@ const installMeshBridge = () => {
 						trust: "active",
 						members: [
 							meshMember(DEVICE_SELF, {
-								name: "damians-MacBook-Pro",
+								name: "studio-mbp",
 								role: "admin",
 							}),
 							meshMember(DEVICE_PEER, {
@@ -2021,4 +2437,199 @@ const ChatTraceScene = () => {
 			<ExpandReceipt marker="reconcile.py" />
 		</PageFrame>
 	);
+};
+
+/* -- 12. Notifications: what the other conversations reported --------------- */
+
+export const Notifications: Story = {
+	render: () => {
+		installWorldBridge();
+		installFetch();
+		/* Read rows stay on the page (the page's own "All" filter), so the frame
+		   shows both registers; the key is the page's persisted preference. */
+		try {
+			localStorage.setItem("notifications-read-state", "all");
+			localStorage.removeItem("notifications-grouping");
+		} catch {
+			// Storage is unavailable only in a locked-down preview; the default
+			// filter still renders a truthful page.
+		}
+		return <NotificationsScene />;
+	},
+};
+
+/**
+ * Hold the shutter until a row of the claimed state is painted: both the page
+ * and the fleet drawer read through an async query, and the rig's element-count
+ * gate fires on the shell alone (the `unreadable/` frames class in AGENTS.md).
+ */
+const TextHold = ({ text, failure }: { text: string; failure: string }) => {
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		const started = Date.now();
+		const timer = window.setInterval(() => {
+			if ((document.querySelector("main")?.textContent ?? "").includes(text)) {
+				document.documentElement.removeAttribute("data-capture-pending");
+				window.clearInterval(timer);
+			} else if (Date.now() - started > 20_000) {
+				document.documentElement.dataset.captureFailed = failure;
+				document.documentElement.removeAttribute("data-capture-pending");
+				window.clearInterval(timer);
+			}
+		}, 100);
+		return () => {
+			window.clearInterval(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, [text, failure]);
+	return null;
+};
+
+const NotificationsScene = () => {
+	useMacChrome();
+	return (
+		<>
+			<TextHold
+				text="Audit finished: 452 ledger rows checked"
+				failure="notifications-not-listed"
+			/>
+			<AppShell rail={{ askCount: FLEET_ASKS.length, askScope: "fleet" }}>
+				<RouteTo path="/notifications">
+					<div className="h-full min-w-0 grow bg-canvas">
+						<NotificationsPage nowMs={NOTIFICATIONS_NOW_MS} />
+					</div>
+				</RouteTo>
+			</AppShell>
+		</>
+	);
+};
+
+/* -- 13. Asks: every conversation's open questions in one drawer ------------ */
+
+const PARALLEL_CONVERSATION: TranscriptRecord[] = [
+	user(
+		"u1",
+		"Reconcile the March invoices in `invoices/march.csv` and have the work checked before you write the summary.",
+		65,
+	),
+	tool({
+		id: "call-read",
+		ts: at(64),
+		toolName: "read",
+		intent: "Reading the March invoice export",
+		args: { path: "invoices/march.csv" },
+		output:
+			"date,customer,amount,status\n2026-03-02,Northwind Traders,1240.00,paid\n2026-03-05,Contoso,2310.00,unpaid\n2026-03-09,Fabrikam,1150.00,unpaid\n",
+		durationS: 0.04,
+	}),
+	tool({
+		id: "call-sum",
+		ts: at(64),
+		toolName: "bash",
+		intent: "Summing the unpaid rows by customer",
+		args: { command: "python reconcile.py --group customer" },
+		output: "customer\nContoso    4820.00\nFabrikam   1150.00",
+		durationS: 1.3,
+	}),
+	assistant(
+		"a0",
+		"The export is loaded and the unpaid rows are grouped: **Contoso** owes 4,820.00 and **Fabrikam** 1,150.00. A reviewer is auditing those figures against the ledger export while a writer drafts the summary, and two of them have a question for you before they go further.",
+		63,
+	),
+];
+
+export const Asks: Story = {
+	render: () => {
+		installWorldBridge();
+		installFetch();
+		return <AsksScene />;
+	},
+};
+
+const AsksScene = () => {
+	useMacChrome();
+	useEffect(() => {
+		const before = useCanonicalSessionsStore.getState().sessions;
+		useCanonicalSessionsStore.setState({ sessions: [...FLEET_CATALOGUE] });
+		return () => {
+			useCanonicalSessionsStore.setState({ sessions: before });
+		};
+	}, []);
+	return (
+		<>
+			<TextHold
+				text="Use last quarter's churn rate"
+				failure="fleet-asks-not-listed"
+			/>
+			<AppShell
+				records={PARALLEL_CONVERSATION}
+				rightPane="asks"
+				runPanelWidth={480}
+				rail={{ askCount: FLEET_ASKS.length, askScope: "fleet" }}
+			/>
+		</>
+	);
+};
+
+/* -- 14. Review pane: the conversation's pull requests beside it ------------ */
+
+const REVIEW_CONVERSATION: TranscriptRecord[] = [
+	user(
+		"u1",
+		"Move the deploy script onto the release runner, and fix the pending-row count while you are in there. Open pull requests and get them reviewed.",
+		48,
+	),
+	tool({
+		id: "call-pr",
+		ts: at(40),
+		toolName: "bash",
+		intent: "Opening the pull request for the deploy script",
+		args: { command: "gh pr create --fill --base main" },
+		output: "https://github.com/northwind/invoices/pull/212",
+		durationS: 2.1,
+	}),
+	assistant(
+		"a0",
+		"Three pull requests are open. **#212** (deploy script) is through two review rounds and QA with all 23 checks passing. **#214** (pending rows) has review findings open and 2 failing checks, and a coder is on the fix. **#215** (the March summary) is still a draft while its checks run.",
+		6,
+	),
+];
+
+export const ReviewPane: Story = {
+	render: () => {
+		installWorldBridge();
+		installFetch();
+		return <ReviewPaneScene />;
+	},
+};
+
+const ReviewPaneScene = () => {
+	useMacChrome();
+	return (
+		<AppShell
+			records={REVIEW_CONVERSATION}
+			rightPane="review"
+			runPanelWidth={520}
+			rail={{ codeOpened: 3, codeMentioned: 1 }}
+		/>
+	);
+};
+
+/**
+ * The shell kit, for `docs-app-hero.stories.tsx`: the hero is the same window
+ * over the same world, so it reuses these rather than restating them. One
+ * object so the meta's `excludeStories` names one export, and Storybook does
+ * not list the helpers as stories.
+ */
+export const docsLibraryKit = {
+	AppShell,
+	CONVERSATION_ID,
+	assistant,
+	at,
+	installFetch,
+	installWorldBridge,
+	tool,
+	useMacChrome,
+	useStagedDraft,
+	user,
 };
