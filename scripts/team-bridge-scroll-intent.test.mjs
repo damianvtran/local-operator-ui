@@ -253,6 +253,66 @@ test("content shrinking under a pinned reader (scrollTop clamped down) is not mi
 	}
 });
 
+/*
+ * F1 / Q1: an upward wheel on a timeline that cannot scroll up (a short
+ * channel, a thread with a few replies) is absorbed by the browser and no
+ * scroll event follows. Unpinning on it stranded the reader at the end,
+ * unpinned, so the message that first made the content overflow was not
+ * followed.
+ */
+test("an upward wheel that cannot move the viewport does not strand the reader unpinned", async () => {
+	const t = await mountStick();
+	try {
+		t.state.content = 300; // shorter than the 400px viewport
+		t.state.top = 0;
+		await t.render();
+		await t.wheel(-10);
+		assert.equal(t.api().isPinned(), true, "no overflow: the tick is absorbed");
+		t.state.ids = [...t.state.ids, "c"];
+		t.state.content = 900;
+		await t.render();
+		assert.equal(t.state.top, t.max(), "the next message is followed");
+	} finally {
+		await t.cleanup();
+	}
+});
+
+/*
+ * D1 / F2: a reader a little way up (inside the 48px band) must not be re-pinned
+ * by scroll events they did not cause. The windowed strip's anchor correction
+ * (`element.scrollTop = target`) and browser scroll anchoring move scrollTop
+ * DOWN by exactly the height that grew above, keeping the distance from the
+ * end; the old fallback judged only the band and re-pinned, so the next
+ * arrival or re-measure threw the reader to the bottom.
+ */
+test("a foreign correction or a no-movement scroll event inside the band does not re-pin", async () => {
+	const t = await mountStick();
+	try {
+		const reading = t.max() - 40; // one ArrowUp
+		await t.userScroll(reading);
+		assert.equal(t.api().isPinned(), false);
+		// A row above re-measured 20px taller; the strip corrects scrollTop by 20.
+		t.state.content += 20;
+		await t.userScroll(reading + 20);
+		assert.equal(t.api().isPinned(), false, "the correction is not the reader");
+		// A scroll event with no movement at all.
+		await t.userScroll(t.state.top);
+		assert.equal(t.api().isPinned(), false, "no movement is not the reader");
+		const held = t.state.top;
+		await t.grow(16);
+		assert.equal(t.state.top, held, "a later re-measure does not pull them");
+		t.state.ids = [...t.state.ids, "c"];
+		t.state.content += 60;
+		await t.render();
+		assert.equal(t.state.top, held, "nor does the next message");
+		// The reader's own move down that closes the gap still re-pins.
+		await t.userScroll(t.max() - 10);
+		assert.equal(t.api().isPinned(), true, "their own move down re-pins");
+	} finally {
+		await t.cleanup();
+	}
+});
+
 test("pin() on own send and a conversation switch still put the reader at the newest message", async () => {
 	const t = await mountStick();
 	try {

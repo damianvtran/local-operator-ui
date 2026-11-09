@@ -51,11 +51,22 @@ import {
  *   a scrollTop decrease; checked against the last position we observed OR
  *   wrote ourselves, so our own `toBottom()` is never mistaken for intent);
  * - a wheel tick upward unpins even before the browser applies it, because a
- *   resize can land between the wheel and its scroll event;
- * - re-pinning needs the reader's own move DOWN into the band (or `pin()`, a
- *   new `resetKey`, the live edge returning). A scroll that ends exactly at
- *   the end because content SHRANK (the browser clamps scrollTop down) keeps
- *   a pinned reader pinned - that decrease is not intent.
+ *   resize can land between the wheel and its scroll event - but only when
+ *   the viewport can actually move up. On a timeline that does not overflow
+ *   (or already sits at scrollTop 0) the browser absorbs the tick, no scroll
+ *   event follows, and unpinning there would strand a reader who never left
+ *   the end: the next message would not be followed (review r1 F1 / QA Q1);
+ * - re-pinning needs the reader's own move DOWN that CLOSES the gap to the
+ *   end and lands inside the band, or reaching the very end (or `pin()`, a
+ *   new `resetKey`, the live edge returning). Scroll events this hook did not
+ *   cause - the windowed strip's anchor correction, browser scroll anchoring
+ *   - shift scrollTop by exactly the height that changed above the reader, so
+ *   their distance from the end does not shrink and `pinned` is left alone.
+ *   Judging the band on every non-upward event re-pinned a reader 40px up the
+ *   moment such a correction fired, and the next message threw them down
+ *   (design r1 D1 / review r1 F2). A scroll that ends exactly at the end
+ *   because content SHRANK (the browser clamps scrollTop down) keeps a pinned
+ *   reader pinned - that decrease is not intent.
  * The page's windowed timeline consults this decision through `isPinned`
  * before its own end-snap, so once the reader has left, neither hook writes
  * them back to the end (its own "at bottom" lags a frame behind the scroll).
@@ -104,6 +115,9 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	   and our own writes update it, so a reader's upward scroll that coalesces
 	   with one of our `toBottom()` writes still reads as upward. */
 	const lastTop = useRef(0);
+	/* Distance from the end at that same observation. A re-pin needs this to
+	   SHRINK: a foreign correction moves scrollTop down but keeps it equal. */
+	const lastFromEnd = useRef(0);
 	const [newMessages, setNewMessages] = useState(0);
 	const viewport = useCallback(
 		() =>
@@ -112,6 +126,12 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 				: (rootRef.current?.querySelector<HTMLElement>(VIEWPORT) ?? null),
 		[scrollElement],
 	);
+	/** Record where the viewport now is: after our own writes and each scroll. */
+	const observe = useCallback((element: HTMLElement) => {
+		lastTop.current = element.scrollTop;
+		lastFromEnd.current =
+			element.scrollHeight - element.scrollTop - element.clientHeight;
+	}, []);
 	/* Keep a ROW and its viewport-relative pixel position, not scrollHeight:
 	 * prepends, changing disclosure height and late image loads can all move
 	 * content above a reader without changing which message they are reading. */
@@ -145,16 +165,16 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 				row.getBoundingClientRect().top -
 				element.getBoundingClientRect().top -
 				anchor.current.offset;
-			lastTop.current = element.scrollTop;
+			observe(element);
 		}
-	}, [preserveAnchor, viewport, rowSelector]);
+	}, [preserveAnchor, viewport, rowSelector, observe]);
 	const toBottom = useCallback(() => {
 		const element = viewport();
 		if (!element) return;
 		element.scrollTop = element.scrollHeight;
 		// Read back: the browser clamps, and the clamped value is what we compare to.
-		lastTop.current = element.scrollTop;
-	}, [viewport]);
+		observe(element);
+	}, [viewport, observe]);
 	const pin = useCallback(() => {
 		if (!liveEdgeAvailable) return;
 		pinned.current = true;
@@ -215,18 +235,25 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	useEffect(() => {
 		const element = viewport();
 		if (!element) return;
-		lastTop.current = element.scrollTop;
+		observe(element);
 		const onScroll = () => {
 			const top = element.scrollTop;
 			const fromEnd = element.scrollHeight - top - element.clientHeight;
 			const movedUp = top < lastTop.current - AT_END_PX;
-			lastTop.current = top;
+			const movedDown = top > lastTop.current + AT_END_PX;
+			const closedGap = fromEnd < lastFromEnd.current - AT_END_PX;
+			observe(element);
 			if (!liveEdgeAvailable) pinned.current = false;
 			else if (movedUp && fromEnd > AT_END_PX) pinned.current = false;
-			// Moving down (or a clamp that left the reader at the very end): the
-			// band decides, as it always has - entering it re-pins, and a jump
-			// that lands far above the end (a restored position) is not pinned.
-			else pinned.current = fromEnd <= NEAR_BOTTOM_PX;
+			// At the very end (the reader got there, or a shrink clamped a pinned
+			// reader there): following is right.
+			else if (fromEnd <= AT_END_PX) pinned.current = true;
+			// A real move toward the end: the band decides - entering it re-pins,
+			// and a jump that lands far above the end is not pinned.
+			else if (movedDown && closedGap)
+				pinned.current = fromEnd <= NEAR_BOTTOM_PX;
+			// Anything else - no movement, or a correction we did not make that
+			// kept the distance from the end - is not the reader: leave `pinned`.
 			if (pinned.current) {
 				anchor.current = null;
 				if (preserveAnchor) setNewMessages(0);
@@ -241,11 +268,17 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		};
 		/* The wheel arrives before its scroll, and a content resize can fire in
 		   between: unpin on the intent itself. A pinch-zoom (ctrlKey) is not a
-		   scroll. A downward tick inside the band re-pins, so a stray upward tick
-		   the browser absorbed at the end cannot strand the reader unpinned. */
+		   scroll. Only a tick that can move the viewport unpins: with no overflow
+		   or at scrollTop 0 the browser absorbs it and no scroll follows, so
+		   unpinning would strand a reader still at the end (F1). A downward tick
+		   inside the band re-pins - the reader heading back to the end. */
 		const onWheel = (event: WheelEvent) => {
 			if (event.ctrlKey || !liveEdgeAvailable) return;
-			if (event.deltaY < 0) {
+			if (
+				event.deltaY < 0 &&
+				element.scrollTop > 0 &&
+				element.scrollHeight > element.clientHeight
+			) {
 				if (pinned.current) {
 					pinned.current = false;
 					captureAnchor();
@@ -301,6 +334,7 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		};
 	}, [
 		viewport,
+		observe,
 		toBottom,
 		resetKey,
 		liveEdgeAvailable,
