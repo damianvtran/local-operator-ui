@@ -43,7 +43,6 @@ import type {
 	TranscriptRecord,
 	TranscriptState,
 } from "@features/chat/canonical/transcript-reducer";
-import { FleetAskDrawer } from "@features/chat/components/asks/fleet-ask-drawer";
 import { ChatHeader } from "@features/chat/components/chat-header";
 import {
 	deriveMcpServers,
@@ -71,7 +70,10 @@ import { ProjectsPage } from "@features/projects/components/projects-page";
 import { SchedulesPage } from "@features/schedules/components/schedules-page";
 import { SettingsSection } from "@features/settings/components/settings-section";
 import { ThemeSelector } from "@features/settings/components/theme-selector";
-import type { ReusableTeam } from "@shared/api/local-operator/profile-hooks";
+import type {
+	ReusableTeam,
+	TeamEffective,
+} from "@shared/api/local-operator/profile-hooks";
 import type {
 	DesktopWakeEntry,
 	DesktopWakeSupervisor,
@@ -579,7 +581,9 @@ const REVIEW_REQUESTS = (() => {
 			{
 				draft: true,
 				head_sha: "77c2f0aa31be",
-				ci: { status: "pending", total: 0, passed: 0, failed: 0, pending: 3 },
+				// total counts the pending runs: 0 rendered "No checks yet" under a
+				// transcript that says this PR's checks are running.
+				ci: { status: "pending", total: 3, passed: 0, failed: 0, pending: 3 },
 				updated_at: minutes(3),
 				comments: 0,
 			},
@@ -625,7 +629,24 @@ const ok = (result: unknown): DesktopResponse => ({
  * scene's page issues. One function, so the scenes share one world rather
  * than one bridge each that could disagree about it.
  */
+/*
+ * The composer draft is PERSISTED per conversation and every scene shares
+ * `CONVERSATION_ID`, so a full-page navigation (which runs no unmount cleanup)
+ * carried the hero's staged draft into the next scene's composer: the review
+ * pane was photographed with "Chase Contoso...". The world clears it once per
+ * document, before the first scene mounts; a scene that wants a draft stages
+ * its own afterwards (`useStagedDraft`, a layout effect). Once, not per
+ * render, so a story re-render cannot wipe the draft its scene just staged.
+ */
+let staleDraftCleared = false;
+const clearInheritedDraft = () => {
+	if (staleDraftCleared) return;
+	staleDraftCleared = true;
+	useConversationInputStore.getState().setCurrentInput(CONVERSATION_ID, "");
+};
+
 const installWorldBridge = () => {
+	clearInheritedDraft();
 	const rows = roster();
 	const notifications = createNotificationFixture(
 		structuredClone(NOTIFICATION_ITEMS),
@@ -658,6 +679,14 @@ const installWorldBridge = () => {
 						desktop_feed: 1,
 						library: 1,
 						team_bridge_conversations: 1,
+						/*
+						 * The two keys `configRunEnabled` adds to the catalogue pair
+						 * above. A current core advertises them; without them the Teams
+						 * and Agents pages print "Ask for a change needs a newer
+						 * backend" - a frame of a core older than the app around it.
+						 */
+						agents_config: 1,
+						session_interrupt: 1,
 					},
 				});
 			case "sessions.list":
@@ -706,7 +735,10 @@ const installWorldBridge = () => {
 						name: team.name,
 						description: team.description,
 						manager: team.manager,
-						members: [],
+						/* The roster itself, not `[]`: the list row prints its count
+						   from this (`memberCountLabel`), and an empty list read "0
+						   members" beside the detail pane's 3. */
+						members: team.members,
 					})),
 				});
 			case "teams.get": {
@@ -714,6 +746,34 @@ const installWorldBridge = () => {
 				if (!hit) throw new Error(`no team ${request.name} in this world`);
 				return ok(hit);
 			}
+			/*
+			 * The team editor's probe (`useTeamEffective`): unanswered, the detail
+			 * pane prints "The effective models could not be read". These rosters
+			 * set no tier, and the backend's reading for such a slot is "runs on
+			 * the launching session's model" - null model, source `session`,
+			 * available. Derived from the SAME roster `teams.get` returns, so the
+			 * two reads cannot disagree about who is on the team.
+			 */
+			case "teams.effective": {
+				const hit = TEAMS.find((team) => team.name === request.name);
+				if (!hit) throw new Error(`no team ${request.name} in this world`);
+				const effective: TeamEffective = {
+					team: hit.name,
+					members: hit.members.map((member) => ({
+						role: member.role,
+						kind: member.kind,
+						tier: { value: null, source: "none" },
+						model: { value: null, source: "session" },
+						effort: { value: null, requested: null, source: "model_default" },
+						available: true,
+						reason: "",
+					})),
+				};
+				return ok(effective);
+			}
+			/* The agents page's effort-tier read; this world configures none. */
+			case "settings.list":
+				return ok({ settings: [] });
 			case "projects.list":
 				return ok({ projects: PROJECTS });
 			case "projects.get": {
@@ -737,8 +797,10 @@ const installWorldBridge = () => {
 			case "notifications.get":
 			case "notifications.read":
 			case "notifications.dismiss":
-				/* The shipped stateful fixture over the pinned contract, so the page,
-				   the sidebar badge and the rail's Asks count agree with each other. */
+				/* The shipped stateful fixture over the pinned contract, so the page
+				   and the sidebar badge agree with each other. The rail's Asks count
+				   is a different scope on purpose: it is the fleet's open asks
+				   (`FLEET_ASKS`, 5), of which this page's "Waiting on you" holds 2. */
 				return notifications.request(request) as DesktopResponse;
 			case "asks.list":
 				return ok({ asks: FLEET_ASKS });
@@ -746,8 +808,9 @@ const installWorldBridge = () => {
 				return ok({ layout: null });
 			default:
 				/* Named on the document as well as thrown: a query swallows the
-				   rejection, and the capture rig prints this attribute, so a scene
-				   that starts issuing a new call is visible in the capture log. */
+				   rejection, so this attribute is how a scene that starts issuing a
+				   new call is found (read `html[data-refused-ops]` in the story;
+				   the capture rig does not print it). */
 				document.documentElement.dataset.refusedOps = [
 					...new Set([
 						...(document.documentElement.dataset.refusedOps ?? "")
@@ -1199,11 +1262,13 @@ const AppShell: FC<{
 									/>
 								</PaneSlot>
 							)}
-							{rightPane === "asks" && (
-								<PaneSlot width={slotWidth} minWidth={380}>
-									<FleetAskDrawer onClose={() => undefined} />
-								</PaneSlot>
-							)}
+							{/*
+							 * NO ASKS PANE HERE, ON PURPOSE. The fleet ask drawer is
+							 * `ChatLayout`'s own (it mounts `FleetAskDrawer` whenever the
+							 * store says `isAskDrawerOpen` with scope `fleet`, which the
+							 * effect above sets for `rightPane === "asks"`). Mounting a
+							 * second one in this row painted two drawers side by side.
+							 */}
 						</div>
 						{/* The rail through the SHELL'S host, exactly as the app mounts it. */}
 						<InPanelRailHost>
@@ -2577,11 +2642,11 @@ const REVIEW_CONVERSATION: TranscriptRecord[] = [
 	user(
 		"u1",
 		"Move the deploy script onto the release runner, and fix the pending-row count while you are in there. Open pull requests and get them reviewed.",
-		48,
+		7,
 	),
 	tool({
 		id: "call-pr",
-		ts: at(40),
+		ts: at(7),
 		toolName: "bash",
 		intent: "Opening the pull request for the deploy script",
 		args: { command: "gh pr create --fill --base main" },
@@ -2605,6 +2670,9 @@ export const ReviewPane: Story = {
 
 const ReviewPaneScene = () => {
 	useMacChrome();
+	/* Staged here rather than inherited: short enough to read as a finished
+	   sentence in the composer the review pane narrows. */
+	useStagedDraft(CONVERSATION_ID, "Merge #212 once QA signs off.");
 	return (
 		<AppShell
 			records={REVIEW_CONVERSATION}

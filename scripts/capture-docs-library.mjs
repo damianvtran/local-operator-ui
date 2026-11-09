@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 /**
- * Captures the docs-library screenshot set from Storybook, one 2560x1800 png
- * per scene per theme.
+ * Captures the docs-library screenshot set from Storybook, one png per scene
+ * per theme: 2560x1440 by default (the marketing set, a 1280x720 viewport at
+ * 2x), or 2560x1800 with `--viewport=1280x900` (the README set, below).
  *
  *     node scripts/capture-docs-library.mjs [origin] \
  *         [--only=hero,teams] [--themes=light,dark] [--out=<dir>] \
- *         [--viewport=1280x900]
+ *         [--viewport=1280x720]
+ *
+ * THE DEFAULT VIEWPORT IS THE MARKETING SET'S, 1280x720. The Team Bridge
+ * stories are composed for it (80% zoom, a 1600x900 layout) and
+ * `derive-marketing-webp.mjs` refuses a Bridge master that is not 16:9, because
+ * its crops are calibrated to that aspect. Only the README refresh below needs
+ * `--viewport=1280x900`.
  *
  * Default origin is http://localhost:6006 (`pnpm storybook`'s port). The default output directory is `docs-library-captures/` beside
  * the repository root.
@@ -13,8 +20,9 @@
  * WHY THIS EXISTS, RATHER THAN REUSING `capture-evidence.mjs`. That tool
  * captures at `deviceScaleFactor: 1` with a per-story size table, because its
  * frames are review evidence at 1x. This set targets the marketing site and
- * both READMEs, which want the hero's own format - a 1280x900 viewport at
- * `deviceScaleFactor: 2`, i.e. a 2560x1800 png - for every scene. The
+ * both READMEs, which want one format for every scene at
+ * `deviceScaleFactor: 2` - a 1280x720 viewport (2560x1440 png) for the sites,
+ * a 1280x900 viewport (2560x1800 png) for the READMEs. The
  * mechanics are the same ones that tool proved: a PRIVATE headless Chrome
  * (fresh `--user-data-dir`, the mock-keychain switch applied by the shared
  * `withMockKeychain` helper, a port Chrome picks), raw CDP over Node's
@@ -23,8 +31,8 @@
  * `animation: none` freeze before the shot so a frame is a function of its
  * story rather than of the instant it was taken.
  *
- * THE README WEBPS. The committed `resources/readme/*.webp` pairs are these
- * pngs converted with `cwebp -q 88 -m 6 -resize 1280 900 <scene>-<theme>.png
+ * THE README WEBPS. The committed `resources/readme/*.webp` pairs are the
+ * `--viewport=1280x900` pngs converted with `cwebp -q 88 -m 6 -resize 1280 900 <scene>-<theme>.png
  * -o <scene>-<theme>.webp` (cwebp writes nothing without a destination) - a
  * spelling verified to reproduce every committed byte; refresh the webps with
  * that command rather than re-shooting frames that did not change.
@@ -89,13 +97,14 @@ const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? [
 	"dark",
 ];
 const OUT = flag("out") ?? join(ROOT, "docs-library-captures");
-// Team Bridge's committed masters use 1440x900 CSS pixels; ordinary library
-// scenes retain 1280x900. One explicit viewport avoids silently changing either.
+// 1280x720 is the marketing set's viewport (see the header): Team Bridge crops
+// are calibrated to 16:9, so a 16:10 default silently mis-cropped them. The
+// README set passes --viewport=1280x900 explicitly.
 const VIEWPORT = flag("viewport")?.match(/^(\d+)x(\d+)$/);
 if (flag("viewport") && !VIEWPORT)
-	throw new Error("--viewport must be WIDTHxHEIGHT, e.g. 1440x900");
+	throw new Error("--viewport must be WIDTHxHEIGHT, e.g. 1280x720");
 const WIDTH = Number(flag("width") ?? VIEWPORT?.[1] ?? 1280);
-const HEIGHT = Number(flag("height") ?? VIEWPORT?.[2] ?? 900);
+const HEIGHT = Number(flag("height") ?? VIEWPORT?.[2] ?? 720);
 const SCALE = Number(flag("scale") ?? 2);
 /*
  * How long a story may take to become ready. The first load of each story
@@ -269,7 +278,7 @@ const main = async () => {
 				   furniture, and any `data-capture-pending` hold is released.
 				   Polled, never slept-for, because a heavy page varies by
 				   seconds and a fixed sleep long enough for the slowest scene
-				   would be paid by all 24 frames. */
+				   would be paid by every frame. */
 					let probe = null;
 					let ready = false;
 					let waited = 0;

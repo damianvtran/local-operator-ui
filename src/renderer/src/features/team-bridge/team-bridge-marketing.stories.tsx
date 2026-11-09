@@ -124,14 +124,15 @@ const APPROVAL = conversation("bcv_signoff", "Launch date sign-off", {
 			state: "active",
 		},
 		{
-			account_id: "agent_atlas",
+			// Sender ids (`agent()` above), so a member-keyed lookup resolves them.
+			account_id: `agent_${SELF}`,
 			kind: "agent",
 			display_label: "Atlas (Maya Chen)",
 			role: "member",
 			state: "active",
 		},
 		{
-			account_id: "agent_juniper",
+			account_id: "agent_acct_jordan",
 			kind: "agent",
 			display_label: "Juniper (Jordan Alvarez)",
 			role: "member",
@@ -586,11 +587,25 @@ export const Mention: Story = {
 	play: async ({ canvasElement }) => {
 		try {
 			const canvas = within(canvasElement);
-			const input = await canvas.findByRole("textbox");
+			// The composer is a `combobox` (it owns the mention listbox), not a
+			// `textbox`: the old role query never resolved, so nothing was typed
+			// and the shutter hold was never released. A bare "@" opens the
+			// unfiltered picker, whose heading the wait below pins.
+			const input = await canvas.findByRole("combobox", {
+				name: `Message ${QA.name}`,
+			});
 			await userEvent.click(input);
-			await userEvent.type(input, "Looks good. @Pri", { delay: 30 });
+			// The draft is persisted per conversation: a second load would type
+			// "@@" onto the first load's "@", which opens no picker.
+			await userEvent.clear(input);
+			await userEvent.type(input, "@", { delay: 30 });
+			// The picker is portalled out of the story root, so the canvas scope
+			// cannot see it: wait on the document for the picker's own section.
+			const page = within(canvasElement.ownerDocument.body);
 			await waitFor(() =>
-				expect(canvas.getByText("People in this conversation")).toBeVisible(),
+				expect(
+					page.getByRole("group", { name: "People in this conversation" }),
+				).toBeVisible(),
 			);
 			delete document.documentElement.dataset.capturePending;
 		} catch (error) {

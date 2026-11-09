@@ -19,6 +19,13 @@
  * Crops are normalized rectangles of the CURRENT Northwind story's 80%-zoom
  * composition at 2560x1440 actual pixels. Their true dimensions are in the JSON
  * report, so a page cannot silently keep the old crop's aspect ratio.
+ *
+ * Team Bridge masters MUST be 16:9 (`capture-docs-library.mjs`'s 1280x720
+ * default at 2x). The sidebar and thread pane are fixed-width in layout pixels,
+ * so the fractions below only land on their columns at the calibrated aspect: a
+ * 16:10 master used to derive wrong-region crops (and the historical 2880x1800
+ * `@2x` name from a different layout) with a green exit. Such a source is now
+ * refused before anything is written.
  */
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -45,7 +52,9 @@ const BRIDGE = ["channel", "thread", "approval", "mention", "launch"];
 const CROPS = {
 	channel: { scene: "channel", rect: [0.17, 0.37, 0.56, 0.33], width: 1200 },
 	thread: { scene: "thread", rect: [0.74, 0, 0.26, 1], width: 832 },
-	mention: { scene: "mention", rect: [0.17, 0.48, 0.7, 0.52], width: 1100 },
+	// Top at 0.34: the unfiltered "@" picker opens to ~0.36 of the frame's
+	// height, and its "People in this conversation" heading is the subject.
+	mention: { scene: "mention", rect: [0.17, 0.34, 0.7, 0.66], width: 1100 },
 	rail: { scene: "channel", rect: [0, 0.18, 0.163, 0.64], width: 540 },
 	approval: { scene: "approval", rect: [0.17, 0.24, 0.82, 0.64], width: 2320 },
 };
@@ -67,17 +76,30 @@ export function planDerivatives(name, dimensions) {
 	const match = name.match(/^(.*)-(light|dark)\.png$/);
 	if (!match) throw new Error(`Expected <scene>-<light|dark>.png: ${name}`);
 	const [, scene, theme] = match;
+	// Within one pixel rather than exact: an odd-width master (1275x717) cannot
+	// be an exact 16:9 integer pair, yet is the same composition.
+	if (scene.startsWith("bridge-") && Math.abs(height - (width * 9) / 16) >= 1)
+		throw new Error(
+			`Team Bridge crops are calibrated to 16:9 masters; ${name} is ${width}x${height}. Re-capture with --viewport=1280x720.`,
+		);
 	const outputs = [];
 	const skipped = [];
 	const add = (file, targetWidth, rect = null, shrinkCrop = true) => {
-		const crop = rect
-			? [
-					Math.round(rect[0] * width),
-					Math.round(rect[1] * height),
-					Math.round(rect[2] * width),
-					Math.round(rect[3] * height),
-				]
-			: null;
+		let crop = null;
+		if (rect) {
+			// Origin and extent round independently, so an edge-touching rect can
+			// overrun an odd-sized source by one pixel (0.74 + 0.26 of 1275 is
+			// 944 + 332): clamp the extent to the source edge, where cwebp would
+			// otherwise refuse the crop.
+			const x = Math.min(Math.round(rect[0] * width), width - 1);
+			const y = Math.min(Math.round(rect[1] * height), height - 1);
+			crop = [
+				x,
+				y,
+				Math.max(1, Math.min(Math.round(rect[2] * width), width - x)),
+				Math.max(1, Math.min(Math.round(rect[3] * height), height - y)),
+			];
+		}
 		const sampledWidth = crop?.[2] ?? width;
 		const sampledHeight = crop?.[3] ?? height;
 		// Crop widths may shrink to their real source width; full responsive
@@ -154,6 +176,14 @@ export function derive(
 	out,
 	{ encoder = "/opt/homebrew/bin/cwebp", only = null } = {},
 ) {
+	// A misspelt --only used to select nothing and exit 0 with `sources: 0`,
+	// which reads as a successful run that simply had nothing to do.
+	const known = [...SCENARIOS, ...BRIDGE.map((scene) => `bridge-${scene}`)];
+	const unknown = (only ?? []).filter((scene) => !known.includes(scene));
+	if (unknown.length > 0)
+		throw new Error(
+			`--only names ${unknown.join(", ")}, which is not a marketing scene (${known.join(", ")})`,
+		);
 	const reports = [];
 	for (const name of readdirSync(input)
 		.filter(
@@ -187,6 +217,10 @@ export function derive(
 		}
 		reports.push(report);
 	}
+	if (reports.length === 0)
+		throw new Error(
+			`No <scene>-<light|dark>.png sources matched in ${input}${only ? ` for --only=${only.join(",")}` : ""}`,
+		);
 	mkdirSync(out, { recursive: true });
 	writeFileSync(
 		join(out, "DERIVATIVES.json"),
@@ -209,7 +243,7 @@ if (
 	if (!input || !out)
 		throw new Error("Required: --input=<png-dir> --out=<dir>");
 	const reports = derive(resolve(input), resolve(out), {
-		only: flag("only")?.split(",") ?? null,
+		only: flag("only")?.split(",").filter(Boolean) ?? null,
 	});
 	console.log(
 		JSON.stringify(
