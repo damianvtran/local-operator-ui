@@ -241,6 +241,48 @@ class RouteContract(unittest.TestCase):
                   row['line'], row['method'], row['path'], row.get('where'), row['problems'] or ''))
         self.assertEqual([r for r in rows if r['problems']], [])
 
+    # Run 42668407732: generate_music (approval_tier="write") parked on Core's
+    # approval gate because the harness never answered it. The harness now posts
+    # the APPROVAL shape {epoch, request_id, approved} to /answers; Core's Answer
+    # validator refuses a gate answer without epoch/request_id, so these pin the
+    # body to that model and prove the probe would catch a malformed one.
+    def _probe(self, calls):
+        python = os.environ.get('LOCAL_OPERATOR_CORE_PYTHON')
+        if not python or not Path(python).exists():
+            self.skipTest('LOCAL_OPERATOR_CORE_PYTHON absent: cannot import the pinned Core app')
+        env = {k: v for k, v in os.environ.items() if not k.startswith('CMUX_')}
+        probe = subprocess.run([python, '-c', CORE_PROBE], input=json.dumps(calls),
+                               capture_output=True, text=True, timeout=180, env=env)
+        self.assertEqual(probe.returncode, 0, probe.stderr[-4000:])
+        return json.loads(probe.stdout)
+
+    def _answers(self, calls):
+        return [c for c in calls if c['path'] and c['path'].endswith('/answers')]
+
+    def test_approval_answer_is_extracted_with_gate_shape(self):
+        answers = self._answers(harness_calls())
+        self.assertEqual(len(answers), 1, answers)
+        self.assertEqual(answers[0]['method'], 'POST')
+        self.assertEqual(sorted(answers[0]['body']), ['approved', 'epoch', 'request_id'])
+        self.assertIs(answers[0]['body']['approved'], True)
+        rows = self._probe(answers)
+        self.assertEqual(rows[0]['problems'], [], rows)
+        self.assertTrue(rows[0]['where'].startswith('local_operator.server.routes.desktop_sessions'), rows)
+
+    def test_malformed_approval_answer_fails_against_core(self):
+        import tempfile
+        text = Path(SOURCE).read_text()
+        for good, bad in [("{'epoch':epoch,'request_id':rid,'approved':True}", "{'request_id':rid,'approved':True}"),
+                          ("{'epoch':epoch,'request_id':rid,'approved':True}", "{'epoch':epoch,'approved':True}"),
+                          ("{'epoch':epoch,'request_id':rid,'approved':True}", "{'epoch':epoch,'request_id':rid,'approve':True}")]:
+            self.assertEqual(text.count(good), 1)
+            with tempfile.TemporaryDirectory() as tmp:
+                mutated = Path(tmp) / 'preflight.py'
+                mutated.write_text(text.replace(good, bad))
+                rows = self._probe(self._answers(harness_calls(mutated)))
+            self.assertEqual(len(rows), 1)
+            self.assertTrue(rows[0]['problems'], (bad, rows))
+
 
 if __name__ == '__main__':
     unittest.main()

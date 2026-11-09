@@ -63,6 +63,10 @@ async def main():
         seed="from pathlib import Path;import os;from local_operator.providers.auth_store import AuthStore;s=AuthStore(db_path=Path(os.environ['LOCAL_OPERATOR_CONFIG_DIR'])/'auth.db',config_dir=Path(os.environ['LOCAL_OPERATOR_CONFIG_DIR']));s.upsert_credential('radient',{'type':'api_key','source':'login','key':os.environ['RADIENT_API_KEY']});s.close()"
         subprocess.run([str(CORE_PYTHON),'-c',seed],env=env,check=True,timeout=30)
         log=(ROOT/'core.log').open('w')
+        # Run 42668407732 timed out with no record of WHY (upstream requests,
+        # pending gate, tool result were all absent). Every timeout now records
+        # those facts first; `diagnose` is bound once the session exists.
+        diagnose=[None]
         async def until(fn,limit=20):
             end=time.monotonic()+limit
             while time.monotonic()<end:
@@ -71,7 +75,10 @@ async def main():
                     if value:return value
                 except (httpx.ConnectError,httpx.ReadError):pass
                 await asyncio.sleep(.1)
-            raise TimeoutError('owned serving preflight condition')
+            if diagnose[0]:
+                try:record('timeout_diagnostics',await diagnose[0](getattr(fn,'__name__','?')))
+                except Exception as error:record('timeout_diagnostics_failed',repr(error))
+            raise TimeoutError('owned serving preflight condition: '+getattr(fn,'__name__','?'))
         core=subprocess.Popen([str(CORE),'serve','--host','127.0.0.1','--port','8080','--hosting','test','--model','mock-model'],env=env,cwd=ROOT,stdout=log,stderr=log)
         # Stay in the supervisor group as a final bounded-command safety net.
         owned.seeds.add(core.pid);owned.observe()
@@ -95,12 +102,50 @@ async def main():
             async def is_live():
                 r=await client.get(target);v=r.json().get('result',{}).get('payload',{});return v if v and not v.get('cold',True) else None
             record('actual_live_snapshot',await until(is_live,30))
+            def scrub(value):
+                # The desktop bearer and fake-upstream key must never reach the
+                # receipt; qa-secrets.json stays excluded from artifacts.
+                text=json.dumps(value,default=str)
+                for secret in (bearer,upstream.bearer):text=text.replace(secret,'[redacted]')
+                return json.loads(text)
+            async def diagnostics(condition):
+                out={'condition':condition,'upstream':upstream.facts()}
+                snap=await client.get(target)
+                payload=snap.json().get('result',{}).get('payload',{}) if snap.status_code==200 else {}
+                out['snapshot']={'status':snap.status_code,'pending_gate':payload.get('pending_gate'),
+                                 'streaming':payload.get('streaming'),'epoch':payload.get('epoch')}
+                hist=await client.get(target+'/history')
+                out['history_tail']=hist.json().get('result',{}).get('entries',[])[-6:] if hist.status_code==200 else hist.status_code
+                events=ROOT/'events.jsonl'
+                out['events_tail']=events.read_text().splitlines()[-30:] if events.exists() else []
+                return scrub(out)
+            diagnose[0]=diagnostics
+            # generate_music/modify_music are approval_tier="write" in Core and
+            # tool_approval_mode defaults to "ask": the worker PARKS the call on a
+            # pending approval gate (no timeout for hours) until a surface answers.
+            # Run 42668407732 never answered, so no upstream request was made.
+            # Answer through the REAL /answers route a desktop user's click takes
+            # (never auto/--yolo): the approval card is part of the user path.
+            gated={'generate_music','modify_music'}
+            async def approve(tool):
+                async def gate():
+                    r=await client.get(target);v=r.json().get('result',{}).get('payload',{})
+                    g=v.get('pending_gate')
+                    return (v['epoch'],g) if g and g.get('kind')=='approval' else None
+                epoch,g=await until(gate)
+                assert g['title']==tool,('approval gate names another tool',g['title'],tool)
+                rid=g['request_id']
+                a=await client.post(target+'/answers',json={'epoch':epoch,'request_id':rid,'approved':True})
+                record('approved_'+tool,scrub({'gate':{'title':g['title'],'detail':g.get('detail',''),'request_id':g['request_id']},
+                                               'status':a.status_code,'body':a.json()}))
+                assert a.status_code==200,a.text
             # Core's turn route is POST .../messages; its handler is merely NAMED
             # `prompt`. test_route_contract.py pins every call here to Core's app.
             async def command(tool,args):
                 cid='music-qa-'+uuid.uuid4().hex
                 (ROOT/'model-command.json').write_text(json.dumps({'id':cid,'tool':tool,'args':args}))
                 r=await client.post(target+'/messages',json={'request_id':str(uuid.uuid4()),'text':'MUSIC_QA_TOOL '+cid});record('prompt_'+tool,{'status':r.status_code,'body':r.json()});assert r.status_code==200
+                if tool in gated:await approve(tool)
             await command('generate_music',{'prompt':'Owned silent fixture','duration_ms':3000,'variations':2})
             async def generated():return upstream.facts() if upstream.generate_count==1 else None
             record('actual_generate_http',await until(generated))
