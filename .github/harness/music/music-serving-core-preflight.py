@@ -7,8 +7,18 @@ from pathlib import Path
 
 S = Path(__file__).resolve().parent
 ROOT = Path(os.environ['LOCAL_OPERATOR_SCRATCHPAD']).resolve() / ('serving-core-' + str(time.time_ns()))
-CORE = Path(os.environ['LOCAL_OPERATOR_CORE_BIN']).resolve()
-CORE_PYTHON = Path(os.environ['LOCAL_OPERATOR_CORE_PYTHON']).resolve()
+def configured_launcher(name):
+    # Python discovers pyvenv.cfg relative to the invoked launcher. Resolving a
+    # venv's interpreter symlink selects the base install and drops its packages.
+    # Keep executable identity lexical; sandbox/data paths still resolve below.
+    path = Path(os.environ[name]).absolute()
+    if not path.is_file() or not os.access(path, os.X_OK):
+        raise RuntimeError('Configured executable unavailable: ' + name)
+    return path
+
+
+CORE = configured_launcher('LOCAL_OPERATOR_CORE_BIN')
+CORE_PYTHON = configured_launcher('LOCAL_OPERATOR_CORE_PYTHON')
 UI_ROOT = Path(os.environ['MUSIC_UI_WORKTREE']).resolve()
 import shutil
 from owned_cleanup import OwnedProcesses, cleanup_all, cancel_listener, run_signalled
