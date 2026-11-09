@@ -5,9 +5,34 @@ real create_stream_fn substitution in test_session_factory.py:7103–7134. It do
 NOT replace Session, tools, transport, journal, downloads, or runtime routing.
 PYTHONPATH inheritance and load receipts must be observed before native admission.
 """
-import json, os
+import json, os, re
 from pathlib import Path
 from urllib.parse import urlsplit
+
+# R12-M1: a job's completion follow-up turn (job_result delivery) starts AFTER
+# music/jobs.py journals state=completed, so the harness can see completed+idle,
+# write the NEXT model-command.json, and have that late follow-up turn (which
+# carries tools) consume it -- parking a write-tier command on its approval
+# gate and blocking the harness's own POST /messages. Settling cannot see a
+# turn that has not started yet, so the race is closed here instead: a command
+# is emitted only by the turn the harness itself prompted, i.e. when the
+# request's LATEST user message carries `MUSIC_QA_TOOL <that command's id>`.
+# Exact id match (not substring) so one id can never authorise a prefix-sharing
+# sibling. Pure functions so tests drive them without the serving graph.
+MARKER = re.compile(r'MUSIC_QA_TOOL (\S+)')
+
+
+def latest_user_text(messages):
+    for message in reversed(list(messages or ())):
+        if getattr(message, 'role', None) == 'user':
+            return ' '.join(getattr(part, 'text', '') or '' for part in (message.content or ())
+                            if getattr(part, 'type', None) == 'text')
+    return ''
+
+
+def prompted_command_id(messages):
+    match = MARKER.search(latest_user_text(messages))
+    return match.group(1) if match else None
 
 scope = os.environ.get('MUSIC_QA_ROOT')
 if scope:
@@ -46,6 +71,15 @@ if scope:
                 note('model_request', registered_tools=tool_names,
                      command_id=command.get('id') if command else None)
                 if command and command['id'] not in self.emitted:
+                    marked = prompted_command_id(request.messages)
+                    if marked != command['id']:
+                        # Job follow-up / any turn the harness did not prompt
+                        # for THIS command: answer text, leave the command for
+                        # the harness's own prompted turn.
+                        note('turn_without_marker', command_id=command['id'], marker_id=marked)
+                        yield StreamTextDelta(delta='Owned synthetic music QA turn complete.')
+                        yield StreamEndEvent(stop_reason='stop')
+                        return
                     name = command['tool']
                     if name not in {'generate_music', 'modify_music', 'music_status'}:
                         raise RuntimeError('QA model command tool not allowlisted')
