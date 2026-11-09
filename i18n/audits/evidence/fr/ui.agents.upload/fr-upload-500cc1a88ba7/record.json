@@ -1,0 +1,89 @@
+{
+	"schema": 1,
+	"audit_id": "fr-upload-500cc1a88ba7",
+	"audit_date": "2026-11-08",
+	"locale": "fr",
+	"namespace": "ui.agents.upload",
+	"round": 1,
+	"batch": "slice-upload-agent-dialog",
+	"branch": "i18n/slice-upload-agent-dialog",
+	"base": "3378319980ff898892f316ae3a17cc22c089b7d3",
+	"head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+	"key_count": 15,
+	"keys_in_file": 46,
+	"keys": [
+		"ui.agents.upload.action.publish",
+		"ui.agents.upload.action.publishing",
+		"ui.agents.upload.action.update_listing",
+		"ui.agents.upload.availability.reserved_named",
+		"ui.agents.upload.availability.reserved_unnamed",
+		"ui.agents.upload.intro.org",
+		"ui.agents.upload.intro.public",
+		"ui.agents.upload.not_leaving.org",
+		"ui.agents.upload.not_leaving.public",
+		"ui.agents.upload.published.org_listed",
+		"ui.agents.upload.receipt.title_hub",
+		"ui.agents.upload.receipt.title_org",
+		"ui.agents.upload.receipt.title_updated",
+		"ui.agents.upload.target.blocked_hint",
+		"ui.agents.upload.target.visibility_hint_public"
+	],
+	"scope": "Delta audit of the 15 keys added to src/i18n/catalogues/fr/ui.agents.upload.json at 2b72db6a56a (diff 3378319980f..2b72db6a56a, this file only). The 31 pre-existing values were checked mechanically: 0 removed, 0 changed, and the base file's sha256 equals origin/main's, so nothing outside the 15 added keys was re-read for naturalness. Catalogue-only: no rendered frame, no activation claim, no release claim.",
+	"auditor": {
+		"agent": "i18n-auditor (lopdev reviewer role, session 500cc1a88ba7); not the translator of these values and not the author of the upload-agent-dialog keying change",
+		"model": "deepseek/deepseek-flash",
+		"model_provenance": "All substantive reads, ICU renders and the verdict ran on deepseek/deepseek-flash. The session opened on anthropic/claude-sonnet-5-5 and took three consecutive provider-quota fallbacks (claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash) before the first catalogue read; no finding or verdict was formed before the fallbacks settled.",
+		"model_fallback": "yes - three provider-quota fallbacks from anthropic/claude-sonnet-5-5 to deepseek/deepseek-flash; disclosed per policy",
+		"independence": "Independent of the translator: did not translate, remediate or edit any catalogue, ledger, allowance, generator, component or test; read the committed bytes at 2b72db6a56a and the English source + context sidecar; the translator's claims (» fiche » for listing, » l'offre Team » for the plan) were treated as claims and each rebuilt from the shipped fr corpus. No MT service used."
+	},
+	"status": "changes_requested",
+	"findings": {
+		"blocker": 0,
+		"major": 1,
+		"minor": 0,
+		"nit": 1
+	},
+	"finding_ids": [
+		"M1",
+		"N1"
+	],
+	"artifacts": {
+		"report": {
+			"path": "i18n/audits/evidence/fr/ui.agents.upload/fr-upload-500cc1a88ba7/report.md",
+			"sha256": "dc670aedd7f382a6e8f98ae76a39271ba315266602b666aae17e888b157725b9"
+		},
+		"receipt": {
+			"path": "i18n/receipts/fr-upload-r1-500cc1a88ba7.json",
+			"sha256": "35b172ff5b4f80cb23caca62e8bfdfa53338b3243e7b6b16514c2981f8190267"
+		}
+	},
+	"verdict": "changes_requested",
+	"inputs": {
+		"source": {
+			"path": "src/i18n/catalogues/en/ui.agents.upload.json",
+			"sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+		},
+		"source_context": {
+			"path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+			"sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.agents.upload.json",
+			"sha256": "3b1a270ec474f530a88c5560874ddf489aacb65ec722379463b9113b4d980eff"
+		},
+		"base_target": {
+			"path": "src/i18n/catalogues/fr/ui.agents.upload.json @ 3378319980ff898892f316ae3a17cc22c089b7d3",
+			"sha256": "54c6b08c1dcdd9df5e91dc2c8c1448e3461c051bce64da070ba61344640ea096"
+		},
+		"references": {
+			"glossary": {
+				"path": "local-operator/i18n/glossary.md",
+				"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+			},
+			"fr_style_guide": {
+				"path": "local-operator/i18n/style-guides/fr.md",
+				"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+			}
+		}
+	}
+}

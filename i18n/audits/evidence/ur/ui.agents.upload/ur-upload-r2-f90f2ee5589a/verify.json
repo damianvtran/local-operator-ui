@@ -1,0 +1,23 @@
+{
+  "base": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "head": "269ef259c0523fd61c9f40b2a700bed27b838055",
+  "changed_ur_files": [
+    "src/i18n/catalogues/ur/ui.agents.upload.json"
+  ],
+  "added_keys": [
+    "ui.agents.upload.target.org_unnamed"
+  ],
+  "modified_existing_values": [],
+  "unchanged_existing_values": 46,
+  "namespace_key_count": 47,
+  "manual_bidi_controls": 0,
+  "runtime_and_hub_byte_unchanged": [
+    "src/i18n/messages.ts",
+    "src/i18n/bidi.ts",
+    "src/i18n/direction.ts",
+    "src/i18n/catalogues/ur/ui.hub.json"
+  ],
+  "visibility_hint_public": "عوامی ہب پر شائع ہونے والی چیزیں کوئی بھی پڑھ سکتا ہے۔ تنظیم کے ایجنٹس صرف اس کے ارکان پڑھ سکتے ہیں۔",
+  "visibility_hint_public_unchanged": true,
+  "result": "PASS"
+}
