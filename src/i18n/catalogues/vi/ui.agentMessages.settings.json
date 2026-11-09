@@ -90,5 +90,7 @@
 	"ui.agentMessages.settings.default_on.b_body": "Team Bridge sẽ tự động bật cho bạn khi tổ chức của bạn sẵn sàng. Không có gì được gửi khi bật.",
 	"ui.agentMessages.settings.default_on.e_body": "Team Bridge đang tắt cho tài khoản này. Hãy đọc nội dung chấp thuận bên dưới, rồi bật lại nếu bạn muốn dùng lại.",
 	"ui.agentMessages.settings.action.turn_on_again": "Bật lần nữa",
-	"ui.agentMessages.settings.consent.via_default_on": "Bật theo mặc định"
+	"ui.agentMessages.settings.consent.via_default_on": "Bật theo mặc định",
+	"ui.agentMessages.settings.share_typing.label": "Hiển thị khi tôi đang nhập",
+	"ui.agentMessages.settings.share_typing.description": "Mọi người trong các cuộc trò chuyện Team Bridge của bạn sẽ thấy một dòng “đang nhập” ngắn khi bạn soạn tin. Nội dung bạn nhập không bao giờ được chia sẻ."
 }

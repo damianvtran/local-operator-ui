@@ -405,5 +405,9 @@
 	"ui.teamBridge.files.no_schedule": "Les fichiers peuvent être envoyés maintenant, mais pas programmés.",
 	"ui.teamBridge.files.uploading": "Téléversement du fichier…",
 	"ui.teamBridge.files.attached": "Joint",
-	"ui.teamBridge.files.not_uploaded": "Non téléversé"
+	"ui.teamBridge.files.not_uploaded": "Non téléversé",
+	"ui.teamBridge.typing.one": "{first} est en train d’écrire",
+	"ui.teamBridge.typing.two": "{first} et {second} sont en train d’écrire",
+	"ui.teamBridge.typing.three": "{first}, {second} et {third} sont en train d’écrire",
+	"ui.teamBridge.typing.several": "Plusieurs personnes sont en train d’écrire"
 }

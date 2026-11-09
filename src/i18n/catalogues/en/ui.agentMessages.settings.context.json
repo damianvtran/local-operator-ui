@@ -646,5 +646,19 @@
 		"length": "Two or three words, shown in a small grid.",
 		"placeholders": {},
 		"note": "Value for the 'Collected in' row when the runtime enrolled the member automatically."
+	},
+	"ui.agentMessages.settings.share_typing.label": {
+		"role": "settings switch label",
+		"tone": "sentence case, plain, first person",
+		"length": "Two to five words, one line",
+		"placeholders": {},
+		"note": "Privacy preference: whether other people see that you are typing in Team Bridge conversations. Default on. It only controls what others see about you, not what you see about others."
+	},
+	"ui.agentMessages.settings.share_typing.description": {
+		"role": "helper text under a settings switch",
+		"tone": "plain, reassuring, second person",
+		"length": "Two short sentences",
+		"placeholders": {},
+		"note": "Explains what the switch shares (only the fact that you are typing) and states that the draft text is never shared. Quote the indicator wording with the locale's usual quotation marks."
 	}
 }

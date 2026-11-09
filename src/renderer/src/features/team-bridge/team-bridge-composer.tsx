@@ -50,6 +50,10 @@ import {
 	transferredFiles,
 	useTeamBridgeFiles,
 } from "./use-team-bridge-files";
+import {
+	type TypingTarget,
+	useTeamBridgeTypingEmitter,
+} from "./use-team-bridge-typing-emitter";
 
 /**
  * Team Bridge's message composer: one bar, anchored to the foot of the pane.
@@ -187,6 +191,13 @@ export type TeamBridgeComposerProps = {
 		attachments: string[],
 		files?: FileSend,
 	) => boolean | Promise<boolean>;
+	/**
+	 * Where this box's typing would be reported (`team_bridge_typing`). `null`
+	 * or absent sends nothing: capability off, a new-DM draft with no
+	 * conversation yet, or "Show when I'm typing" turned off. The host owns the
+	 * gate; the box only feeds the emitter real input events.
+	 */
+	typingTarget?: TypingTarget | null;
 };
 
 export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
@@ -203,6 +214,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	disabledReasonId,
 	recordingProbe,
 	onSendMessage,
+	typingTarget = null,
 }) => {
 	useI18nLocale();
 	const fieldId = useId();
@@ -231,6 +243,9 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 		scopeReceipt.current = { identity: scopeIdentity };
 	const fileStateAdd = files.add;
 	const stageMentionsRef = useRef<(body: string) => void>(() => {});
+	/* The emitter is created after `useMessageInput` (it reads the text), but
+	   the submit callback is handed over before it exists: a ref bridges them. */
+	const typingSentRef = useRef<() => void>(() => {});
 
 	const {
 		inputValue,
@@ -261,7 +276,10 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 				).map((entry) => entry.path),
 				files.receipt(),
 			);
-			if (accepted) for (const key of keys) files.remove(key);
+			if (accepted) {
+				for (const key of keys) files.remove(key);
+				typingSentRef.current();
+			}
 			return accepted;
 		},
 	});
@@ -275,6 +293,11 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 		fieldRef: textareaRef,
 	});
 	stageMentionsRef.current = mentions.stage;
+	/* TYPING INDICATORS: only the field's own change event reports typing - a
+	   restored draft or a programmatic clear arrives through `inputValue`, which
+	   the emitter reads solely to STOP on an empty box. */
+	const typing = useTeamBridgeTypingEmitter(typingTarget, inputValue);
+	typingSentRef.current = typing.onSent;
 
 	/*
 	 * THE FIELD'S HEIGHT, ASKED OF ITS OWN CONTENT.
@@ -612,7 +635,14 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 						aria-label={placeholder}
 						aria-describedby={disabledReasonId}
 						placeholder={placeholder}
-						onChange={(event) => setInputValue(event.target.value)}
+						onChange={(event) => {
+							setInputValue(event.target.value);
+							typing.onInput(event.target.value);
+						}}
+						/* Capture-phase, so these never collide with the `onBlur` the
+						   mention binding may spread onto the same field. */
+						onFocusCapture={typing.onFocus}
+						onBlurCapture={typing.onBlur}
 						{...(dictation.isRecording || dictation.isPreparing
 							? {
 									// A live take owns Enter/Escape via the window listener.
