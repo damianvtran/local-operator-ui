@@ -1,0 +1,51 @@
+{
+  "auditor": "designer",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "cf0bdbdda484",
+  "status": "passed",
+  "namespace": "ui.browser",
+  "sha256": {
+    "en": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
+    "fr": "5556061c36c6804c7778297476ffd43c8275d3aa627df22f217be04acc1e7636",
+    "es": "e97e04970de44733753d800e638235fde61876d116a0662e354d906f324daf38",
+    "zh-CN": "5278c6828d60a9e887c0c107c3dc902a6b3f96df91e2a6bbd6c670b35eaefc68",
+    "ru": "90bcba80e12845bfea4d90dacd0052a20328cea81d1b05027f66e35837c5232f",
+    "vi": "44e669bf3552bc966c4e95df01e8cfada6ea2bdef8c5c1fbfcfe17be4259e7b3",
+    "ur": "965ee2c7542ba08696ec8a1244f85eaf0a4b3b5d8a9592b2568938aea6f64eed",
+    "hi": "04fbeb6d31dde6f4cfbaedaee965ca7d11aad2c17d3cb5a8378f35e53e4268bd"
+  },
+  "findings": [],
+  "context_sha256": "db0285d1df6a96b3fcf5128a3d11883de588cd16521a45019e867f58be83987a",
+  "scope": {
+    "keys": [
+      "ui.browser.browser_passkey_notice.not_allowed",
+      "ui.browser.browser_passkey_notice.explanation"
+    ],
+    "locales": [
+      "en",
+      "fr",
+      "es",
+      "zh-CN",
+      "ru",
+      "vi",
+      "ur",
+      "hi"
+    ],
+    "kind": "Independent two-key delta copy audit only; whole namespace hashes bind bytes, not a whole-namespace audit",
+    "head": "a345f7d2b52cc0feb6c24b85ef36ea2a03fe0394"
+  },
+  "metadata": {
+    "date": "2026-11-09",
+    "authorship": "Fresh receipt authored by independent designer from previously executed audit and reverified catalogue/context hashes; no prior scratch receipt read or copied.",
+    "model_provenance": "Actual served openai/gpt-6.1-sol per manager authoritative runtime tool receipts; configured Opus header not used as served model proof.",
+    "resolved_findings": {
+      "D1": "Chinese agent term 智能体 and register corrected",
+      "D2": "Russian session term сессия corrected",
+      "D3": "French U+202F before semicolon corrected"
+    },
+    "checks": "Initial independent audit parsed ICU in all 8 locales: exact who select arms agent/agentFrame/userFrame/other, site once per arm, all 5 selector variants formatted; explanations parameterless. Corrected fr/zh-CN/ru revalidated. All 16 strings NFC and no manual bidi controls. Namespace/context SHA-256 reverified byte-identical at stated head.",
+    "meaning": "Does not diagnose cancellation vs unavailable credential, does not claim absence of Touch ID/provider, offers alternative sign-in or separate system browser, explicitly no session sharing.",
+    "limits": "Copy audit only; no rendered fit, live RTL, native passkey execution or final rendered PR design sign-off.",
+    "authorization": "Operator explicitly approved this exact new repository receipt write via ask a-2fa5, relayed by manager. No guardrail tuning or ledger action performed."
+  }
+}
