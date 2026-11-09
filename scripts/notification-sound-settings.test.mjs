@@ -453,13 +453,38 @@ const settle = async (turns = 4, ms = 0) => {
 	}
 };
 
+/*
+ * A missed deadline is a TIMEOUT, and the error says so.
+ *
+ * The old tail was `return predicate()`, so every caller's timeout collapsed
+ * into the predicate's own `false` and surfaced as whatever assertion happened
+ * to follow it - Q8's 3000 ms deadline arrived as "the section-level Retry did
+ * not reload the sound list" (CI shard 0, Full Test Suite run 42543029193),
+ * which reads as a product fault when the truth was a starved shard. Throwing
+ * separates the two faults a reader has to tell apart: the bound we waited on,
+ * and the predicate we were waiting for. The message carries all three of the
+ * things that decide what to do next - that it is a timeout rather than a
+ * false predicate, the bound in ms, and the predicate's own source so the
+ * stack trace names the condition instead of only the line number.
+ *
+ * The success path still resolves `true`: all 29 call sites are a bare
+ * `await waitFor(...)` (verified - no `= await waitFor`, `if (await waitFor)`
+ * or `return await waitFor` in this file), so nothing consumes the return
+ * value and no caller changes behaviour. The post-loop predicate check is kept
+ * as the last chance a slow-but-arriving state had before, so the interval
+ * just past the deadline still counts as success.
+ */
 const waitFor = async (predicate, timeout = 2000) => {
 	const deadline = Date.now() + timeout;
 	while (Date.now() < deadline) {
 		if (predicate()) return true;
 		await settle(1, 20);
 	}
-	return predicate();
+	if (predicate()) return true;
+	const source = String(predicate).replace(/\s+/g, " ").trim().slice(0, 200);
+	throw new Error(
+		`waitFor TIMEOUT: the bound of ${timeout}ms elapsed with the predicate still false - this is a timeout, not a predicate failure. If this reads as a product assertion, look at the runner's latency before the feature. predicate: ${source}`,
+	);
 };
 
 /** Mount the section; teardown is armed first (speech-settings' rule). */
@@ -1318,11 +1343,24 @@ test("Q8: the section-level Retry also reloads the sound list", async (t) => {
 		(b) => b.textContent.trim() === "Retry",
 	);
 	await click(retry);
+	/*
+	 * 15 s rather than the 3 s its siblings pass, and the number is provenance
+	 * rather than drift. Measured: 50.6 ms without load on this host (61.4 ms on
+	 * the host the release-window owner measured), but 3062.4 ms on CI shard 0,
+	 * twice identically (Full Test Suite run 42543029193) - exactly the 3000 ms
+	 * bound, so the test did not fail, it never got the chance to finish. That
+	 * shard was starved, not this test slow: Q8 ran ~50-60x its local time, the
+	 * same file's other slow rows ran 748/692/658/429 ms there against a 93.2 ms
+	 * median and 702.4 ms worst locally, and two sibling tests in the shard took
+	 * 50.6 s and 39.1 s - latencies no local run produces. 15 s is headroom over
+	 * measured starvation on one test. It does NOT make the starvation go away,
+	 * and it is not a general licence to raise bounds in this file.
+	 */
 	await waitFor(
 		() =>
 			radio(container, "soft-pulse") !== null &&
 			!container.textContent.includes("Couldn't load"),
-		3000,
+		15000,
 	);
 	assert.ok(
 		daemon.asked.filter((op) => op === "notification_sounds.list").length >
