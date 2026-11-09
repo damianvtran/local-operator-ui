@@ -108,12 +108,17 @@ async def main():
                 text=json.dumps(value,default=str)
                 for secret in (bearer,upstream.bearer):text=text.replace(secret,'[redacted]')
                 return json.loads(text)
+            # Core's SnapshotPayload carries only frontend/history/cold/...; the
+            # gate, streaming flag and session-state epoch live one level down on
+            # payload.frontend.snapshot (FrontendSessionState). Reading them off
+            # the payload always yields None (R10-B1). test_route_contract.py
+            # walks these nested reads through Core's response models.
             async def diagnostics(condition):
                 out={'condition':condition,'upstream':upstream.facts()}
                 snap=await client.get(target)
-                payload=snap.json().get('result',{}).get('payload',{}) if snap.status_code==200 else {}
-                out['snapshot']={'status':snap.status_code,'pending_gate':payload.get('pending_gate'),
-                                 'streaming':payload.get('streaming'),'epoch':payload.get('epoch')}
+                fe=snap.json().get('result',{}).get('payload',{}).get('frontend',{}).get('snapshot',{}) if snap.status_code==200 else {}
+                out['snapshot']={'status':snap.status_code,'pending_gate':fe.get('pending_gate'),
+                                 'streaming':fe.get('streaming'),'epoch':fe.get('epoch')}
                 hist=await client.get(target+'/history')
                 out['history_tail']=hist.json().get('result',{}).get('entries',[])[-6:] if hist.status_code==200 else hist.status_code
                 events=ROOT/'events.jsonl'
@@ -129,9 +134,11 @@ async def main():
             gated={'generate_music','modify_music'}
             async def approve(tool):
                 async def gate():
-                    r=await client.get(target);v=r.json().get('result',{}).get('payload',{})
-                    g=v.get('pending_gate')
-                    return (v['epoch'],g) if g and g.get('kind')=='approval' else None
+                    # /answers compares against frontend_state.epoch, i.e. this
+                    # nested snapshot epoch, NOT the bridge frame's result.epoch.
+                    r=await client.get(target);fe=r.json().get('result',{}).get('payload',{}).get('frontend',{}).get('snapshot',{})
+                    g=fe.get('pending_gate')
+                    return (fe['epoch'],g) if g and g.get('kind')=='approval' else None
                 epoch,g=await until(gate)
                 assert g['title']==tool,('approval gate names another tool',g['title'],tool)
                 rid=g['request_id']

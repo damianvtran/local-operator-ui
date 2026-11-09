@@ -76,27 +76,67 @@ def _scope(node, parents):
     return node
 
 
+def _key_chain(node, parents):
+    # Constant subscripts / ``.get('k', ...)`` applied to ``node``; returns the
+    # keys and the outermost expression they form.
+    chain, cur = [], node
+    while cur in parents:
+        up = parents[cur]
+        if isinstance(up, ast.Subscript) and up.value is cur and isinstance(up.slice, ast.Constant):
+            chain.append(up.slice.value); cur = up; continue
+        if (isinstance(up, ast.Attribute) and up.value is cur and up.attr == 'get'
+                and up in parents and isinstance(parents[up], ast.Call)
+                and parents[up].args and isinstance(parents[up].args[0], ast.Constant)):
+            chain.append(parents[up].args[0].value); cur = parents[up]; continue
+        break
+    return chain, cur
+
+
+def _bound_name(expr, parents):
+    # ``x = <expr>`` or ``x = <expr> if cond else {}`` -> 'x'.
+    up = parents.get(expr)
+    if isinstance(up, ast.IfExp) and up.body is expr:
+        expr, up = up, parents.get(up)
+    if isinstance(up, ast.Assign) and up.value is expr and len(up.targets) == 1 \
+            and isinstance(up.targets[0], ast.Name):
+        return up.targets[0].id
+    return None
+
+
 def _json_keys(scope, var):
-    # Key chains read off ``var.json()`` via subscripts or ``.get('k', ...)``.
+    # Key chains read off ``var.json()`` via subscripts or ``.get('k', ...)``,
+    # FOLLOWED through intermediate variables in the same scope. R10-B1: the
+    # approval wait bound ``v = r.json()...['payload']`` and then read
+    # ``v.get('pending_gate')`` / ``v['epoch']`` — keys Core's SnapshotPayload
+    # does not have — and a direct-chain-only walk never saw those reads.
+    parents = _parents(scope)
+
+    def follow(prefix, name, depth):
+        found = []
+        for use in ast.walk(scope):
+            if not (isinstance(use, ast.Name) and use.id == name and isinstance(use.ctx, ast.Load)):
+                continue
+            chain, end = _key_chain(use, parents)
+            if not chain:
+                continue
+            found.append(prefix + chain)
+            rebound = _bound_name(end, parents)
+            if rebound and depth < 4:
+                found.extend(follow(prefix + chain, rebound, depth + 1))
+        return found
+
     chains = []
     for node in ast.walk(scope):
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
                 and node.func.attr == 'json' and isinstance(node.func.value, ast.Name)
                 and node.func.value.id == var):
             continue
-        parents = _parents(scope)
-        chain, cur = [], node
-        while cur in parents:
-            up = parents[cur]
-            if isinstance(up, ast.Subscript) and up.value is cur and isinstance(up.slice, ast.Constant):
-                chain.append(up.slice.value); cur = up; continue
-            if (isinstance(up, ast.Attribute) and up.value is cur and up.attr == 'get'
-                    and up in parents and isinstance(parents[up], ast.Call)
-                    and parents[up].args and isinstance(parents[up].args[0], ast.Constant)):
-                chain.append(parents[up].args[0].value); cur = parents[up]; continue
-            break
+        chain, end = _key_chain(node, parents)
         if chain:
             chains.append(chain)
+            name = _bound_name(end, parents)
+            if name:
+                chains.extend(follow(chain, name, 0))
     return chains
 
 
@@ -282,6 +322,43 @@ class RouteContract(unittest.TestCase):
                 rows = self._probe(self._answers(harness_calls(mutated)))
             self.assertEqual(len(rows), 1)
             self.assertTrue(rows[0]['problems'], (bad, rows))
+
+    # R10-B1: the approval wait and the timeout diagnostics read the gate and the
+    # session-state epoch off the snapshot through intermediate variables. Core's
+    # SessionSnapshot keeps them at payload.frontend.snapshot.{pending_gate,epoch}
+    # (FrontendSessionState); /answers compares against that epoch. These pin
+    # the extracted nested reads to Core's models and prove the old flat
+    # payload.pending_gate / payload.epoch reads are rejected.
+    SNAP = ['result', 'payload', 'frontend', 'snapshot']
+
+    def _snapshot_reads(self, calls):
+        return [c for c in calls if c['method'] == 'GET' and c['path'] and c['path'].endswith('{sid}')
+                and any(k[:2] == ['result', 'payload'] for k in c['json_keys'])]
+
+    def test_snapshot_reads_follow_intermediate_variables(self):
+        reads = self._snapshot_reads(harness_calls())
+        chains = [k for c in reads for k in c['json_keys']]
+        for leafkey in (['pending_gate'], ['epoch'], ['pending_gate', 'kind'], ['streaming']):
+            self.assertIn(self.SNAP + leafkey, chains, chains)
+        self.assertIn(['result', 'payload', 'cold'], chains)   # is_live: a real top-level field
+        flat = [k for k in chains if k[:2] == ['result', 'payload'] and len(k) > 2
+                and k[2] in ('pending_gate', 'epoch', 'streaming')]
+        self.assertEqual(flat, [], 'gate/epoch read off the payload, not payload.frontend.snapshot')
+        rows = self._probe(reads)
+        self.assertEqual([r['problems'] for r in rows if r['problems']], [], rows)
+
+    def test_flat_payload_gate_reads_fail_against_core(self):
+        import tempfile
+        text = Path(SOURCE).read_text()
+        nested = ".get('payload',{}).get('frontend',{}).get('snapshot',{})"
+        self.assertEqual(text.count(nested), 2)
+        with tempfile.TemporaryDirectory() as tmp:
+            mutated = Path(tmp) / 'preflight.py'
+            mutated.write_text(text.replace(nested, ".get('payload',{})"))
+            rows = self._probe(self._snapshot_reads(harness_calls(mutated)))
+        problems = ' '.join(p for r in rows for p in r['problems'])
+        for key in ('pending_gate', 'epoch', 'streaming'):
+            self.assertIn("SnapshotPayload has no field %r" % key, problems, rows)
 
 
 if __name__ == '__main__':
