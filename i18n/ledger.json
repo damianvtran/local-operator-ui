@@ -2472,31 +2472,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
-			"target_sha256": "71ec923c445ee4df382e865352c5d90193295cc529b68dac9a9227a8db729e08",
+			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
+			"target_sha256": "3508756022df64c17151ca9d64041b03a423f30e006848c93deaa0661d7af868",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session 9a6333fafa02; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "7e2164ab99b1",
+					"result": "clean-with-findings",
+					"instance": "1132acf889a1-ui1824-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7e2164ab99b1.json",
-					"receipt_sha256": "55e4cc2c8506a5f61bac5389391470255611d7304a7097e154b9381a4c996c17",
-					"scope": "the eight transcript status keys added to ui.chat.canonical",
-					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
+					"receipt": "i18n/receipts/1132acf889a1-ui1824-es.json",
+					"receipt_sha256": "3705b0d3ba137c84b5990cfe54632224f2b7819af35735248923b7cbcfd0a169",
+					"scope": "PR #1824 round 1: the 4 tool_row.diff.* keys; other keys byte-identical to prior audited bytes; source-only audit",
+					"note": "ui-i18n-audit-r1 independent reviewer audit; findings in receipt"
 				}
 			],
 			"status": "audited",
@@ -2798,6 +2798,30 @@
 							"receipt_sha256": "18cb3169c02a8a6d7d70ae4c3f80078cebb031f1100ffc5986fa844a523dbb91",
 							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+					"target_sha256": "71ec923c445ee4df382e865352c5d90193295cc529b68dac9a9227a8db729e08",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "7e2164ab99b1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7e2164ab99b1.json",
+							"receipt_sha256": "55e4cc2c8506a5f61bac5389391470255611d7304a7097e154b9381a4c996c17",
+							"scope": "the eight transcript status keys added to ui.chat.canonical",
+							"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 						}
 					],
 					"status": "audited"
@@ -13314,31 +13338,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
-			"target_sha256": "1423095a87c282abd47c2ac723c3cfce17698289460f242aff4fb7d5ee56ee65",
+			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
+			"target_sha256": "f33976a615863616cd93782120b4fa5dfddda66f3270999fe4b19508630bdffe",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session 92406429e984; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "fr-transcript-r1-2eae3ddc404e",
+					"result": "clean-with-findings",
+					"instance": "1132acf889a1-ui1824-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fr-transcript-r1-2eae3ddc404e.json",
-					"receipt_sha256": "d7a9a55e5857c73b1c639492681a158961814377b8cbf90edc34463a9fe0583a",
-					"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
-					"note": "round-1 independent audit"
+					"receipt": "i18n/receipts/1132acf889a1-ui1824-fr.json",
+					"receipt_sha256": "5b4fb0c5695b2c6f611c4e30f878046364d87a23c34a4601f87b86e0ceca45cb",
+					"scope": "PR #1824 round 1: the 4 tool_row.diff.* keys; other keys byte-identical to prior audited bytes; source-only audit",
+					"note": "ui-i18n-audit-r1 independent reviewer audit; findings in receipt"
 				}
 			],
 			"status": "audited",
@@ -13638,6 +13662,30 @@
 							"receipt_sha256": "f6197d6aa3d6a949739405047da9354dd8830da6ecfc072a715d2925fa77aeb3",
 							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+					"target_sha256": "1423095a87c282abd47c2ac723c3cfce17698289460f242aff4fb7d5ee56ee65",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "fr-transcript-r1-2eae3ddc404e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fr-transcript-r1-2eae3ddc404e.json",
+							"receipt_sha256": "d7a9a55e5857c73b1c639492681a158961814377b8cbf90edc34463a9fe0583a",
+							"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
+							"note": "round-1 independent audit"
 						}
 					],
 					"status": "audited"
@@ -24565,31 +24613,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
-			"target_sha256": "5eb7691f97e9fdb1b3bdf3bacd7e29467f302563b280a0a948ed74a3c9dac994",
+			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
+			"target_sha256": "2c166eecf5db5f7a30b83e1248f081dbdceef87e4e85de5c3b64f5d84a7f1497",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session dbb7c7d873cd; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "hi-transcript-r1-ab2f2fb6eeff",
+					"instance": "1132acf889a1-ui1824-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/hi-transcript-r1-ab2f2fb6eeff.json",
-					"receipt_sha256": "2dc80817cda09cace39eae7c60a215fb8e29716be5de6dfade66a639e0b8cc6a",
-					"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
-					"note": "round-1 independent audit"
+					"receipt": "i18n/receipts/1132acf889a1-ui1824-hi.json",
+					"receipt_sha256": "05e18fb1fe9da0e70a422f211a3ac16fc7b5d933011828f68bdd13a9f9046910",
+					"scope": "PR #1824 round 1: the 4 tool_row.diff.* keys; other keys byte-identical to prior audited bytes; source-only audit",
+					"note": "ui-i18n-audit-r1 independent reviewer audit; findings in receipt"
 				}
 			],
 			"status": "audited",
@@ -24889,6 +24937,30 @@
 							"receipt_sha256": "2e140f685e9a147aceb472be77294577a1336adf8b65d80e867cb4710e9b4775",
 							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+					"target_sha256": "5eb7691f97e9fdb1b3bdf3bacd7e29467f302563b280a0a948ed74a3c9dac994",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "hi-transcript-r1-ab2f2fb6eeff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-transcript-r1-ab2f2fb6eeff.json",
+							"receipt_sha256": "2dc80817cda09cace39eae7c60a215fb8e29716be5de6dfade66a639e0b8cc6a",
+							"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
+							"note": "round-1 independent audit"
 						}
 					],
 					"status": "audited"
@@ -35486,31 +35558,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
-			"target_sha256": "fc107d781035ed4e7e043ff844b9bf6d1a36b51c293e34c90e5f37d13a59a990",
+			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
+			"target_sha256": "0b9b758aa132875d5cf4fa392117836c07a12e4bb823bd6708a306ad4ac7a0e8",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session ef3a6636b35b; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "4c8a43091740",
+					"instance": "1132acf889a1-ui1824-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4c8a43091740.json",
-					"receipt_sha256": "2bc427c3dc18fd57023c21f287654113cd66a2f2c6340240a5a724b2d4b65ada",
-					"scope": "the eight transcript status keys added to ui.chat.canonical",
-					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
+					"receipt": "i18n/receipts/1132acf889a1-ui1824-ru.json",
+					"receipt_sha256": "fd634e8607b16ef3282edac9fef990445e89ab85c1903bfeace8175b3311e64d",
+					"scope": "PR #1824 round 1: the 4 tool_row.diff.* keys; other keys byte-identical to prior audited bytes; source-only audit",
+					"note": "ui-i18n-audit-r1 independent reviewer audit; findings in receipt"
 				}
 			],
 			"status": "audited",
@@ -35810,6 +35882,30 @@
 							"receipt_sha256": "ec04548218150371863adc9922ded3953b91d16ccf9a8a8a460cfc00538a732a",
 							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+					"target_sha256": "fc107d781035ed4e7e043ff844b9bf6d1a36b51c293e34c90e5f37d13a59a990",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "4c8a43091740",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4c8a43091740.json",
+							"receipt_sha256": "2bc427c3dc18fd57023c21f287654113cd66a2f2c6340240a5a724b2d4b65ada",
+							"scope": "the eight transcript status keys added to ui.chat.canonical",
+							"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 						}
 					],
 					"status": "audited"
@@ -46428,31 +46524,31 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
-			"target_sha256": "1afbe15928e45422eaddc7576116832645561c331a0fad4e9b0d2775b54517ad",
+			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
+			"target_sha256": "e81ca81801140aa071f17baa15c85e8de393b35ce0de5a4131c8cd8b3ae5cc4d",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session 872c9d99cb31; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "s2a-ur-2cf1ea7b5fd-e05de8251ff7",
+					"instance": "1132acf889a1-ui1824-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/s2a-ur-2cf1ea7b5fd-e05de8251ff7.json",
-					"receipt_sha256": "9bdb5bd8f245d249799fa28a9801a3862e7fcbea2309bf114ea8894bf3cebd17",
-					"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
-					"note": "round-1 independent audit"
+					"receipt": "i18n/receipts/1132acf889a1-ui1824-ur.json",
+					"receipt_sha256": "de69b077041353ecc69ad00bcbf174349d410e3d88149f53f2c6d14600862d06",
+					"scope": "PR #1824 round 1: the 4 tool_row.diff.* keys; other keys byte-identical to prior audited bytes; source-only audit",
+					"note": "ui-i18n-audit-r1 independent reviewer audit; findings in receipt"
 				}
 			],
 			"status": "audited",
@@ -46753,6 +46849,30 @@
 							"receipt_sha256": "6a201068e55667716093e6d48ad24439a3ddff6945641f0dbb06ece7c0203240",
 							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+					"target_sha256": "1afbe15928e45422eaddc7576116832645561c331a0fad4e9b0d2775b54517ad",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "s2a-ur-2cf1ea7b5fd-e05de8251ff7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s2a-ur-2cf1ea7b5fd-e05de8251ff7.json",
+							"receipt_sha256": "9bdb5bd8f245d249799fa28a9801a3862e7fcbea2309bf114ea8894bf3cebd17",
+							"scope": "slice delta 6031bc9ad71..2cf1ea7b5fd",
+							"note": "round-1 independent audit"
 						}
 					],
 					"status": "audited"
@@ -57234,31 +57354,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
-			"target_sha256": "9dddf80e887fdd631860e64f3dd56796b1babeaf5bbdd9f0e4b7db7fa17e9bbf",
+			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
+			"target_sha256": "030d7ac3a2202f305a7513fe9bb643d894c7e40b70835675e13e63da3c07fe0a",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session aca3bfa430aa; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "849774c2de9b",
+					"instance": "1132acf889a1-ui1824-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/849774c2de9b.json",
-					"receipt_sha256": "13182d6d54c25e498bef2d360dd9ca5b48511464613955b6fb8b1b9c81ff20c4",
-					"scope": "the eight transcript status keys added to ui.chat.canonical",
-					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
+					"receipt": "i18n/receipts/1132acf889a1-ui1824-vi.json",
+					"receipt_sha256": "21512fc76cd34c60dcb712c16f667ee134cc2319cccfa12a829d329861852fcb",
+					"scope": "PR #1824 round 1: the 4 tool_row.diff.* keys; other keys byte-identical to prior audited bytes; source-only audit",
+					"note": "ui-i18n-audit-r1 independent reviewer audit; findings in receipt"
 				}
 			],
 			"status": "audited",
@@ -57558,6 +57678,30 @@
 							"receipt_sha256": "2610b82de42cf1e20231b2fffb3035497cbe6f19b70864b19e41b5f328c61243",
 							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+					"target_sha256": "9dddf80e887fdd631860e64f3dd56796b1babeaf5bbdd9f0e4b7db7fa17e9bbf",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "849774c2de9b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/849774c2de9b.json",
+							"receipt_sha256": "13182d6d54c25e498bef2d360dd9ca5b48511464613955b6fb8b1b9c81ff20c4",
+							"scope": "the eight transcript status keys added to ui.chat.canonical",
+							"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 						}
 					],
 					"status": "audited"
@@ -68822,31 +68966,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
-			"target_sha256": "d5b5bba0c55a44bbf261d5b2277b7dc074fd9ff0159722b9e414998a2ab1b3bd",
+			"source_sha256": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e",
+			"target_sha256": "443f49962eaec1f016a26ae59ba80ffe5623bd198b6d93a9999f46f9c6c707c7",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
+				"agent": "ui-diff-show-all",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
-				"note": "PR #1804 translation lane session e0c3abf82259; coder served openai/gpt-6.1-sol after provider-quota fallbacks."
+				"note": "PR #1824: new diff strings authored by coder ui-diff-show-all, job f5da4070a7ae; provenance corrected without catalogue changes."
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "c01a80b57a32",
+					"result": "clean-with-findings",
+					"instance": "1132acf889a1-ui1824-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/c01a80b57a32.json",
-					"receipt_sha256": "f58897ff93360355eab757d79e5ffc5b3d32647dee3ca78042fab59ed5818ca9",
-					"scope": "the eight transcript status keys added to ui.chat.canonical",
-					"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
+					"receipt": "i18n/receipts/1132acf889a1-ui1824-zh-cn.json",
+					"receipt_sha256": "aa2ce17df0f6f8099caa4dfeeed16d6031f3846bf45cc1578997dc1636316b8a",
+					"scope": "PR #1824 round 1: the 4 tool_row.diff.* keys; other keys byte-identical to prior audited bytes; source-only audit",
+					"note": "ui-i18n-audit-r1 independent reviewer audit; findings in receipt"
 				}
 			],
 			"status": "audited",
@@ -69146,6 +69290,30 @@
 							"receipt_sha256": "df3f3c8c1341cf428d1882f755e48af66db7ed7852b1c47574ea6674ea69c371",
 							"scope": "the 55 keys this PR added to ui.chat.canonical (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+					"target_sha256": "d5b5bba0c55a44bbf261d5b2277b7dc074fd9ff0159722b9e414998a2ab1b3bd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "c01a80b57a32",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c01a80b57a32.json",
+							"receipt_sha256": "f58897ff93360355eab757d79e5ffc5b3d32647dee3ca78042fab59ed5818ca9",
+							"scope": "the eight transcript status keys added to ui.chat.canonical",
+							"note": "round-1 independent audit of the slice delta 6031bc9ad71..2cf1ea7b5fd"
 						}
 					],
 					"status": "audited"
