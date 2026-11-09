@@ -631,6 +631,12 @@ type TranscriptPayloadRecord =
 			/** Display-only Bridge facts; never a model-context admission grant. */
 			bridgeReceipt?: BridgeReceipt;
 			music?: MusicReceipt;
+			/**
+			 * The detached job a `job_result` row settles (`details.job_id`), so an
+			 * in-chat music generating card can find its own settlement by identity
+			 * rather than by order (`music-generating-model.ts`).
+			 */
+			jobId?: string;
 			images?: TranscriptImage[];
 			/** The row's rendered body, as persisted. */
 			text: string;
@@ -3483,6 +3489,11 @@ function durableRecord(
 			text,
 			...(music
 				? { music, images: music.tracks.flatMap((track) => track.images) }
+				: {}),
+			...(customType === "job_result" &&
+			typeof details.job_id === "string" &&
+			details.job_id.length > 0
+				? { jobId: details.job_id }
 				: {}),
 			...(customType === "team_bridge_message"
 				? {

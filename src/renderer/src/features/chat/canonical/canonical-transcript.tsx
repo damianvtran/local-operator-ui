@@ -203,6 +203,15 @@ import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
+import {
+	ConnectedMusicGeneratingCard,
+	useMusicGeneratingView,
+} from "./music-generating-card";
+import {
+	type MusicJobSettlement,
+	MusicJobSettlementsContext,
+	jobResultStatus,
+} from "./music-generating-model";
 import { MusicResult } from "./music-result";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
@@ -2494,6 +2503,11 @@ const ToolRow = memo(function ToolRow({
 			: null;
 	const revertAnswer = useProfileRevertAnswer();
 	/*
+	 * Unconditional like the hooks above; null for every row but a music call
+	 * that registered a detached job (`music-generating-model.ts`).
+	 */
+	const musicView = useMusicGeneratingView(record.toolName, record.details);
+	/*
 	 * THE STATUS SEAM IS THE ONLY AUTHORITY (core's revert gate is a live
 	 * action-registration/status read; a persisted `revert_verified` is proof of
 	 * nothing). `profile-revert-status.ts` answers `unavailable` for anything but a
@@ -2532,6 +2546,19 @@ const ToolRow = memo(function ToolRow({
 	 * constant, adjustable in one place when the harness freezes the tool-name
 	 * set.
 	 */
+	/*
+	 * THE MUSIC GENERATING CARD IS THE ROW for a music call whose detached job
+	 * the chat can follow: the motif, state line and the job's own Cancel at the
+	 * call's place, settling in place when the job's `job_result` row lands (that
+	 * row keeps painting the finished tracks, unchanged).
+	 */
+	if (musicView) {
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ConnectedMusicGeneratingCard view={musicView} />
+			</MessageContainer>
+		);
+	}
 	if (isImageGenTool(record.toolName)) {
 		/*
 		 * The mount's action rule (R4, contract §4.2): a video call's work is a
@@ -4143,11 +4170,32 @@ type SectionGroup =
  * subscription. A wrapper rather than a provider inside the pane's JSX so the
  * pane's own render tree, and its diff, are untouched.
  */
-export const CanonicalTranscript: FC<CanonicalTranscriptProps> = (props) => (
-	<SpeechGateScope>
-		<CanonicalTranscriptPane {...props} />
-	</SpeechGateScope>
-);
+export const CanonicalTranscript: FC<CanonicalTranscriptProps> = (props) => {
+	/*
+	 * Settled detached jobs by id, for the music generating card: a fact about
+	 * the LIST (the settlement is a later row), so it is derived once here and
+	 * read by context rather than threaded through every row's memo props.
+	 */
+	const records = props.transcript.records;
+	const settlements = useMemo(() => {
+		const settled = new Map<string, MusicJobSettlement>();
+		for (const record of records) {
+			if (record.kind === "custom" && record.jobId)
+				settled.set(record.jobId, {
+					status: jobResultStatus(record.text),
+					receipt: record.music ?? null,
+				});
+		}
+		return settled;
+	}, [records]);
+	return (
+		<MusicJobSettlementsContext.Provider value={settlements}>
+			<SpeechGateScope>
+				<CanonicalTranscriptPane {...props} />
+			</SpeechGateScope>
+		</MusicJobSettlementsContext.Provider>
+	);
+};
 
 const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	frontend,

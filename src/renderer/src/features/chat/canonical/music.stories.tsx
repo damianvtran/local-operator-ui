@@ -9,6 +9,13 @@ import { CanonicalTranscript } from "./canonical-transcript";
 import { EMPTY_TRANSCRIPT, applyHistoryPage } from "./transcript-reducer";
 import "../../../styles/index.css";
 import toneUrl from "../../../../../../scripts/fixtures/music-tone.mp3?url";
+import type { SubagentRow } from "../components/run-details/run-detail-model";
+import { ConnectedMusicGeneratingCard } from "./music-generating-card";
+import {
+	type MusicJobSettlement,
+	MusicJobsLiveContext,
+	musicGeneratingView,
+} from "./music-generating-model";
 import { MusicJobMotif } from "./music-job-motif";
 import { type MusicReceipt, musicReceiptOf } from "./music-receipt-model";
 import { MusicResult } from "./music-result";
@@ -260,3 +267,147 @@ const CanonicalFlow = ({ rtl = false }: { rtl?: boolean }) => {
 };
 export const CanonicalMissingBytes: Story = { render: () => <CanonicalFlow /> };
 export const CanonicalRtl: Story = { render: () => <CanonicalFlow rtl /> };
+
+/*
+ * THE IN-CHAT GENERATING CARD (operator decision a-69e7), through the real
+ * derivation (`musicGeneratingView`) and the real connected mount, so a story
+ * cannot paint a state the model would never produce. The Cancel press lands on
+ * a local recorder: nothing here reaches a provider or a job.
+ */
+const inlineRow = (
+	id: string,
+	music: { stage: string; total: number; completed: number },
+	status: SubagentRow["status"] = "running",
+) =>
+	({
+		id,
+		label: fixtureTitle,
+		jobType: "music",
+		status,
+		music: { ...music, attribution: "" },
+	}) as SubagentRow;
+const inlineDetails = (job: string) => ({
+	job_id: job,
+	stage: "queued",
+	material: "music",
+	tracks: [],
+});
+const InlineCard = ({
+	job,
+	toolName = "generate_music",
+	row,
+	settlement,
+	rtl = false,
+}: {
+	job: string;
+	toolName?: string;
+	row?: SubagentRow;
+	settlement?: MusicJobSettlement;
+	rtl?: boolean;
+}) => {
+	const view = musicGeneratingView({
+		toolName,
+		details: inlineDetails(job),
+		row,
+		settlement,
+	});
+	return (
+		<MusicJobsLiveContext.Provider
+			value={{
+				rows: new Map<string, SubagentRow>(row ? [[row.id, row]] : []),
+				request: () => undefined,
+			}}
+		>
+			<div dir={rtl ? "rtl" : "ltr"}>
+				{view && <ConnectedMusicGeneratingCard view={view} />}
+			</div>
+		</MusicJobsLiveContext.Provider>
+	);
+};
+const zeroBilled = (status: string): MusicJobSettlement => ({
+	status,
+	receipt: {
+		attribution: "",
+		tracks: [
+			{
+				id: "t1",
+				title: "",
+				variantIndex: 0,
+				error: true,
+				cost: { amount_usd: 0, basis: "billed" },
+				images: [],
+			},
+		],
+	},
+});
+export const InlineQueued: Story = {
+	render: () => (
+		<InlineCard
+			job="job-q"
+			row={inlineRow("job-q", { stage: "", total: 0, completed: 0 }, "queued")}
+		/>
+	),
+};
+export const InlineGeneratingOne: Story = {
+	render: () => (
+		<InlineCard
+			job="job-1"
+			row={inlineRow("job-1", { stage: "polling", total: 1, completed: 0 })}
+		/>
+	),
+};
+export const InlineGeneratingTwoPartial: Story = {
+	render: () => (
+		<InlineCard
+			job="job-2"
+			row={inlineRow("job-2", { stage: "polling", total: 2, completed: 1 })}
+		/>
+	),
+};
+/** Reduced motion is the capturer's media emulation (`prefers-reduced-motion:
+ * reduce`); the motif's `motion-safe:` animation is what it switches off. */
+export const InlineReducedMotion: Story = {
+	...InlineGeneratingTwoPartial,
+	parameters: { prefersReducedMotion: "reduce" },
+};
+export const InlineTwoConcurrent: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4">
+			<InlineCard
+				job="job-a"
+				row={inlineRow("job-a", { stage: "polling", total: 1, completed: 0 })}
+			/>
+			<InlineCard
+				job="job-b"
+				toolName="modify_music"
+				row={inlineRow("job-b", { stage: "polling", total: 2, completed: 1 })}
+			/>
+		</div>
+	),
+};
+export const InlineFailed: Story = {
+	render: () => <InlineCard job="job-f" settlement={zeroBilled("failed")} />,
+};
+export const InlineCancelled: Story = {
+	render: () => <InlineCard job="job-c" settlement={zeroBilled("cancelled")} />,
+};
+export const InlineSettled: Story = {
+	render: () => (
+		<div className="flex flex-col gap-2">
+			<InlineCard
+				job="job-s"
+				settlement={{ status: "completed", receipt: null }}
+			/>
+			<Completed />
+		</div>
+	),
+};
+export const InlineGeneratingRtl: Story = {
+	render: () => (
+		<InlineCard
+			job="job-r"
+			rtl
+			row={inlineRow("job-r", { stage: "polling", total: 2, completed: 1 })}
+		/>
+	),
+};

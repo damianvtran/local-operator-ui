@@ -4,5 +4,13 @@
 	"ui.music.cancel_warning": "“{label}”已开始的生成仍可能完成并产生费用。结果仍可获取。",
 	"ui.music.track": "音轨 {index}",
 	"ui.music.failed": "无法生成此音轨。",
-	"ui.music.empty": "未返回任何音轨。"
+	"ui.music.empty": "未返回任何音轨。",
+	"ui.music.queued": "音乐已排队",
+	"ui.music.generating": "正在生成音乐…",
+	"ui.music.generating_tracks": "{count, plural, other {正在生成 # 条音轨…}}",
+	"ui.music.modifying": "正在修改音乐…",
+	"ui.music.cancel_requested": "已请求取消",
+	"ui.music.ready": "音乐已就绪",
+	"ui.music.job_failed": "音乐生成失败。",
+	"ui.music.job_cancelled": "音乐生成已取消。"
 }

@@ -4,5 +4,13 @@
 	"ui.music.cancel_warning": "Le travail déjà commencé pour « {label} » peut encore aboutir et être facturé. Les résultats restent accessibles.",
 	"ui.music.track": "Piste {index}",
 	"ui.music.failed": "Cette piste n’a pas pu être générée.",
-	"ui.music.empty": "Aucune piste n’a été renvoyée."
+	"ui.music.empty": "Aucune piste n’a été renvoyée.",
+	"ui.music.queued": "Musique en file d’attente",
+	"ui.music.generating": "Génération de la musique…",
+	"ui.music.generating_tracks": "{count, plural, one {Génération de # piste…} other {Génération de # pistes…}}",
+	"ui.music.modifying": "Modification de la musique…",
+	"ui.music.cancel_requested": "Annulation demandée",
+	"ui.music.ready": "Musique prête",
+	"ui.music.job_failed": "La génération de la musique a échoué.",
+	"ui.music.job_cancelled": "Génération de la musique annulée."
 }

@@ -35,6 +35,9 @@ export const MusicJobMotif = ({
 			)}
 		</div>
 		<svg
+			// The motif's own box, apart from the label's lucide icon: geometry and
+			// reduced-motion probes measure this element, never the first svg found.
+			data-music-motif=""
 			width="240"
 			height="44"
 			viewBox="0 0 240 44"

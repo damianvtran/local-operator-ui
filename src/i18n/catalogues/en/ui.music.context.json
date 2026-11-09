@@ -28,5 +28,45 @@
 		"role": "status",
 		"tone": "neutral",
 		"note": "Empty structured music envelope. No success check or fake playable band. No fixed width."
+	},
+	"ui.music.queued": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+	},
+	"ui.music.generating": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+	},
+	"ui.music.generating_tracks": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+	},
+	"ui.music.modifying": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+	},
+	"ui.music.cancel_requested": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+	},
+	"ui.music.ready": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+	},
+	"ui.music.job_failed": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+	},
+	"ui.music.job_cancelled": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
 	}
 }

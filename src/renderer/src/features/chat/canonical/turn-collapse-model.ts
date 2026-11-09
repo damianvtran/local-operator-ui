@@ -56,6 +56,7 @@ import type { HubReceipt } from "../components/trace/receipt-row-model";
 import { isPartialDelivery, toolOp } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
 import { isImageGenTool } from "./image-gen-card-model";
+import { isMusicGenTool, musicJobIdOf } from "./music-generating-model";
 import { freezeRecordDeep } from "./record-immutability";
 import {
 	type FoldCountSegment,
@@ -401,7 +402,14 @@ export function ownsMaterialArtifact(record: TranscriptRecord): boolean {
 		return true;
 	// Before output bytes exist, the generating card already owns loading/error
 	// and cancellation UI; keep ALL phases, not only successful picture rows.
-	return record.kind === "tool" && isImageGenTool(record.toolName);
+	if (record.kind !== "tool") return false;
+	if (isImageGenTool(record.toolName)) return true;
+	// A music call that registered a detached job owns the in-chat generating
+	// card (and its Cancel) for minutes after the call itself settled; folding
+	// it into "1 action" is what hid the motif from the chat.
+	return (
+		isMusicGenTool(record.toolName) && musicJobIdOf(record.details) !== null
+	);
 }
 
 function internalEpisodeBoundary(record: TranscriptRecord): boolean {

@@ -4,5 +4,13 @@
 	"ui.music.cancel_warning": "“{label}” पर शुरू हुआ काम फिर भी पूरा हो सकता है और उसका शुल्क लग सकता है। परिणाम उपलब्ध रहेंगे।",
 	"ui.music.track": "ट्रैक {index}",
 	"ui.music.failed": "यह ट्रैक नहीं बनाया जा सका।",
-	"ui.music.empty": "कोई ट्रैक नहीं मिला।"
+	"ui.music.empty": "कोई ट्रैक नहीं मिला।",
+	"ui.music.queued": "संगीत कतार में है",
+	"ui.music.generating": "संगीत बनाया जा रहा है…",
+	"ui.music.generating_tracks": "{count, plural, one {# ट्रैक बनाया जा रहा है…} other {# ट्रैक बनाए जा रहे हैं…}}",
+	"ui.music.modifying": "संगीत में बदलाव किया जा रहा है…",
+	"ui.music.cancel_requested": "रद्द करने का अनुरोध भेजा गया",
+	"ui.music.ready": "संगीत तैयार है",
+	"ui.music.job_failed": "संगीत नहीं बन सका।",
+	"ui.music.job_cancelled": "संगीत बनाना रद्द किया गया।"
 }
