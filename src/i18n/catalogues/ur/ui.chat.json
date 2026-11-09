@@ -107,7 +107,7 @@
 	"ui.chat.error_block.schema.after_before": "اسے ٹھیک کرنے کے لیے",
 	"ui.chat.error_block.schema.after": "میں اپنا ماڈل تبدیل کریں۔ ہم Radient Automatic استعمال کرنے کی تجویز دیتے ہیں تاکہ آپ کی درخواستوں کی بنیاد پر سستے اور ہوشیار کا بہترین امتزاج آپ کے لیے منتخب ہو (عام طور پر اپنی کلید لانے سے سستا)، یا ستارے والے نشان کے ساتھ تجویز کردہ ماڈلز میں سے کوئی استعمال کریں۔",
 	"ui.chat.approval.reply_required": "منظوری کی درخواست کا جواب yes یا no سے دیں۔",
-	"ui.chat.question_dock.hint.approval": "اوپر منظور کریں یا مسترد کریں منتخب کریں، یا پیغام کے خانے میں yes، no، 1 یا 2 لکھ کر بھیجیں، یا وہیں Escape دبا کر باری روکیں۔",
+	"ui.chat.question_dock.hint.approval": "اوپر کے بٹنوں سے منظور کریں یا مسترد کریں، یا پیغام کے خانے میں yes، no، 1 یا 2 لکھ کر بھیجیں، یا وہیں Escape دبا کر باری روکیں۔",
 	"ui.chat.question_dock.hint.approval_held": "اس کے بجائے کمپوزر سے جواب دیں: پیغام کے خانے میں yes، no، 1 یا 2 لکھ کر بھیجیں، یا Escape دبا کر باری روکیں۔",
 	"ui.chat.question_dock.hint.prefix": "{total} میں سے سوال {index}۔ ",
 	"ui.chat.question_dock.hint.secret": "{prefix}اوپر راز لکھیں یا چسپاں کریں · Enter بھیجتا ہے · Esc چھپاتا ہے",
