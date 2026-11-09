@@ -80,14 +80,19 @@ import {
 	DETACHED_AFTER_MS,
 	type DaemonIdentity,
 	DaemonStateMachine,
+	PROBE_ATTEMPTS,
 	PROBE_INTERVAL_MS,
+	PROBE_RETRY_GAP_MS,
+	PROBE_RETRY_TIMEOUT_MS,
 	PROBE_TIMEOUT_MS,
 	type ProbeObservation,
 	REATTACH_BACKOFF_MS,
+	TRANSPORT_EVIDENCE_MS,
 } from "./daemon-status";
 import type {
 	DiscoveredDaemon,
 	HealthIdentity,
+	IdentityProbe,
 	ServeRecord,
 } from "./discovery";
 import {
@@ -169,6 +174,33 @@ export const READINESS_POLL_INTERVAL_MS = 1_000;
  * start that never becomes ready, and a wall-clock bound would make that test
  * sit out the whole 30 s. */
 export const READINESS_BUDGET_MS = 30_000;
+
+/**
+ * The shortest gap between two recoveries this app's own ANSWERED requests start.
+ *
+ * The trigger is `noteTransportAnswer`, which runs on every admitted desktop
+ * request: a presence beat every 15 s plus the renderer's session reads, i.e.
+ * several a second while a turn streams. `recoveryInFlight` already collapses
+ * concurrent requests into the attempt that is running; this floor governs the
+ * other edge - a burst arriving as an attempt ENDS - so a daemon that answers
+ * everything while its `/health` stalls cannot turn every answer into a probe
+ * storm. One second keeps the heal at "the next request" (the tick's own cadence
+ * is ten).
+ *
+ * WHAT IT BOUNDS, precisely (QA round 1, Q-2): the START RATE of attempts, not the
+ * rate of probes - one attempt spends its own `PROBE_ATTEMPTS` samples whatever
+ * this floor says. So while the connection is detached AND answering - every
+ * admitted answer clears the reattach backoff, which is why those verdict lines
+ * read `next=no wait` - the sustained cadence is one attempt per attempt-span plus
+ * this floor: 7.3 s of samples plus the discovery sweep, measured at one attempt
+ * per ~13.6 s while detached-and-answering (QA round 1, Q-2). THAT IS THE INTENT,
+ * not a leak: an answering transport is fresh proof the daemon is there and that a
+ * heal is likely to succeed, so pacing it like a gone daemon (30 s, doubling to
+ * 300 s) is exactly the defect this change exists to fix. `recoveryInFlight` keeps
+ * it to one attempt at a time, and `next=no wait` names this floor rather than an
+ * absence of pacing.
+ */
+export const AUTO_RECOVERY_FLOOR_MS = 1_000;
 
 /**
  * The wait before the next readiness attempt, by how long the start has
@@ -913,6 +945,18 @@ export class BackendServiceManager {
 	 */
 	private discoveryWedged: WedgedRecord[] = [];
 	private recoveryInFlight = false;
+	/**
+	 * The attempt `recoveryInFlight` says is running, and how to release a joiner.
+	 *
+	 * `recoveryInFlight` alone tells a caller to DROP its request, which is right for
+	 * the tick and for an answer-triggered nudge (both only want an attempt to happen)
+	 * and wrong for the banner's Retry: `reconnectNow()` renders whatever snapshot it
+	 * gets back, so a dropped call printed "Still unreachable" over an attempt that was
+	 * about to re-attach (design review round 1, D1). A joiner awaits this promise and
+	 * reads the state the running attempt produced.
+	 */
+	private recoveryDone: Promise<void> | null = null;
+	private finishRecovery: (() => void) | null = null;
 	private nextRecoveryAt = 0;
 	private appDataPath = app.getPath("userData");
 	private venvPath: string;
@@ -926,6 +970,20 @@ export class BackendServiceManager {
 
 	/** The one probe loop's interval handle. */
 	private healthCheckInterval: NodeJS.Timeout | null = null;
+	/**
+	 * Whether a tick's own work is still running.
+	 *
+	 * THE TICK CAN OUTLIVE ITS INTERVAL: the probe alone spans up to 7.3 s, and a tick
+	 * that moves the state then runs `recoverFromDetachment`, whose observation spends
+	 * up to another 7.3 s - ~14.6 s of work against a 10 s interval (see
+	 * `daemon-status.ts`'s `PROBE_ATTEMPTS` note). `setInterval` does not serialise its
+	 * callback, so without this flag two ticks overlap and ONE physical stall is
+	 * sampled twice and counted twice, reaching the nine-miss detach in half the
+	 * wall-clock silence it is meant to represent. A tick that arrives while one runs
+	 * is DROPPED rather than queued: the running tick is asking the same question about
+	 * the same daemon, and the next interval asks it again.
+	 */
+	private healthCheckInFlight = false;
 	/** The only process this manager may terminate. Null means it owns nothing,
 	 * which is a reason to report "nothing to stop" - never to go looking. */
 	private ownedServe: OwnedServe | null = null;
@@ -1475,7 +1533,70 @@ export class BackendServiceManager {
 			return;
 		}
 		if (this.daemonState.recordTransportSuccess()) this.notifyStatus();
+		/*
+		 * AN ADMITTED ANSWER ENDS A DETACH BY ITSELF (2026-11-08).
+		 *
+		 * The operator's report: the banner said "Can't reach the Local Operator
+		 * server" while they were chatting through the same daemon, and only their
+		 * manual Retry cleared it. The reasons were two and both are here:
+		 *
+		 *  - `recordTransportSuccess` revives `degraded` and nothing above it, and it
+		 *    must not: an answer proves the TRANSPORT, never that the answering process
+		 *    is the one this app holds a credential for, so only
+		 *    `recoverFromDetachment` may lift `detached`/`wedged` - it re-proves
+		 *    identity. What it could not do is START; nothing called it.
+		 *  - the only other callers are the ten-second tick (gated by the reattach
+		 *    backoff, whose ceiling is five minutes) and the banner's Retry. So a
+		 *    connection that detached during a stall sat out the backoff while every
+		 *    request the app made was answered - measured in the operator's own log as
+		 *    `No daemon at http://127.0.0.1:1111 for over 90s` every five minutes for
+		 *    two and a half hours.
+		 *
+		 * So the answer that just arrived is treated as the evidence it is: the backoff
+		 * gate is cleared for it and recovery runs now. It runs through the ONE
+		 * recovery path, so every guard that path holds still holds - the owned-child
+		 * guard (a live child is never spawned over), `isExternalBackend` (an adopted
+		 * daemon is never spawned over) and the pid-liveness check (a daemon that is
+		 * really gone is still reported gone). Nothing about the state moves here.
+		 */
+		if (this.daemonState.needsRecovery()) this.recoverFromAnsweredRequest();
 	}
+
+	/**
+	 * Start recovery because THIS APP'S OWN request was answered while the
+	 * connection had no usable daemon.
+	 *
+	 * WHY the answer does not simply run `recoverFromDetachment()` per call: this
+	 * runs on every admitted desktop request, and the renderer's presence beat plus
+	 * its session reads arrive several times a second while a turn is streaming. The
+	 * gate is the attempt itself - `recoveryInFlight` makes every concurrent request
+	 * join the attempt already running - with one extra floor so that a burst of
+	 * answers arriving as an attempt ENDS does not queue an attempt each. One second
+	 * is below the tick's own ten, so the operator-visible latency of a heal stays
+	 * "the next request", and above the beat's spacing, so the retries stay bounded.
+	 */
+	private recoverFromAnsweredRequest(): void {
+		const now = Date.now();
+		if (now < this.autoRecoveryFloor) return;
+		this.autoRecoveryFloor = now + AUTO_RECOVERY_FLOOR_MS;
+		// This app's own answer outranks the reattach backoff: that pacing exists to
+		// avoid asking a daemon that is not there, and this one just answered.
+		this.nextRecoveryAt = 0;
+		void this.recoverFromDetachment().catch((error) => {
+			logger.error(
+				"Recovery triggered by an answered request threw:",
+				LogFileType.BACKEND,
+				error,
+			);
+		});
+	}
+
+	/**
+	 * Earliest time the next answer-triggered recovery may run (`Date.now()` ms).
+	 *
+	 * A floor rather than a queue: see `recoverFromAnsweredRequest`.
+	 */
+	private autoRecoveryFloor = 0;
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
 	/**
@@ -4243,9 +4364,19 @@ export class BackendServiceManager {
 						: `No answer from ${this.backendUrl}${HEALTH_PATH}`,
 			};
 		}
-		const probe = await probeIdentity(this.backendUrl, expected, {
-			timeoutMs: PROBE_TIMEOUT_MS,
-		});
+		const { probe, attempts } = await this.probeIdentityWithRetries(expected);
+		if (attempts > 1) {
+			/*
+			 * A retry that ANSWERED is the whole point of change 1, so it is recorded -
+			 * once, and only when it happened. A daemon answering its first sample (the
+			 * ordinary case) logs nothing, which is what keeps this out of the
+			 * per-request noise the operator's log already carries.
+			 */
+			logger.info(
+				`${this.backendUrl}${HEALTH_PATH} answered on probe attempt ${attempts} of ${PROBE_ATTEMPTS}: the first sample gave no answer (an expired budget, an unresolved name or an unexplained reset) and the retry inside the same stall found the daemon serving.`,
+				LogFileType.BACKEND,
+			);
+		}
 		/*
 		 * THE ANSWERED VERDICT IS ALSO A PAIRING FACT, and recording it here is what
 		 * makes the pairing record honest while the app is still `attached`.
@@ -4410,6 +4541,82 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * One observation's samples of `/health`, with the retries a transient failure needs.
+	 *
+	 * WHY THIS EXISTS (2026-11-08). The observation was ONE request with a 2000 ms
+	 * budget, on a host that was swapping 12.3 GB of 13.3 GB at load 132: `/health`
+	 * costs this daemon ~1.3 ms to serve, this app's per-tick sample of it reached
+	 * 3982 ms, and the log shows it served nothing at all for 25-1021 s before each
+	 * detach - so a stall is folded as silence, one miss at a time. This app then
+	 * reports a daemon it is actively using as unreachable, and every five-minute
+	 * recovery attempt spends a single sample the same way, which is why a detach
+	 * could outlive the stall by hours.
+	 *
+	 * THE RETRIES SIT INSIDE THE SAME STALL, not after it: attempt 1 keeps the
+	 * ordinary `PROBE_TIMEOUT_MS`, so a healthy daemon costs exactly what it cost
+	 * before, and attempts 2-3 arrive 150 ms later with a slightly larger budget -
+	 * a 4 s stall that started before attempt 1 is therefore answered by attempt 2
+	 * near its own tail. The whole observation spans at most 7.3 s. That is NOT a
+	 * tick's bound: the tick that calls this also runs `recoverFromDetachment`, whose
+	 * own observation spends another 7.3 s (~14.6 s in total, against a 10 s
+	 * interval), which is why the tick refuses to overlap itself instead of relying
+	 * on `PROBE_INTERVAL_MS`.
+	 *
+	 * WHAT IS RETRIED IS DECIDED BY THE CAUSE, and the arbiter is the classifier the
+	 * state machine already uses (`discovery.ts::classifyUnreachable`): a budget that
+	 * expired (`timeout`), a name that did not resolve (`unresolved` - `EAI_AGAIN`),
+	 * and anything it cannot name (`other` - `ECONNRESET`, an unknown throw) get the
+	 * remaining samples, because it files those WITH the timeouts. A REFUSED socket
+	 * returns on its first sample: it is the one unreachable cause that is EVIDENCE
+	 * rather than a stall, and re-asking it would stop the "refused means gone" fast
+	 * path from being fast. A `200` naming another process, and a status this path
+	 * will not read, are ANSWERS with their own outcomes and never reach the retry.
+	 *
+	 * WHERE THIS DOES NOT APPLY, stated rather than implied (review round 1, N3): the
+	 * no-identity arm above still spends ONE `checkHealth` (its own 3 s budget). It
+	 * cannot detach on one miss - that arm reports `unanswered`, which needs
+	 * `UNANSWERED_BEFORE_DETACHED` of them - and it is reachable only where this app
+	 * never held an identity, so acceptance criterion 1 is a guarantee of the
+	 * WITH-identity path only. Extending the retry there is a separate change with
+	 * its own budget question.
+	 *
+	 * @returns the determining probe and how many samples it took, so the caller can
+	 *   record a retry that answered (the one case worth a log line) and a reader can
+	 *   tell "silent three times" from "silent once".
+	 */
+	private async probeIdentityWithRetries(
+		expected: string,
+	): Promise<{ probe: IdentityProbe; attempts: number }> {
+		for (let attempt = 1; attempt <= PROBE_ATTEMPTS; attempt += 1) {
+			if (attempt > 1) {
+				await new Promise((resolve) => setTimeout(resolve, PROBE_RETRY_GAP_MS));
+			}
+			const probe = await probeIdentity(this.backendUrl, expected, {
+				timeoutMs: attempt === 1 ? PROBE_TIMEOUT_MS : PROBE_RETRY_TIMEOUT_MS,
+			});
+			/*
+			 * THE CAUSE DECIDES, and `refused` is the only unreachable cause that returns on
+			 * its first sample: a refusal is evidence, while a timeout, an `unresolved` name
+			 * and an `other` (a reset, an unknown throw) are the transients this change
+			 * exists for - the classifier files all three WITH the timeouts.
+			 */
+			const transient =
+				probe.outcome === "unreachable" && probe.cause !== "refused";
+			if (!transient || attempt === PROBE_ATTEMPTS) {
+				return { probe, attempts: attempt };
+			}
+		}
+		/*
+		 * NOT REACHED: the loop returns on its final iteration whatever it found. Kept
+		 * as a refusal rather than a fall-through so a later edit to `PROBE_ATTEMPTS`
+		 * cannot make this method answer with a verdict it never took.
+		 */
+		throw new Error(
+			"probeIdentityWithRetries reached its end without a verdict",
+		);
+	}
+
+	/**
 	 * Start health check interval.
 	 *
 	 * 10 s rather than 30 s, because the loop is now cheap and non-destructive:
@@ -4458,6 +4665,30 @@ export class BackendServiceManager {
 	 * connection still reads `attached`.
 	 */
 	private async checkBackendHealth(): Promise<void> {
+		/*
+		 * ONE TICK AT A TIME, and the guard protects the COUNT rather than the load: a
+		 * tick can outlive its interval (~14.6 s against 10 s while the connection is
+		 * detached - see the `PROBE_ATTEMPTS` note), and `setInterval` does not serialise
+		 * its callback. Two overlapping ticks would sample ONE physical stall twice and
+		 * count it twice, reaching the nine-miss detach in half the wall-clock silence
+		 * that silence is meant to represent.
+		 *
+		 * HERE rather than in the interval's callback, so a DIRECT call - every case in
+		 * `scripts/daemon-observation.test.mjs` drives one tick this way - is held to the
+		 * same rule. Dropping is safe: no tick carries state a later one needs, and the
+		 * next interval asks the same question again.
+		 */
+		if (this.healthCheckInFlight) return;
+		this.healthCheckInFlight = true;
+		try {
+			await this.runHealthCheck();
+		} finally {
+			this.healthCheckInFlight = false;
+		}
+	}
+
+	/** The tick's own work, without the overlap guard `checkBackendHealth` holds. */
+	private async runHealthCheck(): Promise<void> {
 		if (this.isAppClosing) return;
 
 		// A child of ours whose pid is gone is EVIDENCE, not a timeout to
@@ -4637,8 +4868,22 @@ export class BackendServiceManager {
 	 * replaced at all: if it is gone, the app says so.
 	 */
 	private async recoverFromDetachment(): Promise<void> {
-		if (this.isAppClosing || this.isAutoUpdating || this.recoveryInFlight)
+		if (this.isAppClosing || this.isAutoUpdating) return;
+		/*
+		 * AN ATTEMPT ALREADY RUNNING IS JOINED, not dropped (design review round 1, D1).
+		 * The tick and an answer-triggered nudge only want an attempt to happen, so a drop
+		 * was right for them - but `reconnectNow()` hands the snapshot it reads back to the
+		 * renderer, and the strip prints that snapshot's outcome as a reachability
+		 * statement. A press that dropped made the band say "Still unreachable" over an
+		 * attempt that was at that moment re-attaching, and this change makes that
+		 * collision likely: recovery now starts on the next admitted request, i.e. more or
+		 * less continuously while the connection is detached and answering. Awaiting the
+		 * running attempt is the honest answer - the caller reads the state it produced.
+		 */
+		if (this.recoveryInFlight) {
+			if (this.recoveryDone) await this.recoveryDone;
 			return;
+		}
 		// Backoff applies to a daemon we HAD (re-attaching to a specific daemon
 		// on a specific address is the case worth pacing), and to a pairing main
 		// already knows is broken with a cause a sweep could repair even when no
@@ -4669,6 +4914,31 @@ export class BackendServiceManager {
 			);
 		}
 		this.recoveryInFlight = true;
+		this.recoveryDone = new Promise<void>((resolve) => {
+			// Wrapped rather than handed over directly: `resolve` takes the promise's
+			// `void` value, and the field is a plain no-argument callback.
+			this.finishRecovery = () => resolve();
+		});
+		/*
+		 * THE ATTEMPT'S OWN VERDICT, logged once in the `finally` below (2026-11-08).
+		 *
+		 * WHY a variable rather than a line per branch: a FAILED attempt used to log
+		 * NOTHING AT ALL, which is why an all-evening detach loop could not be diagnosed
+		 * from the operator's own log, and this file said nothing about the attempt in
+		 * either direction. One line per attempt, naming the probe's verdict, the branch
+		 * it took, whether this app's own traffic was fresh evidence and when the next
+		 * attempt may run, is the difference between "recovery is broken" and "recovery
+		 * keeps landing inside a stall".
+		 *
+		 * EVERY ARM STATES WHAT HAPPENED, and this value is the NO-IDENTITY case only
+		 * (review round 1, R1-5). The arms below APPEND to it, so a default that spelled
+		 * out a sweep made an attempt that had just read `contradicted` - or one an
+		 * owned-child guard stopped - claim "no identity and no repairable pairing: swept
+		 * discovery" first: three false statements in the one diagnostic line this change
+		 * adds. The probed path therefore overwrites this with the probe's own reading
+		 * before any arm appends, and no arm's sentence is written here.
+		 */
+		let verdict = "no identity and no repairable pairing";
 		try {
 			// Recover the selected daemon first. Re-discovery must not silently switch
 			// installs during a transient outage, especially with an active turn.
@@ -4688,6 +4958,7 @@ export class BackendServiceManager {
 					observation.kind === "identified" ||
 					observation.kind === "reanchored"
 				) {
+					verdict = `probe=${observation.kind}: identity re-proved, re-attached`;
 					this.daemonState.observe(observation);
 					this.nextRecoveryAt = 0;
 					this.notifyStatus();
@@ -4714,6 +4985,12 @@ export class BackendServiceManager {
 				const selectedPid = this.daemonState.snapshot().pid;
 				const processGone =
 					selectedPid !== null && pidLiveness(selectedPid) === "dead";
+				const probeClause = `probe=${observation.kind}${
+					observation.kind === "unanswered" ? `(${observation.cause})` : ""
+				}${processGone ? "+pid-dead" : ""}`;
+				// Every arm below appends to this, so it states the probe's own reading and
+				// nothing it cannot know: what followed is each arm's to say (R1-5).
+				verdict = `${probeClause}: identity not re-proved by this probe`;
 				const before = this.daemonState.snapshot();
 				this.daemonState.observe(
 					processGone ? { kind: "pid-dead" } : observation,
@@ -4773,7 +5050,10 @@ export class BackendServiceManager {
 				// `scripts/daemon-observation.test.mjs` ("the residue: an owned child that
 				// answers as a non-daemon still reaches the guard, and the Retry cannot
 				// clear it").
-				if (!processGone && observation.kind !== "contradicted") return;
+				if (!processGone && observation.kind !== "contradicted") {
+					verdict = `${probeClause}: a live process is not this app's to replace on a failed probe, so re-discovery was held back`;
+					return;
+				}
 			}
 			// A live owned ChildProcess (including a legacy daemon without records)
 			// is not ours to kill just because HTTP timed out.
@@ -4781,9 +5061,14 @@ export class BackendServiceManager {
 				this.process &&
 				this.process.exitCode === null &&
 				this.process.signalCode == null
-			)
+			) {
+				verdict = `${verdict}; this app's own child (pid ${this.process.pid}) is still live, so no discovery and no spawn`;
 				return;
-			if (await this.discoverAndAttach()) return;
+			}
+			if (await this.discoverAndAttach()) {
+				verdict = `${verdict}; discovery re-attached`;
+				return;
+			}
 			/*
 			 * AN ANSWERED REFUSAL IS NOT A FAILED RE-ATTACH (QA round 2, Q-2). The
 			 * reattach backoff paces retries that FAILED; a sweep that just heard the
@@ -4825,12 +5110,51 @@ export class BackendServiceManager {
 				 * fresh reading.
 				 */
 				this.observeNoCandidate();
+				verdict = `${verdict}; discovery found nothing attachable and this app may not spawn, so the absence was published`;
 				return;
 			}
-			if (this.remoteConfigured || this.isExternalBackend) return;
+			if (this.remoteConfigured || this.isExternalBackend) {
+				verdict = `${verdict}; the daemon is ${this.remoteConfigured ? "remote" : "adopted"}, so it is not this app's to replace`;
+				return;
+			}
+			verdict = `${verdict}; starting a replacement daemon`;
 			await this.start({ quiet: true });
 		} finally {
 			this.recoveryInFlight = false;
+			/*
+			 * ONE LINE, EVERY ATTEMPT, and the fields are the ones a reader needs to tell
+			 * the two failure shapes apart: a probe that kept landing inside a stall (the
+			 * operator's 2026-11-08 evening) and a daemon that is genuinely gone. Both used
+			 * to be silent, and "No daemon ... reporting it as stopped" was the only line
+			 * either of them produced.
+			 *
+			 * THE AGES ARE MEASURED WITH THE STATE MACHINE'S CLOCK, not `Date.now()`
+			 * (review round 1, N4): `lastTransportAt` is stamped by `now()`, which is
+			 * injectable, so a reader comparing them must not mix two clocks. Production
+			 * passes nothing and both are `Date.now()`.
+			 */
+			const nowMs = this.daemonState.nowMs();
+			const finalSnapshot = this.daemonState.snapshot();
+			const evidenceAgeMs =
+				finalSnapshot.lastTransportAt === null
+					? null
+					: nowMs - finalSnapshot.lastTransportAt;
+			const evidenceClause =
+				evidenceAgeMs === null
+					? "none, this app made no answered request"
+					: `${Math.round(evidenceAgeMs / 1000)}s old${evidenceAgeMs <= TRANSPORT_EVIDENCE_MS ? " (fresh)" : " (stale)"}`;
+			const nextWaitMs = Math.max(0, this.nextRecoveryAt - nowMs);
+			logger.info(
+				`Recovery attempt: ${verdict}; state=${finalSnapshot.state}; probes unanswered=${finalSnapshot.unanswered}; transport evidence ${evidenceClause}; next=${nextWaitMs === 0 ? "no wait" : `${Math.round(nextWaitMs / 1000)}s`}.`,
+				LogFileType.BACKEND,
+			);
+			/*
+			 * RELEASED LAST, so a joiner (`reconnectNow`'s Retry, or another answer) reads a
+			 * state that already carries this attempt's result and its log line.
+			 */
+			this.finishRecovery?.();
+			this.finishRecovery = null;
+			this.recoveryDone = null;
 		}
 	}
 	/**
