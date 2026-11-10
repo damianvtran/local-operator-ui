@@ -53,6 +53,7 @@ import {
 	diffFullRetryLabel,
 	diffPageLines,
 	lastPageStart,
+	namelessHeaderRows,
 	nextCursor,
 	pageEndingBefore,
 	pageRange,
@@ -307,12 +308,24 @@ export const DiffHistoryPager: FC<{
 	/**
 	 * Leading artifact rows the pager hides (the nameless `---`/`+++` pair,
 	 * `namelessHeaderRows` of the preview): subtracted from the visible counts.
+	 * `undefined` when there is no preview to read it from (an archive-only
+	 * row): the pager then measures it on the archive's own first page, which
+	 * it always loads first, before any range is shown.
 	 */
 	headerRows?: number;
 	onBack: () => void;
-}> = ({ scope, callId, headerRows = 0, onBack }) => {
+}> = ({ scope, callId, headerRows: knownHeaderRows, onBack }) => {
 	const pager = useDiffHistory(scope, callId);
 	const { state } = pager;
+	const measuredHeaderRows = useRef(0);
+	if (
+		state.kind === "page" &&
+		state.page.start === 0 &&
+		state.page.offset === 0
+	) {
+		measuredHeaderRows.current = namelessHeaderRows(state.page.rows);
+	}
+	const headerRows = knownHeaderRows ?? measuredHeaderRows.current;
 	const rootRef = useRef<HTMLDivElement>(null);
 	const navRef = useRef<HTMLElement>(null);
 	const anchorRef = useRef<{ scroller: HTMLElement; top: number } | null>(null);

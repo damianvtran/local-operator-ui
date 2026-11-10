@@ -78,6 +78,7 @@ const {
 	isBareToolName,
 	formatSettledDuration,
 	isDiffBodyTool,
+	isArchiveOnlyDiffRow,
 	isDiffBodyRow,
 	isFailedResult,
 	isPartialDelivery,
@@ -2523,6 +2524,39 @@ test("a FAILED write keeps its arguments even when a diff came with it", () => {
 		isDiffBodyRow({ toolName: "write", diff: null, isError: false }),
 		false,
 	);
+	// Archive-only rows (full-diff archive): the first/only row was too long
+	// for the inline budget, so no row is inline but `diff_full` names the
+	// archive. They must reach the diff well; rows WITHOUT a descriptor keep the
+	// rule above exactly, and a failed call never qualifies.
+	const archived = { state: "archived", rows: 3 };
+	for (const diff of [null, []])
+		assert.equal(
+			isArchiveOnlyDiffRow({
+				toolName: "edit",
+				diff,
+				isError: false,
+				diffFull: archived,
+			}),
+			true,
+		);
+	assert.equal(
+		isArchiveOnlyDiffRow({
+			toolName: "write",
+			diff: null,
+			isError: false,
+			diffFull: { state: "withheld" },
+		}),
+		true,
+		"a non-archived descriptor still paints its truthful notice",
+	);
+	for (const row of [
+		{ toolName: "write", diff: null, isError: false, diffFull: null },
+		{ toolName: "write", diff: null, isError: false },
+		{ toolName: "write", diff: null, isError: true, diffFull: archived },
+		{ toolName: "bash", diff: null, isError: false, diffFull: archived },
+		{ toolName: "write", diff: ["+a"], isError: false, diffFull: archived },
+	])
+		assert.equal(isArchiveOnlyDiffRow(row), false, JSON.stringify(row));
 });
 
 test("the stand-in line skips the harness wiring a result opens with", () => {

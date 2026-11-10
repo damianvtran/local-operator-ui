@@ -1778,6 +1778,37 @@ export function isDiffBodyRow<
 }
 
 /**
+ * A successful `write`/`edit` whose inline preview holds NO rows but whose
+ * core archived the full diff (`details.diff_full` present).
+ *
+ * Why this exists beside `isDiffBodyRow`: the inline preview is byte-bounded
+ * too, so when the FIRST (or only) row of a diff is longer than the preview's
+ * budget the core cannot keep any row inline — `details.diff` is absent or
+ * empty — yet the archive (larger ceiling, rows continued across pages) holds
+ * the whole change. Without this the row fell through to the arguments body
+ * and the reader never saw the offer, or saw a "legacy" reason that was false.
+ *
+ * Any descriptor state counts, not only `archived`: an `oversized` /
+ * `withheld` / `unavailable` descriptor on an empty preview must still paint
+ * its own truthful notice in the diff well. A row with NO descriptor keeps the
+ * exact `isDiffBodyRow` semantics (null diff -> arguments body).
+ */
+export function isArchiveOnlyDiffRow(row: {
+	toolName: string;
+	diff: readonly string[] | null;
+	isError: boolean;
+	diffFull?: unknown;
+}): boolean {
+	return (
+		isDiffBodyTool(row.toolName) &&
+		!row.isError &&
+		(row.diff === null || row.diff.length === 0) &&
+		row.diffFull !== null &&
+		row.diffFull !== undefined
+	);
+}
+
+/**
  * The unified diff a `write`/`edit` RESULT carries, as view-ready lines.
  *
  * Source of truth: `_diff_details` (tools/builtin.py:4863-4888) puts a

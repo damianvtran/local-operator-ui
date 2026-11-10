@@ -872,3 +872,58 @@ test("pair cursor: Retry of a failed continuation replays the same pair", async 
 		});
 	}
 });
+
+test("archive-only row: empty inline preview still offers the archive, scoped to its call", async () => {
+	// The first/only row was longer than the inline budget, so the core kept
+	// NO row inline (`diff` empty) but archived the whole diff.
+	const rows = ["--- ", "+++ ", "@@ -1 +1 @@", `+${"z".repeat(30_000)}`];
+	art = rows;
+	try {
+		requests = [];
+		const v = await mount({
+			diff: [],
+			truncatedRows: 0,
+			history: {
+				scope: { sessionId: "a1b2c3d4e5f6", childId: "0f0f0f0f0f0f" },
+				callId: "toolu_ONLY",
+				descriptor: { state: "archived", rows: rows.length },
+			},
+		});
+		// No false "not recorded" / "0 more lines" footer — the offer instead.
+		assert.doesNotMatch(v.host.textContent, /not recorded/);
+		await v.click(v.button("View full diff · 2 lines"));
+		assert.equal(requests[0].op, "subagents.diff");
+		assert.equal(requests[0].childId, "0f0f0f0f0f0f");
+		assert.equal(requests[0].callId, "toolu_ONLY");
+		assert.equal(requests[0].offset, 0);
+		// The pager measured the header pair off the archive's first page.
+		assert.match(v.range(), /of 2$/);
+		const parts = [painted(v)];
+		while (painted(v).at(-1).continues) {
+			await v.click(v.button("Next"));
+			parts.push(painted(v));
+		}
+		assert.equal(rebuild(parts).get(3), rows[3]);
+		v.unmount();
+	} finally {
+		art = ARTIFACT;
+	}
+});
+
+test("archive-only row: a non-archived descriptor states its own reason, no count", async () => {
+	requests = [];
+	const v = await mount({
+		diff: [],
+		truncatedRows: 0,
+		history: {
+			scope: { sessionId: "a1b2c3d4e5f6", childId: null },
+			callId: "c",
+			descriptor: { state: "oversized" },
+		},
+	});
+	assert.match(v.host.textContent, /too large to store/);
+	assert.doesNotMatch(v.host.textContent, /more line/);
+	assert.equal(v.host.querySelector("[data-diff-view-full]"), null);
+	assert.equal(requests.length, 0);
+	v.unmount();
+});

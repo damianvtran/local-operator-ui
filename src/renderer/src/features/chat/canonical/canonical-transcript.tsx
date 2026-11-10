@@ -163,6 +163,7 @@ import {
 	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
+	isArchiveOnlyDiffRow,
 	isBareToolName,
 	isDiffBodyRow,
 	isFailedResult,
@@ -2789,9 +2790,12 @@ const ToolRow = memo(function ToolRow({
 				</pre>
 			</div>
 		</div>
-	) : isDiffBodyRow(record) ? (
+	) : isDiffBodyRow(record) || isArchiveOnlyDiffRow(record) ? (
 		<DiffBlock
-			diff={record.diff}
+			// `?? []`: an archive-only row (see `isArchiveOnlyDiffRow`) has no
+			// inline rows at all; the well then carries only the archive's offer
+			// or its descriptor notice.
+			diff={record.diff ?? []}
 			truncatedRows={record.diffTruncatedRows}
 			// The row's own scope (parent, or the child reader's) decides which
 			// route pages the archive — the same seam media rows resolve through.

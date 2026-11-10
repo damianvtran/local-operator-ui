@@ -139,7 +139,17 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 	// Full mode REPLACES the preview inside this same well with one bounded page
 	// of the archive; Back returns to the preview exactly as it was left.
 	const [full, setFull] = useState(false);
-	const descriptor = truncatedRows > 0 ? (history?.descriptor ?? null) : null;
+	/*
+	 * Rows exist that the preview does not show: the producer said so
+	 * (`truncatedRows`), or the preview is EMPTY while the core archived the
+	 * diff — the first/only row was too long for the inline budget, so no row
+	 * could be kept inline (`isArchiveOnlyDiffRow`). Either way the descriptor
+	 * decides what the footer offers; with no descriptor an empty preview stays
+	 * the old honest nothing.
+	 */
+	const archiveOnly = diff.length === 0 && Boolean(history?.descriptor);
+	const omitted = truncatedRows > 0 || archiveOnly;
+	const descriptor = omitted ? (history?.descriptor ?? null) : null;
 	const pageable =
 		descriptor?.state === "archived" && history?.scope ? history : null;
 	const wellId = useId();
@@ -155,6 +165,14 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 	 * the reader never sees those rows (review round 1, R3/U4/Q3).
 	 */
 	const headerRows = namelessHeaderRows(diff);
+	/*
+	 * An archive-only row has no preview to read the pair from. Its offer
+	 * assumes the producer's shape (`_diff_details` runs `difflib.unified_diff`
+	 * without file names, so every non-empty diff opens with the nameless pair);
+	 * the pager does NOT assume — it reads the pair off the archive's own first
+	 * page (`headerRows` undefined), so the range it shows is measured.
+	 */
+	const offerHeaderRows = archiveOnly ? 2 : headerRows;
 
 	useLayoutEffect(() => {
 		const anchor = anchorRef.current;
@@ -252,7 +270,7 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 							// One extra 17.4px row when producer truncation is stated:
 							// the footer and toggle must both fit without an inner scroll.
 							// A non-archived descriptor states WHY in one more row.
-							truncatedRows > 0
+							omitted
 								? descriptor && descriptor.state !== "archived"
 									? "max-h-[776px]"
 									: "max-h-[758px]"
@@ -265,7 +283,7 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 				<DiffHistoryPager
 					scope={pageable.scope}
 					callId={pageable.callId}
-					headerRows={headerRows}
+					headerRows={archiveOnly ? undefined : headerRows}
 					onBack={() => {
 						setFull(false);
 						// Back lands on the preview's own top, not wherever the
@@ -298,7 +316,7 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 				// the missing record even before the reader reveals its stored tail.
 				!full &&
 					!body.withheld &&
-					truncatedRows > 0 &&
+					omitted &&
 					(pageable ? (
 						/*
 						 * The omitted rows WERE archived, so "not recorded" would be
@@ -315,16 +333,20 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 							<span className="block group-focus-visible/diff-toggle:outline group-focus-visible/diff-toggle:outline-2 group-focus-visible/diff-toggle:outline-accent group-focus-visible/diff-toggle:outline-offset-[-2px]">
 								{diffFullViewLabel(
 									descriptor?.state === "archived"
-										? Math.max(0, descriptor.rows - headerRows)
+										? Math.max(0, descriptor.rows - offerHeaderRows)
 										: 0,
 								)}
 							</span>
 						</button>
 					) : (
 						<>
-							<span className="block text-ink-dim">
-								{diffTruncatedLabel(truncatedRows)}
-							</span>
+							{truncatedRows > 0 && (
+								// Never "0 more lines": an archive-only row states only
+								// its descriptor's reason below.
+								<span className="block text-ink-dim">
+									{diffTruncatedLabel(truncatedRows)}
+								</span>
+							)}
 							{descriptor && descriptor.state !== "archived" && (
 								<span
 									data-diff-full-notice={descriptor.state}

@@ -2989,23 +2989,34 @@ const installDiffRelay = (mode: FullMode) => {
 
 const FULL_SCOPE = { sessionId: "a1b2c3d4e5f6", childId: "0a1b2c3d4e5f" };
 
-const fullRow = (descriptor: Record<string, unknown> | null) =>
+/**
+ * `archiveOnly`: the record as the core stores it when the FIRST row of the
+ * diff is longer than the inline budget — no inline rows (`diff` null, no
+ * truncation count), only the archive descriptor. It goes through the real
+ * canonical predicate (`isArchiveOnlyDiffRow`), not a DiffBlock prop.
+ */
+const fullRow = (
+	descriptor: Record<string, unknown> | null,
+	archiveOnly = false,
+) =>
 	tool({
 		id: "tool:full",
 		...LARGE_WRITE,
 		toolName: "edit",
 		toolCallId: "toolu_full",
-		diff: LARGE_DIFF,
-		diffTruncatedRows: 798,
+		diff: archiveOnly ? null : LARGE_DIFF,
+		diffTruncatedRows: archiveOnly ? 0 : 798,
 		diffFull: descriptor as ToolRecord["diffFull"],
 	});
 
 const FullFrame = ({
 	mode = "archive",
 	descriptor = { state: "archived", rows: FULL_TOTAL },
+	archiveOnly = false,
 }: {
 	mode?: FullMode;
 	descriptor?: Record<string, unknown> | null;
+	archiveOnly?: boolean;
 }) => {
 	installDiffRelay(mode);
 	return (
@@ -3014,7 +3025,7 @@ const FullFrame = ({
 			bounded
 			openRows
 			attachmentScope={FULL_SCOPE}
-			records={[fullRow(descriptor)]}
+			records={[fullRow(descriptor, archiveOnly)]}
 		/>
 	);
 };
@@ -3126,6 +3137,31 @@ export const DiffFullEvicted: Story = {
 	play: async ({ canvasElement }) => openFull(canvasElement),
 };
 /** Descriptor says withheld: no pager offered, the reason stated in the footer. */
+/** No inline rows at all (first row over the inline budget): the offer alone. */
+export const DiffFullArchiveOnly: Story = {
+	render: () => <FullFrame archiveOnly />,
+	play: async ({ canvasElement }) => {
+		(
+			await within(canvasElement).findByRole("button", {
+				name: /View full diff/,
+			})
+		).scrollIntoView({ block: "end" });
+	},
+};
+/** Archive-only, opened: the first page comes from the archive. */
+export const DiffFullArchiveOnlyOpen: Story = {
+	render: () => <FullFrame archiveOnly />,
+	play: async ({ canvasElement }) => openFull(canvasElement),
+};
+/** Archive-only with a non-archived descriptor: its reason, no line count. */
+export const DiffFullArchiveOnlyOversized: Story = {
+	render: () => <FullFrame archiveOnly descriptor={{ state: "oversized" }} />,
+	play: async ({ canvasElement }) => {
+		(
+			await within(canvasElement).findByText(/too large to store/)
+		).scrollIntoView({ block: "end" });
+	},
+};
 export const DiffFullWithheldDescriptor: Story = {
 	render: () => <FullFrame descriptor={{ state: "withheld" }} />,
 	play: async ({ canvasElement }) => {
