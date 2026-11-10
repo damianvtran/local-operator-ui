@@ -33,7 +33,9 @@ const bundle = await build({
 		contents: `export * from "./src/renderer/src/features/chat/canonical/music-generating-model";
 export { MusicGeneratingCard, ConnectedMusicGeneratingCard, useMusicGeneratingView, MUSIC_JOB_MISSING_GRACE_MS } from "./src/renderer/src/features/chat/canonical/music-generating-card";
 export { useJobCancel } from "./src/renderer/src/features/chat/components/run-details/use-job-cancel";
-export { ownsMaterialArtifact } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";
+export { ownsMaterialArtifact, collapsePlan } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";
+export { buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";
+export { MusicResult } from "./src/renderer/src/features/chat/canonical/music-result";
 export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 export { deriveRunDetails } from "./src/renderer/src/features/chat/components/run-details/run-detail-model";`,
 		resolveDir: process.cwd(),
@@ -86,6 +88,9 @@ const {
 	ownsMaterialArtifact,
 	EMPTY_TRANSCRIPT,
 	applyHistoryPage,
+	buildRows,
+	collapsePlan,
+	MusicResult,
 	deriveRunDetails,
 	musicJobSettlementsOf,
 	musicJobsLiveRowsOf,
@@ -372,6 +377,53 @@ test("a music call with a job stays inline through turn and action folds", () =>
 		ownsMaterialArtifact({ ...base, details: { error: "x" } }),
 		false,
 	);
+});
+
+/*
+ * REGRESSION, native run 42894406065: a WHOLLY failed music job's receipt
+ * folded behind a bare "Job result" bar. Replays the real history (entries
+ * 82..97 of that run's session) through the app's own path - reducer ->
+ * `buildRows` -> `collapsePlan` (settled, as the pane plans it) - and requires
+ * the job_result row (entry 96, track aud_serving_11, zero artifacts) to paint
+ * outside any collapsed segment, then renders its receipt.
+ */
+test("a wholly failed music job's receipt stays inline, track failed at $0 billed", () => {
+	const { entries } = JSON.parse(
+		readFileSync(
+			new URL(
+				"./fixtures/music-failed-job-result.native.json",
+				import.meta.url,
+			),
+			"utf8",
+		),
+	);
+	const { records } = applyHistoryPage(EMPTY_TRANSCRIPT, { entries });
+	const failed = records.find(
+		(r) => r.kind === "custom" && r.jobId === "c68d27aefb58",
+	);
+	assert.ok(
+		failed?.music,
+		"entry 96 reduces to a custom row with a music receipt",
+	);
+	assert.equal(failed.images?.length ?? 0, 0, "no artifact: nothing to play");
+	assert.equal(ownsMaterialArtifact(failed), true);
+	const plan = collapsePlan(buildRows(records, []), { live: false });
+	const hidden = plan.runs.flatMap((run) =>
+		run.segments
+			.filter((segment) => segment.collapsed)
+			.flatMap((segment) => segment.rows.map((row) => row.record.id)),
+	);
+	assert.ok(
+		!hidden.includes(failed.id),
+		`failed receipt folded away; collapsed rows: ${JSON.stringify(hidden)}`,
+	);
+	const markup = renderToStaticMarkup(
+		h(MusicResult, { receipt: failed.music, scope: null }),
+	);
+	assert.match(markup, /data-music-track="aud_serving_11"/);
+	assert.match(markup, /This track could not be generated\./);
+	assert.match(markup, /Cost \$0 \(billed\)/);
+	assert.doesNotMatch(markup, /data-sound-player/);
 });
 
 test("multiple concurrent jobs each read only their own row", () => {

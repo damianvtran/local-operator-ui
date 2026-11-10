@@ -403,6 +403,18 @@ export function ownsMaterialArtifact(record: TranscriptRecord): boolean {
 		record.images?.length
 	)
 		return true;
+	/*
+	 * A MUSIC SETTLEMENT IS MATERIAL EVEN WITH NO BYTES. A wholly failed music
+	 * job's `job_result` carries its receipt - every track marked failed, each
+	 * with its billed cost (often "$0 (billed)") - but zero artifacts, so the
+	 * `images` test above misses it. Native run 42894406065 (session-history
+	 * entry 96, job c68d27aefb58): that row arrives after the turn's answer,
+	 * opens an internal receipt episode, and without this pin folded behind a
+	 * bare "Job result" bar - track aud_serving_11 never painted, while a failed
+	 * track inside a partially successful job (whose row has audio) did. The
+	 * receipt is the outcome and the bill; it stays inline like the audio does.
+	 */
+	if (record.kind === "custom" && record.music !== undefined) return true;
 	// Before output bytes exist, the generating card already owns loading/error
 	// and cancellation UI; keep ALL phases, not only successful picture rows.
 	if (record.kind !== "tool") return false;
