@@ -1,0 +1,207 @@
+{
+  "audit_id": "ru-s9-2",
+  "mode": "second independent high-visibility pass",
+  "locale": "ru",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "key_count": 5,
+      "en_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+      "ru_sha256": "ea9eff38bfa4c9fcea0fa519aaa37fc890ac09977df535940494aa92194a61e3",
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "namespace": "ui.chat.sidebar_view",
+      "status": "passed",
+      "key_count": 1,
+      "en_sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+      "ru_sha256": "9c64b3b8e7fa3392287ba698b09c6ddd1ae65e1c5fee94439c050abee722c567",
+      "findings": []
+    },
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "status": "passed",
+      "key_count": 1,
+      "en_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+      "ru_sha256": "656d6e0bed21d6b8cde904c2f8fec58becfe9d66f195ebd3d455636950c12cbb",
+      "findings": [
+        {
+          "id": "ru-s9-2-F1",
+          "severity": "minor",
+          "kind": "width/fit",
+          "key": "ui.chat.sidebar.mark_all_read.label",
+          "namespace": "ui.chat.sidebar",
+          "current": "Отметить прочитанными: {count, number, ::group-off}",
+          "problem": "25 chars at a two-digit count against en's 16 ('Mark all 12 read', +56%; the template alone is +21%, 51/42), in the 'narrow section header' the en sidecar calls Short. The shed rule MARK_ALL_READ_LABEL_SHED = \"@max-[253px]/chatheading:sr-only\" (chat-sidebar.tsx:438) is a fixed px point calibrated on the English length, and the sibling heading is the flexing label (min-w-0 flex-1 truncate) while the action Button is shrink-0 - so in the visible-label band the ru section name ellipsises earlier than in en. The count itself stays visible. Not measured in a rendered frame (host rules: no browser), hence minor not major.",
+          "suggested": "Прочитать все: {count, number, ::group-off}",
+          "suggested_note": "17 chars. Same verb as shipped ru:ui.notifications.action.mark_all_read = «Прочитать все», and the ru colon-count readout already shipped in ru:ui.notifications.toast.marked_read = «Отмечено прочитанными: {count}». Alternative if the fr/es parenthetical shape is wanted: «Прочитать все ({count})» (18).",
+          "evidence": [
+            "src/renderer/src/features/chat/components/chat-sidebar.tsx:438",
+            "src/renderer/src/features/chat/components/chat-sidebar.tsx:2271-2345",
+            "src/renderer/src/features/chat/chat-sidebar-layout.ts:31,38-39 (default 260px, range 220-320)"
+          ]
+        }
+      ]
+    }
+  },
+  "namespace_list": [
+    "ui.chat.canonical",
+    "ui.chat.sidebar_view",
+    "ui.chat.sidebar"
+  ],
+  "key_count": 7,
+  "audited_keys": [
+    "ui.chat.canonical.notice.interrupted",
+    "ui.chat.canonical.notice.stopped_with_error",
+    "ui.chat.canonical.notice.compaction_not_run",
+    "ui.chat.canonical.notice.compaction_not_run_after_colon",
+    "ui.chat.canonical.link_toolkit.actions_for",
+    "ui.chat.sidebar_view.ungrouped",
+    "ui.chat.sidebar.mark_all_read.label"
+  ],
+  "head_sha": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+  "base_sha": "23ec4af967b",
+  "scope": "23ec4af967b..165aebb1b73",
+  "audit_date": "2026-11-09",
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "f48b342c2596",
+    "instance": "f48b342c2596",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "actual_model_source": "session model header; no fallback observed this run",
+    "independent_from_translator_session": true,
+    "independent_from_prior_audit": true,
+    "read_prior_audit_comments_or_receipts": false
+  },
+  "input_hashes": {
+    "en": [
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+        "sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff"
+      }
+    ],
+    "context": [
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+        "sha256": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+        "sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff"
+      }
+    ],
+    "target": [
+      {
+        "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+        "sha256": "ea9eff38bfa4c9fcea0fa519aaa37fc890ac09977df535940494aa92194a61e3"
+      },
+      {
+        "path": "src/i18n/catalogues/ru/ui.chat.sidebar_view.json",
+        "sha256": "9c64b3b8e7fa3392287ba698b09c6ddd1ae65e1c5fee94439c050abee722c567"
+      },
+      {
+        "path": "src/i18n/catalogues/ru/ui.chat.sidebar.json",
+        "sha256": "656d6e0bed21d6b8cde904c2f8fec58becfe9d66f195ebd3d455636950c12cbb"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "id": "ru-s9-2-F1",
+      "severity": "minor",
+      "kind": "width/fit",
+      "key": "ui.chat.sidebar.mark_all_read.label",
+      "namespace": "ui.chat.sidebar",
+      "current": "Отметить прочитанными: {count, number, ::group-off}",
+      "problem": "25 chars at a two-digit count against en's 16 ('Mark all 12 read', +56%; the template alone is +21%, 51/42), in the 'narrow section header' the en sidecar calls Short. The shed rule MARK_ALL_READ_LABEL_SHED = \"@max-[253px]/chatheading:sr-only\" (chat-sidebar.tsx:438) is a fixed px point calibrated on the English length, and the sibling heading is the flexing label (min-w-0 flex-1 truncate) while the action Button is shrink-0 - so in the visible-label band the ru section name ellipsises earlier than in en. The count itself stays visible. Not measured in a rendered frame (host rules: no browser), hence minor not major.",
+      "suggested": "Прочитать все: {count, number, ::group-off}",
+      "suggested_note": "17 chars. Same verb as shipped ru:ui.notifications.action.mark_all_read = «Прочитать все», and the ru colon-count readout already shipped in ru:ui.notifications.toast.marked_read = «Отмечено прочитанными: {count}». Alternative if the fr/es parenthetical shape is wanted: «Прочитать все ({count})» (18).",
+      "evidence": [
+        "src/renderer/src/features/chat/components/chat-sidebar.tsx:438",
+        "src/renderer/src/features/chat/components/chat-sidebar.tsx:2271-2345",
+        "src/renderer/src/features/chat/chat-sidebar-layout.ts:31,38-39 (default 260px, range 220-320)"
+      ]
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "verdict": "clean-with-findings",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "ru-s9-2-F1"
+    ]
+  },
+  "accepted_with_precedent": [
+    {
+      "key": "ui.chat.canonical.notice.interrupted",
+      "value": "Прервано",
+      "precedent": "ru:ui.chat.canonical.transcript.interrupted («Прервано»); impersonal neuter line-marker also ru:ui.chat.action.stopped («Остановлено»)"
+    },
+    {
+      "key": "ui.chat.canonical.notice.stopped_with_error",
+      "value": "Остановлено из-за ошибки",
+      "precedent": "ru:ui.chat.canonical.transcript.stopped_before_finishing («Остановлено до завершения»)"
+    },
+    {
+      "key": "ui.chat.canonical.notice.compaction_not_run",
+      "value": "Сжатие не выполнено: {detail}",
+      "precedent": "glossary §2 compaction → «сжатие»; ru:ui.settings.imports.session_meta plural branches «сжатие/сжатия/сжатий»"
+    },
+    {
+      "key": "ui.chat.canonical.notice.compaction_not_run_after_colon",
+      "value": "Сжатие не выполнено — {detail}",
+      "precedent": "ru guide: spaced em dash, no space before punctuation"
+    },
+    {
+      "key": "ui.chat.canonical.link_toolkit.actions_for",
+      "value": "Действия для {name}",
+      "precedent": "ru:ui.shell.sidebar_navigation.row_actions and ru:ui.settings.appearance.editor.more, both exactly «Действия для {name}»; unquoted because {name} is a basename/URL, unlike the quoted human title in ru:ui.browser.browser_tab_strip.actions_for"
+    },
+    {
+      "key": "ui.chat.sidebar_view.ungrouped",
+      "value": "Без группы",
+      "precedent": "residual-bucket «Без …» convention: ru:ui.chat.tags.shown_untagged («В группе «Без тега»»)"
+    }
+  ],
+  "verified_checks": [
+    "JSON parses for all three ru files; key sets equal en (258 / 27 / 81), none of the 7 keys missing or added",
+    "placeholder tokens byte-identical en↔ru: {detail} x2, {name}, {count, number, ::group-off}; no argument renamed, dropped or reordered",
+    "no ICU plural/select introduced or dropped; en carries none in these keys, so no CLDR categories are owed for ru",
+    "punctuation codepoints: colon U+003A with trailing space and none before; em dash U+2014 spaced; no NBSP, no Cf/Cc or bidi control characters, no double spaces",
+    "no English text outside placeholders; sentence case; no trailing punctuation; no «Вы», politeness padding or «!»",
+    "ru values byte-unchanged from the previous audited head 118da8491a9 for all 7 keys"
+  ],
+  "unverified": [
+    "no pnpm check-i18n / node scripts/i18n/*.mjs run (read-only host pass; no builds, tests or installs)",
+    "no ICU message parser executed - skeleton integrity asserted by byte-comparison with the en value",
+    "no rendered frame, no pseudo-localisation, no measured width in a real window"
+  ],
+  "audit_notes_not_execution_log": "Checks above were executed as python3 reads over git-show bytes at the head; the unverified list records what was NOT executed.",
+  "repo_writes": "none - worktree read-only by instruction; candidate receipt kept outside the repo at .worktrees/_s9-audits/second/ru.json for a later assembly step"
+}

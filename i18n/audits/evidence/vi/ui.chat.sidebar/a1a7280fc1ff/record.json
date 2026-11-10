@@ -1,0 +1,197 @@
+{
+  "locale": "vi",
+  "mode": "DELTA",
+  "scope": "118da8491a9..165aebb1b73",
+  "head_sha": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+  "previous_audited_head": "118da8491a9",
+  "shipped_precedent_revision": "23ec4af967b",
+  "audit_date": "2026-11-10",
+  "date_source": "host UTC clock; session snapshot date was 2026-11-09",
+  "key_count": 7,
+  "agent": "i18n-auditor",
+  "instance": "a1a7280fc1ff",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "a1a7280fc1ff",
+    "instance": "a1a7280fc1ff",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "session model header",
+    "fallback": null,
+    "independent_from_translator_session": true,
+    "independence_basis": "Independent audit task; no translation edits performed; translator agent/model named by manager."
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "not supplied by delegator",
+    "identity_source": "delegation brief"
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "result": "clean",
+      "findings": [],
+      "key_count": 5,
+      "keys": [
+        "ui.chat.canonical.notice.interrupted",
+        "ui.chat.canonical.notice.stopped_with_error",
+        "ui.chat.canonical.notice.compaction_not_run",
+        "ui.chat.canonical.notice.compaction_not_run_after_colon",
+        "ui.chat.canonical.link_toolkit.actions_for"
+      ],
+      "source_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+      "target_sha256": "f71e57e9b6700aa31e874108bc8ac9f52cee2f3677638845aa9304996a4296d9"
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "result": "clean",
+      "findings": [],
+      "key_count": 1,
+      "keys": [
+        "ui.chat.sidebar_view.ungrouped"
+      ],
+      "source_sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+      "target_sha256": "ec000db2838d777d66b6bed7320b5adb2e0f7367d7b7c1a7707c6ab125577160"
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "findings": [],
+      "key_count": 1,
+      "keys": [
+        "ui.chat.sidebar.mark_all_read.label"
+      ],
+      "source_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+      "target_sha256": "e409e0c4e3de427aa19289c4261b20844ebc6f28bee1a20563e74ae5f2099789"
+    }
+  },
+  "per_key_reviews": [
+    {
+      "key": "ui.chat.canonical.notice.interrupted",
+      "en": "Interrupted",
+      "current": "Bị ngắt",
+      "findings": [],
+      "decision": "accepted",
+      "evidence": "Accept: terse neutral interrupted-turn marker. Shipped ui.chat.canonical.json:ui.chat.canonical.tool_row.outcome.interrupted uses bị ngắt; transcript.interrupted uses the synonymous Bị gián đoạn. Distinct contexts do not require identical wording."
+    },
+    {
+      "key": "ui.chat.canonical.notice.stopped_with_error",
+      "en": "Stopped with an error",
+      "current": "Đã dừng do lỗi",
+      "findings": [],
+      "decision": "accepted",
+      "evidence": "Accept: idiomatic factual error termination, not success or voluntary cancellation. lỗi is standard error terminology; shipped ui.chat.canonical.json:ui.chat.canonical.tool_row.bridge.detail.outcome.failed preserves the error argument. No glossary conflict."
+    },
+    {
+      "key": "ui.chat.canonical.notice.compaction_not_run",
+      "en": "Compaction did not run: {detail}",
+      "current": "Lần nén không được thực hiện: {detail}",
+      "findings": [],
+      "decision": "accepted",
+      "evidence": "Accept: nén matches glossary compaction → nén. No pre-existing compaction/nén value was found in the three inspected shipped chat namespaces. Lần nén explicitly refers to this attempted compaction; negation is intact; colon precedes verbatim {detail}."
+    },
+    {
+      "key": "ui.chat.canonical.notice.compaction_not_run_after_colon",
+      "en": "Compaction did not run — {detail}",
+      "current": "Lần nén không được thực hiện — {detail}",
+      "findings": [],
+      "decision": "accepted",
+      "evidence": "Accept: same nén decision as colon form; spaced em dash matches style guide and preserves a reason containing its own colon; {detail} remains verbatim."
+    },
+    {
+      "key": "ui.chat.canonical.link_toolkit.actions_for",
+      "en": "Actions for {name}",
+      "current": "Thao tác với {name}",
+      "findings": [],
+      "decision": "accepted",
+      "evidence": "Accept: Thao tác với {name} naturally names actions operating on a link/file. Shipped ui.chat.canonical.json:ui.chat.canonical.fold.count.actions uses thao tác. {name} unchanged; accessible name, not a constrained visible button."
+    },
+    {
+      "key": "ui.chat.sidebar_view.ungrouped",
+      "en": "Ungrouped",
+      "current": "Chưa phân nhóm",
+      "findings": [],
+      "decision": "accepted",
+      "evidence": "VI-m1 resolved: Chưa phân nhóm is a natural residual category heading (not yet grouped), unlike the clipped Chưa nhóm. It uses the same nhóm stem as shipped ui.chat.sidebar_view.json:ui.chat.sidebar_view.group_by = Nhóm theo and section.teams = Nhóm; the verb phrase phân nhóm disambiguates grouping from a team name. Glossary team → nhóm and agent → tác nhân match agent_team and section.agents. Fourteen NFC code points; no numeric width cap is specified."
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.label",
+      "en": "Mark all {count, number, ::group-off} read",
+      "current": "Đánh dấu tất cả {count, number, ::group-off} đã đọc",
+      "findings": [],
+      "decision": "accepted",
+      "evidence": "Accept: concise bulk imperative; marks every counted chat read, with exact ungrouped numeric argument unchanged. Shipped ui.chat.read_ack.json:ui.chat.read_ack.clause.pending uses đang đánh dấu đã đọc; clause.offscreen uses đánh dấu cuộc trò chuyện này là đã đọc; ui.chat.sidebar.json:ui.chat.sidebar.row.unread_suffix uses chưa đọc. No plural branching is needed in Vietnamese. At count 1 the label is 24 NFC code points; narrow-header pixel fit remains unverified."
+    }
+  ],
+  "input_hashes": [
+    {
+      "role": "en",
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f"
+    },
+    {
+      "role": "target",
+      "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+      "sha256": "f71e57e9b6700aa31e874108bc8ac9f52cee2f3677638845aa9304996a4296d9"
+    },
+    {
+      "role": "context",
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107"
+    },
+    {
+      "role": "en",
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+      "sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf"
+    },
+    {
+      "role": "target",
+      "path": "src/i18n/catalogues/vi/ui.chat.sidebar_view.json",
+      "sha256": "ec000db2838d777d66b6bed7320b5adb2e0f7367d7b7c1a7707c6ab125577160"
+    },
+    {
+      "role": "context",
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+      "sha256": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367"
+    },
+    {
+      "role": "en",
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff"
+    },
+    {
+      "role": "target",
+      "path": "src/i18n/catalogues/vi/ui.chat.sidebar.json",
+      "sha256": "e409e0c4e3de427aa19289c4261b20844ebc6f28bee1a20563e74ae5f2099789"
+    },
+    {
+      "role": "context",
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff"
+    }
+  ],
+  "checks": {
+    "executed": "Read-only git show/diff and tiny Python checks: JSON parsing, complete namespace key parity, exact simple ICU argument tokens including number skeleton, NFC, absence of bidi controls, absence of plural/select in all seven selected messages; six unchanged and one changed against prior head.",
+    "reasoned": "Seven-key semantic/register/punctuation/terminology review against English sidecars and named shipped precedents; Vietnamese CLDR other-only, no grammatical plural branching needed for number format. No markup/code/flags present in these seven pairs.",
+    "ledger_rules": "Read scripts/i18n/ledger-rules.mjs: unambiguous real agent/instance/model; per-namespace passed status, exact source/target SHA256, explicit findings arrays, zero counts => clean. Candidate has namespace blocks and consistent aliases; assembly must later provide immutable repo receipt path and receipt_sha256, independent agent and distinct instance. No ledger eligibility claimed here.",
+    "unverified": [
+      "Repository validators and ledger-rules execution (host restriction: no tests/builds; Python checks only)",
+      "Rendered layout, narrow-header fit, screenshot and pseudo-localisation",
+      "Full-namespace semantic audit (scope is seven keys, not every value in each namespace)",
+      "Final tracked evidence retention and receipt/ledger assembly (manager-owned later step)"
+    ]
+  },
+  "candidate_only": true,
+  "retention_handoff": "Requested staging candidate only; manager must retain final record/evidence in canonical tracked root and assemble ledger/receipt. No writes to audited worktree, receipts or ledger."
+}
