@@ -1,0 +1,42 @@
+{
+	"ui.browser.media_permission.label": {
+		"role": "accessible region name — browser camera/microphone permission band",
+		"tone": "Factual",
+		"note": "Names the band above the page asking for camera/microphone access."
+	},
+	"ui.browser.media_permission.message": {
+		"role": "prompt text — browser permission band, like Chrome's site permission prompt",
+		"tone": "Neutral, plain",
+		"note": "site = the requesting website's host (e.g. meet.google.com), never translated. devices select: audio = microphone only, video = camera only, other = both. Keep every select arm."
+	},
+	"ui.browser.media_permission.agent_tab_hint": {
+		"role": "secondary hint after the prompt",
+		"tone": "Factual",
+		"note": "Shown only on agent-driven tabs: the Allow answer is not remembered there. 'Allow' refers to the adjacent button; use the same word as the allow key."
+	},
+	"ui.browser.media_permission.allow": {
+		"role": "button label",
+		"tone": "Short imperative",
+		"note": "Grants camera/microphone to the site. Keep as short as English."
+	},
+	"ui.browser.media_permission.block": {
+		"role": "button label",
+		"tone": "Short imperative",
+		"note": "Denies and remembers the denial for the site. Keep as short as English."
+	},
+	"ui.browser.media_permission.dismiss": {
+		"role": "accessible label for an icon-only close button",
+		"tone": "Factual",
+		"note": "Closes the band, denying this one request without remembering."
+	},
+	"ui.browser.media_permission.system_blocked": {
+		"role": "status text — browser permission band",
+		"tone": "Factual, not alarming",
+		"note": "macOS privacy settings (TCC) refuse this app's device access. 'Local Operator' is the product name: do not translate. devices select as in message."
+	},
+	"ui.browser.media_permission.system_blocked_hint": {
+		"role": "secondary hint",
+		"tone": "Helpful instruction",
+		"note": "Points to macOS System Settings › Privacy & Security; use the locale's official macOS names where Apple localizes them."
+	}
+}

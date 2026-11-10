@@ -1,0 +1,10 @@
+{
+	"ui.browser.media_permission.label": "Camera and microphone request",
+	"ui.browser.media_permission.message": "{devices, select, audio {{site} wants to use your microphone.} video {{site} wants to use your camera.} other {{site} wants to use your camera and microphone.}}",
+	"ui.browser.media_permission.agent_tab_hint": "This is an agent-driven tab, so Allow applies to this request only.",
+	"ui.browser.media_permission.allow": "Allow",
+	"ui.browser.media_permission.block": "Block",
+	"ui.browser.media_permission.dismiss": "Dismiss camera and microphone request",
+	"ui.browser.media_permission.system_blocked": "{devices, select, audio {macOS has microphone access turned off for Local Operator.} video {macOS has camera access turned off for Local Operator.} other {macOS has camera and microphone access turned off for Local Operator.}}",
+	"ui.browser.media_permission.system_blocked_hint": "Turn it on in System Settings › Privacy & Security, then reload the page."
+}

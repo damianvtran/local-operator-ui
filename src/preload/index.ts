@@ -26,6 +26,7 @@ import type {
 	AddressHistoryRequest,
 	AddressHistoryResponse,
 } from "../shared/browser-address-history";
+import type { MediaPermissionDecision } from "../shared/browser-media-permission";
 import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
@@ -1229,6 +1230,28 @@ const api = {
 			ipcRenderer.invoke("browser-passkey-notice-dismiss", tabId, at),
 		openPasskeyNotice: (tabId: number, at: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-open", tabId, at),
+		/**
+		 * Answer the camera/microphone prompt. `trusted` is the click's
+		 * `event.isTrusted`; main refuses a decision without it, and the id is the
+		 * prompt's host-minted identity (see `media-permissions.ts`).
+		 */
+		decideMediaPermission: (
+			tabId: number,
+			id: string,
+			decision: MediaPermissionDecision,
+			trusted: boolean,
+		): Promise<unknown> =>
+			ipcRenderer.invoke(
+				"browser-media-permission-decide",
+				tabId,
+				id,
+				decision,
+				trusted,
+			),
+		/** The system-blocked notice's "Open System Settings": main opens the
+		 * fixed macOS pane for that notice (see `media-permissions.ts`). */
+		openMediaSystemSettings: (tabId: number, id: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-media-permission-open-settings", tabId, id),
 		/** The recovery click on the `unavailable` state (design round 1, D1a).
 		 * No argument: the host restarts the same window's browser, so there is
 		 * nothing for a caller to retarget. */

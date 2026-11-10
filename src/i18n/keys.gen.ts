@@ -47,6 +47,8 @@ import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowserExtensions from "./catalogues/en/ui.browser.extensions.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
+import enUiBrowserMediaAccess from "./catalogues/en/ui.browser.media_access.json";
+import enUiBrowserMediaPermission from "./catalogues/en/ui.browser.media_permission.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatApproval from "./catalogues/en/ui.chat.approval.json";
@@ -202,6 +204,8 @@ import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
 import esUiBrowserExtensions from "./catalogues/es/ui.browser.extensions.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
+import esUiBrowserMediaAccess from "./catalogues/es/ui.browser.media_access.json";
+import esUiBrowserMediaPermission from "./catalogues/es/ui.browser.media_permission.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
 import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
 import esUiChatApproval from "./catalogues/es/ui.chat.approval.json";
@@ -357,6 +361,8 @@ import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
 import frUiBrowserExtensions from "./catalogues/fr/ui.browser.extensions.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
+import frUiBrowserMediaAccess from "./catalogues/fr/ui.browser.media_access.json";
+import frUiBrowserMediaPermission from "./catalogues/fr/ui.browser.media_permission.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
 import frUiChatApproval from "./catalogues/fr/ui.chat.approval.json";
@@ -512,6 +518,8 @@ import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
 import hiUiBrowserExtensions from "./catalogues/hi/ui.browser.extensions.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
+import hiUiBrowserMediaAccess from "./catalogues/hi/ui.browser.media_access.json";
+import hiUiBrowserMediaPermission from "./catalogues/hi/ui.browser.media_permission.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
 import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
 import hiUiChatApproval from "./catalogues/hi/ui.chat.approval.json";
@@ -667,6 +675,8 @@ import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
 import ruUiBrowserExtensions from "./catalogues/ru/ui.browser.extensions.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
+import ruUiBrowserMediaAccess from "./catalogues/ru/ui.browser.media_access.json";
+import ruUiBrowserMediaPermission from "./catalogues/ru/ui.browser.media_permission.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
 import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
 import ruUiChatApproval from "./catalogues/ru/ui.chat.approval.json";
@@ -822,6 +832,8 @@ import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
 import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
 import urUiBrowserExtensions from "./catalogues/ur/ui.browser.extensions.json";
 import urUiBrowser from "./catalogues/ur/ui.browser.json";
+import urUiBrowserMediaAccess from "./catalogues/ur/ui.browser.media_access.json";
+import urUiBrowserMediaPermission from "./catalogues/ur/ui.browser.media_permission.json";
 import urUiCanvas from "./catalogues/ur/ui.canvas.json";
 import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
 import urUiChatApproval from "./catalogues/ur/ui.chat.approval.json";
@@ -977,6 +989,8 @@ import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
 import viUiBrowserExtensions from "./catalogues/vi/ui.browser.extensions.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
+import viUiBrowserMediaAccess from "./catalogues/vi/ui.browser.media_access.json";
+import viUiBrowserMediaPermission from "./catalogues/vi/ui.browser.media_permission.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
 import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
 import viUiChatApproval from "./catalogues/vi/ui.chat.approval.json";
@@ -1132,6 +1146,8 @@ import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
 import zhCNUiBrowserExtensions from "./catalogues/zh-CN/ui.browser.extensions.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
+import zhCNUiBrowserMediaAccess from "./catalogues/zh-CN/ui.browser.media_access.json";
+import zhCNUiBrowserMediaPermission from "./catalogues/zh-CN/ui.browser.media_permission.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
 import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
 import zhCNUiChatApproval from "./catalogues/zh-CN/ui.chat.approval.json";
@@ -1290,6 +1306,8 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowserErrors,
 	...enUiBrowserExtensions,
 	...enUiBrowser,
+	...enUiBrowserMediaAccess,
+	...enUiBrowserMediaPermission,
 	...enUiCanvas,
 	...enUiChatAnalytics,
 	...enUiChatApproval,
@@ -1453,6 +1471,8 @@ export const bundledCatalogues: Readonly<
 		...esUiBrowserErrors,
 		...esUiBrowserExtensions,
 		...esUiBrowser,
+		...esUiBrowserMediaAccess,
+		...esUiBrowserMediaPermission,
 		...esUiCanvas,
 		...esUiChatAnalytics,
 		...esUiChatApproval,
@@ -1610,6 +1630,8 @@ export const bundledCatalogues: Readonly<
 		...frUiBrowserErrors,
 		...frUiBrowserExtensions,
 		...frUiBrowser,
+		...frUiBrowserMediaAccess,
+		...frUiBrowserMediaPermission,
 		...frUiCanvas,
 		...frUiChatAnalytics,
 		...frUiChatApproval,
@@ -1767,6 +1789,8 @@ export const bundledCatalogues: Readonly<
 		...hiUiBrowserErrors,
 		...hiUiBrowserExtensions,
 		...hiUiBrowser,
+		...hiUiBrowserMediaAccess,
+		...hiUiBrowserMediaPermission,
 		...hiUiCanvas,
 		...hiUiChatAnalytics,
 		...hiUiChatApproval,
@@ -1924,6 +1948,8 @@ export const bundledCatalogues: Readonly<
 		...ruUiBrowserErrors,
 		...ruUiBrowserExtensions,
 		...ruUiBrowser,
+		...ruUiBrowserMediaAccess,
+		...ruUiBrowserMediaPermission,
 		...ruUiCanvas,
 		...ruUiChatAnalytics,
 		...ruUiChatApproval,
@@ -2081,6 +2107,8 @@ export const bundledCatalogues: Readonly<
 		...urUiBrowserErrors,
 		...urUiBrowserExtensions,
 		...urUiBrowser,
+		...urUiBrowserMediaAccess,
+		...urUiBrowserMediaPermission,
 		...urUiCanvas,
 		...urUiChatAnalytics,
 		...urUiChatApproval,
@@ -2238,6 +2266,8 @@ export const bundledCatalogues: Readonly<
 		...viUiBrowserErrors,
 		...viUiBrowserExtensions,
 		...viUiBrowser,
+		...viUiBrowserMediaAccess,
+		...viUiBrowserMediaPermission,
 		...viUiCanvas,
 		...viUiChatAnalytics,
 		...viUiChatApproval,
@@ -2395,6 +2425,8 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiBrowserErrors,
 		...zhCNUiBrowserExtensions,
 		...zhCNUiBrowser,
+		...zhCNUiBrowserMediaAccess,
+		...zhCNUiBrowserMediaPermission,
 		...zhCNUiCanvas,
 		...zhCNUiChatAnalytics,
 		...zhCNUiChatApproval,
@@ -3799,6 +3831,23 @@ export type MessageParams = {
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": undefined;
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": undefined;
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": undefined;
+	"ui.browser.media_access.blocked": { devices: string; site: string };
+	"ui.browser.media_access.blocked_hint": { devices: string };
+	"ui.browser.media_access.blocked_label": { devices: string };
+	"ui.browser.media_access.notice_dismiss": undefined;
+	"ui.browser.media_access.open_system_settings": undefined;
+	"ui.browser.media_access.prompt_dismiss": { devices: string };
+	"ui.browser.media_access.prompt_label": { devices: string };
+	"ui.browser.media_access.system_blocked_hint": undefined;
+	"ui.browser.media_access.system_blocked_label": { devices: string };
+	"ui.browser.media_permission.agent_tab_hint": undefined;
+	"ui.browser.media_permission.allow": undefined;
+	"ui.browser.media_permission.block": undefined;
+	"ui.browser.media_permission.dismiss": undefined;
+	"ui.browser.media_permission.label": undefined;
+	"ui.browser.media_permission.message": { devices: string; site: string };
+	"ui.browser.media_permission.system_blocked": { devices: string };
+	"ui.browser.media_permission.system_blocked_hint": undefined;
 	"ui.canvas.close_copy.closed_your_edits_could_not_be_saved_and_are_kept_until_the_app_quits_op": {
 		title: string;
 	};

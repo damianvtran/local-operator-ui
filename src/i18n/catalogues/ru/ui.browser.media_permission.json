@@ -1,0 +1,10 @@
+{
+	"ui.browser.media_permission.label": "Запрос доступа к камере и микрофону",
+	"ui.browser.media_permission.message": "{devices, select, audio {{site} запрашивает доступ к микрофону.} video {{site} запрашивает доступ к камере.} other {{site} запрашивает доступ к камере и микрофону.}}",
+	"ui.browser.media_permission.agent_tab_hint": "Этой вкладкой управляет агент, поэтому «Разрешить» действует только для этого запроса.",
+	"ui.browser.media_permission.allow": "Разрешить",
+	"ui.browser.media_permission.block": "Блокировать",
+	"ui.browser.media_permission.dismiss": "Закрыть запрос доступа к камере и микрофону",
+	"ui.browser.media_permission.system_blocked": "{devices, select, audio {В macOS доступ Local Operator к микрофону выключен.} video {В macOS доступ Local Operator к камере выключен.} other {В macOS доступ Local Operator к камере и микрофону выключен.}}",
+	"ui.browser.media_permission.system_blocked_hint": "Включите его в разделе «Системные настройки › Конфиденциальность и безопасность», затем перезагрузите страницу."
+}
