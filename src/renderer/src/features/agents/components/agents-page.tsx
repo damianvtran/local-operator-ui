@@ -125,6 +125,11 @@ import { HubUpdatePanel } from "./hub-update-panel";
 import { MissingDefinitionError } from "./missing-definition-error";
 import { ProfileProposalPanel } from "./profile-proposal-panel";
 import {
+	ProposedNewGroup,
+	ProposedNewPane,
+	useIsProposedNew,
+} from "./proposed-new-profiles";
+import {
 	SKILL_SCOPE_LABEL,
 	SkillDetail,
 	SkillsRosterBody,
@@ -821,6 +826,22 @@ export function AgentsPage() {
 		else void profileDetail.refetch();
 	};
 
+	/*
+	 * A pending CREATE proposal opened by name (F4/U-F4): the record does not
+	 * exist, so its detail read fails, and the pane reviews the proposal instead
+	 * of reporting a missing definition. Called before any early return (hooks).
+	 */
+	const proposalsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"profile_proposals",
+	);
+	const selectedIsProposedNew = useIsProposedNew(
+		teamMode ? "team" : "agent",
+		skillMode ? null : selected,
+		(teamMode ? teams.data : profiles.data)?.map((row) => row.name),
+		proposalsEnabled,
+	);
+
 	if (agentId)
 		return (
 			<Suspense
@@ -834,6 +855,9 @@ export function AgentsPage() {
 
 	const detailError = teamMode ? teamDetail.error : profileDetail.error;
 	const listError = teamMode ? teams.error : profiles.error;
+	const rosterNames = (teamMode ? teams.data : profiles.data)?.map(
+		(row) => row.name,
+	);
 
 	/*
 	 * Whether the main column is showing the nothing-selected pane — which leads
@@ -1084,6 +1108,19 @@ export function AgentsPage() {
 							 * row being left has to be asked about (D1/U1/Q1), and the pane is
 							 * keyed by record, so the navigation IS the discard.
 							 */
+							onOpen={(rowName) => requestGo({ name: rowName })}
+						/>
+					)}
+					{/*
+					 * Pending proposals for a name the roster does not have yet, under
+					 * the roster the Agents badge leads to (F4/U-F4, U6).
+					 */}
+					{skillMode || listError || !rosterNames ? null : (
+						<ProposedNewGroup
+							kind={teamMode ? "team" : "agent"}
+							existing={rosterNames}
+							selected={creating ? null : selected}
+							enabled={proposalsEnabled}
 							onOpen={(rowName) => requestGo({ name: rowName })}
 						/>
 					)}
@@ -1401,6 +1438,12 @@ export function AgentsPage() {
 									/* A skeleton shaped like the pane, never a blanket "Select a
 						   definition" while something is on its way (D4). */
 									<DetailSkeleton />
+								) : selected && detailError && selectedIsProposedNew ? (
+									<ProposedNewPane
+										kind={teamMode ? "team" : "agent"}
+										name={selected}
+										proposalId={params.get("proposal")}
+									/>
 								) : selected && detailError ? (
 									<MissingDefinitionError
 										name={selected}

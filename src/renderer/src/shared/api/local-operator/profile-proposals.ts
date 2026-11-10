@@ -217,3 +217,31 @@ export function proposalReviewPath(
 	if (proposalId) params.set("proposal", proposalId);
 	return `/agents?${params.toString()}`;
 }
+
+/**
+ * Pending proposals that would CREATE an agent or team the roster does not list
+ * yet, one per name (newest first). Review round 1, F4/U-F4: these were counted
+ * in the Agents nav badge but had no row to open, so they could never be
+ * accepted. The Agents page lists them under "Proposed new" and opens the same
+ * review panel in place of the missing record. A name the roster already has is
+ * not "new" whatever the operation says: its proposals show on that record.
+ */
+export function proposedNewProfiles(
+	list: ProfileProposalList | undefined,
+	kind: "agent" | "team",
+	existing: readonly string[],
+): ProfileProposalSummary[] {
+	const known = new Set(existing);
+	const seen = new Set<string>();
+	const out: ProfileProposalSummary[] = [];
+	for (const p of [...(list?.proposals ?? [])].sort(
+		(a, b) => (b.created_at ?? 0) - (a.created_at ?? 0),
+	)) {
+		if (p.kind !== kind || p.operation !== "create") continue;
+		if (p.state !== "pending" && p.state !== "stale") continue;
+		if (known.has(p.name) || seen.has(p.name)) continue;
+		seen.add(p.name);
+		out.push(p);
+	}
+	return out;
+}

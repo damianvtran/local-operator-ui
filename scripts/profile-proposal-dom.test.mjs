@@ -72,6 +72,19 @@ after(async () => {
 	dom.window.close();
 });
 const flush = () => new Promise((resolve) => setTimeout(resolve, 20));
+/** Re-render the mounted tree with new props: same instance, no remount. */
+async function rerender(Component, props) {
+	await act(async () => {
+		root.render(
+			h(
+				QueryClientProvider,
+				{ client },
+				h(MemoryRouter, {}, h(Component, props)),
+			),
+		);
+		await flush();
+	});
+}
 async function mount(Component, props) {
 	await act(async () => root.render(null));
 	client?.clear();
@@ -104,12 +117,18 @@ async function click(node) {
 const button = (text) =>
 	[...document.querySelectorAll("button")].find((n) => n.textContent === text);
 const id = "pp_0123456789abcdef";
-function bridge({ state = "pending", conflict = false, error = false } = {}) {
+function bridge({
+	state = "pending",
+	conflict = false,
+	error = false,
+	acceptError = false,
+	operation = "update",
+} = {}) {
 	let proposal = {
 		id,
 		kind: "team",
 		name: "lopdev",
-		operation: "update",
+		operation,
 		fields: ["instructions"],
 		state,
 		stale: state === "stale",
@@ -145,6 +164,11 @@ function bridge({ state = "pending", conflict = false, error = false } = {}) {
 					};
 				else if (ask.op === "profileProposals.get") result = proposal;
 				else if (ask.op === "profileProposals.accept") {
+					if (acceptError)
+						return {
+							status: 503,
+							body: { detail: { code: "store_busy", message: "Store busy" } },
+						};
 					if (conflict)
 						return {
 							status: 409,
@@ -298,4 +322,59 @@ test("panel: errors have retry, disabled capability issues no calls, wrong-recor
 		calls.some((c) => c.op.endsWith("accept")),
 		false,
 	);
+});
+
+test("panel: fields line uses labels; a create proposal is titled as a new profile (U4/D1, F4)", async () => {
+	bridge({ operation: "create" });
+	await mount(ProfileProposalPanel, { ...props, key: "create" });
+	assert.match(document.body.textContent, /Changes: Instructions/);
+	assert.doesNotMatch(document.body.textContent, /ui\.agents\.proposals/);
+	assert.match(document.body.textContent, /Proposed new profile: lopdev/);
+	assert.ok(button("Accept"));
+});
+test("panel: a failed non-stale decision offers the Refresh it tells the person to use (U8)", async () => {
+	const calls = bridge({ acceptError: true });
+	await mount(ProfileProposalPanel, { ...props, key: "accept-error" });
+	assert.equal(button("Refresh status"), undefined);
+	await click(button("Accept"));
+	assert.ok(
+		document.querySelector('[role="alert"]'),
+		document.body.textContent,
+	);
+	const gets = () =>
+		calls.filter((c) => c.op === "profileProposals.get").length;
+	const before = gets();
+	await click(button("Refresh status"));
+	assert.ok(gets() > before, "Refresh re-reads the proposal");
+	assert.equal(button("Refresh status"), undefined);
+});
+test("diff: expanded context folds again (D2) and editing keeps folds and position (U7)", async () => {
+	const before = Array.from({ length: 30 }, (_, i) => `Line ${i}: be short.`);
+	const after = [...before];
+	after[5] = "Line 5: be brief.";
+	after[24] = "Line 24: be clear.";
+	const base = { before: before.join("\n"), resetKey: "pp:instructions" };
+	await mount(UnifiedDiff, { ...base, after: after.join("\n") });
+	await click(document.querySelector("[data-diff-gap]"));
+	const hide = document.querySelector("[data-diff-gap-hide]");
+	assert.match(hide.textContent, /Hide \d+ unchanged lines/);
+	await click(document.querySelector('[aria-label="Next change"]'));
+	assert.equal(document.activeElement.dataset.diffChange, "0");
+	// A keystroke in the editor: same identity, different `after`.
+	after[24] = "Line 24: be clearer.";
+	await rerender(UnifiedDiff, { ...base, after: after.join("\n") });
+	assert.ok(
+		document.querySelector("[data-diff-gap-hide]"),
+		"fold survives typing",
+	);
+	assert.match(document.body.textContent, /Change 1 of 2/);
+	await click(document.querySelector("[data-diff-gap-hide]"));
+	assert.ok(document.querySelector("[data-diff-gap]"), "context folded again");
+	// A new identity starts over.
+	await rerender(UnifiedDiff, {
+		...base,
+		resetKey: "pp:other",
+		after: after.join("\n"),
+	});
+	assert.doesNotMatch(document.body.textContent, /Change 1 of 2/);
 });

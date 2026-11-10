@@ -8,7 +8,8 @@
 	"ui.shared.unified_diff.previous_hint": "पिछला बदलाव (P)",
 	"ui.shared.unified_diff.next": "अगला बदलाव",
 	"ui.shared.unified_diff.next_hint": "अगला बदलाव (N)",
-	"ui.shared.unified_diff.show_unchanged": "{count} अपरिवर्तित पंक्तियाँ दिखाएँ",
+	"ui.shared.unified_diff.show_unchanged": "{count, plural, one {# अपरिवर्तित पंक्ति दिखाएँ} other {# अपरिवर्तित पंक्तियाँ दिखाएँ}}",
+	"ui.shared.unified_diff.hide_unchanged": "{count, plural, one {# अपरिवर्तित पंक्ति छिपाएँ} other {# अपरिवर्तित पंक्तियाँ छिपाएँ}}",
 	"ui.shared.unified_diff.line_added": "जोड़ा गया:",
 	"ui.shared.unified_diff.line_removed": "हटाया गया:"
 }

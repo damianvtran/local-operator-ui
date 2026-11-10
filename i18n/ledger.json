@@ -92726,6 +92726,426 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.proposals",
+			"source_sha256": "b08e639453d88df97944e38615c0fd3d915f9d5b5d55ff31b7d904190fe29815",
+			"target_sha256": "adafb4c1946ab3f7739bc85d46c4250d87fad642669e8b04489018e55169ae32",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-fr-proposals-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-fr-proposals-r2.json",
+					"receipt_sha256": "74ad739db18690d2ea6622b5c0677f1503b9f2a81ff179bfcfd3eaf64d00223d",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.shared.unified_diff",
+			"source_sha256": "8c35440a996c4d4a2aa1650fdff8ced1b1b4cd6a1a3e3c0959cb62c7743cb858",
+			"target_sha256": "fe3d3a14aeceb2fab7495c510795164472b95aa1f1093f5cc70745738700fecc",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-fr-unified-diff-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-fr-unified-diff-r2.json",
+					"receipt_sha256": "b1eb14c8ff4ee7b90f3bf02ad518598c3d32eb2479e155c8278692a36539cb86",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.proposals",
+			"source_sha256": "b08e639453d88df97944e38615c0fd3d915f9d5b5d55ff31b7d904190fe29815",
+			"target_sha256": "d7a44ea98dddabbc847f3c4975ecc10f26fa86075e6dc454938f284579189c54",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-es-proposals-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-es-proposals-r2.json",
+					"receipt_sha256": "5341f0ce3a0f9473d81ea3ba7f82904de7a129d7f894c7eee8ffe1db332533cf",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.shared.unified_diff",
+			"source_sha256": "8c35440a996c4d4a2aa1650fdff8ced1b1b4cd6a1a3e3c0959cb62c7743cb858",
+			"target_sha256": "8b0b100252755a56216c42ee359a31a452c3ec199b2f67b54a7ed9e5a0a77da2",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-es-unified-diff-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-es-unified-diff-r2.json",
+					"receipt_sha256": "5f15961a9a153003fb235b75ecf73038c96a1557c800d02b768e68cd067188cf",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.proposals",
+			"source_sha256": "b08e639453d88df97944e38615c0fd3d915f9d5b5d55ff31b7d904190fe29815",
+			"target_sha256": "49ca31c47c742eafe75efb5c9b6a0d3f5db6ff9cc9a4c70a939ba7c752dc58f8",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-ru-proposals-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-ru-proposals-r2.json",
+					"receipt_sha256": "a88dbc67ce769712fe8ee710bab54e418e338878b50af991a65becb62e504223",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.shared.unified_diff",
+			"source_sha256": "8c35440a996c4d4a2aa1650fdff8ced1b1b4cd6a1a3e3c0959cb62c7743cb858",
+			"target_sha256": "0c67022a6d354950e41337fcde822c908ce924915d9263e441a40e0f87d78fbe",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-ru-unified-diff-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-ru-unified-diff-r2.json",
+					"receipt_sha256": "4ff31ac3f8ad41a9ec59cc2b5698a186039a10dfe6c43535e6bcd1b141533d18",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.proposals",
+			"source_sha256": "b08e639453d88df97944e38615c0fd3d915f9d5b5d55ff31b7d904190fe29815",
+			"target_sha256": "48daa86ef846932b658231794719ee18b5095278a5d3fce148b21d6a2f041570",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-hi-proposals-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-hi-proposals-r2.json",
+					"receipt_sha256": "6287bf6682a1b77c1f5b30eaaeceb05e6c775c2fa94e6965d06a5d083221f067",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.shared.unified_diff",
+			"source_sha256": "8c35440a996c4d4a2aa1650fdff8ced1b1b4cd6a1a3e3c0959cb62c7743cb858",
+			"target_sha256": "b0105f0ac4fe8122b739ba287e118ef670e5eb92ae06702c5f9bcc8c39e6c2d6",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-hi-unified-diff-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-hi-unified-diff-r2.json",
+					"receipt_sha256": "29281358bde7c67335c7564f1b6f00bd845d51a76df3e639e96cc8d72174b01f",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.proposals",
+			"source_sha256": "b08e639453d88df97944e38615c0fd3d915f9d5b5d55ff31b7d904190fe29815",
+			"target_sha256": "f61716bc4a15f3f5c8fdaa4cd05f111c7e0bb79b753e8c9eeedce4498c8828a1",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-ur-proposals-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-ur-proposals-r2.json",
+					"receipt_sha256": "151248ce55e383344e272dd322e58da1e41673d68da3371075978bfae531dfeb",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.shared.unified_diff",
+			"source_sha256": "8c35440a996c4d4a2aa1650fdff8ced1b1b4cd6a1a3e3c0959cb62c7743cb858",
+			"target_sha256": "8566f341ecc7ceb7af923c6d29bdd7be05688e33075fdb315a106777db8dd552",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-ur-unified-diff-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-ur-unified-diff-r2.json",
+					"receipt_sha256": "4b0b5e135c697434c9e4777a09068fd25a68dd711c6fb23b3690005572243e45",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.proposals",
+			"source_sha256": "b08e639453d88df97944e38615c0fd3d915f9d5b5d55ff31b7d904190fe29815",
+			"target_sha256": "08ff7d6b1b61eba2de8e67e298a7b99b3338af12c33a9c3039a93dc6c1f858ae",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-vi-proposals-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-vi-proposals-r2.json",
+					"receipt_sha256": "0d6f80febf24a7334e4e57a39538f2fb17c3974fe7b06783ce6f79f16d21b658",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.shared.unified_diff",
+			"source_sha256": "8c35440a996c4d4a2aa1650fdff8ced1b1b4cd6a1a3e3c0959cb62c7743cb858",
+			"target_sha256": "a107a270524d2faa88bd84884318f1cc295df481da86db4cb4ea4a0d446efa1d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-vi-unified-diff-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-vi-unified-diff-r2.json",
+					"receipt_sha256": "818857b1f4d1294d037fb3f28adac88c6f6b8a6ed1cc65259e39424336f38791",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.proposals",
+			"source_sha256": "b08e639453d88df97944e38615c0fd3d915f9d5b5d55ff31b7d904190fe29815",
+			"target_sha256": "8fee970897063f74adc2d5fc607d9af467a5fd987e86b823d37dcf52cffaf094",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-zh-cn-proposals-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-zh-cn-proposals-r2.json",
+					"receipt_sha256": "558f0f445f801436c2f2214d3b2be3971e6934669b08a47a4271b06cea369505",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.shared.unified_diff",
+			"source_sha256": "8c35440a996c4d4a2aa1650fdff8ced1b1b4cd6a1a3e3c0959cb62c7743cb858",
+			"target_sha256": "361067b4a4279ccba3973919aa66c7c9ae73fb2d20351f51c5ea6d5b8da003f2",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "rv34629daf-zh-cn-unified-diff-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/rv34629daf-zh-cn-unified-diff-r2.json",
+					"receipt_sha256": "f422cd733b6e2964a18bc20d54de316d925e478a92f6f87deed5fb151539eed7",
+					"note": "original translation: session e601fb892754 openai/gpt-6.1-sol; round-2 delta keys/plural arms/context: coder session ff1e50c6c655 anthropic/claude-opus-5-5; audit: reviewer 34629dafe61f"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

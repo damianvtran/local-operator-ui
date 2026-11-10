@@ -7,6 +7,8 @@
 	"ui.agents.proposals.not_applied": "Chưa áp dụng gì. Hãy xem lại đề xuất đã làm mới trước khi chấp nhận.",
 	"ui.agents.proposals.invalid_json": "Nhập JSON hợp lệ cho trường chính sách đã sửa. Chưa áp dụng gì.",
 	"ui.agents.proposals.title": "Đề xuất thay đổi {name}",
+	"ui.agents.proposals.title_create": "Hồ sơ mới được đề xuất: {name}",
+	"ui.agents.proposals.fields": "Thay đổi: {fields}",
 	"ui.agents.proposals.origin": "Nguồn: {trigger}",
 	"ui.agents.proposals.untrusted": "Đề xuất này đến từ cuộc trò chuyện bên ngoài hoặc được chuyển tiếp. Hãy xem xét thay đổi trước khi chấp nhận.",
 	"ui.agents.proposals.open_conversation": "Mở cuộc trò chuyện gốc",
@@ -25,5 +27,7 @@
 	"ui.agents.proposals.accepted": "Đã áp dụng thay đổi được đề xuất cho {name}.",
 	"ui.agents.proposals.rejected": "Đã từ chối thay đổi được đề xuất cho {name}. Không có gì thay đổi.",
 	"ui.agents.proposals.waiting": "Có {count} thay đổi được đề xuất đang chờ trong Tác nhân",
-	"ui.agents.proposals.review": "Xem xét trong Tác nhân"
+	"ui.agents.proposals.review": "Xem xét trong Tác nhân",
+	"ui.agents.proposals.new_group": "Đề xuất tạo mới",
+	"ui.agents.proposals.new_row": "Đang chờ xem xét"
 }

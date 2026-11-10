@@ -126,7 +126,9 @@ function ProposalCard({
 				tabIndex={-1}
 				className="font-medium text-ink outline-none"
 			>
-				{t("ui.agents.proposals.title", { name })}
+				{proposal.operation === "create"
+					? t("ui.agents.proposals.title_create", { name })
+					: t("ui.agents.proposals.title", { name })}
 			</h3>
 			{decided ? (
 				<output>
@@ -140,8 +142,11 @@ function ProposalCard({
 			) : (
 				<>
 					<p className="text-meta text-ink-muted">
+						{/* The labels each diff is headed by, not raw field ids (UX U4). */}
 						{t("ui.agents.proposals.fields", {
-							fields: proposal.fields.join(", "),
+							fields: proposal.changes
+								.map((change) => change.label || change.field)
+								.join(", "),
 						})}
 					</p>
 					{proposal.origin.trust === "untrusted" && (
@@ -201,6 +206,9 @@ function ProposalCard({
 									before: t("ui.agents.proposals.current"),
 									after: t("ui.agents.proposals.proposed"),
 								}}
+								// Stable while the draft is typed into, so folds and the
+								// next-change position survive each keystroke (UX U7).
+								resetKey={`${id}:${change.field}`}
 								maxHeight={360}
 							/>
 						</div>
@@ -210,6 +218,7 @@ function ProposalCard({
 							<Button
 								size="sm"
 								variant="outline"
+								data-testid="proposal-accept"
 								disabled={busy || stale}
 								onClick={() => void decide("accept")}
 							>
@@ -238,18 +247,27 @@ function ProposalCard({
 								size="sm"
 								variant="ghost"
 								disabled={busy}
+								data-testid="proposal-reject"
 								onClick={() => void decide("reject")}
 							>
 								{reject.isPending
 									? t("ui.agents.proposals.rejecting")
 									: t("ui.agents.proposals.reject")}
 							</Button>
-							{stale && (
+							{/*
+							 * Also after ANY failed decision: the error sentence tells the
+							 * person to refresh before retrying, so the control must exist
+							 * whenever it is shown (UX U8), not only for a stale base.
+							 */}
+							{(stale || error) && (
 								<Button
 									size="sm"
 									variant="ghost"
 									disabled={busy}
-									onClick={() => void detail.refetch()}
+									onClick={() => {
+										setError(null);
+										void detail.refetch();
+									}}
 								>
 									{t("ui.agents.proposals.refresh")}
 								</Button>

@@ -206,7 +206,25 @@ export function wordSegments(
 ): { before: DiffSegment[]; after: DiffSegment[] } | null {
 	const a = tokenize(before);
 	const b = tokenize(after);
-	if (a.length > MAX_WORD_TOKENS || b.length > MAX_WORD_TOKENS) return null;
+	// The cap bounds the Myers search, which only ever runs on the tokens
+	// between the common prefix and suffix (`diffSequence` trims both first).
+	// Capping the whole line instead dropped the highlight for a one-word edit
+	// inside a long paragraph (design round 1, D3: a 250-word line showed no
+	// changed words), which is exactly the long-brief case this view serves.
+	let head = 0;
+	while (head < a.length && head < b.length && a[head] === b[head]) head++;
+	let tail = 0;
+	while (
+		tail < a.length - head &&
+		tail < b.length - head &&
+		a[a.length - 1 - tail] === b[b.length - 1 - tail]
+	)
+		tail++;
+	if (
+		a.length - head - tail > MAX_WORD_TOKENS ||
+		b.length - head - tail > MAX_WORD_TOKENS
+	)
+		return null;
 	const ops = diffSequence(a, b);
 	let common = 0;
 	for (const op of ops) if (op.kind === "context") common += a[op.a].length;

@@ -7538,10 +7538,17 @@ export function ChatSidebar({
 							<button
 								type="button"
 								data-testid="profile-proposal-row-badge"
+								data-proposal-badge={name}
 								aria-label={t("ui.agents.proposals.waiting", {
 									count: proposalCount,
 								})}
-								className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm hover:bg-row-hover focus-visible:outline focus-visible:outline-accent"
+								// A control inside the row's box takes the ROW's hover step,
+								// guarded `!staged` like the pin beside it, so the pointer never
+								// repaints the current row's ground (sidebar selection guard).
+								className={cn(
+									"flex h-6 w-6 shrink-0 items-center justify-center rounded-sm focus-visible:outline focus-visible:outline-accent",
+									!staged && "hover:bg-row-hover",
+								)}
 								onClick={(event) => {
 									event.stopPropagation();
 									navigate(proposalReviewPath(kind, name));

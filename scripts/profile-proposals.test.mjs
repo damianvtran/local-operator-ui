@@ -178,3 +178,43 @@ test("proposed receipt is bounded, deep link preserves name/proposal without inj
 	assert.equal(url.searchParams.get("name"), "a & b");
 	assert.equal(url.searchParams.get("proposal"), id);
 });
+
+test("proposed-new rows: pending/stale creates for unknown names only, one per name (F4/U-F4)", () => {
+	const row = (over) => ({
+		id: "pp_0123456789abcdef",
+		kind: "agent",
+		name: "fresh",
+		operation: "create",
+		fields: [],
+		state: "pending",
+		stale: false,
+		origin: { trust: "agent" },
+		...over,
+	});
+	const list = {
+		proposals: [
+			row({ created_at: 1 }),
+			row({ id: "pp_1111111111111111", created_at: 2 }),
+			row({ name: "existing" }),
+			row({ name: "updated", operation: "update" }),
+			row({ name: "gone", state: "rejected" }),
+			row({ name: "old", state: "expired" }),
+			row({ name: "stalled", state: "stale", stale: true }),
+			row({ name: "crew", kind: "team" }),
+		],
+		counts: {},
+	};
+	const agents = m.proposedNewProfiles(list, "agent", ["existing", "updated"]);
+	assert.deepEqual(
+		agents.map((p) => [p.name, p.id]),
+		[
+			["fresh", "pp_1111111111111111"],
+			["stalled", "pp_0123456789abcdef"],
+		],
+	);
+	assert.deepEqual(
+		m.proposedNewProfiles(list, "team", []).map((p) => p.name),
+		["crew"],
+	);
+	assert.deepEqual(m.proposedNewProfiles(undefined, "agent", []), []);
+});

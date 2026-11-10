@@ -7,6 +7,8 @@
 	"ui.agents.proposals.not_applied": "कुछ लागू नहीं हुआ। स्वीकार करने से पहले रीफ़्रेश किया गया प्रस्ताव देखें।",
 	"ui.agents.proposals.invalid_json": "संपादित नीति फ़ील्ड के लिए मान्य JSON दर्ज करें। कुछ लागू नहीं हुआ।",
 	"ui.agents.proposals.title": "{name} में प्रस्तावित बदलाव",
+	"ui.agents.proposals.title_create": "प्रस्तावित नई प्रोफ़ाइल: {name}",
+	"ui.agents.proposals.fields": "बदलाव: {fields}",
 	"ui.agents.proposals.origin": "स्रोत: {trigger}",
 	"ui.agents.proposals.untrusted": "यह प्रस्ताव बाहरी या अग्रेषित बातचीत से आया है। स्वीकार करने से पहले बदलाव देखें।",
 	"ui.agents.proposals.open_conversation": "मूल बातचीत खोलें",
@@ -24,6 +26,8 @@
 	"ui.agents.proposals.refresh": "स्थिति रीफ़्रेश करें",
 	"ui.agents.proposals.accepted": "{name} में प्रस्तावित बदलाव लागू हो गया।",
 	"ui.agents.proposals.rejected": "{name} में प्रस्तावित बदलाव अस्वीकार कर दिया गया। कुछ नहीं बदला।",
-	"ui.agents.proposals.waiting": "एजेंट में {count} प्रस्तावित बदलाव लंबित हैं",
-	"ui.agents.proposals.review": "एजेंट में समीक्षा करें"
+	"ui.agents.proposals.waiting": "{count, plural, one {एजेंट में # प्रस्तावित बदलाव लंबित है} other {एजेंट में # प्रस्तावित बदलाव लंबित हैं}}",
+	"ui.agents.proposals.review": "एजेंट में समीक्षा करें",
+	"ui.agents.proposals.new_group": "बनाने के प्रस्ताव",
+	"ui.agents.proposals.new_row": "समीक्षा लंबित"
 }

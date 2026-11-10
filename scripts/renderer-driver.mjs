@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|profile-proposals|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds>
  *                          which built-in scene to run (default: states)
  *   --attach <absolute-path> (with --scene attach, repeatable) one file the
  *                          paperclip press stages; ONLY the native picker is
@@ -121,6 +121,10 @@
  *                          `stay` is the head tree, where the page opens at
  *                          scrollTop 0, unfocused, with the strip below the
  *                          fold.
+ *   --proposal-name <name> (with --scene profile-proposals) the record whose
+ *                          pending proposal is driven; default the first one
+ *   --stale-name <name>    (with --scene profile-proposals) a record with a stale
+ *                          proposal: Accept must be disabled, nothing applied
  *   --session <id>         (with --scene output-artifact) the seeded session the
  *                          scene reads; the fixture is the attachment lane's own
  *                          seed, and a default would photograph whatever chat
@@ -452,6 +456,13 @@ const STUB_LOG = argValue("--stub-log", null);
  * from argv (a token in a command line lands in the shell's history).
  */
 const BACKEND = argValue("--backend", null);
+/**
+ * `--scene profile-proposals`: the pending proposal to drive, by record name
+ * (the first actionable one when absent), and an optional name whose proposal is
+ * stale. Names, not ids: the seed decides ids and the scene reads them back.
+ */
+const PROPOSAL_NAME = argValue("--proposal-name", null);
+const STALE_NAME = argValue("--stale-name", null);
 /**
  * Which half of the `composer-drop` pair this run records (issue #789).
  *
@@ -22106,6 +22117,343 @@ async function sceneAuthoringRefresh(cdp) {
 		`route ${route.route}`,
 	);
 	return [beforeFrame, afterFrame];
+}
+
+/**
+ * `--scene profile-proposals`: the Agents review surface for profile proposals,
+ * driven end to end against a REAL daemon (`--backend`), with the daemon's own
+ * state as the oracle rather than the app's copy of it.
+ *
+ * WHY A SCENE. The operator asked that proposals move out of Mesh into Agents
+ * with actionable Accept/Reject/Edit and a git-style diff. Storybook proves the
+ * panel's states; only the built app against a daemon proves that the badge
+ * leads somewhere, that a proposal for a profile that does not exist yet can be
+ * opened (review round 1, F4/U-F4), and that the Accept button really changes
+ * the profile on disk.
+ *
+ * DATA-DRIVEN, NO HARDCODED IDS. The target is read from
+ * `GET /v1/desktop/profile-proposals?state=pending`: the first actionable
+ * (pending, not stale) agent/team proposal whose name is `--proposal-name`, or
+ * the first such proposal when the flag is absent. The seed decides names.
+ *
+ * LEGS:
+ *   1. /agents (or the Teams tab): the nav badge and the record's row (an
+ *      existing record's roster row, or the "Proposed new" row for a create);
+ *   2. open it: the card, the diff, Next change, and a folded-context expand
+ *      + re-collapse when the diff has a gap;
+ *   3. the real Accept button: the daemon reports the proposal `accepted`, the
+ *      profile's text/list fields equal the proposal's `after_text`, and the
+ *      proposal leaves the pending list (badge gone);
+ *   4. `--stale-name <name>` (optional): a stale proposal for that name shows
+ *      the stale sentence with Accept disabled, and the profile is unchanged;
+ *   5. `--session <id>` (optional): that conversation's agent/team/skill tool
+ *      rows render as ordinary traces, with no inline profile consent card.
+ *
+ * WHAT IT NEEDS: `--backend <url>` of a daemon this run owns (never 1111), the
+ * renderer built against it, and `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's
+ * ENVIRONMENT (never argv) for its own reads.
+ */
+async function sceneProfileProposals(cdp) {
+	const frames = [];
+	const unwrap = (json) => json?.result ?? json;
+	const pending = async () => {
+		const answer = await daemonGet(
+			"/v1/desktop/profile-proposals?state=pending",
+		);
+		return {
+			status: answer.status,
+			proposals: unwrap(answer.json)?.proposals ?? [],
+		};
+	};
+	const profilePath = (kind, name) =>
+		kind === "team"
+			? `/v1/desktop/teams/${encodeURIComponent(name)}`
+			: `/v1/desktop/profiles/${encodeURIComponent(name)}`;
+	/** The first value stored under `field` anywhere in a profile read. */
+	const fieldValue = (json, field) => {
+		const stack = [json];
+		while (stack.length) {
+			const node = stack.shift();
+			if (node && typeof node === "object" && !Array.isArray(node)) {
+				if (Object.hasOwn(node, field)) return node[field];
+				stack.push(...Object.values(node));
+			}
+		}
+		return undefined;
+	};
+	const asText = (value) =>
+		Array.isArray(value)
+			? value.join("\n")
+			: typeof value === "string"
+				? value
+				: value === undefined || value === null
+					? ""
+					: JSON.stringify(value);
+	const exists = (selector) =>
+		`Boolean(document.querySelector(${JSON.stringify(selector)}))`;
+
+	const list = await pending();
+	check(
+		"the daemon lists pending profile proposals",
+		list.status === 200 && list.proposals.length > 0,
+		`status ${list.status}, ${list.proposals.length} pending`,
+		`${list.proposals.length} pending`,
+	);
+	const actionable = list.proposals.filter(
+		(p) =>
+			(p.kind === "agent" || p.kind === "team") &&
+			p.state === "pending" &&
+			p.stale !== true &&
+			(PROPOSAL_NAME === null || p.name === PROPOSAL_NAME),
+	);
+	const target = actionable[0];
+	if (!target) {
+		check(
+			"an actionable agent/team proposal exists for the run",
+			false,
+			`none pending${PROPOSAL_NAME ? ` for ${PROPOSAL_NAME}` : ""}: ${JSON.stringify(list.proposals.map((p) => [p.kind, p.name, p.state, p.stale]))}`,
+		);
+		return frames;
+	}
+	note(
+		"target proposal",
+		JSON.stringify({
+			id: target.id,
+			kind: target.kind,
+			name: target.name,
+			operation: target.operation,
+			fields: target.fields,
+		}),
+	);
+	const detailBefore = await daemonGet(
+		`/v1/desktop/profile-proposals/${encodeURIComponent(target.id)}`,
+	);
+	const changes = unwrap(detailBefore.json)?.changes ?? [];
+
+	// 1. The badge and the row.
+	await verb(
+		cdp,
+		"navigate",
+		target.kind === "team" ? "/agents?kind=team" : "/agents",
+	);
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const navBadge = await waitForCondition(
+		cdp,
+		exists('[data-tour-tag="nav-agents-badge"]'),
+		20_000,
+	);
+	check(
+		"the Agents nav item carries the pending-proposal badge",
+		navBadge.ok,
+		`no [data-tour-tag="nav-agents-badge"] after ${navBadge.waitedMs}ms`,
+		`present after ${navBadge.waitedMs}ms`,
+	);
+	const rowSelector =
+		target.operation === "create"
+			? `[data-testid="proposed-new-row-${target.name}"]`
+			: `[data-testid="roster-row-${target.name}"]`;
+	const row = await waitForCondition(cdp, exists(rowSelector), 20_000);
+	check(
+		target.operation === "create"
+			? "the proposed-new profile has its own row under the roster"
+			: "the existing record's roster row is listed",
+		row.ok,
+		`${rowSelector} absent after ${row.waitedMs}ms`,
+		rowSelector,
+	);
+	frames.push(await captureSettled(cdp, "profile-proposals-1-list"));
+	if (!row.ok) return frames;
+
+	// 2. Open it: the card and the diff.
+	await clickAt(cdp, rowSelector);
+	const card = `[data-proposal-id="${target.id}"]`;
+	const opened = await waitForCondition(
+		cdp,
+		exists(`${card} [data-testid="unified-diff"]`),
+		20_000,
+	);
+	check(
+		"opening the row shows the proposal card with its diff",
+		opened.ok,
+		`${card} diff absent after ${opened.waitedMs}ms`,
+		`after ${opened.waitedMs}ms`,
+	);
+	const rawKey = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(card)})?.textContent.includes("ui.agents.proposals.") ?? null`,
+	);
+	check(
+		"no raw message key in the card",
+		rawKey === false,
+		`raw key present: ${rawKey}`,
+	);
+	frames.push(await captureSettled(cdp, "profile-proposals-2-open"));
+	if (!opened.ok) return frames;
+	await clickAt(cdp, `${card} button[aria-label="Next change"]`);
+	const position = await waitForCondition(
+		cdp,
+		`Array.from(document.querySelectorAll(${JSON.stringify(`${card} [aria-live="polite"]`)})).some((n) => /^Change 1 of \\d+$/.test(n.textContent.trim()))`,
+		5_000,
+	);
+	check(
+		"Next change moves to the first change and says so",
+		position.ok,
+		`no "Change 1 of N" after ${position.waitedMs}ms`,
+	);
+	const hasGap = await cdp.evaluate(exists(`${card} [data-diff-gap]`));
+	if (hasGap) {
+		await clickAt(cdp, `${card} [data-diff-gap]`);
+		const expanded = await waitForCondition(
+			cdp,
+			exists(`${card} [data-diff-gap-hide]`),
+			5_000,
+		);
+		check(
+			"a folded gap expands and offers to fold again",
+			expanded.ok,
+			"no hide control after expand",
+		);
+		frames.push(await captureSettled(cdp, "profile-proposals-3-expanded"));
+		await clickAt(cdp, `${card} [data-diff-gap-hide]`);
+		const folded = await waitForCondition(
+			cdp,
+			exists(`${card} [data-diff-gap]`),
+			5_000,
+		);
+		check("and folds back", folded.ok, "gap button did not return");
+	} else
+		note("diff has no folded context", "expand/collapse leg not applicable");
+
+	// 3. The real Accept button; the daemon is the oracle.
+	await clickAt(cdp, `${card} [data-testid="proposal-accept"]`);
+	let decided = null;
+	const started = Date.now();
+	while (Date.now() - started < 20_000) {
+		const read = await daemonGet(
+			`/v1/desktop/profile-proposals/${encodeURIComponent(target.id)}`,
+		);
+		decided = unwrap(read.json);
+		if (decided?.state && decided.state !== "pending") break;
+		await wait(250);
+	}
+	check(
+		"the daemon records the proposal as accepted",
+		decided?.state === "accepted",
+		`state ${decided?.state}`,
+		`accepted after ${Date.now() - started}ms`,
+	);
+	const profile = await daemonGet(profilePath(target.kind, target.name));
+	check(
+		"the profile now exists and reads back",
+		profile.status === 200,
+		`status ${profile.status}: ${profile.body}`,
+	);
+	for (const change of changes) {
+		if (change.format === "json") {
+			note(`field ${change.field}`, "json field: not compared textually");
+			continue;
+		}
+		const actual = asText(
+			fieldValue(unwrap(profile.json), change.field),
+		).trim();
+		const expected = (change.after_text ?? "").trim();
+		check(
+			`profile field ${change.field} equals the proposed value`,
+			actual === expected,
+			`expected ${JSON.stringify(expected.slice(0, 160))}, got ${JSON.stringify(actual.slice(0, 160))}`,
+			`${expected.length} chars`,
+		);
+	}
+	const after = await pending();
+	check(
+		"the proposal left the pending list",
+		!after.proposals.some((p) => p.id === target.id),
+		"still pending",
+	);
+	const gone = await waitForCondition(
+		cdp,
+		`!document.querySelector(${JSON.stringify(`${card} [data-testid="proposal-accept"]`)})`,
+		10_000,
+	);
+	check("the card no longer offers Accept", gone.ok, "Accept still rendered");
+	if (target.operation === "create") {
+		const editor = await waitForCondition(
+			cdp,
+			`!document.querySelector('[data-testid="proposed-new-pane"]')`,
+			15_000,
+		);
+		check(
+			"the proposed-new pane gives way to the created record",
+			editor.ok,
+			`still the proposed-new pane after ${editor.waitedMs}ms`,
+		);
+	}
+	frames.push(await captureSettled(cdp, "profile-proposals-4-accepted"));
+
+	// 4. Optional stale leg: refused, nothing changes.
+	if (STALE_NAME !== null) {
+		const stale = (await pending()).proposals.find(
+			(p) => p.name === STALE_NAME && (p.stale === true || p.state === "stale"),
+		);
+		if (!stale) {
+			check(
+				"a stale proposal exists for --stale-name",
+				false,
+				`none for ${STALE_NAME}`,
+			);
+		} else {
+			const before = await daemonGet(profilePath(stale.kind, stale.name));
+			const params = new URLSearchParams();
+			if (stale.kind !== "agent") params.set("kind", stale.kind);
+			params.set("name", stale.name);
+			params.set("proposal", stale.id);
+			await verb(cdp, "navigate", `/agents?${params}`);
+			const staleCard = `[data-proposal-id="${stale.id}"]`;
+			const shown = await waitForCondition(
+				cdp,
+				exists(`${staleCard} [data-testid="proposal-accept"]`),
+				20_000,
+			);
+			const disabled = await cdp.evaluate(
+				`document.querySelector(${JSON.stringify(`${staleCard} [data-testid="proposal-accept"]`)})?.disabled ?? null`,
+			);
+			check(
+				"the stale proposal's Accept is disabled",
+				shown.ok && disabled === true,
+				`shown ${shown.ok}, disabled ${disabled}`,
+			);
+			const sentence = await cdp.evaluate(
+				`document.querySelector(${JSON.stringify(`${staleCard} [role="alert"]`)})?.textContent ?? ""`,
+			);
+			check(
+				"the stale sentence says nothing was applied",
+				/Nothing was applied/.test(sentence),
+				JSON.stringify(sentence),
+			);
+			frames.push(await captureSettled(cdp, "profile-proposals-5-stale"));
+			const afterStale = await daemonGet(profilePath(stale.kind, stale.name));
+			check(
+				"the stale profile is unchanged",
+				before.body === afterStale.body,
+				"profile read changed",
+			);
+		}
+	}
+
+	// 5. Optional transcript leg: ordinary tool traces, no inline consent card.
+	if (SESSION !== null) {
+		await verb(cdp, "navigate", `/chat/${encodeURIComponent(SESSION)}`);
+		await wait(2000);
+		const consent = await cdp.evaluate(
+			`Array.from(document.querySelectorAll("section[aria-labelledby]")).some((n) => /Approve|Allow this change|Reject/.test(n.textContent) && /profile/i.test(n.textContent))`,
+		);
+		check(
+			"the conversation shows no inline profile consent card",
+			consent === false,
+			`consent-like card present: ${consent}`,
+		);
+		frames.push(await captureSettled(cdp, "profile-proposals-6-transcript"));
+	}
+	return frames;
 }
 
 /** The two authoring keys, as the cache holds them. */
@@ -50523,6 +50871,11 @@ async function main() {
 			"--scene settings-integrations needs --integration-url: the remote half is a different row and a different backend path, and a scene that silently skipped it would look like it ran",
 		);
 	}
+	if (SCENE === "profile-proposals" && BACKEND === null) {
+		throw new Error(
+			"--scene profile-proposals needs --backend: the proposals, the Accept and the profile it changes all live in a real daemon, which is this scene's oracle",
+		);
+	}
 	if (SCENE === "authoring-refresh" && BACKEND === null) {
 		throw new Error(
 			"--scene authoring-refresh needs --backend: the two lists are gated on the capabilities a live backend advertises, and the write this scene measures is a real request to that backend",
@@ -50946,6 +51299,7 @@ async function main() {
 			else if (SCENE === "plain-newchat-lifecycle")
 				await scenePlainNewchatLifecycle(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
+			else if (SCENE === "profile-proposals") await sceneProfileProposals(cdp);
 			else if (SCENE === "sidebar-bin-promptness")
 				await sceneSidebarBinPromptness(cdp);
 			else if (SCENE === "drafts") await sceneDrafts(cdp);

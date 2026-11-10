@@ -7,6 +7,8 @@
 	"ui.agents.proposals.not_applied": "未应用任何更改。接受前请查看刷新后的提案。",
 	"ui.agents.proposals.invalid_json": "请为编辑的策略字段输入有效的 JSON。未应用任何更改。",
 	"ui.agents.proposals.title": "对 {name} 的更改提案",
+	"ui.agents.proposals.title_create": "新配置文件提案：{name}",
+	"ui.agents.proposals.fields": "更改：{fields}",
 	"ui.agents.proposals.origin": "来源：{trigger}",
 	"ui.agents.proposals.untrusted": "此提案来自外部或转发的对话。接受前请审核更改内容。",
 	"ui.agents.proposals.open_conversation": "打开来源对话",
@@ -25,5 +27,7 @@
 	"ui.agents.proposals.accepted": "已将提案更改应用到 {name}。",
 	"ui.agents.proposals.rejected": "已拒绝对 {name} 的更改提案。未更改任何内容。",
 	"ui.agents.proposals.waiting": "智能体中有 {count} 项更改提案待审核",
-	"ui.agents.proposals.review": "在智能体中审核"
+	"ui.agents.proposals.review": "在智能体中审核",
+	"ui.agents.proposals.new_group": "新建提案",
+	"ui.agents.proposals.new_row": "待审核"
 }

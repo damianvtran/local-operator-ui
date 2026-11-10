@@ -9,6 +9,7 @@
 	"ui.shared.unified_diff.next": "下一处更改",
 	"ui.shared.unified_diff.next_hint": "下一处更改（N）",
 	"ui.shared.unified_diff.show_unchanged": "显示 {count} 行未更改内容",
+	"ui.shared.unified_diff.hide_unchanged": "隐藏 {count} 行未更改内容",
 	"ui.shared.unified_diff.line_added": "新增：",
 	"ui.shared.unified_diff.line_removed": "删除："
 }

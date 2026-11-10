@@ -59,6 +59,14 @@ export type UnifiedDiffProps = {
 	wordLevel?: boolean;
 	/** Names for the two sides, e.g. "Current" / "Proposed". */
 	labels?: { before: string; after: string };
+	/**
+	 * Identity of what is being compared. Folds and the next/previous position
+	 * reset only when this changes. The proposal editor feeds its live draft as
+	 * `after`, so resetting on every text change re-folded context and dropped
+	 * the reader's place on each keystroke (UX round 1, U7). Omitted, the pair
+	 * of texts is the identity, which is right for a read-only diff.
+	 */
+	resetKey?: string;
 	/** CSS max-height of the scrolling body; unbounded when omitted. */
 	maxHeight?: number | string;
 	onStats?: (stats: UnifiedDiffStats) => void;
@@ -88,6 +96,9 @@ const ROW_GROUND: Record<DiffLine["kind"], string> = {
 const NAV_BUTTON =
 	"rounded-sm p-1 text-ink-muted hover:bg-row-hover hover:text-ink disabled:text-ink-disabled focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent";
 
+const GAP_BUTTON =
+	"my-0.5 block w-full bg-surface py-0.5 text-center font-sans text-ink-muted text-meta hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2";
+
 const WORD_GROUND: Record<"add" | "del", string> = {
 	// Ground AND an underline in the role colour: the changed words must not be
 	// told apart by hue alone, and the wash is faint on the light themes.
@@ -97,6 +108,9 @@ const WORD_GROUND: Record<"add" | "del", string> = {
 
 function LineRow({ line }: { line: DiffLine }) {
 	const changed = line.kind !== "context";
+	// Narrowed once here: inside the segment callback TypeScript no longer
+	// knows the kind is not "context", and a context line has no word ground.
+	const wordGround = line.kind === "context" ? "" : WORD_GROUND[line.kind];
 	return (
 		<div
 			className={cn("flex min-w-0", ROW_GROUND[line.kind])}
@@ -142,7 +156,7 @@ function LineRow({ line }: { line: DiffLine }) {
 									// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered split of one line
 									key={index}
 									data-diff-word={line.kind}
-									className={cn("text-inherit", WORD_GROUND[line.kind])}
+									className={cn("text-inherit", wordGround)}
 								>
 									{segment.text}
 								</mark>
@@ -163,6 +177,7 @@ export function UnifiedDiff({
 	context = 3,
 	wordLevel = true,
 	labels,
+	resetKey,
 	maxHeight,
 	onStats,
 	className,
@@ -178,12 +193,18 @@ export function UnifiedDiff({
 	const [current, setCurrent] = useState(-1);
 	const changeRefs = useRef<(HTMLFieldSetElement | null)[]>([]);
 
-	// A new pair of texts is a new diff: folds and position start over.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on input change only
+	// A new comparison is a new diff: folds and position start over. While the
+	// same comparison is edited (`resetKey` stable) both survive; the position
+	// is only clamped so it never points past the last change.
+	const identity = resetKey ?? `${before}\u0000${after}`;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on identity change only
 	useEffect(() => {
 		setExpanded(new Set());
 		setCurrent(-1);
-	}, [before, after]);
+	}, [identity]);
+	useEffect(() => {
+		setCurrent((index) => Math.min(index, model.changes - 1));
+	}, [model.changes]);
 
 	useEffect(() => {
 		onStats?.({
@@ -261,8 +282,9 @@ export function UnifiedDiff({
 				</span>
 				<span className="sr-only">
 					{t("ui.shared.unified_diff.stats_accessible", {
-						added: model.added,
-						removed: model.removed,
+						// Plain ICU arguments are typed as strings by keys.gen.ts.
+						added: String(model.added),
+						removed: String(model.removed),
 					})}
 				</span>
 				{labels && (
@@ -275,8 +297,8 @@ export function UnifiedDiff({
 					{current >= 0 && (
 						<span className="text-ink-muted tabular-nums" aria-live="polite">
 							{t("ui.shared.unified_diff.position", {
-								index: current + 1,
-								total: model.changes,
+								index: String(current + 1),
+								total: String(model.changes),
 							})}
 						</span>
 					)}
@@ -323,8 +345,8 @@ export function UnifiedDiff({
 								data-diff-change={block.index}
 								data-current={current === block.index || undefined}
 								aria-label={t("ui.shared.unified_diff.position", {
-									index: block.index + 1,
-									total: model.changes,
+									index: String(block.index + 1),
+									total: String(model.changes),
 								})}
 								className={cn(
 									"scroll-my-6 border-l-2 border-transparent outline-none",
@@ -343,14 +365,45 @@ export function UnifiedDiff({
 						return (
 							<div key={block.id} tabIndex={-1} className="outline-none">
 								{expanded.has(block.id) ? (
-									block.lines.map((line) => (
-										<LineRow
-											key={`c:${line.oldNo}:${line.newNo}`}
-											line={line}
-										/>
-									))
+									<>
+										{/*
+										 * Expanded context can be folded again (design round 1, D2):
+										 * after a few expansions a long brief was an unfolded wall
+										 * with no way back. Same place and style as the expander, so
+										 * the pair reads as one toggle.
+										 */}
+										<button
+											// Keyed apart from the expander so React mounts a new
+											// control rather than relabelling the one just pressed.
+											key="hide"
+											type="button"
+											data-diff-gap-hide={block.lines.length}
+											onClick={(event) => {
+												event.currentTarget.parentElement?.focus({
+													preventScroll: true,
+												});
+												setExpanded((open) => {
+													const next = new Set(open);
+													next.delete(block.id);
+													return next;
+												});
+											}}
+											className={GAP_BUTTON}
+										>
+											{t("ui.shared.unified_diff.hide_unchanged", {
+												count: block.lines.length,
+											})}
+										</button>
+										{block.lines.map((line) => (
+											<LineRow
+												key={`c:${line.oldNo}:${line.newNo}`}
+												line={line}
+											/>
+										))}
+									</>
 								) : (
 									<button
+										key="show"
 										type="button"
 										data-diff-gap={block.lines.length}
 										onClick={(event) => {
@@ -361,7 +414,7 @@ export function UnifiedDiff({
 											});
 											setExpanded((open) => new Set(open).add(block.id));
 										}}
-										className="my-0.5 block w-full bg-surface py-0.5 text-center font-sans text-ink-muted text-meta hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2"
+										className={GAP_BUTTON}
 									>
 										{t("ui.shared.unified_diff.show_unchanged", {
 											count: block.lines.length,

@@ -9,6 +9,7 @@
 	"ui.shared.unified_diff.next": "Thay đổi tiếp theo",
 	"ui.shared.unified_diff.next_hint": "Thay đổi tiếp theo (N)",
 	"ui.shared.unified_diff.show_unchanged": "Hiện {count} dòng không đổi",
+	"ui.shared.unified_diff.hide_unchanged": "Ẩn {count} dòng không đổi",
 	"ui.shared.unified_diff.line_added": "Đã thêm:",
 	"ui.shared.unified_diff.line_removed": "Đã xóa:"
 }

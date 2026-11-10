@@ -29,7 +29,13 @@ const bundle = await build({
 const mod = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { diffModel, diffSequence, wordSegments, MAX_EDIT_DISTANCE } = mod;
+const {
+	diffModel,
+	diffSequence,
+	wordSegments,
+	MAX_EDIT_DISTANCE,
+	MAX_WORD_TOKENS,
+} = mod;
 
 /** Rebuild both sides from the model's lines - a diff must round-trip. */
 function sides(model) {
@@ -181,4 +187,25 @@ test("an edit distance past the bound degrades to a full replacement, still corr
 	assert.equal(model.removed, n);
 	assert.equal(model.added, n);
 	assert.deepEqual(sides(model), { before, after });
+});
+
+test("a one-word edit inside a long line still highlights (D3: cap applies after trimming common ends)", () => {
+	const words = Array.from({ length: 250 }, (_, i) => `word${i}`);
+	const before = words.join(" ");
+	const edited = [...words];
+	edited[125] = "changed";
+	const segments = wordSegments(before, edited.join(" "));
+	assert.ok(segments, "a 250-word line with one edit keeps its highlight");
+	assert.deepEqual(
+		segments.before.filter((s) => s.changed).map((s) => s.text),
+		["word125"],
+	);
+	assert.deepEqual(
+		segments.after.filter((s) => s.changed).map((s) => s.text),
+		["changed"],
+	);
+	// The bound still holds where it matters: a differing MIDDLE over the cap.
+	const wide = Array.from({ length: MAX_WORD_TOKENS + 10 }, (_, i) => `a${i}`);
+	const other = wide.map((w, i) => (i % 2 ? `b${i}` : w));
+	assert.equal(wordSegments(wide.join(" "), other.join(" ")), null);
 });

@@ -8,7 +8,8 @@
 	"ui.shared.unified_diff.previous_hint": "Changement précédent (P)",
 	"ui.shared.unified_diff.next": "Changement suivant",
 	"ui.shared.unified_diff.next_hint": "Changement suivant (N)",
-	"ui.shared.unified_diff.show_unchanged": "Afficher {count} lignes inchangées",
+	"ui.shared.unified_diff.show_unchanged": "{count, plural, one {Afficher # ligne inchangée} other {Afficher # lignes inchangées}}",
+	"ui.shared.unified_diff.hide_unchanged": "{count, plural, one {Masquer # ligne inchangée} other {Masquer # lignes inchangées}}",
 	"ui.shared.unified_diff.line_added": "Ajout :",
 	"ui.shared.unified_diff.line_removed": "Suppression :"
 }

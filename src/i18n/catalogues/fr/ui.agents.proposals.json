@@ -7,6 +7,8 @@
 	"ui.agents.proposals.not_applied": "Rien n’a été appliqué. Vérifiez la proposition actualisée avant de l’accepter.",
 	"ui.agents.proposals.invalid_json": "Saisissez un JSON valide pour le champ de politique modifié. Rien n’a été appliqué.",
 	"ui.agents.proposals.title": "Modification proposée pour {name}",
+	"ui.agents.proposals.title_create": "Nouveau profil proposé : {name}",
+	"ui.agents.proposals.fields": "Modifications : {fields}",
 	"ui.agents.proposals.origin": "Origine : {trigger}",
 	"ui.agents.proposals.untrusted": "Cette proposition provient d’une conversation externe ou relayée. Vérifiez les modifications avant de l’accepter.",
 	"ui.agents.proposals.open_conversation": "Ouvrir la conversation d’origine",
@@ -25,5 +27,7 @@
 	"ui.agents.proposals.accepted": "La modification proposée pour {name} a été appliquée.",
 	"ui.agents.proposals.rejected": "La modification proposée pour {name} a été rejetée. Rien n’a été modifié.",
 	"ui.agents.proposals.waiting": "{count, plural, one {# modification proposée en attente dans Agents} other {# modifications proposées en attente dans Agents}}",
-	"ui.agents.proposals.review": "Examiner dans Agents"
+	"ui.agents.proposals.review": "Examiner dans Agents",
+	"ui.agents.proposals.new_group": "Créations proposées",
+	"ui.agents.proposals.new_row": "En attente d’examen"
 }

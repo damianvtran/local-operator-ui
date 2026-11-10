@@ -7,6 +7,8 @@
 	"ui.agents.proposals.not_applied": "Ничего не применено. Проверьте обновлённое предложение перед принятием.",
 	"ui.agents.proposals.invalid_json": "Введите корректный JSON для изменённого поля политики. Ничего не применено.",
 	"ui.agents.proposals.title": "Предложение изменить {name}",
+	"ui.agents.proposals.title_create": "Предложен новый профиль: {name}",
+	"ui.agents.proposals.fields": "Изменения: {fields}",
 	"ui.agents.proposals.origin": "Источник: {trigger}",
 	"ui.agents.proposals.untrusted": "Предложение поступило из внешнего или пересланного диалога. Проверьте изменения перед принятием.",
 	"ui.agents.proposals.open_conversation": "Открыть исходный диалог",
@@ -25,5 +27,7 @@
 	"ui.agents.proposals.accepted": "Предложенное изменение применено к {name}.",
 	"ui.agents.proposals.rejected": "Предложенное изменение для {name} отклонено. Ничего не изменено.",
 	"ui.agents.proposals.waiting": "Ожидают решения в разделе «Агенты»: {count}",
-	"ui.agents.proposals.review": "Проверить в разделе «Агенты»"
+	"ui.agents.proposals.review": "Проверить в разделе «Агенты»",
+	"ui.agents.proposals.new_group": "Предложены к созданию",
+	"ui.agents.proposals.new_row": "Ожидает проверки"
 }

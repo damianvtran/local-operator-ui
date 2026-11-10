@@ -7,6 +7,8 @@
 	"ui.agents.proposals.not_applied": "No se aplicó nada. Revisa la propuesta actualizada antes de aceptarla.",
 	"ui.agents.proposals.invalid_json": "Introduce JSON válido para el campo de política editado. No se aplicó nada.",
 	"ui.agents.proposals.title": "Cambio propuesto para {name}",
+	"ui.agents.proposals.title_create": "Nuevo perfil propuesto: {name}",
+	"ui.agents.proposals.fields": "Cambios: {fields}",
 	"ui.agents.proposals.origin": "Origen: {trigger}",
 	"ui.agents.proposals.untrusted": "Esta propuesta procede de una conversación externa o retransmitida. Revisa sus cambios antes de aceptarla.",
 	"ui.agents.proposals.open_conversation": "Abrir la conversación de origen",
@@ -25,5 +27,7 @@
 	"ui.agents.proposals.accepted": "Se aplicó el cambio propuesto a {name}.",
 	"ui.agents.proposals.rejected": "Se rechazó el cambio propuesto para {name}. No se cambió nada.",
 	"ui.agents.proposals.waiting": "{count, plural, one {# cambio propuesto pendiente en Agentes} other {# cambios propuestos pendientes en Agentes}}",
-	"ui.agents.proposals.review": "Revisar en Agentes"
+	"ui.agents.proposals.review": "Revisar en Agentes",
+	"ui.agents.proposals.new_group": "Creaciones propuestas",
+	"ui.agents.proposals.new_row": "Pendiente de revisión"
 }
