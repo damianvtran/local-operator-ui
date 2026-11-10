@@ -254,7 +254,7 @@
 	"ui.chat.canonical.tool_row.diff.withheld": "Diff indisponible pour cette modification",
 	"ui.chat.canonical.notice.interrupted": "Interrompu",
 	"ui.chat.canonical.notice.stopped_with_error": "Arrêté sur une erreur",
-	"ui.chat.canonical.notice.compaction_not_run": "La compaction du contexte n’a pas été exécutée : {detail}",
-	"ui.chat.canonical.notice.compaction_not_run_after_colon": "La compaction du contexte n’a pas été exécutée — {detail}",
+	"ui.chat.canonical.notice.compaction_not_run": "Le compactage du contexte n’a pas été exécuté : {detail}",
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Le compactage du contexte n’a pas été exécuté — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "Actions pour {name}"
 }

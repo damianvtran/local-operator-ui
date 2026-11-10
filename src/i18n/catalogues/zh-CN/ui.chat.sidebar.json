@@ -79,5 +79,5 @@
 	"ui.chat.sidebar.catalogue.show_more_teams": "再显示{count, plural, other {{count, number, ::group-off}个团队}}",
 	"ui.chat.sidebar.drafts.row_label": "草稿：{title}",
 	"ui.chat.sidebar.drafts.discard_label": "放弃草稿“{title}”",
-	"ui.chat.sidebar.mark_all_read.label": "全部{count, number, ::group-off}条标为已读"
+	"ui.chat.sidebar.mark_all_read.label": "全部{count, number, ::group-off}个标为已读"
 }
