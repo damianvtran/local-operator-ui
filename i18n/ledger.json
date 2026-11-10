@@ -94691,8 +94691,26 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "73e65f3746d2-mp1843-a3-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/73e65f3746d2-mp1843-a3-es.json",
+					"receipt_sha256": "824a15aa259dc40e3fa0ba6c5b20ce6734b70f3ad370d8a155b86f78346102c6",
+					"scope": "ui.browser.media_access independent first audit, all 9 keys (post round-2 remediation)",
+					"note": "Independent audit mp1843-a3-es (task child, session 73e65f3746d2); record i18n/audits/evidence/es/ui.browser.media_access/mp1843-a3-es/record.json"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
@@ -94704,8 +94722,26 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "73e65f3746d2-mp1843-a3-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/73e65f3746d2-mp1843-a3-fr.json",
+					"receipt_sha256": "51b85c181bb7ce4dc6d4ed3cba7aba2c471d16bc31203e5fc74d0158aff5572a",
+					"scope": "ui.browser.media_access independent first audit, all 9 keys (post round-2 remediation)",
+					"note": "Independent audit mp1843-a3-fr (task child, session 73e65f3746d2); record i18n/audits/evidence/fr/ui.browser.media_access/mp1843-a3-fr/record.json"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "hi",
@@ -94717,8 +94753,26 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "73e65f3746d2-mp1843-a3-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/73e65f3746d2-mp1843-a3-hi.json",
+					"receipt_sha256": "1e87705033d0792c13ac03f3ab5bb58337d0da7fcc27740190a271cb747a0462",
+					"scope": "ui.browser.media_access independent first audit, all 9 keys (post round-2 remediation)",
+					"note": "Independent audit mp1843-a3-hi (task child, session 73e65f3746d2); record i18n/audits/evidence/hi/ui.browser.media_access/mp1843-a3-hi/record.json"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "ru",
@@ -94730,8 +94784,26 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "73e65f3746d2-mp1843-a3-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/73e65f3746d2-mp1843-a3-ru.json",
+					"receipt_sha256": "0821350c6b778fb2e145a78492f8ea99eeb68d6b35ac80aba34ea542422ae690",
+					"scope": "ui.browser.media_access independent first audit, all 9 keys (post round-2 remediation)",
+					"note": "Independent audit mp1843-a3-ru (task child, session 73e65f3746d2); record i18n/audits/evidence/ru/ui.browser.media_access/mp1843-a3-ru/record.json"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "ur",
@@ -94743,8 +94815,26 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "73e65f3746d2-mp1843-a3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/73e65f3746d2-mp1843-a3-ur.json",
+					"receipt_sha256": "d6fcc13ad8434cbca14d352800cb57b3a53437e6f3759ec9377659079d739fb1",
+					"scope": "ui.browser.media_access independent first audit, all 9 keys (post round-2 remediation)",
+					"note": "Independent audit mp1843-a3-ur (task child, session 73e65f3746d2); record i18n/audits/evidence/ur/ui.browser.media_access/mp1843-a3-ur/record.json"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "vi",
@@ -94756,8 +94846,26 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "73e65f3746d2-mp1843-a3-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/73e65f3746d2-mp1843-a3-vi.json",
+					"receipt_sha256": "297331ca7d3c3b6256c2773afb96e451e19c55f530f9eca832f7b79b29fbfee3",
+					"scope": "ui.browser.media_access independent first audit, all 9 keys (post round-2 remediation)",
+					"note": "Independent audit mp1843-a3-vi (task child, session 73e65f3746d2); record i18n/audits/evidence/vi/ui.browser.media_access/mp1843-a3-vi/record.json"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "zh-CN",
@@ -94769,8 +94877,26 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "73e65f3746d2-mp1843-a3-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/73e65f3746d2-mp1843-a3-zh-cn.json",
+					"receipt_sha256": "01c58fdc7001af53294368e3aadfdeff9c4003c5d8e60685776cc8279aebae70",
+					"scope": "ui.browser.media_access independent first audit, all 9 keys (post round-2 remediation)",
+					"note": "Independent audit mp1843-a3-zh-cn (task child, session 73e65f3746d2); record i18n/audits/evidence/zh-CN/ui.browser.media_access/mp1843-a3-zh-cn/record.json"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
