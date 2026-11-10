@@ -66,5 +66,7 @@ def assert_previous_consumed(root):
 
 def receipts_tail(root, limit=30):
     """Sanitized worker receipt tail for diagnostics (drops paths/tool lists)."""
-    keep = ('event', 'pid', 'command_id', 'tool', 'call_id')
+    # marker_ids/turn_user_rows (first token per current-turn user row) say
+    # WHAT displaced a marker on a skipped turn (R18, run 42727770460).
+    keep = ('event', 'pid', 'command_id', 'tool', 'call_id', 'marker_ids', 'turn_user_rows')
     return [{k: e[k] for k in keep if k in e} for e in receipts(root)][-limit:]

@@ -19,20 +19,49 @@ from urllib.parse import urlsplit
 # request's LATEST user message carries `MUSIC_QA_TOOL <that command's id>`.
 # Exact id match (not substring) so one id can never authorise a prefix-sharing
 # sibling. Pure functions so tests drive them without the serving graph.
+#
+# R18 (run 42727770460): "latest user message" was too narrow. At the provider
+# boundary Core's Session._commit_system_state may append a `[session-state]`
+# CustomMessage AFTER the prompt (session.py: _context.messages.append) whenever a
+# dynamic system section changed -- e.g. a job just went running -- and
+# harness/render.py renders that row as a USER turn. The harness's own prompted
+# status-cancel turn then had `[session-state]...` as its latest user row, was
+# skipped as `turn_without_marker`, ended idle, and the command never emitted
+# (20 s `emitted` timeout). The authority is therefore every user row of the
+# CURRENT turn: those after the last assistant message. A job follow-up still
+# never qualifies -- the prompt that carried a marker was already answered by
+# an assistant message, so it sits before the boundary.
 MARKER = re.compile(r'MUSIC_QA_TOOL (\S+)')
 
 
-def latest_user_text(messages):
+def _text(message):
+    return ' '.join(getattr(part, 'text', '') or '' for part in (getattr(message, 'content', None) or ())
+                    if getattr(part, 'type', None) == 'text')
+
+
+def current_turn_user_texts(messages):
+    """User-row texts after the last assistant message, oldest first."""
+    texts = []
     for message in reversed(list(messages or ())):
-        if getattr(message, 'role', None) == 'user':
-            return ' '.join(getattr(part, 'text', '') or '' for part in (message.content or ())
-                            if getattr(part, 'type', None) == 'text')
-    return ''
+        role = getattr(message, 'role', None)
+        if role == 'assistant':
+            break
+        if role == 'user':
+            texts.append(_text(message))
+    return texts[::-1]
 
 
-def prompted_command_id(messages):
-    match = MARKER.search(latest_user_text(messages))
-    return match.group(1) if match else None
+def prompted_command_ids(messages):
+    """Exact marker ids carried by the current turn's user rows."""
+    return [m.group(1) for text in current_turn_user_texts(messages) for m in MARKER.finditer(text)]
+
+
+def turn_shape(messages):
+    """Content-free-ish receipt of the current turn's user rows: the first
+    token of each (e.g. `[session-state]`, `MUSIC_QA_TOOL`), so the next
+    skipped turn names what displaced the marker instead of leaving it to
+    inference as run 42727770460 did."""
+    return [(text.split() or [''])[0][:32] for text in current_turn_user_texts(messages)]
 
 scope = os.environ.get('MUSIC_QA_ROOT')
 if scope:
@@ -71,12 +100,13 @@ if scope:
                 note('model_request', registered_tools=tool_names,
                      command_id=command.get('id') if command else None)
                 if command and command['id'] not in self.emitted:
-                    marked = prompted_command_id(request.messages)
-                    if marked != command['id']:
+                    marked = prompted_command_ids(request.messages)
+                    if command['id'] not in marked:
                         # Job follow-up / any turn the harness did not prompt
                         # for THIS command: answer text, leave the command for
                         # the harness's own prompted turn.
-                        note('turn_without_marker', command_id=command['id'], marker_id=marked)
+                        note('turn_without_marker', command_id=command['id'], marker_ids=marked,
+                             turn_user_rows=turn_shape(request.messages))
                         yield StreamTextDelta(delta='Owned synthetic music QA turn complete.')
                         yield StreamEndEvent(stop_reason='stop')
                         return

@@ -72,6 +72,14 @@ class CommandSequencingTest(unittest.TestCase):
                          [{'event': 'loaded', 'pid': 1},
                           {'event': 'model_request', 'pid': 1, 'command_id': 'c'}])
 
+    def test_receipts_tail_keeps_skipped_turn_shape(self):
+        # R18: the skipped turn's displacing row must reach timeout diagnostics.
+        self.note(1, event='turn_without_marker', command_id='c', marker_ids=[],
+                  turn_user_rows=['[session-state]'], registered_tools=['a'])
+        self.assertEqual(receipts_tail(self.root),
+                         [{'event': 'turn_without_marker', 'pid': 1, 'command_id': 'c',
+                           'marker_ids': [], 'turn_user_rows': ['[session-state]']}])
+
 
 if __name__ == '__main__':
     unittest.main()
