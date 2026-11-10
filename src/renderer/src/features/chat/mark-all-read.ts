@@ -43,9 +43,12 @@ export { unreadAckableCount, unreadAckableRows, unreadMarkKind };
  * (UX round 1, U1; design D3), and the rows it reaches OUTSIDE the section the
  * control is drawn in are named too.
  *
- * `elsewhere` counts the ackable rows rendered under "Previous chats". The
- * control sits in the Active chats header, so those rows are the ones a reader
- * may not have on screen at all — the case the operator's own report does not
+ * `elsewhere` counts the ackable rows the catalogue does not class `active`. They carry no
+ * heading of their own (the sections are Running / Today / This week / Older, by time, and
+ * "Previous chats" no longer exists: `scripts/renderer-driver.mjs` notes it), so the copy names
+ * them by that class and not by a section. The
+ * control sits on the first section that has rows, so those rows are the ones a
+ * reader may not have on screen at all — the case the operator's own report does not
  * cover and the one that makes the extent worth a sentence.
  */
 export type MarkAllReadCopy = {
@@ -99,7 +102,7 @@ export const markAllReadCopy = (
 	 * Each clause is a SENTENCE that carries its own full stop, and the two are joined
 	 * by a space. The previous shape put the terminator in the `elsewhere` arm and
 	 * began the tokenless arm with a space, so with BOTH clauses present two sentences
-	 * ran together — "…in Previous chats 1 unread mark with no completion token cannot
+	 * ran together — "…that is not active 1 unread mark with no completion token cannot
 	 * be cleared." — and neither clause's own test could see it, because each was
 	 * asserted on a roster where only it fired (design D5 / QA Q-1; measured, and the
 	 * base renders the same run-on). The comma keeps the first clause inside the

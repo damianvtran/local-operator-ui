@@ -330,7 +330,7 @@ test("the bulk mark-read label carries its count and follows the locale", () => 
 
 /** Words the English tooltip is made of; none may survive in another locale. */
 const ENGLISH_TOOLTIP_FRAGMENT =
-	/\b(Mark|unread|chats?|including|Previous|completion token|cleared)\b/;
+	/\b(Mark|unread|chats?|including|not active|completion token|cleared)\b/;
 
 test("the bulk control's tooltip and accessible-name suffix are catalogue copy in every locale", () => {
 	/*
@@ -361,11 +361,11 @@ test("the bulk control's tooltip and accessible-name suffix are catalogue copy i
 	assert.equal(mod.markAllReadCopy(local).nameSuffix, "");
 	assert.equal(
 		mod.markAllReadCopy(elsewhere).scope,
-		"Mark 2 unread chats as read, including 1 in Previous chats.",
+		"Mark 2 unread chats as read, including 1 that is not active.",
 	);
 	assert.equal(
 		mod.markAllReadCopy(elsewhere).nameSuffix,
-		", including 1 in Previous chats",
+		", including 1 that is not active",
 	);
 	assert.equal(
 		mod.markAllReadCopy(tokenless).scope,
@@ -373,7 +373,7 @@ test("the bulk control's tooltip and accessible-name suffix are catalogue copy i
 	);
 	assert.equal(
 		mod.markAllReadCopy(both).scope,
-		"Mark 2 unread chats as read, including 1 in Previous chats. 1 unread mark with no completion token cannot be cleared.",
+		"Mark 2 unread chats as read, including 1 that is not active. 1 unread mark with no completion token cannot be cleared.",
 	);
 
 	useMarkers();

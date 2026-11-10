@@ -638,13 +638,13 @@
 		}
 	},
 	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": {
-		"role": "tooltip (title) of the bulk control; same sentence as scope_chats plus the number of those chats that sit outside the section the control is drawn in",
+		"role": "tooltip (title) of the bulk control; same sentence as scope_chats plus how many of those chats are not active",
 		"tone": "plain declarative sentence, full stop at the end",
 		"length": "One sentence; shown in a native tooltip, so it may wrap.",
-		"note": "Used only when elsewhere is at least 1. Previous chats names the list of older chats below the control's own section; keep it as the product's own name for that list. The elsewhere count is part of count (a subset), never an addition.",
+		"note": "Used only when elsewhere is at least 1. Not active is the catalogue's own class for a conversation the backend does not list as active; it is NOT a section heading (the sidebar has no such heading) and not the same as Running. Translate the sense plainly, no section name. The elsewhere count is part of count (a subset), never an addition. The sentence is one clause after the comma; keep a single full stop.",
 		"placeholders": {
 			"count": "number of unread chats the click will mark read; ungrouped digits",
-			"elsewhere": "how many of those chats sit under Previous chats; at least 1, ungrouped digits"
+			"elsewhere": "how many of those chats are not active; at least 1, ungrouped digits; drives its own plural"
 		}
 	},
 	"ui.chat.sidebar.mark_all_read.scope_tokenless": {
@@ -667,12 +667,12 @@
 		}
 	},
 	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": {
-		"role": "tail appended to the bulk control's accessible name (screen readers) when some unread chats sit outside its section",
+		"role": "tail appended to the bulk control's accessible name (screen readers) when some of the unread chats are not active",
 		"tone": "fragment that continues the visible label, no trailing punctuation",
 		"length": "Short clause; read straight after the label \"Mark all N read\".",
-		"note": "APPENDED directly after the translated mark_all_read.label with no separator added by the code, so it must begin with the punctuation that joins it (a comma in English) and the label must remain a prefix of the full name (WCAG 2.5.3 Label in Name). Previous chats is the product's own name for the older-chats list.",
+		"note": "APPENDED directly after the translated mark_all_read.label with no separator added by the code, so it must begin with the punctuation that joins it (a comma in English) and the label must remain a prefix of the full name (WCAG 2.5.3 Label in Name). Not active is the catalogue's own class, not a section heading; see scope_chats_elsewhere.",
 		"placeholders": {
-			"elsewhere": "how many unread chats sit under Previous chats; at least 1, ungrouped digits"
+			"elsewhere": "how many of the unread chats are not active; at least 1, ungrouped digits; drives its own plural"
 		}
 	}
 }
