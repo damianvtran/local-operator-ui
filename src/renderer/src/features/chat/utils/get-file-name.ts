@@ -1,4 +1,6 @@
-import { t } from "@shared/i18n";
+// Relative, not `@shared/i18n`: this module is bundled through attachment-encode.ts by
+// harnesses that run esbuild without the tsconfig aliases; its siblings import `t` this way.
+import { t } from "../../../../../i18n/messages";
 
 const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
 const PATH_SEPARATOR_REGEX = /[/\\]/;
