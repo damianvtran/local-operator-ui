@@ -9,6 +9,7 @@ import {
 import { forgetClientHintOptIns, installClientHints } from "./client-hints";
 import type { DownloadDecision } from "./downloads";
 import type { DownloadItemLike } from "./electron-types";
+import type { MediaCheckInput, MediaRequestInput } from "./media-permissions";
 
 /**
  * The persistent browsing profile, and the session-level handlers that go with
@@ -130,7 +131,10 @@ export function browserUserAgent(): string {
  *   emulation for this (`cdp.ts` already enables `Emulation.setFocusEmulationEnabled`
  *   at attach for `type`, and that is not what this depends on).
  *
- * SO BOTH HANDLERS STAY DEFAULT-DENY, for every permission and every view:
+ * SO BOTH HANDLERS STAY DEFAULT-DENY, for every permission and every view —
+ * with ONE exception, `media` (camera/microphone), which is routed to the
+ * user-mediated prompt in `media-permissions.ts` when the `media` hook is
+ * installed (and stays denied when it is not):
  * `clipboard-read` and `clipboard-sanitized-write` are both refused, so
  * `navigator.permissions.query` answers "denied" and `readText()` rejects — a
  * PERMISSION-level fact rather than a shim — and the page's own WRITE is served by
@@ -164,7 +168,32 @@ export interface BrowserSessionHooks {
 		 * handler runs for the ask the page actually made.
 		 */
 		source: "request" | "check";
+		/**
+		 * For `media` only: the devices the ask named (a request's `mediaTypes`,
+		 * a check's single `mediaType`); `[]` for a request that named none (the
+		 * `<usermedia>` element's). Without it a correct camera-check denial after a
+		 * microphone grant reads like a bug in the log (review R3).
+		 */
+		mediaTypes?: readonly string[];
 	}) => void;
+	/**
+	 * Camera/microphone: the ONE permission that is not a constant refusal.
+	 *
+	 * ABSENT means `media` is denied like everything else, so a test or a session
+	 * that installs the handlers alone never grants a capture device. Present, the
+	 * request handler hands `media` requests (and only those) to `request`, which
+	 * answers the callback exactly once — possibly much later, after the user
+	 * decides — and the check handler answers `media` checks from `check`, which is
+	 * true only for what the user already allowed. See `media-permissions.ts` for
+	 * the human-only invariant.
+	 */
+	media?: {
+		request: (
+			input: MediaRequestInput,
+			callback: (granted: boolean) => void,
+		) => void;
+		check: (input: MediaCheckInput) => boolean;
+	};
 	/**
 	 * Decide one download attempt, for EVERY download on this session.
 	 *
@@ -267,23 +296,67 @@ export function installBrowserSessionHandlers(
 	// unless the developer has manually configured a custom handler", and "most web
 	// APIs do a permission check then make a request if the check is denied" — so
 	// BOTH handlers must be installed; one alone is a hole.
-	const report = (
+	const report = <T extends boolean = false>(
 		source: "request" | "check",
 		webContentsId: number | null,
 		permission: string,
 		origin: string,
-	): false => {
+		granted: T = false as T,
+		mediaTypes?: readonly string[],
+	): T => {
 		hooks.onPermissionRequested?.({
 			webContentsId: webContentsId ?? -1,
 			origin,
 			permission,
-			granted: false,
+			granted,
 			source,
+			...(mediaTypes ? { mediaTypes } : {}),
 		});
-		return false;
+		return granted;
+	};
+	const topUrlOf = (webContents: WebContents | null | undefined): string => {
+		try {
+			return webContents && !webContents.isDestroyed()
+				? webContents.getURL()
+				: "";
+		} catch {
+			return "";
+		}
 	};
 	browserSession.setPermissionRequestHandler(
 		(webContents, permission, callback, details) => {
+			const media = hooks.media;
+			if (permission === "media" && media && webContents) {
+				const mediaDetails = details as {
+					securityOrigin?: string;
+					requestingUrl?: string;
+					mediaTypes?: string[];
+				};
+				const requestingOrigin =
+					mediaDetails?.securityOrigin || mediaDetails?.requestingUrl || "";
+				// The answer may come long after this handler returns (the user is
+				// being asked), so the report is written when it is known, not now.
+				media.request(
+					{
+						webContentsId: webContents.id,
+						topUrl: topUrlOf(webContents),
+						requestingOrigin,
+						mediaTypes: mediaDetails?.mediaTypes,
+					},
+					(granted) =>
+						callback(
+							report(
+								"request",
+								webContents.id,
+								permission,
+								requestingOrigin,
+								granted === true,
+								mediaDetails?.mediaTypes ?? [],
+							),
+						),
+				);
+				return;
+			}
 			callback(
 				report(
 					"request",
@@ -297,8 +370,27 @@ export function installBrowserSessionHandlers(
 		},
 	);
 	browserSession.setPermissionCheckHandler(
-		(webContents, permission, requestingOrigin, details) =>
-			report(
+		(webContents, permission, requestingOrigin, details) => {
+			const media = hooks.media;
+			if (permission === "media" && media) {
+				const origin = requestingOrigin || details?.requestingUrl || "";
+				const mediaType = (details as { mediaType?: string } | undefined)
+					?.mediaType;
+				return report(
+					"check",
+					webContents?.id ?? null,
+					permission,
+					origin,
+					media.check({
+						webContentsId: webContents?.id ?? null,
+						topUrl: topUrlOf(webContents),
+						requestingOrigin: origin,
+						mediaType,
+					}) === true,
+					mediaType ? [mediaType] : [],
+				);
+			}
+			return report(
 				"check",
 				webContents?.id ?? null,
 				permission,
@@ -308,7 +400,8 @@ export function installBrowserSessionHandlers(
 				// "(unknown origin)" line for a probe the PAGE caused is exactly the line
 				// somebody needs when a site's permission stops working.
 				requestingOrigin || details?.requestingUrl || "",
-			),
+			);
+		},
 	);
 
 	// Downloads. THE PRE-FEATURE RULE IS STILL THE DEFAULT — a download the app was

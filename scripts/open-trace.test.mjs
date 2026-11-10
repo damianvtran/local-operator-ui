@@ -96,7 +96,9 @@ function fields(line) {
 test("a full switch reports every stage in ms from the click and settles once", () => {
 	const r = rig();
 	r.at(1000);
+	const beforeClickEpoch = performance.timeOrigin + performance.now();
 	const t = r.tracer.begin("abc123", "sidebar");
+	const afterClickEpoch = performance.timeOrigin + performance.now();
 	r.at(1004);
 	r.tracer.note("abc123", "routed");
 	r.at(1800);
@@ -114,8 +116,10 @@ test("a full switch reports every stage in ms from the click and settles once", 
 	assert.equal(r.lines.length, 1);
 	assert.equal(
 		r.lines[0],
-		`[open-trace] t=${t} session=abc123 via=sidebar outcome=settled store=- routed=4 request=- snapshot=800 content=900 painted=916 sendable=810 settled=916`,
+		`[open-trace] t=${t} clickEpochMs=${fields(r.lines[0]).clickEpochMs} session=abc123 via=sidebar outcome=settled store=- routed=4 request=- snapshot=800 content=900 painted=916 sendable=810 settled=916`,
 	);
+	assert.ok(Number(fields(r.lines[0]).clickEpochMs) >= beforeClickEpoch);
+	assert.ok(Number(fields(r.lines[0]).clickEpochMs) <= afterClickEpoch);
 	assert.equal(r.timerCount(), 0, "the timeout is cleared on settle");
 	// Late stages after settle write nothing.
 	r.tracer.note("abc123", "content");
@@ -259,7 +263,7 @@ test("fail ends only the matching trace", () => {
 
 test("no-content guard: the line is a fixed grammar of ids, labels and numbers", () => {
 	const shape =
-		/^\[open-trace\] t=\d+ session=([A-Za-z0-9_-]{1,80}|\?) via=(sidebar|open|native) outcome=(settled|superseded|missing|left|timeout) store=(\d+|-) routed=(\d+|-) request=(\d+|-) snapshot=(\d+|-) content=(\d+|-) painted=(\d+|-) sendable=(\d+|-) settled=(\d+|-)( by=t\d+)?$/;
+		/^\[open-trace\] t=\d+ clickEpochMs=(\d+(\.\d+)?|-) session=([A-Za-z0-9_-]{1,80}|\?) via=(sidebar|open|native) outcome=(settled|superseded|missing|left|timeout) store=(\d+|-) routed=(\d+|-) request=(\d+|-) snapshot=(\d+|-) content=(\d+|-) painted=(\d+|-) sendable=(\d+|-) settled=(\d+|-)( by=t\d+)?$/;
 	const line = formatOpenTraceLine(
 		{
 			token: 7,
@@ -660,7 +664,9 @@ test("wiring: every stage has its one hook and the entrances start traces", () =
 	);
 	assert.match(
 		read("shared/hooks/use-canonical-session.ts"),
-		/if \(frame\.type === "snapshot"\) \{[\s\S]{0,200}openTrace\.note\(sessionId, "snapshot", openTraceToken\)/,
+		// The optional receipt log now precedes this note; runtime receipt tests
+		// cover its actual callbacks and clocks, not just this wiring guard.
+		/if \(frame\.type === "snapshot"\) \{[\s\S]{0,600}openTrace\.note\(sessionId, "snapshot", openTraceToken\)/,
 	);
 	/*
 	 * The REQUEST stage: the pane stamps it from the subscription's DECISION, and

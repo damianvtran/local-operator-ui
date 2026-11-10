@@ -4,6 +4,7 @@ import type {
 	AddressHistoryResponse,
 } from "../../shared/browser-address-history";
 import { isExtensionId } from "../../shared/browser-extensions";
+import type { MediaPermissionView } from "../../shared/browser-media-permission";
 import type { PasskeyNoticeView } from "../../shared/browser-passkey-notice";
 import type {
 	HumanTabAction,
@@ -472,6 +473,9 @@ export interface BrowserHostOptions {
 	/** The active tab's passkey notice, from the wiring that owns the shim's state
 	 * (`passkey-notice.ts`). Absent means none: the projection then carries null. */
 	passkeyNotice?: (tabId: number) => PasskeyNoticeView | null;
+	/** The active tab's camera/microphone prompt (or macOS notice), from
+	 * `media-permissions.ts`. Absent means none: the projection carries null. */
+	mediaPermission?: (tabId: number) => MediaPermissionView | null;
 	/** Whether an extension is installed AND enabled right now (the extension
 	 * manager's `isActive`). Lets the USER type one of its pages into a user tab
 	 * (review U1c); absent = no extension pages. */
@@ -549,6 +553,7 @@ export class BrowserHost implements BrowserActionContext {
 	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
 	/** Constructor-assigned, not a field initialiser: see `tabAudio` above. */
 	private readonly passkeyNotice: BrowserHostOptions["passkeyNotice"];
+	private readonly mediaPermission: BrowserHostOptions["mediaPermission"];
 	private readonly isActiveExtension: BrowserHostOptions["isActiveExtension"];
 	/** S4b's popout health, read from the controller (or the launch's platform
 	 * answer when no controller exists). The strip reads this from the same
@@ -598,6 +603,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.forgetSiteData = options.forgetSiteData;
 		this.approvalsCard = options.approvalsCard;
 		this.passkeyNotice = options.passkeyNotice;
+		this.mediaPermission = options.mediaPermission;
 		this.isActiveExtension = options.isActiveExtension;
 		this.addressOverlayMode =
 			options.addressOverlayMode ??
@@ -1137,6 +1143,12 @@ export class BrowserHost implements BrowserActionContext {
 			// user activates that tab, if it has not aged out.
 			passkeyNotice: active
 				? (this.passkeyNotice?.(active.tabId) ?? null)
+				: null,
+			// The ACTIVE tab's camera/microphone prompt only, scoped like the passkey
+			// notice: a background tab's request waits (its callback held) until the
+			// user switches to it, rather than asking about a page they cannot see.
+			mediaPermission: active
+				? (this.mediaPermission?.(active.tabId) ?? null)
 				: null,
 			// Internal pages project their lop:// URL, never the nonce document.
 			url: active ? displayUrlFor(active.view.webContents) : "",

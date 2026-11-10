@@ -7,6 +7,10 @@ import type {
 	AddressHistoryResponse,
 } from "../../../../../shared/browser-address-history";
 import type { BrowserAvailability } from "../../../../../shared/browser-availability";
+import type {
+	MediaPermissionDecision,
+	MediaPermissionView,
+} from "../../../../../shared/browser-media-permission";
 import type { PasskeyNoticeView } from "../../../../../shared/browser-passkey-notice";
 import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
 import {
@@ -185,6 +189,10 @@ export interface BrowserChromeState {
 	 * provide" notice, or null. Main's facts only (origin, owner); see
 	 * `src/shared/browser-passkey-notice.ts`. Optional for a host that predates it. */
 	passkeyNotice?: PasskeyNoticeView | null;
+	/** The active tab's camera/microphone prompt (or macOS notice), or null. Main's
+	 * facts only; see `src/shared/browser-media-permission.ts`. Optional for a host
+	 * that predates it. */
+	mediaPermission?: MediaPermissionView | null;
 	/** Null while the active tab's last navigation succeeded, is still loading, or
 	 * has no document yet. */
 	navFailure: LoadFailureView | null;
@@ -512,6 +520,16 @@ export interface BrowserChrome {
 		tabId: number,
 		at: number,
 	) => Promise<boolean>;
+	/** Answer the camera/microphone prompt. `trusted` must be the click's own
+	 * `event.isTrusted`: main grants nothing without it. */
+	decideMediaPermission: (
+		tabId: number,
+		id: string,
+		decision: MediaPermissionDecision,
+		trusted: boolean,
+	) => Promise<void>;
+	/** The system-blocked notice's "Open System Settings" (main picks the pane). */
+	openMediaSystemSettings: (tabId: number, id: string) => Promise<void>;
 }
 
 export interface BrowserProjection {
@@ -934,6 +952,10 @@ export function useBrowserChrome(): BrowserChrome {
 			clearData: (what) => runVoid(() => api?.clearData(what)),
 			dismissPasskeyNotice: (tabId, at) =>
 				runVoid(() => api?.dismissPasskeyNotice(tabId, at)),
+			decideMediaPermission: (tabId, id, decision, trusted) =>
+				runVoid(() => api?.decideMediaPermission(tabId, id, decision, trusted)),
+			openMediaSystemSettings: (tabId, id) =>
+				runVoid(() => api?.openMediaSystemSettings(tabId, id)),
 			openPasskeyNotice: (tabId, at) =>
 				runVoid(async () => {
 					const answer = await api?.openPasskeyNotice(tabId, at);

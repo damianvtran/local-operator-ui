@@ -119,6 +119,66 @@ function rig() {
 /** Let the adoption's deferred replay run. */
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+/** Metadata stays outside the raw frame through all three delivery paths. */
+test("snapshot receipts distinguish direct, buffered replay and adopted live delivery", async () => {
+	const r = rig();
+	const event = () => ({
+		kind: "data",
+		data: '{"type":"snapshot"}',
+		receipt: {
+			streamId: "synthetic1",
+			sessionId: "123456abcdef",
+			chars: 19,
+			mainRecordEpochMs: 1,
+			mainFoldMs: 0,
+			mainObserverMs: 0,
+			mainEmitMs: 0,
+		},
+	});
+	const seen = [];
+	const direct = subscribeDesktopStream({ sessionId: "123456abcdef" }, (e) =>
+		seen.push(e),
+	);
+	const a = event();
+	Object.freeze(a.receipt);
+	Object.freeze(a);
+	r.emit(0, a);
+	assert.equal(seen[0].receipt.delivery, "direct");
+	assert.ok(Number.isFinite(seen[0].receipt.rendererEntryEpochMs));
+	assert.equal(
+		a.receipt.delivery,
+		undefined,
+		"contextBridge envelope stays untouched",
+	);
+	direct();
+	prewarmSessionStream("123456abcdef");
+	const b = event();
+	r.emit(1, b);
+	assert.equal(seen.length, 1);
+	const adopted = subscribeDesktopStream(
+		{
+			sessionId: "123456abcdef",
+			openFrame: false,
+			journalOrder: false,
+			peerJournalSource: false,
+		},
+		(e) => seen.push(e),
+	);
+	await flush();
+	assert.equal(seen[1].receipt.delivery, "replay");
+	assert.ok(Number.isFinite(seen[1].receipt.bufferedAt));
+	assert.ok(seen[1].receipt.deliveryAt >= seen[1].receipt.bufferedAt);
+	const c = event();
+	r.emit(1, c);
+	assert.equal(seen[2].receipt.delivery, "live");
+	assert.equal(seen[2].receipt.bufferedAt, undefined);
+	assert.deepEqual(
+		seen.map((e) => e.data),
+		[a.data, b.data, c.data],
+	);
+	adopted();
+});
+
 /**
  * The app's capabilities answer, as `useDesktopCapabilities` records it.
  *

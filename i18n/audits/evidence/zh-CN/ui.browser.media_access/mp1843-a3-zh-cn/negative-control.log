@@ -1,0 +1,6 @@
+FAIL es blocked: ICU shape differs
+FAIL fr blocked_hint: U+0020 before : ; ! ? (fr guide requires U+202F)
+FAIL ru blocked_hint[video] does not name the Allow button (Разрешить)
+FAIL vi open_system_settings lacks "Cài đặt hệ thống"
+verify: FAILED 4
+exit=1

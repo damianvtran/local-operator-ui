@@ -28,6 +28,9 @@ export const shell = { openPath: async () => '' };
 // opens the menu, so building one is a no-op here rather than a fake menu.
 export const Menu = { buildFromTemplate: () => ({ popup: () => {} }) };
 export const clipboard = { writeText: () => {} };
+// The camera/microphone OS gate (media-permissions.ts). Startup asks for no
+// device, so neither member is ever called; modelled so the import resolves.
+export const systemPreferences = { getMediaAccessStatus: () => 'not-determined', askForMediaAccess: async () => false };
 // The extension manager's native consent dialogs (extensions/dialogs.ts),
 // modelled only so the import resolves: startup installs nothing, so no dialog
 // is ever asked for, and an inert answer can never show one.

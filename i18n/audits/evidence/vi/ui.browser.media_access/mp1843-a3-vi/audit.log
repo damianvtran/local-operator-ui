@@ -1,0 +1,172 @@
+en 582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42
+context edb38694470ca038987734fd1a2b5661bf77db0067ec8537837eb417cea4c58d
+
+== es 5329d67ac11104dfdf6f6f0761c000d2be683cc068bd7a42d0bbb296611b3741 (sibling ui.browser.media_permission 819f5392c52cea3207379ea4d11b9ea462510a3cb90ba3d3860f51d042b3b8b0)
+  prompt_label[audio]: Solicitud de micrófono
+  prompt_label[video]: Solicitud de cámara
+  prompt_label[other]: Solicitud de cámara y micrófono
+  prompt_dismiss[audio]: Descartar la solicitud de micrófono
+  prompt_dismiss[video]: Descartar la solicitud de cámara
+  prompt_dismiss[other]: Descartar la solicitud de cámara y micrófono
+  blocked_label[audio]: Micrófono bloqueado para este sitio
+  blocked_label[video]: Cámara bloqueada para este sitio
+  blocked_label[other]: Cámara y micrófono bloqueados para este sitio
+  blocked[audio]: El micrófono está bloqueado para meet.google.com.
+  blocked[video]: La cámara está bloqueada para meet.google.com.
+  blocked[other]: La cámara y el micrófono están bloqueados para meet.google.com.
+  blocked_hint[audio]: Para usarlo aquí, selecciona Permitir y vuelve a intentarlo en la página.
+  blocked_hint[video]: Para usarla aquí, selecciona Permitir y vuelve a intentarlo en la página.
+  blocked_hint[other]: Para usarlos aquí, selecciona Permitir y vuelve a intentarlo en la página.
+  system_blocked_label[audio]: Micrófono desactivado en macOS
+  system_blocked_label[video]: Cámara desactivada en macOS
+  system_blocked_label[other]: Cámara y micrófono desactivados en macOS
+  system_blocked_hint: Activa el acceso en Ajustes del Sistema › Privacidad y seguridad. Puede que tengas que salir de Local Operator y volver a abrirlo para que el cambio se aplique.
+  open_system_settings: Abrir Ajustes del Sistema
+  notice_dismiss: Descartar aviso
+  [consistency] label/dismiss/allow (Permitir) and "Ajustes del Sistema › Privacidad y seguridad" checked
+
+== fr 4840c44769c872e4592924acafe16f3b56519bcb3dbc4da3e11b621f28507f56 (sibling ui.browser.media_permission 311336a7158ab1f208bfae5985d20903131b361628ad361735023440ac16f15b)
+  prompt_label[audio]: Demande d’accès au micro
+  prompt_label[video]: Demande d’accès à la caméra
+  prompt_label[other]: Demande d’accès à la caméra et au micro
+  prompt_dismiss[audio]: Ignorer la demande d’accès au micro
+  prompt_dismiss[video]: Ignorer la demande d’accès à la caméra
+  prompt_dismiss[other]: Ignorer la demande d’accès à la caméra et au micro
+  blocked_label[audio]: Micro bloqué pour ce site
+  blocked_label[video]: Caméra bloquée pour ce site
+  blocked_label[other]: Caméra et micro bloqués pour ce site
+  blocked[audio]: Le micro est bloqué pour meet.google.com.
+  blocked[video]: La caméra est bloquée pour meet.google.com.
+  blocked[other]: La caméra et le micro sont bloqués pour meet.google.com.
+  blocked_hint[audio]: Pour l’utiliser ici, sélectionnez Autoriser, puis réessayez sur la page.
+  blocked_hint[video]: Pour l’utiliser ici, sélectionnez Autoriser, puis réessayez sur la page.
+  blocked_hint[other]: Pour les utiliser ici, sélectionnez Autoriser, puis réessayez sur la page.
+  system_blocked_label[audio]: Micro désactivé dans macOS
+  system_blocked_label[video]: Caméra désactivée dans macOS
+  system_blocked_label[other]: Caméra et micro désactivés dans macOS
+  system_blocked_hint: Activez l’accès dans Réglages Système › Confidentialité et sécurité. Vous devrez peut-être quitter puis rouvrir Local Operator pour que la modification s’applique.
+  open_system_settings: Ouvrir Réglages Système
+  notice_dismiss: Ignorer l’avis
+  [consistency] label/dismiss/allow (Autoriser) and "Réglages Système › Confidentialité et sécurité" checked
+
+== hi 72bece022969bd0c8600406a692cf72b23ac4aee69d9affe362fbac97a591bbd (sibling ui.browser.media_permission ff7fe290a3b2b8ae051b636744a3d7b47674239ed010a5d26aad04d42ca1e428)
+  prompt_label[audio]: माइक्रोफ़ोन अनुरोध
+  prompt_label[video]: कैमरा अनुरोध
+  prompt_label[other]: कैमरा और माइक्रोफ़ोन अनुरोध
+  prompt_dismiss[audio]: माइक्रोफ़ोन अनुरोध ख़ारिज करें
+  prompt_dismiss[video]: कैमरा अनुरोध ख़ारिज करें
+  prompt_dismiss[other]: कैमरा और माइक्रोफ़ोन अनुरोध ख़ारिज करें
+  blocked_label[audio]: इस साइट के लिए माइक्रोफ़ोन ब्लॉक है
+  blocked_label[video]: इस साइट के लिए कैमरा ब्लॉक है
+  blocked_label[other]: इस साइट के लिए कैमरा और माइक्रोफ़ोन ब्लॉक हैं
+  blocked[audio]: meet.google.com के लिए माइक्रोफ़ोन ब्लॉक है।
+  blocked[video]: meet.google.com के लिए कैमरा ब्लॉक है।
+  blocked[other]: meet.google.com के लिए कैमरा और माइक्रोफ़ोन ब्लॉक हैं।
+  blocked_hint[audio]: इसे यहाँ इस्तेमाल करने के लिए अनुमति दें चुनें, फिर पेज पर दोबारा कोशिश करें।
+  blocked_hint[video]: इसे यहाँ इस्तेमाल करने के लिए अनुमति दें चुनें, फिर पेज पर दोबारा कोशिश करें।
+  blocked_hint[other]: इन्हें यहाँ इस्तेमाल करने के लिए अनुमति दें चुनें, फिर पेज पर दोबारा कोशिश करें।
+  system_blocked_label[audio]: macOS में माइक्रोफ़ोन बंद है
+  system_blocked_label[video]: macOS में कैमरा बंद है
+  system_blocked_label[other]: macOS में कैमरा और माइक्रोफ़ोन बंद हैं
+  system_blocked_hint: सिस्टम सेटिंग्ज़ › गोपनीयता और सुरक्षा में ऐक्सेस चालू करें। बदलाव लागू होने के लिए शायद आपको Local Operator बंद करके फिर से खोलना पड़े।
+  open_system_settings: सिस्टम सेटिंग्ज़ खोलें
+  notice_dismiss: सूचना ख़ारिज करें
+  [consistency] label/dismiss/allow (अनुमति दें) and "सिस्टम सेटिंग्ज़ › गोपनीयता और सुरक्षा" checked
+
+== ru e8758de8cec74c18d3236a9cd158f9f5bd3c3bd44cb75e32b317f38ddc4d51e1 (sibling ui.browser.media_permission d810589fa10ad5e4211bd8405e127ff5c21cd8f357d3643fb20f86620c06e6bd)
+  prompt_label[audio]: Запрос доступа к микрофону
+  prompt_label[video]: Запрос доступа к камере
+  prompt_label[other]: Запрос доступа к камере и микрофону
+  prompt_dismiss[audio]: Закрыть запрос доступа к микрофону
+  prompt_dismiss[video]: Закрыть запрос доступа к камере
+  prompt_dismiss[other]: Закрыть запрос доступа к камере и микрофону
+  blocked_label[audio]: Микрофон заблокирован для этого сайта
+  blocked_label[video]: Камера заблокирована для этого сайта
+  blocked_label[other]: Камера и микрофон заблокированы для этого сайта
+  blocked[audio]: Микрофон заблокирован для meet.google.com.
+  blocked[video]: Камера заблокирована для meet.google.com.
+  blocked[other]: Камера и микрофон заблокированы для meet.google.com.
+  blocked_hint[audio]: Чтобы использовать его здесь, нажмите «Разрешить» и повторите попытку на странице.
+  blocked_hint[video]: Чтобы использовать её здесь, нажмите «Разрешить» и повторите попытку на странице.
+  blocked_hint[other]: Чтобы использовать их здесь, нажмите «Разрешить» и повторите попытку на странице.
+  system_blocked_label[audio]: Микрофон выключен в macOS
+  system_blocked_label[video]: Камера выключена в macOS
+  system_blocked_label[other]: Камера и микрофон выключены в macOS
+  system_blocked_hint: Включите доступ в разделе «Системные настройки › Конфиденциальность и безопасность». Возможно, чтобы изменение вступило в силу, придётся закрыть и снова открыть Local Operator.
+  open_system_settings: Открыть Системные настройки
+  notice_dismiss: Закрыть уведомление
+  [consistency] label/dismiss/allow (Разрешить) and "Системные настройки › Конфиденциальность и безопасность" checked
+
+== ur c19a07156b80fc8f015282a330b27d28476e3ddb6238dafc67cf91413a9a28a3 (sibling ui.browser.media_permission 78b56e4204caca6a190533d31294dfc6642ac85ec3c9d9e75956b28e7a20d6bb)
+  prompt_label[audio]: مائیکروفون کی درخواست
+  prompt_label[video]: کیمرے کی درخواست
+  prompt_label[other]: کیمرے اور مائیکروفون کی درخواست
+  prompt_dismiss[audio]: مائیکروفون کی درخواست ہٹائیں
+  prompt_dismiss[video]: کیمرے کی درخواست ہٹائیں
+  prompt_dismiss[other]: کیمرے اور مائیکروفون کی درخواست ہٹائیں
+  blocked_label[audio]: اس سائٹ کے لیے مائیکروفون بلاک ہے
+  blocked_label[video]: اس سائٹ کے لیے کیمرا بلاک ہے
+  blocked_label[other]: اس سائٹ کے لیے کیمرا اور مائیکروفون بلاک ہیں
+  blocked[audio]: meet.google.com کے لیے مائیکروفون بلاک ہے۔
+  blocked[video]: meet.google.com کے لیے کیمرا بلاک ہے۔
+  blocked[other]: meet.google.com کے لیے کیمرا اور مائیکروفون بلاک ہیں۔
+  blocked_hint[audio]: اسے یہاں استعمال کرنے کے لیے اجازت دیں منتخب کریں، پھر صفحے پر دوبارہ کوشش کریں۔
+  blocked_hint[video]: اسے یہاں استعمال کرنے کے لیے اجازت دیں منتخب کریں، پھر صفحے پر دوبارہ کوشش کریں۔
+  blocked_hint[other]: انہیں یہاں استعمال کرنے کے لیے اجازت دیں منتخب کریں، پھر صفحے پر دوبارہ کوشش کریں۔
+  system_blocked_label[audio]: macOS میں مائیکروفون بند ہے
+  system_blocked_label[video]: macOS میں کیمرا بند ہے
+  system_blocked_label[other]: macOS میں کیمرا اور مائیکروفون بند ہیں
+  system_blocked_hint: System Settings › Privacy & Security میں رسائی آن کریں۔ تبدیلی لاگو ہونے کے لیے شاید آپ کو Local Operator بند کر کے دوبارہ کھولنا پڑے۔
+  open_system_settings: System Settings کھولیں
+  notice_dismiss: اطلاع ہٹائیں
+  [consistency] label/dismiss/allow (اجازت دیں) and "System Settings › Privacy & Security" checked
+
+== vi 7b5b35ef7f69883f5287b14ce37049a3c9b50aa1b24df37e1d2dabbd988bf83f (sibling ui.browser.media_permission 3a03efae1d9cb8236925f7084d43598d3da13102e51871cc2817fb2f3c2b411f)
+  prompt_label[audio]: Yêu cầu dùng micrô
+  prompt_label[video]: Yêu cầu dùng camera
+  prompt_label[other]: Yêu cầu dùng camera và micrô
+  prompt_dismiss[audio]: Bỏ qua yêu cầu dùng micrô
+  prompt_dismiss[video]: Bỏ qua yêu cầu dùng camera
+  prompt_dismiss[other]: Bỏ qua yêu cầu dùng camera và micrô
+  blocked_label[audio]: Micrô bị chặn cho trang này
+  blocked_label[video]: Camera bị chặn cho trang này
+  blocked_label[other]: Camera và micrô bị chặn cho trang này
+  blocked[audio]: Micrô đang bị chặn cho meet.google.com.
+  blocked[video]: Camera đang bị chặn cho meet.google.com.
+  blocked[other]: Camera và micrô đang bị chặn cho meet.google.com.
+  blocked_hint[audio]: Để dùng micrô ở đây, hãy chọn Cho phép rồi thử lại trên trang.
+  blocked_hint[video]: Để dùng camera ở đây, hãy chọn Cho phép rồi thử lại trên trang.
+  blocked_hint[other]: Để dùng camera và micrô ở đây, hãy chọn Cho phép rồi thử lại trên trang.
+  system_blocked_label[audio]: Micrô đã bị tắt trong macOS
+  system_blocked_label[video]: Camera đã bị tắt trong macOS
+  system_blocked_label[other]: Camera và micrô đã bị tắt trong macOS
+  system_blocked_hint: Hãy bật quyền truy cập trong Cài đặt hệ thống › Quyền riêng tư & Bảo mật. Có thể bạn cần thoát rồi mở lại Local Operator để thay đổi có hiệu lực.
+  open_system_settings: Mở Cài đặt hệ thống
+  notice_dismiss: Bỏ qua thông báo
+  [consistency] label/dismiss/allow (Cho phép) and "Cài đặt hệ thống › Quyền riêng tư & Bảo mật" checked
+
+== zh-CN 9daefb31ce1a892bea9cd16c6157c11c967b0085710d3ad494e5510d9a8e9c6f (sibling ui.browser.media_permission bb8fe98d7e913de09219f0f103605062efae2da298594949dee9e24df5e8e113)
+  prompt_label[audio]: 麦克风请求
+  prompt_label[video]: 摄像头请求
+  prompt_label[other]: 摄像头和麦克风请求
+  prompt_dismiss[audio]: 关闭麦克风请求
+  prompt_dismiss[video]: 关闭摄像头请求
+  prompt_dismiss[other]: 关闭摄像头和麦克风请求
+  blocked_label[audio]: 已为此网站阻止麦克风
+  blocked_label[video]: 已为此网站阻止摄像头
+  blocked_label[other]: 已为此网站阻止摄像头和麦克风
+  blocked[audio]: 已为 meet.google.com 阻止麦克风。
+  blocked[video]: 已为 meet.google.com 阻止摄像头。
+  blocked[other]: 已为 meet.google.com 阻止摄像头和麦克风。
+  blocked_hint[audio]: 如需在此使用麦克风，请选择“允许”，然后在页面上重试。
+  blocked_hint[video]: 如需在此使用摄像头，请选择“允许”，然后在页面上重试。
+  blocked_hint[other]: 如需在此使用摄像头和麦克风，请选择“允许”，然后在页面上重试。
+  system_blocked_label[audio]: macOS 已关闭麦克风
+  system_blocked_label[video]: macOS 已关闭摄像头
+  system_blocked_label[other]: macOS 已关闭摄像头和麦克风
+  system_blocked_hint: 请在“系统设置 › 隐私与安全性”中开启访问权限。你可能需要退出并重新打开 Local Operator，更改才会生效。
+  open_system_settings: 打开系统设置
+  notice_dismiss: 关闭通知
+  [consistency] label/dismiss/allow (允许) and "系统设置 › 隐私与安全性" checked
+
+verify: ok

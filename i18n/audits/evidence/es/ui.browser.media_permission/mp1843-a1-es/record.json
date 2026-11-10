@@ -1,0 +1,104 @@
+{
+ "audit_id": "mp1843-a1-es",
+ "round": 1,
+ "audit_kind": "independent first audit of a new namespace",
+ "date": "2026-11-10",
+ "audit_date": "2026-11-10",
+ "locale": "es",
+ "namespace": "ui.browser.media_permission",
+ "source_commit": "4f0df27743eecae09ccc8c3e69838faa616a3eb2",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1843",
+ "scope": "All 8 keys of ui.browser.media_permission.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "key_count": 8,
+ "keys_read": 8,
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "d1da94af17b7",
+   "team": "lopdev",
+   "label": "i18n-audit-1843",
+   "instance": "d1da94af17b7-mp1843-a1-es",
+   "date": "2026-11-10",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header 'Model: anthropic/claude-opus-5-5' for session d1da94af17b7; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-es.json",
+   "receipt_sha256": "bba9a46664a93bfd2ad0077f24ef4002d6191652b680cb5a0037b89a7b091a16"
+  }
+ ],
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-11-10"
+ },
+ "independence": "Independent auditor; translated nothing originally. Authored only the corrections listed under resolutions, which are disclosed and recorded against the superseded translator bytes.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.json",
+   "sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.context.json",
+   "sha256": "361ee18bdb1beb154c2e9c318a88a21ee44285c4f1eeb3d90681e909de222f10"
+  },
+  "es": {
+   "path": "src/i18n/catalogues/es/ui.browser.media_permission.json",
+   "sha256": "819f5392c52cea3207379ea4d11b9ea462510a3cb90ba3d3860f51d042b3b8b0",
+   "translator_bytes_sha256": "819f5392c52cea3207379ea4d11b9ea462510a3cb90ba3d3860f51d042b3b8b0"
+  },
+  "glossary": {
+   "path": "i18n/glossary.md (damianvtran/local-operator origin/main 9372a3a42d0e)",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/es.md (local-operator origin/main 9372a3a42d0e)",
+   "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/es/ui.browser.media_permission/mp1843-a1-es/audit.log",
+   "sha256": "678383b75efa8000960f46ba4e287e58f6c40771b8090a43449bb59b6724c5e9"
+  },
+  {
+   "path": "i18n/audits/evidence/es/ui.browser.media_permission/mp1843-a1-es/negative-control.log",
+   "sha256": "fb7373868a7cf230a4d875668bc9105ed273f14dfe0f35333503c5468e90a70a"
+  },
+  {
+   "path": "i18n/audits/evidence/es/ui.browser.media_permission/mp1843-a1-es/report.md",
+   "sha256": "2fea75fa929ce6cb0494ac0e17f6a1a933ad70455e5ceb9c4aa81b31f237e8f4"
+  },
+  {
+   "path": "i18n/audits/evidence/es/ui.browser.media_permission/mp1843-a1-es/verify.mjs",
+   "sha256": "53eac836053b720ae636cbeffe0cc77461c0b2d03cf88928c8820bafbc6d78e6"
+  }
+ ],
+ "audit_notes_not_execution_log": "report.md is the auditor's notes; audit.log and negative-control.log are actual stdout of verify.mjs. The ledger-check result quoted in report.md was run interactively on the export and is not captured as a file.",
+ "findings": [
+  {
+   "id": "ES-N1",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.agent_tab_hint",
+   "finding": "Button name Permitir is unquoted mid-sentence; ru/zh-CN quote it. Optional: “Permitir”. No change."
+  }
+ ],
+ "resolutions": [],
+ "observations": [
+  {
+   "id": "ES-I1",
+   "severity": "INFO",
+   "key": "ui.browser.media_permission.system_blocked_hint",
+   "finding": "Ajustes del Sistema › Privacidad y seguridad matches the core es cli.permissions rendering of the macOS labels; Actívalo agrees with masculine acceso of system_blocked."
+  }
+ ]
+}
