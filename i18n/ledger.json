@@ -1781,29 +1781,46 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat",
-			"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
-			"target_sha256": "8f73283420b36ee33454efbd7520c99962c4fa550b9f6785bae2defe77cf6cfd",
+			"source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+			"target_sha256": "73e79f400865c43fd43bd3ce7dbc3e5979e53c8bc7986930d7441e01d9859c46",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513; remediation of the audited keys at 011c0f4f4ca, session ca4082b95928 job 5f8f0fcc0ba4)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / deepseek/deepseek-flash / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (image_actions.actions, audio.position_label): i18n-translator anthropic/claude-sonnet-5-5 session fdf0610daa17. Earlier keys: i18n-translator/anthropic/claude-sonnet-5-5 2026-11-02."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "1350b32a",
+					"instance": "6f5ab11d1b0a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
-					"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
+					"receipt": "i18n/receipts/6f5ab11d1b0a.json",
+					"receipt_sha256": "1ab3b9d25eecb3ea2a2a9fd6849f09c262e2ba09a5f51d71c120bec8d198e282",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "1670651e17bb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1670651e17bb.json",
+					"receipt_sha256": "c72283438c628175cc21357af56d2bbf2dee9ed0f7610f58b27f9f2a66496d08",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -2037,6 +2054,28 @@
 							"receipt": "i18n/receipts/es2-ac9ef02a0918.json",
 							"receipt_sha256": "42d523ee85368f85bf3970512a1df4e11561c40086dea5152535e0e03cf36d84",
 							"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+					"target_sha256": "8f73283420b36ee33454efbd7520c99962c4fa550b9f6785bae2defe77cf6cfd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "1350b32a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
+							"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
 						}
 					],
 					"status": "audited"
@@ -3116,30 +3155,46 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
-			"target_sha256": "2449b14109148274836c53866663b2856aeb0484673a870a666bc81856831c9f",
+			"source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+			"target_sha256": "82d113f5948cf0d3d12bfe3fff081dbf99339489324057c7017a4ca37c3e79dc",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18",
-				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (composer_media.pasted_image): i18n-translator anthropic/claude-sonnet-5-5 session fdf0610daa17. Earlier keys: i18n-translator/deepseek/deepseek-flash 2026-10-18."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer-session",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "809c7b5c7328-composer-media-confirms-es",
+					"instance": "6f5ab11d1b0a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-es.json",
-					"receipt_sha256": "5df61a964509552e4ec7dfe0b8cd882d855ba552687d7f0bcbe43d60b786c87c",
-					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/6f5ab11d1b0a.json",
+					"receipt_sha256": "1ab3b9d25eecb3ea2a2a9fd6849f09c262e2ba09a5f51d71c120bec8d198e282",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "1670651e17bb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1670651e17bb.json",
+					"receipt_sha256": "c72283438c628175cc21357af56d2bbf2dee9ed0f7610f58b27f9f2a66496d08",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -3186,6 +3241,29 @@
 							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-es.json",
 							"receipt_sha256": "582afa6c42b140cf5cbdad0d2049b409922ac84f7512561d235806e63f5d6c1f",
 							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+					"target_sha256": "2449b14109148274836c53866663b2856aeb0484673a870a666bc81856831c9f",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "809c7b5c7328-composer-media-confirms-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-es.json",
+							"receipt_sha256": "5df61a964509552e4ec7dfe0b8cd882d855ba552687d7f0bcbe43d60b786c87c",
+							"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -5143,30 +5221,46 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.actions",
-			"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
-			"target_sha256": "9b90e06d6f1999a64a80a912811cd4254c1a86eb199da69ed15939c5064345c7",
+			"source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+			"target_sha256": "297982c56ead7383ca4bd8ea94c2c961f7532785957f648287a335e7168dd2a8",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (actions_for_name): i18n-translator anthropic/claude-sonnet-5-5 session fdf0610daa17. Earlier keys: i18n-translator/deepseek/deepseek-flash 2026-10-18."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
-					"date": "2026-10-29",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "fafd8194566d-merge-es",
+					"instance": "6f5ab11d1b0a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fafd8194566d-merge-es.json",
-					"receipt_sha256": "561aa02b039de445a2a1cad4f80deafe3b1c86d64068cc9f355e8815e435dd77",
-					"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
-					"note": "PR #1481: merge union verified per locale."
+					"receipt": "i18n/receipts/6f5ab11d1b0a.json",
+					"receipt_sha256": "1ab3b9d25eecb3ea2a2a9fd6849f09c262e2ba09a5f51d71c120bec8d198e282",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "1670651e17bb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1670651e17bb.json",
+					"receipt_sha256": "c72283438c628175cc21357af56d2bbf2dee9ed0f7610f58b27f9f2a66496d08",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -5306,6 +5400,30 @@
 							"receipt_sha256": "829223291d4d1114562320978ebff84df05dc78fcd3f276039e5540a9cf48dba",
 							"scope": "ui.common.actions: verification that the only change since 369bb0113f is removing the unused key check_again",
 							"note": "PR #1481: dead-key removal; surviving bytes proven identical."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+					"target_sha256": "9b90e06d6f1999a64a80a912811cd4254c1a86eb199da69ed15939c5064345c7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "fafd8194566d-merge-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fafd8194566d-merge-es.json",
+							"receipt_sha256": "561aa02b039de445a2a1cad4f80deafe3b1c86d64068cc9f355e8815e435dd77",
+							"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
 						}
 					],
 					"status": "audited"
@@ -12808,29 +12926,46 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat",
-			"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
-			"target_sha256": "a1adfe329c0f49936fb307188c68b65041ce172c0b417cb50de860a6c1ea955a",
+			"source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+			"target_sha256": "b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5; remediation of the audited keys at 011c0f4f4ca, session 3945da4d65a0 job f67ec92231e4)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / deepseek/deepseek-flash / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (image_actions.actions, audio.position_label): i18n-translator anthropic/claude-sonnet-5-5 session 2ddc9a08181b. Earlier keys: i18n-translator/anthropic/claude-sonnet-5-5 2026-11-02."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "1350b32a",
+					"instance": "aa017d573fd4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
-					"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
+					"receipt": "i18n/receipts/aa017d573fd4.json",
+					"receipt_sha256": "791f9df8ee27bb7273d853abb82e35c45a58079c89778664eb09358d8f80d61a",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "e3c562b03258",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e3c562b03258.json",
+					"receipt_sha256": "f1b18d28d269d8a897268276be93cc7902ee54482409b181942eb6899b58deaf",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -13064,6 +13199,28 @@
 							"receipt": "i18n/receipts/35aac0a677bc.json",
 							"receipt_sha256": "71d38bf7687638f054dc1faea345a95f9c267bd8a570d465ae009bcc866c7627",
 							"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+					"target_sha256": "a1adfe329c0f49936fb307188c68b65041ce172c0b417cb50de860a6c1ea955a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "1350b32a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
+							"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
 						}
 					],
 					"status": "audited"
@@ -14204,30 +14361,46 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
-			"target_sha256": "ef1cd323db417d00c42cfb1b97e3fb284b978699a102e66702e8c26e91dbb7d4",
+			"source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+			"target_sha256": "4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18",
-				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (composer_media.pasted_image): i18n-translator anthropic/claude-sonnet-5-5 session 2ddc9a08181b. Earlier keys: i18n-translator/deepseek/deepseek-flash 2026-10-18."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer-session",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "809c7b5c7328-composer-media-confirms-fr",
+					"instance": "aa017d573fd4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-fr.json",
-					"receipt_sha256": "dcea491fe72ed1ebef2c0367edff053090fda2b50d6955100ad17e4d7fc5e772",
-					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/aa017d573fd4.json",
+					"receipt_sha256": "791f9df8ee27bb7273d853abb82e35c45a58079c89778664eb09358d8f80d61a",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "e3c562b03258",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e3c562b03258.json",
+					"receipt_sha256": "f1b18d28d269d8a897268276be93cc7902ee54482409b181942eb6899b58deaf",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -14275,6 +14448,29 @@
 							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-fr.json",
 							"receipt_sha256": "187d543ef664cb61d32d899226e2de4c096e91d5a5e7d4beb5e680e235946156",
 							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+					"target_sha256": "ef1cd323db417d00c42cfb1b97e3fb284b978699a102e66702e8c26e91dbb7d4",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "809c7b5c7328-composer-media-confirms-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-fr.json",
+							"receipt_sha256": "dcea491fe72ed1ebef2c0367edff053090fda2b50d6955100ad17e4d7fc5e772",
+							"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -16406,30 +16602,46 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.actions",
-			"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
-			"target_sha256": "8672c8f71fba10d7df3c8c0130cbc2953782a9fc0bbb2146881bdf378947827e",
+			"source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+			"target_sha256": "65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (actions_for_name): i18n-translator anthropic/claude-sonnet-5-5 session 2ddc9a08181b; actions_for_name revised by a fresh i18n-translator session, anthropic/claude-sonnet-5-5. Earlier keys: i18n-translator/deepseek/deepseek-flash 2026-10-18."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro (fallback from anthropic/claude-sonnet-5-5, provider quota)",
-					"date": "2026-10-29",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "4e009299149e-merge-fr",
+					"instance": "ceaae4db2925",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4e009299149e-merge-fr.json",
-					"receipt_sha256": "f140cf498fe3a28fc39aa50ab02d4c744c43624dd011ad1639f2e821a55ee23d",
-					"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
-					"note": "PR #1481: merge union verified per locale."
+					"receipt": "i18n/receipts/ceaae4db2925.json",
+					"receipt_sha256": "62ec3f99ea9b7f295a711788ca8000f77ef4fa6d6322945e87450e6e674fe190",
+					"scope": "PR #1842 delta @ b8f0fc3aa92: revised value of actions_for_name only; remaining keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "491f3795f0ee",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/491f3795f0ee.json",
+					"receipt_sha256": "bfe8eda3c6c3a0cf291218f93023e25baaa385b1780266a111e7ff3752551429",
+					"scope": "PR #1842 delta @ b8f0fc3aa92: revised value of actions_for_name only; remaining keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -16569,6 +16781,30 @@
 							"receipt_sha256": "18aa8317b57071c873d532063a565ba1cac6c870f2f979bb81b3f5d1c7892469",
 							"scope": "ui.common.actions: verification that the only change since 369bb0113f is removing the unused key check_again",
 							"note": "PR #1481: dead-key removal; surviving bytes proven identical."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+					"target_sha256": "8672c8f71fba10d7df3c8c0130cbc2953782a9fc0bbb2146881bdf378947827e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro (fallback from anthropic/claude-sonnet-5-5, provider quota)",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "4e009299149e-merge-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4e009299149e-merge-fr.json",
+							"receipt_sha256": "f140cf498fe3a28fc39aa50ab02d4c744c43624dd011ad1639f2e821a55ee23d",
+							"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
 						}
 					],
 					"status": "audited"
@@ -24381,46 +24617,46 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat",
-			"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
-			"target_sha256": "7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a",
+			"source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+			"target_sha256": "2a6c484cf4b677a4fb9ba74fdbfbf74849c612b60c0a858804daf2ef4d21e03a",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / openai/gpt-6.1-sol / 2026-10-19); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (image_actions.actions, audio.position_label): i18n-translator anthropic/claude-sonnet-5-5 session 3c79705baf2e. Earlier keys: i18n-translator/anthropic/claude-sonnet-5-5 2026-11-02."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-03",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "b858f6df97a0",
+					"instance": "0d383ce3ad89",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b858f6df97a0.json",
-					"receipt_sha256": "bea7caae3a302bd77a672869d9836326e28ba17093f4c603e81a33a031a6a4f3",
-					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+					"receipt": "i18n/receipts/0d383ce3ad89.json",
+					"receipt_sha256": "9329b6566c6ea7546d25c39630a8ce5cdda798ede758f6e8adf9663c07808f86",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
 				},
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-03",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "786d3d9ff0bb-hi-census-r2",
+					"instance": "157203ee10c3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/786d3d9ff0bb-hi-census-r2.json",
-					"receipt_sha256": "0e7893e85078c0a4cb231f7da4e9f55b31cfa97ee8dfdfbf11492be71212750a",
-					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+					"receipt": "i18n/receipts/157203ee10c3.json",
+					"receipt_sha256": "b06d88caadc592a3767d06a9495a6ba62a473de165834ba9c4be7784fee69966",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -24616,6 +24852,45 @@
 							"receipt_sha256": "f28a945b5f0d747ae58e382671f6dafcded1aff9952c9e2e73a07bcfdb507570",
 							"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 29 keys PR #1603 added + round-2 delta re-audit (553e1ccbd7b1) at 011c0f4f4ca of the 1 changed key(s). Round-1 MAJOR here: A-1c, verified fixed. Counts are open findings only.",
 							"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/553e1ccbd7b1-1603r2-hi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+					"target_sha256": "7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "b858f6df97a0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b858f6df97a0.json",
+							"receipt_sha256": "bea7caae3a302bd77a672869d9836326e28ba17093f4c603e81a33a031a6a4f3",
+							"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "786d3d9ff0bb-hi-census-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/786d3d9ff0bb-hi-census-r2.json",
+							"receipt_sha256": "0e7893e85078c0a4cb231f7da4e9f55b31cfa97ee8dfdfbf11492be71212750a",
+							"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 						}
 					],
 					"status": "audited"
@@ -25717,30 +25992,46 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
-			"target_sha256": "76f584d0850c1a350fc615554fd8bbaefea26a75cad0c7c472a92e4cf509b009",
+			"source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+			"target_sha256": "34812ced782b34fd569daaf7ef04d83efa9782ac09283c741601946bed6bfe15",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19",
-				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (composer_media.pasted_image): i18n-translator anthropic/claude-sonnet-5-5 session 3c79705baf2e. Earlier keys: i18n-translator/openai/gpt-6.1-sol 2026-10-19."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer-session",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "809c7b5c7328-composer-media-confirms-hi",
+					"instance": "0d383ce3ad89",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-hi.json",
-					"receipt_sha256": "f6ce6323d13a54efe1caf884cf055cf9f44d37177c21ad41482878f250b6752a",
-					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/0d383ce3ad89.json",
+					"receipt_sha256": "9329b6566c6ea7546d25c39630a8ce5cdda798ede758f6e8adf9663c07808f86",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "157203ee10c3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/157203ee10c3.json",
+					"receipt_sha256": "b06d88caadc592a3767d06a9495a6ba62a473de165834ba9c4be7784fee69966",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -25788,6 +26079,29 @@
 							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-hi.json",
 							"receipt_sha256": "436179ed7d76db172f82862c8f6fc2bff41febb62d5606158d448aea294c0358",
 							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+					"target_sha256": "76f584d0850c1a350fc615554fd8bbaefea26a75cad0c7c472a92e4cf509b009",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "809c7b5c7328-composer-media-confirms-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-hi.json",
+							"receipt_sha256": "f6ce6323d13a54efe1caf884cf055cf9f44d37177c21ad41482878f250b6752a",
+							"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -27877,30 +28191,46 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.actions",
-			"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
-			"target_sha256": "28e81bd9af2df9f4622cfccd15908b474bce08cecfb02aa3fe163033219d36a9",
+			"source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+			"target_sha256": "48b22fb6b8c8bf490fb205558873471e87a77a72d59fe42d7c69f6bb433c4056",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (actions_for_name): i18n-translator anthropic/claude-sonnet-5-5 session 3c79705baf2e. Earlier keys: i18n-translator/openai/gpt-6.1-sol 2026-10-19."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto (fallback; provider 429)",
-					"date": "2026-10-29",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "9f60aa2edb42-merge-hi",
+					"instance": "0d383ce3ad89",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9f60aa2edb42-merge-hi.json",
-					"receipt_sha256": "a525c23bbc8c220f4f3a7ca3f91a94b83b903ae645b52ae2c96358796717a2d3",
-					"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
-					"note": "PR #1481: merge union verified per locale."
+					"receipt": "i18n/receipts/0d383ce3ad89.json",
+					"receipt_sha256": "9329b6566c6ea7546d25c39630a8ce5cdda798ede758f6e8adf9663c07808f86",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "157203ee10c3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/157203ee10c3.json",
+					"receipt_sha256": "b06d88caadc592a3767d06a9495a6ba62a473de165834ba9c4be7784fee69966",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -28040,6 +28370,30 @@
 							"receipt_sha256": "2538a061c9b09fb1f948d1db7a46eea97e0fe5638d46307140e25fb9cfc829bf",
 							"scope": "ui.common.actions: verification that the only change since 369bb0113f is removing the unused key check_again",
 							"note": "PR #1481: dead-key removal; surviving bytes proven identical."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+					"target_sha256": "28e81bd9af2df9f4622cfccd15908b474bce08cecfb02aa3fe163033219d36a9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto (fallback; provider 429)",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "9f60aa2edb42-merge-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9f60aa2edb42-merge-hi.json",
+							"receipt_sha256": "a525c23bbc8c220f4f3a7ca3f91a94b83b903ae645b52ae2c96358796717a2d3",
+							"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
 						}
 					],
 					"status": "audited"
@@ -35536,29 +35890,46 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat",
-			"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
-			"target_sha256": "4ea150feba1003ac9754f8fb5459350bbccbb7ced27c981768213b3f0d1ed609",
+			"source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+			"target_sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / deepseek/deepseek-flash / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). Earlier row note: Translator receipt i18n/receipts/ui-ru-batch.json; SHA256 bfb725f6f76dbccc8ecdb5b585ccc43f60b6cdf6415099a0ed80291d0e94fc2f."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (image_actions.actions, audio.position_label): i18n-translator anthropic/claude-sonnet-5-5 session 3b22accb1363. Earlier keys: i18n-translator/anthropic/claude-sonnet-5-5 2026-11-02."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "1350b32a",
+					"instance": "c3a66120522a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
-					"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
+					"receipt": "i18n/receipts/c3a66120522a.json",
+					"receipt_sha256": "2a57a558cfffcaa0e1721cbd5b789689bbad2dfc172c9cb1d19bffd781fc530a",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "bcfbdd468d00",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bcfbdd468d00.json",
+					"receipt_sha256": "9bce5907b6f9ec38ea24b487de79d0546c860c531292580906ae527d0446b190",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -35793,6 +36164,28 @@
 							"receipt": "i18n/receipts/97bb3462a65c-ru-census-r2.json",
 							"receipt_sha256": "4799e45e81398b982f644011487d6c97cc5fd137aada37afdc7232d7b9ebe9fa",
 							"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+					"target_sha256": "4ea150feba1003ac9754f8fb5459350bbccbb7ced27c981768213b3f0d1ed609",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "1350b32a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
+							"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
 						}
 					],
 					"status": "audited"
@@ -36871,30 +37264,46 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
-			"target_sha256": "3ea45f5e8abd80709209fe8fba109c66b3f0a179cc9528ac8ae298273cbd8ca8",
+			"source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+			"target_sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18",
-				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (composer_media.pasted_image): i18n-translator anthropic/claude-sonnet-5-5 session 3b22accb1363. Earlier keys: i18n-translator/deepseek/deepseek-flash 2026-10-18."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer-session",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "809c7b5c7328-composer-media-confirms-ru",
+					"instance": "c3a66120522a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-ru.json",
-					"receipt_sha256": "bcc3610efd8d2ce4de1a820cc664c905f83d0ee1e4b699409e70f4779d03a006",
-					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/c3a66120522a.json",
+					"receipt_sha256": "2a57a558cfffcaa0e1721cbd5b789689bbad2dfc172c9cb1d19bffd781fc530a",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "bcfbdd468d00",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bcfbdd468d00.json",
+					"receipt_sha256": "9bce5907b6f9ec38ea24b487de79d0546c860c531292580906ae527d0446b190",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -36942,6 +37351,29 @@
 							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-ru.json",
 							"receipt_sha256": "52545433fa92e10a80593d2686bdd86f13c1dc4acecc8e7ede4e4a433dc59a92",
 							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+					"target_sha256": "3ea45f5e8abd80709209fe8fba109c66b3f0a179cc9528ac8ae298273cbd8ca8",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "809c7b5c7328-composer-media-confirms-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-ru.json",
+							"receipt_sha256": "bcc3610efd8d2ce4de1a820cc664c905f83d0ee1e4b699409e70f4779d03a006",
+							"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -39017,30 +39449,46 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.actions",
-			"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
-			"target_sha256": "bc4285607954f7f79f8135c4de755433097dae7df28cd50a50fad6ff3c3bf718",
+			"source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+			"target_sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (actions_for_name): i18n-translator anthropic/claude-sonnet-5-5 session 3b22accb1363. Earlier keys: i18n-translator/deepseek/deepseek-flash 2026-10-18."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
-					"date": "2026-10-29",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "889ea925e187-merge-ru",
+					"instance": "c3a66120522a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/889ea925e187-merge-ru.json",
-					"receipt_sha256": "48e81191749ccb2bd7ec6dedcb3239e14c0ffc80bc57ae6e892aca491276c27e",
-					"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
-					"note": "PR #1481: merge union verified per locale."
+					"receipt": "i18n/receipts/c3a66120522a.json",
+					"receipt_sha256": "2a57a558cfffcaa0e1721cbd5b789689bbad2dfc172c9cb1d19bffd781fc530a",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "bcfbdd468d00",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bcfbdd468d00.json",
+					"receipt_sha256": "9bce5907b6f9ec38ea24b487de79d0546c860c531292580906ae527d0446b190",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -39181,6 +39629,30 @@
 							"receipt_sha256": "3c570337298ec684bb7a3db1babb611ee7c9ad4de4e7d926f80e9f82e401620a",
 							"scope": "ui.common.actions: verification that the only change since 369bb0113f is removing the unused key check_again",
 							"note": "PR #1481: dead-key removal; surviving bytes proven identical."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+					"target_sha256": "bc4285607954f7f79f8135c4de755433097dae7df28cd50a50fad6ff3c3bf718",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "889ea925e187-merge-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/889ea925e187-merge-ru.json",
+							"receipt_sha256": "48e81191749ccb2bd7ec6dedcb3239e14c0ffc80bc57ae6e892aca491276c27e",
+							"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
 						}
 					],
 					"status": "audited"
@@ -46639,31 +47111,46 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat",
-			"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
-			"target_sha256": "ff3a28460b5027d6067b39aa75463e85f2996ce597e3b6c88e1e1a1fbaa63580",
+			"source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+			"target_sha256": "4be951ec20cc69544d66a59218bb26669df5d0034ed2c35e2305b979db07b256",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb; remediation of the audited keys at 011c0f4f4ca, session 634c73fee13a job 70c2d5eecc5d)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / openai/gpt-6.1-sol / 2026-10-19); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 (image_actions.actions, audio.position_label): i18n-translator anthropic/claude-sonnet-5-5 session f573f85d7297; audio.position_label revised by a fresh i18n-translator session, anthropic/claude-sonnet-5-5. Earlier: i18n-translator/anthropic/claude-sonnet-5-5 2026-11-02."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "60ec7437",
+					"instance": "e5d3f9475753",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/60ec7437.json",
-					"receipt_sha256": "3b813c276e7c92bf876ef244ab46927c03866cbbd0233f4b6e98f513fccb2263",
-					"scope": "one value: ui.chat.question_dock.hint.approval for ur, rewritten so the verb-phrase button labels are not followed by a second 'select' verb; every other key in ur/ui.chat byte-identical to the base",
-					"note": "operator policy allows agent copy review; the auditor is independent of the translator"
+					"receipt": "i18n/receipts/e5d3f9475753.json",
+					"receipt_sha256": "dee10bc8194b1ac9acd549c07280a4c072ff7859fda269ae99ebefba53516dec",
+					"scope": "PR #1842 delta @ b8f0fc3aa92: revised value of audio.position_label only; remaining keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "3795570cf1e1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/3795570cf1e1.json",
+					"receipt_sha256": "44164cad751b6fc53f4696bf07c95284a4a40a4ef87849de5eb52e7629349c2d",
+					"scope": "PR #1842 delta @ b8f0fc3aa92: revised value of audio.position_label only; remaining keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -46919,6 +47406,30 @@
 							},
 							"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
 							"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+					"target_sha256": "ff3a28460b5027d6067b39aa75463e85f2996ce597e3b6c88e1e1a1fbaa63580",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "60ec7437",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/60ec7437.json",
+							"receipt_sha256": "3b813c276e7c92bf876ef244ab46927c03866cbbd0233f4b6e98f513fccb2263",
+							"scope": "one value: ui.chat.question_dock.hint.approval for ur, rewritten so the verb-phrase button labels are not followed by a second 'select' verb; every other key in ur/ui.chat byte-identical to the base",
+							"note": "operator policy allows agent copy review; the auditor is independent of the translator"
 						}
 					],
 					"status": "audited"
@@ -48022,30 +48533,46 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
-			"target_sha256": "ff5d51690b3ca45b10a170eaa75790ba565dd52ee6e714e180e5046e97889713",
+			"source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+			"target_sha256": "0b92eb10a96ac3e94f3acabe554e3e429cee150094ad333bb3c0f1bd0243e3fb",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19",
-				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (composer_media.pasted_image): i18n-translator anthropic/claude-sonnet-5-5 session f573f85d7297. Earlier keys: i18n-translator/openai/gpt-6.1-sol 2026-10-19."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer-session",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "809c7b5c7328-composer-media-confirms-ur",
+					"instance": "a1d964dc45d5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-ur.json",
-					"receipt_sha256": "0652584c1be7bd5ea622e236b8d82c4ac4778867b6ffdfebec2b49c0b215bc31",
-					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/a1d964dc45d5.json",
+					"receipt_sha256": "939f7782a3190751b770c7e0431c81498923b9da36b4706ed495920a4ea665a4",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "75c30f92d238",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/75c30f92d238.json",
+					"receipt_sha256": "0f26d52fba87b062e5aa10d127cc3a178fa09f3c5193eaf4bbe42260dd9ae7ec",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -48093,6 +48620,29 @@
 							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-ur.json",
 							"receipt_sha256": "37b76159995ae975b3cb3d007f91f710c5a6b7bc949384e90f61532497d4fbc2",
 							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+					"target_sha256": "ff5d51690b3ca45b10a170eaa75790ba565dd52ee6e714e180e5046e97889713",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "809c7b5c7328-composer-media-confirms-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-ur.json",
+							"receipt_sha256": "0652584c1be7bd5ea622e236b8d82c4ac4778867b6ffdfebec2b49c0b215bc31",
+							"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -50145,30 +50695,46 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.actions",
-			"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
-			"target_sha256": "3ec87bb6883a33e5a990ed71d0c2783583947f768503bb57e8509ee73a8b21e9",
+			"source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+			"target_sha256": "06ed5d8326b11d74df3891e15a1e9290c3893f03be43b79fa91f9d168058e7f7",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (actions_for_name): i18n-translator anthropic/claude-sonnet-5-5 session f573f85d7297. Earlier keys: i18n-translator/openai/gpt-6.1-sol 2026-10-19."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
-					"date": "2026-10-29",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "91a92bcb62b5-merge-ur",
+					"instance": "a1d964dc45d5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/91a92bcb62b5-merge-ur.json",
-					"receipt_sha256": "83953dd7a60d40bf61d19f49afb6a5095a0a774938ba9cda0f2c31f1e9ee14e0",
-					"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
-					"note": "PR #1481: merge union verified per locale."
+					"receipt": "i18n/receipts/a1d964dc45d5.json",
+					"receipt_sha256": "939f7782a3190751b770c7e0431c81498923b9da36b4706ed495920a4ea665a4",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "75c30f92d238",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/75c30f92d238.json",
+					"receipt_sha256": "0f26d52fba87b062e5aa10d127cc3a178fa09f3c5193eaf4bbe42260dd9ae7ec",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -50310,6 +50876,30 @@
 							"receipt_sha256": "ec7ad4eb95675037f05e3af9e07fbd772f122696f6b1fbac40c0675164f04f19",
 							"scope": "ui.common.actions: verification that the only change since 369bb0113f is removing the unused key check_again",
 							"note": "PR #1481: dead-key removal; surviving bytes proven identical."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+					"target_sha256": "3ec87bb6883a33e5a990ed71d0c2783583947f768503bb57e8509ee73a8b21e9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "91a92bcb62b5-merge-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/91a92bcb62b5-merge-ur.json",
+							"receipt_sha256": "83953dd7a60d40bf61d19f49afb6a5095a0a774938ba9cda0f2c31f1e9ee14e0",
+							"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
 						}
 					],
 					"status": "audited"
@@ -57667,29 +58257,46 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat",
-			"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
-			"target_sha256": "b9f1fea33a925933ec0c89571f9770678f45101b24def4ccfb44db02cba18a26",
+			"source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+			"target_sha256": "28aefec39d49f6c7cbaa05f15e40383a8e6f38761369f0068d90434dc9511445",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / openai/gpt-6.1-sol / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (image_actions.actions, audio.position_label): i18n-translator anthropic/claude-sonnet-5-5 session 9b4eaf460088. Earlier keys: i18n-translator/anthropic/claude-sonnet-5-5 2026-11-02."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "1350b32a",
+					"instance": "9128f82329ff",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
-					"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
+					"receipt": "i18n/receipts/9128f82329ff.json",
+					"receipt_sha256": "7d41a3d731e6b02116c48c620e9eff6459f02220f986548d07d095cfac2c369b",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "1737237b812f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1737237b812f.json",
+					"receipt_sha256": "ee8018fbef169ff5559e28b4b7653d075ccbb023a67a77087192dcd539968263",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -57924,6 +58531,28 @@
 							"receipt": "i18n/receipts/6431174917d4-vi-census-r2.json",
 							"receipt_sha256": "ba932cc7196aec0beff8fb2a44438238c0f63cccfe1e083f60e4de5b86c769ff",
 							"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+					"target_sha256": "b9f1fea33a925933ec0c89571f9770678f45101b24def4ccfb44db02cba18a26",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "1350b32a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
+							"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
 						}
 					],
 					"status": "audited"
@@ -59029,30 +59658,46 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
-			"target_sha256": "03f9542dd36db178c5f39872c17c918028a725bc0befdf9a78941897d3ca80ed",
+			"source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+			"target_sha256": "8b458ffc96e9b6605c0924b2fdee952998ceed1d27fbd9ab23a6f5a5389445a6",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18",
-				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (composer_media.pasted_image): i18n-translator anthropic/claude-sonnet-5-5 session 9b4eaf460088. Earlier keys: i18n-translator/openai/gpt-6.1-sol 2026-10-18."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer-session",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "809c7b5c7328-composer-media-confirms-vi",
+					"instance": "9128f82329ff",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-vi.json",
-					"receipt_sha256": "ab62a6d24692c7ee65364a33f9d847dbabb432ba85c6d894105ee6fd98791d76",
-					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/9128f82329ff.json",
+					"receipt_sha256": "7d41a3d731e6b02116c48c620e9eff6459f02220f986548d07d095cfac2c369b",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "1737237b812f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1737237b812f.json",
+					"receipt_sha256": "ee8018fbef169ff5559e28b4b7653d075ccbb023a67a77087192dcd539968263",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -59124,6 +59769,29 @@
 							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-vi.json",
 							"receipt_sha256": "8e5e58fef1f3b5313d9c67ae81a5ccd0f36b47861aa4ef3e69f564e359716aba",
 							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+					"target_sha256": "03f9542dd36db178c5f39872c17c918028a725bc0befdf9a78941897d3ca80ed",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "809c7b5c7328-composer-media-confirms-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-vi.json",
+							"receipt_sha256": "ab62a6d24692c7ee65364a33f9d847dbabb432ba85c6d894105ee6fd98791d76",
+							"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -61312,30 +61980,46 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.actions",
-			"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
-			"target_sha256": "847c5e790344a8b69c6c611a5653b6834011e0a2fa0967b770cce8be3d232378",
+			"source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+			"target_sha256": "d89b7dacc9c49f715685e2e6fa0cf04ebd75dee37eb5496c21f73bb00124d4ad",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (actions_for_name): i18n-translator anthropic/claude-sonnet-5-5 session 9b4eaf460088. Earlier keys: i18n-translator/openai/gpt-6.1-sol 2026-10-18."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
-					"date": "2026-10-29",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "60922d5a6008-merge-vi",
+					"instance": "9128f82329ff",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/60922d5a6008-merge-vi.json",
-					"receipt_sha256": "a464edd8710a8ee60b2906630a66d26942395c09e49ee10d8ffa5954603d74cd",
-					"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
-					"note": "PR #1481: merge union verified per locale."
+					"receipt": "i18n/receipts/9128f82329ff.json",
+					"receipt_sha256": "7d41a3d731e6b02116c48c620e9eff6459f02220f986548d07d095cfac2c369b",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "1737237b812f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1737237b812f.json",
+					"receipt_sha256": "ee8018fbef169ff5559e28b4b7653d075ccbb023a67a77087192dcd539968263",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -61492,6 +62176,30 @@
 							"receipt_sha256": "214b30bc1d4a013ed03e7b258e4feb7384eaf8dce11dc93ea71c61ba10908d4e",
 							"scope": "ui.common.actions: verification that the only change since 369bb0113f is removing the unused key check_again",
 							"note": "PR #1481: dead-key removal; surviving bytes proven identical."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+					"target_sha256": "847c5e790344a8b69c6c611a5653b6834011e0a2fa0967b770cce8be3d232378",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "60922d5a6008-merge-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/60922d5a6008-merge-vi.json",
+							"receipt_sha256": "a464edd8710a8ee60b2906630a66d26942395c09e49ee10d8ffa5954603d74cd",
+							"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
 						}
 					],
 					"status": "audited"
@@ -69516,29 +70224,46 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat",
-			"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
-			"target_sha256": "0027aebd3b5ca07b67f7eacf4beac884f800664de828f3c77cf920925cd5b1d8",
+			"source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+			"target_sha256": "6c28931de502a5fd821f9bd9ff779a55599681804575a8a2ba4cdc3346c1e1b9",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / openai/gpt-6.1-sol / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (image_actions.actions, audio.position_label): i18n-translator anthropic/claude-sonnet-5-5 session 6c6b9e0107b6. Earlier keys: i18n-translator/anthropic/claude-sonnet-5-5 2026-11-02."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "1350b32a",
+					"instance": "c86e893b040d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
-					"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
+					"receipt": "i18n/receipts/c86e893b040d.json",
+					"receipt_sha256": "2cdde0450ee599b85a2253701b00b3a8887116e2796a4194b867e1c1809a482f",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "5f0ba55bdecb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5f0ba55bdecb.json",
+					"receipt_sha256": "c36858905672a07e67e8832da45509888c00991d49ff0b5f555de29e808108dd",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.image_actions.actions, ui.chat.audio.position_label; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -69772,6 +70497,28 @@
 							"receipt": "i18n/receipts/6433b7a5b3e9.json",
 							"receipt_sha256": "3378cfab2ff9554ad49f13e4f9ba0aecdeb7b492d26bcaa541745aba278592f3",
 							"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+					"target_sha256": "0027aebd3b5ca07b67f7eacf4beac884f800664de828f3c77cf920925cd5b1d8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "1350b32a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/u1-question-dock-hint-1350b32a.json",
+							"receipt_sha256": "390c29ca013e0a2cbe8590e8ed4d79a29d697236718c039d116c87a2e6a7b7b3"
 						}
 					],
 					"status": "audited"
@@ -70903,30 +71650,46 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
-			"target_sha256": "e525b3929a04d7c01d78afcb60ff26369280872bb781c67b30f504c10ebda29c",
+			"source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+			"target_sha256": "d32d42c7972f9cb433844db9d41fe79da6aa05b8c6a2b80643947f4179950df8",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18",
-				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (composer_media.pasted_image): i18n-translator anthropic/claude-sonnet-5-5 session 6c6b9e0107b6. Earlier keys: i18n-translator/openai/gpt-6.1-sol 2026-10-18."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer-session",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "809c7b5c7328-composer-media-confirms-zh-cn",
+					"instance": "c86e893b040d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-zh-cn.json",
-					"receipt_sha256": "d813bbcc25c67ebd4c3732878f75f6338f8380a484177f3274e2c2a76b10f46b",
-					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/c86e893b040d.json",
+					"receipt_sha256": "2cdde0450ee599b85a2253701b00b3a8887116e2796a4194b867e1c1809a482f",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "5f0ba55bdecb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5f0ba55bdecb.json",
+					"receipt_sha256": "c36858905672a07e67e8832da45509888c00991d49ff0b5f555de29e808108dd",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.chat.composer_media.pasted_image; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -70974,6 +71737,29 @@
 							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-zh-cn.json",
 							"receipt_sha256": "453845527590f75653a7ecfd2f0ac66b10380dfc292baf94c8f8e12bd7b29351",
 							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+					"target_sha256": "e525b3929a04d7c01d78afcb60ff26369280872bb781c67b30f504c10ebda29c",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "809c7b5c7328-composer-media-confirms-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-zh-cn.json",
+							"receipt_sha256": "d813bbcc25c67ebd4c3732878f75f6338f8380a484177f3274e2c2a76b10f46b",
+							"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -73177,30 +73963,46 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.actions",
-			"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
-			"target_sha256": "e7074cf3b2567f6932c02ea5e0f4b360362d382ee740522cf951e382420c512a",
+			"source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+			"target_sha256": "9372ac48a563ad7ea188dcaca65ec3c2d165ed5188b8f45bb916c2bd726541bb",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-10",
+				"note": "PR #1842 keys (actions_for_name): i18n-translator anthropic/claude-sonnet-5-5 session 6c6b9e0107b6. Earlier keys: i18n-translator/openai/gpt-6.1-sol 2026-10-18."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro (temporary fallback from anthropic/claude-sonnet-5-5)",
-					"date": "2026-10-29",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "5cd09504ac8b-merge-zh-cn",
+					"instance": "c86e893b040d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5cd09504ac8b-merge-zh-cn.json",
-					"receipt_sha256": "22fa6d6b117de74056a0ee20c9905a8d9b5e13fb7ea54efae895b0de61977cbf",
-					"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
-					"note": "PR #1481: merge union verified per locale."
+					"receipt": "i18n/receipts/c86e893b040d.json",
+					"receipt_sha256": "2cdde0450ee599b85a2253701b00b3a8887116e2796a4194b867e1c1809a482f",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "5f0ba55bdecb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5f0ba55bdecb.json",
+					"receipt_sha256": "c36858905672a07e67e8832da45509888c00991d49ff0b5f555de29e808108dd",
+					"scope": "PR #1842 @ e5fb4310dab: new keys ui.common.actions.actions_for_name; legacy keys consistency-only"
 				}
 			],
 			"status": "audited",
@@ -73381,6 +74183,30 @@
 							"receipt_sha256": "b60f2e94cc671c7c033eea92cc047645b05c559a4aaed851720bcf85eda67c5f",
 							"scope": "ui.common.actions: verification that the only change since 369bb0113f is removing the unused key check_again",
 							"note": "PR #1481: dead-key removal; surviving bytes proven identical."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+					"target_sha256": "e7074cf3b2567f6932c02ea5e0f4b360362d382ee740522cf951e382420c512a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro (temporary fallback from anthropic/claude-sonnet-5-5)",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "5cd09504ac8b-merge-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5cd09504ac8b-merge-zh-cn.json",
+							"receipt_sha256": "22fa6d6b117de74056a0ee20c9905a8d9b5e13fb7ea54efae895b0de61977cbf",
+							"scope": "ui.common.actions: verification of the #1439 merge resolution (main naming + branch-only additions)",
+							"note": "PR #1481: merge union verified per locale."
 						}
 					],
 					"status": "audited"

@@ -1,0 +1,56 @@
+HEAD: e5fb4310dab638f9cf428779d62539ec039a8990
+worktree dirty: False
+hash en/ui.chat: ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15 OK
+hash fr/ui.chat: b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96 OK
+hash en/ui.chat.context: 84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf OK
+hash en/ui.chat.composer_media: 79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae OK
+hash fr/ui.chat.composer_media: 4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198 OK
+hash en/ui.chat.composer_media.context: a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b OK
+hash en/ui.common.actions: 0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b OK
+hash fr/ui.common.actions: 1f375db06df660163bdf5fa126e9ef0f94ff25ba64ed209be872ab04353f3e42 OK
+hash en/ui.common.actions.context: 24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d OK
+hash mismatches: 0
+ui.chat: en=208 fr=208 keyset_equal=True order_equal=True context=202
+  ui.chat.image_actions.actions
+    en='Image actions'
+    fr='Actions sur l’image'
+    ctx role='image actions menu tooltip and unnamed-image trigger accessible name' maxCells=None
+    placeholders en=[] fr=[] equal=True
+    invisible/format chars=[]
+    length=19 trailing_punct=False
+    icu_structure=none (plain mustaches only)
+  ui.chat.audio.position_label
+    en='{label} position'
+    fr='Position de {label}'
+    ctx role='accessible name of an audio clip seek slider' maxCells=None
+    placeholders en=['{label}'] fr=['{label}'] equal=True
+    invisible/format chars=[]
+    length=19 trailing_punct=False
+    icu_structure=none (plain mustaches only)
+ui.chat.composer_media: en=9 fr=9 keyset_equal=True order_equal=True context=9
+  ui.chat.composer_media.pasted_image
+    en='Pasted image'
+    fr='Image collée'
+    ctx role='pasted image fallback filename' maxCells=None
+    placeholders en=[] fr=[] equal=True
+    invisible/format chars=[]
+    length=12 trailing_punct=False
+    icu_structure=none (plain mustaches only)
+ui.common.actions: en=54 fr=54 keyset_equal=True order_equal=True context=54
+  ui.common.actions.actions_for_name
+    en='Actions for {name}'
+    fr='Actions sur {name}'
+    ctx role='accessible name of a named file or image actions menu trigger' maxCells=None
+    placeholders en=['{name}'] fr=['{name}'] equal=True
+    invisible/format chars=[]
+    length=18 trailing_punct=False
+    icu_structure=none (plain mustaches only)
+delta en/ui.chat: added=['ui.chat.audio.position_label', 'ui.chat.image_actions.actions'] removed=[] changed=[]
+delta fr/ui.chat: added=['ui.chat.audio.position_label', 'ui.chat.image_actions.actions'] removed=[] changed=[]
+delta en/ui.chat.composer_media: added=['ui.chat.composer_media.pasted_image'] removed=[] changed=[]
+delta fr/ui.chat.composer_media: added=['ui.chat.composer_media.pasted_image'] removed=[] changed=[]
+delta en/ui.common.actions: added=['ui.common.actions.actions_for_name'] removed=[] changed=[]
+delta fr/ui.common.actions: added=['ui.common.actions.actions_for_name'] removed=[] changed=[]
+glossary copy sha256: 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8
+glossary original sha256: 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8
+style guide sha256: ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226

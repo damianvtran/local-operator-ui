@@ -1,0 +1,158 @@
+{
+  "locale": "fr",
+  "mode": "delta audit of one revised key; key_count 54 and fully_audited_key_count 1",
+  "scope": "PR #1842 @ b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a; e5fb4310dab638f9cf428779d62539ec039a8990..b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a; only ui.common.actions.actions_for_name fully audited. Other 53 namespace keys consistency-only, not recertified. Allocation: fix (<2h), bounded read-only audit.",
+  "head_sha": "b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a",
+  "audit_date": "2026-11-10",
+  "key_count": 54,
+  "fully_audited_key_count": 1,
+  "consistency_only_key_count": 53,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Fresh revision translator and new independent session supplied by delegation; exact translator session ID not supplied. This auditor did not translate this value."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "ceaae4db2925",
+    "session": "ceaae4db2925",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Actual served model in this session host header: openai/gpt-6.1-sol. No model switch or fallback occurred.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Read manager-owned byte-copy; no independent read of original glossary because outside allowed read paths."
+    },
+    "expected_hashes": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/expected-hashes.json"
+    }
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.common.actions.json",
+          "sha256": "65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.common.actions.actions_for_name"
+      ],
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "english_source": "Actions for {name}",
+      "target": "Actions pour {name}",
+      "verdict": "clean",
+      "meaning_and_idiom": "A concise neutral accessible menu label identifying the named asset, not an action on its name. French pour naturally marks which asset the offered actions concern. The construction needs no gender, article or elision agreement with an arbitrary inserted title: Actions pour photo.png, Actions pour Été, Actions pour 123, Actions pour l’image.png. These are reasoning samples, not formatter execution.",
+      "consistency_evidence": [
+        {
+          "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+          "key": "ui.chat.canonical.link_toolkit.actions_for",
+          "quoted_value": "Actions pour {name}"
+        },
+        {
+          "path": "src/i18n/catalogues/fr/ui.library.json",
+          "key": "ui.library.menu.asset_actions_label",
+          "quoted_value": "Actions pour {name}"
+        },
+        {
+          "path": "src/i18n/catalogues/fr/ui.settings.appearance.editor.json",
+          "key": "ui.settings.appearance.editor.more",
+          "quoted_value": "Actions pour {name}"
+        },
+        {
+          "path": "src/i18n/catalogues/fr/ui.shell.json",
+          "key": "ui.shell.sidebar_navigation.row_actions",
+          "quoted_value": "Actions pour {name}"
+        },
+        {
+          "path": "src/i18n/catalogues/fr/ui.common.actions.json",
+          "key": "ui.common.actions.file_actions_menu.file_actions",
+          "quoted_value": "Actions sur le fichier"
+        }
+      ],
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "name",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "unicode_and_fit": "ASCII static text, no invisible/bidi characters or markup; 13-cell static prefix vs English 12. Accessible name, no maxChars/maxCells hint; arbitrary name length is caller-owned. No visible-button overflow claim or rendered validation.",
+      "style_guide_evidence": "fr.md:19-20 sentence case; :24-26 preserve identifiers; :79-84 punctuation. No conflicting glossary term or forbidden register."
+    }
+  ],
+  "english_metadata_check": {
+    "key": "ui.common.actions.actions_for_name",
+    "verdict": "unchanged and appropriate",
+    "detail": {
+      "role": "accessible name of a named file or image actions menu trigger",
+      "tone": "concise neutral phrase, sentence case",
+      "note": "Shared file/image overflow-menu button name. Identifies the asset whose actions will open; not a command to act on the name. Translate the surrounding phrase only. This is not the generic tooltip or the unnamed-asset fallback.",
+      "placeholders": {
+        "name": "string: actual file/asset display name, including Unicode and punctuation; insert verbatim without translating, normalizing, or adding a file extension. Word order may change around {name}."
+      }
+    },
+    "source_diff": "English catalogue and context sidecar have zero diff since prior audited head."
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "node scripts/i18n/check-duplicates.mjs --dir src/i18n/catalogues/fr -> exit 0; 156 files, 0 duplicate keys",
+      "node scripts/i18n/context-parity.mjs -> exit 0; 131 allowed gaps in 4 namespaces (existing allowance, not new failures)"
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_vs_prior_head": "none; exactly one target value changed; 53 unchanged values retained, not recertified",
+    "placeholder_parity": true,
+    "icu_plural_select_needed": false,
+    "hash_binding": "3/3 assigned en/target/context shasum -a 256 values match expected-hashes.json, then independently compared in Python; zero mismatches. Other-locale entries not checked.",
+    "prior_receipt": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/fr-ds-e3c562b03258.json",
+    "prior_receipt_interpretation": "Prior F1 requested changes for this value. This audit independently reassessed the revision; no full namespace pass is inferred from that prior receipt. Prior other new keys in ui.chat and ui.chat.composer_media were passed there, outside this namespace/delta."
+  },
+  "unverified": [
+    "No runtime formatter, rendered UI, screen reader, builds, installs or servers used; semantic judgments are independent reader reasoning.",
+    "Other 53 namespace values checked only for JSON/key-set/removal and targeted consistency, not recertified.",
+    "No ledger write or tracked retention: explicit scratch-only/read-only constraint. Manager must retain canonical evidence and record ledger; scratch delivery does not claim committed evidence."
+  ],
+  "receipt_contract_review": "Same top-level and namespace field sets as fr-ds-e3c562b03258.json; exactly one namespace. Both output JSON files parsed back with Python.",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "fr-sol-ceaae4db2925.audit.log"
+}

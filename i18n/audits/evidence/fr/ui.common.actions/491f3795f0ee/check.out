@@ -1,0 +1,64 @@
+1. Head
+  HEAD = b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a
+  ok   head matches the frozen head in the brief
+  ok   worktree clean (git status --porcelain empty)
+2. sha256 vs manager expected-hashes.json
+  en/ui.common.actions: 0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b (expected 0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b)
+  ok   en/ui.common.actions hash matches expected-hashes.json
+  fr/ui.common.actions: 65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907 (expected 65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907)
+  ok   fr/ui.common.actions hash matches expected-hashes.json
+  en/ui.common.actions.context: 24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d (expected 24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d)
+  ok   en/ui.common.actions.context hash matches expected-hashes.json
+3. JSON validity + key-set parity
+  ok   both files parse as JSON (54 en keys, 54 fr keys)
+  ok   fr key set == en key set
+  ok   key present in both files and in the context sidecar
+4. The delta is exactly one line (git diff prior head..HEAD)
+  changed lines:
+    -	"ui.common.actions.actions_for_name": "Actions sur {name}"
+    +	"ui.common.actions.actions_for_name": "Actions pour {name}"
+  ok   exactly one value changed, nothing else in the file
+  ok   English catalogue and context sidecar unchanged since prior head
+5. Placeholder parity and grammar-safety of the inserted string
+  en='Actions for {name}' placeholders=['name']
+  fr='Actions pour {name}' placeholders=['name']
+  ok   placeholder names, order and count identical; {name} byte-exact once
+  ok   no ICU plural/select structure (English has none; CLDR categories not applicable)
+6. Invisible / bidi / spacing characters in the value
+  ok   no invisible, bidi or non-breaking-space characters (all ASCII: True)
+  length = 19 chars; trailing punctuation/whitespace = False
+  ok   no trailing whitespace or punctuation
+7. Corpus consistency: how this English sentence is rendered elsewhere in fr
+  [pour] ui.chat.canonical.link_toolkit.actions_for = 'Actions pour {name}'
+  [pour] ui.common.actions.actions_for_name = 'Actions pour {name}'
+  [pour] ui.library.menu.asset_actions_label = 'Actions pour {name}'
+  [pour] ui.settings.appearance.editor.more = 'Actions pour {name}'
+  [pour] ui.shell.sidebar_navigation.row_actions = 'Actions pour {name}'
+  5/5 renderings of "Actions for {name}" are exactly 'Actions pour {name}'
+  ok   unanimous: every shipped rendering of this English sentence is 'Actions pour {name}'
+8. 'sur' vs 'pour' split in the fr corpus
+  'sur {placeholder}' occurrences: 117
+    ui.agents.starters.json: ui.agents.starters.progress.accessible = 'Installation des agents intégrés, {step} sur {total}'
+    ui.agents.starters.json: ui.agents.starters.progress.named = 'Installation de {step} sur {total} — {name}…'
+    ui.agents.starters.json: ui.agents.starters.progress.count = 'Installation de {done} sur {total}…'
+    ui.browser.extensions.json: ui.browser.extensions.perm_sites = 'Lire et modifier vos données sur {hosts}'
+    ui.browser.json: ui.browser.browser_file_transfer_row.download_progress = '({percent, number, ::group-off}\u202f%, {received} sur {total})…'
+    ui.browser.json: ui.browser.browser_find_row.match_position = '{ordinal, number, ::group-off} sur {matches, number, ::group-off}'
+    ui.browser.json: ui.browser.browser_surface.startup_retry = 'Nouvelle tentative de démarrage du navigateur ({attempt, number, ::group-off} sur {maximum, number, ::group-off})'
+    ui.canvas.json: ui.canvas.files.progress = '{loaded} sur {total} chargés'
+  'Actions sur …' (article-bearing generic labels):
+    ui.canvas.json: ui.canvas.files.imageActions = 'Actions sur l’image'
+    ui.canvas.json: ui.canvas.files.fileActions = 'Actions sur le fichier'
+    ui.canvas.json: ui.canvas.file_row.ui_canvas_files_fileactions = 'Actions sur le fichier'
+    ui.canvas.json: ui.canvas.finder_files_view.ui_canvas_files_fileactions = 'Actions sur le fichier'
+    ui.canvas.json: ui.canvas.finder_files_view.ui_canvas_files_imageactions = 'Actions sur l’image'
+    ui.chat.json: ui.chat.image_actions.actions = 'Actions sur l’image'
+    ui.common.actions.json: ui.common.actions.file_actions_menu.file_actions = 'Actions sur le fichier'
+    ui.library.json: ui.library.menu.asset_actions = 'Actions sur l’élément'
+    ui.teamBridge.json: ui.teamBridge.actions.label = 'Actions sur le message'
+9. Style-guide and glossary identity
+  ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226  /Users/damian/local-operator/i18n/style-guides/fr.md
+  0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  /Users/damian/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md
+  0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  /Users/damian/local-operator/i18n/glossary.md
+
+RESULT: all mechanical checks passed

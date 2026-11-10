@@ -1,0 +1,78 @@
+== JSON parse + key-set parity with English ==
+ui.chat: en=208 vi=208 missing_in_vi=0 extra_in_vi=0
+ui.chat.composer_media: en=9 vi=9 missing_in_vi=0 extra_in_vi=0
+ui.common.actions: en=54 vi=54 missing_in_vi=0 extra_in_vi=0
+
+== Changed keys vs origin/main (should be additions only) ==
+-	"ui.chat.composer_media.remove_attachment": "Remove attachment"
++	"ui.chat.composer_media.remove_attachment": "Remove attachment",
++	"ui.chat.composer_media.pasted_image": "Pasted image"
+-	"ui.chat.session_status.effort_level.high": "High"
++	"ui.chat.session_status.effort_level.high": "High",
++	"ui.chat.image_actions.actions": "Image actions",
++	"ui.chat.audio.position_label": "{label} position"
+-	"ui.common.actions.clear": "Clear"
++	"ui.common.actions.clear": "Clear",
++	"ui.common.actions.actions_for_name": "Actions for {name}"
+-	"ui.chat.composer_media.remove_attachment": "Gỡ tệp đính kèm"
++	"ui.chat.composer_media.remove_attachment": "Gỡ tệp đính kèm",
++	"ui.chat.composer_media.pasted_image": "Ảnh đã dán"
+-	"ui.chat.session_status.effort_level.high": "Cao"
++	"ui.chat.session_status.effort_level.high": "Cao",
++	"ui.chat.image_actions.actions": "Thao tác với ảnh",
++	"ui.chat.audio.position_label": "Vị trí phát của {label}"
+-	"ui.common.actions.clear": "Xóa"
++	"ui.common.actions.clear": "Xóa",
++	"ui.common.actions.actions_for_name": "Thao tác với {name}"
+
+== Per-key mechanical checks ==
+
+-- ui.chat.composer_media.pasted_image
+   en : 'Pasted image'
+   vi : 'Ảnh đã dán'
+   placeholders en=[] vi=[] match=True
+   invisible/bidi: none
+   non-ASCII: 'á'(U+00E1), 'ã'(U+00E3), 'đ'(U+0111), 'Ả'(U+1EA2)
+   NFC precomposed: True
+   starts/ends with space: False  trailing punct: False
+   len chars=10 cells~=10
+   context role: 'pasted image fallback filename'
+   context maxCells: None
+
+-- ui.chat.image_actions.actions
+   en : 'Image actions'
+   vi : 'Thao tác với ảnh'
+   placeholders en=[] vi=[] match=True
+   invisible/bidi: none
+   non-ASCII: 'á'(U+00E1), 'ả'(U+1EA3), 'ớ'(U+1EDB)
+   NFC precomposed: True
+   starts/ends with space: False  trailing punct: False
+   len chars=16 cells~=16
+   context role: 'image actions menu tooltip and unnamed-image trigger accessible name'
+   context maxCells: None
+
+-- ui.chat.audio.position_label
+   en : '{label} position'
+   vi : 'Vị trí phát của {label}'
+   placeholders en=['label'] vi=['label'] match=True
+   invisible/bidi: none
+   non-ASCII: 'á'(U+00E1), 'í'(U+00ED), 'ị'(U+1ECB), 'ủ'(U+1EE7)
+   NFC precomposed: True
+   starts/ends with space: False  trailing punct: False
+   len chars=23 cells~=23
+   context role: 'accessible name of an audio clip seek slider'
+   context maxCells: None
+
+-- ui.common.actions.actions_for_name
+   en : 'Actions for {name}'
+   vi : 'Thao tác với {name}'
+   placeholders en=['name'] vi=['name'] match=True
+   invisible/bidi: none
+   non-ASCII: 'á'(U+00E1), 'ớ'(U+1EDB)
+   NFC precomposed: True
+   starts/ends with space: False  trailing punct: False
+   len chars=19 cells~=19
+   context role: 'accessible name of a named file or image actions menu trigger'
+   context maxCells: None
+
+== mechanical failures counted by this script: 0 ==

@@ -1,0 +1,197 @@
+{
+  "locale": "ur",
+  "namespaces": [
+    "ui.chat",
+    "ui.chat.composer_media",
+    "ui.common.actions"
+  ],
+  "audit_date": "2026-11-10",
+  "key_count": 4,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD for ur: 4 new keys (ui.chat.image_actions.actions, ui.chat.audio.position_label, ui.chat.composer_media.pasted_image, ui.common.actions.actions_for_name). Legacy values consistency-only; no full namespace certification.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "75c30f92d238",
+    "session": "75c30f92d238",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header: deepseek/deepseek-flash, session 75c30f92d238. No fallback notice appeared in this session; no role or model pin was requested or applied.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "f573f85d7297",
+    "source": "Translator and ur translator session supplied by the delegating manager; values audited as found. This auditor did not translate or participate in translation."
+  },
+  "namespaces_detail": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "key_count": 208,
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206,
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "46ddbd89585ba5d057b61bf90a83dfdca7b42fb2135ce18db940deed41794fdd",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.json",
+          "sha256": "46ddbd89585ba5d057b61bf90a83dfdca7b42fb2135ce18db940deed41794fdd"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "finding_ids": [
+        "UR-1"
+      ],
+      "consistency_only_note": "Legacy values are NOT certified. Checked only: file parses as JSON, key set equals the English file, no key removed or changed versus origin/main (git diff --numstat shows additions only).",
+      "legacy_caveats_observed_but_not_gating": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "key_count": 9,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8,
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "0b92eb10a96ac3e94f3acabe554e3e429cee150094ad333bb3c0f1bd0243e3fb",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.composer_media.json",
+          "sha256": "0b92eb10a96ac3e94f3acabe554e3e429cee150094ad333bb3c0f1bd0243e3fb"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "finding_ids": [],
+      "consistency_only_note": "Legacy values are NOT certified. Checked only: file parses as JSON, key set equals the English file, no key removed or changed versus origin/main (git diff --numstat shows additions only).",
+      "legacy_caveats_observed_but_not_gating": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "key_count": 54,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "06ed5d8326b11d74df3891e15a1e9290c3893f03be43b79fa91f9d168058e7f7",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.common.actions.json",
+          "sha256": "06ed5d8326b11d74df3891e15a1e9290c3893f03be43b79fa91f9d168058e7f7"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "finding_ids": [
+        "UR-2"
+      ],
+      "consistency_only_note": "Legacy values are NOT certified. Checked only: file parses as JSON, key set equals the English file, no key removed or changed versus origin/main (git diff --numstat shows additions only).",
+      "legacy_caveats_observed_but_not_gating": []
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy, verified identical to ~/local-operator/i18n/glossary.md (same sha256, 173 lines). Glossary conformance was checked against this copy.",
+      "identical_to": {
+        "path": "~/local-operator/i18n/glossary.md",
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "path": "ur-ds-75c30f92d238.json",
+      "sha256": "0f26d52fba87b062e5aa10d127cc3a178fa09f3c5193eaf4bbe42260dd9ae7ec",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "ur-ds-75c30f92d238.audit.log",
+      "sha256": "e3969c9058a1b3fceadfd8cd1e39d1b96870f876faca56762b9fb3353fd71c7c",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "ur-ds-75c30f92d238.check.py",
+      "sha256": "37bac99437f75b175e572605637b4ee148f91a8c8018f944f12e10d19dd909dc",
+      "kind": "executed_check_source",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "check-output.txt",
+      "sha256": "a9ddbeb9fbcef0b1abb35243ba62fb4770172c0c0d56007ded130b01f11b9411",
+      "kind": "actual_execution_output_of_check_py",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "receipt-contract-check.mjs",
+      "sha256": "4851ac0cbdb34187899e78132d2d39be8598c9f9d0cc915b963ddf3a2dc9a02c",
+      "kind": "executed_check_source",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "receipt-contract-check.out",
+      "sha256": "4d421431ea0014a77b071b1139315bc4bce321f6c3172afe85d4fe4ee7d42836",
+      "kind": "actual_execution_output_of_contract_check",
+      "record_reference": "record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "UR-1",
+      "UR-2"
+    ]
+  },
+  "finding_report": "ur-ds-75c30f92d238.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "ur-ds-75c30f92d238.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/ur/ui.chat/s12-ds-75c30f92d238/, i18n/audits/evidence/ur/ui.chat.composer_media/s12-ds-75c30f92d238/, i18n/audits/evidence/ur/ui.common.actions/s12-ds-75c30f92d238/",
+    "manager_action_required": "Copy record.json, the receipt and audit.log into the canonical per-namespace directories above (one audit id, three namespace blocks; each copy's namespaces_detail block names its own namespace), then run node scripts/i18n/ledger-assemble.mjs per namespace with --locale ur --receipt <copy>. No ledger command was run here because it writes repository files.",
+    "proposed_note": "passed; 1 MINOR (ur keeps position_label word 'پوزیشن' vs existing 'مقام'), 1 NIT; 0 blocker/major. Record i18n/audits/evidence/ur/ui.chat/s12-ds-75c30f92d238/record.json"
+  },
+  "known_repo_state_at_audit": "node scripts/i18n/ledger-check.mjs printed FAILED - 64 finding(s) across 1085 ledger entries (exit 1), including 9 on ur/* (stale source_sha256, stale target_sha256 and 'receipt does not name the English source bytes on disk' for ui.chat, ui.chat.composer_media, ui.common.actions). That is the expected pending-re-audit state for this unaudited delta (and for the other locales in the same wave), not a defect of the ur translations: the ledger rows describe the pre-PR bytes.",
+  "unverified": [
+    "No ledger write, no tracked evidence commit, no repository edit: ledger-assemble writes i18n/ledger.json and i18n/receipts/ inside the checkout, which this task forbids.",
+    "No rendered UI, browser, screenshot or screen-reader execution; RTL fit is a reading of storage-order strings plus the render layer's documented FSI/PDI isolation.",
+    "scripts/i18n/*.test.mjs and the base-aware check-added-strings gate were not run (CI remit). The four validator scripts (generate --check, check-duplicates, context-parity, ledger-check) were run read-only.",
+    "Legacy values in the three namespaces are consistency-only, not certified."
+  ],
+  "receipt_contract": {
+    "run": true,
+    "command": "node receipt-contract-check.mjs ur-ds-75c30f92d238.json",
+    "module": "scripts/i18n/ledger-rules.mjs#deriveReceiptAudit",
+    "result": "ACCEPTED for all three namespaces (exit 0)",
+    "caveat": "The ledger WRITE (ledger-assemble.mjs) was not run: it writes repository files."
+  }
+}
