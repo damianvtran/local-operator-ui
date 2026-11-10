@@ -10,6 +10,7 @@ import {
 	requireBridgeWriteAccount,
 } from "@shared/api/local-operator/team-bridge-api";
 import { TEAM_TRIAL_START_ENABLED } from "@shared/api/local-operator/team-trial-activation";
+import { InlineErrorBoundary } from "@shared/components/common/inline-error-boundary";
 import { Spinner } from "@shared/components/common/spinner";
 import { useLeftSidebarHosted } from "@shared/components/navigation/left-sidebar-host";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
@@ -3806,7 +3807,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						</div>
 					)
 				) : (
-					<>
+					/* ONE CONVERSATION'S CRASH STAYS IN ITS PANE (P0, 2026-11-10). A render
+					   error here - React #185 from the timeline, a malformed row - used to
+					   reach the route ErrorBoundary and replace the whole window, rail and
+					   app sidebar included, so the reader could not even pick another
+					   channel. Released by the ROOM (not a React key): switching channel
+					   renders the next one normally, while ordinary re-renders of the same
+					   room keep the pane's state. The boundary adds no DOM of its own on
+					   the happy path, so the section's flex layout is unchanged. */
+					<InlineErrorBoundary
+						resetKeys={[target.type === "compose" ? "compose" : shownRoomKey]}
+						className="mx-6 my-4"
+						testId="team-bridge-conversation-error"
+					>
 						{target.type === "compose" ? (
 							<TeamBridgeComposeBar
 								recipients={composeRecipients}
@@ -4564,7 +4577,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									/>
 								</div>
 							))}
-					</>
+					</InlineErrorBoundary>
 				)}
 			</section>
 			{/* Threads: a ground-separated sibling. The capability and captured

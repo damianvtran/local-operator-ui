@@ -24,6 +24,7 @@ import {
 	hubSkillsSupported,
 	hubSourceAddress,
 } from "@shared/api/radient/skills-api";
+import { InlineErrorBoundary } from "@shared/components/common/inline-error-boundary";
 import { Button } from "@shared/components/ui/button";
 import {
 	Dialog,
@@ -40,7 +41,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Search } from "lucide-react";
-import { useId, useMemo, useRef, useState } from "react";
+import { type ReactNode, useId, useMemo, useRef, useState } from "react";
 import {
 	type HubSkillScope,
 	type PullHubSkillInput,
@@ -73,6 +74,21 @@ import { HubSkillPublication } from "./hub-skill-publication";
  * not repeat the scope qualifier the toolbar already shows (design D2, UX U5):
  * the row says WHO, the browse bar says WHICH scope.
  */
+/**
+ * Evaluate `render` inside a CHILD render, not the caller's.
+ *
+ * An error boundary only catches errors thrown while rendering its
+ * descendants. The card and detail bodies are JSX built inline in
+ * `HubSkillsLibrary`'s own render (they close over its hooks' state), so a throw
+ * there - `files.length` on a bundle detail did exactly that - happened in the
+ * PARENT and escaped any boundary placed around it. Deferring the evaluation
+ * into this component moves the throw below the boundary without lifting
+ * ~300 lines of closures into props. `render` must not call hooks.
+ */
+function RenderInBoundary({ render }: { render: () => ReactNode }) {
+	return <>{render()}</>;
+}
+
 function skillPublisherLine(
 	row: HubSkillRow,
 	organization: string | null,
@@ -504,70 +520,87 @@ export function HubSkillsLibrary({
 								</p>
 							)}
 							<ul className="grid list-none grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] gap-6 p-0">
-								{rows.map((row) => {
-									const joined = linkStateFor(row);
-									const mark = skillMark(
-										joined.state,
-										joined.update,
-										joined.link
-											? hubLinkContentState(joined.link) === "present"
-											: false,
-									);
-									return (
-										<li key={row.id} className="min-w-0">
-											<button
-												type="button"
-												aria-haspopup="dialog"
-												aria-expanded={selected === row.id}
-												aria-label={t("ui.hub.skills.open_detail", {
-													item: row.name,
-												})}
-												data-testid="hub-skill-open"
-												data-skill-id={row.id}
-												data-skill-state={joined.state.kind}
-												onClick={() => {
-													setSelected(row.id);
-													pull.reset();
-													subscribe.reset();
-													unpull.reset();
-													policy.reset();
+								{rows.map((row) => (
+									/*
+									 * Each card is its own failure domain, so one row the card
+									 * cannot render costs that card, not the catalogue.
+									 */
+									<li key={row.id} className="min-w-0">
+										<InlineErrorBoundary
+											resetKeys={[row.id, row.revision]}
+											testId="hub-skill-card-error"
+											className="h-full"
+										>
+											<RenderInBoundary
+												render={() => {
+													const joined = linkStateFor(row);
+													const mark = skillMark(
+														joined.state,
+														joined.update,
+														joined.link
+															? hubLinkContentState(joined.link) === "present"
+															: false,
+													);
+													return (
+														<button
+															type="button"
+															aria-haspopup="dialog"
+															aria-expanded={selected === row.id}
+															aria-label={t("ui.hub.skills.open_detail", {
+																item: row.name,
+															})}
+															data-testid="hub-skill-open"
+															data-skill-id={row.id}
+															data-skill-state={joined.state.kind}
+															onClick={() => {
+																setSelected(row.id);
+																pull.reset();
+																subscribe.reset();
+																unpull.reset();
+																policy.reset();
+															}}
+															className={cn(
+																"flex h-full w-full flex-col overflow-hidden rounded-md bg-surface text-left",
+																"transition-colors duration-fast ease-out-quart hover:bg-elevated",
+																"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
+															)}
+														>
+															<span className="flex min-h-0 flex-1 flex-col gap-2 p-4">
+																<span className="truncate font-medium text-heading text-ink">
+																	{row.name}
+																</span>
+																{row.description ? (
+																	<span className="line-clamp-3 text-body-sm text-ink-muted">
+																		{row.description}
+																	</span>
+																) : null}
+																<span className="mt-auto truncate text-ink-dim text-meta">
+																	{skillPublisherLine(row, scope.organization)}
+																</span>
+															</span>
+															{/*
+															 * The footer states the skill's fact in words and, beside
+															 * it, the update mark. The line keeps the downloaded /
+															 * subscribed fact even while an update waits, so a waiting
+															 * card and an applied one differ by the WORD in this row
+															 * (and by the glyph), not only by two close hues.
+															 */}
+															<span className="flex items-center justify-between gap-2 border-t border-hairline px-4 py-2 text-meta">
+																<span className="truncate text-ink-muted">
+																	{stateSentence(
+																		joined.state,
+																		inventoryUnknown,
+																	)}
+																</span>
+																<SkillMarkChip mark={mark} />
+															</span>
+														</button>
+													);
 												}}
-												className={cn(
-													"flex h-full w-full flex-col overflow-hidden rounded-md bg-surface text-left",
-													"transition-colors duration-fast ease-out-quart hover:bg-elevated",
-													"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
-												)}
-											>
-												<span className="flex min-h-0 flex-1 flex-col gap-2 p-4">
-													<span className="truncate font-medium text-heading text-ink">
-														{row.name}
-													</span>
-													{row.description ? (
-														<span className="line-clamp-3 text-body-sm text-ink-muted">
-															{row.description}
-														</span>
-													) : null}
-													<span className="mt-auto truncate text-ink-dim text-meta">
-														{skillPublisherLine(row, scope.organization)}
-													</span>
-												</span>
-												{/*
-												 * The footer states the skill's fact in words and, beside
-												 * it, the update mark. The line keeps the downloaded /
-												 * subscribed fact even while an update waits, so a waiting
-												 * card and an applied one differ by the WORD in this row
-												 * (and by the glyph), not only by two close hues.
-												 */}
-												<span className="flex items-center justify-between gap-2 border-t border-hairline px-4 py-2 text-meta">
-													<span className="truncate text-ink-muted">
-														{stateSentence(joined.state, inventoryUnknown)}
-													</span>
-													<SkillMarkChip mark={mark} />
-												</span>
-											</button>
-										</li>
-									);
-								})}
+											/>
+										</InlineErrorBoundary>
+									</li>
+								))}
 							</ul>
 							<HubPager
 								page={page}
@@ -626,292 +659,319 @@ export function HubSkillsLibrary({
 							{t("ui.hub.status.other_error")}
 						</p>
 					)}
+					{/*
+					 * One skill's detail is its own failure domain (see
+					 * `InlineErrorBoundary`): a payload this body cannot render shows an
+					 * inline alert under the still-closable header instead of replacing
+					 * the window. `RenderInBoundary` defers the body's evaluation into a
+					 * child render, which is what lets the boundary catch it; keyed by
+					 * the selected id so another skill renders normally.
+					 */}
 					{detail.data && scopeMatches && (
-						<>
-							<div className="flex flex-wrap items-center justify-between gap-2">
-								<p className="text-body-sm text-ink-muted">
-									{stateSentence(selectedState, inventoryUnknown)}
-									<span aria-hidden="true" className="mx-1.5">
-										·
-									</span>
-									{t("ui.hub.skills.revision", {
-										revision: String(detail.data.content_revision),
-									})}
-								</p>
-								<SkillMarkChip
-									mark={skillMark(selectedState, selectedUpdate, hasCopy)}
-								/>
-							</div>
-							<p
-								data-testid="hub-skill-description"
-								className="max-w-3xl select-text whitespace-pre-wrap break-words text-body-sm text-ink-muted"
-							>
-								{detail.data.description}
-							</p>
-							{selectedLink && hasCopy && selectedLink.local_path && (
-								<p
-									data-testid="hub-skill-local-path"
-									className="break-words font-mono text-meta text-ink-dim"
-								>
-									{t("ui.hub.skills.local_path", {
-										/*
-										 * FSI/PDI AT THE CALL SITE, not in the message: the repo's
-										 * Urdu gate refuses a manual bidi control in a catalogue
-										 * value, and `scripts/i18n/ur-activation.test.mjs` failed on
-										 * exactly that when the isolate lived in the string. Under
-										 * `dir="rtl"` a leading `/` otherwise resolves as RTL
-										 * punctuation and moves to the far end of the sentence
-										 * (measured with fribidi); isolation here fixes every locale
-										 * that renders this line without touching translated bytes.
-										 */
-										path: `⁨${selectedLink.local_path}⁩`,
-									})}
-								</p>
-							)}
-							<h4 className="text-body-sm text-ink">
-								{t("ui.hub.skills.files")}
-							</h4>
-							<p className="text-meta text-ink-muted">
-								{t("ui.hub.skills.file_count", {
-									count: detail.data.files.length,
-								})}
-							</p>
-							{detail.data.files.map((file) => (
-								<details key={file.path} className="min-w-0">
-									<summary className="break-words text-mono-sm text-ink">
-										{file.path}
-									</summary>
-									<Textarea
-										readOnly
-										rows={12}
-										aria-label={file.path}
-										value={file.content}
-										className="max-h-96 bg-sunken text-mono-sm"
-									/>
-								</details>
-							))}
-							{/*
-							 * Membership and content are independent, and both controls say so.
-							 * The switch is the stateful Subscribe control (turning it off is
-							 * a policy write, never a file delete); the named button beside it
-							 * is how the word "Unsubscribe" is findable without hunting a
-							 * switch's OFF position.
-							 */}
-							{selectedLink && (
-								<div className="flex flex-col gap-2 border-t border-hairline pt-3">
-									<HubLinkPolicyControls link={selectedLink} />
-									{selectedLink.policy.subscribe && (
-										<div className="flex flex-wrap items-center gap-2">
-											<Button
-												variant="outline"
-												size="sm"
-												data-testid="hub-skill-unsubscribe"
-												disabled={policy.isPending || !policy.canWrite}
-												onClick={runUnsubscribe}
-											>
-												{t("ui.hub.skills.unsubscribe")}
-											</Button>
-											<span className="text-meta text-ink-muted">
-												{t("ui.hub.skills.unsubscribe_help")}
-											</span>
+						<InlineErrorBoundary
+							resetKeys={[selected, detail.data.revision]}
+							testId="hub-skill-detail-error"
+						>
+							<RenderInBoundary
+								render={() => (
+									<>
+										<div className="flex flex-wrap items-center justify-between gap-2">
+											<p className="text-body-sm text-ink-muted">
+												{stateSentence(selectedState, inventoryUnknown)}
+												<span aria-hidden="true" className="mx-1.5">
+													·
+												</span>
+												{t("ui.hub.skills.revision", {
+													revision: String(detail.data.content_revision),
+												})}
+											</p>
+											<SkillMarkChip
+												mark={skillMark(selectedState, selectedUpdate, hasCopy)}
+											/>
 										</div>
-									)}
-									{policy.error && (
-										<p role="alert" className="text-meta text-danger">
-											{t("ui.hub.subscriptions.save_failed", {
-												setting:
-													policyAct === "subscribe"
-														? t("ui.hub.subscriptions.subscribe")
-														: t("ui.hub.skills.unsubscribe"),
-												source,
+										<p
+											data-testid="hub-skill-description"
+											className="max-w-3xl select-text whitespace-pre-wrap break-words text-body-sm text-ink-muted"
+										>
+											{detail.data.description}
+										</p>
+										{selectedLink && hasCopy && selectedLink.local_path && (
+											<p
+												data-testid="hub-skill-local-path"
+												className="break-words font-mono text-meta text-ink-dim"
+											>
+												{t("ui.hub.skills.local_path", {
+													/*
+													 * FSI/PDI AT THE CALL SITE, not in the message: the repo's
+													 * Urdu gate refuses a manual bidi control in a catalogue
+													 * value, and `scripts/i18n/ur-activation.test.mjs` failed on
+													 * exactly that when the isolate lived in the string. Under
+													 * `dir="rtl"` a leading `/` otherwise resolves as RTL
+													 * punctuation and moves to the far end of the sentence
+													 * (measured with fribidi); isolation here fixes every locale
+													 * that renders this line without touching translated bytes.
+													 */
+													path: `⁨${selectedLink.local_path}⁩`,
+												})}
+											</p>
+										)}
+										<h4 className="text-body-sm text-ink">
+											{t("ui.hub.skills.files")}
+										</h4>
+										<p className="text-meta text-ink-muted">
+											{/*
+											 * `file_count`, not `files.length`: a BUNDLE skill serves its
+											 * declared inventory (`bundle.file_count`) and no `files` rows,
+											 * so the listing below is empty while the count stays true
+											 * (see `normalizeHubSkillDetail`).
+											 */}
+											{t("ui.hub.skills.file_count", {
+												count: detail.data.file_count,
 											})}
 										</p>
-									)}
-								</div>
-							)}
-							{/*
-							 * The updates channel, not a parallel status story. It is NOT
-							 * mounted without a copy: core reports an absent link's remote
-							 * revision as `available` with `local: null`, so a Retry there
-							 * would re-check and never install — the remedy for an absent
-							 * skill is Download, which this dialog already offers (QA
-							 * Q-R2-1).
-							 */}
-							{selectedLink && hasCopy && (
-								<HubUpdatePanel
-									kind="skill"
-									name={selectedLink.name}
-									enabled={updatesEnabled}
-								/>
-							)}
-							{pull.error && !adoptionInput && (
-								<p
-									role="alert"
-									className="text-body-sm text-danger"
-									data-testid="hub-skill-pull-failed"
-								>
-									{t(
-										aliasConflict(pull.error)
-											? "ui.hub.skills.local_exists"
-											: "ui.hub.skills.pull_failed",
-									)}
-								</p>
-							)}
-							{!adoptionInput && adoptionCandidate && (
-								<Button
-									variant="outline"
-									onClick={() => setAdoptionInput(adoptionCandidate)}
-								>
-									{t("ui.hub.adoption.review")}
-								</Button>
-							)}
-							{adoptionInput && (
-								<HubSkillAdoption
-									input={adoptionInput}
-									onClose={() => {
-										setAdoptionInput(null);
-										pull.reset();
-										subscribe.reset();
-									}}
-								/>
-							)}
+										{detail.data.files.map((file) => (
+											<details key={file.path} className="min-w-0">
+												<summary className="break-words text-mono-sm text-ink">
+													{file.path}
+												</summary>
+												<Textarea
+													readOnly
+													rows={12}
+													aria-label={file.path}
+													value={file.content}
+													className="max-h-96 bg-sunken text-mono-sm"
+												/>
+											</details>
+										))}
+										{/*
+										 * Membership and content are independent, and both controls say so.
+										 * The switch is the stateful Subscribe control (turning it off is
+										 * a policy write, never a file delete); the named button beside it
+										 * is how the word "Unsubscribe" is findable without hunting a
+										 * switch's OFF position.
+										 */}
+										{selectedLink && (
+											<div className="flex flex-col gap-2 border-t border-hairline pt-3">
+												<HubLinkPolicyControls link={selectedLink} />
+												{selectedLink.policy.subscribe && (
+													<div className="flex flex-wrap items-center gap-2">
+														<Button
+															variant="outline"
+															size="sm"
+															data-testid="hub-skill-unsubscribe"
+															disabled={policy.isPending || !policy.canWrite}
+															onClick={runUnsubscribe}
+														>
+															{t("ui.hub.skills.unsubscribe")}
+														</Button>
+														<span className="text-meta text-ink-muted">
+															{t("ui.hub.skills.unsubscribe_help")}
+														</span>
+													</div>
+												)}
+												{policy.error && (
+													<p role="alert" className="text-meta text-danger">
+														{t("ui.hub.subscriptions.save_failed", {
+															setting:
+																policyAct === "subscribe"
+																	? t("ui.hub.subscriptions.subscribe")
+																	: t("ui.hub.skills.unsubscribe"),
+															source,
+														})}
+													</p>
+												)}
+											</div>
+										)}
+										{/*
+										 * The updates channel, not a parallel status story. It is NOT
+										 * mounted without a copy: core reports an absent link's remote
+										 * revision as `available` with `local: null`, so a Retry there
+										 * would re-check and never install — the remedy for an absent
+										 * skill is Download, which this dialog already offers (QA
+										 * Q-R2-1).
+										 */}
+										{selectedLink && hasCopy && (
+											<HubUpdatePanel
+												kind="skill"
+												name={selectedLink.name}
+												enabled={updatesEnabled}
+											/>
+										)}
+										{pull.error && !adoptionInput && (
+											<p
+												role="alert"
+												className="text-body-sm text-danger"
+												data-testid="hub-skill-pull-failed"
+											>
+												{t(
+													aliasConflict(pull.error)
+														? "ui.hub.skills.local_exists"
+														: "ui.hub.skills.pull_failed",
+												)}
+											</p>
+										)}
+										{!adoptionInput && adoptionCandidate && (
+											<Button
+												variant="outline"
+												onClick={() => setAdoptionInput(adoptionCandidate)}
+											>
+												{t("ui.hub.adoption.review")}
+											</Button>
+										)}
+										{adoptionInput && (
+											<HubSkillAdoption
+												input={adoptionInput}
+												onClose={() => {
+													setAdoptionInput(null);
+													pull.reset();
+													subscribe.reset();
+												}}
+											/>
+										)}
 
-							{pull.data &&
-								!pull.data.reports?.some(
-									(report) => report.applied || report.outcome === "unchanged",
-								) && (
-									<p
-										role="alert"
-										className="text-body-sm text-danger"
-										data-testid="hub-skill-pull-failed"
-									>
-										{t("ui.hub.skills.pull_failed")}
-									</p>
+										{pull.data &&
+											!pull.data.reports?.some(
+												(report) =>
+													report.applied || report.outcome === "unchanged",
+											) && (
+												<p
+													role="alert"
+													className="text-body-sm text-danger"
+													data-testid="hub-skill-pull-failed"
+												>
+													{t("ui.hub.skills.pull_failed")}
+												</p>
+											)}
+										{pull.data?.link &&
+											pull.data.reports?.some(
+												(report) =>
+													report.link_id === pulledLinkId &&
+													report.direction === "pull" &&
+													report.applied,
+											) && (
+												<output
+													data-testid="hub-skill-installed"
+													className="text-body-sm text-ink"
+												>
+													{t("ui.hub.skills.installed_alias", {
+														item: pull.data.link.name,
+														source: hubLinkSourceName(pull.data.link),
+													})}
+												</output>
+											)}
+										{unpull.error && (
+											<p
+												role="alert"
+												className="text-body-sm text-danger"
+												data-testid="hub-skill-unpull-failed"
+											>
+												{t("ui.hub.skills.unpull_failed")}
+											</p>
+										)}
+										{subscribe.error && !adoptionInput && (
+											<p
+												role="alert"
+												className="text-body-sm text-danger"
+												data-testid="hub-skill-subscribe-failed"
+											>
+												{t(
+													aliasConflict(subscribe.error)
+														? "ui.hub.skills.local_exists"
+														: "ui.hub.skills.subscribe_failed",
+												)}
+											</p>
+										)}
+										{!signedIn && (
+											<p className="text-meta text-ink-muted">
+												{t("ui.hub.status.no_credential")}
+											</p>
+										)}
+										{/*
+										 * ONE PRIMARY, ONE SECONDARY. Download is the copy act (with
+										 * Subscribe beside it only when there is no subscription yet);
+										 * Remove local copy is the only secondary and is plainly distinct
+										 * from Unsubscribe above. There is no third copy-creating path and
+										 * no policy checkbox applying to one of two buttons (design D4,
+										 * UX U1).
+										 */}
+										{/*
+										 * ONE UPDATE ACTION (design round 2, D4). The update panel
+										 * owns "Update from the hub" — it carries the state, the
+										 * retry and the preview — so the footer no longer offers a
+										 * second "Update now" for the same intent. Download appears
+										 * only when there is nothing to update: an unlinked skill or
+										 * one whose copy is absent.
+										 */}
+										{!adoptionInput && (!selectedLink || !hasCopy) && (
+											<DialogFooter className="flex-row flex-wrap justify-start gap-2">
+												<Button
+													data-testid="hub-skill-download"
+													disabled={
+														!signedIn ||
+														!ready ||
+														pull.isPending ||
+														!inventoryReady
+													}
+													aria-label={t("ui.hub.skills.pull_title", {
+														item: detail.data.name,
+														source,
+													})}
+													onClick={() => runPull(selectedLink)}
+												>
+													{t("ui.hub.skills.download")}
+												</Button>
+												{!selectedLink?.policy.subscribe && (
+													<Button
+														variant="outline"
+														data-testid="hub-skill-subscribe"
+														disabled={
+															!signedIn ||
+															!ready ||
+															!inventoryReady ||
+															subscribe.isPending ||
+															policy.isPending ||
+															// A link makes this a policy write, so it needs the
+															// core's policy-write minimum; creation does not.
+															(selectedLink ? !policy.canWrite : false)
+														}
+														onClick={runSubscribe}
+													>
+														{t("ui.hub.subscriptions.subscribe")}
+													</Button>
+												)}
+											</DialogFooter>
+										)}
+										{selectedLink && hasCopy && (
+											<DialogFooter className="flex-row flex-wrap justify-start gap-2">
+												<Button
+													variant="outline"
+													data-testid="hub-skill-unpull"
+													disabled={unpull.isPending}
+													onClick={() => {
+														unpull.reset();
+														setConfirmUnpull(true);
+													}}
+												>
+													{t("ui.hub.skills.unpull")}
+												</Button>
+											</DialogFooter>
+										)}
+										{/*
+										 * The support sentence describes the DOWNLOAD control above it, so it
+										 * follows the same condition — an update state has no Download and the
+										 * update panel owns that action (design round 3, D12).
+										 */}
+										{!adoptionInput && (!selectedLink || !hasCopy) && (
+											<p className="text-meta text-ink-muted">
+												{selectedLink?.policy.subscribe
+													? t("ui.hub.skills.download_help")
+													: t("ui.hub.skills.subscribe_help")}
+											</p>
+										)}
+									</>
 								)}
-							{pull.data?.link &&
-								pull.data.reports?.some(
-									(report) =>
-										report.link_id === pulledLinkId &&
-										report.direction === "pull" &&
-										report.applied,
-								) && (
-									<output
-										data-testid="hub-skill-installed"
-										className="text-body-sm text-ink"
-									>
-										{t("ui.hub.skills.installed_alias", {
-											item: pull.data.link.name,
-											source: hubLinkSourceName(pull.data.link),
-										})}
-									</output>
-								)}
-							{unpull.error && (
-								<p
-									role="alert"
-									className="text-body-sm text-danger"
-									data-testid="hub-skill-unpull-failed"
-								>
-									{t("ui.hub.skills.unpull_failed")}
-								</p>
-							)}
-							{subscribe.error && !adoptionInput && (
-								<p
-									role="alert"
-									className="text-body-sm text-danger"
-									data-testid="hub-skill-subscribe-failed"
-								>
-									{t(
-										aliasConflict(subscribe.error)
-											? "ui.hub.skills.local_exists"
-											: "ui.hub.skills.subscribe_failed",
-									)}
-								</p>
-							)}
-							{!signedIn && (
-								<p className="text-meta text-ink-muted">
-									{t("ui.hub.status.no_credential")}
-								</p>
-							)}
-							{/*
-							 * ONE PRIMARY, ONE SECONDARY. Download is the copy act (with
-							 * Subscribe beside it only when there is no subscription yet);
-							 * Remove local copy is the only secondary and is plainly distinct
-							 * from Unsubscribe above. There is no third copy-creating path and
-							 * no policy checkbox applying to one of two buttons (design D4,
-							 * UX U1).
-							 */}
-							{/*
-							 * ONE UPDATE ACTION (design round 2, D4). The update panel
-							 * owns "Update from the hub" — it carries the state, the
-							 * retry and the preview — so the footer no longer offers a
-							 * second "Update now" for the same intent. Download appears
-							 * only when there is nothing to update: an unlinked skill or
-							 * one whose copy is absent.
-							 */}
-							{!adoptionInput && (!selectedLink || !hasCopy) && (
-								<DialogFooter className="flex-row flex-wrap justify-start gap-2">
-									<Button
-										data-testid="hub-skill-download"
-										disabled={
-											!signedIn || !ready || pull.isPending || !inventoryReady
-										}
-										aria-label={t("ui.hub.skills.pull_title", {
-											item: detail.data.name,
-											source,
-										})}
-										onClick={() => runPull(selectedLink)}
-									>
-										{t("ui.hub.skills.download")}
-									</Button>
-									{!selectedLink?.policy.subscribe && (
-										<Button
-											variant="outline"
-											data-testid="hub-skill-subscribe"
-											disabled={
-												!signedIn ||
-												!ready ||
-												!inventoryReady ||
-												subscribe.isPending ||
-												policy.isPending ||
-												// A link makes this a policy write, so it needs the
-												// core's policy-write minimum; creation does not.
-												(selectedLink ? !policy.canWrite : false)
-											}
-											onClick={runSubscribe}
-										>
-											{t("ui.hub.subscriptions.subscribe")}
-										</Button>
-									)}
-								</DialogFooter>
-							)}
-							{selectedLink && hasCopy && (
-								<DialogFooter className="flex-row flex-wrap justify-start gap-2">
-									<Button
-										variant="outline"
-										data-testid="hub-skill-unpull"
-										disabled={unpull.isPending}
-										onClick={() => {
-											unpull.reset();
-											setConfirmUnpull(true);
-										}}
-									>
-										{t("ui.hub.skills.unpull")}
-									</Button>
-								</DialogFooter>
-							)}
-							{/*
-							 * The support sentence describes the DOWNLOAD control above it, so it
-							 * follows the same condition — an update state has no Download and the
-							 * update panel owns that action (design round 3, D12).
-							 */}
-							{!adoptionInput && (!selectedLink || !hasCopy) && (
-								<p className="text-meta text-ink-muted">
-									{selectedLink?.policy.subscribe
-										? t("ui.hub.skills.download_help")
-										: t("ui.hub.skills.subscribe_help")}
-								</p>
-							)}
-						</>
+							/>
+						</InlineErrorBoundary>
 					)}
 				</DialogContent>
 			</Dialog>
