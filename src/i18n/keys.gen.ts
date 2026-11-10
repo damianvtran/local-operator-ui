@@ -6645,6 +6645,17 @@ export type MessageParams = {
 	"ui.chat.sidebar.list.retry_refresh": undefined;
 	"ui.chat.sidebar.list.truncated_legacy": undefined;
 	"ui.chat.sidebar.mark_all_read.label": { count: number };
+	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": { elsewhere: number };
+	"ui.chat.sidebar.mark_all_read.scope_chats": { count: number };
+	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": {
+		count: number;
+		elsewhere: number;
+	};
+	"ui.chat.sidebar.mark_all_read.scope_joined": {
+		chats: string;
+		tokenless: string;
+	};
+	"ui.chat.sidebar.mark_all_read.scope_tokenless": { count: number };
 	"ui.chat.sidebar.nav.chats": undefined;
 	"ui.chat.sidebar.pins.drag_title": undefined;
 	"ui.chat.sidebar.pins.failure": { action: string; title: string };
