@@ -63,7 +63,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { teamBridgeDeliveryLines, teamBridgeDeliverySummary } from "./src/renderer/src/features/team-bridge/team-bridge-delivery-annotation-model";
-			export { TeamBridgeDeliveryAnnotation, TeamBridgeDeliveryLines, teamBridgeDeliverySummaryText } from "./src/renderer/src/features/team-bridge/team-bridge-delivery-annotation";
+			export { TeamBridgeDeliveryAnnotation, TeamBridgeDeliveryLines, teamBridgeDeliverySummaryText, teamBridgeDeliverySummaryRuns } from "./src/renderer/src/features/team-bridge/team-bridge-delivery-annotation";
 			export { teamBridgeMessageSchema } from "./src/shared/team-bridge-contract";
 			export { ownerAuditToBridgeMessage } from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-model";
 			export { ownerAuditMessageSchema } from "./src/shared/team-bridge-owner-audit-contract";
@@ -89,6 +89,7 @@ const {
 	teamBridgeDeliveryLines,
 	teamBridgeDeliverySummary,
 	teamBridgeDeliverySummaryText,
+	teamBridgeDeliverySummaryRuns,
 	TeamBridgeDeliveryAnnotation,
 	TeamBridgeDeliveryLines,
 	teamBridgeMessageSchema,
@@ -118,6 +119,27 @@ const BOUND_DANDA = /^। <button/;
 const BOUND_URDU_STOP = /^۔ <button/;
 const BOUND_ELLIPSIS = /<span class="whitespace-nowrap">… <button/;
 const BUTTON_TAIL = /<button[\s\S]*$/;
+// Round-1 remediation assertions (#1832), hoisted for useTopLevelRegex.
+const ROW_SCREENING =
+	/Not delivered to Dot \(Ana\) yet\. It is being screened\./;
+const ROW_HELD_FOR_REVIEW =
+	/Not delivered to Eve \(Renee\) yet\. Held for Renee’s review\./;
+const ROW_ANY_CLASS = /could not be screened|retrying/;
+const ROW_RETRY = /It could not be screened; retrying automatically\./;
+const ROW_PENDING = /Screened; delivery to Aida \(Sam\) is pending/;
+const ROW_NOT_REVIEWED_SHORT = /nobody reviewed it within a day/;
+const ROW_NOT_REVIEWED =
+	/Not delivered to Aida \(Sam\): nobody reviewed it within a day\. It arrives only if its owner releases it; if it matters, send it again or ask them\./;
+const YET_ELLIPSIS = /yet…/;
+const DELIVERED_RUN_SHRINKS =
+	/<span class="[^"]*shrink-\[999\][^"]*">Delivered to 12<\/span><span class="[^"]*">/;
+const FULL_TITLE =
+	/title="Delivered to 12 · 1 held for review · 2 not delivered"/;
+const DELIVERED_ONLY = />Delivered to 3</;
+const ANY_BUTTON = /<button/;
+const MIN_H_6 = /\bmin-h-6\b/;
+const NOT_REVIEWED_FOOTER =
+	/A message not reviewed within a day arrives only if the recipient’s owner releases it\./;
 const HINDI_GRAPHEMES = new Intl.Segmenter("hi", { granularity: "grapheme" });
 
 const entry = (over = {}) => ({
@@ -980,8 +1002,10 @@ test("all moderation copy in every shipped locale has no em dash", () => {
 			key.startsWith("ui.teamBridge.delivery."),
 		);
 		// 14 lines plus `recipient_unnamed`, the in-sentence unnamed form
-		// (#1643), plus the eight summary keys (2026-11-09).
-		assert.equal(entries.length, 23, locale);
+		// (#1643), plus the eight summary keys (2026-11-09), plus the two phase
+		// lines (`held_screening`, `held_not_reviewed`) and the not-reviewed
+		// footer, less the dropped `summary.pending` (#1832 round 1).
+		assert.equal(entries.length, 25, locale);
 		for (const [key, value] of entries) {
 			assert.doesNotMatch(value, MODERATION_EM_DASH, `${locale}:${key}`);
 		}
@@ -998,7 +1022,6 @@ const counts = (over = {}) => ({
 	screening: 0,
 	held: 0,
 	notReviewed: 0,
-	pending: 0,
 	notDelivered: 0,
 	...over,
 });
@@ -1027,14 +1050,37 @@ test("summary counts derive from the viewer's entries when the hub sends no summ
 		summary.counts,
 		counts({
 			delivered: 2,
-			screening: 1,
+			screening: 3,
 			held: 1,
-			pending: 2,
 			notDelivered: 1,
 		}),
-		"an awaiting_review hold is held, never screening; unknown states and duplicates count nowhere",
+		"an awaiting_review hold is held; every other unsettled hold is screening (the hub's buckets); unknown states and duplicates count nowhere",
 	);
 	assert.equal(summary.lines.length, 5);
+});
+
+test("a sender's phase picks the bucket, as the hub counts it", () => {
+	const summary = teamBridgeDeliverySummary({
+		...HUMAN_SOURCE,
+		delivery_states: [
+			entry({ endpoint_id: "a", state: "held", phase: "screening" }),
+			entry({ endpoint_id: "b", state: "held", phase: "held" }),
+			entry({ endpoint_id: "c", state: "held", phase: "not_reviewed" }),
+			// An owner's stale review hold: the phase wins over the class.
+			entry({
+				endpoint_id: "d",
+				state: "held",
+				hold_class: "awaiting_review",
+				phase: "not_reviewed",
+			}),
+			entry({ endpoint_id: "e", state: "held", phase: "future" }),
+		],
+	});
+	assert.deepEqual(
+		summary.counts,
+		counts({ screening: 2, held: 1, notReviewed: 2 }),
+		"an unknown phase claims the least: screening",
+	);
 });
 
 test("the hub's neutral summary wins over the viewer's partial entries", () => {
@@ -1059,22 +1105,32 @@ test("the hub's neutral summary wins over the viewer's partial entries", () => {
 	);
 });
 
-test("a non-sender gets counts and no lines; no data or nothing outstanding is silent", () => {
+test("a non-sender gets counts and no lines; no data is silent; a hub summary always shows (R3/D4)", () => {
 	const neutral = teamBridgeDeliverySummary({
 		delivery_summary: { delivered: 1, screening: 2 },
 	});
 	assert.deepEqual(neutral.counts, counts({ delivered: 1, screening: 2 }));
 	assert.deepEqual(neutral.lines, []);
 	assert.equal(teamBridgeDeliverySummary({}), null);
+	assert.deepEqual(
+		teamBridgeDeliverySummary({ delivery_summary: { total: 4, delivered: 4 } })
+			.counts,
+		counts({ delivered: 4 }),
+		"all delivered still confirms that screening ran",
+	);
 	assert.equal(
-		teamBridgeDeliverySummary({ delivery_summary: { delivered: 4 } }),
+		teamBridgeDeliverySummary({
+			delivery_summary: { total: 0, delivered: 0 },
+		}),
 		null,
+		"a summary counting nobody (a human-only DM) shows nothing",
 	);
 	assert.equal(
 		teamBridgeDeliverySummary({
 			delivery_states: [entry({ state: "delivered" })],
 		}),
 		null,
+		"without a hub summary, an all-delivered message stays quiet as before",
 	);
 });
 
@@ -1083,13 +1139,11 @@ test("the summary text keeps the order, omits zeros and pluralizes per locale", 
 		teamBridgeDeliverySummaryText(
 			counts({ delivered: 3, screening: 2, notDelivered: 2 }),
 		),
-		"Delivered to 3 · 2 screening · 2 not delivered",
+		"Delivered to 3 · 2 being screened · 2 not delivered",
 	);
 	assert.equal(
-		teamBridgeDeliverySummaryText(
-			counts({ held: 1, notReviewed: 1, pending: 1 }),
-		),
-		"1 held for review · 1 not reviewed · 1 pending",
+		teamBridgeDeliverySummaryText(counts({ held: 1, notReviewed: 1 })),
+		"1 held for review · 1 not reviewed",
 	);
 	try {
 		setLocale("ru");
@@ -1117,17 +1171,24 @@ test("the server summary schema keeps counts only and drops bad values per field
 		origin: "human",
 		created_at: "2026-11-09T00:00:00Z",
 		delivery_summary: {
+			total: 3,
 			delivered: 2,
 			held: -1,
 			not_delivered: "x",
+			pending: 1,
 			recipients: ["Aida"],
 		},
 	});
-	assert.deepEqual(parsed.delivery_summary, {
-		delivered: 2,
-		held: undefined,
-		not_delivered: undefined,
-	});
+	assert.deepEqual(
+		parsed.delivery_summary,
+		{
+			total: 3,
+			delivered: 2,
+			held: undefined,
+			not_delivered: undefined,
+		},
+		"no `pending` bucket in the contract: an older hub's key is stripped",
+	);
 	assert.equal(
 		teamBridgeMessageSchema.parse({
 			id: "bcmsg_s",
@@ -1214,6 +1275,11 @@ test("the sender's line opens its details on a press, pins, and closes on Escape
 			);
 		});
 		assert.doesNotMatch(document.body.textContent, DETAIL_TEXT);
+		assert.equal(
+			document.activeElement,
+			button,
+			"the panel took focus, so closing returns it to the trigger (U1 keeps this)",
+		);
 	} finally {
 		await act(async () => root.unmount());
 	}
@@ -1247,5 +1313,269 @@ test("hover opens the details without taking focus, and leaving closes them", as
 		assert.doesNotMatch(document.body.textContent, DETAIL_TEXT);
 	} finally {
 		await act(async () => root.unmount());
+	}
+});
+
+/*
+ * CROSS-PR CONTRACT FIXTURES (2026-11-09). Built from the agreed contract and
+ * agent-server #352's in-progress remediation (`BridgeConversationDeliverySummaryView`:
+ * total/delivered/screening/held/not_reviewed/not_delivered; `phase` on every
+ * held entry). Replace with a verbatim captured response once #352's
+ * remediation commit lands (review R1).
+ */
+const CONTRACT_SENDER_MESSAGE = {
+	id: "bcmsg_contract",
+	conversation_id: "bconv_1",
+	seq: 7,
+	sender: { account_id: "acct_ben", kind: "human", display_label: "Ben" },
+	body: "Can someone pull the Q3 numbers?",
+	origin: "human",
+	created_at: "2026-11-09T10:00:00Z",
+	delivery_summary: {
+		total: 7,
+		delivered: 3,
+		screening: 1,
+		held: 1,
+		not_reviewed: 0,
+		not_delivered: 2,
+	},
+	delivery_states: [
+		{
+			endpoint_id: "bep_a",
+			recipient_label: "Aida",
+			recipient_owner_label: "Sam",
+			state: "delivered",
+		},
+		{
+			endpoint_id: "bep_b",
+			recipient_label: "Bo",
+			recipient_owner_label: "Kim",
+			state: "delivered",
+		},
+		{
+			endpoint_id: "bep_c",
+			recipient_label: "Cy",
+			recipient_owner_label: "Lee",
+			state: "delivered",
+		},
+		{
+			endpoint_id: "bep_d",
+			recipient_label: "Dot",
+			recipient_owner_label: "Ana",
+			state: "held",
+			phase: "screening",
+		},
+		{
+			endpoint_id: "bep_e",
+			recipient_label: "Eve",
+			recipient_owner_label: "Renee",
+			state: "held",
+			phase: "held",
+		},
+		{
+			endpoint_id: "bep_f",
+			recipient_label: "Fay",
+			recipient_owner_label: "Max",
+			state: "refused",
+		},
+		{
+			endpoint_id: "bep_g",
+			recipient_label: "Gil",
+			recipient_owner_label: "Ola",
+			state: "refused",
+		},
+	],
+};
+
+test("contract fixture: buckets sum to total, and the sender's rows match the line (R1/D1/U3)", () => {
+	const parsed = teamBridgeMessageSchema.parse(CONTRACT_SENDER_MESSAGE);
+	const s = parsed.delivery_summary;
+	assert.equal(
+		s.delivered + s.screening + s.held + s.not_reviewed + s.not_delivered,
+		s.total,
+	);
+	const summary = teamBridgeDeliverySummary(parsed);
+	assert.deepEqual(
+		summary.counts,
+		counts({ delivered: 3, screening: 1, held: 1, notDelivered: 2 }),
+	);
+	const derived = teamBridgeDeliverySummary({
+		...parsed,
+		delivery_summary: undefined,
+	});
+	assert.deepEqual(
+		derived.counts,
+		summary.counts,
+		"the sender's own rows count exactly what the hub's line says",
+	);
+	assert.equal(
+		teamBridgeDeliverySummaryText(summary.counts),
+		"Delivered to 3 · 1 being screened · 1 held for review · 2 not delivered",
+	);
+	const rows = lineTexts(
+		renderToStaticMarkup(
+			createElement(TeamBridgeDeliveryLines, { lines: summary.lines }),
+		),
+	).join("\n");
+	assert.match(rows, ROW_SCREENING);
+	assert.match(rows, ROW_HELD_FOR_REVIEW);
+	assert.doesNotMatch(rows, ROW_ANY_CLASS, "no class reaches the sender");
+});
+
+test("an owner's class copy wins over a fresh phase; a stale phase wins over the class", () => {
+	const owner = (over) =>
+		lineTexts(render([entry({ state: "held", ...over })])).join("\n");
+	assert.match(
+		owner({ hold_class: "screening_unavailable", phase: "screening" }),
+		ROW_RETRY,
+	);
+	assert.match(
+		owner({ hold_class: "delivery_pending", phase: "screening" }),
+		ROW_PENDING,
+	);
+	assert.match(
+		owner({ hold_class: "delivery_pending", phase: "not_reviewed" }),
+		ROW_NOT_REVIEWED_SHORT,
+	);
+});
+
+test("not reviewed says what happened and what to do, never 'yet…' (U2)", () => {
+	const html = lineTexts(
+		render([entry({ state: "held", phase: "not_reviewed" })]),
+	).join("\n");
+	assert.match(html, ROW_NOT_REVIEWED);
+	assert.doesNotMatch(html, YET_ELLIPSIS);
+});
+
+test("the line truncates 'Delivered to N' first, and its runs are the full text (D5)", () => {
+	const c = counts({ delivered: 12, held: 1, notDelivered: 2 });
+	const runs = teamBridgeDeliverySummaryRuns(c);
+	assert.deepEqual(runs, {
+		delivered: "Delivered to 12",
+		rest: " · 1 held for review · 2 not delivered",
+	});
+	assert.equal(runs.delivered + runs.rest, teamBridgeDeliverySummaryText(c));
+	assert.deepEqual(teamBridgeDeliverySummaryRuns(counts({ held: 1 })), {
+		delivered: "",
+		rest: "1 held for review",
+	});
+	const html = renderToStaticMarkup(
+		createElement(TeamBridgeDeliveryAnnotation, {
+			message: {
+				delivery_summary: {
+					total: 15,
+					delivered: 12,
+					held: 1,
+					not_delivered: 2,
+				},
+			},
+		}),
+	);
+	assert.match(
+		html,
+		DELIVERED_RUN_SHRINKS,
+		"the delivered run is the one that shrinks first",
+	);
+	assert.match(html, FULL_TITLE);
+});
+
+test("all delivered renders 'Delivered to N' for every member (R3/D4)", () => {
+	const html = renderToStaticMarkup(
+		createElement(TeamBridgeDeliveryAnnotation, {
+			message: { delivery_summary: { total: 3, delivered: 3 } },
+		}),
+	);
+	assert.match(html, DELIVERED_ONLY);
+	assert.doesNotMatch(html, ANY_BUTTON);
+});
+
+test("the sender's trigger has a 24px tap target (U5)", async () => {
+	const root = createRoot(document.getElementById("root"));
+	try {
+		await mountSender(root);
+		assert.match(document.querySelector("button").className, MIN_H_6);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+test("a stale count the rows cannot name gets the not-reviewed footer (U2)", async () => {
+	const root = createRoot(document.getElementById("root"));
+	try {
+		await act(async () =>
+			root.render(
+				createElement(TeamBridgeDeliveryAnnotation, {
+					message: {
+						...HUMAN_SOURCE,
+						delivery_summary: { total: 2, delivered: 1, not_reviewed: 1 },
+						// An older hub: an entry without a phase.
+						delivery_states: [entry({ state: "held" })],
+					},
+				}),
+			),
+		);
+		await act(async () => {
+			document.querySelector("button").dispatchEvent(
+				new dom.window.MouseEvent("click", {
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		assert.match(document.body.textContent, NOT_REVIEWED_FOOTER);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+test("composer focus survives a hover open/close and an Escape typed in it (U1)", async () => {
+	const root = createRoot(document.getElementById("root"));
+	const composer = document.createElement("textarea");
+	document.body.appendChild(composer);
+	const Pointer = dom.window.PointerEvent ?? dom.window.MouseEvent;
+	const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+	try {
+		await mountSender(root);
+		const button = document.querySelector("button");
+		composer.focus();
+		await act(async () => {
+			button.dispatchEvent(new Pointer("pointerover", { bubbles: true }));
+			await wait(400);
+		});
+		assert.match(document.body.textContent, DETAIL_TEXT);
+		await act(async () => {
+			button.dispatchEvent(
+				new Pointer("pointerout", {
+					bubbles: true,
+					relatedTarget: document.body,
+				}),
+			);
+			await wait(300);
+		});
+		assert.doesNotMatch(document.body.textContent, DETAIL_TEXT);
+		assert.equal(document.activeElement, composer, "leave must not move focus");
+		// Hover open again, then Escape typed in the composer closes it in place.
+		await act(async () => {
+			button.dispatchEvent(new Pointer("pointerover", { bubbles: true }));
+			await wait(400);
+		});
+		assert.match(document.body.textContent, DETAIL_TEXT);
+		await act(async () => {
+			composer.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Escape",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.doesNotMatch(document.body.textContent, DETAIL_TEXT);
+		assert.equal(
+			document.activeElement,
+			composer,
+			"Escape must not move focus",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		composer.remove();
 	}
 });

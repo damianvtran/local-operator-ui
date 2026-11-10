@@ -213,7 +213,23 @@ function deliveryLineText(line: TeamBridgeDeliveryLine): string {
 		return t("ui.teamBridge.delivery.pending", params);
 	}
 	if (line.kind === "held") {
-		switch (line.holdReason) {
+		/* The coarse phase (cross-PR contract 2026-11-09) is the same bucket the
+		 * summary line counts, so the row says what the line above it says
+		 * (review R1/D1, UX U3). A stale entry reads "not reviewed" whatever its
+		 * class: what happened and what to do (UX U2), with no "yet…" for an
+		 * entry the hub has counted as not reviewed; a late verdict can still
+		 * deliver it (agent-server #352), so the copy never promises it won't.
+		 * Otherwise an owner's class copy is the more specific and wins. "Held
+		 * for {person}'s review" is safe for the sender: the member-visible
+		 * summary already counts review holds, and the label names the owner. */
+		if (line.phase === "not_reviewed")
+			return t("ui.teamBridge.delivery.held_not_reviewed", params);
+		if (line.holdReason === null && line.phase === "screening")
+			return t("ui.teamBridge.delivery.held_screening", params);
+		const reason =
+			line.holdReason ??
+			(line.phase === "held" ? ("awaiting_review" as const) : null);
+		switch (reason) {
 			case "screening_unavailable":
 				return t("ui.teamBridge.delivery.held_screening_unavailable", params);
 			case "awaiting_review":
@@ -250,7 +266,7 @@ function deliveryLineText(line: TeamBridgeDeliveryLine): string {
  * generated types only accept literal keys, and each key is a full ICU plural so
  * every locale inflects its own count.
  */
-function segmentText(
+export function segmentText(
 	segment: (typeof TEAM_BRIDGE_DELIVERY_SEGMENTS)[number],
 	count: number,
 ): string {
@@ -263,14 +279,12 @@ function segmentText(
 			return t("ui.teamBridge.delivery.summary.held", { count });
 		case "notReviewed":
 			return t("ui.teamBridge.delivery.summary.not_reviewed", { count });
-		case "pending":
-			return t("ui.teamBridge.delivery.summary.pending", { count });
 		case "notDelivered":
 			return t("ui.teamBridge.delivery.summary.not_delivered", { count });
 	}
 }
 
-/** "Delivered to 3 · 2 screening · 2 not delivered", zero segments omitted. */
+/** "Delivered to 3 · 2 being screened · 2 not delivered", zero segments omitted. */
 export function teamBridgeDeliverySummaryText(
 	counts: TeamBridgeDeliveryCounts,
 ): string {
@@ -278,6 +292,59 @@ export function teamBridgeDeliverySummaryText(
 		.map((segment) => segmentText(segment, counts[segment]))
 		.join(t("ui.teamBridge.delivery.summary.separator"));
 }
+
+/**
+ * The summary text as two runs: the "Delivered to N" segment, and everything
+ * outstanding after it (with its leading separator).
+ *
+ * WHY TWO RUNS (design review D5). The line truncates on one row, and the order
+ * is fixed delivered-first, so a narrow pane ellipsised away exactly the
+ * segments that need attention ("not delivered", "held") while keeping
+ * "Delivered to 12". Rendering the runs as flex items where the delivered run
+ * shrinks first keeps the operator's order at full width and gives up the
+ * least useful words first when space is short. The concatenation is always
+ * byte-identical to `teamBridgeDeliverySummaryText`, which stays the
+ * accessible name and `title`.
+ */
+export function teamBridgeDeliverySummaryRuns(
+	counts: TeamBridgeDeliveryCounts,
+): { delivered: string; rest: string } {
+	const separator = t("ui.teamBridge.delivery.summary.separator");
+	const delivered =
+		counts.delivered > 0 ? segmentText("delivered", counts.delivered) : "";
+	const outstanding = TEAM_BRIDGE_DELIVERY_SEGMENTS.filter(
+		(segment) => segment !== "delivered" && counts[segment] > 0,
+	)
+		.map((segment) => segmentText(segment, counts[segment]))
+		.join(separator);
+	return {
+		delivered,
+		rest: delivered && outstanding ? separator + outstanding : outstanding,
+	};
+}
+
+/* The two runs in a flex row. `shrink-[999]` makes the delivered run absorb
+ * nearly all the shrinkage (flex-shrink weights by basis), so it truncates
+ * first; the outstanding run truncates only once the delivered run is gone. */
+const SummaryRuns: FC<{ counts: TeamBridgeDeliveryCounts }> = ({ counts }) => {
+	const { delivered, rest } = teamBridgeDeliverySummaryRuns(counts);
+	return (
+		// `whitespace-pre`, not `truncate`'s `nowrap`: each run is its own flex
+		// item, and `nowrap` would strip the separator's leading space.
+		<span className="flex min-w-0">
+			{delivered ? (
+				<span className="min-w-0 shrink-[999] overflow-hidden text-ellipsis whitespace-pre">
+					{delivered}
+				</span>
+			) : null}
+			{rest ? (
+				<span className="min-w-0 overflow-hidden text-ellipsis whitespace-pre">
+					{rest}
+				</span>
+			) : null}
+		</span>
+	);
+};
 
 /*
  * Hover intent, in ms. OPEN waits long enough that a pointer crossing a busy
@@ -291,7 +358,7 @@ const HOVER_CLOSE_MS = 150;
 
 /**
  * ONE muted summary line under a message, in DMs, groups and channels alike:
- * "Delivered to 3 · 2 screening · 2 not delivered" (operator report
+ * "Delivered to 3 · 2 being screened · 2 not delivered" (operator report
  * 2026-11-09: one line per recipient "would get crazy in large group chats",
  * and members other than the sender could not tell a message was held).
  *
@@ -304,9 +371,11 @@ const HOVER_CLOSE_MS = 150;
  * - every other member gets the same counts as plain text: no names, no
  *   reasons, nothing to open.
  *
- * Single line, truncating with an ellipsis; the full text stays available as
- * the button's accessible name and, for the plain view, its `title`. Renders
- * nothing when nothing is outstanding, so the shared row mounts it
+ * Single line, truncating with an ellipsis ("Delivered to N" first, D5); the
+ * full text stays available as the button's accessible name and, for the plain
+ * view, its `title`. With a hub summary it renders even when everything was
+ * delivered ("Delivered to 3", review R3 / design D4); without one it renders
+ * nothing when nothing is outstanding. The shared row mounts it
  * unconditionally.
  */
 export const TeamBridgeDeliveryAnnotation: FC<{
@@ -319,26 +388,46 @@ export const TeamBridgeDeliveryAnnotation: FC<{
 	if (summary.lines.length === 0) {
 		return (
 			<p
-				className="m-0 mt-0.5 min-w-0 truncate text-[12px] text-ink-muted"
+				className="m-0 mt-0.5 flex min-w-0 text-[12px] text-ink-muted"
 				title={text}
 			>
-				{text}
+				<SummaryRuns counts={summary.counts} />
 			</p>
 		);
 	}
-	return <DeliveryDetails text={text} lines={summary.lines} />;
+	return <DeliveryDetails counts={summary.counts} lines={summary.lines} />;
 };
 
+/*
+ * Popover footer for a stale hold the rows cannot show (UX U2): the hub counts
+ * `not_reviewed` for every recipient, but a sender's rows carry a phase only
+ * for the entries the hub scoped to them (and an older hub sends no phase). The
+ * footer covers the difference so the panel never says less than its line.
+ */
+function unmatchedNotReviewed(
+	counts: TeamBridgeDeliveryCounts,
+	lines: readonly TeamBridgeDeliveryLine[],
+): boolean {
+	const rows = lines.filter(
+		(line) => line.kind === "held" && line.phase === "not_reviewed",
+	).length;
+	return counts.notReviewed > rows;
+}
+
 const DeliveryDetails: FC<{
-	text: string;
+	counts: TeamBridgeDeliveryCounts;
 	lines: readonly TeamBridgeDeliveryLine[];
-}> = ({ text, lines }) => {
+}> = ({ counts, lines }) => {
 	const [open, setOpen] = useState(false);
 	// True while the panel is open only because the pointer is over it: such a
 	// panel must not steal focus, and leaving closes it. A click clears it.
 	const hoverOpen = useRef(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const panel = useRef<HTMLDivElement>(null);
+	// Whether THIS open moved focus into the panel. Only then may close return
+	// focus to the trigger (UX U1): a hover-opened panel never took focus, and
+	// Radix's default close focus would yank it out of the composer.
+	const panelTookFocus = useRef(false);
 	const clearTimer = () => {
 		if (timer.current) clearTimeout(timer.current);
 		timer.current = null;
@@ -398,9 +487,10 @@ const DeliveryDetails: FC<{
 							hoverOpen.current = false;
 							setOpen(!open);
 						}}
-						className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-sm text-left text-[12px] text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
+						// `min-h-6`: a 24 px tap target around 12 px text (UX U5).
+						className="inline-flex min-h-6 min-w-0 max-w-full items-center gap-1 rounded-sm text-left text-[12px] text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
 					>
-						<span className="min-w-0 truncate">{text}</span>
+						<SummaryRuns counts={counts} />
 						<ChevronDown
 							size={12}
 							aria-hidden="true"
@@ -421,13 +511,27 @@ const DeliveryDetails: FC<{
 					// focuses the panel itself (Tab then reaches the glyphs, Escape
 					// returns to the trigger); a hover open takes no focus at all.
 					event.preventDefault();
-					if (!hoverOpen.current) panel.current?.focus();
+					panelTookFocus.current = !hoverOpen.current;
+					if (panelTookFocus.current) panel.current?.focus();
+				}}
+				onCloseAutoFocus={(event) => {
+					// Radix returns focus to the trigger on every non-outside close,
+					// including a hover panel closing on pointer leave or an Escape
+					// typed in the composer, so the next keystroke went to this button
+					// (UX U1). Return it only when the panel had taken it.
+					if (!panelTookFocus.current) event.preventDefault();
+					panelTookFocus.current = false;
 				}}
 				onPointerEnter={clearTimer}
 				onPointerLeave={pointerLeave}
 				className="w-auto min-w-56 max-w-[min(26rem,calc(100vw-2rem))] p-3 outline-none"
 			>
 				<TeamBridgeDeliveryLines lines={lines} />
+				{unmatchedNotReviewed(counts, lines) ? (
+					<p className="m-0 mt-2 text-[12px] text-ink-muted">
+						{t("ui.teamBridge.delivery.summary.not_reviewed_note")}
+					</p>
+				) : null}
 			</PopoverContent>
 		</Popover>
 	);

@@ -287,9 +287,15 @@ const VERDICT = {
 	admitted: { variant: "success", copy: "ui.ownerAudit.admitted" },
 	rejected: { variant: "danger", copy: "ui.ownerAudit.rejected" },
 	not_screened: { variant: "info", copy: "ui.ownerAudit.not_screened" },
-	/* Holds the server reports as `not_screened` (see `ownerAuditDelivery`).
+	/* Holds: the hub's `held` status with its `hold_class`, or an older hub's
+	 * `not_screened` refined by a delivery entry (see `ownerAuditDelivery`).
 	 * Review and retry are `warning`: the owner is the one who can act or should
-	 * know; screening in progress and screened-not-yet-delivered are `info`. */
+	 * know; screening in progress and screened-not-yet-delivered are `info`.
+	 * `held_review` names WHERE to decide (UX U4, design D6): this read-only
+	 * audit has no Deliver/Discard, and the desktop app has no client for
+	 * local-operator's `/v1/desktop/team-bridge/holds` (searched 2026-11-09);
+	 * the decision lives in the notice local-operator #3714 raises in the chief
+	 * of staff's designated session. Wire the buttons here once a client exists. */
 	held_review: { variant: "warning", copy: "ui.ownerAudit.held_review" },
 	screening: { variant: "info", copy: "ui.ownerAudit.screening" },
 	screening_retry: {

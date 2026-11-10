@@ -58,6 +58,7 @@ const bundle = await build({
 				ownerAuditSenderLabel,
 				ownerAuditSenderProfile,
 			} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-model";
+			export { ownerAuditMessageSchema } from "./src/shared/team-bridge-owner-audit-contract";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -444,5 +445,63 @@ test("a held message is never labelled 'not screened' for its owner (2026-11-09)
 			AUDITED_AGENT,
 		),
 		"not_screened",
+	);
+});
+
+test("the hub's `held` audit status carries the badge (cross-PR contract, R2)", () => {
+	// The shape agent-server #352 sends on an owner-audit row once the audited
+	// agent's endpoint reported a hold: `agent_delivery_status: "held"` plus the
+	// class, and NO `delivery_states` (the audit view never had them; review R2).
+	const human = {
+		sender: { account_id: "acct-renee", kind: "human", display_label: "Renee" },
+		origin: "human",
+	};
+	const viaSchema = (over) =>
+		model.ownerAuditDelivery(
+			model.ownerAuditMessageSchema.parse(
+				message({ conversation_id: "bconv_1", ...human, ...over }),
+			),
+			AUDITED_AGENT,
+		);
+	assert.equal(
+		viaSchema({ agent_delivery_status: "held", hold_class: "awaiting_review" }),
+		"held_review",
+		"Renee's DM seq 4: held for review, never 'Not screened'",
+	);
+	assert.equal(
+		viaSchema({
+			agent_delivery_status: "held",
+			hold_class: "screening_unavailable",
+		}),
+		"screening_retry",
+	);
+	assert.equal(
+		viaSchema({
+			agent_delivery_status: "held",
+			hold_class: "delivery_pending",
+		}),
+		"delivery_pending",
+	);
+	assert.equal(
+		viaSchema({ agent_delivery_status: "held" }),
+		"screening",
+		"no or unknown class claims the least: screening in progress",
+	);
+	assert.equal(
+		viaSchema({ agent_delivery_status: "held", hold_class: "future_class" }),
+		"screening",
+	);
+	assert.equal(
+		viaSchema({ agent_delivery_status: "held", hold_class: 42 }),
+		"screening",
+		"a malformed class costs the class, never the row",
+	);
+	// A terminal verdict ignores a stray class.
+	assert.equal(
+		viaSchema({
+			agent_delivery_status: "rejected",
+			hold_class: "awaiting_review",
+		}),
+		"rejected",
 	);
 });

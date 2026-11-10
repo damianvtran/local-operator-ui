@@ -217,6 +217,15 @@ const IDENTICAL_OK = new Map([
 		"language-neutral format string: only placeholders and ',', no words",
 	],
 	[
+		"ui.teamBridge.delivery.summary.separator",
+		// " · " joins the one-line delivery summary's segments ("Delivered to 3 ·
+		// 2 screening"). Each segment is its own translated message; the separator
+		// carries no words, and every shipped locale keeps the middle dot, as
+		// ui.chat.attachments.file_meta does. The key exists so a locale CAN own
+		// the separator; identical is the audited translation (PR #1832 i18n audit).
+		"language-neutral separator: a middle dot with spaces, no words",
+	],
+	[
 		"ui.canvas.files.attachmentMeta",
 		// `{size} · {when}`: the Canvas attachment row's note, placeholders and a
 		// middle dot, no words. The size and the date arrive already localised

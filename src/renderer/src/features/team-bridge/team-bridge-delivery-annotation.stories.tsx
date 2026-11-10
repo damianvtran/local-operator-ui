@@ -297,11 +297,27 @@ const CHANNEL_STATES: TeamBridgeDeliveryState[] = [
 		recipient_label: "Orion",
 		recipient_owner_label: "Sherman Lee",
 	}),
+	/* `phase` as the hub sends it to the sender (cross-PR contract), so every
+	 * summary segment has a row behind it (design D1). */
 	state({
 		endpoint_id: "bep_aida",
 		recipient_label: "Aida",
 		recipient_owner_label: "Ben Tran",
 		state: "held",
+		phase: "held",
+	}),
+	state({
+		endpoint_id: "bep_dot",
+		recipient_label: "Dot",
+		recipient_owner_label: "Ana Ruiz",
+		state: "held",
+		phase: "screening",
+	}),
+	state({
+		endpoint_id: "bep_eli",
+		recipient_label: "Eli",
+		recipient_owner_label: "Eli Novak",
+		state: "delivered",
 	}),
 	state({
 		endpoint_id: "bep_bo",
@@ -317,11 +333,19 @@ const CHANNEL_STATES: TeamBridgeDeliveryState[] = [
 	}),
 ];
 
+/* The hub summary and the sender's entries describe the SAME seven
+ * recipients, as the contract guarantees (design D1). */
+const CHANNEL_SUMMARY = {
+	total: 7,
+	delivered: 3,
+	screening: 1,
+	held: 1,
+	not_reviewed: 0,
+	not_delivered: 2,
+};
+
 export const SummarySenderView: Story = {
-	args: {
-		states: CHANNEL_STATES,
-		summary: { delivered: 3, screening: 1, held: 1, not_delivered: 2 },
-	},
+	args: { states: CHANNEL_STATES, summary: CHANNEL_SUMMARY },
 };
 
 export const SummarySenderDetailsOpen: Story = {
@@ -331,10 +355,34 @@ export const SummarySenderDetailsOpen: Story = {
 
 /* A member who is neither the sender nor an affected agent's owner: counts only. */
 export const SummaryNonSenderView: Story = {
+	args: { states: undefined, summary: CHANNEL_SUMMARY },
+};
+
+/* Everything delivered: every member still sees the confirmation that
+ * screening ran (review R3, design D4). */
+export const SummaryAllDelivered: Story = {
 	args: {
 		states: undefined,
-		summary: { delivered: 3, screening: 1, held: 1, not_delivered: 2 },
+		summary: { total: 3, delivered: 3 },
 	},
+};
+
+/* A day later with no decision: the row says what happened and what to do
+ * (UX U2); the footer covers a stale count the rows cannot name. */
+export const SummaryNotReviewedOpen: Story = {
+	args: {
+		states: [
+			state({
+				endpoint_id: "bep_aida",
+				recipient_label: "Aida",
+				recipient_owner_label: "Ben Tran",
+				state: "held",
+				phase: "not_reviewed",
+			}),
+		],
+		summary: { total: 3, delivered: 1, not_reviewed: 2 },
+	},
+	play: openDetails,
 };
 
 /* An older hub: no summary, so the sender's counts derive from their entries. */
@@ -350,9 +398,10 @@ export const SummarySingleRecipientDm: Story = {
 				recipient_label: "Aida",
 				recipient_owner_label: "Ben Tran",
 				state: "held",
+				phase: "held",
 			}),
 		],
-		summary: { held: 1 },
+		summary: { total: 1, held: 1 },
 	},
 };
 
@@ -361,12 +410,14 @@ export const SummarySingleRecipientDmOpen: Story = {
 	play: openDetails,
 };
 
-/* A narrow pane: the line truncates on one line rather than wrapping. */
+/* A narrow pane: the line truncates on one line rather than wrapping, and
+ * "Delivered to 12" gives way first (design D5). */
 export const SummaryNarrowTruncates: Story = {
 	args: {
 		width: 240,
 		states: undefined,
 		summary: {
+			total: 22,
 			delivered: 12,
 			screening: 3,
 			held: 2,

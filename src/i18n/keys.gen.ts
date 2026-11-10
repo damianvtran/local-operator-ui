@@ -11936,6 +11936,8 @@ export type MessageParams = {
 		person: string;
 	};
 	"ui.teamBridge.delivery.held_awaiting_review_unnamed": { recipient: string };
+	"ui.teamBridge.delivery.held_not_reviewed": { recipient: string };
+	"ui.teamBridge.delivery.held_screening": { recipient: string };
 	"ui.teamBridge.delivery.held_screening_unavailable": { recipient: string };
 	"ui.teamBridge.delivery.info_held": undefined;
 	"ui.teamBridge.delivery.info_label": undefined;
@@ -11953,7 +11955,7 @@ export type MessageParams = {
 	"ui.teamBridge.delivery.summary.held": { count: number };
 	"ui.teamBridge.delivery.summary.not_delivered": { count: number };
 	"ui.teamBridge.delivery.summary.not_reviewed": { count: number };
-	"ui.teamBridge.delivery.summary.pending": { count: number };
+	"ui.teamBridge.delivery.summary.not_reviewed_note": undefined;
 	"ui.teamBridge.delivery.summary.screening": { count: number };
 	"ui.teamBridge.delivery.summary.separator": undefined;
 	"ui.teamBridge.drafts.empty": undefined;

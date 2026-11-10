@@ -116,7 +116,7 @@
 		"tone": "neutral metadata, factual",
 		"length": "Very short chip.",
 		"placeholders": {},
-		"note": "\"Held for your review\": the chief of staff's screening HELD this message for the owner (the reader) to decide; the agent has not read it yet. Address the reader directly ('your'). Do not imply it was refused, deleted or malicious."
+		"note": "\"Held for your review in your chief of staff's session\": the chief of staff's screening HELD this message for the owner (the reader) to decide, and the Deliver/Discard decision lives in the notice in their chief of staff's Local Operator session, not in this read-only audit. Address the reader directly ('your'). Do not imply it was refused, deleted or malicious."
 	},
 	"ui.ownerAudit.screening": {
 		"role": "per-message screening verdict chip",
@@ -130,7 +130,7 @@
 		"tone": "neutral metadata, factual",
 		"length": "Very short chip.",
 		"placeholders": {},
-		"note": "\"Couldn't be screened yet; retrying\": screening could not run for now (the screening service was unavailable) and is retried automatically. Not an error the reader caused; never alarmist. Do not use an em dash."
+		"note": "\"Your chief of staff couldn't screen it yet; retrying\": the chief of staff's screening could not run yet and will retry automatically. Keep the subject (the chief of staff) like the sibling chips. Do not imply it was refused."
 	},
 	"ui.ownerAudit.delivery_pending": {
 		"role": "per-message screening verdict chip",

@@ -344,6 +344,12 @@ export type TeamBridgeFilesCapability = z.infer<
  * to show them. `hold_class` reaches only the recipient's owner; the sender sees
  * every hold as an unclassified "not delivered yet". `refusal_class` is withheld from the
  * sender once the hub suspects probing. Both are optional for that reason.
+ *
+ * `phase` (cross-PR contract, 2026-11-09) is the SENDER's coarse hold bucket,
+ * `screening | held | not_reviewed`, the same buckets the member-visible
+ * `delivery_summary` counts, so the sender's popover rows can say what the line
+ * above them says. It carries no class or reason; agent owners keep
+ * `hold_class` instead.
  */
 export const teamBridgeDeliveryStateSchema = z
 	.object({
@@ -353,6 +359,7 @@ export const teamBridgeDeliveryStateSchema = z
 		state: z.string().max(32),
 		hold_class: z.string().max(32).optional(),
 		refusal_class: z.string().max(32).optional(),
+		phase: z.string().max(32).optional(),
 	})
 	/* Deliberately NOT `.passthrough()`, unlike the rest of this file: an
 	 * extra field on a delivery entry (a score, a reason, a raw category) is
@@ -375,9 +382,17 @@ export type TeamBridgeDeliveryState = z.infer<
  * summary at all (the renderer then derives counts from the `delivery_states`
  * it already has, and renders nothing for a viewer who has neither), and a
  * malformed or future count costs that one segment, never the message.
- * `screening` is screening genuinely in progress; `held` is a hold awaiting the
- * recipient owner's review; `not_reviewed` is such a hold older than the hub's
- * review horizon; `pending` is a recipient that has not reported yet.
+ *
+ * THE BUCKETS (agreed cross-PR contract with agent-server #352 and
+ * local-operator #3714, 2026-11-09; they partition `total`):
+ * - `screening`: fed but no report yet, a `screening_unavailable` hold, or a
+ *   `delivery_pending` hold, all under 24 h old;
+ * - `held`: an `awaiting_review` hold under 24 h old (the operator wants a
+ *   moderated message visible to everyone; the count carries no reason);
+ * - `not_reviewed`: any of the above on a message older than 24 h (held
+ *   verdicts had no exit, incident 2026-11-09). A later verdict still moves it;
+ * - `delivered` / `not_delivered`: terminal verdicts, which always win.
+ * There is no `pending` bucket: an unknown key a hub still sends is stripped.
  *
  * NO NAMES, NO CLASSES. The shape is counts only, and `.strip()` drops anything
  * else a future hub adds, for the same reason as `teamBridgeDeliveryStateSchema`.
@@ -391,11 +406,11 @@ const deliveryCount = z
 	.catch(undefined);
 export const teamBridgeDeliverySummarySchema = z
 	.object({
+		total: deliveryCount,
 		delivered: deliveryCount,
 		screening: deliveryCount,
 		held: deliveryCount,
 		not_reviewed: deliveryCount,
-		pending: deliveryCount,
 		not_delivered: deliveryCount,
 	})
 	.strip();
