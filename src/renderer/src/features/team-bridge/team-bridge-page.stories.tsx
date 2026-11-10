@@ -903,6 +903,32 @@ export const MultiDayGroupedRuns: Story = {
 };
 
 /**
+ * A LONG HISTORY TO SCROLL UP THROUGH (the "it fights me" fix in
+ * `use-stick-to-bottom.ts`). Four days of alternating runs, every fifth body a
+ * paragraph, so measured rows differ from the window's estimates and the strip
+ * re-measures while a reader scrolls up from the newest message - the condition
+ * that used to throw them back to the bottom. Open it, scroll up a few pixels
+ * at a time from the end: the timeline must stay where you put it.
+ */
+const longBody = (day: number, index: number) =>
+	index % 5 === 0
+		? `Day ${day}, note ${index}: the migration dry run passed on staging, the release notes are drafted and waiting on copy review, and the rollback plan is in the doc for anyone on call tonight.`
+		: `Day ${day}, note ${index}.`;
+export const LongHistoryScrollUp: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [3, 2, 1, 0].flatMap((day, run) =>
+			dayRun(
+				day,
+				1 + run * 30,
+				run % 2 === 0 ? multiDayAda : multiDaySelf,
+				Array.from({ length: 30 }, (_, index) => longBody(day, index)),
+			),
+		),
+	},
+};
+
+/**
  * The preview state: header metadata and the join banner, never a body.
  *
  * The messages are deliberately attached to the preview conversation in this
@@ -1635,7 +1661,7 @@ export const PlanRequired: Story = {
 	},
 };
 
-/** Signed out: the panel says so; there is no fake sign-in control to press. */
+/** Signed out: the panel links to Settings, where the Radient sign-in is owned. */
 export const SignedOut: Story = {
 	args: {
 		eligibility: "signed_out",

@@ -251,5 +251,10 @@
 	"ui.chat.canonical.tool_row.diff.more": "{count, plural, one {… diff की # और पंक्ति} other {… diff की # और पंक्तियाँ}}",
 	"ui.chat.canonical.tool_row.diff.show_less": "कम दिखाएँ",
 	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, one {Diff छोटा किया गया — # और पंक्ति दर्ज नहीं हुई} other {Diff छोटा किया गया — # और पंक्तियाँ दर्ज नहीं हुईं}}",
-	"ui.chat.canonical.tool_row.diff.withheld": "इस बदलाव का diff उपलब्ध नहीं है"
+	"ui.chat.canonical.tool_row.diff.withheld": "इस बदलाव का diff उपलब्ध नहीं है",
+	"ui.chat.canonical.notice.interrupted": "बीच में रोका गया",
+	"ui.chat.canonical.notice.stopped_with_error": "त्रुटि के साथ रुका",
+	"ui.chat.canonical.notice.compaction_not_run": "संपीडन नहीं चला: {detail}",
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": "संपीडन नहीं चला — {detail}",
+	"ui.chat.canonical.link_toolkit.actions_for": "{name} की कार्रवाइयाँ"
 }

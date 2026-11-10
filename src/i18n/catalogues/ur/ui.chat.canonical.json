@@ -251,5 +251,10 @@
 	"ui.chat.canonical.tool_row.diff.more": "{count, plural, one {… diff کی # مزید لائن} other {… diff کی # مزید لائنیں}}",
 	"ui.chat.canonical.tool_row.diff.show_less": "کم دکھائیں",
 	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, one {Diff مختصر کیا گیا — # مزید لائن ریکارڈ نہیں ہوئی} other {Diff مختصر کیا گیا — # مزید لائنیں ریکارڈ نہیں ہوئیں}}",
-	"ui.chat.canonical.tool_row.diff.withheld": "اس تبدیلی کا diff دستیاب نہیں"
+	"ui.chat.canonical.tool_row.diff.withheld": "اس تبدیلی کا diff دستیاب نہیں",
+	"ui.chat.canonical.notice.interrupted": "روکی گئی",
+	"ui.chat.canonical.notice.stopped_with_error": "خرابی کے ساتھ رک گئی",
+	"ui.chat.canonical.notice.compaction_not_run": "کمپریشن نہیں چلا: {detail}",
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": "کمپریشن نہیں چلا — {detail}",
+	"ui.chat.canonical.link_toolkit.actions_for": "{name} کے لیے اقدامات"
 }

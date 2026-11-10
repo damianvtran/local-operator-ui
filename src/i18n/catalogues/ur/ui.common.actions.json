@@ -51,5 +51,6 @@
 	"ui.common.actions.configuration_updated": "کنفیگریشن اپ ڈیٹ ہو گئی",
 	"ui.common.actions.system_prompt_updated": "سسٹم پرامپٹ اپ ڈیٹ ہو گیا",
 	"ui.common.actions.credential_updated": "اسناد “{key}” اپ ڈیٹ ہو گئیں",
-	"ui.common.actions.clear": "صاف کریں"
+	"ui.common.actions.clear": "صاف کریں",
+	"ui.common.actions.actions_for_name": "{name} کے اعمال"
 }

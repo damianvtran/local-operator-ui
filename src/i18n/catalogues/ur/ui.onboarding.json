@@ -1,5 +1,5 @@
 {
-	"ui.onboarding.connect.intro": "Local Operator کو کام کے لیے AI اکاؤنٹ چاہیے۔ Radient سب سے آسان ہے؛ براؤزر میں ایک بار سائن ان کریں، کچھ چسپاں نہیں کرنا پڑتا۔ پہلے ہی ChatGPT یا Claude کی ادائیگی کرتے ہیں؟ اسی سے سائن ان کریں۔ دیگر انتخاب مزید فراہم کنندگان میں ہیں۔",
+	"ui.onboarding.connect.intro": "Radient منتخب کریں اور براؤزر میں ایک بار سائن ان کر کے بہت سے ماڈلز، آواز سے لکھائی اور ایجنٹس کے اشتراک کی سہولت پائیں۔ یا اپنی Claude یا ChatGPT سبسکرپشن، API کلید یا اپنے کمپیوٹر پر چلنے والا ماڈل استعمال کریں۔ اہل نئے Radient اکاؤنٹس ای میل کی توثیق اور سیکیورٹی جانچ کے بعد مفت کریڈٹ حاصل کر سکتے ہیں۔",
 	"ui.onboarding.default_model.block.loading_models": "ماڈلز کی فہرست لوڈ ہو رہی ہے…",
 	"ui.onboarding.default_model.block.pick_a_model": "جاری رکھنے کے لیے ماڈل منتخب کریں۔",
 	"ui.onboarding.default_model.change": "بدلیں",
@@ -33,7 +33,7 @@
 	"ui.onboarding.search.each_key_saved": "خانے سے نکلتے ہی ہر کلید آپ کی ڈیوائس پر محفوظ ہو جاتی ہے۔",
 	"ui.onboarding.search.intro": "ایجنٹ کام کرتے ہوئے معلومات تلاش کر سکتے ہیں — آج کی قیمتیں، اس ہفتے کی خبریں — ماڈل کی پہلے سے موجود معلومات پر انحصار کرنے کے بجائے۔",
 	"ui.onboarding.search.mode.free": "مفت",
-	"ui.onboarding.search.mode.free_detail": "مفت فراہم کنندگان کا باری باری استعمال ہوتا ہے — DuckDuckGo، Tavily کا مفت درجہ، Exa اور Parallel۔ کلید درکار نہیں؛ یہ مشترکہ سہولت ہے، اس لیے مصروف اوقات میں تلاش سست ہو سکتی ہے۔",
+	"ui.onboarding.search.mode.free_detail": "مفت تلاش کی خدمات استعمال ہوتی ہیں جو دوسرے صارفین کے ساتھ مشترک ہیں۔ کلید درکار نہیں۔ مصروف اوقات میں تلاش سست ہو سکتی ہے۔",
 	"ui.onboarding.search.mode.keys": "API کلیدیں شامل کریں",
 	"ui.onboarding.search.mode.keys_detail": "جن تلاش فراہم کنندگان کو آپ استعمال کرتے ہیں، ان کی اپنی کلیدیں دیں۔",
 	"ui.onboarding.search.mode.label": "تلاش کا سیٹ اپ",

@@ -1,0 +1,78 @@
+Independent translation audit — locale es, delta tag ds, PR damianvtran/local-operator-ui #1842
+Auditor agent: i18n-auditor · instance/session: 1670651e17bb · served model: deepseek/deepseek-flash (no fallback)
+Date: 2026-11-10 · Worktree: ~/local-operator-ui/.worktrees/i18n-s8 (read-only; nothing written outside my scratchpad)
+
+This file separates what I EXECUTED (command + real output) from what I only READ.
+
+=== 1. HEAD binding (executed) ===
+$ cd ~/local-operator-ui/.worktrees/i18n-s8 && git rev-parse HEAD
+e5fb4310dab638f9cf428779d62539ec039a8990   -> matches the frozen head; worktree clean (git status --porcelain: empty)
+
+=== 2. Hash binding vs _s12-audits expected-hashes.json (executed, python hashlib sha256 of file bytes) ===
+en/ui.chat                     ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  OK
+es/ui.chat                     73e79f400865c43fd43bd3ce7dbc3e5979e53c8bc7986930d7441e01d9859c46  OK
+en/ui.chat.context             84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  OK
+en/ui.chat.composer_media      79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  OK
+es/ui.chat.composer_media      82d113f5948cf0d3d12bfe3fff081dbf99339489324057c7017a4ca37c3e79dc  OK
+en/ui.chat.composer_media.context a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  OK
+en/ui.common.actions           0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  OK
+es/ui.common.actions           297982c56ead7383ca4bd8ea94c2c961f7532785957f648287a335e7168dd2a8  OK
+en/ui.common.actions.context   24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  OK
+ALL HASHES MATCH: True (0 mismatches)
+
+=== 3. Repo validators that are pure reads (executed) ===
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).   exit 0
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1400 file(s) scanned, 0 duplicate key(s)   exit 0
+(I grepped both files for writeFile/writeFileSync/mkdirSync first: neither writes. The rest of `pnpm check-i18n` — generate --check, check-strings, ledger-check, check-coverage — was NOT run: see §9.)
+
+=== 4. Key structure (executed, python json) ===
+ui.chat                 en 208 / es 208  same keyset True
+ui.chat.composer_media  en   9 / es   9  same keyset True
+ui.common.actions       en  54 / es  54  same keyset True
+$ git show origin/main:<file> compared per locale file (executed)
+ui.chat               : 206 -> 208  added ['ui.chat.image_actions.actions','ui.chat.audio.position_label']  removed []  changed []
+ui.chat.composer_media:   8 ->   9  added ['ui.chat.composer_media.pasted_image']                        removed []  changed []
+ui.common.actions     :  53 ->  54  added ['ui.common.actions.actions_for_name']                         removed []  changed []
+=> exactly the four new keys; no legacy value removed or altered.
+
+=== 5. ICU parsing of the four en/es pairs (executed, intl-messageformat, repo node_modules) ===
+new IntlMessageFormat(es).format(sampleArgs) —
+ui.chat.composer_media.pasted_image  en "Pasted image"            es "Imagen pegada"              -> "Imagen pegada"
+ui.common.actions.actions_for_name   en "Actions for {name}"      es "Acciones de {name}"         -> "Acciones de informe final (2).pdf"   (arg name, plain string)
+ui.chat.image_actions.actions        en "Image actions"           es "Acciones de la imagen"      -> "Acciones de la imagen"
+ui.chat.audio.position_label         en "{label} position"        es "Posición de {label}"        -> "Posición de Nota de voz 2026-11-10"  (arg label, plain string)
+No plural/select structure in any of the four; argument names identical to English; no ICU category is required for a plain string.
+
+=== 6. Invisible / bidi / non-ASCII whitespace scan (executed, python unicodedata) ===
+ui.chat.composer_media.pasted_image  'Imagen pegada'          codepoints >127: none; separators U+0020 x1
+ui.chat.image_actions.actions        'Acciones de la imagen'  codepoints >127: none; separators U+0020 x3
+ui.chat.audio.position_label         'Posición de {label}'    codepoints >127: U+00F3 (ó); separators U+0020 x2
+ui.common.actions.actions_for_name   'Acciones de {name}'     codepoints >127: none; separators U+0020 x2
+U+00A0 / U+202F / U+2007 / U+2009 / ZW* / bidi controls: NONE in any of the four.
+Spanish needs no NBSP before ? : ; — and none of the four contains those marks.
+
+=== 7. Ledger receipt-contract check (executed, read-only; nothing written) ===
+$ node --input-type=module -e "import deriveReceiptAudit from './scripts/i18n/ledger-rules.mjs' ..."
+ui.chat                ACCEPTED {"instance":"1670651e17bb","model":"deepseek/deepseek-flash","result":"clean","findings":{"blocker":0,"major":0,"minor":0,"nit":0}}
+ui.chat.composer_media ACCEPTED {same}
+ui.common.actions      ACCEPTED {same}
+So the receipt I wrote is machine-acceptable to scripts/i18n/ledger-rules.mjs for all three namespaces. The ledger writer scripts/i18n/ledger-assemble.mjs was NOT run (it writes i18n/ledger.json and copies receipts into i18n/receipts/; this audit is read-only).
+
+=== 8. What I only READ (no execution claimed) ===
+- ~/local-operator/i18n/style-guides/es.md (sha256 77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e) — formality tú, sentence case, infinitive action labels, typography, settled words.
+- Manager-owned glossary byte copy _s12-audits/e5fb4310.../glossary.md, sha256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8, 173 lines, byte-identical to ~/local-operator/i18n/glossary.md (shasum equal). Glossary has no row for image/file/actions/position; §1 product names and §3 formatting untouched here.
+- English context sidecars for the three namespaces (roles/tone/placeholders/notes).
+- Neighbouring shipped Spanish values for terminology (grep, no execution): pasted_file "Archivo pegado", file_actions_menu.file_actions "Acciones del archivo", teamBridge.actions.label "Acciones del mensaje", teamBridge.row.menu "Más acciones para {name}", image_actions.copy_image "Copiar imagen", image_actions.expand_image "Ampliar imagen", audio.play_label "Reproducir {label}", attachments.playback_position "Posición de reproducción", shell.sidebar_navigation.move_note "... a la posición {position} ...".
+- Source code for the broadened English pasted_file context sentence: features/chat/utils/get-file-name.ts and utils/attachment-encode.ts (diffs + full functions read; non-image data URIs and decode failures both return pasted_file with no MIME-derived prose; names become upload metadata with stored.name ?? name and the dataUrl passed untouched) — the widened sentence is accurate.
+- docs/I18N.md retention/ledger sections.
+
+=== 9. NOT run (no claim made) ===
+- Full `pnpm check-i18n` (generate --check, check-strings, ledger-check, check-coverage) — CI's job and not requested for an audit.
+- No build, no electron, no browser, no screen reader: the brief forbids builds/browser and these are accessible names with no rendered-fit gate.
+
+=== 10. Verdict ===
+es: ui.chat passed/clean, ui.chat.composer_media passed/clean, ui.common.actions passed/clean.
+Severity counts 0/0/0/0. No BLOCKER, MAJOR, MINOR or NIT. Deliberate dismissed candidates are recorded in the receipt's per_key_checks (the "para" precedent in teamBridge.row.menu, and the "de + <name starting with el>" contraction, which the context note's verbatim-insertion rule puts out of scope).
+Actual served model: deepseek/deepseek-flash.  Files: es-ds-1670651e17bb.json, es-ds-1670651e17bb.record.json, es-ds-1670651e17bb.audit.log

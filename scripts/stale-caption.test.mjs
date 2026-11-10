@@ -22,17 +22,23 @@ import { build } from "esbuild";
  * on the component that ships rather than on a transcription of it, and it needs
  * no browser: the duplication is in the element tree, not in a scroll position.
  *
- * The second case keeps the D1 half honest. A fix for a duplicate that moved the
- * caption BACK inside the scroller would satisfy the count and reintroduce the
- * off-screen defect, so the caption's position relative to the scroll box is
- * asserted too — the caption must PRECEDE the element that scrolls.
+ * THE PLACEMENT CHANGED (cached rows paint at once, 2026-11-10). The caption was
+ * hoisted ABOVE the scroller so a tall transcript could not scroll it off screen
+ * (D1), and that row's removal when the page landed grew the scroller by its own
+ * height, moving the conversation in front of the reader. It now lives in the
+ * FOOT slot - the row reserved at the newest edge of the scroller, mounted for
+ * every conversation with rows - so its arrival and removal move nothing. The
+ * second case pins that placement: the caption is INSIDE the foot slot, and
+ * the foot slot is mounted for the stale pane. The third pins the older-history
+ * box, which is reserved (empty, hidden from assistive technology) while the
+ * paint is cached for the same reason. A cached paint always has rows - the
+ * cache never stores an empty transcript - so the fixture carries rows.
  */
 
 const bundle = await build({
 	stdin: {
 		contents: [
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
-			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -91,13 +97,41 @@ const { QueryClient, QueryClientProvider } = await import(
 const queryClient = new QueryClient({
 	defaultOptions: { queries: { retry: false } },
 });
-const { CanonicalTranscript, EMPTY_TRANSCRIPT } = await import(bundlePath.href);
+const { CanonicalTranscript } = await import(bundlePath.href);
 // Unlinked as soon as the graph is evaluated, so no build artifact survives a
 // crash mid-run and none can be committed by accident — the same rule, and the
 // same reason, as `ask-options.test.mjs`.
 await unlink(bundlePath);
 
 const CAPTION = "Showing the last saved view — checking for newer messages.";
+
+const TS = 1_760_000_000_000;
+const RECORDS = [
+	{
+		kind: "user",
+		id: "user:1",
+		ts: TS,
+		text: "Which invoices were late last month?",
+		images: [],
+	},
+	{
+		kind: "assistant",
+		id: "answer:1",
+		ts: TS,
+		text: "Four invoices were late: 1042, 1088, 1103 and 1177.",
+		streaming: false,
+		stopReason: null,
+		error: false,
+	},
+];
+const TRANSCRIPT = {
+	records: RECORDS,
+	index: new Map(RECORDS.map((record, position) => [record.id, position])),
+	generation: 1,
+	oldestId: null,
+	hasMore: false,
+	argsByCall: new Map(),
+};
 
 /**
  * The pane in the state under test.
@@ -113,7 +147,7 @@ function renderPane({ stale, missing = false }) {
 			QueryClientProvider,
 			{ client: queryClient },
 			createElement(CanonicalTranscript, {
-				transcript: EMPTY_TRANSCRIPT,
+				transcript: TRANSCRIPT,
 				gate: null,
 				waiting: false,
 				loadingOlder: false,
@@ -148,17 +182,74 @@ test("an authoritative paint states no caption at all", () => {
 	assert.equal(count(renderPane({ stale: false })), 0);
 });
 
-test("the caption sits OUTSIDE the element that scrolls", () => {
-	// D1's half, kept beside D10's so a fix for the duplicate cannot be made by
-	// moving the caption back inside the scroller — where a transcript taller than
-	// its pane scrolls it off screen, which is the defect the hoist removed.
-	const markup = renderPane({ stale: true });
-	const captionAt = markup.indexOf(CAPTION);
-	const scrollerAt = markup.indexOf("data-lo-canonical-transcript");
-	assert.ok(captionAt >= 0, "the caption is painted");
-	assert.ok(scrollerAt >= 0, "the scroll box is painted");
+const FOOT_WITH_CAPTION = new RegExp(
+	`data-lo-transcript-foot="true"[^>]*>\\s*<span[^>]*data-lo-stale-caption="true"[^>]*>${CAPTION}</span>`,
+);
+
+test("the caption sits in the foot slot, the row reserved for the working line", () => {
+	// The placement that moves nothing: the foot slot exists for every
+	// conversation with rows, so the caption's removal changes what is IN it and
+	// never where anything is. A caption moved back above the scroller would be a
+	// row that exists only while the paint is cached, and its removal would move
+	// the conversation (33.4px, measured on the cached-paint rig arm).
+	const stale = renderPane({ stale: true });
+	assert.match(
+		stale,
+		FOOT_WITH_CAPTION,
+		"the caption is the foot slot's content",
+	);
+	const settled = renderPane({ stale: false });
 	assert.ok(
-		captionAt < scrollerAt,
-		"the caption is inside the scroll box again, so it scrolls away",
+		settled.includes('data-lo-transcript-foot="true"'),
+		"the foot slot is still mounted once the page has landed",
+	);
+	assert.equal(
+		settled.includes("data-lo-stale-caption"),
+		false,
+		"and it is empty of the caption",
+	);
+});
+
+test("the caption is set in the reading face, not the machine face", () => {
+	// A sentence about state is not machine output: the foot slot's own
+	// `font-mono` (the working line's voice) is overridden on the caption.
+	const markup = renderPane({ stale: true });
+	const tag =
+		markup.match(/<span[^>]*data-lo-stale-caption="true"[^>]*>/)?.[0] ?? "";
+	assert.match(
+		tag,
+		/font-sans/,
+		"the caption overrides the foot slot's monospace",
+	);
+	assert.match(tag, /text-meta/, "and takes the status register's size");
+	assert.match(
+		tag,
+		/truncate/,
+		"and stays on one line, inside the reserved row",
+	);
+});
+
+const RESERVE = /aria-hidden="true" class="@container\/olderhistory /;
+
+test("the older-history box is reserved, empty, while the paint is cached", () => {
+	// The real slot reads `exhausted` over a cache entry (its rows are trimmed and
+	// carry no paging cursor) and would say "Start of conversation" over a
+	// transcript that may be a thousand messages in, so it is withheld; but
+	// withholding its BOX moved the conversation by 44px when the page landed.
+	const stale = renderPane({ stale: true });
+	assert.match(
+		stale,
+		RESERVE,
+		"the box is mounted, hidden from assistive technology",
+	);
+	assert.equal(
+		stale.includes("Start of conversation"),
+		false,
+		"and it states nothing",
+	);
+	assert.equal(
+		RESERVE.test(renderPane({ stale: false })),
+		false,
+		"the authoritative pane mounts the real slot, not the reserve",
 	);
 });

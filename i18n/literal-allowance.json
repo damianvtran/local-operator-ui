@@ -60,13 +60,6 @@
 			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/chat/canonical/provider-error-guidance.ts",
-			"ids": ["object-literal:label | billing"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/chat/canonical/sound-batch.tsx",
 			"ids": ["jsx-child-expression | Cost not yet known."],
 			"owner": "the i18n renderer-keying lane",
@@ -82,31 +75,6 @@
 			"owner": "the i18n renderer-keying lane",
 			"payoff": "2027-01-31",
 			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/canonical/transcript-reducer.ts",
-			"ids": [
-				"object-literal:text | Compaction did not run${…}${…}",
-				"object-literal:text | Interrupted",
-				"object-literal:text | Stopped with an error"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/canonical/turn-collapse-model.ts",
-			"ids": ["object-literal:label | ${…} more"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/chat-sidebar-view.ts",
-			"ids": ["object-literal:label | Ungrouped"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
 			"file": "src/renderer/src/features/chat/components/credential-chip.tsx",
@@ -186,41 +154,6 @@
 			"owner": "the i18n renderer-keying lane",
 			"payoff": "2027-01-31",
 			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/mark-all-read.ts",
-			"ids": ["object-literal:label | Mark all ${…} read"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/session-status/session-model.ts",
-			"ids": [
-				"object-literal:label | auto",
-				"object-literal:label | reasoning",
-				"object-literal:label | unknown"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/transcript-display-mode.ts",
-			"ids": [
-				"object-literal:label | By response",
-				"object-literal:label | By turn"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/utils/link-actions.ts",
-			"ids": ["object-literal:label | Actions for ${…}"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
 			"file": "src/renderer/src/features/mesh/mesh-canvas.tsx",

@@ -38,6 +38,8 @@ export interface AddressMirrorRow {
 	text: string;
 	title: string;
 	isolate?: { start: number; end: number };
+	/** A leading glyph; only the browser's own pages carry one. */
+	icon?: "page";
 	/** The candidate's stable identity (its URL). Never sent: it exists so a
 	 * click can be checked against the row the child actually painted. */
 	key: string;
@@ -149,6 +151,7 @@ function viewOf(input: AddressMirrorInput): AddressOverlayView {
 				text: row.text,
 				title: row.title,
 				...(row.isolate ? { isolate: row.isolate } : {}),
+				...(row.icon ? { icon: row.icon } : {}),
 			})),
 		};
 	}

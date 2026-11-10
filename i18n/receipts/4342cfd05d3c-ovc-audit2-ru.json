@@ -1,0 +1,335 @@
+{
+	"schema": 1,
+	"auditor": {
+		"agent": "ux-reviewer",
+		"session": "4342cfd05d3c",
+		"instance": "4342cfd05d3c-ovc-audit2-ru",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"model_source": "Session system prompt header 'Model: anthropic/claude-opus-5-5'; no model-switch or fallback notice in this session.",
+		"independence": "Second independent auditor (lopdev ux-reviewer). Did not author, edit or draft any translation; translator was coder session 4d5802c5f0fc (Fable draft, openai/gpt-6.1-sol final intro).",
+		"independent_from_translator_session": true
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4342cfd05d3c-ovc-audit2-ru",
+	"locale": "ru",
+	"date": "2026-11-09",
+	"head": "c6869d8d800518f547da5efa7c6b99620b80dd21",
+	"base": "8d2a113b250",
+	"branch": "onboarding-value-clarity (local worktree, unpushed at audit time)",
+	"audit_kind": "second independent audit — high-visibility gating/value copy",
+	"scope": "Every key whose English value changed in 8d2a113b250..c6869d8d800 across 9 namespaces (20 keys), read against English source, English context, core glossary and the locale style guide; other catalogue values used only as terminology reference, not re-audited.",
+	"translator": {
+		"session": "4d5802c5f0fc",
+		"agent": "coder",
+		"models": [
+			"Fable (draft)",
+			"openai/gpt-6.1-sol (final intro)"
+		],
+		"source": "manager brief"
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		},
+		"glossary_style_revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9",
+		"ui_rules": "local-operator-ui AGENTS.md i18n policy (lines 148-231) and docs/I18N.md"
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 3,
+		"nit": 0
+	},
+	"findings": [
+		{
+			"id": "A2-ru-1",
+			"severity": "MINOR",
+			"key": "ui.onboarding.connect.intro",
+			"namespace": "ui.onboarding",
+			"issue": "Singular «бесплатный кредит» reads first as 'a free loan'; the shipped ru catalogue renders Radient credits as plural «кредиты» (ui.common.errors.dictation_radient_credits and siblings). Conditionality (eligible accounts, email verification, security check) is preserved, so this is idiom/terminology, not an honesty breach.",
+			"current": "…могут получить бесплатный кредит после подтверждения почты и проверки безопасности.",
+			"suggestion": "…могут получить бесплатные кредиты после подтверждения почты и проверки безопасности.",
+			"pre_existing": false
+		},
+		{
+			"id": "A2-ru-2",
+			"severity": "MINOR",
+			"key": "ui.onboarding.connect.intro",
+			"namespace": "ui.onboarding",
+			"issue": "Term drift: «API-ключ» appears nowhere else in the ru catalogue; the established rendering is «ключ API» (52 unchanged values, e.g. ElevenLabs/OpenAI key-refusal errors).",
+			"current": "…подписку Claude или ChatGPT, API-ключ или модель…",
+			"suggestion": "…подписку Claude или ChatGPT, ключ API или модель…",
+			"pre_existing": false
+		},
+		{
+			"id": "A2-ru-3",
+			"severity": "MINOR",
+			"key": "ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste",
+			"namespace": "ui.providers",
+			"issue": "Same term drift as the onboarding intro: «API-ключа» vs established «ключ API».",
+			"current": "Без подписки и API-ключа.",
+			"suggestion": "Без подписки и ключа API.",
+			"pre_existing": false
+		}
+	],
+	"namespaces": {
+		"ui.onboarding": {
+			"namespace": "ui.onboarding",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"ru": "b420e6b15c27526efc39b2dda084ff43e3bc94d187685b6b4a25b6f8b9100681",
+				"en": "a05d9e709b4322431c5dfb470ee5e964c8b03a225f497edc0bba5e5fcff2eaf8"
+			},
+			"keys_reviewed": [
+				"ui.onboarding.connect.intro",
+				"ui.onboarding.search.mode.free_detail"
+			],
+			"keys_read": 2,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 2,
+				"nit": 0
+			},
+			"findings": [
+				{
+					"id": "A2-ru-1",
+					"severity": "MINOR",
+					"key": "ui.onboarding.connect.intro",
+					"namespace": "ui.onboarding",
+					"issue": "Singular «бесплатный кредит» reads first as 'a free loan'; the shipped ru catalogue renders Radient credits as plural «кредиты» (ui.common.errors.dictation_radient_credits and siblings). Conditionality (eligible accounts, email verification, security check) is preserved, so this is idiom/terminology, not an honesty breach.",
+					"current": "…могут получить бесплатный кредит после подтверждения почты и проверки безопасности.",
+					"suggestion": "…могут получить бесплатные кредиты после подтверждения почты и проверки безопасности.",
+					"pre_existing": false
+				},
+				{
+					"id": "A2-ru-2",
+					"severity": "MINOR",
+					"key": "ui.onboarding.connect.intro",
+					"namespace": "ui.onboarding",
+					"issue": "Term drift: «API-ключ» appears nowhere else in the ru catalogue; the established rendering is «ключ API» (52 unchanged values, e.g. ElevenLabs/OpenAI key-refusal errors).",
+					"current": "…подписку Claude или ChatGPT, API-ключ или модель…",
+					"suggestion": "…подписку Claude или ChatGPT, ключ API или модель…",
+					"pre_existing": false
+				}
+			],
+			"context_sha256": "8a5f95e7d1576a86e71feaf2271c72a1f7dfe922954f3dfb27a5f5b3249dc170"
+		},
+		"ui.providers": {
+			"namespace": "ui.providers",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"ru": "fa7cf989e45a81d89d8d419ff71e0da5987e1e9229615ef62349e9185a558c68",
+				"en": "54cc1b705f315ce0e0d4a28182a9923cff8dcf0209d4d0736694102baf027098"
+			},
+			"keys_reviewed": [
+				"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste"
+			],
+			"keys_read": 1,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"findings": [
+				{
+					"id": "A2-ru-3",
+					"severity": "MINOR",
+					"key": "ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste",
+					"namespace": "ui.providers",
+					"issue": "Same term drift as the onboarding intro: «API-ключа» vs established «ключ API».",
+					"current": "Без подписки и API-ключа.",
+					"suggestion": "Без подписки и ключа API.",
+					"pre_existing": false
+				}
+			],
+			"context_sha256": "9e42019e3eedd2c53b48b766a153576b1e7efa50471322cc720179db749f1373"
+		},
+		"ui.teamBridge": {
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"ru": "959fbef25f0a3c3e4f5526208919e4056e6d20d84dd1237d953893bbcf495a1f",
+				"en": "6af68e35d6998197be44094cf65aed178ca012ad9090aad36c7dde733ce989ce"
+			},
+			"keys_reviewed": [
+				"ui.teamBridge.plan.reason_account",
+				"ui.teamBridge.plan.see_plan"
+			],
+			"keys_read": 2,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"findings": [],
+			"context_sha256": "23f853879433e14b121e499ff98d3c8d53d5cd96ea7e7c7b0767ab85fadb960a"
+		},
+		"ui.settings.account": {
+			"namespace": "ui.settings.account",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"ru": "723e4171e2b146fe723bc9b05b6d609c28d9c28440c3826101455e9f28d7aa99",
+				"en": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e"
+			},
+			"keys_reviewed": [
+				"ui.settings.account.radient_account_section.team_plan_line"
+			],
+			"keys_read": 1,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"findings": [],
+			"context_sha256": "866b976edf768b0d006be08dd56def1fd7b8c7d77074c6b2c423ac63635176b9"
+		},
+		"ui.agents.publication": {
+			"namespace": "ui.agents.publication",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"ru": "07fff8cdf30c40d28d48162a0567100b40c59e403eea24585f43eaabf5f53546",
+				"en": "b386f0fe158efe961ed10c55ce02c17a241a4f16a8b66e8fad3466fec393033b"
+			},
+			"keys_reviewed": [
+				"ui.agents.publication.team_plan_required.body",
+				"ui.agents.publication.team_plan_required.body_pull",
+				"ui.agents.publication.team_plan_required.headline"
+			],
+			"keys_read": 3,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"findings": [],
+			"context_sha256": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90"
+		},
+		"ui.agents.upload": {
+			"namespace": "ui.agents.upload",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"ru": "fd5cf0acdb350da982e667157df051d189405ed78a20158b484705ea4b56941c",
+				"en": "e2fe5db65bd3266e3d438d05bd704d077c149c32bfa3a8846a962adad66573e4"
+			},
+			"keys_reviewed": [
+				"ui.agents.upload.target.blocked_hint"
+			],
+			"keys_read": 1,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"findings": [],
+			"context_sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+		},
+		"ui.hub.pages": {
+			"namespace": "ui.hub.pages",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"ru": "ac2b823544a09aaf4606a3c22803f93121bc758cbf33231d770fb03626f81fc0",
+				"en": "535ba4d3d7fe9e26a3459fcfb4eed5e268e2f5aa882e25d3dbefb66a2fc2867b"
+			},
+			"keys_reviewed": [
+				"ui.hub.pages.org.plan_headline",
+				"ui.hub.pages.org.plan_body"
+			],
+			"keys_read": 2,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"findings": [],
+			"context_sha256": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872"
+		},
+		"ui.hub.teams": {
+			"namespace": "ui.hub.teams",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"ru": "90494f6a40cad0406bf8d2a0b13527645f4b85e82f6f02c05fc4f6493b514f1f",
+				"en": "827495d3c9a421808b13fd0918dae4db741086b5d9378a6f58e031c2c7d27d25"
+			},
+			"keys_reviewed": [
+				"ui.hub.teams.org.plan_body",
+				"ui.hub.teams.org.plan_headline"
+			],
+			"keys_read": 2,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"findings": [],
+			"context_sha256": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe"
+		},
+		"ui.teamBridgeTrial": {
+			"namespace": "ui.teamBridgeTrial",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"ru": "36bb066dc80b4bc1de98654d43487e98e258f67a82f32205a045bbc157dac8d3",
+				"en": "63a88b5951975cbca5b42fe06f3052a6d47ed2b72518c6327914b161d218a767"
+			},
+			"keys_reviewed": [
+				"ui.teamBridgeTrial.empty.title",
+				"ui.teamBridgeTrial.empty.checking",
+				"ui.teamBridgeTrial.ineligible.trial_used",
+				"ui.teamBridgeTrial.ineligible.former_subscriber",
+				"ui.teamBridgeTrial.ineligible.email_unverified",
+				"ui.teamBridgeTrial.ineligible.other"
+			],
+			"keys_read": 6,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"findings": [],
+			"context_sha256": "964f7f893d1f066aa8fbcedfb4533f19a50aae7984c250a81c60675c72b3b411"
+		}
+	},
+	"checks": {
+		"icu": "Parsed every changed key in en + 7 locales with @formatjs/icu-messageformat-parser from the worktree; argument names/types identical to English for all 20 keys x 7 locales; 0 parse errors (scratchpad icu-check.mjs, output 'problems 0').",
+		"plural_arms": "ui.agents.upload.target.blocked_hint arms: es/fr one,many,other; hi/ur one,other; ru =1,one,few,many,other; vi =1,other; zh-CN other. Call site always passes count>=1 (upload-agent-dialog.tsx:1072-1078).",
+		"bidi": "No U+200E/200F/202A-202E/2066-2069/061C in any changed value (ur included).",
+		"fr_apostrophe": "No ASCII apostrophe in fr changed values (’ used).",
+		"key_parity": "All 9 namespaces: locale key sets equal English key sets; no removed keys.",
+		"conditional_credit": "All 7 locales keep the credit conditional on eligibility, email verification and a security check; no amount, no unconditional offer.",
+		"equal_byo": "All 7 locales present Claude/ChatGPT subscription, API key and on-computer model as an equal alternative sentence ('Or use…'), no demotion.",
+		"plan_term": "Radient Team kept untranslated everywhere; plan noun matches established catalogue usage: es plan, fr offre, hi प्लान, ru тариф, ur پلان, vi gói, zh-CN 套餐.",
+		"see_plan_not_purchase": "ui.teamBridge.plan.see_plan renders as view/see in all locales (Ver/Voir/देखें/Посмотреть/دیکھیں/Xem/查看), never buy/upgrade/subscribe.",
+		"ru_unchanged_values": "ru values for 8 changed keys (publication x3, upload, hub.pages x2, hub.teams x2) are byte-unchanged from base because they already said «тариф Radient Team»; re-read against the new English and accepted."
+	},
+	"info": [
+		"Pre-existing, non-counted: zh-CN ui.teamBridgeTrial.ineligible.former_subscriber has a space in 'Team Bridge 历史记录' while the zh-CN catalogue elsewhere writes 'Team Bridge历史记录' with no space; present in base 8d2a113b250.",
+		"Pre-existing, non-counted: English context notes for ui.agents.publication/ui.agents.upload/ui.hub.*/ui.teamBridgeTrial still say \"keep 'Team' as the plan's product name\" while the source now says 'Radient Team plan'; translators followed the source correctly."
+	],
+	"limitations": "Source/text audit only. No rendered-fit, wrap or font evidence is claimed; the later UX round views browser frames."
+}

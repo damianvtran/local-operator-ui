@@ -16,6 +16,7 @@
 	"ui.settings.account.radient_account_section.radient_refused_the_sign_in_this_app_is_holding_so_your_account_d": "Radient拒绝了本应用保存的登录凭据，因此无法读取你的账户详情。在下方重新登录即可替换该凭据。",
 	"ui.settings.account.radient_account_section.your_radient_account_could_not_be_read_so_this_app_cannot_show_yo": "无法读取你的Radient账户，因此本应用无法显示账户详情。",
 	"ui.settings.account.radient_account_section.you_are_not_currently_signed_in_to_radient": "尚未登录Radient。",
+	"ui.settings.account.radient_account_section.team_plan_line": "Radient Team套餐包含Team Bridge，并支持在组织内共享智能体和团队。",
 	"ui.settings.account.settings_page.radient_pass": "Radient Pass",
 	"ui.settings.account.settings_page.available_credits": "可用额度",
 	"ui.settings.account.settings_page.add_credits": "充值",

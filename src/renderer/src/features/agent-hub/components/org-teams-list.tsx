@@ -3,6 +3,7 @@ import {
 	type PublicationAction,
 	publicationTreatment,
 } from "@features/agents/utils/publication-failure";
+import { subscribeUrlFor } from "@features/team-bridge-trial/team-bridge-trial-model";
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { isPublicationError } from "@shared/api/local-operator/publication-errors";
 import type { HubTeam } from "@shared/api/radient/types";
@@ -20,6 +21,7 @@ import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { openConsolePage } from "@shared/utils/radient-account-copy";
 import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
@@ -67,6 +69,7 @@ const ROSTER_ACTIONS: readonly PublicationAction[] = [
 	"refresh-hub",
 	"retry",
 	"sign-in",
+	"open-console",
 ];
 
 /**
@@ -211,6 +214,11 @@ export const OrgTeamsList: React.FC<{
 			case "sign-in":
 				setReauthenticating(true);
 				break;
+			case "open-console":
+				// A plan refusal while pulling names this roster's organization.
+				// Leave the row intact so the reader can return and retry the pull.
+				openConsolePage(subscribeUrlFor(tenantId));
+				break;
 			default:
 				break;
 		}
@@ -338,8 +346,14 @@ export const OrgTeamsList: React.FC<{
 										error,
 									)}
 					</AlertDescription>
+					{/*
+					 * One line, never wrapping: two `sm` buttons fit the narrowest pane
+					 * (the 920px narrow story), and this file's layout contract keeps
+					 * every action row on one line (flex items keep `min-width: auto`,
+					 * so neither label is squeezed below its own width).
+					 */}
 					{refusal !== "no_access" && (
-						<div className="mt-2">
+						<div className="mt-2 flex items-center gap-2">
 							<Button
 								variant="primary"
 								size="sm"
@@ -351,6 +365,23 @@ export const OrgTeamsList: React.FC<{
 									? t("ui.hub.teams.public.trying")
 									: PUBLICATION_ACTION_LABEL.retry}
 							</Button>
+							{/*
+							 * Only the PLAN refusal: its body sends the reader to the Radient
+							 * console, and a load failure has nothing there to fix. Same
+							 * `secondary`-on-wash reasoning as the agents tab's twin control
+							 * (`agent-hub-page.tsx`), and the same label as every other
+							 * console link.
+							 */}
+							{refusal === "plan" && (
+								<Button
+									variant="secondary"
+									size="sm"
+									data-testid="org-teams-plan-console"
+									onClick={() => openConsolePage(subscribeUrlFor(tenantId))}
+								>
+									{PUBLICATION_ACTION_LABEL["open-console"]}
+								</Button>
+							)}
 						</div>
 					)}
 				</Alert>
@@ -485,7 +516,9 @@ export const OrgTeamsList: React.FC<{
 										.map((action) => (
 											<Button
 												key={action}
-												variant="primary"
+												variant={
+													action === "open-console" ? "secondary" : "primary"
+												}
 												size="sm"
 												onClick={() => runTreatmentAction(action, team)}
 											>

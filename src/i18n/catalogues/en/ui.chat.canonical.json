@@ -251,5 +251,10 @@
 	"ui.chat.canonical.tool_row.diff.more": "{count, plural, one {… # more diff line} other {… # more diff lines}}",
 	"ui.chat.canonical.tool_row.diff.show_less": "Show less",
 	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, one {Diff truncated — # more line not recorded} other {Diff truncated — # more lines not recorded}}",
-	"ui.chat.canonical.tool_row.diff.withheld": "Diff not available for this change"
+	"ui.chat.canonical.tool_row.diff.withheld": "Diff not available for this change",
+	"ui.chat.canonical.notice.interrupted": "Interrupted",
+	"ui.chat.canonical.notice.stopped_with_error": "Stopped with an error",
+	"ui.chat.canonical.notice.compaction_not_run": "Compaction did not run: {detail}",
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Compaction did not run — {detail}",
+	"ui.chat.canonical.link_toolkit.actions_for": "Actions for {name}"
 }

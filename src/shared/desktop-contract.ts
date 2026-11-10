@@ -7663,6 +7663,8 @@ export const DESKTOP_MESSAGE_BUDGET_BYTES = DESKTOP_MESSAGE_BYTE_BUDGET;
 export const DESKTOP_SYSTEM_PROMPT_BUDGET_BYTES =
 	DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET;
 export type DesktopStreamEvent = {
+	/** Optional diagnostic envelope; raw data and wire negotiation are unchanged. */
+	receipt?: import("./snapshot-receipt").SnapshotReceipt;
 	streamId: string;
 	kind: "data" | "error" | "end";
 	data?: string;

@@ -77,6 +77,7 @@ import {
 	brandOf,
 	connectedRowMeta,
 	connectedRows,
+	featuredRowTitle,
 	modelDisplayName,
 	monogramOf,
 	moreProvidersSummary,
@@ -231,12 +232,17 @@ export function visibleProviders(
 }
 
 /** The 32px tile: two letters on the elevated step (design § 2, P1 monograms). */
-const Monogram: FC<{ provider: DesktopProvider }> = ({ provider }) => (
+const Monogram: FC<{ provider: DesktopProvider; title?: string }> = ({
+	provider,
+	title,
+}) => (
 	<span
 		aria-hidden="true"
 		className="flex size-8 shrink-0 items-center justify-center rounded-md bg-elevated font-medium text-body-sm text-ink"
 	>
-		{monogramOf(brandOf(provider))}
+		{/* The tile abbreviates the title printed beside it, so a suggested row
+		    titled "Claude" does not carry Anthropic's letters. */}
+		{monogramOf(title ?? brandOf(provider))}
 	</span>
 );
 
@@ -563,8 +569,16 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			</div>
 		) : null;
 
-	const addRow = (provider: DesktopProvider) => {
+	/*
+	 * `featured` is the suggested block onboarding shows first. Its rows are
+	 * titled by the account the reader has (`featuredRowTitle`); every other add
+	 * row keeps the provider's brand. The title also feeds the row action's
+	 * accessible name, so a screen reader hears the same word a sighted reader
+	 * sees beside the button.
+	 */
+	const addRow = (provider: DesktopProvider, featured = false) => {
 		const isRecommended = showsRecommendedCue(provider.id, recommendedId);
+		const title = featured ? featuredRowTitle(provider) : brandOf(provider);
 		const suggestion = provider.suggested_model?.name;
 		const open = selectedId === provider.id;
 		return (
@@ -580,10 +594,10 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				data-search-control
 			>
 				<div className="flex min-h-14 items-center gap-3 px-4 py-2">
-					<Monogram provider={provider} />
+					<Monogram provider={provider} title={title} />
 					<div className="flex min-w-0 flex-1 flex-col">
 						<span className="flex flex-wrap items-baseline gap-x-2 text-body text-ink">
-							{brandOf(provider)}
+							{title}
 							{isRecommended ? (
 								<>
 									{/*
@@ -653,7 +667,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 							action: open
 								? t("ui.providers.provider_grid.close")
 								: rowActionLabel(provider),
-							brand: brandOf(provider),
+							brand: title,
 						})}
 						onClick={() => toggle(provider.id)}
 					>
@@ -1007,7 +1021,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					<div key={group} className="flex flex-col gap-2">
 						<h4 className="text-ink-dim text-meta">{GROUP_HEADINGS[group]}</h4>
 						<RowList label={GROUP_HEADINGS[group]}>
-							{buckets[group].map(addRow)}
+							{buckets[group].map((provider) => addRow(provider))}
 						</RowList>
 					</div>
 				) : null,
@@ -1122,7 +1136,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				) : null}
 				{featured.length > 0 ? (
 					<RowList label={t("ui.providers.provider_grid.suggested_providers")}>
-						{featured.map(addRow)}
+						{featured.map((provider) => addRow(provider, true))}
 					</RowList>
 				) : null}
 				{searching || restCount > 0 ? (

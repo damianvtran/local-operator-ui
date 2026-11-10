@@ -1,0 +1,94 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit (merge delta)",
+	"agent": "reviewer",
+	"session": "909a2c50a0bd",
+	"instance": "onboarding-value-merge-ur-909a2c50a0bd",
+	"model": "anthropic/claude-fable-5-2",
+	"requested_model": "anthropic/claude-fable-5-2",
+	"fallback": false,
+	"auditor": {
+		"agent": "reviewer",
+		"session": "909a2c50a0bd",
+		"instance": "onboarding-value-merge-ur-909a2c50a0bd",
+		"model": "anthropic/claude-fable-5-2",
+		"team": "lopdev",
+		"role": "reviewer",
+		"independent_from_translator_session": true
+	},
+	"independence": "Independent auditor: this session did not draft, translate, merge or edit any catalogue, context file or ledger row.",
+	"translator": {
+		"note": "Two translation lanes meet in this file. plan.* keys: coder session 4d5802c5f0fc (as stated in the lopdev manager's brief; not verified by this auditor). typing.* keys: upstream PR #1819 lane, already on main; its translator is whatever main's ledger row records and was not re-derived here."
+	},
+	"locale": "ur",
+	"date": "2026-11-09",
+	"round": "translation audit 1, merge delta",
+	"scope": {
+		"repo": "damianvtran/local-operator-ui",
+		"worktree": "~/local-operator-ui/.worktrees/onboarding-value-clarity",
+		"previous_head": "7d52eb945657b4234107136487487107afd5f4c8",
+		"merged_main": "96bb3a3a5a89373e708838862a5c1e317d175ed1",
+		"head": "c8415117ffde2cf3ec4a9792ddfa377784ce0141",
+		"pushed": false,
+		"note": "Merge of main into the PR branch (local commit, not yet pushed). Audited only the six keys the two sides contributed to ui.teamBridge and their context entries; the other 407 keys are byte-identical on both parents and were not re-read."
+	},
+	"references": {
+		"core_revision": "dfc7411cac4dc012648cb7bbc4c10ac982b4e5bc",
+		"core_revision_note": "origin/main of the local ~/local-operator clone at audit time (git show; not fetched here). Glossary and style-guide bytes are identical to those cited by this auditor's first receipt.",
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+		}
+	},
+	"prior_evidence": {
+		"plan_keys": {
+			"receipt": "i18n/receipts/onboarding-value-ur-909a2c50a0bd.json",
+			"note": "This auditor's own audit of plan.reason_account and plan.see_plan at 7d52eb945657; both values and both context entries are unchanged by the merge."
+		},
+		"typing_keys": {
+			"receipt": "i18n/receipts/81c927283b69-pr1819-r1-ur.json",
+			"note": "Upstream audit recorded on main's ledger row for this locale; that row's target_sha256 equals the sha256 of main's file at 96bb3a3a5a8 (re-hashed here). The four typing values and context entries are unchanged by the merge. They were also read afresh here."
+		}
+	},
+	"method": {
+		"read": "All six keys read against English, their context entries, the glossary, the locale style guide and neighbouring catalogue usage.",
+		"mechanical_checks_executed": [
+			"target key set equals the union of both parents' key sets and equals the English key set (413 keys), in English key order",
+			"no value of a key present on either parent differs from that parent",
+			"no duplicate key in the raw target file",
+			"placeholder names of the six keys equal the English ones",
+			"typing.* values carry no trailing punctuation or ellipsis",
+			"no manual bidi control characters in any value of the file"
+		],
+		"not_done": "No rendered frames, pseudo-localization, fit measurement or native-speaker review. No tests, builds or gates were run. Text audit only."
+	},
+	"namespaces": {
+		"ui.teamBridge": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "e67d1a9be067a32e0b3d6ef7a4f31c4fa93dc632fa0599f3a66147248d3324f7",
+				"ur": "61ca62306c2a0afa733118d83ee4ec74a6da555c59439eef4dd9be3cbd7bff2e"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.teamBridge.json",
+				"ur": "src/i18n/catalogues/ur/ui.teamBridge.json",
+				"context": "src/i18n/catalogues/en/ui.teamBridge.context.json"
+			},
+			"context_sha256": "b2e111fea0842295ac88ce655f5f7a6c35cd506a4d9b29e1785bd4496e50ea6f",
+			"audited_keys": [
+				"ui.teamBridge.plan.reason_account",
+				"ui.teamBridge.plan.see_plan",
+				"ui.teamBridge.typing.one",
+				"ui.teamBridge.typing.two",
+				"ui.teamBridge.typing.three",
+				"ui.teamBridge.typing.several"
+			],
+			"findings": []
+		}
+	}
+}

@@ -92,7 +92,7 @@
 	"ui.agents.publication.subject.unknown": "Ese agente",
 	"ui.agents.publication.team_not_found.body": "Puede que se haya retirado del hub desde que se cargó esta página.",
 	"ui.agents.publication.team_not_found.headline": "Ese equipo ya no está publicado",
-	"ui.agents.publication.team_plan_required.body": "Compartir agentes dentro de una organización forma parte del plan Team. Pide a un propietario de la organización que lo active en la consola de Radient y vuelve a publicar.",
-	"ui.agents.publication.team_plan_required.body_pull": "Leer los equipos de una organización forma parte del plan Team. Pide a un propietario de la organización que lo active en la consola de Radient y vuelve a hacer pull.",
-	"ui.agents.publication.team_plan_required.headline": "Esa organización necesita un plan Team activo"
+	"ui.agents.publication.team_plan_required.body": "Compartir agentes dentro de una organización forma parte del plan Radient Team. Pide a un propietario de la organización que lo active en la consola de Radient y vuelve a publicar.",
+	"ui.agents.publication.team_plan_required.body_pull": "Leer los equipos de una organización forma parte del plan Radient Team. Pide a un propietario de la organización que lo active en la consola de Radient y vuelve a hacer pull.",
+	"ui.agents.publication.team_plan_required.headline": "Esa organización necesita un plan Radient Team activo"
 }

@@ -1,0 +1,744 @@
+Execution-history disclosure: first run of this scratch script exited 1 on an overbroad assertion requiring legacy English context completeness. The actual repository validator passed with its shrink-only legacy allowances. Scratch assertion was corrected to require context completeness for the four new keys only; no repository files changed. This is a checker-scope correction, not a product finding.
+Hindi independent delta audit; session 0d383ce3ad89; actual model openai/gpt-6.1-sol; no fallback.
+ACTUAL EXECUTION below: commands run by this script with real stdout and exit status.
+Prior actual tool calls: git rev-parse HEAD; git status --short; git diff origin/main HEAD -- scoped catalogue/context files; node scripts/i18n/context-parity.mjs (exit 0: every English key covered apart from 131 allowed gaps in 4 namespaces). Read-only sed/cat/rg and Python inspected source, contexts, target values, adjacent terminology and validator contracts. No builds/installs/servers.
+$ git rev-parse HEAD
+e5fb4310dab638f9cf428779d62539ec039a8990
+
+exit=0
+$ git status --short
+
+
+exit=0
+$ git rev-parse origin/main
+7385893f87a8e30d1b0872d2e8cc7ba887b01a70
+
+exit=0
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.json
+ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  src/i18n/catalogues/en/ui.chat.json
+
+exit=0
+$ git show origin/main:src/i18n/catalogues/en/ui.chat.json
+{
+	"ui.chat.action.stopped": "Stopped",
+	"ui.chat.composer.status.goal_collapse": "Collapse the session goal",
+	"ui.chat.composer.status.goal_dismiss": "Dismiss",
+	"ui.chat.composer.status.goal_dismiss_keep": "it stays in the goal history",
+	"ui.chat.composer.status.goal_dismiss_name": "Dismiss the finished goal",
+	"ui.chat.composer.status.goal_done": "Done",
+	"ui.chat.composer.status.goal_done_name": "Mark the goal done",
+	"ui.chat.composer.status.goal_expand": "Expand the session goal",
+	"ui.chat.composer.status.goal_label": "Goal:",
+	"ui.chat.composer.status.jobs_action": "Open the jobs in run details",
+	"ui.chat.composer.status.loop_clear": "Clear loop",
+	"ui.chat.composer.status.loop_label": "Loop:",
+	"ui.chat.composer.status.loop_progress_of_turns": "{completed, number, ::group-off} of {total, number, ::group-off} turns",
+	"ui.chat.composer.status.loop_progress_turns": "{count, plural, one {# turn} other {# turns}}",
+	"ui.chat.composer.status.loop_stop": "Stop loop",
+	"ui.chat.composer.status.monitors_action": "Open the monitors in run details",
+	"ui.chat.composer.status.plan_action": "Open the plan in run details",
+	"ui.chat.composer.status.session_goal": "Session goal",
+	"ui.chat.composer.status.subagents_action": "Open the subagents in run details",
+	"ui.chat.composer.status.wakes_action": "Open the wakes in run details",
+	"ui.chat.header_identity.loading": "{kind, select, agents {Loading agents…} teams {Loading teams…} other {Loading…}}",
+	"ui.chat.header_identity.no_matches": "Nothing matches “{query}”.",
+	"ui.chat.header_identity.search": "{kind, select, agents {Search agents} teams {Search teams} other {Search}}",
+	"ui.chat.highlights.file_resolution_failed": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
+	"ui.chat.hub_update.check_now": "Check the hub for updates now",
+	"ui.chat.hub_update.dismiss": "Dismiss",
+	"ui.chat.hub_update.dismiss_summary": "Dismiss update summary",
+	"ui.chat.hub_update.update_all": "Update all ({count, number, ::group-off})",
+	"ui.chat.hub_update.update_all_label": "{kind, select, agents {Update all {count, number, ::group-off} agent updates from the hub} teams {Update all {count, number, ::group-off} team updates from the hub} skills {Update all {count, number, ::group-off} skill updates from the hub} other {Update all {count, number, ::group-off} updates from the hub}}",
+	"ui.chat.hub_update.updating": "Updating…",
+	"ui.chat.provider_error.action.open_provider_settings": "Open provider settings",
+	"ui.chat.provider_error.action.open_radient_account": "Open Radient account",
+	"ui.chat.provider_error.action.sign_in_radient": "Sign in to Radient",
+	"ui.chat.provider_error.headline.out_of_credits": "Out of credits{status}: {body}",
+	"ui.chat.provider_error.headline.out_of_credits_refused": "Out of credits{status}: Radient refused the request",
+	"ui.chat.question_dock.asking": "The agent is asking",
+	"ui.chat.question_dock.from_agent_label": "Question from the agent",
+	"ui.chat.question_dock.secret_answer_label": "Secret answer",
+	"ui.chat.question_dock.secret_note": "Hidden as you type — sent to the agent, not shown in the transcript.",
+	"ui.chat.question_dock.secret_placeholder": "Paste the secret",
+	"ui.chat.question_dock.secret_value_label": "Secret value",
+	"ui.chat.question_dock.send": "Send",
+	"ui.chat.question_dock.show": "Show",
+	"ui.chat.question_dock.show_question_label": "Show the agent's question",
+	"ui.chat.quota_notice.dismiss": "Dismiss",
+	"ui.chat.reply.remove": "Remove reply",
+	"ui.chat.reply.replying_to": "Replying to",
+	"ui.chat.session_status.choose_model": "Choose a model",
+	"ui.chat.session_status.choose_model_tooltip": "Choose the model this conversation will run on",
+	"ui.chat.session_status.estimate": "estimate",
+	"ui.chat.session_status.last_reading": "Last reading",
+	"ui.chat.session_status.no_model_resolved": "No model resolved yet",
+	"ui.chat.skill_invocation.instructions_label": "Skill instructions sent with this message",
+	"ui.chat.skill_invocation.trigger_label": "{token} skill instructions",
+	"ui.chat.status_strip.dismiss": "Dismiss",
+	"ui.chat.tabs.chat": "Chat",
+	"ui.chat.tabs.raw": "Raw",
+	"ui.chat.usage.blocked": "Spend unavailable",
+	"ui.chat.usage.continue": "Included quota used; credits will continue.",
+	"ui.chat.usage.eligibility_unknown": "Spend eligibility unknown",
+	"ui.chat.usage.family_caps": "Model-family caps still apply.",
+	"ui.chat.usage.unlimited": "Unlimited paid allowance",
+	"ui.chat.mermaid.zoom_in": "Zoom in",
+	"ui.chat.mermaid.zoom_out": "Zoom out",
+	"ui.chat.mermaid.pan": "Drag to pan",
+	"ui.chat.mermaid.pan_hint": "Drag the diagram to pan",
+	"ui.chat.mermaid.reset_view": "Reset view",
+	"ui.chat.mermaid.save_svg": "Save as SVG",
+	"ui.chat.mermaid.copied": "Copied",
+	"ui.chat.mermaid.copy_text": "Copy mermaid text",
+	"ui.chat.mermaid.error_title": "Mermaid diagram error",
+	"ui.chat.mermaid.unexpected_error": "An unexpected error occurred while rendering the diagram",
+	"ui.chat.mermaid.error_contained": "The error was contained within the diagram component.",
+	"ui.chat.mermaid.chart_label": "Chart",
+	"ui.chat.mermaid.loading": "Loading diagram...",
+	"ui.chat.mermaid.rendering_error": "Rendering error",
+	"ui.chat.mermaid.render_failed": "Failed to render diagram content.",
+	"ui.chat.mermaid.fullscreen": "Fullscreen",
+	"ui.chat.mermaid.open_fullscreen": "Open diagram fullscreen",
+	"ui.chat.mermaid.diagram_title": "Mermaid diagram",
+	"ui.chat.mermaid.close_fullscreen": "Close fullscreen",
+	"ui.chat.aside.question_label": "Question:",
+	"ui.chat.aside.you_label": "You:",
+	"ui.chat.aside.thinking": "thinking…",
+	"ui.chat.aside.title": "Aside",
+	"ui.chat.aside.off_record": "off the record — nothing here joins the conversation",
+	"ui.chat.aside.close_label": "Close the aside",
+	"ui.chat.aside.exchange_label": "The aside exchange",
+	"ui.chat.aside.empty": "Type a question in the composer below — the answer lands here.",
+	"ui.chat.aside.add_to_conversation": "Add to conversation",
+	"ui.chat.error_block.heading": "Error",
+	"ui.chat.error_block.link.settings": "settings page",
+	"ui.chat.error_block.link.providers": "Providers section",
+	"ui.chat.error_block.provider.before": "You haven't selected an AI provider yet. Go to the",
+	"ui.chat.error_block.provider.after": "to configure it for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+	"ui.chat.error_block.model.before": "You haven't selected an AI model yet. Go to the",
+	"ui.chat.error_block.model.after": "to select a model for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+	"ui.chat.error_block.rate_limit.before": "You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the",
+	"ui.chat.error_block.rate_limit.after": "to access AI models with no rate limits at low prices.",
+	"ui.chat.error_block.rate_limit.all_after": "to access all AI models with no rate limits at low prices.",
+	"ui.chat.error_block.invalid_key.before": "Your API key is invalid. Update it in the",
+	"ui.chat.error_block.invalid_key.after": ", or sign in to the provider again.",
+	"ui.chat.error_block.unavailable.before": "The model you're trying to use is not available. Go to the",
+	"ui.chat.error_block.unavailable.after": "to select a different model, or use Radient to get access to hundreds of models with no rate limits",
+	"ui.chat.error_block.schema.before": "The model tried to perform an action but was unable to express its intent in the required schema. Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+	"ui.chat.error_block.schema.after_before": "Change your model in the",
+	"ui.chat.error_block.schema.after": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+	"ui.chat.approval.reply_required": "Reply yes or no to answer the approval request.",
+	"ui.chat.question_dock.hint.approval": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	"ui.chat.question_dock.hint.approval_held": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	"ui.chat.question_dock.hint.prefix": "Question {index} of {total}. ",
+	"ui.chat.question_dock.hint.secret": "{prefix}Type or paste the secret above · Enter sends · Esc hides",
+	"ui.chat.question_dock.hint.secret_held": "{prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+	"ui.chat.question_dock.hint.type": "{prefix}Type your answer below.",
+	"ui.chat.question_dock.hint.options": "{prefix}Up/Down choose · Enter or {digits} answers · Esc hides · or type your own answer below",
+	"ui.chat.session_status.context_heading": "Context",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Context: nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.conversation_starting": "Set once the conversation starts.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Model: none resolved yet. Choose the model this conversation will run on.",
+	"ui.chat.session_status.not_signed_in": "Not signed in to {label}",
+	"ui.chat.session_status.not_signed_in_description": "This session runs {label} without a working sign-in, so it cannot answer until you connect it.",
+	"ui.chat.session_status.nothing_measured_yet": "Nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} is temporarily unavailable",
+	"ui.chat.session_status.temporarily_unavailable_description": "Your saved sign-in is still present. Try again later or choose another model.",
+	"ui.chat.checkpoint.generating_name": "Generating name…",
+	"ui.chat.checkpoint.jump_agent": "Jump to turn {turn, number} of {total, number}, {name}",
+	"ui.chat.checkpoint.jump_agent_unnamed": "Jump to turn {turn, number} of {total, number}",
+	"ui.chat.checkpoint.jump_user": "Jump to your message in turn {turn, number} of {total, number}, {clock}",
+	"ui.chat.checkpoint.jump_user_no_clock": "Jump to your message in turn {turn, number} of {total, number}",
+	"ui.chat.checkpoint.turn": "Turn {turn, number} of {total, number}",
+	"ui.chat.header_identity.aria_agent_assign": "Agent: {label}. Assign an agent",
+	"ui.chat.header_identity.aria_agent_closed": "Agent: {label}. {reason}",
+	"ui.chat.header_identity.aria_agent_switch": "Agent: {label}. Switch agent",
+	"ui.chat.header_identity.aria_team_assign": "Team: {label}. Assign a team",
+	"ui.chat.header_identity.aria_team_closed": "Team: {label}. {reason}",
+	"ui.chat.header_identity.aria_team_switch": "Team: {label}. Switch team",
+	"ui.chat.header_identity.assign_agent": "Assign an agent",
+	"ui.chat.header_identity.assign_team": "Assign a team",
+	"ui.chat.header_identity.no_agent": "No agent",
+	"ui.chat.header_identity.no_team": "No team",
+	"ui.chat.region.composer": "Message composer",
+	"ui.chat.region.conversation": "Conversation",
+	"ui.chat.audio.play": "Play",
+	"ui.chat.audio.pause": "Pause",
+	"ui.chat.audio.play_label": "Play {label}",
+	"ui.chat.audio.pause_label": "Pause {label}",
+	"ui.chat.audio.mute": "Mute",
+	"ui.chat.audio.unmute": "Unmute",
+	"ui.chat.message_controls.copy": "Copy message",
+	"ui.chat.message_controls.copied": "Copied",
+	"ui.chat.image_actions.save_as": "Save as…",
+	"ui.chat.image_actions.copy_image": "Copy image",
+	"ui.chat.image_actions.copy_image_url": "Copy image URL",
+	"ui.chat.image_actions.open_in_browser": "Open in browser",
+	"ui.chat.image_actions.expand_image": "Expand image",
+	"ui.chat.composer.connect_provider": "Connect a provider",
+	"ui.chat.slot_notice.run_draft_title": "Run details need a conversation.",
+	"ui.chat.slot_notice.run_draft_detail": "Send a message to start this conversation; its subagents, plan and scheduled work appear here.",
+	"ui.chat.slot_notice.run_reading_title": "Reading this conversation's run…",
+	"ui.chat.slot_notice.run_unreadable_title": "Run details could not be read for this conversation.",
+	"ui.chat.slot_notice.run_unreadable_detail": "The conversation beside this pane says why and how to reconnect.",
+	"ui.chat.slot_notice.run_missing_detail": "This conversation is no longer on this machine.",
+	"ui.chat.slot_notice.code_draft_title": "Code review needs a conversation.",
+	"ui.chat.slot_notice.code_draft_detail": "Send a message to start this conversation; the pull requests and merge requests it opens or mentions appear here.",
+	"ui.chat.slot_notice.code_below_version_title": "The Local Operator server doesn't serve code review yet.",
+	"ui.chat.slot_notice.code_below_version_detail": "Update the server to see the pull requests and merge requests this conversation opens.",
+	"ui.chat.slot_notice.code_checking_title": "Checking whether the server serves code review…",
+	"ui.chat.slot_notice.code_load_lead": "Code review could not be loaded.",
+	"ui.chat.slash_arguments.model_default_description": "Save the current model ({provider}/{model}) as the default for new sessions.",
+	"ui.chat.slash_arguments.model_default_unavailable": "No active session model is available to save.",
+	"ui.chat.slash_arguments.model_default_click": "Click does the same.",
+	"ui.chat.slash_arguments.model_default_required": "A session model is required before this action can save a default.",
+	"ui.chat.slash_arguments.refresh_description": "Re-read the conversation and name it again",
+	"ui.chat.slash_arguments.refresh_detail": "resumes auto-naming",
+	"ui.chat.aside.add_to_conversation_tooltip": "Add the aside to the conversation",
+	"ui.chat.message_controls.content_header": "Content",
+	"ui.chat.message_controls.replacements_header": "Replacements",
+	"ui.chat.message_controls.thinking_label": "Thinking",
+	"ui.chat.scroll_to_bottom.label": "Scroll to bottom",
+	"ui.chat.scroll_to_bottom.label_new_activity": "New activity, scroll to bottom",
+	"ui.chat.session_status.last_reading_note": "Last reading from before the reconnect.",
+	"ui.chat.session_status.readings_aria_held": "Session readings. {note}",
+	"ui.chat.session_status.commands_off": "Slash commands are off on this server, so this reading cannot be opened from here.",
+	"ui.chat.session_status.context_click_breakdown_held": "Click for the full breakdown, which estimates your next request.",
+	"ui.chat.session_status.context_click_breakdown_held_plain": "Click for the full breakdown.",
+	"ui.chat.session_status.context_measured_now": "Measured now; click for the full breakdown, which estimates your next request",
+	"ui.chat.session_status.context_estimated_now": "Estimated now; click for the full breakdown, which estimates your next request",
+	"ui.chat.session_status.context_click_breakdown": "Click for the full breakdown",
+	"ui.chat.session_status.model_click_choose_draft": "Click to choose a different model. It applies to this conversation.",
+	"ui.chat.session_status.model_click_choose": "Click to choose a different model",
+	"ui.chat.session_status.model_draft_inert": "This conversation will use it. Change it once the conversation starts.",
+	"ui.chat.session_status.effort_change_draft": "Change it. It applies to this conversation.",
+	"ui.chat.session_status.effort_change": "Change it.",
+	"ui.chat.session_status.model_aria": "Model: {selector}{fast, select, yes {, fast mode on} other {}}. {reason}",
+	"ui.chat.session_status.model_aria_pending": "Model: {selector}{fast, select, yes {, fast mode on} other {}}. Switching; waiting for the session to confirm it.",
+	"ui.chat.session_status.switching_model": "Switching the model",
+	"ui.chat.session_status.model_aria_unresolved": "Model: this conversation's model was not resolved. Retry.",
+	"ui.chat.session_status.model_aria_resolving": "Model: resolving the model this conversation will run on.",
+	"ui.chat.session_status.resolving_model_spinner": "Resolving the model this conversation will run on",
+	"ui.chat.session_status.context_aria_no_reading": "Context: no reading yet. {hint}",
+	"ui.chat.session_status.context_aria_reading": "Context: {spelling}{estimate, select, yes {, estimated} other {}}. {hint}",
+	"ui.chat.session_status.active_time_aria": "Active time: {duration}. {explanation}",
+	"ui.chat.session_status.duration_explanation": "Time spent working; waiting is not counted.",
+	"ui.chat.session_status.effort_level.low": "Low",
+	"ui.chat.session_status.effort_level.medium": "Medium",
+	"ui.chat.session_status.effort_level.high": "High"
+}
+
+exit=0
+CHECK src/i18n/catalogues/en/ui.chat.json: valid JSON, no duplicate keys; legacy keys unchanged; added=['ui.chat.audio.position_label', 'ui.chat.image_actions.actions']
+$ shasum -a 256 src/i18n/catalogues/hi/ui.chat.json
+2a6c484cf4b677a4fb9ba74fdbfbf74849c612b60c0a858804daf2ef4d21e03a  src/i18n/catalogues/hi/ui.chat.json
+
+exit=0
+$ git show origin/main:src/i18n/catalogues/hi/ui.chat.json
+{
+	"ui.chat.action.stopped": "रोका गया",
+	"ui.chat.composer.status.goal_collapse": "सत्र का लक्ष्य समेटें",
+	"ui.chat.composer.status.goal_dismiss": "बंद करें",
+	"ui.chat.composer.status.goal_dismiss_keep": "यह लक्ष्य इतिहास में बना रहता है",
+	"ui.chat.composer.status.goal_dismiss_name": "पूरा हो चुका लक्ष्य बंद करें",
+	"ui.chat.composer.status.goal_done": "पूर्ण",
+	"ui.chat.composer.status.goal_done_name": "लक्ष्य को पूर्ण करें",
+	"ui.chat.composer.status.goal_expand": "सत्र का लक्ष्य खोलें",
+	"ui.chat.composer.status.goal_label": "लक्ष्य:",
+	"ui.chat.composer.status.jobs_action": "रन विवरण में जॉब्स खोलें",
+	"ui.chat.composer.status.loop_clear": "लूप साफ़ करें",
+	"ui.chat.composer.status.loop_label": "लूप:",
+	"ui.chat.composer.status.loop_progress_of_turns": "{total, number, ::group-off} में से {completed, number, ::group-off} टर्न",
+	"ui.chat.composer.status.loop_progress_turns": "{count, plural, one {# टर्न} other {# टर्न}}",
+	"ui.chat.composer.status.loop_stop": "लूप रोकें",
+	"ui.chat.composer.status.monitors_action": "रन विवरण में मॉनिटर खोलें",
+	"ui.chat.composer.status.plan_action": "रन विवरण में योजना खोलें",
+	"ui.chat.composer.status.session_goal": "सत्र का लक्ष्य",
+	"ui.chat.composer.status.subagents_action": "रन विवरण में उप-एजेंट खोलें",
+	"ui.chat.composer.status.wakes_action": "रन विवरण में जागृतियाँ खोलें",
+	"ui.chat.header_identity.loading": "{kind, select, agents {एजेंट लोड हो रहे हैं…} teams {टीमें लोड हो रही हैं…} other {लोड हो रहा है…}}",
+	"ui.chat.header_identity.no_matches": "“{query}” से कुछ नहीं मिला।",
+	"ui.chat.header_identity.search": "{kind, select, agents {एजेंट खोजें} teams {टीमें खोजें} other {खोजें}}",
+	"ui.chat.highlights.file_resolution_failed": "इस सत्र के कार्य फ़ोल्डर में यह फ़ाइल नहीं मिली। दोबारा कोशिश करने से पहले फ़ाइल का पाथ कॉपी करके इस सत्र के कार्यक्षेत्र में उसकी जगह जाँचें।",
+	"ui.chat.hub_update.check_now": "अभी हब में अपडेट की जाँच करें",
+	"ui.chat.hub_update.dismiss": "बंद करें",
+	"ui.chat.hub_update.dismiss_summary": "अपडेट सारांश बंद करें",
+	"ui.chat.hub_update.update_all": "सभी अपडेट करें ({count, number, ::group-off})",
+	"ui.chat.hub_update.update_all_label": "{kind, select, agents {हब से सभी {count, number, ::group-off} एजेंट अपडेट करें} teams {हब से सभी {count, number, ::group-off} टीम अपडेट करें} skills {हब से सभी {count, number, ::group-off} कौशल अपडेट करें} other {हब से सभी {count, number, ::group-off} अपडेट करें}}",
+	"ui.chat.hub_update.updating": "अपडेट हो रहा है…",
+	"ui.chat.provider_error.action.open_provider_settings": "प्रोवाइडर सेटिंग्स खोलें",
+	"ui.chat.provider_error.action.open_radient_account": "Radient खाता खोलें",
+	"ui.chat.provider_error.action.sign_in_radient": "Radient में साइन इन करें",
+	"ui.chat.provider_error.headline.out_of_credits": "क्रेडिट खत्म{status}: {body}",
+	"ui.chat.provider_error.headline.out_of_credits_refused": "क्रेडिट खत्म{status}: Radient ने अनुरोध अस्वीकार किया",
+	"ui.chat.question_dock.asking": "एजेंट पूछ रहा है",
+	"ui.chat.question_dock.from_agent_label": "एजेंट का सवाल",
+	"ui.chat.question_dock.secret_answer_label": "गोपनीय जवाब",
+	"ui.chat.question_dock.secret_note": "टाइप करते समय छिपा रहता है — एजेंट को भेजा जाता है, ट्रांसक्रिप्ट में नहीं दिखता।",
+	"ui.chat.question_dock.secret_placeholder": "गोपनीय जानकारी पेस्ट करें",
+	"ui.chat.question_dock.secret_value_label": "गोपनीय मान",
+	"ui.chat.question_dock.send": "भेजें",
+	"ui.chat.question_dock.show": "दिखाएँ",
+	"ui.chat.question_dock.show_question_label": "एजेंट का सवाल दिखाएँ",
+	"ui.chat.quota_notice.dismiss": "बंद करें",
+	"ui.chat.reply.remove": "जवाब हटाएँ",
+	"ui.chat.reply.replying_to": "इसके जवाब में",
+	"ui.chat.session_status.choose_model": "मॉडल चुनें",
+	"ui.chat.session_status.choose_model_tooltip": "वह मॉडल चुनें जिस पर यह बातचीत चलेगी",
+	"ui.chat.session_status.estimate": "अनुमान",
+	"ui.chat.session_status.last_reading": "पिछली रीडिंग",
+	"ui.chat.session_status.no_model_resolved": "अभी कोई मॉडल तय नहीं हुआ",
+	"ui.chat.skill_invocation.instructions_label": "इस संदेश के साथ भेजे गए कौशल के निर्देश",
+	"ui.chat.skill_invocation.trigger_label": "{token} कौशल के निर्देश",
+	"ui.chat.status_strip.dismiss": "बंद करें",
+	"ui.chat.tabs.chat": "चैट",
+	"ui.chat.tabs.raw": "रॉ",
+	"ui.chat.usage.blocked": "खर्च उपलब्ध नहीं",
+	"ui.chat.usage.continue": "शामिल कोटा इस्तेमाल हो गया; आगे क्रेडिट इस्तेमाल होंगे।",
+	"ui.chat.usage.eligibility_unknown": "खर्च की पात्रता अज्ञात",
+	"ui.chat.usage.family_caps": "मॉडल-परिवार की सीमाएँ अब भी लागू हैं।",
+	"ui.chat.usage.unlimited": "भुगतान वाला असीमित कोटा",
+	"ui.chat.mermaid.zoom_in": "ज़ूम बढ़ाएँ",
+	"ui.chat.mermaid.zoom_out": "ज़ूम घटाएँ",
+	"ui.chat.mermaid.pan": "खींचकर पैन करें",
+	"ui.chat.mermaid.pan_hint": "पैन करने के लिए डायग्राम खींचें",
+	"ui.chat.mermaid.reset_view": "दृश्य रीसेट करें",
+	"ui.chat.mermaid.save_svg": "SVG के रूप में सहेजें",
+	"ui.chat.mermaid.copied": "कॉपी किया गया",
+	"ui.chat.mermaid.copy_text": "Mermaid टेक्स्ट कॉपी करें",
+	"ui.chat.mermaid.error_title": "Mermaid डायग्राम में त्रुटि",
+	"ui.chat.mermaid.unexpected_error": "डायग्राम रेंडर करते समय अप्रत्याशित त्रुटि हुई।",
+	"ui.chat.mermaid.error_contained": "त्रुटि डायग्राम कंपोनेंट तक ही रही।",
+	"ui.chat.mermaid.chart_label": "चार्ट",
+	"ui.chat.mermaid.loading": "डायग्राम लोड हो रहा है...",
+	"ui.chat.mermaid.rendering_error": "रेंडरिंग त्रुटि",
+	"ui.chat.mermaid.render_failed": "डायग्राम की सामग्री रेंडर नहीं हो सकी।",
+	"ui.chat.mermaid.fullscreen": "पूरी स्क्रीन",
+	"ui.chat.mermaid.open_fullscreen": "डायग्राम को पूरी स्क्रीन में खोलें",
+	"ui.chat.mermaid.diagram_title": "Mermaid डायग्राम",
+	"ui.chat.mermaid.close_fullscreen": "पूरी स्क्रीन बंद करें",
+	"ui.chat.aside.question_label": "सवाल:",
+	"ui.chat.aside.you_label": "आप:",
+	"ui.chat.aside.thinking": "सोच रहा है…",
+	"ui.chat.aside.title": "अलग बातचीत",
+	"ui.chat.aside.off_record": "बिना रिकॉर्ड — यहाँ की कोई बात बातचीत में नहीं जाती",
+	"ui.chat.aside.close_label": "अलग बातचीत बंद करें",
+	"ui.chat.aside.exchange_label": "अलग बातचीत के सवाल-जवाब",
+	"ui.chat.aside.empty": "नीचे कंपोज़र में सवाल टाइप करें — जवाब यहीं आएगा।",
+	"ui.chat.aside.add_to_conversation": "बातचीत में जोड़ें",
+	"ui.chat.error_block.heading": "त्रुटि",
+	"ui.chat.error_block.link.settings": "सेटिंग्स पेज",
+	"ui.chat.error_block.link.providers": "प्रोवाइडर्स सेक्शन",
+	"ui.chat.error_block.provider.before": "आपने अभी तक कोई AI प्रोवाइडर नहीं चुना है। अपने सभी एजेंट का प्रोवाइडर सेट करने के लिए",
+	"ui.chat.error_block.provider.after": "खोलें। अगर आपके पास AI प्रोवाइडर नहीं है, तो शुरू करने के लिए Radient में मुफ़्त में साइन इन कर सकते हैं।",
+	"ui.chat.error_block.model.before": "आपने अभी तक कोई AI मॉडल नहीं चुना है। अपने सभी एजेंट का मॉडल चुनने के लिए",
+	"ui.chat.error_block.model.after": "खोलें। अगर आपके पास AI प्रोवाइडर नहीं है, तो शुरू करने के लिए Radient में मुफ़्त में साइन इन कर सकते हैं।",
+	"ui.chat.error_block.rate_limit.before": "आप अपने AI प्रोवाइडर की रेट सीमा तक पहुँच चुके हैं। कृपया बाद में फिर कोशिश करें, या Radient Pass लेने के लिए",
+	"ui.chat.error_block.rate_limit.after": "खोलें — बिना रेट सीमा वाले AI मॉडल कम दाम पर पाने के लिए।",
+	"ui.chat.error_block.rate_limit.all_after": "खोलें — बिना रेट सीमा के सभी AI मॉडल कम दाम पर पाने के लिए।",
+	"ui.chat.error_block.invalid_key.before": "आपकी API कुंजी अमान्य है। इसे अपडेट करने के लिए",
+	"ui.chat.error_block.invalid_key.after": " में जाएँ, या प्रोवाइडर में फिर साइन इन करें।",
+	"ui.chat.error_block.unavailable.before": "जिस मॉडल का आप इस्तेमाल करना चाहते हैं वह उपलब्ध नहीं है। दूसरा मॉडल चुनने के लिए",
+	"ui.chat.error_block.unavailable.after": "में जाएँ, या सैकड़ों AI मॉडल बिना रेट सीमा के पाने के लिए Radient इस्तेमाल करें",
+	"ui.chat.error_block.schema.before": "मॉडल ने कोई कार्रवाई करनी चाही, लेकिन ज़रूरी स्कीमा में अपना इरादा नहीं बता सका। ऐसा आम तौर पर इसलिए होता है कि मॉडल एजेंटिक AI के लिए ज़रूरी जटिल निर्देश नहीं निभा पाता।",
+	"ui.chat.error_block.schema.after_before": "इसे ठीक करने के लिए",
+	"ui.chat.error_block.schema.after": "में अपना मॉडल बदलें। हम Radient Automatic इस्तेमाल करने की सलाह देते हैं, ताकि आपके अनुरोधों के आधार पर सस्ते और समझदार मॉडल का सबसे अच्छा मेल आपके लिए चुना जाए (आम तौर पर अपनी कुंजी लाने से सस्ता), या स्टार आइकन वाले सुझाए गए मॉडल में से कोई चुनें।",
+	"ui.chat.approval.reply_required": "स्वीकृति के अनुरोध का जवाब देने के लिए yes या no लिखें।",
+	"ui.chat.question_dock.hint.approval": "ऊपर के बटन से स्वीकृति दें या अस्वीकार करें, या yes, no, 1, या 2 टाइप करके भेजें, या टर्न रोकने के लिए संदेश बॉक्स में Escape दबाएँ।",
+	"ui.chat.question_dock.hint.approval_held": "इसके बजाय कंपोज़र से जवाब दें: yes, no, 1, या 2 टाइप करके भेजें, या टर्न रोकने के लिए संदेश बॉक्स में Escape दबाएँ।",
+	"ui.chat.question_dock.hint.prefix": "सवाल {index} / {total}। ",
+	"ui.chat.question_dock.hint.secret": "{prefix}ऊपर गोपनीय जानकारी टाइप करें या पेस्ट करें · Enter भेजता है · Esc छिपाता है",
+	"ui.chat.question_dock.hint.secret_held": "{prefix}यह जवाब इसलिए रुका है कि इसका अंजाम अभी पता नहीं — हो सकता है यह पहुँच गया हो, इसलिए अब कुछ नहीं भेजा जा सकता · कार्ड में Esc इसे छिपाता है",
+	"ui.chat.question_dock.hint.type": "{prefix}नीचे अपना जवाब टाइप करें।",
+	"ui.chat.question_dock.hint.options": "{prefix}ऊपर/नीचे से चुनें · Enter या {digits} से जवाब दें · Esc छिपाता है · या नीचे अपना जवाब टाइप करें",
+	"ui.chat.session_status.context_heading": "संदर्भ",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "संदर्भ: अभी कुछ मापा नहीं गया। बातचीत चलने के साथ विंडो भरती जाती है।",
+	"ui.chat.session_status.conversation_starting": "बातचीत शुरू होने पर तय होगा।",
+	"ui.chat.session_status.model_none_resolved_tooltip": "मॉडल: अभी कोई तय नहीं हुआ। वह मॉडल चुनें जिस पर यह बातचीत चलेगी।",
+	"ui.chat.session_status.not_signed_in": "{label} में साइन-इन नहीं है",
+	"ui.chat.session_status.not_signed_in_description": "यह सत्र {label} चलाता है, पर उसके पास कोई काम करने वाला साइन-इन नहीं है, इसलिए जब तक आप साइन-इन कनेक्ट नहीं करते, यह जवाब नहीं दे सकता।",
+	"ui.chat.session_status.nothing_measured_yet": "अभी कुछ मापा नहीं गया। बातचीत चलने के साथ विंडो भरती जाती है।",
+	"ui.chat.session_status.temporarily_unavailable": "{label} अस्थायी रूप से उपलब्ध नहीं है",
+	"ui.chat.session_status.temporarily_unavailable_description": "आपका सहेजा हुआ साइन-इन अब भी मौजूद है। बाद में फिर कोशिश करें या कोई दूसरा मॉडल चुनें।",
+	"ui.chat.checkpoint.generating_name": "नाम बनाया जा रहा है…",
+	"ui.chat.checkpoint.jump_agent": "“{name}” — {total, number} में से टर्न {turn, number} पर जाएँ",
+	"ui.chat.checkpoint.jump_agent_unnamed": "{total, number} में से टर्न {turn, number} पर जाएँ",
+	"ui.chat.checkpoint.jump_user": "{total, number} में से टर्न {turn, number} में {clock} पर भेजे गए अपने संदेश पर जाएँ",
+	"ui.chat.checkpoint.jump_user_no_clock": "{total, number} में से टर्न {turn, number} में अपने संदेश पर जाएँ",
+	"ui.chat.checkpoint.turn": "{total, number} में से टर्न {turn, number}",
+	"ui.chat.header_identity.aria_agent_assign": "एजेंट: {label}। एजेंट सौंपें",
+	"ui.chat.header_identity.aria_agent_closed": "एजेंट: {label}। {reason}",
+	"ui.chat.header_identity.aria_agent_switch": "एजेंट: {label}। एजेंट बदलें",
+	"ui.chat.header_identity.aria_team_assign": "टीम: {label}। टीम सौंपें",
+	"ui.chat.header_identity.aria_team_closed": "टीम: {label}। {reason}",
+	"ui.chat.header_identity.aria_team_switch": "टीम: {label}। टीम बदलें",
+	"ui.chat.header_identity.assign_agent": "एजेंट सौंपें",
+	"ui.chat.header_identity.assign_team": "टीम सौंपें",
+	"ui.chat.header_identity.no_agent": "कोई एजेंट नहीं",
+	"ui.chat.header_identity.no_team": "कोई टीम नहीं",
+	"ui.chat.region.composer": "संदेश कंपोज़र",
+	"ui.chat.region.conversation": "बातचीत",
+	"ui.chat.audio.play": "चलाएँ",
+	"ui.chat.audio.pause": "रोकें",
+	"ui.chat.audio.play_label": "{label} चलाएँ",
+	"ui.chat.audio.pause_label": "{label} रोकें",
+	"ui.chat.audio.mute": "आवाज़ बंद करें",
+	"ui.chat.audio.unmute": "आवाज़ चालू करें",
+	"ui.chat.message_controls.copy": "संदेश कॉपी करें",
+	"ui.chat.message_controls.copied": "कॉपी किया गया",
+	"ui.chat.image_actions.save_as": "दूसरे नाम से सहेजें…",
+	"ui.chat.image_actions.copy_image": "तस्वीर कॉपी करें",
+	"ui.chat.image_actions.copy_image_url": "तस्वीर का URL कॉपी करें",
+	"ui.chat.image_actions.open_in_browser": "ब्राउज़र में खोलें",
+	"ui.chat.image_actions.expand_image": "तस्वीर बड़ी करें",
+	"ui.chat.composer.connect_provider": "प्रोवाइडर कनेक्ट करें",
+	"ui.chat.slot_notice.run_draft_title": "रन विवरण के लिए बातचीत ज़रूरी है।",
+	"ui.chat.slot_notice.run_draft_detail": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।",
+	"ui.chat.slot_notice.run_reading_title": "इस बातचीत का रन पढ़ा जा रहा है…",
+	"ui.chat.slot_notice.run_unreadable_title": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।",
+	"ui.chat.slot_notice.run_unreadable_detail": "इस पैनल के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।",
+	"ui.chat.slot_notice.run_missing_detail": "यह बातचीत अब इस मशीन पर नहीं है।",
+	"ui.chat.slot_notice.code_draft_title": "कोड समीक्षा के लिए बातचीत ज़रूरी है।",
+	"ui.chat.slot_notice.code_draft_detail": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।",
+	"ui.chat.slot_notice.code_below_version_title": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।",
+	"ui.chat.slot_notice.code_below_version_detail": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।",
+	"ui.chat.slot_notice.code_checking_title": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…",
+	"ui.chat.slot_notice.code_load_lead": "कोड समीक्षा लोड नहीं हो सकी।",
+	"ui.chat.slash_arguments.model_default_description": "मौजूदा मॉडल ({provider}/{model}) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।",
+	"ui.chat.slash_arguments.model_default_unavailable": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।",
+	"ui.chat.slash_arguments.model_default_click": "क्लिक करने पर भी यही होता है।",
+	"ui.chat.slash_arguments.model_default_required": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।",
+	"ui.chat.slash_arguments.refresh_description": "बातचीत दोबारा पढ़ें और नया नाम दें",
+	"ui.chat.slash_arguments.refresh_detail": "अपने-आप नाम देना फिर शुरू होता है",
+	"ui.chat.aside.add_to_conversation_tooltip": "अलग बातचीत को बातचीत में जोड़ें",
+	"ui.chat.message_controls.content_header": "सामग्री",
+	"ui.chat.message_controls.replacements_header": "बदले गए टेक्स्ट",
+	"ui.chat.message_controls.thinking_label": "सोच रहा है",
+	"ui.chat.scroll_to_bottom.label": "नीचे तक स्क्रॉल करें",
+	"ui.chat.scroll_to_bottom.label_new_activity": "नई गतिविधि, नीचे तक स्क्रॉल करें",
+	"ui.chat.session_status.last_reading_note": "फिर कनेक्ट होने से पहले की पिछली रीडिंग।",
+	"ui.chat.session_status.readings_aria_held": "सत्र की रीडिंग। {note}",
+	"ui.chat.session_status.commands_off": "इस सर्वर पर स्लैश कमांड बंद हैं, इसलिए यह रीडिंग यहाँ से खोली नहीं जा सकती।",
+	"ui.chat.session_status.context_click_breakdown_held": "पूरा विवरण देखने के लिए क्लिक करें, जिसमें आपके अगले अनुरोध का अनुमान दिखता है।",
+	"ui.chat.session_status.context_click_breakdown_held_plain": "पूरा विवरण देखने के लिए क्लिक करें।",
+	"ui.chat.session_status.context_measured_now": "अभी मापा गया; पूरा विवरण देखने के लिए क्लिक करें, जिसमें आपके अगले अनुरोध का अनुमान दिखता है",
+	"ui.chat.session_status.context_estimated_now": "अभी का अनुमान; पूरा विवरण देखने के लिए क्लिक करें, जिसमें आपके अगले अनुरोध का अनुमान दिखता है",
+	"ui.chat.session_status.context_click_breakdown": "पूरा विवरण देखने के लिए क्लिक करें",
+	"ui.chat.session_status.model_click_choose_draft": "दूसरा मॉडल चुनने के लिए क्लिक करें। यह इस बातचीत पर लागू होता है।",
+	"ui.chat.session_status.model_click_choose": "दूसरा मॉडल चुनने के लिए क्लिक करें",
+	"ui.chat.session_status.model_draft_inert": "यह बातचीत इसी का इस्तेमाल करेगी। बातचीत शुरू होने के बाद इसे बदलें।",
+	"ui.chat.session_status.effort_change_draft": "इसे बदलें। यह इस बातचीत पर लागू होता है।",
+	"ui.chat.session_status.effort_change": "इसे बदलें।",
+	"ui.chat.session_status.model_aria": "मॉडल: {selector}{fast, select, yes {, फ़ास्ट मोड चालू} other {}}। {reason}",
+	"ui.chat.session_status.model_aria_pending": "मॉडल: {selector}{fast, select, yes {, फ़ास्ट मोड चालू} other {}}। बदला जा रहा है; सत्र की पुष्टि का इंतज़ार है।",
+	"ui.chat.session_status.switching_model": "मॉडल बदला जा रहा है",
+	"ui.chat.session_status.model_aria_unresolved": "मॉडल: इस बातचीत का मॉडल तय नहीं हो सका। फिर कोशिश करें।",
+	"ui.chat.session_status.model_aria_resolving": "मॉडल: वह मॉडल तय किया जा रहा है जिस पर यह बातचीत चलेगी।",
+	"ui.chat.session_status.resolving_model_spinner": "वह मॉडल तय किया जा रहा है जिस पर यह बातचीत चलेगी",
+	"ui.chat.session_status.context_aria_no_reading": "संदर्भ: अभी कोई रीडिंग नहीं। {hint}",
+	"ui.chat.session_status.context_aria_reading": "संदर्भ: {spelling}{estimate, select, yes {, अनुमानित} other {}}। {hint}",
+	"ui.chat.session_status.active_time_aria": "सक्रिय समय: {duration}। {explanation}",
+	"ui.chat.session_status.duration_explanation": "काम में लगा समय; इंतज़ार की अवधि नहीं गिनी जाती।",
+	"ui.chat.session_status.effort_level.low": "कम",
+	"ui.chat.session_status.effort_level.medium": "मध्यम",
+	"ui.chat.session_status.effort_level.high": "उच्च"
+}
+
+exit=0
+CHECK src/i18n/catalogues/hi/ui.chat.json: valid JSON, no duplicate keys; legacy keys unchanged; added=['ui.chat.audio.position_label', 'ui.chat.image_actions.actions']
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.context.json
+84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  src/i18n/catalogues/en/ui.chat.context.json
+
+exit=0
+Legacy sidecar gaps (not new-key failures; repository context validator allowance applies): ['ui.chat.highlights.file_resolution_failed', 'ui.chat.usage.blocked', 'ui.chat.usage.continue', 'ui.chat.usage.eligibility_unknown', 'ui.chat.usage.family_caps', 'ui.chat.usage.unlimited']
+CHECK ui.chat: 208 keys; EN/HI parity and new-key context coverage PASS; three expected hashes MATCH
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.composer_media.json
+79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  src/i18n/catalogues/en/ui.chat.composer_media.json
+
+exit=0
+$ git show origin/main:src/i18n/catalogues/en/ui.chat.composer_media.json
+{
+	"ui.chat.composer_media.recording": "Recording",
+	"ui.chat.composer_media.confirms": "inserts",
+	"ui.chat.composer_media.cancels": "cancels",
+	"ui.chat.composer_media.sends_now": "sends now",
+	"ui.chat.composer_media.pasted_type": "Pasted {mimeType}",
+	"ui.chat.composer_media.pasted_file": "Pasted file",
+	"ui.chat.composer_media.preview_failed": "Could not be previewed",
+	"ui.chat.composer_media.remove_attachment": "Remove attachment"
+}
+
+exit=0
+CHECK src/i18n/catalogues/en/ui.chat.composer_media.json: valid JSON, no duplicate keys; legacy keys unchanged; added=['ui.chat.composer_media.pasted_image']
+$ shasum -a 256 src/i18n/catalogues/hi/ui.chat.composer_media.json
+34812ced782b34fd569daaf7ef04d83efa9782ac09283c741601946bed6bfe15  src/i18n/catalogues/hi/ui.chat.composer_media.json
+
+exit=0
+$ git show origin/main:src/i18n/catalogues/hi/ui.chat.composer_media.json
+{
+	"ui.chat.composer_media.recording": "रिकॉर्डिंग",
+	"ui.chat.composer_media.confirms": "डालता है",
+	"ui.chat.composer_media.cancels": "रद्द करता है",
+	"ui.chat.composer_media.sends_now": "अभी भेजता है",
+	"ui.chat.composer_media.pasted_type": "पेस्ट किया गया {mimeType}",
+	"ui.chat.composer_media.pasted_file": "पेस्ट की गई फ़ाइल",
+	"ui.chat.composer_media.preview_failed": "प्रीव्यू नहीं दिखाया जा सका",
+	"ui.chat.composer_media.remove_attachment": "अटैचमेंट हटाएँ"
+}
+
+exit=0
+CHECK src/i18n/catalogues/hi/ui.chat.composer_media.json: valid JSON, no duplicate keys; legacy keys unchanged; added=['ui.chat.composer_media.pasted_image']
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.composer_media.context.json
+a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  src/i18n/catalogues/en/ui.chat.composer_media.context.json
+
+exit=0
+Legacy sidecar gaps (not new-key failures; repository context validator allowance applies): []
+CHECK ui.chat.composer_media: 9 keys; EN/HI parity and new-key context coverage PASS; three expected hashes MATCH
+$ shasum -a 256 src/i18n/catalogues/en/ui.common.actions.json
+0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  src/i18n/catalogues/en/ui.common.actions.json
+
+exit=0
+$ git show origin/main:src/i18n/catalogues/en/ui.common.actions.json
+{
+	"ui.common.actions.cancel": "Cancel",
+	"ui.common.actions.close": "Close",
+	"ui.common.actions.copied": "Copied",
+	"ui.common.actions.copy_failed": "Could not copy. Select and copy it manually.",
+	"ui.common.actions.dismiss": "Dismiss",
+	"ui.common.actions.more_info": "More info",
+	"ui.common.actions.retry": "Retry",
+	"ui.common.actions.retry_again": "Try again",
+	"ui.common.actions.retrying": "Trying…",
+	"ui.common.actions.date_time_picker.select_date": "Select date",
+	"ui.common.actions.date_time_picker.choose_date": "Choose {label} date",
+	"ui.common.actions.date_time_picker.select_time": "Select time",
+	"ui.common.actions.date_time_picker.choose_time": "Choose {label} time",
+	"ui.common.actions.date_time_picker.set_to_current_time": "Set to current time",
+	"ui.common.actions.date_time_picker.set_to_current_time369877": "Set {label} to current time",
+	"ui.common.actions.file_actions_menu.file_actions": "File actions",
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "File path copied to clipboard",
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "Failed to copy file path",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "Switch to replace",
+	"ui.common.actions.find_replace_widget.switch_to_find": "Switch to find",
+	"ui.common.actions.find_replace_widget.find": "Find",
+	"ui.common.actions.find_replace_widget.replace": "Replace",
+	"ui.common.actions.find_replace_widget.no_results": "No results",
+	"ui.common.actions.find_replace_widget.previous_match": "Previous match",
+	"ui.common.actions.find_replace_widget.next_match": "Next match",
+	"ui.common.actions.find_replace_widget.replace_enter": "Replace (Enter)",
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": "Replace all (Cmd/Ctrl+Enter)",
+	"ui.common.actions.find_replace_widget.replace_all": "Replace all",
+	"ui.common.actions.find_replace_widget.all": "All",
+	"ui.common.actions.find_replace_widget.close": "Close",
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": "Ask for an edit",
+	"ui.common.actions.text_selection_controls.copy": "Copy",
+	"ui.common.actions.text_selection_controls.copy_without_formatting": "Copy without formatting",
+	"ui.common.actions.text_selection_controls.reply": "Reply",
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": "Refer to this from file",
+	"ui.common.actions.text_selection_controls.open_in_browser": "Open in browser",
+	"ui.common.actions.confirmation_modal.confirm": "Confirm",
+	"ui.common.actions.confirmation_modal.cancel": "Cancel",
+	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+	"ui.common.actions.agent_created": "Agent created",
+	"ui.common.actions.agent_deleted": "Agent deleted",
+	"ui.common.actions.agent_imported": "Agent imported",
+	"ui.common.actions.agent_exported": "Agent exported",
+	"ui.common.actions.agent_updated": "Agent updated",
+	"ui.common.actions.agent_system_prompt_updated": "Agent system prompt updated",
+	"ui.common.actions.conversation_cleared": "Conversation cleared",
+	"ui.common.actions.variable_created": "Variable created",
+	"ui.common.actions.variable_updated": "Variable updated",
+	"ui.common.actions.variable_deleted": "Variable deleted",
+	"ui.common.actions.configuration_updated": "Configuration updated",
+	"ui.common.actions.system_prompt_updated": "System prompt updated",
+	"ui.common.actions.credential_updated": "Credential \"{key}\" updated successfully",
+	"ui.common.actions.clear": "Clear"
+}
+
+exit=0
+CHECK src/i18n/catalogues/en/ui.common.actions.json: valid JSON, no duplicate keys; legacy keys unchanged; added=['ui.common.actions.actions_for_name']
+$ shasum -a 256 src/i18n/catalogues/hi/ui.common.actions.json
+48b22fb6b8c8bf490fb205558873471e87a77a72d59fe42d7c69f6bb433c4056  src/i18n/catalogues/hi/ui.common.actions.json
+
+exit=0
+$ git show origin/main:src/i18n/catalogues/hi/ui.common.actions.json
+{
+	"ui.common.actions.cancel": "रद्द करें",
+	"ui.common.actions.close": "बंद करें",
+	"ui.common.actions.copied": "कॉपी हुआ",
+	"ui.common.actions.copy_failed": "कॉपी नहीं हो सका। इसे चुनकर खुद कॉपी करें।",
+	"ui.common.actions.dismiss": "ख़ारिज करें",
+	"ui.common.actions.more_info": "और जानकारी",
+	"ui.common.actions.retry": "फिर कोशिश करें",
+	"ui.common.actions.retry_again": "फिर कोशिश करें",
+	"ui.common.actions.retrying": "कोशिश की जा रही है…",
+	"ui.common.actions.date_time_picker.select_date": "तारीख़ चुनें",
+	"ui.common.actions.date_time_picker.choose_date": "{label} की तारीख़ चुनें",
+	"ui.common.actions.date_time_picker.select_time": "समय चुनें",
+	"ui.common.actions.date_time_picker.choose_time": "{label} का समय चुनें",
+	"ui.common.actions.date_time_picker.set_to_current_time": "मौजूदा समय पर सेट करें",
+	"ui.common.actions.date_time_picker.set_to_current_time369877": "{label} को मौजूदा समय पर सेट करें",
+	"ui.common.actions.file_actions_menu.file_actions": "फ़ाइल कार्रवाइयाँ",
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "फ़ाइल पाथ क्लिपबोर्ड पर कॉपी हुआ",
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "फ़ाइल पाथ कॉपी नहीं हो सका",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "बदलें मोड पर जाएँ",
+	"ui.common.actions.find_replace_widget.switch_to_find": "खोज पर जाएँ",
+	"ui.common.actions.find_replace_widget.find": "खोजें",
+	"ui.common.actions.find_replace_widget.replace": "बदलें",
+	"ui.common.actions.find_replace_widget.no_results": "कोई परिणाम नहीं",
+	"ui.common.actions.find_replace_widget.previous_match": "पिछला मिलान",
+	"ui.common.actions.find_replace_widget.next_match": "अगला मिलान",
+	"ui.common.actions.find_replace_widget.replace_enter": "बदलें (Enter)",
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": "सभी बदलें (Cmd/Ctrl+Enter)",
+	"ui.common.actions.find_replace_widget.replace_all": "सभी बदलें",
+	"ui.common.actions.find_replace_widget.all": "सभी",
+	"ui.common.actions.find_replace_widget.close": "बंद करें",
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": "बदलाव के लिए कहें",
+	"ui.common.actions.text_selection_controls.copy": "कॉपी करें",
+	"ui.common.actions.text_selection_controls.copy_without_formatting": "बिना फ़ॉर्मैटिंग कॉपी करें",
+	"ui.common.actions.text_selection_controls.reply": "जवाब दें",
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": "फ़ाइल से इसे संदर्भित करें",
+	"ui.common.actions.text_selection_controls.open_in_browser": "ब्राउज़र में खोलें",
+	"ui.common.actions.confirmation_modal.confirm": "पुष्टि करें",
+	"ui.common.actions.confirmation_modal.cancel": "रद्द करें",
+	"ui.common.actions.find_replace_widget.of": "कुल {matchcount, number, ::group-off} में से {currentmatch, number, ::group-off}",
+	"ui.common.actions.agent_created": "एजेंट बनाया गया",
+	"ui.common.actions.agent_deleted": "एजेंट हटाया गया",
+	"ui.common.actions.agent_imported": "एजेंट इम्पोर्ट किया गया",
+	"ui.common.actions.agent_exported": "एजेंट एक्सपोर्ट किया गया",
+	"ui.common.actions.agent_updated": "एजेंट अपडेट किया गया",
+	"ui.common.actions.agent_system_prompt_updated": "एजेंट का सिस्टम प्रॉम्प्ट अपडेट हुआ",
+	"ui.common.actions.conversation_cleared": "बातचीत साफ़ की गई",
+	"ui.common.actions.variable_created": "वेरिएबल बनाया गया",
+	"ui.common.actions.variable_updated": "वेरिएबल अपडेट किया गया",
+	"ui.common.actions.variable_deleted": "वेरिएबल हटाया गया",
+	"ui.common.actions.configuration_updated": "कॉन्फ़िगरेशन अपडेट हुआ",
+	"ui.common.actions.system_prompt_updated": "सिस्टम प्रॉम्प्ट अपडेट हुआ",
+	"ui.common.actions.credential_updated": "क्रेडेंशियल “{key}” सफलतापूर्वक अपडेट हुआ",
+	"ui.common.actions.clear": "साफ़ करें"
+}
+
+exit=0
+CHECK src/i18n/catalogues/hi/ui.common.actions.json: valid JSON, no duplicate keys; legacy keys unchanged; added=['ui.common.actions.actions_for_name']
+$ shasum -a 256 src/i18n/catalogues/en/ui.common.actions.context.json
+24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  src/i18n/catalogues/en/ui.common.actions.context.json
+
+exit=0
+Legacy sidecar gaps (not new-key failures; repository context validator allowance applies): []
+CHECK ui.common.actions: 54 keys; EN/HI parity and new-key context coverage PASS; three expected hashes MATCH
+CHECK ui.chat.composer_media.pasted_image: plain placeholders exact; no plural/select needed; no NBSP/narrow-NBSP/zero-width/bidi/control characters; substitutions=["पेस्ट की गई तस्वीर", "पेस्ट की गई तस्वीर", "पेस्ट की गई तस्वीर", "पेस्ट की गई तस्वीर"]
+CHECK ui.common.actions.actions_for_name: plain placeholders exact; no plural/select needed; no NBSP/narrow-NBSP/zero-width/bidi/control characters; substitutions=["report.png की कार्रवाइयाँ", "照片.png की कार्रवाइयाँ", "राम की फ़ाइल की कार्रवाइयाँ", "a\"b,?.wav की कार्रवाइयाँ"]
+CHECK ui.chat.image_actions.actions: plain placeholders exact; no plural/select needed; no NBSP/narrow-NBSP/zero-width/bidi/control characters; substitutions=["तस्वीर की कार्रवाइयाँ", "तस्वीर की कार्रवाइयाँ", "तस्वीर की कार्रवाइयाँ", "तस्वीर की कार्रवाइयाँ"]
+CHECK ui.chat.audio.position_label: plain placeholders exact; no plural/select needed; no NBSP/narrow-NBSP/zero-width/bidi/control characters; substitutions=["report.png की प्लेबैक स्थिति", "照片.png की प्लेबैक स्थिति", "राम की फ़ाइल की प्लेबैक स्थिति", "a\"b,?.wav की प्लेबैक स्थिति"]
+$ git diff origin/main HEAD -- src/i18n/catalogues/en/ui.chat.json src/i18n/catalogues/hi/ui.chat.json src/i18n/catalogues/en/ui.chat.composer_media.json src/i18n/catalogues/hi/ui.chat.composer_media.json src/i18n/catalogues/en/ui.common.actions.json src/i18n/catalogues/hi/ui.common.actions.json src/i18n/catalogues/en/ui.chat.composer_media.context.json
+diff --git a/src/i18n/catalogues/en/ui.chat.composer_media.context.json b/src/i18n/catalogues/en/ui.chat.composer_media.context.json
+index 99bd48d7fe9..0f6f5f05b15 100644
+--- a/src/i18n/catalogues/en/ui.chat.composer_media.context.json
++++ b/src/i18n/catalogues/en/ui.chat.composer_media.context.json
+@@ -32,7 +32,7 @@
+ 		"role": "pasted attachment fallback filename",
+ 		"tone": "short noun phrase, sentence case",
+ 		"maxCells": 20,
+-		"note": "Fallback when the pasted data URI has no name or MIME type. A 100px tile caption may truncate; maxCells is advisory, not measured fit."
++		"note": "Fallback for non-image data URIs with no usable name, including invalid percent encoding, whether or not a MIME type is present. Also used as synthetic upload metadata; valid names and attachment bytes stay unchanged. A 100px tile caption may truncate; maxCells is advisory, not measured fit."
+ 	},
+ 	"ui.chat.composer_media.preview_failed": {
+ 		"role": "media decode failure tooltip",
+@@ -45,5 +45,10 @@
+ 		"tone": "short imperative action, sentence case",
+ 		"maxCells": 24,
+ 		"note": "Tooltip and accessible name of the attachment remove button. maxCells is an advisory translation target, not measured fit."
++	},
++	"ui.chat.composer_media.pasted_image": {
++		"role": "pasted image fallback filename",
++		"tone": "short noun phrase, sentence case",
++		"note": "Synthetic name only for an image data URI with no usable encoded name, including invalid percent encoding. Preserve valid decoded filenames and user names verbatim. A narrow attachment caption may truncate; keep prose compact. No file extension, MIME identifier or placeholder is part of this message."
+ 	}
+ }
+diff --git a/src/i18n/catalogues/en/ui.chat.composer_media.json b/src/i18n/catalogues/en/ui.chat.composer_media.json
+index ff141a20048..78c1e54d3df 100644
+--- a/src/i18n/catalogues/en/ui.chat.composer_media.json
++++ b/src/i18n/catalogues/en/ui.chat.composer_media.json
+@@ -6,5 +6,6 @@
+ 	"ui.chat.composer_media.pasted_type": "Pasted {mimeType}",
+ 	"ui.chat.composer_media.pasted_file": "Pasted file",
+ 	"ui.chat.composer_media.preview_failed": "Could not be previewed",
+-	"ui.chat.composer_media.remove_attachment": "Remove attachment"
++	"ui.chat.composer_media.remove_attachment": "Remove attachment",
++	"ui.chat.composer_media.pasted_image": "Pasted image"
+ }
+diff --git a/src/i18n/catalogues/en/ui.chat.json b/src/i18n/catalogues/en/ui.chat.json
+index ea5fee914a6..c19e6dcbc1d 100644
+--- a/src/i18n/catalogues/en/ui.chat.json
++++ b/src/i18n/catalogues/en/ui.chat.json
+@@ -204,5 +204,7 @@
+ 	"ui.chat.session_status.duration_explanation": "Time spent working; waiting is not counted.",
+ 	"ui.chat.session_status.effort_level.low": "Low",
+ 	"ui.chat.session_status.effort_level.medium": "Medium",
+-	"ui.chat.session_status.effort_level.high": "High"
++	"ui.chat.session_status.effort_level.high": "High",
++	"ui.chat.image_actions.actions": "Image actions",
++	"ui.chat.audio.position_label": "{label} position"
+ }
+diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json
+index a93ec6d0e6a..b6617047d46 100644
+--- a/src/i18n/catalogues/en/ui.common.actions.json
++++ b/src/i18n/catalogues/en/ui.common.actions.json
+@@ -51,5 +51,6 @@
+ 	"ui.common.actions.configuration_updated": "Configuration updated",
+ 	"ui.common.actions.system_prompt_updated": "System prompt updated",
+ 	"ui.common.actions.credential_updated": "Credential \"{key}\" updated successfully",
+-	"ui.common.actions.clear": "Clear"
++	"ui.common.actions.clear": "Clear",
++	"ui.common.actions.actions_for_name": "Actions for {name}"
+ }
+diff --git a/src/i18n/catalogues/hi/ui.chat.composer_media.json b/src/i18n/catalogues/hi/ui.chat.composer_media.json
+index 6166da97513..6ea7ccf5975 100644
+--- a/src/i18n/catalogues/hi/ui.chat.composer_media.json
++++ b/src/i18n/catalogues/hi/ui.chat.composer_media.json
+@@ -6,5 +6,6 @@
+ 	"ui.chat.composer_media.pasted_type": "पेस्ट किया गया {mimeType}",
+ 	"ui.chat.composer_media.pasted_file": "पेस्ट की गई फ़ाइल",
+ 	"ui.chat.composer_media.preview_failed": "प्रीव्यू नहीं दिखाया जा सका",
+-	"ui.chat.composer_media.remove_attachment": "अटैचमेंट हटाएँ"
++	"ui.chat.composer_media.remove_attachment": "अटैचमेंट हटाएँ",
++	"ui.chat.composer_media.pasted_image": "पेस्ट की गई तस्वीर"
+ }
+diff --git a/src/i18n/catalogues/hi/ui.chat.json b/src/i18n/catalogues/hi/ui.chat.json
+index 11b6949f4d7..652629616df 100644
+--- a/src/i18n/catalogues/hi/ui.chat.json
++++ b/src/i18n/catalogues/hi/ui.chat.json
+@@ -204,5 +204,7 @@
+ 	"ui.chat.session_status.duration_explanation": "काम में लगा समय; इंतज़ार की अवधि नहीं गिनी जाती।",
+ 	"ui.chat.session_status.effort_level.low": "कम",
+ 	"ui.chat.session_status.effort_level.medium": "मध्यम",
+-	"ui.chat.session_status.effort_level.high": "उच्च"
++	"ui.chat.session_status.effort_level.high": "उच्च",
++	"ui.chat.image_actions.actions": "तस्वीर की कार्रवाइयाँ",
++	"ui.chat.audio.position_label": "{label} की प्लेबैक स्थिति"
+ }
+diff --git a/src/i18n/catalogues/hi/ui.common.actions.json b/src/i18n/catalogues/hi/ui.common.actions.json
+index 66476e22038..71be995e277 100644
+--- a/src/i18n/catalogues/hi/ui.common.actions.json
++++ b/src/i18n/catalogues/hi/ui.common.actions.json
+@@ -51,5 +51,6 @@
+ 	"ui.common.actions.configuration_updated": "कॉन्फ़िगरेशन अपडेट हुआ",
+ 	"ui.common.actions.system_prompt_updated": "सिस्टम प्रॉम्प्ट अपडेट हुआ",
+ 	"ui.common.actions.credential_updated": "क्रेडेंशियल “{key}” सफलतापूर्वक अपडेट हुआ",
+-	"ui.common.actions.clear": "साफ़ करें"
++	"ui.common.actions.clear": "साफ़ करें",
++	"ui.common.actions.actions_for_name": "{name} की कार्रवाइयाँ"
+ }
+
+exit=0
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+
+exit=0
+READ/REASONING ONLY (not command execution or rendered proof): binding hi style guide and manager-owned byte-copy glossary read; glossary conformance checked. Source/context and Hindi four-key wording independently assessed. Existing Hindi actions_for strings and playback_position checked. No MT/backtranslation services used.
+Metadata conclusion from source reading: get-file-name.ts branches data:image separately; other data: entries return pasted_file when name missing or decodeURIComponent throws, regardless of MIME. attachment-encode.ts passes getFileName result as upload source name and original dataUrl unchanged. Broadened pasted_file note is accurate. This is code reading, not executed attachment behavior.
+Human-readable assessment: {"ui.chat.composer_media.pasted_image": "पेस्ट की गई तस्वीर naturally names the pasted image; तस्वीर agrees with की गई. Mirrors existing pasted_file = पेस्ट की गई फ़ाइल and image_actions.copy_image = तस्वीर कॉपी करें. Short fallback filename with no extension.", "ui.common.actions.actions_for_name": "{name} की कार्रवाइयाँ is an idiomatic asset-menu name; की agrees with following feminine plural कार्रवाइयाँ, not with the inserted name. Identical to existing ui.chat.canonical.link_toolkit.actions_for; therefore arbitrary names do not need declension, gender or number changes.", "ui.chat.image_actions.actions": "तस्वीर की कार्रवाइयाँ is a natural noun phrase. तस्वीर matches copy_image/expand_image; कार्रवाइयाँ matches file_actions_menu.file_actions. No formal/informal address appears.", "ui.chat.audio.position_label": "{label} की प्लेबैक स्थिति clearly identifies this clip’s seek position rather than play/pause. की agrees with feminine स्थिति, not the clip title. प्लेबैक स्थिति is a normal compound equivalent of existing attachments.playback_position = प्लेबैक की स्थिति; omission of inner की is not a term change."}
+Scope: fully_audited_key_count=4; all other namespace keys consistency_only (JSON/key parity/unchanged legacy checks), NOT semantic certification.
+Width: no maxCells/maxChars constraints on the four new keys; reasonable short noun phrases. Devanagari combining marks are normal. No cell-width calculation, rendering, browser, screen-reader run or production ICU formatter claimed.
+No ledger write or tracked artifact retention: read-only task permits scratch only; manager must retain companions and assemble ledger.
+Receipt parsed back successfully; required top-level fields and three namespace blocks verified.

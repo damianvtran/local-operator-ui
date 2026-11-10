@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { t } from "../../i18n";
 import {
 	PASSKEY_NOTICE_TTL_MS,
 	type PasskeyCall,
@@ -6,13 +7,12 @@ import {
 } from "../../shared/browser-passkey-notice";
 
 /**
- * The "this page asked for a passkey and may be waiting" notice: what raises it,
+ * Optional recovery for pending and NotAllowed passkey requests: what raises it,
  * what it may claim, and what it may never do.
  *
  * Design: docs/design/browser-challenges-and-passkeys.md section 3.6.
  *
- * WHY THIS EXISTS. In the shipped app the platform authenticator is off
- * (`webauthn.ts`: no `keychain-access-groups` entitlement), and a page's
+ * WHY THIS EXISTS. When the platform authenticator is off, a page's
  * `navigator.credentials.create()` / `.get()` then stays pending forever - no
  * prompt, no rejection (measured, section 3.1). Electron 44 exposes no
  * request-start signal to the embedder (its only WebAuthn event,
@@ -24,16 +24,19 @@ import {
  * THE SHIM IS AN OBSERVER, NEVER A PARTICIPANT. It calls the original function
  * with the original arguments and returns the original promise unchanged: it
  * never rejects, never resolves and never fakes a credential. It does attach one
- * no-op reaction to the promise, but only AFTER `PASSKEY_PENDING_MS`, to learn
- * whether the call has settled: a call that rejected quickly (an IP-literal
- * origin, an abort) must not be announced as stuck. Attaching later rather than
+ * reaction to the promise, but only AFTER `PASSKEY_PENDING_MS`, to learn
+ * whether the call has settled. Only pending requests (when native Touch ID is
+ * off) and NotAllowedError rejections offer recovery. Abort, validation and
+ * origin errors stay silent. Attaching later rather than
  * at call time keeps the page's own `unhandledrejection` behaviour for every
  * call that settles inside the window; the one residue is a call that stays
  * pending for 3 s+ and then rejects with NO handler the page ever attached,
  * which loses that event - and a page that awaits the call has a handler. A failure must not wear
  * a verdict's clothes, so what the notice asserts is only what main can
- * stand behind: "a request is still pending after a few seconds, and the built-in
- * browser has no passkey provider".
+ * stand behind: either a request remains pending or did not complete. Native
+ * cancellation and unavailable credentials both produce NotAllowedError, so
+ * that outcome must never be described as proof of a broken/absent provider.
+ * Configured Touch ID is device-bound, not access to synced/manager passkeys.
  *
  * THE SIGNAL IS ONE-WAY AND CARRIES NO PAGE-CONTROLLED TEXT. The shim writes one
  * `console.debug` line: a fixed sentinel, a per-FRAME nonce and the literal
@@ -114,8 +117,11 @@ export const PASSKEY_NOTICE_MIN_GAP_MS = 30_000;
  * creation). The marker on the prototype stops the second run from wrapping the
  * wrapper, which would signal twice per call.
  */
-export function passkeyShimSource(nonce: string): string {
-	return `(function (nonce, sentinel, delay) {
+export function passkeyShimSource(
+	nonce: string,
+	observePending = true,
+): string {
+	return `(function (nonce, sentinel, delay, observePending) {
   var container = typeof CredentialsContainer === "function" ? CredentialsContainer.prototype : null;
   if (!container) return;
   var marker = Symbol.for("local-operator.passkey-notice");
@@ -125,20 +131,36 @@ export function passkeyShimSource(nonce: string): string {
   var later = setTimeout;
   var observe = Promise.prototype.then;
   var settle = Promise.resolve();
-  // The signal fires only for a call STILL PENDING after the delay. The observer is
-  // attached at that moment and not at call time on purpose: a handler attached at
-  // call time would mark a rejection as handled and silence the page's own
-  // unhandledrejection for a call it never awaited. After the delay the page has long
-  // since attached (or not) its own handlers, and a settled promise is skipped.
-  function check(promise, kind) {
+  // Reuse the existing courtesy delay: do not interrupt the site's cancellation
+  // UX synchronously. Attaching at call time would also silence the page's own
+  // unhandledrejection for a call it never awaited. Before the delay its rejection
+  // reporting is unchanged; after it, this observer marks the promise handled.
+  function check(promise, kind, signal) {
     var done = false;
+    var announced = false;
+    function announce(outcome) {
+      try {
+        if (announced || (signal && signal.aborted)) return;
+        announced = true;
+        emit(sentinel + nonce + ":" + kind + (outcome === "not-allowed" ? ":not-allowed" : ""));
+      } catch (e) {}
+    }
     var mark = function () { done = true; };
-    try { observe.call(promise, mark, mark); } catch (e) { return; }
+    // A rejection is not proof that the provider is absent: NotAllowedError also
+    // covers user cancellation. Offer recovery without changing that outcome or
+    // exporting exception messages (which may contain page/credential data).
+    var rejected = function (error) {
+      done = true;
+      try {
+        if (error && error.name === "NotAllowedError") announce("not-allowed");
+      } catch (e) {}
+    };
+    try { observe.call(promise, mark, rejected); } catch (e) { return; }
     // Two microtask hops: an already-settled promise runs mark() first (reactions are
     // FIFO), so by the second hop done is true for it and false for a pending one.
     observe.call(settle, function () {
       observe.call(settle, function () {
-        if (!done) { try { emit(sentinel + nonce + ":" + kind); } catch (e) {} }
+        if (!done && observePending) announce("pending");
       });
     });
   }
@@ -152,14 +174,17 @@ export function passkeyShimSource(nonce: string): string {
           var options = arguments[0];
           var passkey = options && typeof options === "object" && "publicKey" in options;
           var conditional = kind === "get" && options && options.mediation === "conditional";
-          if (passkey && !conditional && result) later(function () { check(result, kind); }, delay);
+          if (passkey && !conditional && result) {
+            var signal = options.signal;
+            later(function () { check(result, kind, signal); }, delay);
+          }
         } catch (e) {}
         return result;
       }
     }[kind];
     Object.defineProperty(container, kind, { value: wrapper, writable: true, configurable: true, enumerable: true });
   });
-})(${JSON.stringify(nonce)}, ${JSON.stringify(PASSKEY_SIGNAL_SENTINEL)}, ${PASSKEY_PENDING_MS});`;
+})(${JSON.stringify(nonce)}, ${JSON.stringify(PASSKEY_SIGNAL_SENTINEL)}, ${PASSKEY_PENDING_MS}, ${JSON.stringify(observePending)});`;
 }
 
 /** Frames remembered per tab. A page can create frames without bound, so the
@@ -175,17 +200,21 @@ const MAX_FRAMES_PER_TAB = 64;
  */
 export function parsePasskeySignal(
 	message: unknown,
-): { nonce: string; kind: PasskeyCall } | null {
+): { nonce: string; kind: PasskeyCall; outcome?: "not-allowed" } | null {
 	if (typeof message !== "string") return null;
 	if (!message.startsWith(PASSKEY_SIGNAL_SENTINEL)) return null;
-	const rest = message.slice(PASSKEY_SIGNAL_SENTINEL.length);
+	const notAllowed = message.endsWith(":not-allowed");
+	const rest = message.slice(
+		PASSKEY_SIGNAL_SENTINEL.length,
+		notAllowed ? -":not-allowed".length : undefined,
+	);
 	const colon = rest.lastIndexOf(":");
 	if (colon <= 0) return null;
 	const kind = rest.slice(colon + 1);
 	const nonce = rest.slice(0, colon);
 	if (kind !== "create" && kind !== "get") return null;
 	if (!NONCE_SHAPE.test(nonce)) return null;
-	return { nonce, kind };
+	return notAllowed ? { nonce, kind, outcome: "not-allowed" } : { nonce, kind };
 }
 
 /** A `randomUUID()`, which is all main ever issues. */
@@ -307,6 +336,7 @@ export class PasskeyNotices {
 			origin,
 			embedded: frame.embedded,
 			kind,
+			...(signal.outcome ? { outcome: signal.outcome } : {}),
 			at: now,
 			ownerKind,
 			suppressed: state.suppressed,
@@ -314,7 +344,7 @@ export class PasskeyNotices {
 		state.lastRaisedAt = now;
 		state.suppressed = 0;
 		this.options.log(
-			`[browser] ${ownerKind === "agent" ? "agent-driven " : ""}tab ${tabId} has a passkey ${kind} pending from ${frame.embedded ? "an embedded frame at " : ""}${origin}; notice raised`,
+			`[browser] ${ownerKind === "agent" ? "agent-driven " : ""}tab ${tabId} has a passkey ${kind} ${signal.outcome ?? "pending"} from ${frame.embedded ? "an embedded frame at " : ""}${origin}; notice raised`,
 		);
 		return true;
 	}
@@ -325,6 +355,27 @@ export class PasskeyNotices {
 		if (!notice) return null;
 		if (this.options.now() - notice.at > PASSKEY_NOTICE_TTL_MS) return null;
 		return notice;
+	}
+
+	/**
+	 * Tabs whose "Continue in your own tab" is between the click and the new
+	 * tab existing (review R1/Q1). The check-then-dismiss in
+	 * `continuePasskeyNoticeInUserTab` spans an await (the host waits for the
+	 * copy's load), so without a claim a double click passed the `at` check
+	 * twice and opened two user tabs. Keyed by tab, not by `at`: a new notice on
+	 * the same tab while one continue is in flight must not start a second.
+	 */
+	private readonly continuing = new Set<number>();
+
+	/** Claim the continue for `tabId`; false when one is already in flight. */
+	claimContinue(tabId: number): boolean {
+		if (this.continuing.has(tabId)) return false;
+		this.continuing.add(tabId);
+		return true;
+	}
+
+	releaseContinue(tabId: number): void {
+		this.continuing.delete(tabId);
 	}
 
 	/** The user dismissed notice `at`. A stale `at` (the notice was replaced) is
@@ -400,4 +451,82 @@ export async function openPasskeyNoticeInSystemBrowser(deps: {
 		`[browser] passkey notice on tab ${deps.tabId}: handing ${url} to the system browser at the user's request`,
 	);
 	return deps.openExternal(url);
+}
+
+/**
+ * The user's one-click "Continue in your own tab", offered only on an AGENT
+ * tab's notice.
+ *
+ * WHY IT EXISTS. A password manager's passkey prompt (1Password's
+ * `inline/modal/modal.html`, a `chrome-extension://` page) appears as a subframe,
+ * and `extensions/subframe-policy.ts` refuses every extension subframe in an
+ * agent-owned tab so CDP can never drive or read it. That rule stays. The
+ * request therefore ends NotAllowed in the agent's tab, and the recovery is a
+ * tab the USER owns at the same page, on the same persistent profile, so the
+ * session the sign-in creates is the agent's session too.
+ *
+ * WHO MAY INVOKE IT. Only the trusted app renderer, through the sender-checked
+ * `browser-passkey-notice-continue` IPC channel (ipc.ts `authorize`): there is no
+ * RPC method for it, so an agent, CDP or a page has no way to call it. Like the
+ * open door above, the renderer supplies only a tab id and the notice's `at`: the
+ * URL is the agent tab's own top-level URL, read by `openUserTab` in main (the
+ * host's user-tab path), never the requesting iframe's and never a sent string.
+ *
+ * Refused for a stale notice, a notice raised in a user tab, a tab no longer
+ * the agent's (handed back or closed), or while a continue for the same tab is
+ * already in flight: each would open a tab the user did not ask for. Success
+ * means the user's tab EXISTS (its load may still fail, visibly, in that tab);
+ * the agent tab's notice is then dismissed, since its recovery is now in the
+ * user's hands.
+ */
+export async function continuePasskeyNoticeInUserTab(deps: {
+	notices: PasskeyNotices;
+	tabId: number;
+	at: number;
+	ownerOf: (tabId: number) => "user" | "agent" | null;
+	openUserTab: (
+		tabId: number,
+	) => Promise<{ ok: true; tabId: number } | { ok: false; reason: string }>;
+	log: (message: string) => void;
+}): Promise<PasskeyOpenOutcome> {
+	// Reasons are full localized sentences (review R2/U3): the renderer shows
+	// them after its own localized "could not open" sentence, so an English
+	// fragment here surfaced verbatim inside every locale's toast.
+	const notice = deps.notices.viewFor(deps.tabId);
+	if (!notice || notice.at !== deps.at) {
+		return {
+			ok: false,
+			reason: t("ui.browser.browser_passkey_notice.continue_refused_stale"),
+		};
+	}
+	if (notice.ownerKind !== "agent" || deps.ownerOf(deps.tabId) !== "agent") {
+		return {
+			ok: false,
+			reason: t("ui.browser.browser_passkey_notice.continue_refused_not_agent"),
+		};
+	}
+	// Claimed BEFORE the await, released in `finally`: the second click of a
+	// double click lands while the first is still loading and is refused here.
+	if (!deps.notices.claimContinue(deps.tabId)) {
+		return {
+			ok: false,
+			reason: t("ui.browser.browser_passkey_notice.continue_refused_in_flight"),
+		};
+	}
+	let outcome: Awaited<ReturnType<typeof deps.openUserTab>>;
+	try {
+		outcome = await deps.openUserTab(deps.tabId);
+	} finally {
+		deps.notices.releaseContinue(deps.tabId);
+	}
+	if (!outcome.ok) return outcome;
+	// The user's tab exists and is the one shown, so the recovery is in their
+	// hands even if its page then failed to load (the host reports that as
+	// success and the tab shows the failure itself, as `duplicate` does):
+	// dismiss, so the agent tab's notice cannot offer a second copy.
+	deps.notices.dismiss(deps.tabId, deps.at);
+	deps.log(
+		`[browser] passkey notice on agent-driven tab ${deps.tabId}: continued in user tab ${outcome.tabId} at the user's request`,
+	);
+	return { ok: true };
 }

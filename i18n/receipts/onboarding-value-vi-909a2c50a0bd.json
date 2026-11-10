@@ -1,0 +1,250 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"agent": "reviewer",
+	"session": "909a2c50a0bd",
+	"instance": "onboarding-value-vi-909a2c50a0bd",
+	"model": "anthropic/claude-fable-5-2",
+	"auditor": {
+		"agent": "reviewer",
+		"session": "909a2c50a0bd",
+		"instance": "onboarding-value-vi-909a2c50a0bd",
+		"model": "anthropic/claude-fable-5-2",
+		"requested_model": "anthropic/claude-fable-5-2",
+		"fallback": false,
+		"model_source": "Harness session model header for session 909a2c50a0bd (anthropic/claude-fable-5-2); no model-switch or fallback notice was observed during the audit, including after the manager pause/resume.",
+		"team": "lopdev",
+		"role": "reviewer",
+		"independent_from_translator_session": true
+	},
+	"independence": "Independent auditor: this session did not draft, translate or edit any catalogue, context file or ledger row, and is a different agent and session from the translator.",
+	"translator": {
+		"agent": "coder",
+		"session": "4d5802c5f0fc",
+		"models": "anthropic/claude-fable-5-2 drafts, then openai/gpt-6.1-sol for the final onboarding intro (fallback)",
+		"source": "As stated in the lopdev manager's audit brief; NOT verified by this auditor."
+	},
+	"locale": "vi",
+	"date": "2026-11-09",
+	"round": "translation audit 1",
+	"scope": {
+		"repo": "damianvtran/local-operator-ui",
+		"worktree": "~/local-operator-ui/.worktrees/onboarding-value-clarity",
+		"base": "8d2a113b250",
+		"head": "c6869d8d800518f547da5efa7c6b99620b80dd21",
+		"pushed": false,
+		"note": "Audited the frozen local commit (not yet pushed). Scope is every key whose English value changed in base..head in the nine namespaces, read with its context entry and the locale's old and new values; unchanged keys in these files were not re-audited for meaning. Whole-file mechanical checks (key-set parity with English, bidi control characters) cover all keys."
+	},
+	"references": {
+		"core_revision": "ac135d06a7fec0bfddd80c3ec058b6b9667d66df",
+		"core_revision_note": "origin/main of the local ~/local-operator clone as it stood at audit time (read with git show; not fetched during this audit).",
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+		}
+	},
+	"method": {
+		"read": "Each changed key was read for meaning, idiom, register and term consistency against the English source, its context entry, the core glossary, the locale style guide and existing catalogue precedent at this head.",
+		"mechanical_checks_executed": [
+			"key set of each target file equals the English key set",
+			"top-level ICU argument names and brace balance of every changed key equal the English ones",
+			"no manual bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C) in any value of the nine target files",
+			"for keys whose only English change was 'Team plan' -> 'Radient Team plan', the target differs from its base value only by the inserted 'Radient ' (or is byte-identical where the locale already carried it)",
+			"no value in the locale's ui.* catalogues still names the plan without 'Radient'"
+		],
+		"not_done": "No rendered frames, pseudo-localization, width/fit measurement or native-speaker review. No tests, builds or gates were run. This is a text audit only."
+	},
+	"acceptance": {
+		"plan_name": "Consistent: 'gói Radient Team' in every audited key.",
+		"credit_claim": "ui.onboarding.connect.intro keeps all three conditions (eligible new accounts, email verification, security check), states no amount and uses 'can', so it makes no unconditional free-credit claim.",
+		"no_free_usage_claim": "ui.providers...one_browser_sign_in_nothing_to_paste says no subscription or API key is needed and does not say usage is free or unlimited.",
+		"see_plan": "ui.teamBridge.plan.see_plan is a neutral 'see/view', not buy/upgrade/subscribe."
+	},
+	"namespaces": {
+		"ui.onboarding": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "a05d9e709b4322431c5dfb470ee5e964c8b03a225f497edc0bba5e5fcff2eaf8",
+				"vi": "3af03ec18271d3b2c75093859e71adb65bfbf776d20f0f071d01f79b6ad56a47"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.onboarding.json",
+				"vi": "src/i18n/catalogues/vi/ui.onboarding.json",
+				"context": "src/i18n/catalogues/en/ui.onboarding.context.json"
+			},
+			"context_sha256": "8a5f95e7d1576a86e71feaf2271c72a1f7dfe922954f3dfb27a5f5b3249dc170",
+			"audited_keys": [
+				"ui.onboarding.connect.intro",
+				"ui.onboarding.search.mode.free_detail"
+			],
+			"findings": []
+		},
+		"ui.providers": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"en": "54cc1b705f315ce0e0d4a28182a9923cff8dcf0209d4d0736694102baf027098",
+				"vi": "64dba372c40eaff18eab434b11a1bab3e514f8588fcfeabb57be56114a2b2d54"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.providers.json",
+				"vi": "src/i18n/catalogues/vi/ui.providers.json",
+				"context": "src/i18n/catalogues/en/ui.providers.context.json"
+			},
+			"context_sha256": "9e42019e3eedd2c53b48b766a153576b1e7efa50471322cc720179db749f1373",
+			"audited_keys": [
+				"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste"
+			],
+			"findings": [
+				{
+					"id": "VI-1",
+					"severity": "NIT",
+					"key": "ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste",
+					"problem": "'gói đăng ký' for subscription is new to the vi catalogue (1 use); existing strings in this same namespace say 'thuê bao' / 'gói thuê bao' (ui.providers.phone.*). Natural and correct, only a term-consistency note.",
+					"suggested_fix": "Optional: 'Không cần gói thuê bao hay khóa API.'"
+				}
+			]
+		},
+		"ui.teamBridge": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "6af68e35d6998197be44094cf65aed178ca012ad9090aad36c7dde733ce989ce",
+				"vi": "beb4f7cd5b73f2ab8e9e676ff0698975a2fb860bbb212c891128d22beccd8e95"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.teamBridge.json",
+				"vi": "src/i18n/catalogues/vi/ui.teamBridge.json",
+				"context": "src/i18n/catalogues/en/ui.teamBridge.context.json"
+			},
+			"context_sha256": "23f853879433e14b121e499ff98d3c8d53d5cd96ea7e7c7b0767ab85fadb960a",
+			"audited_keys": [
+				"ui.teamBridge.plan.reason_account",
+				"ui.teamBridge.plan.see_plan"
+			],
+			"findings": []
+		},
+		"ui.settings.account": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+				"vi": "0012e53925246dbf7adf0ca3065c6cdc6ceb0f63c4b4cb425fece0fd6a0846a7"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.settings.account.json",
+				"vi": "src/i18n/catalogues/vi/ui.settings.account.json",
+				"context": "src/i18n/catalogues/en/ui.settings.account.context.json"
+			},
+			"context_sha256": "866b976edf768b0d006be08dd56def1fd7b8c7d77074c6b2c423ac63635176b9",
+			"audited_keys": [
+				"ui.settings.account.radient_account_section.team_plan_line"
+			],
+			"findings": []
+		},
+		"ui.agents.publication": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "b386f0fe158efe961ed10c55ce02c17a241a4f16a8b66e8fad3466fec393033b",
+				"vi": "717953af7aaab12ac945e6f61bbfb546117eaf0c192fdd36a1a340c2418e8ff4"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.agents.publication.json",
+				"vi": "src/i18n/catalogues/vi/ui.agents.publication.json",
+				"context": "src/i18n/catalogues/en/ui.agents.publication.context.json"
+			},
+			"context_sha256": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90",
+			"audited_keys": [
+				"ui.agents.publication.team_plan_required.body",
+				"ui.agents.publication.team_plan_required.body_pull",
+				"ui.agents.publication.team_plan_required.headline"
+			],
+			"findings": []
+		},
+		"ui.agents.upload": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "e2fe5db65bd3266e3d438d05bd704d077c149c32bfa3a8846a962adad66573e4",
+				"vi": "ba52d56af8cddafce3e3393b3d81990abc47fbfcca705976ae0747d81880660f"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.agents.upload.json",
+				"vi": "src/i18n/catalogues/vi/ui.agents.upload.json",
+				"context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+			},
+			"context_sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f",
+			"audited_keys": [
+				"ui.agents.upload.target.blocked_hint"
+			],
+			"findings": []
+		},
+		"ui.hub.pages": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "535ba4d3d7fe9e26a3459fcfb4eed5e268e2f5aa882e25d3dbefb66a2fc2867b",
+				"vi": "4302cfcb4cd27ac4961cfe31b48335451237e2d1e6084455c3e0353f10316b07"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.hub.pages.json",
+				"vi": "src/i18n/catalogues/vi/ui.hub.pages.json",
+				"context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+			},
+			"context_sha256": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872",
+			"audited_keys": [
+				"ui.hub.pages.org.plan_headline",
+				"ui.hub.pages.org.plan_body"
+			],
+			"findings": []
+		},
+		"ui.hub.teams": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "827495d3c9a421808b13fd0918dae4db741086b5d9378a6f58e031c2c7d27d25",
+				"vi": "3913d6c7c8527c8b841b8cbd0ec1c24b3e6315ae3b2728793a2a152f643d6bcd"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.hub.teams.json",
+				"vi": "src/i18n/catalogues/vi/ui.hub.teams.json",
+				"context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+			},
+			"context_sha256": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe",
+			"audited_keys": [
+				"ui.hub.teams.org.plan_body",
+				"ui.hub.teams.org.plan_headline"
+			],
+			"findings": []
+		},
+		"ui.teamBridgeTrial": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "63a88b5951975cbca5b42fe06f3052a6d47ed2b72518c6327914b161d218a767",
+				"vi": "bdc10d9efddb8a7c66f8b382609eb0bfd87525d701b64fb0862a7eb76da1f67f"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.teamBridgeTrial.json",
+				"vi": "src/i18n/catalogues/vi/ui.teamBridgeTrial.json",
+				"context": "src/i18n/catalogues/en/ui.teamBridgeTrial.context.json"
+			},
+			"context_sha256": "964f7f893d1f066aa8fbcedfb4533f19a50aae7984c250a81c60675c72b3b411",
+			"audited_keys": [
+				"ui.teamBridgeTrial.empty.title",
+				"ui.teamBridgeTrial.empty.checking",
+				"ui.teamBridgeTrial.ineligible.trial_used",
+				"ui.teamBridgeTrial.ineligible.former_subscriber",
+				"ui.teamBridgeTrial.ineligible.email_unverified",
+				"ui.teamBridgeTrial.ineligible.other"
+			],
+			"findings": []
+		}
+	}
+}

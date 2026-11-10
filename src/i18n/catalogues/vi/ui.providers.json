@@ -62,7 +62,7 @@
 	"ui.providers.provider_catalog.use_your_claude_pro_or_max_plan": "Dùng gói Claude Pro hoặc Max đang có. Không phát sinh thêm phí.",
 	"ui.providers.provider_catalog.use_your_chatgpt_plus_or_pro_plan": "Dùng gói ChatGPT Plus hoặc Pro đang có. Không phát sinh thêm phí.",
 	"ui.providers.provider_catalog.use_your_chatgpt_plan_signing_in_with": "Dùng gói ChatGPT của bạn, đăng nhập bằng mã dùng một lần. Không phát sinh thêm phí.",
-	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "Đăng nhập một lần qua trình duyệt. Không cần dán gì.",
+	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "Đăng nhập một lần qua trình duyệt để dùng nhiều mô hình. Không cần gói đăng ký hay khóa API.",
 	"ui.providers.provider_catalog.sign_in_to_your_account_with_a": "Đăng nhập vào tài khoản {brand} bằng mã dùng một lần.",
 	"ui.providers.provider_catalog.sign_in_with_your_account": "Đăng nhập bằng tài khoản {brand}.",
 	"ui.providers.provider_catalog.use_a_subscription": "Dùng gói thuê bao",

@@ -1,0 +1,114 @@
+{
+	"schema": 1,
+	"auditor": {
+		"agent": "ux-reviewer",
+		"session": "4342cfd05d3c",
+		"instance": "4342cfd05d3c-ovc-r3-tb-ru",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"model_source": "Session environment header 'Model: anthropic/claude-opus-5-5'; no model-switch or fallback notice in this run.",
+		"independence": "Independent auditor; authored no translation. Plan keys: PR translator coder session 4d5802c5f0fc. Delivery keys: upstream PR #1832 (audited by ff66daec882c). Neither is this session.",
+		"independent_from_translator_session": true
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4342cfd05d3c-ovc-r3-tb-ru",
+	"locale": "ru",
+	"date": "2026-11-10",
+	"head": "b75b7186836b2c147f29a3a80ff4276b102f2d9f",
+	"base": "c2d84fcb64e0ce1fa77787d06609ef009e5be78a",
+	"merge_parents": {
+		"pr": "c2d84fcb64e0ce1fa77787d06609ef009e5be78a",
+		"main": "7385893f87a8e30d1b0872d2e8cc7ba887b01a70"
+	},
+	"merge_base": "96bb3a3a5a89373e708838862a5c1e317d175ed1",
+	"branch": "onboarding-value-clarity (final convergence with main 7385893f87a)",
+	"audit_kind": "delta audit of merge-integrated namespace",
+	"scope": "ui.teamBridge only. 17 keys read against the merged English source, the merged English context, the glossary and the locale style guide: PR keys plan.reason_account and plan.see_plan, plus 15 delivery.* keys from upstream #1832. The other 407 keys are byte-identical to both parents and are not re-audited.",
+	"union_proof": "Three-way merge with merge base 96bb3a3a5a8. For en, en.context and all 7 locales, HEAD equals the base with the PR's changes (only the 2 plan.* keys) and main's changes (only the 15 delivery.* keys) applied. No key changed on both sides, and computed equality was True for all 9 files (424 keys). The plan.* values at HEAD equal the PR copy; all 15 delivery.* values at HEAD equal main.",
+	"parity_checker": {
+		"command": "node scripts/i18n/catalogue-union-parity.mjs --pr 1826 --head b75b7186836b --old-head c2d84fcb64e0 --base 7385893f87a8 --file en/ui.teamBridge.json --file en/ui.teamBridge.context.json",
+		"result": "exit 1, FAIL: 4 value differences {delivery.held, held_awaiting_review, held_screening_unavailable, info_held} differsFrom [pr]; missing from base [] and missing from PR [] for both files",
+		"disposition": "Expected for a three-way merge, and validated rather than silenced: the checker is two-way against the PR copy. For these 4 keys, the PR copy equals the merge base 96bb3a3a5a8 (this PR never edited them) and HEAD equals main 7385893f87a (#1832 changed them). Main's change is the correct resolution and nothing was lost."
+	},
+	"prior_receipts": {
+		"pr_delta_r2": {
+			"path": "i18n/receipts/4342cfd05d3c-ovc-r2-tb-ru.json",
+			"sha256": "39b0e45c669062f6ca14423295c17b09b3e3c0d37d0d94d98e90d21a2ff2ec13",
+			"note": "plan.* values byte-identical to what it audited"
+		},
+		"upstream_pr1832": {
+			"path": "i18n/receipts/ff66daec882c-pr1832-r2-ru.json",
+			"sha256": "62e40d92e74a3ac6484778353b36d89f8cd545c34c12c343eecca19913049eb5",
+			"note": "delivery.* values byte-identical to main, which it audited"
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		},
+		"glossary_style_revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9"
+	},
+	"status": "passed",
+	"result": "clean",
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"namespaces": {
+		"ui.teamBridge": {
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"ru": "6eb0c8a838679623b4df9c193e5bf989064db7113a614e3f8d4359d9748a875e",
+				"en": "947554527605583cd0fa87359eb6c899294b7f0399a1acd4dc84417e8133576e"
+			},
+			"context_sha256": "65b70187789ecd8d6313cf01980435a4c69dc1517b3d53bc0ed722cadf0eab54",
+			"keys_reviewed": [
+				"ui.teamBridge.plan.reason_account",
+				"ui.teamBridge.plan.see_plan",
+				"ui.teamBridge.delivery.held",
+				"ui.teamBridge.delivery.held_awaiting_review",
+				"ui.teamBridge.delivery.held_awaiting_review_unnamed",
+				"ui.teamBridge.delivery.held_not_reviewed",
+				"ui.teamBridge.delivery.held_screening",
+				"ui.teamBridge.delivery.held_screening_unavailable",
+				"ui.teamBridge.delivery.info_held",
+				"ui.teamBridge.delivery.summary.delivered",
+				"ui.teamBridge.delivery.summary.details_label",
+				"ui.teamBridge.delivery.summary.held",
+				"ui.teamBridge.delivery.summary.not_delivered",
+				"ui.teamBridge.delivery.summary.not_reviewed",
+				"ui.teamBridge.delivery.summary.not_reviewed_note",
+				"ui.teamBridge.delivery.summary.screening",
+				"ui.teamBridge.delivery.summary.separator"
+			],
+			"keys_read": 17,
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"findings": []
+		}
+	},
+	"checks": [
+		"ICU parse with the repo's @formatjs/icu-messageformat-parser: argument names and types match English for all 17 keys (problems 0). Plural arms use each locale's CLDR categories: es/fr one+many+other, ru one/few/many/other, hi/ur one/other, vi/zh-CN other.",
+		"Meaning: held/held_* say 'not delivered yet' and no longer claim the message is being screened. info_held no longer promises automatic delivery. held_not_reviewed does not promise the message will never arrive, and gives the next step (send again or contact). Owner/agent terms match the glossary and these catalogues (propietario, propriétaire, मालिक, владелец, مالک, chủ sở hữu, 所有者).",
+		"summary.separator keeps ' · ' in every locale, as the context allows.",
+		"plan.* unchanged: 'Radient Team' kept, with the locale's word for plan, and no purchase wording.",
+		"No bidi control characters in ur; fr uses ’."
+	],
+	"product_patch_proof": "The PR's +/- lines under src/renderer hash 9740720d…2795 (341 lines) against the old base (96bb..c2d84) and the new base (7385893..b75b718). Upstream's only hunk in team-bridge-page.tsx (@@ -4237) is outside TeamBridgeEligibilityPanel (line 525) and the gate return path (line 2650).",
+	"limitations": "Source/text audit only; no rendered-fit claim."
+}

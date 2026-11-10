@@ -15,6 +15,7 @@ import type {
 	AddressHistoryRequest,
 	AddressHistoryResponse,
 } from "../shared/browser-address-history";
+import type { MediaPermissionDecision } from "../shared/browser-media-permission";
 import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import type {
 	TabActionsMenuRequest,
@@ -332,9 +333,33 @@ declare global {
 				revealDownloads: () => Promise<{ opened: boolean; message: string }>;
 				/** Dismiss the passkey notice `at` on `tabId`; false when it was replaced. */
 				dismissPasskeyNotice: (tabId: number, at: number) => Promise<boolean>;
+				/** Answer the camera/microphone prompt `id` on `tabId`; false when it was
+				 * replaced or the click was not trusted. */
+				decideMediaPermission: (
+					tabId: number,
+					id: string,
+					decision: MediaPermissionDecision,
+					trusted: boolean,
+				) => Promise<boolean>;
+				/** Open the macOS Privacy pane for the system-blocked notice `id`;
+				 * false when it was replaced or the platform has no such pane. */
+				openMediaSystemSettings: (
+					tabId: number,
+					id: string,
+				) => Promise<boolean>;
+				/** Extension manager ops; see src/shared/browser-extensions.ts. */
+				extensions: (
+					request: import("../shared/browser-extensions").ExtensionsRequest,
+				) => Promise<import("../shared/browser-extensions").ExtensionsResponse>;
 				/** Open the tab's own page in the system browser through the vetted door.
 				 * Takes no URL: main reads the tab's URL itself. */
 				openPasskeyNotice: (
+					tabId: number,
+					at: number,
+				) => Promise<{ ok: true } | { ok: false; reason: string }>;
+				/** An agent tab's passkey notice: open the same page in a new user tab,
+				 * where password-manager extensions work. Takes no URL. */
+				continuePasskeyNoticeInUserTab: (
 					tabId: number,
 					at: number,
 				) => Promise<{ ok: true } | { ok: false; reason: string }>;

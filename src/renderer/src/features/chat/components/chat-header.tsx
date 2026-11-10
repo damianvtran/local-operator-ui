@@ -1536,7 +1536,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 												key={option.value}
 												value={option.value}
 											>
-												<span>{option.label}</span>
+												<span>{transcriptDisplayModeLabel(option.value)}</span>
 												{/*
 												 * THE CHECK ON THE CHOSEN ROW (design review round 1, D3). The
 												 * primitive's own mark for a checked radio row is the small status

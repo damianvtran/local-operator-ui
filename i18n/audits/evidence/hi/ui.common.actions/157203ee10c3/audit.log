@@ -1,0 +1,232 @@
+s12-aud-hi-ds — INDEPENDENT TRANSLATION AUDIT, locale hi
+Auditor: i18n-auditor (this session). Served model: deepseek/deepseek-flash.
+PR damianvtran/local-operator-ui #1842, frozen head e5fb4310dab638f9cf428779d62539ec039a8990.
+Audit date: 2026-11-10.  Worktree: ~/local-operator-ui/.worktrees/i18n-s8 (read-only for me).
+
+I did not translate these strings and I edited no repository file. Every command below was
+actually run in this session unless it appears under "READ ONLY (no command executed)".
+
+================================================================================
+1. SCOPE
+================================================================================
+Four NEW keys, fully audited (4 keys):
+  ui.chat.composer_media.pasted_image      en 'Pasted image'          hi 'पेस्ट की गई तस्वीर'
+  ui.common.actions.actions_for_name       en 'Actions for {name}'    hi '{name} की कार्रवाइयाँ'
+  ui.chat.image_actions.actions            en 'Image actions'         hi 'तस्वीर की कार्रवाइयाँ'
+  ui.chat.audio.position_label             en '{label} position'      hi '{label} की प्लेबैक स्थिति'
+
+Plus, in scope on the English side: the broadened scope sentence of the existing
+ui.chat.composer_media.pasted_file context note.
+
+Everything else in the three namespaces (267 keys) is LEGACY content audited in earlier
+waves. For it I checked ONLY mechanical consistency — file parses, identical key set to
+English, and no value changed or removed versus origin/main. I do NOT certify legacy values.
+fully_audited_key_count = 4; consistency_only_key_count = 267.
+
+================================================================================
+2. COMMANDS ACTUALLY RUN (execution, not notes)
+================================================================================
+# 2.1 head binding — stop if it differs from the frozen head
+$ cd ~/local-operator-ui/.worktrees/i18n-s8 && git rev-parse HEAD
+e5fb4310dab638f9cf428779d62539ec039a8990
+$ git status --porcelain            -> empty (clean worktree at that head)
+
+# 2.2 hash binding, both independently and inside check.py
+$ for ns in ui.chat ui.chat.composer_media ui.common.actions; do for l in en hi; do
+    shasum -a 256 src/i18n/catalogues/$l/$ns.json; done
+    shasum -a 256 src/i18n/catalogues/en/$ns.context.json; done
+en/ui.chat                      ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15
+hi/ui.chat                      2a6c484cf4b677a4fb9ba74fdbfbf74849c612b60c0a858804daf2ef4d21e03a
+en/ui.chat.context              84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf
+en/ui.chat.composer_media       79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae
+hi/ui.chat.composer_media       34812ced782b34fd569daaf7ef04d83efa9782ac09283c741601946bed6bfe15
+en/ui.chat.composer_media.context a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b
+en/ui.common.actions            0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b
+hi/ui.common.actions            48b22fb6b8c8bf490fb205558873471e87a77a72d59fe42d7c69f6bb433c4056
+en/ui.common.actions.context    24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d
+-> all 9 equal the values in _s12-audits/e5fb4310.../expected-hashes.json. ZERO mismatches.
+
+# 2.3 glossary binding (manager-owned byte copy, per the mid-audit note)
+$ shasum -a 256 ~/local-operator-ui/.worktrees/_s12-audits/e5fb4310.../glossary.md
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8
+$ diff -q <that copy> ~/local-operator/i18n/glossary.md   -> identical; 173 lines.
+Glossary conformance below is checked against THAT manager-owned copy.
+
+# 2.4 repository validators (read-only modes; nothing was written to the repo)
+$ node scripts/i18n/generate.mjs --check
+src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1400 file(s) scanned, 0 duplicate key(s)
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s)
+$ node scripts/i18n/check-strings.mjs
+check-strings.mjs: ok — 1649 file(s) scanned, 0 literal(s) at or below the baseline
+$ node scripts/i18n/ledger-check.mjs     -> EXIT 1, 64 findings across 1085 ledger entries
+  hi rows, verbatim:
+  ledger-check: hi/ui.chat: stale source_sha256 (ledger 270fc752791e…, file ee4e2a9eeb84…) — the English source moved since translation
+  ledger-check: hi/ui.chat: stale target_sha256 (ledger 7baae2daa308…, file 2a6c484cf4b6…) — the translated file changed since it was audited
+  ledger-check: hi/ui.chat: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+  ledger-check: hi/ui.chat: auditor 2: the receipt does not name the English source bytes on disk - it audited a different file
+  ledger-check: hi/ui.chat.composer_media: stale source_sha256 … / stale target_sha256 … / auditor 1: …
+  ledger-check: hi/ui.common.actions: stale source_sha256 … / stale target_sha256 … / auditor 1: …
+  This is the ledger's standing rule: a namespace edit after its audit flips the row to
+  pending until re-audited. The same failure appears for fr, es, ru, vi, zh-CN and ur at
+  this head (64 findings, all locales) — it is the pre-recording state of a translation
+  wave, NOT a hi translation defect. It clears when ledger-assemble.mjs writes the rows
+  for these audits (see §6).
+
+# 2.5 my own checks (scripts retained beside this log)
+$ python3 check.py       -> failures: 0, warnings: 0   (full output in check.out)
+$ python3 stress.py      -> PROBLEMS: 0               (full output in stress.out)
+check.py verifies: JSON validity; en/hi key-set identity (208/208, 9/9, 54/54); additions-only
+vs origin/main with no value changed or removed; placeholder lists byte-identical; brace
+balance; no ICU argument/plural/select syntax introduced (none is needed — no key in scope
+has a plural or select); no markup/backtick tokens in either side; no NBSP/ZW*/bidi/control
+characters; no leading/trailing whitespace; NFC normalised; no trailing stop the source lacks;
+all 9 hashes against expected-hashes.json; glossary copy hash and line count; width sanity.
+stress.py splices ten adversarial {name}/{label} values (Latin, Devanagari, CJK, spaces,
+quotes, parentheses, one 120-char string, and a label that is itself a Hindi genitive phrase)
+into the shipped templates and asserts no brace artifact, no double space, no padding and an
+unchanged suffix for every one.
+
+# 2.6 derived vs read
+$ git diff origin/main HEAD -- src/i18n/catalogues/hi/
+  Three files, additions only: +1 pasted_image, +2 ui.chat (image_actions.actions,
+  audio.position_label), +1 actions_for_name. No legacy line touched.
+  (check.py repeats this as a value-level comparison against `git show origin/main:<path>`.)
+
+================================================================================
+3. PER-KEY JUDGEMENT (hi)
+================================================================================
+(1) ui.chat.composer_media.pasted_image = 'पेस्ट की गई तस्वीर'   ["Pasted image"]
+Fallback file name of an image pasted with no usable name, also a short caption; no extension.
+- Meaning: exact. पेस्ट की गई = "was pasted" (perfect participle, feminine) + तस्वीर = "image".
+- Internal precedent: the sibling key renders identically in shape —
+  ui.chat.composer_media.pasted_file = 'पेस्ट की गई फ़ाइल'; की गई agrees with its feminine head
+  (फ़ाइल / तस्वीर) in both. pasted_type = 'पेस्ट किया गया {mimeType}' keeps the masculine form
+  because its head is the MIME token. So the three agree with each other exactly as they should.
+- Term: तस्वीर is this catalogue's established word for "image" — ui.chat.canonical.image_label
+  = 'तस्वीर', and every ui.chat.image_actions.* sibling uses तस्वीर ('तस्वीर कॉपी करें',
+  'तस्वीर बड़ी करें'). छवि/चित्र exist only in older avatar-editor error prose; तस्वीर is the
+  user-facing term and the right one here.
+- Context note compliance: no extension, no MIME identifier, no placeholder — none present.
+  Compact enough for the narrow caption (18 codepoints, and it is the same length class as the
+  existing pasted_file value that already ships that tile).
+- Style guide: no nukta missing, no danda (English has no full stop), no तुम/तू, no padding.
+
+(2) ui.common.actions.actions_for_name = '{name} की कार्रवाइयाँ'   ["Actions for {name}"]
+aria-label/tooltip of a file's actions menu; {name} is the user's own file name, verbatim.
+- Placeholder: {name} byte-identical, plain, uninflected; no ICU needed. The suffix is a fixed
+  postpositional phrase: की agrees with कार्रवाइयाँ (feminine plural), never with the inserted
+  string, so no case/gender/number of a user name can break it. Proven by stress.py on ten
+  adversarial insertions, including a name that already ends in a Hindi genitive phrase.
+- Byte-identical precedent for the SAME English string in this catalogue:
+  ui.chat.canonical.link_toolkit.actions_for = '{name} की कार्रवाइयाँ'  (en side: 'Actions for {name}').
+  Also ui.shell.sidebar_navigation.row_actions and ui.projects.project_board.actions_for_displayname
+  use the same construction. (The catalogue also contains '{name} के लिए कार्रवाइयाँ' at
+  ui.library.menu.asset_actions_label and ui.settings.appearance.editor.more — both renderings are
+  live for "actions for X". Reusing the exact bytes of the identical-English precedent is the
+  stronger choice, and that is what shipped.)
+- Meaning: "X's actions" identifies the asset whose menu opens, which is what the context note
+  asks for ("Identifies the asset whose actions will open; not a command to act on the name").
+- Register: neutral noun phrase, no honorifics, no imperative — correct for an aria-label.
+
+(3) ui.chat.image_actions.actions = 'तस्वीर की कार्रवाइयाँ'   ["Image actions"]
+Default tooltip and unnamed-image trigger accessible name; a named image uses key (2).
+- Byte-identical precedent: ui.canvas.files.imageActions = 'तस्वीर की कार्रवाइयाँ' whose English
+  is also exactly 'Image actions'. Same family form as ui.teamBridge.actions.label =
+  'संदेश की कार्रवाइयाँ' and ui.chat.header.actions = 'बातचीत की कार्रवाइयाँ'.
+- Meaning and role: short noun phrase, sentence case, no trailing punctuation — matches the
+  context note and does not collide with the generic file wording or key (2).
+
+(4) ui.chat.audio.position_label = '{label} की प्लेबैक स्थिति'   ["{label} position"]
+Accessible name of an audio clip's seek slider; {label} is the clip's display title, verbatim.
+- Placeholder: {label} byte-identical, plain; unchanged suffix for any inserted title
+  (stress.py). Two clips may be present, and the label is retained, as the note requires.
+- Term: the catalogue's own standalone key for "Playback position" is
+  ui.chat.attachments.playback_position = 'प्लेबैक की स्थिति' (and playback_rate =
+  'प्लेबैक की गति'). This value composes the same two words as a compound, 'प्लेबैक स्थिति',
+  because the genitive is already carried by the preceding '{label} की' — writing की twice
+  ("{label} की प्लेबैक की स्थिति") is the stilted form. The glossary's own rule settles that
+  this is not a term divergence: "A row is violated by a different *term*, not by a grammar
+  form." प्लेबैक and स्थिति are unchanged; only the linking particle moves.
+- Why प्लेबैक is present although the English says only "position": स्थिति alone is this
+  catalogue's word for *status* (~19 existing strings: 'कनेक्शन की स्थिति', 'पढ़ने की स्थिति',
+  'फ़ाइल की स्थिति'…). "X की स्थिति" on a media slider would read as "X's status". The
+  disambiguator is required by the target language and matches the note's wording ("Names
+  playback position for this specific clip"). Recorded here as considered and cleared, not a
+  finding.
+- Avoids the play/pause collision: the sibling controls keep their verb construction
+  ('{label} चलाएँ' / '{label} रोकें'), so the position slider is distinct from both.
+
+================================================================================
+4. SECOND INDEPENDENT PASS (re-checked, not assumed)
+================================================================================
+I re-ran the judgement for all four strings against: the en value, the en context sidecar,
+the binding hi style guide, the manager-owned glossary copy, and every neighbouring hi value.
+Checks re-performed on pass 2: placeholder position and article/agreement behaviour for
+arbitrary user text (10 insertions per key, stress.py), idiomatic word order, register
+(आप / no तुम-तू), sentence case and trailing punctuation, term consistency against the
+sibling keys quoted above, and invisible characters. Pass 2 found nothing pass 1 missed and
+nothing pass 1 wrongly cleared. Two candidate observations were re-examined and both were
+dismissed with the citations above: (a) '{name} की' vs '{name} के लिए' — the identical-English
+precedent decides it; (b) 'प्लेबैक स्थिति' vs 'प्लेबैक की स्थिति' — a grammar form, not a term
+change, per the glossary's own sentence.
+
+================================================================================
+5. ENGLISH METADATA CHECK (pasted_file broadened scope sentence)
+================================================================================
+Context now reads: "Fallback for non-image data URIs with no usable name, including invalid
+percent encoding, whether or not a MIME type is present. Also used as synthetic upload
+metadata; valid names and attachment bytes stay unchanged. A 100px tile caption may truncate;
+maxCells is advisory, not measured fit."
+Verified against the code (read, not executed):
+- src/renderer/src/features/chat/utils/get-file-name.ts: image data URIs return
+  ui.chat.composer_media.pasted_image; every other `data:` URI returns ...pasted_file in BOTH
+  the nameMatch branch (decodeURIComponent throws) and the no-name branch — so a MIME-type-
+  bearing URI without a name= still lands here, which is exactly the correction the old note
+  ("has no name or MIME type") needed.
+- src/renderer/src/features/chat/utils/attachment-encode.ts (~line 155): "Synthetic names for
+  unnamed data URLs follow the active locale and become upload metadata. Valid decoded names
+  stay verbatim; the original dataUrl (and therefore its bytes/MIME) is passed untouched."
+  Matches "Also used as synthetic upload metadata; valid names and attachment bytes stay
+  unchanged" word for word in substance.
+The broadened sentence is accurate. No finding.
+
+================================================================================
+6. LEDGER RECORDING — NOT PERFORMED BY ME, command and row handed to the manager
+================================================================================
+The writer is node scripts/i18n/ledger-assemble.mjs (i18n/ledger.json rows + a copy of the
+receipt under i18n/receipts/<instance>.json). It WRITES two tracked files, and my brief
+forbids editing any repository file, so I did not run it. I also did not run --dry-run on it
+(no such documented mode) and I make no claim about its output.
+Its receipt contract matches this receipt's shape: multi-namespace receipts put each namespace
+under namespaces.<ns> with its own status, findings and role-labelled hashes; it reads
+source_sha256/target_sha256 from that block; an explicit findings: [] is required (absent is
+not zero); instance must be the real 12-hex run id and must equal --auditor-instance. The
+per-namespace hashes in my receipt are the four-on-disk values, so the rows it derives should
+land as status "audited" with result clean.
+Per-namespace invocation the manager needs (one run each, same receipt, same instance):
+  node scripts/i18n/ledger-assemble.mjs --locale hi \
+    --file src/i18n/catalogues/hi/ui.chat.json \
+    --auditor-instance 157203ee10c3 --auditor-model deepseek/deepseek-flash \
+    --receipt <canonical i18n/receipts path> \
+    --translator-agent i18n-translator --translator-model anthropic/claude-sonnet-5-5 \
+    --scope "<scope line from this receipt>" --date 2026-11-10
+  …repeating with ui.chat.composer_media.json and ui.common.actions.json.
+Until those rows exist, ledger-check.mjs keeps failing for hi on the "stale / does not name the
+English source bytes" assertions seen in §2.4 — expected at this head, for all locales.
+
+================================================================================
+7. WHAT I DID NOT DO (no claim beyond this)
+================================================================================
+- No UI was rendered and no browser was used (my brief forbids builds/servers, so no pixel or
+  screen-reader proof is claimed; these are accessible names/tooltips with no maxCells/maxChars
+  on any of the four keys, and I make no measured-fit claim).
+- No production ICU parser, CLDR runtime or Node formatter was exercised on these strings; the
+  ICU statement here is structural (no plural/select/arguments present on either side).
+- No translation API, SDK or MT service was used, and nothing was back-translated.
+- The model named above is the served session model as reported to me in this session's
+  header; I have no independent telemetry to corroborate it.
+- I did not read any other session's directory under ~/.local-operator/sessions/, did not open
+  any .env file, and wrote only inside my own scratchpad.

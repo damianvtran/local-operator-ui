@@ -1920,6 +1920,38 @@ test("row isolate range: validated as display-only data, one range, strict keys"
 	assert.equal(shifted.projection.view.rows[0].isolate, undefined);
 });
 
+test("row icon: only the closed `page` glyph passes; anything else refuses the row", () => {
+	// The browser's own pages (lop://extensions) carry a leading glyph so the
+	// native list marks them like the in-flow list. The child draws a fixed SVG
+	// for the enum, so the boundary must never let another value through.
+	const withRows = (row) =>
+		sanitizeProjection(
+			projection({ active: -1, view: { kind: "rows", rows: [row] } }),
+		);
+	const ok = withRows({
+		text: "lop://extensions",
+		title: "Extensions",
+		icon: "page",
+	});
+	assert.equal(ok.ok, true);
+	assert.deepEqual(ok.projection.view.rows[0], {
+		text: "lop://extensions",
+		title: "Extensions",
+		icon: "page",
+	});
+	assert.equal(
+		"icon" in
+			withRows({ text: "a.example/", title: "" }).projection.view.rows[0],
+		false,
+		"absent stays absent",
+	);
+	for (const icon of ["Page", "<svg>", "favicon", 1, null, { d: "M0" }]) {
+		const result = withRows({ text: "lop://extensions", title: "", icon });
+		assert.equal(result.ok, false, JSON.stringify(icon));
+		assert.equal(result.reason, "bad_rows");
+	}
+});
+
 test("S2 theme: opaque colours only; alpha or junk falls back to one neutral", () => {
 	const resolved = sanitizeProjection(
 		projection({

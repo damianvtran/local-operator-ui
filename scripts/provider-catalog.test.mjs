@@ -54,6 +54,8 @@ const {
 	hostOf,
 	unfinishedMessage,
 	chooseDefaultModel,
+	featuredRowTitle,
+	FEATURED_PROVIDER_IDS,
 } = catalog;
 
 const census = JSON.parse(
@@ -332,4 +334,26 @@ test("step 2 with nothing connected says so", () => {
 		chooseDefaultModel(withSuggestions, { hosting: null, model: null }).kind,
 		"none",
 	);
+});
+
+test("U7: a suggested onboarding row is titled by the account the reader pays for", () => {
+	const byId = (id) => census.find((row) => row.id === id);
+	// The step's intro asks "Already pay for Claude or ChatGPT?", so the rows
+	// that answer it carry those names rather than the companies behind them.
+	assert.equal(featuredRowTitle(byId("anthropic")), "Claude");
+	assert.equal(featuredRowTitle(byId("openai")), "ChatGPT");
+	assert.equal(featuredRowTitle(byId("radient")), "Radient");
+	// A provider with no separate account name keeps its brand.
+	assert.equal(featuredRowTitle(byId("google")), brandOf(byId("google")));
+	// Every other surface still names the PROVIDER: the brand is unchanged.
+	assert.equal(brandOf(byId("anthropic")), "Anthropic");
+	assert.equal(brandOf(byId("openai")), "OpenAI");
+	// The tile abbreviates the title beside it, and stays a legal monogram.
+	for (const id of FEATURED_PROVIDER_IDS) {
+		assert.match(
+			monogramOf(featuredRowTitle(byId(id))),
+			/^[A-Z0-9][A-Za-z0-9]$/,
+			id,
+		);
+	}
 });

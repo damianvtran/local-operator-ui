@@ -618,5 +618,61 @@
 		"placeholders": {
 			"title": "the draft's first line, user-authored, never translated"
 		}
+	},
+	"ui.chat.sidebar.mark_all_read.label": {
+		"role": "visible label of the bulk control that marks every unread chat as read",
+		"tone": "imperative, sentence case, no trailing punctuation",
+		"length": "Short; sits in a narrow section header beside Active chats.",
+		"note": "The number is the exact count the request will clear, so it stays inside the label. The count is always at least 1 when the control is shown.",
+		"placeholders": {
+			"count": "number of unread chats the click will mark read; ungrouped digits"
+		}
+	},
+	"ui.chat.sidebar.mark_all_read.scope_chats": {
+		"role": "tooltip (title) of the bulk control that marks every unread chat as read; states the full extent before the click",
+		"tone": "plain declarative sentence, full stop at the end",
+		"length": "One sentence; shown in a native tooltip, so it may wrap.",
+		"note": "Used when no unread chat sits outside the section the control is drawn in. The count is always at least 1 when the control is shown. When some marks cannot be cleared, scope_joined places a second sentence after this one.",
+		"placeholders": {
+			"count": "number of unread chats the click will mark read; ungrouped digits"
+		}
+	},
+	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": {
+		"role": "tooltip (title) of the bulk control; same sentence as scope_chats plus how many of those chats are not active",
+		"tone": "plain declarative sentence, full stop at the end",
+		"length": "One sentence; shown in a native tooltip, so it may wrap.",
+		"note": "Used only when elsewhere is at least 1. Not active is the catalogue's own class for a conversation the backend does not list as active; it is NOT a section heading (the sidebar has no such heading) and not the same as Running. Translate the sense plainly, no section name. The elsewhere count is part of count (a subset), never an addition. The sentence is one clause after the comma; keep a single full stop.",
+		"placeholders": {
+			"count": "number of unread chats the click will mark read; ungrouped digits",
+			"elsewhere": "how many of those chats are not active; at least 1, ungrouped digits; drives its own plural"
+		}
+	},
+	"ui.chat.sidebar.mark_all_read.scope_tokenless": {
+		"role": "second sentence of the bulk control's tooltip; names unread marks the click cannot clear because they carry no completion token",
+		"tone": "plain declarative sentence, full stop at the end",
+		"length": "One sentence; shown in a native tooltip, so it may wrap.",
+		"note": "Shown only when at least one such mark exists. These marks are NOT part of the count in the other sentences. Completion token is a technical term for the receipt that lets a mark be cleared; translate descriptively, never as a security token.",
+		"placeholders": {
+			"count": "number of drawn unread marks that cannot be cleared; at least 1, ungrouped digits"
+		}
+	},
+	"ui.chat.sidebar.mark_all_read.scope_joined": {
+		"role": "joins the bulk control's tooltip sentences when both the extent sentence and the cannot-be-cleared sentence apply",
+		"tone": "neutral joiner; no words of its own",
+		"length": "Two placeholders and the separator between them.",
+		"note": "Exists so the separator between two whole sentences is the language's own (a space in most scripts, none in some). Keep both placeholders, in the order that reads naturally; add nothing else.",
+		"placeholders": {
+			"chats": "the already-translated extent sentence (scope_chats or scope_chats_elsewhere), with its full stop",
+			"tokenless": "the already-translated cannot-be-cleared sentence (scope_tokenless), with its full stop"
+		}
+	},
+	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": {
+		"role": "tail appended to the bulk control's accessible name (screen readers) when some of the unread chats are not active",
+		"tone": "fragment that continues the visible label, no trailing punctuation",
+		"length": "Short clause; read straight after the label \"Mark all N read\".",
+		"note": "APPENDED directly after the translated mark_all_read.label with no separator added by the code, so it must begin with the punctuation that joins it (a comma in English) and the label must remain a prefix of the full name (WCAG 2.5.3 Label in Name). Not active is the catalogue's own class, not a section heading; see scope_chats_elsewhere.",
+		"placeholders": {
+			"elsewhere": "how many of the unread chats are not active; at least 1, ungrouped digits; drives its own plural"
+		}
 	}
 }

@@ -1,0 +1,207 @@
+{
+  "locale": "zh-CN",
+  "mode": "Fresh independent delta audit of four NEW message keys in three namespaces, in a pinned read-only worktree. All four audited in full (mechanical, accuracy, idiom/register, terminology, fit); the remaining 267 keys of the three namespaces checked for parse validity, key-set parity with English and no changed/removed value versus origin/main only. No legacy value certified. Allocation: fix (<2h), bounded audit only.",
+  "scope": "PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD for zh-CN: 4 added keys (ui.chat.image_actions.actions, ui.chat.audio.position_label, ui.chat.composer_media.pasted_image, ui.common.actions.actions_for_name), zero removed, zero pre-existing value changed. English metadata under review: the broadened ui.chat.composer_media.pasted_file context note.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "6c6b9e0107b6",
+    "source": "Translator agent/model/session supplied by delegation (zh-CN translator session 6c6b9e0107b6). This auditor did not translate, review or participate in the translation of these values, and ran no translation or back-translation service."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "5f0ba55bdecb",
+    "session": "5f0ba55bdecb",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for this session (5f0ba55bdecb): deepseek/deepseek-flash; the delegation tag 'ds' matches. No fallback used; no role or default pin changed.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "6c28931de502a5fd821f9bd9ff779a55599681804575a8a2ba4cdc3346c1e1b9",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.json",
+          "sha256": "6c28931de502a5fd821f9bd9ff779a55599681804575a8a2ba4cdc3346c1e1b9"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "d32d42c7972f9cb433844db9d41fe79da6aa05b8c6a2b80643947f4179950df8",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.composer_media.json",
+          "sha256": "d32d42c7972f9cb433844db9d41fe79da6aa05b8c6a2b80643947f4179950df8"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "9372ac48a563ad7ea188dcaca65ec3c2d165ed5188b8f45bb916c2bd726541bb",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.common.actions.json",
+          "sha256": "9372ac48a563ad7ea188dcaca65ec3c2d165ed5188b8f45bb916c2bd726541bb"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "图片操作",
+      "findings": [],
+      "assessment": "Exact structural parallel to the existing zh-CN ui.common.actions.file_actions_menu.file_actions = '文件操作' for the sibling English 'File actions', and 图片 is the settled word for image in the same namespace (ui.chat.image_actions.copy_image = '复制图片', expand_image = '展开图片'). Short noun phrase, sentence case, no plural needed in Chinese, no trailing punctuation. Carries the context note's meaning (generic overflow-menu label and unnamed-asset accessible-name fallback) without adding a 菜单/action verb the English does not have. No placeholder in either side.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      }
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "{label}的播放位置",
+      "findings": [],
+      "assessment": "{label} byte-exact, still first, still a plain non-ICU argument; no plural branch needed and none added. The 的 attributive construction takes ANY inserted title without case, gender or number agreement, and Chinese inserts no space before the 的, so a Latin or CJK label both read correctly. 播放位置 is not an invented addition: it is the existing zh-CN rendering of this very concept (ui.chat.attachments.playback_position = '播放位置'), and bare 位置 would be ambiguous for an audio seek slider. Names the slider, not an action; distinct from the verb-first ui.chat.audio.play_label = '播放{label}' / pause_label = '暂停{label}' in the same namespace, so no collision with the play/pause controls.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "label",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": null
+      }
+    },
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "粘贴的图片",
+      "findings": [],
+      "assessment": "Exact parallel to the two existing siblings in the same namespace: pasted_file = '粘贴的文件' and pasted_type = '粘贴的{mimeType}'. Short noun phrase, no extension, no MIME identifier and no placeholder, as the context note requires; functions as a fallback filename and as the attachment caption. No maxCells hint in the sidecar; 10 cells / 5 characters, comfortably short, no truncation risk.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      }
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "{name}的操作",
+      "findings": [],
+      "assessment": "{name} byte-exact and untouched. This is the SAME string the catalogue already carries for the identical English 'Actions for {name}' in two places: ui.chat.canonical.link_toolkit.actions_for = '{name}的操作' and ui.projects.project_board.actions_for_displayname = '{displayName}的操作'; ui.projects.project_updates.file_actions_for_name = '{name}的文件操作' also matches. Divergence here would have contradicted those. The 的 construction is grammatical for arbitrary user names (Latin, CJK, names ending in punctuation or quotes) with no agreement, and it reads as identification of the asset, not as a command on the name - which is exactly what the context note demands. Unquoted, matching the two file/asset peers; ui.browser.browser_tab_strip.actions_for = '“{title}”的操作' quotes because a tab title is arbitrary prose, a different asset class.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "name",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": null
+      }
+    }
+  ],
+  "english_metadata_check": {
+    "key": "ui.chat.composer_media.pasted_file.context.note",
+    "verdict": "accurate",
+    "read_sources": [
+      "src/renderer/src/features/chat/utils/get-file-name.ts",
+      "src/renderer/src/features/chat/utils/attachment-encode.ts"
+    ],
+    "detail": "Every clause is supported by the code, read but not executed. 'non-image data URIs': getFileName tests path.startsWith('data:image/') first and only the later path.startsWith('data:') branch returns pasted_file, so images never reach it. 'with no usable name, including invalid percent encoding': the nameMatch[1] branch is guarded by try/decodeURIComponent with catch returning pasted_file. 'whether or not a MIME type is present': the branch keys on the 'data:' prefix alone, so data:;base64,… and data:application/pdf;base64,… both land there. 'Also used as synthetic upload metadata': attachment-encode.ts takes const name = getFileName(attachment) and passes it as AttachmentUploadSource.name for a dataUrl, then files.push({name: stored.name ?? name}). 'valid names and attachment bytes stay unchanged': a decodable name is returned verbatim and 'the original dataUrl (and therefore its bytes/MIME) is passed untouched'. No clause overstates or understates the code."
+  },
+  "preexisting_untouched_verification": {
+    "method": "git diff origin/main HEAD -- src/i18n/catalogues/zh-CN/ plus a Python key-set/value comparison against git show origin/main:<file>",
+    "result": "ui.chat 206->208 (2 added), ui.chat.composer_media 8->9 (1 added), ui.common.actions 53->54 (1 added); zero keys removed; zero pre-existing values changed. Each locale key set is exactly equal to its English counterpart. The only diff lines on pre-existing keys are trailing-comma edits on remove_attachment and clear, whose values are unchanged."
+  },
+  "observations_not_findings": [
+    {
+      "kind": "out_of_scope_source_robustness",
+      "severity": "not a translation finding",
+      "detail": "image-actions-menu.tsx:364 guards the shared key with `label != null` while supplement-file-actions.tsx:181 guards the same key with truthiness (`label ?`). Callers pass label={alt} (markdown-image.tsx:90), label={document.title} and label={row.name}, so an empty-string label (e.g. a markdown image with empty alt text) would satisfy `!= null` and yield t('ui.common.actions.actions_for_name',{name:''}), rendering '的操作' — with a leading 的. The ENGLISH degrades identically there ('Actions for '), so this is a source-side guard bug, locale-agnostic, not attributable to the zh-CN translation and not counted as a finding. Not proven by execution: read-only remit, no test covers label/alt (scripts/image-actions.test.mjs has no label/alt case). Flagged to the manager as a possible follow-up outside this audit."
+    },
+    {
+      "kind": "redundant_duplicate_keying",
+      "severity": "not a translation finding",
+      "detail": "The English 'Actions for {name}' now exists under two keys: the legacy ui.chat.canonical.link_toolkit.actions_for and the new ui.common.actions.actions_for_name. check-duplicates passes (keys differ), and both zh-CN values are identical today ('{name}的操作'), so there is no current defect. Recorded only as a future drift risk for whoever owns the keying change."
+    }
+  ],
+  "policy_sources": [
+    {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy of ~/local-operator/i18n/glossary.md. Verified identical: shasum -a 256 gives the same 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8 for both, 173 lines. Glossary conformance was checked against this copy."
+    }
+  ],
+  "glossary_conformance": {
+    "checked_against": "the manager-owned byte-copy above",
+    "result": "No §1 product-surface name, no §2 core term and no keep-English token appears inside any of the four values, so no §2 row can be violated by them. The rows that do apply are §3: placeholders preserved byte-exactly (§3 'placeholders'), Chinese punctuation conventions with no full-width punctuation required here (§3 'punctuation'), no hand-written digits in any value (§3 'digits'), and no plural message among the four so the zh-CN 'other'-only rule is not engaged (§3 'plurals'). The style guide's zh-CN 'Locale calls' list (session/wake/agent/tool trace/transcript/schedule/monitor/relay/workspace/prompt/compaction) is not touched by these keys."
+  },
+  "unverified": [
+    "ledger-assemble.mjs was NOT run: it writes i18n/ledger.json and i18n/receipts/, and this task is a read-only audit that may not edit repository files. This receipt is written to be assemble-ready, but its acceptance by that tool is unproven by execution.",
+    "node scripts/i18n/ledger-check.mjs currently FAILS with 64 findings (stale source/target hashes) because these four new keys changed all seven locale files while the ledger rows still describe the previous bytes - the expected pre-audit state, not a defect in the zh-CN values. Refreshing the rows is the manager's step after the audits land.",
+    "No ICU runtime parse and no rendered/screen-reader output: no builds, servers or browser in this remit. Judgements of grammar and register are reasoning over the byte-exact values, the sidecars, the code and the binding style guide.",
+    "The empty-label code-path observation is read from source, not executed."
+  ],
+  "audit_notes_not_execution_log": true
+}

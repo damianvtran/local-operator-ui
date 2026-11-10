@@ -1,0 +1,200 @@
+{
+ "locale": "ur",
+ "mode": "Independent delta audit of ONE revised key in one namespace, frozen head b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8, no repository edits, no builds/installs/servers, no translation or MT service. The revision is a fresh translator answer to a prior-round MINOR finding; it was audited on its merits, not accepted because it matches the recommendation the previous auditors made. Allocation: fix (<2h), bounded audit only.",
+ "scope": "PR damianvtran/local-operator-ui #1842 @ b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a (prior head e5fb4310dab638f9cf428779d62539ec039a8990). Namespace under audit: ui.chat. Fully audited: 1 key, ui.chat.audio.position_label, \"{label} کی پوزیشن\" -> \"{label} کا مقام\". The other 207 values of ur/ui.chat.json are consistency-only (file parses, key set equals English 208/208, no key added or removed, values byte-identical to the prior head) and are NOT recertified by this receipt; the namespace's other new key, ui.chat.image_actions.actions, was certified in the prior round (receipts ur-ds-75c30f92d238 and ur-sol-a1d964dc45d5 at _s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/) and is unchanged here.",
+ "head_sha": "b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a",
+ "prior_head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+ "audit_date": "2026-11-10",
+ "key_count": 208,
+ "fully_audited_key_count": 1,
+ "consistency_only_key_count": 207,
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "source": "Fresh translator revision of the prior-round MINOR finding; translator agent/model and the new session identity were supplied by delegation (i18n-translator / anthropic/claude-sonnet-5-5, new session). This auditor did not translate, edit or participate in producing the value."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "3795570cf1e1",
+  "session": "3795570cf1e1",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Served session header for session 3795570cf1e1 states deepseek/deepseek-flash; no model switch, role pin or fallback occurred in this session.",
+  "fallback_used": false,
+  "independent_from_translator_session": true
+ },
+ "policy_sources": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  },
+  "glossary": {
+   "path": "~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "note": "Manager-owned byte-copy for this head; verified identical by sha256 to ~/local-operator/i18n/glossary.md. Glossary conformance was checked against this copy. No glossary row covers this string: no §2 core term (session, wake, agent, tool, workspace, approvals, project, model, prompt, compaction, schedule, monitor, relay, usage) appears; §1 keep-English rules are vacuous because the value carries no product name, command, flag, path or identifier."
+  },
+  "expected_hashes": {
+   "path": "~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/expected-hashes.json",
+   "result": "3/3 relevant entries match the files on disk (en/ui.chat, ur/ui.chat, en/ui.chat.context); no mismatch, so no BLOCKER on hash grounds."
+  }
+ },
+ "prior_round_receipts_consulted": [
+  {
+   "path": "_s12-audits/e5fb4310dab…/ur-ds-75c30f92d238.json",
+   "used_for": "UR-1 MINOR proposed exactly \"{label} کا مقام\"; that recommendation was re-derived here from the catalogue rather than adopted."
+  },
+  {
+   "path": "_s12-audits/e5fb4310dab…/ur-sol-a1d964dc45d5.json",
+   "used_for": "UR-S12-1 MINOR proposed \"{label} میں پلے بیک کا مقام\"; judged here as the alternative and set aside for importing a word the English lacks (recorded in N1)."
+  },
+  {
+   "path": "_s12-audits/e5fb4310dab…/fr-ds-e3c562b03258.json",
+   "used_for": "Receipt schema model."
+  }
+ ],
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "clean",
+ "findings": [
+  {
+   "id": "N1",
+   "severity": "nit",
+   "key": "ui.chat.audio.position_label",
+   "namespace": "ui.chat",
+   "current_text": "{label} کا مقام",
+   "english_source": "{label} position",
+   "problem": "Only the residual half of the manager's open question, recorded because it was asked: bare مقام is also this catalogue's word for \"location\" (7 values, e.g. ui.agents.skills.detail.location_label = \"مقام\", ui.canvas.create_file_dialog.location = \"مقام\", ui.chat.highlights.file_resolution_failed = \"...اس کا مقام...\"), and in general Urdu the word carries a third sense, standing/rank, which the audio sibling removes with its پلے بیک qualifier. In this string the risk does not materialise: {label} کا binds مقام to the clip, the element is role=\"slider\" with aria-valuetext time text (sound-player.tsx:501-510), and the sibling audio seek slider already ships the same word (ui.chat.attachments.playback_position = \"پلے بیک کا مقام\"). So the revision is unambiguous enough and gates nothing; the note exists so a later wave knows the qualifier was considered, not missed.",
+   "recommendation": "Keep \"{label} کا مقام\". Optional, only if a future wave wants the maximal explicit reading: \"{label} میں پلے بیک کا مقام\" (the prior ur-sol auditor's alternative) — rejected here because it imports پلے بیک, a word the English \"{label} position\" does not carry, while its sibling's English \"Playback position\" does.",
+   "evidence": [
+    "src/i18n/catalogues/ur/ui.chat.attachments.json: ui.chat.attachments.playback_position = \"پلے بیک کا مقام\" (English \"Playback position\"; aria-label of the range input at src/renderer/src/features/chat/components/message-item/audio-attachment.tsx:189)",
+    "src/renderer/src/features/chat/canonical/sound-player.tsx:455 sliderLabel = t(\"ui.chat.audio.position_label\", { label }), applied at :501-510 on <div role=\"slider\"> whose aria-valuetext is the time value",
+    "src/i18n/catalogues/ur/ui.agents.skills.json: ui.agents.skills.detail.location_label = \"مقام\" (English \"Location\") — the location sense of the same word",
+    "src/i18n/catalogues/ur/ui.agents.skills.json: ui.agents.skills.where.unknown = \"اس بیک اینڈ نے مقام نہیں بتایا۔\" (English \"Location not reported by this backend.\")",
+    "src/i18n/catalogues/ur/ui.canvas.json: ui.canvas.create_file_dialog.location = \"مقام\" (English \"Location\")",
+    "src/i18n/catalogues/ur/ui.chat.json: ui.chat.highlights.file_resolution_failed = \"... پہلے “فائل کا راستہ نقل کریں” سے اس کا مقام اس سیشن کی ورک اسپیس سے ملا کر دیکھیں۔\" (English \"...check its location against...\") — same namespace, location sense",
+    "~/local-operator/i18n/style-guides/ur.md § Formality & tone: \"Prefer the settled Urdu term where one exists: ترتیبات (settings), محفوظ کریں (save), استعمال (usage).\""
+   ],
+   "gates": false
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "namespaces": {
+  "ui.chat": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+   "target_sha256": "4be951ec20cc69544d66a59218bb26669df5d0034ed2c35e2305b979db07b256",
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.json",
+     "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+    },
+    "ur": {
+     "path": "src/i18n/catalogues/ur/ui.chat.json",
+     "sha256": "4be951ec20cc69544d66a59218bb26669df5d0034ed2c35e2305b979db07b256"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.context.json",
+     "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+    }
+   },
+   "fully_audited_keys": [
+    "ui.chat.audio.position_label"
+   ],
+   "consistency_only_key_count": 207,
+   "findings": [
+    {
+     "id": "N1",
+     "severity": "nit",
+     "key": "ui.chat.audio.position_label",
+     "namespace": "ui.chat",
+     "current_text": "{label} کا مقام",
+     "english_source": "{label} position",
+     "problem": "Only the residual half of the manager's open question, recorded because it was asked: bare مقام is also this catalogue's word for \"location\" (7 values, e.g. ui.agents.skills.detail.location_label = \"مقام\", ui.canvas.create_file_dialog.location = \"مقام\", ui.chat.highlights.file_resolution_failed = \"...اس کا مقام...\"), and in general Urdu the word carries a third sense, standing/rank, which the audio sibling removes with its پلے بیک qualifier. In this string the risk does not materialise: {label} کا binds مقام to the clip, the element is role=\"slider\" with aria-valuetext time text (sound-player.tsx:501-510), and the sibling audio seek slider already ships the same word (ui.chat.attachments.playback_position = \"پلے بیک کا مقام\"). So the revision is unambiguous enough and gates nothing; the note exists so a later wave knows the qualifier was considered, not missed.",
+     "recommendation": "Keep \"{label} کا مقام\". Optional, only if a future wave wants the maximal explicit reading: \"{label} میں پلے بیک کا مقام\" (the prior ur-sol auditor's alternative) — rejected here because it imports پلے بیک, a word the English \"{label} position\" does not carry, while its sibling's English \"Playback position\" does.",
+     "evidence": [
+      "src/i18n/catalogues/ur/ui.chat.attachments.json: ui.chat.attachments.playback_position = \"پلے بیک کا مقام\" (English \"Playback position\"; aria-label of the range input at src/renderer/src/features/chat/components/message-item/audio-attachment.tsx:189)",
+      "src/renderer/src/features/chat/canonical/sound-player.tsx:455 sliderLabel = t(\"ui.chat.audio.position_label\", { label }), applied at :501-510 on <div role=\"slider\"> whose aria-valuetext is the time value",
+      "src/i18n/catalogues/ur/ui.agents.skills.json: ui.agents.skills.detail.location_label = \"مقام\" (English \"Location\") — the location sense of the same word",
+      "src/i18n/catalogues/ur/ui.agents.skills.json: ui.agents.skills.where.unknown = \"اس بیک اینڈ نے مقام نہیں بتایا۔\" (English \"Location not reported by this backend.\")",
+      "src/i18n/catalogues/ur/ui.canvas.json: ui.canvas.create_file_dialog.location = \"مقام\" (English \"Location\")",
+      "src/i18n/catalogues/ur/ui.chat.json: ui.chat.highlights.file_resolution_failed = \"... پہلے “فائل کا راستہ نقل کریں” سے اس کا مقام اس سیشن کی ورک اسپیس سے ملا کر دیکھیں۔\" (English \"...check its location against...\") — same namespace, location sense",
+      "~/local-operator/i18n/style-guides/ur.md § Formality & tone: \"Prefer the settled Urdu term where one exists: ترتیبات (settings), محفوظ کریں (save), استعمال (usage).\""
+     ],
+     "gates": false
+    }
+   ]
+  }
+ },
+ "per_key_checks": [
+  {
+   "key": "ui.chat.audio.position_label",
+   "source": "{label} position",
+   "current_text": "{label} کا مقام",
+   "previous_text": "{label} کی پوزیشن",
+   "findings": [
+    "N1"
+   ],
+   "assessment": "Accuracy: preserved — the English names the playback position of one clip; {label} کا مقام says exactly that, with no addition, omission or polarity change, and nothing destructive or permission-bearing is affected (it is an aria-label on a seek slider, sound-player.tsx:455 applied to a role=\"slider\" at :501-510). Grammar: the revision fixes the agreement the previous value carried by construction rather than by error — پوزیشن is feminine so کی was right there, مقام is masculine so کا is right here; either way the genitive sits on the fixed noun and never on the inserted title, so an arbitrary user-supplied clip title (Latin, mixed script, spaces, punctuation, an already-genitive Urdu phrase) leaves the construction grammatical. The shape \"{placeholder} کا X\" ships 25 times in the ur catalogue (e.g. ui.common.actions.date_time_picker.choose_time = \"{label} کا وقت منتخب کریں\", ui.chat.tags.rename_label = \"{name} کا نام بدلیں\"), and {label}-initial order matches this key's own siblings ({label} چلائیں, {label} کو وقفہ دیں). Terminology: it now uses the catalogue's existing word for the same control concept, ui.chat.attachments.playback_position = \"پلے بیک کا مقام\", which is the whole point of the prior MINOR, and پوزیشن drops to 0 occurrences in the whole ur catalogue (was 1, this key). Register: terse neutral noun phrase, no address, no imperative; مقام is not an over-Persianised import here — it is the catalogue's settled word and appears in 11 values across 8 files. Punctuation/script: Urdu script only, no trailing punctuation, no invisible or bidi control characters, placeholder Latin-brace bytes intact. Fit: 15 characters, no maxCells declared for this key. The English sidecar's stated intent (\"Names playback position for this specific clip, not a play/pause action... retain the clip label... Translate only the surrounding word for position\") is met exactly: the source has no \"playback\" qualifier and the translation adds none.",
+   "placeholder_integrity": {
+    "arguments": [
+     [
+      "label",
+      "string"
+     ]
+    ],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  }
+ ],
+ "open_question_assessment": {
+  "question": "Is مقام, which also means 'location' elsewhere in the ur catalogue, unambiguous enough for a seek-slider name next to ui.chat.attachments.playback_position = \"پلے بیک کا مقام\"?",
+  "answer": "Yes, unambiguous enough; no change requested.",
+  "reasoning": [
+   "The word never stands alone: {label} کا binds مقام to the clip, and the element it names is role=\"slider\" with aria-valuetext carrying the time (sound-player.tsx:501-510), so a screen reader announces name + role + value together; the 'location' and 'standing/rank' readings have no purchase in that frame.",
+   "The catalogue already spends مقام on this exact control concept: ui.chat.attachments.playback_position = \"پلے بیک کا مقام\" labels the other audio seek slider (audio-attachment.tsx:189). Two audio sliders in one product now use one word, which is the AT-facing consistency the prior round asked for.",
+   "The two strings differ in the source too — \"Playback position\" carries پلے بیک in Urdu, \"{label} position\" does not — so the remaining asymmetry mirrors the English instead of contradicting it.",
+   "Measured correction to the prior round's evidence, offered so the ledger does not inherit a soft number: the earlier receipt argued from '64 occurrences in 24 ur files', but that is the substring count — of the 65 substring hits today, 52 are مقامی (local), 2 are مقامات (places) and 11 are the bare word (10 before this revision). The word is still settled for the position sense (playback_position plus 'مقام پر' in ui.projects and ui.shell), but on 4 position-sense values rather than 64 — the sibling audio label, not the raw count, is what carries this decision."
+  ],
+  "residual_risk": "A reader who meets the string with no musical context could parse 'X کا مقام' as X's place/standing; that is what N1 records. It does not gate."
+ },
+ "english_metadata_check": {
+  "key": "ui.chat.audio.position_label (context sidecar entry)",
+  "verdict": "accurate against the component it names",
+  "detail": "The sidecar says 'accessible name of an audio clip seek slider' and that it 'does not replace time/value text': src/renderer/src/features/chat/canonical/sound-player.tsx:455 builds sliderLabel = t(\"ui.chat.audio.position_label\", { label }) and applies it as aria-label on a <div role=\"slider\"> at :501-510 whose aria-valuenow/aria-valuetext stay separate (ariaValueText(0, duration)) — so the name is the slider's name and the time text is not replaced. The note 'Two clips may be present together, so retain the clip label' is consistent with the component receiving a per-clip `label` prop. The declared placeholder contract ('insert verbatim... Word order may change around {label}') is honoured by the value."
+ },
+ "mechanical": {
+  "validator_commands_run": [
+   "node scripts/i18n/generate.mjs --check -> \"/Users/damian/local-operator-ui/.worktrees/i18n-s8/src/i18n/keys.gen.ts is byte-identical to a fresh generation.\" exit 0",
+   "node scripts/i18n/check-duplicates.mjs -> \"check-duplicates: ok — 1400 file(s) scanned, 0 duplicate key(s)\" exit 0",
+   "node scripts/i18n/context-parity.mjs -> \"context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).\" exit 0",
+   "node scripts/i18n/ledger-check.mjs -> FAILED — 64 finding(s) across 1085 ledger entr(ies); the ur/ui.chat rows are the pending pre-audit state this delta creates: \"stale source_sha256 (ledger 270fc752791e…, file ee4e2a9eeb84…)\", \"stale target_sha256 (ledger ff3a28460b50…, file 4be951ec20cc…) — the translated file changed since it was audited\", \"auditor 1: the receipt does not name the English source bytes on disk\". No ledger write was run by this auditor (read-only task; ledger-assemble is the manager's write)."
+  ],
+  "delta_shape": "git diff e5fb4310dab638f9cf428779d62539ec039a8990..HEAD -- src/i18n/catalogues/ur/ names exactly one file (ur/ui.chat.json), numstat 1/1. A JSON-level comparison of the two revisions shows exactly one changed value (ui.chat.audio.position_label, \"{label} کی پوزیشن\" -> \"{label} کا مقام\") and the other 207 values byte-identical, including the prior round's certified ui.chat.image_actions.actions = \"تصویر کے اعمال\".",
+  "json_valid": true,
+  "key_sets_identical_to_english": true,
+  "placeholder_parity": true,
+  "placeholder_detail": "EN {label} and UR {label} extracted by regex; identical single plain argument, byte-exact name, no rename or reorder, no positional/rich/number argument; the value interpolates a user-provided clip title only.",
+  "icu_plural_select_needed": false,
+  "icu_detail": "Neither source nor target contains plural/select/selectordinal; no quantity is named, so no CLDR category (ur: one/other) applies to this key.",
+  "markup_and_tokens": "No <tag>, Rich markup, backtick code, command, flag, identifier, path or Latin acronym inside the value; nothing to keep byte-identical beyond the placeholder.",
+  "invisible_characters": "Codepoint dump U+007B U+006C U+0061 U+0062 U+0065 U+006C U+007D U+0020 U+06A9 U+0627 U+0020 U+0645 U+0642 U+0627 U+0645 — no Cf/Zs/combining mark, so no manual bidi control (correct per style guide § RTL & bidi: the render layer applies FSI/PDI via src/i18n/bidi.ts).",
+  "width": "15 characters, 3 words; this key declares no maxCells in the en sidecar, so no budget is exceeded by the fixed part (the invariant Urdu portion is 8 characters, ~8 cells at the style guide's one-cell-per-character measure). The variable part is the inserted clip title, which the component supplies and no cap constrains.",
+  "hash_binding": "3/3 recomputed sha256 values match ~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/expected-hashes.json: en/ui.chat ee4e2a9e…, ur/ui.chat 4be951ec…, en/ui.chat.context 84fd75c4…. Glossary byte-copy 0eb34437… equals ~/local-operator/i18n/glossary.md (same sha256). 0 mismatches."
+ },
+ "unverified": [
+  "No production ICU parser/formatter, Electron/React run, screen-reader session or rendered-frame check: read-only, no-build, no-server constraint. Grammar, register and ambiguity judgments are native-reader reasoning over the catalogue plus source reading, not runtime output.",
+  "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad. The manager retains these files under i18n/audits/evidence/ur/ui.chat/<audit-id>/ and records the ledger row with the audit-ledger command.",
+  "The other 207 values of ur/ui.chat.json were not recertified — consistency only (parse, key-set parity, byte-identical to the prior head).",
+  "The two audio slider components were read in source; neither was rendered, so no claim is made about the painted RTL layout of a Latin clip title inside this label beyond the bidi isolation the render layer applies (src/i18n/bidi.ts FSI/PDI), which the same shape already relied on before the revision."
+ ],
+ "receipt_contract_review": "Root, per-namespace, auditor, translator, mechanical and unverified field sets mirror the model receipt _s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/fr-ds-e3c562b03258.json, extended with prior_head_sha, prior_round_receipts_consulted and open_question_assessment for the manager's explicit question. The namespaces object carries exactly ONE block (ui.chat) with status, result, source_sha256, target_sha256, input_hashes and findings. Both JSON files were re-parsed with python3 json.load after writing.",
+ "audit_notes_not_execution_log": false,
+ "execution_log": "ur-ds-3795570cf1e1.audit.log"
+}

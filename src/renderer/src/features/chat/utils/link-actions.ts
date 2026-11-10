@@ -68,6 +68,7 @@
  * which is what lets the whole matrix be asserted without an Electron process.
  */
 
+import { t } from "@shared/i18n";
 import { type TargetEvidence, normalizeFileUrl } from "./link-grammar";
 import {
 	MAX_EAGER_READ_BYTES,
@@ -845,7 +846,7 @@ export function linkToolbarModel(input: {
 			],
 			note: null,
 			noteTitle: null,
-			label: `Actions for ${name}`,
+			label: t("ui.chat.canonical.link_toolkit.actions_for", { name }),
 		};
 	}
 
@@ -862,7 +863,7 @@ export function linkToolbarModel(input: {
 			actions: [...leading, action("copy", "Copy path"), ...trailing],
 			note: reason.note,
 			noteTitle: reason.title,
-			label: `Actions for ${name}`,
+			label: t("ui.chat.canonical.link_toolkit.actions_for", { name }),
 		};
 	}
 	/*
@@ -894,7 +895,7 @@ export function linkToolbarModel(input: {
 		],
 		note: overCeiling ? TOO_LARGE_NOTE : null,
 		noteTitle: overCeiling ? TOO_LARGE_TITLE : null,
-		label: `Actions for ${name}`,
+		label: t("ui.chat.canonical.link_toolkit.actions_for", { name }),
 	};
 }
 

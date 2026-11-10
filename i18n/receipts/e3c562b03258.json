@@ -1,0 +1,291 @@
+{
+  "locale": "fr",
+  "mode": "Fresh independent delta audit of 4 new keys in 3 namespaces against frozen head e5fb4310; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8. Allocation: fix (<2h), bounded audit only. Glossary conformance checked against the manager-owned byte-copy at _s12-audits/e5fb4310.../glossary.md (sha256 0eb34437a8c3d6f5…, identical to ~/local-operator/i18n/glossary.md). Fully audited keys: 4. The remaining 267 namespace keys were read only for JSON validity, key-set parity and term consistency; legacy values are not certified.",
+  "scope": "PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990 (origin/main..HEAD). Audited keys: ui.chat.composer_media.pasted_image, ui.common.actions.actions_for_name, ui.chat.image_actions.actions, ui.chat.audio.position_label; plus the broadened English scope sentence of the existing ui.chat.composer_media.pasted_file context sidecar. No full legacy namespace certification.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator model and session (fr 2ddc9a08181b) supplied by delegation; this auditor did not translate or take part in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "e3c562b03258",
+    "session": "e3c562b03258",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for session e3c562b03258 states deepseek/deepseek-flash; no model switch or fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy; verified identical to ~/local-operator/i18n/glossary.md by sha256. Glossary conformance was checked against this copy."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/expected-hashes.json"
+    }
+  },
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "verdict": "changes_requested",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "key": "ui.common.actions.actions_for_name",
+      "current_text": "Actions sur {name}",
+      "english_source": "Actions for {name}",
+      "problem": "The same English sentence already has one settled French rendering in this catalogue: \"Actions pour {name}\" (ui.chat.canonical.link_toolkit.actions_for, ui.library.menu.asset_actions_label, ui.settings.appearance.editor.more, ui.shell.sidebar_navigation.row_actions), plus \"Actions pour {displayName}\" and \"Actions pour \\\"{title}\\\"\". \"sur\" is this corpus's word for the article-bearing generic label (\"Actions sur le fichier\", \"Actions sur l’image\", \"Actions sur l’élément\"), never for a bare inserted name. \"Actions sur {name}\" also drops the determiner that makes \"sur\" idiomatic in French, so it reads clipped next to the four existing values; the glossary's one-term-one-decision invariant is what is broken here, not the meaning.",
+      "recommendation": "Actions pour {name} — matches the four existing renderings of this exact English sentence and keeps the determiner-free inserted name grammatical.",
+      "evidence": [
+        "src/i18n/catalogues/fr/ui.chat.canonical.json: ui.chat.canonical.link_toolkit.actions_for = \"Actions pour {name}\"",
+        "src/i18n/catalogues/fr/ui.library.json: ui.library.menu.asset_actions_label = \"Actions pour {name}\"",
+        "src/i18n/catalogues/fr/ui.settings.appearance.editor.json: ui.settings.appearance.editor.more = \"Actions pour {name}\"",
+        "src/i18n/catalogues/fr/ui.shell.json: ui.shell.sidebar_navigation.row_actions = \"Actions pour {name}\"",
+        "src/i18n/catalogues/fr/ui.projects.json: ui.projects.project_board.actions_for_displayname = \"Actions pour {displayName}\"",
+        "src/i18n/catalogues/fr/ui.browser.json: ui.browser.browser_tab_strip.actions_for = \"Actions pour \\\"{title}\\\"\"",
+        "src/i18n/catalogues/fr/ui.common.actions.json: ui.common.actions.file_actions_menu.file_actions = \"Actions sur le fichier\" (generic, article-bearing)",
+        "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md § intro: \"Translation invariant per term: the SAME rendered word in every locale unless a row says otherwise.\""
+      ],
+      "gates": true
+    },
+    {
+      "id": "N1",
+      "severity": "nit",
+      "key": "ui.chat.audio.position_label",
+      "current_text": "Position de {label}",
+      "english_source": "{label} position",
+      "problem": "Defensible and grammatical; the only cost is the unelided \"de\" before a vowel-initial clip title (\"Position de Audio 1\" where French would elide to \"d’Audio 1\") and a possessive reading of \"position\". The same non-elided pattern already ships in ui.common.actions.date_time_picker.choose_date (\"Choisir la date de {label}\"), so this is taste, not a defect.",
+      "recommendation": "Optional: \"Position dans {label}\" (no elision, unambiguous seek-within-clip reading) or keep as-is; does not gate.",
+      "evidence": [
+        "src/i18n/catalogues/fr/ui.common.actions.json: ui.common.actions.date_time_picker.choose_date = \"Choisir la date de {label}\"",
+        "src/i18n/catalogues/fr/ui.chat.json: ui.chat.audio.pause_label = \"Mettre {label} en pause\" (word order changes around {label})"
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 0,
+    "nit": 1
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.json",
+          "sha256": "b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.chat.image_actions.actions",
+        "ui.chat.audio.position_label"
+      ],
+      "findings": [
+        {
+          "id": "N1",
+          "severity": "nit",
+          "key": "ui.chat.audio.position_label",
+          "current_text": "Position de {label}",
+          "english_source": "{label} position",
+          "problem": "Defensible and grammatical; the only cost is the unelided \"de\" before a vowel-initial clip title (\"Position de Audio 1\" where French would elide to \"d’Audio 1\") and a possessive reading of \"position\". The same non-elided pattern already ships in ui.common.actions.date_time_picker.choose_date (\"Choisir la date de {label}\"), so this is taste, not a defect.",
+          "recommendation": "Optional: \"Position dans {label}\" (no elision, unambiguous seek-within-clip reading) or keep as-is; does not gate.",
+          "evidence": [
+            "src/i18n/catalogues/fr/ui.common.actions.json: ui.common.actions.date_time_picker.choose_date = \"Choisir la date de {label}\"",
+            "src/i18n/catalogues/fr/ui.chat.json: ui.chat.audio.pause_label = \"Mettre {label} en pause\" (word order changes around {label})"
+          ],
+          "gates": false
+        }
+      ]
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.composer_media.json",
+          "sha256": "4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.chat.composer_media.pasted_image"
+      ],
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "1f375db06df660163bdf5fa126e9ef0f94ff25ba64ed209be872ab04353f3e42",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.common.actions.json",
+          "sha256": "1f375db06df660163bdf5fa126e9ef0f94ff25ba64ed209be872ab04353f3e42"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.common.actions.actions_for_name"
+      ],
+      "findings": [
+        {
+          "id": "F1",
+          "severity": "major",
+          "key": "ui.common.actions.actions_for_name",
+          "current_text": "Actions sur {name}",
+          "english_source": "Actions for {name}",
+          "problem": "The same English sentence already has one settled French rendering in this catalogue: \"Actions pour {name}\" (ui.chat.canonical.link_toolkit.actions_for, ui.library.menu.asset_actions_label, ui.settings.appearance.editor.more, ui.shell.sidebar_navigation.row_actions), plus \"Actions pour {displayName}\" and \"Actions pour \\\"{title}\\\"\". \"sur\" is this corpus's word for the article-bearing generic label (\"Actions sur le fichier\", \"Actions sur l’image\", \"Actions sur l’élément\"), never for a bare inserted name. \"Actions sur {name}\" also drops the determiner that makes \"sur\" idiomatic in French, so it reads clipped next to the four existing values; the glossary's one-term-one-decision invariant is what is broken here, not the meaning.",
+          "recommendation": "Actions pour {name} — matches the four existing renderings of this exact English sentence and keeps the determiner-free inserted name grammatical.",
+          "evidence": [
+            "src/i18n/catalogues/fr/ui.chat.canonical.json: ui.chat.canonical.link_toolkit.actions_for = \"Actions pour {name}\"",
+            "src/i18n/catalogues/fr/ui.library.json: ui.library.menu.asset_actions_label = \"Actions pour {name}\"",
+            "src/i18n/catalogues/fr/ui.settings.appearance.editor.json: ui.settings.appearance.editor.more = \"Actions pour {name}\"",
+            "src/i18n/catalogues/fr/ui.shell.json: ui.shell.sidebar_navigation.row_actions = \"Actions pour {name}\"",
+            "src/i18n/catalogues/fr/ui.projects.json: ui.projects.project_board.actions_for_displayname = \"Actions pour {displayName}\"",
+            "src/i18n/catalogues/fr/ui.browser.json: ui.browser.browser_tab_strip.actions_for = \"Actions pour \\\"{title}\\\"\"",
+            "src/i18n/catalogues/fr/ui.common.actions.json: ui.common.actions.file_actions_menu.file_actions = \"Actions sur le fichier\" (generic, article-bearing)",
+            "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md § intro: \"Translation invariant per term: the SAME rendered word in every locale unless a row says otherwise.\""
+          ],
+          "gates": true
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "Image collée",
+      "findings": [],
+      "assessment": "Exact parallel of the shipped ui.chat.composer_media.pasted_file = \"Fichier collé\": feminine past participle agreeing with image, sentence case, no extension, no placeholder, 12 characters against the sibling's 13, no trailing punctuation. No maxCells on this key; the sibling's advisory 20 is met either way. Context note (synthetic name only, verbatim real names preserved) matches get-file-name.ts: both the missing-name and the throwing decodeURIComponent paths return this key.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "Actions sur {name}",
+      "findings": [
+        "F1"
+      ],
+      "assessment": "\"sur\" vs the corpus's \"pour\" for this construction is the finding. Placeholder itself is sound: {name} byte-exact once, plain, no ICU needed, no elision or agreement hazard with an arbitrary inserted name (spaces, quotes, CJK, Latin), and the phrase is a noun phrase rather than an imperative. Sentence case, no trailing punctuation, 18 characters.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "name",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "Actions sur l’image",
+      "findings": [],
+      "assessment": "Byte-identical to the existing ui.canvas.files.imageActions = \"Actions sur l’image\" for the same English sentence, and parallel to ui.common.actions.file_actions_menu.file_actions = \"Actions sur le fichier\"; keeps the elided article that makes \"sur\" idiomatic. U+2019 only, no invisible characters, 19 characters, no trailing punctuation. Generic-label role (tooltip plus unnamed-image accessible name) is served; the named case is ui.common.actions.actions_for_name.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "Position de {label}",
+      "findings": [
+        "N1"
+      ],
+      "assessment": "\"Position\" is the correct term for a seek slider (the corpus uses position for playback/board/pagination position), {label} is byte-exact and the word order change around it matches ui.chat.audio.play_label/pause_label. Names the clip's playback position rather than a play/pause action, as the context requires. No invisible characters, 19 characters, no trailing punctuation. N1 is the unelided \"de\" plus possessive reading, already precedented by date_time_picker.choose_date.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "label",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    }
+  ],
+  "english_metadata_check": {
+    "key": "ui.chat.composer_media.pasted_file (context note, broadened scope sentence)",
+    "verdict": "accurate against both named files",
+    "detail": "src/renderer/src/features/chat/utils/get-file-name.ts: a non-image \"data:\" URI with no name= parameter, or one whose decodeURIComponent throws, returns pasted_file regardless of MIME presence — so \"no usable name, including invalid percent encoding, whether or not a MIME type is present\" holds. src/renderer/src/features/chat/utils/attachment-encode.ts: getFileName() supplies the synthetic `name` for upload metadata while the original dataUrl is forwarded untouched — so \"also used as synthetic upload metadata; valid names and attachment bytes stay unchanged\" holds.",
+    "observation": "Not a finding, outside the two named files: src/renderer/src/features/chat/components/attachments-preview.tsx keeps its own getFileName that returns t(\"ui.chat.composer_media.pasted_type\", { mimeType }) for a non-image data URI with no name but with a MIME type, so on the composer chip strip a MIME-bearing unnamed non-image paste reads \"Collé : {mimeType}\" rather than pasted_file. The note is not wrong about the files it names; it just is not the only rendering of that input."
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation. exit 0",
+      "node scripts/i18n/check-duplicates.mjs -> ok — 1400 file(s) scanned, 0 duplicate key(s)",
+      "node scripts/i18n/context-parity.mjs -> ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only)",
+      "node scripts/i18n/ledger-check.mjs -> FAILED — 64 finding(s) across 1085 ledger entr(ies), of which 9 concern fr (stale source/target hashes for these three namespaces plus a receipt-linkage note). Expected pre-audit state for this PR's delta; no ledger write was run by this auditor."
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_vs_origin_main": "none removed; en+fr each add exactly the 4 audited keys across the three files (git diff origin/main HEAD, deletions are trailing-comma rewrites only)",
+    "placeholder_parity": true,
+    "icu_plural_select_needed": false,
+    "hash_binding": "21/21 sha256 entries match expected-hashes.json (9 recomputed here + the 12 other-locale entries left to their own auditors); 0 mismatches"
+  },
+  "unverified": [
+    "No production ICU parser/formatter, Electron/React run, screen-reader session or rendered-frame check: read-only, no-build, no-server constraint. Grammar and register judgments are native-reader reasoning over the catalogue, not runtime output.",
+    "No ledger write, tracked evidence retention, PR comment or commit: task writes only to this session's scratchpad. The manager retains these deliverables under i18n/audits/evidence/fr/<namespace>/<audit-id>/.",
+    "Legacy values in the three namespaces were not certified: only JSON validity, key-set parity and cross-file term consistency were checked for the 267 non-delta keys.",
+    "The English pasted_file context observation about attachments-preview.tsx was read from source only; the composer strip was not rendered."
+  ],
+  "receipt_contract_review": "Root, per-namespace, auditor and translator field sets mirror the model receipt _s10-audits/fd09d8f/fr-sol-e23a48ff2216.json; each of the three namespace blocks carries status, result, source_sha256, target_sha256, input_hashes and findings. Every JSON file was re-parsed with python3 json.load after writing. Field-level schema validation was not run (no repo validator writes permitted).",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "fr-ds-e3c562b03258.audit.log"
+}

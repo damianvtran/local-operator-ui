@@ -154,7 +154,7 @@ export function radientOutOfCreditsWording(row: {
 	if (!radientOutOfCredits(row)) return null;
 	const relayed = /rate limit or quota( exceeded)?\s*/i;
 	if (!relayed.test(row.headline))
-		return { label: "billing", headline: row.headline };
+		return { label: "billing", headline: row.headline }; // i18n: ignore backend failure-class token shown in the ledger verb slot, like the relayed record.category it stands in for; the wire category vocabulary is not localized
 	/*
 	 * The relayed shape is `<label> (HTTP 402): <body>` (`ProviderError.render`
 	 * in the runtime's `providers/failover.py`). The status and the body are the
@@ -165,7 +165,7 @@ export function radientOutOfCreditsWording(row: {
 	const body = (parts ? parts[2] : rest.replace(/^:\s*/, "")).trim();
 	const status = parts ? ` (${parts[1]})` : "";
 	return {
-		label: "billing",
+		label: "billing", // i18n: ignore backend failure-class token shown in the ledger verb slot, like the relayed record.category it stands in for; the wire category vocabulary is not localized
 		headline: body
 			? t("ui.chat.provider_error.headline.out_of_credits", { status, body })
 			: t("ui.chat.provider_error.headline.out_of_credits_refused", { status }),

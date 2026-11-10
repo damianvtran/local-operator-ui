@@ -51,5 +51,6 @@
 	"ui.common.actions.configuration_updated": "Configuración actualizada",
 	"ui.common.actions.system_prompt_updated": "Prompt del sistema actualizado",
 	"ui.common.actions.credential_updated": "Credencial “{key}” actualizada",
-	"ui.common.actions.clear": "Borrar"
+	"ui.common.actions.clear": "Borrar",
+	"ui.common.actions.actions_for_name": "Acciones de {name}"
 }

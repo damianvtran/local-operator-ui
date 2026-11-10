@@ -134,6 +134,19 @@ body {
 	color: var(--lo-ink);
 }
 
+/* The browser's own pages: lucide's 16px list-row slot and default stroke of 2
+ * (docs/branding.md "Icons"), muted like the in-flow list's `text-ink-muted`. */
+.lo-row-icon {
+	flex: 0 0 16px;
+	width: 16px;
+	height: 16px;
+	fill: none;
+	stroke: var(--lo-ink-muted);
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
 /*
  * A row that embeds the typed value (Open / Search): the sentence is UI type and
  * only the value, which the child wraps in <bdi>, is the machine face. Same split
