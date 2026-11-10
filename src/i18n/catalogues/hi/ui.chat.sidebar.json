@@ -78,5 +78,11 @@
 	"ui.chat.sidebar.catalogue.show_more_agents": "{count, plural, one {{count, number, ::group-off} और एजेंट दिखाएँ} other {{count, number, ::group-off} और एजेंट दिखाएँ}}",
 	"ui.chat.sidebar.catalogue.show_more_teams": "{count, plural, one {{count, number, ::group-off} और टीम दिखाएँ} other {{count, number, ::group-off} और टीमें दिखाएँ}}",
 	"ui.chat.sidebar.drafts.row_label": "ड्राफ़्ट: {title}",
-	"ui.chat.sidebar.drafts.discard_label": "ड्राफ़्ट “{title}” मिटाएँ"
+	"ui.chat.sidebar.drafts.discard_label": "ड्राफ़्ट “{title}” मिटाएँ",
+	"ui.chat.sidebar.mark_all_read.label": "सभी {count, number, ::group-off} को पढ़ा गया चिह्नित करें",
+	"ui.chat.sidebar.mark_all_read.scope_chats": "{count, plural, one {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें।} other {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें।}}",
+	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": "{count, plural, one {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें} other {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें}}, जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है} other {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल हैं}}।",
+	"ui.chat.sidebar.mark_all_read.scope_tokenless": "{count, plural, one {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किया जा सकता।} other {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किए जा सकते।}}",
+	"ui.chat.sidebar.mark_all_read.scope_joined": "{chats} {tokenless}",
+	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": ", जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है} other {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल हैं}}"
 }

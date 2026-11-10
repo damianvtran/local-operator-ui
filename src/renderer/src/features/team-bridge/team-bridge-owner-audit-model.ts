@@ -14,13 +14,28 @@ import {
 } from "./team-bridge-model";
 
 /** Missing verdict is normal only on the audited agent's own messages. Treat
- * future/missing verdicts conservatively without inventing an admission. */
+ * future/missing verdicts conservatively without inventing an admission.
+ *
+ * A HOLD IS NOT "NOT SCREENED". A message the agent's screener HELD (a model
+ * hold waiting for the owner, or screening that could not run) used to reach the
+ * audit as `not_screened`, and the owner read "Not screened by your chief of
+ * staff" over a message their screener had in fact held for them (operator
+ * report 2026-11-09, Renee's DM seq 4). The hub now reports such a row as
+ * `agent_delivery_status: "held"` with the real `hold_class` (cross-PR contract,
+ * agent-server #352; review R2). An older hub has no `held` status, so the
+ * audited agent's own `delivery_states` entry still refines `not_screened` or a
+ * missing status where a hub sends it. The terminal verdicts (admitted,
+ * rejected) always win: the server is the authority on a decision it recorded. */
 export function ownerAuditDelivery(
 	message: OwnerAuditMessage,
 	agentAccountId: string,
 ) {
 	if (message.agent_delivery_status === "admitted") return "admitted";
 	if (message.agent_delivery_status === "rejected") return "rejected";
+	if (message.agent_delivery_status === "held")
+		return holdBadge(message.hold_class);
+	const hold = ownerAuditHold(message);
+	if (hold) return hold;
 	if (message.agent_delivery_status === "not_screened") return "not_screened";
 	if (
 		!message.agent_delivery_status &&
@@ -29,6 +44,42 @@ export function ownerAuditDelivery(
 	)
 		return "own";
 	return "unknown";
+}
+
+/*
+ * One badge per hold class. An unknown or absent class reads as screening
+ * still in progress, the hub's meaning of a bare hold: it claims the least.
+ */
+function holdBadge(holdClass: unknown) {
+	switch (holdClass) {
+		case "awaiting_review":
+			return "held_review" as const;
+		case "screening_unavailable":
+			return "screening_retry" as const;
+		case "delivery_pending":
+			return "delivery_pending" as const;
+		default:
+			return "screening" as const;
+	}
+}
+
+/*
+ * The audited agent's hold from its delivery-state entry, for a hub that sends
+ * one on the audit row. Only `held` entries count: a `refused` entry without a
+ * recorded `rejected` status is left to the server's status rather than
+ * promoted here. Called only after the terminal and `held` statuses returned,
+ * so any status left is `not_screened`, missing, or a future value we do not
+ * refine.
+ */
+function ownerAuditHold(message: OwnerAuditMessage) {
+	if (
+		message.agent_delivery_status &&
+		message.agent_delivery_status !== "not_screened"
+	)
+		return null;
+	const entry = message.delivery_states?.find((item) => item.state === "held");
+	if (!entry) return null;
+	return holdBadge(entry.hold_class);
 }
 
 export function ownerAuditTitle(

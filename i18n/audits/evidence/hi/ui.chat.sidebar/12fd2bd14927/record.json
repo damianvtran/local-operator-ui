@@ -1,0 +1,286 @@
+{
+  "schema": 1,
+  "instance": "12fd2bd14927",
+  "locale": "hi",
+  "namespace": "ui.chat.sidebar",
+  "pr": "damianvtran/local-operator-ui#1836",
+  "head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "mode": "fresh independent pass over the five added mark-all-read keys; whole-file read for consistency",
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "12fd2bd14927",
+    "session": "12fd2bd14927",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served runtime model header of this session: 'Model: deepseek/deepseek-flash'. No fallback occurred in this run; no provider retry or fallback notice appeared.",
+    "fallback_used": false,
+    "translator_agent": "i18n-translator",
+    "translator_model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "independence": "Fresh session 12fd2bd14927, role i18n-auditor, team lopdev. Did not translate, edit or check out anything; the shared worktree ~/local-operator-ui/.worktrees/i18n-s8 was read only. The translator's notes file (~/local-operator-ui/.worktrees/_s10-translations/hi.json) was read only after the first pass, to see which choices the translator flagged as uncertain; no verdict was inherited from it and the shipped catalogue was judged, not the notes. Served model differs from the translator's, so this is an independent audit."
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings",
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean-with-findings",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "HI-S10-F1",
+      "HI-S10-F2",
+      "HI-S10-F3"
+    ]
+  },
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "findings": [
+    {
+      "id": "HI-S10-F1",
+      "severity": "MINOR",
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "current_text": "{count, plural, one {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किया जा सकता।} other {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किए जा सकते।}}",
+      "quote": "अपठित चिह्न साफ़ नहीं किए जा सकते",
+      "problem": "Terminology drift inside one feature. The noun for the unread mark object is 'निशान' everywhere the read/unread state is already shipped in this locale: ui.chat.read_ack.refusal.refused '…इसलिए अपठित निशान साफ़ नहीं हुआ।' (8 keys), and ui.notices.chat.unread_not_cleared '{reason} अपठित के निशान साफ़ नहीं हुए।'. The new tooltip names the same object 'चिह्न' while describing the same event (a mark not cleared), so the tooltip and the toast/row copy that fire from the same bulk action use two words. 'चिह्न' is a correct word for a mark, so meaning is not broken; the cost is that a reader cannot tell whether 'चिह्न' and 'निशान' are the same thing. 'चिह्नित करें' (the verb) is unaffected and correct in the label these keys follow.",
+      "suggested": "… {count, number, ::group-off} अपठित निशान साफ़ नहीं किए जा सकते। / … {count, number, ::group-off} अपठित निशान साफ़ नहीं किया जा सकता। (align to the read-ack family; if the wave prefers 'चिह्न', that is a separate change to the 9 read_ack/ui.notices keys, not this one)"
+    },
+    {
+      "id": "HI-S10-F2",
+      "severity": "MINOR",
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere + ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "current_text": ", जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है} other {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल हैं}}",
+      "quote": "गैर-सक्रिय चैट",
+      "problem": "These are the only two occurrences of 'गैर-सक्रिय' in all 30+ shipped hi catalogues; the locale already renders the inactive/not-active sense as 'निष्क्रिय' in 10 keys, e.g. ui.settings.shortcuts.recording.inactive_claimed 'रिकॉर्डिंग निष्क्रिय है: {label} इस शॉर्टकट का उपयोग कर रहा है।' and ui.common.updates.completion.sessions '…अगली बार रुकने या निष्क्रिय होने पर…'. 'गैर-सक्रिय' is not wrong Hindi and it does pair with 'सक्रिय' (used for active in ui.chat.pickers.info_model.active, ui.projects.project_model.active), so the backend class reads clearly; the defect is two words for one catalogue state. Please do not read this as a meaning error — the subset sense ('जिनमें … शामिल हैं', not 'additionally') is correct.",
+      "suggested": "… {elsewhere, number, ::group-off} निष्क्रिय चैट शामिल है / … निष्क्रिय चैट शामिल हैं (both keys), or record the गैर-सक्रिय split deliberately in the hi guide rather than leaving it silent"
+    },
+    {
+      "id": "HI-S10-F3",
+      "severity": "NIT",
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere + ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "current_text": "{count, plural, one {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें} …}, जिनमें …",
+      "quote": "जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है}",
+      "problem": "'जिनमें' is the oblique PLURAL relative. In the one-count branch (count = 1, and therefore elsewhere = 1) its antecedent is a single chat, so the sentence renders 'सभी 1 को पढ़ा गया चिह्नित करें, जिनमें 1 गैर-सक्रिय चैट शामिल है' — plural relative for one item; 'जिसमें' is the agreeing form. Reachable only when exactly one unread chat exists and it is not active, and 'चैट' is invariant in the plural, so the slip is mild.",
+      "suggested": "Leave as-is (simpler, and the plural relative reads acceptably for a collection), or make the relative follow the count branch: one { …, जिसमें … } other { …, जिनमें … }"
+    }
+  ],
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+      "sha256": "4c6c4b0f5667968ef4814025ec72b1ca0f6a0a58678288ef9c36601af469993f"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "namespace": "ui.chat.sidebar",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "4c6c4b0f5667968ef4814025ec72b1ca0f6a0a58678288ef9c36601af469993f",
+      "en_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "hi_sha256": "4c6c4b0f5667968ef4814025ec72b1ca0f6a0a58678288ef9c36601af469993f",
+      "context_sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3",
+      "key_count": 86,
+      "findings": [
+        {
+          "id": "HI-S10-F1",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+          "current_text": "{count, plural, one {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किया जा सकता।} other {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किए जा सकते।}}",
+          "quote": "अपठित चिह्न साफ़ नहीं किए जा सकते",
+          "problem": "Terminology drift inside one feature. The noun for the unread mark object is 'निशान' everywhere the read/unread state is already shipped in this locale: ui.chat.read_ack.refusal.refused '…इसलिए अपठित निशान साफ़ नहीं हुआ।' (8 keys), and ui.notices.chat.unread_not_cleared '{reason} अपठित के निशान साफ़ नहीं हुए।'. The new tooltip names the same object 'चिह्न' while describing the same event (a mark not cleared), so the tooltip and the toast/row copy that fire from the same bulk action use two words. 'चिह्न' is a correct word for a mark, so meaning is not broken; the cost is that a reader cannot tell whether 'चिह्न' and 'निशान' are the same thing. 'चिह्नित करें' (the verb) is unaffected and correct in the label these keys follow.",
+          "suggested": "… {count, number, ::group-off} अपठित निशान साफ़ नहीं किए जा सकते। / … {count, number, ::group-off} अपठित निशान साफ़ नहीं किया जा सकता। (align to the read-ack family; if the wave prefers 'चिह्न', that is a separate change to the 9 read_ack/ui.notices keys, not this one)"
+        },
+        {
+          "id": "HI-S10-F2",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere + ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+          "current_text": ", जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है} other {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल हैं}}",
+          "quote": "गैर-सक्रिय चैट",
+          "problem": "These are the only two occurrences of 'गैर-सक्रिय' in all 30+ shipped hi catalogues; the locale already renders the inactive/not-active sense as 'निष्क्रिय' in 10 keys, e.g. ui.settings.shortcuts.recording.inactive_claimed 'रिकॉर्डिंग निष्क्रिय है: {label} इस शॉर्टकट का उपयोग कर रहा है।' and ui.common.updates.completion.sessions '…अगली बार रुकने या निष्क्रिय होने पर…'. 'गैर-सक्रिय' is not wrong Hindi and it does pair with 'सक्रिय' (used for active in ui.chat.pickers.info_model.active, ui.projects.project_model.active), so the backend class reads clearly; the defect is two words for one catalogue state. Please do not read this as a meaning error — the subset sense ('जिनमें … शामिल हैं', not 'additionally') is correct.",
+          "suggested": "… {elsewhere, number, ::group-off} निष्क्रिय चैट शामिल है / … निष्क्रिय चैट शामिल हैं (both keys), or record the गैर-सक्रिय split deliberately in the hi guide rather than leaving it silent"
+        },
+        {
+          "id": "HI-S10-F3",
+          "severity": "NIT",
+          "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere + ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+          "current_text": "{count, plural, one {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें} …}, जिनमें …",
+          "quote": "जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है}",
+          "problem": "'जिनमें' is the oblique PLURAL relative. In the one-count branch (count = 1, and therefore elsewhere = 1) its antecedent is a single chat, so the sentence renders 'सभी 1 को पढ़ा गया चिह्नित करें, जिनमें 1 गैर-सक्रिय चैट शामिल है' — plural relative for one item; 'जिसमें' is the agreeing form. Reachable only when exactly one unread chat exists and it is not active, and 'चैट' is invariant in the plural, so the slip is mild.",
+          "suggested": "Leave as-is (simpler, and the plural relative reads acceptably for a collection), or make the relative follow the count branch: one { …, जिसमें … } other { …, जिनमें … }"
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      },
+      "scope": "The five added keys (scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere) fully audited; all 81 other keys in hi/ui.chat.sidebar.json read in full for terminology and register consistency with the new copy."
+    }
+  },
+  "artifacts": [
+    {
+      "path": ".local-operator/sessions/12fd2bd14927/scratchpad/aud-hi-ds/receipt.json",
+      "role": "this audit receipt (scratchpad; not yet a tracked i18n/receipts/ copy)",
+      "sha256": "self - computed when the receipt is copied into the repo"
+    }
+  ],
+  "retention": {
+    "audit_id": "hi-mar-s10-12fd2bd14927",
+    "tracked_record": "i18n/audits/evidence/hi/ui.chat.sidebar/hi-mar-s10-12fd2bd14927/record.json",
+    "tracked_receipt": "i18n/receipts/12fd2bd14927.json",
+    "ledger_note": "hi/ui.chat.sidebar: 5 new mark-all-read keys @28a6127617e; clean-with-findings 0B/0M/2MIN/1NIT (HI-S10-F1 निशान, F2 निष्क्रिय, F3 relative). Record: i18n/audits/evidence/hi/ui.chat.sidebar/hi-mar-s10-12fd2bd14927/record.json",
+    "ledger_note_length": 224,
+    "authority": "manager writes the i18n/ledger.json row; this auditor's worktree is read-only and wrote only this receipt."
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+      "current_text": "{count, plural, one {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें।} other {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें।}}",
+      "back_translation": "Mark the N unread chat(s) as read.",
+      "placeholder_integrity": "one argument (count) with {count, number, ::group-off} in both branches, identical to source; plural categories one+other = the complete hi set",
+      "finding_ids": [],
+      "assessment": "Faithful. 'अपठित' = unread, matches row.unread_suffix ', अपठित'; 'चैट' matches nav.chats/catalogue.total and is invariant in the plural, so the two branches being byte-identical is correct Hindi rather than a dropped inflection, and the ICU structure is kept. Imperative '…चिह्नित करें' is the polite imperative the label and read_ack already use, no 'कृपया', no '!'. Danda placement matches the English full stop inside each branch.",
+      "source_text": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+      "target_text": "{count, plural, one {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें।} other {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें।}}",
+      "verdict": "pass"
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+      "current_text": "{count, plural, one {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें} other {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें}}, जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है} other {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल हैं}}।",
+      "back_translation": "Mark the N unread chat(s) as read, of which M non-active chat(s) are included.",
+      "placeholder_integrity": "both arguments (count, elsewhere) present, same order, {…, number, ::group-off} skeletons intact in all four arms; one+other complete for hi; one/other verb agreement on 'शामिल है' / 'शामिल हैं' is correct for each category",
+      "finding_ids": [
+        "HI-S10-F2",
+        "HI-S10-F3"
+      ],
+      "assessment": "Meaning preserved: 'जिनमें … शामिल हैं' carries the subset sense the context note insists on (elsewhere is part of count, never an addition), and the single full stop after the second plural is the one punctuation mark the note asks for. The sentence stays one clause after the comma like the English. Remaining issues are the two recorded above (गैर-सक्रिय vs निष्क्रिय; plural 'जिनमें' in the count=1 arm).",
+      "source_text": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+      "target_text": "{count, plural, one {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें} other {{count, number, ::group-off} अपठित चैट को पढ़ा गया चिह्नित करें}}, जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है} other {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल हैं}}।",
+      "verdict": "pass-with-findings (HI-S10-F2, HI-S10-F3)"
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "source": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+      "current_text": "{count, plural, one {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किया जा सकता।} other {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किए जा सकते।}}",
+      "back_translation": "Because there is no completion receipt, N unread mark(s) cannot be cleared.",
+      "placeholder_integrity": "one argument, skeleton intact in both branches; one+other complete; masculine agreement correct in both ('किया जा सकता' sg / 'किए जा सकते' pl for चिह्न/निशान, a masculine noun)",
+      "finding_ids": [
+        "HI-S10-F1"
+      ],
+      "assessment": "Meaning preserved and the honesty the source carries survives: the sentence still says these marks CANNOT be cleared, it does not promise a partial success. Hindi fronting the reason clause ('…न होने के कारण') is natural word order and keeps the count where it was. The completion-token rendering is judged acceptable, not a finding: the context note says to translate the term descriptively and never as a security token, and 'रसीद' is the catalogue's own word for a receipt (ui.chat.canonical.fold.receipt.wake '{count, number, ::group-off} जागृति रसीद'), whereas 'टोकन' in this locale is the LLM/API token (ui.agents.settings.chat.max_tokens 'अधिकतम टोकन', ui.chat.pickers.session_panel.tokens 'टोकन') and would send this sentence in the wrong direction. See observation HI-S10-O2.",
+      "source_text": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+      "target_text": "{count, plural, one {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किया जा सकता।} other {पूर्णता रसीद न होने के कारण {count, number, ::group-off} अपठित चिह्न साफ़ नहीं किए जा सकते।}}",
+      "verdict": "pass-with-findings (HI-S10-F1)"
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+      "source": "{chats} {tokenless}",
+      "current_text": "{chats} {tokenless}",
+      "back_translation": "(joiner)",
+      "placeholder_integrity": "both placeholders present, same order, nothing added; no ICU structure to preserve",
+      "finding_ids": [],
+      "assessment": "Correct for Devanagari: Hindi separates sentences with a plain space, so a single U+0020 between two danda-terminated sentences is the language's own separator (the reason this key exists for scripts that need none). Verified by composition: scope_chats* always ends in '।' and scope_tokenless ends in '।', so the joined tooltip reads '…चिह्नित करें। पूर्णता रसीद …' with no run-on and no doubled or missing terminator.",
+      "source_text": "{chats} {tokenless}",
+      "target_text": "{chats} {tokenless}",
+      "verdict": "pass"
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "source": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+      "current_text": ", जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है} other {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल हैं}}",
+      "back_translation": ", of which M non-active chat(s) are included",
+      "placeholder_integrity": "elsewhere argument and skeleton intact in both arms; one+other complete; no trailing punctuation, matching the note",
+      "finding_ids": [
+        "HI-S10-F2",
+        "HI-S10-F3"
+      ],
+      "assessment": "Accessible-name tail is well formed: it opens with the ASCII comma + space the sibling suffix keys use (row.unread_suffix ', अपठित', row.archived_suffix ', संग्रहित'), the hi guide's comma rule is half-width ',', and the code appends it with no separator, so the composed name is 'सभी 5 को पढ़ा गया चिह्नित करें, जिनमें 2 गैर-सक्रिय चैट शामिल हैं' — the visible label stays an unbroken prefix (WCAG 2.5.3), no double space, no trailing punctuation. Reads naturally as one continuing clause in Hindi, unlike a literal '…सहित' calque.",
+      "source_text": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+      "target_text": ", जिनमें {elsewhere, plural, one {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल है} other {{elsewhere, number, ::group-off} गैर-सक्रिय चैट शामिल हैं}}",
+      "verdict": "pass-with-findings (HI-S10-F2, HI-S10-F3)"
+    }
+  ],
+  "observations": [
+    {
+      "id": "HI-S10-O1",
+      "kind": "info",
+      "key": "ui.chat.sidebar.mark_all_read.label (pre-existing, out of scope)",
+      "note": "'सभी {count, number, ::group-off} को पढ़ा गया चिह्नित करें' is shipped at base and is the label the new keys correctly follow (WCAG prefix, same action verb). Its 'पढ़ा गया चिह्नित करें' and read_ack's use of the same phrase are the established status-word idiom (compare Gmail-style 'पढ़ा गया के रूप में चिह्नित करें'); ui.notices.chat.mark_all_read_cleared instead says '{count} चैट को पढ़ा हुआ चिह्नित किया।' with a masculine participle for feminine 'चैट'. That notices drift is pre-existing, in another namespace, and does not gate this audit."
+    },
+    {
+      "id": "HI-S10-O2",
+      "kind": "info",
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "note": "Judged and accepted, not skipped: 'पूर्णता रसीद' for 'completion token'. It follows the sidecar note ('technical term for the receipt that lets a mark be cleared … translate descriptively, never as a security token'), uses the locale's shipped word for receipt, and follows a real Hindi compound pattern (पूर्णता प्रमाणपत्र). 'पूर्णता टोकन' was considered and rejected here because 'टोकन' is this locale's LLM/API token. Understandable in a tooltip whose subject is the unread marks that stay uncleared."
+    },
+    {
+      "id": "HI-S10-O3",
+      "kind": "info",
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats (both branches)",
+      "note": "The two plural branches are byte-identical. Checked as a possible dropped inflection and it is not one: 'चैट' is invariant in the direct plural in this catalogue (nav.chats 'चैट', catalogue.total 'कुल {total} चैट में से {shown} दिखाई जा रही हैं'), and the clause carries no counted noun agreement of its own. Keeping both arms is correct ICU."
+    },
+    {
+      "id": "HI-S10-O4",
+      "kind": "info",
+      "key": "typography / fit",
+      "note": "No typography finding: danda U+0964 for sentence ends, half-width comma, no '!' , no 'कृपया', nukta kept (साफ़, फ़िल्टर-style), Latin digits left to the formatter, no NBSP/ZWJ/ZWNJ and no double spaces in any of the five values (checked codepoint by codepoint). No maxCells/maxChars hint exists for these keys and the string is a native title that wraps, so no overflow finding; the sr-only tail is not rendered. Nothing to measure as a wide-glyph risk here."
+    }
+  ],
+  "executed_checks": [
+    "shasum -a 256 on en/ui.chat.sidebar.json, en/ui.chat.sidebar.context.json and hi/ui.chat.sidebar.json at head 28a6127617e (values bound above; hi matches the expected 4c6c4b0f5667968e…)",
+    "python3 JSON load of en, context and hi catalogues: all parse; 86/86/86 keys; no key added or dropped between en and hi",
+    "python3 placeholder/skeleton extraction on the five keys: argument names identical to source (count, count+elsewhere, count, chats+tokenless, elsewhere), every '{arg, number, ::group-off}' skeleton present the same number of times as English, plural categories exactly one+other per key (the complete hi set), plural nesting valid",
+    "python3 agreement review per CLDR category on the five keys (one and other arms read separately)",
+    "python3 codepoint scan of the five values for NBSP/ZWJ/ZWNJ/bidi marks/double spaces: none found",
+    "read src/renderer/src/features/chat/mark-all-read.ts (markAllReadCopy) and chat-sidebar.tsx:2362 to confirm scope_joined joins the two sentences and the suffix is appended to the label with no separator in code",
+    "read scripts/i18n/ledger-rules.mjs and ledger-assemble.mjs to derive the receipt contract, and validated this receipt against deriveReceiptAudit's logic by hand (see receipt_contract_check)",
+    "read docs/I18N.md 'Retain checkable audit records', ~/local-operator/i18n/glossary.md and ~/local-operator/i18n/style-guides/hi.md (hashes above)"
+  ],
+  "receipt_contract_check": "Field set modelled on the committed i18n/receipts/2bbf16af14ee.json plus the s9 second-pass hi/fr receipts. deriveReceiptAudit() reads: a namespaces block for ui.chat.sidebar (present), block.status (passed), instance (12fd2bd14927 - 12 lowercase hex, not in the placeholder denylist, unused across i18n/receipts and i18n/audits/evidence), auditor agent (i18n-auditor, matches the agent regex), model (deepseek/deepseek-flash, one value everywhere it appears so 'model' stays unambiguous), source/target hashes via source_sha256/en_sha256 and target_sha256/hi_sha256 (same values in both spellings so the ambiguity check passes), scoped findings from the namespace block, counts {blocker:0, major:0, minor:2, nit:1} -> resultSupportedBy(passed, counts) = clean-with-findings, which is this receipt's status/result. No duplicate JSON members (checked with an object_pairs_hook). Not executed with node: this rig forbids node processes.",
+  "not_run": "The repository's own i18n validators (scripts/i18n/check-strings.mjs, generate.mjs --check, ledger-check.mjs) were NOT executed: this audit is constrained to a read-only shared worktree with no builds, no installs and no node processes. Mechanical verification was done independently in Python and by reading the checker source. No browser, no build, no rendered frame, no screen-reader run.",
+  "unverified": [
+    "No rendered frame, no live accessibility-tree / screen-reader capture: this pass is source-and-reasoning only, per the read-only constraint. Whether the tooltip's native title wraps acceptably at real sidebar widths is not measured here.",
+    "Whether a screen reader pronounces 'गैर-सक्रिय' and the '।' pause as intended is not verified live.",
+    "The 'Active chats' section heading is not keyed in any hi catalogue I could find, so the pairing between 'गैर-सक्रिय' / 'निष्क्रिय' and the heading the user actually sees on screen is inferred from the English heading in the component and the comment in mark-all-read.ts, not from a rendered Hindi sidebar.",
+    "Repo validators and the ledger assembler were not run (see not_run); the ledger row itself is the manager's write."
+  ],
+  "pre_existing_out_of_scope": [
+    {
+      "key": "ui.notices.chat.mark_all_read_cleared",
+      "note": "'पढ़ा हुआ चिह्नित किया' with feminine 'चैट' — participle agreement differs from the label/read_ack idiom; pre-existing at base, other namespace, does not gate."
+    },
+    {
+      "key": "ui.chat.read_ack.* (8 keys) + ui.notices.chat.unread_not_cleared",
+      "note": "uses 'अपठित निशान' for the unread mark; if HI-S10-F1 is fixed by aligning the new tooltip to 'निशान' this becomes consistent, no edit needed there."
+    }
+  ],
+  "scope_note": "Fully audited the five added keys (mark_all_read.scope_chats, .scope_chats_elsewhere, .scope_tokenless, .scope_joined, .name_suffix_elsewhere) against the English values and their .context.json notes, and read all 81 remaining keys of hi/ui.chat.sidebar.json for terminology, register and punctuation consistency with the new copy.",
+  "audit_notes_not_execution_log": true
+}

@@ -11,6 +11,11 @@ import {
 	type AddressHistoryRequest,
 } from "../../shared/browser-address-history";
 import {
+	type ExtensionsRequest,
+	type ExtensionsResponse,
+	decodeExtensionsRequest,
+} from "../../shared/browser-extensions";
+import {
 	type TabActionsMenuSelection,
 	tabActionsMenuRequestOrThrow,
 	tabActionsMenuSelectionOrNull,
@@ -145,6 +150,9 @@ export interface RegisterBrowserIpcOptions {
 	 * Optional because only a launch mode that may focus a window supplies it; the
 	 * helper behind it refuses an unfocused or hidden window and never raises one. */
 	focusPage?: () => void;
+	/** The extension manager (extensions/manager.ts). Desktop renderer only;
+	 * there is deliberately no agent RPC op for any of it (design §4.4). */
+	extensions?: (request: ExtensionsRequest) => Promise<ExtensionsResponse>;
 	log: (message: string) => void;
 }
 
@@ -197,6 +205,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-reveal-downloads",
 	"browser-passkey-notice-dismiss",
 	"browser-passkey-notice-open",
+	"browser-extensions",
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
 	"browser-retry",
@@ -592,6 +601,18 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return options.webauthn()?.pendingRequests() ?? [];
 	});
 
+	/*
+	 * Extension management. Sender-checked like every channel here, then a
+	 * strict decode (closed op set, exact fields, id regex) before main reads
+	 * any value. Install is NOT an op: it originates only from the Chrome Web
+	 * Store page's own button plus a native dialog (extensions/webstore.ts).
+	 */
+	ipcMain.handle("browser-extensions", async (event, raw: unknown) => {
+		authorize(event);
+		const request = decodeExtensionsRequest(raw);
+		if (!request) throw new Error("Invalid extensions request");
+		return options.extensions?.(request) ?? { extensions: [], ok: false };
+	});
 	/*
 	 * The passkey notice's actions. Sender-checked like every channel here; the
 	 * renderer names a tab and the notice's `at` and nothing else, so there is no

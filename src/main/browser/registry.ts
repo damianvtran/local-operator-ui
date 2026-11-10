@@ -1,6 +1,12 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
+import {
+	displayTitleFor,
+	displayUrlFor,
+	isInternalDocument,
+	trackInternalPages,
+} from "./internal-pages";
 import type { PersistedTab } from "./session-store";
 import type { SnapshotRef } from "./vendor/driver/ax-compact";
 
@@ -395,6 +401,8 @@ export class TabRegistry {
 			allocationId: options.allocationId ?? "",
 		};
 		this.tabs.set(tabId, record);
+		// Internal pages are shown only for commits main armed (internal-pages.ts).
+		trackInternalPages(record.view.webContents);
 		// Only a USER tab may become the active one, including when nothing is active
 		// yet. The earlier `activeTabId === null` form activated whichever tab was
 		// created first — on a session with no user tab that is the agent's own, so the
@@ -470,11 +478,15 @@ export class TabRegistry {
 	 * rather than an error.
 	 */
 	byWebContentsId(webContentsId: number): TabRecord | undefined {
-		return this.list().find(
-			(record) =>
-				!record.view.webContents.isDestroyed() &&
-				record.view.webContents.id === webContentsId,
-		);
+		return this.list().find((record) => {
+			// Electron detaches a WebContentsView's webContents during native
+			// destruction, before all extension callbacks have drained. Read it
+			// once: a late adapter callback simply belongs to no live tab.
+			const contents = record.view.webContents;
+			return (
+				contents && !contents.isDestroyed() && contents.id === webContentsId
+			);
+		});
 	}
 
 	/** The tab a webContents belongs to, or null.
@@ -567,6 +579,26 @@ export class TabRegistry {
 				{ reason: "view_destroyed" },
 			);
 		}
+		// The browser's own pages (lop://extensions) are management UI painted by
+		// the desktop renderer; an agent may neither read nor drive them, even on a
+		// tab it was handed. Every agent page action resolves its tab here.
+		// Same for an extension's own page in a tab (an onboarding/sign-in page
+		// opened via chrome.tabs.create, review U1): it holds vault UI.
+		const documentUrl = record.view.webContents.getURL();
+		if (/^chrome-extension:/i.test(documentUrl)) {
+			throw new BrowserHostError(
+				"owner_refused",
+				"that tab is showing a browser extension's own page, which agents cannot read or drive",
+				{ reason: "extension_page" },
+			);
+		}
+		if (isInternalDocument(documentUrl)) {
+			throw new BrowserHostError(
+				"owner_refused",
+				"that tab is showing the browser's own Extensions page, which agents cannot read or drive",
+				{ reason: "internal_page" },
+			);
+		}
 		return record;
 	}
 
@@ -617,8 +649,14 @@ export class TabRegistry {
 		record.nonce = mintNonce();
 		record.allocationId = "";
 		this.bumpEpoch(record.tabId);
+		this.ownerChanged?.(record);
 		this.onChanged();
 	}
+
+	/** Called after a hand-over moves a tab away from the user; index.ts uses
+	 * it to re-apply the extension-subframe rule to frames that loaded while the
+	 * tab was the user's (extensions/subframe-policy.ts, review R1-4). */
+	ownerChanged: ((record: TabRecord) => void) | null = null;
 
 	/** Revoke a hand-over: nulls the nonce, so the session's next action on that
 	 * handle gets the ordinary `tab_closed` refusal, and puts the tab back in the
@@ -948,12 +986,12 @@ export class TabRegistry {
 				handedTo: record.handedTo,
 				restored: record.restored,
 				active: record.tabId === this.activeTabId,
-				url: record.view.webContents.isDestroyed()
-					? ""
-					: record.view.webContents.getURL(),
-				title: record.view.webContents.isDestroyed()
-					? ""
-					: record.view.webContents.getTitle(),
+				// An internal page's document is `about:blank#lop-<nonce>:…`; its
+				// display URL is what every reader (chrome, agent `tabs`) gets, and its
+				// title is blank because Chromium falls back to the URL (nonce
+				// included) for a titleless document. Chrome names it itself.
+				url: displayUrlFor(record.view.webContents),
+				title: displayTitleFor(record.view.webContents),
 				handle: token ? redactToken(token) : `ui:${record.tabId}:no-handle`,
 			};
 		});

@@ -1,0 +1,199 @@
+{
+  "schema": "i18n-audit-candidate-receipt/1",
+  "audit_id": "aud2-1827-vi-second",
+  "mode": "second independent high-visibility pass — vi",
+  "locale": "vi",
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1827,
+  "head": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+  "scope": "23ec4af967b..165aebb1b73",
+  "base": "23ec4af967b",
+  "previous_audited_head": "118da8491a9",
+  "audit_date": "2026-11-09",
+  "key_count": 7,
+  "key_groups": {
+    "ui.chat.canonical": [
+      "ui.chat.canonical.notice.interrupted",
+      "ui.chat.canonical.notice.stopped_with_error",
+      "ui.chat.canonical.notice.compaction_not_run",
+      "ui.chat.canonical.notice.compaction_not_run_after_colon",
+      "ui.chat.canonical.link_toolkit.actions_for"
+    ],
+    "ui.chat.sidebar": [
+      "ui.chat.sidebar.mark_all_read.label"
+    ],
+    "ui.chat.sidebar_view": [
+      "ui.chat.sidebar_view.ungrouped"
+    ]
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "3f8a973b1d92",
+    "instance": "3f8a973b1d92",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "actual_model_source": "the model this session ran as; no model switch and no provider fallback occurred during this audit",
+    "independent_from_translator_session": true,
+    "model_differs_from_translator": true,
+    "read_earlier_audit_comments_or_receipts": false
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "en_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+      "source_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+      "vi_sha256": "f71e57e9b6700aa31e874108bc8ac9f52cee2f3677638845aa9304996a4296d9",
+      "target_sha256": "f71e57e9b6700aa31e874108bc8ac9f52cee2f3677638845aa9304996a4296d9",
+      "en_bytes": 25422,
+      "vi_bytes": 25899,
+      "findings": [
+        {
+          "id": "vi2-5",
+          "key": "ui.chat.canonical.link_toolkit.actions_for",
+          "severity": "nit",
+          "current": "Thao tác với {name}",
+          "assessment": "accepted with a recorded split",
+          "evidence": "ui.teamBridge.actions.label = \"Thao tác với tin nhắn\" agrees; the other shipped \"actions for\" precedent uses cho (ui.projects.project_board.actions_for_displayname = \"Thao tác cho {displayName}\", ui.projects.project_updates.file_actions_for_name = \"Thao tác tệp cho {name}\"). Both are grammatical; glossary binds terms, not prepositions.",
+          "suggested": "if a later wave unifies the family, \"Thao tác cho {name}\" aligns with the projects/board precedent; no change needed now"
+        }
+      ],
+      "observations": [
+        {
+          "id": "vi2-1",
+          "key": "ui.chat.canonical.notice.interrupted",
+          "severity": "info",
+          "current": "Bị ngắt",
+          "assessment": "accepted",
+          "evidence": "matches the shipped in-family term ui.chat.canonical.tool_row.outcome.interrupted = \"bị ngắt\"; adversative ị is the neutral choice for an actorless interruption",
+          "suggested": null
+        },
+        {
+          "id": "vi2-2",
+          "key": "ui.chat.canonical.notice.stopped_with_error",
+          "severity": "info",
+          "current": "Đã dừng do lỗi",
+          "assessment": "accepted",
+          "evidence": "parallel to ui.chat.canonical.transcript.stopped_before_finishing = \"Đã dừng trước khi hoàn tất\"; states the stop plus an error occurred, no added specificity",
+          "suggested": null
+        },
+        {
+          "id": "vi2-3",
+          "key": "ui.chat.canonical.notice.compaction_not_run",
+          "severity": "info",
+          "current": "Lần nén không được thực hiện: {detail}",
+          "assessment": "accepted",
+          "evidence": "glossary §2 compaction = nén (vi); classifier precedent ui.settings.imports.session_meta \"# lần nén\"; colon-then-reason order kept, {detail} last",
+          "suggested": null
+        },
+        {
+          "id": "vi2-4",
+          "key": "ui.chat.canonical.notice.compaction_not_run_after_colon",
+          "severity": "info",
+          "current": "Lần nén không được thực hiện — {detail}",
+          "assessment": "accepted",
+          "evidence": "same clause as vi2-3, em dash spaced per vi style guide; the pair stays distinct in punctuation only, as the en sidecar requires",
+          "suggested": null
+        }
+      ],
+      "result": "clean-with-findings"
+    },
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "status": "passed",
+      "en_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+      "source_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+      "vi_sha256": "e409e0c4e3de427aa19289c4261b20844ebc6f28bee1a20563e74ae5f2099789",
+      "target_sha256": "e409e0c4e3de427aa19289c4261b20844ebc6f28bee1a20563e74ae5f2099789",
+      "en_bytes": 7087,
+      "vi_bytes": 8410,
+      "findings": [
+        {
+          "id": "vi2-6",
+          "key": "ui.chat.sidebar.mark_all_read.label",
+          "severity": "minor",
+          "current": "Đánh dấu tất cả {count, number, ::group-off} đã đọc",
+          "assessment": "changes suggested",
+          "evidence": "'tất cả' + a bare interpolated numeral does not collocate when count is 1 (\"Đánh dấu tất cả 1 đã đọc\"); the count is always >=1 per the en sidecar, so count=1 is a routine state. Width: vi renders 26 cells against en's 16 in a header the context calls Short/narrow; chat-sidebar.tsx:438 sheds the label to sr-only only below 253px (a threshold calibrated on the English two-digit width) and the Button is shrink-0 (chat-sidebar.tsx:2272-2334), so the extra cells are taken from the section heading, not from the action.",
+          "suggested": "Đánh dấu {count, number, ::group-off} đã đọc",
+          "unverified": "rendered geometry at sidebar widths 253-300px (no rendering permitted this run)"
+        }
+      ],
+      "observations": [],
+      "result": "clean-with-findings"
+    },
+    "ui.chat.sidebar_view": {
+      "namespace": "ui.chat.sidebar_view",
+      "status": "passed",
+      "en_sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+      "source_sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+      "vi_sha256": "ec000db2838d777d66b6bed7320b5adb2e0f7367d7b7c1a7707c6ab125577160",
+      "target_sha256": "ec000db2838d777d66b6bed7320b5adb2e0f7367d7b7c1a7707c6ab125577160",
+      "en_bytes": 2641,
+      "vi_bytes": 2615,
+      "findings": [],
+      "observations": [
+        {
+          "id": "vi2-7",
+          "key": "ui.chat.sidebar_view.ungrouped",
+          "severity": "info",
+          "current": "Chưa phân nhóm",
+          "assessment": "accepted",
+          "evidence": "'Chưa phân X' is the shipped vi pattern for a residual bucket (ui.library.status.unorganized / ui.library.preview.unorganized = \"Chưa phân loại\"); nhóm is the glossary rendering for team, and the bucket holds chats with neither agent nor team, so it reads as a category rather than a name; at head this replaced the terser \"Chưa nhóm\"",
+          "suggested": null
+        }
+      ],
+      "result": "clean"
+    }
+  },
+  "findings_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1,
+    "ids": [
+      "vi2-6",
+      "vi2-5"
+    ],
+    "note": "vi2-1..vi2-4 and vi2-7 are accepted-key observations recorded in each namespace block's `observations`, not defects; no countFindings severity is attached to them."
+  },
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "unresolved_blocker_major_count": 0,
+  "verdict": "clean-with-findings",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "checks_performed": [
+    "python3 static: placeholder names/types/order identical en vs vi for all 7 keys ({detail},{name},{count, number, ::group-off})",
+    "python3 static: brace balance equal in every source and target value",
+    "python3 static: NFC normalization and zero combining marks in all 7 target values",
+    "python3 static: no bidi controls (U+200B-F, U+202A-E, U+2066-9) in any target value",
+    "python3 static: Latin runs limited to placeholders and number-skeleton tokens",
+    "python3 static: no duplicate JSON keys, files parse; key parity en==vi (258/258, 81/81, 27/27)",
+    "python3 hashlib over git show HEAD bytes for both files of all three namespaces, cross-checked byte-identical to the read-only worktree"
+  ],
+  "checks_not_performed": [
+    "repo validator (pnpm check-i18n / node scripts/i18n/ledger-check.mjs / generate.mjs --check) - not run: host overloaded, this run is read-only with tiny python3 checks only",
+    "ICU render via the shipped library - not run",
+    "pseudo-localisation - not run",
+    "rendered frames / geometry - not run; all width statements are character/cell counts, not measurements",
+    "browser or app launch - none"
+  ],
+  "out_of_scope_notes": [
+    "src/renderer/src/features/chat/mark-all-read.ts:107-120 builds the tooltip/accessible-name 'scope' sentences from raw English template literals (\"Mark ${count} unread ${chat} as read...\"). Not part of this key group; I could not run check-strings, so I cannot say whether the literal ratchet or an allowlist entry already covers it."
+  ],
+  "receipt_path_note": "candidate receipt staged at .worktrees/_s9-audits/second/vi.json, outside the repo and outside i18n/receipts and the ledger, by instruction; the assembler places the tracked evidence and ledger row.",
+  "artifacts": [],
+  "artifacts_note": "no execution log artifacts; checks_performed above are reproducible python3 one-liners recorded in the PR comment, and are audit_notes_not_execution_log except where they name a command actually run.",
+  "report_url": "https://github.com/damianvtran/local-operator-ui/pull/1827#issuecomment-6756411067",
+  "pr_comment_id": 6756411067,
+  "report_title": "### i18n audit — vi — second independent pass"
+}

@@ -987,7 +987,8 @@ async function assertCombinedArrival(heldInner) {
 			undefined,
 			"Refresh must initially be absent",
 		);
-		let innerScrollTop = 800;
+		// Starts at the inner end (2000 - 320); the held case then scrolls UP.
+		let innerScrollTop = 1680;
 		if (heldInner) {
 			Object.defineProperties(inline, {
 				clientHeight: { configurable: true, value: 320 },
@@ -1009,6 +1010,15 @@ async function assertCombinedArrival(heldInner) {
 						);
 				},
 			);
+			// Model the reader's real gesture: observed at the end, then an upward
+			// scroll to 800. useStickToBottom judges intent by direction against
+			// the position it last observed, not by geometry alone, so a single
+			// scroll event that teleports from jsdom's unlaid-out 0/0 mount
+			// geometry to 880px above the end is neither "up" nor "toward the
+			// end" and correctly leaves the pin alone. No browser reaches 800
+			// from a pinned end without that upward scroll.
+			await act(async () => inline.dispatchEvent(new window.Event("scroll")));
+			innerScrollTop = 800;
 			await act(async () => inline.dispatchEvent(new window.Event("scroll")));
 		}
 		const before = inline.getBoundingClientRect().top;

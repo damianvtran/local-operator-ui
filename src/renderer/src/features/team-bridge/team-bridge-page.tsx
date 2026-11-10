@@ -4237,6 +4237,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										   the visible rows plus overscan mount, and the list asks for an
 										   older page when the reader nears the top. */
 										scrollRootRef={timeline.rootRef}
+										isPinned={timeline.isPinned}
 										hasOlder={olderPaging?.hasOlder ?? false}
 										loadingOlder={olderPaging?.loadingOlder ?? false}
 										onLoadOlder={olderPaging?.onLoadOlder}

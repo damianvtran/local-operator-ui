@@ -1,4 +1,5 @@
 import type { AddressHistoryEntry } from "../../../../../shared/browser-address-history";
+import { parseInternalUrl } from "../../../../../shared/internal-pages";
 
 /**
  * The address field's local completion model.
@@ -351,10 +352,20 @@ export function addressIntent(raw: string): AddressIntent {
 	if (raw !== raw.trim()) return "search";
 	if (HAS_WHITESPACE.test(raw)) return "search";
 	if (raw.startsWith("?") || raw.startsWith("#")) return "search";
+	// The browser's own pages (`lop://extensions`) are addresses main resolves
+	// itself; without this they would read as an unknown, blocked scheme.
+	if (parseInternalUrl(raw)) return "url";
 	const withSlashes = SCHEME_WITH_SLASHES.exec(raw);
 	if (withSlashes) {
 		const scheme = foldAscii(withSlashes[1]);
-		if (scheme === "http" || scheme === "https" || scheme === "file")
+		// U1c: a typed extension page reaches main, which checks installed +
+		// enabled and user ownership. This classifier grants no navigation.
+		if (
+			scheme === "http" ||
+			scheme === "https" ||
+			scheme === "file" ||
+			scheme === "chrome-extension"
+		)
 			return "url";
 		return "blocked";
 	}

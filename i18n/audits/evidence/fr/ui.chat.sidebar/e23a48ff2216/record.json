@@ -1,0 +1,94 @@
+{
+  "locale": "fr",
+  "namespace": "ui.chat.sidebar",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "fully_audited_key_count": 1,
+  "consistency_only_key_count": 85,
+  "scope": "PR #1837 @ fd09d8f296318319817edb5a511a42ff6a07868f; origin/main..HEAD French builtin_offer only: added many arm, all old arms unchanged. No full legacy namespace certification.",
+  "head_sha": "fd09d8f296318319817edb5a511a42ff6a07868f",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "e23a48ff2216",
+    "session": "e23a48ff2216",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session e23a48ff2216. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator model supplied by delegation; translator session not supplied. This auditor did not translate or participate in translation."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+      "sha256": "ec93a140d65cf298bb4252b74f999b83bc7736860d0b7c7dbfe5625e7983e3a3"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "receipt.json",
+      "sha256": "06d9f86f16092de42860ce7286fdf348cf7f79ad7bea370c9e41419cb52c3211",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "audit.log",
+      "sha256": "38f0c8827c8772cdc5be2ed3f08021b738fca64147fa1640913a32c8248ca630",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "check.py",
+      "sha256": "72bebc868b193dc53a182133cb017a7b71e2dafb4b1c6486e1b77dab834bd285",
+      "kind": "executed_check_source",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "expansions.json",
+      "sha256": "98853ef84187bbf99810fb6718a7f6cb287b1d2aa879786746408c4396c80c46",
+      "kind": "derived_expansions_not_production_render",
+      "record_reference": "record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "receipt.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/fr/ui.chat.sidebar/s11-sol-e23a48ff2216",
+    "manager_action_required": "Retain record and companions in canonical root; use UI receipt/ledger contract. No ledger command run here.",
+    "proposed_note": "passed; record i18n/audits/evidence/fr/ui.chat.sidebar/s11-sol-e23a48ff2216/record.json"
+  },
+  "unverified": [
+    "Node validator, production ICU parser/formatter, CLDR runtime selection and ledger commands not executed: explicit no-Node/read-only task constraints. Integer selection is derived using binding fr guide, not a runtime test.",
+    "No browser or pixel-fit/width/screen-reader validation: task forbids browser/builds. No rendered UI proof claimed.",
+    "No ledger writes, tracked evidence retention, PR comment or commits. Scratch deliverables require manager retention under canonical evidence root; evidence README absent in pinned worktree.",
+    "Translator session identity is not supplied; independence is based on this fresh auditor session and no participation in translation."
+  ]
+}

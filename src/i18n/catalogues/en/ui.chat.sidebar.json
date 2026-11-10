@@ -78,5 +78,11 @@
 	"ui.chat.sidebar.catalogue.show_more_agents": "Show {count, plural, one {{count, number, ::group-off} more agents} other {{count, number, ::group-off} more agents}}",
 	"ui.chat.sidebar.catalogue.show_more_teams": "Show {count, plural, one {{count, number, ::group-off} more teams} other {{count, number, ::group-off} more teams}}",
 	"ui.chat.sidebar.drafts.row_label": "Draft: {title}",
-	"ui.chat.sidebar.drafts.discard_label": "Discard draft “{title}”"
+	"ui.chat.sidebar.drafts.discard_label": "Discard draft “{title}”",
+	"ui.chat.sidebar.mark_all_read.label": "Mark all {count, number, ::group-off} read",
+	"ui.chat.sidebar.mark_all_read.scope_chats": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+	"ui.chat.sidebar.mark_all_read.scope_tokenless": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+	"ui.chat.sidebar.mark_all_read.scope_joined": "{chats} {tokenless}",
+	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}"
 }

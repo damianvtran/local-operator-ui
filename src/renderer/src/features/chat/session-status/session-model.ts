@@ -723,7 +723,7 @@ export function effortState(
 			// the command share one vocabulary. It used to read `reasoning` in the
 			// TUI, which is a category noun in a value slot and looked like a
 			// sixth level.
-			label: "auto",
+			label: "auto", // i18n: ignore state token, localized at the display seam by effortDisplay (ui.chat.session_readout.effort.level.auto)
 			adjustable: true,
 			knownLadder: true,
 			levelKnown: true,
@@ -755,7 +755,7 @@ export function effortState(
 	 */
 	if (metadataAbsent)
 		return {
-			label: "unknown",
+			label: "unknown", // i18n: ignore state token, localized at the display seam by effortDisplay (ui.chat.session_readout.effort.level.unknown)
 			/*
 			 * ADJUSTABLE, despite knowing nothing.
 			 *
@@ -792,7 +792,7 @@ export function effortState(
 	// Ladder present and EMPTY: a reasoning model with no rungs to choose from.
 	if (ladder && model.reasoning)
 		return {
-			label: "reasoning",
+			label: "reasoning", // i18n: ignore state token, localized at the display seam by effortDisplay (ui.chat.session_readout.effort.level.reasoning)
 			adjustable: false,
 			// The spec DID carry the ladder; it is empty. That is knowledge, and
 			// it is the only source entitled to make this control read-only.

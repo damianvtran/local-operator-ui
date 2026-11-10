@@ -374,6 +374,7 @@ export const PARITY_MODEL_SOURCES = new Set([
 	// Receipt enrichment is now bundled by the reducer and hashed by the pin;
 	// changing it must select parity just like every other declared model input.
 	"src/renderer/src/features/chat/canonical/music-receipt-model.ts",
+	"src/renderer/src/features/chat/canonical/notice-copy.ts",
 	"src/renderer/src/features/chat/canonical/profile-history-replacement.ts",
 	"src/renderer/src/features/chat/canonical/record-immutability.ts",
 	"src/renderer/src/features/chat/canonical/skill-row.ts",

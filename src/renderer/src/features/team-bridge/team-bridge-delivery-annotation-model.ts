@@ -1,4 +1,7 @@
-import type { TeamBridgeDeliveryState } from "../../../../shared/team-bridge-contract";
+import type {
+	TeamBridgeDeliveryState,
+	TeamBridgeDeliverySummary,
+} from "../../../../shared/team-bridge-contract";
 
 /**
  * The view model behind the muted "not delivered" lines under a sent message
@@ -40,6 +43,19 @@ export const TEAM_BRIDGE_HOLD_CLASSES = [
 export type TeamBridgeHoldClass = (typeof TEAM_BRIDGE_HOLD_CLASSES)[number];
 
 /*
+ * The sender's coarse hold phase (cross-PR contract 2026-11-09): the same
+ * buckets the member-visible summary counts, with no class or reason, so a
+ * sender's popover row can say what the summary line above it says (review
+ * R1/D1, UX U3).
+ */
+export const TEAM_BRIDGE_HOLD_PHASES = [
+	"screening",
+	"held",
+	"not_reviewed",
+] as const;
+export type TeamBridgeHoldPhase = (typeof TEAM_BRIDGE_HOLD_PHASES)[number];
+
+/*
  * `pending` is the owner-view `delivery_pending` hold: screening finished and
  * only delivery is outstanding, so "waiting to be screened" would be false
  * (design review round 1, D1). It is its own line, not a held reason.
@@ -58,6 +74,10 @@ export type TeamBridgeDeliveryLine =
 			agent: string;
 			owner: string;
 			holdReason: Exclude<TeamBridgeHoldClass, "delivery_pending"> | null;
+			/* The coarse phase the hub sets on every held entry (null on an older
+			 * hub). The sender gets only this; an owner also gets `holdReason`,
+			 * whose copy is more specific and wins unless the phase is stale. */
+			phase: TeamBridgeHoldPhase | null;
 	  }
 	| { kind: "pending"; key: string; agent: string; owner: string };
 
@@ -65,6 +85,8 @@ const isRefusalClass = (value: unknown): value is TeamBridgeRefusalClass =>
 	(TEAM_BRIDGE_REFUSAL_CLASSES as readonly unknown[]).includes(value);
 const isHoldClass = (value: unknown): value is TeamBridgeHoldClass =>
 	(TEAM_BRIDGE_HOLD_CLASSES as readonly unknown[]).includes(value);
+const isHoldPhase = (value: unknown): value is TeamBridgeHoldPhase =>
+	(TEAM_BRIDGE_HOLD_PHASES as readonly unknown[]).includes(value);
 
 /**
  * One line per non-delivered recipient, in the hub's order.
@@ -130,13 +152,145 @@ export function teamBridgeDeliveryLines(
 		} else if (entry.state === "held") {
 			seen.add(entry.endpoint_id);
 			const holdClass = isHoldClass(entry.hold_class) ? entry.hold_class : null;
+			const phase = isHoldPhase(entry.phase) ? entry.phase : null;
 			lines.push(
-				holdClass === "delivery_pending"
+				// A stale entry is "not reviewed" whatever its class (contract:
+				// past 24 h every non-terminal entry is not_reviewed).
+				holdClass === "delivery_pending" && phase !== "not_reviewed"
 					? { kind: "pending", key, agent, owner }
-					: { kind: "held", key, agent, owner, holdReason: holdClass },
+					: {
+							kind: "held",
+							key,
+							agent,
+							owner,
+							holdReason: holdClass === "delivery_pending" ? null : holdClass,
+							phase,
+						},
 			);
 		}
 		// `delivered` and any state this build does not know: nothing.
 	}
 	return lines;
+}
+
+/**
+ * The counts behind the ONE summary line under a message ("Delivered to 3 ·
+ * 2 being screened · 2 not delivered"), in render order. Zero segments are
+ * omitted by the component, never here, so a test can pin every count.
+ *
+ * The buckets are the hub's `delivery_summary` buckets exactly (cross-PR
+ * contract 2026-11-09, see `teamBridgeDeliverySummarySchema`): `screening`
+ * covers "no report yet", "could not be screened yet, retrying" and a screened
+ * delivery still in flight; `held` waits for the recipient owner's review;
+ * `notReviewed` is anything still unsettled a day after sending.
+ */
+export type TeamBridgeDeliveryCounts = {
+	delivered: number;
+	screening: number;
+	held: number;
+	notReviewed: number;
+	notDelivered: number;
+};
+
+export const TEAM_BRIDGE_DELIVERY_SEGMENTS = [
+	"delivered",
+	"screening",
+	"held",
+	"notReviewed",
+	"notDelivered",
+] as const satisfies readonly (keyof TeamBridgeDeliveryCounts)[];
+
+/**
+ * What the summary line under one message shows to THIS viewer, or `null` when
+ * it shows nothing.
+ *
+ * WHY ONE LINE. One line per recipient grew without bound in a busy channel
+ * (operator report 2026-11-09): six agents meant six muted sentences under
+ * every message. The line now carries counts, and the per-recipient sentences
+ * move into a popover behind it.
+ *
+ * WHO SEES WHAT. `lines` is non-empty only for a viewer the hub already sent
+ * per-recipient entries to (the sender, an agent member's owner), so the
+ * popover never discloses anything that viewer could not already read. Every
+ * other member sees the counts alone, from the hub's neutral
+ * `delivery_summary`; with no summary (an older hub) they see nothing, never a
+ * guess.
+ *
+ * WHERE THE COUNTS COME FROM. The hub's `delivery_summary` wins when present:
+ * it counts EVERY recipient, while a viewer's `delivery_states` may cover only
+ * their own agents, and only the hub can tell a review hold from screening for
+ * a sender. Without it the counts are derived from `delivery_states` with the
+ * same narrowing as the lines: unknown states count nowhere, the sender's
+ * `phase` picks the bucket, then the owner's `hold_class` the way the hub maps
+ * it, and an unclassified hold counts as `screening` (the hub's own bucket for
+ * "no outcome yet").
+ *
+ * WHEN IT IS SILENT. A hub summary is ALWAYS shown when it counts anyone, even
+ * all-delivered ("Delivered to 3"): that is the only confirmation the other
+ * members get that screening ran (operator: "I saw no confirmation that it was
+ * moderated or not"; review R3, design D4). It also keeps the row from
+ * collapsing a few seconds after every send. Without a hub summary (an older
+ * hub) the derived line stays silent when nothing is outstanding, as before.
+ */
+export function teamBridgeDeliverySummary(message: {
+	delivery_states?: readonly TeamBridgeDeliveryState[];
+	delivery_summary?: TeamBridgeDeliverySummary;
+	origin?: unknown;
+	sender?: { kind?: unknown; audit_unknown_kind?: unknown };
+}): {
+	counts: TeamBridgeDeliveryCounts;
+	lines: TeamBridgeDeliveryLine[];
+} | null {
+	const lines = teamBridgeDeliveryLines(message.delivery_states, message);
+	const fromHub = countsFromSummary(message.delivery_summary);
+	const counts = fromHub ?? countsFromStates(message.delivery_states);
+	const outstanding =
+		counts.screening + counts.held + counts.notReviewed + counts.notDelivered;
+	if (outstanding === 0 && (fromHub === null || counts.delivered === 0))
+		return null;
+	return { counts, lines };
+}
+
+const zeroCounts = (): TeamBridgeDeliveryCounts => ({
+	delivered: 0,
+	screening: 0,
+	held: 0,
+	notReviewed: 0,
+	notDelivered: 0,
+});
+
+function countsFromSummary(
+	summary: TeamBridgeDeliverySummary | undefined,
+): TeamBridgeDeliveryCounts | null {
+	if (!summary) return null;
+	return {
+		delivered: summary.delivered ?? 0,
+		screening: summary.screening ?? 0,
+		held: summary.held ?? 0,
+		notReviewed: summary.not_reviewed ?? 0,
+		notDelivered: summary.not_delivered ?? 0,
+	};
+}
+
+function countsFromStates(
+	states: readonly TeamBridgeDeliveryState[] | undefined,
+): TeamBridgeDeliveryCounts {
+	const counts = zeroCounts();
+	const seen = new Set<string>();
+	for (const entry of states ?? []) {
+		// Same first-entry-wins dedup as the lines, so the count matches them.
+		if (seen.has(entry.endpoint_id)) continue;
+		if (entry.state === "delivered") counts.delivered += 1;
+		else if (entry.state === "refused") counts.notDelivered += 1;
+		else if (entry.state === "held") {
+			const phase = isHoldPhase(entry.phase) ? entry.phase : null;
+			if (phase === "not_reviewed") counts.notReviewed += 1;
+			else if (phase === "held") counts.held += 1;
+			else if (phase === null && entry.hold_class === "awaiting_review")
+				counts.held += 1;
+			else counts.screening += 1;
+		} else continue; // unknown state: counted nowhere, like the lines
+		seen.add(entry.endpoint_id);
+	}
+	return counts;
 }

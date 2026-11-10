@@ -773,6 +773,7 @@ export function quietGroupOfSegment(
 		if (entries.length > 2) {
 			let rest = 0;
 			for (const entry of entries.slice(2)) rest += entry.count;
+			// i18n: ignore cross-surface parity datum (scripts/fixtures/quiet-groups.parity.json pins "<N> more"); no renderer surface paints QuietGroup.senders
 			top.push({ label: `${entries.length - 2} more`, count: rest });
 		}
 		senders.push(...top);
