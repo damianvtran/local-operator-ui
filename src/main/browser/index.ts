@@ -1959,10 +1959,13 @@ async function initializeBrowserHost(
 			agentTabs: () => registry.agentTabCount(),
 			sessionCookies: () => restoreReport,
 			...(addressOverlay ? { addressOverlay: probeAddressOverlay } : {}),
+			// stopLocaleUpdates() stays stop()'s first statement, as in rollback: a
+			// locale push must not reach a host mid-teardown while extensions.dispose()
+			// is awaited (pinned by scripts/i18n/census-locale-switch.test.mjs).
 			stop: async () => {
+				stopLocaleUpdates();
 				removeWebStoreBridge();
 				await extensions.dispose();
-				stopLocaleUpdates();
 				detachChords();
 				host.flushHistory();
 				/*

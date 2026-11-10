@@ -18,7 +18,9 @@ const f = () => globalThis.__browserStartupFixture;
 // before-quit history flush (browser/index.ts), and a bare object stub
 // turns that registration into a startup crash the app never has. The fake
 // models the listener surface; the test never fires quit itself.
-export const app = Object.assign(new EventEmitter(), { getVersion: () => 'isolated-test' });
+// getPath: the extension manager roots its store under userData; every path
+// stays inside the fixture's scratch directory, never the real profile.
+export const app = Object.assign(new EventEmitter(), { getVersion: () => 'isolated-test', getPath: name => f().dir + '/app-path-' + name });
 export class BrowserWindow { constructor() { throw new Error('A test must never create a desktop window'); } }
 export const shell = { openPath: async () => '' };
 // The page context menu's two Electron members (LOH-13), modelled only so
@@ -26,6 +28,10 @@ export const shell = { openPath: async () => '' };
 // opens the menu, so building one is a no-op here rather than a fake menu.
 export const Menu = { buildFromTemplate: () => ({ popup: () => {} }) };
 export const clipboard = { writeText: () => {} };
+// The extension manager's native consent dialogs (extensions/dialogs.ts),
+// modelled only so the import resolves: startup installs nothing, so no dialog
+// is ever asked for, and an inert answer can never show one.
+export const dialog = { showMessageBox: async () => ({ response: 0, checkboxChecked: false }) };
 export const webContents = { getAllWebContents: () => [] };
 // Startup has no page frames: passkey attribution must treat missing frames as gone.
 export const webFrameMain = { fromId: (processId, routingId) => f().frames?.get(processId + ':' + routingId) ?? null };
@@ -79,10 +85,46 @@ const bundled = await build({
 	format: "esm",
 	write: false,
 	target: "node20",
+	// The extension manager pulls CommonJS dependencies into main (yauzl, which
+	// unpacks CRX archives, calls require("fs")); an ESM bundle has no require,
+	// so give it one, as census-locale-switch.test.mjs does for its bundles.
+	banner: {
+		js: 'import { createRequire as __startupCreateRequire } from "node:module"; const require = __startupCreateRequire(process.cwd() + "/package.json");',
+	},
 	plugins: [
 		{
 			name: "startup-native-boundaries",
 			setup(b) {
+				// electron-vite's `?asset` import yields the file's path, not its code
+				// (the Web Store preload runs in a page, never in main): model that
+				// rather than bundling a page script that reads `location` at load.
+				b.onResolve({ filter: /\?asset$/ }, (args) => ({
+					path: join(args.resolveDir, args.path.replace(/\?asset$/, "")),
+					namespace: "startup-asset",
+				}));
+				b.onLoad({ filter: /.*/, namespace: "startup-asset" }, (args) => ({
+					contents: `export default ${JSON.stringify(args.path)};`,
+					loader: "js",
+				}));
+				// electron-chrome-extensions is a native boundary like webauthn: its
+				// constructor binds ipcMain routes, preloads and crx: protocol on a
+				// real Session, which these fixtures do not model, and it is
+				// session-singleton, so every retry in a fixture would throw "already
+				// exists". Main touches only these members while no extension is
+				// installed; api/ctx exist for adapter.ts's event-time probes.
+				b.onResolve({ filter: /^electron-chrome-extensions$/ }, () => ({
+					path: "electron-chrome-extensions",
+					namespace: "startup-extensions",
+				}));
+				b.onLoad({ filter: /.*/, namespace: "startup-extensions" }, () => ({
+					contents: `
+export class ElectronChromeExtensions {
+ constructor() { this.api = { browserAction: {} }; this.ctx = { router: {} }; }
+ addTab() {} selectTab() {} removeTab() {}
+}
+`,
+					loader: "js",
+				}));
 				b.onResolve({ filter: /^electron$/ }, () => ({
 					path: "electron",
 					namespace: "startup-test",
@@ -168,6 +210,13 @@ function fixture(failConsole) {
 		setPermissionCheckHandler() {},
 		setDevicePermissionHandler() {},
 		protocol: { handle() {} },
+		// The Chrome Web Store bridge preload: registered once per Session, so the
+		// fixture keeps the list a retry must find already present.
+		preloadScripts: [],
+		getPreloadScripts: () => session.preloadScripts,
+		registerPreloadScript(script) {
+			session.preloadScripts.push(script);
+		},
 		webRequest: {
 			onBeforeRequest() {},
 			onBeforeSendHeaders() {},

@@ -37,9 +37,11 @@ if (!base) {
 	);
 }
 // Execute the real main-owned title expression, not a copy of its English key.
+// An internal lop:// page (the extension manager) takes its own title arm first;
+// only that exact arm may precede the captured web-page fallback.
 const hostPath = "src/main/browser/host.ts";
 const TITLE_EXPRESSION =
-	/title:\s*(this\.titleForChrome\(entry\.title\)\s*\|\|\s*t\("ui\.browser\.browser_tab_strip\.new_tab"\))/;
+	/title:\s*(?:parseInternalUrl\(entry\.url\)\s*\?\s*t\("ui\.browser\.extensions\.page_title"\)\s*:\s*)?(this\.titleForChrome\(entry\.title\)\s*\|\|\s*t\("ui\.browser\.browser_tab_strip\.new_tab"\))/;
 const title = readFileSync(hostPath, "utf8").match(TITLE_EXPRESSION)?.[1];
 assert.ok(title, "execute the production untitled-tab title expression");
 
