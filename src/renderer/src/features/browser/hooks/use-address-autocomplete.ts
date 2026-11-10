@@ -189,8 +189,27 @@ export function useAddressAutocomplete(
 	// The typed text is debounced while the field is focused. The previous
 	// entries stay on screen until the next answer, so there is no flicker; the
 	// requestId guard makes that safe.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `query` is the trigger, not a value the body reads - the request reads `queryRef`, so a stale closure cannot send an older query.
+	//
+	// ONLY A CHANGE IS A TRIGGER, never this effect's first run. The popout's
+	// focus contract focuses the input in a LAYOUT effect on mount (Cmd+L), so
+	// `onFocus` has already set `focusedRef` and sent the focus read before this
+	// passive effect runs for the first time. Treating that first run as a query
+	// change queued an identical second read ADDRESS_QUERY_DEBOUNCE_MS later on
+	// every open. Comparing against the last seen values (rather than a "has
+	// mounted" flag) also keeps React StrictMode's mount/unmount/mount replay
+	// from reading as a change. A real change still fetches: typed text moves
+	// `query`, and an own-state <-> page flip moves `request` via `enabled`.
+	const previousQueryRef = useRef(query);
+	const previousQueryRequestRef = useRef(request);
+	// The body reads `query` only to detect the change; the request itself reads
+	// `queryRef`, so a stale closure cannot send an older query.
 	useEffect(() => {
+		const changed =
+			previousQueryRef.current !== query ||
+			previousQueryRequestRef.current !== request;
+		previousQueryRef.current = query;
+		previousQueryRequestRef.current = request;
+		if (!changed) return;
 		if (!focusedRef.current) return;
 		clearDebounce();
 		debounceRef.current = setTimeout(() => {
