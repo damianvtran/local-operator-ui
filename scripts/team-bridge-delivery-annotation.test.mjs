@@ -1004,8 +1004,9 @@ test("all moderation copy in every shipped locale has no em dash", () => {
 		// 14 lines plus `recipient_unnamed`, the in-sentence unnamed form
 		// (#1643), plus the eight summary keys (2026-11-09), plus the two phase
 		// lines (`held_screening`, `held_not_reviewed`) and the not-reviewed
-		// footer, less the dropped `summary.pending` (#1832 round 1).
-		assert.equal(entries.length, 25, locale);
+		// footer, less the dropped `summary.pending` (#1832 round 1), plus the
+		// five uncounted `summary.single.*` forms (2026-11-10).
+		assert.equal(entries.length, 30, locale);
 		for (const [key, value] of entries) {
 			assert.doesNotMatch(value, MODERATION_EM_DASH, `${locale}:${key}`);
 		}
@@ -1158,6 +1159,75 @@ test("the summary text keeps the order, omits zeros and pluralizes per locale", 
 	} finally {
 		setLocale("en");
 	}
+});
+
+/*
+ * ONE RECIPIENT IN TOTAL (operator request 2026-11-10): "Delivered", not
+ * "Delivered to 1". The trigger is the total, never one bucket at 1, and the
+ * runs still concatenate to the accessible name.
+ */
+test("a single-recipient message drops the count; several recipients keep every count", () => {
+	const cases = [
+		[{ delivered: 1 }, "Delivered"],
+		[{ screening: 1 }, "Being screened"],
+		[{ held: 1 }, "Held for review"],
+		[{ notReviewed: 1 }, "Not reviewed"],
+		[{ notDelivered: 1 }, "Not delivered"],
+		// Negative controls: one bucket at 1 among several recipients.
+		[{ delivered: 2, screening: 1 }, "Delivered to 2 · 1 being screened"],
+		[{ delivered: 1, screening: 1 }, "Delivered to 1 · 1 being screened"],
+		[{ held: 1, notReviewed: 1 }, "1 held for review · 1 not reviewed"],
+		[{ delivered: 2 }, "Delivered to 2"],
+	];
+	for (const [over, expected] of cases) {
+		const c = counts(over);
+		assert.equal(
+			teamBridgeDeliverySummaryText(c),
+			expected,
+			JSON.stringify(over),
+		);
+		const { delivered, rest } = teamBridgeDeliverySummaryRuns(c);
+		assert.equal(delivered + rest, expected, `runs ${JSON.stringify(over)}`);
+	}
+	assert.deepEqual(teamBridgeDeliverySummaryRuns(counts({ delivered: 1 })), {
+		delivered: "Delivered",
+		rest: "",
+	});
+	assert.deepEqual(teamBridgeDeliverySummaryRuns(counts({ screening: 1 })), {
+		delivered: "",
+		rest: "Being screened",
+	});
+	try {
+		setLocale("fr");
+		assert.equal(
+			teamBridgeDeliverySummaryText(counts({ delivered: 1 })),
+			"Remis",
+		);
+		setLocale("ru");
+		assert.equal(
+			teamBridgeDeliverySummaryText(counts({ screening: 1 })),
+			"На проверке",
+		);
+	} finally {
+		setLocale("en");
+	}
+});
+
+const SINGLE_VISIBLE = />Delivered</;
+const SINGLE_COUNTED = /Delivered to 1/;
+const SINGLE_TITLE = /title="Delivered"/;
+test("a 1:1 message renders the uncounted line as its visible text and title", () => {
+	const html = renderToStaticMarkup(
+		createElement(TeamBridgeDeliveryAnnotation, {
+			message: {
+				delivery_summary: { total: 1, delivered: 1 },
+				origin: "human",
+			},
+		}),
+	);
+	assert.match(html, SINGLE_VISIBLE);
+	assert.doesNotMatch(html, SINGLE_COUNTED);
+	assert.match(html, SINGLE_TITLE);
 });
 
 test("the server summary schema keeps counts only and drops bad values per field", () => {
@@ -1454,9 +1524,11 @@ test("the line truncates 'Delivered to N' first, and its runs are the full text 
 		rest: " · 1 held for review · 2 not delivered",
 	});
 	assert.equal(runs.delivered + runs.rest, teamBridgeDeliverySummaryText(c));
-	assert.deepEqual(teamBridgeDeliverySummaryRuns(counts({ held: 1 })), {
+	// Two recipients, so the counted form; a lone recipient's uncounted run is
+	// covered by the single-recipient test above.
+	assert.deepEqual(teamBridgeDeliverySummaryRuns(counts({ held: 2 })), {
 		delivered: "",
-		rest: "1 held for review",
+		rest: "2 held for review",
 	});
 	const html = renderToStaticMarkup(
 		createElement(TeamBridgeDeliveryAnnotation, {

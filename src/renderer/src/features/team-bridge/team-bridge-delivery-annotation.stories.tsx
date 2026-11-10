@@ -434,3 +434,23 @@ export const SummaryNarrowTruncates: Story = {
 		},
 	},
 };
+
+/* ONE RECIPIENT IN TOTAL (operator request 2026-11-10): a 1:1 conversation
+ * reads "Delivered" / "Being screened", not "Delivered to 1" / "1 being
+ * screened"; the count adds nothing when there is only one recipient. */
+export const SummarySingleRecipientDelivered: Story = {
+	args: { states: undefined, summary: { total: 1, delivered: 1 } },
+};
+
+export const SummarySingleRecipientScreening: Story = {
+	args: { states: undefined, summary: { total: 1, screening: 1 } },
+};
+
+/* Several recipients with one bucket at 1 KEEP their counts: "Delivered ·
+ * 1 being screened" would hide how many received it. */
+export const SummaryMultiRecipientOneScreening: Story = {
+	args: {
+		states: undefined,
+		summary: { total: 3, delivered: 2, screening: 1 },
+	},
+};

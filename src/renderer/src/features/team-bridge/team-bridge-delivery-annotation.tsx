@@ -284,12 +284,69 @@ export function segmentText(
 	}
 }
 
-/** "Delivered to 3 · 2 being screened · 2 not delivered", zero segments omitted. */
+/*
+ * The uncounted standalone form of a segment, for a message with exactly one
+ * recipient agent in total (see `isSingleRecipient`). Separate keys rather than
+ * a `=1` arm in the counted plurals: the counted keys must keep saying
+ * "1 being screened" when that one sits beside other segments, and only the
+ * caller knows whether the line has one recipient or one-in-a-bucket.
+ */
+function singleSegmentText(
+	segment: (typeof TEAM_BRIDGE_DELIVERY_SEGMENTS)[number],
+): string {
+	switch (segment) {
+		case "delivered":
+			return t("ui.teamBridge.delivery.summary.single.delivered");
+		case "screening":
+			return t("ui.teamBridge.delivery.summary.single.screening");
+		case "held":
+			return t("ui.teamBridge.delivery.summary.single.held");
+		case "notReviewed":
+			return t("ui.teamBridge.delivery.summary.single.not_reviewed");
+		case "notDelivered":
+			return t("ui.teamBridge.delivery.summary.single.not_delivered");
+	}
+}
+
+/*
+ * WHY DROP THE COUNT FOR ONE RECIPIENT (operator request 2026-11-10). In a 1:1
+ * conversation the line read "Delivered to 1" / "1 being screened": the "1" is
+ * noise, so it reads "Delivered" / "Being screened" instead.
+ *
+ * CONSTRAINT: the trigger is the TOTAL across every bucket (the buckets
+ * partition the hub's `total`, see `teamBridgeDeliverySummarySchema`), never
+ * one bucket being 1. With several recipients, "Delivered · 1 being screened"
+ * would hide how many received it, so "Delivered to 2 · 1 being screened"
+ * keeps its counts.
+ */
+function isSingleRecipient(counts: TeamBridgeDeliveryCounts): boolean {
+	return (
+		TEAM_BRIDGE_DELIVERY_SEGMENTS.reduce(
+			(sum, segment) => sum + counts[segment],
+			0,
+		) === 1
+	);
+}
+
+/* The text of one present segment, uncounted when the line has one recipient. */
+function summarySegmentText(
+	segment: (typeof TEAM_BRIDGE_DELIVERY_SEGMENTS)[number],
+	counts: TeamBridgeDeliveryCounts,
+): string {
+	return isSingleRecipient(counts)
+		? singleSegmentText(segment)
+		: segmentText(segment, counts[segment]);
+}
+
+/**
+ * "Delivered to 3 · 2 being screened · 2 not delivered", zero segments omitted;
+ * just "Delivered" (or "Being screened", ...) for a single recipient.
+ */
 export function teamBridgeDeliverySummaryText(
 	counts: TeamBridgeDeliveryCounts,
 ): string {
 	return TEAM_BRIDGE_DELIVERY_SEGMENTS.filter((segment) => counts[segment] > 0)
-		.map((segment) => segmentText(segment, counts[segment]))
+		.map((segment) => summarySegmentText(segment, counts))
 		.join(t("ui.teamBridge.delivery.summary.separator"));
 }
 
@@ -311,11 +368,11 @@ export function teamBridgeDeliverySummaryRuns(
 ): { delivered: string; rest: string } {
 	const separator = t("ui.teamBridge.delivery.summary.separator");
 	const delivered =
-		counts.delivered > 0 ? segmentText("delivered", counts.delivered) : "";
+		counts.delivered > 0 ? summarySegmentText("delivered", counts) : "";
 	const outstanding = TEAM_BRIDGE_DELIVERY_SEGMENTS.filter(
 		(segment) => segment !== "delivered" && counts[segment] > 0,
 	)
-		.map((segment) => segmentText(segment, counts[segment]))
+		.map((segment) => summarySegmentText(segment, counts))
 		.join(separator);
 	return {
 		delivered,
