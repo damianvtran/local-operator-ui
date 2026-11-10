@@ -159,6 +159,22 @@ const pageHistory: NonNullable<BrowserUrlBarProps["addressHistory"]> = async (
 			lastVisitedAt: 0,
 			source: "history",
 		},
+		// Two `lop…` sites, so the `lop` story shows history kept intact with the
+		// page only taking the free slot after it (review R2/U2/Q1, D3).
+		{
+			url: "https://lopez-bakery.example.com/",
+			title: "Lopez Bakery",
+			visitCount: 3,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		{
+			url: "https://loppers.example.com/garden",
+			title: "Loppers",
+			visitCount: 1,
+			lastVisitedAt: 0,
+			source: "history",
+		},
 	],
 });
 
@@ -201,8 +217,50 @@ export const PageSuggestionsFiltered: Story = {
 	play: typing("lop://ext"),
 };
 
-/** A bare word: the page rides under the default search row and history. */
+/** A bare word: the page rides under the default search row (and after any
+ * history match - this fixture has none for `extensions`; see
+ * `PageSuggestionsSchemeWord` for the ordering behind history). */
 export const PageSuggestionsWord: Story = {
 	args: pagesArgs,
 	play: typing("extensions"),
+};
+
+/** `lop`: search first, both `lop…` history rows intact, then the page in the
+ * slot history left free. `l`/`lo` offer no page at all. */
+export const PageSuggestionsSchemeWord: Story = {
+	args: pagesArgs,
+	play: typing("lop"),
+};
+
+/**
+ * U1: `lop://extensions?dark` matches two installed extensions; Backspace
+ * rejects the highlight, and Enter is refused locally (the blocked sentence is
+ * announced) instead of handing main a URL it cannot open. Storybook has no
+ * preload, so the extension list is stubbed for this story only.
+ */
+export const PageSuggestionsRefused: Story = {
+	beforeEach: () => {
+		const previous = window.api;
+		const browser = {
+			extensions: async () => ({
+				ok: true,
+				extensions: [
+					{ id: "a".repeat(32), name: "Dark Reader" },
+					{ id: "b".repeat(32), name: "Dark Mode" },
+				],
+			}),
+			onStateChanged: () => () => {},
+		};
+		Object.assign(window, { api: { ...previous, browser } });
+		return () => {
+			Object.assign(window, { api: previous });
+		};
+	},
+	args: pagesArgs,
+	play: async (context) => {
+		await typing("lop://extensions?dark")?.(context);
+		const field = within(context.canvasElement).getByRole("combobox");
+		await userEvent.keyboard("{Backspace}{Enter}");
+		await waitFor(() => expect(field).toHaveValue("lop://extensions?dar"));
+	},
 };

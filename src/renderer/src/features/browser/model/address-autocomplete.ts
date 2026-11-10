@@ -3,6 +3,7 @@ import {
 	EXTENSIONS_PAGE_URL,
 	INTERNAL_PAGE_ALIAS_SCHEME,
 	INTERNAL_PAGE_SCHEME,
+	internalUrlOf,
 	parseInternalUrl,
 } from "../../../../../shared/internal-pages";
 
@@ -612,7 +613,17 @@ interface PageMatch {
 	addressed: boolean;
 	rows: AddressPageRow[];
 	inline: InlineCompletion | null;
+	/** True for the bare scheme word `lop`: its rows only fill slots history
+	 * left EMPTY and never displace a history row (review R2/U2/Q1) - `lop` is
+	 * still a plausible prefix of a site, unlike a keyword such as `exten`. */
+	fillOnly?: boolean;
 }
+
+/** `?id=` spellings that are still on their way to an id: the user has typed
+ * the query but not yet a character that names an extension (review U4). */
+const PENDING_DETAILS_QUERY = new Set(["", "i", "id", "id="]);
+const TRAILING_SLASH = /\/$/;
+const ID_KEY = /^id=/i;
 
 function pageRow(url: string, title: string): AddressPageRow {
 	return { kind: "page", displayText: url, title, targetUrl: url };
@@ -652,21 +663,49 @@ function matchInternalPages(
 		if (folded.startsWith(scheme)) rest = folded.slice(scheme.length);
 		else if (scheme.startsWith(folded) && folded.includes(":")) rest = "";
 		if (rest === null) continue;
-		const wanted = rest;
+		// Main accepts `lop://extensions/`, so the picker must too (review R3/U5):
+		// one trailing slash is the same page, not a different path.
+		const wanted = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+		const query = wanted.startsWith(`${EXTENSIONS_PATH}?`)
+			? wanted.slice(EXTENSIONS_PATH.length + 1)
+			: null;
+		// A bare `?` (or `?id=` still being typed) names no extension yet: keep the
+		// list page FIRST so Enter opens the list, not whichever details page
+		// happens to sort first (review U4).
+		const pending = query !== null && PENDING_DETAILS_QUERY.has(query);
 		const rows = pages
-			.filter((page) =>
-				page.url.slice(INTERNAL_PAGE_SCHEME.length).startsWith(wanted),
-			)
+			.filter((page) => {
+				const path = page.url.slice(INTERNAL_PAGE_SCHEME.length);
+				return path.startsWith(wanted) || (pending && path === EXTENSIONS_PATH);
+			})
 			.map((page) => pageRow(page.url, page.title));
 		if (wanted.startsWith(EXTENSIONS_PATH)) {
+			// What follows `?`/`?id=` matches the id by prefix OR the name by
+			// case-insensitive substring (review U3): nobody knows a 32-letter id,
+			// but the rows show names. Names come from the list already loaded for
+			// these rows, so this adds no IPC. Read from the RAW text: names are not
+			// ASCII in every language and `foldAscii` only lowercases A-Z.
+			const term =
+				query === null || pending
+					? ""
+					: raw
+							.slice(raw.length - rest.length)
+							.replace(TRAILING_SLASH, "")
+							.slice(EXTENSIONS_PATH.length + 1)
+							.replace(ID_KEY, "")
+							.toLowerCase();
+			const bare = query === null && wanted !== EXTENSIONS_PATH;
 			for (const extension of extensions) {
-				const path = `${EXTENSIONS_PATH}?id=${extension.id}`;
+				const url = internalUrlOf({ page: "extensions", id: extension.id });
 				// parseInternalUrl is the gate: an id main would refuse is never offered.
+				if (bare || !parseInternalUrl(url)) continue;
 				if (
-					path.startsWith(wanted) &&
-					parseInternalUrl(`${INTERNAL_PAGE_SCHEME}${path}`)
+					term.length > 0 &&
+					!extension.id.startsWith(term) &&
+					!extension.name.toLowerCase().includes(term)
 				)
-					rows.push(pageRow(`${INTERNAL_PAGE_SCHEME}${path}`, extension.name));
+					continue;
+				rows.push(pageRow(url, extension.name));
 			}
 		}
 		if (rows.length === 0) return none;
@@ -674,7 +713,12 @@ function matchInternalPages(
 		if (rows.length === 1) {
 			const only = rows[0];
 			const spelled = `${scheme}${only.targetUrl.slice(INTERNAL_PAGE_SCHEME.length)}`;
-			if (spelled.length > raw.length) {
+			// Only a true prefix completes inline: a NAME match (`?bit` ->
+			// Bitwarden's `?id=…`) is not an extension of what was typed.
+			if (
+				spelled.length > raw.length &&
+				foldAscii(spelled).startsWith(folded)
+			) {
 				const suffix = spelled.slice(raw.length);
 				inline = {
 					raw,
@@ -691,6 +735,10 @@ function matchInternalPages(
 		};
 	}
 	if (intent !== "search") return none;
+	if (folded.length < MIN_PAGE_WORD) return none;
+	// `l`/`lo` are the first keystrokes of localhost, linkedin, login: they offer
+	// nothing (review R2/U2/Q1). `lop` is the whole scheme word, so it offers
+	// the pages, but only into slots history left free.
 	if (INTERNAL_PAGE_SCHEME.startsWith(folded)) {
 		return {
 			addressed: false,
@@ -698,9 +746,9 @@ function matchInternalPages(
 				.slice(0, MAX_WORD_PAGE_ROWS)
 				.map((page) => pageRow(page.url, page.title)),
 			inline: null,
+			fillOnly: true,
 		};
 	}
-	if (folded.length < MIN_PAGE_WORD) return none;
 	// The localized title is lowercased with the locale-agnostic `toLowerCase`
 	// (titles are not ASCII in every language); keywords are already lowercase.
 	const word = raw.toLowerCase();
@@ -860,7 +908,7 @@ export function suggestAddresses(
 		.slice(
 			0,
 			(search ? MAX_ADDRESS_ROWS - 1 : MAX_ADDRESS_ROWS) -
-				pageMatch.rows.length,
+				(pageMatch.fillOnly ? 0 : pageMatch.rows.length),
 		);
 	// THE COMPLETION IS NEVER "NO MATCH". With other rows the inline target is
 	// dropped because the field already shows it (one destination, one place). When
@@ -889,9 +937,14 @@ export function suggestAddresses(
 		...candidates.map(
 			(candidate): AddressCandidateRow => ({ kind: "candidate", candidate }),
 		),
-		// Last: a page matched by a WORD is an extra, never the default Enter.
-		...pageMatch.rows,
 	];
+	// Last: a page matched by a WORD is an extra, never the default Enter. A
+	// fill-only match (`lop`) gets whatever room is left, possibly none.
+	rows.push(
+		...(pageMatch.fillOnly
+			? pageMatch.rows.slice(0, Math.max(0, MAX_ADDRESS_ROWS - rows.length))
+			: pageMatch.rows),
+	);
 	return { inline, candidates, rows, search, typed, inlineRow, intent };
 }
 
@@ -987,4 +1040,50 @@ export function usableRawAddress(raw: string): string | null {
 	const trimmed = raw.trim();
 	if (!trimmed || CONTROL_CHARS.test(trimmed)) return null;
 	return trimmed;
+}
+
+/** What Enter does with the browser's own scheme when NO row is highlighted. */
+export type InternalEnter =
+	| { kind: "navigate"; targetUrl: string }
+	| { kind: "refuse" };
+
+/**
+ * Enter on `lop:`/`chrome:` text with no highlighted row (review U1).
+ *
+ * WHY THIS EXISTS: a page match turns `lop:` into URL intent so the list can
+ * show pages, but the TEXT is still not something main can open - main would
+ * read `lop:` as `https://lop/` (a DNS failure) and `lop://ext` as a refused
+ * scheme. So when the user has rejected the completion (Backspace, a caret
+ * move), the decision is made from the raw text, never from the overridden
+ * intent:
+ *   1. it parses exactly (`lop://extensions/`, `chrome://extensions`): open the
+ *      canonical page;
+ *   2. it is the scheme with EXACTLY one matching page: open that page - the
+ *      list names one destination, so Enter means it;
+ *   3. otherwise refuse locally, as blocked text always was (UX U5).
+ * Returns null for anything that is not the browser's own scheme, which keeps
+ * ordinary web typing on its existing path. Never returns a non-parsing URL.
+ */
+export function internalEnterTarget(
+	raw: string,
+	suggestions: AddressSuggestions,
+): InternalEnter | null {
+	const trimmed = raw.trim();
+	const parsed = parseInternalUrl(trimmed);
+	if (parsed) return { kind: "navigate", targetUrl: internalUrlOf(parsed) };
+	if (addressIntent(trimmed) !== "blocked") return null;
+	const folded = foldAscii(trimmed);
+	const internal = INTERNAL_SCHEMES.some(
+		(scheme) =>
+			folded.startsWith(scheme) ||
+			(scheme.startsWith(folded) && folded.includes(":")),
+	);
+	if (!internal) return null;
+	const pages = suggestions.rows.filter(
+		(row): row is AddressPageRow => row.kind === "page",
+	);
+	const only = pages.length === 1 ? pages[0] : null;
+	if (only && parseInternalUrl(only.targetUrl))
+		return { kind: "navigate", targetUrl: only.targetUrl };
+	return { kind: "refuse" };
 }

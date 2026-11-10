@@ -2378,3 +2378,83 @@ test("lop://extensions lists each installed extension's details by name", async 
 		dom.window.api = undefined;
 	}
 });
+
+// U1 (round 1): rejecting the page completion leaves `lop:` with NO row
+// active. Main reads `lop:` as `https://lop/` (a DNS failure), so Enter must
+// decide from the raw text: open the one matching page, or refuse locally.
+const deleteBack = async (bundle, value) => {
+	await act(async () => {
+		setValue(bundle.input, value, "deleteContentBackward");
+	});
+	await flush();
+};
+
+test("U1: lop: + Backspace + Enter opens the one matching page, never the raw scheme", async () => {
+	for (const [typed, left] of [
+		["lop:", "lop:"],
+		["lop:/", "lop:/"],
+		["chrome:", "chrome:"],
+		["lop://ext", "lop://ext"],
+	]) {
+		const bundle = await renderBar();
+		await type(bundle, typed);
+		await deleteBack(bundle, left);
+		assert.equal(bundle.input.value, left, `${typed}: completion rejected`);
+		assert.equal(
+			options(bundle).filter(
+				(row) => row.getAttribute("aria-selected") === "true",
+			).length,
+			0,
+			`${typed}: no row is active`,
+		);
+		await key(bundle, "Enter");
+		assert.deepEqual(
+			bundle.navigations,
+			[{ url: "lop://extensions", expectedTabId: 1 }],
+			`${typed}: Enter opens the canonical page`,
+		);
+		await bundle.cleanup();
+	}
+});
+
+test("U1: lop:// text matching several pages with no row active is refused locally", async () => {
+	dom.window.api = {
+		browser: {
+			extensions: async () => ({
+				ok: true,
+				extensions: [
+					{ id: "a".repeat(32), name: "Dark Reader" },
+					{ id: "b".repeat(32), name: "Dark Mode" },
+				],
+			}),
+			onStateChanged: () => () => {},
+		},
+	};
+	try {
+		const bundle = await renderBar();
+		await type(bundle, "lop://extensions?dark");
+		assert.equal(options(bundle).length, 2, "both names contain dark");
+		// Same two rows after the deletion, so nothing re-highlights them.
+		await deleteBack(bundle, "lop://extensions?dar");
+		assert.equal(options(bundle).length, 2);
+		assert.equal(
+			options(bundle).filter(
+				(row) => row.getAttribute("aria-selected") === "true",
+			).length,
+			0,
+			"no row is active",
+		);
+		await key(bundle, "Enter");
+		assert.deepEqual(bundle.navigations, [], "nothing reaches main");
+		assert.equal(bundle.input.value, "lop://extensions?dar", "the draft stays");
+		assert.ok(
+			[...bundle.container.querySelectorAll("[aria-live]")].some((node) =>
+				BLOCKED_HINT.test(node.textContent ?? ""),
+			),
+			"the existing refusal sentence is announced",
+		);
+		await bundle.cleanup();
+	} finally {
+		dom.window.api = undefined;
+	}
+});

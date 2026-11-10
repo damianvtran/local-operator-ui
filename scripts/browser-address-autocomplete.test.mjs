@@ -39,6 +39,7 @@ const {
 	isGeneratedSuffixSelected,
 	moveActive,
 	suggestAddresses,
+	internalEnterTarget,
 	usableRawAddress,
 } = mod;
 
@@ -644,8 +645,8 @@ test("pages: a single match inline-completes in the spelling typed, to the canon
 	);
 });
 
-test("pages: `l`, `lo`, `lop` offer the pages after the search row", () => {
-	for (const raw of ["l", "lo", "lop", "LOP"]) {
+test("pages: `lop` offers the pages after the search row; `l`/`lo` offer none (R2/U2/Q1)", () => {
+	for (const raw of ["lop", "LOP"]) {
 		const result = suggestAddresses(sample, raw, { pages: PAGES });
 		assert.equal(result.intent, "search", raw);
 		assert.equal(result.rows[0].kind, "search", `${raw}: search stays first`);
@@ -662,11 +663,186 @@ test("pages: `l`, `lo`, `lop` offer the pages after the search row", () => {
 			`${raw}: a page never inlines a bare word`,
 		);
 	}
+	for (const raw of ["l", "lo", "LO"]) {
+		assert.deepEqual(
+			pageRows(suggestAddresses(sample, raw, { pages: PAGES })),
+			[],
+			`${raw}: the first keystrokes of localhost/linkedin offer no page`,
+		);
+	}
 	assert.deepEqual(
 		pageRows(suggestAddresses(sample, "c", { pages: PAGES })),
 		[],
 		"`c` is not the alias until it is typed with its colon",
 	);
+});
+
+test("pages: `lop` only fills an EMPTY slot and never displaces history (R2/U2/Q1)", () => {
+	const lopHistory = [
+		"https://lopez.example/",
+		"https://lopes.example/",
+		"https://loppers.example/",
+		"https://lopsided.example/",
+		"https://lophophore.example/",
+	].map((url, index) =>
+		entry(url, {
+			source: "history",
+			sourceTabId: undefined,
+			sourceIndex: index,
+			activeTab: false,
+			lastVisitedAt: 100 - index,
+		}),
+	);
+	const urls = (result) =>
+		result.rows
+			.filter((row) => row.kind === "candidate")
+			.map((row) => row.candidate.url);
+	const without = suggestAddresses(lopHistory, "lop", {});
+	const withPages = suggestAddresses(lopHistory, "lop", { pages: PAGES });
+	assert.equal(urls(without).length, 4, "fixture fills the list");
+	assert.deepEqual(urls(withPages), urls(without), "history is intact");
+	assert.deepEqual(pageRows(withPages), [], "a full list has no room");
+	assert.ok(withPages.rows.length <= 5);
+	const roomy = suggestAddresses(lopHistory.slice(0, 2), "lop", {
+		pages: PAGES,
+	});
+	assert.equal(urls(roomy).length, 2);
+	assert.deepEqual(
+		pageRows(roomy),
+		[["lop://extensions", "Extensions"]],
+		"a free slot takes the page",
+	);
+	// Keyword matches keep their reserved slot.
+	const exten = suggestAddresses(
+		lopHistory.map((e, i) => ({ ...e, url: `https://exten${i}.example/` })),
+		"exten",
+		{ pages: PAGES },
+	);
+	assert.deepEqual(pageRows(exten), [["lop://extensions", "Extensions"]]);
+});
+
+test("pages: a trailing slash is the same page (R3/U5)", () => {
+	const result = suggestAddresses(sample, "lop://extensions/", {
+		pages: PAGES,
+		extensions: EXTENSIONS,
+	});
+	assert.equal(result.intent, "url");
+	assert.deepEqual(pageRows(result), [
+		["lop://extensions", "Extensions"],
+		[`lop://extensions?id=${"a".repeat(32)}`, "Password Keeper"],
+		[`lop://extensions?id=${"b".repeat(32)}`, "Ad Shield"],
+	]);
+	assert.equal(
+		rowTarget(result, defaultActiveIndex(result)),
+		"lop://extensions",
+	);
+});
+
+test("pages: `?` or a half-typed `?id=` keeps the list page first (U4)", () => {
+	for (const raw of [
+		"lop://extensions?",
+		"lop://extensions?i",
+		"lop://extensions?id",
+		"lop://extensions?id=",
+	]) {
+		const result = suggestAddresses(sample, raw, {
+			pages: PAGES,
+			extensions: EXTENSIONS,
+		});
+		assert.equal(result.inline, null, `${raw}: no details inline`);
+		assert.equal(result.rows[0].targetUrl, "lop://extensions", raw);
+		assert.equal(
+			rowTarget(result, defaultActiveIndex(result)),
+			"lop://extensions",
+			`${raw}: Enter opens the list`,
+		);
+	}
+});
+
+test("pages: details rows match the extension NAME too, targeting ?id= (U3)", () => {
+	const bId = `lop://extensions?id=${"b".repeat(32)}`;
+	for (const raw of [
+		"lop://extensions?shield",
+		"lop://extensions?id=SHIELD",
+		"chrome://extensions?Ad",
+	]) {
+		const result = suggestAddresses(sample, raw, {
+			pages: PAGES,
+			extensions: EXTENSIONS,
+		});
+		assert.deepEqual(pageRows(result), [[bId, "Ad Shield"]], raw);
+		assert.equal(result.inline, null, `${raw}: a name match never inlines`);
+		assert.equal(rowTarget(result, defaultActiveIndex(result)), bId);
+	}
+	assert.deepEqual(
+		pageRows(
+			suggestAddresses(sample, "lop://extensions?adsh", {
+				pages: PAGES,
+				extensions: EXTENSIONS,
+			}),
+		),
+		[],
+		"a substring, not a fuzzy match",
+	);
+	const prefix = suggestAddresses(sample, "lop://extensions?id=aa", {
+		pages: PAGES,
+		extensions: EXTENSIONS,
+	});
+	assert.deepEqual(
+		pageRows(prefix),
+		[[`lop://extensions?id=${"a".repeat(32)}`, "Password Keeper"]],
+		"id prefix still matches",
+	);
+	assert.equal(
+		prefix.inline?.targetUrl,
+		`lop://extensions?id=${"a".repeat(32)}`,
+	);
+});
+
+test("pages: Enter with no row decides from the RAW text, never sends a non-parsing lop:/chrome: (U1)", () => {
+	const opts = { pages: PAGES, inlineShown: false };
+	const enter = (raw, extra = {}) =>
+		internalEnterTarget(
+			raw,
+			suggestAddresses(sample, raw, { ...opts, ...extra }),
+		);
+	// 1. Parses exactly: canonical.
+	assert.deepEqual(enter("chrome://extensions/"), {
+		kind: "navigate",
+		targetUrl: "lop://extensions",
+	});
+	assert.deepEqual(enter(`LOP://extensions?id=${"A".repeat(32)}`), {
+		kind: "navigate",
+		targetUrl: `lop://extensions?id=${"a".repeat(32)}`,
+	});
+	// 2. Scheme prefix with exactly one page match: that page.
+	for (const raw of ["lop:", "lop:/", "chrome:", "lop://ext"]) {
+		assert.deepEqual(
+			enter(raw),
+			{ kind: "navigate", targetUrl: "lop://extensions" },
+			raw,
+		);
+	}
+	// 3. Several matches, or none: refused locally.
+	assert.deepEqual(
+		enter("lop://extensions?", { extensions: EXTENSIONS }),
+		{ kind: "refuse" },
+		"`?` does not parse and three rows match: refused, not guessed",
+	);
+	assert.deepEqual(enter("lop://extensions?d", { extensions: EXTENSIONS }), {
+		kind: "refuse",
+	});
+	assert.deepEqual(enter("lop://nope"), { kind: "refuse" });
+	assert.deepEqual(enter("lop:", { pages: [] }), { kind: "refuse" });
+	// Ordinary web typing is untouched.
+	for (const raw of [
+		"lop",
+		"example.com",
+		"https://lop.example/",
+		"hello world",
+	]) {
+		assert.equal(enter(raw), null, raw);
+	}
 });
 
 test("pages: a bare word matches a keyword or title, never ahead of the search row", () => {

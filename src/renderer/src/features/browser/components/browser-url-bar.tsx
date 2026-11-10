@@ -62,6 +62,7 @@ import {
 	defaultActiveIndex,
 	displayValue,
 	embedValue,
+	internalEnterTarget,
 	isGeneratedSuffixSelected,
 	isolateBidi,
 	moveActive,
@@ -222,7 +223,10 @@ export function displayUrl(url: string): string {
 /** Whether the typed text has reached `lop://extensions` (or its alias), the
  * point where each installed extension's details page becomes a suggestion. */
 function wantsExtensionDetails(query: string): boolean {
-	const folded = query.trim().toLowerCase();
+	// Untrimmed on purpose: the page matcher refuses padded text (` lop://…`),
+	// so trimming here mounted the extension source for rows that never showed
+	// (review R4).
+	const folded = query.toLowerCase();
 	const path = EXTENSIONS_PAGE_URL.slice(INTERNAL_PAGE_SCHEME.length);
 	return (
 		folded.startsWith(`${INTERNAL_PAGE_SCHEME}${path}`) ||
@@ -616,7 +620,6 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			currentCompletion,
 			editing,
 			internalPagesKey,
-			detailsWanted,
 			extensionDetails,
 		],
 	);
@@ -1237,6 +1240,21 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			}
 			if (current) {
 				commit(current.targetUrl);
+				return;
+			}
+			// The browser's own scheme with no row chosen is decided from the RAW
+			// text: a page match makes `lop:` URL intent for the list's sake, but
+			// main would open it as `https://lop/` (review U1). Only a canonical
+			// page URL ever reaches `commit` from here.
+			const internal = internalEnterTarget(raw, suggestions);
+			if (internal?.kind === "navigate") {
+				commit(internal.targetUrl);
+				return;
+			}
+			if (internal?.kind === "refuse") {
+				setAnnouncement(
+					t("ui.browser.browser_url_bar.address_suggestions_blocked"),
+				);
 				return;
 			}
 			const next = usableRawAddress(raw);
