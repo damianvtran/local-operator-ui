@@ -8,7 +8,17 @@ export type MusicTrackReceipt = {
 	cost: Record<string, unknown> | null;
 	images: TranscriptImage[];
 };
-export type MusicReceipt = { attribution: string; tracks: MusicTrackReceipt[] };
+export type MusicReceipt = {
+	attribution: string;
+	tracks: MusicTrackReceipt[];
+	/**
+	 * The music job this receipt belongs to (Core's `music_receipt.job`). It
+	 * differs from the carrying row's `job_id` when a successor observer settled
+	 * the job after a cancel request (`musicJobSettlementsOf`); absent on
+	 * receipts that do not state it.
+	 */
+	job?: string;
+};
 const object = (value: unknown): value is Record<string, unknown> =>
 	value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -26,6 +36,9 @@ export function musicReceiptOf(details: unknown): MusicReceipt | undefined {
 		? details.artifacts.filter(object)
 		: [];
 	return {
+		...(typeof details.job === "string" && details.job.length > 0
+			? { job: details.job }
+			: {}),
 		attribution:
 			typeof details.attribution === "string" ? details.attribution : "",
 		tracks: details.tracks

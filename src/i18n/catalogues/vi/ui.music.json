@@ -12,5 +12,6 @@
 	"ui.music.cancel_requested": "Đã yêu cầu hủy",
 	"ui.music.ready": "Nhạc đã sẵn sàng",
 	"ui.music.job_failed": "Không thể tạo nhạc.",
-	"ui.music.job_cancelled": "Đã hủy tạo nhạc."
+	"ui.music.job_cancelled": "Đã hủy tạo nhạc.",
+	"ui.music.finished_after_cancel": "Nhạc đã tạo xong trước khi kịp hủy."
 }

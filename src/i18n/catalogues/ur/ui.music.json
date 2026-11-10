@@ -12,5 +12,6 @@
 	"ui.music.cancel_requested": "منسوخی کی درخواست بھیج دی گئی",
 	"ui.music.ready": "موسیقی تیار ہے",
 	"ui.music.job_failed": "موسیقی تیار نہیں ہو سکی۔",
-	"ui.music.job_cancelled": "موسیقی کی تیاری منسوخ کر دی گئی۔"
+	"ui.music.job_cancelled": "موسیقی کی تیاری منسوخ کر دی گئی۔",
+	"ui.music.finished_after_cancel": "موسیقی منسوخ ہونے سے پہلے ہی مکمل ہو گئی۔"
 }

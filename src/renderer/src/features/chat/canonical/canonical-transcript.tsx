@@ -208,9 +208,8 @@ import {
 	useMusicGeneratingView,
 } from "./music-generating-card";
 import {
-	type MusicJobSettlement,
 	MusicJobSettlementsContext,
-	jobResultStatus,
+	musicJobSettlementsOf,
 } from "./music-generating-model";
 import { MusicResult } from "./music-result";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
@@ -4186,17 +4185,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = (props) => {
 	 * read by context rather than threaded through every row's memo props.
 	 */
 	const records = props.transcript.records;
-	const settlements = useMemo(() => {
-		const settled = new Map<string, MusicJobSettlement>();
-		for (const record of records) {
-			if (record.kind === "custom" && record.jobId)
-				settled.set(record.jobId, {
-					status: jobResultStatus(record.text),
-					receipt: record.music ?? null,
-				});
-		}
-		return settled;
-	}, [records]);
+	const settlements = useMemo(() => musicJobSettlementsOf(records), [records]);
 	return (
 		<MusicJobSettlementsContext.Provider value={settlements}>
 			<SpeechGateScope>

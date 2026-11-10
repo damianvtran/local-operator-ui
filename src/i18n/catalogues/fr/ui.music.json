@@ -12,5 +12,6 @@
 	"ui.music.cancel_requested": "Annulation demandée",
 	"ui.music.ready": "Musique prête",
 	"ui.music.job_failed": "La génération de la musique a échoué.",
-	"ui.music.job_cancelled": "Génération de la musique annulée."
+	"ui.music.job_cancelled": "Génération de la musique annulée.",
+	"ui.music.finished_after_cancel": "La musique a été terminée avant de pouvoir être annulée."
 }

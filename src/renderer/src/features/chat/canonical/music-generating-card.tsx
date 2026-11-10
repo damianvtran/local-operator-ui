@@ -28,6 +28,8 @@ const stateLine = (view: MusicGeneratingView): string => {
 			return t("ui.music.job_failed");
 		case "cancelled":
 			return t("ui.music.job_cancelled");
+		case "finished_after_cancel":
+			return t("ui.music.finished_after_cancel");
 		case "unavailable":
 			return t("ui.music.job_status.unavailable");
 	}
@@ -123,9 +125,14 @@ export const useMusicGeneratingView = (
 	const settlements = useContext(MusicJobSettlementsContext);
 	const jobId = musicJobIdOf(details);
 	const row = jobId ? live?.rows.get(jobId) : undefined;
+	const successorRow = jobId ? live?.successors?.get(jobId) : undefined;
 	const settlement = jobId ? settlements.get(jobId) : undefined;
 	const missing =
-		jobId !== null && live?.loaded === true && !row && !settlement;
+		jobId !== null &&
+		live?.loaded === true &&
+		!row &&
+		!successorRow &&
+		!settlement;
 	// Keyed by job id so a recycled row never inherits another job's elapsed grace.
 	const [graceOver, setGraceOver] = useState<string | null>(null);
 	useEffect(() => {
@@ -141,6 +148,7 @@ export const useMusicGeneratingView = (
 		details,
 		row,
 		settlement,
+		successorRow,
 		liveLoaded: missing && graceOver === jobId,
 	});
 };

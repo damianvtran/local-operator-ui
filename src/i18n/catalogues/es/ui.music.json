@@ -12,5 +12,6 @@
 	"ui.music.cancel_requested": "Cancelación solicitada",
 	"ui.music.ready": "Música lista",
 	"ui.music.job_failed": "No se pudo generar la música.",
-	"ui.music.job_cancelled": "Generación de música cancelada."
+	"ui.music.job_cancelled": "Generación de música cancelada.",
+	"ui.music.finished_after_cancel": "La música terminó antes de que se pudiera cancelar."
 }

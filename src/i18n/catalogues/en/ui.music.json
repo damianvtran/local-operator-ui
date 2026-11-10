@@ -12,5 +12,6 @@
 	"ui.music.cancel_requested": "Cancellation requested",
 	"ui.music.ready": "Music ready",
 	"ui.music.job_failed": "Music generation failed.",
-	"ui.music.job_cancelled": "Music generation cancelled."
+	"ui.music.job_cancelled": "Music generation cancelled.",
+	"ui.music.finished_after_cancel": "Music finished before it could be cancelled."
 }

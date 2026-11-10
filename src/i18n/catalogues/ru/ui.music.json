@@ -12,5 +12,6 @@
 	"ui.music.cancel_requested": "Запрошена отмена",
 	"ui.music.ready": "Музыка готова",
 	"ui.music.job_failed": "Не удалось создать музыку.",
-	"ui.music.job_cancelled": "Создание музыки отменено."
+	"ui.music.job_cancelled": "Создание музыки отменено.",
+	"ui.music.finished_after_cancel": "Музыка была готова раньше, чем удалось отменить создание."
 }

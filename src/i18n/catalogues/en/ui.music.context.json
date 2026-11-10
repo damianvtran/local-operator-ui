@@ -68,5 +68,10 @@
 		"role": "status",
 		"tone": "neutral",
 		"note": "In-chat state line above the music generating motif for one detached music job. The job was cancelled. A full sentence with a period; a billed-cost caption may follow it."
+	},
+	"ui.music.finished_after_cancel": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. The user asked to cancel, but the provider finished the track(s) anyway: the music exists, plays on the result row below, and was charged. Must not read as cancelled or as an error. A full sentence with a period; a billed-cost caption follows it."
 	}
 }

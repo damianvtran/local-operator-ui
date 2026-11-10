@@ -34,7 +34,8 @@ const bundle = await build({
 export { MusicGeneratingCard, ConnectedMusicGeneratingCard, useMusicGeneratingView, MUSIC_JOB_MISSING_GRACE_MS } from "./src/renderer/src/features/chat/canonical/music-generating-card";
 export { useJobCancel } from "./src/renderer/src/features/chat/components/run-details/use-job-cancel";
 export { ownsMaterialArtifact } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";
-export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";`,
+export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+export { deriveRunDetails } from "./src/renderer/src/features/chat/components/run-details/run-detail-model";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -85,6 +86,9 @@ const {
 	ownsMaterialArtifact,
 	EMPTY_TRANSCRIPT,
 	applyHistoryPage,
+	deriveRunDetails,
+	musicJobSettlementsOf,
+	musicJobsLiveRowsOf,
 } = mod;
 
 const receiptDetails = (job) => ({
@@ -618,4 +622,218 @@ test("Core's pending generate_music row mounts the generating card", () => {
 	assert.equal(view?.state, "queued");
 	const markup = renderToStaticMarkup(h(MusicGeneratingCard, { view }));
 	assert.ok(markup.includes(`data-music-generating="11f41d8c66d0"`), markup);
+});
+
+/*
+ * FINISHED AFTER A CANCEL REQUEST (native run 42779240064, Core 859729bd). The
+ * cancel ended the call's AsyncJob 8b1723b0f326 (`cancelled`) and Core's music
+ * runner registered observer 5d2b5eecaee0 (`record.watcher`), which finished
+ * track aud_serving_8 and billed it. The record below is that run's
+ * `late_settlement` record (native.log), scrubbed of its idempotency key; the
+ * job_result rows are what `Session._job_result_message` builds from it: the
+ * cancelled task's row (its `latest_details` holds only `music`, so no receipt
+ * is merged) and the observer's row (its `music_receipt` merged in, naming
+ * music job 8b1723b0f326 under the observer's own `job_id`).
+ */
+const LATE_RECORD = {
+	state: "completed",
+	job: "8b1723b0f326",
+	watcher: "5d2b5eecaee0",
+	cancellation_requested: true,
+	cancellation: [
+		{ request_id: "aud_serving_8", requested: true, vendor_stopped: false },
+	],
+	attribution: "Synthetic QA upstream; no resale authorization",
+	artifacts: [
+		{
+			digest: "34681b9e4cf82622b22fabbafab1d748",
+			kind: "audio",
+			name: "owned-silent-music-fixture.mp3",
+			content_type: "audio/mpeg",
+			size_bytes: 24493,
+			duration_s: 3,
+			material: "music",
+			track_id: "aud_serving_8",
+			artifact_id: "artifact_aud_serving_8",
+			role: "full_mix",
+			variant_index: 0,
+			title: "Owned silent music fixture",
+			operation: "compose",
+		},
+	],
+	tracks: [
+		{
+			id: "aud_serving_8",
+			title: "Owned silent music fixture",
+			variant_index: 0,
+			status: "COMPLETED",
+			settled: true,
+			cost: {
+				v: 1,
+				amount_usd: 0.007500000000000001,
+				basis: "billed",
+				units: 3000,
+				unit: "millisecond",
+				provider: "radient",
+				model: "radient/music",
+				tool_type: "music_generation",
+			},
+			error_type: null,
+			artifacts_registered: true,
+		},
+	],
+};
+// `runner`'s final receipt (music/jobs.py): these keys, from the record.
+const lateReceipt = (record) => ({
+	job: record.job,
+	material: "music",
+	model: "radient/music",
+	provider: "radient",
+	tracks: record.tracks,
+	artifacts: record.artifacts ?? [],
+	attribution: record.attribution,
+});
+const jobResultEntry = (id, details) => ({
+	id,
+	ts: 1794300270,
+	type: "message",
+	payload: { kind: "custom", custom_type: "job_result", details },
+});
+const cancelledOriginal = jobResultEntry("r-cancel", {
+	job_id: "8b1723b0f326",
+	text: "background job 'Music' cancelled.",
+});
+const observerResult = (record) =>
+	jobResultEntry("r-observer", {
+		job_id: "5d2b5eecaee0",
+		text: `background job 'Music' ${record.artifacts?.length ? "completed" : "failed"}:\\nmusic ready`,
+		...lateReceipt(record),
+	});
+const settledFrom = (entries) =>
+	musicJobSettlementsOf(
+		applyHistoryPage(EMPTY_TRANSCRIPT, { entries }).records,
+	);
+const cardFor = (settlements, live = {}) =>
+	musicGeneratingView({
+		toolName: "generate_music",
+		details: receiptDetails("8b1723b0f326"),
+		row: live.rows?.get("8b1723b0f326"),
+		successorRow: live.successors?.get("8b1723b0f326"),
+		settlement: settlements.get("8b1723b0f326"),
+	});
+
+test("music that finished after a cancel request is not called cancelled (real Core shape)", () => {
+	// Either arrival order: the successor never overwrites, it attaches.
+	for (const entries of [
+		[cancelledOriginal, observerResult(LATE_RECORD)],
+		[observerResult(LATE_RECORD), cancelledOriginal],
+	]) {
+		const settlements = settledFrom(entries);
+		assert.equal(
+			settlements.has("5d2b5eecaee0"),
+			false,
+			"the observer is not a second card's job",
+		);
+		const view = cardFor(settlements);
+		assert.deepEqual(
+			[view.state, view.completed, view.total, view.cost],
+			["finished_after_cancel", 1, 1, "Cost $0.0075 (billed)."],
+		);
+		const markup = renderToStaticMarkup(h(MusicGeneratingCard, { view }));
+		assert.match(markup, /Music finished before it could be cancelled\./);
+		assert.match(markup, /Cost \$0\.0075 \(billed\)\./);
+		assert.doesNotMatch(markup, /Music generation cancelled/);
+	}
+	// The track itself still renders through the observer's own job_result
+	// row (MusicResult reads `record.music`), unchanged by the card.
+	const records = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [cancelledOriginal, observerResult(LATE_RECORD)],
+	}).records.filter((record) => record.kind === "custom");
+	const observer = records.find((record) => record.jobId === "5d2b5eecaee0");
+	assert.deepEqual(
+		observer.images.map((image) => image.attachment),
+		["34681b9e4cf82622b22fabbafab1d748"],
+	);
+});
+
+test("a genuinely cancelled music job stays cancelled at $0", () => {
+	// Only the cancelled task's row (the observer has not settled yet, or the
+	// runtime predates observers): unchanged "cancelled", no cost line.
+	const alone = cardFor(settledFrom([cancelledOriginal]));
+	assert.deepEqual([alone.state, alone.cost], ["cancelled", null]);
+	// The provider stopped: the observer settles with no audio and a $0 bill.
+	const stopped = {
+		...LATE_RECORD,
+		state: "failed",
+		artifacts: [],
+		tracks: [
+			{
+				...LATE_RECORD.tracks[0],
+				status: "CANCELLED",
+				error_type: "cancelled",
+				artifacts_registered: false,
+				cost: { amount_usd: 0, basis: "billed" },
+			},
+		],
+	};
+	const view = cardFor(
+		settledFrom([cancelledOriginal, observerResult(stopped)]),
+	);
+	assert.deepEqual(
+		[view.state, view.completed, view.cost],
+		["cancelled", 0, "Cost $0 (billed)."],
+	);
+});
+
+test("live: the observer row carries the job after a cancel, never a premature cancelled", () => {
+	// The Jobs wire as Core serves it: the cancelled task, and the observer
+	// whose `latest_details.music.job` names the original music job.
+	const wire = (id, status, stage, settled) => ({
+		id,
+		type: "music",
+		status,
+		queued: false,
+		label: "Music",
+		start_time: 1_000,
+		settled_at: status === "running" ? null : 1_010,
+		latest_details: {
+			music: {
+				job: "8b1723b0f326",
+				stage,
+				tracks: [{ ...LATE_RECORD.tracks[0], settled }],
+				attribution: "",
+			},
+		},
+	});
+	const liveOf = (jobs) => ({
+		...musicJobsLiveRowsOf(
+			deriveRunDetails({ jobs, todos: [], nowMs: 1_060_000 }).jobs,
+		),
+	});
+	const original = wire("8b1723b0f326", "cancelled", "polling", false);
+	const working = liveOf([
+		original,
+		wire("5d2b5eecaee0", "running", "cancel_requested", false),
+	]);
+	assert.equal(working.rows.has("5d2b5eecaee0"), false);
+	assert.equal(working.successors.get("8b1723b0f326")?.id, "5d2b5eecaee0");
+	const pending = cardFor(new Map(), working);
+	assert.deepEqual(
+		[pending.state, pending.cancelRow],
+		["cancel_requested", null],
+		"the provider was already asked: no second Cancel",
+	);
+	// The cancelled task's own job_result can land before the observer ends.
+	const pendingWithRow = cardFor(settledFrom([cancelledOriginal]), working);
+	assert.equal(pendingWithRow.state, "cancel_requested");
+	const finished = cardFor(
+		new Map(),
+		liveOf([original, wire("5d2b5eecaee0", "done", "completed", true)]),
+	);
+	assert.deepEqual(
+		[finished.state, finished.completed, finished.total],
+		["finished_after_cancel", 1, 1],
+	);
+	// No observer at all: the task's cancelled row states the outcome as before.
+	assert.equal(cardFor(new Map(), liveOf([original])).state, "cancelled");
 });

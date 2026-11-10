@@ -316,6 +316,12 @@ export type SubagentRow = {
 	 */
 	jobType: string | null;
 	music?: {
+		/**
+		 * The music job this row carries (`latest_details.music.job`). Differs
+		 * from `id` on a successor observer Core registers after a cancel
+		 * request (see `music-generating-model.ts`); "" when unstated.
+		 */
+		job: string;
 		stage: string;
 		completed: number;
 		total: number;
@@ -1378,6 +1384,7 @@ const deriveChild = (
 		isRecord(job.latest_details.music)
 			? {
 					music: {
+						job: wireText(job.latest_details.music.job),
 						stage: wireText(job.latest_details.music.stage),
 						total: Array.isArray(job.latest_details.music.tracks)
 							? job.latest_details.music.tracks.length

@@ -111,6 +111,7 @@ import { LiveUpdatesPausedBanner } from "../canonical/live-updates-paused-banner
 import {
 	type MusicJobsLive,
 	MusicJobsLiveContext,
+	musicJobsLiveRowsOf,
 } from "../canonical/music-generating-model";
 import { openFrameFacts } from "../canonical/open-frame";
 import {
@@ -170,7 +171,6 @@ import type { DirectoryWritePath } from "./directory-indicator";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import { JobCancelPopover } from "./run-details/job-cancel-popover";
-import { MUSIC_JOB_TYPE } from "./run-details/job-controls-model";
 import { useJobCancel } from "./run-details/use-job-cancel";
 import type { JobControls } from "./run-details/use-job-controls";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
@@ -978,11 +978,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const runDetailJobs = runDetails?.jobs;
 		const musicJobsLive = useMemo<MusicJobsLive>(
 			() => ({
-				rows: new Map(
-					(runDetailJobs ?? [])
-						.filter((row) => row.jobType === MUSIC_JOB_TYPE)
-						.map((row) => [row.id, row]),
-				),
+				// Successor observer rows (a cancel Core carried on) are indexed by
+				// the music job they carry, so a card follows its paid outcome.
+				...musicJobsLiveRowsOf(runDetailJobs ?? []),
 				request: musicJobCancelRequest,
 				loaded: runDetailJobs !== undefined,
 			}),

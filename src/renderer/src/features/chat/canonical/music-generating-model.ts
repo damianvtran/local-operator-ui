@@ -1,6 +1,7 @@
 import { createContext } from "react";
 import {
 	type JobCancelSection,
+	MUSIC_JOB_TYPE,
 	jobRowCanCancel,
 } from "../components/run-details/job-controls-model";
 import {
@@ -10,6 +11,7 @@ import {
 import { isMusicGenTool, musicJobIdOf } from "./music-gen-tool";
 import type { MusicReceipt } from "./music-receipt-model";
 import { soundCostCaption } from "./sound-cost-caption";
+import type { TranscriptRecord } from "./transcript-reducer";
 
 /*
  * THE IN-CHAT MUSIC GENERATING CARD'S STATE, derived from facts the chat
@@ -72,11 +74,89 @@ export function jobResultStatus(text: string): string | null {
 export type MusicJobSettlement = {
 	status: string | null;
 	receipt: MusicReceipt | null;
+	/**
+	 * The settlement of the SUCCESSOR observer job that carried this music job
+	 * on after a cancel, when one has landed (see `musicJobSettlementsOf`).
+	 */
+	successor?: { status: string | null; receipt: MusicReceipt | null };
 };
+
+/*
+ * WHY A MUSIC JOB CAN SETTLE TWICE. Core's music runner (`music/jobs.py`,
+ * `runner`'s `CancelledError` arm, Core 859729bd) treats a cancel as a REQUEST:
+ * it asks the provider to stop, then registers a NEW observer `AsyncJob` (the
+ * record's `watcher`) because a running provider can still finish and bill. So
+ * the job the call registered settles `cancelled` - true of that task - while
+ * the paid outcome, if any, settles later on a different job id whose receipt
+ * still names the original music job (`music_receipt.job`, and
+ * `latest_details.music.job` on the live row). Native run 42779240064 showed
+ * exactly this: job 8b1723b0f326 cancelled, its observer 5d2b5eecaee0 finished
+ * track aud_serving_8, billed. Keying the card by the call's job id alone told
+ * the operator "cancelled" for music they were charged for. The successor is
+ * found through that receipt/live `job` field, never guessed from timing.
+ */
+
+/**
+ * Settled detached jobs by the music job they belong to, from the transcript's
+ * `job_result` rows. A row whose receipt names a different music job than its
+ * own `job_id` is that job's successor observer and is attached as
+ * `successor` (in either arrival order), so it never overwrites the call's own
+ * settlement nor masquerades as a separate job.
+ */
+export function musicJobSettlementsOf(
+	records: readonly TranscriptRecord[],
+): Map<string, MusicJobSettlement> {
+	const own = new Map<string, MusicJobSettlement>();
+	const successors = new Map<
+		string,
+		NonNullable<MusicJobSettlement["successor"]>
+	>();
+	for (const record of records) {
+		if (record.kind !== "custom" || !record.jobId) continue;
+		const settled = {
+			status: jobResultStatus(record.text),
+			receipt: record.music ?? null,
+		};
+		const musicJob = record.music?.job;
+		if (musicJob && musicJob !== record.jobId)
+			successors.set(musicJob, settled);
+		else own.set(record.jobId, settled);
+	}
+	for (const [musicJob, successor] of successors) {
+		// A successor with no own settlement yet (the cancelled row has not been
+		// delivered) still settles its job: status unknown, receipt absent.
+		own.set(musicJob, {
+			...(own.get(musicJob) ?? { status: null, receipt: null }),
+			successor,
+		});
+	}
+	return own;
+}
+
+/**
+ * The Jobs rows a chat's music cards read: by job id, plus successor observer
+ * rows by the music job they carry (`music.job` differs from the row's id).
+ */
+export function musicJobsLiveRowsOf(rows: readonly SubagentRow[]): {
+	rows: Map<string, SubagentRow>;
+	successors: Map<string, SubagentRow>;
+} {
+	const byId = new Map<string, SubagentRow>();
+	const successors = new Map<string, SubagentRow>();
+	for (const row of rows) {
+		if (row.jobType !== MUSIC_JOB_TYPE) continue;
+		const musicJob = row.music?.job;
+		if (musicJob && musicJob !== row.id) successors.set(musicJob, row);
+		else byId.set(row.id, row);
+	}
+	return { rows: byId, successors };
+}
 
 /** What a chat mount knows live about music jobs; null = no run details here. */
 export type MusicJobsLive = {
 	rows: ReadonlyMap<string, SubagentRow>;
+	/** Successor observer rows by the music job they carry (`musicJobsLiveRowsOf`). */
+	successors?: ReadonlyMap<string, SubagentRow>;
 	/** The chat's own confirm flow (`useJobCancel`); absent = no control. */
 	request: JobCancelSection["request"] | null;
 	/**
@@ -101,6 +181,12 @@ export type MusicGeneratingState =
 	| "done"
 	| "failed"
 	| "cancelled"
+	/**
+	 * A cancel was requested but the provider finished anyway: tracks exist and
+	 * were billed (the cancel confirmation warns this can happen). Distinct
+	 * from `cancelled` so the card never says "cancelled" over a paid track.
+	 */
+	| "finished_after_cancel"
 	/** Nothing current states this job's status (see `MusicJobsLive.loaded`). */
 	| "unavailable";
 
@@ -137,17 +223,78 @@ function receiptCost(receipt: MusicReceipt | null): string | null {
 	return soundCostCaption({ cost_usd: sum, billing_basis: basis });
 }
 
+/**
+ * The card after a cancel request whose job was carried on by a successor
+ * observer (see "WHY A MUSIC JOB CAN SETTLE TWICE"); null when there is no
+ * successor or no cancel behind it. The successor is the only source of the
+ * outcome: audio means the provider finished anyway (billed — the cost caption
+ * stays), no audio means the cancel took effect ("cancelled", with the
+ * receipt's own `$0` caption). While the successor still works the state is
+ * `cancel_requested`, never the original task's premature "cancelled", and no
+ * second Cancel is offered: the provider has already been asked.
+ */
+function successorOutcome(
+	base: Pick<MusicGeneratingView, "jobId" | "modify" | "cancelRow">,
+	{
+		settlement,
+		row,
+		successorRow,
+	}: {
+		settlement: MusicJobSettlement | undefined;
+		row: SubagentRow | undefined;
+		successorRow: SubagentRow | undefined;
+	},
+): MusicGeneratingView | null {
+	const settled = settlement?.successor;
+	if (!settled && !successorRow) return null;
+	const cancelRequested =
+		settlement?.status === "cancelled" ||
+		row?.status === "cancelled" ||
+		row?.music?.stage === "cancel_requested" ||
+		successorRow?.music?.stage === "cancel_requested";
+	if (!cancelRequested) return null;
+	if (settled) {
+		const tracks = settled.receipt?.tracks ?? [];
+		const completed = tracks.filter((track) => track.images.length > 0).length;
+		return {
+			...base,
+			state: completed > 0 ? "finished_after_cancel" : "cancelled",
+			completed,
+			total: tracks.length,
+			cost: receiptCost(settled.receipt),
+		};
+	}
+	const live = successorRow as SubagentRow;
+	const completed = live.music?.completed ?? 0;
+	const total = live.music?.total ?? 0;
+	if (isOpenRow(live))
+		return { ...base, state: "cancel_requested", completed, total, cost: null };
+	// Settled live, durable row not landed yet: Core's `completed` means audio
+	// was registered (`jobs.py` raises when nothing is playable), so it states
+	// the paid outcome; anything else is the cancel having taken effect.
+	return {
+		...base,
+		state: live.status === "done" ? "finished_after_cancel" : "cancelled",
+		completed,
+		total,
+		cost: null,
+	};
+}
+
 export function musicGeneratingView({
 	toolName,
 	details,
 	row,
 	settlement,
+	successorRow,
 	liveLoaded = false,
 }: {
 	toolName: string;
 	details: unknown;
 	row: SubagentRow | undefined;
 	settlement: MusicJobSettlement | undefined;
+	/** The live successor observer row carrying this music job, if any. */
+	successorRow?: SubagentRow;
 	/**
 	 * Run details are loaded and have had time to list this job (the hook
 	 * applies a grace window so a just-launched job is not called lost before
@@ -160,6 +307,27 @@ export function musicGeneratingView({
 	if (jobId === null) return null;
 	const modify = toolName === "modify_music";
 	const base = { jobId, modify, cost: null, cancelRow: null };
+	const afterCancel = successorOutcome(base, {
+		settlement,
+		row,
+		successorRow,
+	});
+	if (afterCancel) return afterCancel;
+	if (settlement?.successor || successorRow) {
+		// A successor with no cancel behind it (Core's session-reopen recovery
+		// observes an unfinished job the same way): it simply IS the job now.
+		return musicGeneratingView({
+			toolName,
+			details,
+			row: successorRow ?? row,
+			settlement:
+				settlement?.successor ??
+				(settlement
+					? { status: settlement.status, receipt: settlement.receipt }
+					: undefined),
+			liveLoaded,
+		});
+	}
 	if (settlement) {
 		const tracks = settlement.receipt?.tracks ?? [];
 		const completed = tracks.filter((track) => track.images.length > 0).length;

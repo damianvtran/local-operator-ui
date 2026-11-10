@@ -8888,6 +8888,7 @@ export type MessageParams = {
 	"ui.music.cancel_warning": { label: string };
 	"ui.music.empty": undefined;
 	"ui.music.failed": undefined;
+	"ui.music.finished_after_cancel": undefined;
 	"ui.music.generating": undefined;
 	"ui.music.generating_tracks": { count: number };
 	"ui.music.job_cancelled": undefined;

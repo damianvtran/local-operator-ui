@@ -26,7 +26,8 @@ async function cleanup(){
 }
 const reaper=signalCleanup(cleanup,()=>{interrupted=true;process.exitCode=143;});
 function demand(message, condition){if(!condition)throw Error(message);}
-async function observed(label, read, accept){for(let i=0;i<300;i++){const value=await read();if(accept(value)){note(label,value);return value;}await pause(100);}throw Error('Required actual native condition absent: '+label);}
+// `ms` bounds the poll (default 30 s); a timeout is a failed required condition.
+async function observed(label, read, accept, ms=30000){for(let i=0;i<Math.ceil(ms/100);i++){const value=await read();if(accept(value)){note(label,value);return value;}await pause(100);}throw Error('Required actual native condition absent: '+label);}
 // Operator decision a-69e7: the pending motif is measured on the INLINE chat card for
 // the named pending job, before the Jobs panel opens, so a motif only the panel paints fails.
 async function motionFacts(job){const card='[data-music-generating='+JSON.stringify(job)+']';return cdp.evaluate(`(()=>{const svg=document.querySelector(${JSON.stringify(card+' [data-music-motif]')});const r=svg?.getBoundingClientRect();return {reduce:matchMedia('(prefers-reduced-motion: reduce)').matches,animation:svg?getComputedStyle(svg).animationName:null,width:r?.width||0,height:r?.height||0}})()`);}
@@ -70,14 +71,30 @@ try{
   counter:async()=>{const witness=await control('inspect_cancel',{job:pending.job});demand('Wrong pending cancellation witness',witness.job===pending.job);note('safe_cancel_counter',witness);return witness.cancel_delta;}
  });
  note('late_settlement',await control('settle_after_native_cancel'));
- await pause(1500);await frame('music-late-result');
  const late=JSON.parse(readFileSync(join(root,'native-control-result.json'))).record;
  const track=late.tracks[0].id;
- // Use the observed canonical run token, never manufacture tool:<call> IDs.
- const summaryIdentity=await observed('actual_producing_run',()=>cdp.evaluate(`(()=>{for(const e of document.querySelectorAll('[data-turn-summary][data-run-ids]')){const id=e.getAttribute('data-run-ids').split(/\\s+/).find(x=>x.includes(${JSON.stringify(pending.producing_call_id)}));if(id)return id;}return null})()`),Boolean);
- const summary='[data-turn-summary][data-run-ids~='+JSON.stringify(summaryIdentity)+']';
- const expanded=await cdp.evaluate(`document.querySelector(${JSON.stringify(summary+' button[aria-expanded]')})?.getAttribute('aria-expanded')`);
- if(expanded==='false')await d.verb(cdp,'press',{selector:summary+' button[aria-expanded]'});
+ // Core finishes a cancelled music job on a SUCCESSOR observer job (music/jobs.py
+ // CancelledError arm), whose job_result row lands after its own poll and delivery:
+ // a fixed pause measured a race (run 42779240064 framed 1.5 s, before the row).
+ // Poll (bounded) for the late track outside any turn summary AND the pending card's
+ // settled outcome, then frame: billed audio after a cancel must read
+ // finished_after_cancel, never cancelled; no audio stays cancelled.
+ const pendingCard='[data-music-generating='+JSON.stringify(pending.job)+']';
+ const lateOutcome=late.artifacts?.length?'finished_after_cancel':'cancelled';
+ await observed('late_result_visible',()=>cdp.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify('[data-music-track='+JSON.stringify(track)+']:not([data-turn-summary] *)')});const r=e?.getBoundingClientRect();return {track:!!e&&r.width>0&&r.height>0,card:document.querySelector(${JSON.stringify(pendingCard)})?.getAttribute('data-music-state')||null}})()`),x=>x.track&&x.card===lateOutcome,10000);
+ await frame('music-late-result');
+ // 230bede pins a detached music call OUT of its turn's "N actions" bar
+ // (ownsDetachedMusicJob/groupSplitterOf), so no summary lists it: the producing call
+ // is the record row owning the pending job's inline card — an observed id, never a
+ // manufactured tool:<call> — and must still name the producing call.
+ const producingRecord=await observed('actual_producing_run',()=>cdp.evaluate(`document.querySelector(${JSON.stringify(pendingCard)})?.closest('[data-record-id]')?.getAttribute('data-record-id')||null`),Boolean);
+ demand('Producing record must be the producing music call',producingRecord.includes(pending.producing_call_id));
+ // The producing TURN: every record row between the user row before the producing
+ // call and the next user row (data-record-kind is the row's own record kind).
+ const turnOwners=`(()=>{const anchor=document.querySelector(${JSON.stringify('[data-record-id='+JSON.stringify(producingRecord)+']')});if(!anchor)return [];const all=[...document.querySelectorAll('[data-record-id]')];const users=all.filter(e=>e.getAttribute('data-record-kind')==='user');const start=users.filter(u=>u.compareDocumentPosition(anchor)&Node.DOCUMENT_POSITION_FOLLOWING).pop();const end=users.find(u=>anchor.compareDocumentPosition(u)&Node.DOCUMENT_POSITION_FOLLOWING);return all.filter(e=>(!start||start.compareDocumentPosition(e)&Node.DOCUMENT_POSITION_FOLLOWING)&&(!end||e.compareDocumentPosition(end)&Node.DOCUMENT_POSITION_FOLLOWING));})()`;
+ // Expand only a fold of the producing turn that is actually folded.
+ const expandProducingTurn=async()=>{for(let i=0;i<8;i++){const sel=await cdp.evaluate(`(()=>{const b=${turnOwners}.filter(e=>e.matches('[data-turn-summary]')).map(e=>e.querySelector('button[aria-expanded="false"]')).find(Boolean);return b?'[data-turn-summary][data-record-id='+JSON.stringify(b.closest('[data-turn-summary]').getAttribute('data-record-id'))+'] button[aria-expanded]':null;})()`);if(!sel)return;await d.verb(cdp,'press',{selector:sel});await pause(200);}throw Error('Required actual native condition absent: producing_turn_expanded');};
+ await expandProducingTurn();
  const recordId=await observed('actual_music_record',()=>cdp.evaluate(`document.querySelector('[data-music-track="'+${JSON.stringify(track)}+'"]:not([data-turn-summary] *)')?.closest('[data-record-id]')?.getAttribute('data-record-id')||null`),Boolean);
  const player='[data-record-id='+JSON.stringify(recordId)+']:not([data-turn-summary] *) [data-music-track='+JSON.stringify(track)+'] [data-sound-player]';
  const geometry=await cdp.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(player+' [data-sound-slider]')});const r=e?.getBoundingClientRect();return {width:r?.width||0,height:r?.height||0}})()`);note('player_slider_geometry',geometry);demand('Owned transcript player slider must be visible',geometry.width>0&&geometry.height>0);
@@ -116,9 +133,8 @@ try{
  await frame('music-canvas');await d.verb(cdp,'press',{selector:preview+' > button'});
  await d.verb(cdp,'press',{selector:'[aria-label="Close canvas"]'});
  // Reopen only the actual producing turn; never a global first summary/player.
- const nowExpanded=await cdp.evaluate(`document.querySelector(${JSON.stringify(summary+' button[aria-expanded]')})?.getAttribute('aria-expanded')`);
- if(nowExpanded==='false')await d.verb(cdp,'press',{selector:summary+' button[aria-expanded]'});
- const highlightSelector=await observed('actual_same_turn_highlight',()=>cdp.evaluate(`(()=>{const run=document.querySelector(${JSON.stringify(summary)});const ids=new Set(run?.getAttribute('data-run-ids')?.split(/\\s+/)||[]);const owners=[run,...document.querySelectorAll('[data-record-id]')].filter(e=>e&&(e===run||ids.has(e.getAttribute('data-record-id'))));let cells=[...new Set(owners.flatMap(e=>[...e.querySelectorAll('[data-supplement-sounds] > [data-supplement-sound]')]))];const cell=cells.find(e=>e.querySelector('[data-supplement-sound-title]')?.textContent?.includes(${JSON.stringify(R.name)}));if(!cell)return null;const e=cell.querySelector('[data-sound-player] > button');if(!e)return null;let path='';for(let n=e;n&&n.parentElement;n=n.parentElement){path=n.tagName.toLowerCase()+':nth-child('+([...n.parentElement.children].indexOf(n)+1)+')'+(path?' > '+path:'');}return 'html > '+path;})()`),Boolean);
+ await expandProducingTurn();
+ const highlightSelector=await observed('actual_same_turn_highlight',()=>cdp.evaluate(`(()=>{const owners=${turnOwners};let cells=[...new Set(owners.flatMap(e=>[...e.querySelectorAll('[data-supplement-sounds] > [data-supplement-sound]')]))];const cell=cells.find(e=>e.querySelector('[data-supplement-sound-title]')?.textContent?.includes(${JSON.stringify(R.name)}));if(!cell)return null;const e=cell.querySelector('[data-sound-player] > button');if(!e)return null;let path='';for(let n=e;n&&n.parentElement;n=n.parentElement){path=n.tagName.toLowerCase()+':nth-child('+([...n.parentElement.children].indexOf(n)+1)+')'+(path?' > '+path:'');}return 'html > '+path;})()`),Boolean);
  await d.verb(cdp,'press',{selector:highlightSelector});
  await observed('same_turn_highlight_digest_playback',()=>d.verb(cdp,'soundsFacts'),x=>x.ownerId==='sound:'+D&&!x.paused&&x.time>.2&&x.src?.startsWith('blob:'));
  await frame('music-highlights');

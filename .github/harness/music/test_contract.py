@@ -159,6 +159,22 @@ class PortableContracts(unittest.TestCase):
         for contract in ["control('inspect_links')", "R.ref", "data-file-id", "aria-controls", "indexed_canvas_digest_playback", "same_turn_highlight_digest_playback", "producing_call_id"]:
             self.assertIn(contract.replace('R.ref', 'r.ref'), source)
 
+    def test_producing_call_and_late_result_follow_the_pinned_music_card(self):
+        # Since 230bede the detached music call is pinned OUT of its turn's
+        # summary bar, so a lookup through [data-turn-summary][data-run-ids]
+        # can never find it (run 42779240064: actual_producing_run absent).
+        # The late result is polled, not raced with a fixed pause, and its
+        # card outcome is asserted (finished-after-cancel vs cancelled).
+        source = (HERE / 'music-native-serving-consumer.mjs').read_text()
+        self.assertNotIn("querySelectorAll('[data-turn-summary][data-run-ids]')", source)
+        self.assertIn("const pendingCard='[data-music-generating='+JSON.stringify(pending.job)+']'", source)
+        self.assertIn("closest('[data-record-id]')", source)
+        self.assertIn("producingRecord.includes(pending.producing_call_id)", source)
+        self.assertNotIn("await pause(1500);await frame('music-late-result')", source)
+        self.assertIn("observed('late_result_visible'", source)
+        self.assertIn("'finished_after_cancel':'cancelled'", source)
+        self.assertIn("x=>x.track&&x.card===lateOutcome,10000)", source)
+
     def test_collector_excludes_auth_profiles_and_redacts_owned_tokens(self):
         spec = importlib.util.spec_from_file_location('music_collector', HERE / 'collect_artifacts.py')
         module = importlib.util.module_from_spec(spec)
