@@ -636,6 +636,87 @@ export function collapse(text) {
 	return text.replace(/\s+/g, " ").trim();
 }
 
+// Exact semantic slots, not a whole-repo indirection analysis. These paid-down
+// surfaces have zero debt independent of legacy baselines and literal allowances.
+export const SCOPED_COPY_SLOTS = {
+	"src/renderer/src/features/chat/utils/get-file-name.ts": {
+		getFileName: "returns",
+	},
+	"src/renderer/src/features/chat/canonical/supplement-file-actions.tsx": {
+		ariaLabel: "initializer",
+	},
+	"src/renderer/src/features/chat/components/image-actions-menu.tsx": {
+		resolvedAriaLabel: "initializer",
+	},
+	"src/renderer/src/features/chat/canonical/sound-player.tsx": {
+		sliderLabel: "initializer",
+	},
+};
+
+export function scopedCopyFindings(sourceFile, rel) {
+	const slots = SCOPED_COPY_SLOTS[rel] ?? {};
+	const seen = new Set();
+	const out = [];
+	const pragmas = sourceFile ? pragmaCoveredLines(sourceFile) : [];
+	const emit = (slot, node, text) =>
+		out.push({
+			kind: `scoped-copy:${slot}`,
+			line: node ? lineOf(sourceFile, node.getStart(sourceFile)) : 1,
+			text: collapse(text),
+		});
+	const inspect = (slot, node) => {
+		if (inSpan(lineSpan(sourceFile, node), pragmas)) return;
+		for (const text of copyTexts(node)) {
+			if (LETTER_RE.test(text) && !isCatalogueKey(text)) emit(slot, node, text);
+		}
+	};
+	const returns = (slot, node) => {
+		if (node.kind === SyntaxKind.ReturnStatement && node.expression) {
+			inspect(slot, node.expression);
+			return;
+		}
+		// Nested functions own their returns; do not misclassify their data.
+		if (
+			[
+				SyntaxKind.ArrowFunction,
+				SyntaxKind.FunctionExpression,
+				SyntaxKind.FunctionDeclaration,
+				SyntaxKind.MethodDeclaration,
+			].includes(node.kind)
+		)
+			return;
+		node.forEachChild((child) => returns(slot, child));
+	};
+	const visit = (node) => {
+		const slot =
+			node.name?.kind === SyntaxKind.Identifier ? node.name.text : undefined;
+		const mode = slots[slot];
+		if (
+			mode &&
+			(node.kind === SyntaxKind.VariableDeclaration ||
+				node.kind === SyntaxKind.FunctionDeclaration)
+		) {
+			const value =
+				node.kind === SyntaxKind.FunctionDeclaration ? node : node.initializer;
+			if (mode === "initializer" && value) {
+				seen.add(slot);
+				inspect(slot, value);
+			} else if (mode === "returns" && value?.body) {
+				seen.add(slot);
+				if (value.body.kind === SyntaxKind.Block) returns(slot, value.body);
+				else inspect(slot, value.body);
+			}
+		}
+		node.forEachChild(visit);
+	};
+	if (sourceFile) visit(sourceFile);
+	for (const slot of Object.keys(slots)) {
+		if (!seen.has(slot))
+			emit(slot, undefined, "Required activated copy slot is missing");
+	}
+	return out;
+}
+
 /**
  * The findings of one parsed file: `{ kind, line, text }`, in source order.
  *
@@ -650,9 +731,9 @@ export function collapse(text) {
  * the fixtures prove each new shape is genuinely new rather than incidentally
  * visible to the old rule.
  */
-export function findViolations(sourceFile, { dataShapes = true } = {}) {
+export function findViolations(sourceFile, { dataShapes = true, rel } = {}) {
 	const pragmas = pragmaCoveredLines(sourceFile);
-	const findings = [];
+	const findings = scopedCopyFindings(sourceFile, rel);
 	const push = (kind, node, text) => {
 		findings.push({
 			kind,
@@ -907,7 +988,7 @@ export function scanSnapshot(snapshot, repo, { extraScan = [] } = {}) {
 			 * against `findViolations` directly (see "the data shapes are a
 			 * surface, not the tree" in check-strings.test.mjs). */
 			const dataShapes = extraScan.length > 0 || onDataShapeSurface(rel);
-			scanned.set(rel, findViolations(sourceFile, { dataShapes }));
+			scanned.set(rel, findViolations(sourceFile, { dataShapes, rel }));
 		}
 	};
 	if (extraScan.length > 0) {
@@ -931,6 +1012,9 @@ export function scanSnapshot(snapshot, repo, { extraScan = [] } = {}) {
 		const project = snapshot.getDefaultProjectForFile(abs);
 		add(rel, project?.program.getSourceFile(abs));
 	}
+	for (const rel of Object.keys(SCOPED_COPY_SLOTS)) {
+		if (!scanned.has(rel)) scanned.set(rel, scopedCopyFindings(undefined, rel));
+	}
 	return scanned;
 }
 
@@ -949,7 +1033,9 @@ export function countsOf(scanned, allowlist) {
 	for (const [rel, violations] of scanned) {
 		if (allowlistReason(rel, allowlist) !== undefined) continue;
 		const counted = violations.filter(
-			(finding) => !governedByAllowance(finding.kind),
+			(finding) =>
+				!governedByAllowance(finding.kind) &&
+				!finding.kind.startsWith("scoped-copy:"),
 		);
 		if (counted.length > 0) counts[rel] = counted.length;
 	}
@@ -1443,6 +1529,13 @@ export function runCheck({
 		const counts = countsOf(scanned, entries);
 		const loaded = baseline ?? loadBaseline(baselinePath);
 		const failures = ratchetFindings(counts, loaded.files);
+		// No allowlist, baseline ceiling, or allowance can hide scoped debt.
+		for (const [path, findings] of scanned) {
+			const count = findings.filter((f) =>
+				f.kind.startsWith("scoped-copy:"),
+			).length;
+			if (count) failures.push({ path, count, ceiling: 0 });
+		}
 		const debt = allowance ?? loadLiteralAllowance(allowancePath);
 		const { allowed, problems } = validateLiteralAllowance(debt);
 		const { unlisted, stale } = literalAllowanceFindings(scanned, allowed);
@@ -1783,7 +1876,9 @@ export function main(
 	for (const failure of failures) {
 		process.stdout.write(`${findingLine(failure)}\n`);
 		const details = (scanned.get(failure.path) ?? []).filter(
-			(finding) => !governedByAllowance(finding.kind),
+			(finding) =>
+				!governedByAllowance(finding.kind) &&
+				!finding.kind.startsWith("scoped-copy:"),
 		);
 		for (const detail of details.slice(0, 40)) {
 			process.stdout.write(
