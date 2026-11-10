@@ -14,6 +14,7 @@
 			"node_modules/**",
 			"src/renderer/src/styles/themes.generated.css",
 			"src/main/browser/vendor/**",
+			"src/main/browser/extensions/chrome-web-store/**",
 			"src/main/browser/actions/geometry-sources.gen.ts",
 			"src/main/browser/actions/page-programs.gen.ts",
 			"scripts/fixtures/condense.parity.json",

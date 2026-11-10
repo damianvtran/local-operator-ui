@@ -10,8 +10,8 @@ import {
 } from "../../../../../shared/browser-passkey-notice";
 
 /**
- * The passkey notice: a page in the browser asked for a passkey and this browser
- * has no provider to answer, so the page's request is probably stuck.
+ * Recovery for a pending or NotAllowed passkey request. A configured device-bound
+ * authenticator does not make a user's synced/manager credentials available.
  * Design: docs/design/browser-challenges-and-passkeys.md section 3.6.
  *
  * WHY A BAND AND NOT A DIALOG. The chooser (`browser-webauthn-dialog.tsx`) is a
@@ -22,11 +22,11 @@ import {
  * a notice is reliably visible, and it takes no focus (the page keeps whatever
  * the user was doing; nothing here steals a keystroke).
  *
- * WHAT IT MAY CLAIM. Only what main can stand behind: a passkey request from THIS
- * origin was still unanswered after a few seconds, and this browser has no passkey
- * provider. It does not say the request failed (it did not; the page's promise is
- * untouched) and it does not say "unsupported" about Touch ID or a USB key, which
- * are unmeasured (design section 3.5). The site shown is the requesting FRAME's
+ * WHAT IT MAY CLAIM. Pending and rejected requests have distinct copy.
+ * NotAllowedError cannot distinguish a native cancellation from an unavailable
+ * credential, so it offers optional recovery, never a diagnosis or an alert.
+ * Opening externally does not transfer the embedded browser's login session.
+ * The site shown is the requesting FRAME's
  * origin as main read it, never a string from the page; a request from an embedded
  * frame, or from an agent-driven tab, says so.
  *
@@ -39,6 +39,13 @@ export interface BrowserPasskeyNoticeProps {
 	notice: PasskeyNoticeView | null | undefined;
 	onOpen: (notice: PasskeyNoticeView) => void;
 	onDismiss: (notice: PasskeyNoticeView) => void;
+	/** Opens lop://extensions in the current tab (review U4: the extension
+	 * route gets a control, not just words). Omitted when the active tab is not
+	 * the user's, since the browser's own pages open only in user tabs. */
+	onOpenExtensions?: () => void;
+	/** An installed, turned-on password manager's name (review U10): the hint
+	 * then says to open and sign in to it rather than to add one. */
+	passwordManagerName?: string | null;
 }
 
 /** `host[:port]` of an origin. The scheme is dropped because WebAuthn only runs
@@ -56,6 +63,8 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 	notice,
 	onOpen,
 	onDismiss,
+	onOpenExtensions,
+	passwordManagerName,
 }) => {
 	useI18nLocale();
 	// Aged on THIS clock too: main stops projecting a notice at the same TTL, but
@@ -90,16 +99,37 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 		>
 			<KeyRound aria-hidden className="size-4 shrink-0 text-ink-muted" />
 			<p className="min-w-0 grow basis-64 text-body-sm text-ink">
-				{t("ui.browser.browser_passkey_notice.message", {
-					who,
-					site: siteOf(notice.origin),
-				})}{" "}
+				{t(
+					notice.outcome === "not-allowed"
+						? "ui.browser.browser_passkey_notice.not_allowed"
+						: "ui.browser.browser_passkey_notice.message",
+					{ who, site: siteOf(notice.origin) },
+				)}{" "}
+				{/* D3: ONE hint. With the Extensions action present the recovery
+				    route replaces the generic "usual browser or password manager"
+				    sentence; the system-browser button still offers that route. */}
 				<span className="text-ink-muted">
-					{t("ui.browser.browser_passkey_notice.explanation")}
+					{!onOpenExtensions
+						? t("ui.browser.browser_passkey_notice.explanation")
+						: passwordManagerName
+							? t("ui.browser.extensions.passkey_recovery_installed", {
+									name: passwordManagerName,
+								})
+							: t("ui.browser.extensions.passkey_recovery")}
 				</span>
 			</p>
 			<div className="ml-auto flex shrink-0 items-center gap-1">
-				<Button variant="outline" size="sm" onClick={() => onOpen(notice)}>
+				{onOpenExtensions && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onOpenExtensions}
+						data-tour-tag="browser-passkey-notice-extensions"
+					>
+						{t("ui.browser.extensions.passkey_open_extensions")}
+					</Button>
+				)}
+				<Button variant="ghost" size="sm" onClick={() => onOpen(notice)}>
 					{t("ui.browser.browser_passkey_notice.open_in_system_browser")}
 				</Button>
 				<Button

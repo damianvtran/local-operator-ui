@@ -46,7 +46,7 @@ import { type Session, app } from "electron";
  * passed, and otherwise the module logs one line naming why it is off and stays
  * inert.
  *
- * WHAT IS MEASURED TODAY (2026-10-28, Electron 44.3.0, the installed signed
+ * HISTORICAL MEASUREMENT (2026-10-28, Electron 44.3.0, the then-installed signed
  * 0.45.1 and a dev build): there is NO authenticator. The shipped signature
  * carries no `keychain-access-groups` entitlement and no provisioning profile
  * exists, so `isUserVerifyingPlatformAuthenticatorAvailable()` is `false` and a
@@ -66,14 +66,15 @@ import { type Session, app } from "electron";
  * have no discovery in Electron, PIN-protected keys cannot be served
  * (`SupportsPIN()` is false), and extension-based managers cannot do native
  * messaging. A real USB key and the OS Touch ID sheet are UNMEASURED, not
- * "unsupported". Enabling Touch ID needs a Developer ID provisioning profile that
- * does not exist; that is an open account decision (section 3.7), and this module
- * is written so it enables correctly the day the signature carries the group.
+ * "unsupported". The Developer ID profile was provisioned on 2026-11-02
+ * (section 3.7); the installed v0.52.12 signature was verified on 2026-11-09
+ * with the expected group. That enables this gate, not synced credentials or
+ * proof that a native ceremony completes.
  *
- * WHAT THE USER SEES while it is off: `src/main/browser/passkey-notice.ts` (design
- * doc section 3.6) raises a notice for a request that stays pending, instead of
- * leaving the page hanging in silence. It is armed only when this module did NOT
- * configure the authenticator.
+ * WHAT THE USER SEES: `src/main/browser/passkey-notice.ts` (design section 3.6)
+ * observes pending requests only when this module did not configure Touch ID.
+ * Optional NotAllowed recovery remains armed in both states: configuring a
+ * device-bound provider does not make existing cloud passkeys accessible.
  */
 
 /** The suffix Electron documents for the group: `<TEAM_ID>.<BUNDLE_ID>.webauthn`. */

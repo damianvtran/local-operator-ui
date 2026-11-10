@@ -23,6 +23,8 @@ export const BROWSER_SELF_SUPPRESSION_PREFIXES = [
 	"browser-state:browser-load-failure:",
 	// The start page (LOH-13 slice B, label "browser-start-page").
 	"browser-state:browser-start-page:",
+	// The browser's own pages (lop://extensions; label "browser-internal-page").
+	"browser-state:browser-internal-page:",
 ] as const;
 
 export function isBrowserSelfSuppression(id: string): boolean {

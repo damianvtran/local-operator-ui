@@ -44,7 +44,11 @@ const {
 
 /** A page: a CredentialsContainer with controllable promises, a console that
  * records, and timers the test advances by hand. */
-function page(nonce = "n-1") {
+function page(
+	nonce = "n-1",
+	observePending = true,
+	resultFactory = () => new Promise(() => {}),
+) {
 	const lines = [];
 	const timers = [];
 	const calls = [];
@@ -52,13 +56,13 @@ function page(nonce = "n-1") {
 	class CredentialsContainer {}
 	CredentialsContainer.prototype.create = function create(...args) {
 		calls.push(["create", this, args]);
-		const promise = new Promise(() => {});
+		const promise = resultFactory();
 		returned.push(promise);
 		return promise;
 	};
 	CredentialsContainer.prototype.get = function get(...args) {
 		calls.push(["get", this, args]);
-		const promise = new Promise(() => {});
+		const promise = resultFactory();
 		returned.push(promise);
 		return promise;
 	};
@@ -70,7 +74,7 @@ function page(nonce = "n-1") {
 			return timers.length;
 		},
 	});
-	vm.runInContext(passkeyShimSource(nonce), context);
+	vm.runInContext(passkeyShimSource(nonce, observePending), context);
 	return {
 		container: new CredentialsContainer(),
 		CredentialsContainer,
@@ -155,7 +159,7 @@ test("the shim signals only after the delay, once per call, with the fixed shape
 	assert.deepEqual(p.lines.at(-1), `${PASSKEY_SIGNAL_SENTINEL}abc:get`);
 });
 
-test("a call that already settled inside the delay is not announced as stuck", async () => {
+test("settled calls distinguish success from optional NotAllowed recovery", async () => {
 	const p = page("abc");
 	const settled = Promise.resolve({ id: "cred" });
 	const rejected = Promise.reject(new DOMException("x", "NotAllowedError"));
@@ -180,7 +184,93 @@ test("a call that already settled inside the delay is not announced as stuck", a
 	);
 	p.container.create({ publicKey: {} });
 	await p.fire();
-	assert.deepEqual(p.lines, [], "a rejected call is not a hang either");
+	assert.deepEqual(
+		p.lines,
+		[`${PASSKEY_SIGNAL_SENTINEL}abc:create:not-allowed`],
+		"a rejected call offers recovery without calling it pending",
+	);
+});
+
+test("configured Touch ID observes rejection but never announces a pending native sheet", async () => {
+	const pending = page("native", false);
+	pending.container.get({ publicKey: {} });
+	await pending.fire();
+	assert.deepEqual(pending.lines, []);
+	let reject;
+	const failed = page(
+		"native",
+		false,
+		() =>
+			new Promise((_, no) => {
+				reject = no;
+			}),
+	);
+	const promise = failed.container.get({ publicKey: {} });
+	promise.catch(() => {});
+	await failed.fire();
+	const cancellationOrMissingCredential = new DOMException(
+		"private RP detail",
+		"NotAllowedError",
+	);
+	reject(cancellationOrMissingCredential);
+	await assert.rejects(promise, cancellationOrMissingCredential);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(failed.lines, [
+		`${PASSKEY_SIGNAL_SENTINEL}native:get:not-allowed`,
+	]);
+	assert.equal(
+		failed.lines.some((line) => line.includes("private")),
+		false,
+	);
+});
+
+test("abort, validation, and security errors remain silent; success remains unchanged", async () => {
+	for (const name of [
+		"AbortError",
+		"SecurityError",
+		"TypeError",
+		"InvalidStateError",
+	]) {
+		const error = new DOMException("not exported", name);
+		const p = page("abort", true, () => Promise.reject(error));
+		await assert.rejects(p.container.get({ publicKey: {} }), error);
+		await p.fire();
+		assert.deepEqual(p.lines, [], name);
+	}
+	const credential = { id: "private", response: {} };
+	const success = page("ok", false, () => Promise.resolve(credential));
+	assert.equal(await success.container.get({ publicKey: {} }), credential);
+	await success.fire();
+	assert.deepEqual(success.lines, []);
+});
+
+test("an explicit aborted signal never produces recovery even for NotAllowedError", async () => {
+	for (const pending of [true, false]) {
+		const controller = new AbortController();
+		const error = new DOMException("cancelled", "NotAllowedError");
+		const p = page("cancel", pending, () => Promise.reject(error));
+		await assert.rejects(
+			p.container.get({ publicKey: {}, signal: controller.signal }),
+			error,
+		);
+		controller.abort();
+		await p.fire();
+		assert.deepEqual(p.lines, []);
+	}
+});
+
+test("page-controlled rejection metadata cannot make the observer throw", async () => {
+	const error = Object.defineProperty({}, "name", {
+		get() {
+			throw new Error("page getter must not escape");
+		},
+	});
+	const p = page("hostile", true, () => Promise.reject(error));
+	await p.container
+		.get({ publicKey: {} })
+		.catch((actual) => assert.equal(actual, error));
+	await p.fire();
+	assert.deepEqual(p.lines, []);
 });
 
 test("the shim ignores what is not a passkey request, including conditional mediation", () => {
@@ -258,6 +348,26 @@ test("a valid signal raises one notice attributed to the FRAME's origin, never p
 	assert.equal(view.embedded, false);
 	assert.equal(view.ownerKind, "user");
 	assert.equal(view.tabId, 7);
+});
+
+test("NotAllowed recovery carries a distinct outcome through nonce and origin validation", () => {
+	const { n, frames, log } = notices();
+	frames.set("1:8", { origin: "https://rp.example", embedded: false });
+	const nonce = n.nonceFor(7, "1:8");
+	const signal = `${line(nonce, "get")}:not-allowed`;
+	assert.deepEqual(parsePasskeySignal(signal), {
+		nonce,
+		kind: "get",
+		outcome: "not-allowed",
+	});
+	assert.equal(parsePasskeySignal(`${signal}:not-allowed`), null);
+	assert.equal(parsePasskeySignal(`${signal}:private text`), null);
+	assert.equal(n.observe(8, signal), false, "a different tab cannot replay it");
+	assert.equal(n.observe(7, signal), true);
+	assert.equal(n.viewFor(7).outcome, "not-allowed");
+	assert.equal(n.viewFor(7).origin, "https://rp.example");
+	assert.match(log.at(-1), /not-allowed from/);
+	assert.doesNotMatch(log.at(-1), /pending/);
 });
 
 test("an embedded cross-origin frame is attributed to ITSELF, not to the top frame", () => {
