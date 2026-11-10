@@ -12,7 +12,7 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  * asks the same properties - one question, two readers.
  *
  * THE WHOLE MATRIX, NOT ONE CASE PER DISCOVERED BUG. A row-less pane has exactly
- * one claim to make, and that claim is a function of five values, so the rule is
+ * one claim to make, and that claim is a function of the values below, so the rule is
  * stated once, over all of them, rather than patched where a defect was last
  * found:
  *
@@ -148,8 +148,9 @@ export type CanonicalTranscriptStatus =
  * ONE spelling, two readers, because they must agree about which states outrank
  * the placeholder: `canonicalTranscriptSpeaks` adds the stale paint to this set
  * (for its callers, the caption IS something the pane is saying), while the hold
- * below asks the narrower question - a stale paint is a reason to keep holding
- * until the page lands, not a statement that would end the hold.
+ * below asks the narrower question - a stale paint is rows to paint, not a
+ * statement that would end the hold (it has no hold to end: see the cache
+ * paragraph below).
  */
 function paneStatement(view: {
 	status: CanonicalTranscriptStatus;

@@ -343,6 +343,15 @@ const HELD_STAY = ARGS.includes("--held-stay");
  * replaces them. Needs `--stream=<ms>` long enough to have a window to look
  * into; the verdict is structural (rows before the snapshot, no movement), so it
  * carries no millisecond threshold.
+ *
+ * WHAT ITS "NO MOVEMENT" DOES NOT COVER. The scripted owner answers with the same
+ * fixture the cache holds, so a page that adds older rows, changes a row's height
+ * or carries a running turn is never exercised: under `--live` the arm FAILS on
+ * 45px of real content arriving (a running row, a working line, a taller
+ * composer), which is the page replacing the cache rather than the cache's
+ * layout moving. Chrome outside the transcript is not held constant either: at
+ * `--width=760` the composer grows 4px when the snapshot lands and the rows move
+ * with it. The caption check reads the last frame only, 600 ms after painted.
  */
 const CACHED_PAINT = ARGS.includes("--cached-paint");
 const WIDTH = Number(flag("width", "1280"));
