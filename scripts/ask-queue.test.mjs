@@ -1148,6 +1148,40 @@ test("only a transport failure earns a Retry; a pairing refusal does not (U2)", 
 	);
 });
 
+test("a server-update refusal earns Retry; the display-only hint does not move a code's verdict", () => {
+	/*
+	 * `transient.server-updating` is the reload fence's refusal: no handler ran, so
+	 * a second press is safe once the server is back. A follow-on failure inside
+	 * the update window carries only `detail.updating` and keeps its code - and so
+	 * keeps the retry verdict that code always had (a plane-closed refusal still
+	 * earns none; the ask double-send rule rests on codes, never on the hint).
+	 */
+	assert.equal(
+		queue.askFailureEarnsRetry(
+			new queue.DesktopControlError(
+				503,
+				"The Local Operator server is updating.",
+				undefined,
+				"transient.server-updating",
+			),
+		),
+		true,
+	);
+	assert.equal(
+		queue.askFailureEarnsRetry(
+			new queue.DesktopControlError(
+				503,
+				"closed",
+				undefined,
+				"pairing.plane-closed",
+				undefined,
+				{ message: "closed", updating: true },
+			),
+		),
+		false,
+	);
+});
+
 test("the item's name never doubles a mark, and its clause is the model's one spelling", () => {
 	// The name is composed from the model's own clause, so what the chip PAINTS and
 	// what a screen reader is told cannot be two different sentences - the defect the

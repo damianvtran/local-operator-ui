@@ -805,5 +805,46 @@
 		"length": "Two words; toast card.",
 		"note": "A session variable was updated.",
 		"placeholders": {}
+	},
+	"ui.notices.aida.paused_receipt": {
+		"role": "Aida control toast receipt",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.notices.aida.resumed_receipt": {
+		"role": "Aida control toast receipt",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.notices.aida.paused": {
+		"role": "Aida control toast receipt",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.notices.aida.active": {
+		"role": "Aida control toast receipt",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {}
+	},
+	"ui.notices.aida.account_required": {
+		"role": "Toast when Aida has no AI provider",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {
+			"name": "User-configurable assistant name"
+		}
+	},
+	"ui.notices.aida.open_fallback": {
+		"role": "Toast explaining fallback chat",
+		"tone": "Concise, factual; preserve technical names",
+		"length": "Inline copy; may wrap",
+		"placeholders": {
+			"name": "User-configurable assistant name",
+			"detail": "Already user-facing error explanation; do not translate again"
+		}
 	}
 }

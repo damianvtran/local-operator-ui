@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-11-09",
+  "locale": "hi",
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "instance": "9368437cbc2e",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "fallback": {
+    "initial_model": "anthropic/claude-sonnet-5-5",
+    "announced_intermediate_model": "anthropic/claude-opus-5-5",
+    "actual_served_model": "openai/gpt-6.1-sol",
+    "reason": "Provider failure: quota; harness switched models before substantive audit."
+  },
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "9368437cbc2e",
+    "session": "9368437cbc2e",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "independence": "Did not author or remediate any catalogue values; wrote only own receipt and evidence."
+  },
+  "status": "passed",
+  "result": "clean",
+  "key_count": 29,
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "keys_audited": 7,
+      "keys": [
+        "ui.agents.pages.backend.connecting",
+        "ui.agents.pages.backend.loading_capabilities",
+        "ui.agents.pages.change.new",
+        "ui.agents.pages.backend.upgrade_heading",
+        "ui.agents.pages.backend.unreachable",
+        "ui.agents.pages.backend.upgrade_body",
+        "ui.agents.pages.change.updated"
+      ],
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+      "target_sha256": "368841ff17b1b60c04d4029aa0fab43451c7369f18f0208dc9f7c97846d6c812",
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "hi": "368841ff17b1b60c04d4029aa0fab43451c7369f18f0208dc9f7c97846d6c812"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "evidence": {
+        "path": "i18n/audits/evidence/hi/ui.agents.pages/s7-hi-9368437cbc2e/record.json",
+        "sha256": "27dc4a33681ba936726c1b3bd1bddb37e348b023324aa0ec37f7a64907d8cc21"
+      }
+    },
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "keys_audited": 16,
+      "keys": [
+        "ui.chat.run_details.child.result.preview",
+        "ui.chat.run_details.child.result.title",
+        "ui.chat.run_details.child.result.unavailable_clipped",
+        "ui.chat.run_details.child.result.unavailable",
+        "ui.chat.run_details.child.brief.show_less",
+        "ui.chat.run_details.child.brief.show_more",
+        "ui.chat.run_details.mcp_auth.upgrade",
+        "ui.chat.run_details.mcp_auth.no_references",
+        "ui.chat.run_details.mcp_auth.unknown_method",
+        "ui.chat.run_details.mcp_auth.waiting",
+        "ui.chat.run_details.mcp_auth.status",
+        "ui.chat.run_details.mcp_auth.status_unavailable",
+        "ui.chat.run_details.mcp_failure.cancel_lead",
+        "ui.chat.run_details.mcp_failure.busy",
+        "ui.chat.run_details.mcp_failure.refused",
+        "ui.chat.run_details.mcp_failure.session"
+      ],
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+      "target_sha256": "39e84adf092e58b14f6942f4b4a9fb2751e0008648bf63d6593a240bc45e4350",
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "hi": "39e84adf092e58b14f6942f4b4a9fb2751e0008648bf63d6593a240bc45e4350"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "evidence": {
+        "path": "i18n/audits/evidence/hi/ui.chat.run_details/s7-hi-9368437cbc2e/record.json",
+        "sha256": "e8d081e134b939c1e036febf33ed29ccff6b7aa80d00f7664b2a33ba8a9d55bf"
+      }
+    },
+    "ui.notices": {
+      "namespace": "ui.notices",
+      "keys_audited": 6,
+      "keys": [
+        "ui.notices.aida.paused_receipt",
+        "ui.notices.aida.resumed_receipt",
+        "ui.notices.aida.paused",
+        "ui.notices.aida.active",
+        "ui.notices.aida.account_required",
+        "ui.notices.aida.open_fallback"
+      ],
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+      "target_sha256": "5b33e919a9f21d3d247082b1bc824971d7d3b08d58418b3be3e01869282c1336",
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "hi": "5b33e919a9f21d3d247082b1bc824971d7d3b08d58418b3be3e01869282c1336"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "evidence": {
+        "path": "i18n/audits/evidence/hi/ui.notices/s7-hi-9368437cbc2e/record.json",
+        "sha256": "5b672dd21a6a31676c9a8371b479b580222ffea8f1d8c6da65a0c663a0455ed1"
+      }
+    }
+  },
+  "limitations": [
+    "Source/formatter audit, not rendered-UI validation."
+  ],
+  "artifacts": {
+    "checks": {
+      "path": "i18n/audits/evidence/hi/ui.chat.run_details/s7-hi-9368437cbc2e/checks.json",
+      "sha256": "031e7041cf8bf9b09944ea442e0a6eb0185083e7b278271c0b6d9a70e5efb852"
+    },
+    "report": {
+      "path": "i18n/audits/evidence/hi/ui.chat.run_details/s7-hi-9368437cbc2e/report.md",
+      "sha256": "688edf2dfa08415bc295a83fdbff7f29f29c437ac49bd44c668ad4b2fdd55ce0"
+    }
+  }
+}

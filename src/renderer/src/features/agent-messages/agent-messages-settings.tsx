@@ -31,6 +31,7 @@ import {
 	agentMessagesDefaultOnInForce,
 } from "../../../../shared/agent-messages-contract";
 import { InfoGrid, InfoItem } from "../settings/components/settings-section";
+import { useTeamBridgeShareTypingStore } from "../team-bridge/team-bridge-typing-model";
 import { agentMessagesRefusal } from "./agent-messages-refusal";
 import {
 	type AgentMessagesSettingsAvailability,
@@ -67,7 +68,10 @@ export type AgentMessagesSettingsApi = Pick<
 	| "updateAllowlist"
 	| "localSetting"
 	| "dismissOnboarding"
->;
+> &
+	/* Optional so a story's fake api need not grow it: without it the typing
+	   switch is simply not offered. */
+	Partial<Pick<typeof agentMessagesApi, "setShareTyping">>;
 
 type Load =
 	| { kind: "loading" }
@@ -105,6 +109,11 @@ export type AgentMessagesSettingsProps = {
 	 * nonce re-arms it (see `language-dialog.tsx`'s `focusNonce`).
 	 */
 	focusNonce?: number;
+	/**
+	 * The runtime advertises `team_bridge_typing`: offer "Show when I'm
+	 * typing". Absent or false, the switch is not rendered at all.
+	 */
+	typingAvailable?: boolean;
 };
 
 /**
@@ -142,6 +151,7 @@ export function AgentMessagesSettings({
 	onOpenSession,
 	focus = false,
 	focusNonce,
+	typingAvailable = false,
 }: AgentMessagesSettingsProps) {
 	useI18nLocale();
 	const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -164,6 +174,14 @@ export function AgentMessagesSettings({
 	 */
 	const loadAccount = status?.account_id ?? null;
 	const accountMatches = loadAccount !== null && loadAccount === accountId;
+	/* Every settings read teaches the typing emitter the current preference, so
+	   a change made on another surface (or the CLI) is honoured from here on. */
+	const readShareTyping =
+		load.kind === "ready" ? load.settings.share_typing : undefined;
+	useEffect(() => {
+		if (typeof readShareTyping === "boolean")
+			useTeamBridgeShareTypingStore.getState().setShareTyping(readShareTyping);
+	}, [readShareTyping]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the explicit retry trigger, not a value the effect reads.
 	useEffect(() => {
@@ -455,6 +473,50 @@ export function AgentMessagesSettings({
 						onRefreshStatus={onRefreshStatus}
 						setPending={setPending}
 					/>
+
+					{/* Directly under the state block, whose last row is "Enabled on
+					    this machine": both are per-machine "what this device does on
+					    Team Bridge" switches and read as one group (design round 1,
+					    D2), rather than sitting below the unrelated session picker. */}
+					{typingAvailable &&
+						api.setShareTyping &&
+						typeof load.settings.share_typing === "boolean" && (
+							<ShareTypingSwitch
+								value={load.settings.share_typing}
+								pending={pending === "share_typing"}
+								disabled={pending !== null || !accountMatches}
+								onChange={async (next) => {
+									const owner = loadAccount ?? accountId;
+									const write = api.setShareTyping;
+									if (!owner || !write) return;
+									setPending("share_typing");
+									setActionRefusal(null);
+									try {
+										// A share_typing-only PUT answers `{share_typing}` alone (no
+										// hub call), so the held settings are patched, not replaced.
+										const saved = await write(owner, next);
+										setLoad((current) =>
+											current.kind === "ready"
+												? {
+														...current,
+														settings: {
+															...current.settings,
+															share_typing: saved,
+														},
+													}
+												: current,
+										);
+										useTeamBridgeShareTypingStore
+											.getState()
+											.setShareTyping(saved);
+									} catch (error) {
+										setActionRefusal(agentMessagesRefusal(error));
+									} finally {
+										setPending(null);
+									}
+								}}
+							/>
+						)}
 
 					<SessionDesignation
 						value={sessionValue}
@@ -1096,6 +1158,53 @@ const LocalSwitch: FC<{
 			</div>
 			<Switch
 				aria-labelledby={id}
+				checked={value}
+				disabled={disabled}
+				onCheckedChange={(next) => void onChange(next)}
+			/>
+		</div>
+	);
+};
+
+/**
+ * "Show when I'm typing" (Team Bridge typing indicators, design §7).
+ *
+ * Sender-side and NOT symmetric: off stops this machine from reporting the
+ * user's typing; it does not hide anyone else's indicator (nobody asked for
+ * that, and Slack/Discord offer neither). Default on, stored by lop, enforced
+ * by both the renderer (`useTeamBridgeShareTypingStore`) and the runtime.
+ */
+const ShareTypingSwitch: FC<{
+	value: boolean;
+	pending: boolean;
+	disabled: boolean;
+	onChange: (next: boolean) => Promise<void> | void;
+}> = ({ value, pending, disabled, onChange }) => {
+	const id = useId();
+	const descriptionId = useId();
+	return (
+		<div
+			data-agent-messages-share-typing=""
+			/* A settings-search row like its siblings (design round 1, D3). The
+			   terms are search keys, not copy - English identifiers exactly like
+			   the machine switch's and the session row's. */
+			data-search-row="agent-messages.share-typing"
+			data-search-control
+			data-search-terms="team bridge team_bridge typing share_typing indicator"
+			className="flex items-start justify-between gap-4"
+		>
+			<div className="min-w-0">
+				<p id={id} className="text-body-sm text-ink">
+					{t("ui.agentMessages.settings.share_typing.label")}
+				</p>
+				<p id={descriptionId} className="mt-0.5 text-meta text-ink-dim">
+					{t("ui.agentMessages.settings.share_typing.description")}
+				</p>
+			</div>
+			<Switch
+				aria-labelledby={id}
+				aria-describedby={descriptionId}
+				aria-busy={pending || undefined}
 				checked={value}
 				disabled={disabled}
 				onCheckedChange={(next) => void onChange(next)}

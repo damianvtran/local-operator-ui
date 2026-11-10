@@ -512,6 +512,19 @@ const DiagramError: FC<DiagramErrorProps> = ({ title, children }) => (
 	</Alert>
 );
 
+// The core (and its locale subscription) unmounts when the boundary catches.
+// Translate in the surviving fallback leaf: getters in the class render do
+// not invalidate already-produced JSX behind the outer memo.
+const MermaidBoundaryFallback: FC<{ error?: Error }> = ({ error }) => {
+	useI18nLocale();
+	return (
+		<DiagramError title={t("ui.chat.mermaid.error_title")}>
+			{error?.message || t("ui.chat.mermaid.unexpected_error")}{" "}
+			{t("ui.chat.mermaid.error_contained")}
+		</DiagramError>
+	);
+};
+
 /**
  * Error boundary to catch any rendering errors that escape the component's error handling
  */
@@ -536,10 +549,7 @@ class MermaidErrorBoundary extends Component<
 		if (this.state.hasError) {
 			return (
 				this.props.fallback || (
-					<DiagramError title={t("ui.chat.mermaid.error_title")}>
-						{this.state.error?.message || t("ui.chat.mermaid.unexpected_error")}{" "}
-						{t("ui.chat.mermaid.error_contained")}
-					</DiagramError>
+					<MermaidBoundaryFallback error={this.state.error} />
 				)
 			);
 		}
@@ -552,10 +562,8 @@ class MermaidErrorBoundary extends Component<
  * Enhanced Mermaid diagram component with zoom, pan, save SVG, reset, fullscreen, and copy controls
  */
 const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
-	// The class-based error boundary beside this component cannot subscribe to
-	// locale changes, so the subscription lives here — every one of this
-	// component's own copy sites (`t()` calls in its render) re-renders when the
-	// language setting changes.
+	// This subscription covers the live core; the boundary fallback owns its
+	// own subscription because catching an error unmounts this component.
 	useI18nLocale();
 	const elementRef = useRef<HTMLDivElement>(null);
 	const fullscreenElementRef = useRef<HTMLDivElement>(null);

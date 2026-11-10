@@ -29,5 +29,12 @@
 	"ui.agents.pages.search_aria": "Поиск агентов и команд",
 	"ui.agents.pages.tab.agents": "Агенты",
 	"ui.agents.pages.tab.teams": "Команды",
-	"ui.agents.pages.blocked_edit": "Сначала завершите или отмените правку."
+	"ui.agents.pages.blocked_edit": "Сначала завершите или отмените правку.",
+	"ui.agents.pages.backend.connecting": "Подключение к бэкенду",
+	"ui.agents.pages.backend.loading_capabilities": "Загрузка возможностей бэкенда…",
+	"ui.agents.pages.change.new": "Добавлено",
+	"ui.agents.pages.backend.upgrade_heading": "Для повторно используемых агентов нужен более новый бэкенд",
+	"ui.agents.pages.backend.unreachable": "Не удалось связаться с бэкендом",
+	"ui.agents.pages.backend.upgrade_body": "Обновите бэкенд, чтобы управлять командами и агентами, которых можно использовать повторно. Сохранённые чаты не изменятся.",
+	"ui.agents.pages.change.updated": "Обновлено"
 }

@@ -1231,8 +1231,11 @@ export class DownloadArmer {
 					((this.options.now ?? Date.now)() - capture.startedAt) / 1000,
 				),
 			);
+			// Capture observes file events, not provider mutations: a late arm can miss
+			// the file after a one-time operation has already succeeded. Never advise
+			// replaying that mutation merely because this capture remained empty.
 			reasons.push(
-				`no download started within ${waited}s; if the page needs a click first, pass a selector, or \`click\` it and retry`,
+				`no download started within ${waited}s; for a click-triggered download, use download(selector=<final confirm button>) to arm capture before clicking. Without a selector, capture only waits for a future download event; it cannot recover a download already dispatched or cancelled. This timeout does not prove the click handler failed or a server mutation did not happen; check the provider-side effect before repeating a Generate key, create or export operation`,
 			);
 		}
 		return {

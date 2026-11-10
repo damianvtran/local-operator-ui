@@ -29,5 +29,12 @@
 	"ui.agents.pages.search_aria": "Search agents and teams",
 	"ui.agents.pages.tab.agents": "Agents",
 	"ui.agents.pages.tab.teams": "Teams",
-	"ui.agents.pages.blocked_edit": "Finish or cancel your edit first."
+	"ui.agents.pages.blocked_edit": "Finish or cancel your edit first.",
+	"ui.agents.pages.backend.connecting": "Connecting to the backend",
+	"ui.agents.pages.backend.loading_capabilities": "Loading what this backend can do…",
+	"ui.agents.pages.change.new": "New",
+	"ui.agents.pages.backend.upgrade_heading": "Reusable agents need a newer backend",
+	"ui.agents.pages.backend.unreachable": "The backend could not be reached",
+	"ui.agents.pages.backend.upgrade_body": "Update the backend to manage reusable agents and teams. Saved chats are unchanged.",
+	"ui.agents.pages.change.updated": "Updated"
 }

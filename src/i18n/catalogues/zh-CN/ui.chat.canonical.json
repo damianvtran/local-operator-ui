@@ -239,5 +239,17 @@
 	"ui.chat.canonical.fold.receipt.steered": "已引导",
 	"ui.chat.canonical.checkpoint_rail.label": "轮次检查点",
 	"ui.chat.canonical.transcript.not_delivered": "未送达",
-	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, other {{count, number, ::group-off}+次操作}}"
+	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, other {{count, number, ::group-off}+次操作}}",
+	"ui.chat.canonical.transcript.earlier_text_offscreen": "此回答前面的文字不在屏幕上",
+	"ui.chat.canonical.transcript.interrupted": "已中断",
+	"ui.chat.canonical.transcript.no_answer_given": "未作答",
+	"ui.chat.canonical.transcript.not_run": "未运行",
+	"ui.chat.canonical.transcript.answer_may_be_missing": "此回答可能缺少部分内容",
+	"ui.chat.canonical.transcript.worked": "已进行工作",
+	"ui.chat.canonical.transcript.worked_for": "工作耗时{duration}",
+	"ui.chat.canonical.transcript.job_suffix": "· 任务{id}",
+	"ui.chat.canonical.tool_row.diff.more": "{count, plural, other {… 还有#行diff}}",
+	"ui.chat.canonical.tool_row.diff.show_less": "收起",
+	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, other {diff已截断 — 还有#行未记录}}",
+	"ui.chat.canonical.tool_row.diff.withheld": "此更改的diff不可用"
 }

@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
@@ -245,7 +246,7 @@ export const ANSWER_LIFETIME_MS = 8000;
  * away - the same split `FACT_TEXT`/`FACT_DETAIL` already uses for state.
  */
 export function answerFor(
-	outcome: FreshnessOutcome,
+	outcome: Pick<FreshnessOutcome, "status">,
 	forced: boolean,
 ): string | null | undefined {
 	switch (outcome.status) {
@@ -273,7 +274,7 @@ export function answerFor(
 
 /** The answer's full sentence, for the tooltip and the accessible description. */
 export function answerDetailFor(
-	outcome: FreshnessOutcome,
+	outcome: Pick<FreshnessOutcome, "status">,
 	forced: boolean,
 ): string | null | undefined {
 	switch (outcome.status) {
@@ -350,6 +351,7 @@ export function useFileFreshness({
 	document,
 	conversationId,
 }: UseFileFreshnessOptions): DocumentFreshness {
+	useI18nLocale();
 	const updateOneFile = useCanvasStore((state) => state.updateOneFile);
 	const dirty = useSyncExternalStore(
 		subscribeDocumentDirty,
@@ -376,9 +378,13 @@ export function useFileFreshness({
 	 * publishes - a probe per sentence, for ever. */
 	const factRef = useRef<FreshnessFact | null>(null);
 	factRef.current = fact;
+	// Keep the answer's meaning, not translated text (nor the document's bytes).
+	// Resolve both sentences at read time so a locale change preserves the reply
+	// and its original retirement deadline, without another disk check. The
+	// status + forced flag are the translation descriptor shared by both helpers.
 	const [answer, setAnswer] = useState<{
-		text: string;
-		detail: string | null;
+		status: FreshnessOutcome["status"];
+		forced: boolean;
 		at: number;
 	} | null>(null);
 	/*
@@ -513,8 +519,8 @@ export function useFileFreshness({
 					setAnswer(
 						nextAnswer
 							? {
-									text: nextAnswer,
-									detail: answerDetailFor(outcome, force) ?? null,
+									status: outcome.status,
+									forced: force,
 									at: Date.now(),
 								}
 							: null,
@@ -569,8 +575,8 @@ export function useFileFreshness({
 				setAnswer(
 					nextAnswer
 						? {
-								text: nextAnswer,
-								detail: answerDetailFor(outcome, true) ?? null,
+								status: outcome.status,
+								forced: true,
 								at: Date.now(),
 							}
 						: null,
@@ -638,16 +644,20 @@ export function useFileFreshness({
 		void check(true);
 	}, [check, document.id, loadFile]);
 
+	const answerText = answer ? (answerFor(answer, answer.forced) ?? null) : null;
+	const answerDetail = answer
+		? (answerDetailFor(answer, answer.forced) ?? answerText)
+		: null;
 	return {
 		lastModifiedMs: document.readMtimeMs ?? null,
 		refreshing,
 		// A state of the file outranks a reply to a gesture, and only one line fits.
-		note: fact ? FACT_TEXT[fact] : (answer?.text ?? null),
+		note: fact ? FACT_TEXT[fact] : answerText,
 		/** The same claim with its consequence spelled out, for the tooltip and the
 		 * accessible description. The row's visible string has to fit a 32px chrome
 		 * bar at ordinary pane widths (design round 3, D10), so the short form is the
 		 * one on screen and the full one is the one a reader can ask for. */
-		detail: fact ? FACT_DETAIL[fact] : (answer?.detail ?? answer?.text ?? null),
+		detail: fact ? FACT_DETAIL[fact] : answerDetail,
 		dirty,
 		// The control's meaning follows this: it LOADS the file's version in this
 		// state rather than merely re-reading it, and the row says so.

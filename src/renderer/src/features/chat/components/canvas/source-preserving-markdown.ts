@@ -103,9 +103,12 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 	private readonly spans = new Map<string, Span>();
 	private snapshot: Snapshot = { source: "", children: [], start: 0, end: 0 };
 	private readonly snapshots = new Map<string, Snapshot>();
+	/** External label IDs keep localized presentation outside the source DOM:
+	 * history snapshots retain references, never old-language label strings. */
 	constructor(
 		private readonly editSourceLabel: string,
 		private readonly emptyTaskLabel = "",
+		private readonly labelIds?: { source: string; emptyTask: string },
 	) {}
 
 	private allocate(node: MarkdownNode, source: string, block: boolean): Span {
@@ -143,7 +146,8 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 		// Keep the complete class attribute in a plain literal: the theme/source
 		// gate must audit every ground without evaluating interpolated HTML.
 		return [
-			`<${tag} ${NODE}="${span.id}" ${OPAQUE}="true" contenteditable="false" role="button" tabindex="0" aria-label="${escapeHtml(this.editSourceLabel)}"`,
+			// i18n: ignore HTML attribute template with no human-readable string; interpolates DOM identifiers and separately localized label values.
+			`<${tag} ${NODE}="${span.id}" ${OPAQUE}="true" contenteditable="false" role="button" tabindex="0" ${this.labelIds ? `aria-labelledby="${escapeHtml(this.labelIds.source)}"` : `aria-label="${escapeHtml(this.editSourceLabel)}"`}`,
 			' class="cursor-pointer whitespace-pre-wrap break-words rounded-sm bg-sunken px-1 font-mono text-mono-sm text-ink-muted">',
 			`${escapeHtml(span.raw)}</${tag}>`,
 		].join("");
@@ -232,10 +236,16 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 					const value = (node as MarkdownNode & { value?: string }).value;
 					return value ?? (node.children ?? []).map(taskText).join("");
 				};
-				const taskLabel =
-					(n.children ?? []).map(taskText).join(" ").trim() ||
-					this.emptyTaskLabel;
-				result = `<li ${attr}${n.checked !== null && n.checked !== undefined ? ' class="task-list-item"' : ""}>${n.checked !== null && n.checked !== undefined ? `<input type="checkbox"${n.checked ? " checked" : ""} aria-label="${escapeHtml(taskLabel)}"/> ` : ""}${children()}</li>`;
+				const taskTextLabel = (n.children ?? []).map(taskText).join(" ").trim();
+				const taskLabel = taskTextLabel || this.emptyTaskLabel;
+				// Text-derived names are document content. The localized empty-task
+				// fallback is not: a stable external reference keeps a locale change
+				// from invalidating the exact-source skeleton (or any undo snapshot).
+				const taskLabelAttribute =
+					!taskTextLabel && this.labelIds
+						? `aria-labelledby="${escapeHtml(this.labelIds.emptyTask)}"`
+						: `aria-label="${escapeHtml(taskLabel)}"`;
+				result = `<li ${attr}${n.checked !== null && n.checked !== undefined ? ' class="task-list-item"' : ""}>${n.checked !== null && n.checked !== undefined ? `<input type="checkbox"${n.checked ? " checked" : ""} ${taskLabelAttribute}/> ` : ""}${children()}</li>`;
 				break;
 			}
 			case "break":

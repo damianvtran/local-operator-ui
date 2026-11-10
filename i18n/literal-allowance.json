@@ -13,50 +13,11 @@
 			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/agents/components/agents-page.tsx",
-			"ids": [
-				"jsx-child-expression | Connecting to the backend",
-				"jsx-child-expression | Loading what this backend can do…",
-				"jsx-child-expression | New",
-				"jsx-child-expression | Reusable agents need a newer backend",
-				"jsx-child-expression | The backend could not be reached",
-				"jsx-child-expression | Update the backend to manage reusable agents and teams. Saved chats are unchanged.",
-				"jsx-child-expression | Updated"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/agents/components/team-detail.tsx",
 			"ids": [
 				"jsx-child-expression | Agent",
 				"jsx-child-expression | Team",
 				"jsx-child-expression | · Includes a team"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
-			"ids": [
-				"jsx-child-expression | \"${…}\" is in ${…}'s shared agents as an instruction set. Its members can read and install it; nobody outside the organization can.",
-				"jsx-child-expression | Listing updated",
-				"jsx-child-expression | Nothing else leaves this machine: no conversation, no execution history, no memory or learnings, no plan, and no machine-specific configuration. ${…}'s members can read and install what you publish; nobody outside it can.",
-				"jsx-child-expression | Nothing else leaves this machine: no conversation, no execution history, no memory or learnings, no plan, and no machine-specific configuration. Anyone can read and install what you publish.",
-				"jsx-child-expression | Organization",
-				"jsx-child-expression | Public hub publications are readable by anyone. An organization's agents are readable by its members only.",
-				"jsx-child-expression | Publish",
-				"jsx-child-expression | Published to ${…}",
-				"jsx-child-expression | Published to the hub",
-				"jsx-child-expression | Publishing…",
-				"jsx-child-expression | Sharing agents inside an organization is part of the Team plan. An owner of ${…} can activate it in the Radient console.",
-				"jsx-child-expression | The hub reserves \"${…}\" for one of its built-in agents.",
-				"jsx-child-expression | The hub reserves this name for one of its built-in agents.",
-				"jsx-child-expression | Update listing",
-				"jsx-child-expression | You are about to publish this agent's instruction set into ${…}, where only its members can read and install it. What is published is what describes the agent:",
-				"jsx-child-expression | You are about to publish this agent's instruction set to the public Agent Hub. What is published is what describes the agent:"
 			],
 			"owner": "the i18n renderer-keying lane",
 			"payoff": "2027-01-31",
@@ -77,20 +38,6 @@
 			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/aida/aida-control.ts",
-			"ids": [
-				"object-literal:text | ${…} will say hello once an AI account is connected. Connect one from the chat to start.",
-				"object-literal:text | ${…}'s conversation could not be opened, so you are in a new chat instead. ${…}",
-				"object-literal:text | Aida is active.",
-				"object-literal:text | Aida is paused.",
-				"object-literal:text | Aida is paused. She will not check in until you resume her.",
-				"object-literal:text | Aida is resumed. She will check in on her usual schedule."
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/chat/approval-words.ts",
 			"ids": [
 				"object-literal:description | Refuse the action; the turn continues.",
@@ -101,22 +48,6 @@
 			"owner": "the i18n renderer-keying lane",
 			"payoff": "2027-01-31",
 			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
-			"ids": [
-				"jsx-child-expression | Earlier text of this answer is not on screen",
-				"jsx-child-expression | Interrupted",
-				"jsx-child-expression | No answer given",
-				"jsx-child-expression | Not run",
-				"jsx-child-expression | Part of this answer may be missing",
-				"jsx-child-expression | Worked",
-				"jsx-child-expression | Worked for ${…}",
-				"jsx-child-expression | · Job ${…}"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
 			"file": "src/renderer/src/features/chat/canonical/image-group-lightbox.tsx",
@@ -201,59 +132,11 @@
 			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/chat/components/radient-session-issue.tsx",
-			"ids": [
-				"jsx-child-expression | If signing in does not clear this, run ${…} in a terminal."
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/chat/components/run-details/job-cancel-popover.tsx",
 			"ids": [
 				"jsx-child-expression | Cancel",
 				"jsx-child-expression | Cancelling…",
 				"jsx-child-expression | The runtime asks the provider to stop “${…}”. The row says “Cancelled” only when the job settles."
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/components/run-details/mcp-auth-dialog.tsx",
-			"ids": [
-				"jsx-child-expression | Sign-in ${…}.",
-				"jsx-child-expression | Waiting for backend sign-in status…",
-				"object-literal:message | Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
-				"object-literal:message | This server does not use OAuth and declares no secret references. Add explicit ${NAME} references to its MCP environment or headers, then retry.",
-				"object-literal:message | Update the backend for secure MCP key entry. OAuth and the server list remain available."
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them; JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/components/run-details/mcp-failure.ts",
-			"ids": [
-				"object-literal:cancel | The cancellation could not be confirmed",
-				"object-literal:message | ${…} because this conversation's session is not running. Trying again restarts it and repeats this request.",
-				"object-literal:message | ${…}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.",
-				"object-literal:message | ${…}: the server refused it without giving a reason, and nothing was changed."
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
-			"ids": [
-				"jsx-child-expression | Result",
-				"jsx-child-expression | Result preview",
-				"jsx-child-expression | Show ${…} more lines",
-				"jsx-child-expression | Show less",
-				"jsx-child-expression | This is a shortened copy. This subagent's conversation is not available here.",
-				"jsx-child-expression | This subagent's conversation is not available here."
 			],
 			"owner": "the i18n renderer-keying lane",
 			"payoff": "2027-01-31",

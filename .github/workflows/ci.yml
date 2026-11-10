@@ -533,7 +533,7 @@ jobs:
   # 2026-10-24..11-07, the four `Desktop Tests shard` jobs were ~80% of this
   # workflow's runner time (9.6 min mean each) on a runner pool whose job queue
   # had a 15.6 min median. They now run in `full-suite.yml` - every push to
-  # `main`, nightly, and on demand - which files a `ci-main-red` issue instead of
+  # `main`, nightly, and on demand - whose red `main` run is the signal (no issue is filed) instead of
   # blocking a pull request. A pull request carries TARGETED local evidence
   # instead: `pnpm test:affected --run --evidence` selects the files a diff can
   # reach (scripts/affected-tests.mjs) and prints the block the PR body records.
@@ -877,8 +877,18 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
 
       - name: Build main with V8 bytecode
         env:
@@ -1083,6 +1093,19 @@ jobs:
         with:
           version: '10.29.2'
 
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
+
       - name: Build and pack
         # Fork pull_request jobs cannot read repository secrets. This disposable
         # tarball proves packaging and launch, not OAuth authentication, so use
@@ -1130,7 +1153,6 @@ jobs:
         # here: it would emit bytecode that prepack then overwrites, which is
         # exactly the ambiguity that let the broken artifact ship.
         run: |
-          pnpm install --frozen-lockfile
           npm pack
           # Seal this canonical build before any native scene can touch outputs.
           node scripts/model-uncertainty-native.mjs --write-build-receipt "$RUNNER_TEMP/model-case-build.json"

@@ -239,5 +239,17 @@
 	"ui.chat.canonical.fold.receipt.steered": "Đã định hướng",
 	"ui.chat.canonical.checkpoint_rail.label": "Điểm kiểm tra theo lượt",
 	"ui.chat.canonical.transcript.not_delivered": "Chưa gửi được",
-	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, other {{count, number, ::group-off}+ thao tác}}"
+	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, other {{count, number, ::group-off}+ thao tác}}",
+	"ui.chat.canonical.transcript.earlier_text_offscreen": "Phần trước của câu trả lời này không hiển thị trên màn hình",
+	"ui.chat.canonical.transcript.interrupted": "Bị gián đoạn",
+	"ui.chat.canonical.transcript.no_answer_given": "Chưa có câu trả lời",
+	"ui.chat.canonical.transcript.not_run": "Không chạy",
+	"ui.chat.canonical.transcript.answer_may_be_missing": "Câu trả lời này có thể bị thiếu một phần",
+	"ui.chat.canonical.transcript.worked": "Đã làm việc",
+	"ui.chat.canonical.transcript.worked_for": "Đã làm việc trong {duration}",
+	"ui.chat.canonical.transcript.job_suffix": "· Tác vụ {id}",
+	"ui.chat.canonical.tool_row.diff.more": "{count, plural, other {… thêm # dòng diff}}",
+	"ui.chat.canonical.tool_row.diff.show_less": "Hiện ít hơn",
+	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, other {Diff bị cắt bớt — thêm # dòng không được ghi lại}}",
+	"ui.chat.canonical.tool_row.diff.withheld": "Không có diff cho thay đổi này"
 }

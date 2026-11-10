@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "locale": "ur",
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "instance": "f5d2e59e5dfe-s7a-ur",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "model": "openai/gpt-6.1-sol",
+    "instance": "f5d2e59e5dfe-s7a-ur",
+    "session": "f5d2e59e5dfe",
+    "independent": true
+  },
+  "date": "2026-11-09",
+  "model_provenance": "Initial skill reads under anthropic/claude-sonnet-5-5; host announced quota fallbacks through anthropic/claude-opus-5-5 to openai/gpt-6.1-sol. All substantive diff review, ICU probes and evidence creation ran on openai/gpt-6.1-sol.",
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.agents.pages": {
+      "status": "passed",
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "ur": "2191db10ea1e557295fe5e31a30ac4756a76061e7668a1046677d3e8304927f0"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "keys_audited": 7,
+      "keys": [
+        "ui.agents.pages.backend.connecting",
+        "ui.agents.pages.backend.loading_capabilities",
+        "ui.agents.pages.change.new",
+        "ui.agents.pages.backend.upgrade_heading",
+        "ui.agents.pages.backend.unreachable",
+        "ui.agents.pages.backend.upgrade_body",
+        "ui.agents.pages.change.updated"
+      ],
+      "forbidden_bidi_count": 0,
+      "evidence": {
+        "path": "i18n/audits/evidence/ur/ui.agents.pages/f5d2e59e5dfe-s7a-ur/record.json",
+        "sha256": "13838cc08583e532e7e25ba35ffdb488a03e14f9e4f1bcdbf5e5121e4414cf9c"
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "ur": "4b9b632a3217aefce3505dbef7e83842b839ce09dac63b9629c72730d2c386de"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "keys_audited": 16,
+      "keys": [
+        "ui.chat.run_details.child.result.preview",
+        "ui.chat.run_details.child.result.title",
+        "ui.chat.run_details.child.result.unavailable_clipped",
+        "ui.chat.run_details.child.result.unavailable",
+        "ui.chat.run_details.child.brief.show_less",
+        "ui.chat.run_details.child.brief.show_more",
+        "ui.chat.run_details.mcp_auth.upgrade",
+        "ui.chat.run_details.mcp_auth.no_references",
+        "ui.chat.run_details.mcp_auth.unknown_method",
+        "ui.chat.run_details.mcp_auth.waiting",
+        "ui.chat.run_details.mcp_auth.status",
+        "ui.chat.run_details.mcp_auth.status_unavailable",
+        "ui.chat.run_details.mcp_failure.cancel_lead",
+        "ui.chat.run_details.mcp_failure.busy",
+        "ui.chat.run_details.mcp_failure.refused",
+        "ui.chat.run_details.mcp_failure.session"
+      ],
+      "forbidden_bidi_count": 0,
+      "evidence": {
+        "path": "i18n/audits/evidence/ur/ui.chat.run_details/f5d2e59e5dfe-s7a-ur/record.json",
+        "sha256": "cb4d5cde82d99167f8ec4412224a7736b0b83089394422113de85e0db7d132c6"
+      }
+    },
+    "ui.notices": {
+      "status": "passed",
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "ur": "8b76b735e12fb00b9703875ec2a6ee342bdd446ef1ac3082834f5b41fb1bbf0b"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "keys_audited": 6,
+      "keys": [
+        "ui.notices.aida.paused_receipt",
+        "ui.notices.aida.resumed_receipt",
+        "ui.notices.aida.paused",
+        "ui.notices.aida.active",
+        "ui.notices.aida.account_required",
+        "ui.notices.aida.open_fallback"
+      ],
+      "forbidden_bidi_count": 0,
+      "evidence": {
+        "path": "i18n/audits/evidence/ur/ui.notices/f5d2e59e5dfe-s7a-ur/record.json",
+        "sha256": "f529a858584ef154cf9aede03d9d06b54bb7ac0b5062bc906afcab41b083aaac"
+      }
+    }
+  },
+  "limitations": [
+    "Source/ICU execution audit, not a rendered RTL layout or clipping check; browser tool unavailable to this role."
+  ],
+  "scope": "29 Urdu additions (7/16/6); full three-file forbidden-bidi sweep; baseline terminology cross-check. Deliberate retained source approval labels/wire diagnostics excluded.",
+  "keys_audited": 29,
+  "forbidden_bidi_count": 0
+}

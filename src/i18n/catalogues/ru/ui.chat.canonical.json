@@ -239,5 +239,17 @@
 	"ui.chat.canonical.fold.receipt.steered": "Ход направлен",
 	"ui.chat.canonical.checkpoint_rail.label": "Контрольные точки ходов",
 	"ui.chat.canonical.transcript.not_delivered": "Не доставлено",
-	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ действие} few {{count, number, ::group-off}+ действия} many {{count, number, ::group-off}+ действий} other {{count, number, ::group-off}+ действия}}"
+	"ui.chat.canonical.transcript.earlier_text_offscreen": "Начало этого ответа не отображается на экране",
+	"ui.chat.canonical.transcript.interrupted": "Прервано",
+	"ui.chat.canonical.transcript.no_answer_given": "Ответ не дан",
+	"ui.chat.canonical.transcript.not_run": "Не запускалось",
+	"ui.chat.canonical.transcript.answer_may_be_missing": "Часть этого ответа может отсутствовать",
+	"ui.chat.canonical.transcript.worked": "Велась работа",
+	"ui.chat.canonical.transcript.worked_for": "Время работы: {duration}",
+	"ui.chat.canonical.transcript.job_suffix": "· Задание {id}",
+	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ действие} few {{count, number, ::group-off}+ действия} many {{count, number, ::group-off}+ действий} other {{count, number, ::group-off}+ действия}}",
+	"ui.chat.canonical.tool_row.diff.more": "{count, plural, one {… ещё # строка diff} few {… ещё # строки diff} many {… ещё # строк diff} other {… ещё # строки diff}}",
+	"ui.chat.canonical.tool_row.diff.show_less": "Свернуть",
+	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, one {Diff обрезан — ещё # строка не записана} few {Diff обрезан — ещё # строки не записаны} many {Diff обрезан — ещё # строк не записано} other {Diff обрезан — ещё # строки не записано}}",
+	"ui.chat.canonical.tool_row.diff.withheld": "Diff для этого изменения недоступен"
 }

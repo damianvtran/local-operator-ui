@@ -226,6 +226,18 @@ export interface DaemonStatusSnapshot {
 	 * whatever the probes could not read.
 	 */
 	lastTransportAt: number | null;
+	/**
+	 * True while main's server-update window is open: the daemon answered with
+	 * its reload admission fence (`lop update` / `lop-update` reloading it in
+	 * place) within the last `SERVER_UPDATING_EXTEND_MS`, capped at
+	 * `SERVER_UPDATING_CAP_MS` (`daemon-status.ts`). Surfaces show a neutral
+	 * "the server is updating" state instead of a failure, and offer no Retry or
+	 * Reconnect: the server comes back by itself.
+	 *
+	 * OPTIONAL so a snapshot written before this field existed (a test fixture, a
+	 * story) reads as "not updating", which is the only safe default.
+	 */
+	updating?: boolean;
 	/** One sentence naming what the app actually observed. */
 	detail: string;
 	/**

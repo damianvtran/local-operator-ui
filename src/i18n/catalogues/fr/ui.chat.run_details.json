@@ -91,5 +91,21 @@
 	"ui.chat.run_details.wake.armed_count": "{count, plural, one {{count_display} réveil activé} many {{count_display} de réveils activés} other {{count_display} réveils activés}}",
 	"ui.chat.run_details.wake.cadence_once": "une fois",
 	"ui.chat.run_details.wake.managed_by": "géré par {name}",
-	"ui.chat.run_details.wake.managed_note": "Ce réveil relève de la planification propre à {name} ; il ne peut donc pas être annulé ici. Pour arrêter ces points de suivi, utilisez /aida pause."
+	"ui.chat.run_details.wake.managed_note": "Ce réveil relève de la planification propre à {name} ; il ne peut donc pas être annulé ici. Pour arrêter ces points de suivi, utilisez /aida pause.",
+	"ui.chat.run_details.child.result.preview": "Aperçu du résultat",
+	"ui.chat.run_details.child.result.title": "Résultat",
+	"ui.chat.run_details.child.result.unavailable_clipped": "Cette copie est abrégée. La conversation de ce sous-agent n’est pas disponible ici.",
+	"ui.chat.run_details.child.result.unavailable": "La conversation de ce sous-agent n’est pas disponible ici.",
+	"ui.chat.run_details.child.brief.show_less": "Afficher moins",
+	"ui.chat.run_details.child.brief.show_more": "{count, plural, one {Afficher {count, number, ::group-off} ligne de plus} other {Afficher {count, number, ::group-off} lignes de plus}}",
+	"ui.chat.run_details.mcp_auth.upgrade": "Mettez à jour le backend pour saisir les clés MCP de manière sécurisée. OAuth et la liste des serveurs restent disponibles.",
+	"ui.chat.run_details.mcp_auth.no_references": "Ce serveur n’utilise pas OAuth et ne déclare aucune référence à des secrets. Ajoutez des références explicites $'{'NAME'}' dans son environnement MCP ou ses en-têtes, puis réessayez.",
+	"ui.chat.run_details.mcp_auth.unknown_method": "Impossible de déterminer la méthode de connexion de ce serveur. Vérifiez sa connexion et sa configuration MCP, puis réessayez.",
+	"ui.chat.run_details.mcp_auth.waiting": "En attente de l’état de connexion du backend…",
+	"ui.chat.run_details.mcp_auth.status": "Connexion : {status}.",
+	"ui.chat.run_details.mcp_auth.status_unavailable": "état indisponible",
+	"ui.chat.run_details.mcp_failure.cancel_lead": "L’annulation n’a pas pu être confirmée",
+	"ui.chat.run_details.mcp_failure.busy": "{lead} : une connexion est déjà en cours pour cette conversation, et une seule est possible à la fois. Attendez qu’elle se termine ou annulez-la depuis la ligne du serveur.",
+	"ui.chat.run_details.mcp_failure.refused": "{lead} : le serveur a refusé sans donner de raison et rien n’a été modifié.",
+	"ui.chat.run_details.mcp_failure.session": "{lead} car la session de cette conversation n’est pas en cours d’exécution. Réessayer la redémarre et répète cette requête."
 }

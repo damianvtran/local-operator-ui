@@ -1,0 +1,136 @@
+{
+  "audit_id": "zh-upload-04d006c51d21",
+  "date": "2026-11-08",
+  "audit_date": "2026-11-08",
+  "locale": "zh-CN",
+  "namespace": "ui.agents.upload",
+  "round": 1,
+  "key_count": 15,
+  "whole_file_keys": 46,
+  "source_commit": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "byte_equality_base": "e9fef11640364c9e55e68fc84eac89af45886279",
+  "keys_audited": [
+    "ui.agents.upload.action.publish",
+    "ui.agents.upload.action.publishing",
+    "ui.agents.upload.action.update_listing",
+    "ui.agents.upload.availability.reserved_named",
+    "ui.agents.upload.availability.reserved_unnamed",
+    "ui.agents.upload.intro.org",
+    "ui.agents.upload.intro.public",
+    "ui.agents.upload.not_leaving.org",
+    "ui.agents.upload.not_leaving.public",
+    "ui.agents.upload.published.org_listed",
+    "ui.agents.upload.receipt.title_hub",
+    "ui.agents.upload.receipt.title_org",
+    "ui.agents.upload.receipt.title_updated",
+    "ui.agents.upload.target.blocked_hint",
+    "ui.agents.upload.target.visibility_hint_public"
+  ],
+  "translator": {
+    "agent": "translator (i18n-translator lane)",
+    "model": "unreported-by-delegating-agent",
+    "commit": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+    "date": "2026-11-08",
+    "note": "Produced the zh-CN values for the upload-agent-dialog slice in commit 2b72db6a56a. This auditor saw only the committed candidate catalogue and the commit message, and did not observe the translator's session or reasoning."
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "model_source": "session header after three provider-quota fallbacks; see receipt.model_provenance",
+      "date": "2026-11-08",
+      "result": "clean-with-findings",
+      "instance": "04d006c51d21",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 2
+      },
+      "finding_ids": [
+        "M1",
+        "N1",
+        "N2"
+      ],
+      "receipt": "i18n/receipts/zh-CN-upload-r1-04d006c51d21.json",
+      "receipt_sha256": "c8504f567e1b02588dfd34458bc44cf4834f8e39227c1dd55e7f89050d21eb07",
+      "scope": "15-key zh-CN delta, the whole ui.agents.upload namespace (46 keys) also checked mechanically (key order, key-set parity, ICU signature and placeholder parity, plural legality against the zh-CN style guide, typography and width of the delta).",
+      "note": "Independent auditor: did not translate or remediate; no MT service; no catalogue, ledger, allowance, English, generated-file, component or test edits; nothing committed."
+    }
+  ],
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.agents.upload.json",
+      "sha256": "7dc140a91b4cc79e403c1682ffdfce480820744170c465dae033e392081e52dd"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "structural_decision": {
+    "question": "zh-CN has one CLDR category; the translator folded the English 'one' arm's {org} into the single 'other' arm. Is the resulting sentence correct Chinese at count=1 and count=12, or does it misstate plurality?",
+    "verdict": "correct - it does not misstate plurality",
+    "detail": "Intl.PluralRules('zh-CN').select() returns 'other' for 1, 2 and 12, so all counts render one identical sentence naming blockedTargets[0] and generalising to '任何其他组织'. At count=1 the general disjunct is vacuous (no other org is marked) but nothing false is asserted; at count=12 the named org IS one of the marked, disabled orgs in the same picker, so the sentence is true and more informative than the English. The call site always passes a real name (blockedTargets[0].tenant_name || t('ui.hub.pages.scope.org_unnamed')), so there is no path where {org} is empty. The zh-CN style guide (Plurals) mandates 'other' only and forbids one/other branches, so a 'one' arm would itself be the defect; the English plural_guidance is honoured inside 'other'. The wrong alternative - {org} alone - was correctly avoided: at count=12 it would imply only the named org can enable the feature.",
+    "residual": "N1 (redundancy at count=1)"
+  },
+  "terminology_verified": {
+    "Agent Hub -> 智能体中心": "matches ui.hub.pages.header.title; used in intro.public and published.listed",
+    "listing -> 条目": "matches pre-existing action.open_listing 打开条目, ui.agents.publication.action.update_listing 更新现有条目, title.republished",
+    "instruction set -> 指令集": "matches ui.common.errors.publish_unsupported, ui.agents.publication.*, ui.onboarding.tour.upload_agent_hub_dialog.body.1",
+    "hub (short) -> 中心": "matches pre-existing availability.taken and the en context instruction not to expand receipt.title_hub to Agent Hub",
+    "Team plan -> Team套餐": "matches shipped 'Team Bridge是Radient Team套餐的一部分' / '需要Radient Team套餐'",
+    "Radient console -> Radient控制台": "matches shipped '前往Radient控制台'"
+  },
+  "findings_detail": {
+    "M1": {
+      "severity": "minor",
+      "file": "src/i18n/catalogues/zh-CN/ui.agents.upload.json",
+      "line": 5,
+      "key": "ui.agents.upload.action.publishing",
+      "problem": "uses a single U+2026 for the pending-status ellipsis; the binding zh-CN style guide says 'Ellipsis is …… (two marks)', shipped zh practice is 234 two-mark occurrences vs 11 single, and the same file's sibling at line 8 (availability.checking) is 正在检查此名称是否可用……",
+      "fix": "正在发布……"
+    },
+    "N1": {
+      "severity": "nit",
+      "file": "src/i18n/catalogues/zh-CN/ui.agents.upload.json",
+      "line": 32,
+      "key": "ui.agents.upload.target.blocked_hint",
+      "problem": "at count=1 任何其他组织 refers to an empty set - redundant, not false, and not a plurality defect; the fold itself is correct",
+      "fix": "optional: drop 任何"
+    },
+    "N2": {
+      "severity": "nit",
+      "file": "src/i18n/catalogues/zh-CN/ui.agents.upload.json",
+      "line": 24,
+      "key": "ui.agents.upload.published.org_listed",
+      "problem": "加入 ('has joined') reads slightly mechanical for the English 'is in' in a receipt",
+      "fix": "optional: 已作为指令集出现在{destination}的共享智能体中"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/zh-CN-upload-r1-04d006c51d21.json",
+      "sha256": "c8504f567e1b02588dfd34458bc44cf4834f8e39227c1dd55e7f89050d21eb07"
+    }
+  ],
+  "current_report_verdict": "clean-with-findings (0 blocker, 0 major, 1 minor, 2 nit) - round 1",
+  "evidence_note": "Findings cite byte-level evidence: the style guide's binding ellipsis rule, shipped-catalogue counts (234 two-mark vs 11 single), and the sibling key eight lines above the finding in the same file.",
+  "report": {
+    "path": "i18n/audits/evidence/zh-CN/ui.agents.upload/zh-upload-04d006c51d21/report.md",
+    "sha256": "31ab585ca5384b2059769dfe3d28f8d72d52387966b2ae51978472dea6e3cee3"
+  },
+  "notes": "Round 1 of the zh-CN audit for the upload-agent-dialog slice at 2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82. Glossary sha256 differs from the 2026-10-26 row (ef07b446...), so the glossary moved since that audit; the style-guide hash (8f95d89d...) is unchanged. No ledger edit: wiring this receipt into the ledger is the manager's step."
+}

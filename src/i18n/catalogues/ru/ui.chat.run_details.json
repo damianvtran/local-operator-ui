@@ -91,5 +91,21 @@
 	"ui.chat.run_details.wake.armed_count": "{count, plural, =1 {{count_display} пробуждение запланировано} one {{count_display} пробуждение запланировано} few {{count_display} пробуждения запланированы} many {{count_display} пробуждений запланировано} other {{count_display} пробуждения запланировано}}",
 	"ui.chat.run_details.wake.cadence_once": "однократно",
 	"ui.chat.run_details.wake.managed_by": "под управлением {name}",
-	"ui.chat.run_details.wake.managed_note": "Это пробуждение входит в собственное расписание ассистента {name}, поэтому отменить его здесь нельзя. Чтобы остановить эти проверки, используйте /aida pause."
+	"ui.chat.run_details.wake.managed_note": "Это пробуждение входит в собственное расписание ассистента {name}, поэтому отменить его здесь нельзя. Чтобы остановить эти проверки, используйте /aida pause.",
+	"ui.chat.run_details.child.result.preview": "Предпросмотр результата",
+	"ui.chat.run_details.child.result.title": "Результат",
+	"ui.chat.run_details.child.result.unavailable_clipped": "Это сокращённая копия. Разговор этого субагента здесь недоступен.",
+	"ui.chat.run_details.child.result.unavailable": "Разговор этого субагента здесь недоступен.",
+	"ui.chat.run_details.child.brief.show_less": "Свернуть",
+	"ui.chat.run_details.child.brief.show_more": "{count, plural, one {Показать ещё {count, number, ::group-off} строку} few {Показать ещё {count, number, ::group-off} строки} many {Показать ещё {count, number, ::group-off} строк} other {Показать ещё {count, number, ::group-off} строки}}",
+	"ui.chat.run_details.mcp_auth.upgrade": "Обновите бэкенд для безопасного ввода ключей MCP. OAuth и список серверов остаются доступны.",
+	"ui.chat.run_details.mcp_auth.no_references": "Этот сервер не использует OAuth и не указывает ссылок на секреты. Добавьте явные ссылки $'{'NAME'}' в его переменные окружения MCP или заголовки, затем повторите попытку.",
+	"ui.chat.run_details.mcp_auth.unknown_method": "Не удалось определить способ входа на этот сервер. Проверьте подключение к нему и настройки MCP, затем повторите попытку.",
+	"ui.chat.run_details.mcp_auth.waiting": "Ожидание статуса входа от бэкенда…",
+	"ui.chat.run_details.mcp_auth.status": "Вход: {status}.",
+	"ui.chat.run_details.mcp_auth.status_unavailable": "статус недоступен",
+	"ui.chat.run_details.mcp_failure.cancel_lead": "Не удалось подтвердить отмену",
+	"ui.chat.run_details.mcp_failure.busy": "{lead}: в этом разговоре уже выполняется вход, а одновременно возможен только один. Дождитесь его завершения или отмените его в строке сервера.",
+	"ui.chat.run_details.mcp_failure.refused": "{lead}: сервер отклонил запрос без объяснения причины. Ничего не изменилось.",
+	"ui.chat.run_details.mcp_failure.session": "{lead}, поскольку сессия этого разговора не запущена. Повторная попытка перезапустит её и повторит этот запрос."
 }

@@ -100,5 +100,11 @@
 	"ui.notices.variables.delete_failed": "La variable n’a pas pu être supprimée.",
 	"ui.notices.variables.deleted": "Variable supprimée",
 	"ui.notices.variables.update_failed": "La variable n’a pas pu être mise à jour.",
-	"ui.notices.variables.updated": "Variable mise à jour"
+	"ui.notices.variables.updated": "Variable mise à jour",
+	"ui.notices.aida.paused_receipt": "Aida est en pause. Elle ne fera aucun point de suivi avant que vous ne la repreniez.",
+	"ui.notices.aida.resumed_receipt": "Aida a repris. Elle fera ses points de suivi selon sa planification habituelle.",
+	"ui.notices.aida.paused": "Aida est en pause.",
+	"ui.notices.aida.active": "Aida est active.",
+	"ui.notices.aida.account_required": "{name} vous saluera dès qu’un compte IA sera connecté. Connectez-en un depuis la conversation pour commencer.",
+	"ui.notices.aida.open_fallback": "La conversation de {name} n’a pas pu être ouverte. Une nouvelle conversation a donc été ouverte à la place. {detail}"
 }

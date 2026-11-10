@@ -1,0 +1,368 @@
+{
+  "locale": "vi",
+  "namespace": "ui.chat.run_details",
+  "instance": "c952320b2cf6-s7a-vi",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "c952320b2cf6-s7a-vi",
+    "model": "openai/gpt-6.1-sol",
+    "independent_of_translator": true
+  },
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "date": "2026-11-09",
+  "scope": "Added values only; not a full namespace re-audit",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/vi/ui.chat.run_details.json",
+    "sha256": "efbe1b0118acc6d9679ab3dc9903222bb3262ef079a051402458c616652a0ac8"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+    "sha256": "525753ac3b7aa85ddd4781b7c9752aac4d2ffeaec06ec4898c117cb65549ba74"
+  },
+  "keys_audited": 16,
+  "keys": [
+    {
+      "key": "ui.chat.run_details.child.brief.show_less",
+      "line": 95,
+      "english": "Show less",
+      "vietnamese": "Hiển thị ít hơn",
+      "grammar": "Hiển thị ít hơn is a complete comparison/imperative label.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Hiển thị ít hơn",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.brief.show_more",
+      "line": 96,
+      "english": "{count, plural, one {Show {count, number, ::group-off} more line} other {Show {count, number, ::group-off} more lines}}",
+      "vietnamese": "{count, plural, other {Hiển thị thêm {count, number, ::group-off} dòng}}",
+      "grammar": "Hiển thị thêm + formatted count + dòng is grammatical; Vietnamese only needs other, no singular agreement.",
+      "arguments": [
+        "2:count:{\"type\":0,\"tokens\":[{\"stem\":\"group-off\",\"options\":[]}],\"parsedOptions\":{\"useGrouping\":false}}",
+        "plural:count:cardinal:0"
+      ],
+      "plural_arms": [
+        [
+          "other"
+        ]
+      ],
+      "formatted": "Hiển thị thêm 1000 dòng",
+      "count_samples": {
+        "0": "Hiển thị thêm 0 dòng",
+        "1": "Hiển thị thêm 1 dòng",
+        "2": "Hiển thị thêm 2 dòng",
+        "1000": "Hiển thị thêm 1000 dòng"
+      },
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.result.title",
+      "line": 97,
+      "english": "Result",
+      "vietnamese": "Kết quả",
+      "grammar": "Kết quả is established result terminology.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Kết quả",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.result.preview",
+      "line": 98,
+      "english": "Result preview",
+      "vietnamese": "Xem trước kết quả",
+      "grammar": "Xem trước kết quả is a natural preview label.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Xem trước kết quả",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable",
+      "line": 99,
+      "english": "This subagent's conversation is not available here.",
+      "vietnamese": "Cuộc trò chuyện của tác nhân con này không có sẵn ở đây.",
+      "grammar": "Không có sẵn retains existential có and accurately scopes absence to ở đây; tác nhân con and cuộc trò chuyện match existing bytes.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Cuộc trò chuyện của tác nhân con này không có sẵn ở đây.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable_clipped",
+      "line": 100,
+      "english": "This is a shortened copy. This subagent's conversation is not available here.",
+      "vietnamese": "Đây là bản sao rút gọn. Cuộc trò chuyện của tác nhân con này không có sẵn ở đây.",
+      "grammar": "Đây là bản sao rút gọn states the shortened-copy condition; không có sẵn retains có and local availability scope.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Đây là bản sao rút gọn. Cuộc trò chuyện của tác nhân con này không có sẵn ở đây.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.no_references",
+      "line": 101,
+      "english": "This server does not use OAuth and declares no secret references. Add explicit $'{'NAME'}' references to its MCP environment or headers, then retry.",
+      "vietnamese": "Máy chủ này không dùng OAuth và không khai báo tham chiếu nào đến bí mật. Thêm các tham chiếu $'{'NAME'}' tường minh vào biến môi trường hoặc tiêu đề MCP của máy chủ, rồi thử lại.",
+      "grammar": "Không dùng OAuth and không khai báo tham chiếu nào đến bí mật are complete negative verbs; explicit literal reference syntax retained, with MCP environment variables and headers named.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Máy chủ này không dùng OAuth và không khai báo tham chiếu nào đến bí mật. Thêm các tham chiếu ${NAME} tường minh vào biến môi trường hoặc tiêu đề MCP của máy chủ, rồi thử lại.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.upgrade",
+      "line": 102,
+      "english": "Update the backend for secure MCP key entry. OAuth and the server list remain available.",
+      "vietnamese": "Cập nhật máy chủ để nhập khóa MCP an toàn. OAuth và danh sách máy chủ vẫn dùng được.",
+      "grammar": "Để nhập khóa MCP an toàn expresses purpose; vẫn dùng được expresses continued availability without requiring có.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Cập nhật máy chủ để nhập khóa MCP an toàn. OAuth và danh sách máy chủ vẫn dùng được.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status",
+      "line": 103,
+      "english": "Sign-in {status}.",
+      "vietnamese": "Đăng nhập: {status}.",
+      "grammar": "Đăng nhập: introduces interpolated sign-in status without requiring a copula.",
+      "arguments": [
+        "argument:status"
+      ],
+      "plural_arms": [],
+      "formatted": "Đăng nhập: không có thông tin trạng thái.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status_unavailable",
+      "line": 104,
+      "english": "status unavailable",
+      "vietnamese": "không có thông tin trạng thái",
+      "grammar": "Không có thông tin trạng thái retains required existential có and is not clipped to không thông tin.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "không có thông tin trạng thái",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.waiting",
+      "line": 105,
+      "english": "Waiting for backend sign-in status…",
+      "vietnamese": "Đang chờ trạng thái đăng nhập từ máy chủ…",
+      "grammar": "Đang chờ trạng thái đăng nhập từ máy chủ is complete ongoing waiting; from-source complement is explicit.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Đang chờ trạng thái đăng nhập từ máy chủ…",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.unknown_method",
+      "line": 106,
+      "english": "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
+      "vietnamese": "Không xác định được phương thức đăng nhập của máy chủ này. Kiểm tra kết nối và thiết lập MCP của máy chủ, rồi thử lại.",
+      "grammar": "Không xác định được is complete negative ability; phương thức đăng nhập, kết nối, thiết lập MCP preserve the technical meaning.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Không xác định được phương thức đăng nhập của máy chủ này. Kiểm tra kết nối và thiết lập MCP của máy chủ, rồi thử lại.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.busy",
+      "line": 107,
+      "english": "{lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.",
+      "vietnamese": "{lead}: một lượt đăng nhập đang chạy cho cuộc trò chuyện này và mỗi lần chỉ có thể chạy một lượt. Chờ lượt đó hoàn tất hoặc hủy tại hàng của máy chủ.",
+      "grammar": "Mỗi lần chỉ có thể chạy một lượt retains full có thể; đang chạy marks the existing sign-in; chờ lượt đó hoàn tất expresses completion, not an already-completed run.",
+      "arguments": [
+        "argument:lead"
+      ],
+      "plural_arms": [],
+      "formatted": "Không xác nhận được việc hủy: một lượt đăng nhập đang chạy cho cuộc trò chuyện này và mỗi lần chỉ có thể chạy một lượt. Chờ lượt đó hoàn tất hoặc hủy tại hàng của máy chủ.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.refused",
+      "line": 108,
+      "english": "{lead}: the server refused it without giving a reason, and nothing was changed.",
+      "vietnamese": "{lead}: máy chủ đã từ chối mà không nêu lý do và không có gì thay đổi.",
+      "grammar": "Đã từ chối marks completed refusal; không nêu lý do is a normal negative action; không có gì thay đổi retains existential có and preserves no side effect.",
+      "arguments": [
+        "argument:lead"
+      ],
+      "plural_arms": [],
+      "formatted": "Không xác nhận được việc hủy: máy chủ đã từ chối mà không nêu lý do và không có gì thay đổi.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.session",
+      "line": 109,
+      "english": "{lead} because this conversation's session is not running. Trying again restarts it and repeats this request.",
+      "vietnamese": "{lead} vì phiên của cuộc trò chuyện này không chạy. Thử lại sẽ khởi động lại phiên và gửi lại yêu cầu này.",
+      "grammar": "Vì phiên ... không chạy supplies the causal clause; Thử lại sẽ khởi động lại phiên và gửi lại yêu cầu states both future retry effects. No có required.",
+      "arguments": [
+        "argument:lead"
+      ],
+      "plural_arms": [],
+      "formatted": "Không xác nhận được việc hủy vì phiên của cuộc trò chuyện này không chạy. Thử lại sẽ khởi động lại phiên và gửi lại yêu cầu này.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.cancel_lead",
+      "line": 110,
+      "english": "The cancellation could not be confirmed",
+      "vietnamese": "Không xác nhận được việc hủy",
+      "grammar": "Không xác nhận được việc hủy is a complete negative-potential lead and composes with busy/refused/session without a missing copula.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Không xác nhận được việc hủy",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    }
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "status": "passed",
+  "method": "Independent key-by-key English/Vietnamese meaning, function-word, tense/aspect, terminology and residue review; executable ICU AST parity, other-only arms, formatter, NFC and bidi assertions. Latin product/protocol identifiers Aida, AI, OAuth, MCP, NAME and ICU argument tokens are intentional, not English residue. No rendered UI claim.",
+  "style_guide": "/Users/damian/local-operator/i18n/style-guides/vi.md",
+  "glossary": "/Users/damian/local-operator/i18n/glossary.md"
+}

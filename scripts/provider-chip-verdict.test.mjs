@@ -384,6 +384,12 @@ let accountRequests = 0;
  * means the sign-in cases are not being exercised and the op is a 503.
  */
 let authPollStates = [];
+/**
+ * Whether a `succeeded` sign-in heals the verdict, as the real backend does when
+ * it re-pins the tunnel. `false` is the reproduced 2026-11-06 state: the sign-in
+ * completed and the pinned credential stayed dead.
+ */
+let healOnSucceed = true;
 let authStarts = 0;
 /**
  * The census the bridge serves, mutable so the never-signed-in machine -- no row
@@ -431,6 +437,7 @@ beforeEach(() => {
 	verdictRequests = 0;
 	accountRequests = 0;
 	authPollStates = [];
+	healOnSucceed = true;
 	authStarts = 0;
 	releaseVerdict = () => {};
 	holdAccount = false;
@@ -510,7 +517,7 @@ globalThis.window.api = {
 				if (state === undefined) {
 					return { status: 503, body: { detail: "no auth operation here" } };
 				}
-				if (state === "succeeded") loginAnswer = "ok";
+				if (state === "succeeded" && healOnSucceed) loginAnswer = "ok";
 				return { status: 200, body: { result: { id: request.id, state } } };
 			}
 			if (request?.op === "capabilities") {
@@ -2037,6 +2044,51 @@ test("a successful sign-in from the row refreshes the verdict the claim reads", 
 	const body = text(container);
 	assert.equal(occurrences(body, "Signed in"), 1, body);
 	assert.equal(occurrences(body, "Needs re-authentication"), 0, body);
+});
+
+/**
+ * Agent review round 1, m-3: the panel is the SECOND caller of the shared
+ * post-sign-in re-read (`rereadVerdictAfterSignIn`), and nothing executed it.
+ * Driven like the case above, but with a backend that does NOT heal: the panel
+ * must ask exactly twice - the refetch and ONE bounded re-read after
+ * `VERDICT_HEAL_REREAD_MS` - and then stop. Real delay (3 s): the panel takes no
+ * options, and production's own constant is what this case is about.
+ */
+test("a sign-in from the panel that does not heal re-reads the verdict exactly once more", async () => {
+	loginAnswer = "refused";
+	accountAnswer = "ready";
+	authPollStates = ["succeeded"];
+	healOnSucceed = false;
+	const { container } = await renderGrid({ providerId: "radient" });
+	const before = verdictRequests;
+	const signIn = [...container.querySelectorAll("button")].find((candidate) =>
+		CONTINUE_IN_BROWSER.test(candidate.textContent ?? ""),
+	);
+	assert.ok(
+		signIn,
+		`the row did not open its panel: ${text(container).slice(0, 300)}`,
+	);
+	await act(async () => {
+		signIn.dispatchEvent(
+			new window.MouseEvent("click", { bubbles: true, cancelable: true }),
+		);
+	});
+	const deadline = Date.now() + 6000;
+	while (Date.now() < deadline && verdictRequests < before + 2) {
+		await flush();
+	}
+	assert.equal(
+		verdictRequests - before,
+		2,
+		"the refetch and the one bounded re-read",
+	);
+	const settle = Date.now() + 1000;
+	while (Date.now() < settle) await flush();
+	assert.equal(
+		verdictRequests - before,
+		2,
+		"no third read: the re-read is bounded",
+	);
 });
 
 /* ---- D7/Q-5: the account section's own read, and the loop it was in -------- */

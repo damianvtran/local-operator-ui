@@ -1,0 +1,355 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-11-08",
+  "locale": "es",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "base": "3378319980ff898892f316ae3a17cc22c089b7d3",
+  "instance": "46b43b7fd549",
+  "agent": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "fallback": {
+    "used": true,
+    "pinned": "anthropic/claude-sonnet-5-5",
+    "chain": [
+      "anthropic/claude-sonnet-5-5 (pin, provider quota failure)",
+      "anthropic/claude-opus-5-5 (fallback, quota)",
+      "openai/gpt-6.1-sol (fallback, quota)",
+      "deepseek/deepseek-flash (served for this audit run)"
+    ],
+    "note": "Served model disclosed as required; no role, default or tool pin was changed by the auditor."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "46b43b7fd549",
+    "instance": "46b43b7fd549",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness model-switch banner in this delegated run: 'You are now running as deepseek/deepseek-flash (was anthropic/claude-sonnet-5-5)', preceded by two further fallback banners",
+    "fallback": true,
+    "independent_from_translator_session": true,
+    "independence": "This session did not translate, remediate or author any audited value and read no translator reasoning. It wrote only this receipt and its evidence directory; no catalogue, ledger, allowance, generator, English or test file was edited."
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "key_count": 15,
+  "namespaces": {
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "keys_audited": 15,
+      "keys": [
+        "ui.agents.upload.action.publish",
+        "ui.agents.upload.action.publishing",
+        "ui.agents.upload.action.update_listing",
+        "ui.agents.upload.availability.reserved_named",
+        "ui.agents.upload.availability.reserved_unnamed",
+        "ui.agents.upload.intro.org",
+        "ui.agents.upload.intro.public",
+        "ui.agents.upload.not_leaving.org",
+        "ui.agents.upload.not_leaving.public",
+        "ui.agents.upload.published.org_listed",
+        "ui.agents.upload.receipt.title_hub",
+        "ui.agents.upload.receipt.title_org",
+        "ui.agents.upload.receipt.title_updated",
+        "ui.agents.upload.target.blocked_hint",
+        "ui.agents.upload.target.visibility_hint_public"
+      ],
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f",
+      "target_sha256": "2fd38ed22f19481af887cefc42ab3a10db769c41d3ec81d364af7ecd1ed4569b",
+      "context_sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec",
+      "sha256": {
+        "en": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f",
+        "es": "2fd38ed22f19481af887cefc42ab3a10db769c41d3ec81d364af7ecd1ed4569b",
+        "context": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+      },
+      "finding_ids": [
+        "ES-UPL-1",
+        "ES-UPL-2"
+      ],
+      "findings": [
+        {
+          "id": "ES-UPL-1",
+          "severity": "MINOR",
+          "key": "ui.agents.upload.target.blocked_hint",
+          "current": "{count, plural, one {{org}} many {{org}} other {cualquiera de las organizaciones marcadas arriba}}",
+          "english": "{count, plural, one {{org}} other {any of the organizations marked above}}",
+          "problem": "The `many` branch reuses the singular's `{org}`. Every other plural in the es catalogue either carries a distinct millions form or mirrors `other`; this is the only branch in the tree whose text equals `one` while differing from `other`. Spanish `many` is the CLDR category for exact millions (1.000.000), where the wording must stay plural, so this branch is grammatically the wrong one to copy.",
+          "reachability": "Selected only when Intl.PluralRules('es').select(count) === 'many', i.e. count >= 1.000.000. `count` is planBlockedOrgs(memberships).length (upload-agent-dialog.tsx:274-277), so the branch is not reachable by a user. Recorded MINOR, not MAJOR: no user-reachable code path.",
+          "repro": "node -e \"const{IntlMessageFormat}=require('intl-messageformat');const m=require('./src/i18n/catalogues/es/ui.agents.upload.json')['ui.agents.upload.target.blocked_hint'];console.log(new IntlMessageFormat(m,'es').format({count:1000000,org:'Minerva Labs'}))\" -> '... Un propietario de Minerva Labs puede activarlo en la consola de Radient.' (expected the plural wording 'cualquiera de las organizaciones marcadas arriba')",
+          "evidence_counts": "es catalogue-wide census of 370 `many` branches: 318 carry a distinct millions form ('{count} de ...'), 33 equal `other`, 18 equal both `one` and `other`, 1 equals `one` only - this key.",
+          "proposed_fix": "many {cualquiera de las organizaciones marcadas arriba}  -- i.e. same text as `other` (joins the 33 branches that do this); or drop the `many` category entirely, as English and 4 of the 65 plural-bearing es catalogues do. Keep `one {{org}}` unchanged."
+        },
+        {
+          "id": "ES-UPL-2",
+          "severity": "NIT",
+          "key": "ui.agents.upload.intro.public",
+          "current": "Vas a publicar el conjunto de instrucciones de este agente en el Hub de agentes público. Lo que se publica es lo que describe al agente:",
+          "english": "You are about to publish this agent's instruction set to the public Agent Hub. What is published is what describes the agent:",
+          "problem": "The adjective trails the two-word product name, so 'de agentes público' momentarily reads as an agreement error ('agentes publico') before the reader resolves 'publico' onto the capitalised 'Hub'. Faithful to the source and defensible as written - Spanish normally places the adjective after the noun - so this is a wording nit, not a defect.",
+          "proposed_fix": "If the sentence is touched at all: 'en el Hub publico de agentes' (keeps the capital-H product word, removes the trailing adjective). Leaving it as-is is acceptable and needs no round."
+        }
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "ES-UPL-1",
+      "severity": "MINOR",
+      "key": "ui.agents.upload.target.blocked_hint",
+      "current": "{count, plural, one {{org}} many {{org}} other {cualquiera de las organizaciones marcadas arriba}}",
+      "english": "{count, plural, one {{org}} other {any of the organizations marked above}}",
+      "problem": "The `many` branch reuses the singular's `{org}`. Every other plural in the es catalogue either carries a distinct millions form or mirrors `other`; this is the only branch in the tree whose text equals `one` while differing from `other`. Spanish `many` is the CLDR category for exact millions (1.000.000), where the wording must stay plural, so this branch is grammatically the wrong one to copy.",
+      "reachability": "Selected only when Intl.PluralRules('es').select(count) === 'many', i.e. count >= 1.000.000. `count` is planBlockedOrgs(memberships).length (upload-agent-dialog.tsx:274-277), so the branch is not reachable by a user. Recorded MINOR, not MAJOR: no user-reachable code path.",
+      "repro": "node -e \"const{IntlMessageFormat}=require('intl-messageformat');const m=require('./src/i18n/catalogues/es/ui.agents.upload.json')['ui.agents.upload.target.blocked_hint'];console.log(new IntlMessageFormat(m,'es').format({count:1000000,org:'Minerva Labs'}))\" -> '... Un propietario de Minerva Labs puede activarlo en la consola de Radient.' (expected the plural wording 'cualquiera de las organizaciones marcadas arriba')",
+      "evidence_counts": "es catalogue-wide census of 370 `many` branches: 318 carry a distinct millions form ('{count} de ...'), 33 equal `other`, 18 equal both `one` and `other`, 1 equals `one` only - this key.",
+      "proposed_fix": "many {cualquiera de las organizaciones marcadas arriba}  -- i.e. same text as `other` (joins the 33 branches that do this); or drop the `many` category entirely, as English and 4 of the 65 plural-bearing es catalogues do. Keep `one {{org}}` unchanged."
+    },
+    {
+      "id": "ES-UPL-2",
+      "severity": "NIT",
+      "key": "ui.agents.upload.intro.public",
+      "current": "Vas a publicar el conjunto de instrucciones de este agente en el Hub de agentes público. Lo que se publica es lo que describe al agente:",
+      "english": "You are about to publish this agent's instruction set to the public Agent Hub. What is published is what describes the agent:",
+      "problem": "The adjective trails the two-word product name, so 'de agentes público' momentarily reads as an agreement error ('agentes publico') before the reader resolves 'publico' onto the capitalised 'Hub'. Faithful to the source and defensible as written - Spanish normally places the adjective after the noun - so this is a wording nit, not a defect.",
+      "proposed_fix": "If the sentence is touched at all: 'en el Hub publico de agentes' (keeps the capital-H product word, removes the trailing adjective). Leaving it as-is is acceptable and needs no round."
+    }
+  ],
+  "findings_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "finding_ids": [
+    "ES-UPL-1",
+    "ES-UPL-2"
+  ],
+  "scope": "The 15 keys added to src/i18n/catalogues/es/ui.agents.upload.json on i18n/slice-upload-agent-dialog (base 3378319980f..head 2b72db6a56a), bound by sha256 to the committed bytes of the English catalogue, its context sidecar and the es catalogue. The file's 31 pre-existing values were proved byte-identical to the base and not re-audited; the file's unsorted sign_in.title_continue/title_again tail exists identically in English and is out of scope as pre-existing.",
+  "method": "Read the diff first, then the es catalogue as a whole for register; verified each claimed term against the tree by count; parsed every message with a brace-aware ICU walker to compare argument and plural-category sets against English; measured width with CoreText in the app's real font and size, cross-checked with hb-shape; rendered the plural through intl-messageformat (the app's formatter, src/i18n/messages.ts:45) at reachable and unreachable counts. Mechanical detail and its stdout: i18n/audits/evidence/es/ui.agents.upload/es-upload-46b43b7fd549/audit.log, produced by audit.py in the same directory.",
+  "rulings": {
+    "listing_term": {
+      "claim": "'ficha' is the house term for a hub listing",
+      "ruling": "VERIFIED",
+      "evidence": "12 es values across 3 catalogues use ficha for a listing: 'Abrir la ficha', 'Actualizar la ficha' (both this file), 'Actualizar la ficha existente', 'Publicar como ficha nueva', 'Esa ficha ya no existe', 'Esta ficha pertenece a otra cuenta.' (ui.agents.publication.json, 6 values), plus ui.mesh.json. The only rival lexemes are 'listado' (a list rendered on screen: 'listado de variables', 'segun el listado') and those do not name a published hub listing. The 2 new listing-naming keys (action.update_listing, receipt.title_updated) use ficha consistently with the 2 pre-existing ones."
+    },
+    "product_name": {
+      "claim": "'Hub de agentes' is the product name",
+      "ruling": "VERIFIED with case discipline",
+      "evidence": "This file already distinguishes the capitalised product name ('el Hub de agentes', 4 pre-existing values incl. sign_in.needed, title.publish_public) from the lower-case common noun ('el hub': field.name_label, availability.taken, published.listed, sign_in.reauthenticate). The 15 new values hold that line exactly: intro.public uses 'el Hub de agentes publico' (product), while receipt.title_hub, availability.reserved_named/unnamed and the blocked_hint keep lower-case 'hub'."
+    },
+    "team_plan": {
+      "claim": "'plan Team' renders \"the Team plan\"",
+      "ruling": "VERIFIED",
+      "evidence": "'plan Team' occurs 14 times in the es tree (plus 'plan Radient', 'plan gratuito', 'plan superior'); the new blocked_hint matches it verbatim. No conflict with the pre-existing target.upgrade '(requiere plan superior)', which names no plan."
+    },
+    "radient_console": {
+      "claim": "'la consola de Radient' renders \"the Radient console\"",
+      "ruling": "VERIFIED",
+      "evidence": "'consola de Radient' occurs 10 times in the es tree, e.g. 'Anade creditos en la consola de Radient para continuar.' The bare 'consola' elsewhere means the terminal console ('Cerrar consola'), a different surface; the new blocked_hint uses the disambiguated 'la consola de Radient'."
+    },
+    "builtin_agents": {
+      "claim": "'agentes integrados' renders \"built-in agents\"",
+      "ruling": "VERIFIED",
+      "evidence": "'Un agente integrado esta listo para instalar' (ui.notifications or ui.agents start-up copy) already uses integrado for built-in; no competing 'incorporado'/'nativo' rendering for the same concept (native appears only as ui.nativeBadge.* keys and 'tema integrado' style copy)."
+    },
+    "many_category_convention": {
+      "claim": "es uses one/many/other for plurals, following house convention",
+      "ruling": "CONVENTION UPHHELD, CONTENT BROKEN (see ES-UPL-1)",
+      "evidence": "Measured: Intl.PluralRules('es').resolvedOptions().pluralCategories === ['one','many','other']; select(): 1=one, 2..999999=other, 1.000.000=many, 2.000.000=many. 61 of the 65 es catalogues that use any plural also use many (370 branches across the tree). So emitting many here is convention-conforming and NOT a defect; the cited '21 es catalogues' understates the measured 61. What the convention actually encodes is a distinct millions form ('{count} de mensajes', '{count} de archivos') in 318 of 370 branches, or the plural text in 33 - and this key is the sole many==one branch.",
+      "reachable_for_this_key": "No: count is the number of plan-blocked organisations, selected category 'many' needs >= 1.000.000 of them."
+    },
+    "placeholders": {
+      "claim": "identical placeholder/ICU sets per key vs en",
+      "ruling": "14 of 15 identical; blocked_hint differs only by the added many category",
+      "evidence": "Arg sets compared per key: action.publish [], publishing [], update_listing [], reserved_named ['name'], reserved_unnamed [], intro.org ['destination'], intro.public [], not_leaving.org ['destination'], not_leaving.public [], published.org_listed ['name','destination'], receipt.title_hub [], receipt.title_org ['destination'], receipt.title_updated [], visibility_hint_public [] - all identical. blocked_hint: en args ['count'] categories ['one','other'] vs es ['count'] categories ['many','one','other']; the nested {org} reference appears in both files' `one` branch and (es only) `many`. Call site supplies both: t('...blocked_hint', {count: blockedTargets.length, org: ...}) (upload-agent-dialog.tsx:1039-1044), and keys.gen.ts types it {count:number; org:string}."
+    },
+    "english_leakage": {
+      "claim": "no English except product names/tokens/placeholders",
+      "ruling": "VERIFIED",
+      "evidence": "ASCII lexemes shared between each new es value and its English source, after stripping placeholders and ICU keywords, are only 'plan' (a Spanish word and part of the plan name 'plan Team'), 'Team' and 'hub' (product/token). No untranslated English sentence remains; no value is identical to its English source; no value is empty."
+    }
+  },
+  "width_measurements": {
+    "method": {
+      "primary": "CoreText CTLineGetTypographicBounds (fractional advances)",
+      "font": "system UI font of this macOS host (SF Pro / SFNS.ttf), which is what --font-sans resolves to: system-ui, -apple-system",
+      "size_px": 14,
+      "size_source": "src/renderer/src/styles/index.css:1265 --text-body: 0.875rem (root 16px) - the dialog's body and button size",
+      "cross_check": "hb-shape (HarfBuzz) @14px on /System/Library/Fonts/SFNS.ttf, the shaper the previous es rounds used; it rounds each advance to whole px, so it reads ~5% low versus CoreText",
+      "samples": {
+        "{name}": "Revisor de codigo",
+        "{destination}": "Minerva Labs",
+        "{org}": "Minerva Labs"
+      }
+    },
+    "containers": {
+      "dialog": "BaseDialog maxWidth='sm' -> max-w-xl (576px) (src/renderer/src/shared/components/common/base-dialog.tsx:74)",
+      "action_button": "min-w-25 (100px) (base-dialog.tsx:229)",
+      "footer_state": "Cancelar 56.0px + 'Actualizar la ficha' 109.7px = 165.7px of text before gaps and button padding, against ~528px of content width - no overflow risk"
+    },
+    "rows": [
+      {
+        "key": "ui.agents.upload.action.publish",
+        "en_px": 45.9,
+        "es_px": 50.6,
+        "delta_pct": 10.2,
+        "hb_en": 44,
+        "hb_es": 47
+      },
+      {
+        "key": "ui.agents.upload.action.publishing",
+        "en_px": 78.6,
+        "es_px": 83.3,
+        "delta_pct": 5.9,
+        "hb_en": 70,
+        "hb_es": 73
+      },
+      {
+        "key": "ui.agents.upload.action.update_listing",
+        "en_px": 84.8,
+        "es_px": 109.7,
+        "delta_pct": 29.3,
+        "hb_en": 82,
+        "hb_es": 103
+      },
+      {
+        "key": "ui.agents.upload.availability.reserved_named",
+        "en_px": 410.7,
+        "es_px": 446.7,
+        "delta_pct": 8.8
+      },
+      {
+        "key": "ui.agents.upload.availability.reserved_unnamed",
+        "en_px": 349.4,
+        "es_px": 403.1,
+        "delta_pct": 15.4
+      },
+      {
+        "key": "ui.agents.upload.intro.org",
+        "en_px": 1016.9,
+        "es_px": 1096.3,
+        "delta_pct": 7.8
+      },
+      {
+        "key": "ui.agents.upload.intro.public",
+        "en_px": 759.4,
+        "es_px": 846.5,
+        "delta_pct": 11.5
+      },
+      {
+        "key": "ui.agents.upload.not_leaving.org",
+        "en_px": 1435.1,
+        "es_px": 1635.1,
+        "delta_pct": 13.9
+      },
+      {
+        "key": "ui.agents.upload.not_leaving.public",
+        "en_px": 1185.8,
+        "es_px": 1359.6,
+        "delta_pct": 14.7
+      },
+      {
+        "key": "ui.agents.upload.published.org_listed",
+        "en_px": 927.0,
+        "es_px": 1133.9,
+        "delta_pct": 22.3
+      },
+      {
+        "key": "ui.agents.upload.receipt.title_hub",
+        "en_px": 127.7,
+        "es_px": 123.0,
+        "delta_pct": -3.7
+      },
+      {
+        "key": "ui.agents.upload.receipt.title_org",
+        "en_px": 165.0,
+        "es_px": 168.9,
+        "delta_pct": 2.4
+      },
+      {
+        "key": "ui.agents.upload.receipt.title_updated",
+        "en_px": 95.0,
+        "es_px": 109.0,
+        "delta_pct": 14.7
+      },
+      {
+        "key": "ui.agents.upload.target.blocked_hint",
+        "en_px": 1209.2,
+        "es_px": 1542.3,
+        "delta_pct": 27.5
+      },
+      {
+        "key": "ui.agents.upload.target.visibility_hint_public",
+        "en_px": 667.8,
+        "es_px": 784.5,
+        "delta_pct": 17.5
+      }
+    ],
+    "ruling": "No button, title or footer key overflows: the widest button grows to 109.7px inside a 576px dialog whose footer also holds 'Cancelar'. The paragraph keys grow 8-28% and wrap normally (blocked_hint and not_leaving.* each gain about one line at 576px), which is reflow, not clipping."
+  },
+  "machine_checks": [
+    {
+      "id": "hash-binding",
+      "command": "git show HEAD:src/i18n/catalogues/{en,es}/ui.agents.upload.json | shasum -a 256",
+      "result": "en 3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f / es 2fd38ed22f19481af887cefc42ab3a10db769c41d3ec81d364af7ecd1ed4569b; context 76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec; identical to the worktree bytes, so the audit certifies the committed blobs"
+    },
+    {
+      "id": "structure",
+      "command": "python3 audit.py (section A)",
+      "result": "valid JSON, no duplicate keys, tabs, trailing newline, 46 keys, es key set == en key set, all 46 keys have context entries"
+    },
+    {
+      "id": "delta-scope",
+      "command": "python3 audit.py (section B)",
+      "result": "15 new keys, 31 pre-existing, pre-existing values byte-identical to base, none removed"
+    },
+    {
+      "id": "icu-parity",
+      "command": "python3 audit.py (section C)",
+      "result": "14/15 argument sets identical to English; blocked_hint adds only the many category"
+    },
+    {
+      "id": "plural-render",
+      "command": "node -e '...new IntlMessageFormat(m,\"es\").format({count,org})...'",
+      "result": "count 1 -> '{org}'; count 2 and 3 -> 'cualquiera de las organizaciones marcadas arriba' (matches English); count 1.000.000 and 2.000.000 -> '{org}' (ES-UPL-1)"
+    },
+    {
+      "id": "cldr-categories",
+      "command": "node -e 'new Intl.PluralRules(\"es\")'",
+      "result": "categories [one,many,other]; select(1)=one, select(2/100)=other, select(1000000/2000000)=many"
+    },
+    {
+      "id": "many-census",
+      "command": "python3 audit.py (section F)",
+      "result": "155 es catalogues, 65 with plurals, 61 with many, 370 many branches: 318 distinct, 33 ==other, 18 ==both, 1 ==one-only (this key)"
+    },
+    {
+      "id": "leakage",
+      "command": "python3 audit.py (section G)",
+      "result": "only placeholders, ICU keywords, 'plan', 'Team', 'hub' shared with English"
+    },
+    {
+      "id": "hygiene",
+      "command": "python3 (inline)",
+      "result": "no empty value, no edge/double/exotic spaces, no straight quotes or three-dot ellipsis, no value identical to English; 2 new values use the file's curly quotes, matching 9 pre-existing ones"
+    },
+    {
+      "id": "width",
+      "command": "python3 audit.py (section H) + hb-shape cross-check",
+      "result": "no overflow; worst button +29.3% (84.8->109.7px) inside a 576px dialog"
+    },
+    {
+      "id": "terminology",
+      "command": "grep -rn across src/i18n/catalogues/es/",
+      "result": "ficha 12 values, plan Team 14, consola de Radient 10, agentes integrados present - all four claimed terms verified"
+    }
+  ],
+  "limitations": [
+    "No browser tool in this session: the measurements are font-metric widths from the app's real font at the app's real body size, not screenshots of the rendered dialog. Reflow inside the 576px dialog is stated from the metrics, not observed.",
+    "Width was measured with CoreText and cross-checked with hb-shape; the two shapers differ by ~5% because hb-shape rounds each advance. Neither was used to gate anything: both agree the footer and titles fit.",
+    "The audit is scoped to es. The other six locale files in the same commit were audited by their own sessions; cross-locale consistency of blocked_hint is noted as evidence (fr also emits many, with the plural text) but not ruled on."
+  ]
+}

@@ -91,5 +91,21 @@
 	"ui.chat.run_details.wake.armed_count": "{count, plural, =1 {{count_display} wake armed} other {{count_display} wakes armed}}",
 	"ui.chat.run_details.wake.cadence_once": "once",
 	"ui.chat.run_details.wake.managed_by": "managed by {name}",
-	"ui.chat.run_details.wake.managed_note": "This wake is {name}'s own schedule, so it can't be cancelled here. To stop these check-ins, use /aida pause."
+	"ui.chat.run_details.wake.managed_note": "This wake is {name}'s own schedule, so it can't be cancelled here. To stop these check-ins, use /aida pause.",
+	"ui.chat.run_details.child.result.preview": "Result preview",
+	"ui.chat.run_details.child.result.title": "Result",
+	"ui.chat.run_details.child.result.unavailable_clipped": "This is a shortened copy. This subagent's conversation is not available here.",
+	"ui.chat.run_details.child.result.unavailable": "This subagent's conversation is not available here.",
+	"ui.chat.run_details.child.brief.show_less": "Show less",
+	"ui.chat.run_details.child.brief.show_more": "{count, plural, one {Show {count, number, ::group-off} more line} other {Show {count, number, ::group-off} more lines}}",
+	"ui.chat.run_details.mcp_auth.upgrade": "Update the backend for secure MCP key entry. OAuth and the server list remain available.",
+	"ui.chat.run_details.mcp_auth.no_references": "This server does not use OAuth and declares no secret references. Add explicit $'{'NAME'}' references to its MCP environment or headers, then retry.",
+	"ui.chat.run_details.mcp_auth.unknown_method": "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
+	"ui.chat.run_details.mcp_auth.waiting": "Waiting for backend sign-in status…",
+	"ui.chat.run_details.mcp_auth.status": "Sign-in {status}.",
+	"ui.chat.run_details.mcp_auth.status_unavailable": "status unavailable",
+	"ui.chat.run_details.mcp_failure.cancel_lead": "The cancellation could not be confirmed",
+	"ui.chat.run_details.mcp_failure.busy": "{lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.",
+	"ui.chat.run_details.mcp_failure.refused": "{lead}: the server refused it without giving a reason, and nothing was changed.",
+	"ui.chat.run_details.mcp_failure.session": "{lead} because this conversation's session is not running. Trying again restarts it and repeats this request."
 }

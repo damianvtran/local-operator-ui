@@ -19,14 +19,17 @@
  *
  * HOW A TEST IS SELECTED. The suite is `node --test` over scripts/, not a runner
  * with a `related` mode, and most tests reach `src/**` through esbuild entry
- * points or by reading files rather than through `import`. So the graph has two
+ * points or by reading files rather than through `import`. So the graph has three
  * kinds of edge, and a test is selected when a changed path is reachable from it:
  *
  *   - IMPORTS: static/dynamic `import`, `export ... from` and `require` of a
  *     relative or vite-aliased (`@renderer/...`, see electron.vite.config.js)
  *     specifier, followed through every source file under src/, scripts/, bin/
  *     and i18n/, so a change to a deep renderer util reaches the test that
- *     bundles the component using it;
+ *     bundles the component using it. This includes the specifier inside an
+ *     esbuild `stdin` bundle's source text, which is written relative to the
+ *     REPOSITORY ROOT (`resolveDir: process.cwd()`), not to the test file: that
+ *     is the edge #1761's outage came through (see `resolveSpecifier`);
  *   - MENTIONS: a repository path written in a test or a script helper, either as
  *     a string literal (`"src/renderer/src/features/chat/chat-page.tsx"`) or as a
  *     `join(root, "src", "main", ...)` of literals, or a bare sibling file name
@@ -43,7 +46,7 @@
  * so instead of hiding it: paths no test reaches are listed as UNREACHED, and a
  * change to something every test depends on (the install, a tsconfig, the
  * runner) is flagged BROAD with the explicit full-suite spelling. The safety net
- * for what it misses is full-suite.yml, which files a `ci-main-red` issue.
+ * for what it misses is full-suite.yml, whose red run on `main` is the signal (no issue is filed).
  *
  * GUARD_TESTS is the ONE list of tree-wide guards: assertions about the whole
  * repository (every test runs somewhere, every lane is registered, the runner
@@ -172,8 +175,12 @@ export const ALIASES = Object.freeze({
 
 const SPECIFIER =
 	/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*|\bnew URL\s*\(\s*)["'`]([^"'`\n]+)["'`]/g;
+// A `./` prefix is as common as `../`: an esbuild `stdin` entry is written
+// `"./src/renderer/src/..."` because its `resolveDir` is the repository root.
+// Both spellings name a repository path as written; `mentionedPaths` strips
+// whichever prefix it carried and `resolveSpecifier` decides what it means.
 const PATH_LITERAL =
-	/["'`]((?:\.\.\/)*(?:src|scripts|bin|i18n|docs|resources|build|\.github)\/[\w@./-]+)["'`]/g;
+	/["'`]((?:\.\.?\/)*(?:src|scripts|bin|i18n|docs|resources|build|\.github)\/[\w@./-]+)["'`]/g;
 // Plain string literals (no escapes, no `${}`), the unit `literalPins` reads.
 const STRING_LITERAL = /(["'`])([^"'`\\\n$]{1,300})\1/g;
 const SIBLING_LITERAL =
@@ -222,19 +229,56 @@ function onDisk(root, path) {
 	}
 }
 
-/** Resolve a specifier written in `from` to a repository file, or null. */
+/**
+ * Resolve a specifier written in `from` to a repository file, or null.
+ *
+ * THREE SPELLINGS, and the third one is the correction this module needed.
+ * A `./`-or-`../` specifier is relative to the importing FILE - that is what an
+ * import means - but when it resolves to nothing there, the same spelling is
+ * read as relative to the REPOSITORY ROOT, because that is what it means in an
+ * esbuild `stdin` bundle: those builds set `resolveDir: process.cwd()`, so
+ * `'export * from "./src/renderer/src/shared/store/canonical-sessions-store"'`
+ * names a root-relative path and not a file under `scripts/`.
+ *
+ * WHY THIS EXISTS (measured 2026-11-08). #1761 added `import { t } from
+ * "@shared/i18n"` to `draft-selection.ts`, which `canonical-sessions-store.ts`
+ * imports directly, so the store's esbuild fixture no longer bundled - 19 tests
+ * across 13 files went red on `main` (`peers-catalogue.test.mjs`,
+ * `chat-device-placement.test.mjs` and eleven more). This function resolved the
+ * fixture's entry against `scripts/` (`scripts/src/renderer/...`, absent), so
+ * the graph had NO edge from those tests to the store at all: it could not see
+ * that anything under the store's own import graph reached them. Thirteen files
+ * of evidence that the selector is an under-approximation is what a selection
+ * defect looks like from the outside.
+ *
+ * The alias arm is unchanged: the table is asserted equal to the build's own
+ * alias block by `scripts/affected-tests.test.mjs`, so an alias added to
+ * `electron.vite.config.js` without a graph entry fails there, not on `main`.
+ */
 export function resolveSpecifier(from, specifier, exists) {
-	let base = null;
-	if (specifier.startsWith("./") || specifier.startsWith("../"))
-		base = posix.normalize(posix.join(posix.dirname(from), specifier));
-	else
-		for (const [alias, dir] of Object.entries(ALIASES))
-			if (specifier === alias || specifier.startsWith(`${alias}/`)) {
-				base = dir + specifier.slice(alias.length);
-				break;
-			}
-	if (base === null) return null;
-	return resolvePath(base.replace(/\?.*$/, ""), exists);
+	if (specifier.startsWith("./") || specifier.startsWith("../")) {
+		const adjacent = resolvePath(
+			// Match the alias/root arms: bundler queries are not part of the
+			// on-disk filename, including imports captured from new URL(...).
+			posix
+				.normalize(posix.join(posix.dirname(from), specifier))
+				.replace(/\?.*$/, ""),
+			exists,
+		);
+		if (adjacent) return adjacent;
+		// `../` can only ever mean "above the repository root" once the adjacent
+		// reading has failed, so it is never retried as a root-relative path.
+		return specifier.startsWith("./")
+			? resolvePath(specifier.slice(2).replace(/\?.*$/, ""), exists)
+			: null;
+	}
+	for (const [alias, dir] of Object.entries(ALIASES))
+		if (specifier === alias || specifier.startsWith(`${alias}/`))
+			return resolvePath(
+				(dir + specifier.slice(alias.length)).replace(/\?.*$/, ""),
+				exists,
+			);
+	return null;
 }
 
 /** A repository path as written, with the import extensions probed, or null. */
@@ -249,7 +293,7 @@ export function resolvePath(base, exists) {
 export function mentionedPaths(text) {
 	const found = new Set();
 	for (const match of text.matchAll(PATH_LITERAL))
-		found.add(match[1].replace(/^(?:\.\.\/)+/, "").replace(/\/$/, ""));
+		found.add(match[1].replace(/^(?:\.\.?\/)+/, "").replace(/\/$/, ""));
 	for (const match of text.matchAll(JOIN_CALL)) {
 		const parts = [...match[1].matchAll(/["']([^"'\n]+)["']/g)].map(
 			(m) => m[1],

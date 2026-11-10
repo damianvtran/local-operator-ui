@@ -1984,8 +1984,8 @@ const AssistantRow = memo(function AssistantRow({
 				{record.truncated && (
 					<p className={cn("mb-1 text-ink-dim text-meta")}>
 						{record.truncated === "prefix"
-							? "Earlier text of this answer is not on screen"
-							: "Part of this answer may be missing"}
+							? t("ui.chat.canonical.transcript.earlier_text_offscreen")
+							: t("ui.chat.canonical.transcript.answer_may_be_missing")}
 					</p>
 				)}
 				{/*
@@ -2227,8 +2227,10 @@ const AssistantRow = memo(function AssistantRow({
 						<>
 							<span className={cn("text-ink-dim")}>
 								{foot.durationS !== null
-									? `Worked for ${formatDuration(foot.durationS)}`
-									: "Worked"}
+									? t("ui.chat.canonical.transcript.worked_for", {
+											duration: formatDuration(foot.durationS),
+										})
+									: t("ui.chat.canonical.transcript.worked")}
 							</span>
 							<span aria-hidden={true} className={cn("text-ink-dim")}>
 								·
@@ -2469,6 +2471,9 @@ const ToolRow = memo(function ToolRow({
 	/** The pane's interrupt press, for the card's Cancel; absent = no control. */
 	onInterruptTurn?: () => void;
 }) {
+	// memo compares props, but a locale change arrives through the locale store.
+	// Subscribe here so unchanged tool props cannot retain old-language details.
+	useI18nLocale();
 	/*
 	 * A `notify` CALL THE REEL KNOWS IS ITS FLAG LINE (notifications design
 	 * § 17.2): the item's title and read state, and the anchor the in-view
@@ -2790,7 +2795,9 @@ const ToolRow = memo(function ToolRow({
 					interruptedNotRun ? "text-ink-dim" : "text-danger",
 				)}
 			>
-				{interruptedNotRun ? "Interrupted" : "Not run"}
+				{interruptedNotRun
+					? t("ui.chat.canonical.transcript.interrupted")
+					: t("ui.chat.canonical.transcript.not_run")}
 			</span>
 			<div className={cn(DETAIL_SECTION_MAX, "overflow-auto")}>
 				<pre
@@ -2804,7 +2811,7 @@ const ToolRow = memo(function ToolRow({
 			</div>
 		</div>
 	) : isDiffBodyRow(record) ? (
-		<DiffBlock diff={record.diff} />
+		<DiffBlock diff={record.diff} truncatedRows={record.diffTruncatedRows} />
 	) : bridge && !running ? (
 		<BridgeDetail
 			record={record}
@@ -3299,7 +3306,9 @@ const HubRow = memo(function HubRow({
 						<p className={cn("text-body-sm text-ink-muted")}>
 							{hubIdentity(receipt)}
 							{receipt.direction ? ` · ${receipt.direction}` : ""}
-							{receipt.jobId && receipt.label ? ` · Job ${receipt.jobId}` : ""}
+							{receipt.jobId && receipt.label
+								? ` ${t("ui.chat.canonical.transcript.job_suffix", { id: receipt.jobId })}`
+								: ""}
 						</p>
 						{Object.values(receipt.sender).some(Boolean) ? (
 							<p className={cn("text-body-sm text-ink-muted")}>
@@ -3517,7 +3526,7 @@ const AskReceiptRow = memo(function AskReceiptRow({
 								>
 									{(record.answers[question.id] ?? []).length > 0
 										? (record.answers[question.id] ?? []).join(", ")
-										: "No answer given"}
+										: t("ui.chat.canonical.transcript.no_answer_given")}
 								</p>
 							</div>
 						))}

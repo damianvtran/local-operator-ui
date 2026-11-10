@@ -405,5 +405,9 @@
 	"ui.teamBridge.files.no_schedule": "Có thể gửi tệp ngay, nhưng không thể lên lịch.",
 	"ui.teamBridge.files.uploading": "Đang tải tệp lên…",
 	"ui.teamBridge.files.attached": "Đã đính kèm",
-	"ui.teamBridge.files.not_uploaded": "Chưa tải lên"
+	"ui.teamBridge.files.not_uploaded": "Chưa tải lên",
+	"ui.teamBridge.typing.one": "{first} đang nhập",
+	"ui.teamBridge.typing.two": "{first} và {second} đang nhập",
+	"ui.teamBridge.typing.three": "{first}, {second} và {third} đang nhập",
+	"ui.teamBridge.typing.several": "Nhiều người đang nhập"
 }

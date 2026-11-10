@@ -60,7 +60,7 @@ import { apiConfig } from "@shared/config/api-config";
  * instant (see `useRadientAuthStatus`).
  */
 import {
-	radientSessionIssueKey,
+	rereadVerdictAfterSignIn,
 	useRadientLoginVerdict,
 } from "@shared/hooks/use-radient-session-issue";
 /*
@@ -737,8 +737,15 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * the row still read "Needs re-authentication" with the verdict request count
 		 * unchanged at 1 and `{credential_id: 7, state: "login_required"}` still in
 		 * the cache.
+		 *
+		 * Through the callout's own re-read rather than a bare invalidation, so a
+		 * sign-in that lands before the backend's off-thread tunnel heal gets the
+		 * same ONE bounded second look here as it does in the composer callout
+		 * (`VERDICT_HEAL_REREAD_MS`): the chip and the callout settle on the same
+		 * reading of the same event. Not awaited - the panel's own state does not
+		 * wait on the verdict.
 		 */
-		void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
+		void rereadVerdictAfterSignIn(queryClient);
 		onConnected?.();
 	}, [queryClient, onConnected, provider.id]);
 

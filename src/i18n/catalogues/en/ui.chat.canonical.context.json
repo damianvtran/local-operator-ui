@@ -1720,5 +1720,94 @@
 		"placeholders": {
 			"count": "the number of loaded actions; printed without digit grouping"
 		}
+	},
+	"ui.chat.canonical.transcript.earlier_text_offscreen": {
+		"role": "notice above an answer whose earlier text is outside the loaded transcript",
+		"tone": "calm factual sentence, sentence case, no trailing punctuation",
+		"length": "One short line or wrap in a narrow transcript.",
+		"note": "Describes text not on screen, not proof that the answer is lost.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.interrupted": {
+		"role": "status label on an expanded tool call stopped or redirected before it ran",
+		"tone": "neutral past participle, sentence case, no trailing punctuation",
+		"length": "One short word.",
+		"note": "Distinct from Not run: interruption is not a tool failure.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.no_answer_given": {
+		"role": "fallback body for an unanswered question in an expanded ask receipt",
+		"tone": "neutral factual phrase, sentence case, no trailing punctuation",
+		"length": "One short line.",
+		"note": "Shown in place of an answer; do not imply the question was answered.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.not_run": {
+		"role": "failure status label on an expanded tool call that never executed",
+		"tone": "plain factual status, sentence case, no trailing punctuation",
+		"length": "Two short words.",
+		"note": "Used for planning failures or legacy records; distinguish from neutral Interrupted.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.answer_may_be_missing": {
+		"role": "warning above an answer with potentially missing content",
+		"tone": "cautious factual sentence, sentence case, no trailing punctuation",
+		"length": "One short line or wrap in a narrow transcript.",
+		"note": "Keep the uncertainty: part of this answer MAY be missing.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.worked": {
+		"role": "completed-turn footer status when no elapsed duration is available",
+		"tone": "neutral past-tense receipt, sentence case, no trailing punctuation",
+		"length": "One short word in a compact footer.",
+		"note": "Pair with worked_for: this duration-free form means the agent worked, not that the task necessarily succeeded. Do not add a duration or imply success.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.worked_for": {
+		"role": "completed-turn footer status with elapsed work duration",
+		"tone": "neutral past-tense receipt, sentence case, no trailing punctuation",
+		"length": "Short phrase plus duration in a compact footer.",
+		"note": "Pair with worked: this form includes elapsed work time, not a success verdict. Translate the whole phrase so duration can be placed naturally.",
+		"placeholders": {
+			"duration": "already formatted elapsed duration from formatDuration, e.g. 2m 4s; preserve as supplied"
+		}
+	},
+	"ui.chat.canonical.transcript.job_suffix": {
+		"role": "job identifier suffix after a hub receipt identity",
+		"tone": "compact noun label, sentence case, no trailing punctuation",
+		"length": "Short label plus identifier in a metadata line.",
+		"note": "Keep the middle-dot separator; the call site supplies the preceding space. The identifier is not translated.",
+		"placeholders": {
+			"id": "opaque job identifier from the hub receipt; preserve as supplied"
+		}
+	},
+	"ui.chat.canonical.tool_row.diff.more": {
+		"role": "button under a collapsed write/edit diff that reveals every remaining recorded line",
+		"tone": "terse, mirrors the terminal's overflow marker; keep the leading ellipsis",
+		"length": "Short; one line under the diff.",
+		"note": "Reads '… 161 more diff lines'. 'diff' is the developer term for a line-by-line change listing; keep it untranslated where the locale already uses it.",
+		"placeholders": {
+			"count": "number of diff lines currently hidden"
+		}
+	},
+	"ui.chat.canonical.tool_row.diff.show_less": {
+		"role": "button under an expanded write/edit diff that collapses it back to its first 40 lines",
+		"tone": "plain control label",
+		"length": "One or two words."
+	},
+	"ui.chat.canonical.tool_row.diff.truncated": {
+		"role": "dim footer under a diff the agent's tool stored only partially; the missing lines were never recorded and cannot be shown",
+		"tone": "plain statement, no blame",
+		"length": "One short line.",
+		"note": "Reads 'Diff truncated — 12 more lines not recorded'.",
+		"placeholders": {
+			"count": "number of diff lines the tool did not record"
+		}
+	},
+	"ui.chat.canonical.tool_row.diff.withheld": {
+		"role": "dim notice in place of a diff an older Local Operator version did not store",
+		"tone": "plain statement",
+		"length": "One short sentence fragment, no full stop.",
+		"note": "Shown for file edits recorded before the fix; the change itself happened, only its diff is unavailable."
 	}
 }

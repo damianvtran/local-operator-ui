@@ -1226,13 +1226,18 @@ test("the plan remedy names the Team plan and the console", () => {
 		read("src/i18n/catalogues/en/ui.agents.publication.json"),
 		/activate it in the Radient console, then publish again/,
 	);
-	// C4: the plural branch reads as a plural. It lives in the DIALOG, beside the
-	// picker it explains.
+	// C4: the plural branch reads as a plural. The clause moved to the catalogue when
+	// this PR's English-keying commit made it catalogue copy, so the source pin
+	// follows the KEY and the wording is pinned in the catalogue — the same shape
+	// the plan_body assertions above already use. Pinning the English literal
+	// against the .tsx is exactly the pin that goes stale on the day it is keyed.
 	const dialog = read(
 		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
 	);
-	assert.match(dialog, /any of the organizations marked above/);
-	assert.doesNotMatch(dialog, /An owner of the organizations marked above/);
+	assert.match(dialog, /t\("ui\.agents\.upload\.target\.blocked_hint"/);
+	const uploadCopy = read("src/i18n/catalogues/en/ui.agents.upload.json");
+	assert.match(uploadCopy, /any of the organizations marked above/);
+	assert.doesNotMatch(uploadCopy, /An owner of the organizations marked above/);
 });
 
 /*

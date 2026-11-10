@@ -90,5 +90,7 @@
 	"ui.agentMessages.settings.default_on.b_body": "Team Bridge включится для вас автоматически, как только ваша организация будет готова. При включении ничего не отправляется.",
 	"ui.agentMessages.settings.default_on.e_body": "Team Bridge отключён для этой учётной записи. Прочитайте текст согласия ниже и включите его снова, если он вам нужен.",
 	"ui.agentMessages.settings.action.turn_on_again": "Включить снова",
-	"ui.agentMessages.settings.consent.via_default_on": "Включено по умолчанию"
+	"ui.agentMessages.settings.consent.via_default_on": "Включено по умолчанию",
+	"ui.agentMessages.settings.share_typing.label": "Показывать, когда я печатаю",
+	"ui.agentMessages.settings.share_typing.description": "Участники ваших разговоров в Team Bridge видят короткую строку «печатает», пока вы пишете. Набранный текст никогда не передаётся."
 }

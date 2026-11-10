@@ -44,6 +44,7 @@ import {
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { isServerUpdateStalledError } from "@shared/api/local-operator/server-updating-error";
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Alert, Button } from "@shared/components/ui";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
@@ -82,7 +83,7 @@ export const backendUpdateUnexplained = (): string =>
 
 export type BackendCompatibilityBannerViewProps = {
 	message: string;
-	severity: "danger" | "warning";
+	severity: "danger" | "warning" | "info";
 	offerUpdate: boolean;
 	offerRetry: boolean;
 	updating: boolean;
@@ -204,14 +205,26 @@ export function bannerYieldsToStrip(input: {
 	cause: DaemonPairingCause | null;
 	answered: boolean;
 	kind: BackendErrorKind;
+	/**
+	 * The failure is a reload fence relayed after the server-update window's cap
+	 * (`isServerUpdateStalledError`). The daemon still answers `/health`, so the
+	 * strip has NO row for it, and yielding would leave the header with zero
+	 * voices (review round 1, M2). Optional so the existing callers and cases
+	 * read exactly as before.
+	 */
+	updateStalled?: boolean;
 }): boolean {
-	const { stripPresent, cause, answered, kind } = input;
+	const { stripPresent, cause, answered, kind, updateStalled = false } = input;
 	return (
 		stripPresent &&
 		(cause === "credential-refused" ||
 			(cause === null &&
 				!answered &&
-				(kind === "unreachable" || kind === "deadline" || kind === "unknown")))
+				!updateStalled &&
+				(kind === "updating" ||
+					kind === "unreachable" ||
+					kind === "deadline" ||
+					kind === "unknown")))
 	);
 }
 
@@ -358,7 +371,19 @@ export const BackendCompatibilityBanner = () => {
 	// the same conclusion. Both now go through the shared classification so they
 	// cannot answer that question differently: the grid's own two-way split used
 	// to send a 401 user to a backend install this banner deliberately withholds.
-	const kind = backendErrorKind(capabilities.error);
+	/*
+	 * `updating` ONLY WHILE MAIN'S WINDOW IS OPEN (review round 1, M2). A cached
+	 * capability error from inside the window still classifies as `updating`
+	 * after the window closes, and the strip - whose row 0 is exactly
+	 * `snapshot.updating` - would then have nothing to say. Outside the window it
+	 * is read as the outage it would otherwise be; the next capability poll
+	 * replaces it with the real answer either way.
+	 */
+	const serverUpdating = snapshot?.updating === true;
+	const classified = backendErrorKind(capabilities.error);
+	const kind =
+		classified === "updating" && !serverUpdating ? "unreachable" : classified;
+	const updateStalled = isServerUpdateStalledError(capabilities.error);
 	const answered = Boolean(data);
 	/*
 	 * THE YIELD, WHERE THE NOTE PUTS IT: `compatibilityBannerShown` above decided
@@ -367,7 +392,10 @@ export const BackendCompatibilityBanner = () => {
 	 * the outage-shaped kinds can be told from `unauthorized`, and it calls the
 	 * one exported predicate rather than restating the rule in the render path.
 	 */
-	if (bannerYieldsToStrip({ stripPresent, cause, answered, kind })) return null;
+	if (
+		bannerYieldsToStrip({ stripPresent, cause, answered, kind, updateStalled })
+	)
+		return null;
 
 	const canUpdate = Boolean(window.api?.updater?.updateBackend);
 	const message = backendCompatibilityMessage({
@@ -380,7 +408,16 @@ export const BackendCompatibilityBanner = () => {
 	// Offered only where it is the actual remedy, and for a pairing cause the answer
 	// depends on WHO holds the install: S3 can be repaired by an install this app
 	// owns, and every other pairing cause cannot be repaired by one at all.
+	/*
+	 * THE UPDATE IS IN PROGRESS: nothing to press (design round 1, D2). Retry calls
+	 * `backend.reconnect`, which would only race the reload, and "Update backend"
+	 * would start a second update over the one already running. Reached where the
+	 * strip is not mounted (Settings and other screens) on a launch with no cached
+	 * capabilities.
+	 */
+	const inUpdate = kind === "updating";
 	const offerUpdate =
+		!inUpdate &&
 		canUpdate &&
 		backendUpdateIsRemedy({ kind, unpaired, answered, cause, servedByThisApp });
 	/*
@@ -394,7 +431,7 @@ export const BackendCompatibilityBanner = () => {
 	 * other state keeps Retry, because re-claiming is what can change it.
 	 */
 	const offerRetry =
-		cause !== "governed-elsewhere" && cause !== "pre-handshake";
+		!inUpdate && cause !== "governed-elsewhere" && cause !== "pre-handshake";
 
 	return (
 		/*
@@ -412,9 +449,17 @@ export const BackendCompatibilityBanner = () => {
 			 * ONE FACT, ONE SEVERITY (design note § 0.2): `credential-refused` is the
 			 * same refusal the strip paints `danger`, so this banner paints it danger
 			 * too; every other state here is a transition, a feature limit or an
-			 * environment fact, which is the doctrine's `warning`.
+			 * environment fact, which is the doctrine's `warning`. A server that is
+			 * updating is none of those - nothing is wrong and nothing needs doing - so
+			 * it gets the strip's own `info` (design round 1, D2).
 			 */
-			severity={cause === "credential-refused" ? "danger" : "warning"}
+			severity={
+				cause === "credential-refused"
+					? "danger"
+					: inUpdate
+						? "info"
+						: "warning"
+			}
 			offerUpdate={offerUpdate}
 			offerRetry={offerRetry}
 			updating={updating}

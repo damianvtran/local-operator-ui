@@ -59,6 +59,7 @@ import {
 	UserFacingError,
 } from "@shared/api/local-operator/desktop-api";
 import { desktopRefusalSentence } from "@shared/api/local-operator/desktop-refusal-copy";
+import { t } from "@shared/i18n";
 import {
 	DESKTOP_MACHINE_DETAIL,
 	isDesktopRefusalCode,
@@ -102,7 +103,10 @@ export const MCP_FAILURE_LEAD: Record<McpFailurePhase, string> = {
 	reload: "This server's configuration could not be re-read",
 	add: "The server could not be added",
 	key: "The keys were not saved",
-	cancel: "The cancellation could not be confirmed",
+	// Resolve at access time: this exported table is also read by Settings.
+	get cancel() {
+		return t("ui.chat.run_details.mcp_failure.cancel_lead");
+	},
 	status: "The sign-in status could not be refreshed",
 	disconnect: "The server could not be disconnected",
 	remove: "The server could not be removed",
@@ -228,13 +232,13 @@ export function mcpFailure(
 	if (error.status === 409)
 		return grantRunning
 			? {
-					message: `${lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.`,
+					message: t("ui.chat.run_details.mcp_failure.busy", { lead }),
 					detail: null,
 					cause: "busy",
 					phase,
 				}
 			: {
-					message: `${lead}: the server refused it without giving a reason, and nothing was changed.`,
+					message: t("ui.chat.run_details.mcp_failure.refused", { lead }),
 					detail: null,
 					cause: "refused",
 					phase,
@@ -257,7 +261,7 @@ export function mcpFailure(
 		!MCP_APP_AUTHORED_503.includes(message)
 	)
 		return {
-			message: `${lead} because this conversation's session is not running. Trying again restarts it and repeats this request.`,
+			message: t("ui.chat.run_details.mcp_failure.session", { lead }),
 			cause: "session",
 			phase,
 			detail: message.startsWith(MCP_SESSION_UNAVAILABLE) ? null : message,

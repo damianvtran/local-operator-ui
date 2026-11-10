@@ -30,6 +30,13 @@ import { t } from "../../../../i18n/messages";
 export const RADIENT_VERIFY_URL =
 	"https://console.radienthq.com/dashboard/verification";
 
+/**
+ * The console's root, for the composer callout's `not-cleared` state when the
+ * backend's `tunnel_remedy` names no URL (it normally does: the backend's
+ * `gateway.CONSOLE_URL`).
+ */
+export const RADIENT_CONSOLE_URL = "https://console.radienthq.com";
+
 /** Where credits are bought, when the backend names no `first_topup.topup_url`. */
 export const RADIENT_BILLING_URL =
 	"https://console.radienthq.com/dashboard/billing";

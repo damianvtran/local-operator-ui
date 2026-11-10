@@ -239,5 +239,17 @@
 	"ui.chat.canonical.fold.receipt.steered": "ہدایت دی گئی",
 	"ui.chat.canonical.checkpoint_rail.label": "باری کے چیک پوائنٹس",
 	"ui.chat.canonical.transcript.not_delivered": "نہیں پہنچا",
-	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {+{count, number, ::group-off} کارروائیاں} other {+{count, number, ::group-off} کارروائیاں}}"
+	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {+{count, number, ::group-off} کارروائیاں} other {+{count, number, ::group-off} کارروائیاں}}",
+	"ui.chat.canonical.transcript.earlier_text_offscreen": "اس جواب کا ابتدائی متن اسکرین پر نہیں ہے",
+	"ui.chat.canonical.transcript.interrupted": "روکی گئی",
+	"ui.chat.canonical.transcript.no_answer_given": "کوئی جواب نہیں دیا گیا",
+	"ui.chat.canonical.transcript.not_run": "نہیں چلائی گئی",
+	"ui.chat.canonical.transcript.answer_may_be_missing": "اس جواب کا کچھ حصہ غائب ہو سکتا ہے",
+	"ui.chat.canonical.transcript.worked": "کام کیا",
+	"ui.chat.canonical.transcript.worked_for": "{duration} تک کام کیا",
+	"ui.chat.canonical.transcript.job_suffix": "· جاب {id}",
+	"ui.chat.canonical.tool_row.diff.more": "{count, plural, one {… diff کی # مزید لائن} other {… diff کی # مزید لائنیں}}",
+	"ui.chat.canonical.tool_row.diff.show_less": "کم دکھائیں",
+	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, one {Diff مختصر کیا گیا — # مزید لائن ریکارڈ نہیں ہوئی} other {Diff مختصر کیا گیا — # مزید لائنیں ریکارڈ نہیں ہوئیں}}",
+	"ui.chat.canonical.tool_row.diff.withheld": "اس تبدیلی کا diff دستیاب نہیں"
 }

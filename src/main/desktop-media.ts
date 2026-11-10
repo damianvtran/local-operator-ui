@@ -29,6 +29,7 @@ import {
 	type DesktopRefusalCode,
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
+	isServeReloadFence,
 } from "../shared/desktop-contract";
 import { LINK_PREVIEW_ARTIFACT_ID } from "../shared/link-preview";
 
@@ -651,6 +652,12 @@ export type DesktopMediaOutcome = {
 	response: DesktopMediaResponse;
 	/** Whether the daemon itself answered this request. */
 	answered: boolean;
+	/**
+	 * The daemon answered with its reload admission fence (see the JSON twin,
+	 * `desktop-transport.ts`): the response carries the `serverUpdating` code and
+	 * the service opens its server-update window.
+	 */
+	serverUpdating?: boolean;
 };
 
 /**
@@ -1115,12 +1122,16 @@ export async function requestDesktopMediaOutcome(
 			let detail = "The media request failed.";
 			let declaredCode: string | undefined;
 			let declaredParams: Record<string, unknown> | undefined;
+			let fence = false;
 			if (responseType.includes("application/json")) {
 				try {
 					const parsedError = (await response.json()) as {
 						detail?: unknown;
 						message?: unknown;
 					};
+					// The reload fence refuses media routes too; read it before the
+					// generic arms below map a bare 503 to plane-closed.
+					fence = isServeReloadFence(response.status, parsedError);
 					const raw = parsedError.detail ?? parsedError.message;
 					if (typeof raw === "string") {
 						detail = raw.slice(0, 512);
@@ -1161,6 +1172,17 @@ export async function requestDesktopMediaOutcome(
 					// Keep the generic detail.
 				}
 			}
+			if (fence)
+				return {
+					response: {
+						status: 503,
+						kind: "error",
+						detail: DESKTOP_MACHINE_DETAIL.serverUpdating,
+						code: DESKTOP_REFUSAL_CODE.serverUpdating,
+					},
+					answered: true,
+					serverUpdating: true,
+				};
 			return {
 				response: {
 					status: response.status,

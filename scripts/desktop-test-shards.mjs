@@ -33,7 +33,7 @@ import {
 } from "./desktop-test-inventory.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
-// FOUR, NOT THREE, on measured memory headroom rather than balance: at
+// The original move from THREE to FOUR bought measured memory headroom: at
 // concurrency 3 the guarded runner's process group was killed by the then-current
 // 7.8 GB budget at 7.9 GB (run 40992181176) and again at 8.2 GB (run
 // 40996898976) on the SAME 205-file shard inventory, both after `ok 1060` with
@@ -41,7 +41,10 @@ import { isEntryPoint } from "./entry-point.mjs";
 // so fewer files per process group is what buys headroom; the budget and the
 // concurrency guard are deliberately untouched. That budget has since risen to
 // 9.5 GB (`_BUDGET_FLOOR_MB` = 9728 MB), so both deaths predate the budget in
-// force today.
+// force today. FIVE now buys growth headroom: v0.52.9's release run reached
+// the 200-file warning in one of four lanes, only ten below the 210-file ceiling.
+// Keep the salt and both thresholds unchanged; capacity, not a new deal or a
+// weaker guard, is the lever.
 //
 // THIS CONSTANT IS THE ONLY PLACE THE LANE COUNT LIVES. `partition`,
 // `shardMatrix`, the receipt/verify index bounds, `shardIndexOf`'s default and
@@ -53,7 +56,7 @@ import { isEntryPoint } from "./entry-point.mjs";
 // reads as green. At runtime the same disagreement fails loudly instead -
 // `run`/`receipt` reject an index outside `0..SHARD_COUNT-1` and `verify`
 // demands exactly SHARD_COUNT receipts.
-export const SHARD_COUNT = 4;
+export const SHARD_COUNT = 5;
 
 /**
  * Hard ceiling on the files one shard may hold. A lane over it is refused, not

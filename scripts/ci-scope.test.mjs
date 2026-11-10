@@ -3425,13 +3425,11 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
  * still run where nothing can cancel the record of a `main` commit - it does,
  * and since 2026-11-08 it ALSO runs on pull requests at the merge gate (the
  * second test below), which is why `pull_request` is no longer absent here.
- * And only `main` may write the `ci-main-red` record: a branch dispatch that
- * reports would close a real main-red issue on a green branch, and a shared
- * concurrency group would let it replace a queued `main` run.
+ * And the workflow files NO issue for a red `main` (the red run is the signal;
+ * issues piled up as junk), so no job may hold `issues: write`.
  * Mutation: drop a job from `ci-gate.needs`; remove `always()`; set
- * `cancel-in-progress: true` in full-suite.yml; widen `issues: write` to the
- * workflow; drop the `refs/heads/main` guard from `report`; key the
- * concurrency group by a constant again.
+ * `cancel-in-progress: true` in full-suite.yml; add `issues: write` or a
+ * `gh issue` step back; key the concurrency group by a constant again.
  */
 test("A18: CI Gate needs every job and reds only on failure or cancellation", () => {
 	const gate = jobs["ci-gate"];
@@ -3461,7 +3459,7 @@ test("A18: CI Gate needs every job and reds only on failure or cancellation", ()
 	);
 });
 
-test("A18: the full suite runs on main, nightly and on demand, and only its reporter writes issues", () => {
+test("A18: the full suite runs on main, nightly and on demand, and files no issues", () => {
 	const full = load(readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8"));
 	const on = full.on ?? full[true];
 	assert.deepEqual(on.push.branches, ["main"]);
@@ -3477,21 +3475,17 @@ test("A18: the full suite runs on main, nightly and on demand, and only its repo
 	});
 	assert.deepEqual(full.permissions, { contents: "read" });
 	for (const [id, job] of Object.entries(full.jobs))
-		if (id !== "report")
-			assert.equal(job.permissions, undefined, `${id} widens permissions`);
-	const report = full.jobs.report;
-	assert.deepEqual(report.permissions, { issues: "write" });
-	assert.equal(
-		String(report.if).trim(),
-		"always() && github.ref == 'refs/heads/main'",
-		"the ci-main-red reporter must run for main only, and still on failure",
-	);
-	assert.ok(report.needs.includes("desktop-tests-result"));
-	const run = report.steps.map((step) => step.run ?? "").join("\n");
-	assert.match(run, /label=ci-main-red/);
-	assert.match(run, /if \[ "\$RESULT" = success \]/);
-	assert.match(run, /gh issue close/);
-	assert.match(run, /gh issue create/);
+		assert.equal(job.permissions, undefined, `${id} widens permissions`);
+	// Retired: no reporter job, no issue-filing step, no `issues: write` anywhere.
+	assert.equal(full.jobs.report, undefined, "the issue reporter is retired");
+	// Comments may (and do) explain the retirement, so only live YAML is pinned.
+	const text = readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8")
+		.split("\n")
+		.filter((line) => !/^\s*#/u.test(line))
+		.join("\n");
+	assert.doesNotMatch(text, /issues:\s*write/u);
+	assert.doesNotMatch(text, /gh (issue|label)\b/u);
+	assert.doesNotMatch(text, /Full test suite red on main/u);
 });
 
 /*
@@ -3516,7 +3510,7 @@ test("A18: the full suite runs on main, nightly and on demand, and only its repo
  * the gate or to a shard; add `github.event.label.name == 'ready-to-merge'` or
  * `github.event.action == 'labeled'` to any `if:`; drop a job from
  * `merge-gate.needs`; replace `always()` with nothing; add any event guard to
- * the gate; make `report` run on a branch; delete the `--remove-label` call or
+ * the gate; delete the `--remove-label` call or
  * swap the ritual's two edits; point `pull_request` at `[opened, synchronize]`.
  */
 test("A18: the merge gate always runs, needs every suite job, and no `if:` is gated on a label", () => {
@@ -3540,18 +3534,13 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 		undefined,
 		"the gate needs contents: read only",
 	);
-	// Every job that produces a suite verdict, and `report` deliberately absent:
-	// it is the main-only `ci-main-red` writer and is skipped on every PR.
+	// Every job that produces a suite verdict (all of them but the gate itself).
 	assert.deepEqual(
 		[...gate.needs].sort(),
 		Object.keys(suite)
-			.filter((job) => job !== "merge-gate" && job !== "report")
+			.filter((job) => job !== "merge-gate")
 			.sort(),
 		"a suite job missing from needs is a red suite that cannot red the gate",
-	);
-	assert.ok(
-		!gate.needs.includes("report"),
-		"report is the main-only ci-main-red writer, not a suite producer",
 	);
 
 	// No `if:` anywhere in this file is gated on a label. The invariant is the
@@ -3594,13 +3583,6 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 	const body = gate.steps.map((step) => step.run ?? "").join("\n");
 	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/u);
 	assert.match(body, /process\.exit\(1\)/u);
-
-	// The `main` record keeps its own job, main-only, so a branch dispatch can
-	// never close a real main-red issue.
-	assert.equal(
-		String(suite.report.if).trim(),
-		"always() && github.ref == 'refs/heads/main'",
-	);
 
 	// The ritual is the only way to EXIT the `Expected` state, so it is pinned
 	// here with the workflow: both edits (remove, then add) and the label name.

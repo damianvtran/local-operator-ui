@@ -1,0 +1,46 @@
+{
+	"schema": 1,
+	"auditor": "i18n-auditor (lopdev reviewer role, session 500cc1a88ba7); not the translator of these values and not the author of the upload-agent-dialog keying change",
+	"agent": "i18n-auditor (lopdev reviewer role, session 500cc1a88ba7); not the translator of these values and not the author of the upload-agent-dialog keying change",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "All substantive reads, ICU renders and the verdict ran on deepseek/deepseek-flash. The session opened on anthropic/claude-sonnet-5-5 and took three consecutive provider-quota fallbacks (claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash) before the first catalogue read; no finding or verdict was formed before the fallbacks settled.",
+	"fallback": "yes - three provider-quota fallbacks from anthropic/claude-sonnet-5-5 to deepseek/deepseek-flash; disclosed per policy",
+	"independence": "Independent of the translator: did not translate, remediate or edit any catalogue, ledger, allowance, generator, component or test; read the committed bytes at 2b72db6a56a and the English source + context sidecar; the translator's claims (» fiche » for listing, » l'offre Team » for the plan) were treated as claims and each rebuilt from the shipped fr corpus. No MT service used.",
+	"instance": "500cc1a88ba7",
+	"session": "500cc1a88ba7",
+	"locale": "fr",
+	"namespace": "ui.agents.upload",
+	"branch": "i18n/slice-upload-agent-dialog",
+	"head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+	"base": "3378319980ff898892f316ae3a17cc22c089b7d3",
+	"pr": "damianvtran/local-operator-ui (branch i18n/slice-upload-agent-dialog)",
+	"date": "2026-11-08",
+	"round": 1,
+	"status": "changes_requested",
+	"sha256": {
+		"fr": "3b1a270ec474f530a88c5560874ddf489aacb65ec722379463b9113b4d980eff",
+		"en": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+	},
+	"context_sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec",
+	"scope": "Delta audit of the 15 keys added to src/i18n/catalogues/fr/ui.agents.upload.json at 2b72db6a56a (diff 3378319980f..2b72db6a56a, this file only). The 31 pre-existing values were checked mechanically: 0 removed, 0 changed, and the base file's sha256 equals origin/main's, so nothing outside the 15 added keys was re-read for naturalness. Catalogue-only: no rendered frame, no activation claim, no release claim.",
+	"key_count": 15,
+	"keys_in_file": 46,
+	"findings": {
+		"blocker": 0,
+		"major": 1,
+		"minor": 0,
+		"nit": 1
+	},
+	"finding_ids": [
+		"M1",
+		"N1"
+	],
+	"culprit_keys": [
+		"ui.agents.upload.intro.public"
+	],
+	"notes": [
+		"M1 (MAJOR) ui.agents.upload.intro.public: 'sur le Hub des agents public' puts the qualifier after the complement 'des agents', where it reads as an agreement error on 'agents' or as a post-complement qualifier French does not use for a plain adjective; it also differs from this locale's 'Hub public' (ui.hub.pages.scope.public) and from the same delta's own 'le hub public'. Suggested: 'sur le Hub public des agents'.",
+		"N1 (NIT) ui.agents.upload.target.blocked_hint, one arm: 'Un proprietaire de {org}' renders 'de Acme' without elision; matches the shipped fr sibling ui.hub.teams.org.plan_body and ICU cannot elide, so recorded for a locale-wide sweep, not gated."
+	],
+	"verdict": "changes_requested"
+}

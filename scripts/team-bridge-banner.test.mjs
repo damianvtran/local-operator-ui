@@ -302,10 +302,14 @@ function harness({
 	platform = "darwin",
 	images,
 	waitTimers,
+	show = "focus",
+	canNotify = true,
+	attentionDriver,
 } = {}) {
 	const dir = mkdtempSync(join(tmpdir(), "team-bridge-banner-"));
 	const banners = [];
 	const signals = [];
+	const attention = [];
 	let clock = 1_000_000;
 	const window = {
 		isDestroyed: () => false,
@@ -315,10 +319,17 @@ function harness({
 	};
 	const notifier = new notifierModule.TeamBridgeNotifier({
 		window: () => window,
-		show: "focus",
+		show,
+		attention: attentionDriver ?? {
+			request: () => {
+				attention.push("request");
+				return attention.length;
+			},
+			cancel: (id) => attention.push(["cancel", id]),
+		},
 		store: new storeModule.TeamBridgeNotifyStore(join(dir, "cursors.json")),
 		host: { signalOpen: () => signals.push(true), reopen: () => undefined },
-		canNotify: () => true,
+		canNotify: () => canNotify,
 		platform,
 		now: () => clock,
 		...(images ? { images } : {}),
@@ -334,12 +345,63 @@ function harness({
 		notifier,
 		banners,
 		signals,
+		attention,
+		setFocused: (value) => {
+			focused = value;
+		},
 		advance: (ms) => {
 			clock += ms;
 		},
 		cleanup: () => rmSync(dir, { recursive: true, force: true }),
 	};
 }
+
+test("Dock attention follows admitted Bridge bursts, not duplicate or coalesced alerts", async () => {
+	const h = harness();
+	try {
+		assert.deepEqual(await h.notifier.notify(request()), { shown: true });
+		assert.deepEqual(h.attention, ["request"]);
+		await h.notifier.notify(request());
+		await h.notifier.notify(request({ seq: 5 }));
+		assert.deepEqual(h.attention, ["request"]);
+		h.advance(notifierModule.TEAM_BRIDGE_COALESCE_MS);
+		await h.notifier.notify(request({ seq: 6 }));
+		assert.deepEqual(h.attention, ["request", ["cancel", 1], "request"]);
+		h.notifier.setAuthority({ epoch: 2 });
+		assert.deepEqual(h.attention.at(-1), ["cancel", 3]);
+	} finally {
+		h.cleanup();
+	}
+});
+
+test("Dock attention stays quiet for focused, headless, unsupported, foreign and nonmac alerts", async () => {
+	for (const options of [
+		{ focused: true },
+		{ show: "never" },
+		{ canNotify: false },
+		{ platform: "linux" },
+		{ platform: "win32" },
+	]) {
+		const h = harness(options);
+		try {
+			// viewing:false deliberately permits a banner on another focused screen,
+			// but must never request Dock attention while the app is foreground.
+			await h.notifier.notify(request({ viewing: false }));
+			assert.deepEqual(h.attention, [], JSON.stringify(options));
+		} finally {
+			h.cleanup();
+		}
+	}
+	const h = harness();
+	try {
+		await h.notifier.notify(
+			request({ owner: { accountId: "foreign", epoch: 1 } }),
+		);
+		assert.deepEqual(h.attention, []);
+	} finally {
+		h.cleanup();
+	}
+});
 
 const request = (patch = {}) => ({
 	owner: { accountId: "acct_a", epoch: 1 },
@@ -397,6 +459,7 @@ test("a burst replaces the banner under the same id and sounds once", async () =
 		assert.equal(h.banners[0].closed, true, "the earlier banner is replaced");
 		assert.equal(h.banners[1].options.id, h.banners[0].options.id);
 		assert.equal(h.banners[1].options.silent, true, "no second sound");
+		assert.deepEqual(h.attention, ["request"], "no second Dock bounce");
 		assert.equal(h.banners[1].options.body, "3 new messages: also the flag");
 
 		// Outside the window it is a new moment and sounds again.
@@ -662,8 +725,52 @@ test("a banner waiting on its image is not posted after a sign-out, and nothing 
 		wait.fire();
 		assert.deepEqual(await pending, { shown: false });
 		assert.equal(h.banners.length, 0, "no preview after the sign-out");
+		assert.deepEqual(
+			h.attention,
+			[],
+			"withdrawn alerts never request attention",
+		);
 	} finally {
 		h.cleanup();
+	}
+});
+
+test("focus gained during image enrichment suppresses Dock attention even for another screen", async () => {
+	const wait = hangingWait();
+	const h = harness(wait);
+	try {
+		const pending = h.notifier.notify(request({ viewing: false }));
+		h.setFocused(true);
+		wait.fire();
+		assert.deepEqual(await pending, { shown: true });
+		assert.deepEqual(h.attention, []);
+	} finally {
+		h.cleanup();
+	}
+});
+
+test("a missing Dock or declined attention request never breaks delivery or cancellation", async () => {
+	for (const requestAttention of [
+		() => -1,
+		() => {
+			throw new Error("Dock unavailable");
+		},
+	]) {
+		const cancellations = [];
+		const h = harness({
+			attentionDriver: {
+				request: requestAttention,
+				cancel: (id) => cancellations.push(id),
+			},
+		});
+		try {
+			assert.deepEqual(await h.notifier.notify(request()), { shown: true });
+			assert.deepEqual(await h.notifier.notify(request()), { shown: false });
+			h.notifier.setAuthority({ epoch: 2 });
+			assert.deepEqual(cancellations, []);
+		} finally {
+			h.cleanup();
+		}
 	}
 });
 
@@ -682,6 +789,7 @@ test("a burst that arrives during the image wait replaces once and sounds once",
 		assert.equal(h.banners[0].closed, true, "the earlier banner is replaced");
 		assert.equal(h.banners[1].closed, false);
 		assert.equal(h.banners[1].options.silent, true, "no second sound");
+		assert.deepEqual(h.attention, ["request"], "no second Dock bounce");
 		assert.equal(h.banners[1].options.body, "3 new messages: also the flag");
 	} finally {
 		h.cleanup();

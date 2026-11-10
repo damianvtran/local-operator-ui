@@ -150,10 +150,10 @@ export function McpAuthDialog({
 						phase: "probe",
 						detail: null,
 						message: !secure
-							? "Update the backend for secure MCP key entry. OAuth and the server list remain available."
+							? t("ui.chat.run_details.mcp_auth.upgrade")
 							: probe.transport_oauth_supported === false
-								? "This server does not use OAuth and declares no secret references. Add explicit ${NAME} references to its MCP environment or headers, then retry."
-								: "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
+								? t("ui.chat.run_details.mcp_auth.no_references")
+								: t("ui.chat.run_details.mcp_auth.unknown_method"),
 					},
 					actions: mcpConfigActions(),
 				});
@@ -471,8 +471,12 @@ export function McpAuthDialog({
 					<p>
 						{operation?.message ||
 							(running
-								? "Waiting for backend sign-in status…"
-								: `Sign-in ${operation?.status ?? "status unavailable"}.`)}
+								? t("ui.chat.run_details.mcp_auth.waiting")
+								: t("ui.chat.run_details.mcp_auth.status", {
+										status:
+											operation?.status ??
+											t("ui.chat.run_details.mcp_auth.status_unavailable"),
+									}))}
 					</p>
 				) : null}
 				{statusFailure ? (

@@ -3021,6 +3021,12 @@ app
 			},
 		});
 		const teamBridgeNotifier = new TeamBridgeNotifier({
+			// Native capability belongs only to the admitted Team Bridge notifier,
+			// not a renderer IPC or the regular completion/gate notification path.
+			attention: {
+				request: () => app.dock?.bounce("informational") ?? -1,
+				cancel: (id) => app.dock?.cancelBounce(id),
+			},
 			images: notificationImages,
 			window: () => mainWindow,
 			show: windowLaunch.show,

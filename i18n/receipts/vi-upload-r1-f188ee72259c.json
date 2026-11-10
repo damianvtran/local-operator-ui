@@ -1,0 +1,92 @@
+{
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "session": "05ea8d11157a",
+  "instance": "f188ee72259c",
+  "date": "2026-11-08",
+  "status": "changes_requested",
+  "result": "changes-requested",
+  "locale": "vi",
+  "namespace": "ui.agents.upload",
+  "key_count": 15,
+  "branch": "i18n/slice-upload-agent-dialog",
+  "base": "b915083bd96",
+  "head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-s4",
+  "model": "deepseek/deepseek-flash",
+  "model_provenance": "Served as deepseek/deepseek-flash when the verdict, the finding text and all three bundle files were written. The session was pinned to anthropic/claude-sonnet-5-5 and fell back three times on provider quota failures - anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then deepseek/deepseek-flash - so reads made earlier in the session were served by those models. Disclosed per the harness model-provenance rule rather than reported as a single-model audit. Every check in the bundle is reproducible from the commands recorded in record.json -> checks, so a reader does not have to trust any model's recollection of them.",
+  "independence": "This session did not translate, remediate or author any of the 15 values, and read no translator reasoning. The verdict was rebuilt from the English source, its context sidecar, the vi style guide and glossary, the locale's shipped siblings, the render site in upload-agent-dialog.tsx, and two node renders of the catalogue bytes - not from the translator's account of its own draft. Wrote only this receipt and the two evidence files; no catalogue, ledger, allowance, generator or test file was touched.",
+  "scope": "Independent audit of the 15 vi keys added to src/i18n/catalogues/vi/ui.agents.upload.json by 2b72db6a56a, against the English source and its context sidecar at that head. All 46 values of the file were read for consistency with shipped siblings; only the 15 added keys are judged. The one judgement call the brief asked for - whether the blocked_hint parenthetical is natural or a workaround that shows through, and whether {count} unrendered is acceptable - is answered by rendering and by the sidecar's own wording, both quoted in the record.",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+    "sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+    "sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/vi/ui.agents.upload.json",
+    "sha256": "8308c99f44ab7771c06e54af9ecc3acd50456acb6e7e9feadc55533bde94235f"
+  },
+  "sha256": {
+    "en": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f",
+    "en_context": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec",
+    "vi": "8308c99f44ab7771c06e54af9ecc3acd50456acb6e7e9feadc55533bde94235f"
+  },
+  "bundle_companions_sha256": {
+    "record.json": "b7e307752147d0eda2e91192a1aa8b046687c4b8eee205fdf6017b13d23d0439",
+    "report.md": "0d01e0b462e7c95acb9269190eba8bf0a0011b33c5f3e5746100c67ed6ec3683"
+  },
+  "bundle_companions_paths": {
+    "record.json": "i18n/audits/evidence/vi/ui.agents.upload/vi-upload-f188ee72259c/record.json",
+    "report.md": "i18n/audits/evidence/vi/ui.agents.upload/vi-upload-f188ee72259c/report.md"
+  },
+  "self_hash_note": "This receipt does not hash itself, and record.json names it by path with a null hash: two files cannot each carry the other's digest. The direction chosen is the one that covers the larger artefact - this file hashes record.json and report.md; record.json carries the path only.",
+  "items": {
+    "1_placeholder_parity": "PASS",
+    "2_key_set_and_order": "PASS",
+    "3_icu_parse": "PASS",
+    "4_nfc": "PASS",
+    "5_terminology": "PASS",
+    "6_typography": "PASS",
+    "7_no_english_residue": "PASS",
+    "8_promise_list_preserved": "PASS",
+    "9_plural_single_category": "PASS",
+    "10_plural_arm_content": "FAIL",
+    "11_width": "PASS-with-nit",
+    "12_naturalness": "FAIL"
+  },
+  "failures": [
+    "vi-r1-m1"
+  ],
+  "findings_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 0,
+    "nit": 2
+  },
+  "info_count": 5,
+  "finding_ids": [
+    "vi-r1-m1",
+    "vi-r1-n1",
+    "vi-r1-n2",
+    "vi-r1-i1",
+    "vi-r1-i2",
+    "vi-r1-i3",
+    "vi-r1-i4",
+    "vi-r1-i5"
+  ],
+  "verdict_reason": "changes-requested on one MAJOR: ui.agents.upload.target.blocked_hint names a single organization inside the only plural arm, against the sidecar's explicit rule that every non-`one` category say 'any of the organizations marked above' without naming one, and hedges a singleton at count=1. Nothing else blocks - placeholders, key set and order, ICU parse, NFC, terminology, typography and the five-item promise list all pass. The two NITs are a wording improvement and a wrap risk; they do not gate.",
+  "merge_prerequisites": [
+    {
+      "what": "ledger reassembly for all seven locales",
+      "measured": "all 7 ui.agents.upload rows in i18n/ledger.json are stale on both hashes at this head (row source 45760232c7ac, disk source 3676c1b366cc; each row's target likewise)",
+      "attribution": "source-side drift inherited from the base b915083bd96 (the English keying commit), target-side from 2b72db6a56a - a property of the PR, not of the vi values",
+      "fix": "reassemble each row with scripts/i18n/ledger-assemble.mjs and its new audit receipt"
+    }
+  ],
+  "not_run": "No repo-wide gate was executed: ledger-check, check-clean-view, generate --check, check-duplicates, check-strings, context-parity and the vitest suite are CI's or the manager's. This receipt claims no verdict on them. Node work was serialised under NODE_OPTIONS=--max-old-space-size=1024, two renders plus one PluralRules probe, no install.",
+  "committed": false,
+  "commit_note": "Nothing was committed: the three files are written in the shared worktree for the manager to commit."
+}
