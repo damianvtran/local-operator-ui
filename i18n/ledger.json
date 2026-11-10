@@ -15298,12 +15298,12 @@
 			"locale": "fr",
 			"namespace": "ui.chat.sidebar",
 			"source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
-			"target_sha256": "12b55356dd135aab5a1fdf3d6a4da4394c2bc757c3fa5f85634531f5a690cdd5",
+			"target_sha256": "ec93a140d65cf298bb4252b74f999b83bc7736860d0b7c7dbfe5625e7983e3a3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-10",
-				"note": "translation lane fr by fresh v2 i18n-translator serving anthropic/claude-sonnet-5-5 (PR #1836): first-round major fixed by v2, delta-audited clean; auditors run other models and are independent instances."
+				"note": "translation lane fr by i18n-translator serving anthropic/claude-sonnet-5-5 (PR #1837): one key agents.builtin_offer gained a many arm; auditors run other models and are independent instances."
 			},
 			"auditors": [
 				{
@@ -15311,34 +15311,34 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "8195830a463b",
+					"instance": "e23a48ff2216",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/8195830a463b.json",
-					"receipt_sha256": "36c02c0c8f19f0b3b169336029014b35b17ae9a800964a3edd29d2ae560c83ef",
-					"scope": "fr/ui.chat.sidebar at 89d74581e8e: the 5 mark_all_read keys added by PR #1836 fully audited, the other 81 keys of the 86-key file read for consistency",
-					"note": "PR #1836 independent audit (no findings; first-round FR-S10-SOL-F1 major verified fixed). Delta audit of the v2 values after first-round major. i18n/receipts/8195830a463b.json"
+					"receipt": "i18n/receipts/e23a48ff2216.json",
+					"receipt_sha256": "06d9f86f16092de42860ce7286fdf348cf7f79ad7bea370c9e41419cb52c3211",
+					"scope": "fr/ui.chat.sidebar at fd09d8f (PR #1837): the one changed key agents.builtin_offer audited in full (added many arm), the other 85 keys read for term consistency only",
+					"note": "PR #1837 independent one-key delta audit (no findings). i18n/audits/evidence/fr/ui.chat.sidebar/e23a48ff2216/record.json"
 				},
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "851a79fb9d02",
+					"instance": "70b31b87bdd3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/851a79fb9d02.json",
-					"receipt_sha256": "a3ed3f387733ee3f2abc69f24777406eb4295f7aff9cd637b33d2298e0707f8d",
-					"scope": "fr/ui.chat.sidebar at 89d74581e8e: the 5 mark_all_read keys added by PR #1836 fully audited, the other 81 keys of the 86-key file read for consistency",
-					"note": "PR #1836 independent audit (no findings). Delta audit of the v2 values after first-round major. i18n/receipts/851a79fb9d02.json"
+					"receipt": "i18n/receipts/70b31b87bdd3.json",
+					"receipt_sha256": "27c5de62eab7f42a8e9e1ad51fb182482e87aa7bbbab003bd011b9b1deb4dd9f",
+					"scope": "fr/ui.chat.sidebar at fd09d8f (PR #1837): the one changed key agents.builtin_offer audited in full (added many arm), the other 85 keys read for term consistency only",
+					"note": "PR #1837 independent one-key delta audit (no findings). i18n/audits/evidence/fr/ui.chat.sidebar/70b31b87bdd3/record.json"
 				}
 			],
 			"status": "audited",
@@ -15633,6 +15633,47 @@
 							"receipt_sha256": "a64d01b650d035f7bbb3ce735c801f59949fc0fa0705006cc9d7c3fec942bd49",
 							"scope": "fr/ui.chat.sidebar at 0cc79cf965d: the added mark_all_read label fully audited, the 80 existing keys read for consistency; FR2-F1 label-width remediation verified",
 							"note": "PR #1827 fresh final-head audit of fr/ui.chat.sidebar (0cc79cf965d; bytes unchanged since 165aebb1b73): FR2-F1 resolved. Pre-existing FR-FINAL-LEGACY-1 (builtin_offer lacks ICU many, same at base) excluded from counts. i18n/receipts/2bbf16af14ee.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+					"target_sha256": "12b55356dd135aab5a1fdf3d6a4da4394c2bc757c3fa5f85634531f5a690cdd5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "8195830a463b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8195830a463b.json",
+							"receipt_sha256": "36c02c0c8f19f0b3b169336029014b35b17ae9a800964a3edd29d2ae560c83ef",
+							"scope": "fr/ui.chat.sidebar at 89d74581e8e: the 5 mark_all_read keys added by PR #1836 fully audited, the other 81 keys of the 86-key file read for consistency",
+							"note": "PR #1836 independent audit (no findings; first-round FR-S10-SOL-F1 major verified fixed). Delta audit of the v2 values after first-round major. i18n/receipts/8195830a463b.json"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "851a79fb9d02",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/851a79fb9d02.json",
+							"receipt_sha256": "a3ed3f387733ee3f2abc69f24777406eb4295f7aff9cd637b33d2298e0707f8d",
+							"scope": "fr/ui.chat.sidebar at 89d74581e8e: the 5 mark_all_read keys added by PR #1836 fully audited, the other 81 keys of the 86-key file read for consistency",
+							"note": "PR #1836 independent audit (no findings). Delta audit of the v2 values after first-round major. i18n/receipts/851a79fb9d02.json"
 						}
 					],
 					"status": "audited"

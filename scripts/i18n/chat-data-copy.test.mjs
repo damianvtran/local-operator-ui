@@ -425,7 +425,8 @@ test("the shipped tooltip and name-suffix messages format cleanly in every local
 	 * is the operator's acceptance ("no English in fr") applied to this copy.
 	 */
 	mod.clearRegisteredCatalogues();
-	const English = /\b(unread|not active|Mark|including|completion token)\b/;
+	const English =
+		/\b(unread|not active|Mark|including|completion token|as read|cannot be cleared)\b/;
 	const KEYS = "ui.chat.sidebar.mark_all_read.";
 	const render = (count, elsewhere) => {
 		const chats = mod.t(`${KEYS}scope_chats_elsewhere`, { count, elsewhere });
@@ -447,16 +448,34 @@ test("the shipped tooltip and name-suffix messages format cleanly in every local
 		act(() => mod.setLocale(locale));
 		for (const count of [0, 1, 2, 5, 21, 1_000_000]) {
 			for (const elsewhere of [1, 2, 5]) {
-				for (const out of render(count, elsewhere).outputs) {
+				for (const [index, out] of render(count, elsewhere).outputs.entries()) {
 					assert.ok(out.length > 0, `${locale} ${count}/${elsewhere}: empty`);
 					assert.doesNotMatch(
 						out,
 						/[{}]/,
 						`${locale} ${count}/${elsewhere}: ICU brace left in ${out}`,
 					);
+					/*
+					 * `::group-off` must keep the count as plain digits in every locale. The
+					 * first guard listed three literal groupings (en, es, de-style) and so
+					 * missed fr `1\u202f000\u202f000`, ru `1\u00a0000\u00a0000` and hi
+					 * `10,00,000`. Two checks that do not enumerate locales: when the render
+					 * carries the count (the name suffix carries `elsewhere`, not `count`),
+					 * the plain digits must be present, which already fails for any grouping
+					 * since it splits them; and no run of digit groups joined by a comma,
+					 * dot, space, NBSP, narrow NBSP or Arabic thousands separator may
+					 * appear. The second needs two separators so unrelated punctuation
+					 * ("Mark 5 ... 2.") cannot trip it.
+					 */
+					// outputs[4] is `name_suffix_elsewhere`, which carries `elsewhere` only.
+					if (count === 1_000_000 && index < 4)
+						assert.ok(
+							out.includes("1000000"),
+							`${locale}: count not rendered as plain digits in ${out}`,
+						);
 					assert.doesNotMatch(
 						out,
-						/1,000,000|1 000 000|1\.000\.000/,
+						/\d{1,3}(?:[,.\u00a0\u202f\u066c ]\d{2,3}){2,}/,
 						`${locale}: grouped digits in ${out}`,
 					);
 					if (locale !== "en")
